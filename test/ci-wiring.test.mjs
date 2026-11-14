@@ -6,10 +6,10 @@
 //   0  the workflow file is readable and parses in the indentation subset;
 //   1  the rollup job exists with no name key, so its check name is its id;
 //   2  its job-level if: is exactly always() && !github.event.pull_request.draft;
-//   3a its step pins the shared action to a 40-hex sha;
+//   3a its step pins the shared action at @stable;
 //   3b its with: needs is ${{ toJSON(needs) }};
-//   3c every claude-settings pin in the file names its expected sha: STE_LINT_PIN for ste-lint,
-//      the rollup's sha for the rest;
+//   3c every claude-settings pin in the file names @stable, and checks.yml has one ste-lint
+//      uses: at @stable;
 //   4  its needs are every other job except ci-done and milestone-proof (staged, see i2);
 //   5  no job it needs has a job-level if: with github.event_name or .outputs.;
 //   6  the stamp's merge.requiredChecks is exactly ["all-jobs-passed"];
@@ -20,12 +20,12 @@
 //      and workflow_dispatch, nothing else;
 //  10  its permissions are exactly actions: read, contents: read and issues: write,
 //      at job or workflow level;
-//  11  its one job has one step, which uses the shared ci-alarm action at the shared
-//      pin, with no checkout and a timeout-minutes;
-//  12  every claude-settings pin in every .github/workflows/*.yml names its expected sha (expectedPin),
-//      read from the repo, so a workflow added later is covered too.
+//  11  its one job has one step, which uses the shared ci-alarm action at @stable, with no
+//      checkout and a timeout-minutes;
+//  12  every claude-settings pin in every .github/workflows/*.yml names @stable, read from the
+//      repo, so a workflow added later is covered too.
 //  13  checks.yml has a job mutation-report, which runs the shared mutation report;
-//  14  its step uses the shared action at ACTION_PIN with profile: mailaudit;
+//  14  its step uses the shared action at @stable with profile: mailaudit;
 //  15  its checkout has fetch-depth: 0 and persist-credentials: false;
 //  16  an actions/setup-node step with node-version 22 runs before the action;
 //  17  its job-level if: is only the draft guard;
@@ -121,42 +121,38 @@ const CI_DONE = "ci-done";
 const ACTIONS = "shivinate7/claude-settings/actions/";
 const ALARM_ACTION = ACTIONS + "ci-alarm";
 const STE_LINT = ACTIONS + "ste-lint";
-// The shared action pin. Every claude-settings pin in checks.yml carries this sha, except ste-lint.
-const ACTION_PIN = "380a24b5fa9ab78b973892ddfe3a95eaff68601b";
-// ste-lint follows claude-settings main on its own, not ACTION_PIN (decision action-pins-follow-sessions).
-// STE_LINT_PIN is not written here. steLintPinIn reads it from checks.yml, so a pin move is one edit there.
-// The sha a claude-settings pin must name: STE_LINT_PIN for ste-lint, the shared sha for the rest.
-// One home for the ste-lint exception, read by assertions 3c and 12.
-function expectedPin(action, shared) {
-  return action === "ste-lint" ? STE_LINT_PIN : shared;
-}
-// The one sha that checks.yml's ste-lint uses line names. A pin is a uses: value, so a comment
-// or a run: block that names one does not count. No such line, two shas, or a non-sha throws
-// here, before any assertion runs, so assertions 3c and 12 never compare against a missing pin.
-function steLintPinIn(text) {
-  if (text === null) throw new Error(`ci-wiring: cannot read ${WORKFLOW}, so no ste-lint pin can be read`);
+// The ref every claude-settings action is called at: the branch stable, not a sha (owner ruling R44 part 1).
+// Written as a literal, never read from checks.yml, so a workflow moved to another ref fails against it.
+const ACTION_PIN = "stable";
+// A 40-hex call to a claude-settings action: the form the old rule wanted, now a negative case.
+const SHA_CALL = "f".repeat(40);
+// The ste-lint uses: refs checks.yml names. A pin is a uses: value, so a comment or a run: block
+// that names one does not count. A file that is missing or does not parse gives none, so the
+// repo-files block fails its 3c expect by name and nothing throws at load.
+function steLintRefsIn(text) {
+  if (text === null) return [];
   let uses;
   try {
     uses = usesValues(parseWorkflow(text), []);
-  } catch (e) {
-    throw new Error(`ci-wiring: ${WORKFLOW} does not parse, so no ste-lint pin can be read: ${e.message}`);
+  } catch {
+    return [];
   }
-  const refs = [
+  return [
     ...new Set(
       uses.filter((u) => u === STE_LINT || u.startsWith(STE_LINT + "@")).map((u) => u.slice(STE_LINT.length + 1))
     ),
   ];
-  if (refs.length === 0) throw new Error(`ci-wiring: ${WORKFLOW} has no ${STE_LINT} uses: line, so no ste-lint pin can be read`);
-  if (refs.length > 1) throw new Error(`ci-wiring: ${WORKFLOW} names ${refs.length} ste-lint shas (${refs.join(", ")}); keep one`);
-  if (!SHA.test(refs[0])) throw new Error(`ci-wiring: the ste-lint pin in ${WORKFLOW} is not a 40-hex sha: "${refs[0]}"`);
-  return refs[0];
 }
+// Assertion 3c for ste-lint: checks.yml has exactly one ste-lint uses:, and it names ACTION_PIN.
+const steLintAtStable = (text) => {
+  const refs = steLintRefsIn(text);
+  return refs.length === 1 && refs[0] === ACTION_PIN;
+};
 const ROLLUP_IF = "always() && !github.event.pull_request.draft";
 const DRAFT_GUARD = "!github.event.pull_request.draft";
 // A needed job may read the draft guard, since a draft run skips it on purpose. An
 // event name or a job output in its job-level if: skips a run that should pass.
 const FORBIDDEN_IF = ["github.event_name", ".outputs."];
-const SHA = /^[0-9a-f]{40}$/;
 const KEY = /^([A-Za-z0-9_.-]+):(?:\s+(.*))?$/;
 const BLOCK = /^[|>][-+0-9]*$/;
 const isMap = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -346,8 +342,8 @@ function workflowChecks(text) {
   const rollSha = rollUses === undefined ? undefined : rollUses.slice(rollPin.length);
   add(
     "3a",
-    `rollup step uses ${ACTIONS}${ROLLUP} pinned to a 40-hex sha`,
-    rollSha !== undefined && SHA.test(rollSha),
+    `rollup step uses ${ACTIONS}${ROLLUP} at @${ACTION_PIN}`,
+    rollSha === ACTION_PIN,
     `uses is ${JSON.stringify(rollUses ?? null)}`
   );
 
@@ -367,15 +363,12 @@ function workflowChecks(text) {
       }
     }
   }
-  const off = others.filter((o) => {
-    const action = o.uses.slice(ACTIONS.length).split("@")[0];
-    return o.uses.split("@")[1] !== expectedPin(action, rollSha);
-  });
+  const off = others.filter((o) => o.uses.split("@")[1] !== ACTION_PIN);
   add(
     "3c",
-    "every claude-settings pin names its expected sha: STE_LINT_PIN for ste-lint, the rollup's for the rest",
-    rollSha !== undefined && off.length === 0,
-    rollSha === undefined ? "no rollup sha to compare" : off.map((o) => `${o.id} ${o.uses}`).join("; ")
+    `every claude-settings pin in the file names @${ACTION_PIN}`,
+    off.length === 0,
+    off.map((o) => `${o.id} ${o.uses}`).join("; ")
   );
 
   // Assertions 5 and 8 check the set assertion 4 names, so they still bite when the
@@ -1256,9 +1249,8 @@ const readOrNull = (path) => {
   }
 };
 
-// checks.yml, read once. The ste-lint pin and every repo check on this file use this text.
+// checks.yml, read once. Every repo check on this file uses this text.
 const WORKFLOW_TEXT = readOrNull(WORKFLOW);
-const STE_LINT_PIN = steLintPinIn(WORKFLOW_TEXT);
 
 // The repo's own files.
 {
@@ -1268,6 +1260,7 @@ const STE_LINT_PIN = steLintPinIn(WORKFLOW_TEXT);
   if (wf === null) expect(`cannot read ${WORKFLOW}`, false);
   if (st === null) expect(`cannot read ${STAMP}`, false);
   for (const r of checkAll(wf, st)) expect(r.label, r.ok, r.detail);
+  expect(`3c checks.yml has one ste-lint uses: at @${ACTION_PIN}`, steLintAtStable(wf), `ste-lint refs: ${JSON.stringify(steLintRefsIn(wf))}`);
   for (const r of alarmChecks(al, wf)) expect(r.label, r.ok, r.detail);
 }
 
@@ -1395,7 +1388,7 @@ const PRE_TEXT =
     STE_IF,
     "    runs-on: ubuntu-latest",
     "    steps:",
-    `      - uses: ${ACTIONS}ste-lint@${STE_LINT_PIN} # main 2026-11-03`,
+    `      - uses: ${ACTIONS}ste-lint@${ACTION_PIN} # tracks claude-settings stable`,
     "  ci-done:",
     "    needs: [suite, screens, scope, native, zizmor, checks]",
     "    if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}",
@@ -1440,6 +1433,8 @@ function mutate(src, from, to) {
   if (!src.includes(from)) throw new Error(`fixture edit did not apply: ${from}`);
   return src.replace(from, () => to);
 }
+// Moves every claude-settings call in a fixture to one ref, the rollup's included.
+const everyPinAt = (src, ref) => src.split("@" + ACTION_PIN).join("@" + ref);
 
 {
   const bad = checkAll(GOOD, GOOD_STAMP).filter((r) => !r.ok);
@@ -1450,6 +1445,19 @@ function mutate(src, from, to) {
   );
 }
 
+// The ste-lint existence and ref claim, which the repo-files block checks against the real file.
+expect("fixture good: one ste-lint uses at @stable passes 3c", steLintAtStable(GOOD), `refs ${JSON.stringify(steLintRefsIn(GOOD))}`);
+expect(
+  "fixture red: no ste-lint uses line fails 3c",
+  !steLintAtStable(mutate(GOOD, "      - uses: " + ACTIONS + "ste-lint@" + ACTION_PIN + " # tracks claude-settings stable\n", "")),
+  "a checks.yml without ste-lint still passes"
+);
+expect(
+  "fixture red: a ste-lint uses at a 40-hex sha fails 3c",
+  !steLintAtStable(mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@" + SHA_CALL)),
+  "a 40-hex ste-lint call still passes"
+);
+
 const RED = [
   ["rollup job missing", PRE_TEXT, GOOD_STAMP, "1"],
   ["rollup job has a name key", wf({ nameLine: "    name: all jobs passed" }), GOOD_STAMP, "1"],
@@ -1459,16 +1467,14 @@ const RED = [
   ["rollup needs milestone-proof before its first green run", wf({ needs: [...NEEDS, PROOF] }), GOOD_STAMP, "4"],
   ["rollup with: needs is not toJSON(needs)", wf({ withNeeds: "${{ toJSON(github) }}" }), GOOD_STAMP, "3b"],
   ["rollup pinned to @main", wf({ pin: ACTIONS + ROLLUP + "@main" }), GOOD_STAMP, "3a"],
+  ["rollup pinned to a 40-hex sha", wf({ pin: ACTIONS + ROLLUP + "@" + SHA_CALL }), GOOD_STAMP, "3a"],
+  ["every claude-settings pin at one 40-hex sha", everyPinAt(GOOD, SHA_CALL), GOOD_STAMP, "3a"],
+  ["every claude-settings pin at @main", everyPinAt(GOOD, "main"), GOOD_STAMP, "3a"],
+  ["ste-lint pinned to a 40-hex sha", mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@" + SHA_CALL), GOOD_STAMP, "3c"],
+  ["ste-lint pinned to @main", mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@main"), GOOD_STAMP, "3c"],
   [
-    "rollup sha differs from the other pins",
-    wf({ pin: ACTIONS + ROLLUP + "@" + "f".repeat(40) }),
-    GOOD_STAMP,
-    "3c",
-  ],
-  ["ste-lint pinned to ACTION_PIN", mutate(GOOD, "ste-lint@" + STE_LINT_PIN, "ste-lint@" + ACTION_PIN), GOOD_STAMP, "3c"],
-  [
-    "ci-done-comment pinned to STE_LINT_PIN",
-    mutate(GOOD, "ci-done-comment@" + ACTION_PIN, "ci-done-comment@" + STE_LINT_PIN),
+    "ci-done-comment pinned to a 40-hex sha",
+    mutate(GOOD, "ci-done-comment@" + ACTION_PIN, "ci-done-comment@" + SHA_CALL),
     GOOD_STAMP,
     "3c",
   ],
@@ -2388,7 +2394,7 @@ const ALARM_RED = [
     "10",
   ],
   ["pinned to @main", mutate(GOOD_ALARM, "@" + ACTION_PIN, "@main"), NIGHTLY_FIXTURE, "11"],
-  ["pinned to another sha", mutate(GOOD_ALARM, ACTION_PIN, "f".repeat(40)), NIGHTLY_FIXTURE, "11"],
+  ["pinned to a 40-hex sha", mutate(GOOD_ALARM, "@" + ACTION_PIN, "@" + SHA_CALL), NIGHTLY_FIXTURE, "11"],
   [
     "checkout step added",
     mutate(
@@ -2452,7 +2458,7 @@ for (const [name, text] of ALARM_GREEN) {
   );
 }
 
-// Assertion 12: every claude-settings pin in every workflow file names its expected sha. The
+// Assertion 12: every claude-settings pin in every workflow file names @stable. The
 // files are read from the repo, so a workflow added later is covered too. The scan must
 // find a pin before the pins are compared, or an empty scan would pass.
 // A pin is a uses: value, read by the workflow parser above, so a comment or a run: block
@@ -2479,7 +2485,7 @@ function pinRefs(files) {
   return found;
 }
 const offPins = (found) =>
-  found.filter((f) => f.ref !== expectedPin(f.action, ACTION_PIN)).map((f) => `${f.where} ${f.action}@${f.ref ?? "no ref"}`);
+  found.filter((f) => f.ref !== ACTION_PIN).map((f) => `${f.where} ${f.action}@${f.ref ?? "no ref"}`);
 
 {
   let files = null;
@@ -2503,17 +2509,17 @@ const offPins = (found) =>
     if (found !== null) {
       expect("12 the scan finds a claude-settings pin in the workflow files", found.length > 0, "no pin found");
       const off = offPins(found);
-      expect("12 every claude-settings pin in every workflow file names its expected sha", off.length === 0, off.join("; "));
+      expect("12 every claude-settings pin in every workflow file names @stable", off.length === 0, off.join("; "));
     }
   }
 }
 
 const PIN_RED = [
-  ["a test workflow pin names another sha", ".github/workflows/checks.yml", mutate(GOOD, "ste-lint@" + STE_LINT_PIN, "ste-lint@" + "f".repeat(40)), "ste-lint"],
-  ["a new workflow pin names another sha", ".github/workflows/new-check.yml", mutate(GOOD_ALARM, "@" + ACTION_PIN, "@" + "f".repeat(40)), "ci-alarm"],
+  ["a test workflow pin names a 40-hex sha", ".github/workflows/checks.yml", mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@" + SHA_CALL), "ste-lint"],
+  ["a new workflow pin names a 40-hex sha", ".github/workflows/new-check.yml", mutate(GOOD_ALARM, "@" + ACTION_PIN, "@" + SHA_CALL), "ci-alarm"],
   ["a pin has no ref", ".github/workflows/ci-alarm.yml", mutate(GOOD_ALARM, "@" + ACTION_PIN, ""), "ci-alarm"],
-  ["ste-lint pinned to ACTION_PIN", ".github/workflows/checks.yml", mutate(GOOD, "ste-lint@" + STE_LINT_PIN, "ste-lint@" + ACTION_PIN), "ste-lint"],
-  ["ci-done-comment pinned to STE_LINT_PIN", ".github/workflows/checks.yml", mutate(GOOD, "ci-done-comment@" + ACTION_PIN, "ci-done-comment@" + STE_LINT_PIN), "ci-done-comment"],
+  ["ste-lint pinned to @main", ".github/workflows/checks.yml", mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@main"), "ste-lint"],
+  ["ci-done-comment pinned to @main", ".github/workflows/checks.yml", mutate(GOOD, "ci-done-comment@" + ACTION_PIN, "ci-done-comment@main"), "ci-done-comment"],
 ];
 for (const [name, file, text, action] of PIN_RED) {
   const off = offPins(pinRefs([{ name: file, text }]));
@@ -2521,10 +2527,10 @@ for (const [name, file, text, action] of PIN_RED) {
 }
 
 const PIN_GREEN = [
-  ["every pin names its expected sha", [{ name: "checks.yml", text: GOOD }, { name: "ci-alarm.yml", text: GOOD_ALARM }]],
+  ["every pin names @stable", [{ name: "checks.yml", text: GOOD }, { name: "ci-alarm.yml", text: GOOD_ALARM }]],
   [
-    "a quoted pin names its expected sha",
-    [{ name: "x.yml", text: `jobs:\n  j:\n    steps:\n      - uses: "shivinate7/claude-settings/actions/ste-lint@${STE_LINT_PIN}"\n` }],
+    "a quoted pin names @stable",
+    [{ name: "x.yml", text: `jobs:\n  j:\n    steps:\n      - uses: "shivinate7/claude-settings/actions/ste-lint@${ACTION_PIN}"\n` }],
   ],
   [
     "a comment and a run block name another pin",
@@ -2613,7 +2619,7 @@ function mutationJobChecks(text) {
   const profile = action && isMap(action.with) ? action.with.profile : undefined;
   add(
     "14",
-    `its step uses ${MUTATION_ACTION} at ACTION_PIN with profile: ${MUTATION_PROFILE}`,
+    `its step uses ${MUTATION_ACTION} at @${ACTION_PIN} with profile: ${MUTATION_PROFILE}`,
     ref === ACTION_PIN && profile === MUTATION_PROFILE,
     `uses ${JSON.stringify(action?.uses ?? null)}; profile ${JSON.stringify(profile ?? null)}`
   );
@@ -2981,7 +2987,8 @@ const MUT_GOOD = [...MUT_HEAD, ...MUT_CHECKOUT, ...MUT_SETUP, ...MUT_ACTION].joi
 const MUT_LATE = [...MUT_HEAD, ...MUT_CHECKOUT, ...MUT_ACTION, ...MUT_SETUP].join("\n") + "\n";
 const MUT_RED = [
   ["the job is missing", mutate(MUT_GOOD, `  ${MUTATION_JOB}:`, "  not-the-report:"), "13"],
-  ["it names another pin", mutate(MUT_GOOD, `@${ACTION_PIN} # main`, `@${"f".repeat(40)} # main`), "14"],
+  ["it names a 40-hex sha", mutate(MUT_GOOD, `@${ACTION_PIN} # main`, `@${SHA_CALL} # main`), "14"],
+  ["it names @main", mutate(MUT_GOOD, `@${ACTION_PIN} # main`, "@main # main"), "14"],
   ["its profile is another", mutate(MUT_GOOD, `profile: ${MUTATION_PROFILE}`, "profile: other"), "14"],
   ["its checkout is shallow", mutate(MUT_GOOD, "fetch-depth: 0", "fetch-depth: 1"), "15"],
   ["its checkout keeps credentials", mutate(MUT_GOOD, "persist-credentials: false", "persist-credentials: true"), "15"],
