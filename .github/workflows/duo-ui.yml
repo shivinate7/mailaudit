@@ -58,8 +58,10 @@ permissions:
 
 # Every run runs every job the pull request's current labels and draft state call for. So a newer run of the same
 # pull request (a push or a label) repeats the older run's jobs, and cancelling the older run loses nothing.
+# The draft state is in the group, so a draft run (which skips every job but a duo-ui labeled one) never
+# cancels a ready run. This workflow has no push, schedule or dispatch trigger, so no main run can be cancelled.
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}-${{ github.event.pull_request.draft }}
   cancel-in-progress: true
 
 jobs:
