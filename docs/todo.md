@@ -2,7 +2,6 @@
 
 Tasks a session caught and did not do. One line each.
 
-- Read the `mutation-report` job on PR 328's run (claude-settings step `mutation-report-child-adoption`, mailaudit part already on main) and record its run id and time, then delete this line.
 - `src/entry.jsx` still sends a stored GitHub token on GitHub calls. Web History's reads of the private `mailaudit-data` repo are unproven with no token.
 - Code comments still say the ledger push and photo uploads share GitHub's content-write budget, though the web app makes no GitHub writes: `src/app.jsx` near 3172 and 4026, `src/entry.jsx` near 418, 505, 601-608 and 660, `test/harness.mjs` near 297. The GitHub write functions in `src/entry.jsx` (near 640, 745, 794) are unreachable from the UI.
 - Decision `duo-card-in-hand` says "five mockup parts", but debt `duo-hand-mockup-gaps` says eight. One of them is wrong.
