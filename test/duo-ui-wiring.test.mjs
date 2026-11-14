@@ -23,7 +23,8 @@
 //   d8  pro-ui-a and pro-ui-b run on xcode-27 with a positive timeout-minutes, and each if: requires
 //       the pro-ui label, never the draft gate alone, and still runs on a labeled event for another
 //       label (a-d);
-//   d9  the concurrency group sets cancel-in-progress to the literal true, not an if: expression (a).
+//   d9  the concurrency group sets cancel-in-progress to the literal true, not an if: expression (a),
+//       and its group holds the PR draft state, so a draft run never cancels a ready run (b).
 //
 // The fixtures prove the checker: a good set passes, each mutant fails its named check, and the
 // scanners get the comment-opener, multi-line string and lone-quote cases.
@@ -859,6 +860,10 @@ function checkDuo(input) {
     const c = isMap(wf.concurrency) ? wf.concurrency["cancel-in-progress"] : undefined;
     return c === "true" ? pass : fail(`cancel-in-progress is ${show(c)}`);
   });
+  wfCheck("d9b", "concurrency.group holds github.event.pull_request.draft", () => {
+    const g = isMap(wf.concurrency) ? wf.concurrency.group : undefined;
+    return typeof g === "string" && g.includes("github.event.pull_request.draft") ? pass : fail(`group is ${show(g)}`);
+  });
 
   return out;
 }
@@ -964,7 +969,7 @@ const WF_GOOD =
     "  contents: read",
     "",
     "concurrency:",
-    "  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}",
+    "  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}-${{ github.event.pull_request.draft }}",
     "  cancel-in-progress: true",
     "",
     "jobs:",
@@ -1282,6 +1287,7 @@ const MUTANTS = [
   ["labeled-event narrowing on the duo-ui if", "d2d", narrowDuo, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=pro-ui"],
   ["labeled-event narrowing on the pro-ui ifs", "d8c", narrowPro, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=duo-ui"],
   ["labeled-event narrowing on the pro-ui ifs", "d8d", narrowPro, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=duo-ui"],
+  ["the group drops the draft state", "d9b", onWf("-${{ github.event.pull_request.draft }}", ""), "group is"],
   ["cancel-in-progress is an if: expression", "d9a", onWf("  cancel-in-progress: true", "  cancel-in-progress: ${{ github.event.action != 'labeled' }}"), "cancel-in-progress is \"${{ github.event.action != 'labeled' }}\""],
 ];
 
