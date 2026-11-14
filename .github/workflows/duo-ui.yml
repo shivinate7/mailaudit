@@ -254,6 +254,6 @@ jobs:
     permissions:
       pull-requests: write
     steps:
-      - uses: shivinate7/claude-settings/actions/ci-done-comment@380a24b5fa9ab78b973892ddfe3a95eaff68601b # main 2026-11-06 (#1341)
+      - uses: shivinate7/claude-settings/actions/ci-done-comment@stable # tracks claude-settings stable
         with:
           needs: ${{ toJSON(needs) }}

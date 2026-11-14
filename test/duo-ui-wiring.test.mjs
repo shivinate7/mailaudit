@@ -17,9 +17,10 @@
 //       flags may sit in the step, its env, the workflow env or scripts/ci-sim.sh; the closed pass's
 //       if: holds !cancelled() and reads env otherwise, never success(), failure() or always(); a
 //       step fetches hinge at its pinned sha (a-f);
-//   d6  every uses: is pinned by a 40-hex sha, every checkout keeps no credentials, and no run:
-//       block in any job holds a GitHub expression (a-c);
-//   d7  ci-done needs duo-ui, pro-ui-a and pro-ui-b, and uses ci-done-comment at checks.yml's pin (a-b);
+//   d6  every uses: of a claude-settings action is at @stable, every other uses: is pinned by a 40-hex
+//       sha, every checkout keeps no credentials, and no run: block in any job holds a GitHub expression (a-c);
+//   d7  ci-done needs duo-ui, pro-ui-a and pro-ui-b, and uses ci-done-comment at @stable, the one ref
+//       checks.yml names (a-b);
 //   d8  pro-ui-a and pro-ui-b run on xcode-27 with a positive timeout-minutes, and each if: requires
 //       the pro-ui label, never the draft gate alone, and still runs on a labeled event for another
 //       label (a-d);
@@ -56,6 +57,9 @@ const PASS_FLAGS = ["-retry-tests-on-failure", "-resultBundlePath"];
 const HINGE_REPO = "artemnovichkov/hinge";
 const HINGE_SHA = "afb8f0bd277cb12187f0844a79542cbac35e7385";
 const CI_DONE_ACTION = "shivinate7/claude-settings/actions/ci-done-comment";
+// Every claude-settings action is called at this branch ref, not a sha (owner ruling R44 part 1).
+const CLAUDE_SETTINGS = "shivinate7/claude-settings/";
+const STABLE = "stable";
 const SHA = /^[0-9a-f]{40}$/;
 const DUO_FILE = /^Duo.*UITests\.swift$/;
 const KEY = /^([A-Za-z0-9_.-]+):(?:\s+(.*))?$/;
@@ -564,7 +568,7 @@ function checksPinOf(text) {
     ),
   ];
   if (pins.length !== 1) return { error: `${CHECKS_PATH} names ${pins.length} ci-done-comment pins, not one` };
-  if (!SHA.test(pins[0])) return { error: `${CHECKS_PATH} pins ci-done-comment at ${pins[0]}, not a 40-hex sha` };
+  if (pins[0] !== STABLE) return { error: `${CHECKS_PATH} pins ci-done-comment at ${pins[0]}, not @${STABLE}` };
   return { pin: pins[0] };
 }
 
@@ -798,13 +802,15 @@ function checkDuo(input) {
   );
 
   // d6: pins, checkout credentials and GitHub expressions in run blocks, across every job.
-  wfCheck("d6a", "every uses: names a 40-hex sha pin", () => {
+  wfCheck("d6a", `every claude-settings uses: is at @${STABLE}, every other uses: is pinned by a 40-hex sha`, () => {
     const refs = usesOf(wf);
     if (refs.length === 0) return fail(`${WORKFLOW_PATH} has no uses: line`);
-    const bad = refs.filter((r) => !SHA.test(r.uses.slice(r.uses.lastIndexOf("@") + 1)));
-    return bad.length === 0
-      ? pass
-      : fail(`not pinned by a sha: ${bad.map((r) => `${r.where} ${r.uses}`).join("; ")}`);
+    const bad = refs.flatMap((r) => {
+      const ref = r.uses.slice(r.uses.lastIndexOf("@") + 1);
+      if (r.uses.startsWith(CLAUDE_SETTINGS)) return ref === STABLE ? [] : [`${r.where} ${r.uses} is not at @${STABLE}`];
+      return SHA.test(ref) ? [] : [`${r.where} ${r.uses} is not a 40-hex sha`];
+    });
+    return bad.length === 0 ? pass : fail(bad.join("; "));
   });
   wfCheck("d6b", "every actions/checkout step has persist-credentials: false", () => {
     const cos = checkoutsOf(wf);
@@ -828,7 +834,7 @@ function checkDuo(input) {
     const missing = [DUO_JOB, PRO_A, PRO_B].filter((n) => !listOf(j.needs).includes(n));
     return missing.length === 0 ? pass : fail(`${CI_DONE} does not need ${missing.join(", ")}`);
   });
-  wfCheck("d7b", `${CI_DONE} uses ${CI_DONE_ACTION} at the pin ${CHECKS_PATH} names`, () => {
+  wfCheck("d7b", `${CI_DONE} uses ${CI_DONE_ACTION} at @${STABLE}, the ref ${CHECKS_PATH} names`, () => {
     const pin = checksPinOf(input.checks);
     if (pin.error) return fail(pin.error);
     const j = jobOf(CI_DONE);
@@ -838,7 +844,7 @@ function checkDuo(input) {
       .map((s) => s.uses.slice(CI_DONE_ACTION.length + 1));
     if (refs.length === 0) return fail(`${CI_DONE} has no step that uses ${CI_DONE_ACTION}`);
     const wrong = refs.filter((r) => r !== pin.pin);
-    return wrong.length === 0 ? pass : fail(`${CI_DONE} pins ${wrong.join(", ")}, not ${pin.pin}`);
+    return wrong.length === 0 ? pass : fail(`${CI_DONE} pins ${wrong.join(", ")}, not @${pin.pin}`);
   });
 
   // d8: the two pro jobs.
@@ -925,7 +931,8 @@ function mutateAll(src, from, to) {
 }
 
 const CHECKOUT_SHA = "1".repeat(40);
-const CI_DONE_SHA = "2".repeat(40);
+// A 40-hex call to a claude-settings action: the form the old rule wanted, now a negative case.
+const SHA_CALL = "2".repeat(40);
 const XB = "xcodebuild test-without-building -destination id=$SIM_UDID -collect-test-diagnostics never";
 const FLAT_TEST = XB + " -retry-tests-on-failure -test-iterations 2 -resultBundlePath flat.xcresult";
 const CLOSED_TEST = XB + " -retry-tests-on-failure -test-iterations 2 -resultBundlePath closed.xcresult";
@@ -1004,7 +1011,7 @@ const WF_GOOD =
     "    permissions:",
     "      pull-requests: write",
     "    steps:",
-    "      - uses: " + CI_DONE_ACTION + "@" + CI_DONE_SHA + " # main 2026-11-06 (#1341)",
+    "      - uses: " + CI_DONE_ACTION + "@" + STABLE + " # tracks claude-settings stable",
     "        with:",
     "          needs: ${{ toJSON(needs) }}",
   ].join("\n") + "\n";
@@ -1019,7 +1026,7 @@ const CHECKS_GOOD = [
   "  ci-done:",
   "    runs-on: ubuntu-latest",
   "    steps:",
-  "      - uses: " + CI_DONE_ACTION + "@" + CI_DONE_SHA + " # main 2026-11-06 (#1341)",
+  "      - uses: " + CI_DONE_ACTION + "@" + STABLE + " # tracks claude-settings stable",
   "        with:",
   "          needs: ${{ toJSON(needs) }}",
   "",
@@ -1223,6 +1230,8 @@ const onWfLast = (from, to) => (g) => ({ ...g, workflow: mutateLast(g.workflow, 
 const onMk = (from, to) => (g) => ({ ...g, makefile: mutate(g.makefile, from, to) });
 const onSwift = (name, from, to) => (g) => ({ ...g, swift: { ...g.swift, [name]: mutate(g.swift[name], from, to) } });
 const onChecks = (from, to) => (g) => ({ ...g, checks: mutate(g.checks, from, to) });
+// Two edits at once, for a defect that moves the workflow and checks.yml together.
+const onBoth = (first, second) => (g) => second(first(g));
 // Edits the live-shape fixture, whose commands sit in the env. The good set is not read.
 const onCmd = (from, to) => () => ({ ...CMD_INPUT, workflow: mutate(CMD_WF, from, to) });
 
@@ -1252,7 +1261,9 @@ const MUTANTS = [
   ["pro-ui-a pass drops -retry-tests-on-failure", "d5e", onWf(PRO_A_TEST, PRO_A_TEST.replace(" -retry-tests-on-failure", ""))],
   ["pro-ui-b pass drops -resultBundlePath", "d5f", onWf(PRO_B_TEST, PRO_B_TEST.replace(" -resultBundlePath pro-b.xcresult", ""))],
   ["checkout pinned to a tag", "d6a", onWf(CHECKOUT, "      - uses: actions/checkout@v4")],
-  ["ci-done-comment pinned to a branch", "d6a", onWf("@" + CI_DONE_SHA, "@main")],
+  ["ci-done-comment pinned to a branch", "d6a", onWf("@" + STABLE, "@main"), "not at @stable"],
+  ["ci-done-comment pinned to a sha", "d6a", onWf("@" + STABLE, "@" + SHA_CALL), "not at @stable"],
+  ["checkout pinned to stable", "d6a", onWf(CHECKOUT, "      - uses: actions/checkout@stable"), "is not a 40-hex sha"],
   ["duo checkout keeps credentials", "d6b", onWf("persist-credentials: false", "persist-credentials: true")],
   ["pro-ui-b checkout keeps credentials", "d6b", onWfLast("persist-credentials: false", "persist-credentials: true")],
   ["a run block holds a GitHub expression", "d6c", onWf('        run: make ui-duo-closed UI_TEST="$UI_TEST"', '        run: make ui-duo-closed UI_TEST="$UI_TEST" && echo "${{ github.sha }}"')],
@@ -1261,8 +1272,13 @@ const MUTANTS = [
   ["a # line in a run block still holds a GitHub expression", "d6c", onWf('        run: make ui-b UI_TEST="$UI_TEST"', '        run: |\n          make ui-b UI_TEST="$UI_TEST"\n          # ${{ github.sha }}')],
   ["ci-done needs drops pro-ui-b", "d7a", onWf("    needs: [duo-ui, pro-ui-a, pro-ui-b]", "    needs: [duo-ui, pro-ui-a]")],
   ["ci-done needs drops duo-ui", "d7a", onWf("    needs: [duo-ui, pro-ui-a, pro-ui-b]", "    needs: [pro-ui-a, pro-ui-b]")],
-  ["ci-done pins another sha than checks.yml", "d7b", onWf(CI_DONE_ACTION + "@" + CI_DONE_SHA, CI_DONE_ACTION + "@" + "3".repeat(40))],
-  ["checks.yml names no ci-done-comment pin", "d7b", onChecks("      - uses: " + CI_DONE_ACTION + "@" + CI_DONE_SHA, "      - run: echo none")],
+  ["ci-done pins a sha, checks.yml names stable", "d7b", onWf(CI_DONE_ACTION + "@" + STABLE, CI_DONE_ACTION + "@" + SHA_CALL), "not @stable"],
+  ["ci-done pins @main, checks.yml names stable", "d7b", onWf(CI_DONE_ACTION + "@" + STABLE, CI_DONE_ACTION + "@main"), "not @stable"],
+  ["checks.yml names no ci-done-comment pin", "d7b", onChecks("      - uses: " + CI_DONE_ACTION + "@" + STABLE, "      - run: echo none")],
+  ["checks.yml pins ci-done-comment at a sha", "d7b", onChecks("      - uses: " + CI_DONE_ACTION + "@" + STABLE, "      - uses: " + CI_DONE_ACTION + "@" + SHA_CALL), "not @stable"],
+  ["checks.yml pins ci-done-comment at @main", "d7b", onChecks("      - uses: " + CI_DONE_ACTION + "@" + STABLE, "      - uses: " + CI_DONE_ACTION + "@main"), "not @stable"],
+  ["both files pin @main", "d7b", onBoth(onWf(CI_DONE_ACTION + "@" + STABLE, CI_DONE_ACTION + "@main"), onChecks("      - uses: " + CI_DONE_ACTION + "@" + STABLE, "      - uses: " + CI_DONE_ACTION + "@main")), "not @stable"],
+  ["both files pin one 40-hex sha", "d7b", onBoth(onWf(CI_DONE_ACTION + "@" + STABLE, CI_DONE_ACTION + "@" + SHA_CALL), onChecks("      - uses: " + CI_DONE_ACTION + "@" + STABLE, "      - uses: " + CI_DONE_ACTION + "@" + SHA_CALL)), "not @stable"],
   ["pro-ui-a runs on macos", "d8a", onWf("  pro-ui-a:\n    if: " + PRO_IF + "\n    runs-on: xcode-27", "  pro-ui-a:\n    if: " + PRO_IF + "\n    runs-on: macos-15")],
   ["pro-ui-b timeout is zero", "d8b", onWf("  pro-ui-b:\n    if: " + PRO_IF + "\n    runs-on: xcode-27\n    timeout-minutes: 60", "  pro-ui-b:\n    if: " + PRO_IF + "\n    runs-on: xcode-27\n    timeout-minutes: 0")],
   ["pro-ui-a if is the draft gate alone", "d8c", onWf("  pro-ui-a:\n    if: " + PRO_IF, "  pro-ui-a:\n    if: ${{ !github.event.pull_request.draft }}")],
