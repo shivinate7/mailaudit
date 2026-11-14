@@ -14,11 +14,15 @@ on:
 permissions:
   actions: read
   contents: read # the alarm reads the workflow file at the clearing head
-  issues: write
 
 jobs:
   alarm:
     runs-on: ubuntu-latest
+    # A job-level block replaces the top-level one, so it repeats the two reads. Only this job writes.
+    permissions:
+      actions: read
+      contents: read
+      issues: write # opens or comments on the one issue
     timeout-minutes: 5 # provisional
     steps:
       - name: Alarm on a red main
