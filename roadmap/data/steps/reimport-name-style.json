@@ -1,0 +1,10 @@
+{
+  "title": "Rename the 472 older product names to the new style so Tally pools them",
+  "status": "todo",
+  "phase": "sync",
+  "order": 10,
+  "why": "Measured 13:29 CST 2026-11-15 (coordinator): 472 stored lines use the older ' - ' name style and the file now uses ', '. 13 product names split in Tally because the 59 new lines use the new style.",
+  "note": "Owner ruled yes in chat, 13:38 CST 2026-11-15 (page item 90 reimport-name-style): its own change, after the change for page item 89 (reimport-changed-lines, lane reimport-received-pin). Cosmetic and names only; check-ins stay untouched. No lane is started: the coordinator starts it.",
+  "ask": "",
+  "updatedAt": "2026-11-15T19:38:50Z"
+}
