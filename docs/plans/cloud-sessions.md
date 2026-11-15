@@ -6,7 +6,7 @@
 
 ## The setup script
 
-`docs/plans/cloud-setup.sh` is a draft. It runs as root before Claude Code launches, once per environment snapshot, which is rebuilt when the script or the network hosts change and after about seven days. A non-zero exit fails the session start, and a setup script gets no network secret.
+`docs/plans/cloud-setup.sh` is a draft. It runs as root before Claude Code launches, once per environment snapshot. The snapshot is rebuilt after about seven days, and when the script or the network hosts change. A non-zero exit fails the session start, and a setup script gets no network secret.
 
 1. Run the claude-settings paste block, so `~/.claude` keeps one home.
 2. Install Chromium for Playwright 1.63.0, the version pinned in `package.json`, with its system libraries.

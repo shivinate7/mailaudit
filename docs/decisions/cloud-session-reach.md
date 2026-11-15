@@ -1,6 +1,6 @@
 # What a cloud session can reach: the Worker, GitHub and the Mac
 
-This record says what a cloud session of this repo can and cannot do against the live Worker, GitHub and the owner's Mac, and the one probe that proves each claim. Run the probe before you answer "I can't". A session that said it could not write to the Worker was wrong.
+This record says what a cloud session of this repo can do against the live Worker, GitHub and the owner's Mac. Each claim has one probe that proves it. Run the probe before you answer that you cannot. A session once said it could not write to the Worker, and it was wrong.
 
 **Holds while:** the cloud environment keeps a network secret for the Worker host `manifestnumberone.shivamsemwal01.workers.dev`, so the agent proxy adds the device key to requests for it. If that secret is removed or the host changes, the Worker claims are stale: re-run the probes. Measured 2026-11-15 13:24 CST by the coordinator, and re-read by this lane (GETs only) on 2026-11-15. The device key is never in the session, never in an environment variable and never in this repo (`the-token-is-a-credential`).
 
@@ -8,7 +8,7 @@ This record says what a cloud session of this repo can and cannot do against the
 
 | Target | Reach | Probe (proves the claim) |
 |---|---|---|
-| Worker, read | works: `/health`, `/ledger`, `/snapshots`, `/kept`, `/photos` all answer 200 | `curl -sS -o /dev/null -w "%{http_code}\n" https://manifestnumberone.shivamsemwal01.workers.dev/ledger` prints 200 (401 means the proxy is not adding the key) |
+| Worker, read | works: `/health`, `/ledger`, `/snapshots`, `/kept`, `/photos` all answer 200 | `curl -sS -o /dev/null -w "%{http_code}\n" https://manifestnumberone.shivamsemwal01.workers.dev/ledger` prints 200 (401 means that the proxy is not adding the key) |
 | Worker, write | works: `POST /ledger` with `{"ledger": ...}` | `curl -sS -o /dev/null -w "%{http_code}\n" -X POST -H 'content-type: application/json' -d '{"ledger":{}}' <host>/ledger` prints 400 `bad ledger`: the key is accepted and the shape check refuses it, so nothing is stored |
 | GitHub, this repo | REST works through `gh api repos/{owner}/{repo}/...` and the GitHub MCP tools; branches push | `gh api repos/shivinate7/mailaudit --jq .full_name` prints the name |
 | GitHub, `gh pr`, `gh issue`, GraphQL | refused with 403 | `gh pr list -R shivinate7/mailaudit -L1` prints HTTP 403 |
@@ -17,7 +17,7 @@ This record says what a cloud session of this repo can and cannot do against the
 | Xcode, simulators, `swift test` | not available: Ubuntu VM | these run in macOS CI (`native-ci-on-hosted-macos`) |
 | Phone install | not available: it runs on the Mac | the CI route is the manual `testflight` dispatch (`native-ships-via-testflight`) |
 
-The proxy adds the key outside the VM, so `env` shows no key and a script that checks the key's shape in the VM cannot run: `scripts/copy-photos-to-worker.mjs` refuses without a key it can read. Use curl or `fetch` against the host.
+The proxy adds the key outside the VM, so `env` shows no key. A script that checks the key's shape in the VM cannot run: `scripts/copy-photos-to-worker.mjs` refuses without a key it can read. Use curl or `fetch` against the host.
 
 A live Worker **deploy** is unmeasured from the cloud: it would need `api.cloudflare.com` and a Cloudflare token as a network secret, and it needs the owner's word either way (`live-verification`). A write to `/ledger` is a data write, and `imports-merge-never-replace` governs it.
 
