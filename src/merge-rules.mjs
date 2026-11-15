@@ -39,18 +39,31 @@ import { mergeRecent } from "./recent-rules.mjs";
 
    `base` wins a collision. Both sides derive items from the same TCGplayer
    scrape, so a collision is almost always byte-identical; preferring the
-   caller's own copy means a merge never perturbs a line already on screen. */
-export function mergeItems(base, incoming) {
+   caller's own copy means a merge never perturbs a line already on screen.
+
+   `opts.refreshTracking` (the CSV import passes it, invariant
+   imports-merge-never-replace): on a collision keep the base line but take the
+   incoming `tracking`, so a newer export's shipping status reaches a stored line.
+   An empty incoming `tracking` says nothing, so the stored one stays. No other
+   field changes, no line is dropped, and `refreshed` counts the lines whose
+   `tracking` changed. The option is off in mergeLedger: a stale device's items
+   would revert a newer `tracking` the other device already holds. */
+export function mergeItems(base, incoming, opts = {}) {
   const map = new Map((base || []).map((it) => [it.key, it]));
   let added = 0;
+  let refreshed = 0;
   for (const it of incoming || []) {
     if (!it || !it.key) continue;
-    if (!map.has(it.key)) {
+    const held = map.get(it.key);
+    if (!held) {
       map.set(it.key, it);
       added++;
+    } else if (opts.refreshTracking && it.tracking && it.tracking !== held.tracking) {
+      map.set(it.key, { ...held, tracking: it.tracking });
+      refreshed++;
     }
   }
-  return { items: [...map.values()], added };
+  return { items: [...map.values()], added, refreshed };
 }
 
 /* Per-key, later change wins. `baseAt` / `incomingAt` map a key to the ms of its

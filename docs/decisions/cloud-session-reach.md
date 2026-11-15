@@ -33,7 +33,7 @@ The web app's import has a second way in, for a session that holds the CSV. It n
 
 Figures from the one run so far, and the open question about stored `tracking`: `cloud-csv-import`.
 
-**Status:** open. A re-import never updates a stored line (`mergeItems` keeps the base), so a changed `tracking` in a new CSV does not reach the ledger. The owner has the question on the waiting page. Until it is ruled, this route adds new lines only.
+**Status:** open. This route adds new lines only. The web import refreshes `tracking` on a stored line (`imports-merge-never-replace`), but `POST /ledger` merges with the stored copy as the base, so a refreshed `tracking` in a posted ledger does not reach the stored one.
 
 ## See also
 
