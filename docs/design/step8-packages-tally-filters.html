@@ -21,6 +21,7 @@
   --new:#2E7A5E; --today:#A8443C;
 }
 body.hide-floor { --f10: 10px; --f105: 10.5px; }
+body.hide-scope .scope { display:none; }
 * { box-sizing: border-box; }
 body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
 main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
@@ -66,7 +67,7 @@ figcaption b { font-size:16px; }
 .duobar span.on { background:color-mix(in srgb, var(--card) 90%, transparent); }
 
 /* ---- the Find pill (FindPill): glass capsule, magnifier, Cochin 16 field, 44 x 44 clear slot always laid out ---- */
-.find { position:absolute; z-index:7; height:52px; display:flex; align-items:center; gap:8px; padding:4px 6px 4px 16px; border-radius:26px;
+.find { position:absolute; z-index:9; height:52px; display:flex; align-items:center; gap:8px; padding:4px 6px 4px 16px; border-radius:26px;
   border:1px solid var(--line); background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(18px) saturate(1.8);
   box-shadow:0 8px 24px var(--shadow), 0 1px 3px var(--shadow); }
 .find.focused { border-color:var(--accent); }
@@ -220,6 +221,7 @@ body.hide-tags [data-tag]::before { display:none; } body.hide-tags .tag-new, bod
   <span class="sep"></span>
   <button type="button" data-toggle="hide-tc">Hide Title Case labels</button>
   <button type="button" data-toggle="hide-floor">Hide the 11 pt floor</button>
+  <button type="button" data-toggle="hide-scope">Hide the sort's list name</button>
   <button type="button" data-toggle="hide-tags">Hide tags</button>
 </nav>
 
@@ -424,7 +426,7 @@ body.hide-tags [data-tag]::before { display:none; } body.hide-tags .tag-new, bod
         <span class="grp">View</span>
         <div class="lcard">
           <div class="lrow"><span class="lt"><b>Showing</b></span><span class="v">○ Everything</span></div>
-          <div class="lrow"><span class="lt"><b>Sorted by</b></span><span class="v">Newest</span><span class="chev open">›</span></div>
+          <div class="lrow"><span class="lt"><b>Sorted by</b><span class="scope tag-new" data-tag="New: names the list it sorts" id="focus-scope">Packages list</span></span><span class="v">Newest</span><span class="chev open">›</span></div>
           <div class="opanel tag-today" data-tag="Today: package keys (last list: Packages)">
             <div class="ogrid" style="grid-template-columns:repeat(2,1fr)">
               <span class="on">Newest</span><span>Oldest</span><span>$ remaining</span><span>Unit rate</span><span style="grid-column:span 2">Seller A–Z</span>
@@ -448,7 +450,7 @@ body.hide-tags [data-tag]::before { display:none; } body.hide-tags .tag-new, bod
         <span class="grp">View</span>
         <div class="lcard">
           <div class="lrow"><span class="lt"><b>Showing</b></span><span class="v">● Unreceived</span></div>
-          <div class="lrow"><span class="lt"><b>Sorted by</b></span><span class="v">Most missing</span><span class="chev open">›</span></div>
+          <div class="lrow"><span class="lt"><b>Sorted by</b><span class="scope tag-new" data-tag="New: names the list it sorts">Tally list</span></span><span class="v">Most missing</span><span class="chev open">›</span></div>
           <div class="opanel tag-today" data-tag="Today: Tally keys (last list: Tally)">
             <div class="ogrid" style="grid-template-columns:repeat(2,1fr)">
               <span class="on">Most missing</span><span>Cost basis</span><span>Most ordered</span><span>$ remaining</span><span>Unit rate</span><span>Name A–Z</span>
@@ -534,7 +536,7 @@ function fit() {
     const pt = d.classList.contains('duo') ? 951 : d.classList.contains('pro') ? 402 : 466;
     d.style.zoom = Math.min(1, w.clientWidth / pt); });
 }
-const opts = { 'hide-tc': 'Title Case labels', 'hide-floor': 'the 11 pt floor', 'hide-tags': 'tags' };
+const opts = { 'hide-tc': 'Title Case labels', 'hide-floor': 'the 11 pt floor', 'hide-scope': "the sort's list name", 'hide-tags': 'tags' };
 document.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', () => {
   const c = b.dataset.toggle, on = document.body.classList.toggle(c);
   b.textContent = (on ? 'Show ' : 'Hide ') + opts[c];
