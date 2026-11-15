@@ -79,17 +79,32 @@ extension XCUIApplication {
         max(windows.firstMatch.frame.minY, statusBars.firstMatch.exists ? statusBars.firstMatch.frame.maxY : 0)
     }
 
-    /// The bottom of the band a list scrolls in: the top of the Find pill when one is drawn, else the tab bar's top. The pill
-    /// floats above the bar (FindPill.swift), so a drag that starts on it moves nothing, and a row under it is not free to
-    /// read. The pill's own frame is `find-pill`, the container of the field.
+    /// The bottom of the band a list scrolls in: the top of the Find pill when one is drawn, else the top of the bar the list
+    /// ends on. That bar is the system tab bar, or on the open Duo the custom bar, whose top edge is its pill's (DuoMetrics.pill).
+    /// The flat Duo hides the system bar (DuoSystemBar), so tabBars has no match there. The pill floats above the bar
+    /// (FindPill.swift), so a drag that starts on it moves nothing, and a row under it is not free to read. The pill's own
+    /// frame is `find-pill`, the container of the field.
     var listBottom: CGFloat {
-        let bar = tabBars.firstMatch.frame.minY
+        let bar = tabBars.firstMatch.exists ? tabBars.firstMatch.frame.minY
+            : duoBar.exists ? duoBar.frame.minY
+            : windows.firstMatch.frame.maxY
         let pill = descendants(matching: .any).matching(identifier: "find-pill").firstMatch
         return pill.exists && !pill.frame.isEmpty ? min(bar, pill.frame.minY) : bar
     }
 
-    /// The one scroll helper of these tests. Plain: swipe up until the element exists and can be tapped, at most 5 swipes.
-    /// A lazy list mounts a row only near the screen, so an element not there yet is swiped toward, a second at a time.
+    /// One drag up a list, from `from` to `to` in screen points, at `x` (the window's middle by default). It holds before it
+    /// lifts, so it has no fling. It runs in the window's space: on the open Duo, app coordinates land on the outer display.
+    func dragUp(from: CGFloat, to: CGFloat, x: CGFloat? = nil) {
+        let w = windows.firstMatch
+        let dx = (x ?? w.frame.midX) - w.frame.minX
+        func at(_ y: CGFloat) -> XCUICoordinate {
+            w.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: dx, dy: y - w.frame.minY))
+        }
+        at(from).press(forDuration: 0.05, thenDragTo: at(to), withVelocity: .slow, thenHoldForDuration: 0.3)
+    }
+
+    /// The one scroll helper of these tests. Plain: drag up until the element exists and can be tapped, at most 5 drags.
+    /// A lazy list mounts a row only near the screen, so an element not there yet is dragged toward, a second at a time.
     /// `whole`: for a test that records frames before a tap. A tap on an element that is off screen scrolls the
     /// list and moves every frame, so the element must lie fully between the status bar and the Find pill or the tab
     /// bar (listBottom) first.
@@ -98,19 +113,21 @@ extension XCUIApplication {
     /// caller reads its at-rest state after this call, never before.
     func reveal(_ element: XCUIElement, whole: Bool = false) {
         guard whole else {
-            var swipes = 0
-            while !(element.exists && element.isHittable) && swipes < 5 {
-                swipeUp()
-                swipes += 1
+            // Plain: a drag from 40 pt above listBottom, half the band per drag, as whole's drags start. It is not swipeUp():
+            // XCTest chooses swipeUp's start point, and a start on the Find pill moves nothing.
+            var drags = 0
+            while !(element.exists && element.isHittable) && drags < 5 {
+                let top = listTop, bottom = listBottom
+                dragUp(from: bottom - 40, to: bottom - 40 - (bottom - top - 80) / 2)
+                drags += 1
                 _ = element.waitForExistence(timeout: 1)
             }
             return
         }
-        guard element.waitForExistence(timeout: 5), tabBars.firstMatch.exists else {
-            XCTFail("reveal: the element or the tab bar is missing")
+        guard element.waitForExistence(timeout: 5), tabBars.firstMatch.exists || duoBar.exists else {
+            XCTFail("reveal: the element or the bar is missing")
             return
         }
-        let screen = windows.firstMatch.frame
         let top = listTop
         let bottom = listBottom
         func inView() -> Bool { element.frame.minY >= top && element.frame.maxY <= bottom }
@@ -128,10 +145,7 @@ extension XCUIApplication {
             let span = bottom - top - 80
             let from = gap > 0 ? bottom - 40 : top + 40
             let to = from - max(-span, min(span, gap))
-            let x = screen.midX
-            coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: from))
-                .press(forDuration: 0.05, thenDragTo: coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: to)),
-                       withVelocity: .slow, thenHoldForDuration: 0.3)
+            dragUp(from: from, to: to)
             settle()
         }
         settle()

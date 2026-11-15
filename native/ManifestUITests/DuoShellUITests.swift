@@ -184,13 +184,12 @@ final class DuoShellUITests: XCTestCase {
         return last
     }
 
-    /// One drag up the right page, from 80 % to 15 % of the window's height. It starts above the bar (which starts at 89 %),
-    /// and it holds before it lifts, so it has no fling (as reveal(_:whole:) does).
+    /// One drag up the right page, from 40 pt above listBottom to 15 % of the window's height. On the open Duo listBottom is the
+    /// top of the Find pill, which floats above the custom bar. The old start at 80 % of the height fell on that pill and moved
+    /// nothing. The drag holds before it lifts, so it has no fling (as reveal(_:whole:) does).
     func dragListUp(_ app: XCUIApplication) {
-        let window = app.window
-        let from = window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.8))
-        let to = window.coordinate(withNormalizedOffset: CGVector(dx: 0.75, dy: 0.15))
-        from.press(forDuration: 0.05, thenDragTo: to, withVelocity: .slow, thenHoldForDuration: 0.3)
+        let window = app.window.frame
+        app.dragUp(from: app.listBottom - 40, to: window.minY + 0.15 * window.height, x: window.minX + 0.75 * window.width)
     }
 
     /// Drags a list up until a drag moves nothing, and returns its lowest row. A list whose rows reach the bar must move on
