@@ -1,6 +1,6 @@
 # The batch runner batches and merges
 
-Merge grant: claude-settings `standing-merge-grant`, under the session tiers (`session-tiers`). The batch runner owns the integration batch, the CI waits and the merge tool runs. It may merge a pull request to `main` without asking first. Every other rule still applies.
+Merge grant: claude-settings `standing-merge-grant`, under the session tiers (`session-tiers`). The coordinator holds the grant; the batch runner runs every merge under it, and the owner can withdraw it in chat. The batch runner owns the integration batch, the CI waits and the merge tool runs. It may merge a pull request to `main` without asking first. Every other rule still applies.
 
 - The coordinator starts the lane sessions and never merges. The batch runner merges on green checks and a done review, and never asks the owner to merge.
 - A lane session never opens an integration PR, marks a PR ready, or merges. It sends each lane branch that passed its local checks and its review to the batch runner, with the head commit, the checks run and the reviewer's verdict. Each lane PR stays a draft.
