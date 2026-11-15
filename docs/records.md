@@ -183,7 +183,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `null-remote-info-is-not-no-key` | A null `remoteInfo` means that the status has not loaded yet. | [`docs/decisions/null-remote-info-is-not-no-key.md`](../docs/decisions/null-remote-info-is-not-no-key.md) |
 | `offline-is-decided-by-fetch` | The app decides `offline` only by a failed `fetch`, and by nothing else. | [`docs/decisions/offline-is-decided-by-fetch.md`](../docs/decisions/offline-is-decided-by-fetch.md) |
 | `one-stamp-per-package` | Each package holds at most one order stamp. | [`docs/decisions/one-stamp-per-package.md`](../docs/decisions/one-stamp-per-package.md) |
-| `orchestrator-may-merge` | Under the session tiers (claude-settings decision session-tiers), the coordinator holds the owner's standing merge grant (claude-settings decision standing-merge-grant). | [`docs/decisions/orchestrator-may-merge.md`](../docs/decisions/orchestrator-may-merge.md) |
+| `orchestrator-may-merge` | Merge grant: claude-settings `standing-merge-grant`, under the session tiers (`session-tiers`). | [`docs/decisions/orchestrator-may-merge.md`](../docs/decisions/orchestrator-may-merge.md) |
 | `orderwand-csv` | This record holds the CSV column list and every quirk found in the user's real OrderWand exports. | [`docs/decisions/orderwand-csv.md`](../docs/decisions/orderwand-csv.md) |
 | `orphan-sweep-drops-unused-photos` | One sweep effect covers every path that orphans a photo. | [`docs/decisions/orphan-sweep-drops-unused-photos.md`](../docs/decisions/orphan-sweep-drops-unused-photos.md) |
 | `orphaned-colours-by-meaning` | Orphaned uses the app's colour meanings. | [`docs/decisions/orphaned-colours-by-meaning.md`](../docs/decisions/orphaned-colours-by-meaning.md) |
@@ -253,7 +253,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 
 | Slug | Gist | Link |
 |---|---|---|
-| `app-build-waits-xcode-27` | No pull-request CI job compiles the native app. | [`docs/debts/app-build-waits-xcode-27.md`](../docs/debts/app-build-waits-xcode-27.md) |
+| `app-build-waits-xcode-27` | No `app-build` job exists; `duo-ui` (`duo-ui-runs-on-pr-label`) builds the native app on a pull request, run 42577148982 green. | [`docs/debts/app-build-waits-xcode-27.md`](../docs/debts/app-build-waits-xcode-27.md) |
 | `armed-reset-mistap-unmeasured` | A mis-tap on a control next to the armed Reset box is unmeasured, and so is the width of the armed row. | [`docs/debts/armed-reset-mistap-unmeasured.md`](../docs/debts/armed-reset-mistap-unmeasured.md) |
 | `backup-unwatched` | Once the watchdog is off, no check reads the Worker's snapshots or the `data` branch, so a stopped backup raises no alarm. | [`docs/debts/backup-unwatched.md`](../docs/debts/backup-unwatched.md) |
 | `card-action-row-unmeasured` | The action row's content need at its tallest state is not measured at `f97e423`. | [`docs/debts/card-action-row-unmeasured.md`](../docs/debts/card-action-row-unmeasured.md) |
@@ -326,7 +326,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-pinned-card-dynamic-type` | `MastheadBackupUITests.testAccessibilityAuditWithTheRunningHeadPinned` scrolls Packages until the running head pins, then audits. | [`docs/debts/native-pinned-card-dynamic-type.md`](../docs/debts/native-pinned-card-dynamic-type.md) |
 | `native-restore-later-reply-unpinned` | A native restore now runs the bundle's `restampRestore` (`RestoreRestampTests`). | [`docs/debts/native-restore-later-reply-unpinned.md`](../docs/debts/native-restore-later-reply-unpinned.md) |
 | `native-restore-pill-tap-unpinned` | `VersionsUITests` checks the armed Restore by tapping the version row's middle twice. | [`docs/debts/native-restore-pill-tap-unpinned.md`](../docs/debts/native-restore-pill-tap-unpinned.md) |
-| `native-runner-image-unverified` | Whether the `macos-26` runner image has Xcode 27 and xcodegen is unknown. | [`docs/debts/native-runner-image-unverified.md`](../docs/debts/native-runner-image-unverified.md) |
+| `native-runner-image-unverified` | Whether the hosted runner image has xcodegen is unknown; the `xcode-27` image has Xcode 27.1. | [`docs/debts/native-runner-image-unverified.md`](../docs/debts/native-runner-image-unverified.md) |
 | `native-runner-keychain-unverified` | Whether the runner keychain is unlocked is unknown. | [`docs/debts/native-runner-keychain-unverified.md`](../docs/debts/native-runner-keychain-unverified.md) |
 | `native-seller-scale-unmeasured` | The native card seller (`PackagesView.swift`, `PackageRow.header`) carries `.minimumScaleFactor(0.5)` on 15pt Cochin. | [`docs/debts/native-seller-scale-unmeasured.md`](../docs/debts/native-seller-scale-unmeasured.md) |
 | `native-stamp-load-unmeasured` | Step 6 adds stamp work to `PackagesModel.load()` (`native/ManifestKit/Sources/ManifestKit/Packages.swift`): eight or more hops into JavaScriptCore, three of them one call per stored stamp. | [`docs/debts/native-stamp-load-unmeasured.md`](../docs/debts/native-stamp-load-unmeasured.md) |

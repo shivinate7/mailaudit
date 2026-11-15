@@ -86,7 +86,7 @@ The control region is the masthead's own vocabulary continued. Read these before
 - `sync-line-toggles-its-panel` — The sync line is also the panel's way out.
 - `merge-is-the-primary-sync-action` — Retired 2026-10-12: Merge left the UI.
 - `sync-panel-is-two-column-grid` — The sync panel is server status, last sync and a key box.
-- `sync-particulars-ruled-values` — Sync particulars are ruled label and value pairs.
+- `sync-particulars-ruled-values` — Sync particulars are ruled label and value pairs; the `LEDGER`, `PHOTOS` and `KEY` labels are queued.
 - `token-field-is-sixteen-pixels` — The key field is 16px to stop iOS zoom.
 
 ## Motion
