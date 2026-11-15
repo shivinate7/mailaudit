@@ -1,0 +1,553 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Step 8 Find and Filters</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (decision native-build-lanes, N13 notes),
+   so this page has one theme. Cochin sets words, Menlo sets numbers (typography-cochin-and-mono). */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, Georgia, serif;
+  --mono: Menlo, monospace;
+  /* The 11 pt floor (brief; Apple accessibility page). The build draws these at 10 and 10.5 pt; "Hide the 11 pt floor" shows them. */
+  --f10: 11px; --f105: 11px;
+  /* Top safe area: unmeasured on both phones. 18 Pro drawn at 54 pt, the Duo at 20 pt (a guess; see the notes, Guesses). */
+  --sat-pro: max(env(safe-area-inset-top), 54px);
+  --sat-duo: max(env(safe-area-inset-top), 20px);
+  --new:#2E7A5E; --today:#A8443C;
+}
+body.hide-floor { --f10: 10px; --f105: 10.5px; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-size:24px; line-height:1.2; margin:0; }
+.sub { color:var(--inkSoft); margin:0; }
+nav { display:flex; flex-wrap:wrap; gap:8px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav .sep { flex-basis:100%; height:0; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure[hidden] { display:none; }
+figcaption b { font-size:16px; }
+.fit { width:100%; overflow:hidden; }
+.kind { font-size:13px; color:var(--inkSoft); }
+
+/* ---- device frames, 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:24px; overflow:hidden; font-family:var(--cochin); }
+.pro { width:402px; height:874px; --sat:var(--sat-pro); }
+.fold-out { width:466px; height:678px; --sat:var(--sat-duo); }
+.duo { width:951px; height:669px; border-radius:12px; --sat:var(--sat-duo); }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 24px; font:600 12px -apple-system, system-ui, sans-serif; z-index:9; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow:hidden; display:flex; flex-direction:column; }
+.duo .fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:3; pointer-events:none; }
+.duo .fold span { position:absolute; top:240px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+
+/* system tab bar (iOS chrome): y and height from the sim log (FindPillUITests, 2026-11-08) and duo-fold-and-keyboard */
+.sysbar { position:absolute; left:0; right:0; bottom:0; height:83px; z-index:6; display:flex; justify-content:center; padding-top:8px; }
+.sysbar .cap { width:calc(100% - 32px); height:56px; border-radius:28px; border:1px solid var(--line);
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(18px); display:grid; grid-template-columns:repeat(4,1fr); align-items:center; }
+.sysbar .cap span, .duobar span { display:flex; flex-direction:column; align-items:center; gap:2px; font:11px -apple-system, system-ui, sans-serif; color:var(--inkSoft); }
+.sysbar .cap span i, .duobar span i { width:22px; height:22px; border:1.5px solid currentColor; border-radius:6px; display:block; }
+.sysbar .cap span.on, .duobar span.on { color:var(--accent); }
+/* the open Duo's own bar: on the right page, 24 pt in, 12 pt up, 64 pt tall (DuoBar, DuoBarMetrics) */
+.duobar { position:absolute; left:519.5px; width:407.5px; bottom:12px; height:64px; border-radius:32px; z-index:6; padding:4px;
+  display:grid; grid-template-columns:repeat(4,1fr); gap:4px; border:1px solid var(--line);
+  background:color-mix(in srgb, var(--paper) 62%, transparent); box-shadow:0 4px 8px var(--shadow); }
+.duobar span { justify-content:center; border-radius:28px; font-family:var(--cochin); font-size:12px; }
+.duobar span.on { background:color-mix(in srgb, var(--card) 90%, transparent); }
+
+/* ---- the Find pill (FindPill): glass capsule, magnifier, Cochin 16 field, 44 x 44 clear slot always laid out ---- */
+.find { position:absolute; z-index:7; height:52px; display:flex; align-items:center; gap:8px; padding:4px 6px 4px 16px; border-radius:26px;
+  border:1px solid var(--line); background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(18px) saturate(1.8);
+  box-shadow:0 8px 24px var(--shadow), 0 1px 3px var(--shadow); }
+.find.focused { border-color:var(--accent); }
+.find svg { flex:none; width:20px; height:20px; fill:none; stroke:var(--inkSoft); stroke-width:1.8; stroke-linecap:round; }
+.find .q { flex:1; min-width:0; font-family:var(--cochin); font-size:16px; color:var(--ink); white-space:nowrap; overflow:hidden; }
+.find .q.ph { color:var(--inkSoft); }
+.find .clr { flex:none; width:44px; height:44px; display:grid; place-items:center; }
+.find .clr i { width:20px; height:20px; border-radius:50%; background:var(--inkSoft); color:var(--paper); display:grid; place-items:center;
+  font:700 11px -apple-system, system-ui, sans-serif; font-style:normal; }
+.find .clr.spacer { outline:1px dotted var(--line); outline-offset:-4px; }
+.pro .find { left:16px; right:16px; bottom:calc(83px + 8px); }
+.fold-out .find { left:16px; right:16px; bottom:calc(83px + 8px); }
+.duo .find { left:511.5px; width:423.5px; bottom:calc(76px + 8px); }
+
+/* ---- masthead: unchanged in step 8, drawn short ---- */
+.mast { display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 24px 8px; }
+.mast .lh { font-size:26px; letter-spacing:6px; font-weight:700; }
+.mast .rule { align-self:stretch; height:2px; border-top:1px solid var(--gold); border-bottom:1px solid var(--gold); }
+.mast .count { font:11px var(--mono); color:var(--inkSoft); }
+.slot { height:24px; }
+
+/* ---- ruled row (RuledRow): rule, 44 pt cells trailing, thin rule ---- */
+.ruled { display:flex; flex-direction:column; padding:0 16px 16px; }
+.ruled .r1 { height:1px; background:var(--line); }
+.ruled .r2 { height:1px; background:var(--line); opacity:.55; }
+.ruled .cells { display:flex; justify-content:flex-end; }
+.ruled .cell { min-height:44px; min-width:44px; padding:0 12px; display:flex; align-items:center; gap:4px; border-left:1px solid var(--line);
+  font:var(--f10) var(--mono); color:var(--inkSoft); }
+.ruled .cell.on { color:var(--ink); } .ruled .cell.on .g { color:var(--accent); }
+
+/* ---- lists ---- */
+.list { display:flex; flex-direction:column; gap:8px; padding:0 16px 8px; }
+.tlist { gap:12px; }
+.mini { font:11.5px var(--mono); color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:5px; padding:8px 12px;
+  white-space:nowrap; text-align:center; }
+.hit { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
+
+/* package card (PackageRow) */
+.pcard { position:relative; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 1px var(--shadow); display:flex; flex-direction:column; }
+.pcard.done { border-color:var(--green); }
+.pbar { position:absolute; left:0; right:0; top:0; height:3px; background:var(--silver); border-radius:8px 8px 0 0; overflow:hidden; }
+.pbar i { display:block; height:100%; background:var(--accent); }
+.phead { display:flex; flex-direction:column; padding:12px 12px 0; }
+.phead .top { display:flex; align-items:center; gap:8px; }
+.phead .who { flex:1; min-width:0; display:flex; flex-direction:column; }
+.phead .seller { font-size:15px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.phead .date { font:11px var(--mono); color:var(--inkSoft); }
+.spill { font:700 12.5px var(--cochin); padding:4px 8px; border-radius:999px; background:var(--redSoft); color:var(--red); white-space:nowrap; min-height:28px; display:inline-flex; align-items:center; }
+.spill.refund { background:var(--manila); color:var(--manilaInk); }
+.stampx { font:700 var(--f105) var(--mono); letter-spacing:1px; color:var(--green); border:2px solid var(--green); border-radius:4px; padding:4px 8px; transform:rotate(-4deg); }
+.oid { font:11px var(--mono); color:var(--inkSoft); text-decoration:underline; min-height:45px; display:flex; align-items:center; }
+.srow { display:flex; align-items:center; min-height:48px; padding:0 12px; }
+.brow { display:flex; justify-content:flex-end; align-items:center; gap:8px; min-height:48px; padding:0 12px; }
+.line { display:flex; gap:8px; align-items:flex-start; padding-left:4px; border-top:1px solid var(--line); background:var(--card); }
+.line.done { background:var(--greenSoft); }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; }
+.line .box i { width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; display:block; background:var(--card); }
+.line.done .box i { background:var(--green); border-color:var(--green); position:relative; }
+.line.done .box i::after { content:""; position:absolute; left:8px; top:3px; width:7px; height:13px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.line .t { flex:1; display:flex; flex-direction:column; gap:4px; padding:12px 12px 12px 0; }
+.line .t b { font-size:14px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
+.line .t b span { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.line.done .t b { color:var(--inkSoft); }
+.line .t small { font-size:11.5px; color:var(--inkSoft); }
+.line .t .oidc { font:var(--f105) var(--mono); color:var(--inkSoft); text-decoration:underline; min-height:44px; display:flex; align-items:center; }
+.reveal { font:11px var(--mono); color:var(--inkSoft); border-top:1px solid var(--line); min-height:44px; padding:8px 12px; display:flex; align-items:center; gap:4px; }
+.reveal u { color:var(--ink); }
+
+/* Tally row (TallyRowView) */
+.trow { position:relative; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); }
+.trow.done { border-color:var(--green); }
+.trow.picked { outline:2px solid var(--accent); outline-offset:-2px; }
+.thead { display:flex; align-items:center; gap:8px; padding:12px; min-height:44px; }
+.thead .dis { font:11px var(--mono); color:var(--inkSoft); }
+.thead .nm { flex:1; min-width:0; display:flex; flex-direction:column; }
+.thead .nm b { font-size:15px; }
+.thead .nm span { font:11px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.thead .fig { display:flex; flex-direction:column; align-items:flex-end; }
+.thead .fig b { font:700 15px var(--mono); }
+.trow.done .thead .fig b { color:var(--green); }
+.thead .fig span { font:11.5px var(--mono); color:var(--inkSoft); }
+.thead .fig em { font:700 12px var(--cochin); font-style:normal; color:var(--red); }
+.across { font:var(--f105) var(--mono); color:var(--inkSoft); padding:0 12px 4px; }
+.dtitle { font-size:20px; font-weight:700; padding:0 12px 4px; }
+
+/* empty result: one sentence, one control (ux-unknown-is-not-empty) */
+.empty { display:flex; flex-direction:column; align-items:center; gap:8px; padding:32px 8px; text-align:center; font-size:14px; color:var(--inkSoft); }
+.empty .mini { padding:4px 8px; }
+
+/* Ledger tab, View group (LedgerTab.viewGroup) */
+.ledger { display:flex; flex-direction:column; padding:0 16px 16px; }
+.ledger .ttl { font:12px var(--mono); letter-spacing:3.6px; text-transform:uppercase; color:var(--inkSoft); text-align:center; }
+.grp { font:11px var(--mono); letter-spacing:2.2px; text-transform:uppercase; color:var(--inkSoft); padding:16px 0 8px 4px; }
+.lcard { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; display:flex; flex-direction:column; }
+.lrow { display:flex; align-items:center; gap:12px; min-height:52px; padding:8px 16px; border-top:1px solid var(--line); }
+.lrow:first-child { border-top:0; }
+.lrow .lt { flex:1; display:flex; flex-direction:column; gap:4px; }
+.lrow .lt b { font-size:20px; font-weight:400; }
+.lrow .lt span { font-size:13.5px; color:var(--inkSoft); }
+.lrow .v { font:14px var(--mono); color:var(--accent); text-align:right; }
+.lrow .chev { font-size:22px; color:var(--inkSoft); width:12px; text-align:center; }
+.lrow .chev.open { transform:rotate(90deg); }
+.opanel { display:flex; flex-direction:column; padding:4px 8px 12px; border-top:1px solid var(--line); }
+.ogrid { display:grid; gap:1px; background:var(--line); border:1px solid var(--line); margin-top:8px; }
+.ogrid span { min-height:44px; display:grid; place-items:center; background:var(--card); font:11.5px var(--mono); color:var(--ink); white-space:nowrap; }
+.ogrid span.on { background:var(--accent); color:var(--card); }
+.subhead { font:var(--f10) var(--cochin); letter-spacing:1.6px; text-transform:uppercase; color:var(--inkSoft); padding:12px 0 8px; }
+.chips { display:flex; flex-wrap:wrap; gap:4px; }
+.chips span { min-height:44px; min-width:44px; padding:0 8px; display:grid; place-items:center; border:1px solid var(--line); background:var(--card); font:11.5px var(--mono); }
+.chips span.on { background:var(--accent); border-color:var(--accent); color:var(--card); }
+.exact { font:11px var(--mono); color:var(--inkSoft); min-height:44px; display:flex; align-items:center; gap:8px; margin-top:12px; }
+.exact b { color:var(--accent); width:10px; font-weight:400; }
+
+/* tags: dashed outline on what exists today, and on what this redraw adds */
+[data-tag]:not(.find) { position:relative; }
+.mast[data-tag]::before { top:auto; bottom:-4px; }
+.lcard[data-tag] { overflow:visible; }
+.lcard[data-tag] > .lrow:first-child { border-radius:8px 8px 0 0; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 11px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:8; white-space:nowrap; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+body.hide-tags [data-tag]::before { display:none; } body.hide-tags .tag-new, body.hide-tags .tag-today { outline:0; }
+
+.hand { position:absolute; inset:0; background:var(--paper); z-index:5; display:flex; }
+.hand .pg { padding:calc(var(--sat) + 16px) 16px 16px; display:flex; flex-direction:column; gap:12px; width:455.5px; }
+.hand .field { height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:16px; }
+.hand .soft { color:var(--inkSoft); font-size:14px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No seller, card, order id, date, price or count on this page is real. This page is a redraw from the built code on step8-build (head 6a4a900); it is not the lost original mockup, and it does not claim to match it.</div>
+<h1>Step 8: the Find pill, filters and sort, on Packages and Tally</h1>
+<p class="sub">Designer kind: informed. Light theme only (the native app is held to light). Frames: iPhone Duo folded (outer screen, 466 x 678 pt), iPhone 18 Pro (402 x 874 pt, from the sim log), iPhone Duo open (951 x 669 pt). Notes: <code>step8-packages-tally-filters-notes.md</code>.</p>
+
+<nav aria-label="States">
+  <a href="#s=folded">Duo folded: Packages</a>
+  <a href="#s=packages">Packages</a>
+  <a href="#s=typed">Typed, with clear</a>
+  <a href="#s=empty">Packages empty result</a>
+  <a href="#s=tally">Tally</a>
+  <a href="#s=tally-empty">Tally empty result</a>
+  <a href="#s=filters">Filters: Orders from</a>
+  <a href="#s=sort">Sort: Packages keys</a>
+  <a href="#s=sort-tally">Sort: Tally keys</a>
+  <a href="#s=duo-tally">Duo open: Tally</a>
+  <a href="#s=duo-packages">Duo open: Packages</a>
+  <a href="#s=duo-hand">Duo open: Card in Hand</a>
+  <a href="#">All</a>
+  <span class="sep"></span>
+  <button type="button" data-toggle="hide-tc">Hide Title Case labels</button>
+  <button type="button" data-toggle="hide-floor">Hide the 11 pt floor</button>
+  <button type="button" data-toggle="hide-tags">Hide tags</button>
+</nav>
+
+<template id="pro-chrome">
+  <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+</template>
+<template id="mast">
+  <div class="mast tag-today" data-tag="Today: masthead (unchanged, drawn short)">
+    <span class="lh">MANIFEST</span><span class="rule"></span><span class="count">4 packages · 11 cards</span>
+  </div>
+  <div class="slot"></div>
+</template>
+<template id="ruled-pkg">
+  <div class="ruled tag-today" data-tag="Today: ruled row (RuledRow)">
+    <span class="r1"></span>
+    <div class="cells"><span class="cell">1 canceled <span class="g">▸</span></span><span class="cell">1 stamped <span class="g">○</span></span></div>
+    <span class="r2"></span>
+  </div>
+</template>
+<template id="sysbar-tally">
+  <div class="sysbar"><div class="cap"><span><i></i>Ledger</span><span><i></i>Orphaned</span><span class="on"><i></i>Tally</span><span><i></i>Packages</span></div></div>
+</template>
+<template id="sysbar-pkg">
+  <div class="sysbar"><div class="cap"><span><i></i>Ledger</span><span><i></i>Orphaned</span><span><i></i>Tally</span><span class="on"><i></i>Packages</span></div></div>
+</template>
+<template id="sysbar-ledger">
+  <div class="sysbar"><div class="cap"><span class="on"><i></i>Ledger</span><span><i></i>Orphaned</span><span><i></i>Tally</span><span><i></i>Packages</span></div></div>
+</template>
+<template id="find-empty">
+  <div class="find tag-today" data-tag="Today: Find pill, empty">
+    <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+    <span class="q ph">Find card, set, seller, order</span>
+    <span class="clr spacer" title="44 x 44 clear slot, laid out while empty"></span>
+  </div>
+</template>
+<template id="cards">
+  <div class="pcard">
+    <div class="pbar"><i style="width:33%"></i></div>
+    <div class="phead">
+      <div class="top"><span class="who"><span class="seller">Gamma Cards</span><span class="date">2026-07-01</span></span><span class="spill">2 left · $0.73</span></div>
+      <span class="oid">SAMPLE-0003-C</span>
+    </div>
+    <div class="srow"><span class="hit"><span class="mini">Stamp</span></span></div>
+    <div class="brow"><span class="hit"><span class="mini tc" data-old="Mark all received">Mark All Received</span></span><span class="hit"><span class="mini tc" data-old="Clear check‑ins">Clear Check‑ins</span></span></div>
+    <div class="line done"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div>
+    <div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div>
+  </div>
+  <div class="pcard">
+    <div class="phead">
+      <div class="top"><span class="who"><span class="seller">Alpha Cards</span><span class="date">2026-06-28</span></span><span class="spill refund tag-today" data-tag="Today: refunded pill">1 left · refunded</span></div>
+      <span class="oid">SAMPLE-0001-A</span>
+    </div>
+    <div class="srow"><span class="hit"><span class="mini">Stamp</span></span></div>
+  </div>
+</template>
+
+<!-- Folded first (ios-apps, Mockups). One page: the one-page pill above the system bar (PackagesView.pillShown). -->
+<figure id="s-folded" data-state="folded">
+  <div class="fit"><div class="dev fold-out" data-device="iphone-duo-folded">
+    <div data-fill="pro-chrome"></div>
+    <div class="scroll"><div data-fill="mast"></div><div data-fill="ruled-pkg"></div><div class="list" data-fill="cards"></div></div>
+    <div data-fill="find-empty"></div>
+    <div data-fill="sysbar-pkg"></div>
+  </div></div>
+  <figcaption><b>Duo folded, Packages.</b> Outer screen 466 x 678 pt; system bar from y 595, 83 pt (<code>duo-fold-and-keyboard</code>). One page, so the pill is the inset form: 16 pt in, 8 pt above the bar.</figcaption>
+</figure>
+
+<figure id="s-packages" data-state="packages">
+  <div class="fit"><div class="dev pro" data-device="iphone-18-pro">
+    <div data-fill="pro-chrome"></div>
+    <div class="scroll"><div data-fill="mast"></div><div data-fill="ruled-pkg"></div><div class="list" data-fill="cards"></div></div>
+    <div data-fill="find-empty"></div>
+    <div data-fill="sysbar-pkg"></div>
+  </div></div>
+  <figcaption><b>iPhone 18 Pro, Packages, Find empty.</b> The pill shows only while the ledger holds items. Its clear slot is laid out while empty (dotted here only to show it), so the field never changes width as the first letter lands.</figcaption>
+</figure>
+
+<figure id="s-typed" data-state="typed">
+  <div class="fit"><div class="dev pro" data-device="iphone-18-pro">
+    <div data-fill="pro-chrome"></div>
+    <div class="scroll"><div data-fill="mast"></div><div data-fill="ruled-pkg"></div>
+      <div class="list">
+        <div class="pcard">
+          <div class="pbar"><i style="width:33%"></i></div>
+          <div class="phead">
+            <div class="top"><span class="who"><span class="seller">Gamma Cards</span><span class="date">2026-07-01</span></span><span class="spill">2 left · $0.73</span></div>
+            <span class="oid">SAMPLE-0003-C</span>
+          </div>
+          <div class="srow"><span class="hit"><span class="mini">Stamp</span></span></div>
+          <div class="brow"><span class="hit"><span class="mini tc" data-old="Mark all received">Mark All Received</span></span><span class="hit"><span class="mini tc" data-old="Clear check‑ins">Clear Check‑ins</span></span></div>
+          <div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div>
+          <div class="reveal tag-today" data-tag="Today: the way back (revealFooter)">+2 more lines in this order <u>show all</u></div>
+        </div>
+      </div>
+    </div>
+    <div class="find focused tag-today" data-tag="Today: clear x, 44 x 44, only with text" id="focus-clear">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+      <span class="q">path</span>
+      <span class="clr" role="img" aria-label="Clear search"><i>✕</i></span>
+    </div>
+    <div data-fill="sysbar-pkg"></div>
+  </div></div>
+  <figcaption><b>Typed, with the clear button.</b> "path" leaves the one package with a match, and its card shows only the matching line plus the way back. The clear button (accessibility label "Clear search") empties the field; the list returns. Drawn with the keys down (after Return): the 18 Pro keyboard frame is unmeasured, and with keys up the pill lifts above them.</figcaption>
+</figure>
+
+<figure id="s-empty" data-state="empty">
+  <div class="fit"><div class="dev pro" data-device="iphone-18-pro">
+    <div data-fill="pro-chrome"></div>
+    <div class="scroll"><div data-fill="mast"></div><div data-fill="ruled-pkg"></div>
+      <div class="list"><div class="empty">No cards match that search.<span class="hit tag-new" data-tag="New: Title Case (item 81 b)" id="focus-tc"><span class="mini tc" data-old="Clear search">Clear Search</span></span></div></div>
+    </div>
+    <div class="find focused">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+      <span class="q">zzz</span>
+      <span class="clr" role="img" aria-label="Clear search"><i>✕</i></span>
+    </div>
+    <div data-fill="sysbar-pkg"></div>
+  </div></div>
+  <figcaption><b>Packages, empty result.</b> One sentence and one control (<code>ux-unknown-is-not-empty</code>). The ruled row stays. With no query the sentence is "Everything here has been checked in." and there is no control.</figcaption>
+</figure>
+
+<template id="tally-rows">
+  <div class="trow">
+    <div class="pbar"><i style="width:50%"></i></div>
+    <div class="thead"><span class="dis">▶</span><span class="nm"><b>Lightning Bolt</b><span>3 sellers · 3 orders · Sample Set</span></span>
+      <span class="fig"><b>2/4</b><span>$0.40 / copy</span><em>2 left · $0.80</em></span></div>
+  </div>
+  <div class="trow">
+    <div class="thead"><span class="dis">▶</span><span class="nm"><b>Path to Exile</b><span>2 sellers · 2 orders · Sample Set</span></span>
+      <span class="fig"><b>0/2</b><span>$0.31 / copy</span><em>2 left · $0.62</em></span></div>
+  </div>
+  <div class="trow done">
+    <div class="thead"><span class="dis">▶</span><span class="nm"><b>Ponder</b><span>1 seller · 1 order · Sample Set</span></span>
+      <span class="fig"><b>1/1 ✓</b><span>$0.18 / copy</span><em style="opacity:0">1 left · $0.18</em></span></div>
+  </div>
+</template>
+
+<figure id="s-tally" data-state="tally">
+  <div class="fit"><div class="dev pro" data-device="iphone-18-pro">
+    <div data-fill="pro-chrome"></div>
+    <div class="scroll"><div data-fill="mast"></div>
+      <div class="list tlist" data-fill="tally-rows"></div>
+    </div>
+    <div data-fill="find-empty"></div>
+    <div data-fill="sysbar-tally"></div>
+  </div></div>
+  <figcaption><b>iPhone 18 Pro, Tally, Find empty.</b> One query serves both tabs. Tally draws the ruled row only while a canceled order exists (none here). A done row keeps its "left" line mounted at zero opacity, so nothing moves.</figcaption>
+</figure>
+
+<figure id="s-tally-empty" data-state="tally-empty">
+  <div class="fit"><div class="dev pro" data-device="iphone-18-pro">
+    <div data-fill="pro-chrome"></div>
+    <div class="scroll"><div data-fill="mast"></div>
+      <div class="list tlist"><div class="empty"><span class="tag-today" data-tag="Today: departs from the web wording">No product matches this search.</span><span class="hit"><span class="mini tc" data-old="Clear search">Clear Search</span></span></div></div>
+    </div>
+    <div class="find focused">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+      <span class="q">zzz</span>
+      <span class="clr" role="img" aria-label="Clear search"><i>✕</i></span>
+    </div>
+    <div data-fill="sysbar-tally"></div>
+  </div></div>
+  <figcaption><b>Tally, empty result.</b> The build reads "No product matches this search."; the web reads "No items match that search." (see the notes, item 9).</figcaption>
+</figure>
+
+<figure id="s-filters" data-state="filters">
+  <div class="fit"><div class="dev pro" data-device="iphone-18-pro">
+    <div data-fill="pro-chrome"></div>
+    <div class="scroll"><div data-fill="mast"></div>
+      <div class="ledger">
+        <span class="ttl">Ledger</span>
+        <span class="grp">View</span>
+        <div class="lcard tag-today" data-tag="Today: View group (item 47 a)">
+          <div class="lrow"><span class="lt"><b>Showing</b></span><span class="v">● Unreceived</span></div>
+          <div class="lrow"><span class="lt"><b>Sorted by</b></span><span class="v">Newest</span><span class="chev">›</span></div>
+          <div class="lrow"><span class="lt"><b>Orders from</b><span>212 lines · 38 outside</span></span><span class="v">Aug</span><span class="chev open">›</span></div>
+          <div class="opanel">
+            <div class="ogrid" style="grid-template-columns:repeat(4,1fr)">
+              <span>All time</span><span>30 days</span><span>45 days</span><span>60 days</span>
+              <span>90 days</span><span>Last…</span><span class="on" style="grid-column:span 2">By month</span>
+            </div>
+            <span class="subhead">Month</span>
+            <div class="chips"><span>Nov</span><span>Oct</span><span>Sep</span><span class="on">Aug</span><span>Jul</span><span>Jun</span></div>
+            <span class="exact"><b>+</b><span class="tc" data-old="Exact dates">Exact Dates</span></span>
+          </div>
+        </div>
+        <span class="grp">Data</span>
+        <div class="lcard"><div class="lrow"><span class="lt"><b>Sync</b></span><span class="v">On</span><span class="chev">›</span></div></div>
+      </div>
+    </div>
+    <div data-fill="sysbar-ledger"></div>
+  </div></div>
+  <figcaption><b>Filters: Showing and Orders from, By month picked.</b> The filters live in the Ledger tab's View group, not on Packages or Tally (owner item 47 a; <code>LedgerTab.viewGroup</code>). Showing is one tap (○ Everything, ● Unreceived). Orders from opens a 4-column grid; By month adds the month chips and Exact dates. A whole-month range reads back as its month ("Aug"). Picked, not typed.</figcaption>
+</figure>
+
+<figure id="s-sort" data-state="sort">
+  <div class="fit"><div class="dev pro" data-device="iphone-18-pro">
+    <div data-fill="pro-chrome"></div>
+    <div class="scroll"><div data-fill="mast"></div>
+      <div class="ledger">
+        <span class="ttl">Ledger</span>
+        <span class="grp">View</span>
+        <div class="lcard">
+          <div class="lrow"><span class="lt"><b>Showing</b></span><span class="v">○ Everything</span></div>
+          <div class="lrow"><span class="lt"><b>Sorted by</b></span><span class="v">Newest</span><span class="chev open">›</span></div>
+          <div class="opanel tag-today" data-tag="Today: package keys (last list: Packages)">
+            <div class="ogrid" style="grid-template-columns:repeat(2,1fr)">
+              <span class="on">Newest</span><span>Oldest</span><span>$ remaining</span><span>Unit rate</span><span style="grid-column:span 2">Seller A–Z</span>
+            </div>
+          </div>
+          <div class="lrow"><span class="lt"><b>Orders from</b><span>250 lines</span></span><span class="v">All time</span><span class="chev">›</span></div>
+        </div>
+      </div>
+    </div>
+    <div data-fill="sysbar-ledger"></div>
+  </div></div>
+  <figcaption><b>Sort, Packages keys.</b> Sorted by orders the list tab you left last (<code>options.lastList</code>). Five keys from <code>PKG_SORTS</code>; the last cell spans the row. A pick closes the grid. Opening Sorted by closes Orders from, and the other way round.</figcaption>
+</figure>
+
+<figure id="s-sort-tally" data-state="sort-tally">
+  <div class="fit"><div class="dev pro" data-device="iphone-18-pro">
+    <div data-fill="pro-chrome"></div>
+    <div class="scroll"><div data-fill="mast"></div>
+      <div class="ledger">
+        <span class="ttl">Ledger</span>
+        <span class="grp">View</span>
+        <div class="lcard">
+          <div class="lrow"><span class="lt"><b>Showing</b></span><span class="v">● Unreceived</span></div>
+          <div class="lrow"><span class="lt"><b>Sorted by</b></span><span class="v">Most missing</span><span class="chev open">›</span></div>
+          <div class="opanel tag-today" data-tag="Today: Tally keys (last list: Tally)">
+            <div class="ogrid" style="grid-template-columns:repeat(2,1fr)">
+              <span class="on">Most missing</span><span>Cost basis</span><span>Most ordered</span><span>$ remaining</span><span>Unit rate</span><span>Name A–Z</span>
+            </div>
+          </div>
+          <div class="lrow"><span class="lt"><b>Orders from</b><span>250 lines</span></span><span class="v">All time</span><span class="chev">›</span></div>
+        </div>
+      </div>
+    </div>
+    <div data-fill="sysbar-ledger"></div>
+  </div></div>
+  <figcaption><b>Sort, Tally keys.</b> Six keys from <code>TallySort</code> (<code>tally-sort-keys-are-six</code>). A reload keeps the order while the source and the sort are unchanged.</figcaption>
+</figure>
+
+<!-- Duo open: the pill sits on the right page, bottom DuoBarMetrics.height + 8 = 84 pt above the window bottom (findPillOnDuo). -->
+<figure id="s-duo-tally" data-state="duo-tally">
+  <div class="fit"><div class="dev duo" data-device="iphone-duo-unfolded">
+    <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+    <div class="page l"><div class="scroll"><div data-fill="mast"></div>
+      <div class="list tlist">
+        <div class="trow picked"><div class="pbar"><i style="width:50%"></i></div>
+          <div class="thead"><span class="dis">▶</span><span class="nm"><b>Lightning Bolt</b><span>3 sellers · 3 orders · Sample Set</span></span><span class="fig"><b>2/4</b><span>$0.40 / copy</span><em>2 left · $0.80</em></span></div></div>
+        <div class="trow"><div class="thead"><span class="dis">▶</span><span class="nm"><b>Path to Exile</b><span>2 sellers · 2 orders · Sample Set</span></span><span class="fig"><b>0/2</b><span>$0.31 / copy</span><em>2 left · $0.62</em></span></div></div>
+        <div class="trow done"><div class="thead"><span class="dis">▶</span><span class="nm"><b>Ponder</b><span>1 seller · 1 order · Sample Set</span></span><span class="fig"><b>1/1 ✓</b><span>$0.18 / copy</span><em style="opacity:0">1 left</em></span></div></div>
+      </div></div></div>
+    <div class="page r"><div class="scroll" style="padding-top:16px">
+      <span class="dtitle">Lightning Bolt</span>
+      <span class="across">$1.60 across 4 copies · $0.40 avg</span>
+      <div class="brow"><span class="hit"><span class="mini tc" data-old="Mark all received">Mark All Received</span></span><span class="hit"><span class="mini tc" data-old="Clear check‑ins">Clear Check‑ins</span></span></div>
+      <div class="line done"><span class="box"><i></i></span><span class="t"><b>Gamma Cards<span>$0.42</span></b><small>2026-07-01 · Sample Set · Normal · NM</small><span class="oidc">SAMPLE-0003-C ›</span></span></div>
+      <div class="line"><span class="box"><i></i></span><span class="t"><b>Alpha Cards<span>$0.38</span></b><small>2026-06-28 · Sample Set · Normal · LP</small><span class="oidc">SAMPLE-0001-A ›</span></span></div>
+    </div></div>
+    <div class="fold"><span>FOLD</span></div>
+    <div class="find tag-today" data-tag="Today: right page, 84 pt up; filters the left list" id="focus-duo">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4.5 4.5"/></svg>
+      <span class="q ph">Find card, set, seller, order</span><span class="clr spacer"></span>
+    </div>
+    <div class="duobar"><span><i></i>Ledger</span><span><i></i>Orphaned</span><span class="on"><i></i>Tally</span><span><i></i>Packages</span></div>
+  </div></div>
+  <figcaption><b>Duo open, Tally.</b> 951 x 669 pt, fold 40 pt at x 455.5. Names on the left page, the picked name's totals and copies on the right. The pill floats over the right page, 16 pt in from its edges, its bottom 76 + 8 pt above the window bottom; it filters the left list. The right page scrolls clear of the pill and the bar.</figcaption>
+</figure>
+
+<figure id="s-duo-packages" data-state="duo-packages">
+  <div class="fit"><div class="dev duo" data-device="iphone-duo-unfolded">
+    <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+    <div class="scroll"><div data-fill="mast"></div><div data-fill="ruled-pkg"></div>
+      <div style="display:flex;justify-content:flex-end;padding:0 16px"><span class="hit"><span class="mini">Card in Hand</span></span></div>
+      <div class="list tag-today" data-tag="Today: one-page list spans the fold" data-fill="cards"></div>
+    </div>
+    <div class="fold"><span>FOLD</span></div>
+    <div data-fill="find-empty"></div>
+    <div class="duobar"><span><i></i>Ledger</span><span><i></i>Orphaned</span><span><i></i>Tally</span><span class="on"><i></i>Packages</span></div>
+  </div></div>
+  <figcaption><b>Duo open, Packages.</b> Packages keeps its one-page layout across both pages (<code>PackagesTab</code>), with the Card in Hand control at the top. The pill sits on the right page above the bar, as on Tally.</figcaption>
+</figure>
+
+<figure id="s-duo-hand" data-state="duo-hand">
+  <div class="fit"><div class="dev duo" data-device="iphone-duo-unfolded">
+    <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+    <div class="hand">
+      <div class="pg"><span style="font-weight:700;font-size:17px">Mail day</span><div class="field">Lightning</div><span class="soft">Card in Hand has its own field.</span></div>
+      <div class="pg" style="margin-left:40px"><span class="soft">It came from</span></div>
+    </div>
+    <div class="fold"><span>FOLD</span></div>
+    <div class="duobar"><span><i></i>Ledger</span><span><i></i>Orphaned</span><span><i></i>Tally</span><span class="on"><i></i>Packages</span></div>
+  </div></div>
+  <figcaption><b>Duo open, Card in Hand open: no pill.</b> The pill leaves the tree while Card in Hand is open (duo ruling Q5; <code>duoHandOpen</code>). Card in Hand is drawn as a schematic only; its own mockups hold its look.</figcaption>
+</figure>
+</main>
+
+<script>
+// Fill each frame from its templates, so the shared parts are drawn once.
+document.querySelectorAll('[data-fill]').forEach(el => {
+  el.getAttribute('data-fill').split(' ').forEach(id => el.append(document.getElementById(id).content.cloneNode(true)));
+});
+// The 11 pt floor's focus: the ruled cells on the 18 Pro Packages frame (a template holds no id, so each copy stays unique).
+document.querySelector('#s-packages .ruled').id = 'focus-floor';
+// Keep each label's Title Case text, so "Hide Title Case labels" can swap the build's labels in and back.
+document.querySelectorAll('.tc').forEach(el => { el.dataset.new = el.textContent; });
+// Scale each frame to the page width; the page never scrolls sideways.
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild;
+    const pt = d.classList.contains('duo') ? 951 : d.classList.contains('pro') ? 402 : 466;
+    d.style.zoom = Math.min(1, w.clientWidth / pt); });
+}
+const opts = { 'hide-tc': 'Title Case labels', 'hide-floor': 'the 11 pt floor', 'hide-tags': 'tags' };
+document.querySelectorAll('[data-toggle]').forEach(b => b.addEventListener('click', () => {
+  const c = b.dataset.toggle, on = document.body.classList.toggle(c);
+  b.textContent = (on ? 'Show ' : 'Hide ') + opts[c];
+  if (c === 'hide-tc') document.querySelectorAll('.tc').forEach(el => { el.textContent = on ? el.dataset.old : el.dataset.new; });
+}));
+// Deep link: #s=<state> shows one state; no hash shows all.
+function route() {
+  const m = location.hash.match(/s=([\w-]+)/), s = m && m[1];
+  document.querySelectorAll('figure').forEach(f => { f.hidden = !!s && f.dataset.state !== s; });
+  document.querySelectorAll('nav a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === (location.hash || '#'))));
+  fit();
+}
+addEventListener('hashchange', route); addEventListener('resize', fit); route();
+</script>
+</body>
+</html>
