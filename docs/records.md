@@ -127,6 +127,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `card-the-action-row-is-reserved` | The action row's buttons change on the same tap that changes the card. | [`docs/decisions/card-the-action-row-is-reserved.md`](../docs/decisions/card-the-action-row-is-reserved.md) |
 | `ci-runs-in-utc` | **Status:** open. | [`docs/decisions/ci-runs-in-utc.md`](../docs/decisions/ci-runs-in-utc.md) |
 | `claims-and-tests-change-together` | A behaviour that changes on purpose changes its assertion and its prose in one commit. | [`docs/decisions/claims-and-tests-change-together.md`](../docs/decisions/claims-and-tests-change-together.md) |
+| `cloud-session-reach` | This record says what a cloud session of this repo can do against the live Worker, GitHub and the owner's Mac. | [`docs/decisions/cloud-session-reach.md`](../docs/decisions/cloud-session-reach.md) |
 | `cost-basis-excludes-ship-and-tax` | **Cost basis** = Σ (Price × Quantity) over the item's non-canceled copies in the active date range. | [`docs/decisions/cost-basis-excludes-ship-and-tax.md`](../docs/decisions/cost-basis-excludes-ship-and-tax.md) |
 | `csv-import-shows-a-summary` | A CSV import works by drag and drop, or by the file picker. | [`docs/decisions/csv-import-shows-a-summary.md`](../docs/decisions/csv-import-shows-a-summary.md) |
 | `date-filter-spans-ledger-views` | The date filter applies to the Tally view and the Packages view. | [`docs/decisions/date-filter-spans-ledger-views.md`](../docs/decisions/date-filter-spans-ledger-views.md) |
@@ -382,7 +383,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | Slug | Gist | Link |
 |---|---|---|
 | `cloud-lane-cut` | Cloud restart: one lane cut from every handoff | [`docs/plans/cloud-lane-cut.md`](../docs/plans/cloud-lane-cut.md) |
-| `cloud-sessions` | Cloud sessions for mailaudit | [`docs/plans/cloud-sessions.md`](../docs/plans/cloud-sessions.md) |
+| `cloud-sessions` | Cloud sessions for mailaudit: what is still unbuilt | [`docs/plans/cloud-sessions.md`](../docs/plans/cloud-sessions.md) |
 | `orders-extension` | Orders by browser extension | [`docs/plans/orders-extension.md`](../docs/plans/orders-extension.md) |
 | `recent-log-web` | Recent log, web client | [`docs/plans/recent-log-web.md`](../docs/plans/recent-log-web.md) |
 
@@ -404,6 +405,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | Slug | Gist | Link |
 |---|---|---|
 | `card-reserved-geometry` | Card reserved geometry heights | [`measurements/card-reserved-geometry.md`](../measurements/card-reserved-geometry.md) |
+| `cloud-csv-import` | One CSV import from a cloud session | [`measurements/cloud-csv-import.md`](../measurements/cloud-csv-import.md) |
 | `duo-fold-and-keyboard` | Fold strip, keyboard frame and outer screen on the iPhone Duo simulator | [`measurements/duo-fold-and-keyboard.md`](../measurements/duo-fold-and-keyboard.md) |
 | `ledger-and-seed-sizes` | Ledger and version sizes | [`measurements/ledger-and-seed-sizes.md`](../measurements/ledger-and-seed-sizes.md) |
 | `masthead-foot-slot` | Masthead foot save-slot width | [`measurements/masthead-foot-slot.md`](../measurements/masthead-foot-slot.md) |
