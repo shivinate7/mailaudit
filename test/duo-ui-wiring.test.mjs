@@ -25,7 +25,11 @@
 //       the pro-ui label, never the draft gate alone, and still runs on a labeled event for another
 //       label (a-d);
 //   d9  the concurrency group sets cancel-in-progress to the literal true, not an if: expression (a),
-//       and its group holds the PR draft state, so a draft run never cancels a ready run (b).
+//       and its group holds the PR draft state, so a draft run never cancels a ready run (b);
+//   d10 duo-ui runs a warm-up step after the open-the-Duo step (ci-sim.sh pose flat) and before the flat
+//       pass: it runs make ui-duo-warmup through scripts/ci-sim.sh run, named by DUO_WARMUP_CMD (a); the
+//       result bundle it writes is its own, not the flat pass's, and it tolerates failure (b); make -n
+//       ui-duo-warmup names exactly one Duo test id that is not in DUO_CLOSED_TESTS (c). Its mutants are in MUTANTS.
 //
 // The fixtures prove the checker: a good set passes, each mutant fails its named check, and the
 // scanners get the comment-opener, multi-line string and lone-quote cases.
@@ -71,6 +75,12 @@ const FLAT_RUN = /\bmake\s+ui-duo-flat(?![\w-])/;
 const CLOSED_RUN = /\bmake\s+ui-duo-closed(?![\w-])/;
 const PRO_A_RUN = /\bmake\s+ui-a(?![\w-])/;
 const PRO_B_RUN = /\bmake\s+ui-b(?![\w-])/;
+const WARMUP_TARGET = "ui-duo-warmup";
+const WARMUP_RUN = /\bci-sim\.sh\s+run\b[^\n]*\bmake\s+ui-duo-warmup(?![\w-])/;
+const OPEN_RUN = /\bci-sim\.sh\s+pose\s+flat\b/;
+// The bundle a pass writes: the -resultBundlePath its command names. $VAR and ${VAR} read from the step's env.
+const BUNDLE_FLAG = /-resultBundlePath\s+"?([^"\s]+)/;
+const BUNDLE_REF = /\$\$?\{?([A-Za-z_]\w*)\}?/g;
 
 const isMap = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const show = (v) => (v === undefined ? "nothing" : JSON.stringify(v));
@@ -272,9 +282,9 @@ const CLASS_DECL = /\bclass\s+(\w+)\s*:\s*\w+/g;
 const TEST_FUNC = /\bfunc\s+(test\w*)\s*\(\s*\)[^{]*\{/g;
 const CLOSED_CALL = /\brequirePose\s*\(\s*\.closed\s*\)/;
 
-// The Class/method ids of the Duo test methods whose body calls requirePose(.closed). Only files named
+// The Class/method ids of the Duo test methods whose body satisfies want(body). Only files named
 // Duo*UITests.swift are read, and each method belongs to the last class declared before it.
-function swiftClosedIds(files) {
+function swiftTestIds(files, want) {
   const ids = [];
   for (const name of Object.keys(files).sort()) {
     if (!DUO_FILE.test(name)) continue;
@@ -283,13 +293,15 @@ function swiftClosedIds(files) {
     for (const m of code.matchAll(TEST_FUNC)) {
       const open = m.index + m[0].length - 1;
       const body = code.slice(open, matchBrace(code, open) + 1);
-      if (!CLOSED_CALL.test(body)) continue;
+      if (!want(body)) continue;
       const cls = classes.filter((c) => c.index < m.index).pop();
       ids.push(`${cls ? cls[1] : "?"}/${m[1]}`);
     }
   }
   return ids;
 }
+const swiftClosedIds = (files) => swiftTestIds(files, (body) => CLOSED_CALL.test(body));
+const swiftDuoIds = (files) => swiftTestIds(files, () => true);
 
 // Runs make with a Makefile given on stdin. The UI_TEST variable of the caller's environment is
 // removed, so only the arguments set it.
@@ -644,6 +656,7 @@ function checkDuo(input) {
   };
   const flatRun = makeRun(input.makefile, ["-n", "ui-duo-flat", "UI_TEST=echo"]);
   const closedRun = makeRun(input.makefile, ["-n", "ui-duo-closed", "UI_TEST=echo"]);
+  const warmRun = makeRun(input.makefile, ["-n", WARMUP_TARGET, "UI_TEST=echo"]);
 
   // The env of the workflow, the job and the step each hold a value a pass can inherit: make reads
   // UI_TEST from the environment, so one shared value at the top of the workflow is a valid home.
@@ -684,6 +697,14 @@ function checkDuo(input) {
     const s = stepRunning(j, re);
     if (s === undefined) return fail(noStepDetail(jobName, j, target));
     return passFlags(passText(j, s));
+  };
+  // The result bundle a pass step writes: the -resultBundlePath of its command. The command is the step's UI_TEST
+  // when the step sets one, else the text the step names (its run and scripts/ci-sim.sh), so a flag moved into the
+  // script still counts. The path's $VAR and ${VAR} are read from the step's env.
+  const bundleOf = (job, step) => {
+    const env = envOf(wf, job, step);
+    const m = BUNDLE_FLAG.exec(env.UI_TEST ?? passText(job, step));
+    return m ? m[1].replace(BUNDLE_REF, (whole, name) => (Object.hasOwn(env, name) ? env[name] : whole)) : undefined;
   };
   const runsOnAndTimeout = (name) => {
     const j = jobOf(name);
@@ -871,6 +892,50 @@ function checkDuo(input) {
     return typeof g === "string" && g.includes("github.event.pull_request.draft") ? pass : fail(`group is ${show(g)}`);
   });
 
+  // d10: the warm-up step sits between the open-the-Duo step and the flat pass. It only warms the simulator, so it
+  // writes a bundle of its own and tolerates failure. Its make target names one flat-pose Duo test.
+  wfCheck("d10a", `${DUO_JOB} runs make ${WARMUP_TARGET} through ci-sim.sh run, after the open-the-Duo step and before the flat pass`, () => {
+    const j = jobOf(DUO_JOB);
+    if (j === null) return jobMiss(DUO_JOB);
+    const steps = stepsOf(j);
+    const open = steps.find((s) => typeof s.run === "string" && OPEN_RUN.test(runText(s.run, envOf(wf, j, s))));
+    if (open === undefined) return fail(`no ${DUO_JOB} step opens the Duo with ci-sim.sh pose flat`);
+    const warm = stepRunning(j, WARMUP_RUN);
+    if (warm === undefined) return fail(noStepDetail(DUO_JOB, j, WARMUP_TARGET));
+    const flat = stepRunning(j, FLAT_RUN);
+    if (flat === undefined) return fail(noStepDetail(DUO_JOB, j, "ui-duo-flat"));
+    const at = (s) => steps.indexOf(s) + 1;
+    return at(open) < at(warm) && at(warm) < at(flat)
+      ? pass
+      : fail(`the warm-up step (step ${at(warm)}) is not between the open-the-Duo step (step ${at(open)}) and the flat pass (step ${at(flat)})`);
+  });
+  wfCheck("d10b", `the ${WARMUP_TARGET} step writes a result bundle of its own and tolerates failure`, () => {
+    const j = jobOf(DUO_JOB);
+    if (j === null) return jobMiss(DUO_JOB);
+    const warm = stepRunning(j, WARMUP_RUN);
+    if (warm === undefined) return fail(noStepDetail(DUO_JOB, j, WARMUP_TARGET));
+    const flat = stepRunning(j, FLAT_RUN);
+    if (flat === undefined) return fail(noStepDetail(DUO_JOB, j, "ui-duo-flat"));
+    const bundle = bundleOf(j, warm);
+    if (bundle === undefined) return fail("the warm-up step names no -resultBundlePath, so it writes no bundle");
+    if (bundle === bundleOf(j, flat)) return fail(`the warm-up step writes the flat pass's result bundle, ${bundle}`);
+    const tolerant = warm["continue-on-error"] === "true" || /\|\|\s*true\b/.test(runLines(typeof warm.run === "string" ? warm.run : ""));
+    return tolerant
+      ? pass
+      : fail("the warm-up step tolerates no failure: set continue-on-error: true, or end its run with || true");
+  });
+  check("d10c", `make -n ${WARMUP_TARGET} names exactly one Duo test id, and it is not in DUO_CLOSED_TESTS`, () => {
+    if (!warmRun.ok) return fail(`${WARMUP_TARGET} is not a Makefile target: make -n failed: ${warmRun.err}`);
+    const ids = flagsIn(warmRun.out, ONLY_FLAG);
+    if (ids.length !== 1) return fail(`make -n ${WARMUP_TARGET} passes ${ids.length} -only-testing flags, not one`);
+    const id = ids[0];
+    if (!/^\w+\/\w+$/.test(id)) return fail(`${WARMUP_TARGET} names ${id}, which is not a Class/method id`);
+    if (!swiftDuoIds(input.swift).includes(id)) return fail(`${id} is not a test method in the Duo sources`);
+    const closed = varWords("DUO_CLOSED_TESTS");
+    if (closed.error) return fail(closed.error);
+    return closed.words.includes(id) ? fail(`${id} is in DUO_CLOSED_TESTS, but the warm-up runs in the flat pose`) : pass;
+  });
+
   return out;
 }
 
@@ -943,6 +1008,28 @@ const PRO_IF = "${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') 
 const CLOSED_IF = "        if: ${{ !cancelled() }}";
 const CHECKOUT = "      - uses: actions/checkout@" + CHECKOUT_SHA;
 const HINGE_LINE = '          git -C "$RUNNER_TEMP/hinge" checkout -q ' + HINGE_SHA;
+// The warm-up step and the open-the-Duo step it follows. Its command is named by DUO_WARMUP_CMD, and it writes warmup.xcresult.
+const WARMUP_TEST = XB + " -retry-tests-on-failure -test-iterations 2 -resultBundlePath warmup.xcresult";
+const OPEN_LINES = ["      - name: open the Duo", "        run: scripts/ci-sim.sh pose flat"];
+const WARM_LINES = [
+  "      - name: warm up the Duo simulator",
+  "        continue-on-error: true",
+  "        env:",
+  "          UI_TEST: " + WARMUP_TEST,
+  "          RESULT_BUNDLE: warmup.xcresult",
+  "          DUO_WARMUP_CMD: make ui-duo-warmup",
+  "        run: scripts/ci-sim.sh run $DUO_WARMUP_CMD",
+];
+const WARM_BLOCK = WARM_LINES.join("\n") + "\n";
+const OPEN_BLOCK = OPEN_LINES.join("\n") + "\n";
+const FLAT_RUN_LINE = '        run: make ui-duo-flat UI_TEST="$UI_TEST"';
+// Moves the warm-up block to sit where the edit names: after the flat pass, or before the open-the-Duo step.
+const moveWarm = (text, toBefore) => {
+  const cut = mutate(text, WARM_BLOCK, "");
+  return toBefore
+    ? mutate(cut, OPEN_BLOCK, WARM_BLOCK + OPEN_BLOCK)
+    : mutate(cut, FLAT_RUN_LINE + "\n", FLAT_RUN_LINE + "\n" + WARM_BLOCK);
+};
 
 const proLines = (name, target, test) => [
   "  " + name + ":",
@@ -992,9 +1079,12 @@ const WF_GOOD =
     "        run: |",
     '          git clone -q https://github.com/artemnovichkov/hinge "$RUNNER_TEMP/hinge"',
     HINGE_LINE,
+    ...OPEN_LINES,
+    ...WARM_LINES,
     "      - name: Duo's flat pass # don't panic",
     "        env:",
     "          UI_TEST: " + FLAT_TEST,
+    "          RESULT_BUNDLE: flat.xcresult",
     '        run: make ui-duo-flat UI_TEST="$UI_TEST"',
     "      - name: Closed pass",
     CLOSED_IF,
@@ -1032,7 +1122,8 @@ const CHECKS_GOOD = [
   "",
 ].join("\n");
 
-const MAKEFILE = (closedIds) =>
+const WARMUP_ID = "DuoSpreadUITests/testOpenSpreadIsFlat";
+const MAKEFILE = (closedIds, warmId = WARMUP_ID) =>
   [
     "UI_TEST ?= sim-test",
     "APP := Manifest",
@@ -1054,6 +1145,9 @@ const MAKEFILE = (closedIds) =>
     "",
     "ui-duo-closed:",
     "\tcd $(NATIVE) && $(UI_TEST) -project $(APP).xcodeproj -scheme $(APP) -derivedDataPath build CODE_SIGNING_ALLOWED=NO $(DUO_CLOSED_ONLY)",
+    "",
+    "ui-duo-warmup:",
+    "\tcd $(NATIVE) && $(UI_TEST) -project $(APP).xcodeproj -scheme $(APP) -derivedDataPath build CODE_SIGNING_ALLOWED=NO -only-testing:ManifestUITests/" + warmId,
     "",
   ].join("\n");
 
@@ -1146,10 +1240,11 @@ const SCRIPT_GOOD = [
 ].join("\n");
 
 // Moves the flags out of the env blocks and into scripts/ci-sim.sh, as one shared command.
+// A step's other env lines (the result bundle) stay in its env block; the run line takes the shared command.
 const viaScript = (text) =>
   text.replace(
-    / {8}env:\n {10}UI_TEST: [^\n]*\n( {8}run: make \S+) UI_TEST="\$UI_TEST"/g,
-    '$1 UI_TEST="$(scripts/ci-sim.sh test-command)"'
+    / {8}env:\n {10}UI_TEST: [^\n]*\n((?: {10}[^\n]*\n)*)( {8}run: make \S+) UI_TEST="\$UI_TEST"/g,
+    (whole, rest, run) => (rest === "" ? "" : "        env:\n" + rest) + run + ' UI_TEST="$(scripts/ci-sim.sh test-command)"'
   );
 
 const GOOD = { workflow: WF_GOOD, makefile: MAKEFILE(CLOSED_IDS), swift: SWIFT_GOOD, checks: CHECKS_GOOD, script: null };
@@ -1160,7 +1255,8 @@ const SCRIPT_INPUT = { ...GOOD, workflow: viaScript(WF_GOOD), script: SCRIPT_GOO
 const SHARED_TEST = XB + " -retry-tests-on-failure -test-iterations 2 -resultBundlePath $RESULT_BUNDLE";
 const toWorkflowEnv = (text) =>
   text
-    .replace(/ {8}env:\n {10}UI_TEST: [^\n]*\n/g, "")
+    .replace(/ {10}UI_TEST: [^\n]*\n/g, "")
+    .replace(/ {8}env:\n(?! {10})/g, "")
     .replace("\njobs:\n", () => "\nenv:\n  UI_TEST: " + SHARED_TEST + "\n\njobs:\n");
 const WF_ENV_INPUT = { ...GOOD, workflow: toWorkflowEnv(WF_GOOD) };
 
@@ -1171,10 +1267,11 @@ const toCmdEnv = (text) => {
   t = mutate(t, '        run: make ui-duo-closed UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run ${DUO_CLOSED_CMD}");
   t = mutate(t, '        run: make ui-a UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run $PRO_A_CMD");
   t = mutate(t, '        run: make ui-b UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run $PRO_B_CMD");
+  t = mutate(t, "          DUO_WARMUP_CMD: make ui-duo-warmup\n", "");
   return mutate(
     t,
     "\nenv:\n  UI_TEST: ",
-    "\nenv:\n  DUO_FLAT_CMD: make ui-duo-flat\n  DUO_CLOSED_CMD: make ui-duo-closed\n  PRO_A_CMD: make ui-a\n  PRO_B_CMD: make ui-b\n  UI_TEST: "
+    "\nenv:\n  DUO_FLAT_CMD: make ui-duo-flat\n  DUO_CLOSED_CMD: make ui-duo-closed\n  DUO_WARMUP_CMD: make ui-duo-warmup\n  PRO_A_CMD: make ui-a\n  PRO_B_CMD: make ui-b\n  UI_TEST: "
   );
 };
 const CMD_WF = toCmdEnv(WF_ENV_INPUT.workflow);
@@ -1188,8 +1285,8 @@ const jobEnvCmd = mutate(
 );
 const stepEnvCmd = mutate(
   mutate(CMD_WF, "  DUO_FLAT_CMD: make ui-duo-flat\n", ""),
-  FLAT_STEP_RUN,
-  "        env:\n          DUO_FLAT_CMD: make ui-duo-flat\n" + FLAT_STEP_RUN
+  "          RESULT_BUNDLE: flat.xcresult\n" + FLAT_STEP_RUN,
+  "          RESULT_BUNDLE: flat.xcresult\n          DUO_FLAT_CMD: make ui-duo-flat\n" + FLAT_STEP_RUN
 );
 const quotedHashCmd = mutate(CMD_WF, FLAT_STEP_RUN, "        run: \"echo '#' && scripts/ci-sim.sh run $DUO_FLAT_CMD\"");
 const apostropheCmd = mutate(
@@ -1305,6 +1402,20 @@ const MUTANTS = [
   ["labeled-event narrowing on the pro-ui ifs", "d8d", narrowPro, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=duo-ui"],
   ["the group drops the draft state", "d9b", onWf("-${{ github.event.pull_request.draft }}", ""), "group is"],
   ["cancel-in-progress is an if: expression", "d9a", onWf("  cancel-in-progress: true", "  cancel-in-progress: ${{ github.event.action != 'labeled' }}"), "cancel-in-progress is \"${{ github.event.action != 'labeled' }}\""],
+  // d10: the warm-up step's place, its bundle and its failure tolerance, and the one Duo test its make target names.
+  ["warm-up step after the flat pass", "d10a", (g) => ({ ...g, workflow: moveWarm(g.workflow, false) }), "is not between the open-the-Duo step"],
+  ["warm-up step before the open-the-Duo step", "d10a", (g) => ({ ...g, workflow: moveWarm(g.workflow, true) }), "is not between the open-the-Duo step"],
+  ["warm-up step runs make directly, not through ci-sim.sh run", "d10a", onWf("        run: scripts/ci-sim.sh run $DUO_WARMUP_CMD", "        run: make ui-duo-warmup"), "no step in duo-ui runs make ui-duo-warmup"],
+  ["warm-up command sits only on a comment line", "d10a", onWf("        run: scripts/ci-sim.sh run $DUO_WARMUP_CMD", "        run: |\n          # scripts/ci-sim.sh run $DUO_WARMUP_CMD\n          true"), "no step in duo-ui runs make ui-duo-warmup"],
+  ["warm-up step writes the flat pass's bundle", "d10b", onWf("-resultBundlePath warmup.xcresult", "-resultBundlePath flat.xcresult"), "writes the flat pass's result bundle"],
+  ["warm-up step writes the flat pass's bundle through the workflow env", "d10b", onCmd("          RESULT_BUNDLE: warmup.xcresult", "          RESULT_BUNDLE: flat.xcresult"), "writes the flat pass's result bundle"],
+  ["warm-up step without failure tolerance", "d10b", onWf("        continue-on-error: true\n", ""), "tolerates no failure"],
+  ["warm-up step tolerates failure only in a comment", "d10b", onBoth(onWf("        continue-on-error: true\n", ""), onWf("        run: scripts/ci-sim.sh run $DUO_WARMUP_CMD", "        run: |\n          # scripts/ci-sim.sh run $DUO_WARMUP_CMD || true\n          scripts/ci-sim.sh run $DUO_WARMUP_CMD")), "tolerates no failure"],
+  ["warm-up target is missing", "d10c", onMk("ui-duo-warmup:", "ui-duo-warmup-old:"), "is not a Makefile target"],
+  ["warm-up target names two ids", "d10c", onMk("-only-testing:ManifestUITests/" + WARMUP_ID, "-only-testing:ManifestUITests/" + WARMUP_ID + " -only-testing:ManifestUITests/DuoHandUITests/testHandShowsTwoButtons"), "passes 2 -only-testing flags"],
+  ["warm-up target names a class, not a test method", "d10c", onMk("-only-testing:ManifestUITests/" + WARMUP_ID, "-only-testing:ManifestUITests/DuoSpreadUITests"), "is not a Class/method id"],
+  ["warm-up target names a closed test", "d10c", onMk(WARMUP_ID, "DuoShellUITests/testClosedKeepsSystemBar"), "is in DUO_CLOSED_TESTS"],
+  ["warm-up target names a test the sources lack", "d10c", onMk(WARMUP_ID, "DuoSpreadUITests/testNoSuchTest"), "is not a test method"],
 ];
 
 for (const [name, id, build, cause] of MUTANTS) {
@@ -1324,7 +1435,9 @@ for (const [name, id, build, cause] of MUTANTS) {
 
 // The good set passes every check. The variants reach the empty set and the full-size set, and
 // the flags moved into scripts/ci-sim.sh.
-const FULL ={ ...GOOD, swift: FULL_SWIFT, makefile: MAKEFILE(FULL_CLOSED) };
+// The full-size Makefile names a flat test of the full-size set as its warm-up test.
+const FULL_MAKEFILE = MAKEFILE(FULL_CLOSED, "DuoSpreadUITests/testItem1");
+const FULL ={ ...GOOD, swift: FULL_SWIFT, makefile: FULL_MAKEFILE };
 const VARIANTS = [
   ["fixture good: the good set", GOOD],
   ["fixture good: the closed pass if: reads env beside !cancelled()", { ...GOOD, workflow: mutate(GOOD.workflow, CLOSED_IF, "        if: ${{ !cancelled() && env.SIM_UDID != '' }}") }],
@@ -1337,7 +1450,10 @@ const VARIANTS = [
   ["fixture good: the flat command in its step env", { ...GOOD, workflow: stepEnvCmd }],
   ["fixture good: a # inside quotes on the flat command line", { ...GOOD, workflow: quotedHashCmd }],
   ["fixture good: a lone apostrophe on an earlier run line", { ...GOOD, workflow: apostropheCmd }],
-  ["fixture good: commands from the env, full size", { ...CMD_INPUT, swift: FULL_SWIFT, makefile: MAKEFILE(FULL_CLOSED) }],
+  ["fixture good: warm-up tolerates failure through || true", { ...GOOD, workflow: mutate(mutate(GOOD.workflow, "        continue-on-error: true\n", ""), "        run: scripts/ci-sim.sh run $DUO_WARMUP_CMD", "        run: scripts/ci-sim.sh run $DUO_WARMUP_CMD || true") }],
+  ["fixture good: a # inside quotes on the warm-up command line", { ...GOOD, workflow: mutate(GOOD.workflow, "        run: scripts/ci-sim.sh run $DUO_WARMUP_CMD", "        run: \"echo '#' && scripts/ci-sim.sh run $DUO_WARMUP_CMD\"") }],
+  ["fixture good: a lone apostrophe on the warm-up run block", { ...GOOD, workflow: mutate(GOOD.workflow, "        run: scripts/ci-sim.sh run $DUO_WARMUP_CMD", "        run: |\n          echo don't\n          scripts/ci-sim.sh run $DUO_WARMUP_CMD") }],
+  ["fixture good: commands from the env, full size", { ...CMD_INPUT, swift: FULL_SWIFT, makefile: FULL_MAKEFILE }],
 ];
 for (const [name, input] of VARIANTS) {
   const bad = checkDuo(input).filter((r) => !r.ok);
