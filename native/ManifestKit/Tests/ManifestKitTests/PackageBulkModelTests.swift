@@ -383,4 +383,40 @@ final class PackageBulkModelTests: XCTestCase {
 
         XCTAssertEqual(model.bulkUndoCount, 0, "a check-in on another package ends the held Undo, so the count is 0")
     }
+
+    /// A later write lapses the held Undo, and the lapse drops the Undo's takes with it. A Mark all on a fully received package adds
+    /// nothing, so it has no takes of its own, and it must not count the lapsed Undo's takes: that count throws, and the press raises
+    /// "Saved, but the Undo count could not refresh". The shim makes the count throw while E1 is checked in. The first Mark all's
+    /// count runs before that check-in and succeeds. Before fix aa6732f8, lapseBulkUndo kept the takes, so the second press counted
+    /// them after the check-in, and threw.
+    func testAMarkAllThatAddsNothingAfterALapsedUndoRaisesNoCountError() async throws {
+        let js = """
+            var realUndo = Rules.undoBulk;
+            Rules = Object.assign({}, Rules, { undoBulk: function (takes, received) {
+              if (received.e1 !== undefined) throw new Error("the Undo count is made to throw");
+              return realUndo(takes, received);
+            } });
+            """
+        let engine = try RulesEngine(bundleURL: try probeBundleFile(js, for: self))
+        let (model, _) = try await rig(received: [Self.f1: 1], engine: engine)
+        try await bulking(model).bulk(gk: Self.gk, on: true)
+        XCTAssertEqual(model.bulkUndoGk, Self.gk, "anchor: the Mark all that adds copies holds its Undo")
+        do {
+            _ = try await engine.call("undoBulk", #"[[],{"e1":1}]"#)
+            XCTFail("anchor: the count must throw once E1 is checked in, or this case proves nothing")
+        } catch {}
+
+        try await model.checkIn(key: Self.e1, count: 1)
+        XCTAssertNil(model.bulkUndoGk, "anchor: a check-in on this device lapses the held Undo")
+        XCTAssertEqual(model.done[Self.f1], true, "anchor: f1 is in, so the Mark all on F1 adds nothing")
+
+        do {
+            try await bulking(model).bulk(gk: Self.fGk, on: true)
+        } catch {
+            XCTFail("a Mark all that adds nothing must raise no count error, but it threw: \(error)")
+            return
+        }
+        XCTAssertNil(model.checkInError, "a Mark all that adds nothing must not raise \"Saved, but the Undo count could not refresh\"")
+        XCTAssertEqual(model.bulkUndoCount, 0, "no Undo is held after the lapse and the press, so the count is 0")
+    }
 }
