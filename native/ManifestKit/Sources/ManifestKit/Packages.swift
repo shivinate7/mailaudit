@@ -113,7 +113,8 @@ public final class PackagesModel {
     }
     /// The notices whose Undo another write ended while the card was off the list. Each keeps its slot, drawn inert, so nothing
     /// below it moves under the pointer (no-layout-shift-under-pointer). A tab change, a restore or a Reset drops them all; a
-    /// dismiss (dismissVacated) drops its own.
+    /// dismiss (dismissVacated) drops its own. An Undo on the held card
+    /// (undoBulk) keeps the others.
     public var lapsedUndos: [VacatedUndo] { lapsed.compactMap { vacated(gk: $0.gk, seller: $0.seller, count: $0.count) } }
     private var lapsed: [(gk: String, seller: String, count: Int)] = []
 
@@ -132,7 +133,7 @@ public final class PackagesModel {
         dropHeld()  // the takes and the held count go too, so a later Mark all never counts a lapsed Undo's stale takes
     }
 
-    /// Drops the held Undo: its card, its takes and its held count. endBulkUndo and dismissVacated call it.
+    /// Drops the held Undo: its card, its takes and its held count. lapseBulkUndo, undoBulk, endBulkUndo and dismissVacated call it.
     private func dropHeld() {
         bulkUndoGk = nil
         bulkUndoTakes = []
@@ -595,7 +596,7 @@ public final class PackagesModel {
     public func undoBulk() async throws {
         guard let gk = bulkUndoGk else { return }
         let takes = bulkUndoTakes
-        endBulkUndo()
+        dropHeld()  // not endBulkUndo(): an Undo keeps the other lapsed notices in their slots (no-layout-shift-under-pointer)
         do {
             let counts = try await BulkRules.undone(takes, received: store.received(), engine: engine)
             try store.commitReceived(counts)
