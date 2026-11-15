@@ -129,7 +129,7 @@ public final class PackagesModel {
             lapsed.removeAll { $0.gk == v.gk }
             lapsed.append((v.gk, v.seller, v.count))
         }
-        bulkUndoGk = nil
+        dropHeld()  // the takes and the held count go too, so a later Mark all never counts a lapsed Undo's stale takes
     }
 
     /// Drops the held Undo: its card, its takes and its held count. endBulkUndo and dismissVacated call it.
