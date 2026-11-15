@@ -3233,22 +3233,26 @@ function runFolder() {
   expect("sweep: the run's own folder stays, though it is old", existsSync(own));
 }
 
-// Assertion 32 runs the import and count scripts in a sandbox. A stub security tool answers their calls:
-// find-identity prints the after count, and list-keychains prints the search list unless it sets one.
+// Assertion 29 runs the import script, and 32 the import and count scripts, in a sandbox. A stub security tool answers their calls:
+// find-identity prints the after count, and list-keychains prints the search list unless it sets one. The stub
+// logs each call, one argument per line and a "#" line after it, so a case reads the search list the step set.
 // The only values are fakes, so no real secret reaches a script.
 const SECURITY_STUB = [
   "#!/bin/bash",
+  `printf '%s\\n' "$@" "#" >> "$STUB_LOG"`,
   'case "$1" in',
   '  find-identity) cat "$STUB_AFTER" ;;',
   '  list-keychains) case " $* " in *" -s "*) ;; *) cat "$STUB_KEYCHAINS" ;; esac ;;',
   "esac",
   "exit 0",
 ].join("\n") + "\n";
-const KEYCHAINS_LIST = '    "/Users/runner/Library/Keychains/login.keychain-db"\n    "/Library/Keychains/System.keychain"\n';
+// The search list the stub prints for a read: two keychains in the macOS format of list-keychains.
+const KEYCHAIN_PATHS = ["/Users/runner/Library/Keychains/login.keychain-db", "/Library/Keychains/System.keychain"];
+const keychainsText = (paths) => paths.map((p) => `    "${p}"\n`).join("");
 let sandboxCount = 0;
 // A fresh sandbox under this run's folder. Its env replaces the caller's, so no caller variable reaches a
-// script; PATH is kept only to find bash, openssl and base64.
-function sandboxDir() {
+// script; PATH is kept only to find bash, openssl and base64. `readPaths` is the search list a read prints.
+function sandboxDir(readPaths = KEYCHAIN_PATHS) {
   const root = join(runFolder(), `sandbox-${sandboxCount++}`);
   const bin = join(root, "bin");
   const rt = join(root, "runner-temp");
@@ -3258,7 +3262,8 @@ function sandboxDir() {
   chmodSync(join(bin, "security"), 0o755);
   const after = join(root, "after.txt");
   const keychains = join(root, "keychains.txt");
-  writeFileSync(keychains, KEYCHAINS_LIST);
+  writeFileSync(keychains, keychainsText(readPaths));
+  const log = join(root, "security.log");
   const env = {
     PATH: `${bin}:${process.env.PATH ?? ""}`,
     HOME: home,
@@ -3268,8 +3273,9 @@ function sandboxDir() {
     GITHUB_OUTPUT: join(root, "github-output"),
     STUB_AFTER: after,
     STUB_KEYCHAINS: keychains,
+    STUB_LOG: log,
   };
-  return { root, rt, after, env };
+  return { root, rt, after, log, env };
 }
 // Runs one step's run text with bash -e, as a runner does, in the sandbox, with `extraEnv` on top. The runner
 // expands each secret expression before bash reads the text, so the sandbox does the same with the fake values.
@@ -3292,16 +3298,19 @@ function secretEnv(step, values) {
 const COUNT_UNREAD = "could not read the identity counts";
 // The last line find-identity prints, as the count step reads it. An empty count is no line at all.
 const countLine = (n) => (n === "" ? "" : `     ${n} valid identities found\n`);
+// The fake secrets the sandbox runs with. The .p12 is base64 of "fake-p12"; no real identity reaches a script.
+const FAKE_P12 = "ZmFrZS1wMTI=";
+const fakeValues = (p12) => ({ [SIGN_P12]: p12, [SIGN_PASS]: "fixture-password" });
 // The cases: an identity imported with the count rising, with the count level, and no identity imported
 // (the empty secret: the count step must not fail on a run that imported nothing). The last two name an
 // empty count beside a numeric one: the count step must say it could not read the counts.
 const SIGN_CASES = [
-  { what: "an identity was imported and the count rose from 1 to 2", p12: "ZmFrZS1wMTI=", before: 1, after: 2, fails: true },
-  { what: "an identity was imported and the count stayed at 1", p12: "ZmFrZS1wMTI=", before: 1, after: 1, fails: false },
+  { what: "an identity was imported and the count rose from 1 to 2", p12: FAKE_P12, before: 1, after: 2, fails: true },
+  { what: "an identity was imported and the count stayed at 1", p12: FAKE_P12, before: 1, after: 1, fails: false },
   { what: "no identity was imported and the count rose from 1 to 2", p12: "", before: 1, after: 2, fails: false },
   {
     what: "an identity was imported and the count before was empty",
-    p12: "ZmFrZS1wMTI=",
+    p12: FAKE_P12,
     before: "",
     after: 2,
     fails: true,
@@ -3309,7 +3318,7 @@ const SIGN_CASES = [
   },
   {
     what: "an identity was imported and the count after was empty",
-    p12: "ZmFrZS1wMTI=",
+    p12: FAKE_P12,
     before: 1,
     after: "",
     fails: true,
@@ -3319,7 +3328,7 @@ const SIGN_CASES = [
 // The cause for one case, or "" when the count step does what the case expects.
 function countCaseCause(imp, count, c) {
   const dir = sandboxDir();
-  const values = { [SIGN_P12]: c.p12, [SIGN_PASS]: "fixture-password" };
+  const values = fakeValues(c.p12);
   writeFileSync(dir.after, countLine(c.after));
   const imported = runStep(dir, "import", runOf(imp), values, secretEnv(imp, values));
   if (imported.status !== 0) {
@@ -3340,6 +3349,48 @@ function countCaseCause(imp, count, c) {
 function sandboxCause(imp, count) {
   for (const c of SIGN_CASES) {
     const cause = countCaseCause(imp, count, c);
+    if (cause) return cause;
+  }
+  return "";
+}
+// The security calls a sandbox run logged: each call's arguments, one per line, then a "#" line.
+function securityCalls(log) {
+  const calls = [];
+  let call = [];
+  const text = existsSync(log) ? readFileSync(log, "utf8") : "";
+  for (const line of text.split("\n").slice(0, -1)) {
+    if (line === "#") {
+      calls.push(call);
+      call = [];
+    } else call.push(line);
+  }
+  return calls;
+}
+// The cause for one read state, or "" when the search list the import step sets is the new keychain first and
+// then each entry the read gave, in the read's order.
+function searchListCase(imp, readPaths) {
+  const dir = sandboxDir(readPaths);
+  const values = fakeValues(FAKE_P12);
+  const imported = runStep(dir, "import", runOf(imp), values, secretEnv(imp, values));
+  if (imported.status !== 0) {
+    return `the import step exits ${imported.status} in the sandbox: ${String(imported.stderr).split("\n")[0]}`;
+  }
+  const calls = securityCalls(dir.log);
+  const kc = calls.filter((c) => c[0] === "create-keychain").at(-1)?.at(-1);
+  const set = calls.filter((c) => c[0] === "list-keychains" && c.includes("-s")).at(-1);
+  if (kc === undefined) return "the import step creates no keychain in the sandbox";
+  if (set === undefined) return "the import step sets no search list in the sandbox";
+  const words = set.slice(set.indexOf("-s") + 1);
+  if (words[0] !== kc) return `the set does not put the new keychain first: it sets ${JSON.stringify(words)}`;
+  const want = [kc, ...readPaths];
+  if (JSON.stringify(words) === JSON.stringify(want)) return "";
+  return `the set does not carry the list the read gave: it sets ${JSON.stringify(words)}, expected ${JSON.stringify(want)}`;
+}
+// Assertion 29's sandbox run, once with a read of two keychains and once with a read of none. An empty read is
+// the state where a loop that adds an empty entry shows.
+function searchListCause(imp) {
+  for (const readPaths of [KEYCHAIN_PATHS, []]) {
+    const cause = searchListCase(imp, readPaths);
     if (cause) return cause;
   }
   return "";
@@ -3436,7 +3487,8 @@ function signingIdentityChecks(text) {
       (setAt < 0 ? "the search list is never set: no list-keychains -s" : "") ||
       (readAt > setAt ? "the search list is set before it is read" : "") ||
       (listWords.length === 0 ? "the search list is set to the new keychain alone, not the list read" : "") ||
-      (!readUsed ? "the list read never reaches the set" : ""),
+      (!readUsed ? "the list read never reaches the set" : "") ||
+      searchListCause(imp),
     `read at line ${readAt + 1}, set at line ${setAt + 1}`
   );
 
@@ -3581,6 +3633,8 @@ const SIGN_GOOD = signText(
   SIGN_COUNT_STEP,
   SIGN_DELETE_STEP
 );
+// The loop line that keeps each read entry. The bad rows below replace it.
+const LOOP_KEEP = '            [ -z "$l" ] || set -- "$@" "$l"\n';
 // Each row: a name, the text, the assertions that must fail (in order), and the cause that the first one's detail names.
 const SIGN_RED = [
   [
@@ -3670,6 +3724,24 @@ const SIGN_RED = [
     mutate(SIGN_GOOD, '          done <<< "$current"\n', '          done <<< ""\n'),
     ["29"],
     "never reaches the set",
+  ],
+  [
+    "the loop drops every read entry",
+    mutate(SIGN_GOOD, LOOP_KEEP, '            [ -z "$l" ] || :\n'),
+    ["29"],
+    "does not carry the list the read gave",
+  ],
+  [
+    "the loop keeps only the last read entry",
+    mutate(SIGN_GOOD, LOOP_KEEP, '            [ -z "$l" ] || set -- "$kc" "$l"\n'),
+    ["29"],
+    "does not carry the list the read gave",
+  ],
+  [
+    "the loop adds an empty entry when the read gives none",
+    mutate(SIGN_GOOD, LOOP_KEEP, '            set -- "$@" "$l"\n'),
+    ["29"],
+    "does not carry the list the read gave",
   ],
   [
     "the count step's guard lets an empty count through",
