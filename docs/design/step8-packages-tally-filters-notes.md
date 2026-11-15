@@ -34,7 +34,7 @@ This is a redraw, not the original. The step 8 design spec and its packages-tall
 1. **The Find pill, one page.** Today, built.
    - What: a glass capsule pinned above the system tab bar on Packages and on Tally. It holds a magnifier, a Cochin 16 field, and a 44 x 44 pt clear slot. The placeholder is "Find card, set, seller, order" at normal type sizes, and "Find" at accessibility sizes, where the full prompt was cut off (`FindPill.promptText`). It sits 16 pt in from each side and 8 pt above the bar. It draws only while the ledger holds items. One query serves both tabs.
    - Sources: `FindPill`, `View.findPill(show:query:change:)`, `PackagesView.pillShown`, `TallyView.findPillShown`; web `.mdl-pill`.
-   - Gain: the main input sits in thumb reach (`ux-thumb-zone`), and Apple's search-fields page allows bottom placement. Loss: it covers the last 68 pt of list at rest. A bottom content inset scrolls the list clear.
+   - Gain: the main input sits in thumb reach (`ux-thumb-zone`), and Apple's search-fields page allows bottom placement. Loss: it covers the last 68 pt of list at rest at normal type sizes (48 pt pill, 8 pt above and below). At accessibility sizes the field holds one line (`FindPill.fieldLines`) and the pill follows the text. Before that fix, an empty second line made it 87 pt tall at AX3 and 110 pt at AX5 (design review, screen-check run 43765127724), and it hid "14 still missing" and the VALUE figure. A bottom content inset scrolls the list clear.
    - Pick: as built.
    - Tests: `FindPillUITests.testPillSitsAboveTheTabBarOnPackagesAndTally`, `testFindFieldHitAreaIsAtLeast44ptTall`, `testOpeningSearchMovesNoPackageRow`, `testPillAboveTheBarIsNotSkippedAsUnderTheBar`. No test reads either placeholder.
 

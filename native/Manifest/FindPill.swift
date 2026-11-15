@@ -7,11 +7,15 @@ import SwiftUI
 /// Its 44 x 44 slot is laid out while the field is empty too, as a clear spacer, so the field never changes width as the first
 /// character lands (no-layout-shift-under-pointer).
 ///
-/// The field holds two lines at rest (`lineLimit(2...3)`): a vertical-axis field's hit region is its text view, not its frame,
-/// and the accessibility audit calls a one-line one smaller than 44pt even inside a 52pt frame (measured, 2026-11-08, find-field
-/// at 7168062; the same measure as the Tally search field of N17 and the Orphaned composer). Two Cochin lines clear it. The whole pill
-/// still takes a tap and focuses the field. The field grows to three lines at large text, so the pill grows and never clips the
-/// query. The Return key submits: a vertical-axis field types a newline, which is read as the submit.
+/// At normal text sizes the field holds two lines at rest (`lineLimit(2...3)`). The second line is for the hit region: a
+/// vertical-axis field's hit region is its text view, not its frame, and the accessibility audit calls a one-line one smaller than
+/// 44pt even inside a 52pt frame (measured, 2026-11-08, find-field at 7168062; the same measure as the Tally search field of N17
+/// and the Orphaned composer). Two Cochin lines clear it. At accessibility sizes that reason stops: one line is already taller
+/// than 44pt, so the field holds one line (`lineLimit(1...1)`) and the pill follows the text. A second, empty line there sat 20pt
+/// (AX3) and 27pt (AX5) above the magnifier and made the pill 87pt and 110pt tall, hiding list rows behind it (design review,
+/// screen-check run 43765127724). The whole pill still takes a tap and focuses the field. At normal sizes the field grows to three
+/// lines, so the pill grows and never clips the query. The Return key submits: a vertical-axis field types a newline, which is
+/// read as the submit.
 struct FindPill: View {
     let query: String
     let change: (String) -> Void
@@ -23,6 +27,9 @@ struct FindPill: View {
     /// run 43755312311, iPhone 18 Pro at AX5): a placeholder does not wrap in a vertical-axis field, so the short word keeps every letter.
     private var promptText: String { typeSize.isAccessibilitySize ? "Find" : "Find card, set, seller, order" }
 
+    /// Two lines at rest for the 44pt hit region; one at accessibility sizes, where a single line is already taller than 44pt.
+    private var fieldLines: ClosedRange<Int> { typeSize.isAccessibilitySize ? 1...1 : 2...3 }
+
     var body: some View {
         HStack(spacing: 8) {
             Image(systemName: "magnifyingglass").font(.system(size: 20)).foregroundStyle(Parchment.inkSoft)
@@ -30,7 +37,7 @@ struct FindPill: View {
             TextField("Search", text: Binding(get: { text }, set: { v in
                 if v.contains("\n") { text = v.replacingOccurrences(of: "\n", with: ""); focused = false } else { text = v }
             }), prompt: Text(promptText).foregroundStyle(Parchment.inkSoft), axis: .vertical)
-                .lineLimit(2...3).textFieldStyle(.plain).focused($focused).submitLabel(.search)
+                .lineLimit(fieldLines).textFieldStyle(.plain).focused($focused).submitLabel(.search)
                 .font(.cochin(16, relativeTo: .body)).foregroundStyle(Parchment.ink)
                 .autocorrectionDisabled()
                 .textInputAutocapitalization(.never)
