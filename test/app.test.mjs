@@ -2825,6 +2825,93 @@ const ownValue = (o, k) => (Object.prototype.hasOwnProperty.call(o, k) ? o[k] : 
   }
 });
 
+/* ── 33, the tracking refresh on re-import (owner ruling, waiting-page item 89 b,
+   2026-11-15 13:38 CST). A CSV re-import refreshes ONLY `tracking` on a stored line.
+   Received marks and every other field stay the base copy, no line is dropped, and
+   an empty incoming tracking keeps the stored one. Only the import path passes
+   `refreshTracking`; mergeLedger (the two-device merge) keeps the base copy. The
+   controls (33.54, 33.57, 33.58, 33.61 to 33.63, 33.65) hold on the old code too;
+   the rest are red there. */
+const trkLine = (n, tracking, over = {}) => ({
+  key: `T|${n}|${n}`,
+  orderId: "T",
+  seller: "Seller Alpha",
+  name: `Card ${n}`,
+  set: "Theros",
+  condition: "Near Mint",
+  finish: "",
+  qty: 2,
+  price: 1.5,
+  date: "2026-07-01",
+  tracking,
+  line: "Magic",
+  ...over,
+});
+const TRK_BASE = [
+  trkLine(1, "unknown"),
+  trkLine(2, "with tracking"),
+  trkLine(3, "without tracking"),
+  trkLine(5, "with tracking"), // stored, and absent from the incoming list
+];
+const TRK_IN = [
+  trkLine(1, "with tracking", {
+    orderId: "T9", seller: "Seller Omega", name: "Card 1 reprint", set: "Other Set",
+    condition: "Lightly Played", finish: "Foil", qty: 5, price: 9.99, date: "2026-11-01", line: "Other",
+  }),
+  trkLine(2, "Canceled"),
+  trkLine(3, "without tracking"),
+  trkLine(4, "without tracking"), // new
+];
+const TRK_OPT = { refreshTracking: true };
+const trkOf = (items, n) => items.find((it) => it.key === `T|${n}|${n}`)?.tracking;
+const withoutTracking = (it) => {
+  const { tracking, ...rest } = it;
+  return JSON.stringify(rest);
+};
+const trkOnce = mergeItems(TRK_BASE, TRK_IN, TRK_OPT);
+const trkTwice = mergeItems(trkOnce.items, TRK_IN, TRK_OPT);
+
+/* the guard mergeLedger leans on: with no option the base copy wins a key clash */
+eq(trkOf(mergeItems(TRK_BASE, TRK_IN).items, 1), "unknown", "33.54 with no option a key clash keeps the base tracking");
+eq(trkOf(trkOnce.items, 1), "with tracking", "33.55 with refreshTracking a stored unknown takes the incoming status");
+eq(trkOf(trkOnce.items, 2), "Canceled", "33.56 and a stored status takes the incoming Canceled");
+eq(
+  withoutTracking(trkOnce.items.find((it) => it.key === "T|1|1")),
+  withoutTracking(TRK_BASE[0]),
+  "33.57 with refreshTracking every other field of the stored line is the base copy's, byte for byte"
+);
+eq(
+  trkOf(mergeItems(TRK_BASE, [trkLine(2, "")], TRK_OPT).items, 2),
+  "with tracking",
+  "33.58 with refreshTracking an empty incoming tracking keeps the stored one"
+);
+eq(trkOnce.refreshed, 2, "33.59 the result counts the two lines whose tracking changed");
+eq(
+  mergeItems([trkLine(3, "without tracking")], [trkLine(3, "without tracking")], TRK_OPT).refreshed,
+  0,
+  "33.60 an identical line counts as no refresh"
+);
+eq(
+  trkOnce.items.map((it) => it.key),
+  ["T|1|1", "T|2|2", "T|3|3", "T|5|5", "T|4|4"],
+  "33.61 no stored line is dropped, the stored key absent from the incoming list stays, and the new line is appended"
+);
+eq(trkOnce.added, 1, "33.62 the added count is still the one new line");
+eq(
+  JSON.stringify(trkTwice.items),
+  JSON.stringify(trkOnce.items),
+  "33.63 running the refresh a second time changes no item"
+);
+eq(trkTwice.refreshed, 0, "33.64 and the second run refreshes nothing");
+eq(
+  mergeLedger(
+    { items: [trkLine(1, "unknown")] },
+    { items: [trkLine(1, "with tracking")] }
+  ).merged.items[0].tracking,
+  "unknown",
+  "33.65 a two-device merge keeps the local tracking: mergeLedger never refreshes"
+);
+
 /* ── 34. the conflict stops being a trap ──────────────────────────────────
    Group 25 proves a stale write is refused. This proves it can now be resolved
    without either device losing work. On the Worker the merge happens on the
@@ -7443,16 +7530,12 @@ await sleep(SAVE_WAIT);
 eq(saved().items.length, 4, "57.12 the list still holds four lines after that re-import");
 eq(saved().received, marksBefore57, "57.13 and every received mark is still unchanged");
 
-/* KNOWN GAP, pinned as it stands. A re-import that brings Shipping Status Canceled for a line
-   the list already holds should carry that status across (canceled-orders-leave-the-list).
-   mergeItems keeps the base copy on a key clash, so today the line keeps its old status. Owner
-   ruling, waiting-page item 89 b, 2026-11-15 13:38 CST: a re-import refreshes ONLY tracking on
-   a stored key; received marks and every other field stay. The code change is a later lane.
-   These cases assert the unchanged state, so the gap reads as a gap. A fix turns 57.14 red:
-   re-point it then, rather than weakening it. 57.16 holds the ruling's other half now: the
-   marks on that line stay. */
-const trackBefore57 = saved().items.find((it) => it.name === RB57)?.tracking;
-eq(trackBefore57, "without tracking", "57.14a before the canceled re-import Beta holds the base status");
+/* Owner ruling, waiting-page item 89 b, 2026-11-15 13:38 CST: a re-import refreshes ONLY
+   `tracking` on a stored line; received marks and every other field stay. So a canceled
+   re-import carries Canceled onto the held Beta line and changes nothing else on it. 57.16
+   holds the received marks. */
+const betaBefore57 = saved().items.find((it) => it.name === RB57);
+eq(betaBefore57?.tracking, "without tracking", "57.14a before the canceled re-import Beta holds the base status");
 await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 ok(/Drop your OrderWand CSV here/.test(text()), "57.14b the upload zone is open before the canceled drop");
@@ -7462,11 +7545,11 @@ await dropFile(
 );
 await sleep(SAVE_WAIT);
 eq(
-  saved().items.find((it) => it.name === RB57)?.tracking,
-  trackBefore57,
-  "57.14 known gap: a re-import that brings Canceled for a held line keeps the base status"
+  canon56(saved().items.find((it) => it.name === RB57)),
+  canon56({ ...betaBefore57, tracking: "Canceled" }),
+  "57.14 the canceled re-import sets Beta's stored tracking to Canceled and changes no other Beta field"
 );
-eq(saved().items.length, 4, "57.15 known gap: and that canceled re-import adds no line");
+eq(saved().items.length, 4, "57.15 the canceled re-import adds no line");
 eq(
   saved().received,
   marksBefore57,
@@ -7477,6 +7560,28 @@ eq(
 ok(
   !/Drop your OrderWand CSV here/.test(text()),
   "57.17 the canceled re-import drop was applied: the upload zone closed"
+);
+/* an empty Shipping Status says nothing about tracking, so a held line keeps the status it has
+   (owner ruling, 2026-11-15 13:38 CST, waiting-page item 89 b: an empty incoming tracking keeps
+   the stored one). */
+await reachFor(/Re-import CSV/);
+await click(btn(/Re-import CSV/), "show the upload zone for the empty-status drop");
+ok(/Drop your OrderWand CSV here/.test(text()), "57.18a the upload zone is open before the empty-status drop");
+const trackingBefore57 = saved().items.find((it) => it.name === RB57)?.tracking;
+ok(!!trackingBefore57, "57.18b the held Beta line has a stored status before the empty-status drop");
+await dropFile(
+  "orders.csv",
+  csv([FIRST57[0], { ...FIRST57[1], "Shipping Status": "" }, FIRST57[2], NEW57])
+);
+await sleep(SAVE_WAIT);
+ok(
+  !/Drop your OrderWand CSV here/.test(text()),
+  "57.18c the empty-status drop was applied: the upload zone closed"
+);
+eq(
+  saved().items.find((it) => it.name === RB57)?.tracking,
+  trackingBefore57,
+  "57.18 an empty Shipping Status on a held line keeps its stored status"
 );
 
 /* ── 61. the house UX rules, lanes L1 and L2 (decision ux-house-rules-govern) ──
