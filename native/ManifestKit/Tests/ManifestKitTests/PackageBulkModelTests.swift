@@ -409,6 +409,7 @@ final class PackageBulkModelTests: XCTestCase {
         try await model.checkIn(key: Self.e1, count: 1)
         XCTAssertNil(model.bulkUndoGk, "anchor: a check-in on this device lapses the held Undo")
         XCTAssertEqual(model.done[Self.f1], true, "anchor: f1 is in, so the Mark all on F1 adds nothing")
+        XCTAssertNotNil(model.rows.first { $0.gk == Self.fGk }, "anchor: F1 is a row, so the press below reaches the model")
 
         do {
             try await bulking(model).bulk(gk: Self.fGk, on: true)
@@ -418,5 +419,23 @@ final class PackageBulkModelTests: XCTestCase {
         }
         XCTAssertNil(model.checkInError, "a Mark all that adds nothing must not raise \"Saved, but the Undo count could not refresh\"")
         XCTAssertEqual(model.bulkUndoCount, 0, "no Undo is held after the lapse and the press, so the count is 0")
+    }
+
+    /// Two cards' Undos lapse, one each time the next Mark all lands, and the third card's Undo is held. Undo on the held card
+    /// takes back only its own copy. It ends only that card's Undo, so the two lapsed notices stay in their slots and nothing
+    /// below them moves under the pointer (no-layout-shift-under-pointer). A tab change, a restore or a Reset clears them all.
+    func testUndoOnTheHeldCardKeepsTheLapsedNotices() async throws {
+        let (model, store) = try await rig(received: [:], unreceived: true)
+        try await bulking(model).bulk(gk: Self.gk, on: true)
+        try await bulking(model).bulk(gk: Self.eGk, on: true)
+        try await bulking(model).bulk(gk: Self.fGk, on: true)
+        XCTAssertEqual(model.bulkUndoGk, Self.fGk, "anchor: F1's Mark all holds its Undo")
+        XCTAssertEqual(model.lapsedUndos.map(\.gk), [Self.gk, Self.eGk], "anchor: A1's and E1's Undos lapsed, in that order")
+
+        try await bulking(model).undoBulk()
+
+        XCTAssertEqual(store.received(), [Self.a1: 1, Self.a2: 2, Self.e1: 1], "undo takes back F1's copy and no more")
+        XCTAssertNil(model.bulkUndoGk, "undo ends the held Undo")
+        XCTAssertEqual(model.lapsedUndos.map(\.gk), [Self.gk, Self.eGk], "undo on F1 ends its own notice only: A1's and E1's notices must stay")
     }
 }
