@@ -42,6 +42,16 @@
 //  24  every defect's file is in the repo. This one is outside the brief.
 //  25  the ship job of testflight.yml has one actions/checkout step, and its with: ref is
 //      ${{ github.ref }}, so a run queued behind a merge checks out the branch tip at run start.
+//  26 to 33 read the signing identity in testflight.yml's ship job. Each names one cause per failure:
+//  26  one step named "Import the signing identity" runs before Fetch ios-ship and before Ship;
+//  27  it reads ASC_DEV_CERT_P12 and ASC_DEV_CERT_PASSWORD only through its env:, never in run:;
+//  28  it makes its keychain under RUNNER_TEMP and runs set-key-partition-list;
+//  29  it reads the search list before it sets one, so the user's keychains stay on it;
+//  30  it removes the .p12 after the security import;
+//  31  "Delete the keys" runs if: always(), removes dev.p12 and deletes the signing keychain;
+//  32  "Certificate count" fails when the count after Ship exceeds the count before, with an identity
+//      imported (the import and count scripts run in a sandbox, see the fixtures for 26 to 33);
+//  33  the workflow names both secrets and holds no secret value: no base64 blob, no literal password.
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in checks.yml
 // are checked the same way, with letter ids:
@@ -104,7 +114,9 @@
 // MILESTONE_WORKFLOW name other files; a relative path resolves from the repo root.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { failLine } from "./fail-line.mjs";
@@ -3105,6 +3117,582 @@ for (const [name, text] of TF_RED) {
   const real = testflightRefCheck(readOrNull(TESTFLIGHT_WORKFLOW));
   expect(real.label, real.ok, real.detail);
 }
+
+// Assertions 26 to 33: the signing identity in testflight.yml's ship job. The job imports one stored Apple
+// Development identity into a throwaway keychain before Fetch ios-ship, and deletes it after. Each check
+// reads the workflow text. The scope (the file, the ship job, the import step) is checked before the subject.
+const SIGN_IMPORT = "Import the signing identity";
+const SIGN_FETCH = "Fetch ios-ship";
+const SIGN_SHIP = "Ship";
+const SIGN_COUNT = "Certificate count";
+const SIGN_DELETE = "Delete the keys";
+const SIGN_P12 = "ASC_DEV_CERT_P12";
+const SIGN_PASS = "ASC_DEV_CERT_PASSWORD";
+// A whole ${{ secrets.NAME }} value, the only form a secret takes in an env: map.
+const SECRET_REF = /^\$\{\{\s*secrets\.([A-Za-z0-9_]+)\s*\}\}$/;
+
+const parsedDoc = (text) => {
+  if (text === null) return null;
+  try {
+    return parseWorkflow(text);
+  } catch {
+    return null;
+  }
+};
+const runOf = (step) => (typeof step?.run === "string" ? step.run : "");
+const isSecretRef = (v, name) => {
+  const m = SECRET_REF.exec(String(v ?? "").trim());
+  return m !== null && m[1] === name;
+};
+// A token that could be a base64 blob: 40 or more base64 characters, with upper and lower case, digits, and a
+// character a hex digest lacks. A pin holds @ or :, and a sha256 digest is hex, so neither matches.
+const looksLikeBlob = (tok) =>
+  /^[A-Za-z0-9+/]{40,}={0,2}$/.test(tok) &&
+  /[a-z]/.test(tok) &&
+  /[A-Z]/.test(tok) &&
+  /[0-9]/.test(tok) &&
+  /[^0-9a-fA-F]/.test(tok);
+// The 1-based line of the first blob-like token, or 0. The token itself is never printed.
+function blobLine(text) {
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    for (const tok of lines[i].split(/\s+/)) {
+      if (looksLikeBlob(tok.replace(/^["']+|["']+$/g, ""))) return i + 1;
+    }
+  }
+  return 0;
+}
+// The cause for the keychain claim, read from the import step's run lines. The keychain comes from
+// create-keychain. Its path is RUNNER_TEMP itself, or a variable set from RUNNER_TEMP.
+function keychainCause(lines) {
+  const create = lines.find((l) => /\bcreate-keychain\b/.test(l));
+  if (create === undefined) return "no create-keychain in run:";
+  const word = create.trim().split(/\s+/).pop().replace(/"/g, "");
+  if (word.includes("RUNNER_TEMP")) return "";
+  const name = /^\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?$/.exec(word)?.[1];
+  const set =
+    name === undefined ? undefined : lines.find((l) => new RegExp(`^${name}=["']?\\$\\{?RUNNER_TEMP`).test(l.trim()));
+  return set === undefined ? `the keychain ${word} is not under RUNNER_TEMP` : "";
+}
+
+// Test temp files follow the run-folder standard (test-temp-standard): one run folder per run, named
+// <pid>-<UUID>, under one temp root for this repo. The first request of a run sweeps the sibling run folders
+// older than a day, and teardown removes this run's folder.
+const TEMP_ROOT = join(tmpdir(), "mailaudit-test-temp");
+const TEMP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const RUN_FOLDER_RE = /^[0-9]+-[0-9a-f]{32}$/;
+// Removes each sibling run folder older than a day at `now`. `own` stays, and so does a name that is no run folder.
+function sweepRunFolders(root, own, now) {
+  let names = [];
+  try {
+    names = readdirSync(root);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    const path = join(root, name);
+    if (path === own || !RUN_FOLDER_RE.test(name)) continue;
+    try {
+      const st = statSync(path);
+      if (st.isDirectory() && now - st.mtimeMs > TEMP_MAX_AGE_MS) rmSync(path, { recursive: true, force: true });
+    } catch {
+      // A folder that vanished or cannot be read is left for a later sweep.
+    }
+  }
+}
+let ownRunFolder = null;
+function runFolder() {
+  if (ownRunFolder === null) {
+    mkdirSync(TEMP_ROOT, { recursive: true });
+    ownRunFolder = join(TEMP_ROOT, `${process.pid}-${randomUUID().replaceAll("-", "")}`);
+    mkdirSync(ownRunFolder);
+    sweepRunFolders(TEMP_ROOT, ownRunFolder, Date.now());
+    process.on("exit", () => rmSync(ownRunFolder, { recursive: true, force: true }));
+  }
+  return ownRunFolder;
+}
+// The sweep proof. The sweep takes `now` as an argument, so the case reads no clock. An old sibling goes, a
+// newer one stays, a name that is no run folder stays, and the run's own folder stays even when it is old.
+{
+  const root = join(runFolder(), "sweep-proof");
+  const own = join(root, `${process.pid}-${"0".repeat(32)}`);
+  const old = join(root, `1-${"a".repeat(32)}`);
+  const fresh = join(root, `2-${"b".repeat(32)}`);
+  const other = join(root, "not-a-run-folder");
+  for (const d of [own, old, fresh, other]) mkdirSync(d, { recursive: true });
+  const now = Date.parse("2026-11-03T00:00:00Z");
+  const longAgo = new Date(Date.parse("2026-11-01T00:00:00Z"));
+  const hourAgo = new Date(now - 60 * 60 * 1000);
+  for (const d of [own, old, other]) utimesSync(d, longAgo, longAgo);
+  utimesSync(fresh, hourAgo, hourAgo);
+  sweepRunFolders(root, own, now);
+  expect("sweep: an old sibling run folder goes", !existsSync(old));
+  expect("sweep: a sibling run folder under a day old stays", existsSync(fresh));
+  expect("sweep: a folder whose name is no run folder stays", existsSync(other));
+  expect("sweep: the run's own folder stays, though it is old", existsSync(own));
+}
+
+// Assertion 32 runs the import and count scripts in a sandbox. A stub security tool answers their calls:
+// find-identity prints the after count, and list-keychains prints the search list unless it sets one.
+// The only values are fakes, so no real secret reaches a script.
+const SECURITY_STUB = [
+  "#!/bin/bash",
+  'case "$1" in',
+  '  find-identity) cat "$STUB_AFTER" ;;',
+  '  list-keychains) case " $* " in *" -s "*) ;; *) cat "$STUB_KEYCHAINS" ;; esac ;;',
+  "esac",
+  "exit 0",
+].join("\n") + "\n";
+const KEYCHAINS_LIST = '    "/Users/runner/Library/Keychains/login.keychain-db"\n    "/Library/Keychains/System.keychain"\n';
+let sandboxCount = 0;
+// A fresh sandbox under this run's folder. Its env replaces the caller's, so no caller variable reaches a
+// script; PATH is kept only to find bash, openssl and base64.
+function sandboxDir() {
+  const root = join(runFolder(), `sandbox-${sandboxCount++}`);
+  const bin = join(root, "bin");
+  const rt = join(root, "runner-temp");
+  const home = join(root, "home");
+  for (const d of [bin, rt, home]) mkdirSync(d, { recursive: true });
+  writeFileSync(join(bin, "security"), SECURITY_STUB);
+  chmodSync(join(bin, "security"), 0o755);
+  const after = join(root, "after.txt");
+  const keychains = join(root, "keychains.txt");
+  writeFileSync(keychains, KEYCHAINS_LIST);
+  const env = {
+    PATH: `${bin}:${process.env.PATH ?? ""}`,
+    HOME: home,
+    RUNNER_TEMP: rt,
+    GITHUB_ENV: join(root, "github-env"),
+    GITHUB_PATH: join(root, "github-path"),
+    GITHUB_OUTPUT: join(root, "github-output"),
+    STUB_AFTER: after,
+    STUB_KEYCHAINS: keychains,
+  };
+  return { root, rt, after, env };
+}
+// Runs one step's run text with bash -e, as a runner does, in the sandbox, with `extraEnv` on top. The runner
+// expands each secret expression before bash reads the text, so the sandbox does the same with the fake values.
+function runStep(dir, name, run, values, extraEnv) {
+  const file = join(dir.root, `${name}.sh`);
+  const text = run.replace(/\$\{\{\s*secrets\.([A-Za-z0-9_]+)\s*\}\}/g, (_, n) => values[n] ?? "");
+  writeFileSync(file, text.endsWith("\n") ? text : `${text}\n`);
+  return spawnSync("bash", ["-e", file], { cwd: dir.root, env: { ...dir.env, ...extraEnv }, encoding: "utf8" });
+}
+// The env a step gets from its secrets: each env: entry that is a whole secret reference gets that secret's value.
+function secretEnv(step, values) {
+  const out = {};
+  for (const [key, v] of Object.entries(isMap(step?.env) ? step.env : {})) {
+    const m = SECRET_REF.exec(String(v).trim());
+    if (m !== null) out[key] = values[m[1]] ?? "";
+  }
+  return out;
+}
+// The cases: an identity imported with the count rising, with the count level, and no identity imported
+// (the empty secret: the count step must not fail on a run that imported nothing).
+const SIGN_CASES = [
+  { what: "an identity was imported and the count rose from 1 to 2", p12: "ZmFrZS1wMTI=", before: 1, after: 2, fails: true },
+  { what: "an identity was imported and the count stayed at 1", p12: "ZmFrZS1wMTI=", before: 1, after: 1, fails: false },
+  { what: "no identity was imported and the count rose from 1 to 2", p12: "", before: 1, after: 2, fails: false },
+];
+// The cause for one case, or "" when the count step does what the case expects.
+function countCaseCause(imp, count, c) {
+  const dir = sandboxDir();
+  const values = { [SIGN_P12]: c.p12, [SIGN_PASS]: "fixture-password" };
+  writeFileSync(dir.after, `     ${c.after} valid identities found\n`);
+  const imported = runStep(dir, "import", runOf(imp), values, secretEnv(imp, values));
+  if (imported.status !== 0) {
+    return `the import step exits ${imported.status} in the sandbox (${c.what}): ${String(imported.stderr).split("\n")[0]}`;
+  }
+  writeFileSync(join(dir.rt, "ids-before"), `     ${c.before} valid identities found\n`);
+  const counted = runStep(dir, "count", runOf(count), values, {});
+  const failed = counted.status !== 0;
+  if (failed === c.fails) return "";
+  return `the count step ${failed ? "fails" : "passes"} when ${c.what}; expected it to ${c.fails ? "fail" : "pass"}`;
+}
+function sandboxCause(imp, count) {
+  for (const c of SIGN_CASES) {
+    const cause = countCaseCause(imp, count, c);
+    if (cause) return cause;
+  }
+  return "";
+}
+
+// The checks for 26 to 33 on one workflow text. A failing check's detail is its one cause; a passing check's
+// detail is what it read.
+function signingIdentityChecks(text) {
+  const out = [];
+  const add = (id, what, cause, detail = "") =>
+    out.push({ id, label: `${id} ${what}`, ok: cause === "", detail: cause || detail });
+  const doc = parsedDoc(text);
+  const jobs = doc !== null && isMap(doc.jobs) ? doc.jobs : {};
+  const ship = jobOf(jobs, TF_SHIP);
+  const st = ship === undefined ? [] : steps(ship);
+  const named = (name) => st.filter((s) => s.name === name);
+  const imports = named(SIGN_IMPORT);
+  const imp = imports[0];
+  const fetch = named(SIGN_FETCH)[0];
+  const shipStep = named(SIGN_SHIP)[0];
+  const count = named(SIGN_COUNT)[0];
+  const del = named(SIGN_DELETE)[0];
+  const fileScope =
+    doc === null
+      ? `cannot read or parse ${TESTFLIGHT_WORKFLOW}`
+      : ship === undefined
+        ? `no ${TF_SHIP} job`
+        : "";
+  const scope =
+    fileScope || (imports.length === 0 ? `no step named "${SIGN_IMPORT}" in the ${TF_SHIP} job` : "");
+  const impRun = runOf(imp);
+  const runLines = impRun.split("\n");
+  const refs = (name) => JSON.stringify(doc).split(`secrets.${name}`).length - 1;
+  const at = (s) => st.indexOf(s);
+
+  add(
+    "26",
+    `one step named "${SIGN_IMPORT}" runs before ${SIGN_FETCH} and before ${SIGN_SHIP}`,
+    fileScope ||
+      (imports.length === 0 ? `no step named "${SIGN_IMPORT}" in the ${TF_SHIP} job` : "") ||
+      (imports.length > 1 ? `${imports.length} steps named "${SIGN_IMPORT}"; expected 1` : "") ||
+      (fetch === undefined ? `no step named "${SIGN_FETCH}"` : "") ||
+      (shipStep === undefined ? `no step named "${SIGN_SHIP}"` : "") ||
+      (at(imp) > at(fetch) ? `it runs after ${SIGN_FETCH}` : "") ||
+      (at(imp) > at(shipStep) ? `it runs after ${SIGN_SHIP}` : ""),
+    `import step at ${at(imp)}, ${SIGN_FETCH} at ${at(fetch)}, ${SIGN_SHIP} at ${at(shipStep)}`
+  );
+
+  const envValues = Object.values(isMap(imp?.env) ? imp.env : {});
+  add(
+    "27",
+    `${SIGN_P12} and ${SIGN_PASS} are read only through the import step's env:, never in run:`,
+    scope ||
+      (!envValues.some((v) => isSecretRef(v, SIGN_P12)) ? `env: maps no value to secrets.${SIGN_P12}` : "") ||
+      (!envValues.some((v) => isSecretRef(v, SIGN_PASS)) ? `env: maps no value to secrets.${SIGN_PASS}` : "") ||
+      (/secrets/.test(impRun) ? "run: names a secret; secrets reach the step through env: only" : "") ||
+      (refs(SIGN_P12) !== 1 ? `secrets.${SIGN_P12} is named ${refs(SIGN_P12)} times; expected 1` : "") ||
+      (refs(SIGN_PASS) !== 1 ? `secrets.${SIGN_PASS} is named ${refs(SIGN_PASS)} times; expected 1` : ""),
+    "env maps both secrets; run: names neither"
+  );
+
+  add(
+    "28",
+    "the import makes its keychain under RUNNER_TEMP and runs set-key-partition-list",
+    scope ||
+      keychainCause(runLines) ||
+      (runLines.some((l) => /\bset-key-partition-list\b/.test(l)) ? "" : "no set-key-partition-list in run:"),
+    "keychain under RUNNER_TEMP; partition list set"
+  );
+
+  const isSetList = (l) => /\blist-keychains\b/.test(l) && /(^|\s)-s(\s|$)/.test(l);
+  const readAt = runLines.findIndex((l) => /\blist-keychains\b/.test(l) && !isSetList(l));
+  const setAt = runLines.findIndex(isSetList);
+  add(
+    "29",
+    "the import reads the search list before it sets one",
+    scope ||
+      (readAt < 0 ? "the search list is never read: no list-keychains without -s" : "") ||
+      (setAt < 0 ? "the search list is never set: no list-keychains -s" : "") ||
+      (readAt > setAt ? "the search list is set before it is read" : ""),
+    `read at line ${readAt + 1}, set at line ${setAt + 1}`
+  );
+
+  const importAt = runLines.findIndex((l) => /\bsecurity\s+import\b/.test(l));
+  const p12Arg =
+    importAt < 0 ? "" : (/\bsecurity\s+import\s+(\S+)/.exec(runLines[importAt])?.[1] ?? "").replace(/"/g, "");
+  const p12Removed =
+    p12Arg !== "" && runLines.some((l, i) => i > importAt && /(^|[\s;&|])rm\s/.test(l) && l.includes(p12Arg));
+  add(
+    "30",
+    "the import removes the .p12 after the security import",
+    scope ||
+      (importAt < 0 ? "no security import in run:" : "") ||
+      (p12Arg === "" ? "the security import names no .p12 file" : "") ||
+      (!p12Removed ? `the .p12 ${p12Arg} is not removed after the security import` : ""),
+    `${p12Arg} removed after the import`
+  );
+
+  const delLines = runOf(del).split("\n");
+  add(
+    "31",
+    `"${SIGN_DELETE}" runs if: always(), removes dev.p12 and deletes the signing keychain`,
+    fileScope ||
+      (del === undefined ? `no step named "${SIGN_DELETE}"` : "") ||
+      (normIf(String(del.if ?? "")) !== "always()" ? `if: ${JSON.stringify(del.if ?? null)}; expected always()` : "") ||
+      (!delLines.some((l) => /(^|[\s;&|])rm\s/.test(l) && l.includes("dev.p12")) ? "it does not remove dev.p12" : "") ||
+      (!delLines.some((l) => /\bdelete-keychain\b/.test(l)) ? "it does not delete the signing keychain" : ""),
+    "always(); removes dev.p12; deletes the keychain"
+  );
+
+  add(
+    "32",
+    `"${SIGN_COUNT}" fails when the count after ${SIGN_SHIP} exceeds the count before, with an identity imported`,
+    scope ||
+      (count === undefined ? `no step named "${SIGN_COUNT}"` : "") ||
+      (shipStep === undefined ? `no step named "${SIGN_SHIP}"` : "") ||
+      (at(count) < at(shipStep) ? `${SIGN_COUNT} runs before ${SIGN_SHIP}` : "") ||
+      sandboxCause(imp, count),
+    "sandbox: the count step passes when the count does not rise, and when no identity was imported"
+  );
+
+  const unnamed = [SIGN_P12, SIGN_PASS].find((n) => refs(n) < 1);
+  const blob = blobLine(text);
+  add(
+    "33",
+    "the workflow names both secrets and holds no secret value: no base64 blob, no literal password",
+    fileScope ||
+      (unnamed !== undefined ? `the workflow names no secrets.${unnamed}` : "") ||
+      (blob > 0 ? `line ${blob} holds a base64-like token of 40 or more characters` : "") ||
+      (runLines.some((l) => /(^|\s)-[pP]\s+["']?[^$\s"']/.test(l))
+        ? "the import passes a literal password to -p or -P"
+        : ""),
+    "both secrets named; no base64-like token; no literal password"
+  );
+  return out;
+}
+
+// The fixture workflow for 26 to 33: the ship job with its signing steps, laid out as the reference design
+// lays them out. Each step is a block of lines, so a red edit moves whole steps. The good text passes all eight.
+const SIGN_HEAD = [
+  "name: testflight",
+  "on:",
+  "  workflow_dispatch:",
+  "jobs:",
+  "  ship:",
+  "    runs-on: xcode-27",
+  "    steps:",
+  "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+  "        with:",
+  "          ref: ${{ github.ref }}",
+  "          persist-credentials: false",
+];
+const SIGN_IMPORT_STEP = [
+  "      - name: Import the signing identity",
+  "        env:",
+  "          ASC_DEV_CERT_P12: ${{ secrets.ASC_DEV_CERT_P12 }}",
+  "          ASC_DEV_CERT_PASSWORD: ${{ secrets.ASC_DEV_CERT_PASSWORD }}",
+  "        run: |",
+  '          if [ -z "$ASC_DEV_CERT_P12" ]; then',
+  '            echo "::notice::secret ASC_DEV_CERT_P12 is empty: this run lets Xcode create a certificate"',
+  "            exit 0",
+  "          fi",
+  "          umask 077",
+  '          kc="$RUNNER_TEMP/signing.keychain-db"; p12="$RUNNER_TEMP/dev.p12"',
+  '          kcpw=$(openssl rand -hex 24); echo "::add-mask::$kcpw"',
+  '          security create-keychain -p "$kcpw" "$kc"',
+  '          security set-keychain-settings -lut 21600 "$kc"',
+  '          security unlock-keychain -p "$kcpw" "$kc"',
+  "          printf '%s' \"$ASC_DEV_CERT_P12\" | base64 --decode > \"$p12\"",
+  '          security import "$p12" -k "$kc" -f pkcs12 -P "$ASC_DEV_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security',
+  '          rm -f "$p12"',
+  '          security set-key-partition-list -S apple-tool:,apple: -s -k "$kcpw" "$kc" > /dev/null',
+  '          current=$(security list-keychains -d user) || exit 1',
+  '          set -- "$kc"',
+  "          while IFS= read -r l; do",
+  '            l=${l#*\\"}; l=${l%\\"*}',
+  '            [ -z "$l" ] || set -- "$@" "$l"',
+  '          done <<< "$current"',
+  '          security list-keychains -d user -s "$@"',
+  '          touch "$RUNNER_TEMP/imported-identity"',
+];
+const SIGN_FETCH_STEP = [
+  "      - name: Fetch ios-ship",
+  "        run: |",
+  '          security find-identity -v -p codesigning | tail -n1 > "$RUNNER_TEMP/ids-before"',
+];
+const SIGN_BLOB = "MIIKqQIBAzCCCm8GCSqGSIb3DQEHAaCCCmAEggpcMIIKWDCCCo8GCSqGSIb3DQEHBqCCCoAwggp8AgEAMIIKdQYJKoZIhvcNAQcBMF4GCSqG";
+const SIGN_SHIP_STEP = [
+  "      - name: Ship",
+  "        env:",
+  "          TEAM_ID: ${{ vars.TEAM_ID }}",
+  "        run: |",
+  '          echo "ship"',
+];
+const SIGN_CMP =
+  '            [ "$na" -le "$nb" ] || { echo "xcodebuild created a certificate despite the imported identity ($nb before, $na after)" >&2; exit 1; }';
+const SIGN_COUNT_STEP = [
+  "      - name: Certificate count",
+  "        if: ${{ !cancelled() }}",
+  "        run: |",
+  '          before=$(cat "$RUNNER_TEMP/ids-before" 2>/dev/null || echo unknown); after=$(security find-identity -v -p codesigning | tail -n1)',
+  '          echo "codesigning identities before: $before; after: $after"',
+  '          if [ -f "$RUNNER_TEMP/imported-identity" ]; then',
+  '            read -r nb _ <<< "$before"; read -r na _ <<< "$after"',
+  "            case $nb$na in *[!0-9]*|'') echo \"could not read the identity counts\" >&2; exit 1 ;; esac",
+  SIGN_CMP,
+  "          fi",
+];
+const SIGN_DELETE_STEP = [
+  "      - name: Delete the keys",
+  "        if: ${{ always() }}",
+  "        run: |",
+  '          rm -f "$RUNNER_TEMP"/asc/AuthKey_*.p8 "$RUNNER_TEMP/gitauth" "$RUNNER_TEMP/dev.p12"',
+  '          if [ -f "$RUNNER_TEMP/signing.keychain-db" ]; then security delete-keychain "$RUNNER_TEMP/signing.keychain-db"; fi',
+];
+const signText = (...blocks) => blocks.map((b) => b.join("\n") + "\n").join("");
+const SIGN_GOOD = signText(
+  SIGN_HEAD,
+  SIGN_IMPORT_STEP,
+  SIGN_FETCH_STEP,
+  SIGN_SHIP_STEP,
+  SIGN_COUNT_STEP,
+  SIGN_DELETE_STEP
+);
+// Each row: a name, the text, the assertions that must fail (in order), and the cause that the first one's detail names.
+const SIGN_RED = [
+  [
+    "the import step runs after Fetch ios-ship",
+    signText(SIGN_HEAD, SIGN_FETCH_STEP, SIGN_IMPORT_STEP, SIGN_SHIP_STEP, SIGN_COUNT_STEP, SIGN_DELETE_STEP),
+    ["26"],
+    "runs after",
+  ],
+  [
+    "the import step runs after Ship",
+    signText(SIGN_HEAD, SIGN_FETCH_STEP, SIGN_SHIP_STEP, SIGN_IMPORT_STEP, SIGN_COUNT_STEP, SIGN_DELETE_STEP),
+    ["26"],
+    "runs after",
+  ],
+  [
+    "the import step is written twice",
+    signText(SIGN_HEAD, SIGN_IMPORT_STEP, SIGN_IMPORT_STEP, SIGN_FETCH_STEP, SIGN_SHIP_STEP, SIGN_COUNT_STEP, SIGN_DELETE_STEP),
+    ["26", "27"],
+    "steps named",
+  ],
+  [
+    "the import step is renamed",
+    mutate(SIGN_GOOD, "      - name: Import the signing identity\n", "      - name: Import the identity\n"),
+    ["26", "27", "28", "29", "30", "32"],
+    `no step named "${SIGN_IMPORT}"`,
+  ],
+  [
+    "the password env is a literal",
+    mutate(
+      SIGN_GOOD,
+      "          ASC_DEV_CERT_PASSWORD: ${{ secrets.ASC_DEV_CERT_PASSWORD }}\n",
+      "          ASC_DEV_CERT_PASSWORD: fixture-literal\n"
+    ),
+    ["27", "33"],
+    "maps no value to secrets.ASC_DEV_CERT_PASSWORD",
+  ],
+  [
+    "the run names a secret",
+    mutate(SIGN_GOOD, "        run: |\n          if [ -z", "        run: |\n          # ${{ secrets.ASC_DEV_CERT_P12 }}\n          if [ -z"),
+    ["27"],
+    "run: names a secret",
+  ],
+  [
+    "the keychain is not under RUNNER_TEMP",
+    mutate(SIGN_GOOD, 'kc="$RUNNER_TEMP/signing.keychain-db"', 'kc="/tmp/signing.keychain-db"'),
+    ["28"],
+    "is not under RUNNER_TEMP",
+  ],
+  [
+    "set-key-partition-list is not run",
+    mutate(
+      SIGN_GOOD,
+      '          security set-key-partition-list -S apple-tool:,apple: -s -k "$kcpw" "$kc" > /dev/null\n',
+      ""
+    ),
+    ["28"],
+    "no set-key-partition-list",
+  ],
+  [
+    "the search list is never read",
+    mutate(SIGN_GOOD, "          current=$(security list-keychains -d user) || exit 1\n", '          current=""\n'),
+    ["29"],
+    "is never read",
+  ],
+  [
+    "the search list is set before it is read",
+    mutate(
+      SIGN_GOOD,
+      "          current=$(security list-keychains -d user) || exit 1\n",
+      '          security list-keychains -d user -s "$kc"\n          current=$(security list-keychains -d user) || exit 1\n'
+    ),
+    ["29"],
+    "set before it is read",
+  ],
+  [
+    "the .p12 is not removed",
+    mutate(SIGN_GOOD, '          rm -f "$p12"\n', ""),
+    ["30"],
+    "is not removed after",
+  ],
+  [
+    "the .p12 is removed before the import",
+    mutate(
+      mutate(SIGN_GOOD, '          rm -f "$p12"\n', ""),
+      '          security import "$p12"',
+      '          rm -f "$p12"\n          security import "$p12"'
+    ),
+    ["30"],
+    "is not removed after",
+  ],
+  [
+    "Delete the keys is not always()",
+    mutate(SIGN_GOOD, "        if: ${{ always() }}\n", "        if: ${{ success() }}\n"),
+    ["31"],
+    "expected always()",
+  ],
+  [
+    "Delete the keys leaves dev.p12",
+    mutate(SIGN_GOOD, '"$RUNNER_TEMP/gitauth" "$RUNNER_TEMP/dev.p12"', '"$RUNNER_TEMP/gitauth"'),
+    ["31"],
+    "does not remove dev.p12",
+  ],
+  [
+    "Delete the keys leaves the keychain",
+    mutate(
+      SIGN_GOOD,
+      '          if [ -f "$RUNNER_TEMP/signing.keychain-db" ]; then security delete-keychain "$RUNNER_TEMP/signing.keychain-db"; fi\n',
+      ""
+    ),
+    ["31"],
+    "does not delete the signing keychain",
+  ],
+  [
+    "the count step never fails",
+    mutate(SIGN_GOOD, SIGN_CMP + "\n", ""),
+    ["32"],
+    "expected it to fail",
+  ],
+  [
+    "the count step fails with no identity imported",
+    mutate(SIGN_GOOD, 'if [ -f "$RUNNER_TEMP/imported-identity" ]; then', "if true; then"),
+    ["32"],
+    "expected it to pass",
+  ],
+  [
+    "the workflow holds a base64 blob",
+    mutate(SIGN_GOOD, '          echo "ship"\n', `          echo "ship"\n          echo ${SIGN_BLOB}\n`),
+    ["33"],
+    "base64-like token",
+  ],
+  [
+    "the import passes a literal password",
+    mutate(SIGN_GOOD, '-P "$ASC_DEV_CERT_PASSWORD"', "-P hunter2"),
+    ["33"],
+    "passes a literal password",
+  ],
+];
+
+for (const r of signingIdentityChecks(SIGN_GOOD)) expect(`fixture good: ${r.label}`, r.ok, r.detail);
+for (const [name, text, ids, cause] of SIGN_RED) {
+  const results = signingIdentityChecks(text);
+  const failed = results.filter((r) => !r.ok).map((r) => r.id);
+  expect(
+    `fixture red: ${name} fails assertion ${ids.join(" and ")}`,
+    JSON.stringify(failed) === JSON.stringify(ids),
+    `failed assertions: ${JSON.stringify(failed)}`
+  );
+  const first = results.find((r) => r.id === ids[0]);
+  expect(
+    `fixture red: ${name} fails assertion ${ids[0]} for its cause`,
+    first !== undefined && !first.ok && first.detail.includes(cause),
+    `assertion ${ids[0]}: ${first?.detail ?? "missing"}`
+  );
+}
+
+// The real file: testflight.yml on this branch. Red until the workflow carries the signing step.
+for (const r of signingIdentityChecks(readOrNull(TESTFLIGHT_WORKFLOW))) expect(r.label, r.ok, r.detail);
 
 // Fixtures for s1 to s5. The good texts pass all five; each red edit moves the named assertion, and the
 // ones marked loose move another with it, because the edit breaks two things at once.
