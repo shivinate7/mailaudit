@@ -8,6 +8,6 @@ Each of these closes the gap:
 - The workflow imports one certificate from a repo secret.
 - A cleanup step revokes the run's certificate after the upload.
 
-**Status:** open. The count per run is measured once. The team's current certificate count and Apple's cap for it are unmeasured.
+**Status:** import merged, unproven until the first run with the secrets set shows identities not growing; the secrets are owner-set.
 
 **Decision:** `native-ships-via-testflight`.
