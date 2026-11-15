@@ -4,7 +4,7 @@
 
 The Mac team wound down on 2026-11-08 at 17:20 CST. The Mac lanes each left a handoff in a draft PR. The owner ruled (2026-11-08 17:57 CST) that the cloud restart compiles every handoff into one list and cuts new lanes from it, rather than restarting the Mac lanes as they were. This plan is that list and that cut.
 
-Sources read: the bodies and comments of PRs 221 and 232-246, the transfer notes on PR 246, and branch `records-owner-1523` (62f9a6d). PRs 221 and 242 are merged. Plan `cloud-sessions` (on PR 246's branch) holds the restart order this cut serves.
+Sources read: the bodies and comments of PRs 221 and 232-246, the transfer notes on PR 246, and branch `records-owner-1523` (62f9a6d). PRs 221 and 242 are merged. Plan `cloud-sessions` held the restart order this cut serves; the restart has shipped.
 
 ## Open items
 

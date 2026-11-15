@@ -67,6 +67,7 @@ A fact an agent needs, that argues nothing. Read the CSV record before touching 
 
 - `assets-and-icons` — Icon files and how to export them.
 - `build-and-deploy` — Build, test and deploy commands, and `ios-ship testflight`.
+- `cloud-session-reach` — What a cloud session can reach: the Worker, GitHub and the Mac, with a probe for each.
 - `live-verification` — What has run against real GitHub, a real device or a Worker probe.
 - `orderwand-csv` — The OrderWand CSV schema and quirks.
 
