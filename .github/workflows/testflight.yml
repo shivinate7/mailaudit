@@ -4,7 +4,7 @@
 # Uploads only from main: ios-ship refuses any other HEAD. Each run holds a shared macOS runner slot.
 # Checkout takes the branch tip at run start, not the dispatch sha: a long runner wait must not leave HEAD behind main.
 # Secrets: ASC_KEY_P8, ASC_KEY_ID, ASC_ISSUER_ID (the App Store Connect key, always);
-# ASC_DEV_CERT_P12 (base64 of one Apple Development .p12) and ASC_DEV_CERT_PASSWORD (its password), both optional. Variable: TEAM_ID.
+# ASC_DEV_CERT_P12 (base64 of one Apple Development .p12) and ASC_DEV_CERT_PASSWORD (its password), set both or neither (a P12 set with an empty password fails the import loudly, by design). Variable: TEAM_ID.
 # With them, every run reuses that identity; without them, Xcode creates a new certificate each run, and Apple caps those.
 # No log artifact: the raw ios-ship log may hold the key id and issuer id, and masking covers job logs only.
 # GitHub dispatches a workflow only when this file is on main.
@@ -151,7 +151,7 @@ jobs:
           if [ -f "$RUNNER_TEMP/imported-identity" ]; then
             # read drops the leading blanks that macOS may put before the count.
             read -r nb _ <<< "$before"; read -r na _ <<< "$after"
-            case $nb$na in *[!0-9]*|'') echo "could not read the identity counts; the imported identity is unchecked" >&2; exit 1 ;; esac
+            case "$nb,$na" in *[!0-9,]*|,*|*,) echo "could not read the identity counts; the imported identity is unchecked" >&2; exit 1 ;; esac
             [ "$na" -le "$nb" ] || { echo "xcodebuild created a certificate despite the imported identity ($nb before, $na after)" >&2; exit 1; }
           fi
           for l in "$RUNNER_TEMP"/ios-ship-testflight.*; do

@@ -8,6 +8,6 @@ Each of these closes the gap:
 - The workflow imports one certificate from a repo secret.
 - A cleanup step revokes the run's certificate after the upload.
 
-**Status:** import merged, unproven until the first run with the secrets set shows identities not growing; the secrets are owner-set.
+**Status:** import in place on the branch; unproven until the first run with the secrets set shows identities not growing; the secrets are owner-set.
 
 **Decision:** `native-ships-via-testflight`.
