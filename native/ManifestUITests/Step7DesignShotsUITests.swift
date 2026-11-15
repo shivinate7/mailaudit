@@ -102,7 +102,7 @@ final class Step7DesignShotsUITests: XCTestCase {
         app.terminate()
     }
 
-    /// Undo shown: Mark all checked in the card's lines, and its slot now reads Undo mark all.
+    /// Undo shown: Mark all checked in the card's lines, and its slot now reads Undo Mark All.
     func packagesUndo(_ width: Int?) {
         let app = packagesWithA1(width, everything: true)
         ScreenKit.tap(app, "bulk-mark:\(Self.gk)")
