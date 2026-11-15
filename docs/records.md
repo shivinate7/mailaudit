@@ -349,7 +349,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `recent-log-unbuilt` | The web client ships the log, its merge rule, its panel and its undo (plan `recent-log-web`). | [`docs/debts/recent-log-unbuilt.md`](../docs/debts/recent-log-unbuilt.md) |
 | `recent-log-unmeasured` | How many actions a heavy day's mail makes is unmeasured. | [`docs/debts/recent-log-unmeasured.md`](../docs/debts/recent-log-unmeasured.md) |
 | `recent-undo-under-bar` | At 375px with the page at the top, the first open Recent row's UNDO cell spans y 705 to 777. | [`docs/debts/recent-undo-under-bar.md`](../docs/debts/recent-undo-under-bar.md) |
-| `reimport-received-unpinned` | Nothing pins that `received` survives a re-import. | [`docs/debts/reimport-received-unpinned.md`](../docs/debts/reimport-received-unpinned.md) |
 | `reset-all-keeps-token-unpinned` | No test pins that `resetAll` keeps the GitHub token. | [`docs/debts/reset-all-keeps-token-unpinned.md`](../docs/debts/reset-all-keeps-token-unpinned.md) |
 | `reset-leaves-sync-unpinned` | No test pins that an armed Reset leaves Sync open. | [`docs/debts/reset-leaves-sync-unpinned.md`](../docs/debts/reset-leaves-sync-unpinned.md) |
 | `reset-vs-worker-copy-unmeasured` | A Reset writes an empty ledger with no change times, on the web and on native. | [`docs/debts/reset-vs-worker-copy-unmeasured.md`](../docs/debts/reset-vs-worker-copy-unmeasured.md) |
