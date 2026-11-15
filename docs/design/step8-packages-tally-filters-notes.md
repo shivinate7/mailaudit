@@ -4,7 +4,7 @@ Mockup: `docs/design/step8-packages-tally-filters.html`. Open it from disk. Deep
 
 Designer kind: informed.
 
-This is a redraw, not the original. The step 8 design spec and its packages-tally-filters mockup were lost: they lived only in the coordinator's Mac side-session notes (PR 238, the step 8 search pill, filters and sort PR, "Owed before this can merge", item 2). This page is drawn from the built code on `step8-build` at 6a4a900. Where the build is the only source, the mockup draws the build. It does not claim to match the lost original. Each place that needed a guess is listed under Guesses.
+This is a redraw, not the original. The step 8 design spec and its packages-tally-filters mockup were lost: they lived only in the coordinator's Mac side-session notes (PR 238, the step 8 search pill, filters and sort PR, "Owed before this can merge", item 2). This page is drawn from the built code on `step8-build` at 6a4a900. Items 1, 4, 9 and 12 follow `step8-design-fix` at ea8d8ff0 (the step 8 design-fix commit). Where the build is the only source, the mockup draws the build. It does not claim to match the lost original. Each place that needed a guess is listed under Guesses.
 
 ## Sources, in order
 
@@ -32,11 +32,11 @@ This is a redraw, not the original. The step 8 design spec and its packages-tall
 ## Items
 
 1. **The Find pill, one page.** Today, built.
-   - What: a glass capsule pinned above the system tab bar on Packages and on Tally. It holds a magnifier, a Cochin 16 field with the placeholder "Find card, set, seller, order", and a 44 x 44 pt clear slot. It sits 16 pt in from each side and 8 pt above the bar. It draws only while the ledger holds items. One query serves both tabs.
+   - What: a glass capsule pinned above the system tab bar on Packages and on Tally. It holds a magnifier, a Cochin 16 field, and a 44 x 44 pt clear slot. The placeholder is "Find card, set, seller, order" at normal type sizes, and "Find" at accessibility sizes, where the full prompt was cut off (`FindPill.promptText`). It sits 16 pt in from each side and 8 pt above the bar. It draws only while the ledger holds items. One query serves both tabs.
    - Sources: `FindPill`, `View.findPill(show:query:change:)`, `PackagesView.pillShown`, `TallyView.findPillShown`; web `.mdl-pill`.
    - Gain: the main input sits in thumb reach (`ux-thumb-zone`), and Apple's search-fields page allows bottom placement. Loss: it covers the last 68 pt of list at rest. A bottom content inset scrolls the list clear.
    - Pick: as built.
-   - Tests: `FindPillUITests.testPillSitsAboveTheTabBarOnPackagesAndTally`, `testFindFieldHitAreaIsAtLeast44ptTall`, `testOpeningSearchMovesNoPackageRow`, `testPillAboveTheBarIsNotSkippedAsUnderTheBar`.
+   - Tests: `FindPillUITests.testPillSitsAboveTheTabBarOnPackagesAndTally`, `testFindFieldHitAreaIsAtLeast44ptTall`, `testOpeningSearchMovesNoPackageRow`, `testPillAboveTheBarIsNotSkippedAsUnderTheBar`. No test reads either placeholder.
 
 2. **The clear button (x).** Today, built. Owner item 46 a, 2026-11-08 10:55 CST.
    - What: a 20 pt inkSoft disc with a paper x, centred in a 44 x 44 pt button labelled "Clear search". It shows only while the field holds text. While the field is empty, a clear spacer of the same size holds its slot, so the field keeps its width when the first letter lands (`no-layout-shift-under-pointer`).
@@ -50,14 +50,14 @@ This is a redraw, not the original. The step 8 design spec and its packages-tall
    - Tests: `FindPillUITests.testPillFiltersThePackagesList`; `PackagesReloadRaceTests` in ManifestKit.
 
 4. **The empty result.** Today, built.
-   - What: one sentence and one control (`ux-unknown-is-not-empty`). On Packages: "No cards match that search." with Clear Search. On Tally: "No product matches this search." with Clear Search. With no query, the control is absent, and the sentence reads "Everything here has been checked in." (Packages) or "Nothing to show." (Tally). The ruled row stays.
+   - What: one sentence and one control (`ux-unknown-is-not-empty`). On Packages: "No cards match that search." with Clear Search. On Tally: "No items match that search." with Clear Search. With no query, the control is absent, and the sentence reads "Everything here has been checked in." (Packages) or "Nothing to show." (Tally). The ruled row stays.
    - Sources: `PackagesView.empty`, `TallyView.empty`.
    - Test: no case taps `package-clear` or `tally-clear`. That gap is a test to add: type a query that matches nothing, check that the sentence and Clear Search show, tap it, and check that the rows return.
 
 5. **Filters: Showing and Orders from.** Today, built. Owner item 47 a: the head cells live in the Ledger tab's View group.
    - What: the filters live in the Ledger tab's View group, above Data, not on Packages or Tally. Showing is one tap (○ Everything, ● Unreceived). Orders from has a sub line ("N lines · N outside") and opens a 4-column grid of the `RANGES` presets: All time, 30, 45, 60 and 90 days, Last…, By month.
      - Last… adds a − / + day stepper.
-     - By month adds the month chips, newest first, and an Exact dates disclosure with From and To date pickers.
+     - By month adds the month chips, newest first, and an Exact Dates disclosure with From and To date pickers.
      - A whole-month range reads back as its month, such as "Aug". The year shows only when the ledger spans more than one year.
    - Sources: `LedgerTab.viewGroup`, `LedgerTab.monthRow`, `LedgerTab.daysRow`, `OptionPanel`, `OptionChip`; `view-rules.mjs` `RANGES`, `rangeLabel`, `monthChoices`, `bumpDays`.
    - Tests: `LedgerViewUITests.testLedgerTabHoldsTheViewGroupAboveData`, `testPickingAnOrderChangesThePackagesList`; `ViewOptionsModelTests.testSavedOrdersFromRangeNarrowsThePackagesList`, `testSavedOrdersFromRangeChangesTallyCounts`, `testPickingAWholeMonthReadsBackAsItsName`; `test/view-rules.test.mjs`.
@@ -79,12 +79,10 @@ This is a redraw, not the original. The step 8 design spec and its packages-tall
    - What: "N left · refunded" in Cochin 12.5 bold, manilaInk on manila, in the card's status slot. The slot is sized by the widest pill, "99 left · refunded", so a check-in moves nothing. It scales with Dynamic Type.
    - Sources: `PackageRow.statusSlot`; `refundedPill` in `src/view-rules.mjs`.
 
-9. **The Tally empty sentence.**
-   - Departs from: `src/app.jsx` `MailDayLedger`, which reads "No items match that search." on the item view. The build reads "No product matches this search." (`TallyView.empty`).
-   - Options:
-     - (keep) Gain: "product" is the Tally's own word (`tally-pools-on-the-exact-name`). Loss: it departs from the web with no ruling.
-     - (match the web) Gain: one sentence on both clients. Loss: "items" is not a word the native Tally uses.
-   - Pick: match the web, since a port keeps behaviour (`building-port-keeps-behaviour`). Not blocking. Owner grant: no.
+9. **The Tally empty sentence.** Today, built. It matches the web.
+   - What: "No items match that search.", the web's wording in `src/app.jsx` `MailDayLedger`. Source: `TallyView.empty`.
+   - Pick: match the web, since a port keeps behaviour (`building-port-keeps-behaviour`). Gain: one sentence on both clients. Loss: "items" is not a word the native Tally uses. Not blocking. Owner grant: no.
+   - The other choice kept "product", the Tally's own word (`tally-pools-on-the-exact-name`). It departed from the web with no ruling.
 
 10. **The open Duo.** Today, built. Duo ruling Q5, 2026-11-08 11:14 CST.
     - What: the pill floats over the right page, 16 pt in from its edges. Its bottom sits `DuoBarMetrics.height + 8` = 76 + 8 = 84 pt above the window's bottom, so 8 pt above the Duo's own bar.
@@ -99,11 +97,11 @@ This is a redraw, not the original. The step 8 design spec and its packages-tall
     - What: one page, so the pill takes the inset form of item 1 above the system bar (`PackagesView.pillShown` is true when `spread.pages(for: .cardInHand)` is nil).
     - Test: none on the folded Duo. That gap is a test to add: fold, open Packages, and check that `find-pill` sits above the tab bar.
 
-12. **Title Case button labels.** New. Ruling 81 b, waiting page item 81, 2026-11-09 19:19 CST.
-    - What: the visible button labels on step 8 screens move to Title Case. "Clear search" becomes "Clear Search" (both empty states), "Mark all received" becomes "Mark All Received", "Clear check-ins" becomes "Clear Check-ins", "Undo mark all" becomes "Undo Mark All", and "Exact dates" becomes "Exact Dates". "Card in Hand" and "Stamp" already comply. The build (2026-11-08) predates the ruling.
-    - Builder change, outside the design folder: `PackagesView.empty`, `TallyView.empty`, `BulkRow.markSlot`, `BulkRow.clearTitle`, and `LedgerTab.monthRow`. Any UI test that finds a button by its label text moves with it.
+12. **Title Case button labels.** Today, built. Ruling 81 b, waiting page item 81, 2026-11-09 19:19 CST.
+    - What: the visible button labels on step 8 screens are Title Case. "Clear Search" (both empty states), "Mark All Received", "Clear Check-ins", "Undo Mark All", and "Exact Dates". "Card in Hand" and "Stamp" already comply. The x button's spoken label stays "Clear search" (item 2).
+    - Code: `PackagesView.empty`, `TallyView.empty`, `BulkRow.markSlot`, `BulkRow.clearTitle`, and `LedgerTab.monthRow`. Any UI test that finds a button by its label text moves with it.
     - Gain: it follows the ruling and Apple's buttons page. Loss: the web keeps sentence case, so the two clients differ.
-    - Pick: apply. Owner grant: no (the ruling exists). The control "Hide Title Case labels" shows the built labels.
+    - Pick: applied. Owner grant: no (the ruling exists). The control "Hide Title Case labels" shows the sentence-case labels from before the ruling.
 
 13. **The 11 pt text floor.** New. The brief and Apple's accessibility page set 11 pt as the least text size.
     - What: the build draws these under 11 pt:
@@ -156,4 +154,4 @@ Run with skill `impeccable` (`critique`) on 2026-11-15. The launcher did not run
 - Fixed: text under 11 pt (item 13, as an option).
 - Fixed: in the first draw, the pill sat in the flow, not over the list. A tag rule had set its position.
 - Open, outside this folder: no UI test taps `package-clear` or `tally-clear` (item 4), and none checks the pill on the folded Duo (item 11).
-- Questions for the owner: keep Cochin in the mockup against the check (Frame), item 13, item 15, and item 9.
+- Questions for the owner: keep Cochin in the mockup against the check (Frame), item 13, and item 15.
