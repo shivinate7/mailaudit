@@ -10,7 +10,7 @@
 
 In run 42643271925, the new chip case `testChipClearsTheKeysAtAccessibilityXLWithTwoMatches` failed the same way. Its `assertChipSpeaks` wait at `DuoHandUITests.swift:565` timed out though the label matched (102.5 s in all). The retry passed in 48.6 s. In run 42666668781 it passed on the first try in 59.7 s. A run with a first-try failure is not a clean pass, and a debt retires only on a cited run whose pinning tests pass on the first try.
 
-**Observed in run 42643271925 (job 129249675281).** The first test's first iteration and its retry ran in one xcodebuild process (pid 8596). On the retry, automation session setup took 5.55 s, not 26.65 s (4.8x). Wait-for-idle was 2.5x faster. The whole test took 49.3 s, not 131.0 s (2.7x). The 5 s label wait expired in the first iteration though the label read "3 left".
+**Observed in run 42643271925 (job 129249675281).** The first test's first iteration and its retry ran in one xcodebuild process (pid 8596). Durations from the log's step times: "Setting up automation session" took 11.9 s in the first iteration and 4.8 s on the retry (2.5x). The "Wait for dev.shivinate.manifest to idle" step after it took 3.8 s and 2.3 s (1.6x). The whole test took 131.0 s and then 49.3 s (2.7x). The 5 s label wait expired in the first iteration though the label read "3 left · $3.00".
 
 **Hypothesis, unmeasured.** The simulator's automation stack is cold on the first test. Both attempts share one xcodebuild process, so a cold start per process and one per simulator are not told apart.
 

@@ -96,7 +96,7 @@ jobs:
         run: scripts/ci-sim.sh duo-counts
       - name: open the Duo
         run: scripts/ci-sim.sh pose flat
-      # Run 42643271925: the first test after the pose set up its automation session in 26.65 s (5.55 s on the retry), and its 5 s
+      # Run 42643271925: the first test after the pose spent 11.9 s setting up its automation session (4.8 s on the retry), and its 5 s
       # label wait expired with the label right. A cold automation stack is the guess, unmeasured; this step tests it by running one short test first.
       # Its bundle is its own, and check-results reads only flat and closed, so it changes no count. A failure here is not a verdict.
       - name: warm up the Duo

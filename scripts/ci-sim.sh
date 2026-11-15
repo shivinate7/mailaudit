@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # The simulator steps of the duo-ui workflow, one home for its three jobs (duo-ui, pro-ui-a, pro-ui-b).
 # The duo-ui job runs one short test (DUO_WARMUP_CMD) between `pose flat` and the flat pass: in run 42643271925 the first test
-# after the pose set up its automation session in 26.65 s (5.55 s on the retry) and a 5 s wait expired with the label right.
+# after the pose spent 11.9 s setting up its automation session (4.8 s on the retry) and a 5 s wait expired with the label right.
 # Each subcommand prints what it reads, so a red run says why. Only the workflow runs this script.
 # Every repo-specific value comes from the env: block at the top of the workflow. This script holds none, and a
 # subcommand fails when a value it needs is unset or empty.
