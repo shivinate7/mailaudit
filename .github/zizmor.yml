@@ -1,0 +1,6 @@
+rules:
+  unpinned-uses:
+    config:
+      policies:
+        shivinate7/claude-settings/*: ref-pin
+        "*": hash-pin

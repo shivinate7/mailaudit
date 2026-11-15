@@ -1,8 +1,8 @@
 # The native job runs on a hosted macOS runner
 
-**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Lane C1 landed the job in PR #76. The `all-jobs-passed` rollup needs it, so it is required, see Required check. Its unmeasured facts are debts, see Unmeasured: `native-runner-image-unverified`, `native-runner-keychain-unverified` and `native-job-hosted-time-unmeasured`.
+**Status:** ruled. The owner accepted this on 2026-10-11 with the plan. Owner ruling, 2026-11-08 16:50 CST: hosted macOS CI is the only place native work runs. The whole team moves to the cloud, with no Mac simulators. Lane C1 landed the job in PR #76. The `all-jobs-passed` rollup needs it, so it is required, see Required check. Its unmeasured facts are debts, see Unmeasured: `native-runner-image-unverified`, `native-runner-keychain-unverified` and `native-job-hosted-time-unmeasured`.
 
-The native job in `.github/workflows/checks.yml` runs the Swift package tests on a hosted macOS runner. Degen's self-hosted runner is not copied. The rest of the native checks are in Still open.
+The native job in `.github/workflows/checks.yml` runs the Swift package tests on a hosted macOS runner. Degen's self-hosted runner is not copied. Native builds, simulator and UI tests, and screenshots move into macOS CI jobs, see Still open.
 
 **Holds while:** this repo is public on GitHub, so hosted macOS minutes cost nothing.
 
@@ -16,7 +16,7 @@ Plan: docs/decisions/native-ci-on-hosted-macos.md#still-open (native)
 - It uses the same concurrency group pattern as the screens job: one group per sha on main, and cancel on a PR ref.
 - It has `needs: [suite, scope]`. The suite runs first on Ubuntu, and it runs `check:rules` and `check:golden`. A red suite skips the job; the rollup is red then anyway.
 - The job skips draft PRs, as every job does, see `ci-skips-draft-prs`. `ready_for_review` starts a new run when a draft is marked ready.
-- The job has work when scope reports a native change, on nightly and dispatch runs, and when scope fails (fail safe). With no work, the job still runs and passes, so the rollup reads it as success, not skipped. It runs on `ubuntu-latest` and skips its steps. With work, it runs on `macos-26`. One condition picks the runner and gates the steps.
+- The job has work when scope reports a native change on a PR, on nightly and dispatch runs, and when scope fails (fail safe). A push to main gives neither the native nor the screens job work: the batch PR's run already tested that merge tree (`orchestrator-may-merge`), and the push runs held the shared macOS slots ahead of PR runs (runs 42565350080 and 42570138966, 2026-11-09). With no work, the job still runs and passes, so the rollup reads it as success, not skipped. It runs on `ubuntu-latest` and skips its steps. With work, it runs on `macos-26`. One condition picks the runner and gates the steps.
 - Steps, in order: print the Xcode and Swift versions, then ST.
 - ST means `swift test --package-path native/ManifestKit`, see `native-build-lanes`.
 - The paths filter for native and shared files is in `ci-filters-guarantee-no-rebuild`.
@@ -44,7 +44,9 @@ Degen's self-hosted runner. On a public repo, a fork PR would run on the owner's
 
 ## Still open
 
-- Update, 2026-10-12: lane N5 landed without the steps. Its diff does not touch the workflow, so the native job still runs ST only. Debt: `native-ui-tests-not-in-ci`.
+- The native job runs ST only (`checks.yml`). The UI tests run in other jobs: the Duo classes in `duo-ui-runs-on-pr-label`, the other classes at milestones in `milestone-runs-full-suite`. Debt: `native-ui-tests-not-in-ci`.
+- Owner ruling, 2026-11-08 16:50 CST: native UI tests and screenshots run in macOS CI jobs, with no Mac simulators. Debt: `native-ui-tests-not-in-ci`.
+- Home measured a hosted route for the Duo: the xcode-27 macOS runner image has the iPhone Duo device type, and `hinge` works there (run 42522664456 and PR 588 in the home repo). `duo-ui-runs-on-pr-label` builds that route.
 
 ## See also
 

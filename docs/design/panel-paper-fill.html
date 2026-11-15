@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Panel Paper Fill</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The web ships one theme, light, so this page has one. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --red:#A8443C; --manila:#EADBBA; --manilaInk:#695832;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--cochin); font-size:16px; line-height:1.45; }
+main { max-width:1600px; margin:0 auto; padding:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-family:var(--mono); font-size:13px; }
+h1 { font-size:26px; font-weight:400; letter-spacing:.06em; margin:16px 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:78ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
+nav .lab { font:12px/1.4 var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--inkSoft); min-width:64px; }
+nav a, nav button { font:13px/1.4 var(--mono); min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:700; }
+nav button[aria-pressed="true"] { color:var(--inkSoft); text-decoration:line-through; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.row { display:grid; column-gap:24px; row-gap:6px; grid-template-columns:repeat(auto-fill, minmax(min(100%, var(--col)), 1fr)); align-items:start; }
+body[data-w="375"] .row { --col:280px; } body[data-w="760"] .row { --col:520px; }
+figure { margin:0; display:grid; grid-template-rows:subgrid; grid-row:span 5; row-gap:6px; align-content:start; }
+.tags { align-self:end; }
+figure[hidden] { display:none; }
+figure a.shot { display:block; border-radius:8px; }
+figure a.shot:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+figure img { display:block; width:100%; height:auto; border:1px solid var(--line); border-radius:8px; background:var(--card); }
+.cap { font-size:19px; margin:0 0 6px; display:flex; align-items:baseline; gap:8px; flex-wrap:wrap; }
+.cap small { font:12px/1.4 var(--mono); color:var(--inkSoft); }
+/* Tag text is ink: green and red on paper fall under 4.5:1 at this size, so the colour rides on the dashed border. */
+.tag { display:inline-block; font:12px/1.4 var(--mono); color:var(--ink); border:1px dashed var(--inkSoft); border-radius:4px; padding:2px 6px; margin:0 4px 4px 0; }
+.tag.today { border-color:var(--red); } .tag.new { border-color:var(--green); }
+figcaption { font-size:15px; }
+.read { font:12px/1.5 var(--mono); color:var(--inkSoft); margin:0 0 28px; white-space:pre-line; }
+.read b { color:var(--ink); font-weight:700; }
+.hr { border:0; border-top:1px solid var(--line); margin:28px 0 16px; }
+section h2 { font-size:20px; font-weight:400; margin:0 0 8px; }
+section ul { margin:0; padding-left:20px; max-width:90ch; font-size:15px; }
+code { font:13px/1.4 var(--mono); }
+</style>
+</head>
+<body data-w="375" data-p="sort">
+<main>
+<div class="banner" role="note">Sample data. The ledger in every frame is the test fixture shared/fixtures/ledger.json (12 lines, 4 packages, $67.50), so its counts and dollar figures are not real. The frames are headless Chromium screenshots of the built index.html, and the px readings under them were measured on those pages.</div>
+<h1>Panel paper fill</h1>
+<p class="sub">Waiting item 63, panel-paper-fill. Should an overlay panel on the Ledger tab paint the paper colour, so the rows under it stop showing through? Every frame but the last draws the overlay the owner ruled on 2026-10-11 (motion-disclosure-panels-arrive). The owner ruled that panels overlay the list, not where they sit. The overlay is not built yet, so a style override draws it here, and its geometry is a guess: the panel keeps its place, is as wide as its card, and runs past the card's foot over the rows below. Where a panel cuts a row below it, that cut comes from this guess. Only the panel's fill differs between the options.</p>
+
+<nav aria-label="Panel">
+  <span class="lab">Panel</span>
+  <a href="#p=sort" data-k="p" data-v="sort">Sorted by (option grid)</a>
+  <a href="#p=history" data-k="p" data-v="history">History (text)</a>
+</nav>
+<nav aria-label="Width">
+  <span class="lab">Width</span>
+  <a href="#w=375" data-k="w" data-v="375">375 px phone</a>
+  <a href="#w=760" data-k="w" data-v="760">760 px tablet</a>
+</nav>
+<nav aria-label="Theme">
+  <span class="lab">Theme</span>
+  <a href="#t=light" data-k="t" data-v="light" aria-current="true">Light, the only theme</a>
+</nav>
+<nav aria-label="Hide an option">
+  <span class="lab">Hide</span>
+  <button type="button" data-hide="paper" aria-pressed="false">Paper fill</button>
+  <button type="button" data-hide="none" aria-pressed="false">No fill</button>
+  <button type="button" data-hide="rule" aria-pressed="false">Paper fill, ruled foot</button>
+  <button type="button" data-hide="built" aria-pressed="false">As built today</button>
+</nav>
+
+<div class="row" id="frames">
+  <figure id="focus-paper" data-o="paper">
+    <p class="cap">Paper fill <small>the item's first option</small></p>
+    <div class="tags"><span class="tag new">New: paper fill on panelWrap</span><span class="tag new">New: overlay, ruled; geometry is a guess</span></div>
+    <a class="shot" href="shots/panel-paper-fill/sort-paper-375-light.png" title="Open the full-size screenshot"><img src="shots/panel-paper-fill/sort-paper-375-light.png" alt="Ledger tab with the panel open over the rows, filled with the paper colour"></a>
+    <figcaption>The panel is opaque. The rows under it are hidden, and the option cells sit raised on the paper. Its bottom edge is square and has no rule. With the guessed geometry, it cuts the next row's text in half. A geometry that kept the panel inside its card would not cut a row this way.</figcaption>
+    <div class="read"></div>
+  </figure>
+  <figure id="focus-none" data-o="none">
+    <p class="cap">No fill <small>the item's second option</small></p>
+    <div class="tags"><span class="tag today">Today: panelWrap, padding and top rule, no background</span><span class="tag new">New: overlay, ruled; geometry is a guess</span></div>
+    <a class="shot" href="shots/panel-paper-fill/sort-none-375-light.png" title="Open the full-size screenshot"><img src="shots/panel-paper-fill/sort-none-375-light.png" alt="Ledger tab with the panel open over the rows, with no fill, so the rows show through"></a>
+    <figcaption>The rows under the panel show through its gaps. The History text prints over Re-import CSV and Backup. A row you can still see sits under the panel, so a tap on it reaches the panel instead.</figcaption>
+    <div class="read"></div>
+  </figure>
+  <figure id="focus-rule" data-o="rule">
+    <p class="cap">Paper fill, ruled foot <small>designer's variant, not on the item</small></p>
+    <div class="tags"><span class="tag new">New: paper fill</span><span class="tag new">New: 1px line rule at the foot</span><span class="tag new">New: overlay, ruled; geometry is a guess</span></div>
+    <a class="shot" href="shots/panel-paper-fill/sort-rule-375-light.png" title="Open the full-size screenshot"><img src="shots/panel-paper-fill/sort-rule-375-light.png" alt="Ledger tab with the panel open, paper fill and a hairline under it"></a>
+    <figcaption>The paper fill, with a 1px <code>line</code> rule under the panel. The rule closes the cut edge with the region's own hairline. With the guessed geometry, the row under it is still cut.</figcaption>
+    <div class="read"></div>
+  </figure>
+  <figure id="focus-built" data-o="built">
+    <p class="cap">As built today <small>for reference, not an option</small></p>
+    <div class="tags"><span class="tag today">Today: panel in flow, pushes the rows down</span></div>
+    <a class="shot" href="shots/panel-paper-fill/sort-inflow-375-light.png" title="Open the full-size screenshot"><img src="shots/panel-paper-fill/sort-inflow-375-light.png" alt="Ledger tab as built: the panel takes space and pushes the rows below it down"></a>
+    <figcaption>The page on main. The panel takes layout space, so nothing shows through. The owner ruled this push out on 2026-10-11, and once the overlay is built the fill question applies.</figcaption>
+    <div class="read"></div>
+  </figure>
+</div>
+
+<hr class="hr">
+<section aria-label="Sizes and sources">
+  <h2>Sizes and sources</h2>
+  <ul>
+    <li>Shots and readings come from shots/panel-paper-fill/capture.mjs; run it again to retake them.</li>
+    <li>Widths 375 and 760 px, height 812: <code>WIDTHS</code> and <code>openSeeded</code> in test/screens.mjs. Device scale 2.</li>
+    <li>One theme, light: shared/tokens.json holds one palette, and src/app.jsx has no dark rule.</li>
+    <li>Panel style: <code>panelWrap</code> in src/app.jsx (padding 4px 8px 12px, top rule <code>line</code>, no background). Callers: the Sorted by and Orders from panels in the View card, and the Sync, Recent and History panels in the Data card.</li>
+    <li>Paper: <code>paper</code> #F2E9DA. The Ledger cards are <code>card</code> #FCF6EA (<code>.mdl-lcard</code>), so a paper panel reads darker than the card it opens from.</li>
+    <li>The overlay is drawn by a style override, not built: the panel is absolute at its own place in flow, as wide as its card, over the rows. The card drops <code>overflow: hidden</code> so the panel can pass its foot. That geometry is this mockup's guess; motion-disclosure-panels-arrive gives no geometry.</li>
+    <li>Row tops are read from the page. They are the same in all three overlay frames at each width, so the fill and the rule move nothing (no-layout-shift-under-pointer).</li>
+    <li>Unmeasured: the Sync and Recent panels (no sync key and no recent taps in the fixture), the Orders from panel, and touch-device rendering.</li>
+  </ul>
+</section>
+</main>
+<script>
+/* Figures read from the shots: document y of each row's button top, the panel's box, and the card foot. */
+const R = {"sort-built-375":{"rows":{"Orders from":590,"Sync":691,"History":751},"panel":[459,131,341],"foot":653},"sort-none-375":{"rows":{"Orders from":459,"Sync":560,"History":620},"panel":[459,131,341],"foot":522},"sort-paper-375":{"rows":{"Orders from":459,"Sync":560,"History":620},"panel":[459,131,341],"foot":522},"sort-rule-375":{"rows":{"Orders from":459,"Sync":560,"History":620},"panel":[459,132,341],"foot":522},
+"history-built-375":{"rows":{"Re-import CSV":751,"Backup":803,"Reset":877},"panel":[672,79,341],"foot":856},"history-none-375":{"rows":{"Re-import CSV":672,"Backup":724,"Reset":798},"panel":[672,79,341],"foot":777},"history-paper-375":{"rows":{"Re-import CSV":672,"Backup":724,"Reset":798},"panel":[672,79,341],"foot":777},"history-rule-375":{"rows":{"Re-import CSV":672,"Backup":724,"Reset":798},"panel":[672,80,341],"foot":777},
+"sort-built-760":{"rows":{"Orders from":601,"Sync":702,"History":762},"panel":[470,131,726],"foot":664},"sort-none-760":{"rows":{"Orders from":470,"Sync":571,"History":631},"panel":[470,131,726],"foot":533},"sort-paper-760":{"rows":{"Orders from":470,"Sync":571,"History":631},"panel":[470,131,726],"foot":533},"sort-rule-760":{"rows":{"Orders from":470,"Sync":571,"History":631},"panel":[470,132,726],"foot":533},
+"history-built-760":{"rows":{"Re-import CSV":762,"Backup":814,"Reset":888},"panel":[683,79,726],"foot":867},"history-none-760":{"rows":{"Re-import CSV":683,"Backup":735,"Reset":809},"panel":[683,79,726],"foot":788},"history-paper-760":{"rows":{"Re-import CSV":683,"Backup":735,"Reset":809},"panel":[683,79,726],"foot":788},"history-rule-760":{"rows":{"Re-import CSV":683,"Backup":735,"Reset":809},"panel":[683,80,726],"foot":788}};
+const FILE = { built: "inflow", none: "none", paper: "paper", rule: "rule" };
+const hidden = new Set();
+function state() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  return { p: h.get("p") === "history" ? "history" : "sort", w: h.get("w") === "760" ? "760" : "375", t: "light", o: h.get("o") };
+}
+function render() {
+  const s = state();
+  document.body.dataset.w = s.w; document.body.dataset.p = s.p;
+  for (const a of document.querySelectorAll("nav a[data-k]")) {
+    a.setAttribute("aria-current", String(s[a.dataset.k] === a.dataset.v));
+    const q = { p: s.p, w: s.w, t: s.t, [a.dataset.k]: a.dataset.v }; if (s.o) q.o = s.o;
+    a.href = "#" + new URLSearchParams(q).toString();
+  }
+  for (const f of document.querySelectorAll("#frames figure")) {
+    const o = f.dataset.o;
+    f.hidden = hidden.has(o) || (s.o && s.o !== o);
+    const src = `shots/panel-paper-fill/${s.p}-${FILE[o]}-${s.w}-light.png`;
+    f.querySelector("img").src = src; f.querySelector("a.shot").href = src;
+    const r = R[`${s.p}-${o}-${s.w}`], base = R[`${s.p}-paper-${s.w}`];
+    const rows = Object.entries(r.rows).map(([k, v]) => `${k} ${v}`).join(", ");
+    const same = o !== "built" && JSON.stringify(r.rows) === JSON.stringify(base.rows);
+    f.querySelector(".read").innerHTML = `${s.w} px, light. Panel top ${r.panel[0]}, height ${r.panel[1]}, width ${r.panel[2]}. Card foot ${r.foot}.\nRow tops: ${rows}.` +
+      (same ? `\n<b>Row tops equal the other overlay frames: nothing moved.</b>` : "");
+  }
+}
+for (const b of document.querySelectorAll("button[data-hide]"))
+  b.addEventListener("click", () => {
+    const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+    b.setAttribute("aria-pressed", String(hidden.has(o))); render();
+  });
+addEventListener("hashchange", render);
+render();
+</script>
+</body>
+</html>

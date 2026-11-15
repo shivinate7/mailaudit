@@ -1,6 +1,6 @@
 # Card in Hand: the Post offer keeps the sender
 
-Mockup: `duo-hand-post-sender.html`. Debt: `hand-post-scroll-hides-sender`. Decision: `duo-card-in-hand`.
+Mockup: `duo-hand-post-sender.html`. Debt: `hand-post-scroll-hides-sender`, retired: its pinning test passed on the first attempt in CI run 42577148982. Decision: `duo-card-in-hand`.
 Lane kind: informed (the brief names no kind).
 
 Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash shows all.

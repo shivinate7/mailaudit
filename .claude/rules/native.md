@@ -36,6 +36,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 
 ## Native debts
 
+- `testflight-cert-per-run` — Each TestFlight run from CI may make a new Apple Development certificate.
 - `native-ui-tests-not-in-ci` — Native UI tests and builds are not in CI.
 - `native-sync-live-unrun` — The native sync POST, socket and photo paths are unrun against the Worker.
 - `native-sync-glue-unpinned` — No test drives the native sync glue in the app.
@@ -50,10 +51,11 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
 - `native-orphaned-colours-unbuilt` — The native Orphaned composer audits flag text with no element.
+- `orphaned-composer-contrast` — The ready Orphaned composer fails contrast on its card count and its Save (duo-ui run 42653870499, job pro-ui-a, 2 of 2 tries).
 - `tabbar-hides-partial-controls` — The tab-bar skip never checks a control partly under the bar.
 - `native-candidate-lines-wrap` — Native candidate seller and meta lines wrap.
 - `native-undo-notice-padding` — The native Undo notice pads 4pt, not 8pt.
-- `native-composer-fields-two-lines` — The native composer fields draw two lines tall.
+- `composer-fields-two-lines` — The envelope composer's two-line card name and note fields are right on the phone.
 - `native-discard-arm-unpinned` — No test pins the native Discard arm.
 - `native-key-scan-skips-views` — The native key scan skips SwiftUI view state.
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
@@ -65,7 +67,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
 - `native-stamp-load-unmeasured` — The native Packages load with stamps is unmeasured.
 - `native-armed-audit-misses-ask` — The native armed stamp audit cannot see the ask.
-- `app-build-waits-xcode-27` — No pull-request CI job compiles the app; the milestone build has no green run yet.
+- `app-build-waits-xcode-27` — No `app-build` job exists; `duo-ui` builds the app on a pull request, and the milestone build has no green run yet.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
 - `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy six view rules in Swift.
@@ -76,7 +78,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-masthead-stale-after-tabs` — The native masthead and Packages go stale after another tab writes.
 - `native-ledger-pins-missing` — No test pins that the app passes its own rules.js to the ledger store.
 - `mac-target-unbuilt` — The Mac has no native app.
-- `native-runner-image-unverified` — Whether the hosted runner image has Xcode 27 and xcodegen is unverified.
+- `native-runner-image-unverified` — Whether the hosted runner image has xcodegen is unverified; the `xcode-27` image has Xcode 27.1.
 - `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
 - `native-job-hosted-time-unmeasured` — The native job's time on a hosted runner is unmeasured.
 - `native-photo-screens-unwired` — No native screen shows a photo, and nothing takes one.
@@ -90,27 +92,23 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `duo-bar-dynamic-type-clips` — The Duo tab bar labels clip at every accessibility text size.
 - `duo-stacked-poses-unbuilt` — The Duo has no stacked poses.
 - `duo-hand-mockup-gaps` — Eight parts of the Card in Hand mockup are not built.
-- `hand-stray-keeps-tie` — A released card leaves its tie on the answer page.
 - `hand-stale-checkin-error` — A good post leaves an old check-in error showing.
 - `stamped-toggle-clears-error` — The stamped toggle clears a failed check-in's error.
 - `tally-reorders-on-reload` — The native Tally re-sorts on every reload.
 - `packages-reload-counts-split` — A check-in during a Packages reload can revert its checkbox.
 - `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.
-- `hand-post-scroll-hides-sender` — The Post offer scrolls the sender off the page.
-- `hand-notice-cuts-match-row` — A Suspense or Released box pushes the match under the keys.
 - `hand-post-top-scroll-unpinned` — No test pins the scroll to the page top when Post shows.
-- `hand-held-box-under-keys` — A held card's box can sit under the keys.
-- `hand-match-row-ax3-unmeasured` — The large-text match-row test runs only on a local Duo.
 - `hand-open-under-bar-at-l` — At AccessibilityL the Card in Hand control sits under the tab bar.
-- `hand-suspense-tap-shift` — A tap on a match shifts rows under the finger.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
-- `duo-left-page-dead-margin` — The Duo left page scrolls 76 pt past its end; low priority, after restyle's step 8.
+- `duo-left-page-dead-margin` — The Duo left page scrolls past its end by the bar's height, which no run has measured (a `DuoShellUITests` comment caps the bar at 76 pt); low priority, after restyle's step 8.
+- `duo-hand-first-case-timeout` — A Duo UI wait times out in CI while its value is already right.
 - `duo-keys-minimize-pref` — A simulator keyboard preference fails the Duo keys-up tests.
 - `duo-checkin-error-under-bar` — A Packages check-in error can sit under the Duo bar.
 - `native-tally-ellipsis-unpinned` — Nothing pins the native Tally ellipsis.
 - `native-discard-panel-covers-head` — The native armed Discard panel covers the envelope header.
 - `native-axl-rows-break` — Three native rows break at accessibility text sizes.
 - `sim-test-diagnose-and-pin` — sim-test runs simctl diagnose and can pick the Duo.
+- `composer-keys-cover-tab-bar` — The Orphaned composer's keys cover the tab bar, so a draft test stays red.
 
 ## Measurements
 

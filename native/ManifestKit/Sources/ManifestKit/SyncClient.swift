@@ -22,6 +22,9 @@ public final class SyncClient {
     public private(set) var rev: Int?
     /// The `stats` of the last adopted reply; nil when that reply carried none.
     public private(set) var stats: [String: Int]?
+    /// The merge sentence for the stats of the last adopted reply (mergeSummary in the rules bundle).
+    /// nil when that reply carried no stats, or a merge that added and removed nothing, or the bundle failed.
+    public private(set) var mergeNotice: String?
 
     /// Milliseconds since 1970 when a call last agreed with the Worker: an adopted reply, or a 404 from a healthy server
     /// with nothing stored. nil until then. A failure leaves it alone, and it never moves back (web workerSyncedAt, Math.max).
@@ -61,6 +64,12 @@ public final class SyncClient {
     public var socket: (any SyncSocket)?
     /// Read by the server apply (PhotoIds.kept).
     public var photoStore: PhotoStore?
+    /// nil: no photo fetch.
+    public var photoSync: PhotoSync?
+    /// True while any call is out: a run() in flight, or the retry's POST. Derived from what is out, never a flag
+    /// set and cleared per call, because run() lets calls overlap and the retry's POST runs outside run(). The
+    /// photo sweep reads it.
+    public var syncing: Bool { !inflight.isEmpty || retryOut }
     /// Runs after a reply was adopted, so the screens read the new ledger.
     public var onApplied: (@MainActor () async -> Void)?
 
@@ -128,7 +137,7 @@ public final class SyncClient {
         return await run { await $0.postFlow(retry: false, cold: false) }
     }
 
-    /// Cancels every call in flight, the pending retry, the POST timer and the socket. A stop is not a failure.
+    /// Cancels every call in flight, the photo run, the pending retry, the POST timer and the socket. A stop is not a failure.
     /// A later connect() or call starts again.
     public func stop() {
         for t in inflight.values { t.cancel() }
@@ -137,6 +146,7 @@ public final class SyncClient {
         socketTask = nil
         postTask?.cancel()
         postTask = nil
+        photoSync?.stop()
     }
 
     /// A key was saved (KeyIntake .stored). It lifts the 401 stop even for the same key, as the web's
@@ -255,6 +265,20 @@ public final class SyncClient {
         return out
     }
 
+    /// Fetches the blobs the reply's live envelopes name, before the reply reaches the ledger
+    /// (pull-fetches-photos-before-apply). The report is dropped: a photo failure changes neither the outcome
+    /// nor the advisory (photo-errors-never-hit-pushstate). Duplicates LedgerStore.photoIDs() over the raw reply
+    /// (live is deletedAt == nil, each id once, in envelope order), because the reply is not in the store yet.
+    private func fetchPhotos(of ledger: [String: Any]) async {
+        var seen = Set<String>()
+        let ids = (ledger["envelopes"] as? [[String: Any]] ?? [])
+            .filter { $0["deletedAt"] == nil }
+            .flatMap { $0["photos"] as? [String] ?? [] }
+            .filter { seen.insert($0).inserted }
+        guard !ids.isEmpty, let photoSync else { return }
+        _ = await photoSync.pull(referenced: ids)
+    }
+
     // MARK: flows
 
     private func pullFlow(cold: Bool) async -> SyncOutcome {
@@ -265,6 +289,7 @@ public final class SyncClient {
         case .failed(let code): return await failed(code, retry: false)
         case .ledger(let answer):
             let reply = Answer(ledger: await keepingPhotoIds(answer.ledger), rev: answer.rev, stats: answer.stats)
+            await fetchPhotos(of: reply.ledger)
             guard await pressClear(cold: cold) else { return .stopped }
             // A reply that arrives over an edit, or over data no reply has carried, is not
             // adopted: the POST sends that data and the Worker's merge answers (imports-merge-never-replace).
@@ -290,6 +315,7 @@ public final class SyncClient {
             case .empty: return await failed("unknown", retry: retry)  // the Worker answers a POST with no 404
             case .ledger(let answer):
                 let reply = Answer(ledger: await keepingPhotoIds(answer.ledger), rev: answer.rev, stats: answer.stats)
+                await fetchPhotos(of: reply.ledger)
                 guard await pressClear(cold: cold) else { return .stopped }
                 // The ledger changed while the POST was out, or during the hold: the reply is old. POST again.
                 if store.generation != gen { continue }
@@ -307,9 +333,24 @@ public final class SyncClient {
         carried = store.userData()
         if let r = reply.rev { rev = max(rev ?? 0, r) }
         stats = reply.stats
+        mergeNotice = await notice(for: reply.stats)
         succeeded(fromPost: fromPost)
         if let onApplied { Task { await onApplied() } }
         return .applied
+    }
+
+    /// The web's gate (`changed` in src/app.jsx): a merge that added and removed nothing has no sentence.
+    /// A bundle failure leaves no notice and never fails the apply.
+    private func notice(for stats: [String: Int]?) async -> String? {
+        guard let stats else { return nil }
+        let kinds = ["itemsAdded", "checkInsAdded", "envelopesAdded", "checkInsRemoved", "envelopesRemoved",
+                     "stampsRemoved", "stampsAdded"]
+        guard kinds.reduce(0, { $0 + (stats[$1] ?? 0) }) > 0,
+              let args = try? JSONSerialization.data(withJSONObject: [stats] as [Any]),
+              let out = try? await engine.call("mergeSummary", String(decoding: args, as: UTF8.self)),
+              let text = (try? JSONSerialization.jsonObject(with: Data(out.utf8), options: .fragmentsAllowed)) as? String
+        else { return nil }
+        return text
     }
 
     private func holdsUserData() -> Bool {

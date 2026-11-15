@@ -4,7 +4,7 @@ The ring keeps the newest 20 non-milestone versions. That covers ten to thirty m
 
 **Holds while:** `hourHours` is 24 in `RETENTION`, and `keptIds` in `src/version-rules.mjs` keeps `hourAnchors(today)`.
 
-The source comment estimates 24 more records, roughly 600KB gzipped. It calls this the cheapest tier here. It also says this tier matches how a mail day actually goes wrong.
+The source comment estimates 24 more records, roughly 600KB gzipped. It calls this the cheapest tier here. It also says this tier matches how a day's mail actually goes wrong.
 
 **Pinned by:** group 38, which is pure. Mutants confirmed red: the hourly tier deleted, the hourly tier reaching forever, and the hourly tier treating every record as an anchor.
 

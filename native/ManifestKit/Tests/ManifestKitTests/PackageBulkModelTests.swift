@@ -351,4 +351,36 @@ final class PackageBulkModelTests: XCTestCase {
         XCTAssertNil(model.vacatedUndo, "Dismiss ends the notice")
         XCTAssertEqual(store.received()[Self.e1], 1, "Dismiss takes nothing back: the copy stays in")
     }
+
+    /// A remote apply can lower a line the Mark all took from, and it does not end the Undo. The hint counts what undoBulk
+    /// takes back now, which is BulkRules.undone against the ledger as it is, not the takes the press kept. a2 took 2 copies.
+    /// A remote apply lowers a2 to 1, so undo takes a2's last copy and deletes it: the hint says 1, not the stale 2.
+    func testBulkUndoCountIsWhatUndoWouldTakeBackAfterARemoteLowering() async throws {
+        let (model, store) = try await rig(received: [Self.a1: 1, Self.f1: 1])
+        try await bulking(model).bulk(gk: Self.gk, on: true)
+        XCTAssertEqual(model.bulkUndoCount, 2, "anchor: the held Undo counts the two copies of a2 that Mark all added")
+
+        try store.commitReceived(Self.a2, count: 1)
+        try await model.load()
+        XCTAssertEqual(model.bulkUndoGk, Self.gk, "anchor: a remote apply does not end the held Undo")
+
+        XCTAssertEqual(model.bulkUndoCount, 1, "undo would take back 1 copy of a2 now, since a2 is at 1, so the hint says 1")
+
+        let copies = store.received().values.reduce(0, +)
+        try await bulking(model).undoBulk()
+        XCTAssertEqual(copies - store.received().values.reduce(0, +), 1, "undoBulk moves received by the count the hint showed: 1 copy")
+        XCTAssertEqual(store.received(), [Self.a1: 1, Self.f1: 1], "undo deletes a2, which fell to 0, and keeps a1 and f1")
+    }
+
+    /// A check-in on another package ends the held Undo, as a check-in on this device does. Mark all on A1 holds the two copies
+    /// of a2, then a check-in of e1 on E1 / Seller E ends it, so the count is 0. This passes on the old code too: a guard.
+    func testBulkUndoCountIsZeroAfterACheckInOnAnotherPackage() async throws {
+        let (model, _) = try await rig(received: [Self.a1: 1, Self.f1: 1])
+        try await bulking(model).bulk(gk: Self.gk, on: true)
+        XCTAssertEqual(model.bulkUndoCount, 2, "anchor: the held Undo counts the two copies of a2 that Mark all added")
+
+        try await model.checkIn(key: Self.e1, count: 1)
+
+        XCTAssertEqual(model.bulkUndoCount, 0, "a check-in on another package ends the held Undo, so the count is 0")
+    }
 }

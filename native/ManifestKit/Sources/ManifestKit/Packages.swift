@@ -94,8 +94,10 @@ public final class PackagesModel {
     /// that adds a copy, a Clear or endBulkUndo() ends it (undo-removes-only-its-delta). A Worker apply does not.
     public private(set) var bulkUndoGk: String?
     private var bulkUndoTakes: [BulkTake] = []
-    /// The check-ins the held Undo takes back: the one source of the Undo hint's count. 0 when none is held.
-    public var bulkUndoCount: Int { bulkUndoGk == nil ? 0 : bulkUndoTakes.reduce(0) { $0 + $1.take } }
+    /// BulkRules.takenBack for the held takes against `received`, set wherever `received` changes while an Undo is held.
+    private var bulkUndoHeld = 0
+    /// The check-ins the held Undo would take back now: the one source of the Undo hint's count. 0 when none is held.
+    public var bulkUndoCount: Int { bulkUndoGk == nil ? 0 : bulkUndoHeld }
 
     /// The held Mark all Undo of a card that is no longer in the list (Showing: Unreceived drops a package its Mark all completes), so the
     /// Undo's own slot went with it. `index` is the place in `rows` the card held, where the shared Undo notice takes over
@@ -128,6 +130,13 @@ public final class PackagesModel {
             lapsed.append((v.gk, v.seller, v.count))
         }
         bulkUndoGk = nil
+    }
+
+    /// Drops the held Undo: its card, its takes and its held count. endBulkUndo and dismissVacated call it.
+    private func dropHeld() {
+        bulkUndoGk = nil
+        bulkUndoTakes = []
+        bulkUndoHeld = 0
     }
     /// The store's postsSaved when checkInError was last set: only a Post after that is a good write that outdates the failure line.
     @ObservationIgnored private var errorPosts = 0
@@ -168,6 +177,11 @@ public final class PackagesModel {
     private func build() async throws {
         let got = store.received()
         let held = store.stamps()
+        // The recount runs only while an Undo is held. A failed call must not stop the list, so it counts 0.
+        let heldGk = bulkUndoGk
+        let takes = bulkUndoTakes
+        var undoHeld = 0
+        if heldGk != nil { undoHeld = (try? await BulkRules.takenBack(takes, received: got, engine: engine)) ?? 0 }
         let live = try await LiveItems.of(store.items(), stamps: held, engine: engine)
         let active = try await engine.call("dropCanceled", "[\(try json(store.items()))]")
         let range = try await ViewRange.range(options.dateFilter, store: store, engine: engine)
@@ -224,6 +238,8 @@ public final class PackagesModel {
         try await options.readCanceled(itemsJSON: allItems, engine: engine)
         options.months = choices
         received = got
+        // A press or a clear that ran during the awaits above set its own count, so this one only fills the same Undo.
+        if bulkUndoGk == heldGk && bulkUndoTakes == takes { bulkUndoHeld = undoHeld }
         stamps = held
         stampedCount = stamped.count
         showStamped = on
@@ -551,14 +567,26 @@ public final class PackagesModel {
             throw error
         }
         checkInError = nil
-        // A Mark all that adds nothing has nothing to undo, so the held Undo stays. A Clear ends it.
+        received = store.received()
+        // A Mark all that adds nothing has nothing to undo, so the held Undo stays. A Clear, or a Mark all that adds, ends it.
+        // A new Undo sets its gk only after its count is known, so the hint never shows a count from before the press.
         if !on || !takes.isEmpty {
             lapseBulkUndo()
             if on { lapsed.removeAll { $0.gk == gk } }  // the card is held again, so one notice per card
-            bulkUndoTakes = takes
-            bulkUndoGk = on ? gk : nil
         }
-        received = store.received()
+        let counted = takes.isEmpty ? bulkUndoTakes : takes
+        if on && !counted.isEmpty {
+            let n: Int
+            do { n = try await BulkRules.takenBack(counted, received: received, engine: engine) } catch {
+                fail("Saved, but the Undo count could not refresh. \(error.localizedDescription)")
+                throw error
+            }
+            if !takes.isEmpty || bulkUndoGk != nil {
+                bulkUndoTakes = counted
+                bulkUndoHeld = n
+                if !takes.isEmpty { bulkUndoGk = gk }
+            }
+        }
         try await relist()
         try await reread(pkg, items: pkg.items)
     }
@@ -567,8 +595,7 @@ public final class PackagesModel {
     public func undoBulk() async throws {
         guard let gk = bulkUndoGk else { return }
         let takes = bulkUndoTakes
-        bulkUndoGk = nil
-        bulkUndoTakes = []
+        endBulkUndo()
         do {
             let counts = try await BulkRules.undone(takes, received: store.received(), engine: engine)
             try store.commitReceived(counts)
@@ -584,14 +611,14 @@ public final class PackagesModel {
 
     /// A tab change, a restore or a Reset: the held Undo is gone, and so are the notices left by earlier ones.
     public func endBulkUndo() {
-        bulkUndoGk = nil
+        dropHeld()
         lapsed = []
     }
 
     /// Dismisses one vacated notice. It ends the held Undo only when the notice is the held one's, and it leaves every other
     /// lapsed notice in its slot, so nothing below it moves under the pointer (no-layout-shift-under-pointer).
     public func dismissVacated(gk: String) {
-        if bulkUndoGk == gk { bulkUndoGk = nil }
+        if bulkUndoGk == gk { dropHeld() }
         lapsed.removeAll { $0.gk == gk }
     }
 

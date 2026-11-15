@@ -33,6 +33,9 @@ export class Ledger extends DurableObject {
     photoPut: async (id, mime, bytes) => {
       this.ctx.storage.sql.exec("INSERT OR IGNORE INTO photos (id, mime, bytes) VALUES (?, ?, ?)", id, mime, bytes);
     },
+    /* the last POST /orders outcome: a key of its own, never part of the ledger */
+    readOrdersStatus: () => this.ctx.storage.get("orders-status").then((s) => s ?? null),
+    writeOrdersStatus: (status) => this.ctx.storage.put("orders-status", status),
     broadcast: async (obj) => {
       const msg = JSON.stringify(obj);
       for (const ws of this.ctx.getWebSockets()) {

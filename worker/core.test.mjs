@@ -13,13 +13,13 @@
 import { createHash } from "node:crypto";
 import { readFileSync } from "node:fs";
 import { mergeLedger } from "../src/merge-rules.mjs";
-import { salvageLedger } from "../src/view-rules.mjs";
+import { salvageLedger, parseItems } from "../src/view-rules.mjs";
 import { failLine } from "../test/fail-line.mjs";
 
 /* A missing or broken core fails in one clear line, not a raw stack trace. */
-let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES;
+let route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES, MAX_ORDERS_BODY_BYTES;
 try {
-  ({ route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES } = await import("./core.mjs"));
+  ({ route, keyAllowed, wsAuthorized, MAX_LEDGER_BYTES, MAX_PHOTO_BYTES, MAX_ORDERS_BODY_BYTES } = await import("./core.mjs"));
 } catch (e) {
   console.log(
     `worker/core.test.mjs: worker/core.mjs does not load (expected until the core is built): ${e.message.split("\n")[0]}`
@@ -135,8 +135,11 @@ const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
      readKept(at) -> {ledger, rev} | null
      listKept() -> [{at, rev}]            no ledger bodies
      pruneKept(beforeDay)                 drops kept rows whose day is before beforeDay
+     readOrdersStatus() -> {lastSuccessAt, lastFailure} | null
+     writeOrdersStatus(status)            replaces the orders status under its own key, never the ledger
    The fake's `order` records "snapshot", "kept", "write" and "broadcast". Prune is
-   not recorded there. */
+   not recorded there. opts.ordersStatus seeds the orders status; opts.ordersStatusFails
+   makes writeOrdersStatus throw. */
 /* initial is {ledger, rev, at?} or null for an empty store. A missing `at`
    defaults to PREV. snaps is [[day, {ledger, rev, at}], ...]. */
 /* initial is {ledger, rev} or null for an empty store. The photo half of the
@@ -147,9 +150,11 @@ const dayOf = (t) => new Date(t).toISOString().slice(0, 10);
      photoPut(id, mime, bytes) -> void   (the route, not the store, enforces write-once)
    photoWrites counts every photoPut call, so a route that writes twice shows.
    photoGets counts every photoGet call, so a list that reads bytes shows. */
-function fakeStore(initial = null, snaps = []) {
+function fakeStore(initial = null, snaps = [], opts = {}) {
   const s = {
     state: initial ? clone({ at: PREV, ...initial }) : null,
+    ordersStatus: opts.ordersStatus ? clone(opts.ordersStatus) : null,
+    ordersStatusWrites: [],
     writes: [],
     broadcasts: [],
     order: [],
@@ -201,6 +206,12 @@ function fakeStore(initial = null, snaps = []) {
   s.listKept = async () => [...s.kept].map(([at, v]) => ({ at, rev: v.rev }));
   s.pruneKept = async (beforeDay) => {
     for (const at of [...s.kept.keys()]) if (at.slice(0, 10) < beforeDay) s.kept.delete(at);
+  };
+  s.readOrdersStatus = async () => (s.ordersStatus ? clone(s.ordersStatus) : null);
+  s.writeOrdersStatus = async (st) => {
+    if (opts.ordersStatusFails) throw new Error("store refuses the status write");
+    s.ordersStatusWrites.push(clone(st));
+    s.ordersStatus = clone(st);
   };
   return s;
 }
@@ -1702,6 +1713,721 @@ await test("71.8 the merged list is the same from either device, and merging it 
   const m = mergeLedger(a, b, NOW71).merged;
   eq(mergeLedger(b, a, NOW71).merged.recent, m.recent, "the list is the same from either device");
   eq(mergeLedger(m, b, NOW71).merged.recent, m.recent, "and merging the merged ledger with a side again adds nothing");
+});
+
+/* ---------- 72. orders: POST /orders and GET /orders/status ---------- */
+/* The Worker takes order-history pages from the extension (the Worker contract of the orders
+   extension plan). Every case runs through route() and the fake store, so each claim is one the
+   Worker answers. Pages are synthetic: invented names, ids and sellers. The markup follows the
+   structure of the masked page sample. The parse cases of the archived orders job are ported here
+   as route cases, because the parse is reached only through POST /orders. */
+const ORDERS_BODY_MAX = typeof MAX_ORDERS_BODY_BYTES === "number" ? MAX_ORDERS_BODY_BYTES : 8_000_000;
+const LAST_OK = Date.UTC(2026, 9, 10, 12, 0);
+const LAST_OK_ISO = new Date(LAST_OK).toISOString();
+const LATER = NOW + DAY;
+
+/* Awaits fn with the process clock set to zone, then restores it. A date read through the local clock
+   must come out the same in any zone the suite runs in. */
+const inZone = async (zone, fn) => {
+  const was = process.env.TZ;
+  process.env.TZ = zone;
+  try {
+    return await fn();
+  } finally {
+    if (was === undefined) delete process.env.TZ;
+    else process.env.TZ = was;
+  }
+};
+
+/* ---- page builders: div.orderWrap > div.orderHeader (three spans) + div.orderContent ---- */
+const rowHtml = ({ name, set = "Test Set", cond = "Near Mint", price = "$1.00", qty = 1, pid, note = "", soldBy = "", odd = false, decoyFirst = false, noImage = false, noName = false }) => {
+  const src = `https://img.example.invalid/product/${pid}_25w.jpg`;
+  const img = noImage
+    ? ""
+    : decoyFirst
+      ? `<img class="orderThumbnail lazy" onerror="this.src='https://img.example.invalid/product/0_25w.jpg'" src="${src}" width="21" alt="${name}"/>`
+      : `<img src="${src}" data-original="${src}" width="21" onerror="this.src='https://img.example.invalid/product/0_25w.jpg'" class="orderThumbnail lazy" alt="${name}"/>`;
+  return `
+                        <tr class="${odd ? "trOdd" : "trEven"}">
+                            <td class="orderHistoryItems">
+                                    <div>
+                                        ${img}
+                                    </div>
+                                <span style="display: block; padding-left: 30px;">
+                                        ${noName ? "" : `<a class="nocontext" href="/magic/test-set/${pid}" title="${name}" target="_blank">${name}</a><br />`}
+
+${set}
+                                        ${note}
+                                        ${soldBy ? `<span class="orderSoldby">Sold by <a href="/sellerprofile/${pid}">${soldBy}</a></span>` : ""}
+                                </span>
+                            </td>
+                            <td class="orderHistoryDetail">
+                                    Rarity: Rare<br />
+                                    Condition: ${cond}
+                            </td>
+                            <td class="orderHistoryPrice" style="vertical-align:middle;">${price}</td>
+                            <td class="orderHistoryQuantity" style="vertical-align:middle;">${qty}</td>
+                        </tr>`;
+};
+
+/* ship / tax null leaves that summary row out, as the page does when there is none */
+const orderBlock = ({ id, date = "October 25, 2026", direct = false, seller = "Acme Cards", status = "Shipped With Tracking:", ship = "$3.99", tax = "$0.62", lines }) => `
+<div class="orderWrap">
+    <div class="orderHeader">
+        <span style="display: inline-block; width: 20%;">
+            <span class="orderTitle">
+                Order Date
+            </span><br />
+            <span data-aid="spn-orderhistory-orderdate">
+                ${date}
+            </span>
+        </span>
+        <span style="display: inline-block; width: 20%;">
+            <span class="orderTitle">
+                Source
+            </span><br />
+            <span data-aid="spn-orderhistory-source">
+                TCG Marketplace
+            </span>
+        </span>
+        <span style="display: inline-block; width: 20%;">
+            <span class="orderTitle">
+                     ${direct ? "TCGPLAYER DIRECT #" : "Order Number"}
+            </span><br />
+            ${id}
+        </span>
+        <span style="float: right;">
+                    <input type="button" class="catalogBlueButton" value="View Order" onclick="location.href = '/myaccount/orderhistory/order/${id}?x=1'" />
+
+         <input type="button" class="catalogBlueButton" style="margin-left: 16px;" value="Print Invoice" id="print_${id}" onclick="printOrder('Print Invoice', 'Print', '${id}', 'abc');" />
+        </span>
+    </div>
+    <div class="orderContent">
+        <span class="orderSummary">
+            <span class="orderTitle">Order Summary</span><br />
+            <table width="100%" data-aid="tbl-summary">
+                <tr>
+                    <td>Quantity:</td>
+                    <td style="text-align: right">${lines.reduce((n, l) => n + (l.qty ?? 1), 0)}</td>
+                </tr>
+                <tr>
+                    <td>Subtotal:</td>
+                    <td style="text-align: right">$9.99</td>
+                </tr>
+                ${ship === null ? "" : `<tr>
+                        <td>Shipping:</td>
+                        <td style="text-align: right">${ship}</td>
+                    </tr>`}
+                ${tax === null ? "" : `<tr>
+                    <td>
+                             Sales Tax (WA):
+
+                    </td>
+                    <td style="text-align: right">
+                             ${tax}
+                    </td>
+                </tr>`}
+                <tr>
+                    <td><b>Total:</b></td>
+                    <td style="text-align: right"><b>$99.99</b></td>
+                </tr>
+            </table>
+        </span>
+        <span class="orderSummary breakword" data-aid="addr-ship">
+                <span class="orderTitle">Ship To</span><br />
+                 Test Person<br />
+                 1 Test Lane<br />
+                 Testville, WA 00000<br />
+                 US
+        </span>
+        <span class="orderSummary breakword" data-aid="addr-bill">
+            <span class="orderTitle">Bill To</span><br />
+            Test Person<br />
+            1 Test Lane<br />
+            Testville, WA 00000<br />
+            US
+        </span>
+        <span class="orderSummary breakword" style="margin-right:0px; width: 165px;white-space: normal;">
+            ${
+              direct
+                ? `<span class="orderTitle">Sold By</span><br />
+                <a href="https://help.example.invalid/direct" target="_blank">
+                    <span style="font-weight: bold; float: left;"><img style="vertical-align: middle;" src="/images/logos/direct_logo_sm.png" alt="TCGplayer Direct" /></span>
+                    <span style="float: left;">&nbsp;TCGplayer Direct&nbsp;</span>
+                    <span class="filterIcon iconQuestion" style="float: left;"></span>
+                </a><br />`
+                : `<span class="orderTitle">Sold By</span><br />
+                    <span data-aid="spn-orderhistory-seller">
+                                <a class="nocontext" href="/sellerprofile/s1" target="_blank">${seller}</a><br />
+                    </span>`
+            }
+            <span style="height: 8px; display: block;">&nbsp;</span>
+                <span class="orderTitle" data-aid="spn-sellerorderwidget-trackingnumber">${status}</span><br />
+                ${/^Shipped With/.test(status) ? `<a class="nocontext" href="https://track.example.invalid/t/0000" title="Track" target="_blank">0000000000000000</a><br />` : ""}
+                     Carrier (est. delivery on November 1, 2026) - $3.99
+        </span>
+
+            <br /><br />
+
+        <table class="orderTable" data-aid="tbl-items">
+            <thead>
+                <tr>
+                    <th class="orderHistoryItems">Item</th>
+                    <th class="orderHistoryDetail">Detail</th>
+                    <th class="orderHistoryPrice">Price</th>
+                    <th class="orderHistoryQuantity">Quantity</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${lines.map((l, i) => rowHtml({ ...l, odd: i % 2 === 0 })).join("")}
+            </tbody>
+        </table>
+    </div>
+</div>
+<br />
+`;
+
+/* A full page with look-alike orders in its shell: an HTML comment, a script template literal and a
+   style rule, plus text that opens a comment or a quote. parse must skip them. */
+const fakeOrder = (id) => orderBlock({ id, lines: [{ name: "FAKE", pid: 999999 }] });
+const pageHtml = (...blocks) =>
+  [
+    "<!-- sample: page -->",
+    "<!DOCTYPE html><html><head><title>Order History</title>",
+    "<style type=\"text/css\">.orderWrap { border: 1px solid #ccc; } /* it's a comment */ .orderHeader > span { color: red; }</style>",
+    "<script>",
+    "var tpl = `",
+    fakeOrder("FAKE-SCRIPT-ORDER"),
+    "  it's a lone quote, a // comment opener and a /* block opener",
+    "`;",
+    "</script></head><body>",
+    `<!-- ${fakeOrder("FAKE-COMMENT-ORDER")} -->`,
+    ...blocks,
+    "</body></html>",
+  ].join("\n");
+
+/* ---- the six orders of the parse cases ---- */
+const OID = {
+  A: "00a1bc23-4de5fa-6b789",
+  B: "11b2cd34-5ef6ab-7c890",
+  C: "482913-ab3k",
+  D: "22c3de45-6fa7bc-8d901",
+  E: "33d4ef56-7ab8cd-9e012",
+  F: "44e5fa67-8bc9de-0f123",
+};
+const NOTE_A1 = "Ships in a toploader, thanks!";
+const NOTE_A2 = "Mailed flat, no sleeve.";
+const NAME_A1 = "Moe's Gambit // Fire #7 /* x */ &lt;!-- y";
+const ORDER_A = orderBlock({
+  id: OID.A,
+  date: "October 25, 2026",
+  seller: "Moe&#39;s Cards&amp;Games9",
+  lines: [
+    { name: NAME_A1, set: "Test Set One", cond: "Near Mint Foil", price: "$1,250.00", qty: 1, pid: 100001, note: `<em>${NOTE_A1}</em>`, decoyFirst: true },
+    { name: "Plain Card", set: "Test &amp; Set Two", cond: "Lightly Played", price: "$0.25", qty: 4, pid: 100002, note: `<div style="font-size:smaller">${NOTE_A2}</div>` },
+  ],
+});
+const ORDER_B = orderBlock({
+  id: OID.B,
+  date: "September 3, 2026",
+  seller: "Beta Cards",
+  status: "Shipped Without Tracking",
+  ship: null,
+  tax: null,
+  lines: [{ name: "Solo Card", set: "Test Set Three", cond: "Moderately Played Reverse Holofoil", price: "$2.00", qty: 2, pid: 100003 }],
+});
+const ORDER_C = orderBlock({
+  id: OID.C,
+  date: "October 23, 2026",
+  direct: true,
+  lines: [
+    { name: "Direct One", set: "Test Set Four", price: "$3.00", qty: 1, pid: 100004, soldBy: "Gamma Games" },
+    { name: "Direct Two", set: "Test Set Five", price: "$4.00", qty: 2, pid: 100005, soldBy: "Delta Cards" },
+    { name: "Direct Three", set: "Test Set Six", price: "$5.00", qty: 1, pid: 100006, soldBy: "Gamma Games" },
+  ],
+});
+const ORDER_D = orderBlock({ id: OID.D, date: "October 21, 2026", status: "Canceled", lines: [{ name: "Canceled Card", price: "$1.50", pid: 100007 }] });
+const ORDER_E = orderBlock({ id: OID.E, date: "October 22, 2026", status: "Shipping Not Confirmed", lines: [{ name: "Pending Card", price: "$1.75", pid: 100008 }] });
+const ORDER_F = orderBlock({ id: OID.F, date: "October 24, 2026", status: "Shipped With Tracking", lines: [{ name: "Tracked Card", price: "$6.00", pid: 100009 }] });
+/* The trimmed page the extension sends: the concatenated orderWrap blocks, no shell. */
+const TRIMMED_ALL = [ORDER_A, ORDER_B, ORDER_C, ORDER_D, ORDER_E, ORDER_F].join("\n");
+const PAGE_SHELL = pageHtml(ORDER_A, ORDER_B, ORDER_C, ORDER_D, ORDER_E, ORDER_F);
+const LOGON_HTML = `<html><body><form action="/logon" method="post"><input name="Email"><input type="password" name="Password"></form></body></html>`;
+const KEYS_ALL = [
+  `${OID.A}|1|100001`, `${OID.A}|2|100002`, `${OID.B}|1|100003`,
+  `${OID.C}|1|100004`, `${OID.C}|2|100005`, `${OID.C}|3|100006`,
+  `${OID.D}|1|100007`, `${OID.E}|1|100008`, `${OID.F}|1|100009`,
+].sort();
+
+const postOrders = (s, body, o = {}) => send(s, "POST", "/orders", { key: KEY_PHONE, json: body, ...o });
+const postRaw = (s, raw, o = {}) => send(s, "POST", "/orders", { key: KEY_PHONE, raw, ...o });
+const getStatus = (s, o = {}) => send(s, "GET", "/orders/status", { key: KEY_PHONE, ...o });
+const pagesBody = (...pages) => ({ v: 1, pages });
+const itemsOf = (s) => s.state?.ledger?.items ?? [];
+const keysOf = (s) => itemsOf(s).map((i) => i.key).sort();
+const without = (o, k) => Object.fromEntries(Object.entries(o).filter(([x]) => x !== k));
+const pick = (o, ks) => Object.fromEntries(ks.map((k) => [k, o[k]]));
+
+/* A body of n bytes: one page's JSON with ASCII padding, so bytes and characters are the same. */
+const orderBody = (n) => {
+  const pre = '{"v":1,"pages":["';
+  const post = '"]}';
+  return pre + "x".repeat(n - pre.length - post.length) + post;
+};
+
+const BAD_ORDER_BODIES = [
+  ["not JSON", { raw: "{not json" }],
+  ["v 2", { json: { v: 2, pages: [TRIMMED_ALL] } }],
+  ["v missing", { json: { pages: [TRIMMED_ALL] } }],
+  ["v a string", { json: { v: "1", pages: [TRIMMED_ALL] } }],
+  ["pages a string", { json: { v: 1, pages: TRIMMED_ALL } }],
+  ["a page that is not a string", { json: { v: 1, pages: [TRIMMED_ALL, 7] } }],
+  ["an unknown failure kind", { json: { v: 1, failure: "nope" } }],
+  ["a failure kind only the Worker sets", { json: { v: 1, failure: "empty" } }],
+  ["neither pages nor failure", { json: { v: 1 } }],
+];
+
+await test("72.1 POST /orders and GET /orders/status refuse a missing or wrong key with 401, and take the device key", async () => {
+  for (const [label, o] of [
+    ["no key", { key: undefined }],
+    ["a wrong key", { key: KEY_STRANGER }],
+  ]) {
+    const s = seeded();
+    const before = canon(s.state);
+    const post = await postOrders(s, pagesBody(TRIMMED_ALL), o);
+    eq(post.status, 401, `POST /orders, ${label}: status`);
+    eq(await post.json(), { error: "unauthorized" }, `POST /orders, ${label}: body`);
+    const get = await getStatus(s, o);
+    eq(get.status, 401, `GET /orders/status, ${label}: status`);
+    eq(await get.json(), { error: "unauthorized" }, `GET /orders/status, ${label}: body`);
+    eq(s.writes.length, 0, `${label}: writes`);
+    ok(canon(s.state) === before, `${label}: stored ledger unchanged`);
+  }
+  const s = seeded();
+  const post = await postOrders(s, pagesBody(TRIMMED_ALL), { key: KEY_PHONE });
+  eq(post.status, 200, "the first listed key: POST /orders is answered 200");
+  eq(s.writes.length, 1, "the first listed key: POST /orders writes once");
+  const get = await getStatus(s, { key: KEY_LAPTOP });
+  eq(get.status, 200, "the second listed key: GET /orders/status is answered 200");
+});
+
+await test("72.2 POST /orders refuses a body that is neither pages nor a known failure with 400 bad body, and merges nothing", async () => {
+  for (const [label, { raw, json }] of BAD_ORDER_BODIES) {
+    const s = seeded();
+    const res = raw !== undefined ? await postRaw(s, raw) : await postOrders(s, json);
+    eq(res.status, 400, `${label}: status`);
+    eq(await res.json(), { error: "bad body" }, `${label}: body`);
+    eq(s.writes.length, 0, `${label}: writes`);
+  }
+});
+
+await test("72.3 POST /orders gets 413 too-large for a body over MAX_ORDERS_BODY_BYTES, and a body of exactly that size is not refused for its size", async () => {
+  const over = orderBody(ORDERS_BODY_MAX + 1);
+  eq(new TextEncoder().encode(over).length, ORDERS_BODY_MAX + 1, "fixture: the body is MAX + 1 bytes");
+  const s = seeded();
+  const before = canon(s.state);
+  const res = await postRaw(s, over);
+  eq(res.status, 413, "over: status");
+  eq(await res.json(), { error: "too-large" }, "over: body");
+  eq(s.writes.length, 0, "over: writes");
+  ok(canon(s.state) === before, "over: stored ledger unchanged");
+  const atLimit = await postRaw(seeded(), orderBody(ORDERS_BODY_MAX));
+  ok(atLimit.status !== 413, `at the limit: not refused for its size (status ${atLimit.status})`);
+});
+
+await test("72.4 the body limit counts UTF-8 bytes, not characters: a body under it in characters and over it in bytes gets 413", async () => {
+  /* "é" is one character and two UTF-8 bytes */
+  const body = `{"v":1,"pages":["${"é".repeat(Math.floor(ORDERS_BODY_MAX * 0.75))}"]}`;
+  ok(new TextEncoder().encode(body).length > ORDERS_BODY_MAX, "fixture: over the limit in bytes");
+  ok(body.length <= ORDERS_BODY_MAX, "fixture: under the limit in characters");
+  const s = seeded();
+  const res = await postRaw(s, body);
+  eq(res.status, 413, "status");
+  eq(await res.json(), { error: "too-large" }, "body");
+  eq(s.writes.length, 0, "writes");
+});
+
+await test("72.5 a merged ledger over MAX_LEDGER_BYTES gets 413 too-large from POST /orders, and nothing is written", async () => {
+  const stored = sized(LIM - 500, "900|1|001");
+  const page = orderBlock({ id: "S72-05", lines: [{ name: "w".repeat(1500), set: "Test Set Five", price: "$1.00", qty: 1, pid: 100050 }] });
+  eq(bytes(stored), LIM - 500, "fixture: the stored ledger is under the limit");
+  const s = fakeStore({ ledger: stored, rev: 3 });
+  const res = await postOrders(s, pagesBody(page));
+  eq(res.status, 413, "status");
+  eq(await res.json(), { error: "too-large" }, "body");
+  eq(s.writes.length, 0, "writes");
+  ok(canon(s.state) === canon({ ledger: stored, rev: 3, at: PREV }), "stored ledger unchanged");
+});
+
+await test("72.6 a page that parses to no orders gets 422 empty at any position, merges nothing, and records kind empty", async () => {
+  for (const [label, pages] of [
+    ["alone", [LOGON_HTML]],
+    ["last", [TRIMMED_ALL, LOGON_HTML]],
+    ["first", [LOGON_HTML, TRIMMED_ALL]],
+  ]) {
+    const s = seeded();
+    const before = canon(s.state);
+    const res = await postOrders(s, pagesBody(...pages));
+    eq(res.status, 422, `${label}: status`);
+    eq(await res.json(), { error: "empty" }, `${label}: body`);
+    eq(s.writes.length, 0, `${label}: writes`);
+    ok(canon(s.state) === before, `${label}: stored ledger unchanged`);
+    const st = await (await getStatus(s)).json();
+    eq(st.lastFailure?.kind, "empty", `${label}: status records kind empty`);
+    ok(new Date(st.lastFailure?.at).getTime() === NOW, `${label}: status time is this run`);
+  }
+});
+
+await test("72.7 a page of look-alike orders only, an empty string, or a block cut off mid-tag is an empty page: 422 empty", async () => {
+  for (const [label, page] of [
+    ["look-alike orders only", pageHtml()],
+    ["an empty string", ""],
+    ["a block cut off mid-tag", '<div class="orderWrap"><div class="orderHeader"><span>'],
+  ]) {
+    const s = seeded();
+    const res = await postOrders(s, pagesBody(page));
+    eq(res.status, 422, `${label}: status`);
+    eq(await res.json(), { error: "empty" }, `${label}: body`);
+    eq(s.writes.length, 0, `${label}: writes`);
+  }
+});
+
+await test("72.8 rows that parseItems keeps as none give 422 no-items, merge nothing, and record kind no-items", async () => {
+  const blank = orderBlock({ id: "S72-08", lines: [{ name: "", set: "Test Set Eight", price: "$1.00", qty: 1, pid: 100080 }] });
+  const s = seeded();
+  const before = canon(s.state);
+  const res = await postOrders(s, pagesBody(blank));
+  eq(res.status, 422, "status");
+  eq(await res.json(), { error: "no-items" }, "body");
+  eq(s.writes.length, 0, "writes");
+  ok(canon(s.state) === before, "stored ledger unchanged");
+  const st = await (await getStatus(s)).json();
+  eq(st.lastFailure?.kind, "no-items", "status records kind no-items");
+});
+
+await test("72.9 a line whose price or quantity is not a number is dropped as unreadable, the good line merges, and the status records kind unreadable", async () => {
+  const page = orderBlock({
+    id: "S72-09",
+    lines: [
+      { name: "Good Card", set: "Test Set Nine", price: "$1.00", qty: 1, pid: 100091 },
+      { name: "Bad Price Card", set: "Test Set Nine", price: "TBD", qty: 1, pid: 100092 },
+      { name: "Bad Qty Card", set: "Test Set Nine", price: "$2.00", qty: "n/a", pid: 100093 },
+    ],
+  });
+  const s = seeded();
+  const res = await postOrders(s, pagesBody(page));
+  eq(res.status, 200, "status");
+  eq((await res.json()).unreadable, 2, "body: the two lines whose price or quantity is not a number are counted");
+  eq(keysOf(s).filter((k) => k.startsWith("S72-09|")), ["S72-09|1|100091"], "stored: the good line only, the others are not stored with a default");
+  ok(keysOf(s).includes("100|1|555"), "the stored line is kept");
+  const st = await (await getStatus(s)).json();
+  eq(st.lastFailure?.kind, "unreadable", "status records kind unreadable");
+  ok(new Date(st.lastSuccessAt).getTime() === NOW, "a run that merged lines is a success");
+});
+
+await test("72.10 a line with no image is dropped as unreadable, and no stored key ends in a blank product id", async () => {
+  const page = orderBlock({
+    id: "S72-10",
+    lines: [
+      { name: "Imageless Card", set: "Test Set Ten", price: "$1.00", qty: 1, noImage: true },
+      { name: "Good Card", set: "Test Set Ten", price: "$1.00", qty: 1, pid: 100101 },
+    ],
+  });
+  const s = seeded();
+  const res = await postOrders(s, pagesBody(page));
+  eq(res.status, 200, "status");
+  eq((await res.json()).unreadable, 1, "body: the imageless line is counted");
+  eq(keysOf(s).filter((k) => k.startsWith("S72-10|")), ["S72-10|2|100101"], "stored: the good line at its page position, and no line under a blank id");
+  ok(!keysOf(s).some((k) => k.endsWith("|")), "no stored key ends in a blank product id");
+});
+
+await test("72.11 a good line after a dropped line keeps its page position, as the CSV import numbers it", async () => {
+  const page = orderBlock({
+    id: "S72-11",
+    lines: [
+      { name: "Bad Price Card", set: "Test Set Eleven", price: "TBD", qty: 1, pid: 100111 },
+      { name: "Good Card", set: "Test Set Eleven", price: "$1.00", qty: 1, pid: 100112 },
+    ],
+  });
+  const s = seeded();
+  const res = await postOrders(s, pagesBody(page));
+  eq(res.status, 200, "status");
+  eq(keysOf(s).filter((k) => k.startsWith("S72-11|")), ["S72-11|2|100112"], "stored: the good line keeps item number 2");
+});
+
+await test("72.12 a status write that fails is answered 500, not a quiet success", async () => {
+  for (const [label, body] of [
+    ["pages", pagesBody(TRIMMED_ALL)],
+    ["a posted failure", { v: 1, failure: "fetch" }],
+  ]) {
+    const s = fakeStore({ ledger: ledger(), rev: 3 }, [], { ordersStatusFails: true });
+    const res = await postOrders(s, body);
+    eq(res.status, 500, `${label}: status`);
+  }
+});
+
+await test("72.13 a shipping-status text the parser does not know reads blank, so the refresh leaves the stored tracking", async () => {
+  const solo = `${OID.F}|1|100009`;
+  const stored = ledger({
+    items: [
+      { key: solo, orderId: OID.F, seller: "Acme Cards", name: "Tracked Card", set: "Test Set", condition: "Near Mint", finish: "", qty: 1, price: 6, date: "2026-10-24", tracking: "with tracking", line: "" },
+    ],
+  });
+  const page = [
+    orderBlock({ id: OID.F, date: "October 24, 2026", status: "Shipping Mystery Text", lines: [{ name: "Tracked Card", price: "$6.00", pid: 100009 }] }),
+    orderBlock({ id: "S72-13", status: "Shipping Mystery Text", lines: [{ name: "New Card", price: "$1.00", pid: 100131 }] }),
+  ].join("\n");
+  const s = fakeStore({ ledger: stored, rev: 3 });
+  const res = await postOrders(s, pagesBody(page));
+  eq(res.status, 200, "status");
+  ok(itemsOf(s).some((i) => i.key === "S72-13|1|100131"), "scope: the new line is merged");
+  eq(itemsOf(s).find((i) => i.key === solo)?.tracking, "with tracking", "the stored tracking is kept");
+  eq(itemsOf(s).find((i) => i.key === "S72-13|1|100131")?.tracking, "", "a new line with that text is stored with blank tracking");
+});
+
+await test("72.14 a posted failure is recorded as 200 and merges nothing: the status shows it and keeps lastSuccessAt", async () => {
+  for (const kind of ["signed-out", "fetch", "timeout"]) {
+    const s = fakeStore({ ledger: ledger(), rev: 3 }, [], { ordersStatus: { lastSuccessAt: LAST_OK_ISO, lastFailure: null } });
+    const before = canon(s.state);
+    const res = await postOrders(s, { v: 1, failure: kind });
+    eq(res.status, 200, `${kind}: status`);
+    eq(await res.json(), { recorded: kind }, `${kind}: body`);
+    eq(s.writes.length, 0, `${kind}: writes`);
+    ok(canon(s.state) === before, `${kind}: stored ledger unchanged`);
+    const st = await (await getStatus(s)).json();
+    eq(st.lastFailure?.kind, kind, `${kind}: status kind`);
+    ok(new Date(st.lastFailure?.at).getTime() === NOW, `${kind}: status time is this run`);
+    eq(st.lastSuccessAt, LAST_OK_ISO, `${kind}: lastSuccessAt kept`);
+  }
+});
+
+await test("72.15 the trimmed pages merge into an empty store and into a stored ledger: orders, unreadable, rev and one stored line per order line", async () => {
+  for (const [label, mk, rev, extra] of [
+    ["an empty store", empty, 1, []],
+    ["a stored ledger", seeded, 4, ["100|1|555"]],
+  ]) {
+    const s = mk();
+    const res = await inZone("Asia/Tokyo", () => postOrders(s, pagesBody(TRIMMED_ALL)));
+    eq(res.status, 200, `${label}: status`);
+    const body = await res.json();
+    eq(body.orders, 6, `${label}: orders`);
+    eq(body.unreadable, 0, `${label}: unreadable`);
+    eq(body.rev, rev, `${label}: rev`);
+    eq(s.writes.length, 1, `${label}: writes`);
+    eq(keysOf(s), [...extra, ...KEYS_ALL].sort(), `${label}: stored keys`);
+    /* items is the page's own line count only on an empty store, where it equals the ledger total */
+    if (extra.length === 0) eq(body.items, 9, `${label}: items`);
+  }
+});
+
+await test("72.16 each stored line carries its own name, set, seller, condition, finish, qty and price, with entities decoded and the listing note left out", async () => {
+  const s = empty();
+  const res = await inZone("Asia/Tokyo", () => postOrders(s, pagesBody(TRIMMED_ALL)));
+  eq(res.status, 200, "scope: the page is merged");
+  const line = (k) => itemsOf(s).find((i) => i.key === k) ?? {};
+  const a1 = line(`${OID.A}|1|100001`);
+  eq(a1.name, "Moe's Gambit // Fire #7 /* x */ <!-- y", "line 1: an apostrophe, //, #, /* and an entity-encoded <!-- survive in the name");
+  eq(a1.set, "Test Set One", "line 1: set");
+  eq(a1.seller, "Moe's Cards&Games9", "line 1: the seller's entities are decoded once");
+  eq([a1.condition, a1.finish].filter(Boolean).join(" "), "Near Mint Foil", "line 1: condition and finish");
+  eq([a1.qty, a1.price], [1, 1250], "line 1: qty and unit price");
+  const a2 = line(`${OID.A}|2|100002`);
+  eq(a2.name, "Plain Card", "line 2: name");
+  eq(a2.set, "Test & Set Two", "line 2: an entity in the set name is decoded");
+  eq([a2.qty, a2.price], [4, 0.25], "line 2: qty and unit price");
+  ok(!(a1.name ?? "").includes(NOTE_A1) && !(a1.set ?? "").includes(NOTE_A1), "line 1: the listing note is in neither name nor set");
+  ok(!(a2.name ?? "").includes(NOTE_A2) && !(a2.set ?? "").includes(NOTE_A2), "line 2: the listing note is in neither name nor set");
+  const b1 = line(`${OID.B}|1|100003`);
+  eq([b1.condition, b1.finish].filter(Boolean).join(" "), "Moderately Played Reverse Holofoil", "a grade with a finish");
+  eq(line(`${OID.D}|1|100007`).condition, "Near Mint", "a plain grade with no finish");
+  const direct = [`${OID.C}|1|100004`, `${OID.C}|2|100005`, `${OID.C}|3|100006`].map(line);
+  eq(direct.map((i) => i.seller), ["Gamma Games", "Delta Cards", "Gamma Games"], "a Direct order: each line's Sold-by seller, not TCGplayer Direct");
+  eq(direct.map((i) => i.set), ["Test Set Four", "Test Set Five", "Test Set Six"], "a Direct order: the set name, not the Sold-by text");
+  eq(direct.map((i) => i.name), ["Direct One", "Direct Two", "Direct Three"], "a Direct order: names");
+});
+
+await test("72.17 the shipping texts map to the four statuses, with or without the colon, and a Direct order has its status too", async () => {
+  const s = empty();
+  const res = await inZone("Asia/Tokyo", () => postOrders(s, pagesBody(TRIMMED_ALL)));
+  eq(res.status, 200, "scope: the page is merged");
+  const statusOf = (id) => [...new Set(itemsOf(s).filter((i) => i.orderId === id).map((i) => i.tracking))];
+  eq(statusOf(OID.A), ["with tracking"], "Shipped With Tracking:");
+  eq(statusOf(OID.F), ["with tracking"], "Shipped With Tracking");
+  eq(statusOf(OID.B), ["without tracking"], "Shipped Without Tracking");
+  eq(statusOf(OID.E), ["unknown"], "Shipping Not Confirmed");
+  eq(statusOf(OID.D), ["canceled"], "Canceled");
+  eq(statusOf(OID.C), ["with tracking"], "a Direct order");
+});
+
+await test("72.18 pages merge onto a stored ledger: added counts the new lines, and a repeat adds none and keeps rev", async () => {
+  const s = seeded();
+  const split = pagesBody(
+    [ORDER_A, ORDER_B, ORDER_C].join("\n"),
+    [ORDER_D, ORDER_E, ORDER_F].join("\n")
+  );
+  const first = await postOrders(s, split);
+  eq(first.status, 200, "status");
+  const body = await first.json();
+  eq(body.added, 9, "added: the nine lines that were not stored");
+  eq(body.rev, 4, "rev: the stored rev plus one");
+  eq(keysOf(s), ["100|1|555", ...KEYS_ALL].sort(), "stored: the stored line and the nine new ones");
+  const again = await postOrders(s, split);
+  eq(again.status, 200, "repeat: status");
+  const b2 = await again.json();
+  eq(b2.added, 0, "repeat: adds nothing");
+  eq(b2.rev, 4, "repeat: keeps rev");
+  eq(s.writes.length, 1, "repeat: writes nothing");
+});
+
+await test("72.19 a pages merge keeps every stored field and check-in, and refreshes only the tracking of a line the page names", async () => {
+  const SOLO = `${OID.B}|1|100003`;
+  const stored = ledger({
+    items: [
+      { key: SOLO, orderId: OID.B, seller: "Stored Seller", name: "Stored Name", set: "Stored Set", condition: "Heavily Played", finish: "", qty: 1, price: 9.99, date: "2026-08-01", tracking: "without tracking", line: "" },
+      { key: "555|1|777", orderId: "555", seller: "Keep Seller", name: "Kept Only", set: "", condition: "", finish: "", qty: 1, price: 1, date: "2026-07-01", tracking: "with tracking", line: "" },
+    ],
+    received: { [SOLO]: 1 },
+    receivedAt: { [SOLO]: PREV },
+    envelopes: [{ id: "env-72", createdAt: 5, updatedAt: 5, label: "shelf" }],
+    stamps: { [`${OID.B}::Beta Cards`]: { kind: "refunded", updatedAt: 7 } },
+  });
+  const page = orderBlock({
+    id: OID.B,
+    date: "September 3, 2026",
+    seller: "Beta Cards",
+    status: "Shipped With Tracking:",
+    lines: [
+      { name: "Solo Card", set: "Test Set Three", cond: "Moderately Played Reverse Holofoil", price: "$2.00", qty: 2, pid: 100003 },
+      { name: "Second Solo", set: "Test Set Three", price: "$1.00", qty: 1, pid: 100031 },
+    ],
+  });
+  const s = fakeStore({ ledger: stored, rev: 3 });
+  const res = await postOrders(s, pagesBody(page));
+  eq(res.status, 200, "status");
+  ok(itemsOf(s).some((i) => i.key === `${OID.B}|2|100031`), "scope: the page's new line is merged");
+  const cur = s.state.ledger;
+  const solo = cur.items.find((i) => i.key === SOLO) ?? {};
+  eq(solo.tracking, "with tracking", "the shipping status of the named line is refreshed");
+  eq(without(solo, "tracking"), without(stored.items[0], "tracking"), "nothing else on that line changes: name, set, condition, price, qty, seller and date");
+  eq(cur.items.find((i) => i.key === "555|1|777"), stored.items[1], "a stored line the page does not name is kept as it was");
+  eq(cur.received, { [SOLO]: 1 }, "stored check-ins survive");
+  eq(cur.receivedAt, { [SOLO]: PREV }, "check-in times survive");
+  eq(cur.envelopes, stored.envelopes, "envelopes survive");
+  eq(cur.stamps, stored.stamps, "stamps survive");
+});
+
+await test("72.20 the shell page's look-alike orders, in a comment, a script template literal and a style rule, are not orders; the real orders are", async () => {
+  const s = empty();
+  const res = await inZone("Asia/Tokyo", () => postOrders(s, pagesBody(PAGE_SHELL)));
+  eq(res.status, 200, "status");
+  eq((await res.json()).orders, 6, "orders: the six real orders");
+  eq(keysOf(s), KEYS_ALL, "stored keys: the real lines only");
+  ok(!JSON.stringify(s.state ?? null).includes("FAKE"), "no look-alike order's line is stored");
+});
+
+await test("72.21 GET /orders/status before any run replies with lastSuccessAt null and lastFailure null, and no other key", async () => {
+  const s = seeded();
+  const res = await getStatus(s);
+  eq(res.status, 200, "status");
+  eq(await res.json(), { lastSuccessAt: null, lastFailure: null }, "body");
+});
+
+await test("72.22 after a successful POST, the status gives lastSuccessAt as the run's time and lastFailure null, and the ledger holds no status key", async () => {
+  const s = seeded();
+  const res = await postOrders(s, pagesBody(TRIMMED_ALL));
+  eq(res.status, 200, "scope: the run succeeds");
+  const st = await (await getStatus(s)).json();
+  ok(new Date(st.lastSuccessAt).getTime() === NOW, "lastSuccessAt is this run's time");
+  eq(st.lastFailure, null, "lastFailure is null");
+  ok(!("lastSuccessAt" in s.state.ledger) && !("lastFailure" in s.state.ledger), "the ledger holds no status key");
+});
+
+await test("72.23 a failed run keeps lastSuccessAt, and a later successful run clears lastFailure", async () => {
+  const s = fakeStore({ ledger: ledger(), rev: 3 }, [], { ordersStatus: { lastSuccessAt: LAST_OK_ISO, lastFailure: null } });
+  const fail = await postOrders(s, { v: 1, failure: "timeout" });
+  eq(fail.status, 200, "failure: scope");
+  const mid = await (await getStatus(s)).json();
+  eq(mid.lastFailure?.kind, "timeout", "failure: lastFailure is the failure");
+  eq(mid.lastSuccessAt, LAST_OK_ISO, "failure: lastSuccessAt kept");
+  const good = await postOrders(s, pagesBody(TRIMMED_ALL), { now: LATER });
+  eq(good.status, 200, "success: scope");
+  const end = await (await getStatus(s)).json();
+  eq(end.lastFailure, null, "success: lastFailure cleared");
+  ok(new Date(end.lastSuccessAt).getTime() === LATER, "success: lastSuccessAt is the later run's time");
+});
+
+await test("72.24 the device key never appears in a reply body, the status or the stored ledger", async () => {
+  ok(JSON.stringify({ k: KEY_PHONE }).includes(KEY_PHONE), "control: the scan finds a key that is planted");
+  const s = seeded();
+  const good = await postOrders(s, pagesBody(TRIMMED_ALL));
+  eq(good.status, 200, "scope: the good run is answered 200");
+  const replies = [await good.text()];
+  replies.push(await (await postRaw(seeded(), "{not json")).text());
+  replies.push(await (await postOrders(s, pagesBody(LOGON_HTML))).text());
+  replies.push(await (await postOrders(s, { v: 1, failure: "fetch" })).text());
+  replies.push(await (await getStatus(s)).text());
+  replies.push(JSON.stringify(s.state), JSON.stringify(s.ordersStatus ?? null));
+  replies.forEach((t, i) => ok(!t.includes(KEY_PHONE) && !t.includes(KEY_LAPTOP), `reply ${i + 1}: no device key in it`));
+});
+
+await test("72.25 the lines the Worker stores equal the lines parseItems makes from the same OrderWand rows", async () => {
+  const base = { Type: "purchase", Vendor: "TCGplayer", Currency: "USD", "Product Line": "Magic" };
+  const wand = [
+    { ...base, "Order Id": OID.A, "Ordered At": "2026-10-25", "Item Number": "1", "Vendor Product Id": "100001", "Product Name": NAME_A1, Price: "1250.00", Quantity: "1", Party: "Moe's Cards&amp;Games9", "Shipping Status": "with tracking" },
+    { ...base, "Order Id": OID.A, "Ordered At": "2026-10-25", "Item Number": "2", "Vendor Product Id": "100002", "Product Name": "Plain Card", Price: "0.25", Quantity: "4", Party: "Moe's Cards&amp;Games9", "Shipping Status": "with tracking" },
+    { ...base, "Order Id": OID.B, "Ordered At": "2026-09-03", "Item Number": "1", "Vendor Product Id": "100003", "Product Name": "Solo Card", Price: "2.00", Quantity: "2", Party: "Beta Cards", "Shipping Status": "without tracking" },
+    { ...base, "Order Id": OID.C, "Ordered At": "2026-10-23", "Item Number": "1", "Vendor Product Id": "100004", "Product Name": "Direct One", "Set Name": "Sold by Gamma Games", Price: "3.00", Quantity: "1", Party: "Gamma Games", "Shipping Status": "with tracking" },
+    { ...base, "Order Id": OID.C, "Ordered At": "2026-10-23", "Item Number": "2", "Vendor Product Id": "100005", "Product Name": "Direct Two", "Set Name": "Sold by Delta Cards", Price: "4.00", Quantity: "2", Party: "Delta Cards", "Shipping Status": "with tracking" },
+    { ...base, "Order Id": OID.C, "Ordered At": "2026-10-23", "Item Number": "3", "Vendor Product Id": "100006", "Product Name": "Direct Three", "Set Name": "Sold by Gamma Games", Price: "5.00", Quantity: "1", Party: "Gamma Games", "Shipping Status": "with tracking" },
+    { ...base, "Order Id": OID.D, "Ordered At": "2026-10-21", "Item Number": "1", "Vendor Product Id": "100007", "Product Name": "Canceled Card", Price: "1.50", Quantity: "1", Party: "Acme Cards", "Shipping Status": "canceled" },
+    { ...base, "Order Id": OID.E, "Ordered At": "2026-10-22", "Item Number": "1", "Vendor Product Id": "100008", "Product Name": "Pending Card", Price: "1.75", Quantity: "1", Party: "Acme Cards", "Shipping Status": "unknown" },
+    { ...base, "Order Id": OID.F, "Ordered At": "2026-10-24", "Item Number": "1", "Vendor Product Id": "100009", "Product Name": "Tracked Card", Price: "6.00", Quantity: "1", Party: "Acme Cards", "Shipping Status": "with tracking" },
+  ];
+  const s = empty();
+  const res = await inZone("Asia/Tokyo", () => postOrders(s, pagesBody(TRIMMED_ALL)));
+  eq(res.status, 200, "scope: the page is merged");
+  const f = ["key", "orderId", "seller", "name", "qty", "price", "date", "tracking"];
+  const byKey = (a, b) => (a.key < b.key ? -1 : a.key > b.key ? 1 : 0);
+  eq(itemsOf(s).map((i) => pick(i, f)).sort(byKey), parseItems(wand).map((i) => pick(i, f)).sort(byKey), "key, order, seller, name, qty, price, date and tracking of every line");
+});
+
+await test("72.26 a line with no card name (its name link is missing) is counted unreadable and not stored, the good line merges, and the status records kind unreadable with that count", async () => {
+  const page = orderBlock({
+    id: "S72-26",
+    lines: [
+      { name: "Nameless Card", set: "Test Set Twenty-six", price: "$1.00", qty: 1, pid: 100261, noName: true },
+      { name: "Good Card", set: "Test Set Twenty-six", price: "$1.00", qty: 1, pid: 100262 },
+    ],
+  });
+  const s = seeded();
+  const res = await postOrders(s, pagesBody(page));
+  eq(res.status, 200, "status");
+  eq(keysOf(s).filter((k) => k.startsWith("S72-26|")), ["S72-26|2|100262"], "scope: the good line merges at item number 2, and the nameless line is not stored");
+  eq((await res.json()).unreadable, 1, "body: the nameless line is counted unreadable");
+  const st = await (await getStatus(s)).json();
+  eq({ kind: st.lastFailure?.kind, count: st.lastFailure?.count }, { kind: "unreadable", count: 1 }, "status: kind unreadable with count 1");
+});
+
+await test("72.27 an order with no readable order id counts each of its lines unreadable, the other order's line merges, and no line is stored under the id unknown", async () => {
+  const idless = orderBlock({
+    id: "",
+    lines: [
+      { name: "Idless One", set: "Test Set Twenty-seven", price: "$1.00", qty: 1, pid: 100271 },
+      { name: "Idless Two", set: "Test Set Twenty-seven", price: "$1.00", qty: 1, pid: 100272 },
+    ],
+  });
+  const good = orderBlock({
+    id: "S72-27",
+    lines: [{ name: "Good Card", set: "Test Set Twenty-seven", price: "$1.00", qty: 1, pid: 100273 }],
+  });
+  const s = seeded();
+  const res = await postOrders(s, pagesBody([idless, good].join("\n")));
+  eq(res.status, 200, "status");
+  eq(keysOf(s).filter((k) => k.startsWith("S72-27|")), ["S72-27|1|100273"], "scope: the other order's line merges");
+  eq((await res.json()).unreadable, 2, "body: each of the id-less order's two lines is counted unreadable");
+  ok(!keysOf(s).some((k) => k.startsWith("unknown|")), "no line of the id-less order is stored under the id unknown");
+  const st = await (await getStatus(s)).json();
+  eq({ kind: st.lastFailure?.kind, count: st.lastFailure?.count }, { kind: "unreadable", count: 2 }, "status: kind unreadable with count 2");
 });
 
 report();

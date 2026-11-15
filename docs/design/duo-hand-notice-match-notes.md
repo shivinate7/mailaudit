@@ -1,6 +1,6 @@
 # Card in Hand: the first match stays above the keys
 
-Mockup: `duo-hand-notice-match.html`. Debt: `hand-notice-cuts-match-row`, closed by this change. Decision: `duo-card-in-hand`.
+Mockup: `duo-hand-notice-match.html`. Debt: `hand-notice-cuts-match-row`, retired by this change: its pinning tests passed on the first attempt in CI run 42577148982. Decision: `duo-card-in-hand`.
 Lane kind: informed (the brief names no kind).
 
 Deep links: `#s=today`, `#s=under`, `#s=under-tap`, `#s=one-line`, `#s=answer-page`, `#s=folded`. Add `z=default` or `z=ax3` for one text size, for example `#s=under&z=ax3`. No hash shows all.
@@ -32,9 +32,9 @@ Deep links: `#s=today`, `#s=under`, `#s=under-tap`, `#s=one-line`, `#s=answer-pa
    - Owner grant: no.
 
 2. **A tap on a match** (the case in `testTappingAMatchDoesNotMoveNewEnvelope`: type "to", 3 matches, tap the 2nd). Drawn as `#s=under-tap`.
-   - Today: New envelope does not move. The tapped row slides up to the first slot. If the tapped name is shared, the Suspense box opens above This envelope, and New envelope and the row move down (`hand-suspense-tap-shift`).
+   - Today: New envelope does not move. The tapped row slides up to the first slot. If the tapped name is shared, the Suspense box opens above This envelope, and New envelope and the row move down (gap `hand-suspense-tap-shift`, now retired).
    - Box under the matches: New envelope does not move. The tapped row slides up to the first slot, as today. The Suspense box rises into the space the 2nd and 3rd rows left, under the finger. The box has no control, so a second tap there does nothing. A Suspense box that a tap opens opens below the list and moves nothing above it.
-   - Gain toward `hand-suspense-tap-shift`: the box no longer moves New envelope or the list. It does not close that debt: the tapped row still moves.
+   - Gain toward `hand-suspense-tap-shift`: the box no longer moves New envelope or the list. This change does not retire that debt: the tap-shift pick does (`duo-hand-tap-shift-notes`), by holding the list so the tapped row stays put.
    - Owner grant: no.
 
 3. **Hold the list's height after a tap.** Not drawn. The list could keep its height until the next keystroke, so the box would not rise under the finger. Gain: nothing moves below the list. Lose: one more state to build, and a gap under the one match. Pick: no. The box is inert, and the tapped row already moves today. The rising box still departs from the house rule `ux-press-moves-nothing`. Owner grant: no.

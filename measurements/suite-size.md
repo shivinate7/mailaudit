@@ -4,7 +4,7 @@
 
 This record holds the assertion count and the run time for `npm test`. The suite runs 1678 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
-The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the test step sets `TZ`, and it names one New York run's output in `CHECK_DOCS_SUITE_LOG`. `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
+The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the three part steps set `TZ`, and the `docs` job names their three logs in `CHECK_DOCS_SUITE_LOG`. The count is the sum of the parts (296, 516 and 866 on 2026-11-13). `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
 `npm test` has no test framework. It runs `test/app.test.mjs` top to bottom. It prints `N passed, M failed`, and it exits 1 when M is not zero. Groups 30 to 31 spend a few seconds in real timers, on purpose. Groups 53 to 61 and 67 to 69 run on the harness virtual clock. Groups 62 to 66 and 70 keep real timers, see `harness-waits-past-debounces`. The sweep race can only be reached by letting the clock run. `test/harness.mjs` holds the jsdom setup, the storage mocks, the DOM helpers, and the fixture's loader. The fixture itself is `shared/fixtures/ledger.json`.
 

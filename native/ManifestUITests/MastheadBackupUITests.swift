@@ -396,7 +396,8 @@ final class MastheadBackupUITests: XCTestCase {
     }
 
     /// On every tab the first content sits one slot below the masthead's foot, so the running head can pin there
-    /// without moving anything. The offset is read from the masthead's own frame, not from a figure copied here.
+    /// without moving anything. The offset is read from the masthead's own frame, not from a figure copied here. On
+    /// Packages that first content is the ruled row, and the package rows sit under its bottom.
     func assertTheFirstContentSitsOneSlotBelowTheMasthead(width: Int) throws {
         let app = launch(width: width)
         for tab in Self.tabs {

@@ -12,9 +12,9 @@ The native client sets words in Cochin and numbers in Menlo through `Font.cochin
 
 ## The size floor
 
-No visible text is smaller than 10px. The owner ruled on 2026-10-11, accept all: record a 10px micro-label floor. Per `ux-house-rules-govern`, some labels are smaller than 10px today.
+No visible text is smaller than 10px. The owner ruled on 2026-10-11, accept all: record a 10px micro-label floor. Per `ux-house-rules-govern`, some labels were smaller than 10px until `type-floor-unbuilt` was fixed.
 
-**Status:** ruled 2026-10-11, not built. Build: lane L1, see `ux-house-rules-govern`. Debt: `type-floor-unbuilt`.
+**Status:** ruled 2026-10-11, built (tests 61.29 to 61.32). Build: lane L1, see `ux-house-rules-govern`. Debt: `type-floor-unbuilt`, fixed and awaiting its Retire cite.
 
 Kind: build
 
@@ -22,6 +22,7 @@ Plan: docs/decisions/typography-cochin-and-mono.md#the-size-floor (web)
 
 ## See also
 
+- `composer-fields-two-lines` — the envelope composer's two-line card name and note fields are right on the phone (owner ruling 2026-11-08).
 - `design-view-switch-equal-thirds` — the one exception to mono for numbers, the outstanding pill.
 - `design-form-controls-no-inherit` — form controls need their own font rule.
 - `masthead-is-one-letterhead` — MANIFEST is set in Cochin caps.

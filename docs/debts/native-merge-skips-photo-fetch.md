@@ -1,7 +1,7 @@
 # Nothing fetches native photos before an apply
 
-**What.** `PhotoSync.pull` downloads the blobs that a ledger names, and it has no caller. On web, `pull-fetches-photos-before-apply` makes a merge or a held reply fetch its photos first. A native apply that skips the call lands the ledger with no blobs, and a tile stays blank until a later sync brings the blob. The ids are kept either way. The gap closes when the native apply path calls `PhotoSync.pull` before it applies, and a test pins that order.
+**What.** `SyncClient` calls `photoSync.pull` with a reply's live photo ids before the press gate and the apply, on a GET and on a POST (`SyncPhotoFetchTests`). The app sets no `photoSync`, so on a phone no apply fetches its photos. A tile stays blank until a later sync brings the blob. The ids are kept either way. A reply that lands while another photo run is out skips its fetch, because `PhotoSync` starts no second run. The id is kept, and a later sync brings the blob (owner ruling, page item 59, 2026-11-08 15:23 CST). The gap closes when the app builds a `PhotoSync` on `HTTPPhotoTransport` and hands it to the client.
 
-**Status:** open. `HTTPPhotoTransport` exists, but the app builds neither it nor a `PhotoSync`, so the call has nothing to run on. No lane row names the call. The owner names the lane.
+**Status:** open. Lane photo-sync-wiring (plan `cloud-lane-cut`) adds the caller in `ManifestApp.swift`.
 
 **Decision:** `pull-fetches-photos-before-apply`.
