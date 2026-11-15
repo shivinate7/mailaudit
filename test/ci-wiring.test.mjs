@@ -46,11 +46,12 @@
 //  26  one step named "Import the signing identity" runs before Fetch ios-ship and before Ship;
 //  27  it reads ASC_DEV_CERT_P12 and ASC_DEV_CERT_PASSWORD only through its env:, never in run:;
 //  28  it makes its keychain under RUNNER_TEMP and runs set-key-partition-list;
-//  29  it reads the search list before it sets one, so the user's keychains stay on it;
+//  29  it reads the search list before it sets one, and sets the list it read, so the user's keychains stay on it;
 //  30  it removes the .p12 after the security import;
 //  31  "Delete the keys" runs if: always(), removes dev.p12 and deletes the signing keychain;
 //  32  "Certificate count" fails when the count after Ship exceeds the count before, with an identity
-//      imported (the import and count scripts run in a sandbox, see the fixtures for 26 to 33);
+//      imported, and exits 1 with "could not read the identity counts" when a count is empty (the import
+//      and count scripts run in a sandbox, see the fixtures for 26 to 33);
 //  33  the workflow names both secrets and holds no secret value: no base64 blob, no literal password.
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in checks.yml
@@ -3287,24 +3288,51 @@ function secretEnv(step, values) {
   }
   return out;
 }
+// The message for a count that cannot be read. A case with `msg` must exit 1 with it, not only exit 1.
+const COUNT_UNREAD = "could not read the identity counts";
+// The last line find-identity prints, as the count step reads it. An empty count is no line at all.
+const countLine = (n) => (n === "" ? "" : `     ${n} valid identities found\n`);
 // The cases: an identity imported with the count rising, with the count level, and no identity imported
-// (the empty secret: the count step must not fail on a run that imported nothing).
+// (the empty secret: the count step must not fail on a run that imported nothing). The last two name an
+// empty count beside a numeric one: the count step must say it could not read the counts.
 const SIGN_CASES = [
   { what: "an identity was imported and the count rose from 1 to 2", p12: "ZmFrZS1wMTI=", before: 1, after: 2, fails: true },
   { what: "an identity was imported and the count stayed at 1", p12: "ZmFrZS1wMTI=", before: 1, after: 1, fails: false },
   { what: "no identity was imported and the count rose from 1 to 2", p12: "", before: 1, after: 2, fails: false },
+  {
+    what: "an identity was imported and the count before was empty",
+    p12: "ZmFrZS1wMTI=",
+    before: "",
+    after: 2,
+    fails: true,
+    msg: COUNT_UNREAD,
+  },
+  {
+    what: "an identity was imported and the count after was empty",
+    p12: "ZmFrZS1wMTI=",
+    before: 1,
+    after: "",
+    fails: true,
+    msg: COUNT_UNREAD,
+  },
 ];
 // The cause for one case, or "" when the count step does what the case expects.
 function countCaseCause(imp, count, c) {
   const dir = sandboxDir();
   const values = { [SIGN_P12]: c.p12, [SIGN_PASS]: "fixture-password" };
-  writeFileSync(dir.after, `     ${c.after} valid identities found\n`);
+  writeFileSync(dir.after, countLine(c.after));
   const imported = runStep(dir, "import", runOf(imp), values, secretEnv(imp, values));
   if (imported.status !== 0) {
     return `the import step exits ${imported.status} in the sandbox (${c.what}): ${String(imported.stderr).split("\n")[0]}`;
   }
-  writeFileSync(join(dir.rt, "ids-before"), `     ${c.before} valid identities found\n`);
+  writeFileSync(join(dir.rt, "ids-before"), countLine(c.before));
   const counted = runStep(dir, "count", runOf(count), values, {});
+  if (c.msg !== undefined) {
+    const err = String(counted.stderr);
+    if (counted.status === 1 && err.includes(c.msg)) return "";
+    const said = err.trim().split("\n").pop();
+    return `the count step exits ${counted.status} with "${said}" when ${c.what}; expected exit 1 with "${c.msg}"`;
+  }
   const failed = counted.status !== 0;
   if (failed === c.fails) return "";
   return `the count step ${failed ? "fails" : "passes"} when ${c.what}; expected it to ${c.fails ? "fail" : "pass"}`;
@@ -3385,13 +3413,30 @@ function signingIdentityChecks(text) {
   const isSetList = (l) => /\blist-keychains\b/.test(l) && /(^|\s)-s(\s|$)/.test(l);
   const readAt = runLines.findIndex((l) => /\blist-keychains\b/.test(l) && !isSetList(l));
   const setAt = runLines.findIndex(isSetList);
+  // The words after -s, less the new keychain: the list the set carries besides the keychain it adds. A word
+  // is compared without its quotes, and ${kc} reads as $kc.
+  const plainWord = (w) => w.replace(/["']/g, "").replace(/^\$\{(\w+)\}$/, "$$$1");
+  const newKc = plainWord((runLines.find((l) => /\bcreate-keychain\b/.test(l)) ?? "").trim().split(/\s+/).pop() ?? "");
+  const setWords = setAt < 0 ? [] : runLines[setAt].trim().split(/\s+/);
+  const listWords = setWords
+    .slice(setWords.indexOf("-s") + 1)
+    .map(plainWord)
+    .filter((w) => w !== "" && w !== newKc);
+  // The variable the read's output lands in. A line between the read and the set must expand it.
+  const readVar = /^\s*([A-Za-z_]\w*)=\$\(\s*security\s+list-keychains\s+-d\s+user\s*\)/.exec(runLines[readAt] ?? "")?.[1];
+  const readUsed =
+    readVar !== undefined &&
+    setAt > readAt &&
+    runLines.slice(readAt + 1, setAt).some((l) => new RegExp(`\\$\\{?${readVar}(?!\\w)`).test(l));
   add(
     "29",
-    "the import reads the search list before it sets one",
+    "the import reads the search list before it sets one, and sets the list it read",
     scope ||
       (readAt < 0 ? "the search list is never read: no list-keychains without -s" : "") ||
       (setAt < 0 ? "the search list is never set: no list-keychains -s" : "") ||
-      (readAt > setAt ? "the search list is set before it is read" : ""),
+      (readAt > setAt ? "the search list is set before it is read" : "") ||
+      (listWords.length === 0 ? "the search list is set to the new keychain alone, not the list read" : "") ||
+      (!readUsed ? "the list read never reaches the set" : ""),
     `read at line ${readAt + 1}, set at line ${setAt + 1}`
   );
 
@@ -3516,7 +3561,7 @@ const SIGN_COUNT_STEP = [
   '          echo "codesigning identities before: $before; after: $after"',
   '          if [ -f "$RUNNER_TEMP/imported-identity" ]; then',
   '            read -r nb _ <<< "$before"; read -r na _ <<< "$after"',
-  "            case $nb$na in *[!0-9]*|'') echo \"could not read the identity counts\" >&2; exit 1 ;; esac",
+  '            case "$nb,$na" in *[!0-9,]*|,*|*,) echo "could not read the identity counts" >&2; exit 1 ;; esac',
   SIGN_CMP,
   "          fi",
 ];
@@ -3609,6 +3654,32 @@ const SIGN_RED = [
     ),
     ["29"],
     "set before it is read",
+  ],
+  [
+    "the search list is set to the new keychain alone",
+    mutate(
+      SIGN_GOOD,
+      '          security list-keychains -d user -s "$@"\n',
+      '          security list-keychains -d user -s "$kc"\n'
+    ),
+    ["29"],
+    "the new keychain alone",
+  ],
+  [
+    "the list read never reaches the set",
+    mutate(SIGN_GOOD, '          done <<< "$current"\n', '          done <<< ""\n'),
+    ["29"],
+    "never reaches the set",
+  ],
+  [
+    "the count step's guard lets an empty count through",
+    mutate(
+      SIGN_GOOD,
+      'case "$nb,$na" in *[!0-9,]*|,*|*,) echo "could not read',
+      "case $nb$na in *[!0-9]*|'') echo \"could not read"
+    ),
+    ["32"],
+    'with "xcodebuild created a certificate',
   ],
   [
     "the .p12 is not removed",
