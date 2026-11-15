@@ -14,7 +14,8 @@ This record says what a cloud session of this repo can and cannot do against the
 | GitHub, `gh pr`, `gh issue`, GraphQL | refused with 403 | `gh pr list -R shivinate7/mailaudit -L1` prints HTTP 403 |
 | GitHub, a repo not attached to the session (`mailaudit-data`) | refused with 403 until the add-repo tool attaches it | `gh api repos/shivinate7/mailaudit-data` prints 403 |
 | Mac | not reachable: the owner's computer serves no folder to a cloud session | the cloud session's computer-folders tool lists no usable folder, and shows the Mac folders as not available |
-| Xcode, simulators, `swift test`, phone install | not available: Ubuntu VM | these run in macOS CI (`native-ci-on-hosted-macos`) |
+| Xcode, simulators, `swift test` | not available: Ubuntu VM | these run in macOS CI (`native-ci-on-hosted-macos`) |
+| Phone install | not available: it runs on the Mac | the CI route is the manual `testflight` dispatch (`native-ships-via-testflight`) |
 
 The proxy adds the key outside the VM, so `env` shows no key and a script that checks the key's shape in the VM cannot run: `scripts/copy-photos-to-worker.mjs` refuses without a key it can read. Use curl or `fetch` against the host.
 
@@ -26,9 +27,9 @@ The web app's import has a second way in, for a session that holds the CSV. It n
 
 1. Copy the live ledger first: `curl -sS <host>/ledger > before.json`. The web import saves a "before import" version before it merges. This route does not. The Worker also keeps one daily snapshot (`/snapshots`), taken at the first changing write of a day, which is the fallback and not a substitute.
 2. Parse the CSV with the repo's own parser: `Papa.parse(text, { header: true, skipEmptyLines: true })`, then `parseItems(rows)` from `src/view-rules.mjs`. Never hand-roll a second parser (`parser-filters`).
-3. Merge with `mergeItems(base.ledger.items, parsed)` from `src/merge-rules.mjs`, where `base` is the copy from step 1. Put the merged items back in the ledger and keep every other field as read.
+3. Merge with `mergeItems(base.ledger.items, parsed)` from `src/merge-rules.mjs`, where `base` is the copy from step 1. The result is `{items, added}`: put its `items` back in the ledger, keep every other field as read, and note `added`.
 4. POST `{"ledger": <ledger>}` to `/ledger`. The Worker merges again server-side, so the POST cannot replace what is stored (`imports-merge-never-replace`).
-5. Read back: `rev` rose by one, `items` grew by `added`, and `received` and `receivedAt` are byte-equal to the copy.
+5. Read back: when `added` is above 0, `rev` rose by one (an unchanged ledger keeps its rev), `items` grew by `added`, and `received` and `receivedAt` are byte-equal to the copy.
 
 Figures from the one run so far, and the open question about stored `tracking`: `cloud-csv-import`.
 
