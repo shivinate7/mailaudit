@@ -61,7 +61,8 @@ const CI_DONE_ACTION = "shivinate7/claude-settings/actions/ci-done-comment";
 const CLAUDE_SETTINGS = "shivinate7/claude-settings/";
 const STABLE = "stable";
 const SHA = /^[0-9a-f]{40}$/;
-const DUO_FILE = /^Duo.*UITests\.swift$/;
+// A Duo file names Duo somewhere in the class, as ci-wiring's isDuoClass does: FindPillDuoUITests.swift drives the hinge pose too.
+const DUO_FILE = /Duo.*UITests\.swift$/;
 const KEY = /^([A-Za-z0-9_.-]+):(?:\s+(.*))?$/;
 const BLOCK = /^[|>][-+0-9]*$/;
 const ONLY_FLAG = /-only-testing:ManifestUITests\/(\S+)/g;
