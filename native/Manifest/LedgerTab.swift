@@ -174,7 +174,7 @@ struct LedgerTab: View {
             Button { exactOpen.toggle() } label: {
                 HStack(spacing: 8) {
                     Text(exactOpen ? "\u{2013}" : "+").foregroundStyle(Parchment.accent).frame(width: 10)
-                    Text("Exact dates")
+                    Text("Exact Dates")
                 }
                 .font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
                 .frame(minHeight: 44, alignment: .leading).contentShape(Rectangle())

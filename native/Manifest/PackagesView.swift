@@ -95,8 +95,8 @@ struct PackagesView: View {
             Text(model.query.isEmpty ? "Everything here has been checked in." : "No cards match that search.")
                 .font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft).multilineTextAlignment(.center)
             if !model.query.isEmpty {
-                Button { Task { await run { try await model.clearSearch() } } } label: { MiniLabel(title: "Clear search", vertical: 4, horizontal: 8) }
-                    .accessibilityLabel("Clear search")
+                Button { Task { await run { try await model.clearSearch() } } } label: { MiniLabel(title: "Clear Search", vertical: 4, horizontal: 8) }
+                    .accessibilityLabel("Clear Search")
                     .accessibilityIdentifier("package-clear")
             }
         }

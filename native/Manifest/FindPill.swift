@@ -17,6 +17,11 @@ struct FindPill: View {
     let change: (String) -> Void
     @State private var text = ""
     @FocusState private var focused: Bool
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// The web's words at normal sizes. At accessibility sizes the full sentence was cut to "Find card, set, seller, o…" (screen-check
+    /// run 43755312311, iPhone 18 Pro at AX5): a placeholder does not wrap in a vertical-axis field, so the short word keeps every letter.
+    private var promptText: String { typeSize.isAccessibilitySize ? "Find" : "Find card, set, seller, order" }
 
     var body: some View {
         HStack(spacing: 8) {
@@ -24,7 +29,7 @@ struct FindPill: View {
                 .accessibilityHidden(true)
             TextField("Search", text: Binding(get: { text }, set: { v in
                 if v.contains("\n") { text = v.replacingOccurrences(of: "\n", with: ""); focused = false } else { text = v }
-            }), prompt: Text("Find card, set, seller, order").foregroundStyle(Parchment.inkSoft), axis: .vertical)
+            }), prompt: Text(promptText).foregroundStyle(Parchment.inkSoft), axis: .vertical)
                 .lineLimit(2...3).textFieldStyle(.plain).focused($focused).submitLabel(.search)
                 .font(.cochin(16, relativeTo: .body)).foregroundStyle(Parchment.ink)
                 .autocorrectionDisabled()
