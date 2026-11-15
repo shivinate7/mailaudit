@@ -3,7 +3,9 @@
 # so only a dispatch by someone with write access may reach the App Store Connect key.
 # Uploads only from main: ios-ship refuses any other HEAD. Each run holds a shared macOS runner slot.
 # Checkout takes the branch tip at run start, not the dispatch sha: a long runner wait must not leave HEAD behind main.
-# Secrets: ASC_KEY_P8, ASC_KEY_ID, ASC_ISSUER_ID (the App Store Connect key). Variable: TEAM_ID.
+# Secrets: ASC_KEY_P8, ASC_KEY_ID, ASC_ISSUER_ID (the App Store Connect key, always);
+# ASC_DEV_CERT_P12 (base64 of one Apple Development .p12) and ASC_DEV_CERT_PASSWORD (its password), set both or neither (a P12 set with an empty password fails the import loudly, by design). Variable: TEAM_ID.
+# With them, every run reuses that identity; without them, Xcode creates a new certificate each run, and Apple caps those.
 # No log artifact: the raw ios-ship log may hold the key id and issuer id, and masking covers job logs only.
 # GitHub dispatches a workflow only when this file is on main.
 name: testflight
@@ -65,6 +67,38 @@ jobs:
           # GIT_CONFIG_GLOBAL replaces the runner's global config, so include it to keep the runner's own settings.
           if [ -f "$HOME/.gitconfig" ]; then git config --file "$RUNNER_TEMP/gitauth" include.path "$HOME/.gitconfig"; fi
           git config --file "$RUNNER_TEMP/gitauth" http.https://github.com/.extraheader "AUTHORIZATION: basic $h"
+      # The runner's keychain is fresh, so xcodebuild makes a "Created via API" certificate each run, and its key dies with the runner.
+      # One stored identity in a throwaway keychain lets Xcode reuse it.
+      - name: Import the signing identity
+        env:
+          ASC_DEV_CERT_P12: ${{ secrets.ASC_DEV_CERT_P12 }}
+          ASC_DEV_CERT_PASSWORD: ${{ secrets.ASC_DEV_CERT_PASSWORD }}
+        run: |
+          if [ -z "$ASC_DEV_CERT_P12" ]; then
+            echo "::notice::secret ASC_DEV_CERT_P12 is empty: this run lets Xcode create a certificate"
+            exit 0
+          fi
+          umask 077
+          kc="$RUNNER_TEMP/signing.keychain-db"; p12="$RUNNER_TEMP/dev.p12"
+          kcpw=$(openssl rand -hex 24); echo "::add-mask::$kcpw"
+          security create-keychain -p "$kcpw" "$kc"
+          # 6 hours: longer than the job's timeout, so the keychain never locks mid-build.
+          security set-keychain-settings -lut 21600 "$kc"
+          security unlock-keychain -p "$kcpw" "$kc"
+          printf '%s' "$ASC_DEV_CERT_P12" | base64 --decode > "$p12"
+          security import "$p12" -k "$kc" -f pkcs12 -P "$ASC_DEV_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security
+          rm -f "$p12"
+          # Lets codesign use the key with no UI prompt.
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$kcpw" "$kc" > /dev/null
+          # Prepend, keeping the user's existing keychains on the list. Read the list first, so a failure stops the step instead of leaving only the new keychain.
+          current=$(security list-keychains -d user) || exit 1
+          set -- "$kc"
+          while IFS= read -r l; do
+            l=${l#*\"}; l=${l%\"*}
+            [ -z "$l" ] || set -- "$@" "$l"
+          done <<< "$current"
+          security list-keychains -d user -s "$@"
+          touch "$RUNNER_TEMP/imported-identity"
       - name: Fetch ios-ship
         timeout-minutes: 5
         env:
@@ -111,7 +145,15 @@ jobs:
       - name: Certificate count
         if: ${{ !cancelled() }}
         run: |
-          echo "codesigning identities before: $(cat "$RUNNER_TEMP/ids-before" 2>/dev/null || echo unknown); after: $(security find-identity -v -p codesigning | tail -n1)"
+          before=$(cat "$RUNNER_TEMP/ids-before" 2>/dev/null || echo unknown); after=$(security find-identity -v -p codesigning | tail -n1)
+          echo "codesigning identities before: $before; after: $after"
+          # The first word of find-identity's last line is the count. More identities after Ship than before, with one imported, means xcodebuild made a certificate anyway.
+          if [ -f "$RUNNER_TEMP/imported-identity" ]; then
+            # read drops the leading blanks that macOS may put before the count.
+            read -r nb _ <<< "$before"; read -r na _ <<< "$after"
+            case "$nb,$na" in *[!0-9,]*|,*|*,) echo "could not read the identity counts; the imported identity is unchecked" >&2; exit 1 ;; esac
+            [ "$na" -le "$nb" ] || { echo "xcodebuild created a certificate despite the imported identity ($nb before, $na after)" >&2; exit 1; }
+          fi
           for l in "$RUNNER_TEMP"/ios-ship-testflight.*; do
             [ -f "$l" ] || continue
             echo "note: $(grep -ciE 'creat[a-z]* .*certificate|certificate .*creat' "$l" || true) log lines mention creating a certificate (a fresh keychain may create an Apple Development certificate each run)"
@@ -127,4 +169,7 @@ jobs:
           [ "$found" = 1 ] || echo "no ios-ship log: it refused before the build; see the Ship step"
       - name: Delete the keys
         if: ${{ always() }}
-        run: rm -f "$RUNNER_TEMP"/asc/AuthKey_*.p8 "$RUNNER_TEMP/gitauth"
+        run: |
+          rm -f "$RUNNER_TEMP"/asc/AuthKey_*.p8 "$RUNNER_TEMP/gitauth" "$RUNNER_TEMP/dev.p12"
+          # Last, so a delete-keychain failure cannot skip the removals above. Deleting it also drops it from the search list.
+          if [ -f "$RUNNER_TEMP/signing.keychain-db" ]; then security delete-keychain "$RUNNER_TEMP/signing.keychain-db"; fi
