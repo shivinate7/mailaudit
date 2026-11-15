@@ -2911,6 +2911,18 @@ eq(
   "unknown",
   "33.65 a two-device merge keeps the local tracking: mergeLedger never refreshes"
 );
+/* the count is per key, against the tracking the base held: two incoming rows of one
+   key count once, and the last row decides whether that key counted at all */
+eq(
+  mergeItems([trkLine(1, "unknown")], [trkLine(1, "with tracking"), trkLine(1, "Canceled")], TRK_OPT).refreshed,
+  1,
+  "33.66a two incoming rows of one stored key that both differ count once: refreshed is 1"
+);
+eq(
+  mergeItems([trkLine(2, "with tracking")], [trkLine(2, "Canceled"), trkLine(2, "with tracking")], TRK_OPT).refreshed,
+  0,
+  "33.66b a last incoming row equal to the stored tracking leaves refreshed at 0"
+);
 
 /* ── 34. the conflict stops being a trap ──────────────────────────────────
    Group 25 proves a stale write is refused. This proves it can now be resolved
