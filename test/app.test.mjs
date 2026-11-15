@@ -7368,6 +7368,109 @@ eq(saved().items?.length ?? 0, 12, "56.7 a late GET reply with a lower rev never
   );
 }
 
+/* ── 57. a re-import keeps every line and every received mark ─────────────
+   Invariant imports-merge-never-replace: the Re-import CSV drop merges the file into
+   the list. A line the list already holds keeps its check-in and its count, and only
+   a line it lacks is added. Each seller holds one line here, so its package card
+   and its controls are found without ambiguity. Alpha holds a quantity of 3 and is
+   counted to 2, so the count a re-import could reset sits above one. */
+const RA57 = "Reimport Alpha";
+const RB57 = "Reimport Beta";
+const RC57 = "Reimport Gamma";
+const RD57 = "Reimport Delta";
+const FIRST57 = [
+  { "Order Id": "RA1", Party: "Seller Alpha", "Product Name": RA57, Quantity: "3", Price: "1.00" },
+  { "Order Id": "RB1", Party: "Seller Beta", "Product Name": RB57, Price: "2.00" },
+  { "Order Id": "RC1", Party: "Seller Gamma", "Product Name": RC57, Price: "3.00" },
+];
+const NEW57 = { "Order Id": "RD1", Party: "Seller Delta", "Product Name": RD57, Price: "4.00" };
+const tap57 = async (seller, label, sel) => {
+  const el = card(seller)?.querySelector(sel);
+  ok(!!el, `${label}: the control is on screen`);
+  if (el) await click(el, label);
+};
+const keyOf57 = (name) => saved().items.find((it) => it.name === name)?.key;
+
+await boot({ items: [], received: {} });
+await dropFile("orders.csv", csv(FIRST57));
+ok(/Imported 3 lines/.test(text()), "57.1 the first file imports its three lines");
+await goTo("packages");
+await tap57(/Seller Alpha/, "count Alpha up", 'button[aria-label="One more received"]');
+await tap57(/Seller Alpha/, "count Alpha up again", 'button[aria-label="One more received"]');
+await tap57(/Seller Beta/, "check Beta in", 'button[aria-label="Mark as received"]');
+await sleep(SAVE_WAIT);
+const marksBefore57 = { ...saved().received };
+eq(marksBefore57[keyOf57(RA57)], 2, "57.2 before the re-import Alpha is saved at a count of 2");
+eq(marksBefore57[keyOf57(RB57)], 1, "57.3 and Beta is saved as checked in");
+
+await reachFor(/Re-import CSV/);
+await click(btn(/Re-import CSV/), "show upload zone");
+await dropFile("orders.csv", csv([...FIRST57, NEW57]));
+ok(/Added 1 new line/.test(text()), "57.4 the re-import reports one new line");
+await sleep(SAVE_WAIT);
+eq(
+  saved().items.map((it) => it.name).sort(),
+  [RA57, RB57, RC57, RD57].sort(),
+  "57.5 the saved list holds the three lines and the new one, each once"
+);
+eq(
+  saved().received,
+  marksBefore57,
+  "57.6 every received mark and count is unchanged in the saved ledger"
+);
+await goTo("packages");
+/* the Packages view starts on unreceived (hideDone defaults true), so the checked-in Beta
+   package is hidden until Showing brings the received rows back */
+await toggleShowing();
+ok(!!card(/Seller Alpha/), "57.7 the Alpha package is on screen after the re-import");
+ok(/2\/3/.test(card(/Seller Alpha/)?.textContent ?? ""), "57.8 and Alpha still reads 2/3 on screen");
+/* after the re-import the Beta card comes back collapsed, and a collapsed card does not render
+   its check indicator, so open it before reading the indicator */
+ok(!!card(/Seller Beta/), "57.9a the Beta package is on screen");
+const betaOpen57 = card(/Seller Beta/)?.querySelector('button[aria-label^="Expand Seller Beta"]');
+if (betaOpen57) await click(betaOpen57, "open the Beta package");
+ok(
+  !!card(/Seller Beta/)?.querySelector('button[aria-label="Mark as not received"]'),
+  "57.9 and Beta is still checked in on screen"
+);
+ok(text().includes(RD57), "57.10 the new line appears on the page");
+
+await reachFor(/Re-import CSV/);
+await click(btn(/Re-import CSV/), "show upload zone");
+await dropFile("orders.csv", csv(FIRST57));
+ok(/No new lines/.test(text()), "57.11 re-importing the first file alone adds nothing");
+await sleep(SAVE_WAIT);
+eq(saved().items.length, 4, "57.12 the list still holds four lines after that re-import");
+eq(saved().received, marksBefore57, "57.13 and every received mark is still unchanged");
+
+/* KNOWN GAP, pinned as it stands. A re-import that brings Shipping Status Canceled for a line
+   the list already holds should carry that status across (canceled-orders-leave-the-list).
+   mergeItems keeps the base copy on a key clash, so today the line keeps its old status. Owner
+   ruling, page item 89 option b: a re-import refreshes ONLY tracking on a stored key; received
+   marks and every other field stay. The code change is a later lane. These cases assert the
+   unchanged state, so the gap reads as a gap. A fix turns 57.14 red: re-point it then, rather
+   than weakening it. 57.16 holds the ruling's other half now: the marks on that line stay. */
+const trackBefore57 = saved().items.find((it) => it.name === RB57)?.tracking;
+eq(trackBefore57, "without tracking", "57.14a before the canceled re-import Beta holds the base status");
+await reachFor(/Re-import CSV/);
+await click(btn(/Re-import CSV/), "show upload zone");
+await dropFile(
+  "orders.csv",
+  csv([FIRST57[0], { ...FIRST57[1], "Shipping Status": "Canceled" }, FIRST57[2], NEW57])
+);
+await sleep(SAVE_WAIT);
+eq(
+  saved().items.find((it) => it.name === RB57)?.tracking,
+  trackBefore57,
+  "57.14 known gap: a re-import that brings Canceled for a held line keeps the base status"
+);
+eq(saved().items.length, 4, "57.15 known gap: and that canceled re-import adds no line");
+eq(
+  saved().received,
+  marksBefore57,
+  "57.16 the canceled re-import leaves every received mark, Beta's included, as the ruling requires"
+);
+
 /* ── 61. the house UX rules, lanes L1 and L2 (decision ux-house-rules-govern) ──
    Each block names the rule it checks. An ask names the count it removes or
    replaces, and its first focus lands on Cancel (ux-ask-or-undo). A missing
