@@ -10,10 +10,12 @@
 
 In run 42643271925, the new chip case `testChipClearsTheKeysAtAccessibilityXLWithTwoMatches` failed the same way. Its `assertChipSpeaks` wait at `DuoHandUITests.swift:565` timed out though the label matched (102.5 s in all). The retry passed in 48.6 s. In run 42666668781 it passed on the first try in 59.7 s. A run with a first-try failure is not a clean pass, and a debt retires only on a cited run whose pinning tests pass on the first try.
 
-**Cause, measured in run 42643271925 (job 129249675281).** The first test after `pose flat` runs every accessibility call 3-5x slower: automation session setup took 26.7 s (5.6 s on the retry), each element debug capture about 5 s, and one snapshot 25 s. A 5 s wait then expires while the label is right. The retry in the same simulator is fast, so the simulator's automation stack is cold on the first test and warm after it.
+**Observed in run 42643271925 (job 129249675281).** The first test's first iteration and its retry ran in one xcodebuild process (pid 8596). On the retry, automation session setup took 5.55 s, not 26.65 s (4.8x). Wait-for-idle was 2.5x faster. The whole test took 49.3 s, not 131.0 s (2.7x). The 5 s label wait expired in the first iteration though the label read "3 left".
 
-**Fix.** The `duo-ui` job runs one short flat-pose test, `make ui-duo-warmup` (`DuoSpreadUITests/testFlatPackagesFullWidth`), between `pose flat` and the flat pass. It writes its own result bundle, tolerates failure, and no check reads it. The warm-up test also runs in the flat pass. The gap closes when four runs in a row pass the cases above on the first try, each cited here.
+**Hypothesis, unmeasured.** The simulator's automation stack is cold on the first test. Both attempts share one xcodebuild process, so a cold start per process and one per simulator are not told apart.
 
-**Status:** open. Found 2026-11-09 in lane `duo-held-chip`. Neither case is skipped or retried by hand. Closes when four consecutive runs pass the pinned cases on the first try (no such run is cited yet since the warm-up).
+**Fix under test.** The `duo-ui` job runs one short flat-pose test, `make ui-duo-warmup` (`DuoSpreadUITests/testFlatPackagesFullWidth`), between `pose flat` and the flat pass. It writes its own result bundle, tolerates failure, and no check reads it. The warm-up test also runs in the flat pass. It runs in its own xcodebuild, so whether it helps is open until the pull request runs show it. The gap closes when four runs in a row pass the cases above on the first try, each cited here.
+
+**Status:** open. Found 2026-11-09 in lane `duo-held-chip`. Neither case is skipped or retried by hand. Closes when four consecutive runs pass the pinned cases on the first try (no run is cited yet since the warm-up).
 
 **Decision:** `duo-ui-runs-on-pr-label`.

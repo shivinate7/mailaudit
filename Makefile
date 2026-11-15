@@ -56,9 +56,9 @@ ui-a: project
 ui-b: project
 	cd $(NATIVE) && $(UI_TEST) -project $(APP).xcodeproj -scheme $(APP) -derivedDataPath build CODE_SIGNING_ALLOWED=NO $(UI_SKIP_DUO) $(UI_SKIP_A)
 
-# One short flat-pose Duo test, run once after the Duo opens and before the flat pass. The first test after `pose flat` ran 3-5x
-# slower on every accessibility call (run 42643271925), so its 5 s waits expired while the label was right. This test pays that cost
-# instead. The workflow gives it a result bundle of its own, which no check reads.
+# One short flat-pose Duo test, run once after the Duo opens and before the flat pass. In run 42643271925 the first test after
+# `pose flat` set up its automation session in 26.65 s (5.55 s on the retry) and its 5 s label wait expired with the label right.
+# The guess is a cold automation stack, unmeasured. The workflow gives this test a result bundle of its own, which no check reads.
 ui-duo-warmup:
 	cd $(NATIVE) && $(UI_TEST) -project $(APP).xcodeproj -scheme $(APP) -derivedDataPath build CODE_SIGNING_ALLOWED=NO -only-testing:ManifestUITests/DuoSpreadUITests/testFlatPackagesFullWidth
 

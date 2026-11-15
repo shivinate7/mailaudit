@@ -96,8 +96,8 @@ jobs:
         run: scripts/ci-sim.sh duo-counts
       - name: open the Duo
         run: scripts/ci-sim.sh pose flat
-      # The first test after the pose runs 3-5x slower on every accessibility call (run 42643271925: automation session setup 26.7 s,
-      # then 5.6 s on the retry in the same simulator), so a 5 s wait expires with the label right. One short test pays that cost first.
+      # Run 42643271925: the first test after the pose set up its automation session in 26.65 s (5.55 s on the retry), and its 5 s
+      # label wait expired with the label right. A cold automation stack is the guess, unmeasured; this step tests it by running one short test first.
       # Its bundle is its own, and check-results reads only flat and closed, so it changes no count. A failure here is not a verdict.
       - name: warm up the Duo
         continue-on-error: true

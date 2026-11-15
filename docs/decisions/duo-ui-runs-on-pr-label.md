@@ -14,7 +14,7 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 
 ## What runs
 
-- `duo-ui` runs the three Duo classes on an iPhone Duo simulator. The list is `DUO_UI_TESTS` in the Makefile. The job folds the simulator with `hinge`, a simulator-folding tool pinned at commit `afb8f0bd`. A warm-up step runs `make ui-duo-warmup`, one short flat-pose test, after the job opens the Duo and before the flat pass: the first test after the pose runs 3-5x slower (debt `duo-hand-first-case-timeout`). The step has its own result bundle and tolerates failure, so no count reads it. It runs a flat pass, then a closed pass. The closed pass runs the two methods in `DUO_CLOSED_TESTS`.
+- `duo-ui` runs the three Duo classes on an iPhone Duo simulator. The list is `DUO_UI_TESTS` in the Makefile. The job folds the simulator with `hinge`, a simulator-folding tool pinned at commit `afb8f0bd`. A warm-up step runs `make ui-duo-warmup`, one short flat-pose test, after the job opens the Duo and before the flat pass: the first test after the pose was slow in run 42643271925, and a cold start is the untested guess (debt `duo-hand-first-case-timeout`). The step has its own result bundle and tolerates failure, so no count reads it. It runs a flat pass, then a closed pass. The closed pass runs the two methods in `DUO_CLOSED_TESTS`.
 - `pro-ui-a` and `pro-ui-b` run `make ui-a` and `make ui-b` on an iPhone 18 Pro simulator. That is the split `milestone-runs-full-suite` uses, without the Duo classes.
 - `ci-done` runs after the three jobs. A red run posts one comment on the pull request. The comment wakes the session that watches the pull request (claude-settings rule `git-ci-done-comment-wakes`).
 - Each job builds once with `make app-build`. The tests then run without a build step.
