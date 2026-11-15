@@ -93,12 +93,12 @@ struct TallyView: View {
     /// One sentence and one Clear control, only while a search is what empties the list.
     private var empty: some View {
         VStack(spacing: 8) {
-            Text(!model.query.isEmpty ? "No product matches this search."
+            Text(!model.query.isEmpty ? "No items match that search."
                 : model.hideReceived ? "Everything here has been checked in." : "Nothing to show.")
                 .font(.cochin(14, relativeTo: .body)).foregroundStyle(paint(.meta)).multilineTextAlignment(.center)
             if !model.query.isEmpty {
-                Button { Task { await run { try await model.clearSearch() } } } label: { MiniLabel(title: "Clear search", vertical: 4, horizontal: 8) }
-                    .accessibilityLabel("Clear search")
+                Button { Task { await run { try await model.clearSearch() } } } label: { MiniLabel(title: "Clear Search", vertical: 4, horizontal: 8) }
+                    .accessibilityLabel("Clear Search")
                     .accessibilityIdentifier("tally-clear")
             }
         }
