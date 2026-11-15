@@ -7446,14 +7446,16 @@ eq(saved().received, marksBefore57, "57.13 and every received mark is still unch
 /* KNOWN GAP, pinned as it stands. A re-import that brings Shipping Status Canceled for a line
    the list already holds should carry that status across (canceled-orders-leave-the-list).
    mergeItems keeps the base copy on a key clash, so today the line keeps its old status. Owner
-   ruling, page item 89 option b: a re-import refreshes ONLY tracking on a stored key; received
-   marks and every other field stay. The code change is a later lane. These cases assert the
-   unchanged state, so the gap reads as a gap. A fix turns 57.14 red: re-point it then, rather
-   than weakening it. 57.16 holds the ruling's other half now: the marks on that line stay. */
+   ruling, waiting-page item 89 b, 2026-11-15 13:38 CST: a re-import refreshes ONLY tracking on
+   a stored key; received marks and every other field stay. The code change is a later lane.
+   These cases assert the unchanged state, so the gap reads as a gap. A fix turns 57.14 red:
+   re-point it then, rather than weakening it. 57.16 holds the ruling's other half now: the
+   marks on that line stay. */
 const trackBefore57 = saved().items.find((it) => it.name === RB57)?.tracking;
 eq(trackBefore57, "without tracking", "57.14a before the canceled re-import Beta holds the base status");
 await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
+ok(/Drop your OrderWand CSV here/.test(text()), "57.14b the upload zone is open before the canceled drop");
 await dropFile(
   "orders.csv",
   csv([FIRST57[0], { ...FIRST57[1], "Shipping Status": "Canceled" }, FIRST57[2], NEW57])
@@ -7469,6 +7471,12 @@ eq(
   saved().received,
   marksBefore57,
   "57.16 the canceled re-import leaves every received mark, Beta's included, as the ruling requires"
+);
+/* a merged drop closes the upload zone (the drop handler's setShowUpload(false), reached only
+   after the merge), so a drop the page ignores leaves the zone open on screen. */
+ok(
+  !/Drop your OrderWand CSV here/.test(text()),
+  "57.17 the canceled re-import drop was applied: the upload zone closed"
 );
 
 /* ── 61. the house UX rules, lanes L1 and L2 (decision ux-house-rules-govern) ──
