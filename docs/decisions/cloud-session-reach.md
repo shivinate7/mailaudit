@@ -31,9 +31,9 @@ The web app's import has a second way in, for a session that holds the CSV. It n
 4. POST `{"ledger": <ledger>}` to `/ledger`. The Worker merges again server-side, so the POST cannot replace what is stored (`imports-merge-never-replace`).
 5. Read back: when `added` is above 0, `rev` rose by one (an unchanged ledger keeps its rev), `items` grew by `added`, and `received` and `receivedAt` are byte-equal to the copy.
 
-Figures from the one run so far, and the open question about stored `tracking`: `cloud-csv-import`.
+Figures from the one run so far: `cloud-csv-import`.
 
-**Status:** open. This route adds new lines only. The web import refreshes `tracking` on a stored line (`imports-merge-never-replace`), but `POST /ledger` merges with the stored copy as the base, so a refreshed `tracking` in a posted ledger does not reach the stored one.
+**Status:** open. The owner ruled that a re-import refreshes `tracking` (item 89 b, 2026-11-15 13:38 CST, `imports-merge-never-replace`). The web import does. This route adds new lines only: `POST /ledger` merges with the stored copy as the base, so a refreshed `tracking` stays on the importing device (debt `reimport-refresh-stays-on-device`).
 
 ## See also
 

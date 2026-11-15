@@ -1,6 +1,6 @@
 # Test suite assertion count and run time
 
-**Status:** measured 2026-11-15 at `28bdadb7` plus the tracking refresh, on `reimport-tracking-refresh`. New York (`TZ=America/New_York`): 1717 passed, 0 failed, from `check:docs`, which runs the suite; parts 1 and 2 alone printed 296 and 528. UTC: 1716 by the 38.9 rule, not re-run. The rise from 1701 is 33.54 to 33.65 in part 2 and 57.18, 57.18a, 57.18b and 57.18c in part 3. Earlier figures are in git.
+**Status:** measured 2026-11-15 at `28bdadb7` plus the tracking refresh, on `reimport-tracking-refresh`. New York (`TZ=America/New_York`): 1717 passed, 0 failed, from `check:docs`, which runs the suite; parts 1 and 2 alone printed 296 and 528. UTC: unmeasured (one fewer by the 38.9 rule). The rise from 1701 is 33.54 to 33.65 in part 2 and 57.18, 57.18a, 57.18b and 57.18c in part 3. Earlier figures are in git.
 
 This record holds the assertion count and the run time for `npm test`. The suite runs 1717 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 

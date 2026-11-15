@@ -3915,8 +3915,9 @@ export default function MailDayLedger() {
             items.length === 0
               ? `Imported ${parsed.length} lines across your orders.`
               : added > 0
-              ? `Added ${added} new line${added === 1 ? "" : "s"} from the file — existing cards and check-ins untouched.` +
-                (refreshed > 0 ? refreshNote : "")
+              ? refreshed > 0
+                ? `Added ${plural(added)}.${refreshNote} Check-ins untouched.`
+                : `Added ${added} new line${added === 1 ? "" : "s"} from the file — existing cards and check-ins untouched.`
               : refreshed > 0
               ? `No new lines.${refreshNote} Check-ins untouched.`
               : "No new lines — everything in that file was already being tracked."
