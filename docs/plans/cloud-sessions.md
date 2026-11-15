@@ -25,7 +25,7 @@ Names only. No value goes in this repo, which is public.
 | Cloudflare API token | network secret, Bearer, host `api.cloudflare.com`; only if Worker deploys move to the cloud | wrangler | yes |
 | `CLOUDFLARE_ACCOUNT_ID` | variable; only with the token | wrangler | no |
 
-`GH_TOKEN` and `GITHUB_TOKEN` stay unset: the GitHub proxy authenticates. The device key is a network secret on the Worker host and never a variable (`cloud-session-reach`, `the-token-is-a-credential`). The App Store Connect key is a repo secret for the `testflight` workflow and never enters a cloud session.
+Never set `GH_TOKEN` or `GITHUB_TOKEN` to a real token: the GitHub proxy authenticates, and a session may show a placeholder. The device key is a network secret on the Worker host and never a variable (`cloud-session-reach`, `the-token-is-a-credential`). The App Store Connect key is a repo secret for the `testflight` workflow and never enters a cloud session.
 
 ## Network access
 
@@ -40,4 +40,8 @@ Custom: tick the default list, then add the hosts a work kind needs.
 - A repo SessionStart hook that runs `npm ci` (config change).
 - A macOS CI job that shoots web and native screenshots on a macOS runner and uploads them. The Cochin font exists only on macOS, so a Linux screen check is a smoke test and the `screens` job stays the verdict (`screens-checked-headless-in-ci`).
 - A cloud session that measures the setup verdict lines, the Chromium download host, a PR made through `gh api` REST, and whether wrangler accepts a proxy-injected Cloudflare token.
-- Shared screen-check plan: home's `docs/plans/plan-shared-screen-check.md`, which degen agreed to in degen PR 531.
+- A write to the waiting page through the claude-artifacts connector, and a merge through the GitHub MCP tools.
+- Whether a fresh session prints the claude-settings `installed` line. The docs say the user settings file is not read in cloud sessions, and claude-settings measured its hooks running anyway.
+- Whether cloud sessions can message each other. Home measured that they can (home ruling, 2026-11-08 16:48 CST; home PR 588); the app's session-tool notes say a session cannot send a message back. Unmeasured here.
+- Do not attach `mailaudit-data` to a session: a session with two or more repos loads no repo hooks (docs, read 2026-11-08). The ledger lives on the Worker, so no session needs that repo.
+- Shared screen-check plan, with one setup script in claude-settings and one coordinator shape across the three repos: home's `docs/plans/plan-shared-screen-check.md`, which degen agreed to in degen PR 531.

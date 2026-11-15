@@ -1,7 +1,5 @@
 # What a cloud session can reach: the Worker, GitHub and the Mac
 
-Kind: build
-
 This record says what a cloud session of this repo can and cannot do against the live Worker, GitHub and the owner's Mac, and the one probe that proves each claim. Run the probe before you answer "I can't". A session that said it could not write to the Worker was wrong.
 
 **Holds while:** the cloud environment keeps a network secret for the Worker host `manifestnumberone.shivamsemwal01.workers.dev`, so the agent proxy adds the device key to requests for it. If that secret is removed or the host changes, the Worker claims are stale: re-run the probes. Measured 2026-11-15 13:24 CST by the coordinator, and re-read by this lane (GETs only) on 2026-11-15. The device key is never in the session, never in an environment variable and never in this repo (`the-token-is-a-credential`).
@@ -32,14 +30,15 @@ The web app's import has a second way in, for a session that holds the CSV. It n
 4. POST `{"ledger": <ledger>}` to `/ledger`. The Worker merges again server-side, so the POST cannot replace what is stored (`imports-merge-never-replace`).
 5. Read back: `rev` rose by one, `items` grew by `added`, and `received` and `receivedAt` are byte-equal to the copy.
 
-Measured once, 2026-11-15: the OrderWand CSV of that day went through steps 2 to 4. The live ledger went from rev 13 to 14, and items from 1201 to 1260 (59 added). No stored line changed and the received marks were byte-equal. This lane re-read the ledger: rev 14, 1260 items.
+Figures from the one run so far, and the open question about stored `tracking`: `cloud-csv-import`.
 
-A re-import never updates a stored line: `mergeItems` keeps the base on a key collision. 514 stored lines differ from that CSV in `tracking`. Whether that is wanted is an open question for the owner, on the waiting page, and this record does not rule on it.
+**Status:** open. A re-import never updates a stored line (`mergeItems` keeps the base), so a changed `tracking` in a new CSV does not reach the ledger. The owner has the question on the waiting page. Until it is ruled, this route adds new lines only.
 
 ## See also
 
 - `live-verification` — what has run against the live Worker, GitHub and a device.
 - `csv-import-stays-web` — the native app has no CSV import; this route is a web-parser route.
 - `the-token-is-a-credential` — the device key stays out of the session, the repo and the ledger.
+- `cloud-csv-import` — the figures of the one run.
 - `orderwand-csv` — the CSV schema and quirks.
 - `build-and-deploy` — commands, and why a deploy needs the owner's word.
