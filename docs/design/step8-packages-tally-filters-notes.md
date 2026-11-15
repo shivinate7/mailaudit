@@ -122,6 +122,12 @@ This is a redraw, not the original. The step 8 design spec and its packages-tall
     - Ruling 76 a, a Suspense line of several names, applies to Card in Hand only.
     - The Tally cell's 2 pt accent outline on the open Duo (`pickedMark`) is not ruling 77 a. It was built before that ruling.
 
+15. **The sort names the list it sorts.** New, from the critique.
+    - What: a sub line under Sorted by, "Packages list" or "Tally list", the list that `options.lastList` names. Today the row gives no sign of which list it sorts. On the Ledger tab, the same row shows five keys or six, depending on which tab you left last.
+    - Departs from: `src/app.jsx` `lastList`, where the web's View group shows no such line. Not blocking.
+    - Gain: the key set no longer changes with no reason given (`ux-one-plain-name`). Loss: one more line in the View card, and the web differs.
+    - Pick: owner's choice. Owner grant: yes, because it adds a line the web lacks. The control "Hide the sort's list name" removes it. Focus: `#focus-scope`.
+
 ## Guesses
 
 - **Step number.** The restyle plan on `rw/restyle-plan` has no step numbered 8. Step 8 is read as lane N21 by its contents, and PR 238 calls step 9 motion and step 10 sync labels.
@@ -143,4 +149,11 @@ This is a redraw, not the original. The step 8 design spec and its packages-tall
 
 ## Critique
 
-Run with skill `impeccable` (`critique`), informed fallback, no snapshot. Findings and fixes are in the lane report.
+Run with skill `impeccable` (`critique`) on 2026-11-15. The launcher did not run, and no PRODUCT.md or DESIGN.md exists. The target is a native platform, so the critique was the design review alone, with no detector and no snapshot.
+
+- Fixed: the Sorted by row did not say which list it sorts (item 15, as an option).
+- Fixed: tag labels showed through the Find pill's glass. The pill now draws above them.
+- Fixed: text under 11 pt (item 13, as an option).
+- Fixed: in the first draw, the pill sat in the flow, not over the list. A tag rule had set its position.
+- Open, outside this folder: no UI test taps `package-clear` or `tally-clear` (item 4), and none checks the pill on the folded Duo (item 11).
+- Questions for the owner: keep Cochin in the mockup against the check (Frame), item 13, item 15, and item 9.
