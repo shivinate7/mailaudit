@@ -8,7 +8,7 @@ Plan: docs/plans/orders-extension.md#extension (extension)
 
 **Status:** ruled. The owner accepted this on 2026-10-11 with "all seem fine". The native client has no CSV import and no upload zone.
 
-Orders enter the ledger through the web app's CSV import, and through the browser extension's pages at the Worker's `POST /orders` (plan `docs/plans/orders-extension.md`). The Worker syncs them to the native client. The Worker runs the same `parseItems` on the extension's pages, so `parser-filters` (the parser keeps only TCG purchases) keeps one home. A Swift port of the importer would give it a second home.
+Orders enter the ledger through the web app's CSV import, and through the browser extension's pages at the Worker's `POST /orders` (plan `docs/plans/orders-extension.md`). The Worker syncs them to the native client. The Worker runs the same `parseItems` on the extension's pages, so `parser-filters` (the parser keeps only TCG purchases) keeps one home. A Swift port of the importer would give it a second home. A cloud session that holds a CSV may also run `parseItems` and `mergeItems` and POST to `/ledger`; that is the same code, not a second importer (`cloud-session-reach`).
 
 **Holds while:** `parseItems` is the only code that applies `parser-filters` (the web import calls it, and `POST /orders` will too), and the native client has no CSV import.
 
