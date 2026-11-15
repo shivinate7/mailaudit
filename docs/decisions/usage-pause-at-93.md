@@ -11,4 +11,6 @@ The owner ruled on 2026-11-09 at 23:46 CST, relayed by the degen coordinator and
 - The pause ends at the reset, or on the owner's word.
 - A session reads the figure on demand: the list_events tool on its own session id, with kinds rate_limit_event, field utilization. The coordinator also sends PAUSE.
 
+**Status:** lapsed at the reset on 2026-11-14 13:00 CST. No later ruling found in this repo or in claude-settings.
+
 **Holds while:** the owner has not lifted the ruling, and the account's 7-day usage has not reset. Dated by the reset on 2026-11-14 13:00 CST.

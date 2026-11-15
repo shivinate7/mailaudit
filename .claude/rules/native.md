@@ -67,7 +67,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
 - `native-stamp-load-unmeasured` — The native Packages load with stamps is unmeasured.
 - `native-armed-audit-misses-ask` — The native armed stamp audit cannot see the ask.
-- `app-build-waits-xcode-27` — No pull-request CI job compiles the app; the milestone build has no green run yet.
+- `app-build-waits-xcode-27` — No `app-build` job exists; `duo-ui` builds the app on a pull request, and the milestone build has no green run yet.
 - `native-card-gestures-unpinned` — No UI test pins the native card header gestures.
 - `native-card-state-in-swift` — The native card copies the line and package done rules in Swift.
 - `native-sync-tally-rules-in-swift` — The native Sync panel and Tally row copy six view rules in Swift.
@@ -78,7 +78,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-masthead-stale-after-tabs` — The native masthead and Packages go stale after another tab writes.
 - `native-ledger-pins-missing` — No test pins that the app passes its own rules.js to the ledger store.
 - `mac-target-unbuilt` — The Mac has no native app.
-- `native-runner-image-unverified` — Whether the hosted runner image has Xcode 27 and xcodegen is unverified.
+- `native-runner-image-unverified` — Whether the hosted runner image has xcodegen is unverified; the `xcode-27` image has Xcode 27.1.
 - `native-runner-keychain-unverified` — Whether the hosted runner keychain is unlocked is unverified.
 - `native-job-hosted-time-unmeasured` — The native job's time on a hosted runner is unmeasured.
 - `native-photo-screens-unwired` — No native screen shows a photo, and nothing takes one.
