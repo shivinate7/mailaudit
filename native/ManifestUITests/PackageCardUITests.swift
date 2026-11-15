@@ -115,6 +115,7 @@ final class PackageCardUITests: XCTestCase {
     /// after that scroll, so they also prove the scroll checked nothing in.
     func testCheckInsMoveNothingWhileTheBarComesAndGoes() throws {
         let app = launch()
+        ScreenKit.showEverything(app)  // Unreceived would take A1 off the list when its last line is in, and the card is read after it
         let gk = Self.package
         let clear = element(app, "bulk-clear:\(gk)"), pill = element(app, "card-pill:\(gk)")
         let row = element(app, "package-row:\(gk)")
