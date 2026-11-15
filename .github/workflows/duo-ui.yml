@@ -23,6 +23,7 @@ env:
   XCODEGEN_SHA256: "4d9e34b62172d645eed6457cac13fc222569974098ef4ee9c3368bedf0196806"
   # The commands the steps run, each through scripts/ci-sim.sh run, which fails on an empty value.
   BUILD_CMD: make app-build
+  DUO_WARMUP_CMD: make ui-duo-warmup
   DUO_FLAT_CMD: make ui-duo-flat
   DUO_CLOSED_CMD: make ui-duo-closed
   PRO_A_CMD: make ui-a
@@ -95,6 +96,16 @@ jobs:
         run: scripts/ci-sim.sh duo-counts
       - name: open the Duo
         run: scripts/ci-sim.sh pose flat
+      # The first test after the pose runs 3-5x slower on every accessibility call (run 42643271925: automation session setup 26.7 s,
+      # then 5.6 s on the retry in the same simulator), so a 5 s wait expires with the label right. One short test pays that cost first.
+      # Its bundle is its own, and check-results reads only flat and closed, so it changes no count. A failure here is not a verdict.
+      - name: warm up the Duo
+        continue-on-error: true
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/warmup.xcresult
+        run: |
+          mkdir -p "$(dirname "$RESULT_BUNDLE")"
+          scripts/ci-sim.sh run $DUO_WARMUP_CMD
       - name: flat pass
         env:
           RESULT_BUNDLE: ${{ runner.temp }}/results/flat.xcresult

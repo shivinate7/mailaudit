@@ -1,10 +1,12 @@
 #!/usr/bin/env bash
 # The simulator steps of the duo-ui workflow, one home for its three jobs (duo-ui, pro-ui-a, pro-ui-b).
+# The duo-ui job runs one short test (DUO_WARMUP_CMD) between `pose flat` and the flat pass: the first test after the pose runs
+# 3-5x slower on every accessibility call (run 42643271925), and a 5 s wait in the first real test expires with the label right.
 # Each subcommand prints what it reads, so a red run says why. Only the workflow runs this script.
 # Every repo-specific value comes from the env: block at the top of the workflow. This script holds none, and a
 # subcommand fails when a value it needs is unset or empty.
 #
-#   run <command words>                 run a command from the env block (BUILD_CMD, DUO_FLAT_CMD ...); fails when it is empty
+#   run <command words>                 run a command from the env block (BUILD_CMD, DUO_WARMUP_CMD, DUO_FLAT_CMD ...); fails when it is empty
 #   install-xcodegen                    env XCODEGEN_VERSION, XCODEGEN_SHA256
 #   create-sim <device name>            pick the newest iOS runtime that supports the device type, create, boot, wait until it answers;
 #                                       sets SIM_UDID and SIM_RUNTIME in GITHUB_ENV

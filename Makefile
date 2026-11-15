@@ -26,7 +26,7 @@ UI_ONLY_DUO := $(addprefix -only-testing:ManifestUITests/,$(DUO_UI_TESTS))
 UI_SKIP_DUO_CLOSED := $(addprefix -skip-testing:ManifestUITests/,$(DUO_CLOSED_TESTS))
 UI_ONLY_DUO_CLOSED := $(addprefix -only-testing:ManifestUITests/,$(DUO_CLOSED_TESTS))
 
-.PHONY: tokens-check kit-test project app-build ui-test ui-a ui-b ui-duo-flat ui-duo-closed duo-closed-list native-check phone testflight
+.PHONY: tokens-check kit-test project app-build ui-test ui-a ui-b ui-duo-warmup ui-duo-flat ui-duo-closed duo-closed-list native-check phone testflight
 
 # index.html embeds shared/tokens.json. This check proves the committed index.html matches this repo's code.
 tokens-check:
@@ -55,6 +55,12 @@ ui-a: project
 # Milestone job part-b: every class that is not in UI_TESTS_A and not a Duo class.
 ui-b: project
 	cd $(NATIVE) && $(UI_TEST) -project $(APP).xcodeproj -scheme $(APP) -derivedDataPath build CODE_SIGNING_ALLOWED=NO $(UI_SKIP_DUO) $(UI_SKIP_A)
+
+# One short flat-pose Duo test, run once after the Duo opens and before the flat pass. The first test after `pose flat` ran 3-5x
+# slower on every accessibility call (run 42643271925), so its 5 s waits expired while the label was right. This test pays that cost
+# instead. The workflow gives it a result bundle of its own, which no check reads.
+ui-duo-warmup:
+	cd $(NATIVE) && $(UI_TEST) -project $(APP).xcodeproj -scheme $(APP) -derivedDataPath build CODE_SIGNING_ALLOWED=NO -only-testing:ManifestUITests/DuoSpreadUITests/testFlatPackagesFullWidth
 
 # The Duo classes in the flat pose (open Duo): every Duo test but the closed ones. No `project` step: the duo-ui workflow
 # builds once with app-build and runs this with xcodebuild test-without-building.
