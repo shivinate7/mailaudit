@@ -1,0 +1,10 @@
+{
+  "title": "Relabel the buttons in sentence case",
+  "status": "todo",
+  "phase": "restyle",
+  "order": 6,
+  "why": "Lane suggestion from the design reviewer of lane restyle-step8: four button labels are not in sentence case: '+ Record an envelope' (OrphanedView:73), 'Restore this version' (LedgerTab:354), 'Remove stamp' (StampViews:337) and 'Save envelope'.",
+  "note": "Lane suggestion, not started (coordinator, 2026-11-15 18:00 CST). Todo until the owner answers.",
+  "ask": "",
+  "updatedAt": "2026-11-15T23:59:00Z"
+}

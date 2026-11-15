@@ -1,0 +1,10 @@
+{
+  "title": "The pro-ui-b job hits its 60 minute cap: split it or raise the cap",
+  "status": "todo",
+  "phase": "tooling",
+  "order": 17,
+  "why": "The pro-ui-b job hit its 60 minute cap on main (run 43769323418, main 9b7c4e4d) and on PR 238 (run 43762232891). It was cancelled inside PackageStamp, so PackagesShell, Step7DesignShots, SyncAdvisory, TallyCopyStepper, Tally and Versions have never run green on any tree.",
+  "note": "CI lane, not started (coordinator, 2026-11-15 18:00 CST). Needs a ruling from the owner on splitting the job or raising the cap; the change is in the workflow file. PR 238 stays a draft: 12 tests are new on it and 6 are unknown. The baseline PR 341 is closed.",
+  "ask": "",
+  "updatedAt": "2026-11-15T23:59:00Z"
+}
