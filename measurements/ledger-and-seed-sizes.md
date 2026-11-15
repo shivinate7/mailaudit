@@ -18,6 +18,6 @@ The seed was a snapshot, not a feed, and the page no longer carries it. It refre
 
 Snapshots are gzipped with `CompressionStream`. That is built into Safari, so it needs no dependency. ~235KB of ledger JSON becomes ~25KB. The measured figure is 65,756 → 5,680 bytes, a ratio of 11.6×. The `gz` flag rides in the metadata, so the app never assumes compression happened.
 
-The real ledger blob is 235KB. All 19 pushes of it bundle to 39KB. Git deltas near-identical JSON to roughly 2KB a version. At tens of pushes a mail day, that is single-digit MB a year.
+The real ledger blob is 235KB. All 19 pushes of it bundle to 39KB. Git deltas near-identical JSON to roughly 2KB a version. At tens of pushes on a day's mail, that is single-digit MB a year.
 
 `receivedAt` is never pruned. Its size is debt `received-at-size-unmeasured`.

@@ -38,6 +38,12 @@ final class DuoShellUITests: XCTestCase {
 
     func launch() -> XCUIApplication { .launchedOnSeed() }
 
+    override func tearDown() {
+        let name = self.name
+        MainActor.assumeIsolated { DuoShot.keep(name: name) }
+        super.tearDown()
+    }
+
     func customBar(_ app: XCUIApplication) -> XCUIElement { app.duoBar }
 
     func element(_ app: XCUIApplication, _ id: String) -> XCUIElement { app.byID(id) }

@@ -39,4 +39,11 @@ enum BulkRules {
         let map = try decode([String: Int].self, out)
         return Dictionary(takes.map { ($0.itemKey, map[$0.itemKey] ?? 0) }, uniquingKeysWith: { first, _ in first })
     }
+
+    /// The copies `undone` would take back now: each line's count in `received` less the count the Undo sets it to. A later
+    /// edit or a remote apply that lowered a line shows here, which the takes alone do not.
+    static func takenBack(_ takes: [BulkTake], received: [String: Int], engine: RulesEngine) async throws -> Int {
+        let back = try await undone(takes, received: received, engine: engine)
+        return back.reduce(0) { $0 + max((received[$1.key] ?? 0) - $1.value, 0) }
+    }
 }

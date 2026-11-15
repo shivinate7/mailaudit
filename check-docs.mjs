@@ -20,7 +20,7 @@
 import * as esbuild from "esbuild";
 import { readFileSync, readdirSync } from "fs";
 import { existsSync, statSync } from "fs";
-import { dirname, join } from "path";
+import { delimiter, dirname, join } from "path";
 import { execFileSync } from "child_process";
 
 const FOLDERS = ["decisions", "invariants", "measurements", "debts"];
@@ -132,32 +132,54 @@ function lineAt(text, index) {
    runner set to UTC prints one fewer assertion than a machine behind UTC.
    A count that changes with the runner's clock cannot be checked anywhere,
    so the count is always read from a run under a fixed, non-UTC zone.
-   CI runs the suite once under that zone and names its output in
-   CHECK_DOCS_SUITE_LOG; this reads the count from that file. With the
-   variable unset (local use) it runs the suite itself, as before. A named
-   file that is unreadable or holds no count is a failure, never a pass. */
+   CI runs the suite under that zone and names its output in
+   CHECK_DOCS_SUITE_LOG; this reads the count from that file. CI runs the
+   suite as parts on separate runners, so the variable may name one log per
+   part, joined with the path delimiter. The count is the sum of the parts.
+   Each part's log holds the line "app suite: part N of M". The logs must
+   hold each part 1 to M once and nothing else, so a lost part log cannot
+   lower the total. A log with no such line is one whole run and stands
+   alone. With the variable unset (local use) it runs the suite itself, as
+   before. A named file that is unreadable or holds no count is a failure,
+   never a pass. */
 const FIXED_TZ = "America/New_York";
 
 function suiteTotal() {
   const log = process.env.CHECK_DOCS_SUITE_LOG;
-  let out;
+  const outs = [];
   if (log) {
-    try {
-      out = readFileSync(log, "utf8");
-    } catch (e) {
-      throw new Error(`could not read CHECK_DOCS_SUITE_LOG (${log}): ${e.message}`);
+    for (const file of log.split(delimiter).filter(Boolean)) {
+      try {
+        outs.push(readFileSync(file, "utf8"));
+      } catch (e) {
+        throw new Error(`could not read CHECK_DOCS_SUITE_LOG (${file}): ${e.message}`);
+      }
     }
   } else {
-    out = execFileSync(process.execPath, ["test/app.test.mjs"], {
-      encoding: "utf8",
-      env: { ...process.env, TZ: FIXED_TZ },
-    });
+    outs.push(
+      execFileSync(process.execPath, ["test/app.test.mjs"], {
+        encoding: "utf8",
+        env: { ...process.env, TZ: FIXED_TZ },
+      })
+    );
   }
-  const m = out.match(/(\d+) passed, (\d+) failed/);
-  if (!m) {
-    throw new Error("could not read a pass/fail count out of the suite's output");
+  const logs = outs.map((out) => {
+    const m = out.match(/(\d+) passed, (\d+) failed/);
+    if (!m) throw new Error("could not read a pass/fail count out of the suite's output");
+    const p = out.match(/^app suite: part (\d+) of (\d+)$/m);
+    return { n: Number(m[1]) + Number(m[2]), part: p ? Number(p[1]) : 0, of: p ? Number(p[2]) : 0 };
+  });
+  const parts = logs.filter((l) => l.part > 0);
+  if (parts.length > 0) {
+    const of = parts[0].of;
+    const seen = parts.map((l) => l.part).sort((a, b) => a - b);
+    const want = Array.from({ length: of }, (_, i) => i + 1);
+    if (parts.length !== logs.length || parts.some((l) => l.of !== of) || seen.join() !== want.join())
+      throw new Error(`the suite logs must hold parts 1 to ${of} once each, and nothing else (got ${logs.length} logs, parts ${seen.join(", ")})`);
+  } else if (logs.length > 1) {
+    throw new Error("several suite logs, and none names its part");
   }
-  return Number(m[1]) + Number(m[2]);
+  return logs.reduce((a, l) => a + l.n, 0);
 }
 
 const real = suiteTotal();
@@ -262,8 +284,17 @@ for (const { span } of allSpans) {
   if (!knownPath.has(base)) knownPath.set(base, span);
 }
 
-// Every file in the repo, for bare filenames that live below the root.
-const tracked = execFileSync("git", ["ls-files"], { encoding: "utf8" }).split("\n");
+// The one home for the git file listing. -z keeps a path git would quote
+// (native/ has some) as its real name. Claim 2 reads the tracked list; claim 3
+// adds the untracked, unignored files, since the test corpus never runs `git add`.
+function gitFiles(extra = []) {
+  return execFileSync("git", ["ls-files", "-z", ...extra], { encoding: "utf8", maxBuffer: 1 << 28 })
+    .split("\0")
+    .filter(Boolean);
+}
+
+// Every tracked file in the repo, for bare filenames that live below the root.
+const tracked = gitFiles();
 
 // A bare filename's real location: the corpus's own qualified mention, then the
 // root, then any tracked file with that basename. null when it is nowhere.
@@ -356,10 +387,21 @@ for (const entry of allSpans) {
 
 /* ---------- claim 3: every code-shaped name in backticks occurs in the code ----------
    A span shaped like a code name (camelCase, PascalCase, snake_case, CONST_CASE, or
-   `name()`) must occur as a whole word somewhere in the code roots below.
+   `name()`) must occur as a whole word somewhere in the code.
    A renamed function then turns every record that cites it red. Names the
-   code cannot hold are listed in EXTERNAL, one reason each. */
-const CODE_ROOTS = ["src", "test", "build.mjs", "check-records.mjs", "icon", "native", "package.json", ".github"];
+   code cannot hold are listed in EXTERNAL, one reason each.
+   The code is every file git lists (tracked, or untracked and not ignored), so
+   a new folder is walked with no edit here. NOT_CODE leaves out each class of
+   file below; otherwise a stale name would pass on text that is not code. */
+const RECORD_TOPS = new Set([...FOLDERS.map((f) => DIR(f).split("/")[0]), RULES_DIR.split("/")[0]]);
+const NOT_CODE = [
+  [(p) => p.split("/").includes("node_modules"), "a dependency, not our code (and the test corpus has no .gitignore)"],
+  [(p) => p.endsWith(".md"), "prose"],
+  [(p) => RECORD_TOPS.has(p.split("/")[0]), "records, rules and design mockups are prose about the code"],
+  [(p) => p === "package-lock.json", "generated; its camelCase keys are dependency metadata"],
+  [(p) => p === "check-docs.mjs", "this checker: EXTERNAL and its own strings would count as code"],
+  [(p) => /\.(png|jpe?g)$/i.test(p), "a binary image"],
+];
 const EXTERNAL = new Set([
   "currentTime", // Web Animations API, set by hand when measuring motion
   "getAnimations", // Web Animations API, used by hand when measuring motion
@@ -367,32 +409,33 @@ const EXTERNAL = new Set([
   "enforce_admins", // GitHub branch-protection setting, not our code
   "fromJSON", // GitHub Actions expression function
 ]);
-function walk(path, out) {
-  if (!existsSync(path)) return;
-  if (statSync(path).isDirectory()) {
-    for (const n of readdirSync(path)) if (n !== "node_modules" && !n.startsWith(".")) walk(`${path}/${n}`, out);
-  } else if (!/\.(png|jpe?g)$/i.test(path)) {
-    let t = readFileSync(path, "utf8");
-    // A name in a comment is prose, not code: esbuild drops JS comments (it
-    // keeps strings and regex literals intact). A file it cannot parse fails
-    // the check by name; it is never treated as clear. Known ceiling: non-JS
-    // files (.py, .yml) are not stripped, so a name in a `#` comment still counts.
-    // And esbuild folds constant expressions: `false && X` becomes `false`, so a
-    // name that lives only in such dead code reads as absent.
-    if (/\.(mjs|jsx?)$/.test(path)) {
-      try {
-        t = esbuild.transformSync(t, { loader: "jsx", legalComments: "none" }).code;
-      } catch (e) {
-        console.error(`check:docs: cannot parse ${path}: ${e.errors?.[0]?.text ?? e.message}`);
-        failures++;
-        t = "";
-      }
+function readCode(path, out) {
+  if (NOT_CODE.some(([skip]) => skip(path))) return;
+  if (!existsSync(path) || !statSync(path).isFile()) return; // listed, then deleted, or a submodule
+  const buf = readFileSync(path);
+  if (buf.includes(0)) return; // a NUL byte marks a binary file
+  let t = buf.toString("utf8");
+  // A generated bundle repeats the names of its sources, which are walked on their own.
+  if (t.startsWith("/* Generated by")) return;
+  // A name in a comment is prose, not code: esbuild drops JS comments (it
+  // keeps strings and regex literals intact). A file it cannot parse fails
+  // the check by name; it is never treated as clear. Known ceiling: non-JS
+  // files (.py, .yml) are not stripped, so a name in a `#` comment still counts.
+  // And esbuild folds constant expressions: `false && X` becomes `false`, so a
+  // name that lives only in such dead code reads as absent.
+  if (/\.(mjs|jsx?)$/.test(path)) {
+    try {
+      t = esbuild.transformSync(t, { loader: "jsx", legalComments: "none" }).code;
+    } catch (e) {
+      console.error(`check:docs: cannot parse ${path}: ${e.errors?.[0]?.text ?? e.message}`);
+      failures++;
+      t = "";
     }
-    out.push(t);
   }
+  out.push(t);
 }
 const codeParts = [];
-for (const r of CODE_ROOTS) walk(r, codeParts);
+for (const path of gitFiles(["--cached", "--others", "--exclude-standard"])) readCode(path, codeParts);
 const codeText = codeParts.join("\n");
 const NAME_SHAPE = /^(?:[a-z][a-z0-9]*[A-Z][A-Za-z0-9]*|[a-z][a-z0-9]*(?:_[a-z0-9]+)+|[A-Z][A-Z0-9]*(?:_[A-Z0-9]+)+|[A-Z][a-z0-9]+(?:[A-Z][a-z0-9]*)+|[A-Za-z_$][\w$]*\(\))$/;
 const nameSeen = new Set();

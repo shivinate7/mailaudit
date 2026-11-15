@@ -60,8 +60,8 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `hidden-tab-apply-delay-unmeasured` — The apply delay on a hidden tab is unmeasured.
 - `sync-latency-after-fix-unmeasured` — The sync delay with the press guard is unmeasured.
 - `screens-45px-width-flake` — The screens check once measured every target 45px wide.
-- `screens-touch-context-flake` — The nightly screens check once failed the touch context.
+- `screens-touch-context-flake` — The screens check fails the touch context now and then, and passes on a rerun.
 - `tracking-checker-unbuilt` — A future checker that passively checks tracking numbers. It blocks nothing.
-- `orders-job-unbuilt` — The Worker orders cron, its key test and its status screen are unbuilt.
+- `orders-job-unbuilt` — The orders status screen is unbuilt, and the first live run has not happened.
 - `claim-17a-ci-red-unexplained` — Claim 17a failed twice on CI, and why only those runs is unknown.
 - `suite-flakes-under-load` — A suite case fails under load and passes on a re-run.

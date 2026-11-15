@@ -1,6 +1,6 @@
 # Card in Hand: a tap on a match moves nothing under the finger
 
-Mockup: `duo-hand-tap-shift.html`. Debt: `hand-suspense-tap-shift`, closed by the pick once a test pins it. Decision: `duo-card-in-hand`. Invariant: `no-layout-shift-under-pointer`.
+Mockup: `duo-hand-tap-shift.html`. Debt: `hand-suspense-tap-shift`, retired by the pick: its pinning tests passed on the first attempt in CI run 42577148982. Decision: `duo-card-in-hand`. Invariant: `no-layout-shift-under-pointer`.
 Lane kind: informed (the brief names no kind).
 
 Deep links: `#s=before`, `#s=today`, `#s=hold`, `#s=keep-slot`, `#s=trim`, `#s=folded`. Add `c=unique` or `c=shared` for one case, for example `#s=hold&c=shared`. Add `k=down` to leave the keys out, so what sits under them shows. No hash shows all.
@@ -34,7 +34,7 @@ Deep links: `#s=before`, `#s=today`, `#s=hold`, `#s=keep-slot`, `#s=trim`, `#s=f
 
 2. **Hold the list.** Drawn as `#s=hold`. After a tap, every row keeps its place until the next keystroke. The tapped row reads as chosen: bold, a 3 pt accent bar, the selected trait for VoiceOver. The other rows stay live, in inkSoft (4.68:1 on paper).
    - Gain: nothing on the left page moves on a tap, in both cases. A mis-tap is mended with one more tap on the right row. It copies the web's sticky row. The list still says what "to" matched.
-   - Lose: one more state to build (the held names and the chosen one). For a shared name, the Suspense box opens below the held rows, at y 464 to 536, wholly under the keys. Nothing on the left page above the keys then says the card is held. The right page's tie ("2 envelopes hold this card") says the name decides nothing yet. Same gap as `hand-held-box-under-keys`.
+   - Lose: one more state to build (the held names and the chosen one). For a shared name, the Suspense box opens below the held rows, at y 464 to 536, wholly under the keys. Nothing on the left page above the keys then says the card is held. The right page's tie ("2 envelopes hold this card") says the name decides nothing yet. Same gap as `hand-held-box-under-keys`, now retired by the held chip.
    - Pick: yes.
 
 3. **Keep the slot.** Drawn as `#s=keep-slot`. After a tap, the tapped row stays in its slot. The others leave the eye and VoiceOver but keep their space until the next keystroke.
@@ -62,7 +62,7 @@ Departs from: today's collapse to the tapped row in `HandScreen.matches` (`Butto
 
 In `HandScreen`, keep the names on screen and the chosen name in state. On a match tap: if no list is held, hold the names on screen; set the query and the chosen name. When the query changes to anything but the chosen name, drop the held list. `matches` draws the held list if there is one, else `hitNames`; a row that is not chosen is `Parchment.inkSoft`; the chosen row gets `.isSelected`. Close drops the held list.
 
-Tests. `testTappingAMatchDoesNotMoveNewEnvelope` expects the collapse (`waitForHits(app, count: 1, ...)`): re-point it, red first. It should assert three rows after the tap and the tapped row's `minY` unchanged. Add a shared-name twin (type "o", tap Counterspell): the tapped row's `minY` is unchanged, and `hand-held` `minY` is at or below the last `hand-hit:` row's `maxY`. Together they close `hand-suspense-tap-shift`.
+Tests. `testTappingAMatchDoesNotMoveNewEnvelope` (type "to", tap the 2nd match) asserts that the list holds three rows and New envelope's `minY` is unchanged. Its shared-name twin, `testTappingAMatchMovesNoRowUnderTheFinger` (type "o", tap Counterspell), asserts the tapped row's `minY` is unchanged and `hand-held` `minY` is at or below the old list foot. Both passed on the first attempt in CI run 42577148982, which retires `hand-suspense-tap-shift`.
 
 Focus ids for the waiting page: `focus-hold`, `focus-keep-slot`, `focus-trim`, each with a `-shared` twin; `focus-today` and `focus-today-shared` for Today; `focus-before` for the frame before the tap.
 
@@ -75,7 +75,7 @@ Design review only: the drawing is of a native screen, so the detector does not 
 - Fixed: with the keys up, the reader could not see where the Suspense box opens in the hold options. `k=down` leaves the keys out.
 - Fixed: `check_ios_mockup.py` found no static unfolded frame (the frames are drawn by script); each frame set now carries `data-device="iphone-duo-unfolded"`.
 - Open, in the pick: inkSoft rows may read as disabled, though a tap on one picks it. See Input needed.
-- Open, all options: for a shared name the left page shows nothing held above the keys (`hand-held-box-under-keys`).
+- Open, all options: for a shared name the left page shows nothing held above the keys (`hand-held-box-under-keys`, now retired by the held chip).
 - Product finding, outside the design folder: the match list in the web's `EnvelopeComposer` collapses on a tap and the entries below rise. No test pins it.
 - Product finding, carried: the micro labels and the box title are 10.5 pt (`HandScreen.micro`, `HandScreen.notice`), under the 11 pt iOS minimum.
 

@@ -96,7 +96,7 @@ The Worker POST handler in `worker/core.mjs` stored the merged ledger whenever a
 
 ## Swift names in this record
 
-The Swift names in this record (LedgerStore, LedgerStoreTests, RulesCore, droppedCount) are unbackticked. They were plain because `check-docs.mjs` did not read `native/`. Its CODE_ROOTS lists `native/` now, so a backticked Swift name is checked.
+The Swift names in this record (LedgerStore, LedgerStoreTests, RulesCore, droppedCount) are unbackticked. They were plain because `check-docs.mjs` did not read `native/`. Claim 3 reads every file git lists, `native/` included, so a backticked Swift name is checked.
 
 ## See also
 

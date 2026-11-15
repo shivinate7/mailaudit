@@ -1,0 +1,370 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Candidate Meta Line</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle), so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --red:#A8443C; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  /* Cochin and Menlo are Apple fonts. Off a Mac, Menlo falls back to DejaVu Sans Mono, which Menlo is drawn from:
+     the same 0.602 em advance, so every mono width on this page holds. Cochin falls back to a serif of other widths. */
+  --cochin: Cochin, "Liberation Serif", Georgia, serif;
+  --mono: Menlo, "DejaVu Sans Mono", ui-monospace, monospace;
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { margin:0 auto; padding:16px; max-width:2600px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; max-width:100ch; }
+h1 { font-family:var(--cochin); font-size:24px; margin:16px 0 4px; }
+h2 { font-family:var(--cochin); font-size:20px; margin:32px 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:100ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+nav .sep { width:100%; height:0; }
+nav .lab { align-self:center; font-size:13px; color:var(--inkSoft); min-width:5em; }
+figure { margin:16px 0 32px; }
+figure[hidden], [hidden] { display:none !important; }
+figcaption { margin-top:8px; max-width:100ch; }
+
+/* The comparison: one row per text size, one column per option. The grid scrolls inside its own box, so the page never scrolls sideways. */
+.scroller { overflow-x:auto; padding:12px 4px 8px; }
+.grid { display:grid; grid-template-columns:repeat(var(--cols), 466px); gap:16px 20px; align-items:start; width:max-content; }
+.group { font-family:var(--cochin); font-size:18px; font-weight:700; padding:8px 12px; border-radius:8px; }
+.group small { display:block; font:400 13px/1.35 -apple-system, system-ui, sans-serif; color:var(--inkSoft); }
+.group.today { border:2px dashed var(--today); } .group.new { border:2px dashed var(--new); }
+.colhead { padding:0 4px; }
+.colhead b { font-family:var(--cochin); font-size:17px; display:block; }
+.colhead .how { font-size:13px; color:var(--inkSoft); display:block; }
+.verdict { display:inline-block; margin-top:4px; font-size:12.5px; font-weight:600; padding:2px 8px; border-radius:6px; border:1px solid currentColor; }
+.verdict.fail { color:var(--red); } .verdict.pass { color:var(--green); } .verdict.unk { color:var(--inkSoft); }
+.sizehead { grid-column:1 / -1; font-family:var(--cochin); font-size:18px; font-weight:700; border-top:1px solid var(--line); padding-top:12px; margin-top:8px; }
+.sizehead small { font:400 13px -apple-system, system-ui, sans-serif; color:var(--inkSoft); margin-left:8px; }
+.cellcap { margin:0 0 6px; font-size:13px; color:var(--ink); max-width:466px; }
+.cellcap .tagname { margin-top:0; font-size:12px; }
+.cell .read { font:12px/1.45 var(--mono); color:var(--inkSoft); margin-top:6px; max-width:466px; }
+.read .bad { color:var(--red); } .read .ok { color:var(--green); }
+
+/* ---- device: iPhone Duo outer screen (folded), 466 pt wide (duo-fold-and-keyboard, 2026-11-08). 1 CSS px = 1 pt. ---- */
+.phone { width:466px; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; position:relative;
+  padding:calc(env(safe-area-inset-top) + 8px) 16px calc(env(safe-area-inset-bottom) + 16px); }
+.phone.open { width:455.5px; border-radius:4px; } /* the open Duo's right page: 455.5 pt (duo-fold-and-keyboard) */
+.above { font:11px var(--mono); color:var(--inkSoft); border:1px dashed var(--line); border-radius:6px; padding:4px 8px; margin-bottom:12px; }
+
+/* ---- the envelope card, as OrphanedView.swift EnvelopeCard draws it. Sizes are set by script per text size. ---- */
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); line-height:normal; }
+.ehead { display:flex; align-items:center; gap:8px; padding:12px 12px 8px; }
+.micro { font-family:var(--mono); text-transform:uppercase; color:var(--inkSoft); }
+.ehead .micro { flex:1 1 0; min-width:0; }
+.mini { font-family:var(--mono); color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:5px; text-align:center; flex:none; }
+.mini.discard { color:var(--red); border-color:#F4E4D9; }
+.entries { display:flex; flex-direction:column; gap:4px; padding:0 12px 8px; font-family:var(--cochin); }
+.rule { height:1px; background:var(--line); }
+.cands { display:flex; flex-direction:column; gap:8px; padding:8px 12px 12px; }
+.tie { font-family:var(--cochin); background:var(--manila); color:var(--manilaInk); border-radius:6px; padding:4px 8px; }
+.cand { display:flex; align-items:center; gap:8px; padding:8px; border:1px solid var(--line); border-radius:8px; }
+.cand .col { flex:1 1 0; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.seller { font-family:var(--cochin); font-weight:700; color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.meta { font-family:var(--mono); color:var(--inkSoft); position:relative; }
+.fitline { font-family:var(--mono); color:var(--inkSoft); }
+/* "This one": MiniLabel at 11.5, 8 pt padding, in a 44 x 44 pt hit frame. Its width at accessibility sizes is unmeasured; drawn capped at half the row. */
+.cand .mini { padding:8px; min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; max-width:50%; }
+
+/* The meta line, by option */
+.meta.wrap { white-space:normal; overflow-wrap:anywhere; }
+.meta.one { white-space:nowrap; overflow:hidden; }
+.meta.ellipsis { text-overflow:ellipsis; }
+/* CutLine (ControlViews.swift): hard clip at the column, and a "…" drawn on the card fill over the edge. */
+.meta .dots { position:absolute; right:0; top:0; background:var(--card); padding-left:1px; }
+
+/* tags: dashed outline on what exists today, and on what an option adds. The tag's words sit in the column head,
+   so no label covers the line being judged. */
+[data-tag] { position:relative; }
+.tag-new { outline:2px dashed var(--new); outline-offset:1px; }
+.tag-today { outline:2px dashed var(--today); outline-offset:1px; }
+.tagname { display:inline-block; margin-top:4px; font-size:12.5px; font-weight:600; padding:1px 6px; border:2px dashed currentColor; border-radius:4px; }
+.tagname.tag-today { color:var(--today); outline:0; } .tagname.tag-new { color:var(--new); outline:0; }
+
+/* ---- the web row: src/app.jsx EnvelopeCard, px sizes, at 375 px ---- */
+.web { width:375px; background:var(--paper); border:1px solid var(--ink); border-radius:8px; padding:16px; }
+.web .card { line-height:1.4; }
+#summary { border-collapse:collapse; font-size:13.5px; background:var(--card); }
+#summary th, #summary td { border:1px solid var(--line); padding:6px 10px; text-align:left; vertical-align:top; }
+#summary th { font-weight:600; }
+#summary td.bad { color:var(--red); } #summary td.ok { color:var(--green); }
+.sources { max-width:100ch; }
+.sources li { margin:4px 0; }
+code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No seller, date, order number or count on this page is real. Widths come from the code and this drawing, not from a simulator.</div>
+<h1>Orphaned candidate: the meta line wraps, or keeps one line</h1>
+<p class="sub">Owner page item 56 (<code>orphaned-meta-line-wraps</code>). The line under the seller holds the order date, the untracked tag and the order number. iPhone Duo folded, 466 pt wide. Four text sizes. Light theme only. One sample in every frame: an envelope of 3 cards that two packages fit equally (a tie), the first untracked. Only the meta line's rule changes between columns. Debt <code>native-candidate-lines-wrap</code>.</p>
+
+<nav aria-label="Options">
+  <span class="lab">Option</span>
+  <a href="#o=wrap">Wrap (today)</a>
+  <a href="#o=shrink">Shrink to fit</a>
+  <a href="#o=cut">Cut at full size</a>
+  <a href="#o=cutline">Cut line</a>
+  <a href="#o=capped">Capped size</a>
+  <a href="#o=web">The web row</a>
+  <a href="#">All</a>
+  <span class="sep"></span>
+  <span class="lab">Text size</span>
+  <a href="#size=default" data-size>Default</a>
+  <a href="#size=xxxl" data-size>xxxLarge</a>
+  <a href="#size=ax3" data-size>AX3</a>
+  <a href="#size=ax5" data-size>AX5</a>
+  <span class="sep"></span>
+  <span class="lab">Hide</span>
+  <button type="button" data-hide="shrink">Hide Shrink to fit</button>
+  <button type="button" data-hide="cut">Hide Cut at full size</button>
+  <button type="button" data-hide="cutline">Hide Cut line</button>
+  <button type="button" data-hide="capped">Hide Capped size</button>
+</nav>
+
+<section id="summary-box" data-o="all">
+  <h2>What the drawing shows, row 1 (untracked)</h2>
+  <div class="scroller"><table id="summary"></table></div>
+  <p class="sub" id="room"></p>
+</section>
+
+<!-- Folded first (ios-apps, Mockups). The candidate rows sit in the one-page list on the folded screen. -->
+<figure id="compare">
+  <div class="scroller"><div class="grid" id="grid" data-device="iphone-duo-folded"></div></div>
+  <figcaption>Each column is one rule for the meta line. Each row is one text size. Under each frame, the drawing reads its own meta line: lines, size, and characters hidden. The seller line and the fit line are today's in every column.</figcaption>
+</figure>
+
+<figure data-o="open">
+  <h2>The open Duo</h2>
+  <div class="scroller"><div style="display:flex; gap:20px; width:max-content;" id="open" data-device="iphone-duo-unfolded"></div></div>
+  <figcaption>On the open Duo the list shows envelope cells, and the candidates sit on the right page (<code>OrphanedView.detail</code>, 16 pt padding). The page is 455.5 pt wide, 10.5 pt narrower than the folded screen, so each option breaks as in its folded column, one or two characters sooner.</figcaption>
+</figure>
+
+<figure data-o="web">
+  <h2>The web row, for comparison</h2>
+  <div class="scroller"><div class="web" id="web"></div></div>
+  <figcaption>The web row at 375 px, the same sample. The web sets its text in px, so it does not grow with iOS text size. Its meta line is one line with "…" (<code>EnvelopeCard</code>, <code>whiteSpace: "nowrap"</code>, <code>textOverflow: "ellipsis"</code>). At 375 px the order number is cut away; it shows only in the hover title, which a phone has not got.</figcaption>
+  <div class="read" id="webread" style="font:12px/1.45 var(--mono); color:var(--inkSoft); margin-top:6px;"></div>
+</figure>
+
+<section class="sources" data-o="all">
+  <h2>Sizes and sources</h2>
+  <ul>
+    <li>Screen: folded Duo, 466 pt wide (<code>duo-fold-and-keyboard</code>, outer screen, re-measured 2026-11-08). Open Duo right page: 455.5 pt (same record). <code>layout.py devices</code> gives <code>unknown</code> for this repo.</li>
+    <li>Gutters: the list pads 16 pt (<code>OrphanedView.list</code>); the candidates block pads 8, 12, 12 (<code>EnvelopeCard.card</code>); a row pads 8 with an 8 pt gap to "This one" (<code>CandidateRow.body</code>). So the text column at the default size is 394 pt less "This one".</li>
+    <li>Type, at the default size: seller Cochin 14 bold, relative to Body; meta Menlo 10.5, relative to Caption 1; fit line Menlo 11, Caption 1; "This one" Menlo 11.5, Caption 1 (<code>CandidateRow.body</code>, <code>MiniLabel</code>). Header micro Menlo 11, entries Cochin 13.5 Body, tie line Cochin 12.5 Footnote (<code>EnvelopeCard.card</code>).</li>
+    <li>Scaling: <code>Font.custom(_:size:relativeTo:)</code> scales each size by its text style. Ratios from Apple's iOS Dynamic Type tables (typography page, read 2026-11-08, 200): Body 17, 23, 40, 53; Caption 1 12, 18, 32, 43; Footnote 13, 19, 33, 44, at Large (default), xxxLarge, AX3 and AX5. So the meta line draws at 10.5, 15.75, 28 and 37.6 pt.</li>
+    <li>Colours: candidate meta and fit line inkSoft, seller ink, row border line, tie line manilaInk on manila (<code>OrphanedPaint.token</code>, <code>ControlPaint</code>).</li>
+    <li>The audit's text size on 2026-10-27: unmeasured. <code>OrphanedUITests.launch</code> passes no <code>-UIPreferredContentSizeCategoryName</code>, so the tie audit ran at the simulator's own setting, which no record names. AX5 is drawn as the worst case; it is the size <code>DuoSpreadUITests.testFlatBarLabelsFitThePillAtAccessibilityXXXL</code> uses.</li>
+    <li>Width of "This one" at AX3 and AX5: unmeasured. Drawn at its natural width, capped at half the row, so it wraps to two lines there.</li>
+    <li>Line heights: Chromium's, not SwiftUI's. Row heights are estimates within a few points.</li>
+  </ul>
+</section>
+</main>
+<script>
+// One sample for every frame. The order numbers are invented, in the 8-6-5 shape of a TCGplayer order number.
+const ENV = { title: 'Envelope · 2026-11-03 · 3 cards', entries: ['Lightning Bolt', 'Counterspell', 'Brainstorm'] };
+const TIE = '2 packages fit these cards equally well — pick the right one yourself.';
+const CANDS = [
+  { seller: 'Alpha Cards', date: '2026-07-01', untracked: true, id: '7C41B09E-3A5F12-D80C4', fit: '3 of 3 cards · 2 more still owed' },
+  { seller: 'Beta Games', date: '2026-07-29', untracked: false, id: 'E93A6D21-0B7C48-15FAE', fit: '3 of 3 cards · 2 more still owed' },
+];
+const metaText = c => [c.date, c.untracked ? '○ untracked' : '', c.id].filter(Boolean).join(' · ');
+
+// iOS Dynamic Type sizes, Apple typography page (read 2026-11-08): Large is the default.
+const SIZES = {
+  default: { label: 'Default text size (Large)', note: 'Body 17, Caption 1 12', body: 17, caption: 12, footnote: 13, ax: false },
+  xxxl: { label: 'xxxLarge', note: 'the largest size outside the accessibility sizes. Body 23, Caption 1 18', body: 23, caption: 18, footnote: 19, ax: false },
+  ax3: { label: 'AX3 (Accessibility Large 3)', note: 'Body 40, Caption 1 32', body: 40, caption: 32, footnote: 33, ax: true },
+  ax5: { label: 'AX5 (AccessibilityXXXL, the largest)', note: 'Body 53, Caption 1 43. Drawn as the worst case: the 2026-10-27 audit size is unrecorded', body: 53, caption: 43, footnote: 44, ax: true },
+};
+const BASE = SIZES.default;
+const sz = (s, base, style) => +(base * s[style] / BASE[style]).toFixed(2);
+
+const OPTS = {
+  wrap: { name: 'Wrap (today)', how: 'Text with no line limit. It wraps at large text (CandidateRow.body).', verdict: ['pass', 'Audit: no clipped-text finding on this line (7c887ab, 2026-10-27)'], tag: ['tag-today', 'Today: wraps'] },
+  shrink: { name: 'Shrink to fit', how: 'One line; shrinks to half size, then "…". What the seller ships today.', verdict: ['fail', 'Audit: "Text clipped" (measured 2026-10-27)'], tag: ['tag-new', 'New: shrink, then …'] },
+  cut: { name: 'Cut at full size', how: 'One line with "…" at full size, as the web does (lineLimit 1, tail).', verdict: ['fail', 'Audit: "Text clipped", no element (measured 2026-10-28 on the Tally line)'], tag: ['tag-new', 'New: one line, …'] },
+  cutline: { name: 'Cut line', how: 'The Tally meta line’s CutLine: hard clip with a drawn "…"; wraps at accessibility sizes.', verdict: ['unk', 'Audit: passed on the Tally line (2026-10-28); this row unmeasured'], tag: ['tag-new', 'New: clip + drawn …'] },
+  capped: { name: 'Capped size', how: 'The line stops growing at xxxLarge (dynamicTypeSize(...xxxLarge)), and cuts as Cut line does.', verdict: ['unk', 'Audit: unmeasured'], tag: ['tag-new', 'New: size capped, cut'] },
+};
+const ONE_LINE = ['shrink', 'cut', 'cutline', 'capped'];
+const ORDER = ['wrap', ...ONE_LINE];
+
+// The meta line for one option at one text size. Returns [className, inner html, font size].
+function metaFor(opt, s, c) {
+  const t = metaText(c);
+  let size = sz(s, 10.5, 'caption');
+  if (opt === 'wrap' || (opt === 'cutline' && s.ax)) return ['wrap', t, size];
+  if (opt === 'capped') size = Math.min(size, sz(SIZES.xxxl, 10.5, 'caption'));
+  if (opt === 'shrink' || opt === 'cut') return ['one ellipsis', t, size];
+  return ['one cutline', `${t}<span class="dots" aria-hidden="true">…</span>`, size];
+}
+
+function card(opt, s, ids) {
+  const px = (b, st) => sz(s, b, st) + 'px';
+  const rows = CANDS.map((c, i) => {
+    const [cls, inner, msize] = metaFor(opt, s, c);
+    const tag = i === 0 && OPTS[opt].tag ? ` class="${OPTS[opt].tag[0]}" data-tag="${OPTS[opt].tag[1]}"` : '';
+    return `<div class="cand">
+      <div class="col">
+        <div class="seller" data-shrink style="font-size:${px(14, 'body')}">${c.seller}</div>
+        <div${tag}><div class="meta ${cls}" data-opt="${opt}" data-full="${metaText(c)}" style="font-size:${msize}px"${i === 0 && ids ? ` id="${ids}"` : ''}>${inner}</div></div>
+        <div class="fitline" style="font-size:${px(11, 'caption')}">${c.fit}</div>
+      </div>
+      <div class="mini" style="font-size:${px(11.5, 'caption')}">This one</div>
+    </div>`;
+  }).join('');
+  return `<div class="card">
+    <div class="ehead"><span class="micro" style="font-size:${px(11, 'caption')}; letter-spacing:1.32px">${ENV.title}</span>
+      <span class="mini" style="font-size:${px(11, 'caption')}; padding:4px 8px">Edit</span><span class="mini discard" style="font-size:${px(11, 'caption')}; padding:4px 8px">Discard</span></div>
+    <div class="entries" style="font-size:${px(13.5, 'body')}">${ENV.entries.map(e => `<span>${e}</span>`).join('')}</div>
+    <div class="rule"></div>
+    <div class="cands">
+      <span class="micro" style="font-size:${px(10.5, 'caption')}; letter-spacing:1.26px">Could have come from</span>
+      <div class="tie" style="font-size:${px(12.5, 'footnote')}">${TIE}</div>
+      ${rows}
+    </div>
+  </div>`;
+}
+
+function phone(opt, size, device = 'iphone-duo-folded', cls = '') {
+  return `<div class="phone ${cls}" data-device="${device}" data-shot="${opt}-${size}">
+    <div class="above">Masthead and "+ Record an envelope" above; not drawn</div>
+    ${card(opt, SIZES[size], device === 'iphone-duo-folded' && size === 'ax3' && opt === 'wrap' ? 'focus-wrap-row' : '')}
+  </div>`;
+}
+
+// Build the grid: two group heads, one head per option, then one row of frames per text size.
+const grid = document.getElementById('grid');
+grid.style.setProperty('--cols', ORDER.length);
+let html = `<div class="group today" id="focus-wrap" data-col="wrap">Wrap is right on the phone<small>Today. Every word stays on screen; rows grow at large text.</small></div>
+  <div class="group new" id="focus-one-line" data-col="one" style="grid-column:span ${ONE_LINE.length}">Keep looking for a one-line version<small>Four candidates a lane might try. Each says what the audit has measured.</small></div>`;
+html += ORDER.map(o => `<div class="colhead" data-col="${o}"><b>${OPTS[o].name}</b><span class="how">${OPTS[o].how}</span><span class="tagname ${OPTS[o].tag[0]}">${OPTS[o].tag[1]}</span><br><span class="verdict ${OPTS[o].verdict[0]}">${OPTS[o].verdict[1]}</span></div>`).join('');
+for (const [k, s] of Object.entries(SIZES)) {
+  html += `<div class="sizehead" data-size="${k}">${s.label}<small>${s.note}</small></div>`;
+  html += ORDER.map(o => `<div class="cell" data-col="${o}" data-size="${k}"><p class="cellcap"><b>${OPTS[o].name}</b> · ${s.label} · <span class="tagname ${OPTS[o].tag[0]}">${OPTS[o].tag[1]}</span></p>${phone(o, k)}<div class="read" data-read></div></div>`).join('');
+}
+grid.innerHTML = html;
+
+// The open Duo: the right page at the default size and AX5, Wrap only.
+document.getElementById('open').innerHTML = ['default', 'ax5'].map(k =>
+  `<div><p style="margin:0 0 6px;font-weight:600">${SIZES[k].label}, Wrap (today)</p>${phone('wrap', k, 'iphone-duo-unfolded', 'open')}</div>`).join('');
+
+// The web row: px sizes from src/app.jsx EnvelopeCard; 16 px page gutter (the page wrapper's padding).
+document.getElementById('web').innerHTML = `<div class="card">
+  <div class="ehead"><span class="micro" style="font-size:11px; letter-spacing:1.32px">${ENV.title}</span><span class="mini" style="font-size:11px;padding:4px 8px">Edit</span><span class="mini discard" style="font-size:11px;padding:4px 8px">Discard</span></div>
+  <div class="entries" style="font-size:13.5px">${ENV.entries.map(e => `<span>${e}</span>`).join('')}</div>
+  <div class="rule"></div>
+  <div class="cands"><span class="micro" style="font-size:10.5px; letter-spacing:1.26px">Could have come from</span><div class="tie" style="font-size:12.5px">${TIE}</div>
+  ${CANDS.map((c, i) => `<div class="cand"><div class="col"><div class="seller" style="font-size:14px">${c.seller}</div>
+    <div class="meta one ellipsis" style="font-size:10.5px" data-full="${metaText(c)}"${i === 0 ? ' id="focus-web-row"' : ''} title="${c.id}">${metaText(c)}</div>
+    <div class="fitline" style="font-size:11px">${c.fit}</div></div><div class="mini" style="font-size:11.5px; min-height:0; padding:8px">This one</div></div>`).join('')}
+  </div></div>`;
+
+// Shrink to fit: SwiftUI's minimumScaleFactor(0.5). Scale the whole line down to fit, never under half; past that, "…".
+function shrinkAll() {
+  document.querySelectorAll('.meta[data-opt="shrink"], .seller[data-shrink]').forEach(el => {
+    el.style.transform = ''; const base = parseFloat(el.dataset.base || el.style.fontSize); el.dataset.base = base;
+    el.style.fontSize = base + 'px';
+    const w = el.scrollWidth, room = el.clientWidth;
+    if (w > room + 0.5) el.style.fontSize = Math.max(base * 0.5, base * room / w) + 'px';
+  });
+}
+
+// Read each meta line from this drawing: lines, drawn size, and how many characters the line hides.
+function readAll() {
+  const report = (el) => {
+    const cs = getComputedStyle(el), fs = parseFloat(cs.fontSize), lh = parseFloat(cs.lineHeight) || fs * 1.164;
+    const full = el.dataset.full, cw = fs * 0.602;
+    const lines = Math.max(1, Math.round(el.getBoundingClientRect().height / lh));
+    let hidden = 0;
+    if (el.classList.contains('one')) {
+      const room = el.clientWidth;
+      if (full.length * cw > room + 0.5) hidden = full.length - Math.floor((room - cw) / cw);
+    }
+    return { fs, lines, hidden, full };
+  };
+  document.querySelectorAll('.cell').forEach(cell => {
+    const metas = [...cell.querySelectorAll('.meta')];
+    if (!metas[0] || !metas[0].getBoundingClientRect().height) return;
+    const r = metas.map(report), row = cell.querySelector('.cand').getBoundingClientRect().height;
+    const parts = r.map((x, i) => {
+      const what = x.hidden ? `<span class="bad">${x.hidden} characters hidden${x.hidden >= 24 ? ': the whole order number and more' : x.hidden >= 21 ? ': the whole order number' : ': part of the order number'}</span>` : '<span class="ok">nothing hidden</span>';
+      const small = x.fs < 10.5 ? ' <span class="bad">(smaller than at the default size)</span>' : '';
+      return `row ${i + 1}: ${x.lines} line${x.lines > 1 ? 's' : ''} at ${x.fs.toFixed(1)} pt${small}, ${what}`;
+    });
+    cell.querySelector('[data-read]').innerHTML = 'In this drawing: ' + parts.join('<br>') + `<br>row 1 height ${Math.round(row)} pt`;
+  });
+  // The summary: row 1 of each option at each size, read from the frames above. Hidden frames are skipped.
+  const keys = Object.keys(SIZES), cellOf = (o, k) => document.querySelector(`.cell[data-col="${o}"][data-size="${k}"]`);
+  let t = `<tr><th>Option</th>${keys.map(k => `<th>${SIZES[k].label.split(' (')[0]}</th>`).join('')}</tr>`;
+  for (const o of ORDER) {
+    t += `<tr><th>${OPTS[o].name}</th>` + keys.map(k => {
+      const m = cellOf(o, k).querySelector('.meta'); if (!m.getBoundingClientRect().height) return '<td>not shown</td>';
+      const x = report(m), small = x.fs < 10.5;
+      const txt = `${x.lines} line${x.lines > 1 ? 's' : ''}, ${x.fs.toFixed(1)} pt` + (x.hidden ? `, ${x.hidden} characters hidden` : ', all shown') + (small ? ', smaller than default' : '') + `; row ${Math.round(m.closest('.cand').getBoundingClientRect().height)} pt tall`;
+      return `<td class="${x.hidden || small ? 'bad' : 'ok'}">${txt}</td>`;
+    }).join('') + '</tr>';
+  }
+  document.getElementById('summary').innerHTML = t;
+  const room = keys.map(k => { const m = cellOf('wrap', k).querySelector('.meta'); if (!m.getBoundingClientRect().height) return '';
+    const fs = parseFloat(getComputedStyle(m).fontSize); return `${SIZES[k].label.split(' (')[0]}: column ${Math.round(m.clientWidth)} pt, the order number alone needs ${Math.round(21 * 0.602 * fs)} pt`; }).filter(Boolean);
+  document.getElementById('room').textContent = 'Room for the line in this drawing. ' + room.join('; ') + '. Past the size where the order number alone is wider than the column, no one-line rule shows it whole at full size.';
+  const w = document.querySelector('#focus-web-row'); if (w) { const x = report(w);
+    document.getElementById('webread').innerHTML = `In this drawing: row 1 meta ${x.lines} line at ${x.fs} px, ${x.hidden ? x.hidden + ' characters hidden' : 'nothing hidden'}.`; }
+}
+
+// Deep links: #o=<option> and #size=<size>, alone or joined with &. No hash shows all. A hide button removes one option.
+const hidden = new Set();
+const param = k => { const m = location.hash.match(new RegExp('(?:^#|&)' + k + '=([\\w-]+)')); return m && m[1]; };
+function route() {
+  const o = param('o'), size = param('size');
+  const showCol = c => (!o || o === c || (c === 'one' && ONE_LINE.includes(o))) && !hidden.has(c);
+  const live = ORDER.filter(c => showCol(c));
+  document.querySelectorAll('#grid [data-col]').forEach(el => {
+    const c = el.dataset.col;
+    el.hidden = c === 'one' ? !ONE_LINE.some(showCol) : !showCol(c);
+    if (c === 'one') el.style.gridColumn = 'span ' + Math.max(1, ONE_LINE.filter(showCol).length);
+    if (el.dataset.size && size && el.dataset.size !== size) el.hidden = true;
+  });
+  document.querySelectorAll('#grid .sizehead').forEach(el => { el.hidden = size && el.dataset.size !== size; });
+  grid.style.setProperty('--cols', Math.max(1, live.length));
+  document.getElementById('compare').hidden = o === 'web';
+  document.querySelector('[data-o="open"]').hidden = !!o && o !== 'wrap';
+  document.querySelector('[data-o="web"]').hidden = !!o && o !== 'web';
+  document.querySelector('[data-o="all"]').hidden = !!o || !!size;
+  document.querySelectorAll('nav a').forEach(a => {
+    const h = a.getAttribute('href');
+    const on = h === '#' ? !o && !size : h.startsWith('#o=') ? h.slice(3) === o : h.slice(6) === size;
+    a.setAttribute('aria-current', String(on));
+  });
+  shrinkAll(); readAll();
+}
+document.querySelectorAll('nav a').forEach(a => a.addEventListener('click', e => {
+  const h = a.getAttribute('href'); if (h === '#') return;
+  e.preventDefault();
+  const o = h.startsWith('#o=') ? h.slice(3) : param('o'), size = h.startsWith('#size=') ? h.slice(6) : param('size');
+  location.hash = [o && 'o=' + o, size && 'size=' + size].filter(Boolean).join('&');
+}));
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide, name = b.textContent.replace(/^(Hide|Show) /, '');
+  hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + name; route();
+}));
+addEventListener('hashchange', route);
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(route); route();
+</script>
+</body>
+</html>

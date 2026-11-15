@@ -1,6 +1,6 @@
 # The check tick is written, not popped in
 
-The check tick draws as one stroke, from left to right. It takes 300ms. That ceiling is not a preference. The tick fires hundreds of times on a mail day. Anything slower feels like latency. The exact stroke duration is in `motion-timings`.
+The check tick draws as one stroke, from left to right. It takes 300ms. That ceiling is not a preference. The tick fires hundreds of times when the mail comes. Anything slower feels like latency. The exact stroke duration is in `motion-timings`.
 
 **Holds while:** `.mdl-nib` in `src/app.jsx` draws the tick with `stroke-dashoffset` over 300ms, and the glyph is an SVG `path`.
 

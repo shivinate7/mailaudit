@@ -6,10 +6,10 @@
 //   0  the workflow file is readable and parses in the indentation subset;
 //   1  the rollup job exists with no name key, so its check name is its id;
 //   2  its job-level if: is exactly always() && !github.event.pull_request.draft;
-//   3a its step pins the shared action to a 40-hex sha;
+//   3a its step pins the shared action at @stable;
 //   3b its with: needs is ${{ toJSON(needs) }};
-//   3c every claude-settings pin in the file names its expected sha: STE_LINT_PIN for ste-lint,
-//      the rollup's sha for the rest;
+//   3c every claude-settings pin in the file names @stable, and checks.yml has one ste-lint
+//      uses: at @stable;
 //   4  its needs are every other job except ci-done and milestone-proof (staged, see i2);
 //   5  no job it needs has a job-level if: with github.event_name or .outputs.;
 //   6  the stamp's merge.requiredChecks is exactly ["all-jobs-passed"];
@@ -20,12 +20,13 @@
 //      and workflow_dispatch, nothing else;
 //  10  its permissions are exactly actions: read, contents: read and issues: write,
 //      at job or workflow level;
-//  11  its one job has one step, which uses the shared ci-alarm action at the shared
-//      pin, with no checkout and a timeout-minutes;
-//  12  every claude-settings pin in every .github/workflows/*.yml names its expected sha (expectedPin),
-//      read from the repo, so a workflow added later is covered too.
+//  10b its top-level permissions are read-only, so issues: write sits on the job;
+//  11  its one job has one step, which uses the shared ci-alarm action at @stable, with no
+//      checkout and a timeout-minutes;
+//  12  every claude-settings pin in every .github/workflows/*.yml names @stable, read from the
+//      repo, so a workflow added later is covered too.
 //  13  checks.yml has a job mutation-report, which runs the shared mutation report;
-//  14  its step uses the shared action at ACTION_PIN with profile: mailaudit;
+//  14  its step uses the shared action at @stable with profile: mailaudit;
 //  15  its checkout has fetch-depth: 0 and persist-credentials: false;
 //  16  an actions/setup-node step with node-version 22 runs before the action;
 //  17  its job-level if: is only the draft guard;
@@ -39,6 +40,8 @@
 //      cannot read that history, so the check is unknown there, and an unknown read is red in CI
 //      (decision ci-unknown-is-red);
 //  24  every defect's file is in the repo. This one is outside the brief.
+//  25  the ship job of testflight.yml has one actions/checkout step, and its with: ref is
+//      ${{ github.ref }}, so a run queued behind a merge checks out the branch tip at run start.
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in checks.yml
 // are checked the same way, with letter ids:
@@ -74,6 +77,19 @@
 //       value is 'on' exactly when milestone-proof is in the rollup's needs;
 //   m2  no merge.ignoreChecks entry in the stamp names a workflow, a job the rollup needs, or a required check.
 //
+// The suite job runs as a matrix of shards under one job id. A step with no shard if: runs in every
+// shard, and a step in no shard never runs, so CI stays green when a check is lost or doubled. These
+// ids read the split:
+//   s1  the matrix lists at least two distinct whole-number shards;
+//   s2  each checkout, setup-node and npm ci step has no shard if:, so every shard has a tree and its modules;
+//   s3  each other step has if: matrix.shard == N with N a listed shard, so it runs in exactly one shard;
+//   s4  each command in SUITE_WORK is exactly one step, so no check is dropped and none runs twice;
+//   s5  each part of the app suite (PART_COUNT in test/app-parts.mjs) runs in exactly one step;
+//   s6  MAILDAY_TEST_PART picks one part, or every part when unset, and refuses any other value;
+//   s7  the docs job runs npm run check:docs --silent in exactly one step, so the part logs are summed;
+//   s8  the rollup and ci-done each need the docs job.
+// A new check in the suite job goes into one shard and into SUITE_WORK in the same commit.
+//
 // No YAML library is in node_modules, and none may be added. The workflow is read as
 // text by indentation: jobs sit under jobs: at 2 spaces, job keys at 4, step keys at 8.
 // A # starts a comment only after a space and outside a quoted scalar. A quote starts a
@@ -92,54 +108,52 @@ import { existsSync, readFileSync, readdirSync } from "node:fs";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { failLine } from "./fail-line.mjs";
+import { PART_COUNT, partFromEnv, partGate } from "./app-parts.mjs";
 
 const ROOT = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const WORKFLOW = resolve(ROOT, process.env.CI_WORKFLOW || ".github/workflows/checks.yml");
 const STAMP = resolve(ROOT, process.env.CI_STAMP || ".github/stamp.json");
 const MILESTONE = resolve(ROOT, process.env.MILESTONE_WORKFLOW || ".github/workflows/milestone.yml");
 const ALARM = resolve(ROOT, ".github/workflows/ci-alarm.yml");
+const TESTFLIGHT_WORKFLOW = resolve(ROOT, ".github/workflows/testflight.yml");
 
 const ROLLUP = "all-jobs-passed";
 const CI_DONE = "ci-done";
 const ACTIONS = "shivinate7/claude-settings/actions/";
 const ALARM_ACTION = ACTIONS + "ci-alarm";
 const STE_LINT = ACTIONS + "ste-lint";
-// The shared action pin. Every claude-settings pin in checks.yml carries this sha, except ste-lint.
-const ACTION_PIN = "380a24b5fa9ab78b973892ddfe3a95eaff68601b";
-// ste-lint follows claude-settings main on its own, not ACTION_PIN (decision action-pins-follow-sessions).
-// STE_LINT_PIN is not written here. steLintPinIn reads it from checks.yml, so a pin move is one edit there.
-// The sha a claude-settings pin must name: STE_LINT_PIN for ste-lint, the shared sha for the rest.
-// One home for the ste-lint exception, read by assertions 3c and 12.
-function expectedPin(action, shared) {
-  return action === "ste-lint" ? STE_LINT_PIN : shared;
-}
-// The one sha that checks.yml's ste-lint uses line names. A pin is a uses: value, so a comment
-// or a run: block that names one does not count. No such line, two shas, or a non-sha throws
-// here, before any assertion runs, so assertions 3c and 12 never compare against a missing pin.
-function steLintPinIn(text) {
-  if (text === null) throw new Error(`ci-wiring: cannot read ${WORKFLOW}, so no ste-lint pin can be read`);
+// The ref every claude-settings action is called at: the branch stable, not a sha (owner ruling R44 part 1).
+// Written as a literal, never read from checks.yml, so a workflow moved to another ref fails against it.
+const ACTION_PIN = "stable";
+// A 40-hex call to a claude-settings action: the form the old rule wanted, now a negative case.
+const SHA_CALL = "f".repeat(40);
+// The ste-lint uses: refs checks.yml names. A pin is a uses: value, so a comment or a run: block
+// that names one does not count. A file that is missing or does not parse gives none, so the
+// repo-files block fails its 3c expect by name and nothing throws at load.
+function steLintRefsIn(text) {
+  if (text === null) return [];
   let uses;
   try {
     uses = usesValues(parseWorkflow(text), []);
-  } catch (e) {
-    throw new Error(`ci-wiring: ${WORKFLOW} does not parse, so no ste-lint pin can be read: ${e.message}`);
+  } catch {
+    return [];
   }
-  const refs = [
+  return [
     ...new Set(
       uses.filter((u) => u === STE_LINT || u.startsWith(STE_LINT + "@")).map((u) => u.slice(STE_LINT.length + 1))
     ),
   ];
-  if (refs.length === 0) throw new Error(`ci-wiring: ${WORKFLOW} has no ${STE_LINT} uses: line, so no ste-lint pin can be read`);
-  if (refs.length > 1) throw new Error(`ci-wiring: ${WORKFLOW} names ${refs.length} ste-lint shas (${refs.join(", ")}); keep one`);
-  if (!SHA.test(refs[0])) throw new Error(`ci-wiring: the ste-lint pin in ${WORKFLOW} is not a 40-hex sha: "${refs[0]}"`);
-  return refs[0];
 }
+// Assertion 3c for ste-lint: checks.yml has exactly one ste-lint uses:, and it names ACTION_PIN.
+const steLintAtStable = (text) => {
+  const refs = steLintRefsIn(text);
+  return refs.length === 1 && refs[0] === ACTION_PIN;
+};
 const ROLLUP_IF = "always() && !github.event.pull_request.draft";
 const DRAFT_GUARD = "!github.event.pull_request.draft";
 // A needed job may read the draft guard, since a draft run skips it on purpose. An
 // event name or a job output in its job-level if: skips a run that should pass.
 const FORBIDDEN_IF = ["github.event_name", ".outputs."];
-const SHA = /^[0-9a-f]{40}$/;
 const KEY = /^([A-Za-z0-9_.-]+):(?:\s+(.*))?$/;
 const BLOCK = /^[|>][-+0-9]*$/;
 const isMap = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
@@ -329,8 +343,8 @@ function workflowChecks(text) {
   const rollSha = rollUses === undefined ? undefined : rollUses.slice(rollPin.length);
   add(
     "3a",
-    `rollup step uses ${ACTIONS}${ROLLUP} pinned to a 40-hex sha`,
-    rollSha !== undefined && SHA.test(rollSha),
+    `rollup step uses ${ACTIONS}${ROLLUP} at @${ACTION_PIN}`,
+    rollSha === ACTION_PIN,
     `uses is ${JSON.stringify(rollUses ?? null)}`
   );
 
@@ -350,15 +364,12 @@ function workflowChecks(text) {
       }
     }
   }
-  const off = others.filter((o) => {
-    const action = o.uses.slice(ACTIONS.length).split("@")[0];
-    return o.uses.split("@")[1] !== expectedPin(action, rollSha);
-  });
+  const off = others.filter((o) => o.uses.split("@")[1] !== ACTION_PIN);
   add(
     "3c",
-    "every claude-settings pin names its expected sha: STE_LINT_PIN for ste-lint, the rollup's for the rest",
-    rollSha !== undefined && off.length === 0,
-    rollSha === undefined ? "no rollup sha to compare" : off.map((o) => `${o.id} ${o.uses}`).join("; ")
+    `every claude-settings pin in the file names @${ACTION_PIN}`,
+    off.length === 0,
+    off.map((o) => `${o.id} ${o.uses}`).join("; ")
   );
 
   // Assertions 5 and 8 check the set assertion 4 names, so they still bite when the
@@ -434,6 +445,7 @@ function stampCheck(text) {
 const ALARM_WHAT = {
   9: "ci-alarm.yml triggers are schedule (one cron, after checks.yml's nightly cron) and workflow_dispatch, nothing else",
   10: "ci-alarm.yml permissions are exactly actions: read, contents: read and issues: write, at job or workflow level",
+  "10b": "ci-alarm.yml top-level permissions are a map with no write value (the issues write lives on the job)",
   11: "ci-alarm.yml has one job with one step, which uses the shared ci-alarm action at the shared pin, with no checkout and a timeout-minutes",
 };
 const CRON_TIME = /^(\d{1,2}) (\d{1,2}) \* \* \*$/;
@@ -491,6 +503,12 @@ function alarmChecks(alarmText, nightlyText) {
     perms.contents === "read" &&
     perms.issues === "write";
   add("10", permsOk, `effective permissions: ${JSON.stringify(perms ?? null)}`);
+  const top = alarm.permissions;
+  add(
+    "10b",
+    isMap(top) && Object.keys(top).length > 0 && Object.values(top).every((v) => v === "read"),
+    `top-level permissions: ${JSON.stringify(top ?? null)}`
+  );
 
   const steps = Array.isArray(job?.steps) ? job.steps : [];
   const step = steps.length === 1 && isMap(steps[0]) ? steps[0] : {};
@@ -1239,9 +1257,8 @@ const readOrNull = (path) => {
   }
 };
 
-// checks.yml, read once. The ste-lint pin and every repo check on this file use this text.
+// checks.yml, read once. Every repo check on this file uses this text.
 const WORKFLOW_TEXT = readOrNull(WORKFLOW);
-const STE_LINT_PIN = steLintPinIn(WORKFLOW_TEXT);
 
 // The repo's own files.
 {
@@ -1251,6 +1268,7 @@ const STE_LINT_PIN = steLintPinIn(WORKFLOW_TEXT);
   if (wf === null) expect(`cannot read ${WORKFLOW}`, false);
   if (st === null) expect(`cannot read ${STAMP}`, false);
   for (const r of checkAll(wf, st)) expect(r.label, r.ok, r.detail);
+  expect(`3c checks.yml has one ste-lint uses: at @${ACTION_PIN}`, steLintAtStable(wf), `ste-lint refs: ${JSON.stringify(steLintRefsIn(wf))}`);
   for (const r of alarmChecks(al, wf)) expect(r.label, r.ok, r.detail);
 }
 
@@ -1378,7 +1396,7 @@ const PRE_TEXT =
     STE_IF,
     "    runs-on: ubuntu-latest",
     "    steps:",
-    `      - uses: ${ACTIONS}ste-lint@${STE_LINT_PIN} # main 2026-11-03`,
+    `      - uses: ${ACTIONS}ste-lint@${ACTION_PIN} # tracks claude-settings stable`,
     "  ci-done:",
     "    needs: [suite, screens, scope, native, zizmor, checks]",
     "    if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}",
@@ -1423,6 +1441,8 @@ function mutate(src, from, to) {
   if (!src.includes(from)) throw new Error(`fixture edit did not apply: ${from}`);
   return src.replace(from, () => to);
 }
+// Moves every claude-settings call in a fixture to one ref, the rollup's included.
+const everyPinAt = (src, ref) => src.split("@" + ACTION_PIN).join("@" + ref);
 
 {
   const bad = checkAll(GOOD, GOOD_STAMP).filter((r) => !r.ok);
@@ -1433,6 +1453,19 @@ function mutate(src, from, to) {
   );
 }
 
+// The ste-lint existence and ref claim, which the repo-files block checks against the real file.
+expect("fixture good: one ste-lint uses at @stable passes 3c", steLintAtStable(GOOD), `refs ${JSON.stringify(steLintRefsIn(GOOD))}`);
+expect(
+  "fixture red: no ste-lint uses line fails 3c",
+  !steLintAtStable(mutate(GOOD, "      - uses: " + ACTIONS + "ste-lint@" + ACTION_PIN + " # tracks claude-settings stable\n", "")),
+  "a checks.yml without ste-lint still passes"
+);
+expect(
+  "fixture red: a ste-lint uses at a 40-hex sha fails 3c",
+  !steLintAtStable(mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@" + SHA_CALL)),
+  "a 40-hex ste-lint call still passes"
+);
+
 const RED = [
   ["rollup job missing", PRE_TEXT, GOOD_STAMP, "1"],
   ["rollup job has a name key", wf({ nameLine: "    name: all jobs passed" }), GOOD_STAMP, "1"],
@@ -1442,16 +1475,14 @@ const RED = [
   ["rollup needs milestone-proof before its first green run", wf({ needs: [...NEEDS, PROOF] }), GOOD_STAMP, "4"],
   ["rollup with: needs is not toJSON(needs)", wf({ withNeeds: "${{ toJSON(github) }}" }), GOOD_STAMP, "3b"],
   ["rollup pinned to @main", wf({ pin: ACTIONS + ROLLUP + "@main" }), GOOD_STAMP, "3a"],
+  ["rollup pinned to a 40-hex sha", wf({ pin: ACTIONS + ROLLUP + "@" + SHA_CALL }), GOOD_STAMP, "3a"],
+  ["every claude-settings pin at one 40-hex sha", everyPinAt(GOOD, SHA_CALL), GOOD_STAMP, "3a"],
+  ["every claude-settings pin at @main", everyPinAt(GOOD, "main"), GOOD_STAMP, "3a"],
+  ["ste-lint pinned to a 40-hex sha", mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@" + SHA_CALL), GOOD_STAMP, "3c"],
+  ["ste-lint pinned to @main", mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@main"), GOOD_STAMP, "3c"],
   [
-    "rollup sha differs from the other pins",
-    wf({ pin: ACTIONS + ROLLUP + "@" + "f".repeat(40) }),
-    GOOD_STAMP,
-    "3c",
-  ],
-  ["ste-lint pinned to ACTION_PIN", mutate(GOOD, "ste-lint@" + STE_LINT_PIN, "ste-lint@" + ACTION_PIN), GOOD_STAMP, "3c"],
-  [
-    "ci-done-comment pinned to STE_LINT_PIN",
-    mutate(GOOD, "ci-done-comment@" + ACTION_PIN, "ci-done-comment@" + STE_LINT_PIN),
+    "ci-done-comment pinned to a 40-hex sha",
+    mutate(GOOD, "ci-done-comment@" + ACTION_PIN, "ci-done-comment@" + SHA_CALL),
     GOOD_STAMP,
     "3c",
   ],
@@ -1724,10 +1755,13 @@ const GOOD_ALARM = [
   "permissions:",
   "  actions: read",
   "  contents: read",
-  "  issues: write",
   "jobs:",
   "  alarm:",
   "    runs-on: ubuntu-latest",
+  "    permissions:",
+  "      actions: read",
+  "      contents: read",
+  "      issues: write",
   "    timeout-minutes: 5",
   "    steps:",
   '      - name: "Alarm # on a red main"',
@@ -2328,50 +2362,58 @@ const ALARM_RED = [
   ["workflow_dispatch missing", mutate(GOOD_ALARM, "  workflow_dispatch:\n", ""), NIGHTLY_FIXTURE, "9"],
   [
     "permissions gain pull-requests: read",
-    mutate(GOOD_ALARM, "  issues: write\n", "  issues: write\n  pull-requests: read\n"),
+    mutate(GOOD_ALARM, "      issues: write\n", "      issues: write\n      pull-requests: read\n"),
     NIGHTLY_FIXTURE,
     "10",
   ],
   [
     "contents is write, not read",
-    mutate(GOOD_ALARM, "  contents: read\n", "  contents: write\n"),
+    mutate(GOOD_ALARM, "      contents: read\n", "      contents: write\n"),
     NIGHTLY_FIXTURE,
     "10",
   ],
   [
     "contents permission missing",
-    mutate(GOOD_ALARM, "  contents: read\n", ""),
+    mutate(GOOD_ALARM, "      contents: read\n", ""),
     NIGHTLY_FIXTURE,
     "10",
   ],
   [
     "permissions are write-all",
-    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\n  issues: write\n", "permissions: write-all\n"),
+    mutate(GOOD_ALARM, "    permissions:\n      actions: read\n      contents: read\n      issues: write\n", "    permissions: write-all\n"),
     NIGHTLY_FIXTURE,
     "10",
   ],
-  ["issues is read, not write", mutate(GOOD_ALARM, "  issues: write", "  issues: read"), NIGHTLY_FIXTURE, "10"],
-  ["issues permission missing", mutate(GOOD_ALARM, "  issues: write\n", ""), NIGHTLY_FIXTURE, "10"],
+  ["issues is read, not write", mutate(GOOD_ALARM, "      issues: write", "      issues: read"), NIGHTLY_FIXTURE, "10"],
+  ["issues permission missing", mutate(GOOD_ALARM, "      issues: write\n", ""), NIGHTLY_FIXTURE, "10"],
   [
     "permissions are an empty map",
-    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\n  issues: write\n", "permissions: {}\n"),
+    mutate(GOOD_ALARM, "    permissions:\n      actions: read\n      contents: read\n      issues: write\n", "    permissions: {}\n"),
     NIGHTLY_FIXTURE,
     "10",
   ],
   [
     "job-level permissions drop issues",
-    mutate(GOOD_ALARM, "    timeout-minutes: 5\n", "    permissions: {actions: read, contents: read}\n    timeout-minutes: 5\n"),
+    mutate(GOOD_ALARM, "    permissions:\n      actions: read\n      contents: read\n      issues: write\n", "    permissions: {actions: read, contents: read}\n"),
     NIGHTLY_FIXTURE,
     "10",
   ],
   [
     "flow map repeats a key",
-    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\n  issues: write\n", "permissions: {actions: read, actions: write, issues: write}\n"),
+    mutate(GOOD_ALARM, "    permissions:\n      actions: read\n      contents: read\n      issues: write\n", "    permissions: {actions: read, actions: write, issues: write}\n"),
     NIGHTLY_FIXTURE,
     "10",
   ],
+  [
+    "top-level permissions carry issues: write",
+    mutate(GOOD_ALARM, "  contents: read\njobs:", "  contents: read\n  issues: write\njobs:"),
+    NIGHTLY_FIXTURE,
+    "10b",
+  ],
+  ["top-level permissions are write-all", mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\njobs:", "permissions: write-all\njobs:"), NIGHTLY_FIXTURE, "10b"],
+  ["top-level permissions are missing", mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\njobs:", "jobs:"), NIGHTLY_FIXTURE, "10b"],
   ["pinned to @main", mutate(GOOD_ALARM, "@" + ACTION_PIN, "@main"), NIGHTLY_FIXTURE, "11"],
-  ["pinned to another sha", mutate(GOOD_ALARM, ACTION_PIN, "f".repeat(40)), NIGHTLY_FIXTURE, "11"],
+  ["pinned to a 40-hex sha", mutate(GOOD_ALARM, "@" + ACTION_PIN, "@" + SHA_CALL), NIGHTLY_FIXTURE, "11"],
   [
     "checkout step added",
     mutate(
@@ -2405,16 +2447,12 @@ for (const [name, text, nightly, id] of ALARM_RED) {
 
 const ALARM_GREEN = [
   [
-    "permissions in flow form",
-    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\n  issues: write\n", "permissions: {actions: read, contents: read, issues: write}\n"),
+    "job permissions in flow form",
+    mutate(GOOD_ALARM, "    permissions:\n      actions: read\n      contents: read\n      issues: write\n", "    permissions: {actions: read, contents: read, issues: write}\n"),
   ],
   [
-    "permissions at job level only",
-    mutate(
-      mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\n  issues: write\n", ""),
-      "    timeout-minutes: 5\n",
-      "    permissions: {actions: read, contents: read, issues: write}\n    timeout-minutes: 5\n"
-    ),
+    "top-level permissions in flow form",
+    mutate(GOOD_ALARM, "permissions:\n  actions: read\n  contents: read\njobs:", "permissions: {actions: read, contents: read}\njobs:"),
   ],
   [
     "timeout-minutes on the step",
@@ -2435,7 +2473,7 @@ for (const [name, text] of ALARM_GREEN) {
   );
 }
 
-// Assertion 12: every claude-settings pin in every workflow file names its expected sha. The
+// Assertion 12: every claude-settings pin in every workflow file names @stable. The
 // files are read from the repo, so a workflow added later is covered too. The scan must
 // find a pin before the pins are compared, or an empty scan would pass.
 // A pin is a uses: value, read by the workflow parser above, so a comment or a run: block
@@ -2462,7 +2500,7 @@ function pinRefs(files) {
   return found;
 }
 const offPins = (found) =>
-  found.filter((f) => f.ref !== expectedPin(f.action, ACTION_PIN)).map((f) => `${f.where} ${f.action}@${f.ref ?? "no ref"}`);
+  found.filter((f) => f.ref !== ACTION_PIN).map((f) => `${f.where} ${f.action}@${f.ref ?? "no ref"}`);
 
 {
   let files = null;
@@ -2486,17 +2524,17 @@ const offPins = (found) =>
     if (found !== null) {
       expect("12 the scan finds a claude-settings pin in the workflow files", found.length > 0, "no pin found");
       const off = offPins(found);
-      expect("12 every claude-settings pin in every workflow file names its expected sha", off.length === 0, off.join("; "));
+      expect("12 every claude-settings pin in every workflow file names @stable", off.length === 0, off.join("; "));
     }
   }
 }
 
 const PIN_RED = [
-  ["a test workflow pin names another sha", ".github/workflows/checks.yml", mutate(GOOD, "ste-lint@" + STE_LINT_PIN, "ste-lint@" + "f".repeat(40)), "ste-lint"],
-  ["a new workflow pin names another sha", ".github/workflows/new-check.yml", mutate(GOOD_ALARM, "@" + ACTION_PIN, "@" + "f".repeat(40)), "ci-alarm"],
+  ["a test workflow pin names a 40-hex sha", ".github/workflows/checks.yml", mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@" + SHA_CALL), "ste-lint"],
+  ["a new workflow pin names a 40-hex sha", ".github/workflows/new-check.yml", mutate(GOOD_ALARM, "@" + ACTION_PIN, "@" + SHA_CALL), "ci-alarm"],
   ["a pin has no ref", ".github/workflows/ci-alarm.yml", mutate(GOOD_ALARM, "@" + ACTION_PIN, ""), "ci-alarm"],
-  ["ste-lint pinned to ACTION_PIN", ".github/workflows/checks.yml", mutate(GOOD, "ste-lint@" + STE_LINT_PIN, "ste-lint@" + ACTION_PIN), "ste-lint"],
-  ["ci-done-comment pinned to STE_LINT_PIN", ".github/workflows/checks.yml", mutate(GOOD, "ci-done-comment@" + ACTION_PIN, "ci-done-comment@" + STE_LINT_PIN), "ci-done-comment"],
+  ["ste-lint pinned to @main", ".github/workflows/checks.yml", mutate(GOOD, "ste-lint@" + ACTION_PIN, "ste-lint@main"), "ste-lint"],
+  ["ci-done-comment pinned to @main", ".github/workflows/checks.yml", mutate(GOOD, "ci-done-comment@" + ACTION_PIN, "ci-done-comment@main"), "ci-done-comment"],
 ];
 for (const [name, file, text, action] of PIN_RED) {
   const off = offPins(pinRefs([{ name: file, text }]));
@@ -2504,10 +2542,10 @@ for (const [name, file, text, action] of PIN_RED) {
 }
 
 const PIN_GREEN = [
-  ["every pin names its expected sha", [{ name: "checks.yml", text: GOOD }, { name: "ci-alarm.yml", text: GOOD_ALARM }]],
+  ["every pin names @stable", [{ name: "checks.yml", text: GOOD }, { name: "ci-alarm.yml", text: GOOD_ALARM }]],
   [
-    "a quoted pin names its expected sha",
-    [{ name: "x.yml", text: `jobs:\n  j:\n    steps:\n      - uses: "shivinate7/claude-settings/actions/ste-lint@${STE_LINT_PIN}"\n` }],
+    "a quoted pin names @stable",
+    [{ name: "x.yml", text: `jobs:\n  j:\n    steps:\n      - uses: "shivinate7/claude-settings/actions/ste-lint@${ACTION_PIN}"\n` }],
   ],
   [
     "a comment and a run block name another pin",
@@ -2555,6 +2593,28 @@ function parsedJobs(text) {
 const jobOf = (jobs, id) => (jobs !== null && Object.hasOwn(jobs, id) && isMap(jobs[id]) ? jobs[id] : undefined);
 const needsIn = (jobs, id) => needsOf(jobOf(jobs, id));
 
+// Assertion 25: the ship job of testflight.yml checks out with ref: ${{ github.ref }}. A manual run can
+// queue for a runner while a merge moves main, so the checkout names the branch and builds its tip at
+// run start. The main-only guard in Pick apps reads GITHUB_REF and is a different check.
+const TF_SHIP = "ship";
+const TF_REF = "${{ github.ref }}";
+// The one result for assertion 25. Each failure names its own cause; the scope (the ship job, its one
+// checkout) is checked before the subject (the ref).
+function testflightRefCheck(text) {
+  const id = "25";
+  const label = `${id} testflight.yml's ${TF_SHIP} job checks out with ref: ${TF_REF}`;
+  const fail = (detail) => ({ id, label, ok: false, detail });
+  if (text === null) return fail(`cannot read ${TESTFLIGHT_WORKFLOW}`);
+  const jobs = parsedJobs(text);
+  if (jobs === null) return fail(`${TESTFLIGHT_WORKFLOW} is outside the parser's subset`);
+  const ship = jobOf(jobs, TF_SHIP);
+  if (ship === undefined) return fail(`no ${TF_SHIP} job`);
+  const checkouts = steps(ship).filter((s) => typeof s.uses === "string" && s.uses.startsWith(CHECKOUT));
+  if (checkouts.length !== 1) return fail(`${TF_SHIP} job has ${checkouts.length} checkout steps; expected 1`);
+  const cw = isMap(checkouts[0].with) ? checkouts[0].with : {};
+  return { id, label, ok: cw.ref === TF_REF, detail: `checkout with: ${JSON.stringify(cw)}` };
+}
+
 function mutationJobChecks(text) {
   const out = [];
   const add = (id, what, ok, detail = "") => out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail });
@@ -2574,7 +2634,7 @@ function mutationJobChecks(text) {
   const profile = action && isMap(action.with) ? action.with.profile : undefined;
   add(
     "14",
-    `its step uses ${MUTATION_ACTION} at ACTION_PIN with profile: ${MUTATION_PROFILE}`,
+    `its step uses ${MUTATION_ACTION} at @${ACTION_PIN} with profile: ${MUTATION_PROFILE}`,
     ref === ACTION_PIN && profile === MUTATION_PROFILE,
     `uses ${JSON.stringify(action?.uses ?? null)}; profile ${JSON.stringify(profile ?? null)}`
   );
@@ -2625,6 +2685,213 @@ function needsChecks(text) {
   const jobs = parsedJobs(text);
   const done = needsIn(jobs, CI_DONE);
   add("19", `${CI_DONE} needs ${MUTATION_JOB}`, done.includes(MUTATION_JOB), `ci-done needs ${JSON.stringify(done)}`);
+  return out;
+}
+
+// ---- The suite job's shards: assertions s1 to s6 ----
+const SUITE_JOB = "suite";
+// Every command the suite job runs, bar the app suite (s5 reads that one) and check:docs, which sums the
+// part logs of three runners and so runs in the docs job (s7). Each is one step, in one shard. A command
+// that moves to another shard stays here; one that is retired leaves.
+const SUITE_WORK = [
+  "npm run check:rules",
+  "npm run test:rules",
+  "npm run test:recent-rules",
+  "npm run test:check-docs",
+  "npm run test:check-records",
+  "npm run test:worker",
+  "npm run test:extension",
+  "node extension/build.mjs --check",
+  "npm run test:send-key",
+  "npm run test:view-rules",
+  "npm run test:ci-wiring",
+  "npm run test:fail-line",
+  "npm run test:tests-for",
+  "npm run test:milestone-due",
+  "npm run test:golden",
+  "npm run check:golden --silent",
+  "npm run check:build --silent",
+  "npm run check:seed --silent",
+  "npm run check:records --silent",
+  "node test/photoget.test.mjs",
+];
+const SHARD_IF = /^matrix\.shard==(\d+)$/;
+// Setup runs in every shard: the checkout, the node setup and the install.
+const isSetupStep = (s) =>
+  (typeof s.uses === "string" && (s.uses.startsWith(CHECKOUT) || s.uses.startsWith(SETUP_NODE))) ||
+  (typeof s.run === "string" && s.run.trim() === "npm ci");
+const stepLabel = (s) =>
+  typeof s.name === "string"
+    ? s.name
+    : typeof s.run === "string"
+      ? s.run.trim().split("\n").pop()
+      : String(s.uses ?? "a step with no run or uses");
+
+// The patterns that read a step as running the app suite: node on its file, and each package.json
+// script that runs it. null when package.json has no scripts to read.
+function appRunners(pkgText) {
+  let scripts;
+  try {
+    scripts = JSON.parse(pkgText).scripts;
+  } catch {
+    return null;
+  }
+  if (!isMap(scripts)) return null;
+  const esc = (x) => x.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+  const names = Object.keys(scripts).filter((n) => typeof scripts[n] === "string" && scripts[n].includes("test/app.test.mjs"));
+  return [
+    /\bnode\s+(?:\.\/)?test\/app\.test\.mjs\b/,
+    ...names.map((n) => (n === "test" ? /\bnpm\s+(?:run\s+)?test(?![\w:-])/ : new RegExp(`\\bnpm\\s+run\\s+${esc(n)}(?![\\w:-])`))),
+  ];
+}
+// The part a step selects: "all" with no MAILDAY_TEST_PART (or an empty one), the whole number written
+// in its run line or env map, or null for any other value.
+function stepPart(step) {
+  const m = typeof step.run === "string" ? /\bMAILDAY_TEST_PART=(\S*)/.exec(step.run) : null;
+  const fromEnv = isMap(step.env) && step.env.MAILDAY_TEST_PART !== undefined ? String(step.env.MAILDAY_TEST_PART) : undefined;
+  const v = m ? m[1].replace(/^["']|["']$/g, "") : fromEnv;
+  if (v === undefined || v === "") return "all";
+  return /^[1-9]\d*$/.test(v) ? Number(v) : null;
+}
+
+function shardChecks({ wfText, pkgText, partCount }) {
+  const out = [];
+  const add = (id, what, ok, detail = "") => out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail });
+  const jobs = parsedJobs(wfText);
+  const job = jobOf(jobs, SUITE_JOB);
+  const js = steps(job);
+  const none = job === undefined ? (jobs === null ? "no readable workflow" : `no ${SUITE_JOB} job`) : "";
+  const matrix = isMap(job) && isMap(job.strategy) && isMap(job.strategy.matrix) ? job.strategy.matrix.shard : undefined;
+  const shards = Array.isArray(matrix) ? matrix.map(String) : [];
+
+  add(
+    "s1",
+    `the ${SUITE_JOB} job's matrix lists at least two distinct whole-number shards`,
+    shards.length >= 2 && shards.every((x) => /^[1-9]\d*$/.test(x)) && new Set(shards).size === shards.length,
+    none || `matrix shard: ${JSON.stringify(matrix ?? null)}`
+  );
+
+  const setup = js.filter(isSetupStep);
+  const setupBad = setup.filter((s) => normIf(ifText(s)).includes("matrix.shard"));
+  add(
+    "s2",
+    `every checkout, setup-node and npm ci step of the ${SUITE_JOB} job runs in every shard`,
+    setup.length > 0 && setupBad.length === 0,
+    none || (setup.length === 0 ? "the job has no setup step" : `a shard if: on ${setupBad.map(stepLabel).join(", ")}`)
+  );
+
+  const work = js.filter((s) => !isSetupStep(s));
+  const cause = (s) => {
+    if (s.if === undefined) return `${stepLabel(s)} has no if:, so it runs in every shard`;
+    const m = SHARD_IF.exec(normIf(ifText(s)));
+    if (!m) return `${stepLabel(s)} has if: ${ifText(s)}, which is not matrix.shard == N`;
+    if (!shards.includes(m[1])) return `${stepLabel(s)} names shard ${m[1]}, which the matrix does not list, so it runs in none`;
+    return null;
+  };
+  const bad3 = work.map(cause).filter((x) => x !== null);
+  add(
+    "s3",
+    `every other step of the ${SUITE_JOB} job runs in exactly one shard (if: matrix.shard == N, N a listed shard)`,
+    work.length > 0 && bad3.length === 0,
+    none || (work.length === 0 ? "the job has no work step" : bad3.join("; "))
+  );
+
+  const runs = js.map((s) => (typeof s.run === "string" ? s.run.trim() : null));
+  const dropped = SUITE_WORK.filter((c) => !runs.includes(c));
+  const twice = SUITE_WORK.filter((c) => runs.filter((r) => r === c).length > 1);
+  add(
+    "s4",
+    `each of the ${SUITE_WORK.length} commands the ${SUITE_JOB} job must run is exactly one step`,
+    dropped.length === 0 && twice.length === 0,
+    [none, dropped.length ? `no step runs: ${dropped.join(", ")}` : "", twice.length ? `more than one step runs: ${twice.join(", ")}` : ""]
+      .filter(Boolean)
+      .join("; ")
+  );
+
+  const runners = appRunners(pkgText);
+  const appParts = runners === null ? [] : js.filter((s) => typeof s.run === "string" && runners.some((re) => re.test(s.run))).map(stepPart);
+  const coverage = (n) => appParts.filter((p) => p === "all" || p === n).length;
+  const bad5 = [];
+  for (let n = 1; n <= partCount; n++) if (coverage(n) !== 1) bad5.push(`part ${n} runs in ${coverage(n)} steps`);
+  for (const p of appParts) {
+    if (p === null) bad5.push("a step sets MAILDAY_TEST_PART to a value that is not a whole number");
+    else if (p !== "all" && p > partCount) bad5.push(`a step selects part ${p}, beyond the count of ${partCount}`);
+  }
+  add(
+    "s5",
+    "each part of the app suite runs in exactly one step",
+    runners !== null && Number.isInteger(partCount) && partCount >= 1 && bad5.length === 0,
+    runners === null ? "package.json has no scripts to read" : [none, ...bad5].filter(Boolean).join("; ")
+  );
+  return out;
+}
+
+// s6: the part selector and its gate, passed in so a fixture can hand them a broken copy.
+function partSelectChecks({ select, gateOf, count }) {
+  const out = [];
+  const add = (what, ok, detail = "") => out.push({ id: "s6", label: `s6 ${what}`, ok: Boolean(ok), detail });
+  const pick = (v) => {
+    try {
+      return select(v === undefined ? {} : { MAILDAY_TEST_PART: v }, count);
+    } catch {
+      return "throws";
+    }
+  };
+  for (const [v, want] of [[undefined, 0], ["", 0], ["1", 1], [String(count), count]])
+    add(`MAILDAY_TEST_PART ${JSON.stringify(v ?? null)} selects ${want === 0 ? "every part" : `part ${want}`}`, pick(v) === want, `selected ${JSON.stringify(pick(v))}`);
+  for (const v of ["0", String(count + 1), "x", "1 ", "01", "-1", "1.5"])
+    add(`MAILDAY_TEST_PART ${JSON.stringify(v)} is refused`, pick(v) === "throws", `selected ${JSON.stringify(pick(v))}`);
+
+  const parts = Array.from({ length: count }, (_, i) => i + 1);
+  const asks = (env, ns) => {
+    const g = gateOf(env, count);
+    return [ns.map((n) => g.inPart(n)), g];
+  };
+  const [answers] = asks({ MAILDAY_TEST_PART: "2" }, parts);
+  add("with part 2 chosen, only part 2's block runs", JSON.stringify(answers) === JSON.stringify(parts.map((n) => n === 2)), `blocks run: ${JSON.stringify(answers)}`);
+  const [every] = asks({}, parts);
+  add("with no part chosen, every block runs", every.every(Boolean), `blocks run: ${JSON.stringify(every)}`);
+  const checkOf = (ns) => {
+    const [, g] = asks({}, ns);
+    try {
+      g.check();
+      return "passes";
+    } catch {
+      return "throws";
+    }
+  };
+  add("the gate passes when each part asks once", checkOf(parts) === "passes", `check ${checkOf(parts)}`);
+  add("the gate refuses a part that never asks", checkOf(parts.slice(1)) === "throws", `check ${checkOf(parts.slice(1))}`);
+  add("the gate refuses a part that asks twice", checkOf([...parts, 1]) === "throws", `check ${checkOf([...parts, 1])}`);
+  add("the gate refuses a block beyond the count", checkOf([...parts, count + 1]) === "throws", `check ${checkOf([...parts, count + 1])}`);
+  return out;
+}
+
+// s7 and s8: check:docs sums the part logs the suite shards wrote on three runners, so it runs in its own
+// job after them. A job that runs nothing, or that the rollup and ci-done do not wait for, would let a
+// red check:docs pass.
+const DOCS_JOB = "docs";
+const DOCS_COMMAND = "npm run check:docs --silent";
+function docsJobChecks(text) {
+  const out = [];
+  const add = (id, what, ok, detail = "") => out.push({ id, label: `${id} ${what}`, ok: Boolean(ok), detail });
+  const jobs = parsedJobs(text);
+  const job = jobOf(jobs, DOCS_JOB);
+  const runs = steps(job).map((s) => (typeof s.run === "string" ? s.run.trim() : null));
+  const count = runs.filter((r) => r === DOCS_COMMAND).length;
+  add(
+    "s7",
+    `the ${DOCS_JOB} job runs ${DOCS_COMMAND} in exactly one step`,
+    job !== undefined && count === 1,
+    job === undefined ? (jobs === null ? "no readable workflow" : `no ${DOCS_JOB} job`) : `${count} steps run it`
+  );
+  const lacking = [ROLLUP, CI_DONE].filter((id) => !needsIn(jobs, id).includes(DOCS_JOB));
+  add(
+    "s8",
+    `the ${ROLLUP} and ${CI_DONE} jobs each need the ${DOCS_JOB} job`,
+    jobs !== null && jobOf(jobs, ROLLUP) !== undefined && jobOf(jobs, CI_DONE) !== undefined && lacking.length === 0,
+    jobs === null ? "no readable workflow" : `no ${DOCS_JOB} in needs of: ${lacking.join(", ")}`
+  );
   return out;
 }
 
@@ -2735,7 +3002,8 @@ const MUT_GOOD = [...MUT_HEAD, ...MUT_CHECKOUT, ...MUT_SETUP, ...MUT_ACTION].joi
 const MUT_LATE = [...MUT_HEAD, ...MUT_CHECKOUT, ...MUT_ACTION, ...MUT_SETUP].join("\n") + "\n";
 const MUT_RED = [
   ["the job is missing", mutate(MUT_GOOD, `  ${MUTATION_JOB}:`, "  not-the-report:"), "13"],
-  ["it names another pin", mutate(MUT_GOOD, `@${ACTION_PIN} # main`, `@${"f".repeat(40)} # main`), "14"],
+  ["it names a 40-hex sha", mutate(MUT_GOOD, `@${ACTION_PIN} # main`, `@${SHA_CALL} # main`), "14"],
+  ["it names @main", mutate(MUT_GOOD, `@${ACTION_PIN} # main`, "@main # main"), "14"],
   ["its profile is another", mutate(MUT_GOOD, `profile: ${MUTATION_PROFILE}`, "profile: other"), "14"],
   ["its checkout is shallow", mutate(MUT_GOOD, "fetch-depth: 0", "fetch-depth: 1"), "15"],
   ["its checkout keeps credentials", mutate(MUT_GOOD, "persist-credentials: false", "persist-credentials: true"), "15"],
@@ -2803,6 +3071,169 @@ for (const [name, text, id] of KD_RED) {
   expect(`fixture red: ${name} fails assertion ${id}`, hit !== undefined && !hit.ok, `assertion ${id}: ${JSON.stringify(hit ?? null)}`);
 }
 for (const r of knownDefectChecks(kdJson([KD_ENTRY]), ROOT, true)) show({ ...r, label: `fixture good: ${r.label}` });
+
+// Fixtures for 25. The good text names the ref. Each red edit moves assertion 25 and no other.
+const TF_GOOD = [
+  "name: testflight",
+  "jobs:",
+  "  ship:",
+  "    runs-on: xcode-27",
+  "    steps:",
+  "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+  "        with:",
+  "          persist-credentials: false",
+  "          ref: ${{ github.ref }}",
+  "      - run: echo ship",
+].join("\n") + "\n";
+const TF_RED = [
+  ["the checkout names no ref", mutate(TF_GOOD, "          ref: ${{ github.ref }}\n", "")],
+  ["the ref is the dispatch sha", mutate(TF_GOOD, "${{ github.ref }}", "${{ github.sha }}")],
+  ["the ref is a bare github.ref", mutate(TF_GOOD, "${{ github.ref }}", "github.ref")],
+  ["the job has no checkout step", mutate(TF_GOOD, "- uses: actions/checkout@", "- uses: actions/cache@")],
+];
+for (const [name, text] of TF_RED) {
+  const hit = testflightRefCheck(text);
+  expect(`fixture red: ${name} fails assertion 25`, !hit.ok, hit.detail);
+}
+{
+  const good = testflightRefCheck(TF_GOOD);
+  expect(`fixture good: ${good.label}`, good.ok, good.detail);
+}
+
+// The real file: testflight.yml on this branch. Red until the workflow checks out with the ref.
+{
+  const real = testflightRefCheck(readOrNull(TESTFLIGHT_WORKFLOW));
+  expect(real.label, real.ok, real.detail);
+}
+
+// Fixtures for s1 to s5. The good texts pass all five; each red edit moves the named assertion, and the
+// ones marked loose move another with it, because the edit breaks two things at once.
+const shStep = (cmd, n) => [`      - run: ${cmd}`, `        if: matrix.shard == ${n}`];
+const shText = (cmd, n) => shStep(cmd, n).join("\n") + "\n";
+const shardOfCmd = (cmd) => (SUITE_WORK.indexOf(cmd) % 3) + 1;
+const SH_HEAD = [
+  "jobs:",
+  `  ${SUITE_JOB}:`,
+  "    runs-on: ubuntu-latest",
+  "    strategy:",
+  "      fail-fast: false",
+  "      matrix:",
+  "        shard: [1, 2, 3]",
+  "    steps:",
+];
+const SH_SETUP = [
+  `      - uses: ${CHECKOUT}${PIN_CHECKOUT} # v7.0.1`,
+  "        with:",
+  "          fetch-depth: 0",
+  `      - uses: ${SETUP_NODE}${PIN_SETUP} # v7.1.0`,
+  "        with:",
+  '          node-version: "22"',
+  "      - run: npm ci",
+];
+const SH_WORK = SUITE_WORK.flatMap((c) => shStep(c, shardOfCmd(c)));
+// The app suite as three part steps, the selector written both ways it can be given.
+const SH_PART2 = ["      - name: app part 2", "        if: matrix.shard == 2", "        env:", "          MAILDAY_TEST_PART: 2", "        run: npm test"];
+const SH_PARTS = [...shStep("MAILDAY_TEST_PART=1 npm test", 1), ...SH_PART2, ...shStep("MAILDAY_TEST_PART=3 npm test", 3)];
+// The app suite as one step that runs every part, with the if: in its ${{ }} form.
+const SH_ONE_APP = ["      - run: npm test", "        if: ${{ matrix.shard == 1 }}"];
+const shFile = (...bodies) => [...SH_HEAD, ...SH_SETUP, ...bodies.flat()].join("\n") + "\n";
+const SH_GOOD = shFile(SH_WORK, SH_PARTS);
+const SH_GOOD_ONE = shFile(SH_WORK, SH_ONE_APP);
+const SH_PKG = JSON.stringify({ scripts: { test: "node test/app.test.mjs && node test/photoget.test.mjs", "test:rules": "node test/rules.test.mjs" } });
+const C0 = SUITE_WORK[0];
+const SH_RED = [
+  { name: "the job has no matrix", id: "s1", only: false, wf: mutate(SH_GOOD, "    strategy:\n      fail-fast: false\n      matrix:\n        shard: [1, 2, 3]\n", "") },
+  { name: "the matrix lists one shard", id: "s1", only: false, wf: mutate(SH_GOOD, "shard: [1, 2, 3]", "shard: [1]") },
+  { name: "the matrix lists a shard twice", id: "s1", wf: mutate(SH_GOOD, "shard: [1, 2, 3]", "shard: [1, 2, 2, 3]") },
+  {
+    name: "the checkout runs in shard 1 only",
+    id: "s2",
+    wf: mutate(SH_GOOD, `${SH_SETUP[0]}\n`, `${SH_SETUP[0]}\n        if: matrix.shard == 1\n`),
+  },
+  { name: "npm ci runs in shard 2 only", id: "s2", wf: mutate(SH_GOOD, "      - run: npm ci\n", "      - run: npm ci\n        if: matrix.shard == 2\n") },
+  { name: "a step has no if:", id: "s3", wf: mutate(SH_GOOD, shText(C0, 1), `      - run: ${C0}\n`) },
+  { name: "a step names a shard the matrix does not list", id: "s3", wf: mutate(SH_GOOD, shText(C0, 1), shText(C0, 4)) },
+  {
+    name: "a step runs in two shards",
+    id: "s3",
+    wf: mutate(SH_GOOD, shText(C0, 1), `      - run: ${C0}\n        if: matrix.shard == 1 || matrix.shard == 2\n`),
+  },
+  {
+    name: "a step reads another condition",
+    id: "s3",
+    wf: mutate(SH_GOOD, shText(C0, 1), `      - run: ${C0}\n        if: github.event_name == 'push'\n`),
+  },
+  { name: "a command is dropped", id: "s4", wf: mutate(SH_GOOD, shText(C0, 1), "") },
+  { name: "a command runs in two shards", id: "s4", wf: mutate(SH_GOOD, shText(C0, 1), shText(C0, 1) + shText(C0, 2)) },
+  { name: "a command is renamed", id: "s4", wf: mutate(SH_GOOD, `      - run: ${C0}\n`, "      - run: npm run check:rule\n") },
+  { name: "part 2 is dropped", id: "s5", wf: mutate(SH_GOOD, SH_PART2.join("\n") + "\n", "") },
+  { name: "part 1 runs in a second shard", id: "s5", wf: shFile(SH_WORK, SH_PARTS, shStep("MAILDAY_TEST_PART=1 npm test", 2)) },
+  { name: "an unrestricted run sits beside the parts", id: "s5", wf: shFile(SH_WORK, SH_PARTS, SH_ONE_APP) },
+  { name: "a step selects part 4 of 3", id: "s5", wf: mutate(SH_GOOD, "MAILDAY_TEST_PART=3 npm test", "MAILDAY_TEST_PART=4 npm test"), only: false },
+  { name: "a step selects a part that is no number", id: "s5", only: false, wf: mutate(SH_GOOD, "MAILDAY_TEST_PART=3 npm test", "MAILDAY_TEST_PART=three npm test") },
+  { name: "no step runs the app suite", id: "s5", wf: shFile(SH_WORK) },
+  { name: "the count grew by one and no step runs part 4", id: "s5", wf: SH_GOOD, partCount: 4 },
+  { name: "package.json is unreadable", id: "s5", wf: SH_GOOD, pkg: null },
+];
+for (const { name, id, wf, pkg = SH_PKG, partCount = 3, only = true } of SH_RED) {
+  const failed = shardChecks({ wfText: wf, pkgText: pkg, partCount })
+    .filter((r) => !r.ok)
+    .map((r) => r.id);
+  expect(
+    `fixture red: ${name} fails assertion ${id}`,
+    only ? JSON.stringify(failed) === JSON.stringify([id]) : failed.includes(id),
+    `failed assertions: ${JSON.stringify(failed)}`
+  );
+}
+for (const text of [SH_GOOD, SH_GOOD_ONE])
+  for (const r of shardChecks({ wfText: text, pkgText: SH_PKG, partCount: 3 })) expect(`fixture good: ${r.label}`, r.ok, r.detail);
+
+// s6 on a selector that never refuses, and on a gate that never checks. Both must go red.
+{
+  const lax = (env) => Number(env.MAILDAY_TEST_PART || 0);
+  const blind = () => ({ part: 0, inPart: () => true, check() {} });
+  const laxRed = partSelectChecks({ select: lax, gateOf: partGate, count: 3 }).filter((r) => !r.ok);
+  expect("fixture red: a selector that refuses nothing fails assertion s6", laxRed.length > 0, "every s6 case passed");
+  const blindRed = partSelectChecks({ select: partFromEnv, gateOf: blind, count: 3 }).filter((r) => !r.ok);
+  expect("fixture red: a gate that checks nothing fails assertion s6", blindRed.length > 0, "every s6 case passed");
+}
+
+// Fixtures for s7 and s8. Each red edit moves the named assertion and no other.
+const DOCS_GOOD = [
+  "jobs:",
+  `  ${DOCS_JOB}:`,
+  "    needs: [suite]",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  `      - run: ${DOCS_COMMAND}`,
+  `  ${ROLLUP}:`,
+  `    needs: [suite, ${DOCS_JOB}]`,
+  "    runs-on: ubuntu-latest",
+  `  ${CI_DONE}:`,
+  `    needs: [suite, ${DOCS_JOB}, ${ROLLUP}]`,
+  "    runs-on: ubuntu-latest",
+].join("\n") + "\n";
+const DOCS_RED = [
+  ["the job is missing", mutate(DOCS_GOOD, `  ${DOCS_JOB}:\n`, "  not-docs:\n"), "s7"],
+  ["the job runs another command", mutate(DOCS_GOOD, DOCS_COMMAND, "npm run check:records --silent"), "s7"],
+  ["the job runs it twice", mutate(DOCS_GOOD, `      - run: ${DOCS_COMMAND}\n`, `      - run: ${DOCS_COMMAND}\n      - run: ${DOCS_COMMAND}\n`), "s7"],
+  ["the rollup does not need the job", mutate(DOCS_GOOD, `needs: [suite, ${DOCS_JOB}]`, "needs: [suite]"), "s8"],
+  ["ci-done does not need the job", mutate(DOCS_GOOD, `needs: [suite, ${DOCS_JOB}, ${ROLLUP}]`, `needs: [suite, ${ROLLUP}]`), "s8"],
+];
+for (const [name, text, id] of DOCS_RED) {
+  const failed = docsJobChecks(text).filter((r) => !r.ok).map((r) => r.id);
+  expect(`fixture red: ${name} fails assertion ${id}`, JSON.stringify(failed) === JSON.stringify([id]), `failed assertions: ${JSON.stringify(failed)}`);
+}
+for (const r of docsJobChecks(DOCS_GOOD)) expect(`fixture good: ${r.label}`, r.ok, r.detail);
+
+// The real files: checks.yml's suite and docs jobs, package.json, test/app-parts.mjs.
+{
+  const wf = WORKFLOW_TEXT;
+  const pkg = readOrNull(resolve(ROOT, "package.json"));
+  for (const r of shardChecks({ wfText: wf, pkgText: pkg, partCount: PART_COUNT })) show(r);
+  for (const r of partSelectChecks({ select: partFromEnv, gateOf: partGate, count: PART_COUNT })) show(r);
+  for (const r of docsJobChecks(wf)) show(r);
+}
 
 if (failures) {
   console.log(failLine(failures, checks));

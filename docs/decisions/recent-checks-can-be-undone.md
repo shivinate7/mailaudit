@@ -91,7 +91,7 @@ An undo is a new, later write. It is never a local rollback.
 
 Every undo stamps a fresh time: `touchReceived` for counts, `setStamp` for stamps, `updatedAt` for envelopes. It also appends its undo entry. Then it travels like any tap: save, Worker POST, merge, and the later change wins (`merge-later-change-wins`). An undone check is an un-check, and it travels as a timed absence (`max-cannot-express-an-uncheck`). The accepted clock-skew risk of `merge-later-change-wins` applies to an undo as to any tap.
 
-An undo never edits the old write. It never restores a snapshot. It never passes through `applyBackup`. It takes no milestone, because a milestone per tap would fill the 60-slot list in one mail day (`sync-revamp-cloudflare`).
+An undo never edits the old write. It never restores a snapshot. It never passes through `applyBackup`. It takes no milestone, because a milestone per tap would fill the 60-slot list in one day's mail (`sync-revamp-cloudflare`).
 
 Two devices that undo one row offline each write one absolute count. The merge keeps one of them. Neither subtracts twice.
 

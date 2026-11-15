@@ -11,6 +11,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | Slug | Gist | Link |
 |---|---|---|
 | `auto-push-safe-as-merge-exists` | **Status:** retired 2026-10-14. | [`docs/decisions/auto-push-safe-as-merge-exists.md`](../docs/decisions/auto-push-safe-as-merge-exists.md) |
+| `composer-fields-two-lines` | Owner ruling 2026-11-08 15:23 CST, waiting-page item 57 a: on the phone, the envelope composer's two-line card name and note fields are right. | [`docs/decisions/composer-fields-two-lines.md`](../docs/decisions/composer-fields-two-lines.md) |
 | `data-branch-setup` | The `data` branch in `mailaudit-data` already exists. | [`docs/decisions/data-branch-setup.md`](../docs/decisions/data-branch-setup.md) |
 | `debts-hold-known-gaps` | Each known gap is one file under `docs/debts/`, with a Status line and a Decision line. | [`docs/decisions/debts-hold-known-gaps.md`](../docs/decisions/debts-hold-known-gaps.md) |
 | `fine-grained-token-single-repo` | **Status:** retired. | [`docs/decisions/fine-grained-token-single-repo.md`](../docs/decisions/fine-grained-token-single-repo.md) |
@@ -44,6 +45,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `token-lives-outside-namespace` | The device key and any stored GitHub token sit outside the storage namespace. | [`docs/decisions/token-lives-outside-namespace.md`](../docs/decisions/token-lives-outside-namespace.md) |
 | `token-sits-on-shared-origin` | **Status:** open. | [`docs/decisions/token-sits-on-shared-origin.md`](../docs/decisions/token-sits-on-shared-origin.md) |
 | `two-device-merge-proven-first` | **Status:** retired 2026-10-14. | [`docs/decisions/two-device-merge-proven-first.md`](../docs/decisions/two-device-merge-proven-first.md) |
+| `usage-pause-at-93` | Kind: process | [`docs/decisions/usage-pause-at-93.md`](../docs/decisions/usage-pause-at-93.md) |
 | `watchdog-catches-silent-failure` | **Status:** retired. | [`docs/decisions/watchdog-catches-silent-failure.md`](../docs/decisions/watchdog-catches-silent-failure.md) |
 | `watchdog-lives-in-private-repo` | **Status:** retired. | [`docs/decisions/watchdog-lives-in-private-repo.md`](../docs/decisions/watchdog-lives-in-private-repo.md) |
 
@@ -62,7 +64,9 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `check-seed-backstop-not-proof` | Kind: build | [`docs/decisions/check-seed-backstop-not-proof.md`](../docs/decisions/check-seed-backstop-not-proof.md) |
 | `ci-filters-guarantee-no-rebuild` | Nothing the app writes should touch the source repository, so a backup can never trigger a site rebuild. | [`docs/decisions/ci-filters-guarantee-no-rebuild.md`](../docs/decisions/ci-filters-guarantee-no-rebuild.md) |
 | `ci-skips-draft-prs` | Kind: build | [`docs/decisions/ci-skips-draft-prs.md`](../docs/decisions/ci-skips-draft-prs.md) |
+| `csv-import-stays-web` | Kind: build | [`docs/decisions/csv-import-stays-web.md`](../docs/decisions/csv-import-stays-web.md) |
 | `duo-card-in-hand` | Kind: build | [`docs/decisions/duo-card-in-hand.md`](../docs/decisions/duo-card-in-hand.md) |
+| `duo-ui-runs-on-pr-label` | The workflow `.github/workflows/duo-ui.yml` runs the UI tests that need a simulator the milestone run does not cover. | [`docs/decisions/duo-ui-runs-on-pr-label.md`](../docs/decisions/duo-ui-runs-on-pr-label.md) |
 | `ledger-remote-needed-for-seed` | Kind: build | [`docs/decisions/ledger-remote-needed-for-seed.md`](../docs/decisions/ledger-remote-needed-for-seed.md) |
 | `live-verification` | This file draws the line between proven and unproven. | [`docs/decisions/live-verification.md`](../docs/decisions/live-verification.md) |
 | `masthead-tallies-unequal-thirds` | The tallies are three ruled cells: cards, packages, and value. | [`docs/decisions/masthead-tallies-unequal-thirds.md`](../docs/decisions/masthead-tallies-unequal-thirds.md) |
@@ -89,6 +93,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `recent-checks-can-be-undone` | **Status:** ruled. | [`docs/decisions/recent-checks-can-be-undone.md`](../docs/decisions/recent-checks-can-be-undone.md) |
 | `recovery-control-not-state-gated` | If the data an action works on is absent, its recovery control must not hide. | [`docs/decisions/recovery-control-not-state-gated.md`](../docs/decisions/recovery-control-not-state-gated.md) |
 | `remote-is-transport-not-storage` | `window.remote` is transport, not storage. | [`docs/decisions/remote-is-transport-not-storage.md`](../docs/decisions/remote-is-transport-not-storage.md) |
+| `ruled-head-masthead-vocabulary` | Kind: build | [`docs/decisions/ruled-head-masthead-vocabulary.md`](../docs/decisions/ruled-head-masthead-vocabulary.md) |
 | `ruled-head-one-advisory-entrance` | Kind: build | [`docs/decisions/ruled-head-one-advisory-entrance.md`](../docs/decisions/ruled-head-one-advisory-entrance.md) |
 | `ruled-head-panels-carry-no-fill` | **Status:** orchestrator default, 2026-10-11, not built. | [`docs/decisions/ruled-head-panels-carry-no-fill.md`](../docs/decisions/ruled-head-panels-carry-no-fill.md) |
 | `rules-run-in-javascriptcore` | **Status:** ruled. | [`docs/decisions/rules-run-in-javascriptcore.md`](../docs/decisions/rules-run-in-javascriptcore.md) |
@@ -124,7 +129,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `claims-and-tests-change-together` | A behaviour that changes on purpose changes its assertion and its prose in one commit. | [`docs/decisions/claims-and-tests-change-together.md`](../docs/decisions/claims-and-tests-change-together.md) |
 | `cost-basis-excludes-ship-and-tax` | **Cost basis** = Σ (Price × Quantity) over the item's non-canceled copies in the active date range. | [`docs/decisions/cost-basis-excludes-ship-and-tax.md`](../docs/decisions/cost-basis-excludes-ship-and-tax.md) |
 | `csv-import-shows-a-summary` | A CSV import works by drag and drop, or by the file picker. | [`docs/decisions/csv-import-shows-a-summary.md`](../docs/decisions/csv-import-shows-a-summary.md) |
-| `csv-import-stays-web` | **Status:** ruled. | [`docs/decisions/csv-import-stays-web.md`](../docs/decisions/csv-import-stays-web.md) |
 | `date-filter-spans-ledger-views` | The date filter applies to the Tally view and the Packages view. | [`docs/decisions/date-filter-spans-ledger-views.md`](../docs/decisions/date-filter-spans-ledger-views.md) |
 | `design-form-controls-no-inherit` | Browsers force their own UI font onto `button`, `input`, `select` and `textarea`. | [`docs/decisions/design-form-controls-no-inherit.md`](../docs/decisions/design-form-controls-no-inherit.md) |
 | `design-parchment-ledger` | The theme is named "Parchment ledger" (palette D▸, Violet Evergarden–inspired). | [`docs/decisions/design-parchment-ledger.md`](../docs/decisions/design-parchment-ledger.md) |
@@ -175,10 +179,11 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `motion-the-stamp-lands` | The stamp rocks down and settles at its resting angle, instead of blinking into place. | [`docs/decisions/motion-the-stamp-lands.md`](../docs/decisions/motion-the-stamp-lands.md) |
 | `motion-the-switch-is-one-object` | The ruling: the active-view fill is a single element that slides between thirds. | [`docs/decisions/motion-the-switch-is-one-object.md`](../docs/decisions/motion-the-switch-is-one-object.md) |
 | `motion-use-just-became` | Every celebration marks a state that a package can already be in. | [`docs/decisions/motion-use-just-became.md`](../docs/decisions/motion-use-just-became.md) |
+| `native-bulk-check-in` | The iOS Packages card and the open Tally row carry Mark all received and Clear check-ins, as the web's do (`src/app.jsx` `bulkSet`). | [`docs/decisions/native-bulk-check-in.md`](../docs/decisions/native-bulk-check-in.md) |
 | `null-remote-info-is-not-no-key` | A null `remoteInfo` means that the status has not loaded yet. | [`docs/decisions/null-remote-info-is-not-no-key.md`](../docs/decisions/null-remote-info-is-not-no-key.md) |
 | `offline-is-decided-by-fetch` | The app decides `offline` only by a failed `fetch`, and by nothing else. | [`docs/decisions/offline-is-decided-by-fetch.md`](../docs/decisions/offline-is-decided-by-fetch.md) |
 | `one-stamp-per-package` | Each package holds at most one order stamp. | [`docs/decisions/one-stamp-per-package.md`](../docs/decisions/one-stamp-per-package.md) |
-| `orchestrator-may-merge` | Under the session tiers (claude-settings decision session-tiers), the coordinator holds the owner's standing merge grant (claude-settings decision standing-merge-grant). | [`docs/decisions/orchestrator-may-merge.md`](../docs/decisions/orchestrator-may-merge.md) |
+| `orchestrator-may-merge` | Merge grant: claude-settings `standing-merge-grant`, under the session tiers (`session-tiers`). | [`docs/decisions/orchestrator-may-merge.md`](../docs/decisions/orchestrator-may-merge.md) |
 | `orderwand-csv` | This record holds the CSV column list and every quirk found in the user's real OrderWand exports. | [`docs/decisions/orderwand-csv.md`](../docs/decisions/orderwand-csv.md) |
 | `orphan-sweep-drops-unused-photos` | One sweep effect covers every path that orphans a photo. | [`docs/decisions/orphan-sweep-drops-unused-photos.md`](../docs/decisions/orphan-sweep-drops-unused-photos.md) |
 | `orphaned-colours-by-meaning` | Orphaned uses the app's colour meanings. | [`docs/decisions/orphaned-colours-by-meaning.md`](../docs/decisions/orphaned-colours-by-meaning.md) |
@@ -202,7 +207,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `remote-rules-fail-quietly` | Two adapter decisions get their own pure functions, in `src/remote-rules.mjs`. | [`docs/decisions/remote-rules-fail-quietly.md`](../docs/decisions/remote-rules-fail-quietly.md) |
 | `remote-sync-is-off-the-save-path` | The local save runs on its own debounced path, with a 500ms debounce and a saved or saving indicator. | [`docs/decisions/remote-sync-is-off-the-save-path.md`](../docs/decisions/remote-sync-is-off-the-save-path.md) |
 | `retention-tiers-are-unioned` | A saved version survives a prune when any one of four rules keeps it. | [`docs/decisions/retention-tiers-are-unioned.md`](../docs/decisions/retention-tiers-are-unioned.md) |
-| `ruled-head-masthead-vocabulary` | The control region uses the masthead's own vocabulary. | [`docs/decisions/ruled-head-masthead-vocabulary.md`](../docs/decisions/ruled-head-masthead-vocabulary.md) |
 | `ruled-head-range-picked` | The custom range uses a month picker. | [`docs/decisions/ruled-head-range-picked.md`](../docs/decisions/ruled-head-range-picked.md) |
 | `ruled-head-resume-is-reopening` | An iOS home-screen app is usually backgrounded, not closed. | [`docs/decisions/ruled-head-resume-is-reopening.md`](../docs/decisions/ruled-head-resume-is-reopening.md) |
 | `ruled-head-showing-unreceived` | The Showing row replaces the old "Hide received" button. | [`docs/decisions/ruled-head-showing-unreceived.md`](../docs/decisions/ruled-head-showing-unreceived.md) |
@@ -249,7 +253,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 
 | Slug | Gist | Link |
 |---|---|---|
-| `app-build-waits-xcode-27` | No pull-request CI job compiles the native app. | [`docs/debts/app-build-waits-xcode-27.md`](../docs/debts/app-build-waits-xcode-27.md) |
+| `app-build-waits-xcode-27` | No `app-build` job exists; `duo-ui` (`duo-ui-runs-on-pr-label`) builds the native app on a pull request, run 42577148982 green. | [`docs/debts/app-build-waits-xcode-27.md`](../docs/debts/app-build-waits-xcode-27.md) |
 | `armed-reset-mistap-unmeasured` | A mis-tap on a control next to the armed Reset box is unmeasured, and so is the width of the armed row. | [`docs/debts/armed-reset-mistap-unmeasured.md`](../docs/debts/armed-reset-mistap-unmeasured.md) |
 | `backup-unwatched` | Once the watchdog is off, no check reads the Worker's snapshots or the `data` branch, so a stopped backup raises no alarm. | [`docs/debts/backup-unwatched.md`](../docs/debts/backup-unwatched.md) |
 | `card-action-row-unmeasured` | The action row's content need at its tallest state is not measured at `f97e423`. | [`docs/debts/card-action-row-unmeasured.md`](../docs/debts/card-action-row-unmeasured.md) |
@@ -260,10 +264,12 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `claim-17a-ci-red-unexplained` | `check:screens` claim 17a failed twice on CI, on runs 39892195068 and 39900120189 (2026-10-23). | [`docs/debts/claim-17a-ci-red-unexplained.md`](../docs/debts/claim-17a-ci-red-unexplained.md) |
 | `claim-9-fractional-box-edges` | A 43.5px box reads as 44px, so claim 9 can pass a box just under 44px. | [`docs/debts/claim-9-fractional-box-edges.md`](../docs/debts/claim-9-fractional-box-edges.md) |
 | `cloudflare-access-login-untested` | Whether the backup sign-in survives in an iOS home-screen app has not been run on a device. | [`docs/debts/cloudflare-access-login-untested.md`](../docs/debts/cloudflare-access-login-untested.md) |
+| `composer-keys-cover-tab-bar` | `OrphanedUITests.testComposerDraftSurvivesAViewChange` stays red on the iPhone 18 Pro. | [`docs/debts/composer-keys-cover-tab-bar.md`](../docs/debts/composer-keys-cover-tab-bar.md) |
 | `discard-keeps-draft` | `discardEnvelope` in `src/app.jsx` never clears the draft. | [`docs/debts/discard-keeps-draft.md`](../docs/debts/discard-keeps-draft.md) |
 | `duo-bar-dynamic-type-clips` | The open Duo's tab bar is a fixed 64 pt pill, while its labels scale with Dynamic Type. | [`docs/debts/duo-bar-dynamic-type-clips.md`](../docs/debts/duo-bar-dynamic-type-clips.md) |
 | `duo-checkin-error-under-bar` | On the open Duo, the Packages `checkin-error` overlay sits at the tab's bottom edge. | [`docs/debts/duo-checkin-error-under-bar.md`](../docs/debts/duo-checkin-error-under-bar.md) |
 | `duo-fold-change-unpinned` | The shell UI tests launch MANIFEST in one pose and check the tab bar. | [`docs/debts/duo-fold-change-unpinned.md`](../docs/debts/duo-fold-change-unpinned.md) |
+| `duo-hand-first-case-timeout` | In the `duo-ui` CI job, a 5 s `XCTNSPredicateExpectation` wait in `DuoHandUITests` can time out even though the label it waits for is already right. | [`docs/debts/duo-hand-first-case-timeout.md`](../docs/debts/duo-hand-first-case-timeout.md) |
 | `duo-hand-mockup-gaps` | Poses 1, 2, 3 and 5 of PR 144, the Duo round 2 design pull request, show eight parts that the build lacks: | [`docs/debts/duo-hand-mockup-gaps.md`](../docs/debts/duo-hand-mockup-gaps.md) |
 | `duo-keyboard-gap-unmeasured` | On the open Duo, every tab reserves the custom tab bar's height as a bottom scroll margin. | [`docs/debts/duo-keyboard-gap-unmeasured.md`](../docs/debts/duo-keyboard-gap-unmeasured.md) |
 | `duo-keys-minimize-pref` | The Duo keys-up tests in DuoHandUITests wait for the system keys and read their frame. | [`docs/debts/duo-keys-minimize-pref.md`](../docs/debts/duo-keys-minimize-pref.md) |
@@ -272,15 +278,9 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `duo-tab-items-twice` | RootView names each tab's title, symbol and badge twice: once for the system tab bar and once for the Duo's custom bar. | [`docs/debts/duo-tab-items-twice.md`](../docs/debts/duo-tab-items-twice.md) |
 | `failed-photo-download-no-retry` | When a merge's photo download fails, the id stays in the ledger and the tile stays blank. | [`docs/debts/failed-photo-download-no-retry.md`](../docs/debts/failed-photo-download-no-retry.md) |
 | `half-open-socket-has-no-ping` | A socket that stays open and hears nothing gets no ping. | [`docs/debts/half-open-socket-has-no-ping.md`](../docs/debts/half-open-socket-has-no-ping.md) |
-| `hand-held-box-under-keys` | On Card in Hand on the open Duo, the Suspense and Released boxes sit below the matches. | [`docs/debts/hand-held-box-under-keys.md`](../docs/debts/hand-held-box-under-keys.md) |
-| `hand-match-row-ax3-unmeasured` | On Card in Hand on the open Duo, the mockup `duo-hand-notice-match` shows the first match row whole above the keys at AX3. | [`docs/debts/hand-match-row-ax3-unmeasured.md`](../docs/debts/hand-match-row-ax3-unmeasured.md) |
-| `hand-notice-cuts-match-row` | On Card in Hand with the keys up, a manila box (Suspense, or Released, not checked in) sits above New envelope and the match list. | [`docs/debts/hand-notice-cuts-match-row.md`](../docs/debts/hand-notice-cuts-match-row.md) |
 | `hand-open-under-bar-at-l` | On the open Duo, Packages shows the `hand-open` control near the top of the right page. | [`docs/debts/hand-open-under-bar-at-l.md`](../docs/debts/hand-open-under-bar-at-l.md) |
-| `hand-post-scroll-hides-sender` | On the open Duo, when a held card's Post offer shows, the answer page scrolls it above the keys. | [`docs/debts/hand-post-scroll-hides-sender.md`](../docs/debts/hand-post-scroll-hides-sender.md) |
 | `hand-post-top-scroll-unpinned` | On Card in Hand on the open Duo, when the Post offer shows, the answer page scrolls to its top (`HandScreen.swift`, the `onChange` on the offer). | [`docs/debts/hand-post-top-scroll-unpinned.md`](../docs/debts/hand-post-top-scroll-unpinned.md) |
 | `hand-stale-checkin-error` | On Card in Hand, a failed line check-in shows `hand-checkin-error` on the envelope page. | [`docs/debts/hand-stale-checkin-error.md`](../docs/debts/hand-stale-checkin-error.md) |
-| `hand-stray-keeps-tie` | On Card in Hand, after New envelope releases a held card, the left page says "It no longer decides an envelope". | [`docs/debts/hand-stray-keeps-tie.md`](../docs/debts/hand-stray-keeps-tie.md) |
-| `hand-suspense-tap-shift` | On Card in Hand, a list that collapses to the tapped match slides a row at index 1 or later up under the finger. | [`docs/debts/hand-suspense-tap-shift.md`](../docs/debts/hand-suspense-tap-shift.md) |
 | `hand-tap-label-unpinned` | On Card in Hand on the open Duo, every match row pads 10 pt, so a tap adds the accent bar in the gutter and the name does not move. | [`docs/debts/hand-tap-label-unpinned.md`](../docs/debts/hand-tap-label-unpinned.md) |
 | `header-gestures-unmeasured` | No device ran a phone long-press on the package header. | [`docs/debts/header-gestures-unmeasured.md`](../docs/debts/header-gestures-unmeasured.md) |
 | `hidden-tab-apply-delay-unmeasured` | Nobody has timed a reply on a hidden or frozen tab. | [`docs/debts/hidden-tab-apply-delay-unmeasured.md`](../docs/debts/hidden-tab-apply-delay-unmeasured.md) |
@@ -317,8 +317,8 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-masthead-axl-clips` | At accessibility text sizes two masthead lines break. | [`docs/debts/native-masthead-axl-clips.md`](../docs/debts/native-masthead-axl-clips.md) |
 | `native-masthead-foot-row-gap` | On every tab, the masthead foot's second row sits about 4.6pt lower than the web's. | [`docs/debts/native-masthead-foot-row-gap.md`](../docs/debts/native-masthead-foot-row-gap.md) |
 | `native-masthead-stale-after-tabs` | `MastheadModel.refresh()` now runs at boot, after a check-in on Packages or Tally, after each Orphaned write and after a Ledger reset or restore. | [`docs/debts/native-masthead-stale-after-tabs.md`](../docs/debts/native-masthead-stale-after-tabs.md) |
-| `native-merge-notice-unbuilt` | `SyncClient` keeps the `stats` of the last adopted reply (`native-reply-waits-generation`). | [`docs/debts/native-merge-notice-unbuilt.md`](../docs/debts/native-merge-notice-unbuilt.md) |
-| `native-merge-skips-photo-fetch` | `PhotoSync.pull` downloads the blobs that a ledger names, and it has no caller. | [`docs/debts/native-merge-skips-photo-fetch.md`](../docs/debts/native-merge-skips-photo-fetch.md) |
+| `native-merge-notice-unbuilt` | `SyncClient.mergeNotice` holds the merge sentence for the last adopted reply. | [`docs/debts/native-merge-notice-unbuilt.md`](../docs/debts/native-merge-notice-unbuilt.md) |
+| `native-merge-skips-photo-fetch` | `SyncClient` calls `photoSync.pull` with a reply's live photo ids before the press gate and the apply, on a GET and on a POST (`SyncPhotoFetchTests`). | [`docs/debts/native-merge-skips-photo-fetch.md`](../docs/debts/native-merge-skips-photo-fetch.md) |
 | `native-orphaned-colours-unbuilt` | The native Orphaned view paints from `shared/tokens.json` through `OrphanedPaint`, and a unit test pins the meanings (`orphaned-colours-by-meaning`). | [`docs/debts/native-orphaned-colours-unbuilt.md`](../docs/debts/native-orphaned-colours-unbuilt.md) |
 | `native-photo-screens-unwired` | Lane N10 built `PhotoStrip`, `PhotoViewer` and `PhotoSyncBar` in `native/Manifest/PhotoViews.swift`. | [`docs/debts/native-photo-screens-unwired.md`](../docs/debts/native-photo-screens-unwired.md) |
 | `native-photo-sweep-unbuilt` | Nothing on native removes a blob that no envelope or draft uses. | [`docs/debts/native-photo-sweep-unbuilt.md`](../docs/debts/native-photo-sweep-unbuilt.md) |
@@ -326,7 +326,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-pinned-card-dynamic-type` | `MastheadBackupUITests.testAccessibilityAuditWithTheRunningHeadPinned` scrolls Packages until the running head pins, then audits. | [`docs/debts/native-pinned-card-dynamic-type.md`](../docs/debts/native-pinned-card-dynamic-type.md) |
 | `native-restore-later-reply-unpinned` | A native restore now runs the bundle's `restampRestore` (`RestoreRestampTests`). | [`docs/debts/native-restore-later-reply-unpinned.md`](../docs/debts/native-restore-later-reply-unpinned.md) |
 | `native-restore-pill-tap-unpinned` | `VersionsUITests` checks the armed Restore by tapping the version row's middle twice. | [`docs/debts/native-restore-pill-tap-unpinned.md`](../docs/debts/native-restore-pill-tap-unpinned.md) |
-| `native-runner-image-unverified` | Whether the `macos-26` runner image has Xcode 27 and xcodegen is unknown. | [`docs/debts/native-runner-image-unverified.md`](../docs/debts/native-runner-image-unverified.md) |
+| `native-runner-image-unverified` | Whether the hosted runner image has xcodegen is unknown; the `xcode-27` image has Xcode 27.1. | [`docs/debts/native-runner-image-unverified.md`](../docs/debts/native-runner-image-unverified.md) |
 | `native-runner-keychain-unverified` | Whether the runner keychain is unlocked is unknown. | [`docs/debts/native-runner-keychain-unverified.md`](../docs/debts/native-runner-keychain-unverified.md) |
 | `native-seller-scale-unmeasured` | The native card seller (`PackagesView.swift`, `PackageRow.header`) carries `.minimumScaleFactor(0.5)` on 15pt Cochin. | [`docs/debts/native-seller-scale-unmeasured.md`](../docs/debts/native-seller-scale-unmeasured.md) |
 | `native-stamp-load-unmeasured` | Step 6 adds stamp work to `PackagesModel.load()` (`native/ManifestKit/Sources/ManifestKit/Packages.swift`): eight or more hops into JavaScriptCore, three of them one call per stored stamp. | [`docs/debts/native-stamp-load-unmeasured.md`](../docs/debts/native-stamp-load-unmeasured.md) |
@@ -338,7 +338,8 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `native-ui-tests-not-in-ci` | The native job runs the ST tests only, so native UI tests and builds are not in CI. | [`docs/debts/native-ui-tests-not-in-ci.md`](../docs/debts/native-ui-tests-not-in-ci.md) |
 | `native-undo-notice-padding` | The Undo notice in `native/Manifest/OrphanedView.swift` pads its rows 4pt above and below. | [`docs/debts/native-undo-notice-padding.md`](../docs/debts/native-undo-notice-padding.md) |
 | `order-id-visible-unbuilt` | The package header gives the order id its own line (built 2026-10-20). | [`docs/debts/order-id-visible-unbuilt.md`](../docs/debts/order-id-visible-unbuilt.md) |
-| `orders-job-unbuilt` | The owner ruled on 2026-10-27 at 20:19 CDT that the job runs as a cron on the existing Worker. | [`docs/debts/orders-job-unbuilt.md`](../docs/debts/orders-job-unbuilt.md) |
+| `orders-job-unbuilt` | Orders come from a browser extension. | [`docs/debts/orders-job-unbuilt.md`](../docs/debts/orders-job-unbuilt.md) |
+| `orphaned-composer-contrast` | `testAccessibilityAuditOrphanedComposerReady` (the ready composer's contrast audit) failed "Contrast failed" on 2 of 2 tries in duo-ui run 42653870499, job pro-ui-a, on main `9bafcad` plus one Makefile comment line (2026-11-09). | [`docs/debts/orphaned-composer-contrast.md`](../docs/debts/orphaned-composer-contrast.md) |
 | `orphaned-reach-unpinned` | No test pins that Re-import, Backup and Reset must stay reachable from Orphaned, and it is unverified. | [`docs/debts/orphaned-reach-unpinned.md`](../docs/debts/orphaned-reach-unpinned.md) |
 | `panel-paper-fill-unbuilt` | Overlay panels carry no `paper` fill: `panelWrap` in `src/app.jsx` sets padding and a top border, and no background. | [`docs/debts/panel-paper-fill-unbuilt.md`](../docs/debts/panel-paper-fill-unbuilt.md) |
 | `panels-overlay-unbuilt` | Today a panel takes layout space and pushes the list down. | [`docs/debts/panels-overlay-unbuilt.md`](../docs/debts/panels-overlay-unbuilt.md) |
@@ -346,7 +347,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `photoget-throw-counts-as-kill` | In `test/photoget.test.mjs`, `runCase` turns a throw into a red case, and a red case counts as a mutant kill. | [`docs/debts/photoget-throw-counts-as-kill.md`](../docs/debts/photoget-throw-counts-as-kill.md) |
 | `received-at-size-unmeasured` | `receivedAt` is never pruned, and its size has not been measured. | [`docs/debts/received-at-size-unmeasured.md`](../docs/debts/received-at-size-unmeasured.md) |
 | `recent-log-unbuilt` | The web client ships the log, its merge rule, its panel and its undo (plan `recent-log-web`). | [`docs/debts/recent-log-unbuilt.md`](../docs/debts/recent-log-unbuilt.md) |
-| `recent-log-unmeasured` | How many actions a heavy mail day makes is unmeasured. | [`docs/debts/recent-log-unmeasured.md`](../docs/debts/recent-log-unmeasured.md) |
+| `recent-log-unmeasured` | How many actions a heavy day's mail makes is unmeasured. | [`docs/debts/recent-log-unmeasured.md`](../docs/debts/recent-log-unmeasured.md) |
 | `recent-undo-under-bar` | At 375px with the page at the top, the first open Recent row's UNDO cell spans y 705 to 777. | [`docs/debts/recent-undo-under-bar.md`](../docs/debts/recent-undo-under-bar.md) |
 | `reimport-received-unpinned` | Nothing pins that `received` survives a re-import. | [`docs/debts/reimport-received-unpinned.md`](../docs/debts/reimport-received-unpinned.md) |
 | `reset-all-keeps-token-unpinned` | No test pins that `resetAll` keeps the GitHub token. | [`docs/debts/reset-all-keeps-token-unpinned.md`](../docs/debts/reset-all-keeps-token-unpinned.md) |
@@ -367,6 +368,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `tally-audit-contrast-flags` | Three Tally audits report "Contrast failed" on small text and "Potentially inaccessible text" with no element: `TallyUITests.testAccessibilityAuditTallyScreenWithRows`, `TallyUITests.testAccessibilityAuditTallyScreenWithARowOpen` and `PackagesShellUITests.testAccessibilityAuditTallyScreen`. | [`docs/debts/tally-audit-contrast-flags.md`](../docs/debts/tally-audit-contrast-flags.md) |
 | `tally-card-moves-at-320px` | At 320px the Tally card moves 14px on check-ins 1 and 6. | [`docs/debts/tally-card-moves-at-320px.md`](../docs/debts/tally-card-moves-at-320px.md) |
 | `tcgplayer-link-opens-history-list` | The order id link opens `orderhistory?SearchString=<id>`, the URL the owner gave on 2026-10-21 (`tcgplayerOrderUrl` encodes the id). | [`docs/debts/tcgplayer-link-opens-history-list.md`](../docs/debts/tcgplayer-link-opens-history-list.md) |
+| `testflight-cert-per-run` | The `testflight` workflow signs on a fresh hosted runner with automatic signing and the App Store Connect key. | [`docs/debts/testflight-cert-per-run.md`](../docs/debts/testflight-cert-per-run.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`docs/debts/token-state-and-bundle-unpinned.md`](../docs/debts/token-state-and-bundle-unpinned.md) |
 | `tracking-checker-unbuilt` | Today the app does not check tracking numbers. | [`docs/debts/tracking-checker-unbuilt.md`](../docs/debts/tracking-checker-unbuilt.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`docs/debts/type-floor-unbuilt.md`](../docs/debts/type-floor-unbuilt.md) |
@@ -380,6 +382,9 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 
 | Slug | Gist | Link |
 |---|---|---|
+| `cloud-lane-cut` | Cloud restart: one lane cut from every handoff | [`docs/plans/cloud-lane-cut.md`](../docs/plans/cloud-lane-cut.md) |
+| `cloud-sessions` | Cloud sessions for mailaudit | [`docs/plans/cloud-sessions.md`](../docs/plans/cloud-sessions.md) |
+| `orders-extension` | Orders by browser extension | [`docs/plans/orders-extension.md`](../docs/plans/orders-extension.md) |
 | `recent-log-web` | Recent log, web client | [`docs/plans/recent-log-web.md`](../docs/plans/recent-log-web.md) |
 
 ## Invariants

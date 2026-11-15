@@ -1,22 +1,32 @@
 # The iOS app ships Mac first, TestFlight as the fallback
 
-After each merge, this Mac installs a Release build of MANIFEST on the owner's phone over Wi-Fi or cable. `ios-ship install tools/ios-ship.json --app Manifest` does the install. If it fails for any reason, `ios-ship testflight tools/ios-ship.json --app Manifest` uploads the same commit to TestFlight at once.
+After each merge, this Mac installs a Release build of MANIFEST on the owner's phone over Wi-Fi or cable. `ios-ship install tools/ios-ship.json --app Manifest` does the install. If it fails for any reason, a manual dispatch of the `testflight` workflow, `.github/workflows/testflight.yml`, uploads the same commit to TestFlight. Each dispatch needs the owner's go.
 
-**Status:** ruled. Owner ruling, 2026-10-22 19:40 CDT, for every app: when the phone is on Wi-Fi and the Mac can install, take that route, with TestFlight as the fallback. It amends the ruling of 2026-10-21 13:58 CDT, which shipped through TestFlight only.
+**Status:** ruled. Owner ruling, 2026-10-22 19:40 CDT, for every app: when the phone is on Wi-Fi and the Mac can install, take that route, with TestFlight as the fallback. It amends the ruling of 2026-10-21 13:58 CDT, which shipped through TestFlight only. Owner ruling, 2026-11-08 19:38 CST, on the waiting page as item 65 a (TestFlight upload from CI): the upload runs from CI, and the holds on it are lifted.
 
 Kind: build
 
-Plan: docs/decisions/build-and-deploy.md#make-testflight (native)
+Plan: docs/decisions/build-and-deploy.md#ios-ship-testflight (native)
 
-**Holds while:** the shared `ios-ship install` command installs a Release build from `tools/ios-ship.json`, and `ios-ship testflight` archives and uploads from the same file.
+**Holds while:** the shared `ios-ship install` command installs a Release build from `tools/ios-ship.json`, and `ios-ship testflight` archives and uploads from the same file. Also, the `testflight` workflow runs that upload from CI on a manual dispatch.
 
 ## The command
 
-- `ios-ship testflight tools/ios-ship.json --app Manifest` runs `xcodegen`, archives Release for `generic/platform=iOS`, then uploads the archive to App Store Connect. The steps and flags are in `build-and-deploy`. It does not run `npm run build`, so check `npm run check:rules` first.
-- `--export-only` stops before the upload and keeps the export in a printed folder. It is the only proof run without an upload.
-- Run it on this Mac after each merge, from a clean tree at origin/main. The tool is shared with the owner's Degen project.
-- The upload runs once. Never retry it in a loop.
-- The App Store Connect key file, key id and issuer id are credentials. They live in the ios-ship account file on this Mac, the ios-ship account file under ~/.config, never in this repo. Never read, copy or print the key file.
+- `ios-ship testflight tools/ios-ship.json --app Manifest` runs `xcodegen`, archives Release for `generic/platform=iOS`, then uploads the archive to App Store Connect. The steps and flags are in `build-and-deploy`. It does not run `npm run build`, so check `npm run check:rules` first. The workflow does not run it either. Main's required checks run it in the `suite` job, see `.github/workflows/checks.yml`, and keep `native/ManifestKit/Sources/ManifestKit/rules.js` fresh.
+- `--export-only` stops before the upload and keeps the export in a printed folder. It is the only proof run without an upload. The workflow's `dry` input passes it.
+- On this Mac, `make testflight` runs the same upload as a local fallback, from a clean tree at origin/main. The tool is shared with the owner's Degen project.
+- The upload runs once. Never retry it in a loop, and never re-dispatch the workflow in a loop.
+- The App Store Connect key file, key id and issuer id are credentials. On this Mac they live in the ios-ship account file under ~/.config, off the repo. In CI they live in the repo secrets `ASC_KEY_P8`, `ASC_KEY_ID` and `ASC_ISSUER_ID`. Never read, copy or print the key, in either place.
+
+## The CI workflow
+
+- `.github/workflows/testflight.yml` is the TestFlight fallback in CI. Its one trigger is `workflow_dispatch`, a manual dispatch. It runs on the `xcode-27` runner.
+- Inputs: `apps`, default `Manifest`. `dry` passes `--export-only`, so a dry dispatch exports and does not upload.
+- The signing team id comes from the repo variable `TEAM_ID`. `tools/ios-ship.json` holds no ID, and the job stops early when the variable is empty. The job installs a pinned xcodegen, as `milestone.yml` does, because the runner image has none.
+- An upload runs only from main. ios-ship needs a clean tree, with HEAD equal to origin/main.
+- The job checks out the branch tip when it starts, not the commit at dispatch. A merge during the wait for a runner then cannot fail the upload. A merge in the minute or two before ios-ship fetches main still stops the run, with nothing uploaded.
+- The job fetches ios-ship from claude-settings at the pinned commit `eaaf66e`. It writes the App Store Connect key from the repo secrets into the runner's temp dir, ships, and then deletes the key in a step that always runs.
+- Each dispatch needs the owner's go, dry and real alike: the macOS runner slots are shared. Minutes cost nothing while the repo is public, see `milestone-runs-full-suite`.
 
 ## The build number
 
@@ -35,12 +45,18 @@ The archive holds `Assets.car` and `CFBundleIconName` AppIcon, from the catalog 
 - `tools/ios-ship.json` lists the one app, Manifest. It holds no ID. The team, key and phone IDs live in the ios-ship account file on this Mac, off the repo.
 - The phone is Shivinate XIII (owner ruling, 2026-10-26). `make phone` and `make testflight` call `ios-ship` with `tools/ios-ship.json --app Manifest`. The repo has no script or app list of its own.
 - The phone must be on home Wi-Fi or cabled. The tool logs under ~/Library/Logs/ios-adblock-reinstall. Exit 75 means the phone is unreachable.
-- Any non-zero exit sends the same commit through `ios-ship testflight tools/ios-ship.json --app Manifest`. The report names the route that landed.
+- Any non-zero exit leaves the same commit for a manual dispatch of the `testflight` workflow, which needs the owner's go, see The CI workflow. The report names the route that landed.
 - First run: 2026-10-22 19:42 CDT, installed and launched over Wi-Fi.
 
 ## Native files
 
 A TestFlight install puts a native build on the phone. So the first install is the first native ship, and the names in `native-files-are-frozen` freeze then.
+
+## Measured
+
+- Dry run 42745528705, on main at 6a55afc, 2026-11-09 20:51 CST: green on the xcode-27 runner. A clean runner signs with the ASC key and `TEAM_ID` alone, with no certificate secret. The job took 3 min 6 s, and the Ship step took 2 min 58 s.
+- Upload run 42750597378, on main at 727a7b3, 2026-11-09 22:04 CST: build 202611100404 uploaded to TestFlight. The Ship step took 4 min 4 s. The runner keychain went from 0 to 1 signing identity, so the run made one Apple Development certificate.
+- Upload run 42747709994 failed with nothing uploaded. It waited 14 min for a runner while a merge moved main, and ios-ship refused because HEAD was not origin/main.
 
 ## Unmeasured
 
