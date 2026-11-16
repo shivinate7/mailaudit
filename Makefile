@@ -14,7 +14,7 @@ UI_TEST ?= sim-test
 # (debt native-ui-tests-not-in-ci); on the owner's Mac they run by hand.
 # UI_TESTS_A is the first milestone job's share. The second job runs every class that is in neither list.
 # test/ci-wiring.test.mjs proves each class is in exactly one of A, the rest and Duo.
-DUO_UI_TESTS := DuoHandUITests DuoSpreadUITests DuoShellUITests
+DUO_UI_TESTS := DuoHandUITests DuoSpreadUITests DuoShellUITests FindPillDuoUITests
 UI_TESTS_A := AuditSkippingTabBarUITests LedgerSyncUITests MastheadBackupUITests MastheadPaintUITests OrphanedUITests
 UI_ONLY_A := $(addprefix -only-testing:ManifestUITests/,$(UI_TESTS_A))
 UI_SKIP_DUO := $(addprefix -skip-testing:ManifestUITests/,$(DUO_UI_TESTS))
