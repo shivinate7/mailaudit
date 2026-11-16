@@ -24,7 +24,6 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `reset-leaves-sync-unpinned` — No test pins that an armed Reset leaves Sync open.
 - `reset-all-keeps-token-unpinned` — No test pins that resetAll keeps the GitHub token.
 - `token-state-and-bundle-unpinned` — Nothing pins the token's React-state or bundle guarantees.
-- `reimport-tracking-unrefreshed` — A re-import does not refresh tracking.
 - `ruled-head-heights-unremeasured` — The ruled head heights have not been re-measured.
 - `photo-put-unrun-on-github` — The GitHub photo PUT and pull have never run.
 - `tally-audit-contrast-flags` — The Tally audit flags contrast and inaccessible text that the token pairs clear.
@@ -34,6 +33,7 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `recent-log-unbuilt` — The recent-actions log is not built in the native client.
 - `recent-log-unmeasured` — The recent-actions log has one measurement to take.
 - `recent-undo-under-bar` — A Recent UNDO cell can sit half under the bottom bar.
+- `reimport-refresh-stays-on-device` — A refreshed tracking stays on the importing device.
 - `armed-reset-mistap-unmeasured` — A mis-tap beside the armed Reset box is unmeasured.
 - `orphaned-reach-unpinned` — Re-import, Backup and Reset on Orphaned have no test.
 - `panels-overlay-unbuilt` — Disclosure panels still push the list.
