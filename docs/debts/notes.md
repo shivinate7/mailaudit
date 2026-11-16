@@ -118,3 +118,12 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-15, testflight import review: no case pins a wrapped (embedded newline) P12 as running, and the label of assertion 34 in `test/ci-wiring.test.mjs` still says "empty", though blank counts. Decision: `native-ships-via-testflight`.
 - 2026-11-15, testflight import review: the macOS behaviour of a blank P12, and bash 3.2 itself, is unmeasured; the tests ran on Linux with a stub. Decision: `native-ships-via-testflight`.
 - 2026-11-15, testflight import review: the first CI proof used a Desktop path mix-up, a `... | gh secret set` pipe with no pipefail that stores an empty secret when the file is missing. With `ASC_DEV_CERT_PASSWORD` set and `ASC_DEV_CERT_P12` blank, the "Import the signing identity" step fails and names `ASC_DEV_CERT_P12`; with both blank it prints a notice and exits 0. Decision: `native-ships-via-testflight`.
+
+## mailaudit #342 review, low findings
+
+- 2026-11-16, #342 review: in `src/merge-rules.mjs` `mergeItems`, a key not stored but repeated in one CSV takes the last row's tracking and counts as refreshed; before, the first row won.
+- 2026-11-16, #342 review: the three new summary branches in `handleFile` (`src/app.jsx`), such as "Updated the shipping status on N lines", have no test, and 57.11 matches the old and the new text.
+- 2026-11-16, #342 review: the 57.18 comment and the group 33 header in `test/app.test.mjs` credit "empty incoming tracking keeps the stored one" to ruling 89 b, but the ruling text has no such clause.
+- 2026-11-16, #342 review: cases 33.66a and 33.66b in `test/app.test.mjs` were edited in a24f14b1 after the builder's fixes; whether a test-author wrote them is unconfirmed.
+- 2026-11-16, #342 review: the copy "Updated the shipping status on" at `src/app.jsx:3911` can read "Updated shipping status on".
+- 2026-11-16, #342 review: the PR body says `cloud-session-reach` and `csv-import-shows-a-summary` are "no change", but the diff edits both files.
