@@ -46,8 +46,8 @@ struct FindPill: View {
         }
         .padding(.leading, 16).padding(.trailing, 6).padding(.vertical, 4)
         .frame(maxWidth: .infinity, minHeight: 48)
-        // Glass over the paper at 62 percent (the web's backdrop blur over the paper).
-        .background { Capsule().fill(.ultraThinMaterial); Capsule().fill(Parchment.paper.opacity(0.62)) }
+        // Opaque paper, no material: list text under a translucent pill shows through and fails the contrast audit.
+        .background(Capsule().fill(Parchment.paper))
         .overlay(Capsule().strokeBorder(focused ? Parchment.accent : Parchment.line, lineWidth: 1))
         .contentShape(Capsule())
         .onTapGesture { focused = true }
