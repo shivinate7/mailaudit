@@ -91,8 +91,10 @@ jobs:
           PUSH_TREE: ${{ github.event.head_commit.tree_id }}
           EVENT: ${{ github.event_name }}
 
-  suite:
-    name: suite
+  # The shared push-skip action and the rollup name the job `suite`, and GitHub appends the matrix
+  # value to a matrix job's name. So the three shards run under suite-shards, and the fan-in job
+  # `suite` below is the one check with that exact name.
+  suite-shards:
     needs: [push-skip]
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
@@ -248,6 +250,21 @@ jobs:
       - name: the record corpus checks out
         if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 3
         run: npm run check:records --silent
+
+  # Fan-in over the shards: the one job named `suite`. always() makes it run when a shard fails or
+  # is cancelled, and the step fails unless every shard succeeded, so a red shard reads as a red `suite`.
+  # It has no name key and no step if:, so it reports on every run that is not a draft.
+  suite:
+    needs: [suite-shards]
+    if: ${{ always() && !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: every suite shard succeeded
+        env:
+          SHARDS_RESULT: ${{ needs.suite-shards.result }}
+        run: |
+          test "$SHARDS_RESULT" = success || { echo "suite-shards result is $SHARDS_RESULT, not success"; exit 1; }
 
   # CLAUDE.md's own numbers and paths, checked against the repo itself: see check-docs.mjs for what
   # this does and does not cover. Claim 1 sums the three app-suite part logs, which the suite
@@ -517,7 +534,7 @@ jobs:
   # or was skipped. always() makes it run when a needed job fails, and a draft skips it with
   # every other job. It has no name key, so its check name is its id.
   all-jobs-passed:
-    needs: [push-skip, suite, docs, screens, scope, native, zizmor, checks, milestone-due, mutation-report]
+    needs: [push-skip, suite, suite-shards, docs, screens, scope, native, zizmor, checks, milestone-due, mutation-report]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -531,7 +548,7 @@ jobs:
   # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
   # A draft run posts nothing, because its jobs skip on purpose.
   ci-done:
-    needs: [push-skip, suite, docs, screens, scope, native, zizmor, checks, milestone-due, mutation-report, all-jobs-passed]
+    needs: [push-skip, suite, suite-shards, docs, screens, scope, native, zizmor, checks, milestone-due, mutation-report, all-jobs-passed]
     if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
