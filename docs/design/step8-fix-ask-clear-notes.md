@@ -34,6 +34,10 @@ Deep links: `#o=flip`, `#o=scroll`, `#o=margin`, `#o=clamp`, `#o=today`; `s=stam
      - Try 2: the ask found about 4 s after the Remove tap, and invalid about 5 s after it.
    - The brief's premise needs a correction. `b/b.txt`, from before the band, already shows "stamp-ask-confirm:A1::Alpha Cards is missing". Before the band, the ask hung under the pill and the tab bar instead. So the band moved the edge. It did not start this failure class.
    - The b and c job logs of run 43894310154 are not in the scratchpad, so that run's stamp and bulk failures are unknown to me.
+   - The failures split into two paths, and the flip fixes only the first.
+     - The tap path: `ScreenKit.tap` meets an ask that is not hittable, drags, and the ask lapses. "Failed to tap", "Activation point invalid", and "is missing" after a tap all take this path. Making the ask hittable in place fixes it.
+     - The read path: `testEveryStampControlHasA44ptHitRegion` (`PackageStampUITests.swift:403-407`) reads the frame through `assertHitRegion`, which never drags. In `c_full.txt` the Remove tap lands at t = 134.75 s, the ask exists at 136.13 s, and the frame read at 138.74 s returns 0.0 pt, 4.0 s after the tap, with no drag between. That is the 4 s lapse alone (`StampViews.swift:197`), a test-side race. The flip will not turn it green.
+     - Do not change the 4 s lapse; it is ruled behaviour (`stamp-band-opens-the-editor`). The test fix is the one this suite already uses: read every frame in one snapshot right after the arm (`PackageStampUITests.swift:231`).
    - Job d of that run passed `Step7DesignShotsUITests` "clear armed". That test reveals the whole card before it arms, which fits the edge cause.
 
 2. **What the invariant allows and forbids.** `no-layout-shift-under-pointer` forbids:
@@ -64,6 +68,7 @@ Deep links: `#o=flip`, `#o=scroll`, `#o=margin`, `#o=clamp`, `#o=today`; `s=stam
      - Offset the ask: `ask.offset(y: up ? -(askHeight + 4) : rowHeight + 4)`.
      - Until `up` is set, draw the ask at `opacity(0)` and `accessibilityHidden(true)`, so it never shows on the wrong side.
      - With no `visible` (no enclosing scroll view), keep today's below.
+     - Write `visible` and `askHeight` to state only while `armed` is true and `up` is not yet set. Every mounted `BulkRow` carries this modifier, so an unarmed row must change no state on a scroll frame (`native-card-load-time` measures the Packages load).
    - Spec, the cover:
      - Add `@Entry var askCover: EdgeInsets` next to `HangingAsk`. Its default top is 47, the running-head slot (`MastheadScreen.slot`, `RunningHead.height + 1`), and its default bottom is 0.
      - Set the bottom where a margin already sits:
@@ -124,15 +129,24 @@ Deep links: `#o=flip`, `#o=scroll`, `#o=margin`, `#o=clamp`, `#o=today`; `s=stam
 - The top safe area is a guess of 54 pt.
 - Whether the re-pointed stamp and bulk tests go green is unknown. The proof is a run of `PackageStampUITests` and `PackageBulkUITests` on the build.
 
+## Devices
+
+`layout.py devices` printed `unknown` for this repo, so no device list gives a size. The frames are drawn at the brief's 375 pt launch width (the test window is 402 x 874 pt), and at the Duo sizes the step 8 mockups use: 466 x 678 pt folded and 951 x 669 pt open.
+
 ## Critique
 
 Skill `impeccable` (`critique`) was run on 2026-11-16 as a design review alone. The target is native, so it had no detector and no snapshot. The launcher did not run, and no PRODUCT.md or DESIGN.md exists.
+
+Render faults I found in my own screenshots, before the critique:
 
 - Fixed: every verdict line read red, because "Nothing moved." matched the colour test. Each verdict now sets its own colour.
 - Fixed: the AX frames gave the flip no room above, because their crop was shorter than the list. Room now counts from the list's top under the running head.
 - Fixed: the "last tap" ring sat on the ask, not on Remove or Clear. It now reads only the row's own buttons.
 - Fixed: "Scroll on arm" said a second tap removes the stamp. On the stamp ask the finger lands on the ask's Cancel. Only the Clear ask puts the confirm there.
 - Kept: the AX5 frames are tall. That is the true span the flip needs.
+
+The critique's own findings:
+
 - Fixed: the AX Tally frames showed blank space above the card with no reason given. The captions now say it is the masthead, not drawn.
 - Open (P2, outside this folder): the flipped Clear ask covers Brainstorm's name, and its confirm does not name the product. Naming the scope in the confirm ("Tap again to clear 1 check-in of Brainstorm") would change `BulkRow` and the web's wording.
 

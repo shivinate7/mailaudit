@@ -85,13 +85,23 @@ Deep links: `#o=measure`, `#o=outline`, `#o=short`, `#o=wide`; `d=375`, `d=fold`
 - The cause of the default-size flag, until item 2's run.
 - Whether item 3 or item 6 changes any audit result.
 
+## Devices
+
+`layout.py devices` printed `unknown` for this repo, so no device list gives a size. The frames are drawn at the brief's 375 pt launch width, and at the Duo widths the step 8 mockups use: 466 pt folded and 951 pt open.
+
 ## Critique
 
-Skill `impeccable` (`critique`) was run on 2026-11-16 as a design review alone. The target is native, and it had no snapshot. The launcher did not run, and no PRODUCT.md or DESIGN.md exists.
+Skill `impeccable` (`critique`) was run on this file on 2026-11-16 as a design review alone. The target is native, and it had no snapshot. The launcher did not run, and no PRODUCT.md or DESIGN.md exists.
+
+Render faults I found in my own screenshots, before the critique:
 
 - Fixed: the cell marks were drawn below their cells, because the offsets were added twice. The cell's offsetParent is the frame.
 - Fixed: each route grew the frames. Their height is now the content's height.
 - Fixed: the measure-first mark read green while the audit flags that cell. It now reads red, "flagged at this size, cause unknown".
+The critique's own findings:
+
+- Fixed: the folded Duo AX5 caption ended in two periods and said nothing. It now names the type and the cell width.
+- Kept: the frame marks' labels sit over the next cell. They are page chrome, not the screen.
 - Kept: the "VIEW" group label is uppercase, as built (`LedgerTab.viewGroup`, `textCase(.uppercase)`).
 - Open (P3, outside this fix): at AX3 and AX5 the Ledger row's value ("Most missing") wraps under its title. That is the row, not the grid. Debt `native-axl-rows-break` covers rows that break at AX sizes.
 
