@@ -257,10 +257,11 @@ final class TallyUITests: XCTestCase {
             var clipped: [String] = []
             try app.performAccessibilityAudit(for: .textClipped) { issue in
                 guard let frame = issue.element?.frame, frame.intersects(option.frame) else { return true }
-                clipped.append(issue.compactDescription)
+                let name = issue.element.map { $0.identifier.isEmpty ? $0.label : $0.identifier }
+                clipped.append(auditFailLine(type: issue.compactDescription, name: name, frame: frame))
                 return false
             }
-            XCTAssertEqual(clipped, [], "\(label) is clipped at 375pt")
+            XCTAssertEqual(clipped, [], "\(label) is clipped at 375pt\n" + auditFailureText(clipped))
 
             option.tap()
             let shown = [sort.label, sort.value as? String ?? ""].joined(separator: " ")
