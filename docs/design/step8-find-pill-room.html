@@ -1,0 +1,274 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Find Pill Room</title>
+<style>
+/* Tokens: shared/tokens.json, read through Parchment (native/Manifest/Theme.swift). Light keys: paper, card, ink, inkSoft, line,
+   accent, shadow. Dark keys: darkPaper, darkCard, darkInk, darkInkSoft, darkLine, darkAccent. The native app is held to light
+   (native/project.yml UIUserInterfaceStyle: Light), so the dark theme here is a spec, not a shipped state.
+   Page chrome only: manila, manilaInk, green (--new), red (--today), and their dark keys. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --shadow:rgba(28,43,36,0.06); --manila:#EADBBA; --manilaInk:#695832; --new:#2E7A5E; --today:#A8443C;
+  --cochin: Cochin, Georgia, serif; --mono: Menlo, monospace;
+  --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+    --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+  --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.45; }
+main { max-width:1040px; margin:0 auto; padding:calc(16px + var(--sat)) 16px calc(16px + var(--sab)); display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-size:24px; line-height:1.2; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+nav .sep { flex-basis:100%; height:0; }
+section.opt { display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line); padding-top:16px; }
+section.opt[hidden], figure[hidden] { display:none; }
+.opt h2 { font-size:18px; margin:0; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.opt p { margin:0; color:var(--inkSoft); max-width:72ch; }
+.chip { font:600 12px/1.4 -apple-system, system-ui, sans-serif; border:2px dashed; border-radius:6px; padding:2px 6px; }
+.chip.new { color:var(--new); } .chip.today { color:var(--today); }
+.figs { font:13px/1.45 var(--mono); }
+.pick { font-size:13px; font-weight:600; color:var(--accent); }
+.row { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap:16px; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure.wide { grid-column:1 / -1; }
+figcaption { font-size:13px; color:var(--inkSoft); }
+figcaption b { color:var(--ink); font-size:14px; }
+.fit { width:100%; overflow:hidden; }
+
+/* ---- device crops, 1 CSS px = 1 pt. Each frame is the bottom band of the screen. ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:0 0 24px 24px; border-top-style:dashed;
+  overflow:hidden; font-family:var(--cochin); color:var(--ink); }
+.fold-out { width:466px; height:280px; }   /* folded Duo 466 x 678; crop y 398 to 678 */
+.duo { width:951px; height:240px; border-radius:0 0 12px 12px; }  /* open Duo 951 x 669; crop y 429 to 669 */
+.pro { width:402px; height:300px; border-radius:0 0 40px 40px; }  /* iPhone 18 Pro 402 x 874; crop y 574 to 874 */
+.duo .fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:7; }
+
+/* system tab bar (system-drawn; approximated): 83 pt at the screen's foot */
+.sysbar { position:absolute; left:0; right:0; bottom:0; height:83px; z-index:6; display:flex; justify-content:center; padding-top:8px; }
+.sysbar .cap, .duobar { border:1px solid var(--line); background:color-mix(in srgb, var(--paper) 62%, transparent);
+  -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); display:grid; grid-template-columns:repeat(4,1fr); align-items:center; }
+.sysbar .cap { width:calc(100% - 32px); height:56px; border-radius:28px; padding:0 8px; }
+.sysbar span, .duobar span { display:flex; flex-direction:column; align-items:center; gap:2px; font:11px -apple-system, system-ui, sans-serif; color:var(--inkSoft); }
+.sysbar span i { width:22px; height:22px; border:1.5px solid currentColor; border-radius:6px; display:block; }
+.sysbar span.on, .duobar span.on { color:var(--accent); }
+.duobar { position:absolute; left:519.5px; width:407.5px; bottom:12px; height:64px; border-radius:32px; z-index:6; padding:4px; gap:4px; }
+.duobar span { font-family:var(--cochin); font-size:12px; }
+
+/* ---- the Find pill (FindPill.body), opaque paper as built. Its place is set per frame by --pt (top) and --ph (height). ---- */
+.find { position:absolute; z-index:9; left:16px; right:16px; top:var(--pt); height:var(--ph); display:flex; align-items:center; gap:8px;
+  padding:4px 6px 4px 16px; border-radius:999px; border:1px solid var(--line); background:var(--paper); }
+.find svg { flex:none; width:20px; height:20px; fill:none; stroke:var(--inkSoft); stroke-width:1.8; stroke-linecap:round; }
+.find .q { flex:1; min-width:0; font-family:var(--cochin); font-size:16px; color:var(--inkSoft); white-space:nowrap; overflow:hidden; }
+.find .clr { flex:none; width:44px; height:44px; }
+.ax3 .find .q { font-size:24px; } .ax5 .find .q { font-size:30px; }
+.ax3 .find svg, .ax5 .find svg { width:24px; height:24px; }
+.duo .find { left:511.5px; right:auto; width:423.5px; }
+
+/* ---- the list viewport. --edge is where the scroll view ends (pt from the crop's top). Today it runs to the screen's foot. ---- */
+.vp { position:absolute; left:0; right:0; top:0; height:var(--edge); overflow:hidden; }
+.o-today .vp { height:100%; }
+.vp.l { right:auto; width:455.5px; height:100%; }    /* open Duo Tally: the left page, nothing over it */
+.vp.r { left:495.5px; right:0; }                     /* open Duo Tally: the right page's detail */
+.list { position:absolute; left:16px; right:16px; top:var(--top); display:flex; flex-direction:column; gap:8px; }
+.o-rule .vp:not(.l)::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:var(--line); }
+.o-fade .vp:not(.l)::after { content:""; position:absolute; left:0; right:0; bottom:0; height:16px;
+  background:linear-gradient(to bottom, color-mix(in srgb, var(--paper) 0%, transparent), var(--paper)); pointer-events:none; }
+
+.pcard, .trow { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 1px var(--shadow); }
+.phead { padding:12px; display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.phead b { font-size:15px; } .phead span { font:11px var(--mono); color:var(--inkSoft); }
+.ln { display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); padding:12px 12px 12px 4px; }
+.ln i { flex:0 0 45px; height:30px; display:grid; place-items:center; }
+.ln i::before { content:""; width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; }
+.ln .t { flex:1; display:flex; flex-direction:column; gap:4px; min-width:0; }
+.ln .t b { font-size:14px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
+.ln .t b span, .ln .t small { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.thead { display:flex; align-items:center; gap:8px; padding:12px; }
+.thead .nm { flex:1; display:flex; flex-direction:column; } .thead .nm b { font-size:15px; }
+.thead .nm span, .thead .fig span { font:12px var(--mono); color:var(--inkSoft); }
+.thead .fig { display:flex; flex-direction:column; align-items:flex-end; } .thead .fig b { font:700 15px var(--mono); }
+.thead .step { flex:none; width:44px; height:44px; border:1px solid var(--line); border-radius:8px; display:grid; place-items:center; font:600 18px var(--mono); color:var(--accent); }
+/* AX list text: drawn to fit, not a measured size */
+.ax3 .ln .t b, .ax3 .thead .nm b, .ax3 .phead b { font-size:21px; line-height:1.2; }
+.ax3 .ln .t small, .ax3 .ln .t b span, .ax3 .thead .nm span, .ax3 .thead .fig span, .ax3 .phead span { font-size:16px; }
+.ax5 .ln .t b, .ax5 .thead .nm b, .ax5 .phead b { font-size:26px; line-height:1.2; }
+.ax5 .ln .t small, .ax5 .ln .t b span, .ax5 .thead .nm span, .ax5 .thead .fig span, .ax5 .phead span { font-size:20px; }
+.ax3 .thead .fig b { font-size:21px; } .ax5 .thead .fig b { font-size:26px; }
+.ax3 .ln, .ax3 .thead, .ax5 .ln, .ax5 .thead, .ax3 .phead, .ax5 .phead { flex-wrap:wrap; }
+
+/* measurement ticks, page chrome: the gap between the list's edge and the pill */
+.tick { position:absolute; z-index:10; right:4px; width:28px; top:var(--edge); height:calc(var(--pt) - var(--edge)); border:1px dashed var(--new);
+  border-left:0; font:600 9px/1 -apple-system, system-ui, sans-serif; color:var(--new); display:grid; place-items:center end; padding-right:2px; }
+.o-today .tick { display:none; }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" role="note">Sample: no figure on this page is real. Rows use the test fixture names (shared/fixtures/golden).</div>
+  <h1>Find pill room</h1>
+  <p class="sub">Step 8, PR 238, notes item 17. The list ends where the Find pill begins, so no row sits under the pill at rest. Each option draws the list's bottom edge against the pill: the folded Duo, the open Duo, then the iPhone 18 Pro at normal size, AX3 and AX5, on Packages and Tally. Designer kind: informed.</p>
+  <nav aria-label="States">
+    <a href="#">All</a><a href="#o=hard">Hard edge</a><a href="#o=rule">Hairline rule</a><a href="#o=fade">Short fade</a><a href="#o=today">Today</a>
+    <span class="sep"></span>
+    <a href="#d=fold">Duo folded</a><a href="#d=duo">Duo open</a><a href="#d=pro">18 Pro</a><a href="#s=packages">Packages</a><a href="#s=tally">Tally</a>
+    <a href="#x=normal">Normal size</a><a href="#x=ax3">AX3</a><a href="#x=ax5">AX5</a>
+    <span class="sep"></span>
+    <a href="#t=light" data-theme-link>Light</a><a href="#t=dark" data-theme-link>Dark</a>
+    <button type="button" data-hide="hard">Hide hard edge</button>
+    <button type="button" data-hide="rule">Hide hairline rule</button>
+    <button type="button" data-hide="fade">Hide short fade</button>
+    <button type="button" data-hide="today">Hide today</button>
+  </nav>
+
+  <!-- The two Duo poses, folded first, then the 18 Pro. Each option clones these frames. -->
+  <template id="folded"><div class="dev fold-out" data-device="iphone-duo-folded"></div></template>
+  <template id="unfolded"><div class="dev duo" data-device="iphone-duo-unfolded"></div></template>
+  <template id="pro"><div class="dev pro" data-device="iphone-18-pro"></div></template>
+  <template id="sys"><div class="sysbar"><div class="cap"><span class="on"><i></i>Packages</span><span><i></i>Tally</span><span><i></i>Orphaned</span><span><i></i>Ledger</span></div></div></template>
+  <template id="mag"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg></template>
+  <template id="pk"><div class="list">
+    <div class="pcard"><div class="phead"><b>Beta Games</b><span>B1 · 2026-07-29</span></div>
+      <div class="ln"><i></i><div class="t"><b>Brainstorm <span>$0.50</span></b><small>Test Set · Near Mint</small></div></div>
+      <div class="ln"><i></i><div class="t"><b>Counterspell <span>$2.00</span></b><small>Test Set · Near Mint</small></div></div>
+      <div class="ln"><i></i><div class="t"><b>Lightning Bolt <span>$1.00</span></b><small>Test Set · Near Mint</small></div></div></div>
+    <div class="pcard"><div class="phead"><b>Alpha Cards</b><span>A1 · 2026-07-01</span></div>
+      <div class="ln"><i></i><div class="t"><b>Brainstorm <span>$0.50</span></b><small>Test Set · Near Mint</small></div></div>
+      <div class="ln"><i></i><div class="t"><b>Path to Exile <span>$3.00</span></b><small>Test Set · Near Mint</small></div></div></div>
+  </div></template>
+  <template id="tl"><div class="list">
+    <div class="trow"><div class="thead"><div class="nm"><b>Brainstorm</b><span>Test Set · 2 sellers</span></div><div class="fig"><b>0/4</b><span>$2.00</span></div><span class="step">+</span></div></div>
+    <div class="trow"><div class="thead"><div class="nm"><b>Counterspell</b><span>Test Set · 2 sellers</span></div><div class="fig"><b>0/2</b><span>$4.00</span></div><span class="step">+</span></div></div>
+    <div class="trow"><div class="thead"><div class="nm"><b>Lightning Bolt</b><span>Test Set · 3 sellers</span></div><div class="fig"><b>0/3</b><span>$3.00</span></div><span class="step">+</span></div></div>
+    <div class="trow"><div class="thead"><div class="nm"><b>Path to Exile</b><span>Test Set · 1 seller</span></div><div class="fig"><b>0/1</b><span>$3.00</span></div><span class="step">+</span></div></div>
+    <div class="trow"><div class="thead"><div class="nm"><b>Swords to Plowshares</b><span>Test Set · 2 sellers</span></div><div class="fig"><b>0/2</b><span>$1.50</span></div><span class="step">+</span></div></div>
+  </div></template>
+
+  <div id="opts"></div>
+</main>
+<script>
+const OPTS = [
+  { k:'hard', name:'Hard edge', chip:['new','New: list ends 8 pt above the pill'], pick:false,
+    text:'The scroll view ends 8 pt above the pill and draws nothing at its edge. Bare paper below. A card cut at the edge loses its border with no end, which reads like a drawing fault.',
+    fig:'List edge = pill top - 8. Band below: paper, no mark.' },
+  { k:'rule', name:'Hairline rule', chip:['new','New: list ends on a 1 pt line rule, pill on a paper band'], pick:true,
+    text:'The scroll view ends 8 pt above the pill. The band under it is paper, and its top 1 pt is a Parchment.line rule, the same rule that closes the running head at the top of this scroll (MastheadScreen RunningHead). A cut card ends on a ruled line, so the edge reads as the page, not a fault. This is also the "paper band" look: the list is paper too, so a band with no rule is the hard edge.',
+    fig:'List edge = pill top - 8; rule 1 pt Parchment.line, full width of the list. Band: Parchment.paper to the screen foot.' },
+  { k:'fade', name:'Short fade', chip:['new','New: 16 pt paper fade at the list edge'], pick:false,
+    text:'The scroll view ends 8 pt above the pill, and its last 16 pt fade to paper. Apple\'s layout page asks for a scroll edge effect, not a solid backing, under controls. Loss: the fade lowers the contrast of the row text under it, the text the audit already flags.',
+    fig:'Worst case: a row\'s ink 8 pt into a 16 pt fade sits near 50% over paper, about 2:1. Unmeasured on the phone.' },
+  { k:'today', name:'Today', chip:['today','Today: the list runs under the pill (safeAreaInset)'], pick:false,
+    text:'As built: .safeAreaInset(edge: .bottom) leaves the scroll view at full height, so rows pass under the opaque pill at rest. Row text straddles the pill top (frame y 723 to 737, pill top 727, macOS run 43848366093).',
+    fig:'Scroll view ends at the screen foot; content margin only at the list end.' },
+];
+// Geometry per device, in crop points (crop top = screen y shown). pt: pill top, ph: pill height.
+// 18 Pro: pill top 727 measured at normal size (run 43848366093), bottom 779, 12 pt above the bar at 791. AX3 51 pt and AX5 59 pt
+// one-line pills are the brief's figures (coordinator), drawn with the same bottom. Folded Duo: per the code, 8 pt above the bar at 595.
+// Open Duo: per the code, pill bottom = 669 - (DuoBarMetrics.height 76 + 8) = 585, 52 pt tall.
+const FRAMES = [
+  { d:'fold', s:'packages', x:'normal', tpl:'folded', crop:398, pillTop:535, ph:52, top:-30, list:'pk', caption:'Duo folded, Packages, normal size. Outer screen 466 x 678 pt; crop y 398 to 678. Pill 535 to 587, 8 pt above the system bar at 595 (code). List edge 527.' },
+  { d:'duo', s:'packages', x:'normal', tpl:'unfolded', crop:429, pillTop:533, ph:52, top:-60, list:'pk', wide:true, caption:'Duo open, Packages. 951 x 669 pt; crop y 429 to 669. One list across both pages (PackagesTab). Pill on the right page, 533 to 585, 8 pt above the Duo bar (findPillOnDuo). The list ends at 525 across its full width, the left page too: 140 pt (FindPillMetrics.duoRoom) less list on both pages.' },
+  { d:'duo', s:'tally', x:'normal', tpl:'unfolded', crop:429, pillTop:533, ph:52, top:-40, list:'tl', wide:true, split:true, caption:'Duo open, Tally. The left page lists names and has nothing over it, so it is unchanged. The right page (the picked name\'s copies) ends at 525, 8 pt above the pill.' },
+  { d:'pro', s:'packages', x:'normal', tpl:'pro', crop:574, pillTop:727, ph:52, top:-20, list:'pk', caption:'18 Pro, Packages, normal size. 402 x 874 pt; crop y 574 to 874. Pill 727 to 779 (measured). List edge 719: the scroll frame ends 72 pt above the bar top at 791.' },
+  { d:'pro', s:'packages', x:'ax3', tpl:'pro', crop:574, pillTop:728, ph:51, top:-70, list:'pk', caption:'18 Pro, Packages, AX3. Pill one line, 51 pt (brief), 728 to 779. List edge 720.' },
+  { d:'pro', s:'packages', x:'ax5', tpl:'pro', crop:574, pillTop:720, ph:59, top:-120, list:'pk', caption:'18 Pro, Packages, AX5. Pill one line, 59 pt (brief), 720 to 779. List edge 712.' },
+  { d:'pro', s:'tally', x:'normal', tpl:'pro', crop:574, pillTop:727, ph:52, top:-10, list:'tl', caption:'18 Pro, Tally, normal size. The "+" stepper of the last row in view now sits above the edge, never under the pill.' },
+  { d:'pro', s:'tally', x:'ax3', tpl:'pro', crop:574, pillTop:728, ph:51, top:-60, list:'tl', caption:'18 Pro, Tally, AX3. List edge 720.' },
+  { d:'pro', s:'tally', x:'ax5', tpl:'pro', crop:574, pillTop:720, ph:59, top:-150, list:'tl', caption:'18 Pro, Tally, AX5. List edge 712.' },
+];
+const GAP = 8;  // list edge to pill top, pt
+const tpl = id => document.getElementById(id).content.cloneNode(true);
+function pill(ph) {
+  const p = document.createElement('div'); p.className = 'find';
+  p.append(tpl('mag')); const q = document.createElement('span'); q.className = 'q'; q.textContent = ph; p.append(q);
+  const c = document.createElement('span'); c.className = 'clr'; p.append(c); return p;
+}
+function vp(cls, list, top, id) {
+  const v = document.createElement('div'); v.className = 'vp' + (cls ? ' ' + cls : ''); if (id) v.id = id;
+  v.style.setProperty('--top', top + 'px'); v.append(tpl(list)); return v;
+}
+const host = document.getElementById('opts');
+OPTS.forEach(o => {
+  const sec = document.createElement('section'); sec.className = 'opt'; sec.dataset.o = o.k;
+  sec.innerHTML = `<h2>${o.name} <span class="chip ${o.chip[0]}">${o.chip[1]}</span>${o.pick ? '<span class="pick">Pick</span>' : ''}</h2><p>${o.text}</p><p class="figs">${o.fig}</p>`;
+  const row = document.createElement('div'); row.className = 'row';
+  let focused = false;
+  FRAMES.forEach(f => {
+    const fig = document.createElement('figure'); fig.dataset.d = f.d; fig.dataset.s = f.s; fig.dataset.x = f.x;
+    if (f.wide) fig.className = 'wide';
+    fig.innerHTML = `<figcaption><b>${f.caption.split('. ')[0]}.</b> ${f.caption.split('. ').slice(1).join('. ')}</figcaption>`;
+    const fit = document.createElement('div'); fit.className = 'fit';
+    const d = tpl(f.tpl).firstElementChild; d.classList.add('o-' + o.k); if (f.x !== 'normal') d.classList.add(f.x);
+    const pt = f.pillTop - f.crop, edge = pt - GAP;
+    d.style.setProperty('--pt', pt + 'px'); d.style.setProperty('--ph', f.ph + 'px'); d.style.setProperty('--edge', edge + 'px');
+    // The element that carries the choice is the list's bottom edge: the first 18 Pro Packages frame of each option.
+    const fid = (!focused && f.d === 'pro') ? 'focus-' + o.k : null; if (fid) focused = true;
+    if (f.split) {
+      d.append(vp('l', 'tl', f.top), vp('r', 'pk', f.top - 30));
+    } else {
+      d.append(vp('', f.list, f.top, fid));
+    }
+    if (f.d === 'duo') {
+      const fold = document.createElement('div'); fold.className = 'fold';
+      const bar = document.createElement('div'); bar.className = 'duobar';
+      bar.innerHTML = `<span${f.s === 'packages' ? ' class="on"' : ''}>Packages</span><span${f.s === 'tally' ? ' class="on"' : ''}>Tally</span><span>Orphaned</span><span>Ledger</span>`;
+      d.append(fold, bar);
+    } else {
+      const sys = tpl('sys'); if (f.s === 'tally') { const s = sys.querySelectorAll('span'); s[0].classList.remove('on'); s[1].classList.add('on'); }
+      d.append(sys);
+    }
+    d.append(pill(f.x === 'normal' ? 'Find card, set, seller, order' : 'Find'));
+    const t = document.createElement('div'); t.className = 'tick'; t.textContent = '8'; t.setAttribute('aria-hidden', 'true');
+    if (f.d === 'duo') t.style.right = '440px';
+    d.append(t);
+    fit.append(d); fig.append(fit); row.append(fig);
+  });
+  sec.append(row); host.append(sec);
+});
+// Hide one option per press.
+const hidden = new Set();
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.hide; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
+  b.textContent = (hidden.has(k) ? 'Show ' : 'Hide ') + OPTS.find(o => o.k === k).name.toLowerCase(); route();
+}));
+// Scale each frame to its box, so the page never scrolls sideways.
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild;
+    d.style.zoom = Math.min(1, w.clientWidth / d.offsetWidth); });
+}
+// Deep links: #o=hard|rule|fade|today, d=fold|duo|pro, s=packages|tally, x=normal|ax3|ax5, t=light|dark; join with &.
+function route() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const o = h.get('o'), d = h.get('d'), s = h.get('s'), x = h.get('x'), t = h.get('t');
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll('section.opt').forEach(sec => { sec.hidden = (o && sec.dataset.o !== o) || hidden.has(sec.dataset.o); });
+  document.querySelectorAll('figure').forEach(f => { f.hidden = (d && f.dataset.d !== d) || (s && f.dataset.s !== s) || (x && f.dataset.x !== x); });
+  document.querySelectorAll('nav a').forEach(a => {
+    const k = new URLSearchParams(a.getAttribute('href').slice(1));
+    const on = [...k].length ? [...k].every(([kk, v]) => h.get(kk) === v) : !location.hash || location.hash === '#';
+    a.setAttribute('aria-current', String(on));
+    if (a.hasAttribute('data-theme-link')) { const n = new URLSearchParams(h); n.set('t', k.get('t')); a.href = '#' + n; }
+  });
+  fit();
+}
+addEventListener('hashchange', route); addEventListener('resize', fit); route();
+</script>
+</body>
+</html>
