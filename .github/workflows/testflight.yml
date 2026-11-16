@@ -4,7 +4,7 @@
 # Uploads only from main: ios-ship refuses any other HEAD. Each run holds a shared macOS runner slot.
 # Checkout takes the branch tip at run start, not the dispatch sha: a long runner wait must not leave HEAD behind main.
 # Secrets: ASC_KEY_P8, ASC_KEY_ID, ASC_ISSUER_ID (the App Store Connect key, always);
-# ASC_DEV_CERT_P12 (base64 of one Apple Development .p12) and ASC_DEV_CERT_PASSWORD (its password), set both or neither (a P12 set with an empty password fails the import loudly, by design). Variable: TEAM_ID.
+# ASC_DEV_CERT_P12 (base64 of one Apple Development .p12) and ASC_DEV_CERT_PASSWORD (its password), set both or neither (either one set with the other empty fails the import loudly, by design). Variable: TEAM_ID.
 # With them, every run reuses that identity; without them, Xcode creates a new certificate each run, and Apple caps those.
 # No log artifact: the raw ios-ship log may hold the key id and issuer id, and masking covers job logs only.
 # GitHub dispatches a workflow only when this file is on main.
@@ -75,6 +75,10 @@ jobs:
           ASC_DEV_CERT_PASSWORD: ${{ secrets.ASC_DEV_CERT_PASSWORD }}
         run: |
           if [ -z "$ASC_DEV_CERT_P12" ]; then
+            if [ -n "$ASC_DEV_CERT_PASSWORD" ]; then
+              echo "::error::secret ASC_DEV_CERT_P12 is empty but ASC_DEV_CERT_PASSWORD is set: set both or neither (re-set ASC_DEV_CERT_P12)" >&2
+              exit 1
+            fi
             echo "::notice::secret ASC_DEV_CERT_P12 is empty: this run lets Xcode create a certificate"
             exit 0
           fi
