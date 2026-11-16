@@ -155,6 +155,7 @@ This is a redraw, not the original. The step 8 design spec and its packages-tall
     - Unmeasured: whether the opaque fill turns the two audits green. A text element half under an opaque view may still be sampled. The proof is a re-run of those two tests on the build.
 
 17. **The list ends where the Find pill begins.** New. Direction from the coordinator (lane restyle-step8, PR 238): no row sits under the pill at rest. Not an owner ruling.
+    - Not built in PR 238: the open Duo points (the Packages cut, the Tally cut, and the margin reset on the cut scroll). The pill stays `findPillOnDuo`.
     - Mockup: `docs/design/step8-find-pill-room.html`. Deep links: `#o=hard`, `#o=rule`, `#o=fade`, `#o=today`; `d=fold`, `d=duo`, `d=pro`; `s=packages`, `s=tally`; `x=normal`, `x=ax3`, `x=ax5`; `t=light`, `t=dark`. Join them with `&`, for example `#o=rule&d=pro&x=ax5`. "Hide hard edge", "Hide hairline rule", "Hide short fade" and "Hide today" each remove one option. Focus ids: `focus-hard`, `focus-rule`, `focus-fade`, `focus-today` (the list viewport of each option's first 18 Pro frame).
     - Today: `View.findPill` (`FindPill.swift`) is `.safeAreaInset(edge: .bottom)`. A scroll view runs under a bottom inset, so it stays full height and rows pass under the opaque pill at rest. Measured on macOS run 43848366093 (brief, not read by me): row text at y 723 to 737 against a pill top at 727 fails the contrast audit, and the stamp editor's Save and the Tally "+" land under the pill, where taps hit the pill.
     - The spec (pick: hairline rule):
