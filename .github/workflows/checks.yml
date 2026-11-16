@@ -160,7 +160,7 @@ jobs:
       # The part logs go to the `docs` job. An upload step has one shard, as every other step does.
       - name: keep the part 1 log
         if: matrix.shard == 1
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: suite-log-1
           path: ${{ runner.temp }}/suite-part-1.log
@@ -169,7 +169,7 @@ jobs:
           retention-days: 1
       - name: keep the part 2 log
         if: matrix.shard == 2
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: suite-log-2
           path: ${{ runner.temp }}/suite-part-2.log
@@ -178,7 +178,7 @@ jobs:
           retention-days: 1
       - name: keep the part 3 log
         if: matrix.shard == 3
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
         with:
           name: suite-log-3
           path: ${{ runner.temp }}/suite-part-3.log
