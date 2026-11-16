@@ -56,7 +56,7 @@ Nothing in the component touches a storage API. Three adapters do, and each fail
 - `records-hold-current-text-only` — Records hold current text only; git keeps history.
 - `debts-hold-known-gaps` — Known gaps live in debts, one file each. Caught tasks live in `docs/todo.md`.
 - `records-name-what-dates-them` — Each decision names the fact that would date it.
-- `orchestrator-may-merge` — The batch runner merges each lane's own PR on its own green run, after review.
+- `orchestrator-may-merge` — The batch runner batches and merges green, reviewed PRs, and merges each lane's own PR on its own green run.
 - `session-tiers-adopted` — This repo runs the session tiers, with the record branch `roadmap`.
 - `usage-pause-at-93` — Lapsed at the reset, 2026-11-14 13:00 CST: sessions paused at 93% of the weekly usage.
 - `invariants-cited-by-slug` — Invariants are cited by slug, never by number.

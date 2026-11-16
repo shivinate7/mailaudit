@@ -1,6 +1,6 @@
-# The batch runner merges each lane's PR
+# The batch runner batches and merges, and merges each lane's own PR
 
-Merge grant: claude-settings `standing-merge-grant`, under the session tiers (`session-tiers`). The coordinator holds the grant; the batch runner runs every merge under it, and the owner can withdraw it in chat. The batch runner owns the CI waits and the merge tool runs. It may merge a pull request to `main` without asking first. Every other rule still applies.
+Merge grant: claude-settings `standing-merge-grant`, under the session tiers (`session-tiers`). The coordinator holds the grant; the batch runner runs every merge under it, and the owner can withdraw it in chat. The batch runner owns the integration batch, the CI waits and the merge tool runs. It may merge a pull request to `main` without asking first. Every other rule still applies.
 
 - The coordinator starts the lane sessions and never merges. The batch runner merges on green checks and a done review, and never asks the owner to merge.
 - A lane session never opens an integration PR, marks a PR ready, or merges. It sends each lane branch that passed its local checks and its review to the batch runner, with the head commit, the checks run and the reviewer's verdict. Each lane PR stays a draft until the batch runner marks it ready.
@@ -10,7 +10,7 @@ Merge grant: claude-settings `standing-merge-grant`, under the session tiers (`s
 
 **Process-only, orchestrator default, 2026-10-12:** a polish merge (see `ux-house-rules-govern`) keeps the fresh-reviewer pass. The owner's polish grant covers taste, not review.
 
-**Process-only, coordinator's choice, 2026-11-06 17:30 CST:** before a PR goes ready, the batch runner runs `ste-changed origin/main` and `npm run check:docs` on its branch. On an integration branch it drops any lane that fails. Three of four red batch runs that day were these checks. `npm run check:docs` takes about 309 s (1 run).
+**Process-only, coordinator's choice, 2026-11-06 17:30 CST:** before a batch PR goes ready, the batch runner runs `ste-changed origin/main` and `npm run check:docs` on the batch branch. It drops any lane that fails. Three of four red batch runs that day were these checks. `npm run check:docs` takes about 309 s (1 run).
 
 **Holds while:** the owner has not withdrawn the grant or named another session, and branch protection on `main` requires `all-jobs-passed` for every PR, admins included.
 
