@@ -3900,25 +3900,29 @@ export default function MailDayLedger() {
             return;
           }
           /* MERGE, invariant imports-merge-never-replace: keep everything already tracked, add what's
-             new, and refresh only `tracking` on a stored line. Shared with the
+             new, and refresh only `tracking` and `name` on a stored line. Shared with the
              two-device merge rather than kept as a second Map-union here — one
              definition of "union line items by key", so the two cannot drift. */
           takeVersion("before import", "milestone");
-          const { items: mergedItems, added, refreshed } = mergeItems(items, parsed, {
+          const { items: mergedItems, added, refreshed, renamed } = mergeItems(items, parsed, {
             refreshTracking: true,
+            refreshName: true,
           });
           const plural = (n) => `${n} line${n === 1 ? "" : "s"}`;
-          const refreshNote = ` Updated the shipping status on ${plural(refreshed)}.`;
+          const refreshNote =
+            (refreshed > 0 ? ` Updated the shipping status on ${plural(refreshed)}.` : "") +
+            (renamed > 0 ? ` Renamed ${plural(renamed)} to the new name.` : "");
+          const changed = refreshed + renamed > 0;
           setItems(mergedItems);
           setUndo(null); // its plan referenced the pre-merge line-up
           setImportMsg(
             items.length === 0
               ? `Imported ${parsed.length} lines across your orders.`
               : added > 0
-              ? refreshed > 0
+              ? changed
                 ? `Added ${plural(added)}.${refreshNote} Check-ins untouched.`
                 : `Added ${added} new line${added === 1 ? "" : "s"} from the file — existing cards and check-ins untouched.`
-              : refreshed > 0
+              : changed
               ? `No new lines.${refreshNote} Check-ins untouched.`
               : "No new lines — everything in that file was already being tracked."
           );

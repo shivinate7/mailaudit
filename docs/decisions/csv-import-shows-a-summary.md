@@ -4,7 +4,7 @@ A CSV import works by drag and drop, or by the file picker. The import merges in
 
 **Holds while:** `src/app.jsx` writes "Imported N lines across your orders." after a CSV import.
 
-The merge rules sit in `imports-merge-never-replace`. The summary states how many lines the import read. A re-import that refreshed `tracking` on stored lines adds how many.
+The merge rules sit in `imports-merge-never-replace`. The summary states how many lines the import read. A re-import that refreshed `tracking` or renamed stored lines adds how many of each.
 
 ## See also
 

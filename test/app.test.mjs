@@ -91,7 +91,7 @@ import {
 /* the adapter's pure rules — see group 27 for why these are imported directly */
 import { classifyStatus, pushBody } from "../src/remote-rules.mjs";
 /* group 77 names the clamped figure gotQty gives, the rule the native read-out also uses */
-import { gotQty } from "../src/view-rules.mjs";
+import { gotQty, tallyGroups } from "../src/view-rules.mjs";
 import {
   photoName,
   photoIdFromName,
@@ -2922,6 +2922,74 @@ eq(
   mergeItems([trkLine(2, "with tracking")], [trkLine(2, "Canceled"), trkLine(2, "with tracking")], TRK_OPT).refreshed,
   0,
   "33.66b a last incoming row equal to the stored tracking leaves refreshed at 0"
+);
+
+/* Owner ruling, waiting-page item 90 (2026-11-15 13:38 CST, item 89 b's follow-up): a CSV
+   re-import also brings a stored line's old product name to the incoming name. The key holds
+   no name, so a rename never changes it. Option `refreshName`, beside `refreshTracking`. */
+const NM_OPT = { refreshName: true };
+const nmLine = (n, name, over = {}) => trkLine(n, "with tracking", { name, ...over });
+const NM_BASE = [
+  nmLine(1, "Ornn - Fire Below the Mountain (Overnumbered)", { qty: 2, price: 4 }),
+  nmLine(2, "Same Name"),
+  nmLine(3, "Kept"), // stored, absent from the incoming list
+];
+const NM_IN = [
+  nmLine(1, "Ornn, Fire Below the Mountain (Overnumbered)", { qty: 9, price: 99, seller: "Seller Omega" }),
+  nmLine(2, "Same Name"),
+  nmLine(4, "New Card"),
+];
+const nmOnce = mergeItems(NM_BASE, NM_IN, NM_OPT);
+const nmTwice = mergeItems(nmOnce.items, NM_IN, NM_OPT);
+const nmOf = (items, n) => items.find((it) => it.key === `T|${n}|${n}`)?.name;
+const withoutName = (it) => {
+  const { name, ...rest } = it;
+  return JSON.stringify(rest);
+};
+eq(nmOf(mergeItems(NM_BASE, NM_IN).items, 1), NM_BASE[0].name, "33.67 with no option a key clash keeps the base name");
+eq(nmOf(nmOnce.items, 1), "Ornn, Fire Below the Mountain (Overnumbered)", "33.68 with refreshName a stored line takes the incoming name");
+eq(
+  withoutName(nmOnce.items.find((it) => it.key === "T|1|1")),
+  withoutName(NM_BASE[0]),
+  "33.69 with refreshName every other field of the stored line is the base copy's, byte for byte"
+);
+eq(nmOnce.renamed, 1, "33.70 the result counts the one line whose name changed");
+eq(nmOnce.refreshed, 0, "33.70a a rename is not counted as a tracking refresh");
+eq(mergeItems(NM_BASE, NM_IN).renamed ?? 0, 0, "33.71 with no option nothing is renamed");
+eq(
+  nmOnce.items.map((it) => it.key),
+  ["T|1|1", "T|2|2", "T|3|3", "T|4|4"],
+  "33.72 no stored line is dropped, the absent stored key stays, and the new line is appended"
+);
+eq(nmOnce.added, 1, "33.73 the added count is still the one new line");
+eq(JSON.stringify(nmTwice.items), JSON.stringify(nmOnce.items), "33.74 running the rename a second time changes no item");
+eq(nmTwice.renamed, 0, "33.75 and the second run renames nothing");
+eq(
+  nmOf(mergeItems(NM_BASE, [nmLine(1, "")], NM_OPT).items, 1),
+  NM_BASE[0].name,
+  "33.76 an empty incoming name keeps the stored one"
+);
+eq(
+  mergeItems([nmLine(1, "Old", { tracking: "unknown" })], [nmLine(1, "New", { tracking: "Canceled" })], {
+    refreshTracking: true,
+    refreshName: true,
+  }).items[0],
+  { ...nmLine(1, "New"), tracking: "Canceled" },
+  "33.77 both options together change only name and tracking"
+);
+eq(
+  nmOf(
+    mergeLedger({ items: [nmLine(1, "Old")] }, { items: [nmLine(1, "New")] }).merged.items,
+    1
+  ),
+  "Old",
+  "33.78 a two-device merge keeps the local name: mergeLedger never renames"
+);
+eq(
+  tallyGroups(nmOnce.items.concat([nmLine(7, "Ornn, Fire Below the Mountain (Overnumbered)", { key: "T|7|7" })]))
+    .filter((g) => g.name.startsWith("Ornn")).length,
+  1,
+  "33.79 after the rename the old-style line and a new-style line pool into one Tally group"
 );
 
 /* ── 34. the conflict stops being a trap ──────────────────────────────────
@@ -7595,6 +7663,39 @@ eq(
   trackingBefore57,
   "57.18 an empty Shipping Status on a held line keeps its stored status"
 );
+
+/* Owner ruling, waiting-page item 90: a re-import also renames a held line to the name in the
+   file, so the Tally pools it with the new-style copy. The key holds no name; received stays. */
+const OLD58 = "Ornn - Fire Below the Mountain (Overnumbered)";
+const NEW58 = "Ornn, Fire Below the Mountain (Overnumbered)";
+await boot({ items: [], received: {} });
+await dropFile(
+  "orders.csv",
+  csv([{ "Order Id": "NA1", Party: "Seller Old", "Product Name": OLD58, Quantity: "2", Price: "1.00" }])
+);
+await goTo("packages");
+await tap57(/Seller Old/, "count the old-style line up", 'button[aria-label="One more received"]');
+await sleep(SAVE_WAIT);
+const keyBefore58 = saved().items[0]?.key;
+const marksBefore58 = { ...saved().received };
+eq(marksBefore58[keyBefore58], 1, "57.19 the old-style line is counted to 1 before the re-import");
+await reachFor(/Re-import CSV/);
+await click(btn(/Re-import CSV/), "show upload zone");
+await dropFile(
+  "orders.csv",
+  csv([
+    { "Order Id": "NA1", Party: "Seller Old", "Product Name": NEW58, Quantity: "2", Price: "1.00" },
+    { "Order Id": "NB1", Party: "Seller New", "Product Name": NEW58, Quantity: "1", Price: "2.00" },
+  ])
+);
+await sleep(SAVE_WAIT);
+eq(saved().items.map((it) => it.name), [NEW58, NEW58], "57.20 the held line took the new-style name and the new line carries it");
+eq(saved().items[0].key, keyBefore58, "57.21 the renamed line keeps its key");
+eq(saved().received, marksBefore58, "57.22 the received mark survives the rename");
+eq(saved().items.length, 2, "57.23 no line is dropped");
+eq(tallyGroups(saved().items).length, 1, "57.24 the two copies pool into one Tally group");
+ok(/Renamed 1 line/.test(text()), "57.25 the summary counts the rename");
+ok(!/Updated the shipping status/.test(text()), "57.26 a rename-only re-import does not say the shipping status was updated");
 
 /* ── 61. the house UX rules, lanes L1 and L2 (decision ux-house-rules-govern) ──
    Each block names the rule it checks. An ask names the count it removes or
