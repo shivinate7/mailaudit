@@ -113,17 +113,23 @@ final class FindPillUITests: XCTestCase {
         field.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "the keyboard did not open on the find field")
 
-        // The keyboard shrinks the band, and the lazy list unmounts its far rows. A row missing from `after` is not read as
-        // moved. Compared: the ids in both snapshots whose frame lay fully inside the band before the tap. A visible row that
-        // moves still fails, and the failure names it with both frames.
+        // The keyboard shrinks the band, so its bottom is read again once it is up. The lazy list unmounts the rows that fall
+        // past the shrunk band, so a row missing from `after` is judged by where it lay before the tap: a row whose before-frame
+        // lies fully above the shrunk bottom must still be on screen, so its absence fails. A row whose before-frame reaches
+        // below that bottom is not read.
+        let shrunk = app.listBottom
         let after = ShellUITest.layoutFrames(app)
-        let compared = before.keys.filter { id in
-            guard let was = before[id], after[id] != nil else { return false }
-            return was.minY >= top && was.maxY <= bottom
-        }.sorted()
-        XCTAssertFalse(compared.isEmpty, "scope: no package row or check-in control lies in the band above the keyboard, so none is compared")
-        for id in compared {
-            guard let was = before[id], let now = after[id] else { continue }
+        // The rows on screen before the tap: their frames lay fully inside the band the tap was read in.
+        let watched = before.filter { $0.value.minY >= top && $0.value.maxY <= bottom }.keys.sorted()
+        XCTAssertFalse(watched.isEmpty, "scope: no package row or check-in control lies in the band above the keyboard, so none is compared")
+        for id in watched {
+            guard let was = before[id] else { continue }
+            guard let now = after[id] else {
+                if was.maxY <= shrunk {
+                    XCTFail("\(id) left the band under the pointer when search opened (no-layout-shift-under-pointer): before \(was), after none")
+                }
+                continue
+            }
             XCTAssertEqual(now, was, "\(id) moved under the pointer when search opened (no-layout-shift-under-pointer): before \(was), after \(now)")
         }
     }
