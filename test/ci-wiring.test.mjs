@@ -85,7 +85,10 @@
 //   k3  milestone.yml has two UI-test jobs, timeout-minutes 45 and 50, and neither runs a Duo class;
 //   k4  each UI-test job creates its simulator on runtime iOS-27-1;
 //   k5  UI_TESTS_A holds no Duo class, the 45-minute job runs it, and the 50-minute job runs the rest;
-//   k6  each UI-test job's xcodebuild gets the simulator id that CI sets, as its -destination.
+//   k6  each UI-test job's xcodebuild gets the simulator id that CI sets, as its -destination;
+//   k7  UI_TESTS_B1 and UI_TESTS_B2 are set, non-empty, name only UI test classes outside Duo and A, and do not overlap;
+//   k8  each UI test class outside Duo runs in exactly one pro shard (make ui-a, ui-b1, ui-b2, ui-b3), no Duo class runs
+//       in one, and the B shards together run what make ui-b runs.
 //
 // The dispatch switch and the merge ignore list are read from the repo:
 //   m1  milestone-due's dispatch step needs MILESTONE_AUTO_DISPATCH to be 'on', and that env
@@ -1123,6 +1126,8 @@ function uiTestChecks({ makefile, classes, msDoc, msErr }) {
     k4: "k4 each UI-test job creates its simulator on runtime iOS-27-1",
     k5: "k5 each UI test class is in exactly one of UI_TESTS_A, the B set and DUO_UI_TESTS; no class drops out",
     k6: "k6 each UI-test job's xcodebuild gets the simulator id that CI sets",
+    k7: "k7 UI_TESTS_B1 and UI_TESTS_B2 are set, non-empty, and name only UI test classes outside Duo and A, with no overlap",
+    k8: "k8 each UI test class outside Duo runs in exactly one pro shard, and the B shards run what make ui-b runs",
   };
   const out = [];
   const add = (id, fn) => {
@@ -1239,6 +1244,70 @@ function uiTestChecks({ makefile, classes, msDoc, msErr }) {
         `in A and Duo ${both.join(" ") || "none"}; dropped ${dropped.join(" ") || "none"}; ` +
         `twice ${twice.join(" ") || "none"}`,
     };
+  });
+
+  // The pro shards: the A list and the two B lists are each set, non-empty and disjoint, and name no Duo class.
+  add("k7", () => {
+    const vars = makeVars(makefile, ["UI_TESTS_A", "UI_TESTS_B1", "UI_TESTS_B2"]);
+    const problems = [];
+    const lists = {};
+    for (const name of ["UI_TESTS_B1", "UI_TESTS_B2"]) {
+      const v = vars[name];
+      if (v.origin === "undefined") {
+        problems.push(`${name} is not set in the Makefile`);
+        continue;
+      }
+      const words = listOf(v.value);
+      lists[name] = words;
+      if (words.length === 0) problems.push(`${name} is empty, so its target runs every class`);
+      const unknown = words.filter((c) => !classes.includes(c));
+      if (unknown.length > 0) problems.push(`${name} names ${unknown.join(" ")}, which is no UI test class`);
+      const inDuo = words.filter((c) => duo.includes(c));
+      if (inDuo.length > 0) problems.push(`${name} names Duo class ${inDuo.join(" ")}`);
+    }
+    if (vars.UI_TESTS_A.origin !== "undefined") lists.UI_TESTS_A = listOf(vars.UI_TESTS_A.value);
+    for (const [x, y] of [["UI_TESTS_A", "UI_TESTS_B1"], ["UI_TESTS_A", "UI_TESTS_B2"], ["UI_TESTS_B1", "UI_TESTS_B2"]]) {
+      if (!lists[x] || !lists[y]) continue;
+      const both = lists[x].filter((c) => lists[y].includes(c));
+      if (both.length > 0) problems.push(`${both.join(" ")} is in ${x} and in ${y}`);
+    }
+    return { ok: problems.length === 0, detail: problems.join("; ") };
+  });
+
+  // The four pro shards, one make target each. Each class outside Duo runs in exactly one of them, Duo in none, and the
+  // three B shards together run what make ui-b runs (the milestone's part-b). UI_TEST is echo, so make prints each
+  // flag with its leading dash: with no UI_TEST, make reads a dash that starts an expanded line as an ignore-error mark.
+  const PRO_SHARDS = ["ui-a", "ui-b1", "ui-b2", "ui-b3"];
+  add("k8", () => {
+    const shards = PRO_SHARDS.map((target) => {
+      const r = expandLine(makefile, [target], "echo");
+      if (r.error) return { target, error: r.error };
+      const only = flagsIn(r.text, ONLY_FLAG);
+      const skip = flagsIn(r.text, SKIP_FLAG);
+      return { target, selected: (only.size > 0 ? [...only] : classes).filter((c) => !skip.has(c)) };
+    });
+    const broken = shards.filter((s) => s.error).map((s) => s.error);
+    if (broken.length > 0) return { ok: false, detail: broken.join("; ") };
+    const runsIn = (c) => shards.filter((s) => s.selected.includes(c)).map((s) => s.target);
+    const outside = classes.filter((c) => !duo.includes(c));
+    const problems = [];
+    const none = outside.filter((c) => runsIn(c).length === 0);
+    if (none.length > 0) problems.push(`${none.join(" ")} run in no pro shard`);
+    const more = outside.filter((c) => runsIn(c).length > 1);
+    if (more.length > 0) problems.push(`${more.join(" ")} run in more than one pro shard`);
+    const inDuo = duo.filter((c) => runsIn(c).length > 0);
+    if (inDuo.length > 0) problems.push(`Duo ${inDuo.join(" ")} runs in a pro shard`);
+    const whole = expandLine(makefile, ["ui-b"], "echo");
+    if (whole.error) {
+      problems.push(whole.error);
+    } else {
+      const only = flagsIn(whole.text, ONLY_FLAG);
+      const skip = flagsIn(whole.text, SKIP_FLAG);
+      const partB = (only.size > 0 ? [...only] : classes).filter((c) => !skip.has(c));
+      const bShards = [...new Set(shards.filter((s) => s.target !== "ui-a").flatMap((s) => s.selected))];
+      if (!sameList(bShards, partB)) problems.push(`the B shards run ${bShards.sort().join(" ") || "none"}, not what make ui-b runs`);
+    }
+    return { ok: problems.length === 0, detail: problems.join("; ") };
   });
 
   // k6 has one result per UI-test job, so a red shows which job's destination is wrong.
@@ -1564,6 +1633,8 @@ for (const [name, text, stamp] of GREEN) {
 // one field of it, so it fails only the assertion it names. The Makefile fixture holds the recipes
 // the UI checks read, and the Swift classes are a fixed list.
 const FIX_CLASSES = ["AuditSkippingTabBarUITests", "DuoHandUITests", "TallyUITests"];
+// The -only-testing or -skip-testing flags for a space-separated list of class names.
+const flagsFor = (flag, list) => listOf(list).map((c) => `-${flag}:ManifestUITests/${c}`).join(" ");
 // One Makefile for the UI checks. Each option breaks one recipe or variable.
 function fixtureMakefile(o = {}) {
   const duo = o.duo ?? "DuoHandUITests";
@@ -1576,6 +1647,21 @@ function fixtureMakefile(o = {}) {
   // The UI recipes run $(UI_TEST) with the test's arguments, as the Makefile does. Each uiA or uiB
   // text starts with "xcodebuild test", and that word is what the recipe swaps for $(UI_TEST).
   const runIt = (text) => `\t$(UI_TEST)${text.slice("xcodebuild test".length)}`;
+  // The pro shards, only with shards: the B1 and B2 lists and their targets, and the rest target, which skips
+  // Duo, A, B1 and B2. Each option breaks one of them.
+  const b1 = o.b1 ?? "TallyUITests";
+  const b2 = o.b2 ?? "PackageStampUITests";
+  const shards = o.shards
+    ? [
+        ...(o.noB1 ? [] : [`UI_TESTS_B1 := ${b1}`]),
+        ...(o.noB2 ? [] : [`UI_TESTS_B2 := ${b2}`]),
+        "ui-b1:",
+        runIt(o.uiB1 ?? `xcodebuild test ${flagsFor("only-testing", b1)}`),
+        "ui-b2:",
+        runIt(o.uiB2 ?? `xcodebuild test ${flagsFor("only-testing", b2)}`),
+        ...(o.noB3 ? [] : ["ui-b3:", runIt(o.uiB3 ?? `xcodebuild test ${flagsFor("skip-testing", `${duo} ${a} ${b1} ${b2}`)}`)]),
+      ]
+    : [];
   return [
     `DUO_UI_TESTS := ${duo}`,
     ...(o.noA ? [] : [`UI_TESTS_A := ${a}`]),
@@ -1585,11 +1671,29 @@ function fixtureMakefile(o = {}) {
     runIt(uiA),
     "ui-b:",
     runIt(uiB),
+    ...shards,
     "",
   ].join("\n");
 }
 const FIX_MAKEFILE = fixtureMakefile();
 const FIX_INPUTS = { makefile: FIX_MAKEFILE, classes: FIX_CLASSES };
+
+// The pro-shard fixtures. The shard classes add PackageStamp (the B2 class) and Shelf (a class only the rest target runs).
+// The full-size set has 30 classes: three in A, twelve in B1, nine in B2, six in the rest, and one Duo class.
+const SHARD_CLASSES = [...FIX_CLASSES, "PackageStampUITests", "ShelfUITests"];
+const shardInputs = (over = {}, classes = SHARD_CLASSES) => ({ makefile: fixtureMakefile({ shards: true, ...over }), classes });
+const FULL_SHARD_CLASSES = ["DuoHandUITests", ...Array.from({ length: 30 }, (_, i) => `Item${String(i).padStart(2, "0")}UITests`)];
+const itemNames = (from, n) => FULL_SHARD_CLASSES.slice(1 + from, 1 + from + n).join(" ");
+const FULL_SHARD_INPUTS = shardInputs(
+  {
+    a: itemNames(0, 3),
+    b1: itemNames(3, 12),
+    b2: itemNames(15, 9),
+    uiA: `xcodebuild test ${flagsFor("only-testing", itemNames(0, 3))}`,
+    uiB: `xcodebuild test ${flagsFor("skip-testing", `DuoHandUITests ${itemNames(0, 3)}`)}`,
+  },
+  FULL_SHARD_CLASSES
+);
 const SIM_RUNTIME = "com.apple.CoreSimulator.SimRuntime.iOS-27-1";
 // The UI_TEST value that milestone.yml sets: a $$ in the value is one $ after make expands it. The
 // broken form has one $, so make reads $S and prints id=IM_UDID.
@@ -1721,16 +1825,42 @@ const MS_RED = [
   ["k6: part-a's destination is id=IM_UDID", msFile(msJob("part-a", 45, "make ui-a", undefined, UI_TEST_BROKEN), msJob("part-b", 50, "make ui-b")), "k6"],
   ["k6: part-b's destination is id=IM_UDID", msFile(msJob("part-a", 45, "make ui-a"), msJob("part-b", 50, "make ui-b", undefined, UI_TEST_BROKEN)), "k6"],
   ["k6: part-b's UI_TEST is sim-test, so no xcodebuild runs", msFile(msJob("part-a", 45, "make ui-a"), msJob("part-b", 50, "make ui-b", undefined, "sim-test")), "k6"],
+  // k7 and k8, the pro shards. A row's fifth field is the cause its failing detail must contain.
+  ["k7: UI_TESTS_B1 is not set", MS_GOOD, "k7", shardInputs({ noB1: true }), "UI_TESTS_B1 is not set"],
+  ["k7: UI_TESTS_B2 is empty", MS_GOOD, "k7", shardInputs({ b2: "" }), "UI_TESTS_B2 is empty"],
+  ["k7: a B1 name is no UI test class", MS_GOOD, "k7", shardInputs({ b1: "TallyUITests GhostUITests" }), "names GhostUITests, which is no UI test class"],
+  ["k7: a B2 name is a Duo class", MS_GOOD, "k7", shardInputs({ b2: "DuoHandUITests PackageStampUITests" }), "names Duo class DuoHandUITests"],
+  ["k7: a B1 class is also in A", MS_GOOD, "k7", shardInputs({ b1: "AuditSkippingTabBarUITests TallyUITests" }), "is in UI_TESTS_A and in UI_TESTS_B1"],
+  ["k7: a class is in both B lists", MS_GOOD, "k7", shardInputs({ b2: "TallyUITests PackageStampUITests" }), "is in UI_TESTS_B1 and in UI_TESTS_B2"],
+  ["k8: ui-b3 is missing", MS_GOOD, "k8", shardInputs({ noB3: true }), "make -n ui-b3 failed"],
+  ["k8: ui-b2 runs every class, as an empty flag list would", MS_GOOD, "k8", shardInputs({ uiB2: "xcodebuild test" }), "run in more than one pro shard"],
+  ["k8: ui-b3 does not skip the A class", MS_GOOD, "k8", shardInputs({ uiB3: "xcodebuild test -skip-testing:ManifestUITests/DuoHandUITests -skip-testing:ManifestUITests/TallyUITests -skip-testing:ManifestUITests/PackageStampUITests" }), "run in more than one pro shard"],
+  ["k8: a class is in no pro shard", MS_GOOD, "k8", shardInputs({ uiB3: "xcodebuild test -skip-testing:ManifestUITests/DuoHandUITests -skip-testing:ManifestUITests/AuditSkippingTabBarUITests -skip-testing:ManifestUITests/TallyUITests -skip-testing:ManifestUITests/PackageStampUITests -skip-testing:ManifestUITests/ShelfUITests" }), "run in no pro shard"],
+  ["k8: a Duo class runs in ui-b1", MS_GOOD, "k8", shardInputs({ uiB1: "xcodebuild test -only-testing:ManifestUITests/TallyUITests -only-testing:ManifestUITests/DuoHandUITests" }), "Duo DuoHandUITests runs in a pro shard"],
+  ["k8: the B shards miss a class that make ui-b runs", MS_GOOD, "k8", shardInputs({ uiB: "xcodebuild test -skip-testing:ManifestUITests/DuoHandUITests -skip-testing:ManifestUITests/AuditSkippingTabBarUITests -skip-testing:ManifestUITests/ShelfUITests" }), "not what make ui-b runs"],
 ];
 const MS_CHECKS = ["a", "a2", "b", "c", "k1", "k2", "k3", "k4", "k5", "k6"];
-for (const [name, text, id, extra = {}] of MS_RED) {
+for (const [name, text, id, extra = {}, cause] of MS_RED) {
   const results = milestoneChecks({ msText: text, wfText: null, read: () => null, ...FIX_INPUTS, ...extra });
   const bad = results.filter((r) => !r.ok);
+  const hit = bad.find((r) => r.label.split(" ")[0] === id && (cause === undefined || r.detail.includes(cause)));
   expect(
     `fixture red: ${name} fails assertion ${id}`,
-    bad.some((r) => r.label.split(" ")[0] === id),
-    `failing: ${bad.map((r) => r.label.split(" ")[0]).join(", ") || "none"}`
+    hit !== undefined,
+    `failing: ${bad.map((r) => `${r.label.split(" ")[0]} (${r.detail})`).join("; ") || "none"}${cause === undefined ? "" : `; want the cause "${cause}"`}`
   );
+}
+// The good pro-shard sets: one class per shard with a rest class, a rest that is empty, and the full-size set.
+const SHARD_GOOD = [
+  ["fixture good: one class per shard, with a rest class", shardInputs()],
+  ["fixture good: the rest is empty", shardInputs({}, [...FIX_CLASSES, "PackageStampUITests"])],
+  ["fixture good: full size, 30 classes in four shards", FULL_SHARD_INPUTS],
+];
+for (const [name, extra] of SHARD_GOOD) {
+  const bad = milestoneChecks({ msText: MS_GOOD, wfText: null, read: () => null, ...FIX_INPUTS, ...extra }).filter(
+    (r) => ["k7", "k8"].includes(r.label.split(" ")[0]) && !r.ok
+  );
+  expect(name, bad.length === 0, bad.map((r) => `${r.label} (${r.detail})`).join("; "));
 }
 {
   const results = milestoneChecks({ msText: MS_GOOD, wfText: null, read: () => null, ...FIX_INPUTS });

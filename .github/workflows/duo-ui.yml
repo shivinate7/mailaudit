@@ -1,8 +1,8 @@
 # The UI tests that need a simulator the milestone workflow does not run, on a GitHub-hosted Mac with Xcode 27.
 #   duo-ui    the Duo classes (DUO_UI_TESTS in the Makefile) on an iPhone Duo simulator, a flat pass then a closed pass.
 #             It runs on a ready pull request, or on a draft that carries the label duo-ui.
-#   pro-ui-a, pro-ui-b
-#             the milestone split (make ui-a, make ui-b) on an iPhone 18 Pro simulator. Only the label pro-ui starts them:
+#   pro-ui-a, pro-ui-b, pro-ui-c, pro-ui-d
+#             the milestone split in four shards (make ui-a, ui-b1, ui-b2, ui-b3) on an iPhone 18 Pro simulator. Only the label pro-ui starts them:
 #             the non-Duo suite has known reds (decision milestone-runs-full-suite), so an automatic run would turn every native PR red.
 # The steps live in scripts/ci-sim.sh. The tests run through the Makefile, which is the one home of the run.
 #
@@ -26,7 +26,9 @@ env:
   DUO_FLAT_CMD: make ui-duo-flat
   DUO_CLOSED_CMD: make ui-duo-closed
   PRO_A_CMD: make ui-a
-  PRO_B_CMD: make ui-b
+  PRO_B_CMD: make ui-b1
+  PRO_C_CMD: make ui-b2
+  PRO_D_CMD: make ui-b3
   # The tests run without a build step: the job builds once with BUILD_CMD, then make runs UI_TEST in place of sim-test.
   # -retry-tests-on-failure with 2 iterations runs a failed test once more. The step summary lists each test that needed it.
   UI_TEST: xcodebuild test-without-building -destination "platform=iOS Simulator,id=$$SIM_UDID" -collect-test-diagnostics never -retry-tests-on-failure -test-iterations 2 -resultBundlePath "$$RESULT_BUNDLE"
@@ -143,9 +145,11 @@ jobs:
           retention-days: 7
 
   pro-ui-a:
+    # Every pro job has a cap of 90 min. Measured: the Stamp class alone takes 22 to 35+ min, the Bulk classes 17, and pro-ui-a
+    # took 51 of its old 60. The target is a slowest job under 80% of the cap (72 min).
     if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') }}
     runs-on: xcode-27
-    timeout-minutes: 60 # provisional
+    timeout-minutes: 90 # provisional
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -197,7 +201,7 @@ jobs:
     # The steps repeat pro-ui-a on purpose: a matrix would hide each job and its cap from test/ci-wiring.test.mjs.
     if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') }}
     runs-on: xcode-27
-    timeout-minutes: 60 # provisional
+    timeout-minutes: 90 # provisional
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -213,7 +217,7 @@ jobs:
         run: scripts/ci-sim.sh run $BUILD_CMD
       - name: create and boot the Pro simulator
         run: scripts/ci-sim.sh create-sim "$PRO_DEVICE"
-      - name: the other UI test classes
+      - name: the second UI test shard
         env:
           RESULT_BUNDLE: ${{ runner.temp }}/results/pro-b.xcresult
         run: |
@@ -244,10 +248,110 @@ jobs:
           if-no-files-found: warn
           retention-days: 7
 
+  pro-ui-c:
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') }}
+    runs-on: xcode-27
+    timeout-minutes: 90 # provisional
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: select Xcode
+        run: |
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+      - name: install xcodegen
+        run: scripts/ci-sim.sh install-xcodegen
+      - run: xcodegen --version
+      - name: build the app and the tests once
+        run: scripts/ci-sim.sh run $BUILD_CMD
+      - name: create and boot the Pro simulator
+        run: scripts/ci-sim.sh create-sim "$PRO_DEVICE"
+      - name: the third UI test shard
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/pro-c.xcresult
+        run: |
+          mkdir -p "$(dirname "$RESULT_BUNDLE")"
+          scripts/ci-sim.sh run $PRO_C_CMD
+      - name: read the result
+        if: ${{ !cancelled() && env.SIM_UDID != '' }}
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/pro-c.xcresult
+        run: scripts/ci-sim.sh check-results "$RESULT_BUNDLE" pro-ui-c nonzero
+      - name: export the screenshots
+        if: ${{ !cancelled() }}
+        env:
+          RESULTS: ${{ runner.temp }}/results
+        run: |
+          scripts/ci-sim.sh export "$RESULTS/pro-c.xcresult" out/pro-c
+          if [ -d "$RESULTS" ]; then cp -R "$RESULTS" out/results; fi
+      - name: record the result
+        if: ${{ !cancelled() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/ci-sim.sh summary-head "iPhone 18 Pro UI tests, part c"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: pro-ui-c
+          path: out/
+          if-no-files-found: warn
+          retention-days: 7
+
+  pro-ui-d:
+    if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') }}
+    runs-on: xcode-27
+    timeout-minutes: 90 # provisional
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: select Xcode
+        run: |
+          sudo xcode-select -s "$XCODE_APP"
+          xcodebuild -version
+      - name: install xcodegen
+        run: scripts/ci-sim.sh install-xcodegen
+      - run: xcodegen --version
+      - name: build the app and the tests once
+        run: scripts/ci-sim.sh run $BUILD_CMD
+      - name: create and boot the Pro simulator
+        run: scripts/ci-sim.sh create-sim "$PRO_DEVICE"
+      - name: the fourth UI test shard
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/pro-d.xcresult
+        run: |
+          mkdir -p "$(dirname "$RESULT_BUNDLE")"
+          scripts/ci-sim.sh run $PRO_D_CMD
+      - name: read the result
+        if: ${{ !cancelled() && env.SIM_UDID != '' }}
+        env:
+          RESULT_BUNDLE: ${{ runner.temp }}/results/pro-d.xcresult
+        run: scripts/ci-sim.sh check-results "$RESULT_BUNDLE" pro-ui-d nonzero
+      - name: export the screenshots
+        if: ${{ !cancelled() }}
+        env:
+          RESULTS: ${{ runner.temp }}/results
+        run: |
+          scripts/ci-sim.sh export "$RESULTS/pro-d.xcresult" out/pro-d
+          if [ -d "$RESULTS" ]; then cp -R "$RESULTS" out/results; fi
+      - name: record the result
+        if: ${{ !cancelled() }}
+        env:
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: scripts/ci-sim.sh summary-head "iPhone 18 Pro UI tests, part d"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        if: ${{ !cancelled() }}
+        with:
+          name: pro-ui-d
+          path: out/
+          if-no-files-found: warn
+          retention-days: 7
+
   # A run that ends red posts one comment on the pull request, which wakes the session that watches it (rule git-ci-done-comment-wakes).
-  # It runs when any of the three jobs was due: a ready pull request or the label duo-ui for duo-ui, the label pro-ui for the pro jobs.
+  # It runs when any of the five jobs was due: a ready pull request or the label duo-ui for duo-ui, the label pro-ui for the four pro jobs.
   ci-done:
-    needs: [duo-ui, pro-ui-a, pro-ui-b]
+    needs: [duo-ui, pro-ui-a, pro-ui-b, pro-ui-c, pro-ui-d]
     if: ${{ !cancelled() && github.event_name == 'pull_request' && (!github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui') || contains(github.event.pull_request.labels.*.name, 'pro-ui')) }}
     runs-on: ubuntu-latest
     timeout-minutes: 5

@@ -1,10 +1,10 @@
-# The batch runner batches and merges
+# The batch runner batches and merges, and merges each lane's own PR
 
 Merge grant: claude-settings `standing-merge-grant`, under the session tiers (`session-tiers`). The coordinator holds the grant; the batch runner runs every merge under it, and the owner can withdraw it in chat. The batch runner owns the integration batch, the CI waits and the merge tool runs. It may merge a pull request to `main` without asking first. Every other rule still applies.
 
 - The coordinator starts the lane sessions and never merges, except under the temporary ruling below. The batch runner merges on green checks and a done review, and never asks the owner to merge.
-- A lane session never opens an integration PR, marks a PR ready, or merges. It sends each lane branch that passed its local checks and its review to the batch runner, with the head commit, the checks run and the reviewer's verdict. Each lane PR stays a draft.
-- In a repo under owner ruling 820 c (page save 2026-11-14 00:19 CST; record `own-820-c-five-repos` in claude-settings), the batch runner marks a lane's own PR ready and merges it on that PR's own green run. No integration branch is needed for it. A batch of several lanes still goes through one integration branch, and only its PR goes ready.
+- A lane session never opens an integration PR, marks a PR ready, or merges. It sends each lane branch that passed its local checks and its review to the batch runner, with the head commit, the checks run and the reviewer's verdict. Each lane PR stays a draft until the batch runner marks it ready.
+- A lane's own PR merges on its own green run: the batch runner marks it ready and merges it, and no integration branch is needed. The owner's Nov 14 ruling (page save 2026-11-14 00:19 CST; record `own-820-c-five-repos` in claude-settings) extends per-lane merge to mailaudit, with q_max, banchi, ios-adblock and joyous. Several lanes may still share one integration branch by choice, and only that PR goes ready.
 - The PR must pass the required check `all-jobs-passed`, which needs every job. A change to a rule, a guard's or check's verdict, or product code needs a fresh reviewer's pass before the merge.
 - A Dependabot PR may merge on green CI through the merge tool (owner, 2026-10-27 12:26).
 
