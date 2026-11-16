@@ -45,10 +45,16 @@ import { mergeRecent } from "./recent-rules.mjs";
    imports-merge-never-replace): on a collision keep the base line but take the
    incoming `tracking`, so a newer export's shipping status reaches a stored line.
    An empty incoming `tracking` says nothing, so the stored one stays. No other
-   field changes, no line is dropped, and `refreshed` counts each line whose
+   field changes (bar `name` under refreshName), no line is dropped, and `refreshed` counts each line whose
    `tracking` differs from the one `base` held, once, however many incoming rows
    share its key. The option is off in mergeLedger: a stale device's items
-   would revert a newer `tracking` the other device already holds. */
+   would revert a newer `tracking` the other device already holds.
+
+   `opts.refreshName` (the CSV import passes it, owner item 90): on a collision take
+   the incoming `name`, so a line stored under an old product name pools in the Tally with
+   the same card under its new name. The key holds no name, so it never changes. An empty
+   incoming `name` keeps the stored one. `renamed` counts each line whose `name` differs
+   from the one `base` held, once. Off in mergeLedger for the same stale-device reason. */
 export function mergeItems(base, incoming, opts = {}) {
   const map = new Map((base || []).map((it) => [it.key, it]));
   const stored = new Map(map);
@@ -60,14 +66,23 @@ export function mergeItems(base, incoming, opts = {}) {
     if (!held) {
       map.set(it.key, it);
       added++;
-    } else if (opts.refreshTracking && it.tracking && it.tracking !== held.tracking) {
-      map.set(it.key, { ...held, tracking: it.tracking });
+      continue;
+    }
+    const next = { ...held };
+    if (opts.refreshTracking && it.tracking && it.tracking !== held.tracking) next.tracking = it.tracking;
+    if (opts.refreshName && it.name && it.name !== held.name) next.name = it.name;
+    if (next.tracking !== held.tracking || next.name !== held.name) {
+      map.set(it.key, next);
       touched.add(it.key);
     }
   }
   let refreshed = 0;
-  for (const k of touched) if (map.get(k).tracking !== stored.get(k)?.tracking) refreshed++;
-  return { items: [...map.values()], added, refreshed };
+  let renamed = 0;
+  for (const k of touched) {
+    if (map.get(k).tracking !== stored.get(k)?.tracking) refreshed++;
+    if (map.get(k).name !== stored.get(k)?.name) renamed++;
+  }
+  return { items: [...map.values()], added, refreshed, renamed };
 }
 
 /* Per-key, later change wins. `baseAt` / `incomingAt` map a key to the ms of its
