@@ -1,0 +1,241 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Find Pill Fill</title>
+<style>
+/* Tokens: shared/tokens.json, read through Parchment (native/Manifest/Theme.swift). Light keys: paper, card, ink, inkSoft, line,
+   accent, shadow. Dark keys: darkPaper, darkCard, darkInk, darkInkSoft, darkLine, darkAccent. The native app is held to light
+   (native/project.yml UIUserInterfaceStyle: Light), so the dark theme here is a spec, not a shipped state.
+   Page chrome: manila, manilaInk, green (--new), red (--today), and their dark keys. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --shadow:rgba(28,43,36,0.06); --manila:#EADBBA; --manilaInk:#695832; --new:#2E7A5E; --today:#A8443C;
+  --cochin: Cochin, Georgia, serif; --mono: Menlo, monospace;
+  --sab: env(safe-area-inset-bottom);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+    --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+  --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.45; }
+main { max-width:1040px; margin:0 auto; padding:16px 16px calc(16px + var(--sab)); display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-size:24px; line-height:1.2; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav .sep { flex-basis:100%; height:0; }
+section.opt { display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line); padding-top:16px; }
+section.opt[hidden], figure[hidden] { display:none; }
+.opt h2 { font-size:18px; margin:0; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.opt p { margin:0; color:var(--inkSoft); max-width:72ch; }
+.chip { font:600 12px/1.4 -apple-system, system-ui, sans-serif; border:2px dashed; border-radius:6px; padding:2px 6px; }
+.chip.new { color:var(--new); } .chip.today { color:var(--today); }
+.figs { font:13px/1.45 var(--mono); }
+.pick { font-size:13px; font-weight:600; color:var(--accent); }
+.row { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 440px), 1fr)); gap:16px; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figcaption { font-size:13px; color:var(--inkSoft); }
+figcaption b { color:var(--ink); font-size:14px; }
+.fit { width:100%; overflow:hidden; }
+
+/* ---- device crops, 1 CSS px = 1 pt. Each frame is the bottom band of the screen, where the pill sits. ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:0 0 24px 24px; border-top-style:dashed;
+  overflow:hidden; font-family:var(--cochin); color:var(--ink); }
+.fold-out { width:466px; height:280px; }           /* folded Duo 466 x 678; crop y 398 to 678 */
+.duo { width:951px; height:220px; border-radius:0 0 12px 12px; }  /* open Duo 951 x 669; crop y 449 to 669 */
+.duo .fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:3; }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+
+/* system tab bar (system-drawn; approximated): 83 pt tall at the screen's foot (duo-fold-and-keyboard) */
+.sysbar { position:absolute; left:0; right:0; bottom:0; height:83px; z-index:6; display:flex; justify-content:center; padding-top:8px; }
+.sysbar .cap, .duobar { border:1px solid var(--line); background:color-mix(in srgb, var(--paper) 62%, transparent);
+  -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); display:grid; grid-template-columns:repeat(4,1fr); align-items:center; }
+.sysbar .cap { width:calc(100% - 32px); height:56px; border-radius:28px; padding:0 8px; }
+.sysbar span, .duobar span { display:flex; flex-direction:column; align-items:center; gap:2px; font:11px -apple-system, system-ui, sans-serif; color:var(--inkSoft); }
+.sysbar span i { width:22px; height:22px; border:1.5px solid currentColor; border-radius:6px; display:block; }
+.sysbar span.on, .duobar span.on { color:var(--accent); }
+/* the open Duo's own bar: right page, 24 pt in, 12 pt up, 64 pt tall (DuoBar, DuoBarMetrics.height 76 = 64 + 12) */
+.duobar { position:absolute; left:519.5px; width:407.5px; bottom:12px; height:64px; border-radius:32px; z-index:6; padding:4px; gap:4px; }
+.duobar span { font-family:var(--cochin); font-size:12px; }
+
+/* ---- the Find pill (FindPill.body). Geometry as built; only the fill changes per option. ---- */
+.find { position:absolute; z-index:9; left:16px; right:16px; bottom:91px; min-height:52px; display:flex; align-items:center; gap:8px;
+  padding:4px 6px 4px 16px; border-radius:999px; border:1px solid var(--line); }
+.find svg { flex:none; width:20px; height:20px; fill:none; stroke:var(--inkSoft); stroke-width:1.8; stroke-linecap:round; }
+.find .q { flex:1; min-width:0; font-family:var(--cochin); font-size:16px; color:var(--inkSoft); white-space:nowrap; overflow:hidden; }
+.find .clr { flex:none; width:44px; height:44px; }  /* the clear slot, laid out while empty (FindPill.clearSlot) */
+.ax .find { min-height:83px; }                    /* AX5, one line: 110 - 27 pt (derived; see notes) */
+.ax .find .q { font-size:30px; }
+.ax .find svg { width:24px; height:24px; }
+.duo .find { left:511.5px; right:auto; width:423.5px; bottom:84px; }  /* DuoBarMetrics.height + 8 */
+
+.f-paper .find { background:var(--paper); }
+.f-card  .find { background:var(--card); }
+.f-near  .find { background:color-mix(in srgb, var(--paper) 94%, transparent); -webkit-backdrop-filter:blur(18px) saturate(1.8); backdrop-filter:blur(18px) saturate(1.8); }
+.f-today .find { background:color-mix(in srgb, var(--paper) 62%, transparent); -webkit-backdrop-filter:blur(18px) saturate(1.8); backdrop-filter:blur(18px) saturate(1.8); }
+
+/* ---- list rows, scrolled so a row's text runs under the pill ---- */
+.list { position:absolute; left:16px; right:16px; top:var(--top); display:flex; flex-direction:column; gap:8px; }
+.pcard, .trow { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 1px var(--shadow); }
+.phead { padding:12px; display:flex; justify-content:space-between; align-items:baseline; }
+.phead b { font-size:15px; } .phead span { font:11px var(--mono); color:var(--inkSoft); }
+.ln { display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); padding:12px 12px 12px 4px; }
+.ln i { flex:0 0 45px; height:30px; display:grid; place-items:center; }
+.ln i::before { content:""; width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; }
+.ln .t { flex:1; display:flex; flex-direction:column; gap:4px; }
+.ln .t b { font-size:14px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
+.ln .t b span, .ln .t small { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.thead { display:flex; align-items:center; gap:8px; padding:12px; }
+.thead .nm { flex:1; display:flex; flex-direction:column; } .thead .nm b { font-size:15px; }
+.thead .nm span, .thead .fig span { font:12px var(--mono); color:var(--inkSoft); }
+.thead .fig { display:flex; flex-direction:column; align-items:flex-end; } .thead .fig b { font:700 15px var(--mono); }
+/* AX5 list text: drawn larger to fit, not a measured size */
+.ax .ln .t b, .ax .thead .nm b, .ax .phead b { font-size:26px; line-height:1.2; }
+.ax .ln .t small, .ax .ln .t b span, .ax .thead .nm span, .ax .thead .fig span, .ax .phead span { font-size:20px; }
+.ax .thead .fig b { font-size:26px; }
+.ax .ln, .ax .thead { flex-wrap:wrap; }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" role="note">Sample: no figure on this page is real. Rows use the test fixture names (shared/fixtures/golden).</div>
+  <h1>Find pill fill</h1>
+  <p class="sub">Step 8, PR 238. The pill's 62% glass lets list text show through, and the contrast audit fails on it. The owner ruled: make the fill near-opaque, and do not widen the audit skip. Each option below draws the same scrolled rows under the pill: Packages and Tally, normal size and AX5, on the folded Duo. Designer kind: informed.</p>
+  <nav aria-label="States">
+    <a href="#">All</a><a href="#o=paper">Opaque paper</a><a href="#o=card">Opaque card</a><a href="#o=near">Paper at 94%</a><a href="#o=today">Today</a>
+    <span class="sep"></span>
+    <a href="#s=packages">Packages</a><a href="#s=tally">Tally</a><a href="#s=duo">Open Duo</a><a href="#x=normal">Normal size</a><a href="#x=ax">AX5</a>
+    <span class="sep"></span>
+    <a href="#t=light" data-theme-link>Light</a><a href="#t=dark" data-theme-link>Dark</a>
+    <button type="button" data-hide="card">Hide opaque card</button>
+    <button type="button" data-hide="near">Hide paper at 94%</button>
+    <button type="button" data-hide="today">Hide today</button>
+  </nav>
+
+  <!-- The two Duo poses, folded first. Each option clones these frames. -->
+  <template id="folded"><div class="dev fold-out" data-device="iphone-duo-folded"></div></template>
+  <template id="unfolded"><div class="dev duo" data-device="iphone-duo-unfolded"></div></template>
+  <template id="sys"><div class="sysbar"><div class="cap"><span class="on"><i></i>Packages</span><span><i></i>Tally</span><span><i></i>Orphaned</span><span><i></i>Ledger</span></div></div></template>
+  <template id="mag"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg></template>
+  <template id="pk"><div class="list">
+    <div class="pcard"><div class="phead"><b>Beta Games</b><span>B1 · 2026-07-29</span></div>
+      <div class="ln"><i></i><div class="t"><b>Brainstorm <span>$0.50</span></b><small>Test Set · Near Mint</small></div></div>
+      <div class="ln"><i></i><div class="t"><b>Counterspell <span>$2.00</span></b><small>Test Set · Near Mint</small></div></div>
+      <div class="ln"><i></i><div class="t"><b>Lightning Bolt <span>$1.00</span></b><small>Test Set · Near Mint</small></div></div></div>
+    <div class="pcard"><div class="phead"><b>Alpha Cards</b><span>A1 · 2026-07-01</span></div>
+      <div class="ln"><i></i><div class="t"><b>Brainstorm <span>$0.50</span></b><small>Test Set · Near Mint</small></div></div></div>
+  </div></template>
+  <template id="tl"><div class="list">
+    <div class="trow"><div class="thead"><div class="nm"><b>Brainstorm</b><span>Test Set · 2 sellers</span></div><div class="fig"><b>0/4</b><span>$2.00</span></div></div></div>
+    <div class="trow"><div class="thead"><div class="nm"><b>Counterspell</b><span>Test Set · 2 sellers</span></div><div class="fig"><b>0/2</b><span>$4.00</span></div></div></div>
+    <div class="trow"><div class="thead"><div class="nm"><b>Lightning Bolt</b><span>Test Set · 3 sellers</span></div><div class="fig"><b>0/3</b><span>$3.00</span></div></div></div>
+    <div class="trow"><div class="thead"><div class="nm"><b>Path to Exile</b><span>Test Set · 1 seller</span></div><div class="fig"><b>0/1</b><span>$3.00</span></div></div></div>
+  </div></template>
+
+  <div id="opts"></div>
+</main>
+<script>
+const OPTS = [
+  { k:'paper', name:'Opaque paper', chip:['new','New: opaque paper fill'], pick:'Pick',
+    text:'Parchment.paper at 100%, material dropped. Hairline Parchment.line, accent while focused. No shadow, as built. Nothing under the pill shows.',
+    fig:'Placeholder inkSoft on paper 4.68:1 light, darkInkSoft on darkPaper 7.31:1 dark. Ghost of a row: none.' },
+  { k:'card', name:'Opaque card', chip:['new','New: opaque card fill'], pick:'',
+    text:'Parchment.card at 100%. More margin for the placeholder (5.24:1), but the pill takes the card rows\' colour and reads as one more card.',
+    fig:'Placeholder 5.24:1 light, 6.62:1 dark. Ghost of a row: none.' },
+  { k:'near', name:'Paper at 94%', chip:['new','New: paper at 94% over the material'], pick:'',
+    text:'The ruling\'s word "near-opaque" taken literally. A faint smear of the row still shows, and the placeholder over it drops under 4.5:1.',
+    fig:'Worst case with no blur: placeholder over a row\'s ink 4.22:1 light (under 4.5:1); the ghost ink itself 1.12:1. This page\'s CSS blur is heavier than iOS ultraThinMaterial, so the smear draws fainter here than on the phone.' },
+  { k:'today', name:'Today', chip:['today','Today: glass fill, paper at 62% over ultraThinMaterial'], pick:'',
+    text:'As built (FindPill.body). The rows read through the pill; the contrast audit fails on them.',
+    fig:'Worst case with no blur: placeholder over a row\'s ink 2.25:1; the ghost ink 2.18:1. The CSS blur here is heavier than the iOS material.' },
+];
+// Each frame: screen, size, list top (pt, so a row's text sits under the pill), and the pill text.
+const FRAMES = [
+  { s:'packages', x:'normal', name:'Packages, normal size', top:-58, tpl:'pk', ph:'Find card, set, seller, order' },
+  { s:'packages', x:'ax', name:'Packages, AX5', top:-118, tpl:'pk', ph:'Find' },
+  { s:'tally', x:'normal', name:'Tally, normal size', top:6, tpl:'tl', ph:'Find card, set, seller, order' },
+  { s:'tally', x:'ax', name:'Tally, AX5', top:-104, tpl:'tl', ph:'Find' },
+];
+const tpl = id => document.getElementById(id).content.cloneNode(true);
+function pill(ph, id) {
+  const p = document.createElement('div'); p.className = 'find'; if (id) p.id = id;
+  p.append(tpl('mag')); const q = document.createElement('span'); q.className = 'q'; q.textContent = ph; p.append(q);
+  const c = document.createElement('span'); c.className = 'clr'; p.append(c); return p;
+}
+const host = document.getElementById('opts');
+OPTS.forEach(o => {
+  const sec = document.createElement('section'); sec.className = 'opt'; sec.dataset.o = o.k;
+  sec.innerHTML = `<h2>${o.name} <span class="chip ${o.chip[0]}">${o.chip[1]}</span>${o.pick ? '<span class="pick">Pick</span>' : ''}</h2><p>${o.text}</p><p class="figs">${o.fig}</p>`;
+  const row = document.createElement('div'); row.className = 'row';
+  FRAMES.forEach((f, i) => {
+    const fig = document.createElement('figure'); fig.dataset.s = f.s; fig.dataset.x = f.x;
+    fig.innerHTML = `<figcaption><b>${f.name}</b>. Folded Duo, bottom 280 pt of 466 x 678.</figcaption>`;
+    const fit = document.createElement('div'); fit.className = 'fit';
+    const d = tpl('folded').firstElementChild; d.classList.add('f-' + o.k); if (f.x === 'ax') d.classList.add('ax');
+    d.style.setProperty('--top', f.top + 'px');
+    d.append(tpl(f.tpl), tpl('sys'), pill(f.ph, i === 0 ? 'focus-' + o.k : null));
+    fit.append(d); fig.append(fit); row.append(fig);
+  });
+  if (o.k === 'paper') {  // the open Duo: the same pill on the right page, over Tally's copies
+    const fig = document.createElement('figure'); fig.dataset.s = 'duo'; fig.dataset.x = 'normal'; fig.style.gridColumn = '1 / -1';
+    fig.innerHTML = '<figcaption><b>Open Duo, Tally</b>. Bottom 220 pt of 951 x 669. The pill sits on the right page, 8 pt above the Duo bar (findPillOnDuo).</figcaption>';
+    const fit = document.createElement('div'); fit.className = 'fit';
+    const d = tpl('unfolded').firstElementChild; d.classList.add('f-paper');
+    const l = document.createElement('div'); l.className = 'page l'; l.style.setProperty('--top', '-40px'); l.append(tpl('tl'));
+    const r = document.createElement('div'); r.className = 'page r'; r.style.setProperty('--top', '-20px');
+    r.innerHTML = `<div class="list"><div class="pcard"><div class="phead"><b>Lightning Bolt</b><span>3 copies</span></div>
+      <div class="ln"><i></i><div class="t"><b>Beta Games <span>B1</span></b><small>Test Set · Near Mint</small></div></div>
+      <div class="ln"><i></i><div class="t"><b>Alpha Cards <span>A1</span></b><small>Test Set · Near Mint</small></div></div>
+      <div class="ln"><i></i><div class="t"><b>Gamma Cards <span>C1</span></b><small>Test Set · Near Mint</small></div></div></div></div>`;
+    const fold = document.createElement('div'); fold.className = 'fold';
+    const bar = document.createElement('div'); bar.className = 'duobar';
+    bar.innerHTML = '<span>Packages</span><span class="on">Tally</span><span>Orphaned</span><span>Ledger</span>';
+    d.append(l, r, fold, bar, pill('Find card, set, seller, order', 'focus-duo'));
+    fit.append(d); fig.append(fit); row.append(fig);
+  }
+  sec.append(row); host.append(sec);
+});
+// Hide one option per press.
+const hidden = new Set();
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const k = b.dataset.hide; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
+  b.textContent = (hidden.has(k) ? 'Show ' : 'Hide ') + OPTS.find(o => o.k === k).name.toLowerCase(); route();
+}));
+// Scale each frame to its box, so the page never scrolls sideways.
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild;
+    d.style.zoom = Math.min(1, w.clientWidth / (d.classList.contains('duo') ? 951 : 466)); });
+}
+// Deep links: #o=paper|card|near|today, s=packages|tally|duo, x=normal|ax, t=light|dark; join with &.
+function route() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const o = h.get('o'), s = h.get('s'), x = h.get('x'), t = h.get('t');
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll('section.opt').forEach(sec => { sec.hidden = (o && sec.dataset.o !== o) || hidden.has(sec.dataset.o); });
+  document.querySelectorAll('figure').forEach(f => { f.hidden = (s && f.dataset.s !== s) || (x && f.dataset.x !== x); });
+  document.querySelectorAll('nav a').forEach(a => {
+    const k = new URLSearchParams(a.getAttribute('href').slice(1));
+    const on = [...k].length ? [...k].every(([kk, v]) => h.get(kk) === v) : !location.hash || location.hash === '#';
+    a.setAttribute('aria-current', String(on));
+    if (a.hasAttribute('data-theme-link')) { const n = new URLSearchParams(h); n.set('t', k.get('t')); a.href = '#' + n; }
+  });
+  fit();
+}
+addEventListener('hashchange', route); addEventListener('resize', fit); route();
+</script>
+</body>
+</html>
