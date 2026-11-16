@@ -68,8 +68,7 @@ figcaption b { font-size:16px; }
 
 /* ---- the Find pill (FindPill): glass capsule, magnifier, Cochin 16 field, 44 x 44 clear slot always laid out ---- */
 .find { position:absolute; z-index:9; height:52px; display:flex; align-items:center; gap:8px; padding:4px 6px 4px 16px; border-radius:26px;
-  border:1px solid var(--line); background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(18px) saturate(1.8);
-  box-shadow:0 8px 24px var(--shadow), 0 1px 3px var(--shadow); }
+  border:1px solid var(--line); background:var(--paper); }  /* opaque paper, no shadow: notes item 16, step8-find-pill-fill.html */
 .find.focused { border-color:var(--accent); }
 .find svg { flex:none; width:20px; height:20px; fill:none; stroke:var(--inkSoft); stroke-width:1.8; stroke-linecap:round; }
 .find .q { flex:1; min-width:0; font-family:var(--cochin); font-size:16px; color:var(--ink); white-space:nowrap; overflow:hidden; }

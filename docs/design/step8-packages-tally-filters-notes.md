@@ -127,6 +127,33 @@ This is a redraw, not the original. The step 8 design spec and its packages-tall
     - Gain: the key set no longer changes with no reason given (`ux-one-plain-name`). Loss: one more line in the View card, and the web differs.
     - Pick: owner's choice. Owner grant: yes, because it adds a line the web lacks. The control "Hide the sort's list name" removes it. Focus: `#focus-scope`.
 
+16. **The Find pill's fill.** New. The owner ruled: a near-opaque fill, so no list text shows through, and no wider audit skip.
+    - Mockup: `docs/design/step8-find-pill-fill.html`. Deep links: `#o=paper`, `#o=card`, `#o=near`, `#o=today`; `s=packages`, `s=tally`, `s=duo`; `x=normal`, `x=ax`; `t=light`, `t=dark`. Join them with `&`, for example `#o=paper&s=tally&x=ax&t=dark`. With no hash, every option shows, and `prefers-color-scheme` sets the theme. "Hide opaque card", "Hide paper at 94%" and "Hide today" each remove one option. Focus ids: `focus-paper`, `focus-card`, `focus-near`, `focus-today`, and `focus-duo` for the open Duo.
+    - Today: `FindPill.body` fills the capsule with `.ultraThinMaterial` and then `Parchment.paper.opacity(0.62)`. List text shows through it. The audits `AuditSkippingTabBarUITests.testTheSameIssuesFailOnceTheBarMovesAway` and the `MastheadBackupUITests` Packages audit fail with "Contrast failed" on 'Test Set · Near Mint' and 'Lightning Bolt' behind the pill.
+    - The spec (pick):
+      - Light: one layer, `Capsule().fill(Parchment.paper)` at opacity 1.0. Drop `.ultraThinMaterial`, because an opaque fill hides it.
+      - Dark: the token `darkPaper` at 1.0. The hairline is `darkLine`, and `darkAccent` while focused. The native app ships light only (`native/project.yml` `UIUserInterfaceStyle: Light`). `Parchment` has no dark accessor, and only `extension/build.mjs` reads the dark keys. So the dark line is a spec for a later dark theme, not a change to make now.
+      - The hairline stays as built: `Parchment.line`, 1 pt, and `Parchment.accent` while focused (`FindPill.body`, the `strokeBorder` overlay).
+      - No shadow. The native pill has none today, and this spec adds none.
+      - All else stays as built: the 44 x 44 pt clear slot, the 48 pt minimum height, and one line at AX sizes.
+      - The open Duo gets the same fill, since `findPillOnDuo` draws the same `FindPill`.
+    - Tokens, read from `shared/tokens.json` through `Parchment.color` (`native/Manifest/Theme.swift`): `paper` #F2E9DA, `card` #FCF6EA, `ink` #332E3F, `inkSoft` #6E6379, `line` #DCCDB6, `accent` #6F5CA6; `darkPaper` #1E1B24, `darkCard` #27232E, `darkInk` #EFE6D6, `darkInkSoft` #B1A6BB, `darkLine` #443D4D, `darkAccent` #A796DA.
+    - Why 1.0 and not "near" 1.0. Contrast ratios are by the WCAG formula. Apple's accessibility page asks for 4.5:1 for text up to 17 pt.
+      - The placeholder, `inkSoft` on `paper`, is 4.68:1 on a clear fill. That leaves 0.18 of margin.
+      - At any opacity under 1.0, a row's ink shows behind the placeholder and pulls it down. At 0.97 it falls to 4.45:1, under the floor.
+      - The list text under the pill is the element the audit flags. At 0.94 its ink still reads as text at 1.12:1.
+      - Every under-1.0 figure here is a worst case with no blur. The material softens it.
+      - So "no text shows through" holds only at 1.0. I read the ruling's "near-opaque" as opaque. Not blocking.
+    - Options in the mockup:
+      - Opaque paper. Gain: nothing shows through, and it keeps the web's paper colour. Loss: the pill no longer matches the 62% glass of the system tab bar and the Duo bar below it, and over a card row it reads as a slightly darker band. Pick: yes. Owner grant: no, because the ruling covers it.
+      - Opaque card. Gain: a placeholder margin of 5.24:1 light and 6.62:1 dark. Loss: the card colour blends the pill into the card rows, so it reads as one more card. Pick: no. Owner grant: yes, since it changes the pill's colour.
+      - Paper at 94% over the material. Gain: a trace of glass stays. Loss: a smear of the row stays, and the placeholder over it drops under 4.5:1. The page's CSS blur is heavier than iOS `ultraThinMaterial`, so the page draws the smear fainter than the phone would. Pick: no.
+      - Today. Drawn for comparison only.
+    - Departs from: `src/app.jsx` `.mdl-pill`, the web pill: paper at 62%, an 18 px backdrop blur, and a two-layer `shadow` box-shadow. The owner ruled the native departure. The web pill keeps its glass, and this item does not change it. Not blocking.
+    - Frames: the folded Duo, as the bottom 280 pt of the 466 x 678 pt outer screen, for Packages and Tally at normal size and AX5. Then the open Duo, as the bottom 220 pt of 951 x 669, with Tally. The AX5 pill is drawn 83 pt tall. That is 110 pt minus the empty 27 pt second line, from `FindPill.swift`'s doc comment and screen-check run 43765127724; it is derived, not measured. AX3 would draw at 67 pt by the same sum. AX text is drawn to fit, not at a measured size.
+    - `.find` in `step8-packages-tally-filters.html` drew the web's glass and box-shadow. It now draws the pick: opaque paper with no shadow.
+    - Unmeasured: whether the opaque fill turns the two audits green. A text element half under an opaque view may still be sampled. The proof is a re-run of those two tests on the build.
+
 ## Guesses
 
 - **Step number.** The restyle plan on `rw/restyle-plan` has no step numbered 8. Step 8 is read as lane N21 by its contents, and PR 238 calls step 9 motion and step 10 sync labels.
@@ -154,5 +181,12 @@ Run with skill `impeccable` (`critique`) on 2026-11-15. The launcher did not run
 - Fixed: tag labels showed through the Find pill's glass. The pill now draws above them.
 - Fixed: text under 11 pt (item 13, as an option).
 - Fixed: in the first draw, the pill sat in the flow, not over the list. A tag rule had set its position.
+- Item 16, run on `step8-find-pill-fill.html`, 2026-11-15. It was a single-context run, because a designer has no sub-agent tool. The launcher did not run, and no PRODUCT.md or DESIGN.md exists.
+  - Fixed: the deciding contrast figures were only in the notes. Each option now prints them.
+  - Fixed: the CSS blur draws the 94% smear fainter than the phone would. The option now says so.
+  - Fixed: the frames lacked static Duo `data-device` markers, so `check_ios_mockup.py` found no frames. They now come from templates.
+  - Fixed: the step 8 mockup's pill drew the web's shadow.
+  - False alarm (detector): "cramped padding" on the tab bar capsule. Its labels sit centred in a 56 pt bar.
+  - Not drawn: the focused pill's accent hairline. It is unchanged from the build.
 - Open, outside this folder: no UI test taps `package-clear` or `tally-clear` (item 4), and none checks the pill on the folded Duo (item 11).
 - Questions for the owner: keep Cochin in the mockup against the check (Frame), item 13, and item 15.
