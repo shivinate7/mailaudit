@@ -97,7 +97,8 @@
 // ids read the split:
 //   s1  the matrix lists at least two distinct whole-number shards;
 //   s2  each checkout, setup-node and npm ci step has no shard if:, so every shard has a tree and its modules;
-//   s3  each other step has if: matrix.shard == N with N a listed shard, so it runs in exactly one shard;
+//   s3  each other step has if: matrix.shard == N with N a listed shard, so it runs in exactly one shard
+//       (the push-skip gate, needs.push-skip.outputs.skip != 'true' &&, may lead the if:);
 //   s4  each command in SUITE_WORK is exactly one step, so no check is dropped and none runs twice;
 //   s5  each part of the app suite (PART_COUNT in test/app-parts.mjs) runs in exactly one step;
 //   s6  MAILDAY_TEST_PART picks one part, or every part when unset, and refuses any other value;
@@ -107,18 +108,18 @@
 //
 // The push skip (decision push-skip-on-proven-tree) is checked with these ids:
 //   p1   the job push-skip exists;
-//   p2   it calls the shared push-skip action, pinned by a 40-hex sha, not @stable or a tag;
+//   p2   it calls the shared push-skip action pinned at @stable, not a sha or a tag;
 //   p3   it holds no copy: its steps are a checkout and that action, and it has no run: line;
 //   p4   its checkout and decide steps are guarded if: github.event_name == 'push';
 //   p5   its skip output reads the decide step's skip output;
 //   p6   scope needs push-skip;
-//   p7   scope's job-level if: keeps the draft guard and skips on push-skip's skip output;
+//   p7   scope's job-level if: keeps the draft guard, and every step's if: holds push-skip's skip gate;
 //   p8   scope's job-level if: keeps !cancelled();
 //   p9   scope's script tests no push event for a skip (a shell comment line does not count);
 //   p10  all-jobs-passed needs push-skip;
 //   p11  all-jobs-passed passes scope-skips: one JSON object naming needed jobs and scope flags;
-//   p12  each suite job (the rollup's needs, less scope and push-skip) needs push-skip, gates its
-//        job-level if: on push-skip's skip output, and names no other event or output.
+//   p12  each suite job (the rollup's needs, less scope and push-skip) needs push-skip, every step's
+//        if: holds its skip gate, and its job-level if: names no event or output.
 //
 // No YAML library is in node_modules, and none may be added. The workflow is read as
 // text by indentation: jobs sit under jobs: at 2 spaces, job keys at 4, step keys at 8.
@@ -458,13 +459,21 @@ function workflowChecks(text) {
 // names one cause. A missing job fails each result that reads it, by that result's own cause.
 const PUSH_SKIP = "push-skip";
 const PUSH_SKIP_ACTION = ACTIONS + PUSH_SKIP;
-const PUSH_SKIP_PIN = /^shivinate7\/claude-settings\/actions\/push-skip@[0-9a-f]{40}$/;
+// push-skip is pinned at the shared ref like every claude-settings call (owner ruling R44 A).
+const PUSH_SKIP_PIN = PUSH_SKIP_ACTION + "@" + ACTION_PIN;
 const PUSH_ONLY = "github.event_name=='push'";
 const SKIP_GATE = "needs.push-skip.outputs.skip!='true'";
 const SCOPE_JOB = "scope";
 // The event test a skip would make. A shell comment line in a run: block is text, so it is dropped first.
 const EVENT_PUSH_TEST = /\$\{?EVENT\}?"?\s*={1,2}\s*push\b/;
 const stepIf = (s) => (isMap(s) && s.if != null ? normIf(String(s.if)) : "");
+// The first step whose if: lacks the push-skip gate, as a cause, or "" when every step holds it.
+// A job with no steps is a cause too, so an empty list never passes by holding nothing.
+const ungatedStep = (list) => {
+  if (list.length === 0) return "it has no steps";
+  const i = list.findIndex((s) => !stepIf(s).includes(SKIP_GATE));
+  return i < 0 ? "" : `step ${i + 1} lacks ${SKIP_GATE} in its if:`;
+};
 const callsShared = (s) => isMap(s) && typeof s.uses === "string" && s.uses.startsWith(PUSH_SKIP_ACTION + "@");
 const isCheckout = (s) => isMap(s) && typeof s.uses === "string" && s.uses.startsWith(CHECKOUT_ACTION);
 // The scope flags a job may name: the keys of scope's outputs.
@@ -526,10 +535,10 @@ function pushSkipChecks(text) {
   const pin =
     decider === undefined
       ? `${PUSH_SKIP} has no step that calls the shared action`
-      : PUSH_SKIP_PIN.test(decider.uses)
+      : decider.uses === PUSH_SKIP_PIN
         ? ""
         : `uses is ${JSON.stringify(decider.uses)}`;
-  add("p2", `${PUSH_SKIP} calls ${PUSH_SKIP_ACTION} pinned by a 40-hex sha`, pin);
+  add("p2", `${PUSH_SKIP} calls ${PUSH_SKIP_ACTION} pinned at @${ACTION_PIN}`, pin);
 
   const copy =
     runsOf(job).length > 0
@@ -569,14 +578,12 @@ function pushSkipChecks(text) {
 
   add(
     "p7",
-    `${SCOPE_JOB} job-level if: keeps ${DRAFT_GUARD} and skips on the ${PUSH_SKIP} skip output`,
+    `${SCOPE_JOB} job-level if: keeps ${DRAFT_GUARD}, and every step's if: holds the ${PUSH_SKIP} skip gate`,
     scope === undefined
       ? `no ${SCOPE_JOB} job`
       : !scopeIf.includes(DRAFT_GUARD)
         ? "its job-level if: lacks the draft guard"
-        : !scopeIf.includes(SKIP_GATE)
-          ? `its job-level if: lacks ${SKIP_GATE}`
-          : ""
+        : ungatedStep(steps(scope))
   );
 
   add(
@@ -626,12 +633,10 @@ function pushSkipChecks(text) {
       ? "no such job"
       : !needsOf(j).includes(PUSH_SKIP)
         ? `it does not need ${PUSH_SKIP}`
-        : !cond.includes(SKIP_GATE)
-          ? `its job-level if: lacks ${SKIP_GATE}`
-          : /github\.event_name|\.outputs\./.test(cond.replace(SKIP_GATE, ""))
-            ? "its job-level if: names an event or another output"
-            : "";
-    add("p12", `suite job ${id} needs ${PUSH_SKIP} and skips only on its skip output`, problem);
+        : /github\.event_name|\.outputs\./.test(cond)
+          ? "its job-level if: names an event or an output"
+          : ungatedStep(steps(j));
+    add("p12", `suite job ${id} needs ${PUSH_SKIP}, every step's if: holds its skip gate, and its job-level if: names no event or output`, problem);
   }
   return out;
 }
@@ -2932,7 +2937,8 @@ const SUITE_WORK = [
   "npm run check:records --silent",
   "node test/photoget.test.mjs",
 ];
-const SHARD_IF = /^matrix\.shard==(\d+)$/;
+// A shard step may lead with the push-skip gate and no other prefix (the gate is one prefix, decision push-skip-on-proven-tree).
+const SHARD_IF = /^(?:needs\.push-skip\.outputs\.skip!='true'&&)?matrix\.shard==(\d+)$/;
 // Setup runs in every shard: the checkout, the node setup and the install.
 const isSetupStep = (s) =>
   (typeof s.uses === "string" && (s.uses.startsWith(CHECKOUT) || s.uses.startsWith(SETUP_NODE))) ||
@@ -4203,6 +4209,9 @@ const SH_RED = [
     id: "s3",
     wf: mutate(SH_GOOD, shText(C0, 1), `      - run: ${C0}\n        if: github.event_name == 'push'\n`),
   },
+  { name: "a gated step has no shard test", id: "s3", wf: mutate(SH_GOOD, shText(C0, 1), `      - run: ${C0}\n        if: needs.push-skip.outputs.skip != 'true'\n`) },
+  { name: "the push-skip gate follows the shard test", id: "s3", wf: mutate(SH_GOOD, shText(C0, 1), `      - run: ${C0}\n        if: matrix.shard == 1 && needs.push-skip.outputs.skip != 'true'\n`) },
+  { name: "a step has another prefix before its shard test", id: "s3", wf: mutate(SH_GOOD, shText(C0, 1), `      - run: ${C0}\n        if: github.event_name == 'push' && matrix.shard == 1\n`) },
   { name: "a command is dropped", id: "s4", wf: mutate(SH_GOOD, shText(C0, 1), "") },
   { name: "a command runs in two shards", id: "s4", wf: mutate(SH_GOOD, shText(C0, 1), shText(C0, 1) + shText(C0, 2)) },
   { name: "a command is renamed", id: "s4", wf: mutate(SH_GOOD, `      - run: ${C0}\n`, "      - run: npm run check:rule\n") },
@@ -4292,40 +4301,48 @@ const PS_GOOD = [
   "      - name: Decide whether the push can skip",
   "        id: decide",
   "        if: ${{ github.event_name == 'push' }}",
-  `        uses: ${PUSH_SKIP_ACTION}@${PS_SHA} # <version>`,
+  `        uses: ${PUSH_SKIP_ACTION}@${ACTION_PIN} # tracks claude-settings stable`,
   "        env:",
   "          GH_TOKEN: ${{ github.token }}",
   "          EVENT: ${{ github.event_name }}",
   "  scope:",
   "    needs: [push-skip]",
-  "    if: ${{ !cancelled() && !github.event.pull_request.draft && needs.push-skip.outputs.skip != 'true' }}",
+  "    if: ${{ !cancelled() && !github.event.pull_request.draft }}",
   "    runs-on: ubuntu-latest",
   "    outputs:",
   "      screens: ${{ steps.d.outputs.screens }}",
   "    steps:",
+  "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+  "        if: ${{ needs.push-skip.outputs.skip != 'true' }}",
+  "        with:",
+  "          persist-credentials: false",
   "      - id: d",
+  "        if: ${{ needs.push-skip.outputs.skip != 'true' }}",
   "        run: |",
   "          # EVENT = push is only a comment here",
   "          screens=true",
   "          echo \"screens=$screens\" >> \"$GITHUB_OUTPUT\"",
   "  suite:",
   "    needs: [push-skip]",
-  "    if: ${{ needs.push-skip.outputs.skip != 'true' && !github.event.pull_request.draft }}",
+  "    if: ${{ !github.event.pull_request.draft }}",
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - run: npm test",
+  "        if: ${{ needs.push-skip.outputs.skip != 'true' }}",
   "  docs:",
   "    needs: [suite, push-skip]",
-  "    if: ${{ needs.push-skip.outputs.skip != 'true' && !github.event.pull_request.draft }}",
+  "    if: ${{ !github.event.pull_request.draft }}",
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - run: npm run check:docs --silent",
+  "        if: ${{ needs.push-skip.outputs.skip != 'true' }}",
   "  screens:",
   "    needs: [scope, push-skip]",
-  "    if: ${{ needs.push-skip.outputs.skip != 'true' && !github.event.pull_request.draft }}",
+  "    if: ${{ !github.event.pull_request.draft }}",
   "    runs-on: ubuntu-latest",
   "    steps:",
   "      - run: npm run check:screens",
+  "        if: ${{ needs.push-skip.outputs.skip != 'true' }}",
   "  all-jobs-passed:",
   "    needs: [push-skip, scope, suite, docs, screens]",
   "    if: ${{ always() && !github.event.pull_request.draft }}",
@@ -4346,8 +4363,9 @@ const PS_GOOD = [
 }
 const PS_RED = [
   ["the push-skip job is missing", mutate(PS_GOOD, "  push-skip:\n", "  not-push-skip:\n"), "p1"],
-  ["the pin is @stable", mutate(PS_GOOD, `push-skip@${PS_SHA}`, "push-skip@stable"), "p2"],
-  ["the pin is a tag", mutate(PS_GOOD, `push-skip@${PS_SHA}`, "push-skip@v1.4.0"), "p2"],
+  ["the pin is a 40-hex sha", mutate(PS_GOOD, `push-skip@${ACTION_PIN}`, `push-skip@${PS_SHA}`), "p2"],
+  ["the pin is a tag", mutate(PS_GOOD, `push-skip@${ACTION_PIN}`, "push-skip@v1.4.0"), "p2"],
+  ["the pin is @main", mutate(PS_GOOD, `push-skip@${ACTION_PIN}`, "push-skip@main"), "p2"],
   [
     "the job runs a copy as a run line",
     mutate(PS_GOOD, "      - name: Decide whether the push can skip\n", "      - run: python3 push-skip.py\n      - name: Decide whether the push can skip\n"),
@@ -4369,10 +4387,24 @@ const PS_RED = [
   ],
   ["the skip output reads another step", mutate(PS_GOOD, "      skip: ${{ steps.decide.outputs.skip }}\n", "      skip: ${{ steps.other.outputs.skip }}\n"), "p5"],
   ["scope does not need push-skip", mutate(PS_GOOD, "  scope:\n    needs: [push-skip]\n", "  scope:\n    needs: []\n"), "p6"],
-  ["scope's if drops the draft guard", mutate(PS_GOOD, "!cancelled() && !github.event.pull_request.draft && needs", "!cancelled() && needs"), "p7"],
+  ["scope's if drops the draft guard", mutate(PS_GOOD, "if: ${{ !cancelled() && !github.event.pull_request.draft }}", "if: ${{ !cancelled() }}"), "p7"],
   [
-    "scope's if drops the skip gate",
-    mutate(PS_GOOD, "!github.event.pull_request.draft && needs.push-skip.outputs.skip != 'true' }}", "!github.event.pull_request.draft }}"),
+    "scope's checkout step drops the skip gate",
+    mutate(PS_GOOD, "        if: ${{ needs.push-skip.outputs.skip != 'true' }}\n        with:\n          persist-credentials: false\n", "        with:\n          persist-credentials: false\n"),
+    "p7",
+  ],
+  [
+    "scope's script step drops the skip gate",
+    mutate(PS_GOOD, "      - id: d\n        if: ${{ needs.push-skip.outputs.skip != 'true' }}\n", "      - id: d\n"),
+    "p7",
+  ],
+  [
+    "scope has no steps",
+    mutate(
+      mutate(PS_GOOD, "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1\n        if: ${{ needs.push-skip.outputs.skip != 'true' }}\n        with:\n          persist-credentials: false\n", ""),
+      "      - id: d\n        if: ${{ needs.push-skip.outputs.skip != 'true' }}\n        run: |\n          # EVENT = push is only a comment here\n          screens=true\n          echo \"screens=$screens\" >> \"$GITHUB_OUTPUT\"\n",
+      ""
+    ),
     "p7",
   ],
   ["scope's if drops !cancelled()", mutate(PS_GOOD, "!cancelled() && !github.event.pull_request.draft", "!github.event.pull_request.draft"), "p8"],
@@ -4392,17 +4424,23 @@ const PS_RED = [
   ["scope-skips is not JSON", mutate(PS_GOOD, '{"screens":["screens"]}', "{screens:"), "p11"],
   ["suite does not need push-skip", mutate(PS_GOOD, "  suite:\n    needs: [push-skip]\n", "  suite:\n    needs: []\n"), "p12"],
   [
-    "suite's if has no skip gate",
-    mutate(PS_GOOD, "  suite:\n    needs: [push-skip]\n    if: ${{ needs.push-skip.outputs.skip != 'true' && ", "  suite:\n    needs: [push-skip]\n    if: ${{ "),
+    "suite's step drops the skip gate",
+    mutate(PS_GOOD, "      - run: npm test\n        if: ${{ needs.push-skip.outputs.skip != 'true' }}\n", "      - run: npm test\n"),
     "p12",
   ],
   [
-    "suite's if names the event",
-    mutate(
-      PS_GOOD,
-      "  suite:\n    needs: [push-skip]\n    if: ${{ needs.push-skip.outputs.skip != 'true' && ",
-      "  suite:\n    needs: [push-skip]\n    if: ${{ github.event_name != 'pull_request' && needs.push-skip.outputs.skip != 'true' && "
-    ),
+    "suite's job-level if names the event",
+    mutate(PS_GOOD, "  suite:\n    needs: [push-skip]\n    if: ${{ !github.event.pull_request.draft }}", "  suite:\n    needs: [push-skip]\n    if: ${{ github.event_name != 'pull_request' && !github.event.pull_request.draft }}"),
+    "p12",
+  ],
+  [
+    "suite's job-level if names the skip output",
+    mutate(PS_GOOD, "  suite:\n    needs: [push-skip]\n    if: ${{ !github.event.pull_request.draft }}", "  suite:\n    needs: [push-skip]\n    if: ${{ needs.push-skip.outputs.skip != 'true' && !github.event.pull_request.draft }}"),
+    "p12",
+  ],
+  [
+    "suite has no steps",
+    mutate(PS_GOOD, "    steps:\n      - run: npm test\n        if: ${{ needs.push-skip.outputs.skip != 'true' }}\n", ""),
     "p12",
   ],
   ["the rollup names no suite job", mutate(PS_GOOD, "    needs: [push-skip, scope, suite, docs, screens]", "    needs: [push-skip, scope]"), "p12"],
@@ -4411,6 +4449,42 @@ for (const [name, text, id] of PS_RED) {
   const failed = pushSkipChecks(text).filter((r) => !r.ok).map((r) => r.id);
   expect(`fixture red: ${name} fails assertion ${id}`, failed.includes(id), `failed assertions: ${JSON.stringify(failed)}`);
 }
+
+// Assertions 3c and 12 are unchanged (owner ruling R44 A): every claude-settings pin names @stable,
+// push-skip included. A sha pin on push-skip fails them as it fails on any other action.
+{
+  const bad = checkAll(PS_GOOD, GOOD_STAMP).filter((r) => !r.ok);
+  expect(
+    "fixture good: the push-skip wiring passes every checks.yml assertion (1, 2, 3a to 3c, 4 to 8)",
+    bad.length === 0,
+    bad.map((r) => `${r.label} (${r.detail})`).join("; ")
+  );
+  const psSha = mutate(PS_GOOD, `push-skip@${ACTION_PIN}`, `push-skip@${PS_SHA}`);
+  const ciDoneSha = mutate(GOOD, "ci-done-comment@" + ACTION_PIN, "ci-done-comment@" + SHA_CALL);
+  const red3c = [
+    ["push-skip pinned to a 40-hex sha", psSha],
+    ["ci-done-comment pinned to a 40-hex sha", ciDoneSha],
+  ];
+  for (const [name, text] of red3c) {
+    const bad3c = checkAll(text, GOOD_STAMP).filter((r) => r.id === "3c" && !r.ok);
+    expect(`fixture red: ${name} fails assertion 3c`, bad3c.length === 1, `3c failures: ${bad3c.length}`);
+  }
+  const off = offPins(pinRefs([{ name: ".github/workflows/checks.yml", text: PS_GOOD }]));
+  expect("fixture good: push-skip pinned at @stable passes assertion 12", off.length === 0, off.join("; "));
+  const red12 = [
+    ["push-skip pinned to a 40-hex sha", psSha],
+    ["all-jobs-passed pinned to a 40-hex sha", mutate(PS_GOOD, `all-jobs-passed@${ACTION_PIN}`, `all-jobs-passed@${SHA_CALL}`)],
+  ];
+  for (const [name, text] of red12) {
+    const off12 = offPins(pinRefs([{ name: ".github/workflows/checks.yml", text }]));
+    expect(`fixture red: ${name} fails assertion 12`, off12.length > 0, `detail: ${off12.join("; ") || "none"}`);
+  }
+}
+
+// s3 accepts the push-skip gate as a prefix of the shard test, and no other prefix.
+const SH_GATED = SH_GOOD.replaceAll("        if: matrix.shard == ", "        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == ");
+for (const r of shardChecks({ wfText: SH_GATED, pkgText: SH_PKG, partCount: 3 }))
+  expect(`fixture good: gated shard steps, ${r.label}`, r.ok, r.detail);
 
 // The real files: checks.yml's suite and docs jobs, package.json, test/app-parts.mjs.
 {
