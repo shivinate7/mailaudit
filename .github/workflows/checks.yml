@@ -59,7 +59,40 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
 
 jobs:
+  # Decision push-skip-on-proven-tree: asks the shared action whether a push to main has a tree that a
+  # passing PR run already proved. The job starts on every event and only its steps are guarded by
+  # the event, because a job-level if would leave it skipped on a pull request. Every job that does
+  # work reads its skip output in the `if:` of each step, never in a job-level if:, so a skipped push
+  # still runs each job to success and the rollup sees no skipped job.
+  push-skip:
+    if: ${{ !github.event.pull_request.draft }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      pull-requests: read
+      checks: read
+      actions: read
+    outputs:
+      skip: ${{ steps.decide.outputs.skip }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: ${{ github.event_name == 'push' }}
+        with:
+          persist-credentials: false
+      - name: Decide whether the push can skip
+        id: decide
+        if: ${{ github.event_name == 'push' }}
+        uses: shivinate7/claude-settings/actions/push-skip@183ede0dd99216f3091cc7563034fa9921814419 # stable at 2026-11-15
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          HEAD_SHA: ${{ github.sha }}
+          PUSH_TREE: ${{ github.event.head_commit.tree_id }}
+          EVENT: ${{ github.event_name }}
+
   suite:
+    needs: [push-skip]
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     # About 5x the slowest green run (229 s, 26 runs); 10 min cut run 39713600893.
@@ -78,14 +111,17 @@ jobs:
     steps:
       # fetch-depth 0: test:ci-wiring reads history to check that each known defect's id names a commit.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           node-version: "22"
           cache: npm
       - run: npm ci
+        if: needs.push-skip.outputs.skip != 'true'
       # The steps are split over three shards by `matrix.shard`. Each step names its shard in its
       # own `if:`, so a step has exactly one home. The app suite is the slow step by far (about
       # 204 s of 236 s, run 43362506071), so each shard runs one of its three parts. Shard 1 also
@@ -94,39 +130,39 @@ jobs:
       #
       # Shard 2: the rule, record, worker and extension tests.
       - run: npm run check:rules
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
       - run: npm run test:rules
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
       - run: npm run test:recent-rules
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
       - run: npm run test:check-docs
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
       - run: npm run test:check-records
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
       - run: npm run test:worker
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
       - run: npm run test:extension
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
       - name: extension/pull.js is in step with its source
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
         run: node extension/build.mjs --check
       - run: npm run test:send-key
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
       - run: npm run test:view-rules
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
       # Shard 3: the wiring, fail-line, tests-for, milestone and golden tests, and the record corpus.
       - run: npm run test:ci-wiring
-        if: matrix.shard == 3
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 3
       - run: npm run test:fail-line
-        if: matrix.shard == 3
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 3
       - run: npm run test:tests-for
-        if: matrix.shard == 3
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 3
       - run: npm run test:milestone-due
-        if: matrix.shard == 3
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 3
       - run: npm run test:golden
-        if: matrix.shard == 3
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 3
       - name: golden files are in step with src/view-rules.mjs
-        if: matrix.shard == 3
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 3
         run: npm run check:golden --silent
       # The app suite, one part per shard. The parts share one bundle path
       # (node_modules/.mailday-test), so each runs on its own runner. TZ is pinned non-UTC so test
@@ -134,7 +170,7 @@ jobs:
       # `docs` job sums the three logs. pipefail makes a red part fail the step despite the tee.
       # `node test/app.test.mjs` and not `npm test`, which would also run photoget in every shard.
       - name: app suite part 1 (TZ=America/New_York)
-        if: matrix.shard == 1
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 1
         env:
           TZ: America/New_York
           MAILDAY_TEST_PART: 1
@@ -142,7 +178,7 @@ jobs:
           set -o pipefail
           node test/app.test.mjs | tee "$RUNNER_TEMP/suite-part-1.log"
       - name: app suite part 2 (TZ=America/New_York)
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
         env:
           TZ: America/New_York
           MAILDAY_TEST_PART: 2
@@ -150,7 +186,7 @@ jobs:
           set -o pipefail
           node test/app.test.mjs | tee "$RUNNER_TEMP/suite-part-2.log"
       - name: app suite part 3 (TZ=America/New_York)
-        if: matrix.shard == 3
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 3
         env:
           TZ: America/New_York
           MAILDAY_TEST_PART: 3
@@ -159,7 +195,7 @@ jobs:
           node test/app.test.mjs | tee "$RUNNER_TEMP/suite-part-3.log"
       # The part logs go to the `docs` job. An upload step has one shard, as every other step does.
       - name: keep the part 1 log
-        if: matrix.shard == 1
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 1
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: suite-log-1
@@ -168,7 +204,7 @@ jobs:
           overwrite: true
           retention-days: 1
       - name: keep the part 2 log
-        if: matrix.shard == 2
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 2
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: suite-log-2
@@ -177,7 +213,7 @@ jobs:
           overwrite: true
           retention-days: 1
       - name: keep the part 3 log
-        if: matrix.shard == 3
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 3
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: suite-log-3
@@ -187,7 +223,7 @@ jobs:
           retention-days: 1
       # The photo suite is not an app part, so it runs once.
       - name: photoget suite (TZ=America/New_York)
-        if: matrix.shard == 1
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 1
         env:
           TZ: America/New_York
         run: node test/photoget.test.mjs
@@ -196,20 +232,20 @@ jobs:
       # local `npm run deploy` can skip by accident. The page is built from
       # src/ alone, so the whole page is compared.
       - name: index.html is in step with src/
-        if: matrix.shard == 1
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 1
         run: npm run check:build --silent
 
       # The page publishes no ledger data. The Pages site is world-readable and
       # git keeps every version, so a ledger payload in index.html is the one
       # mistake here that git makes permanent.
       - name: the published page carries no ledger data
-        if: matrix.shard == 1
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 1
         run: npm run check:seed --silent
 
       # The record corpus under invariants/, measurements/, docs/decisions/ and docs/debts/ —
       # see check-records.mjs for the eight claims this proves.
       - name: the record corpus checks out
-        if: matrix.shard == 3
+        if: needs.push-skip.outputs.skip != 'true' && matrix.shard == 3
         run: npm run check:records --silent
 
   # CLAUDE.md's own numbers and paths, checked against the repo itself: see check-docs.mjs for what
@@ -217,7 +253,7 @@ jobs:
   # shards wrote on three runners, so this check runs after them and not inside one of them. A red
   # suite skips it, and the rollup is red already.
   docs:
-    needs: [suite]
+    needs: [suite, push-skip]
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -226,19 +262,24 @@ jobs:
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           node-version: "22"
           cache: npm
       - run: npm ci
+        if: needs.push-skip.outputs.skip != 'true'
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           pattern: suite-log-*
           merge-multiple: true
           path: ${{ runner.temp }}/suite-logs
       - name: CLAUDE.md's numbers and paths check out
+        if: needs.push-skip.outputs.skip != 'true'
         env:
           # One log per part, joined with ":". check-docs.mjs refuses a part set that is not 1 to 3 once each.
           CHECK_DOCS_SUITE_LOG: ${{ runner.temp }}/suite-logs/suite-part-1.log:${{ runner.temp }}/suite-logs/suite-part-2.log:${{ runner.temp }}/suite-logs/suite-part-3.log
@@ -250,11 +291,11 @@ jobs:
   # starts an ubuntu runner and skips every step, so it passes and no Mac starts.
   # !cancelled() lets it run when scope itself failed (fail safe).
   screens:
-    needs: [scope]
+    needs: [scope, push-skip]
     if: ${{ !cancelled() && !github.event.pull_request.draft }}
-    runs-on: ${{ (needs.scope.result != 'success' || needs.scope.outputs.screens == 'true') && 'macos-26' || 'ubuntu-latest' }}
+    runs-on: ${{ needs.push-skip.outputs.skip != 'true' && (needs.scope.result != 'success' || (github.event_name != 'push' && needs.scope.outputs.screens == 'true')) && 'macos-26' || 'ubuntu-latest' }}
     env:
-      WORK: ${{ needs.scope.result != 'success' || needs.scope.outputs.screens == 'true' }}
+      WORK: ${{ needs.push-skip.outputs.skip != 'true' && (needs.scope.result != 'success' || (github.event_name != 'push' && needs.scope.outputs.screens == 'true')) }}
     # About 2.7x the slowest green run (670 s, 26 runs); it stops a hang (decision above).
     timeout-minutes: 30
     # Cancel a superseded run on a PR ref (draft state in the group); never cancel a run on main, where
@@ -264,29 +305,31 @@ jobs:
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: env.WORK == 'true'
+        if: needs.push-skip.outputs.skip != 'true' && env.WORK == 'true'
         with:
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
-        if: env.WORK == 'true'
+        if: needs.push-skip.outputs.skip != 'true' && env.WORK == 'true'
         with:
           node-version: "22"
           cache: npm
       - run: npm ci
-        if: env.WORK == 'true'
+        if: needs.push-skip.outputs.skip != 'true' && env.WORK == 'true'
       - name: install Chromium
-        if: env.WORK == 'true'
+        if: needs.push-skip.outputs.skip != 'true' && env.WORK == 'true'
         run: npx playwright install chromium
         timeout-minutes: 2
       - run: npm run build
-        if: env.WORK == 'true'
+        if: needs.push-skip.outputs.skip != 'true' && env.WORK == 'true'
       - run: npm run check:screens
-        if: env.WORK == 'true'
+        if: needs.push-skip.outputs.skip != 'true' && env.WORK == 'true'
 
   # Decision native-ci-on-hosted-macos: says whether the native and screens jobs have work.
-  # Nightly and dispatch run both; so does a PR diff that cannot be read (fail safe). A push to main runs neither.
+  # Nightly and dispatch run both; so does a PR diff that cannot be read (fail safe). A push whose tree is proven
+  # skips this job's steps, so both flags are empty and no Mac starts.
   scope:
-    if: ${{ !github.event.pull_request.draft }}
+    needs: [push-skip]
+    if: ${{ !cancelled() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     outputs:
@@ -294,23 +337,21 @@ jobs:
       screens: ${{ steps.d.outputs.screens }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           fetch-depth: 0
           persist-credentials: false
       - id: d
+        if: needs.push-skip.outputs.skip != 'true'
         env:
           EVENT: ${{ github.event_name }}
           BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
         run: |
           native=true
           screens=true
-          # A push to main follows a batch PR whose run already tested that merge tree
-          # (decision orchestrator-may-merge), so it starts no Mac: the shared macOS slots
-          # go to PR runs. A failed scope job still runs both on macOS (fail safe).
-          if [ "$EVENT" = push ]; then
-            native=false
-            screens=false
-          elif [ "$EVENT" = pull_request ]; then
+          # A push never gets here when its tree is proven: the push-skip job says skip and this step
+          # does not run. The native and screens jobs start no Mac on a push (their runs-on and WORK).
+          if [ "$EVENT" = pull_request ]; then
             # NUL-separated, so a quoted path (a double quote in a name) still matches.
             # A failed or empty diff leaves files empty, and both stay true.
             files=$(git diff --no-renames --name-only -z "$BASE" HEAD | tr '\0' '\n')
@@ -331,39 +372,42 @@ jobs:
   # Scope says whether the change can move native code. With no such change the job starts an
   # ubuntu runner and skips every step, so it passes and no Mac starts.
   native:
-    needs: [suite, scope]
+    needs: [suite, scope, push-skip]
     # !cancelled() lets it run when scope itself failed (fail safe) and still
     # stops it on a cancelled run; the suite result check keeps the
     # cheap-first rule: a red suite skips native.
     if: ${{ !cancelled() && needs.suite.result == 'success' && !github.event.pull_request.draft }}
-    runs-on: ${{ (needs.scope.result != 'success' || needs.scope.outputs.native == 'true') && 'macos-26' || 'ubuntu-latest' }}
+    runs-on: ${{ needs.push-skip.outputs.skip != 'true' && (needs.scope.result != 'success' || (github.event_name != 'push' && needs.scope.outputs.native == 'true')) && 'macos-26' || 'ubuntu-latest' }}
     env:
-      WORK: ${{ needs.scope.result != 'success' || needs.scope.outputs.native == 'true' }}
+      WORK: ${{ needs.push-skip.outputs.skip != 'true' && (needs.scope.result != 'success' || (github.event_name != 'push' && needs.scope.outputs.native == 'true')) }}
     timeout-minutes: 10
     concurrency:
       group: native-${{ github.ref == 'refs/heads/main' && github.sha || format('{0}-{1}', github.ref, github.event.pull_request.draft) }}
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: env.WORK == 'true'
+        if: needs.push-skip.outputs.skip != 'true' && env.WORK == 'true'
         with:
           persist-credentials: false
       - run: xcodebuild -version && swift --version
-        if: env.WORK == 'true'
+        if: needs.push-skip.outputs.skip != 'true' && env.WORK == 'true'
       - run: swift test --package-path native/ManifestKit
-        if: env.WORK == 'true'
+        if: needs.push-skip.outputs.skip != 'true' && env.WORK == 'true'
 
   # Audits the workflows and the dependabot config. Same command as local:
   # zizmor .github/workflows .github/dependabot.yml (online-audits off; the action still passes github.token).
   zizmor:
+    needs: [push-skip]
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           persist-credentials: false
       - uses: zizmorcore/zizmor-action@53290badfa369cb0bf7ad16342cb62c2fa47ac7b # v0.8.0
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           version: 1.30.1
           inputs: .github/workflows .github/dependabot.yml
@@ -374,6 +418,7 @@ jobs:
   # Lints the markdown a change adds or edits, in Simplified Technical English. It fails only
   # on an error on a changed line. fetch-depth 0 lets the action diff against the base branch.
   checks:
+    needs: [push-skip]
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 60  # provisional
@@ -382,16 +427,19 @@ jobs:
       cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           fetch-depth: 0
           persist-credentials: false
       - uses: shivinate7/claude-settings/actions/ste-lint@stable # tracks claude-settings stable
+        if: needs.push-skip.outputs.skip != 'true'
 
   # Decision milestone-runs-full-suite: on a push to main, dispatches the full Swift suite
   # (milestone.yml) when it is due. Cost per push: one ubuntu job, one API read, one git log.
   # The job-level permissions cannot depend on the event, so every CI step carries the push-to-main
   # guard: on a pull request no step runs, and the job never uses its actions: write token.
   milestone-due:
+    needs: [push-skip]
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 5 # provisional
@@ -403,12 +451,12 @@ jobs:
       MILESTONE_AUTO_DISPATCH: "off"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}
+        if: ${{ needs.push-skip.outputs.skip != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}
         with:
           fetch-depth: 0
           persist-credentials: false
       - name: dispatch the full Swift suite when it is due
-        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.MILESTONE_AUTO_DISPATCH == 'on' }}
+        if: ${{ needs.push-skip.outputs.skip != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && env.MILESTONE_AUTO_DISPATCH == 'on' }}
         env:
           GITHUB_TOKEN: ${{ github.token }}
         run: node scripts/milestone-due.mjs --native-paths .github/native-paths.regex
@@ -441,19 +489,23 @@ jobs:
   # their branch names vary (int-batch-*, batch/*), so no branch filter fits. The shared action itself skips
   # on a push or a schedule.
   mutation-report:
+    needs: [push-skip]
     if: ${{ !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 20 # provisional
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           fetch-depth: 0
           persist-credentials: false
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           node-version: "22"
           cache: npm
       - uses: shivinate7/claude-settings/actions/mutation-report@stable # tracks claude-settings stable
+        if: needs.push-skip.outputs.skip != 'true'
         with:
           profile: mailaudit
 
@@ -461,7 +513,7 @@ jobs:
   # or was skipped. always() makes it run when a needed job fails, and a draft skips it with
   # every other job. It has no name key, so its check name is its id.
   all-jobs-passed:
-    needs: [suite, docs, screens, scope, native, zizmor, checks, milestone-due, mutation-report]
+    needs: [push-skip, suite, docs, screens, scope, native, zizmor, checks, milestone-due, mutation-report]
     if: ${{ always() && !github.event.pull_request.draft }}
     runs-on: ubuntu-latest
     timeout-minutes: 2
@@ -469,12 +521,13 @@ jobs:
       - uses: shivinate7/claude-settings/actions/all-jobs-passed@stable # tracks claude-settings stable
         with:
           needs: ${{ toJSON(needs) }}
+          scope-skips: '{"native":["native"],"screens":["screens"]}'
 
   # Rule git-ci-done-comment-wakes: a run that ends with a red job posts one PR comment, which
   # wakes the session that watches the PR. A green run posts nothing. Keep needs: on every other job.
   # A draft run posts nothing, because its jobs skip on purpose.
   ci-done:
-    needs: [suite, docs, screens, scope, native, zizmor, checks, milestone-due, mutation-report, all-jobs-passed]
+    needs: [push-skip, suite, docs, screens, scope, native, zizmor, checks, milestone-due, mutation-report, all-jobs-passed]
     if: ${{ !cancelled() && !github.event.pull_request.draft && github.event_name == 'pull_request' }}
     runs-on: ubuntu-latest
     timeout-minutes: 5
