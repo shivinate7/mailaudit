@@ -259,7 +259,7 @@ final class TallyUITests: XCTestCase {
                 guard let frame = issue.element?.frame, frame.intersects(option.frame) else { return true }
                 let name = issue.element.map { $0.identifier.isEmpty ? $0.label : $0.identifier }
                 clipped.append(auditFailLine(type: issue.compactDescription, name: name, frame: frame))
-                return false
+                return true  // an unnamed XCUI failure could end the test before the named assert below
             }
             XCTAssertEqual(clipped, [], "\(label) is clipped at 375pt\n" + auditFailureText(clipped))
 
