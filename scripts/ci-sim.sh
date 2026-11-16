@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# The simulator steps of the duo-ui workflow, one home for its three jobs (duo-ui, pro-ui-a, pro-ui-b).
+# The simulator steps of the duo-ui workflow, one home for its five jobs (duo-ui, pro-ui-a, pro-ui-b, pro-ui-c, pro-ui-d).
 # Each subcommand prints what it reads, so a red run says why. Only the workflow runs this script.
 # Every repo-specific value comes from the env: block at the top of the workflow. This script holds none, and a
 # subcommand fails when a value it needs is unset or empty.
