@@ -74,8 +74,9 @@ jobs:
           ASC_DEV_CERT_P12: ${{ secrets.ASC_DEV_CERT_P12 }}
           ASC_DEV_CERT_PASSWORD: ${{ secrets.ASC_DEV_CERT_PASSWORD }}
         run: |
-          if [ -z "$ASC_DEV_CERT_P12" ]; then
-            if [ -n "$ASC_DEV_CERT_PASSWORD" ]; then
+          # A secret pasted as only spaces or newlines is blank: it must not reach base64 or the skip path as a value.
+          if [ -z "${ASC_DEV_CERT_P12//[[:space:]]/}" ]; then
+            if [ -n "${ASC_DEV_CERT_PASSWORD//[[:space:]]/}" ]; then
               echo "::error::secret ASC_DEV_CERT_P12 is empty but ASC_DEV_CERT_PASSWORD is set: set both or neither (re-set ASC_DEV_CERT_P12)" >&2
               exit 1
             fi
