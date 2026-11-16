@@ -295,8 +295,8 @@ final class TallyUITests: XCTestCase {
     }
 
     /// Probe: "Most missing" is audited while it is NOT picked. Cost basis is picked first, so the row shows another
-    /// label. Fails with the AUDIT-FAIL line when the audit flags the cell. A flag here, with the picked probe passing,
-    /// ties the flag to the picked state (step 8 sort-label notes, item 2).
+    /// label. Fails with the AUDIT-FAIL line when the audit flags the cell. A flag here, while unpicked, means the picked
+    /// state is not the cause: the flag follows the first audit after the Ledger tab opens (step 8 sort-label notes, item 2).
     func testProbeMostMissingUnpickedFitsAt375pt() throws {
         let app = launch(width: 375)
         let sort = openSortGrid(app)
@@ -311,7 +311,8 @@ final class TallyUITests: XCTestCase {
     }
 
     /// Probe: "Most ordered" is audited while it IS picked. The row must show the pick before the audit runs.
-    /// Fails with the AUDIT-FAIL line when the audit flags the cell (notes item 2, as above).
+    /// Fails with the AUDIT-FAIL line when the audit flags the cell. The picked state is the cause only when this probe
+    /// fails and the unpicked probe passes (step 8 sort-label notes, item 2).
     func testProbeMostOrderedPickedFitsAt375pt() throws {
         let app = launch(width: 375)
         let sort = openSortGrid(app)
