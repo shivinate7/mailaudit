@@ -9,4 +9,4 @@ This record holds the figures of the one CSV import made from a cloud session. T
 - The OrderWand CSV of 2026-11-15 went through `parseItems` (`src/view-rules.mjs`), then `mergeItems` (`src/merge-rules.mjs`), then `POST /ledger`.
 - The live ledger went from rev 13 to rev 14, and from 1201 items to 1260 (59 added).
 - No stored line changed, and the `received` marks were byte-equal.
-- A re-import never updates a stored line, because `mergeItems` keeps the base. 514 stored lines differ from that CSV in `tracking`. Whether that is wanted is an open question for the owner, on the waiting page. This record does not rule on it.
+- That run updated no stored line, because `mergeItems` kept the base by default. 514 stored lines differed from that CSV in `tracking`. The owner ruled that a re-import refreshes `tracking` (`imports-merge-never-replace`). The web import now does. This run is not repeated.
