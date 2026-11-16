@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sort Label Fit</title>
+<style>
+/* Tokens: shared/tokens.json through Parchment (native/Manifest/Theme.swift). The option cell is the web's optCell
+   (src/app.jsx): card fill and ink text, the picked one accent fill and card text, 1 pt line gaps. The native app ships
+   light only (native/project.yml UIUserInterfaceStyle: Light), so dark is a spec. Page chrome only: manila, manilaInk,
+   green (--new), red (--today). */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --manila:#EADBBA; --manilaInk:#695832; --new:#2E7A5E; --today:#A8443C;
+  --cochin: Cochin, Georgia, serif; --mono: Menlo, monospace;
+  --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); --sal: env(safe-area-inset-left); --sar: env(safe-area-inset-right);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+    --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+  --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.45; }
+main { max-width:1040px; margin:0 auto; padding:calc(16px + var(--sat)) calc(16px + var(--sar)) calc(16px + var(--sab)) calc(16px + var(--sal));
+  display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-size:24px; line-height:1.2; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+nav .sep { flex-basis:100%; height:0; }
+section.opt { display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line); padding-top:16px; }
+section.opt[hidden], figure[hidden] { display:none; }
+.opt h2 { font-size:18px; margin:0; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.opt p, .opt ol { margin:0; color:var(--inkSoft); max-width:72ch; }
+.opt ol { padding-left:20px; }
+.chip { font:600 12px/1.4 -apple-system, system-ui, sans-serif; border:2px dashed; border-radius:6px; padding:2px 6px; }
+.chip.new { color:var(--new); } .chip.today { color:var(--today); }
+.pick { font-size:13px; font-weight:600; color:var(--accent); }
+.row { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 400px), 1fr)); gap:16px; align-items:start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure.wide { grid-column:1 / -1; }
+figcaption { font-size:13px; color:var(--inkSoft); }
+figcaption b { color:var(--ink); font-size:14px; }
+.fig-num { font:12px/1.4 var(--mono); }
+.fit { width:100%; overflow:hidden; }
+
+/* device crops, 1 CSS px = 1 pt: the Ledger tab's View group, sort open */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-top-style:dashed; border-bottom-style:dashed; overflow:hidden; padding-bottom:24px;
+  font-family:var(--cochin); color:var(--ink); }
+.w375 { width:375px; } .fold-out { width:466px; } .duo { width:951px; }
+.duo .fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:3; pointer-events:none; }
+.grp { font:calc(11px * var(--kc))/1 var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--inkSoft); padding:16px 0 8px 20px; }
+.lrow { display:flex; align-items:center; gap:12px; padding:8px 16px; min-height:52px; border-top:1px solid var(--line); flex-wrap:wrap; }
+.lrow .ti { font-size:calc(20px * var(--kb)); line-height:1.2; flex:1 1 auto; }
+.lrow .va { font:calc(14px * var(--kb))/1.2 var(--mono); text-align:right; color:var(--ink); text-decoration:underline; text-underline-offset:3px; }
+.lrow .ds { font-size:calc(22px * var(--kb)); color:var(--inkSoft); }
+.lrow .ds.open { transform:rotate(90deg); }
+.panel { padding:4px 8px 12px; border-top:1px solid var(--line); }
+.grid { display:grid; gap:1px; background:var(--line); border:1px solid var(--line); margin-top:8px; }
+.cell { min-height:44px; display:flex; align-items:center; justify-content:center; background:var(--card); color:var(--ink);
+  font:calc(11.5px * var(--kc))/1.2 var(--mono); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:0; min-width:0; }
+.cell > span { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:100%; }
+.cell.on { background:var(--accent); color:var(--card); }
+.o-outline .cell.on { background:var(--card); color:var(--accent); font-weight:700; box-shadow:inset 0 0 0 2px var(--accent); }
+.mark { position:absolute; z-index:4; border:2px dashed var(--new); border-radius:4px; pointer-events:none; }
+.mark.bad { border-color:var(--today); }
+.mark b { position:absolute; left:0; top:100%; margin-top:2px; white-space:nowrap; font:600 11px/1.3 -apple-system, system-ui, sans-serif; color:var(--new);
+  background:var(--paper); padding:0 4px; }
+.mark.bad b { color:var(--today); }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" role="note">Sample: no figure on this page is real. The labels are the web's ITEM_SORTS (src/app.jsx).</div>
+  <h1>Sort label fit</h1>
+  <p class="sub">Step 8 fix, PR 238. The Tally sort grid on the Ledger tab's View group. TallyUITests.testEverySortLabelFitsAt375pt reports "Text clipped | Most missing | frame 38,501,163,44" (run 43894310154). Each option draws the grid with Most missing picked, as the test first audits it, at 375 pt (normal, AX3, AX5), the folded Duo and the open Duo. The width line under each frame gives the label's drawn width against its cell. Designer kind: informed.</p>
+  <nav aria-label="States">
+    <a href="#">All</a><a href="#o=measure">Measure first</a><a href="#o=outline">Picked cell outlined</a><a href="#o=short">Shorter label</a><a href="#o=wide">One label per row</a>
+    <span class="sep"></span>
+    <a href="#d=375">375 pt</a><a href="#d=fold">Duo folded</a><a href="#d=duo">Duo open</a><a href="#x=normal">Normal size</a><a href="#x=ax3">AX3</a><a href="#x=ax5">AX5</a>
+    <span class="sep"></span>
+    <a href="#t=light" data-theme-link>Light</a><a href="#t=dark" data-theme-link>Dark</a>
+    <button type="button" data-hide="measure">Hide measure first</button>
+    <button type="button" data-hide="outline">Hide picked cell outlined</button>
+    <button type="button" data-hide="short">Hide shorter label</button>
+    <button type="button" data-hide="wide">Hide one label per row</button>
+    <button type="button" id="axcol" aria-pressed="false">Hide one column at AX sizes</button>
+  </nav>
+
+  <template id="t375"><div class="dev w375" data-device="iphone-375"></div></template>
+  <template id="folded"><div class="dev fold-out" data-device="iphone-duo-folded"></div></template>
+  <template id="unfolded"><div class="dev duo" data-device="iphone-duo-unfolded"></div></template>
+
+  <section class="opt" data-item="ax">
+    <h2>One column at accessibility sizes <span class="chip new">New: the grid takes one column at AX1 and up</span><span class="pick">Pick, with any option below</span></h2>
+    <p>At accessibility sizes the cell label scales with Caption 1. Most missing then needs 222 pt at AX3 and 298 pt at AX5, by arithmetic, against a 163 pt cell. lineLimit(1) cuts it to "Most mis…". That is a real clip, separate from the flag at the default size. One column gives the label 327 pt at 375 pt. The press "Hide one column at AX sizes" draws today's two columns in the AX frames.</p>
+  </section>
+  <div id="opts"></div>
+</main>
+<script>
+const LABELS = ['Most missing', 'Cost basis', 'Most ordered', '$ remaining', 'Unit rate', 'Name A–Z'];
+const OPTS = [
+  { k:'measure', name:'Measure first', pick:true, chip:['today','Today: as built, until one run says what the flag follows'],
+    text:'No change to the label or the cell at the default size. Most ordered has the same 12 Menlo characters, the same column and the same 163 pt cell, and it passes. So width does not explain the flag, and no width fix can be shown to clear it. One thing differs: Most missing is the only cell the test audits while it is picked (ViewOptions.itemSort starts .missing), and the first audit after the Ledger tab opens. One run with two probes tells them apart:',
+    probes:['Pick Cost basis first, then audit Most missing unpicked. If the flag goes, it follows the picked state.', 'Pick Most ordered, reopen the grid, audit Most ordered picked. If it flags, the picked fill is the cause, whatever the label.'] },
+  { k:'outline', name:'Picked cell outlined', pick:false, chip:['new','New: the picked cell keeps the card fill, with a 2 pt accent line and accent text'],
+    text:'Only if the probes tie the flag to the picked state. The picked cell draws card fill, accent bold text and a 2 pt inset accent line, so no cell is light text on a solid fill. Loss: it departs from the web\'s optCell, whose picked cell is a solid accent fill, and from Ledger\'s other grids unless they change too. Whether the audit clears is unknown until a run.' },
+  { k:'short', name:'Shorter label', pick:false, chip:['new','New: "Missing" in place of "Most missing"'],
+    text:'A 7-character label, 48 pt wide. Loss: the web says "Most missing" (src/app.jsx ITEM_SORTS) and the parity table keeps the six Tally sort keys on both clients (native-parity-table). It also fixes nothing the width does not already allow: Most ordered is as long and passes.' },
+  { k:'wide', name:'One label per row', pick:false, chip:['new','New: the sort grid is one column at every size'],
+    text:'Each cell spans the 327 pt row. Loss: the grid grows from 3 rows to 6, 135 pt more at the default size, and departs from the web\'s optGrid(2). Like the shorter label, it adds width the label does not need at the default size.' },
+];
+const K = { normal:{kc:1, kb:1}, ax3:{kc:32/12, kb:40/17}, ax5:{kc:43/12, kb:53/17} };  // Caption 1 and Body: Large, AX3, AX5
+const ADV = 0.602;  // Menlo advance per em, assumed (unmeasured)
+const FRAMES = [
+  { d:'375', x:'normal', tpl:'t375', W:375, cap:'375 pt, normal size. The cell frame the audit reports: 38,501,163,44 (in a 402 pt window, 13.5 pt inset).' },
+  { d:'375', x:'ax3', tpl:'t375', W:375, cap:'375 pt, AX3. Cell text 30.7 pt (11.5 x 32/12).' },
+  { d:'375', x:'ax5', tpl:'t375', W:375, cap:'375 pt, AX5. Cell text 41.2 pt (11.5 x 43/12).' },
+  { d:'fold', x:'normal', tpl:'folded', W:466, cap:'Duo folded, normal size. 466 pt wide, so 208.5 pt cells.' },
+  { d:'fold', x:'ax5', tpl:'folded', W:466, cap:'Duo folded, AX5.' },
+  { d:'duo', x:'normal', tpl:'unfolded', W:951, wide:true, cap:'Duo open, normal size. LedgerTab has no DuoPages (code read), so the View group runs across both pages and the fold. Drawn as read, not measured.' },
+];
+let axOneCol = true;
+const tpl = id => document.getElementById(id).content.cloneNode(true).firstElementChild;
+const host = document.getElementById('opts');
+const built = [];
+OPTS.forEach(o => {
+  const sec = document.createElement('section'); sec.className = 'opt'; sec.dataset.o = o.k;
+  sec.innerHTML = `<h2>${o.name} <span class="chip ${o.chip[0]}">${o.chip[1]}</span>${o.pick ? '<span class="pick">Pick</span>' : ''}</h2><p>${o.text}</p>`
+    + (o.probes ? `<ol>${o.probes.map(p => `<li>${p}</li>`).join('')}</ol>` : '');
+  const row = document.createElement('div'); row.className = 'row';
+  let focused = false;
+  FRAMES.forEach(f => {
+    const fig = document.createElement('figure'); fig.dataset.d = f.d; fig.dataset.x = f.x; if (f.wide) fig.className = 'wide';
+    fig.innerHTML = `<figcaption><b>${f.cap.split('. ')[0]}.</b> ${f.cap.split('. ').slice(1).join('. ')}</figcaption>`;
+    const fit = document.createElement('div'); fit.className = 'fit';
+    const d = tpl(f.tpl); d.classList.add('o-' + o.k);
+    d.style.setProperty('--kc', K[f.x].kc); d.style.setProperty('--kb', K[f.x].kb);
+    const label = o.k === 'short' ? 'Missing' : 'Most missing';
+    d.innerHTML = `<div class="grp">View</div>
+      <div class="lrow"><span class="ti">Showing</span><span class="va">● Unreceived</span></div>
+      <div class="lrow"><span class="ti">Sorted by</span><span class="va">${label}</span><span class="ds open">›</span></div>
+      <div class="panel"><div class="grid"></div></div>
+      <div class="lrow"><span class="ti">Orders from</span><span class="va">All time</span><span class="ds">›</span></div>`;
+    if (f.d === 'duo') { const fo = document.createElement('div'); fo.className = 'fold'; d.append(fo); }
+    const grid = d.querySelector('.grid');
+    (o.k === 'short' ? ['Missing', ...LABELS.slice(1)] : LABELS).forEach((t, i) => {
+      const c = document.createElement('div'); c.className = 'cell' + (i === 0 ? ' on' : ''); c.innerHTML = `<span>${t}</span>`;
+      c.setAttribute('role', 'button'); c.setAttribute('aria-pressed', String(i === 0));
+      if (i === 0 && !focused && f.d === '375') { c.id = 'focus-' + o.k; focused = true; }
+      grid.append(c);
+    });
+    const num = document.createElement('div'); num.className = 'fig-num';
+    fit.append(d); fig.append(fit, num); row.append(fig);
+    built.push({ o:o.k, f, d, grid, num, label });
+  });
+  sec.append(row); host.append(sec);
+});
+function layout(b) {
+  const ax = b.f.x !== 'normal';
+  const cols = b.o === 'wide' || (ax && axOneCol) ? 1 : 2;
+  b.grid.style.gridTemplateColumns = `repeat(${cols}, minmax(0, 1fr))`;
+  const gridW = b.f.W - 48, cell = cols === 1 ? gridW : (gridW - 1) / 2;
+  const size = 11.5 * K[b.f.x].kc, need = ADV * size * b.label.length;
+  const fits = need <= cell;
+  b.num.textContent = `${b.label}: ${need.toFixed(0)} pt of text in a ${cell.toFixed(1)} pt cell (${cols} column${cols === 1 ? '' : 's'}). ${fits ? 'Fits by width.' : 'Cut by lineLimit(1).'}`;
+  b.num.style.color = fits ? 'var(--new)' : 'var(--today)';
+  b.d.querySelectorAll('.mark').forEach(m => m.remove());
+  const c = b.grid.firstElementChild, m = document.createElement('div');
+  const flagged = b.o === 'measure' && !ax;  // the audit's flag at the default size
+  m.className = 'mark' + (fits && !flagged ? '' : ' bad');
+  m.innerHTML = `<b>${fits ? (b.o === 'measure' && !ax ? 'Today: flagged at this size, cause unknown' : b.o === 'outline' ? 'New: picked by outline' : 'Fits') : 'Today: cut off'}</b>`;
+  // the cell's offsetParent is the frame itself (the only positioned ancestor)
+  m.style.left = (c.offsetLeft - 2) + 'px'; m.style.top = (c.offsetTop - 2) + 'px'; m.style.width = (c.offsetWidth + 4) + 'px'; m.style.height = (c.offsetHeight + 4) + 'px';
+  b.d.append(m);
+}
+const hidden = new Set();
+document.querySelectorAll('[data-hide]').forEach(btn => btn.addEventListener('click', () => {
+  const k = btn.dataset.hide; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
+  btn.textContent = (hidden.has(k) ? 'Show ' : 'Hide ') + OPTS.find(o => o.k === k).name.toLowerCase(); route();
+}));
+const axBtn = document.getElementById('axcol');
+axBtn.addEventListener('click', () => {
+  axOneCol = !axOneCol; axBtn.setAttribute('aria-pressed', String(!axOneCol));
+  axBtn.textContent = (axOneCol ? 'Hide' : 'Show') + ' one column at AX sizes'; route();
+});
+function fit() { document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; d.style.zoom = Math.min(1, w.clientWidth / d.offsetWidth); }); }
+// Deep links: #o=measure|outline|short|wide, d=375|fold|duo, x=normal|ax3|ax5, t=light|dark; join with &.
+function route() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const o = h.get('o'), d = h.get('d'), x = h.get('x'), t = h.get('t');
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll('section.opt[data-o]').forEach(sec => { sec.hidden = (o && sec.dataset.o !== o) || hidden.has(sec.dataset.o); });
+  document.querySelectorAll('figure').forEach(f => { f.hidden = (d && f.dataset.d !== d) || (x && f.dataset.x !== x); });
+  document.querySelectorAll('nav a').forEach(a => {
+    const k = new URLSearchParams(a.getAttribute('href').slice(1));
+    const on = [...k].length ? [...k].every(([kk, v]) => h.get(kk) === v) : !location.hash || location.hash === '#';
+    a.setAttribute('aria-current', String(on));
+    if (a.hasAttribute('data-theme-link')) { const n = new URLSearchParams(h); n.set('t', k.get('t')); a.href = '#' + n; }
+  });
+  built.forEach(b => { if (!b.d.closest('figure').hidden && !b.d.closest('section').hidden) layout(b); });
+  fit();
+}
+addEventListener('hashchange', route); addEventListener('resize', route); route();
+</script>
+</body>
+</html>
