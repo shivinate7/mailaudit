@@ -1,0 +1,10 @@
+{
+  "title": "Re-export the Apple Development cert and re-set its two repo secrets (owner act)",
+  "status": "todo",
+  "phase": "native",
+  "order": 6,
+  "why": "The earlier commands set the repo secret ASC_DEV_CERT_P12 empty twice: first the command ran in the wrong folder, then the file was gone, and a pipe hid the error. The TestFlight identity step cannot pass its dry run on an empty P12.",
+  "note": "Owner act, waits on the owner (coordinator, 2026-11-15 19:05 CST). The owner re-exports the Apple Development cert from Keychain Access as dev.p12, then re-sets repo secrets ASC_DEV_CERT_P12 and ASC_DEV_CERT_PASSWORD with a guarded command that stops on an error. No secret value goes in any record. Related: lane testflight-identity and PR 344 (fail on an empty P12). After both land, the coordinator dispatches one dry run and the lane reads its log. Parent step: testflight-from-ci.",
+  "ask": "",
+  "updatedAt": "2026-11-16T01:03:00Z"
+}
