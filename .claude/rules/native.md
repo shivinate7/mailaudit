@@ -61,7 +61,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
 - `native-card-lost-flags-unbuilt` — The native package card has no lost-mail flag and no tracked glyph.
 - `native-seller-scale-unmeasured` — The native seller shrinks to half size, and the cause is unmeasured.
-- `native-pinned-card-dynamic-type` — The pinned-head audit flags Dynamic Type on one card.
+- `native-pinned-card-dynamic-type` — The pinned-head audit flags Dynamic Type and contrast.
 - `native-cold-launch-ledger-shift` — The Ledger tab may jump at cold launch.
 - `native-masthead-foot-row-gap` — The native masthead foot's second row sits 4.6pt low.
 - `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
