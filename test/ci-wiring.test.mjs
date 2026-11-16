@@ -42,6 +42,21 @@
 //  24  every defect's file is in the repo. This one is outside the brief.
 //  25  the ship job of testflight.yml has one actions/checkout step, and its with: ref is
 //      ${{ github.ref }}, so a run queued behind a merge checks out the branch tip at run start.
+//  26 to 34 read the signing identity in testflight.yml's ship job. Each names one cause per failure:
+//  26  one step named "Import the signing identity" runs before Fetch ios-ship and before Ship;
+//  27  it reads ASC_DEV_CERT_P12 and ASC_DEV_CERT_PASSWORD only through its env:, never in run:;
+//  28  it makes its keychain under RUNNER_TEMP and runs set-key-partition-list;
+//  29  it reads the search list before it sets one, and sets the list it read, so the user's keychains stay on it;
+//  30  it removes the .p12 after the security import;
+//  31  "Delete the keys" runs if: always(), removes dev.p12 and deletes the signing keychain;
+//  32  "Certificate count" fails when the count after Ship exceeds the count before, with an identity
+//      imported, and exits 1 with "could not read the identity counts" when a count is empty (the import
+//      and count scripts run in a sandbox, see the fixtures for 26 to 34);
+//  33  the workflow names both secrets and holds no secret value: no base64 blob, no literal password;
+//  34  with ASC_DEV_CERT_PASSWORD set and ASC_DEV_CERT_P12 empty or blank after trimming whitespace, the
+//      import step exits non-zero and its output names ASC_DEV_CERT_P12, so no run quietly lets Xcode create
+//      a certificate. With both blank after trimming, it prints the notice and exits 0, the optional case.
+//      A P12 with content still imports. The sandbox runs the step for each state.
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in checks.yml
 // are checked the same way, with letter ids:
@@ -70,7 +85,10 @@
 //   k3  milestone.yml has two UI-test jobs, timeout-minutes 45 and 50, and neither runs a Duo class;
 //   k4  each UI-test job creates its simulator on runtime iOS-27-1;
 //   k5  UI_TESTS_A holds no Duo class, the 45-minute job runs it, and the 50-minute job runs the rest;
-//   k6  each UI-test job's xcodebuild gets the simulator id that CI sets, as its -destination.
+//   k6  each UI-test job's xcodebuild gets the simulator id that CI sets, as its -destination;
+//   k7  UI_TESTS_B1 and UI_TESTS_B2 are set, non-empty, name only UI test classes outside Duo and A, and do not overlap;
+//   k8  each UI test class outside Duo runs in exactly one pro shard (make ui-a, ui-b1, ui-b2, ui-b3), no Duo class runs
+//       in one, and the B shards together run what make ui-b runs.
 //
 // The dispatch switch and the merge ignore list are read from the repo:
 //   m1  milestone-due's dispatch step needs MILESTONE_AUTO_DISPATCH to be 'on', and that env
@@ -104,7 +122,9 @@
 // MILESTONE_WORKFLOW name other files; a relative path resolves from the repo root.
 
 import { spawnSync } from "node:child_process";
-import { existsSync, readFileSync, readdirSync } from "node:fs";
+import { randomUUID } from "node:crypto";
+import { chmodSync, existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, utimesSync, writeFileSync } from "node:fs";
+import { tmpdir } from "node:os";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { failLine } from "./fail-line.mjs";
@@ -1108,6 +1128,8 @@ function uiTestChecks({ makefile, classes, msDoc, msErr }) {
     k4: "k4 each UI-test job creates its simulator on runtime iOS-27-1",
     k5: "k5 each UI test class is in exactly one of UI_TESTS_A, the B set and DUO_UI_TESTS; no class drops out",
     k6: "k6 each UI-test job's xcodebuild gets the simulator id that CI sets",
+    k7: "k7 UI_TESTS_B1 and UI_TESTS_B2 are set, non-empty, and name only UI test classes outside Duo and A, with no overlap",
+    k8: "k8 each UI test class outside Duo runs in exactly one pro shard, and the B shards run what make ui-b runs",
   };
   const out = [];
   const add = (id, fn) => {
@@ -1224,6 +1246,70 @@ function uiTestChecks({ makefile, classes, msDoc, msErr }) {
         `in A and Duo ${both.join(" ") || "none"}; dropped ${dropped.join(" ") || "none"}; ` +
         `twice ${twice.join(" ") || "none"}`,
     };
+  });
+
+  // The pro shards: the A list and the two B lists are each set, non-empty and disjoint, and name no Duo class.
+  add("k7", () => {
+    const vars = makeVars(makefile, ["UI_TESTS_A", "UI_TESTS_B1", "UI_TESTS_B2"]);
+    const problems = [];
+    const lists = {};
+    for (const name of ["UI_TESTS_B1", "UI_TESTS_B2"]) {
+      const v = vars[name];
+      if (v.origin === "undefined") {
+        problems.push(`${name} is not set in the Makefile`);
+        continue;
+      }
+      const words = listOf(v.value);
+      lists[name] = words;
+      if (words.length === 0) problems.push(`${name} is empty, so its target runs every class`);
+      const unknown = words.filter((c) => !classes.includes(c));
+      if (unknown.length > 0) problems.push(`${name} names ${unknown.join(" ")}, which is no UI test class`);
+      const inDuo = words.filter((c) => duo.includes(c));
+      if (inDuo.length > 0) problems.push(`${name} names Duo class ${inDuo.join(" ")}`);
+    }
+    if (vars.UI_TESTS_A.origin !== "undefined") lists.UI_TESTS_A = listOf(vars.UI_TESTS_A.value);
+    for (const [x, y] of [["UI_TESTS_A", "UI_TESTS_B1"], ["UI_TESTS_A", "UI_TESTS_B2"], ["UI_TESTS_B1", "UI_TESTS_B2"]]) {
+      if (!lists[x] || !lists[y]) continue;
+      const both = lists[x].filter((c) => lists[y].includes(c));
+      if (both.length > 0) problems.push(`${both.join(" ")} is in ${x} and in ${y}`);
+    }
+    return { ok: problems.length === 0, detail: problems.join("; ") };
+  });
+
+  // The four pro shards, one make target each. Each class outside Duo runs in exactly one of them, Duo in none, and the
+  // three B shards together run what make ui-b runs (the milestone's part-b). UI_TEST is echo, so make prints each
+  // flag with its leading dash: with no UI_TEST, make reads a dash that starts an expanded line as an ignore-error mark.
+  const PRO_SHARDS = ["ui-a", "ui-b1", "ui-b2", "ui-b3"];
+  add("k8", () => {
+    const shards = PRO_SHARDS.map((target) => {
+      const r = expandLine(makefile, [target], "echo");
+      if (r.error) return { target, error: r.error };
+      const only = flagsIn(r.text, ONLY_FLAG);
+      const skip = flagsIn(r.text, SKIP_FLAG);
+      return { target, selected: (only.size > 0 ? [...only] : classes).filter((c) => !skip.has(c)) };
+    });
+    const broken = shards.filter((s) => s.error).map((s) => s.error);
+    if (broken.length > 0) return { ok: false, detail: broken.join("; ") };
+    const runsIn = (c) => shards.filter((s) => s.selected.includes(c)).map((s) => s.target);
+    const outside = classes.filter((c) => !duo.includes(c));
+    const problems = [];
+    const none = outside.filter((c) => runsIn(c).length === 0);
+    if (none.length > 0) problems.push(`${none.join(" ")} run in no pro shard`);
+    const more = outside.filter((c) => runsIn(c).length > 1);
+    if (more.length > 0) problems.push(`${more.join(" ")} run in more than one pro shard`);
+    const inDuo = duo.filter((c) => runsIn(c).length > 0);
+    if (inDuo.length > 0) problems.push(`Duo ${inDuo.join(" ")} runs in a pro shard`);
+    const whole = expandLine(makefile, ["ui-b"], "echo");
+    if (whole.error) {
+      problems.push(whole.error);
+    } else {
+      const only = flagsIn(whole.text, ONLY_FLAG);
+      const skip = flagsIn(whole.text, SKIP_FLAG);
+      const partB = (only.size > 0 ? [...only] : classes).filter((c) => !skip.has(c));
+      const bShards = [...new Set(shards.filter((s) => s.target !== "ui-a").flatMap((s) => s.selected))];
+      if (!sameList(bShards, partB)) problems.push(`the B shards run ${bShards.sort().join(" ") || "none"}, not what make ui-b runs`);
+    }
+    return { ok: problems.length === 0, detail: problems.join("; ") };
   });
 
   // k6 has one result per UI-test job, so a red shows which job's destination is wrong.
@@ -1549,6 +1635,8 @@ for (const [name, text, stamp] of GREEN) {
 // one field of it, so it fails only the assertion it names. The Makefile fixture holds the recipes
 // the UI checks read, and the Swift classes are a fixed list.
 const FIX_CLASSES = ["AuditSkippingTabBarUITests", "DuoHandUITests", "TallyUITests"];
+// The -only-testing or -skip-testing flags for a space-separated list of class names.
+const flagsFor = (flag, list) => listOf(list).map((c) => `-${flag}:ManifestUITests/${c}`).join(" ");
 // One Makefile for the UI checks. Each option breaks one recipe or variable.
 function fixtureMakefile(o = {}) {
   const duo = o.duo ?? "DuoHandUITests";
@@ -1561,6 +1649,21 @@ function fixtureMakefile(o = {}) {
   // The UI recipes run $(UI_TEST) with the test's arguments, as the Makefile does. Each uiA or uiB
   // text starts with "xcodebuild test", and that word is what the recipe swaps for $(UI_TEST).
   const runIt = (text) => `\t$(UI_TEST)${text.slice("xcodebuild test".length)}`;
+  // The pro shards, only with shards: the B1 and B2 lists and their targets, and the rest target, which skips
+  // Duo, A, B1 and B2. Each option breaks one of them.
+  const b1 = o.b1 ?? "TallyUITests";
+  const b2 = o.b2 ?? "PackageStampUITests";
+  const shards = o.shards
+    ? [
+        ...(o.noB1 ? [] : [`UI_TESTS_B1 := ${b1}`]),
+        ...(o.noB2 ? [] : [`UI_TESTS_B2 := ${b2}`]),
+        "ui-b1:",
+        runIt(o.uiB1 ?? `xcodebuild test ${flagsFor("only-testing", b1)}`),
+        "ui-b2:",
+        runIt(o.uiB2 ?? `xcodebuild test ${flagsFor("only-testing", b2)}`),
+        ...(o.noB3 ? [] : ["ui-b3:", runIt(o.uiB3 ?? `xcodebuild test ${flagsFor("skip-testing", `${duo} ${a} ${b1} ${b2}`)}`)]),
+      ]
+    : [];
   return [
     `DUO_UI_TESTS := ${duo}`,
     ...(o.noA ? [] : [`UI_TESTS_A := ${a}`]),
@@ -1570,11 +1673,29 @@ function fixtureMakefile(o = {}) {
     runIt(uiA),
     "ui-b:",
     runIt(uiB),
+    ...shards,
     "",
   ].join("\n");
 }
 const FIX_MAKEFILE = fixtureMakefile();
 const FIX_INPUTS = { makefile: FIX_MAKEFILE, classes: FIX_CLASSES };
+
+// The pro-shard fixtures. The shard classes add PackageStamp (the B2 class) and Shelf (a class only the rest target runs).
+// The full-size set has 30 classes: three in A, twelve in B1, nine in B2, six in the rest, and one Duo class.
+const SHARD_CLASSES = [...FIX_CLASSES, "PackageStampUITests", "ShelfUITests"];
+const shardInputs = (over = {}, classes = SHARD_CLASSES) => ({ makefile: fixtureMakefile({ shards: true, ...over }), classes });
+const FULL_SHARD_CLASSES = ["DuoHandUITests", ...Array.from({ length: 30 }, (_, i) => `Item${String(i).padStart(2, "0")}UITests`)];
+const itemNames = (from, n) => FULL_SHARD_CLASSES.slice(1 + from, 1 + from + n).join(" ");
+const FULL_SHARD_INPUTS = shardInputs(
+  {
+    a: itemNames(0, 3),
+    b1: itemNames(3, 12),
+    b2: itemNames(15, 9),
+    uiA: `xcodebuild test ${flagsFor("only-testing", itemNames(0, 3))}`,
+    uiB: `xcodebuild test ${flagsFor("skip-testing", `DuoHandUITests ${itemNames(0, 3)}`)}`,
+  },
+  FULL_SHARD_CLASSES
+);
 const SIM_RUNTIME = "com.apple.CoreSimulator.SimRuntime.iOS-27-1";
 // The UI_TEST value that milestone.yml sets: a $$ in the value is one $ after make expands it. The
 // broken form has one $, so make reads $S and prints id=IM_UDID.
@@ -1720,16 +1841,42 @@ const MS_RED = [
   ["k6: part-a's destination is id=IM_UDID", msFile(msJob("part-a", 45, "make ui-a", undefined, UI_TEST_BROKEN), msJob("part-b", 50, "make ui-b")), "k6"],
   ["k6: part-b's destination is id=IM_UDID", msFile(msJob("part-a", 45, "make ui-a"), msJob("part-b", 50, "make ui-b", undefined, UI_TEST_BROKEN)), "k6"],
   ["k6: part-b's UI_TEST is sim-test, so no xcodebuild runs", msFile(msJob("part-a", 45, "make ui-a"), msJob("part-b", 50, "make ui-b", undefined, "sim-test")), "k6"],
+  // k7 and k8, the pro shards. A row's fifth field is the cause its failing detail must contain.
+  ["k7: UI_TESTS_B1 is not set", MS_GOOD, "k7", shardInputs({ noB1: true }), "UI_TESTS_B1 is not set"],
+  ["k7: UI_TESTS_B2 is empty", MS_GOOD, "k7", shardInputs({ b2: "" }), "UI_TESTS_B2 is empty"],
+  ["k7: a B1 name is no UI test class", MS_GOOD, "k7", shardInputs({ b1: "TallyUITests GhostUITests" }), "names GhostUITests, which is no UI test class"],
+  ["k7: a B2 name is a Duo class", MS_GOOD, "k7", shardInputs({ b2: "DuoHandUITests PackageStampUITests" }), "names Duo class DuoHandUITests"],
+  ["k7: a B1 class is also in A", MS_GOOD, "k7", shardInputs({ b1: "AuditSkippingTabBarUITests TallyUITests" }), "is in UI_TESTS_A and in UI_TESTS_B1"],
+  ["k7: a class is in both B lists", MS_GOOD, "k7", shardInputs({ b2: "TallyUITests PackageStampUITests" }), "is in UI_TESTS_B1 and in UI_TESTS_B2"],
+  ["k8: ui-b3 is missing", MS_GOOD, "k8", shardInputs({ noB3: true }), "make -n ui-b3 failed"],
+  ["k8: ui-b2 runs every class, as an empty flag list would", MS_GOOD, "k8", shardInputs({ uiB2: "xcodebuild test" }), "run in more than one pro shard"],
+  ["k8: ui-b3 does not skip the A class", MS_GOOD, "k8", shardInputs({ uiB3: "xcodebuild test -skip-testing:ManifestUITests/DuoHandUITests -skip-testing:ManifestUITests/TallyUITests -skip-testing:ManifestUITests/PackageStampUITests" }), "run in more than one pro shard"],
+  ["k8: a class is in no pro shard", MS_GOOD, "k8", shardInputs({ uiB3: "xcodebuild test -skip-testing:ManifestUITests/DuoHandUITests -skip-testing:ManifestUITests/AuditSkippingTabBarUITests -skip-testing:ManifestUITests/TallyUITests -skip-testing:ManifestUITests/PackageStampUITests -skip-testing:ManifestUITests/ShelfUITests" }), "run in no pro shard"],
+  ["k8: a Duo class runs in ui-b1", MS_GOOD, "k8", shardInputs({ uiB1: "xcodebuild test -only-testing:ManifestUITests/TallyUITests -only-testing:ManifestUITests/DuoHandUITests" }), "Duo DuoHandUITests runs in a pro shard"],
+  ["k8: the B shards miss a class that make ui-b runs", MS_GOOD, "k8", shardInputs({ uiB: "xcodebuild test -skip-testing:ManifestUITests/DuoHandUITests -skip-testing:ManifestUITests/AuditSkippingTabBarUITests -skip-testing:ManifestUITests/ShelfUITests" }), "not what make ui-b runs"],
 ];
 const MS_CHECKS = ["a", "a2", "b", "c", "k1", "k2", "k3", "k4", "k5", "k6"];
-for (const [name, text, id, extra = {}] of MS_RED) {
+for (const [name, text, id, extra = {}, cause] of MS_RED) {
   const results = milestoneChecks({ msText: text, wfText: null, read: () => null, ...FIX_INPUTS, ...extra });
   const bad = results.filter((r) => !r.ok);
+  const hit = bad.find((r) => r.label.split(" ")[0] === id && (cause === undefined || r.detail.includes(cause)));
   expect(
     `fixture red: ${name} fails assertion ${id}`,
-    bad.some((r) => r.label.split(" ")[0] === id),
-    `failing: ${bad.map((r) => r.label.split(" ")[0]).join(", ") || "none"}`
+    hit !== undefined,
+    `failing: ${bad.map((r) => `${r.label.split(" ")[0]} (${r.detail})`).join("; ") || "none"}${cause === undefined ? "" : `; want the cause "${cause}"`}`
   );
+}
+// The good pro-shard sets: one class per shard with a rest class, a rest that is empty, and the full-size set.
+const SHARD_GOOD = [
+  ["fixture good: one class per shard, with a rest class", shardInputs()],
+  ["fixture good: the rest is empty", shardInputs({}, [...FIX_CLASSES, "PackageStampUITests"])],
+  ["fixture good: full size, 30 classes in four shards", FULL_SHARD_INPUTS],
+];
+for (const [name, extra] of SHARD_GOOD) {
+  const bad = milestoneChecks({ msText: MS_GOOD, wfText: null, read: () => null, ...FIX_INPUTS, ...extra }).filter(
+    (r) => ["k7", "k8"].includes(r.label.split(" ")[0]) && !r.ok
+  );
+  expect(name, bad.length === 0, bad.map((r) => `${r.label} (${r.detail})`).join("; "));
 }
 {
   const results = milestoneChecks({ msText: MS_GOOD, wfText: null, read: () => null, ...FIX_INPUTS });
@@ -3142,6 +3289,829 @@ for (const [name, text] of TF_RED) {
   const real = testflightRefCheck(readOrNull(TESTFLIGHT_WORKFLOW));
   expect(real.label, real.ok, real.detail);
 }
+
+// Assertions 26 to 33: the signing identity in testflight.yml's ship job. The job imports one stored Apple
+// Development identity into a throwaway keychain before Fetch ios-ship, and deletes it after. Each check
+// reads the workflow text. The scope (the file, the ship job, the import step) is checked before the subject.
+const SIGN_IMPORT = "Import the signing identity";
+const SIGN_FETCH = "Fetch ios-ship";
+const SIGN_SHIP = "Ship";
+const SIGN_COUNT = "Certificate count";
+const SIGN_DELETE = "Delete the keys";
+const SIGN_P12 = "ASC_DEV_CERT_P12";
+const SIGN_PASS = "ASC_DEV_CERT_PASSWORD";
+// A whole ${{ secrets.NAME }} value, the only form a secret takes in an env: map.
+const SECRET_REF = /^\$\{\{\s*secrets\.([A-Za-z0-9_]+)\s*\}\}$/;
+
+const parsedDoc = (text) => {
+  if (text === null) return null;
+  try {
+    return parseWorkflow(text);
+  } catch {
+    return null;
+  }
+};
+const runOf = (step) => (typeof step?.run === "string" ? step.run : "");
+const isSecretRef = (v, name) => {
+  const m = SECRET_REF.exec(String(v ?? "").trim());
+  return m !== null && m[1] === name;
+};
+// A token that could be a base64 blob: 40 or more base64 characters, with upper and lower case, digits, and a
+// character a hex digest lacks. A pin holds @ or :, and a sha256 digest is hex, so neither matches.
+const looksLikeBlob = (tok) =>
+  /^[A-Za-z0-9+/]{40,}={0,2}$/.test(tok) &&
+  /[a-z]/.test(tok) &&
+  /[A-Z]/.test(tok) &&
+  /[0-9]/.test(tok) &&
+  /[^0-9a-fA-F]/.test(tok);
+// The 1-based line of the first blob-like token, or 0. The token itself is never printed.
+function blobLine(text) {
+  const lines = text.split("\n");
+  for (let i = 0; i < lines.length; i++) {
+    for (const tok of lines[i].split(/\s+/)) {
+      if (looksLikeBlob(tok.replace(/^["']+|["']+$/g, ""))) return i + 1;
+    }
+  }
+  return 0;
+}
+// The cause for the keychain claim, read from the import step's run lines. The keychain comes from
+// create-keychain. Its path is RUNNER_TEMP itself, or a variable set from RUNNER_TEMP.
+function keychainCause(lines) {
+  const create = lines.find((l) => /\bcreate-keychain\b/.test(l));
+  if (create === undefined) return "no create-keychain in run:";
+  const word = create.trim().split(/\s+/).pop().replace(/"/g, "");
+  if (word.includes("RUNNER_TEMP")) return "";
+  const name = /^\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?$/.exec(word)?.[1];
+  const set =
+    name === undefined ? undefined : lines.find((l) => new RegExp(`^${name}=["']?\\$\\{?RUNNER_TEMP`).test(l.trim()));
+  return set === undefined ? `the keychain ${word} is not under RUNNER_TEMP` : "";
+}
+
+// Test temp files follow the run-folder standard (test-temp-standard): one run folder per run, named
+// <pid>-<UUID>, under one temp root for this repo. The first request of a run sweeps the sibling run folders
+// older than a day, and teardown removes this run's folder.
+const TEMP_ROOT = join(tmpdir(), "mailaudit-test-temp");
+const TEMP_MAX_AGE_MS = 24 * 60 * 60 * 1000;
+const RUN_FOLDER_RE = /^[0-9]+-[0-9a-f]{32}$/;
+// Removes each sibling run folder older than a day at `now`. `own` stays, and so does a name that is no run folder.
+function sweepRunFolders(root, own, now) {
+  let names = [];
+  try {
+    names = readdirSync(root);
+  } catch {
+    return;
+  }
+  for (const name of names) {
+    const path = join(root, name);
+    if (path === own || !RUN_FOLDER_RE.test(name)) continue;
+    try {
+      const st = statSync(path);
+      if (st.isDirectory() && now - st.mtimeMs > TEMP_MAX_AGE_MS) rmSync(path, { recursive: true, force: true });
+    } catch {
+      // A folder that vanished or cannot be read is left for a later sweep.
+    }
+  }
+}
+let ownRunFolder = null;
+function runFolder() {
+  if (ownRunFolder === null) {
+    mkdirSync(TEMP_ROOT, { recursive: true });
+    ownRunFolder = join(TEMP_ROOT, `${process.pid}-${randomUUID().replaceAll("-", "")}`);
+    mkdirSync(ownRunFolder);
+    sweepRunFolders(TEMP_ROOT, ownRunFolder, Date.now());
+    process.on("exit", () => rmSync(ownRunFolder, { recursive: true, force: true }));
+  }
+  return ownRunFolder;
+}
+// The sweep proof. The sweep takes `now` as an argument, so the case reads no clock. An old sibling goes, a
+// newer one stays, a name that is no run folder stays, and the run's own folder stays even when it is old.
+{
+  const root = join(runFolder(), "sweep-proof");
+  const own = join(root, `${process.pid}-${"0".repeat(32)}`);
+  const old = join(root, `1-${"a".repeat(32)}`);
+  const fresh = join(root, `2-${"b".repeat(32)}`);
+  const other = join(root, "not-a-run-folder");
+  for (const d of [own, old, fresh, other]) mkdirSync(d, { recursive: true });
+  const now = Date.parse("2026-11-03T00:00:00Z");
+  const longAgo = new Date(Date.parse("2026-11-01T00:00:00Z"));
+  const hourAgo = new Date(now - 60 * 60 * 1000);
+  for (const d of [own, old, other]) utimesSync(d, longAgo, longAgo);
+  utimesSync(fresh, hourAgo, hourAgo);
+  sweepRunFolders(root, own, now);
+  expect("sweep: an old sibling run folder goes", !existsSync(old));
+  expect("sweep: a sibling run folder under a day old stays", existsSync(fresh));
+  expect("sweep: a folder whose name is no run folder stays", existsSync(other));
+  expect("sweep: the run's own folder stays, though it is old", existsSync(own));
+}
+
+// Assertion 29 runs the import script, and 32 the import and count scripts, in a sandbox. A stub security tool answers their calls:
+// find-identity prints the after count, and list-keychains prints the search list unless it sets one. The stub
+// logs each call, one argument per line and a "#" line after it, so a case reads the search list the step set.
+// The only values are fakes, so no real secret reaches a script.
+const SECURITY_STUB = [
+  "#!/bin/bash",
+  `printf '%s\\n' "$@" "#" >> "$STUB_LOG"`,
+  'case "$1" in',
+  '  find-identity) cat "$STUB_AFTER" ;;',
+  '  list-keychains) case " $* " in *" -s "*) ;; *) cat "$STUB_KEYCHAINS" ;; esac ;;',
+  "esac",
+  "exit 0",
+].join("\n") + "\n";
+// The search list the stub prints for a read: two keychains in the macOS format of list-keychains.
+const KEYCHAIN_PATHS = ["/Users/runner/Library/Keychains/login.keychain-db", "/Library/Keychains/System.keychain"];
+const keychainsText = (paths) => paths.map((p) => `    "${p}"\n`).join("");
+let sandboxCount = 0;
+// A fresh sandbox under this run's folder. Its env replaces the caller's, so no caller variable reaches a
+// script; PATH is kept only to find bash, openssl and base64. `readPaths` is the search list a read prints.
+function sandboxDir(readPaths = KEYCHAIN_PATHS) {
+  const root = join(runFolder(), `sandbox-${sandboxCount++}`);
+  const bin = join(root, "bin");
+  const rt = join(root, "runner-temp");
+  const home = join(root, "home");
+  for (const d of [bin, rt, home]) mkdirSync(d, { recursive: true });
+  writeFileSync(join(bin, "security"), SECURITY_STUB);
+  chmodSync(join(bin, "security"), 0o755);
+  const after = join(root, "after.txt");
+  const keychains = join(root, "keychains.txt");
+  writeFileSync(keychains, keychainsText(readPaths));
+  const log = join(root, "security.log");
+  const env = {
+    PATH: `${bin}:${process.env.PATH ?? ""}`,
+    HOME: home,
+    RUNNER_TEMP: rt,
+    GITHUB_ENV: join(root, "github-env"),
+    GITHUB_PATH: join(root, "github-path"),
+    GITHUB_OUTPUT: join(root, "github-output"),
+    STUB_AFTER: after,
+    STUB_KEYCHAINS: keychains,
+    STUB_LOG: log,
+  };
+  return { root, rt, after, log, env };
+}
+// Runs one step's run text with bash -e, as a runner does, in the sandbox, with `extraEnv` on top. The runner
+// expands each secret expression before bash reads the text, so the sandbox does the same with the fake values.
+function runStep(dir, name, run, values, extraEnv) {
+  const file = join(dir.root, `${name}.sh`);
+  const text = run.replace(/\$\{\{\s*secrets\.([A-Za-z0-9_]+)\s*\}\}/g, (_, n) => values[n] ?? "");
+  writeFileSync(file, text.endsWith("\n") ? text : `${text}\n`);
+  return spawnSync("bash", ["-e", file], { cwd: dir.root, env: { ...dir.env, ...extraEnv }, encoding: "utf8" });
+}
+// The env a step gets: each env: entry that is a whole secret reference gets that secret's value, and a literal
+// entry is passed as written, as the runner does, so a literal password reaches the step.
+function secretEnv(step, values) {
+  const out = {};
+  for (const [key, v] of Object.entries(isMap(step?.env) ? step.env : {})) {
+    const m = SECRET_REF.exec(String(v).trim());
+    out[key] = m !== null ? (values[m[1]] ?? "") : String(v).trim();
+  }
+  return out;
+}
+// The message for a count that cannot be read. A case with `msg` must exit 1 with it, not only exit 1.
+const COUNT_UNREAD = "could not read the identity counts";
+// The last line find-identity prints, as the count step reads it. An empty count is no line at all.
+const countLine = (n) => (n === "" ? "" : `     ${n} valid identities found\n`);
+// The fake secrets the sandbox runs with. The .p12 is base64 of "fake-p12"; no real identity reaches a script.
+const FAKE_P12 = "ZmFrZS1wMTI=";
+const FAKE_PASS = "fixture-password";
+// `pass` defaults to the fake password. Both secrets empty is the optional case, so a case passes "" for both.
+const fakeValues = (p12, pass = FAKE_PASS) => ({ [SIGN_P12]: p12, [SIGN_PASS]: pass });
+// The cases: an identity imported with the count rising, with the count level, and no identity imported
+// (both secrets empty: the count step must not fail on a run that imported nothing). The last two name an
+// empty count beside a numeric one: the count step must say it could not read the counts.
+const SIGN_CASES = [
+  { what: "an identity was imported and the count rose from 1 to 2", p12: FAKE_P12, before: 1, after: 2, fails: true },
+  { what: "an identity was imported and the count stayed at 1", p12: FAKE_P12, before: 1, after: 1, fails: false },
+  { what: "no identity was imported and the count rose from 1 to 2", p12: "", pass: "", before: 1, after: 2, fails: false },
+  {
+    what: "an identity was imported and the count before was empty",
+    p12: FAKE_P12,
+    before: "",
+    after: 2,
+    fails: true,
+    msg: COUNT_UNREAD,
+  },
+  {
+    what: "an identity was imported and the count after was empty",
+    p12: FAKE_P12,
+    before: 1,
+    after: "",
+    fails: true,
+    msg: COUNT_UNREAD,
+  },
+];
+// The cause for one case, or "" when the count step does what the case expects.
+function countCaseCause(imp, count, c) {
+  const dir = sandboxDir();
+  const values = fakeValues(c.p12, c.pass);
+  writeFileSync(dir.after, countLine(c.after));
+  const imported = runStep(dir, "import", runOf(imp), values, secretEnv(imp, values));
+  if (imported.status !== 0) {
+    return `the import step exits ${imported.status} in the sandbox (${c.what}): ${String(imported.stderr).split("\n")[0]}`;
+  }
+  writeFileSync(join(dir.rt, "ids-before"), countLine(c.before));
+  const counted = runStep(dir, "count", runOf(count), values, {});
+  if (c.msg !== undefined) {
+    const err = String(counted.stderr);
+    if (counted.status === 1 && err.includes(c.msg)) return "";
+    const said = err.trim().split("\n").pop();
+    return `the count step exits ${counted.status} with "${said}" when ${c.what}; expected exit 1 with "${c.msg}"`;
+  }
+  const failed = counted.status !== 0;
+  if (failed === c.fails) return "";
+  return `the count step ${failed ? "fails" : "passes"} when ${c.what}; expected it to ${c.fails ? "fail" : "pass"}`;
+}
+function sandboxCause(imp, count) {
+  for (const c of SIGN_CASES) {
+    const cause = countCaseCause(imp, count, c);
+    if (cause) return cause;
+  }
+  return "";
+}
+// Assertion 34: the empty-P12 states of the import step. A value that is only whitespace is blank, so a P12 of
+// spaces, tabs or newlines counts as empty, as does an empty one. A password set with a blank P12 must fail and
+// name the P12, since a skip there lets Xcode create a certificate. Both blank is the optional case: a notice,
+// exit 0. A whitespace-only password is unset, so it does not trip that failure. A P12 with content imports.
+// `expect` is "fails", "notice" or "runs". The blank values are fakes; no real secret reaches a script.
+const BLANK_P12 = ["   ", "\n", "\t\n "];
+const blankOf = (v) => `${SIGN_P12} is blank (${JSON.stringify(v)})`;
+const EMPTY_P12_CASES = [
+  { what: `${SIGN_PASS} is set and ${SIGN_P12} is empty`, p12: "", pass: FAKE_PASS, expect: "fails" },
+  ...BLANK_P12.map((p12) => ({ what: `${SIGN_PASS} is set and ${blankOf(p12)}`, p12, pass: FAKE_PASS, expect: "fails" })),
+  { what: "both secrets are empty", p12: "", pass: "", expect: "notice" },
+  { what: `${blankOf("   ")} and ${SIGN_PASS} is empty`, p12: "   ", pass: "", expect: "notice" },
+  { what: `${SIGN_P12} is empty and ${SIGN_PASS} is blank ("   ")`, p12: "", pass: "   ", expect: "notice" },
+  { what: `${blankOf("\t\n ")} and ${SIGN_PASS} is blank (${JSON.stringify("\n")})`, p12: "\t\n ", pass: "\n", expect: "notice" },
+  { what: `${SIGN_P12} and ${SIGN_PASS} are set`, p12: FAKE_P12, pass: FAKE_PASS, expect: "runs" },
+];
+// The cause for one empty-secret state, or "" when the import step does what the case expects. The output is
+// stdout and stderr together, so the message may go to either.
+function emptySecretCase(imp, c) {
+  const dir = sandboxDir();
+  const values = fakeValues(c.p12, c.pass);
+  const r = runStep(dir, "import", runOf(imp), values, secretEnv(imp, values));
+  const out = `${r.stdout}${r.stderr}`;
+  if (c.expect === "fails") {
+    if (r.status === 0) return `the import step exits 0 when ${c.what}; expected it to exit non-zero`;
+    if (!out.includes(SIGN_P12)) return `the import step exits ${r.status} when ${c.what} without naming ${SIGN_P12}`;
+    return "";
+  }
+  if (c.expect === "notice") {
+    if (r.status !== 0) return `the import step exits ${r.status} when ${c.what}; expected it to exit 0`;
+    if (!out.includes(`::notice::secret ${SIGN_P12} is empty`)) return `the import step prints no notice when ${c.what}`;
+    return "";
+  }
+  if (r.status !== 0) return `the import step exits ${r.status} when ${c.what}; expected it to exit 0`;
+  if (out.includes("::error::") || out.includes(`${SIGN_P12} is empty`)) {
+    return `the import step reports a blank secret when ${c.what}; a set P12 must import`;
+  }
+  return "";
+}
+function emptySecretCause(imp) {
+  for (const c of EMPTY_P12_CASES) {
+    const cause = emptySecretCase(imp, c);
+    if (cause) return cause;
+  }
+  return "";
+}
+
+// The security calls a sandbox run logged: each call's arguments, one per line, then a "#" line.
+function securityCalls(log) {
+  const calls = [];
+  let call = [];
+  const text = existsSync(log) ? readFileSync(log, "utf8") : "";
+  for (const line of text.split("\n").slice(0, -1)) {
+    if (line === "#") {
+      calls.push(call);
+      call = [];
+    } else call.push(line);
+  }
+  return calls;
+}
+// The cause for one read state, or "" when the search list the import step sets is the new keychain first and
+// then each entry the read gave, in the read's order.
+function searchListCase(imp, readPaths) {
+  const dir = sandboxDir(readPaths);
+  const values = fakeValues(FAKE_P12);
+  const imported = runStep(dir, "import", runOf(imp), values, secretEnv(imp, values));
+  if (imported.status !== 0) {
+    return `the import step exits ${imported.status} in the sandbox: ${String(imported.stderr).split("\n")[0]}`;
+  }
+  const calls = securityCalls(dir.log);
+  const kc = calls.filter((c) => c[0] === "create-keychain").at(-1)?.at(-1);
+  const set = calls.filter((c) => c[0] === "list-keychains" && c.includes("-s")).at(-1);
+  if (kc === undefined) return "the import step creates no keychain in the sandbox";
+  if (set === undefined) return "the import step sets no search list in the sandbox";
+  const words = set.slice(set.indexOf("-s") + 1);
+  if (words[0] !== kc) return `the set does not put the new keychain first: it sets ${JSON.stringify(words)}`;
+  const want = [kc, ...readPaths];
+  if (JSON.stringify(words) === JSON.stringify(want)) return "";
+  return `the set does not carry the list the read gave: it sets ${JSON.stringify(words)}, expected ${JSON.stringify(want)}`;
+}
+// Assertion 29's sandbox run, once with a read of two keychains and once with a read of none. An empty read is
+// the state where a loop that adds an empty entry shows.
+function searchListCause(imp) {
+  for (const readPaths of [KEYCHAIN_PATHS, []]) {
+    const cause = searchListCase(imp, readPaths);
+    if (cause) return cause;
+  }
+  return "";
+}
+
+// The checks for 26 to 33 on one workflow text. A failing check's detail is its one cause; a passing check's
+// detail is what it read.
+function signingIdentityChecks(text) {
+  const out = [];
+  const add = (id, what, cause, detail = "") =>
+    out.push({ id, label: `${id} ${what}`, ok: cause === "", detail: cause || detail });
+  const doc = parsedDoc(text);
+  const jobs = doc !== null && isMap(doc.jobs) ? doc.jobs : {};
+  const ship = jobOf(jobs, TF_SHIP);
+  const st = ship === undefined ? [] : steps(ship);
+  const named = (name) => st.filter((s) => s.name === name);
+  const imports = named(SIGN_IMPORT);
+  const imp = imports[0];
+  const fetch = named(SIGN_FETCH)[0];
+  const shipStep = named(SIGN_SHIP)[0];
+  const count = named(SIGN_COUNT)[0];
+  const del = named(SIGN_DELETE)[0];
+  const fileScope =
+    doc === null
+      ? `cannot read or parse ${TESTFLIGHT_WORKFLOW}`
+      : ship === undefined
+        ? `no ${TF_SHIP} job`
+        : "";
+  const scope =
+    fileScope || (imports.length === 0 ? `no step named "${SIGN_IMPORT}" in the ${TF_SHIP} job` : "");
+  const impRun = runOf(imp);
+  const runLines = impRun.split("\n");
+  const refs = (name) => JSON.stringify(doc).split(`secrets.${name}`).length - 1;
+  const at = (s) => st.indexOf(s);
+
+  add(
+    "26",
+    `one step named "${SIGN_IMPORT}" runs before ${SIGN_FETCH} and before ${SIGN_SHIP}`,
+    fileScope ||
+      (imports.length === 0 ? `no step named "${SIGN_IMPORT}" in the ${TF_SHIP} job` : "") ||
+      (imports.length > 1 ? `${imports.length} steps named "${SIGN_IMPORT}"; expected 1` : "") ||
+      (fetch === undefined ? `no step named "${SIGN_FETCH}"` : "") ||
+      (shipStep === undefined ? `no step named "${SIGN_SHIP}"` : "") ||
+      (at(imp) > at(fetch) ? `it runs after ${SIGN_FETCH}` : "") ||
+      (at(imp) > at(shipStep) ? `it runs after ${SIGN_SHIP}` : ""),
+    `import step at ${at(imp)}, ${SIGN_FETCH} at ${at(fetch)}, ${SIGN_SHIP} at ${at(shipStep)}`
+  );
+
+  const envValues = Object.values(isMap(imp?.env) ? imp.env : {});
+  add(
+    "27",
+    `${SIGN_P12} and ${SIGN_PASS} are read only through the import step's env:, never in run:`,
+    scope ||
+      (!envValues.some((v) => isSecretRef(v, SIGN_P12)) ? `env: maps no value to secrets.${SIGN_P12}` : "") ||
+      (!envValues.some((v) => isSecretRef(v, SIGN_PASS)) ? `env: maps no value to secrets.${SIGN_PASS}` : "") ||
+      (/secrets/.test(impRun) ? "run: names a secret; secrets reach the step through env: only" : "") ||
+      (refs(SIGN_P12) !== 1 ? `secrets.${SIGN_P12} is named ${refs(SIGN_P12)} times; expected 1` : "") ||
+      (refs(SIGN_PASS) !== 1 ? `secrets.${SIGN_PASS} is named ${refs(SIGN_PASS)} times; expected 1` : ""),
+    "env maps both secrets; run: names neither"
+  );
+
+  add(
+    "28",
+    "the import makes its keychain under RUNNER_TEMP and runs set-key-partition-list",
+    scope ||
+      keychainCause(runLines) ||
+      (runLines.some((l) => /\bset-key-partition-list\b/.test(l)) ? "" : "no set-key-partition-list in run:"),
+    "keychain under RUNNER_TEMP; partition list set"
+  );
+
+  const isSetList = (l) => /\blist-keychains\b/.test(l) && /(^|\s)-s(\s|$)/.test(l);
+  const readAt = runLines.findIndex((l) => /\blist-keychains\b/.test(l) && !isSetList(l));
+  const setAt = runLines.findIndex(isSetList);
+  // The words after -s, less the new keychain: the list the set carries besides the keychain it adds. A word
+  // is compared without its quotes, and ${kc} reads as $kc.
+  const plainWord = (w) => w.replace(/["']/g, "").replace(/^\$\{(\w+)\}$/, "$$$1");
+  const newKc = plainWord((runLines.find((l) => /\bcreate-keychain\b/.test(l)) ?? "").trim().split(/\s+/).pop() ?? "");
+  const setWords = setAt < 0 ? [] : runLines[setAt].trim().split(/\s+/);
+  const listWords = setWords
+    .slice(setWords.indexOf("-s") + 1)
+    .map(plainWord)
+    .filter((w) => w !== "" && w !== newKc);
+  // The variable the read's output lands in. A line between the read and the set must expand it.
+  const readVar = /^\s*([A-Za-z_]\w*)=\$\(\s*security\s+list-keychains\s+-d\s+user\s*\)/.exec(runLines[readAt] ?? "")?.[1];
+  const readUsed =
+    readVar !== undefined &&
+    setAt > readAt &&
+    runLines.slice(readAt + 1, setAt).some((l) => new RegExp(`\\$\\{?${readVar}(?!\\w)`).test(l));
+  add(
+    "29",
+    "the import reads the search list before it sets one, and sets the list it read",
+    scope ||
+      (readAt < 0 ? "the search list is never read: no list-keychains without -s" : "") ||
+      (setAt < 0 ? "the search list is never set: no list-keychains -s" : "") ||
+      (readAt > setAt ? "the search list is set before it is read" : "") ||
+      (listWords.length === 0 ? "the search list is set to the new keychain alone, not the list read" : "") ||
+      (!readUsed ? "the list read never reaches the set" : "") ||
+      searchListCause(imp),
+    `read at line ${readAt + 1}, set at line ${setAt + 1}`
+  );
+
+  const importAt = runLines.findIndex((l) => /\bsecurity\s+import\b/.test(l));
+  const p12Arg =
+    importAt < 0 ? "" : (/\bsecurity\s+import\s+(\S+)/.exec(runLines[importAt])?.[1] ?? "").replace(/"/g, "");
+  const p12Removed =
+    p12Arg !== "" && runLines.some((l, i) => i > importAt && /(^|[\s;&|])rm\s/.test(l) && l.includes(p12Arg));
+  add(
+    "30",
+    "the import removes the .p12 after the security import",
+    scope ||
+      (importAt < 0 ? "no security import in run:" : "") ||
+      (p12Arg === "" ? "the security import names no .p12 file" : "") ||
+      (!p12Removed ? `the .p12 ${p12Arg} is not removed after the security import` : ""),
+    `${p12Arg} removed after the import`
+  );
+
+  const delLines = runOf(del).split("\n");
+  add(
+    "31",
+    `"${SIGN_DELETE}" runs if: always(), removes dev.p12 and deletes the signing keychain`,
+    fileScope ||
+      (del === undefined ? `no step named "${SIGN_DELETE}"` : "") ||
+      (normIf(String(del.if ?? "")) !== "always()" ? `if: ${JSON.stringify(del.if ?? null)}; expected always()` : "") ||
+      (!delLines.some((l) => /(^|[\s;&|])rm\s/.test(l) && l.includes("dev.p12")) ? "it does not remove dev.p12" : "") ||
+      (!delLines.some((l) => /\bdelete-keychain\b/.test(l)) ? "it does not delete the signing keychain" : ""),
+    "always(); removes dev.p12; deletes the keychain"
+  );
+
+  add(
+    "32",
+    `"${SIGN_COUNT}" fails when the count after ${SIGN_SHIP} exceeds the count before, with an identity imported`,
+    scope ||
+      (count === undefined ? `no step named "${SIGN_COUNT}"` : "") ||
+      (shipStep === undefined ? `no step named "${SIGN_SHIP}"` : "") ||
+      (at(count) < at(shipStep) ? `${SIGN_COUNT} runs before ${SIGN_SHIP}` : "") ||
+      sandboxCause(imp, count),
+    "sandbox: the count step passes when the count does not rise, and when no identity was imported"
+  );
+
+  const unnamed = [SIGN_P12, SIGN_PASS].find((n) => refs(n) < 1);
+  const blob = blobLine(text);
+  add(
+    "33",
+    "the workflow names both secrets and holds no secret value: no base64 blob, no literal password",
+    fileScope ||
+      (unnamed !== undefined ? `the workflow names no secrets.${unnamed}` : "") ||
+      (blob > 0 ? `line ${blob} holds a base64-like token of 40 or more characters` : "") ||
+      (runLines.some((l) => /(^|\s)-[pP]\s+["']?[^$\s"']/.test(l))
+        ? "the import passes a literal password to -p or -P"
+        : ""),
+    "both secrets named; no base64-like token; no literal password"
+  );
+
+  add(
+    "34",
+    `the import step exits non-zero and names ${SIGN_P12} when ${SIGN_PASS} is set and ${SIGN_P12} is empty; with both empty it notices and exits 0`,
+    scope || emptySecretCause(imp),
+    "sandbox: a password with an empty P12 fails and names the P12; both empty notices and exits 0"
+  );
+  return out;
+}
+
+// The fixture workflow for 26 to 33: the ship job with its signing steps, laid out as the reference design
+// lays them out. Each step is a block of lines, so a red edit moves whole steps. The good text passes all eight.
+const SIGN_HEAD = [
+  "name: testflight",
+  "on:",
+  "  workflow_dispatch:",
+  "jobs:",
+  "  ship:",
+  "    runs-on: xcode-27",
+  "    steps:",
+  "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+  "        with:",
+  "          ref: ${{ github.ref }}",
+  "          persist-credentials: false",
+];
+// The blank tests. Bash drops every whitespace character, so a value of spaces, tabs or newlines is blank. A
+// guard that tests `-z` on the raw value misses a whitespace-only P12 (assertion 34).
+const P12_BLANK_IF = '          if [ -z "${ASC_DEV_CERT_P12//[[:space:]]/}" ]; then';
+const PASS_SET_IF = '            if [ -n "${ASC_DEV_CERT_PASSWORD//[[:space:]]/}" ]; then';
+// The guard inside the blank-P12 branch: a password with no P12 fails and names the P12 (assertion 34).
+const P12_GUARD = [
+  PASS_SET_IF,
+  '              echo "::error::secret ASC_DEV_CERT_P12 is empty but ASC_DEV_CERT_PASSWORD is set: set both or neither"',
+  "              exit 1",
+  "            fi",
+];
+const SIGN_IMPORT_STEP = [
+  "      - name: Import the signing identity",
+  "        env:",
+  "          ASC_DEV_CERT_P12: ${{ secrets.ASC_DEV_CERT_P12 }}",
+  "          ASC_DEV_CERT_PASSWORD: ${{ secrets.ASC_DEV_CERT_PASSWORD }}",
+  "        run: |",
+  P12_BLANK_IF,
+  ...P12_GUARD,
+  '            echo "::notice::secret ASC_DEV_CERT_P12 is empty: this run lets Xcode create a certificate"',
+  "            exit 0",
+  "          fi",
+  "          umask 077",
+  '          kc="$RUNNER_TEMP/signing.keychain-db"; p12="$RUNNER_TEMP/dev.p12"',
+  '          kcpw=$(openssl rand -hex 24); echo "::add-mask::$kcpw"',
+  '          security create-keychain -p "$kcpw" "$kc"',
+  '          security set-keychain-settings -lut 21600 "$kc"',
+  '          security unlock-keychain -p "$kcpw" "$kc"',
+  "          printf '%s' \"$ASC_DEV_CERT_P12\" | base64 --decode > \"$p12\"",
+  '          security import "$p12" -k "$kc" -f pkcs12 -P "$ASC_DEV_CERT_PASSWORD" -T /usr/bin/codesign -T /usr/bin/security',
+  '          rm -f "$p12"',
+  '          security set-key-partition-list -S apple-tool:,apple: -s -k "$kcpw" "$kc" > /dev/null',
+  '          current=$(security list-keychains -d user) || exit 1',
+  '          set -- "$kc"',
+  "          while IFS= read -r l; do",
+  '            l=${l#*\\"}; l=${l%\\"*}',
+  '            [ -z "$l" ] || set -- "$@" "$l"',
+  '          done <<< "$current"',
+  '          security list-keychains -d user -s "$@"',
+  '          touch "$RUNNER_TEMP/imported-identity"',
+];
+const SIGN_FETCH_STEP = [
+  "      - name: Fetch ios-ship",
+  "        run: |",
+  '          security find-identity -v -p codesigning | tail -n1 > "$RUNNER_TEMP/ids-before"',
+];
+const SIGN_BLOB = "MIIKqQIBAzCCCm8GCSqGSIb3DQEHAaCCCmAEggpcMIIKWDCCCo8GCSqGSIb3DQEHBqCCCoAwggp8AgEAMIIKdQYJKoZIhvcNAQcBMF4GCSqG";
+const SIGN_SHIP_STEP = [
+  "      - name: Ship",
+  "        env:",
+  "          TEAM_ID: ${{ vars.TEAM_ID }}",
+  "        run: |",
+  '          echo "ship"',
+];
+const SIGN_CMP =
+  '            [ "$na" -le "$nb" ] || { echo "xcodebuild created a certificate despite the imported identity ($nb before, $na after)" >&2; exit 1; }';
+const SIGN_COUNT_STEP = [
+  "      - name: Certificate count",
+  "        if: ${{ !cancelled() }}",
+  "        run: |",
+  '          before=$(cat "$RUNNER_TEMP/ids-before" 2>/dev/null || echo unknown); after=$(security find-identity -v -p codesigning | tail -n1)',
+  '          echo "codesigning identities before: $before; after: $after"',
+  '          if [ -f "$RUNNER_TEMP/imported-identity" ]; then',
+  '            read -r nb _ <<< "$before"; read -r na _ <<< "$after"',
+  '            case "$nb,$na" in *[!0-9,]*|,*|*,) echo "could not read the identity counts" >&2; exit 1 ;; esac',
+  SIGN_CMP,
+  "          fi",
+];
+const SIGN_DELETE_STEP = [
+  "      - name: Delete the keys",
+  "        if: ${{ always() }}",
+  "        run: |",
+  '          rm -f "$RUNNER_TEMP"/asc/AuthKey_*.p8 "$RUNNER_TEMP/gitauth" "$RUNNER_TEMP/dev.p12"',
+  '          if [ -f "$RUNNER_TEMP/signing.keychain-db" ]; then security delete-keychain "$RUNNER_TEMP/signing.keychain-db"; fi',
+];
+const signText = (...blocks) => blocks.map((b) => b.join("\n") + "\n").join("");
+const SIGN_GOOD = signText(
+  SIGN_HEAD,
+  SIGN_IMPORT_STEP,
+  SIGN_FETCH_STEP,
+  SIGN_SHIP_STEP,
+  SIGN_COUNT_STEP,
+  SIGN_DELETE_STEP
+);
+// The loop line that keeps each read entry. The bad rows below replace it.
+const LOOP_KEEP = '            [ -z "$l" ] || set -- "$@" "$l"\n';
+// Each row: a name, the text, the assertions that must fail (in order), and the cause that the first one's detail names.
+const SIGN_RED = [
+  [
+    "the import step runs after Fetch ios-ship",
+    signText(SIGN_HEAD, SIGN_FETCH_STEP, SIGN_IMPORT_STEP, SIGN_SHIP_STEP, SIGN_COUNT_STEP, SIGN_DELETE_STEP),
+    ["26"],
+    "runs after",
+  ],
+  [
+    "the import step runs after Ship",
+    signText(SIGN_HEAD, SIGN_FETCH_STEP, SIGN_SHIP_STEP, SIGN_IMPORT_STEP, SIGN_COUNT_STEP, SIGN_DELETE_STEP),
+    ["26"],
+    "runs after",
+  ],
+  [
+    "the import step is written twice",
+    signText(SIGN_HEAD, SIGN_IMPORT_STEP, SIGN_IMPORT_STEP, SIGN_FETCH_STEP, SIGN_SHIP_STEP, SIGN_COUNT_STEP, SIGN_DELETE_STEP),
+    ["26", "27"],
+    "steps named",
+  ],
+  [
+    "the import step is renamed",
+    mutate(SIGN_GOOD, "      - name: Import the signing identity\n", "      - name: Import the identity\n"),
+    ["26", "27", "28", "29", "30", "32", "34"],
+    `no step named "${SIGN_IMPORT}"`,
+  ],
+  [
+    "the password env is a literal",
+    mutate(
+      SIGN_GOOD,
+      "          ASC_DEV_CERT_PASSWORD: ${{ secrets.ASC_DEV_CERT_PASSWORD }}\n",
+      "          ASC_DEV_CERT_PASSWORD: fixture-literal\n"
+    ),
+    // A literal password is set in every sandbox state, so the no-identity runs of 32 and the both-empty run of 34 fail with it.
+    ["27", "32", "33", "34"],
+    "maps no value to secrets.ASC_DEV_CERT_PASSWORD",
+  ],
+  [
+    "the run names a secret",
+    mutate(SIGN_GOOD, "        run: |\n          if [ -z", "        run: |\n          # ${{ secrets.ASC_DEV_CERT_P12 }}\n          if [ -z"),
+    ["27"],
+    "run: names a secret",
+  ],
+  [
+    "the keychain is not under RUNNER_TEMP",
+    mutate(SIGN_GOOD, 'kc="$RUNNER_TEMP/signing.keychain-db"', 'kc="/tmp/signing.keychain-db"'),
+    ["28"],
+    "is not under RUNNER_TEMP",
+  ],
+  [
+    "set-key-partition-list is not run",
+    mutate(
+      SIGN_GOOD,
+      '          security set-key-partition-list -S apple-tool:,apple: -s -k "$kcpw" "$kc" > /dev/null\n',
+      ""
+    ),
+    ["28"],
+    "no set-key-partition-list",
+  ],
+  [
+    "the search list is never read",
+    mutate(SIGN_GOOD, "          current=$(security list-keychains -d user) || exit 1\n", '          current=""\n'),
+    ["29"],
+    "is never read",
+  ],
+  [
+    "the search list is set before it is read",
+    mutate(
+      SIGN_GOOD,
+      "          current=$(security list-keychains -d user) || exit 1\n",
+      '          security list-keychains -d user -s "$kc"\n          current=$(security list-keychains -d user) || exit 1\n'
+    ),
+    ["29"],
+    "set before it is read",
+  ],
+  [
+    "the search list is set to the new keychain alone",
+    mutate(
+      SIGN_GOOD,
+      '          security list-keychains -d user -s "$@"\n',
+      '          security list-keychains -d user -s "$kc"\n'
+    ),
+    ["29"],
+    "the new keychain alone",
+  ],
+  [
+    "the list read never reaches the set",
+    mutate(SIGN_GOOD, '          done <<< "$current"\n', '          done <<< ""\n'),
+    ["29"],
+    "never reaches the set",
+  ],
+  [
+    "the loop drops every read entry",
+    mutate(SIGN_GOOD, LOOP_KEEP, '            [ -z "$l" ] || :\n'),
+    ["29"],
+    "does not carry the list the read gave",
+  ],
+  [
+    "the loop keeps only the last read entry",
+    mutate(SIGN_GOOD, LOOP_KEEP, '            [ -z "$l" ] || set -- "$kc" "$l"\n'),
+    ["29"],
+    "does not carry the list the read gave",
+  ],
+  [
+    "the loop adds an empty entry when the read gives none",
+    mutate(SIGN_GOOD, LOOP_KEEP, '            set -- "$@" "$l"\n'),
+    ["29"],
+    "does not carry the list the read gave",
+  ],
+  [
+    "the count step's guard lets an empty count through",
+    mutate(
+      SIGN_GOOD,
+      'case "$nb,$na" in *[!0-9,]*|,*|*,) echo "could not read',
+      "case $nb$na in *[!0-9]*|'') echo \"could not read"
+    ),
+    ["32"],
+    'with "xcodebuild created a certificate',
+  ],
+  [
+    "the .p12 is not removed",
+    mutate(SIGN_GOOD, '          rm -f "$p12"\n', ""),
+    ["30"],
+    "is not removed after",
+  ],
+  [
+    "the .p12 is removed before the import",
+    mutate(
+      mutate(SIGN_GOOD, '          rm -f "$p12"\n', ""),
+      '          security import "$p12"',
+      '          rm -f "$p12"\n          security import "$p12"'
+    ),
+    ["30"],
+    "is not removed after",
+  ],
+  [
+    "Delete the keys is not always()",
+    mutate(SIGN_GOOD, "        if: ${{ always() }}\n", "        if: ${{ success() }}\n"),
+    ["31"],
+    "expected always()",
+  ],
+  [
+    "Delete the keys leaves dev.p12",
+    mutate(SIGN_GOOD, '"$RUNNER_TEMP/gitauth" "$RUNNER_TEMP/dev.p12"', '"$RUNNER_TEMP/gitauth"'),
+    ["31"],
+    "does not remove dev.p12",
+  ],
+  [
+    "Delete the keys leaves the keychain",
+    mutate(
+      SIGN_GOOD,
+      '          if [ -f "$RUNNER_TEMP/signing.keychain-db" ]; then security delete-keychain "$RUNNER_TEMP/signing.keychain-db"; fi\n',
+      ""
+    ),
+    ["31"],
+    "does not delete the signing keychain",
+  ],
+  [
+    "the count step never fails",
+    mutate(SIGN_GOOD, SIGN_CMP + "\n", ""),
+    ["32"],
+    "expected it to fail",
+  ],
+  [
+    "the count step fails with no identity imported",
+    mutate(SIGN_GOOD, 'if [ -f "$RUNNER_TEMP/imported-identity" ]; then', "if true; then"),
+    ["32"],
+    "expected it to pass",
+  ],
+  [
+    "the workflow holds a base64 blob",
+    mutate(SIGN_GOOD, '          echo "ship"\n', `          echo "ship"\n          echo ${SIGN_BLOB}\n`),
+    ["33"],
+    "base64-like token",
+  ],
+  [
+    "the import passes a literal password",
+    mutate(SIGN_GOOD, '-P "$ASC_DEV_CERT_PASSWORD"', "-P hunter2"),
+    ["33"],
+    "passes a literal password",
+  ],
+  [
+    "the import skips quietly when only the password is set",
+    mutate(SIGN_GOOD, P12_GUARD.join("\n") + "\n", ""),
+    ["34"],
+    "exits 0 when",
+  ],
+  [
+    "the password-only failure does not name the P12",
+    mutate(
+      SIGN_GOOD,
+      "secret ASC_DEV_CERT_P12 is empty but ASC_DEV_CERT_PASSWORD is set",
+      "the signing secret is empty but ASC_DEV_CERT_PASSWORD is set"
+    ),
+    ["34"],
+    "without naming ASC_DEV_CERT_P12",
+  ],
+  [
+    "the P12 guard tests -z without trimming",
+    mutate(SIGN_GOOD, P12_BLANK_IF, '          if [ -z "$ASC_DEV_CERT_P12" ]; then'),
+    ["34"],
+    `${SIGN_P12} is blank`,
+  ],
+  [
+    "the P12 guard trims spaces but not newlines or tabs",
+    mutate(SIGN_GOOD, P12_BLANK_IF, '          if [ -z "${ASC_DEV_CERT_P12// /}" ]; then'),
+    ["34"],
+    `${SIGN_P12} is blank`,
+  ],
+  [
+    "the password guard tests -n without trimming",
+    mutate(SIGN_GOOD, PASS_SET_IF, '            if [ -n "$ASC_DEV_CERT_PASSWORD" ]; then'),
+    ["34"],
+    `${SIGN_PASS} is blank`,
+  ],
+];
+
+for (const r of signingIdentityChecks(SIGN_GOOD)) expect(`fixture good: ${r.label}`, r.ok, r.detail);
+for (const [name, text, ids, cause] of SIGN_RED) {
+  const results = signingIdentityChecks(text);
+  const failed = results.filter((r) => !r.ok).map((r) => r.id);
+  expect(
+    `fixture red: ${name} fails assertion ${ids.join(" and ")}`,
+    JSON.stringify(failed) === JSON.stringify(ids),
+    `failed assertions: ${JSON.stringify(failed)}`
+  );
+  const first = results.find((r) => r.id === ids[0]);
+  expect(
+    `fixture red: ${name} fails assertion ${ids[0]} for its cause`,
+    first !== undefined && !first.ok && first.detail.includes(cause),
+    `assertion ${ids[0]}: ${first?.detail ?? "missing"}`
+  );
+}
+
+// The real file: testflight.yml on this branch. Assertion 34 is red until the import step treats a P12 blank after
+// trimming as empty, and a password blank after trimming as unset; the other assertions read the step as it stands.
+for (const r of signingIdentityChecks(readOrNull(TESTFLIGHT_WORKFLOW))) expect(r.label, r.ok, r.detail);
 
 // Fixtures for s1 to s5. The good texts pass all five; each red edit moves the named assertion, and the
 // ones marked loose move another with it, because the edit breaks two things at once.

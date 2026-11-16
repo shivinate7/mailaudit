@@ -1,7 +1,7 @@
 // Cases for the Duo UI workflow, the Makefile targets it runs and the Duo test classes it names.
 //
-// The Duo UI tests run on an iPhone Duo simulator in two poses: a flat pass and a closed pass. Two
-// pro passes run the Pro simulator's classes. These checks read .github/workflows/duo-ui.yml, the
+// The Duo UI tests run on an iPhone Duo simulator in two poses: a flat pass and a closed pass. Four
+// pro passes run the Pro simulator's classes, one job each. These checks read .github/workflows/duo-ui.yml, the
 // Makefile (through make), native/ManifestUITests/*.swift, scripts/ci-sim.sh when a step runs it,
 // and the ci-done pin in .github/workflows/checks.yml. Each failure names one cause:
 //   d1  duo-ui.yml exists and parses; its triggers are pull_request only (a-d);
@@ -16,14 +16,16 @@
 //       text names it once each $VAR and ${VAR} is read from the step, job or workflow env; the
 //       flags may sit in the step, its env, the workflow env or scripts/ci-sim.sh; the closed pass's
 //       if: holds !cancelled() and reads env otherwise, never success(), failure() or always(); a
-//       step fetches hinge at its pinned sha (a-f);
+//       step fetches hinge at its pinned sha (a-d); each pro pass runs its own make target (e-h); each pro job
+//       reads its result under its own job name (i), uploads its artifact under its own name (j), and names
+//       its result bundle with its own suffix (k);
 //   d6  every uses: of a claude-settings action is at @stable, every other uses: is pinned by a 40-hex
 //       sha, every checkout keeps no credentials, and no run: block in any job holds a GitHub expression (a-c);
-//   d7  ci-done needs duo-ui, pro-ui-a and pro-ui-b, and uses ci-done-comment at @stable, the one ref
-//       checks.yml names (a-b);
-//   d8  pro-ui-a and pro-ui-b run on xcode-27 with a positive timeout-minutes, and each if: requires
+//   d7  ci-done needs duo-ui, pro-ui-a, pro-ui-b, pro-ui-c and pro-ui-d, and uses ci-done-comment at @stable,
+//       the one ref checks.yml names (a-b);
+//   d8  pro-ui-a to pro-ui-d run on xcode-27 with a positive timeout-minutes (a, b, e, f), and each if: requires
 //       the pro-ui label, never the draft gate alone, and still runs on a labeled event for another
-//       label (a-d);
+//       label (c, d, g, h); every pro job's timeout-minutes is 90 (i);
 //   d9  the concurrency group sets cancel-in-progress to the literal true, not an if: expression (a),
 //       and its group holds the PR draft state, so a draft run never cancels a ready run (b).
 //
@@ -50,6 +52,8 @@ const SCRIPT_PATH = "scripts/ci-sim.sh";
 const DUO_JOB = "duo-ui";
 const PRO_A = "pro-ui-a";
 const PRO_B = "pro-ui-b";
+const PRO_C = "pro-ui-c";
+const PRO_D = "pro-ui-d";
 const CI_DONE = "ci-done";
 const XCODE = "xcode-27";
 const TRIGGER_TYPES = ["opened", "synchronize", "reopened", "ready_for_review", "labeled"];
@@ -57,6 +61,7 @@ const PASS_FLAGS = ["-retry-tests-on-failure", "-resultBundlePath"];
 const HINGE_REPO = "artemnovichkov/hinge";
 const HINGE_SHA = "afb8f0bd277cb12187f0844a79542cbac35e7385";
 const CI_DONE_ACTION = "shivinate7/claude-settings/actions/ci-done-comment";
+const UPLOAD = "actions/upload-artifact";
 // Every claude-settings action is called at this branch ref, not a sha (owner ruling R44 part 1).
 const CLAUDE_SETTINGS = "shivinate7/claude-settings/";
 const STABLE = "stable";
@@ -71,7 +76,19 @@ const SKIP_FLAG = /-skip-testing:ManifestUITests\/(\S+)/g;
 const FLAT_RUN = /\bmake\s+ui-duo-flat(?![\w-])/;
 const CLOSED_RUN = /\bmake\s+ui-duo-closed(?![\w-])/;
 const PRO_A_RUN = /\bmake\s+ui-a(?![\w-])/;
-const PRO_B_RUN = /\bmake\s+ui-b(?![\w-])/;
+const PRO_B_RUN = /\bmake\s+ui-b1(?![\w-])/;
+const PRO_C_RUN = /\bmake\s+ui-b2(?![\w-])/;
+const PRO_D_RUN = /\bmake\s+ui-b3(?![\w-])/;
+// Each pro job, the make target its pass runs, the pattern that names that target, and the suffix its result files carry.
+const PRO_JOBS = [
+  { job: PRO_A, suffix: "pro-a" },
+  { job: PRO_B, suffix: "pro-b" },
+  { job: PRO_C, suffix: "pro-c" },
+  { job: PRO_D, suffix: "pro-d" },
+];
+// The result reader: its second argument is the label the job reads its result under.
+const CHECK_RESULTS = /\bcheck-results\s+"\$RESULT_BUNDLE"\s+(\S+)\s+nonzero\b/;
+const PRO_TIMEOUT = "90";
 
 const isMap = (v) => v !== null && typeof v === "object" && !Array.isArray(v);
 const show = (v) => (v === undefined ? "nothing" : JSON.stringify(v));
@@ -798,9 +815,47 @@ function checkDuo(input) {
   wfCheck("d5e", `${PRO_A} runs make ui-a with the xcodebuild pass flags`, () =>
     passStepCheck(PRO_A, PRO_A_RUN, "ui-a")
   );
-  wfCheck("d5f", `${PRO_B} runs make ui-b with the xcodebuild pass flags`, () =>
-    passStepCheck(PRO_B, PRO_B_RUN, "ui-b")
+  wfCheck("d5f", `${PRO_B} runs make ui-b1 with the xcodebuild pass flags`, () =>
+    passStepCheck(PRO_B, PRO_B_RUN, "ui-b1")
   );
+  wfCheck("d5g", `${PRO_C} runs make ui-b2 with the xcodebuild pass flags`, () =>
+    passStepCheck(PRO_C, PRO_C_RUN, "ui-b2")
+  );
+  wfCheck("d5h", `${PRO_D} runs make ui-b3 with the xcodebuild pass flags`, () =>
+    passStepCheck(PRO_D, PRO_D_RUN, "ui-b3")
+  );
+  // d5i to d5k: each pro job reads its result, uploads its artifact and names its result bundle after
+  // itself. Each rule runs on every pro job, and a missing job fails the rule as missing.
+  const proCheck = (id, label, rule) =>
+    wfCheck(id, label, () => {
+      const bad = PRO_JOBS.flatMap(({ job, suffix }) => {
+        const j = jobOf(job);
+        return j === null ? [`${job} is missing`] : rule(j, job, suffix);
+      });
+      return bad.length === 0 ? pass : fail(bad.join("; "));
+    });
+  proCheck("d5i", "each pro job reads its result under its own job name", (j, job) => {
+    const labels = stepsOf(j)
+      .map((s) => (typeof s.run === "string" ? CHECK_RESULTS.exec(s.run)?.[1] : undefined))
+      .filter((l) => l !== undefined);
+    if (labels.length === 0) return [`${job} has no check-results step`];
+    return labels.includes(job) ? [] : [`${job} reads its result as ${labels.join(", ")}`];
+  });
+  proCheck("d5j", "each pro job uploads its artifact under its own job name", (j, job) => {
+    const up = stepsOf(j).find((s) => typeof s.uses === "string" && s.uses.startsWith(UPLOAD + "@"));
+    if (up === undefined) return [`${job} has no upload-artifact step`];
+    const name = isMap(up.with) ? up.with.name : undefined;
+    return name === job ? [] : [`${job} uploads its artifact as ${name ?? "no name"}`];
+  });
+  proCheck("d5k", "each pro job names every result bundle it holds with its own suffix", (j, job, suffix) => {
+    const names = stepsOf(j)
+      .flatMap((s) => [s.run, ...(isMap(s.env) ? Object.values(s.env) : [])])
+      .filter((v) => typeof v === "string")
+      .flatMap((v) => [...v.matchAll(/([\w-]+)\.xcresult\b/g)].map((m) => m[1]));
+    if (names.length === 0) return [`${job} names no result bundle`];
+    const wrong = [...new Set(names.filter((n) => n !== suffix))];
+    return wrong.length === 0 ? [] : [`${job} names ${wrong.join(", ")}.xcresult, not ${suffix}.xcresult`];
+  });
 
   // d6: pins, checkout credentials and GitHub expressions in run blocks, across every job.
   wfCheck("d6a", `every claude-settings uses: is at @${STABLE}, every other uses: is pinned by a 40-hex sha`, () => {
@@ -829,10 +884,10 @@ function checkDuo(input) {
   });
 
   // d7: ci-done waits on the three jobs and uses the shared action at checks.yml's pin.
-  wfCheck("d7a", `${CI_DONE} needs ${DUO_JOB}, ${PRO_A} and ${PRO_B}`, () => {
+  wfCheck("d7a", `${CI_DONE} needs ${DUO_JOB} and the four pro jobs`, () => {
     const j = jobOf(CI_DONE);
     if (j === null) return jobMiss(CI_DONE);
-    const missing = [DUO_JOB, PRO_A, PRO_B].filter((n) => !listOf(j.needs).includes(n));
+    const missing = [DUO_JOB, ...PRO_JOBS.map((p) => p.job)].filter((n) => !listOf(j.needs).includes(n));
     return missing.length === 0 ? pass : fail(`${CI_DONE} does not need ${missing.join(", ")}`);
   });
   wfCheck("d7b", `${CI_DONE} uses ${CI_DONE_ACTION} at @${STABLE}, the ref ${CHECKS_PATH} names`, () => {
@@ -848,7 +903,7 @@ function checkDuo(input) {
     return wrong.length === 0 ? pass : fail(`${CI_DONE} pins ${wrong.join(", ")}, not @${pin.pin}`);
   });
 
-  // d8: the two pro jobs.
+  // d8: the four pro jobs.
   wfCheck("d8a", `${PRO_A} runs on ${XCODE} with a positive timeout-minutes`, () => runsOnAndTimeout(PRO_A));
   wfCheck("d8b", `${PRO_B} runs on ${XCODE} with a positive timeout-minutes`, () => runsOnAndTimeout(PRO_B));
   wfCheck("d8c", `${PRO_A} runs on the pro-ui label, never on the draft gate alone`, () => {
@@ -861,6 +916,21 @@ function checkDuo(input) {
     if (j === null) return jobMiss(PRO_B);
     return gateResult(j, PRO_GATE);
   });
+  wfCheck("d8e", `${PRO_C} runs on ${XCODE} with a positive timeout-minutes`, () => runsOnAndTimeout(PRO_C));
+  wfCheck("d8f", `${PRO_D} runs on ${XCODE} with a positive timeout-minutes`, () => runsOnAndTimeout(PRO_D));
+  wfCheck("d8g", `${PRO_C} runs on the pro-ui label, never on the draft gate alone`, () => {
+    const j = jobOf(PRO_C);
+    if (j === null) return jobMiss(PRO_C);
+    return gateResult(j, PRO_GATE);
+  });
+  wfCheck("d8h", `${PRO_D} runs on the pro-ui label, never on the draft gate alone`, () => {
+    const j = jobOf(PRO_D);
+    if (j === null) return jobMiss(PRO_D);
+    return gateResult(j, PRO_GATE);
+  });
+  proCheck("d8i", `every pro job has timeout-minutes ${PRO_TIMEOUT}`, (j, job) =>
+    String(j["timeout-minutes"]) === PRO_TIMEOUT ? [] : [`${job} timeout-minutes is ${show(j["timeout-minutes"])}`]
+  );
 
   // d9: the concurrency group cancels older runs with the literal true, so no event's if: decides it.
   wfCheck("d9a", "concurrency.cancel-in-progress is the literal true", () => {
@@ -921,11 +991,6 @@ function mutate(src, from, to) {
   if (!src.includes(from)) throw new Error(`fixture edit did not apply: ${from.slice(0, 60)}`);
   return src.replace(from, () => to);
 }
-function mutateLast(src, from, to) {
-  const i = src.lastIndexOf(from);
-  if (i < 0) throw new Error(`fixture edit did not apply: ${from.slice(0, 60)}`);
-  return src.slice(0, i) + to + src.slice(i + from.length);
-}
 function mutateAll(src, from, to) {
   if (!src.includes(from)) throw new Error(`fixture edit did not apply: ${from.slice(0, 60)}`);
   return src.split(from).join(to);
@@ -939,17 +1004,21 @@ const FLAT_TEST = XB + " -retry-tests-on-failure -test-iterations 2 -resultBundl
 const CLOSED_TEST = XB + " -retry-tests-on-failure -test-iterations 2 -resultBundlePath closed.xcresult";
 const PRO_A_TEST = XB + " -retry-tests-on-failure -test-iterations 2 -resultBundlePath pro-a.xcresult";
 const PRO_B_TEST = XB + " -retry-tests-on-failure -test-iterations 2 -resultBundlePath pro-b.xcresult";
+const PRO_C_TEST = XB + " -retry-tests-on-failure -test-iterations 2 -resultBundlePath pro-c.xcresult";
+const PRO_D_TEST = XB + " -retry-tests-on-failure -test-iterations 2 -resultBundlePath pro-d.xcresult";
 const DUO_IF = "${{ !github.event.pull_request.draft || contains(github.event.pull_request.labels.*.name, 'duo-ui') }}";
 const PRO_IF = "${{ contains(github.event.pull_request.labels.*.name, 'pro-ui') }}";
 const CLOSED_IF = "        if: ${{ !cancelled() }}";
 const CHECKOUT = "      - uses: actions/checkout@" + CHECKOUT_SHA;
 const HINGE_LINE = '          git -C "$RUNNER_TEMP/hinge" checkout -q ' + HINGE_SHA;
 
-const proLines = (name, target, test) => [
+const UPLOAD_SHA = "3".repeat(40);
+// One pro job. Its result is read under its job name, and its artifact is uploaded under the same name.
+const proLines = (name, target, test, suffix) => [
   "  " + name + ":",
   "    if: " + PRO_IF,
   "    runs-on: xcode-27",
-  "    timeout-minutes: 60",
+  "    timeout-minutes: 90",
   "    steps:",
   CHECKOUT,
   "        with:",
@@ -958,6 +1027,15 @@ const proLines = (name, target, test) => [
   "        env:",
   "          UI_TEST: " + test,
   '        run: make ' + target + ' UI_TEST="$UI_TEST"',
+  "      - name: read the " + suffix + " result",
+  "        if: ${{ !cancelled() && env.SIM_UDID != '' }}",
+  "        env:",
+  "          RESULT_BUNDLE: ${{ runner.temp }}/results/" + suffix + ".xcresult",
+  '        run: scripts/ci-sim.sh check-results "$RESULT_BUNDLE" ' + name + " nonzero",
+  "      - uses: actions/upload-artifact@" + UPLOAD_SHA,
+  "        with:",
+  "          name: " + name,
+  "          path: out/",
 ];
 
 const WF_GOOD =
@@ -1002,10 +1080,12 @@ const WF_GOOD =
     "        env:",
     "          UI_TEST: " + CLOSED_TEST,
     '        run: make ui-duo-closed UI_TEST="$UI_TEST"',
-    ...proLines(PRO_A, "ui-a", PRO_A_TEST),
-    ...proLines(PRO_B, "ui-b", PRO_B_TEST),
+    ...proLines(PRO_A, "ui-a", PRO_A_TEST, "pro-a"),
+    ...proLines(PRO_B, "ui-b1", PRO_B_TEST, "pro-b"),
+    ...proLines(PRO_C, "ui-b2", PRO_C_TEST, "pro-c"),
+    ...proLines(PRO_D, "ui-b3", PRO_D_TEST, "pro-d"),
     "  ci-done:",
-    "    needs: [duo-ui, pro-ui-a, pro-ui-b]",
+    "    needs: [duo-ui, pro-ui-a, pro-ui-b, pro-ui-c, pro-ui-d]",
     "    if: ${{ !cancelled() && github.event_name == 'pull_request' }}",
     "    runs-on: ubuntu-latest",
     "    timeout-minutes: 5",
@@ -1171,11 +1251,13 @@ const toCmdEnv = (text) => {
   let t = mutate(text, '        run: make ui-duo-flat UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run $DUO_FLAT_CMD");
   t = mutate(t, '        run: make ui-duo-closed UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run ${DUO_CLOSED_CMD}");
   t = mutate(t, '        run: make ui-a UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run $PRO_A_CMD");
-  t = mutate(t, '        run: make ui-b UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run $PRO_B_CMD");
+  t = mutate(t, '        run: make ui-b1 UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run $PRO_B_CMD");
+  t = mutate(t, '        run: make ui-b2 UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run $PRO_C_CMD");
+  t = mutate(t, '        run: make ui-b3 UI_TEST="$UI_TEST"', "        run: scripts/ci-sim.sh run $PRO_D_CMD");
   return mutate(
     t,
     "\nenv:\n  UI_TEST: ",
-    "\nenv:\n  DUO_FLAT_CMD: make ui-duo-flat\n  DUO_CLOSED_CMD: make ui-duo-closed\n  PRO_A_CMD: make ui-a\n  PRO_B_CMD: make ui-b\n  UI_TEST: "
+    "\nenv:\n  DUO_FLAT_CMD: make ui-duo-flat\n  DUO_CLOSED_CMD: make ui-duo-closed\n  PRO_A_CMD: make ui-a\n  PRO_B_CMD: make ui-b1\n  PRO_C_CMD: make ui-b2\n  PRO_D_CMD: make ui-b3\n  UI_TEST: "
   );
 };
 const CMD_WF = toCmdEnv(WF_ENV_INPUT.workflow);
@@ -1227,7 +1309,13 @@ for (const cls of ["DuoHandUITests", "DuoSpreadUITests", "DuoShellUITests"]) {
 // Mutants. Each changes one piece of the good set, and the named check must go red on it. A row's optional
 // fourth field is the cause its red detail must contain.
 const onWf = (from, to) => (g) => ({ ...g, workflow: mutate(g.workflow, from, to) });
-const onWfLast = (from, to) => (g) => ({ ...g, workflow: mutateLast(g.workflow, from, to) });
+// An edit that lands in one named job: from is its first match after that job's header.
+const inJob = (job, from, to) => (g) => {
+  const start = g.workflow.indexOf("\n  " + job + ":\n");
+  const at = start < 0 ? -1 : g.workflow.indexOf(from, start);
+  if (at < 0) throw new Error(`fixture edit did not apply in ${job}: ${from.slice(0, 60)}`);
+  return { ...g, workflow: g.workflow.slice(0, at) + to + g.workflow.slice(at + from.length) };
+};
 const onMk = (from, to) => (g) => ({ ...g, makefile: mutate(g.makefile, from, to) });
 const onSwift = (name, from, to) => (g) => ({ ...g, swift: { ...g.swift, [name]: mutate(g.swift[name], from, to) } });
 const onChecks = (from, to) => (g) => ({ ...g, checks: mutate(g.checks, from, to) });
@@ -1266,13 +1354,17 @@ const MUTANTS = [
   ["ci-done-comment pinned to a sha", "d6a", onWf("@" + STABLE, "@" + SHA_CALL), "not at @stable"],
   ["checkout pinned to stable", "d6a", onWf(CHECKOUT, "      - uses: actions/checkout@stable"), "is not a 40-hex sha"],
   ["duo checkout keeps credentials", "d6b", onWf("persist-credentials: false", "persist-credentials: true")],
-  ["pro-ui-b checkout keeps credentials", "d6b", onWfLast("persist-credentials: false", "persist-credentials: true")],
+  ["pro-ui-b checkout keeps credentials", "d6b", inJob(PRO_B, "persist-credentials: false", "persist-credentials: true")],
+  ["pro-ui-c checkout keeps credentials", "d6b", inJob(PRO_C, "persist-credentials: false", "persist-credentials: true")],
+  ["pro-ui-d checkout keeps credentials", "d6b", inJob(PRO_D, "persist-credentials: false", "persist-credentials: true")],
   ["a run block holds a GitHub expression", "d6c", onWf('        run: make ui-duo-closed UI_TEST="$UI_TEST"', '        run: make ui-duo-closed UI_TEST="$UI_TEST" && echo "${{ github.sha }}"')],
   ["a quoted # hides a GitHub expression in a run", "d6c", onWf('        run: make ui-a UI_TEST="$UI_TEST"', '        run: make ui-a UI_TEST="$UI_TEST"\n      - name: Trap\n        run: "echo a # ${{ github.sha }}"')],
-  ["a lone apostrophe does not hide a GitHub expression in a run", "d6c", onWf('        run: make ui-b UI_TEST="$UI_TEST"', '        run: make ui-b UI_TEST="$UI_TEST"\n      - name: Trap\n        run: echo don\'t ${{ github.sha }}')],
-  ["a # line in a run block still holds a GitHub expression", "d6c", onWf('        run: make ui-b UI_TEST="$UI_TEST"', '        run: |\n          make ui-b UI_TEST="$UI_TEST"\n          # ${{ github.sha }}')],
-  ["ci-done needs drops pro-ui-b", "d7a", onWf("    needs: [duo-ui, pro-ui-a, pro-ui-b]", "    needs: [duo-ui, pro-ui-a]")],
-  ["ci-done needs drops duo-ui", "d7a", onWf("    needs: [duo-ui, pro-ui-a, pro-ui-b]", "    needs: [pro-ui-a, pro-ui-b]")],
+  ["a lone apostrophe does not hide a GitHub expression in a run", "d6c", onWf('        run: make ui-b1 UI_TEST="$UI_TEST"', '        run: make ui-b1 UI_TEST="$UI_TEST"\n      - name: Trap\n        run: echo don\'t ${{ github.sha }}')],
+  ["a # line in a run block still holds a GitHub expression", "d6c", onWf('        run: make ui-b1 UI_TEST="$UI_TEST"', '        run: |\n          make ui-b1 UI_TEST="$UI_TEST"\n          # ${{ github.sha }}')],
+  ["ci-done needs drops pro-ui-b", "d7a", onWf("    needs: [duo-ui, pro-ui-a, pro-ui-b, pro-ui-c, pro-ui-d]", "    needs: [duo-ui, pro-ui-a, pro-ui-c, pro-ui-d]"), "does not need pro-ui-b"],
+  ["ci-done needs drops pro-ui-c", "d7a", onWf("    needs: [duo-ui, pro-ui-a, pro-ui-b, pro-ui-c, pro-ui-d]", "    needs: [duo-ui, pro-ui-a, pro-ui-b, pro-ui-d]"), "does not need pro-ui-c"],
+  ["ci-done needs drops pro-ui-d", "d7a", onWf("    needs: [duo-ui, pro-ui-a, pro-ui-b, pro-ui-c, pro-ui-d]", "    needs: [duo-ui, pro-ui-a, pro-ui-b, pro-ui-c]"), "does not need pro-ui-d"],
+  ["ci-done needs drops duo-ui", "d7a", onWf("    needs: [duo-ui, pro-ui-a, pro-ui-b, pro-ui-c, pro-ui-d]", "    needs: [pro-ui-a, pro-ui-b, pro-ui-c, pro-ui-d]"), "does not need duo-ui"],
   ["ci-done pins a sha, checks.yml names stable", "d7b", onWf(CI_DONE_ACTION + "@" + STABLE, CI_DONE_ACTION + "@" + SHA_CALL), "not @stable"],
   ["ci-done pins @main, checks.yml names stable", "d7b", onWf(CI_DONE_ACTION + "@" + STABLE, CI_DONE_ACTION + "@main"), "not @stable"],
   ["checks.yml names no ci-done-comment pin", "d7b", onChecks("      - uses: " + CI_DONE_ACTION + "@" + STABLE, "      - run: echo none")],
@@ -1281,10 +1373,24 @@ const MUTANTS = [
   ["both files pin @main", "d7b", onBoth(onWf(CI_DONE_ACTION + "@" + STABLE, CI_DONE_ACTION + "@main"), onChecks("      - uses: " + CI_DONE_ACTION + "@" + STABLE, "      - uses: " + CI_DONE_ACTION + "@main")), "not @stable"],
   ["both files pin one 40-hex sha", "d7b", onBoth(onWf(CI_DONE_ACTION + "@" + STABLE, CI_DONE_ACTION + "@" + SHA_CALL), onChecks("      - uses: " + CI_DONE_ACTION + "@" + STABLE, "      - uses: " + CI_DONE_ACTION + "@" + SHA_CALL)), "not @stable"],
   ["pro-ui-a runs on macos", "d8a", onWf("  pro-ui-a:\n    if: " + PRO_IF + "\n    runs-on: xcode-27", "  pro-ui-a:\n    if: " + PRO_IF + "\n    runs-on: macos-15")],
-  ["pro-ui-b timeout is zero", "d8b", onWf("  pro-ui-b:\n    if: " + PRO_IF + "\n    runs-on: xcode-27\n    timeout-minutes: 60", "  pro-ui-b:\n    if: " + PRO_IF + "\n    runs-on: xcode-27\n    timeout-minutes: 0")],
+  ["pro-ui-b timeout is zero", "d8b", onWf("  pro-ui-b:\n    if: " + PRO_IF + "\n    runs-on: xcode-27\n    timeout-minutes: 90", "  pro-ui-b:\n    if: " + PRO_IF + "\n    runs-on: xcode-27\n    timeout-minutes: 0")],
   ["pro-ui-a if is the draft gate alone", "d8c", onWf("  pro-ui-a:\n    if: " + PRO_IF, "  pro-ui-a:\n    if: ${{ !github.event.pull_request.draft }}")],
   ["pro-ui-b if asks for another label", "d8d", onWf("  pro-ui-b:\n    if: " + PRO_IF, "  pro-ui-b:\n    if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui-x') }}")],
   ["pro-ui-a job is renamed", "d8a", onWf("  pro-ui-a:\n", "  pro-ui-z:\n")],
+  ["pro-ui-c runs make ui-b1, not its own ui-b2", "d5g", onWf('        run: make ui-b2 UI_TEST="$UI_TEST"', '        run: make ui-b1 UI_TEST="$UI_TEST"'), "no step in pro-ui-c runs make ui-b2"],
+  ["pro-ui-d runs plain make ui-b, not ui-b3", "d5h", onWf('        run: make ui-b3 UI_TEST="$UI_TEST"', '        run: make ui-b UI_TEST="$UI_TEST"'), "no step in pro-ui-d runs make ui-b3"],
+  ["pro-ui-c pass drops -retry-tests-on-failure", "d5g", onWf(PRO_C_TEST, PRO_C_TEST.replace(" -retry-tests-on-failure", "")), "lacks -retry-tests-on-failure"],
+  ["pro-ui-d pass drops -resultBundlePath", "d5h", onWf(PRO_D_TEST, PRO_D_TEST.replace(" -resultBundlePath pro-d.xcresult", "")), "lacks -resultBundlePath"],
+  ["pro-ui-c runs on macos-15", "d8e", onWf("  pro-ui-c:\n    if: " + PRO_IF + "\n    runs-on: xcode-27", "  pro-ui-c:\n    if: " + PRO_IF + "\n    runs-on: macos-15"), "pro-ui-c runs-on is"],
+  ["pro-ui-d timeout is zero", "d8f", inJob(PRO_D, "timeout-minutes: 90", "timeout-minutes: 0"), "pro-ui-d timeout-minutes is"],
+  ["pro-ui-c if is the draft gate alone", "d8g", onWf("  pro-ui-c:\n    if: " + PRO_IF, "  pro-ui-c:\n    if: ${{ !github.event.pull_request.draft }}"), "runs on draft=false, labels=[], action=opened"],
+  ["pro-ui-d if asks for another label", "d8h", onWf("  pro-ui-d:\n    if: " + PRO_IF, "  pro-ui-d:\n    if: ${{ contains(github.event.pull_request.labels.*.name, 'pro-ui-x') }}"), "does not run on draft=false, labels=[pro-ui], action=opened"],
+  ["pro-ui-a timeout stays at 60", "d8i", inJob(PRO_A, "timeout-minutes: 90", "timeout-minutes: 60"), "pro-ui-a timeout-minutes is"],
+  ["pro-ui-c timeout is 60", "d8i", inJob(PRO_C, "timeout-minutes: 90", "timeout-minutes: 60"), "pro-ui-c timeout-minutes is"],
+  ["pro-ui-d timeout is 120", "d8i", inJob(PRO_D, "timeout-minutes: 90", "timeout-minutes: 120"), "pro-ui-d timeout-minutes is"],
+  ["pro-ui-c reads its result under pro-ui-b", "d5i", onWf('check-results "$RESULT_BUNDLE" pro-ui-c nonzero', 'check-results "$RESULT_BUNDLE" pro-ui-b nonzero'), "pro-ui-c reads its result as pro-ui-b"],
+  ["pro-ui-c uploads its artifact as pro-ui-b", "d5j", inJob(PRO_C, "          name: pro-ui-c\n", "          name: pro-ui-b\n"), "pro-ui-c uploads its artifact as pro-ui-b"],
+  ["pro-ui-d names a pro-b result bundle", "d5k", onWf(PRO_D_TEST, PRO_D_TEST.replace("pro-d.xcresult", "pro-b.xcresult")), "pro-ui-d names pro-b.xcresult, not pro-d.xcresult"],
   ["DUO_CLOSED_TESTS is unset", "d3a", onMk("DUO_CLOSED_TESTS := ", "# DUO_CLOSED_TESTS := ")],
   ["DUO_CLOSED_TESTS lists a call that sits in a comment", "d3b", onMk(" DuoSpreadUITests/testClosedTallyIsOnePage", " DuoSpreadUITests/testClosedTallyIsOnePage DuoShellUITests/testCommentedCall")],
   ["DUO_CLOSED_TESTS lists a call that sits in a multi-line string", "d3b", onMk(" DuoSpreadUITests/testClosedTallyIsOnePage", " DuoSpreadUITests/testClosedTallyIsOnePage DuoShellUITests/testBlockTextIsNotACall")],
@@ -1304,6 +1410,8 @@ const MUTANTS = [
   ["labeled-event narrowing on the duo-ui if", "d2d", narrowDuo, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=pro-ui"],
   ["labeled-event narrowing on the pro-ui ifs", "d8c", narrowPro, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=duo-ui"],
   ["labeled-event narrowing on the pro-ui ifs", "d8d", narrowPro, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=duo-ui"],
+  ["labeled-event narrowing on the pro-ui ifs", "d8g", narrowPro, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=duo-ui"],
+  ["labeled-event narrowing on the pro-ui ifs", "d8h", narrowPro, "does not run on draft=false, labels=[duo-ui, pro-ui], action=labeled, labelName=duo-ui"],
   ["the group drops the draft state", "d9b", onWf("-${{ github.event.pull_request.draft }}", ""), "group is"],
   ["cancel-in-progress is an if: expression", "d9a", onWf("  cancel-in-progress: true", "  cancel-in-progress: ${{ github.event.action != 'labeled' }}"), "cancel-in-progress is \"${{ github.event.action != 'labeled' }}\""],
 ];

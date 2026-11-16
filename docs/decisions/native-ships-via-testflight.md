@@ -16,12 +16,13 @@ Plan: docs/decisions/build-and-deploy.md#ios-ship-testflight (native)
 - `--export-only` stops before the upload and keeps the export in a printed folder. It is the only proof run without an upload. The workflow's `dry` input passes it.
 - On this Mac, `make testflight` runs the same upload as a local fallback, from a clean tree at origin/main. The tool is shared with the owner's Degen project.
 - The upload runs once. Never retry it in a loop, and never re-dispatch the workflow in a loop.
-- The App Store Connect key file, key id and issuer id are credentials. On this Mac they live in the ios-ship account file under ~/.config, off the repo. In CI they live in the repo secrets `ASC_KEY_P8`, `ASC_KEY_ID` and `ASC_ISSUER_ID`. Never read, copy or print the key, in either place.
+- The App Store Connect key file, key id and issuer id are credentials. On this Mac they live in the ios-ship account file under ~/.config, off the repo. In CI they live in the repo secrets `ASC_KEY_P8`, `ASC_KEY_ID` and `ASC_ISSUER_ID`. Never read, copy or print the key, in either place. The optional `ASC_DEV_CERT_P12` (base64 of one .p12) and `ASC_DEV_CERT_PASSWORD` are credentials too, a signing key. Set both or neither. Never write them in the repo.
 
 ## The CI workflow
 
 - `.github/workflows/testflight.yml` is the TestFlight fallback in CI. Its one trigger is `workflow_dispatch`, a manual dispatch. It runs on the `xcode-27` runner.
 - Inputs: `apps`, default `Manifest`. `dry` passes `--export-only`, so a dry dispatch exports and does not upload.
+- The workflow imports one stored Apple Development identity per run. The optional secrets `ASC_DEV_CERT_P12` (base64 of one .p12) and `ASC_DEV_CERT_PASSWORD` (its password) are set both or neither. With both unset, Xcode creates a certificate each run, and Apple caps development certificates per team.
 - The signing team id comes from the repo variable `TEAM_ID`. `tools/ios-ship.json` holds no ID, and the job stops early when the variable is empty. The job installs a pinned xcodegen, as `milestone.yml` does, because the runner image has none.
 - An upload runs only from main. ios-ship needs a clean tree, with HEAD equal to origin/main.
 - The job checks out the branch tip when it starts, not the commit at dispatch. A merge during the wait for a runner then cannot fail the upload. A merge in the minute or two before ios-ship fetches main still stops the run, with nothing uploaded.
@@ -44,7 +45,7 @@ The archive holds `Assets.car` and `CFBundleIconName` AppIcon, from the catalog 
 - `ios-ship install` clones main, builds Release, signs it for development, and installs it with `xcrun devicectl device install app`.
 - `tools/ios-ship.json` lists the one app, Manifest. It holds no ID. The team, key and phone IDs live in the ios-ship account file on this Mac, off the repo.
 - The phone is Shivinate XIII (owner ruling, 2026-10-26). `make phone` and `make testflight` call `ios-ship` with `tools/ios-ship.json --app Manifest`. The repo has no script or app list of its own.
-- The phone must be on home Wi-Fi or cabled. The tool logs under ~/Library/Logs/ios-adblock-reinstall. Exit 75 means the phone is unreachable.
+- The phone must be on home Wi-Fi or cabled. The tool logs under ~/Library/Logs/ios-adblock-reinstall. Exit 75 means that the phone is unreachable.
 - Any non-zero exit leaves the same commit for a manual dispatch of the `testflight` workflow, which needs the owner's go, see The CI workflow. The report names the route that landed.
 - First run: 2026-10-22 19:42 CDT, installed and launched over Wi-Fi.
 
@@ -55,7 +56,7 @@ A TestFlight install puts a native build on the phone. So the first install is t
 ## Measured
 
 - Dry run 42745528705, on main at 6a55afc, 2026-11-09 20:51 CST: green on the xcode-27 runner. A clean runner signs with the ASC key and `TEAM_ID` alone, with no certificate secret. The job took 3 min 6 s, and the Ship step took 2 min 58 s.
-- Upload run 42750597378, on main at 727a7b3, 2026-11-09 22:04 CST: build 202611100404 uploaded to TestFlight. The Ship step took 4 min 4 s. The runner keychain went from 0 to 1 signing identity, so the run made one Apple Development certificate.
+- Upload run 42750597378, on main at 727a7b3, 2026-11-09 22:04 CST: build 202611100404 uploaded to TestFlight. The Ship step took 4 min 4 s. The runner keychain went from 0 to 1 signing identity, so the run made one Apple Development certificate. The home repo saw the same 0 to 1 count.
 - Upload run 42747709994 failed with nothing uploaded. It waited 14 min for a runner while a merge moved main, and ios-ship refused because HEAD was not origin/main.
 
 ## Unmeasured
