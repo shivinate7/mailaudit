@@ -1,6 +1,6 @@
 {
   "added": "2026-11-16T12:36:20Z",
-  "context": "Goal: PR 238 (restyle step 8) lands with every contrast audit passing on the phone.\nProblem (rule): the Find pill floats over the list and covers row text, so the contrast audit fails on \"Test Set \u00b7 Near Mint\" (frame 73,723,102,14) and, in 12 tests, on the editor Save button and the stepper plus button, and only your word can change the pill's place or skip the audit on its frame.\nBased on (measured): the phone UI run 43848366093 on the latest commit of PR 238, read test by test by lane restyle-step8.\nBased on (read): the designer's spec for the band, kept with the lane's notes.\nDeparts from: FindPill.swift:3, where the pill floats over the list on the phone \u2014 option a ends the phone list above the pill with a paper band and a 1pt rule, so about 8pt of rows go at rest, and at the largest text size about 6 package lines or 4 Tally rows stay in view (estimates; the design reviewer measures them). The web keeps its floating pill.\nMeanwhile: the lane builds option a and keeps PR 238 a draft, and nothing merges before your word.",
+  "context": "Goal: PR 238 (restyle step 8) lands with every contrast audit passing on the phone.\nProblem (rule): the Find pill floats over the list and covers row text, so the contrast audit fails on \"Test Set \u00b7 Near Mint\" (frame 73,723,102,14) and, in 12 tests, on the editor Save button and the stepper plus button, and only your word can change the pill's place or skip the audit on its frame.\nBased on (measured): the phone UI run 43848366093 on the latest commit of PR 238, read test by test by lane restyle-step8.\nBased on (measured): the screen check on the latest commit of PR 238, an 18 Pro at 402x874pt, read from the pictures by lane restyle-step8: the pill top is 731pt and the list ends at 723pt at rest.\nBased on (read): the designer's spec for the band, kept with the lane's notes.\nDeparts from: FindPill.swift:3, where the pill floats over the list on the phone \u2014 option a ends the phone list above the pill with a paper band and a 1pt rule, so 8pt of list goes at rest. The list ends at 723, 723 and 715.3pt at normal size, M and AX5, which is 3 to 4pt more list than the mockup promised (719, 720 and 712pt). 0 whole Tally rows are lost at normal size and M (5 rows show whole, the 6th is cut). Whether 8pt would finish the cut Packages card line is unmeasured. At the two largest text sizes (AX3, AX5) the list shows zero rows at rest on Packages and Tally, so the band costs 0 rows there, and the tall masthead causes it (a later lane). The web keeps its floating pill.\nVerdicts against the mockup: normal size and M pass on Packages and Tally. AX3 and AX5 fail on both, from the masthead.\nUnmeasured: the sort grid at the large text sizes, empty states, the Tally error bar, dark theme, and the folded Duo.\nMeanwhile: the lane builds option a and keeps PR 238 a draft, and nothing merges before your word.",
   "holds": "PR 238 does not merge until you answer.",
   "home": "PR 238 (restyle step 8) and lane restyle-step8; decision phone-nav-is-bottom-bar",
   "kind": "decision",
@@ -12,10 +12,10 @@
       "id": "accept-band",
       "key": "a",
       "label": "End the list above the pill with a paper band",
-      "lose": "About 8pt of rows go at rest, and at the largest text size only about 6 package lines or 4 Tally rows stay in view. It also changes the phone's bottom-bar ruling."
+      "lose": "8pt of list goes at rest, with 0 whole Tally rows lost at normal size and M. The two largest text sizes already show zero rows, from the tall masthead. It also changes the phone's bottom-bar ruling."
     },
     {
-      "gain": "No change to how the list looks, and no rows are lost.",
+      "gain": "No change to how the list looks, and no list is lost.",
       "how": "The pill keeps floating over the list. The phone audit skips the contrast check on the pill's frame, named, and every other check stays on. Decision audit-skips-measured-flags allows only skips you name, so this is a new named skip that only your answer can add.",
       "id": "skip-pill-audit",
       "key": "b",
