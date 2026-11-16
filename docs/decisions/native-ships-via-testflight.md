@@ -16,7 +16,7 @@ Plan: docs/decisions/build-and-deploy.md#ios-ship-testflight (native)
 - `--export-only` stops before the upload and keeps the export in a printed folder. It is the only proof run without an upload. The workflow's `dry` input passes it.
 - On this Mac, `make testflight` runs the same upload as a local fallback, from a clean tree at origin/main. The tool is shared with the owner's Degen project.
 - The upload runs once. Never retry it in a loop, and never re-dispatch the workflow in a loop.
-- The App Store Connect key file, key id and issuer id are credentials. On this Mac they live in the ios-ship account file under ~/.config, off the repo. In CI they live in the repo secrets `ASC_KEY_P8`, `ASC_KEY_ID` and `ASC_ISSUER_ID`. Never read, copy or print the key, in either place.
+- The App Store Connect key file, key id and issuer id are credentials. On this Mac they live in the ios-ship account file under ~/.config, off the repo. In CI they live in the repo secrets `ASC_KEY_P8`, `ASC_KEY_ID` and `ASC_ISSUER_ID`. Never read, copy or print the key, in either place. The optional `ASC_DEV_CERT_P12` (base64 of one .p12) and `ASC_DEV_CERT_PASSWORD` are credentials too, a signing key. Set both or neither. Never write them in the repo.
 
 ## The CI workflow
 
