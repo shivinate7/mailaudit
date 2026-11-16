@@ -2954,6 +2954,7 @@ eq(
   "33.69 with refreshName every other field of the stored line is the base copy's, byte for byte"
 );
 eq(nmOnce.renamed, 1, "33.70 the result counts the one line whose name changed");
+eq(nmOnce.refreshed, 0, "33.70a a rename is not counted as a tracking refresh");
 eq(mergeItems(NM_BASE, NM_IN).renamed ?? 0, 0, "33.71 with no option nothing is renamed");
 eq(
   nmOnce.items.map((it) => it.key),
@@ -7693,7 +7694,8 @@ eq(saved().items[0].key, keyBefore58, "57.21 the renamed line keeps its key");
 eq(saved().received, marksBefore58, "57.22 the received mark survives the rename");
 eq(saved().items.length, 2, "57.23 no line is dropped");
 eq(tallyGroups(saved().items).length, 1, "57.24 the two copies pool into one Tally group");
-ok(/Renamed 1 line/.test(text()), "57.25 the summary counts the rename apart from the tracking refresh");
+ok(/Renamed 1 line/.test(text()), "57.25 the summary counts the rename");
+ok(!/Updated the shipping status/.test(text()), "57.26 a rename-only re-import does not say the shipping status was updated");
 
 /* ── 61. the house UX rules, lanes L1 and L2 (decision ux-house-rules-govern) ──
    Each block names the rule it checks. An ask names the count it removes or
