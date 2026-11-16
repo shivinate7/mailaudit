@@ -46,6 +46,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View group.
 - `native-restore-later-reply-unpinned` — No test pins that a later Worker reply leaves a native restore in place.
 - `native-ask-has-no-cancel-focus` — The native ask does not move first focus to Cancel.
+- `native-ask-hangs-under-list-edge` — A hanging ask near the list's edge cannot be tapped.
 - `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
