@@ -141,3 +141,4 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 
 - 2026-11-16, step 8 fix round 2 review: `FindPillUITests.testOpeningSearchMovesNoPackageRow` asserts a row was watched before the tap, but not that one row was checked after the list shrank; if every watched row ended below the shrunk list's bottom and unmounted, the test would pass having checked nothing.
 - 2026-11-16, step 8 fix round 2 review: the scope message in that test says "in the band above the keyboard" but the filter uses the pre-tap band.
+- 2026-11-16, step 8 ask review: the 0.0 pt reads in `testEveryStampControlHasA44ptHitRegion` are a separate test-side race. The test reads 4.0 s after the tap. Read every frame in one snapshot right after arming, as `PackageStampUITests.swift` line 231 does. Decision: none.
