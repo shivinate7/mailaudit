@@ -109,6 +109,10 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-axl-rows-break` — Three native rows break at accessibility text sizes.
 - `sim-test-diagnose-and-pin` — sim-test runs simctl diagnose and can pick the Duo.
 - `composer-keys-cover-tab-bar` — The Orphaned composer's keys cover the tab bar, so a draft test stays red.
+- `masthead-at-ax-sizes` — At accessibility sizes the stacked masthead hides figures at rest.
+- `duo-filter-cell-under-bar` — On the open Duo at AX3, the Packages "0 stamped" cell sits under the bar.
+- `tally-name-breaks-mid-word` — On the 18 Pro at AX3, a Tally name breaks mid-word under the Find pill.
+- `unshot-states-of-step-8` — Four step 8 states have no shot, so none is checked.
 
 ## Measurements
 
