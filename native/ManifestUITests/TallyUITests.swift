@@ -17,7 +17,7 @@
 //     "Undo check in <name>" (the Packages control, same wording).
 //   Sort: the Sorted by row "ledger-sort" on the Ledger tab (its View group). Its option grid "ledger-sort-grid"
 //     lists the six labels as buttons, once Tally is the last list tab left.
-//   Search: the floating pill's field "find-field" (lane restyle-step8). Its clear control "find-clear" shows while the
+//   Search: the Find pill's field "find-field" (lane restyle-step8). Its clear control "find-clear" shows while the
 //     field holds text (owner item 46, answer a, 2026-11-08 10:55 CST).
 //   Empty search: no row, the empty state's one button labelled "Clear Search" outside the pill, and the pill's own clear
 //     control. An empty search therefore shows two clear controls: the pill's, and the empty state's.
