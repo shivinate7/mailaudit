@@ -92,7 +92,7 @@
 //       value is 'on' exactly when milestone-proof is in the rollup's needs;
 //   m2  no merge.ignoreChecks entry in the stamp names a workflow, a job the rollup needs, or a required check.
 //
-// The suite job runs as a matrix of shards under one job id. A step with no shard if: runs in every
+// The suite-shards job (SUITE_JOB) runs as a matrix of shards under one job id. A step with no shard if: runs in every
 // shard, and a step in no shard never runs, so CI stays green when a check is lost or doubled. These
 // ids read the split:
 //   s1  the matrix lists at least two distinct whole-number shards;
@@ -104,7 +104,7 @@
 //   s6  MAILDAY_TEST_PART picks one part, or every part when unset, and refuses any other value;
 //   s7  the docs job runs npm run check:docs --silent in exactly one step, so the part logs are summed;
 //   s8  the rollup and ci-done each need the docs job.
-// A new check in the suite job goes into one shard and into SUITE_WORK in the same commit.
+// A new check in the suite-shards job goes into one shard and into SUITE_WORK in the same commit.
 //
 // The push skip (decision push-skip-on-proven-tree) is checked with these ids:
 //   p1   the job push-skip exists;
@@ -118,8 +118,14 @@
 //   p9   scope's script tests no push event for a skip (a shell comment line does not count);
 //   p10  all-jobs-passed needs push-skip;
 //   p11  all-jobs-passed passes scope-skips: one JSON object naming needed jobs and scope flags;
-//   p12  each suite job (the rollup's needs, less scope and push-skip) needs push-skip, every step's
-//        if: holds its skip gate, and its job-level if: names no event or output.
+//   p12  each suite job (the rollup's needs, less scope, push-skip, milestone-due and the fan-in suite)
+//        needs push-skip, every step's if: holds its skip gate, and its job-level if: names no event or output;
+//   p13  the matrix job is suite-shards, and no job with a matrix is named suite (push-skip matches the name);
+//   p13a the fan-in job suite has no strategy, needs suite-shards, has always() with the draft guard and no
+//        event or output in its job-level if:, and has one step;
+//   p13b that step has no if:, reads needs.suite-shards.result, and tests it against success;
+//   p13c the rollup and ci-done need suite;
+//   p14  milestone-due reads no push-skip output in its job-level or step if:.
 //
 // No YAML library is in node_modules, and none may be added. The workflow is read as
 // text by indentation: jobs sit under jobs: at 2 spaces, job keys at 4, step keys at 8.
@@ -464,9 +470,11 @@ const PUSH_SKIP_PIN = PUSH_SKIP_ACTION + "@" + ACTION_PIN;
 const PUSH_ONLY = "github.event_name=='push'";
 const SKIP_GATE = "needs.push-skip.outputs.skip!='true'";
 const SCOPE_JOB = "scope";
-// The job names push-skip matches exactly (push-skip.py reads a job's conclusions by name). The suite job's
-// matrix rows carry its name, so a matrix name would split them into suite (1) to suite (3). SUITE_NAME is
-// declared here, not with SUITE_JOB, because these cases run before that constant is declared.
+// The suite job is a matrix under SUITE_JOB. Its rows read suite-shards (N), and push-skip matches a job by
+// exact name, so the fan-in job SUITE_NAME gathers the shards and is the job push-skip finds. A matrix named
+// suite would split its rows into suite (1) to suite (3), which never match. Both constants sit here, because
+// the push-skip cases run before the shard checks.
+const SUITE_JOB = "suite-shards";
 const SUITE_NAME = "suite";
 // The job that dispatches the Swift suite on a push to main. A proven-tree push must still reach it.
 const DISPATCH_JOB = "milestone-due";
@@ -547,7 +555,8 @@ function pushSkipChecks(text) {
   const decider = caller[0];
   const checkout = all.find(isCheckout);
   // The suite jobs. milestone-due is left out: it dispatches on a proven-tree push, so it reads no skip (p14).
-  const suites = needsOf(roll).filter((id) => id !== SCOPE_JOB && id !== PUSH_SKIP && id !== DISPATCH_JOB);
+  // The fan-in SUITE_NAME is left out: it has no work steps, and p13a and p13b check its shape instead.
+  const suites = needsOf(roll).filter((id) => ![SCOPE_JOB, PUSH_SKIP, DISPATCH_JOB, SUITE_NAME].includes(id));
   const scopeIf = normIf(ifText(scope));
   const skipOut = isMap(job?.outputs) ? String(job.outputs.skip ?? "").replace(/\s+/g, "") : "";
 
@@ -661,24 +670,84 @@ function pushSkipChecks(text) {
           : ungatedStep(steps(j));
     add(
       "p12",
-      `suite job ${id} needs ${PUSH_SKIP}, every step's if: holds its skip gate, and its job-level if: names no event or output (${DISPATCH_JOB} is no suite job: it dispatches on a proven-tree push, p14)`,
+      `suite job ${id} needs ${PUSH_SKIP}, every step's if: holds its skip gate, and its job-level if: names no event or output (${DISPATCH_JOB} is no suite job: it dispatches on a proven-tree push, p14; ${SUITE_NAME} is the fan-in, which has no work steps, p13a)`,
       problem
     );
   }
 
-  // p13: push-skip finds a job's rows by its name, so the suite job is named exactly suite. Every other job in
-  // the rollup keeps its id as its name (a job with no name key is named by its id).
-  const suiteJob = jobs[SUITE_NAME];
+  // p13 and its fan-in cases. A matrix row carries its job's name with its value appended (suite (1)), and
+  // push-skip matches a job by exact name. So the matrix job is SUITE_JOB, and no job with a matrix is named
+  // SUITE_NAME. The fan-in job takes that name, and p13a and p13b check it.
+  const hasMatrix = (j) => isMap(j) && isMap(j.strategy) && j.strategy.matrix !== undefined;
+  const matrixProblem = hasMatrix(jobs[SUITE_NAME])
+    ? `${SUITE_NAME} carries the matrix, so its rows read ${SUITE_NAME} (N)`
+    : !isMap(jobs[SUITE_JOB])
+      ? `no ${SUITE_JOB} job`
+      : !hasMatrix(jobs[SUITE_JOB])
+        ? `${SUITE_JOB} has no strategy matrix`
+        : jobs[SUITE_JOB].name === SUITE_NAME
+          ? `${SUITE_JOB} is named ${SUITE_NAME}, so its rows read ${SUITE_NAME} (N)`
+          : "";
+  // Every other job in the rollup keeps its id as its name (a job with no name key is named by its id).
   const renamed = needsOf(roll).filter((id) => id !== SUITE_NAME && isMap(jobs[id]) && jobs[id].name !== undefined && jobs[id].name !== id);
   add(
     "p13",
-    `the ${SUITE_NAME} job is named exactly ${SUITE_NAME}, so push-skip finds all its rows, and every other job keeps its id as its name`,
-    !isMap(suiteJob)
-      ? `no ${SUITE_NAME} job`
-      : suiteJob.name !== SUITE_NAME
-        ? `the ${SUITE_NAME} job is named ${JSON.stringify(suiteJob.name ?? null)}, not ${SUITE_NAME}`
-        : renamed.length > 0
-          ? `job ${renamed[0]} is named ${JSON.stringify(jobs[renamed[0]].name)}, not its id`
+    `the matrix job is ${SUITE_JOB}, its rows are not named ${SUITE_NAME}, and every other job keeps its id as its name`,
+    matrixProblem || (renamed.length > 0 ? `job ${renamed[0]} is named ${JSON.stringify(jobs[renamed[0]].name)}, not its id` : "")
+  );
+
+  const fan = jobs[SUITE_NAME];
+  const fanCond = normIf(ifText(fan));
+  const fanProblem = !isMap(fan)
+    ? `no ${SUITE_NAME} job`
+    : fan.strategy !== undefined
+      ? `${SUITE_NAME} has a strategy, so it is a matrix, not the fan-in`
+      : fan.name !== undefined && fan.name !== SUITE_NAME
+        ? `${SUITE_NAME} is named ${JSON.stringify(fan.name)}, not ${SUITE_NAME}`
+        : !needsOf(fan).includes(SUITE_JOB)
+          ? `${SUITE_NAME} does not need ${SUITE_JOB}`
+          : !fanCond.includes("always()") || !fanCond.includes(DRAFT_GUARD)
+            ? "its job-level if: lacks always() or the draft guard"
+            : /github\.event_name|\.outputs\./.test(fanCond)
+              ? "its job-level if: names an event or an output"
+              : steps(fan).length !== 1
+                ? `it has ${steps(fan).length} steps, not one`
+                : "";
+  add(
+    "p13a",
+    `the ${SUITE_NAME} job is the fan-in: no strategy, named ${SUITE_NAME} or unnamed, needs ${SUITE_JOB}, always() with the draft guard and no event or output, one step`,
+    fanProblem
+  );
+
+  const fanStep = steps(fan)[0];
+  const fanRun = typeof fanStep?.run === "string" ? fanStep.run : "";
+  const fanReads = fanRun + JSON.stringify(fanStep?.env ?? {});
+  const fanStepProblem =
+    fanStep === undefined
+      ? "it has no step"
+      : stepIf(fanStep) !== ""
+        ? "its step has an if:, so it can skip"
+        : !fanReads.includes(`needs.${SUITE_JOB}.result`)
+          ? `its step does not read needs.${SUITE_JOB}.result`
+          : !/(?<!!)={1,2}\s*"?success"?\b/.test(fanRun)
+            ? "its step does not test the result against success"
+            : "";
+  add(
+    "p13b",
+    `the ${SUITE_NAME} job's one step has no if:, reads needs.${SUITE_JOB}.result, and tests it against success`,
+    fanStepProblem
+  );
+
+  const ciDone = jobs[CI_DONE];
+  add(
+    "p13c",
+    `${ROLLUP} and ${CI_DONE} need ${SUITE_NAME}, the fan-in that gathers the shards`,
+    !needsOf(roll).includes(SUITE_NAME)
+      ? `${ROLLUP} does not need ${SUITE_NAME}`
+      : !isMap(ciDone)
+        ? `no ${CI_DONE} job`
+        : !needsOf(ciDone).includes(SUITE_NAME)
+          ? `${CI_DONE} does not need ${SUITE_NAME}`
           : ""
   );
 
@@ -2970,7 +3039,6 @@ function needsChecks(text) {
 }
 
 // ---- The suite job's shards: assertions s1 to s6 ----
-const SUITE_JOB = "suite";
 // Every command the suite job runs, bar the app suite (s5 reads that one) and check:docs, which sums the
 // part logs of three runners and so runs in the docs job (s7). Each is one step, in one shard. A command
 // that moves to another shard stays here; one that is retired leaves.
@@ -4353,6 +4421,19 @@ const MS_JOB = [
   "        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.MILESTONE_AUTO_DISPATCH == 'on' }}",
   "        run: node scripts/milestone-due.mjs --native-paths .github/native-paths.regex",
 ].join("\n") + "\n";
+// The fan-in job, named suite: it fails unless every shard passed, and it has no work steps of its own (p13a, p13b).
+const FAN_IN_LINES = [
+  "  suite:",
+  "    needs: [suite-shards]",
+  "    if: ${{ always() && !github.event.pull_request.draft }}",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - name: fail unless every shard passed",
+  "        env:",
+  "          SHARDS: ${{ needs.suite-shards.result }}",
+  '        run: test "$SHARDS" = success',
+];
+const FAN_IN_TEXT = FAN_IN_LINES.join("\n") + "\n";
 const PS_GOOD = [
   "name: test",
   "jobs:",
@@ -4396,14 +4477,17 @@ const PS_GOOD = [
   "          # EVENT = push is only a comment here",
   "          screens=true",
   "          echo \"screens=$screens\" >> \"$GITHUB_OUTPUT\"",
-  "  suite:",
+  "  suite-shards:",
   "    needs: [push-skip]",
   "    if: ${{ !github.event.pull_request.draft }}",
   "    runs-on: ubuntu-latest",
-  "    name: suite",
+  "    strategy:",
+  "      matrix:",
+  "        shard: [1, 2, 3]",
   "    steps:",
   "      - run: npm test",
   "        if: ${{ needs.push-skip.outputs.skip != 'true' }}",
+  ...FAN_IN_LINES,
   "  docs:",
   "    needs: [suite, push-skip]",
   "    if: ${{ !github.event.pull_request.draft }}",
@@ -4419,7 +4503,7 @@ const PS_GOOD = [
   "      - run: npm run check:screens",
   "        if: ${{ needs.push-skip.outputs.skip != 'true' }}",
   MS_JOB + "  all-jobs-passed:",
-  "    needs: [push-skip, scope, suite, docs, screens, milestone-due]",
+  "    needs: [push-skip, scope, suite-shards, suite, docs, screens, milestone-due]",
   "    if: ${{ always() && !github.event.pull_request.draft }}",
   "    runs-on: ubuntu-latest",
   "    steps:",
@@ -4427,6 +4511,12 @@ const PS_GOOD = [
   "        with:",
   "          needs: ${{ toJSON(needs) }}",
   "          scope-skips: '{\"screens\":[\"screens\"]}'",
+  "  ci-done:",
+  "    needs: [suite, all-jobs-passed]",
+  "    if: ${{ always() && !github.event.pull_request.draft }}",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - run: echo ci-done",
 ].join("\n") + "\n";
 {
   const bad = pushSkipChecks(PS_GOOD).filter((r) => !r.ok);
@@ -4490,55 +4580,92 @@ const PS_RED = [
   ],
   [
     "the rollup does not need push-skip",
-    mutate(PS_GOOD, "    needs: [push-skip, scope, suite, docs, screens, milestone-due]", "    needs: [scope, suite, docs, screens, milestone-due]"),
+    mutate(PS_GOOD, "    needs: [push-skip, scope, suite-shards, suite, docs, screens, milestone-due]", "    needs: [scope, suite-shards, suite, docs, screens, milestone-due]"),
     "p10",
   ],
   ["scope-skips is absent", mutate(PS_GOOD, "          scope-skips: '{\"screens\":[\"screens\"]}'\n", ""), "p11"],
   ["scope-skips names a job the rollup does not need", mutate(PS_GOOD, '{"screens":["screens"]}', '{"ghost":["screens"]}'), "p11"],
   ["scope-skips names a flag scope does not output", mutate(PS_GOOD, '{"screens":["screens"]}', '{"screens":["mac"]}'), "p11"],
   ["scope-skips is not JSON", mutate(PS_GOOD, '{"screens":["screens"]}', "{screens:"), "p11"],
-  ["suite does not need push-skip", mutate(PS_GOOD, "  suite:\n    needs: [push-skip]\n", "  suite:\n    needs: []\n"), "p12"],
+  ["suite-shards does not need push-skip", mutate(PS_GOOD, "  suite-shards:\n    needs: [push-skip]\n", "  suite-shards:\n    needs: []\n"), "p12"],
   [
-    "suite's step drops the skip gate",
+    "suite-shards's step drops the skip gate",
     mutate(PS_GOOD, "      - run: npm test\n        if: ${{ needs.push-skip.outputs.skip != 'true' }}\n", "      - run: npm test\n"),
     "p12",
   ],
   [
-    "suite's job-level if names the event",
-    mutate(PS_GOOD, "  suite:\n    needs: [push-skip]\n    if: ${{ !github.event.pull_request.draft }}", "  suite:\n    needs: [push-skip]\n    if: ${{ github.event_name != 'pull_request' && !github.event.pull_request.draft }}"),
+    "suite-shards's job-level if names the event",
+    mutate(PS_GOOD, "  suite-shards:\n    needs: [push-skip]\n    if: ${{ !github.event.pull_request.draft }}", "  suite-shards:\n    needs: [push-skip]\n    if: ${{ github.event_name != 'pull_request' && !github.event.pull_request.draft }}"),
     "p12",
   ],
   [
-    "suite's job-level if names the skip output",
-    mutate(PS_GOOD, "  suite:\n    needs: [push-skip]\n    if: ${{ !github.event.pull_request.draft }}", "  suite:\n    needs: [push-skip]\n    if: ${{ needs.push-skip.outputs.skip != 'true' && !github.event.pull_request.draft }}"),
+    "suite-shards's job-level if names the skip output",
+    mutate(PS_GOOD, "  suite-shards:\n    needs: [push-skip]\n    if: ${{ !github.event.pull_request.draft }}", "  suite-shards:\n    needs: [push-skip]\n    if: ${{ needs.push-skip.outputs.skip != 'true' && !github.event.pull_request.draft }}"),
     "p12",
   ],
   [
-    "suite has no steps",
+    "suite-shards has no steps",
     mutate(PS_GOOD, "    steps:\n      - run: npm test\n        if: ${{ needs.push-skip.outputs.skip != 'true' }}\n", ""),
     "p12",
   ],
-  ["the rollup names no suite job", mutate(PS_GOOD, "    needs: [push-skip, scope, suite, docs, screens, milestone-due]", "    needs: [push-skip, scope, milestone-due]"), "p12"],
+  ["the rollup names no suite job", mutate(PS_GOOD, "    needs: [push-skip, scope, suite-shards, suite, docs, screens, milestone-due]", "    needs: [push-skip, scope, milestone-due]"), "p12"],
 ];
 for (const [name, text, id] of PS_RED) {
   const failed = pushSkipChecks(text).filter((r) => !r.ok).map((r) => r.id);
   expect(`fixture red: ${name} fails assertion ${id}`, failed.includes(id), `failed assertions: ${JSON.stringify(failed)}`);
 }
 
-// Reviewer round 1. The suite rows (p13), the milestone dispatch (p14), the suite set of p12, and the shell
+// The matrix and fan-in jobs (p13 to p13c), the milestone dispatch (p14), the suite set of p12 and the shell
 // cases of p9. Each red edit must fail the case it names; each good edit must pass every case.
 {
-  const named = pushSkipChecks(PS_GOOD).find((r) => r.id === "p13");
-  expect("fixture good: the suite job is named suite, so p13 passes", named?.ok === true, `p13: ${JSON.stringify(named ?? null)}`);
+  const bad = pushSkipChecks(PS_GOOD).filter((r) => ["p13", "p13a", "p13b", "p13c"].includes(r.id) && !r.ok);
+  expect("fixture good: the matrix job and the fan-in pass p13, p13a, p13b and p13c", bad.length === 0, bad.map((r) => `${r.label} (${r.detail})`).join("; "));
 }
 const P13_RED = [
-  ["the suite job has no name", mutate(PS_GOOD, "    name: suite\n", "")],
-  ["the suite job's name keeps the matrix", mutate(PS_GOOD, "    name: suite\n", "    name: suite (${{ matrix.shard }})\n")],
-  ["another job is named apart from its id", mutate(PS_GOOD, "  docs:\n", "  docs:\n    name: docs check\n")],
+  ["the matrix job is named suite", mutate(PS_GOOD, "  suite-shards:\n    needs: [push-skip]\n", "  suite-shards:\n    name: suite\n    needs: [push-skip]\n"), "p13"],
+  ["the matrix stays on the suite id", mutate(mutate(PS_GOOD, FAN_IN_TEXT, ""), "  suite-shards:\n", "  suite:\n"), "p13"],
+  ["another job is named apart from its id", mutate(PS_GOOD, "  docs:\n", "  docs:\n    name: docs check\n"), "p13"],
+  ["the fan-in carries a strategy", mutate(PS_GOOD, "  suite:\n    needs: [suite-shards]\n", "  suite:\n    needs: [suite-shards]\n    strategy:\n      matrix:\n        shard: [1]\n"), "p13a"],
+  ["the fan-in is named apart from suite", mutate(PS_GOOD, "  suite:\n    needs: [suite-shards]\n", "  suite:\n    name: fan-in\n    needs: [suite-shards]\n"), "p13a"],
+  ["the fan-in does not need the matrix", mutate(PS_GOOD, "  suite:\n    needs: [suite-shards]\n", "  suite:\n    needs: [push-skip]\n"), "p13a"],
+  [
+    "the fan-in's if: lacks always()",
+    mutate(PS_GOOD, "  suite:\n    needs: [suite-shards]\n    if: ${{ always() && !github.event.pull_request.draft }}\n", "  suite:\n    needs: [suite-shards]\n    if: ${{ !github.event.pull_request.draft }}\n"),
+    "p13a",
+  ],
+  [
+    "the fan-in's if: names the event",
+    mutate(PS_GOOD, "  suite:\n    needs: [suite-shards]\n    if: ${{ always() && !github.event.pull_request.draft }}\n", "  suite:\n    needs: [suite-shards]\n    if: ${{ always() && github.event_name != 'pull_request' && !github.event.pull_request.draft }}\n"),
+    "p13a",
+  ],
+  [
+    "the fan-in's if: names the skip output",
+    mutate(PS_GOOD, "  suite:\n    needs: [suite-shards]\n    if: ${{ always() && !github.event.pull_request.draft }}\n", "  suite:\n    needs: [suite-shards]\n    if: ${{ always() && needs.push-skip.outputs.skip != 'true' && !github.event.pull_request.draft }}\n"),
+    "p13a",
+  ],
+  ["the fan-in has a second step", mutate(PS_GOOD, '        run: test "$SHARDS" = success\n', '        run: test "$SHARDS" = success\n      - run: npm test\n'), "p13a"],
+  [
+    "the fan-in's step has an if:",
+    mutate(PS_GOOD, "      - name: fail unless every shard passed\n", "      - name: fail unless every shard passed\n        if: ${{ needs.suite-shards.result != 'skipped' }}\n"),
+    "p13b",
+  ],
+  ["the fan-in's step reads another job", mutate(PS_GOOD, "          SHARDS: ${{ needs.suite-shards.result }}\n", "          SHARDS: ${{ needs.push-skip.outputs.skip }}\n"), "p13b"],
+  ["the fan-in's step tests nothing", mutate(PS_GOOD, '        run: test "$SHARDS" = success\n', '        run: echo "$SHARDS"\n'), "p13b"],
+  [
+    "the fan-in has no step",
+    mutate(PS_GOOD, '    steps:\n      - name: fail unless every shard passed\n        env:\n          SHARDS: ${{ needs.suite-shards.result }}\n        run: test "$SHARDS" = success\n', ""),
+    "p13b",
+  ],
+  [
+    "the rollup does not need the fan-in",
+    mutate(PS_GOOD, "    needs: [push-skip, scope, suite-shards, suite, docs, screens, milestone-due]", "    needs: [push-skip, scope, suite-shards, docs, screens, milestone-due]"),
+    "p13c",
+  ],
+  ["ci-done does not need the fan-in", mutate(PS_GOOD, "  ci-done:\n    needs: [suite, all-jobs-passed]\n", "  ci-done:\n    needs: [all-jobs-passed]\n"), "p13c"],
 ];
-for (const [name, text] of P13_RED) {
+for (const [name, text, id] of P13_RED) {
   const failed = pushSkipChecks(text).filter((r) => !r.ok).map((r) => r.id);
-  expect(`fixture red: ${name} fails assertion p13`, failed.includes("p13"), `failed assertions: ${JSON.stringify(failed)}`);
+  expect(`fixture red: ${name} fails assertion ${id}`, failed.includes(id), `failed assertions: ${JSON.stringify(failed)}`);
 }
 
 // The good wiring carries milestone-due, so the p14 cases read it (see MS_JOB above PS_GOOD).
