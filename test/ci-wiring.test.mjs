@@ -105,6 +105,21 @@
 //   s8  the rollup and ci-done each need the docs job.
 // A new check in the suite job goes into one shard and into SUITE_WORK in the same commit.
 //
+// The push skip (decision push-skip-on-proven-tree) is checked with these ids:
+//   p1   the job push-skip exists;
+//   p2   it calls the shared push-skip action, pinned by a 40-hex sha, not @stable or a tag;
+//   p3   it holds no copy: its steps are a checkout and that action, and it has no run: line;
+//   p4   its checkout and decide steps are guarded if: github.event_name == 'push';
+//   p5   its skip output reads the decide step's skip output;
+//   p6   scope needs push-skip;
+//   p7   scope's job-level if: keeps the draft guard and skips on push-skip's skip output;
+//   p8   scope's job-level if: keeps !cancelled();
+//   p9   scope's script tests no push event for a skip (a shell comment line does not count);
+//   p10  all-jobs-passed needs push-skip;
+//   p11  all-jobs-passed passes scope-skips: one JSON object naming needed jobs and scope flags;
+//   p12  each suite job (the rollup's needs, less scope and push-skip) needs push-skip, gates its
+//        job-level if: on push-skip's skip output, and names no other event or output.
+//
 // No YAML library is in node_modules, and none may be added. The workflow is read as
 // text by indentation: jobs sit under jobs: at 2 spaces, job keys at 4, step keys at 8.
 // A # starts a comment only after a space and outside a quoted scalar. A quote starts a
@@ -434,6 +449,190 @@ function workflowChecks(text) {
     isMap(screens) && needsOf(screens).includes("scope") && !screensIf.includes(".outputs."),
     `needs: ${JSON.stringify(needsOf(screens))}; if: ${JSON.stringify(screensIf)}`
   );
+  return out;
+}
+
+// ---- The push skip: assertions p1 to p12 (decision push-skip-on-proven-tree) ----
+// The push-skip job asks the shared action whether a push's tree is already proven. scope and every
+// suite job read its skip output, and all-jobs-passed names scope flags in scope-skips. Each result
+// names one cause. A missing job fails each result that reads it, by that result's own cause.
+const PUSH_SKIP = "push-skip";
+const PUSH_SKIP_ACTION = ACTIONS + PUSH_SKIP;
+const PUSH_SKIP_PIN = /^shivinate7\/claude-settings\/actions\/push-skip@[0-9a-f]{40}$/;
+const PUSH_ONLY = "github.event_name=='push'";
+const SKIP_GATE = "needs.push-skip.outputs.skip!='true'";
+const SCOPE_JOB = "scope";
+// The event test a skip would make. A shell comment line in a run: block is text, so it is dropped first.
+const EVENT_PUSH_TEST = /\$\{?EVENT\}?"?\s*={1,2}\s*push\b/;
+const stepIf = (s) => (isMap(s) && s.if != null ? normIf(String(s.if)) : "");
+const callsShared = (s) => isMap(s) && typeof s.uses === "string" && s.uses.startsWith(PUSH_SKIP_ACTION + "@");
+const isCheckout = (s) => isMap(s) && typeof s.uses === "string" && s.uses.startsWith(CHECKOUT_ACTION);
+// The scope flags a job may name: the keys of scope's outputs.
+const flagsOf = (job) => (isMap(job?.outputs) ? Object.keys(job.outputs) : []);
+
+// scope-skips is one JSON object {job: [scope flag, ...]}. Returns the first cause it breaks, or "".
+function scopeSkipsProblem(raw, needed, flags) {
+  if (typeof raw !== "string" || raw.trim() === "") return "scope-skips is empty or absent";
+  let map;
+  try {
+    map = JSON.parse(raw);
+  } catch {
+    return "scope-skips is not JSON";
+  }
+  if (!isMap(map)) return "scope-skips is not one JSON object";
+  const names = Object.keys(map);
+  if (names.length === 0) return "scope-skips names no job";
+  for (const name of names) {
+    if (!needed.includes(name)) return `scope-skips names ${name}, which ${ROLLUP} does not need`;
+    const list = map[name];
+    if (!Array.isArray(list) || list.length === 0 || !list.every((f) => typeof f === "string"))
+      return `scope-skips for ${name} is not a non-empty list of flags`;
+    const unknown = list.find((f) => !flags.includes(f));
+    if (unknown !== undefined) return `scope-skips names flag ${unknown}, which ${SCOPE_JOB} does not output`;
+  }
+  return "";
+}
+
+// Assertions p1 to p12 on the workflow text. A result's detail is "" when it passes.
+function pushSkipChecks(text) {
+  const out = [];
+  const add = (id, what, problem) => out.push({ id, label: `${id} ${what}`, ok: problem === "", detail: problem });
+  if (text === null) {
+    add("p1", `job ${PUSH_SKIP} exists`, "no readable workflow file");
+    return out;
+  }
+  let doc;
+  try {
+    doc = parseWorkflow(text);
+  } catch (e) {
+    add("p1", `job ${PUSH_SKIP} exists`, `workflow does not parse: ${e.message}`);
+    return out;
+  }
+  const jobs = isMap(doc.jobs) ? doc.jobs : {};
+  const job = isMap(jobs[PUSH_SKIP]) ? jobs[PUSH_SKIP] : undefined;
+  const scope = isMap(jobs[SCOPE_JOB]) ? jobs[SCOPE_JOB] : undefined;
+  const roll = isMap(jobs[ROLLUP]) ? jobs[ROLLUP] : undefined;
+  const all = steps(job);
+  const caller = all.filter(callsShared);
+  const decider = caller[0];
+  const checkout = all.find(isCheckout);
+  const suites = needsOf(roll).filter((id) => id !== SCOPE_JOB && id !== PUSH_SKIP);
+  const scopeIf = normIf(ifText(scope));
+  const skipOut = isMap(job?.outputs) ? String(job.outputs.skip ?? "").replace(/\s+/g, "") : "";
+
+  add("p1", `job ${PUSH_SKIP} exists`, job === undefined ? `no ${PUSH_SKIP} job` : "");
+
+  // p2 to p5 name their own claim when the job is absent, so an absent job reads as a failed claim.
+  const pin =
+    decider === undefined
+      ? `${PUSH_SKIP} has no step that calls the shared action`
+      : PUSH_SKIP_PIN.test(decider.uses)
+        ? ""
+        : `uses is ${JSON.stringify(decider.uses)}`;
+  add("p2", `${PUSH_SKIP} calls ${PUSH_SKIP_ACTION} pinned by a 40-hex sha`, pin);
+
+  const copy =
+    runsOf(job).length > 0
+      ? "it has a run: line"
+      : all.some((s) => !isCheckout(s) && !callsShared(s))
+        ? "it has a step that is neither the checkout nor the shared action"
+        : caller.length !== 1
+          ? `${caller.length} steps call the shared action`
+          : "";
+  add("p3", `${PUSH_SKIP} holds no copy: its steps are the checkout and the shared action`, copy);
+
+  const guard =
+    stepIf(checkout) !== PUSH_ONLY
+      ? "the checkout step is missing or not guarded"
+      : stepIf(decider) !== PUSH_ONLY
+        ? "the decide step is missing or not guarded"
+        : "";
+  add("p4", `the checkout and decide steps of ${PUSH_SKIP} are guarded if: github.event_name == 'push'`, guard);
+
+  const readsDecide =
+    decider !== undefined && decider.id !== undefined && skipOut === "${{steps." + decider.id + ".outputs.skip}}";
+  add(
+    "p5",
+    `${PUSH_SKIP} has a skip output that reads the decide step's skip output`,
+    readsDecide ? "" : "its skip output does not read the decide step"
+  );
+
+  add(
+    "p6",
+    `${SCOPE_JOB} needs ${PUSH_SKIP}`,
+    scope === undefined
+      ? `no ${SCOPE_JOB} job`
+      : needsOf(scope).includes(PUSH_SKIP)
+        ? ""
+        : `needs: ${JSON.stringify(needsOf(scope))}`
+  );
+
+  add(
+    "p7",
+    `${SCOPE_JOB} job-level if: keeps ${DRAFT_GUARD} and skips on the ${PUSH_SKIP} skip output`,
+    scope === undefined
+      ? `no ${SCOPE_JOB} job`
+      : !scopeIf.includes(DRAFT_GUARD)
+        ? "its job-level if: lacks the draft guard"
+        : !scopeIf.includes(SKIP_GATE)
+          ? `its job-level if: lacks ${SKIP_GATE}`
+          : ""
+  );
+
+  add(
+    "p8",
+    `${SCOPE_JOB} job-level if: keeps !cancelled()`,
+    scope === undefined ? `no ${SCOPE_JOB} job` : scopeIf.includes("!cancelled()") ? "" : "its job-level if: lacks !cancelled()"
+  );
+
+  const pushTests = runsOf(scope)
+    .join("\n")
+    .split("\n")
+    .filter((l) => !l.trim().startsWith("#") && EVENT_PUSH_TEST.test(l));
+  add(
+    "p9",
+    `${SCOPE_JOB} script tests no push event for a skip`,
+    scope === undefined
+      ? `no ${SCOPE_JOB} job`
+      : pushTests.length > 0
+        ? `the script still tests the event for push: ${pushTests[0].trim()}`
+        : ""
+  );
+
+  add(
+    "p10",
+    `${ROLLUP} needs ${PUSH_SKIP}`,
+    roll === undefined
+      ? `no ${ROLLUP} job`
+      : needsOf(roll).includes(PUSH_SKIP)
+        ? ""
+        : `needs: ${JSON.stringify(needsOf(roll))}`
+  );
+
+  const rollStep = steps(roll).find((s) => typeof s.uses === "string" && s.uses.startsWith(ACTIONS + ROLLUP + "@"));
+  const rawSkips = isMap(rollStep?.with) ? rollStep.with["scope-skips"] : undefined;
+  add(
+    "p11",
+    `${ROLLUP} passes scope-skips: one JSON object naming needed jobs and ${SCOPE_JOB} flags`,
+    roll === undefined ? `no ${ROLLUP} job` : scopeSkipsProblem(rawSkips, needsOf(roll), flagsOf(scope))
+  );
+
+  if (suites.length === 0)
+    add("p12", `${ROLLUP} needs at least one suite job`, `${ROLLUP} needs no job but ${SCOPE_JOB} and ${PUSH_SKIP}`);
+  for (const id of suites) {
+    const j = jobs[id];
+    const cond = normIf(ifText(j));
+    const problem = !isMap(j)
+      ? "no such job"
+      : !needsOf(j).includes(PUSH_SKIP)
+        ? `it does not need ${PUSH_SKIP}`
+        : !cond.includes(SKIP_GATE)
+          ? `its job-level if: lacks ${SKIP_GATE}`
+          : /github\.event_name|\.outputs\./.test(cond.replace(SKIP_GATE, ""))
+            ? "its job-level if: names an event or another output"
+            : "";
+    add("p12", `suite job ${id} needs ${PUSH_SKIP} and skips only on its skip output`, problem);
+  }
   return out;
 }
 
@@ -1285,6 +1484,7 @@ const WORKFLOW_TEXT = readOrNull(WORKFLOW);
   if (wf === null) expect(`cannot read ${WORKFLOW}`, false);
   if (st === null) expect(`cannot read ${STAMP}`, false);
   for (const r of checkAll(wf, st)) expect(r.label, r.ok, r.detail);
+  for (const r of pushSkipChecks(wf)) expect(r.label, r.ok, r.detail);
   expect(`3c checks.yml has one ste-lint uses: at @${ACTION_PIN}`, steLintAtStable(wf), `ste-lint refs: ${JSON.stringify(steLintRefsIn(wf))}`);
   for (const r of alarmChecks(al, wf)) expect(r.label, r.ok, r.detail);
 }
@@ -4065,6 +4265,152 @@ for (const [name, text, id] of DOCS_RED) {
   expect(`fixture red: ${name} fails assertion ${id}`, JSON.stringify(failed) === JSON.stringify([id]), `failed assertions: ${JSON.stringify(failed)}`);
 }
 for (const r of docsJobChecks(DOCS_GOOD)) expect(`fixture good: ${r.label}`, r.ok, r.detail);
+
+// Fixtures for p1 to p12. PS_GOOD is the wiring those cases describe, with a shell comment that
+// names the push test as a control for p9. Each red edit breaks one case, which must fail by its id.
+// Built from arrays, so the ${{ }} expressions are text and never JS interpolation.
+const PS_SHA = "e".repeat(40);
+const PS_GOOD = [
+  "name: test",
+  "jobs:",
+  "  push-skip:",
+  "    if: ${{ !github.event.pull_request.draft }}",
+  "    runs-on: ubuntu-latest",
+  "    timeout-minutes: 5",
+  "    permissions:",
+  "      contents: read",
+  "      pull-requests: read",
+  "      checks: read",
+  "      actions: read",
+  "    outputs:",
+  "      skip: ${{ steps.decide.outputs.skip }}",
+  "    steps:",
+  "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+  "        if: ${{ github.event_name == 'push' }}",
+  "        with:",
+  "          persist-credentials: false",
+  "      - name: Decide whether the push can skip",
+  "        id: decide",
+  "        if: ${{ github.event_name == 'push' }}",
+  `        uses: ${PUSH_SKIP_ACTION}@${PS_SHA} # <version>`,
+  "        env:",
+  "          GH_TOKEN: ${{ github.token }}",
+  "          EVENT: ${{ github.event_name }}",
+  "  scope:",
+  "    needs: [push-skip]",
+  "    if: ${{ !cancelled() && !github.event.pull_request.draft && needs.push-skip.outputs.skip != 'true' }}",
+  "    runs-on: ubuntu-latest",
+  "    outputs:",
+  "      screens: ${{ steps.d.outputs.screens }}",
+  "    steps:",
+  "      - id: d",
+  "        run: |",
+  "          # EVENT = push is only a comment here",
+  "          screens=true",
+  "          echo \"screens=$screens\" >> \"$GITHUB_OUTPUT\"",
+  "  suite:",
+  "    needs: [push-skip]",
+  "    if: ${{ needs.push-skip.outputs.skip != 'true' && !github.event.pull_request.draft }}",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - run: npm test",
+  "  docs:",
+  "    needs: [suite, push-skip]",
+  "    if: ${{ needs.push-skip.outputs.skip != 'true' && !github.event.pull_request.draft }}",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - run: npm run check:docs --silent",
+  "  screens:",
+  "    needs: [scope, push-skip]",
+  "    if: ${{ needs.push-skip.outputs.skip != 'true' && !github.event.pull_request.draft }}",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - run: npm run check:screens",
+  "  all-jobs-passed:",
+  "    needs: [push-skip, scope, suite, docs, screens]",
+  "    if: ${{ always() && !github.event.pull_request.draft }}",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  `      - uses: ${ACTIONS}${ROLLUP}@${ACTION_PIN} # tracks claude-settings stable`,
+  "        with:",
+  "          needs: ${{ toJSON(needs) }}",
+  "          scope-skips: '{\"screens\":[\"screens\"]}'",
+].join("\n") + "\n";
+{
+  const bad = pushSkipChecks(PS_GOOD).filter((r) => !r.ok);
+  expect(
+    "fixture good: every push-skip case passes, with a shell comment that names the push test",
+    bad.length === 0,
+    bad.map((r) => `${r.label} (${r.detail})`).join("; ")
+  );
+}
+const PS_RED = [
+  ["the push-skip job is missing", mutate(PS_GOOD, "  push-skip:\n", "  not-push-skip:\n"), "p1"],
+  ["the pin is @stable", mutate(PS_GOOD, `push-skip@${PS_SHA}`, "push-skip@stable"), "p2"],
+  ["the pin is a tag", mutate(PS_GOOD, `push-skip@${PS_SHA}`, "push-skip@v1.4.0"), "p2"],
+  [
+    "the job runs a copy as a run line",
+    mutate(PS_GOOD, "      - name: Decide whether the push can skip\n", "      - run: python3 push-skip.py\n      - name: Decide whether the push can skip\n"),
+    "p3",
+  ],
+  [
+    "the decide step has no push-only if",
+    mutate(PS_GOOD, "        id: decide\n        if: ${{ github.event_name == 'push' }}\n", "        id: decide\n"),
+    "p4",
+  ],
+  [
+    "the checkout step has no push-only if",
+    mutate(
+      PS_GOOD,
+      "        if: ${{ github.event_name == 'push' }}\n        with:\n          persist-credentials: false\n      - name: Decide",
+      "        with:\n          persist-credentials: false\n      - name: Decide"
+    ),
+    "p4",
+  ],
+  ["the skip output reads another step", mutate(PS_GOOD, "      skip: ${{ steps.decide.outputs.skip }}\n", "      skip: ${{ steps.other.outputs.skip }}\n"), "p5"],
+  ["scope does not need push-skip", mutate(PS_GOOD, "  scope:\n    needs: [push-skip]\n", "  scope:\n    needs: []\n"), "p6"],
+  ["scope's if drops the draft guard", mutate(PS_GOOD, "!cancelled() && !github.event.pull_request.draft && needs", "!cancelled() && needs"), "p7"],
+  [
+    "scope's if drops the skip gate",
+    mutate(PS_GOOD, "!github.event.pull_request.draft && needs.push-skip.outputs.skip != 'true' }}", "!github.event.pull_request.draft }}"),
+    "p7",
+  ],
+  ["scope's if drops !cancelled()", mutate(PS_GOOD, "!cancelled() && !github.event.pull_request.draft", "!github.event.pull_request.draft"), "p8"],
+  [
+    "scope's script tests the push event",
+    mutate(PS_GOOD, "          screens=true\n", "          if [ \"$EVENT\" = push ]; then screens=false; fi\n          screens=true\n"),
+    "p9",
+  ],
+  [
+    "the rollup does not need push-skip",
+    mutate(PS_GOOD, "    needs: [push-skip, scope, suite, docs, screens]", "    needs: [scope, suite, docs, screens]"),
+    "p10",
+  ],
+  ["scope-skips is absent", mutate(PS_GOOD, "          scope-skips: '{\"screens\":[\"screens\"]}'\n", ""), "p11"],
+  ["scope-skips names a job the rollup does not need", mutate(PS_GOOD, '{"screens":["screens"]}', '{"ghost":["screens"]}'), "p11"],
+  ["scope-skips names a flag scope does not output", mutate(PS_GOOD, '{"screens":["screens"]}', '{"screens":["mac"]}'), "p11"],
+  ["scope-skips is not JSON", mutate(PS_GOOD, '{"screens":["screens"]}', "{screens:"), "p11"],
+  ["suite does not need push-skip", mutate(PS_GOOD, "  suite:\n    needs: [push-skip]\n", "  suite:\n    needs: []\n"), "p12"],
+  [
+    "suite's if has no skip gate",
+    mutate(PS_GOOD, "  suite:\n    needs: [push-skip]\n    if: ${{ needs.push-skip.outputs.skip != 'true' && ", "  suite:\n    needs: [push-skip]\n    if: ${{ "),
+    "p12",
+  ],
+  [
+    "suite's if names the event",
+    mutate(
+      PS_GOOD,
+      "  suite:\n    needs: [push-skip]\n    if: ${{ needs.push-skip.outputs.skip != 'true' && ",
+      "  suite:\n    needs: [push-skip]\n    if: ${{ github.event_name != 'pull_request' && needs.push-skip.outputs.skip != 'true' && "
+    ),
+    "p12",
+  ],
+  ["the rollup names no suite job", mutate(PS_GOOD, "    needs: [push-skip, scope, suite, docs, screens]", "    needs: [push-skip, scope]"), "p12"],
+];
+for (const [name, text, id] of PS_RED) {
+  const failed = pushSkipChecks(text).filter((r) => !r.ok).map((r) => r.id);
+  expect(`fixture red: ${name} fails assertion ${id}`, failed.includes(id), `failed assertions: ${JSON.stringify(failed)}`);
+}
 
 // The real files: checks.yml's suite and docs jobs, package.json, test/app-parts.mjs.
 {
