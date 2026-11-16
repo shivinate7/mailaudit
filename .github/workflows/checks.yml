@@ -83,7 +83,7 @@ jobs:
       - name: Decide whether the push can skip
         id: decide
         if: ${{ github.event_name == 'push' }}
-        uses: shivinate7/claude-settings/actions/push-skip@183ede0dd99216f3091cc7563034fa9921814419 # stable at 2026-11-15
+        uses: shivinate7/claude-settings/actions/push-skip@stable # tracks claude-settings stable
         env:
           GH_TOKEN: ${{ github.token }}
           REPO: ${{ github.repository }}
