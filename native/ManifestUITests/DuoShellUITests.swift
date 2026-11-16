@@ -184,9 +184,9 @@ final class DuoShellUITests: XCTestCase {
         return last
     }
 
-    /// One drag up the right page, from 40 pt above listBottom to 15 % of the window's height. On the open Duo listBottom is the
-    /// top of the Find pill, which floats above the custom bar. The old start at 80 % of the height fell on that pill and moved
-    /// nothing. The drag holds before it lifts, so it has no fling (as reveal(_:whole:) does).
+    /// One drag up the right page, from 40 pt above listBottom to 15 % of the window's height. On the open Duo listBottom is
+    /// 8 pt above the top of the Find pill (findPillBandTop), which floats above the custom bar. The old start at 80 % of the
+    /// height fell on that pill and moved nothing. The drag holds before it lifts, so it has no fling (as reveal(_:whole:) does).
     func dragListUp(_ app: XCUIApplication) {
         let window = app.window.frame
         app.dragUp(from: app.listBottom - 40, to: window.minY + 0.15 * window.height, x: window.minX + 0.75 * window.width)
