@@ -1,0 +1,53 @@
+{
+  "added": "2026-11-15T19:38:00Z",
+  "closed": "2026-11-15T19:39:00Z",
+  "context": "Measured 13:29 CST (coordinator): 472 stored lines have the older \" - \" style and the file now uses \", \". 13 product names split in Tally because the 59 new lines use the new style.\nAnswered in chat, 13:38 CST, by the owner (relayed by the coordinator): \"I agree\" to the coordinator's recommendation: yes. It is its own change, after item 89's change. It is cosmetic, names only, and leaves check-ins untouched.",
+  "home": "reimport-name-style",
+  "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-15T19:38:00Z",
+    "choice": "a",
+    "note": "Owner in chat, 13:38 CST (relayed by the coordinator): \"I agree\". Yes, as its own change after item 89's change; cosmetic, names only, check-ins untouched."
+  },
+  "n": 90,
+  "options": [
+    {
+      "gain": "Tally pools each product under one name again.",
+      "how": "A separate change, after item 89's, renames the product name on stored lines to the ', ' style. Names only; check-ins untouched.",
+      "id": "rename-old-names",
+      "key": "a",
+      "label": "Yes, rename the older names to the new style",
+      "lose": "A separate change to build, review and run."
+    },
+    {
+      "gain": "No change.",
+      "how": "No rename.",
+      "id": "leave-split-names",
+      "key": "b",
+      "label": "No, leave the names as stored",
+      "lose": "13 product names stay split in Tally."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "step reimport-name-style (the lane task that renames old product names); item 89 reimport-changed-lines (the re-import change it follows)",
+  "replied": "2026-11-15T19:39:00Z",
+  "reply": "Answered yes at 13:38 CST. Filed as the step reimport-name-style; the coordinator starts the lane.",
+  "repo": "shivinate7/mailaudit",
+  "short": "Product names to new style",
+  "shown": [
+    {
+      "id": "rename-old-names",
+      "key": "a",
+      "label": "Yes, rename the older names to the new style"
+    },
+    {
+      "id": "leave-split-names",
+      "key": "b",
+      "label": "No, leave the names as stored"
+    }
+  ],
+  "status": "closed",
+  "title": "Rename the 472 stored lines with the older ' - ' product names to the new ', ' style so Tally pools them?",
+  "why": "The coordinator recommended it and the owner agreed."
+}

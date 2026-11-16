@@ -1,0 +1,53 @@
+{
+  "added": "2026-11-15T19:10:00Z",
+  "closed": "2026-11-15T19:14:00Z",
+  "context": "Goal: mailaudit's Mac test jobs run without blocking or being blocked by the other repos' Mac jobs.\nProblem (goal): the Mac-sharing agreement (07:47 CST 11-09) has mailaudit tell four named sessions when its Mac jobs queue and start, and all four are now archived.\nBased on (read): list_sessions on 2026-11-15 shows the home, degen and claude-settings sessions from the agreement archived.\nDeparts from: main, where mailaudit tells four named sessions \u2014 changes to telling whichever coordinators run now, or nobody.\nMeanwhile: the mailaudit coordinator runs one Mac job at a time and tells nobody.",
+  "home": "docs/debts/notes.md (process-only ruling, records PR)",
+  "id": "mac-share-partners",
+  "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-15T19:09:00Z",
+    "note": "Owner in chat, 13:09 CST: run Mac jobs as needed and pay no mind to other coordinators."
+  },
+  "n": 88,
+  "options": [
+    {
+      "gain": "No messages to keep up; mailaudit work keeps moving.",
+      "how": "Mailaudit queues its own Mac jobs, one at a time, and sends no notices.",
+      "id": "tell-nobody",
+      "key": "a",
+      "label": "Tell nobody; one mailaudit Mac job at a time",
+      "lose": "Another repo's Mac job may wait behind mailaudit without warning."
+    },
+    {
+      "gain": "The repos keep sharing the Mac fairly.",
+      "how": "You name the running coordinators; mailaudit tells them when its Mac jobs queue and start.",
+      "id": "tell-named",
+      "key": "b",
+      "label": "Tell the coordinators you name",
+      "lose": "You name the sessions, and each notice costs a little usage."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "pick": "a",
+  "ref": "Mac-sharing agreement among coordinators (07:47 CST 2026-11-09); step cloud-lane-cut (cloud lanes)",
+  "replied": "2026-11-15T19:26:00Z",
+  "reply": "Filed as a process-only ruling in docs/debts/notes.md (PR 333): mailaudit runs its Mac jobs as needed and pays no mind to other coordinators. The 2026-11-09 Mac-sharing agreement is retired. Main had no record of it, so a notes line is the home.",
+  "repo": "shivinate7/mailaudit",
+  "short": "Who shares the Mac now",
+  "shown": [
+    {
+      "id": "tell-nobody",
+      "key": "a",
+      "label": "Tell nobody; one mailaudit Mac job at a time"
+    },
+    {
+      "id": "tell-named",
+      "key": "b",
+      "label": "Tell the coordinators you name"
+    }
+  ],
+  "status": "closed",
+  "title": "The Mac-sharing agreement names home, degen and claude-settings sessions that are now archived. Who shares the Mac now?",
+  "why": "Only mailaudit appears to be running now, so the notices have no reader."
+}

@@ -1,0 +1,54 @@
+{
+  "added": "2026-11-15T19:21:00Z",
+  "closed": "2026-11-15T19:39:00Z",
+  "context": "Goal: re-importing an updated CSV keeps your received marks and leaves the order data right.\nProblem (rule): the invariant record imports-merge-never-replace says a re-import \"adds or refreshes entries by key\", but the code (src/merge-rules.mjs, mergeItems, line 48) only adds new keys and keeps an existing line as is. A tracked line never moves to canceled on re-import, so a canceled order stays in your counts and may raise lost-mail flags. Your word decides which is right.\nBased on (read): invariants/imports-merge-never-replace.md (\"adds or refreshes entries by key\"); src/merge-rules.mjs:48 and src/app.jsx:3908 (the base copy wins a key collision).\nBased on (read): docs/decisions/orderwand-csv.md line 18 (a cancellation is Shipping Status = canceled, held in the item's tracking field; the key is order id, item number and product id, with no status); decision canceled-orders-leave-the-list (a canceled line leaves the list). The CSV record names no refund field, and the app's refunded stamp is your own mark.\nBased on (measured): a dry run of the 2026-11-15 CSV against the live ledger shows 514 stored lines whose tracking differs from the file (coordinator, 2026-11-15 13:24 CST). Nobody knows whether the export shows refunds at all.\nDeparts from: main, where a changed line is ignored on re-import \u2014 option b updates the tracking field of a tracked line.\nMeanwhile: lane reimport-received-pin builds the test that received marks survive a re-import. It holds only the wording change.",
+  "home": "reimport-received-pin",
+  "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-15T19:38:00Z",
+    "choice": "b",
+    "note": "Owner in chat, 13:38 CST (relayed by the coordinator): option b, refresh only the tracking field on a stored line whose key is already stored; never touch received marks or any other field."
+  },
+  "n": 89,
+  "options": [
+    {
+      "gain": "No app change, and a line on screen never shifts.",
+      "how": "The record is reworded to say a re-import only adds new lines and keeps existing ones as they are.",
+      "id": "tell-keep-code",
+      "key": "a",
+      "label": "Keep the code, fix the record",
+      "lose": "A changed line in a newer CSV never updates, so a canceled order stays in your counts and may raise lost-mail flags."
+    },
+    {
+      "gain": "A cancellation in a newer CSV reaches the app, and the canceled order leaves your counts and lost-mail flags.",
+      "how": "On a re-import, a tracked line gets its tracking value updated from the newer CSV. Received marks and every other field stay as they are.",
+      "id": "refresh-changed-lines",
+      "key": "b",
+      "label": "Refresh changed lines on re-import",
+      "lose": "An app change (builder, reviewer, Mac run), and a price or quantity change in a newer CSV still does not update.",
+      "note": "Now means: narrowed. A re-import updates only the tracking field on a tracked line, so a cancellation moves it to the canceled section. It never touches received marks or any other field."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "b",
+  "ref": "invariant imports-merge-never-replace (a re-import keeps every item and adds or refreshes entries by key); step reimport-received-pin (the lane that tests received marks survive a re-import); src/merge-rules.mjs mergeItems (the merge the CSV import calls)",
+  "replied": "2026-11-15T19:39:00Z",
+  "reply": "Answered b at 13:38 CST in chat: a re-import refreshes only the tracking field on a stored line, and never touches received marks or any other field. Home is lane reimport-received-pin; the coordinator routes it.",
+  "repo": "shivinate7/mailaudit",
+  "short": "Re-import changed lines",
+  "shown": [
+    {
+      "id": "tell-keep-code",
+      "key": "a",
+      "label": "Keep the code, fix the record"
+    },
+    {
+      "id": "refresh-changed-lines",
+      "key": "b",
+      "label": "Refresh changed lines on re-import"
+    }
+  ],
+  "status": "closed",
+  "title": "When you re-import a newer CSV, should a changed order line, such as a cancellation in a newer CSV, update or stay as first imported?",
+  "why": "514 stored lines differ from the newest CSV in tracking alone, so the cost is real today. Updating only the tracking field on a stored line fixes that without touching received marks or any other field."
+}

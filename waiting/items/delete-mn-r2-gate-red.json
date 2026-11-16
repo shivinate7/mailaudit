@@ -1,5 +1,6 @@
 {
   "added": "2026-11-09T05:15:00Z",
+  "closed": "2026-11-15T19:14:00Z",
   "command": {
     "mac": "gh auth switch -u shivinate7\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/wip/mn-r2-gate-red\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/mutant/photo-fetch-order\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/lane/duo-ci-path-next\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/probe/orphaned-audit\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/probe/pro-ui-main-reds",
     "powershell": "gh auth switch -u shivinate7\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/wip/mn-r2-gate-red\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/mutant/photo-fetch-order\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/lane/duo-ci-path-next\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/probe/orphaned-audit\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/probe/pro-ui-main-reds"
@@ -8,6 +9,11 @@
   "home": "PR 270",
   "id": "delete-mn-r2-gate-red",
   "kind": "task",
+  "lastAnswer": {
+    "at": "2026-11-15T19:10:00Z",
+    "done": true,
+    "note": "Done: all five branches deleted from origin (ls-remote, 13:10 CST)."
+  },
   "links": [
     {
       "label": "Branches on GitHub",
@@ -19,9 +25,11 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "port": false,
   "ref": "branch wip/mn-r2-gate-red (lane merge-notice-r2's red-gate branch); branch mutant/photo-fetch-order (PR 266, the mutant proof for PR 263, closed unmerged); branch lane/duo-ci-path-next (lane duo-ci-path, merged in PR 270); branch probe/orphaned-audit (probe PR 281, closed unmerged); branch probe/pro-ui-main-reds (lane pro-ui-main-reds probe, all on main)",
+  "replied": "2026-11-15T19:14:00Z",
+  "reply": "Checked with ls-remote at 13:14 CST: the five branches are gone from origin, and their four archive/ copies remain. Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Delete 5 branches",
-  "status": "open",
+  "status": "closed",
   "steps": [
     "Paste the command below in a terminal.",
     "Press Mark done."

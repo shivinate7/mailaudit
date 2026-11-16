@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-16T12:36:20Z",
+  "context": "Goal: PR 238 (restyle step 8) lands with every contrast audit passing on the phone.\nProblem (rule): the Find pill floats over the list and covers row text, so the contrast audit fails on \"Test Set \u00b7 Near Mint\" (frame 73,723,102,14) and, in 12 tests, on the editor Save button and the stepper plus button, and only your word can change the pill's place or skip the audit on its frame.\nBased on (measured): the phone UI run 43848366093 on the latest commit of PR 238, read test by test by lane restyle-step8.\nBased on (read): the designer's spec for the band, kept with the lane's notes.\nDeparts from: FindPill.swift:3, where the pill floats over the list on the phone \u2014 option a ends the phone list above the pill with a paper band and a 1pt rule, so about 8pt of rows go at rest, and at the largest text size about 6 package lines or 4 Tally rows stay in view (estimates; the design reviewer measures them). The web keeps its floating pill.\nMeanwhile: the lane builds option a and keeps PR 238 a draft, and nothing merges before your word.",
+  "holds": "PR 238 does not merge until you answer.",
+  "home": "PR 238 (restyle step 8) and lane restyle-step8; decision phone-nav-is-bottom-bar",
+  "kind": "decision",
+  "n": 95,
+  "options": [
+    {
+      "gain": "Every contrast audit passes with no skip, and no row text sits under the pill.",
+      "how": "On the phone, the list ends above the Find pill. A paper band with a 1pt rule sits under the last row, so the pill no longer floats over rows. No audit skip is added.",
+      "id": "accept-band",
+      "key": "a",
+      "label": "End the list above the pill with a paper band",
+      "lose": "About 8pt of rows go at rest, and at the largest text size only about 6 package lines or 4 Tally rows stay in view. It also changes the phone's bottom-bar ruling."
+    },
+    {
+      "gain": "No change to how the list looks, and no rows are lost.",
+      "how": "The pill keeps floating over the list. The phone audit skips the contrast check on the pill's frame, named, and every other check stays on. Decision audit-skips-measured-flags allows only skips you name, so this is a new named skip that only your answer can add.",
+      "id": "skip-pill-audit",
+      "key": "b",
+      "label": "Skip the contrast audit on the pill's frame",
+      "lose": "The audit stops checking contrast under the pill, so row text under it can go unread, and the red tests stay unfixed apart from the skip."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "PR 238 (the restyle step 8 pull request); lane restyle-step8 (the lane that builds it); FindPill.swift line 3 (the Find pill floats over the list); decision phone-nav-is-bottom-bar (the phone's navigation is a bottom bar); run 43848366093 (the phone UI run that shows the reds)",
+  "repo": "shivinate7/mailaudit",
+  "short": "Find pill: end list above it",
+  "shown": [
+    {
+      "id": "accept-band",
+      "key": "a",
+      "label": "End the list above the pill with a paper band"
+    },
+    {
+      "id": "skip-pill-audit",
+      "key": "b",
+      "label": "Skip the contrast audit on the pill's frame"
+    }
+  ],
+  "status": "open",
+  "title": "The phone's Find pill floats over the list and fails the contrast audit. End the list above the pill, or skip the audit on it?",
+  "why": "A band fixes the cause, a pill that covers text, with no new blind spot in the audit, and it costs only about 8pt of rows."
+}

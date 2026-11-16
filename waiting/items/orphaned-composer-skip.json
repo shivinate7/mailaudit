@@ -9,22 +9,38 @@
     {
       "gain": "The Orphaned composer audit goes green, and the colours that measure clear stay as they are.",
       "how": "The composer audit skips only the contrast check, only on those two elements. The count first gets an id so the skip can name it. Every other check stays on.",
+      "id": "named-skips",
       "key": "a",
       "label": "Add named contrast skips for Save and the card count",
       "lose": "The audit stops checking contrast on two more elements."
     },
     {
       "gain": "No new blind spot in the audit.",
-      "how": "No skip. Both elements stay red under debt orphaned-composer-contrast until someone measures a change that makes the audit pass.",
+      "how": "No skip. Both elements stay red, listed as a known gap for these two elements, until someone measures a change that makes the audit pass.",
+      "id": "skip-nothing",
       "key": "b",
       "label": "Skip nothing: both stay red until a measured fix exists",
       "lose": "Main's iPhone UI audit stays red on these two elements, and no colour change is known to fix it, since both already measure clear."
     }
   ],
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "pick": "a",
   "ref": "decision audit-skips-measured-flags (audit skips only for measured false flags); debt orphaned-composer-contrast (the ready Orphaned composer fails contrast); debt tally-audit-contrast-flags (the audit flags pairs above 4.5:1); step pro-ui-main-reds (the iPhone UI test reds on main)",
   "repo": "shivinate7/mailaudit",
   "short": "Orphaned composer skips",
+  "shown": [
+    {
+      "id": "named-skips",
+      "key": "a",
+      "label": "Add named contrast skips for Save and the card count"
+    },
+    {
+      "id": "skip-nothing",
+      "key": "b",
+      "label": "Skip nothing: both stay red until a measured fix exists"
+    }
+  ],
   "status": "open",
-  "title": "The Orphaned composer's Save button and card count fail Apple's contrast audit, but their colours measure clear. Add two named skips?"
+  "title": "The Orphaned composer's Save button and card count fail Apple's contrast audit, but their colours measure clear. Add two named skips?",
+  "why": "Both elements measure clear (12.17:1 and 5.24:1), so the flags are false; two named contrast-only skips match how Cancel, Edit and Discard were handled on this form."
 }
