@@ -26,10 +26,10 @@ final class FindPillUITests: XCTestCase {
     /// The Packages tab, open, with its rows loaded. Scope first: the rows exist before any case reads them. The list is lazy,
     /// and D1 is the fourth card, below the fold, so it is not in the tree until the list scrolls near it. ScreenKit.mount
     /// does that scroll, as PackageCardUITests does for the same row. Every launch starts on Unreceived, and the seed has no
-    /// check-in, so all four packages are listed there.
-    func openPackages(_ app: XCUIApplication) throws {
+    /// check-in, so all four packages are listed there. `mounting` names the row to scroll to; D1 by default.
+    func openPackages(_ app: XCUIApplication, mounting row: String = "package-row:D1::Delta Cards") throws {
         app.tabBars.buttons["Packages"].tap()
-        XCTAssertTrue(ScreenKit.mount(app, "package-row:D1::Delta Cards"), "scope: the Packages rows are missing")
+        XCTAssertTrue(ScreenKit.mount(app, row), "scope: the Packages rows are missing")
     }
 
     /// Each seeded package, mounted in turn. A row count would read only the rows near the screen, so the lazy list is
@@ -148,7 +148,8 @@ final class FindPillUITests: XCTestCase {
     /// placeholder is the short "Find" (FindPill.promptText). Scope first: the pill and its field are drawn before either is read.
     func assertFindPillHoldsOneLine(size: String, oldHeight: CGFloat, _ what: String) throws {
         let app = ShellUITest.launch(width: 375, size: size)
-        try openPackages(app)
+        // At AX5 each card is taller than the screen, so a plain reveal never mounts D1. B1 is mounted at both sizes.
+        try openPackages(app, mounting: "package-row:B1::Beta Games")
         let pill = ShellUITest.element(app, "find-pill")
         XCTAssertTrue(pill.waitForExistence(timeout: 5), "scope: the find pill find-pill is missing \(what)")
         let field = ShellUITest.element(app, "find-field")
