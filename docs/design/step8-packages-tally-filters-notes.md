@@ -216,5 +216,11 @@ Run with skill `impeccable` (`critique`) on 2026-11-15. The launcher did not run
   - Fixed: the step 8 mockup's pill drew the web's shadow.
   - False alarm (detector): "cramped padding" on the tab bar capsule. Its labels sit centred in a 56 pt bar.
   - Not drawn: the focused pill's accent hairline. It is unchanged from the build.
+- Item 17, run on `step8-find-pill-room.html`, 2026-11-16. Design review alone: the target is native, so no detector and no snapshot. The launcher did not run, and no PRODUCT.md or DESIGN.md exists.
+  - Fixed: the Today frames reused the new captions ("List edge 719"). They now say the list runs under the pill.
+  - Fixed: the pick sat second. It now leads the page, the nav and the hide buttons.
+  - Fixed: the 8 pt gap's label was 9 pt. It is now 11 pt.
+  - Kept: the hard edge and the rule differ by 1 pt, so a frame scaled down to phone width shows them nearly alike. That is the true size.
+  - `check_ios_mockup.py`: the same one fault as before, `system-font` on Cochin (Frame).
 - Open, outside this folder: no UI test taps `package-clear` or `tally-clear` (item 4), and none checks the pill on the folded Duo (item 11).
 - Questions for the owner: keep Cochin in the mockup against the check (Frame), item 13, and item 15.

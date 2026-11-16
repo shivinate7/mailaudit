@@ -116,7 +116,7 @@ figcaption b { color:var(--ink); font-size:14px; }
 
 /* measurement ticks, page chrome: the gap between the list's edge and the pill */
 .tick { position:absolute; z-index:10; right:4px; width:28px; top:var(--edge); height:calc(var(--pt) - var(--edge)); border:1px dashed var(--new);
-  border-left:0; font:600 9px/1 -apple-system, system-ui, sans-serif; color:var(--new); display:grid; place-items:center end; padding-right:2px; }
+  border-left:0; font:600 11px/1 -apple-system, system-ui, sans-serif; color:var(--new); display:grid; place-items:center end; padding-right:2px; }
 .o-today .tick { display:none; }
 </style>
 </head>
@@ -126,14 +126,14 @@ figcaption b { color:var(--ink); font-size:14px; }
   <h1>Find pill room</h1>
   <p class="sub">Step 8, PR 238, notes item 17. The list ends where the Find pill begins, so no row sits under the pill at rest. Each option draws the list's bottom edge against the pill: the folded Duo, the open Duo, then the iPhone 18 Pro at normal size, AX3 and AX5, on Packages and Tally. Designer kind: informed.</p>
   <nav aria-label="States">
-    <a href="#">All</a><a href="#o=hard">Hard edge</a><a href="#o=rule">Hairline rule</a><a href="#o=fade">Short fade</a><a href="#o=today">Today</a>
+    <a href="#">All</a><a href="#o=rule">Hairline rule</a><a href="#o=hard">Hard edge</a><a href="#o=fade">Short fade</a><a href="#o=today">Today</a>
     <span class="sep"></span>
     <a href="#d=fold">Duo folded</a><a href="#d=duo">Duo open</a><a href="#d=pro">18 Pro</a><a href="#s=packages">Packages</a><a href="#s=tally">Tally</a>
     <a href="#x=normal">Normal size</a><a href="#x=ax3">AX3</a><a href="#x=ax5">AX5</a>
     <span class="sep"></span>
     <a href="#t=light" data-theme-link>Light</a><a href="#t=dark" data-theme-link>Dark</a>
-    <button type="button" data-hide="hard">Hide hard edge</button>
     <button type="button" data-hide="rule">Hide hairline rule</button>
+    <button type="button" data-hide="hard">Hide hard edge</button>
     <button type="button" data-hide="fade">Hide short fade</button>
     <button type="button" data-hide="today">Hide today</button>
   </nav>
@@ -178,6 +178,7 @@ const OPTS = [
     text:'As built: .safeAreaInset(edge: .bottom) leaves the scroll view at full height, so rows pass under the opaque pill at rest. Row text straddles the pill top (frame y 723 to 737, pill top 727, macOS run 43848366093).',
     fig:'Scroll view ends at the screen foot; content margin only at the list end.' },
 ];
+OPTS.sort((a, b) => b.pick - a.pick);  // the pick first; the rest keep their order
 // Geometry per device, in crop points (crop top = screen y shown). pt: pill top, ph: pill height.
 // 18 Pro: pill top 727 measured at normal size (run 43848366093), bottom 779, 12 pt above the bar at 791. AX3 51 pt and AX5 59 pt
 // one-line pills are the brief's figures (coordinator), drawn with the same bottom. Folded Duo: per the code, 8 pt above the bar at 595.
@@ -213,7 +214,8 @@ OPTS.forEach(o => {
   FRAMES.forEach(f => {
     const fig = document.createElement('figure'); fig.dataset.d = f.d; fig.dataset.s = f.s; fig.dataset.x = f.x;
     if (f.wide) fig.className = 'wide';
-    fig.innerHTML = `<figcaption><b>${f.caption.split('. ')[0]}.</b> ${f.caption.split('. ').slice(1).join('. ')}</figcaption>`;
+    const head = f.caption.split('. ')[0], rest = f.caption.split('. ').slice(1).join('. ');
+    fig.innerHTML = `<figcaption><b>${head}.</b> ${o.k === 'today' ? 'Today: the scroll view runs to the screen foot, and rows pass under the pill and the bar.' : rest}</figcaption>`;
     const fit = document.createElement('div'); fit.className = 'fit';
     const d = tpl(f.tpl).firstElementChild; d.classList.add('o-' + o.k); if (f.x !== 'normal') d.classList.add(f.x);
     const pt = f.pillTop - f.crop, edge = pt - GAP;
