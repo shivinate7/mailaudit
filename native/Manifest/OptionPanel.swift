@@ -16,8 +16,14 @@ struct OptionPanel<Extra: View>: View {
     let cells: [OptionCell]
     @ViewBuilder var extra: Extra
 
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// One column at an accessibility size, so a label that `lineLimit(1)` would cut (the web has no Dynamic Type) shows whole.
+    /// It follows the type size alone, never a tap, so no cell moves under the pointer.
+    private var cols: Int { typeSize.isAccessibilitySize ? 1 : columns }
+
     private var rows: [[OptionCell]] {
-        stride(from: 0, to: cells.count, by: columns).map { Array(cells[$0..<min($0 + columns, cells.count)]) }
+        stride(from: 0, to: cells.count, by: cols).map { Array(cells[$0..<min($0 + cols, cells.count)]) }
     }
 
     var body: some View {
@@ -27,7 +33,7 @@ struct OptionPanel<Extra: View>: View {
                     GridRow {
                         ForEach(Array(row.enumerated()), id: \.offset) { i, cell in
                             let last = i == row.count - 1
-                            button(cell).gridCellColumns(last ? columns - row.count + 1 : 1)
+                            button(cell).gridCellColumns(last ? cols - row.count + 1 : 1)
                         }
                     }
                 }
