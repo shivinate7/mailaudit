@@ -231,42 +231,98 @@ final class TallyUITests: XCTestCase {
 
     // MARK: the sort label
 
-    /// Each of the six labels shows whole at 375pt in the Sorted by grid. The grid lives on the Ledger tab's View
-    /// group (ledger-tab-holds-options), and it holds the Tally labels once Tally is the last list tab left, so the
-    /// case opens Tally first. The cell keeps to the frame, and the clipped-text audit finds nothing on it.
-    func testEverySortLabelFitsAt375pt() throws {
-        let app = launch(width: 375)
+    /// Opens Tally, then Ledger's Sorted by grid. Tally goes first so the grid lists the Tally labels. Returns the Sorted by row.
+    func openSortGrid(_ app: XCUIApplication) -> XCUIElement {
         openTally(app)
         app.tabBars.buttons["Ledger"].tap()
         let sort = element(app, "ledger-sort")
         XCTAssertTrue(sort.waitForExistence(timeout: 5), "the Sorted by row ledger-sort is missing on Ledger")
         sort.tap()
         XCTAssertTrue(element(app, "ledger-sort-grid").waitForExistence(timeout: 5), "Sorted by opened no option grid")
+        return sort
+    }
+
+    /// The Sorted by row's label and value as one string. The row shows the picked label.
+    func sortShown(_ sort: XCUIElement) -> String {
+        [sort.label, sort.value as? String ?? ""].joined(separator: " ")
+    }
+
+    /// Picks a label in the open grid, then checks the row shows it. A pick closes the grid (src/app.jsx setSortOpen(false)).
+    func pickSort(_ app: XCUIApplication, _ sort: XCUIElement, _ label: String) {
+        app.buttons[label].tap()
+        let shown = sortShown(sort)
+        XCTAssertTrue(shown.contains(label), "after choosing \(label), Sorted by reads \u{201C}\(shown)\u{201D}")
+    }
+
+    /// Opens the grid again after a pick closed it.
+    func reopenSortGrid(_ app: XCUIApplication, _ sort: XCUIElement, before label: String) {
+        sort.tap()
+        XCTAssertTrue(element(app, "ledger-sort-grid").waitForExistence(timeout: 5), "Sorted by did not reopen before \(label)")
+    }
+
+    /// The clipped-text audit for the issues that land on one sort cell, one AUDIT-FAIL line each (449e3f52).
+    func clippedSortCell(_ app: XCUIApplication, _ option: XCUIElement) throws -> [String] {
+        var clipped: [String] = []
+        try app.performAccessibilityAudit(for: .textClipped) { issue in
+            guard let frame = issue.element?.frame, frame.intersects(option.frame) else { return true }
+            let name = issue.element.map { $0.identifier.isEmpty ? $0.label : $0.identifier }
+            clipped.append(auditFailLine(type: issue.compactDescription, name: name, frame: frame))
+            return true  // an unnamed XCUI failure could end the test before the named assert below
+        }
+        return clipped
+    }
+
+    /// Each of the six labels shows whole at 375pt in the Sorted by grid. The grid lives on the Ledger tab's View
+    /// group (ledger-tab-holds-options), and it holds the Tally labels once Tally is the last list tab left, so the
+    /// case opens Tally first. The cell keeps to the frame, and the clipped-text audit finds nothing on it.
+    func testEverySortLabelFitsAt375pt() throws {
+        let app = launch(width: 375)
+        let sort = openSortGrid(app)
         let inset = (app.windows.firstMatch.frame.width - 375) / 2
 
         for (i, label) in Self.sortLabels.enumerated() {
-            if i > 0 {  // a pick closes the grid (src/app.jsx setSortOpen(false)), so open it again before the next cell
-                sort.tap()
-                XCTAssertTrue(element(app, "ledger-sort-grid").waitForExistence(timeout: 5), "Sorted by did not reopen before \(label)")
-            }
+            if i > 0 { reopenSortGrid(app, sort, before: label) }
             let option = app.buttons[label]
             XCTAssertTrue(option.waitForExistence(timeout: 5), "the Sorted by grid has no \(label) cell")
             XCTAssertGreaterThanOrEqual(option.frame.minX, inset - 1, "\(label): the cell starts outside the 375pt frame")
             XCTAssertLessThanOrEqual(option.frame.maxX, inset + 375 + 1, "\(label): the cell ends outside the 375pt frame")
 
-            var clipped: [String] = []
-            try app.performAccessibilityAudit(for: .textClipped) { issue in
-                guard let frame = issue.element?.frame, frame.intersects(option.frame) else { return true }
-                let name = issue.element.map { $0.identifier.isEmpty ? $0.label : $0.identifier }
-                clipped.append(auditFailLine(type: issue.compactDescription, name: name, frame: frame))
-                return true  // an unnamed XCUI failure could end the test before the named assert below
-            }
+            let clipped = try clippedSortCell(app, option)
             XCTAssertEqual(clipped, [], "\(label) is clipped at 375pt\n" + auditFailureText(clipped))
 
-            option.tap()
-            let shown = [sort.label, sort.value as? String ?? ""].joined(separator: " ")
-            XCTAssertTrue(shown.contains(label), "after choosing \(label), Sorted by reads \u{201C}\(shown)\u{201D}")
+            pickSort(app, sort, label)
         }
+    }
+
+    /// Probe: "Most missing" is audited while it is NOT picked. Cost basis is picked first, so the row shows another
+    /// label. Fails with the AUDIT-FAIL line when the audit flags the cell. A flag here, with the picked probe passing,
+    /// ties the flag to the picked state (step 8 sort-label notes, item 2).
+    func testProbeMostMissingUnpickedFitsAt375pt() throws {
+        let app = launch(width: 375)
+        let sort = openSortGrid(app)
+        pickSort(app, sort, "Cost basis")
+        reopenSortGrid(app, sort, before: "Most missing")
+        XCTAssertFalse(sortShown(sort).contains("Most missing"), "the row shows Most missing, so its cell is picked")
+        let option = app.buttons["Most missing"]
+        XCTAssertTrue(option.waitForExistence(timeout: 5), "the Sorted by grid has no Most missing cell")
+
+        let clipped = try clippedSortCell(app, option)
+        XCTAssertEqual(clipped, [], "Most missing (not picked) is clipped at 375pt\n" + auditFailureText(clipped))
+    }
+
+    /// Probe: "Most ordered" is audited while it IS picked. The row must show the pick before the audit runs.
+    /// Fails with the AUDIT-FAIL line when the audit flags the cell (notes item 2, as above).
+    func testProbeMostOrderedPickedFitsAt375pt() throws {
+        let app = launch(width: 375)
+        let sort = openSortGrid(app)
+        pickSort(app, sort, "Most ordered")
+        reopenSortGrid(app, sort, before: "Most ordered")
+        XCTAssertTrue(sortShown(sort).contains("Most ordered"), "the row does not show Most ordered, so its cell is not picked")
+        let option = app.buttons["Most ordered"]
+        XCTAssertTrue(option.waitForExistence(timeout: 5), "the Sorted by grid has no Most ordered cell")
+
+        let clipped = try clippedSortCell(app, option)
+        XCTAssertEqual(clipped, [], "Most ordered (picked) is clipped at 375pt\n" + auditFailureText(clipped))
     }
 
     /// The control for the audit above: at a very narrow width the existing screens clip text, and the audit must say so.
