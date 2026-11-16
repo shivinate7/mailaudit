@@ -464,8 +464,29 @@ const PUSH_SKIP_PIN = PUSH_SKIP_ACTION + "@" + ACTION_PIN;
 const PUSH_ONLY = "github.event_name=='push'";
 const SKIP_GATE = "needs.push-skip.outputs.skip!='true'";
 const SCOPE_JOB = "scope";
-// The event test a skip would make. A shell comment line in a run: block is text, so it is dropped first.
-const EVENT_PUSH_TEST = /\$\{?EVENT\}?"?\s*={1,2}\s*push\b/;
+// The job names push-skip matches exactly (push-skip.py reads a job's conclusions by name). The suite job's
+// matrix rows carry its name, so a matrix name would split them into suite (1) to suite (3). SUITE_NAME is
+// declared here, not with SUITE_JOB, because these cases run before that constant is declared.
+const SUITE_NAME = "suite";
+// The job that dispatches the Swift suite on a push to main. A proven-tree push must still reach it.
+const DISPATCH_JOB = "milestone-due";
+// The event test a skip would make, with its quotes and braces. A comment is cut first (codePart).
+const EVENT_PUSH_TEST = /\$\{?EVENT\}?"?\s*={1,2}\s*"?push\b/;
+// The code part of one shell line: a # that starts a comment is found outside quotes, so a # inside a string
+// does not cut the line. A quote with no closing quote on its line is a lone character, so the code after it
+// still counts. Quoted text is skipped only to find comments, so it never hides a test.
+function codePart(line) {
+  for (let i = 0; i < line.length; i++) {
+    const c = line[i];
+    if (c === '"' || c === "'") {
+      const end = line.indexOf(c, i + 1);
+      if (end > i) i = end;
+    } else if (c === "#" && (i === 0 || /\s/.test(line[i - 1]))) {
+      return line.slice(0, i);
+    }
+  }
+  return line;
+}
 const stepIf = (s) => (isMap(s) && s.if != null ? normIf(String(s.if)) : "");
 // The first step whose if: lacks the push-skip gate, as a cause, or "" when every step holds it.
 // A job with no steps is a cause too, so an empty list never passes by holding nothing.
@@ -525,7 +546,8 @@ function pushSkipChecks(text) {
   const caller = all.filter(callsShared);
   const decider = caller[0];
   const checkout = all.find(isCheckout);
-  const suites = needsOf(roll).filter((id) => id !== SCOPE_JOB && id !== PUSH_SKIP);
+  // The suite jobs. milestone-due is left out: it dispatches on a proven-tree push, so it reads no skip (p14).
+  const suites = needsOf(roll).filter((id) => id !== SCOPE_JOB && id !== PUSH_SKIP && id !== DISPATCH_JOB);
   const scopeIf = normIf(ifText(scope));
   const skipOut = isMap(job?.outputs) ? String(job.outputs.skip ?? "").replace(/\s+/g, "") : "";
 
@@ -595,7 +617,8 @@ function pushSkipChecks(text) {
   const pushTests = runsOf(scope)
     .join("\n")
     .split("\n")
-    .filter((l) => !l.trim().startsWith("#") && EVENT_PUSH_TEST.test(l));
+    .map(codePart)
+    .filter((l) => EVENT_PUSH_TEST.test(l));
   add(
     "p9",
     `${SCOPE_JOB} script tests no push event for a skip`,
@@ -636,8 +659,44 @@ function pushSkipChecks(text) {
         : /github\.event_name|\.outputs\./.test(cond)
           ? "its job-level if: names an event or an output"
           : ungatedStep(steps(j));
-    add("p12", `suite job ${id} needs ${PUSH_SKIP}, every step's if: holds its skip gate, and its job-level if: names no event or output`, problem);
+    add(
+      "p12",
+      `suite job ${id} needs ${PUSH_SKIP}, every step's if: holds its skip gate, and its job-level if: names no event or output (${DISPATCH_JOB} is no suite job: it dispatches on a proven-tree push, p14)`,
+      problem
+    );
   }
+
+  // p13: push-skip finds a job's rows by its name, so the suite job is named exactly suite. Every other job in
+  // the rollup keeps its id as its name (a job with no name key is named by its id).
+  const suiteJob = jobs[SUITE_NAME];
+  const renamed = needsOf(roll).filter((id) => id !== SUITE_NAME && isMap(jobs[id]) && jobs[id].name !== undefined && jobs[id].name !== id);
+  add(
+    "p13",
+    `the ${SUITE_NAME} job is named exactly ${SUITE_NAME}, so push-skip finds all its rows, and every other job keeps its id as its name`,
+    !isMap(suiteJob)
+      ? `no ${SUITE_NAME} job`
+      : suiteJob.name !== SUITE_NAME
+        ? `the ${SUITE_NAME} job is named ${JSON.stringify(suiteJob.name ?? null)}, not ${SUITE_NAME}`
+        : renamed.length > 0
+          ? `job ${renamed[0]} is named ${JSON.stringify(jobs[renamed[0]].name)}, not its id`
+          : ""
+  );
+
+  // p14: milestone-due dispatches the Swift suite on a push to main, so its steps read no skip output. A
+  // proven-tree push still reaches the dispatch step, and milestone-due's own script decides whether it is due.
+  const dispatch = jobs[DISPATCH_JOB];
+  const readingStep = isMap(dispatch) ? steps(dispatch).findIndex((s) => stepIf(s).includes(PUSH_SKIP)) : -1;
+  add(
+    "p14",
+    `${DISPATCH_JOB} reads no ${PUSH_SKIP} output in its job-level or step if:, so a proven-tree push still dispatches the Swift suite when due`,
+    !isMap(dispatch)
+      ? `no ${DISPATCH_JOB} job`
+      : ifText(dispatch).includes(PUSH_SKIP)
+        ? `its job-level if: reads ${PUSH_SKIP}`
+        : readingStep >= 0
+          ? `step ${readingStep + 1} reads ${PUSH_SKIP} in its if:`
+          : ""
+  );
   return out;
 }
 
@@ -4279,6 +4338,21 @@ for (const r of docsJobChecks(DOCS_GOOD)) expect(`fixture good: ${r.label}`, r.o
 // names the push test as a control for p9. Each red edit breaks one case, which must fail by its id.
 // Built from arrays, so the ${{ }} expressions are text and never JS interpolation.
 const PS_SHA = "e".repeat(40);
+// milestone-due dispatches the Swift suite on a push to main. It is in the rollup but is no suite job (p12),
+// and its steps read no skip output (p14). Its steps carry the push-to-main gate and nothing from push-skip.
+const MS_JOB = [
+  "  milestone-due:",
+  "    if: ${{ !github.event.pull_request.draft }}",
+  "    runs-on: ubuntu-latest",
+  "    steps:",
+  "      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1",
+  "        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}",
+  "        with:",
+  "          fetch-depth: 0",
+  "      - name: dispatch the full Swift suite when it is due",
+  "        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.MILESTONE_AUTO_DISPATCH == 'on' }}",
+  "        run: node scripts/milestone-due.mjs --native-paths .github/native-paths.regex",
+].join("\n") + "\n";
 const PS_GOOD = [
   "name: test",
   "jobs:",
@@ -4326,6 +4400,7 @@ const PS_GOOD = [
   "    needs: [push-skip]",
   "    if: ${{ !github.event.pull_request.draft }}",
   "    runs-on: ubuntu-latest",
+  "    name: suite",
   "    steps:",
   "      - run: npm test",
   "        if: ${{ needs.push-skip.outputs.skip != 'true' }}",
@@ -4343,8 +4418,8 @@ const PS_GOOD = [
   "    steps:",
   "      - run: npm run check:screens",
   "        if: ${{ needs.push-skip.outputs.skip != 'true' }}",
-  "  all-jobs-passed:",
-  "    needs: [push-skip, scope, suite, docs, screens]",
+  MS_JOB + "  all-jobs-passed:",
+  "    needs: [push-skip, scope, suite, docs, screens, milestone-due]",
   "    if: ${{ always() && !github.event.pull_request.draft }}",
   "    runs-on: ubuntu-latest",
   "    steps:",
@@ -4415,7 +4490,7 @@ const PS_RED = [
   ],
   [
     "the rollup does not need push-skip",
-    mutate(PS_GOOD, "    needs: [push-skip, scope, suite, docs, screens]", "    needs: [scope, suite, docs, screens]"),
+    mutate(PS_GOOD, "    needs: [push-skip, scope, suite, docs, screens, milestone-due]", "    needs: [scope, suite, docs, screens, milestone-due]"),
     "p10",
   ],
   ["scope-skips is absent", mutate(PS_GOOD, "          scope-skips: '{\"screens\":[\"screens\"]}'\n", ""), "p11"],
@@ -4443,11 +4518,68 @@ const PS_RED = [
     mutate(PS_GOOD, "    steps:\n      - run: npm test\n        if: ${{ needs.push-skip.outputs.skip != 'true' }}\n", ""),
     "p12",
   ],
-  ["the rollup names no suite job", mutate(PS_GOOD, "    needs: [push-skip, scope, suite, docs, screens]", "    needs: [push-skip, scope]"), "p12"],
+  ["the rollup names no suite job", mutate(PS_GOOD, "    needs: [push-skip, scope, suite, docs, screens, milestone-due]", "    needs: [push-skip, scope, milestone-due]"), "p12"],
 ];
 for (const [name, text, id] of PS_RED) {
   const failed = pushSkipChecks(text).filter((r) => !r.ok).map((r) => r.id);
   expect(`fixture red: ${name} fails assertion ${id}`, failed.includes(id), `failed assertions: ${JSON.stringify(failed)}`);
+}
+
+// Reviewer round 1. The suite rows (p13), the milestone dispatch (p14), the suite set of p12, and the shell
+// cases of p9. Each red edit must fail the case it names; each good edit must pass every case.
+{
+  const named = pushSkipChecks(PS_GOOD).find((r) => r.id === "p13");
+  expect("fixture good: the suite job is named suite, so p13 passes", named?.ok === true, `p13: ${JSON.stringify(named ?? null)}`);
+}
+const P13_RED = [
+  ["the suite job has no name", mutate(PS_GOOD, "    name: suite\n", "")],
+  ["the suite job's name keeps the matrix", mutate(PS_GOOD, "    name: suite\n", "    name: suite (${{ matrix.shard }})\n")],
+  ["another job is named apart from its id", mutate(PS_GOOD, "  docs:\n", "  docs:\n    name: docs check\n")],
+];
+for (const [name, text] of P13_RED) {
+  const failed = pushSkipChecks(text).filter((r) => !r.ok).map((r) => r.id);
+  expect(`fixture red: ${name} fails assertion p13`, failed.includes("p13"), `failed assertions: ${JSON.stringify(failed)}`);
+}
+
+// The good wiring carries milestone-due, so the p14 cases read it (see MS_JOB above PS_GOOD).
+const PS_MILESTONE = PS_GOOD;
+const P14_RED = [
+  [
+    "the dispatch step gates on the skip output",
+    mutate(PS_MILESTONE, "        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' && env.MILESTONE_AUTO_DISPATCH == 'on' }}", "        if: ${{ needs.push-skip.outputs.skip != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' && env.MILESTONE_AUTO_DISPATCH == 'on' }}"),
+  ],
+  [
+    "the checkout step gates on the skip output",
+    mutate(PS_MILESTONE, "        if: ${{ github.event_name == 'push' && github.ref == 'refs/heads/main' }}\n        with:\n          fetch-depth: 0", "        if: ${{ needs.push-skip.outputs.skip != 'true' && github.event_name == 'push' && github.ref == 'refs/heads/main' }}\n        with:\n          fetch-depth: 0"),
+  ],
+  [
+    "the job-level if reads the skip output",
+    mutate(PS_MILESTONE, "  milestone-due:\n    if: ${{ !github.event.pull_request.draft }}", "  milestone-due:\n    if: ${{ needs.push-skip.outputs.skip != 'true' && !github.event.pull_request.draft }}"),
+  ],
+];
+for (const [name, text] of P14_RED) {
+  const failed = pushSkipChecks(text).filter((r) => !r.ok).map((r) => r.id);
+  expect(`fixture red: ${name} fails assertion p14`, failed.includes("p14"), `failed assertions: ${JSON.stringify(failed)}`);
+}
+
+// p9 reads the code of each shell line: a quoted or braced push test counts, and a comment does not.
+const P9_RED = [
+  ["a quoted push test", mutate(PS_GOOD, "          screens=true\n", "          if [ \"$EVENT\" = \"push\" ]; then screens=false; fi\n          screens=true\n")],
+  ["a braced quoted push test", mutate(PS_GOOD, "          screens=true\n", "          if [ \"${EVENT}\" = \"push\" ]; then screens=false; fi\n          screens=true\n")],
+  ["a push test after a # inside a string", mutate(PS_GOOD, "          screens=true\n", "          x=\"#\"; if [ \"$EVENT\" = push ]; then screens=false; fi\n          screens=true\n")],
+  ["a push test after a lone apostrophe", mutate(PS_GOOD, "          screens=true\n", "          echo don't; if [ \"$EVENT\" = push ]; then screens=false; fi\n          screens=true\n")],
+];
+for (const [name, text] of P9_RED) {
+  const failed = pushSkipChecks(text).filter((r) => !r.ok).map((r) => r.id);
+  expect(`fixture red: ${name} fails assertion p9`, failed.includes("p9"), `failed assertions: ${JSON.stringify(failed)}`);
+}
+const P9_GOOD = [
+  ["a push test in an inline comment", mutate(PS_GOOD, "          screens=true\n", "          screens=true # if [ \"$EVENT\" = push ]; then screens=false; fi\n")],
+  ["a push test in a comment after a lone apostrophe", mutate(PS_GOOD, "          screens=true\n", "          echo don't # [ \"$EVENT\" = push ]\n          screens=true\n")],
+];
+for (const [name, text] of P9_GOOD) {
+  const failed = pushSkipChecks(text).filter((r) => r.id === "p9" && !r.ok);
+  expect(`fixture good: ${name} passes assertion p9`, failed.length === 0, `p9: ${failed.map((r) => r.detail).join("; ")}`);
 }
 
 // Assertions 3c and 12 are unchanged (owner ruling R44 A): every claude-settings pin names @stable,
