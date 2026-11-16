@@ -53,9 +53,10 @@
 //      imported, and exits 1 with "could not read the identity counts" when a count is empty (the import
 //      and count scripts run in a sandbox, see the fixtures for 26 to 34);
 //  33  the workflow names both secrets and holds no secret value: no base64 blob, no literal password;
-//  34  with ASC_DEV_CERT_PASSWORD set and ASC_DEV_CERT_P12 empty, the import step exits non-zero and its
-//      output names ASC_DEV_CERT_P12, so no run quietly lets Xcode create a certificate. With both empty
-//      it prints the notice and exits 0, the optional case. The sandbox runs the step for both states.
+//  34  with ASC_DEV_CERT_PASSWORD set and ASC_DEV_CERT_P12 empty or blank after trimming whitespace, the
+//      import step exits non-zero and its output names ASC_DEV_CERT_P12, so no run quietly lets Xcode create
+//      a certificate. With both blank after trimming, it prints the notice and exits 0, the optional case.
+//      A P12 with content still imports. The sandbox runs the step for each state.
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in checks.yml
 // are checked the same way, with letter ids:
@@ -3359,26 +3360,43 @@ function sandboxCause(imp, count) {
   }
   return "";
 }
-// Assertion 34: the two empty-P12 states of the import step. A password with an empty P12 must fail and name the
-// P12, since a skip there lets Xcode create a certificate. Both empty is the optional case: a notice, exit 0.
+// Assertion 34: the empty-P12 states of the import step. A value that is only whitespace is blank, so a P12 of
+// spaces, tabs or newlines counts as empty, as does an empty one. A password set with a blank P12 must fail and
+// name the P12, since a skip there lets Xcode create a certificate. Both blank is the optional case: a notice,
+// exit 0. A whitespace-only password is unset, so it does not trip that failure. A P12 with content imports.
+// `expect` is "fails", "notice" or "runs". The blank values are fakes; no real secret reaches a script.
+const BLANK_P12 = ["   ", "\n", "\t\n "];
+const blankOf = (v) => `${SIGN_P12} is blank (${JSON.stringify(v)})`;
 const EMPTY_P12_CASES = [
-  { what: `${SIGN_PASS} is set and ${SIGN_P12} is empty`, pass: FAKE_PASS },
-  { what: "both secrets are empty", pass: "" },
+  { what: `${SIGN_PASS} is set and ${SIGN_P12} is empty`, p12: "", pass: FAKE_PASS, expect: "fails" },
+  ...BLANK_P12.map((p12) => ({ what: `${SIGN_PASS} is set and ${blankOf(p12)}`, p12, pass: FAKE_PASS, expect: "fails" })),
+  { what: "both secrets are empty", p12: "", pass: "", expect: "notice" },
+  { what: `${blankOf("   ")} and ${SIGN_PASS} is empty`, p12: "   ", pass: "", expect: "notice" },
+  { what: `${SIGN_P12} is empty and ${SIGN_PASS} is blank ("   ")`, p12: "", pass: "   ", expect: "notice" },
+  { what: `${blankOf("\t\n ")} and ${SIGN_PASS} is blank (${JSON.stringify("\n")})`, p12: "\t\n ", pass: "\n", expect: "notice" },
+  { what: `${SIGN_P12} and ${SIGN_PASS} are set`, p12: FAKE_P12, pass: FAKE_PASS, expect: "runs" },
 ];
 // The cause for one empty-secret state, or "" when the import step does what the case expects. The output is
 // stdout and stderr together, so the message may go to either.
 function emptySecretCase(imp, c) {
   const dir = sandboxDir();
-  const values = fakeValues("", c.pass);
+  const values = fakeValues(c.p12, c.pass);
   const r = runStep(dir, "import", runOf(imp), values, secretEnv(imp, values));
   const out = `${r.stdout}${r.stderr}`;
-  if (c.pass !== "") {
+  if (c.expect === "fails") {
     if (r.status === 0) return `the import step exits 0 when ${c.what}; expected it to exit non-zero`;
     if (!out.includes(SIGN_P12)) return `the import step exits ${r.status} when ${c.what} without naming ${SIGN_P12}`;
     return "";
   }
+  if (c.expect === "notice") {
+    if (r.status !== 0) return `the import step exits ${r.status} when ${c.what}; expected it to exit 0`;
+    if (!out.includes(`::notice::secret ${SIGN_P12} is empty`)) return `the import step prints no notice when ${c.what}`;
+    return "";
+  }
   if (r.status !== 0) return `the import step exits ${r.status} when ${c.what}; expected it to exit 0`;
-  if (!out.includes(`::notice::secret ${SIGN_P12} is empty`)) return `the import step prints no notice when ${c.what}`;
+  if (out.includes("::error::") || out.includes(`${SIGN_P12} is empty`)) {
+    return `the import step reports a blank secret when ${c.what}; a set P12 must import`;
+  }
   return "";
 }
 function emptySecretCause(imp) {
@@ -3604,9 +3622,13 @@ const SIGN_HEAD = [
   "          ref: ${{ github.ref }}",
   "          persist-credentials: false",
 ];
-// The guard inside the empty-P12 branch: a password with no P12 fails and names the P12 (assertion 34).
+// The blank tests. Bash drops every whitespace character, so a value of spaces, tabs or newlines is blank. A
+// guard that tests `-z` on the raw value misses a whitespace-only P12 (assertion 34).
+const P12_BLANK_IF = '          if [ -z "${ASC_DEV_CERT_P12//[[:space:]]/}" ]; then';
+const PASS_SET_IF = '            if [ -n "${ASC_DEV_CERT_PASSWORD//[[:space:]]/}" ]; then';
+// The guard inside the blank-P12 branch: a password with no P12 fails and names the P12 (assertion 34).
 const P12_GUARD = [
-  '            if [ -n "$ASC_DEV_CERT_PASSWORD" ]; then',
+  PASS_SET_IF,
   '              echo "::error::secret ASC_DEV_CERT_P12 is empty but ASC_DEV_CERT_PASSWORD is set: set both or neither"',
   "              exit 1",
   "            fi",
@@ -3617,7 +3639,7 @@ const SIGN_IMPORT_STEP = [
   "          ASC_DEV_CERT_P12: ${{ secrets.ASC_DEV_CERT_P12 }}",
   "          ASC_DEV_CERT_PASSWORD: ${{ secrets.ASC_DEV_CERT_PASSWORD }}",
   "        run: |",
-  '          if [ -z "$ASC_DEV_CERT_P12" ]; then',
+  P12_BLANK_IF,
   ...P12_GUARD,
   '            echo "::notice::secret ASC_DEV_CERT_P12 is empty: this run lets Xcode create a certificate"',
   "            exit 0",
@@ -3883,6 +3905,24 @@ const SIGN_RED = [
     ["34"],
     "without naming ASC_DEV_CERT_P12",
   ],
+  [
+    "the P12 guard tests -z without trimming",
+    mutate(SIGN_GOOD, P12_BLANK_IF, '          if [ -z "$ASC_DEV_CERT_P12" ]; then'),
+    ["34"],
+    `${SIGN_P12} is blank`,
+  ],
+  [
+    "the P12 guard trims spaces but not newlines or tabs",
+    mutate(SIGN_GOOD, P12_BLANK_IF, '          if [ -z "${ASC_DEV_CERT_P12// /}" ]; then'),
+    ["34"],
+    `${SIGN_P12} is blank`,
+  ],
+  [
+    "the password guard tests -n without trimming",
+    mutate(SIGN_GOOD, PASS_SET_IF, '            if [ -n "$ASC_DEV_CERT_PASSWORD" ]; then'),
+    ["34"],
+    `${SIGN_PASS} is blank`,
+  ],
 ];
 
 for (const r of signingIdentityChecks(SIGN_GOOD)) expect(`fixture good: ${r.label}`, r.ok, r.detail);
@@ -3902,8 +3942,8 @@ for (const [name, text, ids, cause] of SIGN_RED) {
   );
 }
 
-// The real file: testflight.yml on this branch. Assertion 34 is red until the import step fails a password set
-// with an empty P12; the other assertions read the step as it stands.
+// The real file: testflight.yml on this branch. Assertion 34 is red until the import step treats a P12 blank after
+// trimming as empty, and a password blank after trimming as unset; the other assertions read the step as it stands.
 for (const r of signingIdentityChecks(readOrNull(TESTFLIGHT_WORKFLOW))) expect(r.label, r.ok, r.detail);
 
 // Fixtures for s1 to s5. The good texts pass all five; each red edit moves the named assertion, and the
