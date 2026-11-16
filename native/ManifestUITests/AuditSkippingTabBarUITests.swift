@@ -59,6 +59,25 @@ func isKeyboardPredictionCell(detail: String) -> Bool {
     isKeyboardPredictionCell(detail: issue.detailedDescription)
 }
 
+/// One failing audit issue as one short line: `AUDIT-FAIL <type> | <identifier or label> | frame x,y,w,h`. The type is cut
+/// to 30 characters, the name to 40, and the frame is rounded to whole points, so a line stays under 120 characters and
+/// survives a truncated log. An issue with no element has no name and no frame.
+func auditFailLine(type: String, name: String?, frame: CGRect?) -> String {
+    let flat = (name ?? "").map { $0.isNewline ? " " : String($0) }.joined()
+    let shownName = flat.isEmpty ? "no name" : String(flat.prefix(40))
+    var shownFrame = "none"
+    if let f = frame, !f.isNull, f.minX.isFinite, f.minY.isFinite, f.width.isFinite, f.height.isFinite {
+        shownFrame = "\(Int(f.minX.rounded())),\(Int(f.minY.rounded())),\(Int(f.width.rounded())),\(Int(f.height.rounded()))"
+    }
+    return "AUDIT-FAIL \(String(type.prefix(30))) | \(shownName) | frame \(shownFrame)"
+}
+
+/// The failure text for the failing issues: their lines first, at most 12 lines. Past 12, the last line counts the rest.
+func auditFailureText(_ failing: [String]) -> String {
+    guard failing.count > 12 else { return failing.joined(separator: "\n") }
+    return (Array(failing.prefix(11)) + ["AUDIT-FAIL +\(failing.count - 11) more not shown"]).joined(separator: "\n")
+}
+
 /// The element is on screen and its frame is at least 44pt each way: the hit region of every control the owner taps.
 /// A frame comes back with float noise (a minHeight 44 row reads 43.99999999999997), so the floor has a thousandth
 /// of a point of slack. A real miss is a third of a point or more short. OrphanedUITests and PackageStampUITests call it.
@@ -153,14 +172,16 @@ extension XCUIApplication {
     }
 
     /// The accessibility audit, minus every issue whose element touches the tab bar or lies below the window
-    /// (isUnderTabBar). The issues it skips and the issues it fails come back as text. `bar` and `window` replace the
-    /// tab bar's and the window's frames, for the narrowness test. With `record: false` no issue is recorded, so a test
-    /// can read them.
+    /// (isUnderTabBar). `bar` and `window` replace the tab bar's and the window's frames, for the narrowness test.
     /// `ruled` is another skip the owner ruled on, such as skipMeasuredContrastFlags. An issue it accepts is left
     /// out and is not counted in `skipped`, which means "under the bar" only. It comes back in `ruled` instead.
+    /// A failing issue comes back in `failing` as one AUDIT-FAIL line (auditFailLine). With `record: true` the
+    /// failing issues fail the test once, with those lines first (auditFailureText). With `record: false` nothing
+    /// fails, so a test can read them.
     @discardableResult
     func auditSkippingTabBar(bar override: CGRect? = nil, window windowOverride: CGRect? = nil, record: Bool = true,
-                             ruled: ((XCUIAccessibilityAuditIssue) -> Bool)? = nil) throws
+                             ruled: ((XCUIAccessibilityAuditIssue) -> Bool)? = nil,
+                             file: StaticString = #filePath, line: UInt = #line) throws
         -> (skipped: [String], failing: [String], ruled: [String])
     {
         let tabBar = tabBars.firstMatch
@@ -180,9 +201,14 @@ extension XCUIApplication {
                 ruledText.append(text)
                 return true
             }
-            print("AUDIT-FAIL \(text)")
-            failing.append(text)
-            return !record
+            let name = issue.element.map { $0.identifier.isEmpty ? $0.label : $0.identifier }
+            let fail = auditFailLine(type: issue.compactDescription, name: name, frame: frame)
+            print(fail)
+            failing.append(fail)
+            return true
+        }
+        if record {
+            XCTAssertTrue(failing.isEmpty, auditFailureText(failing), file: file, line: line)
         }
         return (skipped, failing, ruledText)
     }
@@ -197,7 +223,7 @@ extension XCUIApplication {
     func auditNamingElements(skipping skip: @escaping (XCUIAccessibilityAuditIssue) -> Bool = { _ in false },
                              file: StaticString = #filePath, line: UInt = #line) throws -> [String] {
         let result = try auditSkippingTabBar(record: false, ruled: skip)
-        XCTAssertEqual(result.failing, [], "the audit flagged these elements", file: file, line: line)
+        XCTAssertTrue(result.failing.isEmpty, auditFailureText(result.failing), file: file, line: line)
         return result.skipped + result.ruled
     }
 }
@@ -348,7 +374,7 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         let app = launchedPackages()
 
         let real = try app.auditSkippingTabBar(record: false)
-        XCTAssertEqual(real.failing, [], "an issue outside the tab bar fails the Packages audit")
+        XCTAssertTrue(real.failing.isEmpty, auditFailureText(real.failing) + "\nan issue outside the tab bar fails the Packages audit")
         try XCTSkipIf(real.skipped.isEmpty, "no audit issue sits under the tab bar, so the rule hides nothing")
 
         let away = try app.auditSkippingTabBar(bar: Self.farAway, window: Self.tallWindow, record: false)
@@ -375,11 +401,11 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         return app
     }
 
-    /// The filtered audit still records an issue outside the bar. The screen is a known one that raises issues (the open
-    /// Orphaned composer), so the test proves the skip lets a real finding through. The bar is far away, so it covers
-    /// nothing and every issue is outside it. The expected failure is strict, so the test goes red when the audit
-    /// records nothing, as it does if the handler returns true for such an issue. It also goes red if the composer
-    /// ever audits clean: the finding to plant is then another known one, not a looser check.
+    /// The filtered audit still fails the test on an issue outside the bar. The screen is a known one that raises issues
+    /// (the open Orphaned composer), so the test proves the skip lets a real finding through. The bar is far away, so it
+    /// covers nothing and every issue is outside it. The expected failure is strict, so the test goes red when the audit
+    /// fails no issue, as it does if the helper accepts an issue outside the bar without failing the test. It also goes
+    /// red if the composer ever audits clean: the finding to plant is then another known one, not a looser check.
     func testAnIssueOutsideTheBarIsRecorded() throws {
         let app = launchedOrphanedComposer()
         try XCTExpectFailure("an issue outside the tab bar fails the audit", strict: true) {
