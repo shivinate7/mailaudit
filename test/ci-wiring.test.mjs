@@ -42,7 +42,7 @@
 //  24  every defect's file is in the repo. This one is outside the brief.
 //  25  the ship job of testflight.yml has one actions/checkout step, and its with: ref is
 //      ${{ github.ref }}, so a run queued behind a merge checks out the branch tip at run start.
-//  26 to 33 read the signing identity in testflight.yml's ship job. Each names one cause per failure:
+//  26 to 34 read the signing identity in testflight.yml's ship job. Each names one cause per failure:
 //  26  one step named "Import the signing identity" runs before Fetch ios-ship and before Ship;
 //  27  it reads ASC_DEV_CERT_P12 and ASC_DEV_CERT_PASSWORD only through its env:, never in run:;
 //  28  it makes its keychain under RUNNER_TEMP and runs set-key-partition-list;
@@ -51,8 +51,11 @@
 //  31  "Delete the keys" runs if: always(), removes dev.p12 and deletes the signing keychain;
 //  32  "Certificate count" fails when the count after Ship exceeds the count before, with an identity
 //      imported, and exits 1 with "could not read the identity counts" when a count is empty (the import
-//      and count scripts run in a sandbox, see the fixtures for 26 to 33);
-//  33  the workflow names both secrets and holds no secret value: no base64 blob, no literal password.
+//      and count scripts run in a sandbox, see the fixtures for 26 to 34);
+//  33  the workflow names both secrets and holds no secret value: no base64 blob, no literal password;
+//  34  with ASC_DEV_CERT_PASSWORD set and ASC_DEV_CERT_P12 empty, the import step exits non-zero and its
+//      output names ASC_DEV_CERT_P12, so no run quietly lets Xcode create a certificate. With both empty
+//      it prints the notice and exits 0, the optional case. The sandbox runs the step for both states.
 //
 // The milestone workflow (.github/workflows/milestone.yml) and its job in checks.yml
 // are checked the same way, with letter ids:
@@ -3285,12 +3288,13 @@ function runStep(dir, name, run, values, extraEnv) {
   writeFileSync(file, text.endsWith("\n") ? text : `${text}\n`);
   return spawnSync("bash", ["-e", file], { cwd: dir.root, env: { ...dir.env, ...extraEnv }, encoding: "utf8" });
 }
-// The env a step gets from its secrets: each env: entry that is a whole secret reference gets that secret's value.
+// The env a step gets: each env: entry that is a whole secret reference gets that secret's value, and a literal
+// entry is passed as written, as the runner does, so a literal password reaches the step.
 function secretEnv(step, values) {
   const out = {};
   for (const [key, v] of Object.entries(isMap(step?.env) ? step.env : {})) {
     const m = SECRET_REF.exec(String(v).trim());
-    if (m !== null) out[key] = values[m[1]] ?? "";
+    out[key] = m !== null ? (values[m[1]] ?? "") : String(v).trim();
   }
   return out;
 }
@@ -3300,14 +3304,16 @@ const COUNT_UNREAD = "could not read the identity counts";
 const countLine = (n) => (n === "" ? "" : `     ${n} valid identities found\n`);
 // The fake secrets the sandbox runs with. The .p12 is base64 of "fake-p12"; no real identity reaches a script.
 const FAKE_P12 = "ZmFrZS1wMTI=";
-const fakeValues = (p12) => ({ [SIGN_P12]: p12, [SIGN_PASS]: "fixture-password" });
+const FAKE_PASS = "fixture-password";
+// `pass` defaults to the fake password. Both secrets empty is the optional case, so a case passes "" for both.
+const fakeValues = (p12, pass = FAKE_PASS) => ({ [SIGN_P12]: p12, [SIGN_PASS]: pass });
 // The cases: an identity imported with the count rising, with the count level, and no identity imported
-// (the empty secret: the count step must not fail on a run that imported nothing). The last two name an
+// (both secrets empty: the count step must not fail on a run that imported nothing). The last two name an
 // empty count beside a numeric one: the count step must say it could not read the counts.
 const SIGN_CASES = [
   { what: "an identity was imported and the count rose from 1 to 2", p12: FAKE_P12, before: 1, after: 2, fails: true },
   { what: "an identity was imported and the count stayed at 1", p12: FAKE_P12, before: 1, after: 1, fails: false },
-  { what: "no identity was imported and the count rose from 1 to 2", p12: "", before: 1, after: 2, fails: false },
+  { what: "no identity was imported and the count rose from 1 to 2", p12: "", pass: "", before: 1, after: 2, fails: false },
   {
     what: "an identity was imported and the count before was empty",
     p12: FAKE_P12,
@@ -3328,7 +3334,7 @@ const SIGN_CASES = [
 // The cause for one case, or "" when the count step does what the case expects.
 function countCaseCause(imp, count, c) {
   const dir = sandboxDir();
-  const values = fakeValues(c.p12);
+  const values = fakeValues(c.p12, c.pass);
   writeFileSync(dir.after, countLine(c.after));
   const imported = runStep(dir, "import", runOf(imp), values, secretEnv(imp, values));
   if (imported.status !== 0) {
@@ -3353,6 +3359,36 @@ function sandboxCause(imp, count) {
   }
   return "";
 }
+// Assertion 34: the two empty-P12 states of the import step. A password with an empty P12 must fail and name the
+// P12, since a skip there lets Xcode create a certificate. Both empty is the optional case: a notice, exit 0.
+const EMPTY_P12_CASES = [
+  { what: `${SIGN_PASS} is set and ${SIGN_P12} is empty`, pass: FAKE_PASS },
+  { what: "both secrets are empty", pass: "" },
+];
+// The cause for one empty-secret state, or "" when the import step does what the case expects. The output is
+// stdout and stderr together, so the message may go to either.
+function emptySecretCase(imp, c) {
+  const dir = sandboxDir();
+  const values = fakeValues("", c.pass);
+  const r = runStep(dir, "import", runOf(imp), values, secretEnv(imp, values));
+  const out = `${r.stdout}${r.stderr}`;
+  if (c.pass !== "") {
+    if (r.status === 0) return `the import step exits 0 when ${c.what}; expected it to exit non-zero`;
+    if (!out.includes(SIGN_P12)) return `the import step exits ${r.status} when ${c.what} without naming ${SIGN_P12}`;
+    return "";
+  }
+  if (r.status !== 0) return `the import step exits ${r.status} when ${c.what}; expected it to exit 0`;
+  if (!out.includes(`::notice::secret ${SIGN_P12} is empty`)) return `the import step prints no notice when ${c.what}`;
+  return "";
+}
+function emptySecretCause(imp) {
+  for (const c of EMPTY_P12_CASES) {
+    const cause = emptySecretCase(imp, c);
+    if (cause) return cause;
+  }
+  return "";
+}
+
 // The security calls a sandbox run logged: each call's arguments, one per line, then a "#" line.
 function securityCalls(log) {
   const calls = [];
@@ -3543,6 +3579,13 @@ function signingIdentityChecks(text) {
         : ""),
     "both secrets named; no base64-like token; no literal password"
   );
+
+  add(
+    "34",
+    `the import step exits non-zero and names ${SIGN_P12} when ${SIGN_PASS} is set and ${SIGN_P12} is empty; with both empty it notices and exits 0`,
+    scope || emptySecretCause(imp),
+    "sandbox: a password with an empty P12 fails and names the P12; both empty notices and exits 0"
+  );
   return out;
 }
 
@@ -3561,6 +3604,13 @@ const SIGN_HEAD = [
   "          ref: ${{ github.ref }}",
   "          persist-credentials: false",
 ];
+// The guard inside the empty-P12 branch: a password with no P12 fails and names the P12 (assertion 34).
+const P12_GUARD = [
+  '            if [ -n "$ASC_DEV_CERT_PASSWORD" ]; then',
+  '              echo "::error::secret ASC_DEV_CERT_P12 is empty but ASC_DEV_CERT_PASSWORD is set: set both or neither"',
+  "              exit 1",
+  "            fi",
+];
 const SIGN_IMPORT_STEP = [
   "      - name: Import the signing identity",
   "        env:",
@@ -3568,6 +3618,7 @@ const SIGN_IMPORT_STEP = [
   "          ASC_DEV_CERT_PASSWORD: ${{ secrets.ASC_DEV_CERT_PASSWORD }}",
   "        run: |",
   '          if [ -z "$ASC_DEV_CERT_P12" ]; then',
+  ...P12_GUARD,
   '            echo "::notice::secret ASC_DEV_CERT_P12 is empty: this run lets Xcode create a certificate"',
   "            exit 0",
   "          fi",
@@ -3658,7 +3709,7 @@ const SIGN_RED = [
   [
     "the import step is renamed",
     mutate(SIGN_GOOD, "      - name: Import the signing identity\n", "      - name: Import the identity\n"),
-    ["26", "27", "28", "29", "30", "32"],
+    ["26", "27", "28", "29", "30", "32", "34"],
     `no step named "${SIGN_IMPORT}"`,
   ],
   [
@@ -3668,7 +3719,8 @@ const SIGN_RED = [
       "          ASC_DEV_CERT_PASSWORD: ${{ secrets.ASC_DEV_CERT_PASSWORD }}\n",
       "          ASC_DEV_CERT_PASSWORD: fixture-literal\n"
     ),
-    ["27", "33"],
+    // A literal password is set in every sandbox state, so the no-identity runs of 32 and the both-empty run of 34 fail with it.
+    ["27", "32", "33", "34"],
     "maps no value to secrets.ASC_DEV_CERT_PASSWORD",
   ],
   [
@@ -3815,6 +3867,22 @@ const SIGN_RED = [
     ["33"],
     "passes a literal password",
   ],
+  [
+    "the import skips quietly when only the password is set",
+    mutate(SIGN_GOOD, P12_GUARD.join("\n") + "\n", ""),
+    ["34"],
+    "exits 0 when",
+  ],
+  [
+    "the password-only failure does not name the P12",
+    mutate(
+      SIGN_GOOD,
+      "secret ASC_DEV_CERT_P12 is empty but ASC_DEV_CERT_PASSWORD is set",
+      "the signing secret is empty but ASC_DEV_CERT_PASSWORD is set"
+    ),
+    ["34"],
+    "without naming ASC_DEV_CERT_P12",
+  ],
 ];
 
 for (const r of signingIdentityChecks(SIGN_GOOD)) expect(`fixture good: ${r.label}`, r.ok, r.detail);
@@ -3834,7 +3902,8 @@ for (const [name, text, ids, cause] of SIGN_RED) {
   );
 }
 
-// The real file: testflight.yml on this branch. Red until the workflow carries the signing step.
+// The real file: testflight.yml on this branch. Assertion 34 is red until the import step fails a password set
+// with an empty P12; the other assertions read the step as it stands.
 for (const r of signingIdentityChecks(readOrNull(TESTFLIGHT_WORKFLOW))) expect(r.label, r.ok, r.detail);
 
 // Fixtures for s1 to s5. The good texts pass all five; each red edit moves the named assertion, and the
