@@ -354,7 +354,7 @@ final class MastheadBackupUITests: XCTestCase {
         app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "package-row:"))
     }
 
-    /// The topmost Tally row. The Tally has no search box under the masthead any more: its find pill floats above the tab bar
+    /// The topmost Tally row. The Tally has no search box under the masthead any more: its find pill sits in a band above the tab bar
     /// (FindPillUITests), so the first content under the masthead is the first row.
     func topmostTallyRow(_ app: XCUIApplication) throws -> XCUIElement {
         let rows = app.descendants(matching: .any).matching(NSPredicate(format: "identifier BEGINSWITH %@", "tally-row:"))

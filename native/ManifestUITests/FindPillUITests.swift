@@ -1,4 +1,4 @@
-// The floating search pill on Packages and Tally (lane restyle-step8: search-filters-inside-package,
+// The Find pill on Packages and Tally, in a band above the tab bar (lane restyle-step8: search-filters-inside-package,
 // phone-nav-is-bottom-bar, no-layout-shift-under-pointer). The web's .mdl-pill: 48 tall, 8 above the
 // bar, a magnifier and a field, drawn only while the ledger holds items. It filters the tab you are on.
 //

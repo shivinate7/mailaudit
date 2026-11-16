@@ -88,6 +88,10 @@ func auditFailureText(_ failing: [String]) -> String {
     XCTAssertGreaterThanOrEqual(f.height, 44 - 0.001, "\(what) is \(f.height)pt high, under 44pt", file: file, line: line)
 }
 
+/// FindPill's `.padding(.top, 8)` in `findPill` (FindPill.swift). The band's top rule sits this far above the pill's frame,
+/// and a list ends at that rule.
+private let findPillBandTop: CGFloat = 8
+
 extension XCUIApplication {
     /// The top of the band a list scrolls in: the status bar's foot, or the window's top when no status bar resolves.
     /// The status bar is not in the app's accessibility tree on the simulator runs so far, so this reads the window's
@@ -98,17 +102,17 @@ extension XCUIApplication {
         max(windows.firstMatch.frame.minY, statusBars.firstMatch.exists ? statusBars.firstMatch.frame.maxY : 0)
     }
 
-    /// The bottom of the band a list scrolls in: the top of the Find pill when one is drawn, else the top of the bar the list
-    /// ends on. That bar is the system tab bar, or on the open Duo the custom bar, whose top edge is its pill's (DuoMetrics.pill).
-    /// The flat Duo hides the system bar (DuoSystemBar), so tabBars has no match there. The pill floats above the bar
-    /// (FindPill.swift), so a drag that starts on it moves nothing, and a row under it is not free to read. The pill's own
-    /// frame is `find-pill`, the container of the field.
+    /// The bottom of the band a list scrolls in: the top rule of the Find pill's band when one is drawn, else the top of the bar
+    /// the list ends on. That bar is the system tab bar, or on the open Duo the custom bar, whose top edge is its pill's (DuoMetrics.pill).
+    /// The flat Duo hides the system bar (DuoSystemBar), so tabBars has no match there. The list ends above the pill's band, so a
+    /// drag that starts on the pill moves nothing, and a row under the band is not free to read. The pill's own frame is
+    /// `find-pill`, the container of the field, and the band's top rule sits findPillBandTop above it.
     var listBottom: CGFloat {
         let bar = tabBars.firstMatch.exists ? tabBars.firstMatch.frame.minY
             : duoBar.exists ? duoBar.frame.minY
             : windows.firstMatch.frame.maxY
         let pill = descendants(matching: .any).matching(identifier: "find-pill").firstMatch
-        return pill.exists && !pill.frame.isEmpty ? min(bar, pill.frame.minY) : bar
+        return pill.exists && !pill.frame.isEmpty ? min(bar, pill.frame.minY - findPillBandTop) : bar
     }
 
     /// One drag up a list, from `from` to `to` in screen points, at `x` (the window's middle by default). It holds before it
