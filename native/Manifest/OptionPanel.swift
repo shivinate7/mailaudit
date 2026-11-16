@@ -46,7 +46,7 @@ struct OptionPanel<Extra: View>: View {
 
     private func button(_ cell: OptionCell) -> some View {
         Button(action: cell.action) {
-            Text(cell.label).font(.mono(11.5, relativeTo: .caption)).lineLimit(1).minimumScaleFactor(0.8)
+            Text(cell.label).font(.mono(11.5, relativeTo: .caption)).lineLimit(1)
                 .foregroundStyle(cell.on ? Parchment.card : Parchment.ink)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .background(cell.on ? Parchment.accent : Parchment.card)
