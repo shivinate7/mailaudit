@@ -127,6 +127,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `card-the-action-row-is-reserved` | The action row's buttons change on the same tap that changes the card. | [`docs/decisions/card-the-action-row-is-reserved.md`](../docs/decisions/card-the-action-row-is-reserved.md) |
 | `ci-runs-in-utc` | **Status:** open. | [`docs/decisions/ci-runs-in-utc.md`](../docs/decisions/ci-runs-in-utc.md) |
 | `claims-and-tests-change-together` | A behaviour that changes on purpose changes its assertion and its prose in one commit. | [`docs/decisions/claims-and-tests-change-together.md`](../docs/decisions/claims-and-tests-change-together.md) |
+| `cloud-session-reach` | This record says what a cloud session of this repo can do against the live Worker, GitHub and the owner's Mac. | [`docs/decisions/cloud-session-reach.md`](../docs/decisions/cloud-session-reach.md) |
 | `cost-basis-excludes-ship-and-tax` | **Cost basis** = Σ (Price × Quantity) over the item's non-canceled copies in the active date range. | [`docs/decisions/cost-basis-excludes-ship-and-tax.md`](../docs/decisions/cost-basis-excludes-ship-and-tax.md) |
 | `csv-import-shows-a-summary` | A CSV import works by drag and drop, or by the file picker. | [`docs/decisions/csv-import-shows-a-summary.md`](../docs/decisions/csv-import-shows-a-summary.md) |
 | `date-filter-spans-ledger-views` | The date filter applies to the Tally view and the Packages view. | [`docs/decisions/date-filter-spans-ledger-views.md`](../docs/decisions/date-filter-spans-ledger-views.md) |
@@ -349,7 +350,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `recent-log-unbuilt` | The web client ships the log, its merge rule, its panel and its undo (plan `recent-log-web`). | [`docs/debts/recent-log-unbuilt.md`](../docs/debts/recent-log-unbuilt.md) |
 | `recent-log-unmeasured` | How many actions a heavy day's mail makes is unmeasured. | [`docs/debts/recent-log-unmeasured.md`](../docs/debts/recent-log-unmeasured.md) |
 | `recent-undo-under-bar` | At 375px with the page at the top, the first open Recent row's UNDO cell spans y 705 to 777. | [`docs/debts/recent-undo-under-bar.md`](../docs/debts/recent-undo-under-bar.md) |
-| `reimport-received-unpinned` | Nothing pins that `received` survives a re-import. | [`docs/debts/reimport-received-unpinned.md`](../docs/debts/reimport-received-unpinned.md) |
+| `reimport-tracking-unrefreshed` | A re-import keeps the stored copy of a line whose key is already stored, so a changed `tracking` value in a newer CSV never reaches the app (`mergeItems` in `src/merge-rules.mjs`: the base copy wins a key collision). | [`docs/debts/reimport-tracking-unrefreshed.md`](../docs/debts/reimport-tracking-unrefreshed.md) |
 | `reset-all-keeps-token-unpinned` | No test pins that `resetAll` keeps the GitHub token. | [`docs/debts/reset-all-keeps-token-unpinned.md`](../docs/debts/reset-all-keeps-token-unpinned.md) |
 | `reset-leaves-sync-unpinned` | No test pins that an armed Reset leaves Sync open. | [`docs/debts/reset-leaves-sync-unpinned.md`](../docs/debts/reset-leaves-sync-unpinned.md) |
 | `reset-vs-worker-copy-unmeasured` | A Reset writes an empty ledger with no change times, on the web and on native. | [`docs/debts/reset-vs-worker-copy-unmeasured.md`](../docs/debts/reset-vs-worker-copy-unmeasured.md) |
@@ -368,7 +369,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `tally-audit-contrast-flags` | Three Tally audits report "Contrast failed" on small text and "Potentially inaccessible text" with no element: `TallyUITests.testAccessibilityAuditTallyScreenWithRows`, `TallyUITests.testAccessibilityAuditTallyScreenWithARowOpen` and `PackagesShellUITests.testAccessibilityAuditTallyScreen`. | [`docs/debts/tally-audit-contrast-flags.md`](../docs/debts/tally-audit-contrast-flags.md) |
 | `tally-card-moves-at-320px` | At 320px the Tally card moves 14px on check-ins 1 and 6. | [`docs/debts/tally-card-moves-at-320px.md`](../docs/debts/tally-card-moves-at-320px.md) |
 | `tcgplayer-link-opens-history-list` | The order id link opens `orderhistory?SearchString=<id>`, the URL the owner gave on 2026-10-21 (`tcgplayerOrderUrl` encodes the id). | [`docs/debts/tcgplayer-link-opens-history-list.md`](../docs/debts/tcgplayer-link-opens-history-list.md) |
-| `testflight-cert-per-run` | The `testflight` workflow signs on a fresh hosted runner with automatic signing and the App Store Connect key. | [`docs/debts/testflight-cert-per-run.md`](../docs/debts/testflight-cert-per-run.md) |
 | `token-state-and-bundle-unpinned` | Nothing pins the React-state or bundle guarantees. | [`docs/debts/token-state-and-bundle-unpinned.md`](../docs/debts/token-state-and-bundle-unpinned.md) |
 | `tracking-checker-unbuilt` | Today the app does not check tracking numbers. | [`docs/debts/tracking-checker-unbuilt.md`](../docs/debts/tracking-checker-unbuilt.md) |
 | `type-floor-unbuilt` | Some labels are smaller than the 10px floor today. | [`docs/debts/type-floor-unbuilt.md`](../docs/debts/type-floor-unbuilt.md) |
@@ -383,7 +383,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | Slug | Gist | Link |
 |---|---|---|
 | `cloud-lane-cut` | Cloud restart: one lane cut from every handoff | [`docs/plans/cloud-lane-cut.md`](../docs/plans/cloud-lane-cut.md) |
-| `cloud-sessions` | Cloud sessions for mailaudit | [`docs/plans/cloud-sessions.md`](../docs/plans/cloud-sessions.md) |
+| `cloud-sessions` | Cloud sessions for mailaudit: what is still unbuilt | [`docs/plans/cloud-sessions.md`](../docs/plans/cloud-sessions.md) |
 | `orders-extension` | Orders by browser extension | [`docs/plans/orders-extension.md`](../docs/plans/orders-extension.md) |
 | `recent-log-web` | Recent log, web client | [`docs/plans/recent-log-web.md`](../docs/plans/recent-log-web.md) |
 
@@ -405,6 +405,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | Slug | Gist | Link |
 |---|---|---|
 | `card-reserved-geometry` | Card reserved geometry heights | [`measurements/card-reserved-geometry.md`](../measurements/card-reserved-geometry.md) |
+| `cloud-csv-import` | One CSV import from a cloud session | [`measurements/cloud-csv-import.md`](../measurements/cloud-csv-import.md) |
 | `duo-fold-and-keyboard` | Fold strip, keyboard frame and outer screen on the iPhone Duo simulator | [`measurements/duo-fold-and-keyboard.md`](../measurements/duo-fold-and-keyboard.md) |
 | `ledger-and-seed-sizes` | Ledger and version sizes | [`measurements/ledger-and-seed-sizes.md`](../measurements/ledger-and-seed-sizes.md) |
 | `masthead-foot-slot` | Masthead foot save-slot width | [`measurements/masthead-foot-slot.md`](../measurements/masthead-foot-slot.md) |

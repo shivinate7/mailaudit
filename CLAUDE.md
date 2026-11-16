@@ -20,7 +20,7 @@ This file is an index, and it holds no argument of its own. Rulings sit in recor
 
 - `invariants/` holds a rule that must not break. 8 records.
 - `docs/decisions/` holds a ruling and the reason it still holds.
-- `measurements/` holds a measured figure and how to re-measure it. 11 records.
+- `measurements/` holds a measured figure and how to re-measure it. 12 records.
 - `docs/debts/` holds one known gap per file, each pointing at its decision.
 - `docs/plans/` holds work not yet shipped. `docs/specs/` holds how a shipped feature works now. `docs/todo.md` holds tasks a session caught and did not do. `.claude/rules/` holds rules for one folder.
 
@@ -67,6 +67,7 @@ A fact an agent needs, that argues nothing. Read the CSV record before touching 
 
 - `assets-and-icons` — Icon files and how to export them.
 - `build-and-deploy` — Build, test and deploy commands, and `ios-ship testflight`.
+- `cloud-session-reach` — What a cloud session can reach: the Worker, GitHub and the Mac, with a probe for each.
 - `live-verification` — What has run against real GitHub, a real device or a Worker probe.
 - `orderwand-csv` — The OrderWand CSV schema and quirks.
 

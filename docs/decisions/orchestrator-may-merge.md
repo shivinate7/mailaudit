@@ -2,15 +2,17 @@
 
 Merge grant: claude-settings `standing-merge-grant`, under the session tiers (`session-tiers`). The coordinator holds the grant; the batch runner runs every merge under it, and the owner can withdraw it in chat. The batch runner owns the integration batch, the CI waits and the merge tool runs. It may merge a pull request to `main` without asking first. Every other rule still applies.
 
-- The coordinator starts the lane sessions and never merges. The batch runner merges on green checks and a done review, and never asks the owner to merge.
+- The coordinator starts the lane sessions and never merges, except under the temporary ruling below. The batch runner merges on green checks and a done review, and never asks the owner to merge.
 - A lane session never opens an integration PR, marks a PR ready, or merges. It sends each lane branch that passed its local checks and its review to the batch runner, with the head commit, the checks run and the reviewer's verdict. Each lane PR stays a draft until the batch runner marks it ready.
-- A lane's own PR merges on its own green run: the batch runner marks it ready and merges it, and no integration branch is needed. The owner's 00:19 CST Nov 14 ruling (page save 2026-11-14 00:19 CST; record `own-820-c-five-repos` in claude-settings) extends per-lane merge to mailaudit, with q_max, banchi, ios-adblock and joyous. Several lanes may still share one integration branch by choice, and only that PR goes ready.
+- A lane's own PR merges on its own green run: the batch runner marks it ready and merges it, and no integration branch is needed. The owner's Nov 14 ruling (page save 2026-11-14 00:19 CST; record `own-820-c-five-repos` in claude-settings) extends per-lane merge to mailaudit, with q_max, banchi, ios-adblock and joyous. Several lanes may still share one integration branch by choice, and only that PR goes ready.
 - The PR must pass the required check `all-jobs-passed`, which needs every job. A change to a rule, a guard's or check's verdict, or product code needs a fresh reviewer's pass before the merge.
 - A Dependabot PR may merge on green CI through the merge tool (owner, 2026-10-27 12:26).
 
 **Process-only, orchestrator default, 2026-10-12:** a polish merge (see `ux-house-rules-govern`) keeps the fresh-reviewer pass. The owner's polish grant covers taste, not review.
 
 **Process-only, coordinator's choice, 2026-11-06 17:30 CST:** before a batch PR goes ready, the batch runner runs `ste-changed origin/main` and `npm run check:docs` on the batch branch. It drops any lane that fails. Three of four red batch runs that day were these checks. `npm run check:docs` takes about 309 s (1 run).
+
+**Temporary, process-only, owner in chat, 2026-11-15 13:40 CST** ("for now your're just allowed to merge in mailaudit repo though ill give my verbal approval for whateveer or grant an override"): for now the coordinator may also merge pull requests in this repo, because the batch runner's merge command is blocked. Never a red PR, and the review rules above still apply. It ends when the claude-settings allow rule for `merge --ready` is on stable and the batch runner can merge again (the coordinator's end condition, not the owner's).
 
 **Holds while:** the owner has not withdrawn the grant or named another session, and branch protection on `main` requires `all-jobs-passed` for every PR, admins included.
 
