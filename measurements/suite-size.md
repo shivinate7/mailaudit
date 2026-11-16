@@ -1,8 +1,8 @@
 # Test suite assertion count and run time
 
-**Status:** measured 2026-11-15 at `28bdadb7` plus the tracking refresh, on `reimport-tracking-refresh`. New York (`TZ=America/New_York`): 1719 passed, 0 failed, from `check:docs`, which runs the suite; parts 1 and 2 alone printed 296 and 530. UTC: unmeasured (one fewer by the 38.9 rule). The rise from 1701 is 33.54 to 33.66 in part 2 and 57.18, 57.18a, 57.18b and 57.18c in part 3. Earlier figures are in git.
+**Status:** measured 2026-11-16 at `8bc4c0e0` plus the name refresh, on `reimport-name-style`. New York (`TZ=America/New_York`): 1740 passed, 0 failed, from `check:docs`, which runs the suite. The part split is unmeasured. UTC: unmeasured (one fewer by the 38.9 rule). The rise from 1719 is 33.67 to 33.79 in part 2 and 57.19 to 57.25 in part 3. Earlier figures are in git.
 
-This record holds the assertion count and the run time for `npm test`. The suite runs 1719 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
+This record holds the assertion count and the run time for `npm test`. The suite runs 1740 assertions under a zone where 38.9 runs, and one fewer under UTC. Test 38.9 skips itself in UTC, so the UTC count is one lower. Re-measure whenever a test group is added or removed, or the suite's real-timer waits change.
 
 The count depends on the clock's zone, so the zone is pinned to `America/New_York`. In CI, the three part steps set `TZ`, and the `docs` job names their three logs in `CHECK_DOCS_SUITE_LOG`. The count is the sum of the parts (296, 530 and 893 on 2026-11-15, under New York). `check:docs` grades the figure in this sentence. Locally, `npm run check:docs` runs the suite itself and waits for it to end.
 
