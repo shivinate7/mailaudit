@@ -538,7 +538,9 @@ final class PackageBulkUITests: XCTestCase {
 
         checkIn(app, "B1|1|pCounterspell")
 
-        XCTAssertFalse(el(app, "bulk-vacated-undo:\(gk)").exists, "the held Undo has ended, so its Undo is no tap target")
+        // The held Undo is drawn inert (UndoNoticeBar.inertWhen), and XCUI still lists it, so the fact is "no tap target", not "absent".
+        let heldUndo = el(app, "bulk-vacated-undo:\(gk)")
+        XCTAssertTrue(!heldUndo.exists || !heldUndo.isHittable, "the held Undo has ended, so its Undo is no tap target")
         XCTAssertFalse(el(app, "bulk-vacated-undo:\(gk)-dismiss").exists, "the held Undo has ended, so its dismiss is no tap target")
         ScreenKit.assertStill(before, app, anchor: anchor, "the check-in that ended the held Undo", prefixes: Self.framed)
     }
