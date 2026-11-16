@@ -15,10 +15,10 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 ## What runs
 
 - `duo-ui` runs the three Duo classes on an iPhone Duo simulator. The list is `DUO_UI_TESTS` in the Makefile. The job folds the simulator with `hinge`, a simulator-folding tool pinned at commit `afb8f0bd`. It runs a flat pass, then a closed pass. The closed pass runs the two methods in `DUO_CLOSED_TESTS`.
-- `pro-ui-a` and `pro-ui-b` run `make ui-a` and `make ui-b` on an iPhone 18 Pro simulator. That is the split `milestone-runs-full-suite` uses, without the Duo classes.
-- `ci-done` runs after the three jobs. A red run posts one comment on the pull request. The comment wakes the session that watches the pull request (claude-settings rule `git-ci-done-comment-wakes`).
+- `pro-ui-a`, `pro-ui-b`, `pro-ui-c` and `pro-ui-d` run `make ui-a`, `make ui-b1`, `make ui-b2` and `make ui-b3` on an iPhone 18 Pro simulator. Together they cover the classes `milestone-runs-full-suite` runs, without the Duo classes. `ui-b1` runs PackageBulk, PackageCard and PackagesShell. `ui-b2` runs PackageStamp. `ui-b3` runs every other class that is not in A or Duo. `make ui-b` still runs all of B for milestone.
+- `ci-done` runs after the five jobs. A red run posts one comment on the pull request. The comment wakes the session that watches the pull request (claude-settings rule `git-ci-done-comment-wakes`).
 - Each job builds once with `make app-build`. The tests then run without a build step.
-- `duo-ui` has a 90-minute cap. `pro-ui-a` and `pro-ui-b` have a 60-minute cap. All three caps are provisional. The duo-ui job took 43.5 min (run 42625642858), 58.0 min (run 42643271925), and was cancelled over 60 min (run 42653789986). Sharding the suite retires the raise.
+- `duo-ui` has a 90-minute cap. The four Pro jobs have a 90-minute cap, raised from 60 after the old `pro-ui-b` was cancelled at its cap in two runs (43769323418, 43762232891). PackageStamp alone took 22 to 35 or more minutes and PackageBulk 15 to 17. All caps are provisional. The duo-ui job took 43.5 min (run 42625642858), 58.0 min (run 42643271925), and was cancelled over 60 min (run 42653789986). Sharding the suite retires the raise.
 
 ## Trigger
 
@@ -31,7 +31,7 @@ Plan: docs/decisions/duo-ui-runs-on-pr-label.md#gate (native)
 
 - The trigger's paths filter: `native/**`, `Makefile`, `shared/**`, `.github/workflows/duo-ui.yml` and `scripts/ci-sim.sh`. A pull request that touches none of them starts no run.
 - `duo-ui` runs on a ready pull request, or on a draft that carries the label `duo-ui`.
-- `pro-ui-a` and `pro-ui-b` run only when the pull request carries the label `pro-ui`. A draft runs them too.
+- The four Pro jobs run only when the pull request carries the label `pro-ui`. A draft runs them too.
 - The Pro jobs need a label. The non-Duo suite has known reds, named in `milestone-runs-full-suite`. An automatic run would turn every native pull request red.
 
 ## Departs from `ci-skips-draft-prs`
