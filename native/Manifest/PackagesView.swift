@@ -67,8 +67,9 @@ struct PackagesView: View {
                     .background(.regularMaterial).accessibilityIdentifier("checkin-error")
             }
         }
-        // On one page the pill is an inset. On the open Duo it floats over the right page, above the bar, and the list scrolls clear of it
-        // (the bar's own room is DuoSystemBar's margin; this one holds the bar and the pill).
+        // On one page the pill is a band under the list (`findPill`), so the list ends above it and needs no margin. On the open Duo the
+        // pill is an overlay on the right page, above the bar (`findPillOnDuo`), so the list scrolls clear of it with a margin (the bar's
+        // own room is DuoSystemBar's margin; this one holds the bar and the pill).
         .contentMargins(.bottom, duoPillShown ? FindPillMetrics.duoRoom : 0, for: .scrollContent)
         .findPill(show: pillShown, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
         .findPillOnDuo(show: model.hasItems && !handOpen, right: spread.pages(for: .cardInHand)?.right, query: model.query) { q in Task { await run { try await model.setQuery(q) } } }
