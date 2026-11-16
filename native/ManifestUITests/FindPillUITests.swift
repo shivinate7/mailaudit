@@ -105,15 +105,26 @@ final class FindPillUITests: XCTestCase {
         try openPackages(app)
         let before = ShellUITest.layoutFrames(app)
         XCTAssertFalse(before.isEmpty, "scope: no package row or check-in control to measure")
+        // The band a row can be read in, before the keyboard opens.
+        let top = app.listTop, bottom = app.listBottom
 
         let field = ShellUITest.element(app, "find-field")
         XCTAssertTrue(field.waitForExistence(timeout: 5), "the find field find-field is missing")
         field.tap()
         XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "the keyboard did not open on the find field")
 
+        // The keyboard shrinks the band, and the lazy list unmounts its far rows. A row missing from `after` is not read as
+        // moved. Compared: the ids in both snapshots whose frame lay fully inside the band before the tap. A visible row that
+        // moves still fails, and the failure names it with both frames.
         let after = ShellUITest.layoutFrames(app)
-        for (id, frame) in before {
-            XCTAssertEqual(after[id], frame, "opening search moved \(id) under the pointer (no-layout-shift-under-pointer)")
+        let compared = before.keys.filter { id in
+            guard let was = before[id], after[id] != nil else { return false }
+            return was.minY >= top && was.maxY <= bottom
+        }.sorted()
+        XCTAssertFalse(compared.isEmpty, "scope: no package row or check-in control lies in the band above the keyboard, so none is compared")
+        for id in compared {
+            guard let was = before[id], let now = after[id] else { continue }
+            XCTAssertEqual(now, was, "\(id) moved under the pointer when search opened (no-layout-shift-under-pointer): before \(was), after \(now)")
         }
     }
 

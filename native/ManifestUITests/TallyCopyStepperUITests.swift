@@ -91,6 +91,9 @@ final class TallyCopyStepperUITests: XCTestCase {
         let copy = element(app, "tally-copy:\(key)")
         let plus = element(app, "step-plus:\(key)")
         XCTAssertTrue(plus.waitForExistence(timeout: 3), "the Brainstorm copy has no + button")
+        // The + button can sit under the Find band. A tap on it then scrolls the list and moves the row, so it is revealed whole
+        // first, and the frames are read at rest.
+        app.reveal(plus, whole: true)
         let before = [copy.frame, plus.frame]
         plus.tap()
         wait("label == '1/2'", for: element(app, "got-qty:\(key)"), "+ did not raise the copy to 1/2")
