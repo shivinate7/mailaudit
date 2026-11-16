@@ -27,7 +27,7 @@ The web app's import has a second way in, for a session that holds the CSV. It n
 
 1. Copy the live ledger first: `curl -sS <host>/ledger > before.json`. The web import saves a "before import" version before it merges. This route does not. The Worker also keeps one daily snapshot (`/snapshots`), taken at the first changing write of a day, which is the fallback and not a substitute.
 2. Parse the CSV with the repo's own parser: `Papa.parse(text, { header: true, skipEmptyLines: true })`, then `parseItems(rows)` from `src/view-rules.mjs`. Never hand-roll a second parser (`parser-filters`).
-3. Merge with `mergeItems(base.ledger.items, parsed)` from `src/merge-rules.mjs`, where `base` is the copy from step 1. The result is `{items, added}`: put its `items` back in the ledger, keep every other field as read, and note `added`.
+3. Merge with `mergeItems(base.ledger.items, parsed)` from `src/merge-rules.mjs`, where `base` is the copy from step 1. The result is `{items, added}` (`mergeItems` called without the refresh option): put its `items` back in the ledger, keep every other field as read, and note `added`.
 4. POST `{"ledger": <ledger>}` to `/ledger`. The Worker merges again server-side, so the POST cannot replace what is stored (`imports-merge-never-replace`).
 5. Read back: when `added` is above 0, `rev` rose by one (an unchanged ledger keeps its rev), `items` grew by `added`, and `received` and `receivedAt` are byte-equal to the copy.
 
