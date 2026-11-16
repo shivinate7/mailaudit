@@ -142,4 +142,33 @@ final class FindPillUITests: XCTestCase {
         XCTAssertFalse(isUnderTabBar(pill, bar: bar, window: window),
                        "the find pill is skipped as under the tab bar: isUnderTabBar must not widen to the pill")
     }
+
+    /// The pill at an accessibility size, on Packages. One line: the pill is shorter than the height the empty second line gave it
+    /// (87pt at AX3, 110pt at AX5, screen-check run 43765127724). The field keeps its 44pt hit region on the audit, and its
+    /// placeholder is the short "Find" (FindPill.promptText). Scope first: the pill and its field are drawn before either is read.
+    func assertFindPillHoldsOneLine(size: String, oldHeight: CGFloat, _ what: String) throws {
+        let app = ShellUITest.launch(width: 375, size: size)
+        try openPackages(app)
+        let pill = ShellUITest.element(app, "find-pill")
+        XCTAssertTrue(pill.waitForExistence(timeout: 5), "scope: the find pill find-pill is missing \(what)")
+        let field = ShellUITest.element(app, "find-field")
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "scope: the find field find-field is missing \(what)")
+
+        XCTAssertLessThan(pill.frame.height, oldHeight,
+                          "the find pill is \(pill.frame.height)pt tall \(what), not under the \(oldHeight)pt the empty second line gave it")
+        XCTAssertEqual(field.placeholderValue, "Find", "the find field's placeholder is not \"Find\" \(what)")
+        try app.performAccessibilityAudit(for: .hitRegion) { issue in
+            issue.element?.identifier != "find-field"
+        }
+    }
+
+    /// AX3: one line, pill under 87pt, placeholder "Find", find field passes the 44pt hit-region audit.
+    func testFindPillHoldsOneLineAtAccessibilityXL() throws {
+        try assertFindPillHoldsOneLine(size: ShellUITest.accessibilityXL, oldHeight: 87, "at AX3")
+    }
+
+    /// AX5: one line, pill under 110pt, placeholder "Find", find field passes the 44pt hit-region audit.
+    func testFindPillHoldsOneLineAtAccessibilityXXXL() throws {
+        try assertFindPillHoldsOneLine(size: ShellUITest.accessibilityXXXL, oldHeight: 110, "at AX5")
+    }
 }

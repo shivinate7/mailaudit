@@ -4,11 +4,17 @@
 import XCTest
 
 enum ShellUITest {
-    /// Launches on the bundled fake seed. `width` frames the root content (-ManifestUITestWidth).
-    static func launch(width: Int? = nil) -> XCUIApplication {
+    /// UIContentSizeCategory names for `launch(size:)`: AX3 and AX5, the accessibility sizes the Find pill cases read.
+    static let accessibilityXL = "UICTContentSizeCategoryAccessibilityXL"
+    static let accessibilityXXXL = "UICTContentSizeCategoryAccessibilityXXXL"
+
+    /// Launches on the bundled fake seed. `width` frames the root content (-ManifestUITestWidth). `size` is a UIContentSizeCategory
+    /// name (-UIPreferredContentSizeCategoryName), passed where a case depends on the type size, so the simulator's own setting cannot move it.
+    static func launch(width: Int? = nil, size: String? = nil) -> XCUIApplication {
         let app = XCUIApplication()
         var args = ["-ManifestUITestSeed"]
         if let width { args += ["-ManifestUITestWidth", String(width)] }
+        if let size { args += ["-UIPreferredContentSizeCategoryName", size] }
         app.launchArguments = args
         app.launch()
         return app
