@@ -57,3 +57,4 @@ Sync runs itself. These records say what it refuses to do, and why each refusal 
 ## Measurements
 
 - `sync-latency` — Sync delay from a tap on one device to the row on the other.
+- `cloud-csv-import` — The figures of the one CSV import made from a cloud session.
