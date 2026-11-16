@@ -32,7 +32,7 @@ This is a redraw, not the original. The step 8 design spec and its packages-tall
 ## Items
 
 1. **The Find pill, one page.** Today, built.
-   - What: a glass capsule pinned above the system tab bar on Packages and on Tally. It holds a magnifier, a Cochin 16 field, and a 44 x 44 pt clear slot. The placeholder is "Find card, set, seller, order" at normal type sizes, and "Find" at accessibility sizes, where the full prompt was cut off (`FindPill.promptText`). It sits 16 pt in from each side and 8 pt above the bar. It draws only while the ledger holds items. One query serves both tabs.
+   - What: a capsule pinned above the system tab bar on Packages and on Tally. It holds a magnifier, a Cochin 16 field, and a 44 x 44 pt clear slot. The placeholder is "Find card, set, seller, order" at normal type sizes, and "Find" at accessibility sizes, where the full prompt was cut off (`FindPill.promptText`). It sits 16 pt in from each side and 8 pt above the bar. It draws only while the ledger holds items. One query serves both tabs.
    - Sources: `FindPill`, `View.findPill(show:query:change:)`, `PackagesView.pillShown`, `TallyView.findPillShown`; web `.mdl-pill`.
    - Gain: the main input sits in thumb reach (`ux-thumb-zone`), and Apple's search-fields page allows bottom placement. Loss: it covers the last 68 pt of list at rest at normal type sizes (48 pt pill, 8 pt above and below). At accessibility sizes the field holds one line (`FindPill.fieldLines`) and the pill follows the text. Before that fix, an empty second line made it 87 pt tall at AX3 and 110 pt at AX5 (design review, screen-check run 43765127724), and the pill hid "14 still missing" and the VALUE figure. At AX sizes the masthead's height now hides those figures, not the pill (debt `masthead-at-ax-sizes`). A bottom content inset scrolls the list clear.
    - Pick: as built.
@@ -151,7 +151,7 @@ This is a redraw, not the original. The step 8 design spec and its packages-tall
       - Today. Drawn for comparison only.
     - Departs from: `src/app.jsx` `.mdl-pill`, the web pill: paper at 62%, an 18 px backdrop blur, and a two-layer `shadow` box-shadow. The owner ruled the native departure. The web pill keeps its glass, and this item does not change it. Not blocking.
     - Frames: the folded Duo, as the bottom 280 pt of the 466 x 678 pt outer screen, for Packages and Tally at normal size and AX5. Then the open Duo, as the bottom 220 pt of 951 x 669, with Tally. The AX5 pill is drawn 83 pt tall. That is 110 pt minus the empty 27 pt second line, from `FindPill.swift`'s doc comment and screen-check run 43765127724; it is derived, not measured. AX3 would draw at 67 pt by the same sum. AX text is drawn to fit, not at a measured size.
-    - `.find` in `step8-packages-tally-filters.html` drew the web's glass and box-shadow. It now draws the pick: opaque paper with no shadow.
+    - `.find` in `step8-packages-tally-filters.html` drew the web's glass and box-shadow. It now draws the pick, opaque paper with no shadow, so the design review judges the built pill against the ruled fill. Until the builder lands it, item 1's frames are ahead of the build in this one part.
     - Unmeasured: whether the opaque fill turns the two audits green. A text element half under an opaque view may still be sampled. The proof is a re-run of those two tests on the build.
 
 ## Guesses

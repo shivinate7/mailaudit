@@ -7,7 +7,8 @@
 <style>
 /* Tokens: shared/tokens.json, read through Parchment (native/Manifest/Theme.swift). Light keys: paper, card, ink, inkSoft, line,
    accent, shadow. Dark keys: darkPaper, darkCard, darkInk, darkInkSoft, darkLine, darkAccent. The native app is held to light
-   (native/project.yml UIUserInterfaceStyle: Light), so the dark theme here is a spec, not a shipped state. */
+   (native/project.yml UIUserInterfaceStyle: Light), so the dark theme here is a spec, not a shipped state.
+   Page chrome: manila, manilaInk, green (--new), red (--today), and their dark keys. */
 :root {
   --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
   --shadow:rgba(28,43,36,0.06); --manila:#EADBBA; --manilaInk:#695832; --new:#2E7A5E; --today:#A8443C;
@@ -18,12 +19,12 @@
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
     --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
-    --manila:#3A3226; --manilaInk:#E2CFA4; --new:#7FC4A4; --today:#E3958C; color-scheme: dark;
+    --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
   --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
-  --manila:#3A3226; --manilaInk:#E2CFA4; --new:#7FC4A4; --today:#E3958C; color-scheme: dark;
+  --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
 }
 * { box-sizing: border-box; }
 body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.45; }
