@@ -418,6 +418,7 @@ jobs:
 
   # Lints the markdown a change adds or edits, in Simplified Technical English. It fails only
   # on an error on a changed line. fetch-depth 0 lets the action diff against the base branch.
+  # The claude-md-cites step fails when a rule file copies a claude-settings record instead of naming it.
   checks:
     needs: [push-skip]
     if: ${{ !github.event.pull_request.draft }}
@@ -433,6 +434,8 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
       - uses: shivinate7/claude-settings/actions/ste-lint@stable # tracks claude-settings stable
+        if: needs.push-skip.outputs.skip != 'true'
+      - uses: shivinate7/claude-settings/actions/claude-md-cites@stable # tracks claude-settings stable
         if: needs.push-skip.outputs.skip != 'true'
 
   # Decision milestone-runs-full-suite: on a push to main, dispatches the full Swift suite
