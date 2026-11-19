@@ -90,6 +90,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `duo-bar-dynamic-type-clips` — The Duo tab bar labels clip at every accessibility text size.
 - `duo-stacked-poses-unbuilt` — The Duo has no stacked poses.
 - `duo-hand-mockup-gaps` — Eight parts of the Card in Hand mockup are not built.
+- `duo-post-bar-unmeasured-s-m` — The pinned Post bar of Card in Hand is judged only at L.
 - `hand-stale-checkin-error` — A good post leaves an old check-in error showing.
 - `stamped-toggle-clears-error` — The stamped toggle clears a failed check-in's error.
 - `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.
