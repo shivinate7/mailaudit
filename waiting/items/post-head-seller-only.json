@@ -1,0 +1,58 @@
+{
+  "added": "2026-11-19T05:40:00Z",
+  "context": "Goal: the sender and the Post button both stay on screen at every text size.\nProblem (goal): with the full sender head and the bar, the two together fill the screen at the largest sizes, and dropping the head's other text needs your grant.\nBased on (ruling): you answered build B now on the Post bar question, with the note make the pin not so thick (2026-11-18 23:22 CST).\nBased on (measured): the designer measured the bar at the default large text size: 128 pt as drawn, 61 pt in one row, 53 pt button only.\nDeparts from: main shows the full sender head at every size \u2014 this shows only the seller at the largest sizes.\nWaiting on: your answer; the builder waits on this together with the text cap for the largest sizes.",
+  "designs": [
+    {
+      "drawn": 951,
+      "file": "docs/design/duo-hand-post-pin.html",
+      "focus": "#head-slim",
+      "label": "A: seller-only head and capped bar",
+      "option": "a",
+      "slug": "duo-hand-post-pin",
+      "state": "slimhead"
+    }
+  ],
+  "home": "decision duo-card-in-hand and the open duo-hand-post-order",
+  "id": "post-head-seller-only",
+  "kind": "decision",
+  "n": 105,
+  "options": [
+    {
+      "design": "duo-hand-post-pin",
+      "gain": "Room for a whole card line above the bar with the cap.",
+      "how": "The head keeps just the seller's name at the largest sizes.",
+      "id": "seller-only",
+      "key": "a",
+      "label": "Show only the seller",
+      "lose": "The head's other text is hidden at the largest sizes."
+    },
+    {
+      "gain": "Nothing hidden.",
+      "how": "The head shows everything at every size.",
+      "id": "full-head",
+      "key": "b",
+      "label": "Keep the full head",
+      "lose": "With or without the cap, no whole line shows above the bar at the largest sizes."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "decision duo-card-in-hand; plan cloud-lane-cut (lane duo-post-pins)",
+  "repo": "shivinate7/mailaudit",
+  "short": "At the largest text sizes, show only the seller in the sender head",
+  "shown": [
+    {
+      "id": "seller-only",
+      "key": "a",
+      "label": "Show only the seller"
+    },
+    {
+      "id": "full-head",
+      "key": "b",
+      "label": "Keep the full head"
+    }
+  ],
+  "status": "open",
+  "title": "At the largest text sizes, may the sender head show only the seller?",
+  "why": "With the text cap it is what leaves a card line on screen; without it the screen is only head and bar."
+}

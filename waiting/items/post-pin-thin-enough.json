@@ -1,0 +1,76 @@
+{
+  "added": "2026-11-19T05:40:00Z",
+  "context": "Goal: the Post button stays pinned above the keyboard without covering the card lines.\nProblem (goal): you asked for a thinner pin; the drawn bar was 128 pt, and the two thinner shapes trade the sender sentence against 8 pt, so only your eye can choose.\nBased on (ruling): you answered build B now on the Post bar question, with the note make the pin not so thick (2026-11-18 23:22 CST).\nBased on (measured): the designer measured the bar at the default large text size: 128 pt as drawn, 61 pt in one row, 53 pt button only.\nDeparts from: main puts Post under the sender \u2014 option b of the pin question builds it pinned above the keys; this picks the bar's shape.\nWaiting on: your answer; the builder starts now on the 61 pt one-row bar at normal text sizes, so a different pick changes that work.",
+  "designs": [
+    {
+      "drawn": 951,
+      "file": "docs/design/duo-hand-post-pin.html",
+      "focus": "#pin-onerow",
+      "label": "A: one-row bar, 61 pt",
+      "option": "a",
+      "size": {
+        "h": 61,
+        "w": 455.5
+      },
+      "slug": "duo-hand-post-pin",
+      "state": "onerow"
+    },
+    {
+      "drawn": 951,
+      "file": "docs/design/duo-hand-post-pin.html",
+      "focus": "#pin-button",
+      "label": "B: button-only bar, 53 pt",
+      "option": "b",
+      "size": {
+        "h": 53,
+        "w": 455.5
+      },
+      "slug": "duo-hand-post-pin",
+      "state": "button"
+    }
+  ],
+  "home": "decision duo-card-in-hand and the open duo-hand-post-order",
+  "id": "post-pin-thin-enough",
+  "kind": "decision",
+  "n": 103,
+  "options": [
+    {
+      "design": "duo-hand-post-pin",
+      "gain": "Keeps the sentence; 67 pt thinner than drawn.",
+      "how": "The sentence and the Post button share one row.",
+      "id": "one-row-61",
+      "key": "a",
+      "label": "61 pt one-row bar",
+      "lose": "8 pt taller than button only."
+    },
+    {
+      "design": "duo-hand-post-pin",
+      "gain": "The thinnest bar.",
+      "how": "The bar holds only the Post button.",
+      "id": "button-only-53",
+      "key": "b",
+      "label": "53 pt button-only bar",
+      "lose": "The sentence leaves the bar."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "decision duo-card-in-hand; plan cloud-lane-cut (lane duo-post-pins)",
+  "repo": "shivinate7/mailaudit",
+  "short": "Post bar: 61 pt one row or 53 pt button only",
+  "shown": [
+    {
+      "id": "one-row-61",
+      "key": "a",
+      "label": "61 pt one-row bar"
+    },
+    {
+      "id": "button-only-53",
+      "key": "b",
+      "label": "53 pt button-only bar"
+    }
+  ],
+  "status": "open",
+  "title": "Is a 61 pt Post bar thin enough, or should it drop the sentence for a 53 pt button-only bar?",
+  "why": "It keeps the sentence you saw and is already thin enough to answer your note."
+}

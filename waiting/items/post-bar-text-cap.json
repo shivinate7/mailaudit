@@ -1,0 +1,62 @@
+{
+  "added": "2026-11-19T05:40:00Z",
+  "context": "Goal: the Post bar stays small enough that a card line still shows above it at every text size.\nProblem (goal): without a cap the bar grows to 212 pt at the largest text size and no whole card line shows above it, and a cap needs your grant because it limits how big the bar's text gets.\nBased on (ruling): you answered build B now on the Post bar question, with the note make the pin not so thick (2026-11-18 23:22 CST).\nBased on (measured): the designer measured the bar at the default large text size: 128 pt as drawn, 61 pt in one row, 53 pt button only.\nDeparts from: main sets no cap on the bar's text \u2014 this caps it at the extra extra extra large size and shows the full text in the large-content viewer on press.\nWaiting on: your answer; the builder waits on this for the largest text sizes.",
+  "designs": [
+    {
+      "drawn": 951,
+      "file": "docs/design/duo-hand-post-pin.html",
+      "focus": "#pin-capped",
+      "label": "A: capped bar, 87 pt at the largest size",
+      "option": "a",
+      "size": {
+        "h": 87,
+        "w": 455.5
+      },
+      "slug": "duo-hand-post-pin",
+      "state": "capped"
+    }
+  ],
+  "home": "decision duo-card-in-hand and the open duo-hand-post-order",
+  "id": "post-bar-text-cap",
+  "kind": "decision",
+  "n": 104,
+  "options": [
+    {
+      "design": "duo-hand-post-pin",
+      "gain": "A card line stays visible above the bar at the largest sizes (87 pt bar).",
+      "how": "The bar's text stops growing at the cap; a press shows it large.",
+      "id": "cap-with-viewer",
+      "key": "a",
+      "label": "Cap the text and use the large-content viewer",
+      "lose": "The bar's text is smaller than the setting at the largest sizes."
+    },
+    {
+      "gain": "The text always follows your setting.",
+      "how": "The bar's text grows with the setting.",
+      "id": "no-cap",
+      "key": "b",
+      "label": "No cap",
+      "lose": "At the largest sizes no whole card line shows above the bar (212 pt)."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "decision duo-card-in-hand; plan cloud-lane-cut (lane duo-post-pins)",
+  "repo": "shivinate7/mailaudit",
+  "short": "Post bar: cap its text at the extra large size",
+  "shown": [
+    {
+      "id": "cap-with-viewer",
+      "key": "a",
+      "label": "Cap the text and use the large-content viewer"
+    },
+    {
+      "id": "no-cap",
+      "key": "b",
+      "label": "No cap"
+    }
+  ],
+  "status": "open",
+  "title": "At the largest text sizes, may the Post bar's text stop growing at the extra extra extra large size, with the large-content viewer for the rest?",
+  "why": "A bar that hides every card line is worse than text one step smaller, and the viewer keeps the full text reachable."
+}
