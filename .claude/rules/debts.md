@@ -37,7 +37,7 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `armed-reset-mistap-unmeasured` — A mis-tap beside the armed Reset box is unmeasured.
 - `orphaned-reach-unpinned` — Re-import, Backup and Reset on Orphaned have no test.
 - `panels-overlay-unbuilt` — Disclosure panels still push the list.
-- `panel-paper-fill-unbuilt` — Overlay panels carry no paper fill.
+- `panel-paper-fill-unbuilt` — Overlay panels carry no paper fill. The owner confirmed the fill for the web's Sorted by and History panels.
 - `order-id-visible-unbuilt` — The Tally order id has no narrow-width rule.
 - `tcgplayer-link-opens-history-list` — The TCGplayer link may not search by order id.
 - `header-gestures-unmeasured` — Header gestures are unmeasured.
