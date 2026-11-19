@@ -25,7 +25,7 @@ Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash show
 
 2. **What scrolls.**
    - A replaces `scrollTo(offerID, anchor: .bottom)`, now gone from `HandScreen.swift`, with a scroll to the page top when the offer shows: the scroll position at edge `.top`, or an id on the padded VStack. Not an id on the sender text, which could align it to the bounds top, under the status bar. It drops both `onScrollGeometryChange` handlers and `revealPending`. The page then sits at its top, so no row is under the status bar (unmeasured). Gain: less code, and no read of the keyboard. Loss: none found.
-   - Pick: A.
+   - Ruled B (owner item 42, answer b, 2026-11-18 23:22 CST): not A.
    - Owner grant: no.
 
 3. **After Post.**
@@ -36,7 +36,7 @@ Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash show
    - Departs from: today's box that leaves on Post (`HandModel.post`). Not blocking.
    - Owner grant: no.
 
-4. **The offer arrives on an envelope already shown.** `HandModel.read` sets the offer in the same call that sets the hits. So the offer usually comes with its envelope. When the same envelope stays shown and an offer comes later, A moves the lines down by 118 pt. That happens on a keystroke on the left page, away from any press on the right page. B moves no line. Pick: accept it in A, and say so. Owner grant: no.
+4. **The offer arrives on an envelope already shown.** `HandModel.read` sets the offer in the same call that sets the hits. So the offer usually comes with its envelope. When the same envelope stays shown and an offer comes later, A moves the lines down by 118 pt. That happens on a keystroke on the left page, away from any press on the right page. B moves no line. Ruled B (owner item 42, answer b, 2026-11-18 23:22 CST): the cost above does not arise. Owner grant: no.
 
 5. **The check-in error band.** The `hand-checkin-error` overlay sits at the top of the right page, and covers the sender while it shows. No change here; it shows only after a failed save. Owner grant: no.
 
