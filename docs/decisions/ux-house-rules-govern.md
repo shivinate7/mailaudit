@@ -72,7 +72,7 @@ Tests 21.4 and 62.1 to 62.10 pin the bar. Tests 63.4 to 63.7 pin the Ledger tab'
 
 ## Orphaned composer keys
 
-Owner, page item 86 a, 2026-11-18 23:22 CST: the Orphaned form gets a drag on the list that hides the keyboard, the same drag Card in Hand uses. This carries L2 (the draft survives a view change) to the phone: the tab bar is reachable while the keys are hidden. Option b (leave it as it is) and option c (point the test at the Return key) are not chosen. The gap is `composer-keys-cover-tab-bar`, and it stays open until the test is green on the iPhone 18 Pro.
+Owner, page item 86 a, 2026-11-18 23:22 CST: the Orphaned form gets a drag on the list that hides the keyboard, the same drag Card in Hand uses. Option b (leave it as it is) and option c (point the test at the Return key) are not chosen. The gap is `composer-keys-cover-tab-bar`, and it stays open until the test is green on the iPhone 18 Pro.
 
 ## Holes, named
 
