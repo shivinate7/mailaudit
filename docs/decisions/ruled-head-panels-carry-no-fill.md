@@ -1,6 +1,6 @@
 # Overlay panels take the paper fill
 
-**Status:** orchestrator default, 2026-10-11, not built. Debt: `panel-paper-fill-unbuilt`. It is not an owner ruling, and the owner may overrule it. It follows the owner's "Fix both" on press movement, which made disclosure panels overlay the list (`motion-disclosure-panels-arrive`). An overlay with no fill shows the list rows through it.
+**Status:** orchestrator default, 2026-10-11, not built. Debt: `panel-paper-fill-unbuilt`. The owner confirmed it, 2026-11-18 21:56 CST, for the web's Sorted by and History panels. It follows the owner's "Fix both" on press movement, which made disclosure panels overlay the list (`motion-disclosure-panels-arrive`). An overlay with no fill shows the list rows through it.
 
 An overlay panel takes the paper fill. `paper` is the page colour in `shared/tokens.json`. A paper fill is opaque, so the list rows do not show through it. The option grids still read as raised, because their own cells paint a surface over the panel's rule.
 
