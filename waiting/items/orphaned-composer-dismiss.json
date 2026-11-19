@@ -12,6 +12,16 @@
       "id": "add-drag-list-that",
       "key": "a",
       "label": "Add a drag on the list that hides the keys",
+      "links": [
+        {
+          "label": "Picture: keys hidden after the drag",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-86/docs/design/shots/item-86-orphaned-composer-dismiss/a-keys-hidden.png"
+        },
+        {
+          "label": "Mockup page",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-86/docs/design/item-86-orphaned-composer-dismiss/a.html"
+        }
+      ],
       "lose": "A change to the app: one builder, one reviewer and one Mac run."
     },
     {
@@ -20,6 +30,16 @@
       "id": "leave-as-is",
       "key": "b",
       "label": "Leave it as it is",
+      "links": [
+        {
+          "label": "Picture: keys up, covering the tabs",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-86/docs/design/shots/item-86-orphaned-composer-dismiss/b-keys-up.png"
+        },
+        {
+          "label": "Mockup page",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-86/docs/design/item-86-orphaned-composer-dismiss/b.html"
+        }
+      ],
       "lose": "You can't switch tabs while typing an Orphaned note, and main's iPhone UI run keeps a red."
     },
     {

@@ -13,6 +13,16 @@
       "id": "accept-band",
       "key": "a",
       "label": "End the list above the pill with a paper band",
+      "links": [
+        {
+          "label": "Picture: the list ends above the pill, paper band under it",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-95/docs/design/shots/item-95-find-pill-band/a.png"
+        },
+        {
+          "label": "Mockup page",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-95/docs/design/item-95-find-pill-band/a.html"
+        }
+      ],
       "lose": "8pt of list goes at rest, with 0 whole Tally rows lost at normal size and M. The two largest text sizes already show zero rows, from the tall masthead. It also changes the phone's bottom-bar ruling."
     },
     {
@@ -21,6 +31,16 @@
       "id": "skip-pill-audit",
       "key": "b",
       "label": "Skip the contrast audit on the pill's frame",
+      "links": [
+        {
+          "label": "Picture: the pill floats over the list",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-95/docs/design/shots/item-95-find-pill-band/b.png"
+        },
+        {
+          "label": "Mockup page",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-95/docs/design/item-95-find-pill-band/b.html"
+        }
+      ],
       "lose": "The audit stops checking contrast under the pill, so row text under it can go unread, and the red tests stay unfixed apart from the skip."
     }
   ],

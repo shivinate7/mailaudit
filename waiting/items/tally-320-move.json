@@ -1,6 +1,6 @@
 {
   "added": "2026-11-08T13:14:00-06:00",
-  "context": "Goal: nothing moves under your finger, on any phone width.\nProblem (rule): at 320 px wide, the Tally card moves 14 px on check-ins 1 and 6, which breaks invariant no-layout-shift-under-pointer. No shipped check reads 320 px; the screens check runs at 375 and 760 px only. The record's fix keeps all three buttons in place and hides the one that does not apply, which changes how the card looks.\nBased on (read): debt tally-card-moves-at-320px and test/screens.mjs widths.\nDeparts from: main lets the Tally card's buttons come and go \u2014 option a reserves room for all three buttons and hides the one that does not apply.\nMeanwhile: nothing waits on this.",
+  "context": "Goal: nothing moves under your finger, on any phone width.\nProblem (rule): at 320 px wide the Tally card moves 14 px under your finger when you check in, which breaks your rule that nothing moves under a tap, and the fix changes the card's look.\nBased on (measured): the pictures drawn from the built card at 320 px, which show the 14 px move on check-ins 1 and 6.\nBased on (read): the record of this known gap, which says three buttons where the card has two bulk buttons.\nDeparts from: main lets the Tally card's buttons come and go \u2014 option a reserves room for both bulk buttons and hides the one that does not apply.\nWaiting on: nothing stopped; the coordinator acts on your pick next.",
   "home": "debt tally-card-moves-at-320px; decision card-reserved-geometry",
   "id": "tally-320-move",
   "kind": "decision",
@@ -8,11 +8,25 @@
   "options": [
     {
       "gain": "Nothing moves under your finger at any width.",
-      "how": "Every Tally card holds room for all three buttons and hides the one that does not apply, then the screens check adds 320 px.",
+      "how": "Every Tally card holds room for both bulk buttons and hides the one that does not apply, then the screens check adds 320 px.",
       "id": "keep-all-three-buttons",
       "key": "a",
-      "label": "Keep all three buttons in place",
-      "lose": "The card looks a little different: a gap where the hidden button sits."
+      "label": "Keep both buttons in place",
+      "links": [
+        {
+          "label": "Picture: check-in 1, 320 px",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-62/docs/design/shots/item-62-tally-320/a-1.png"
+        },
+        {
+          "label": "Picture: check-in 6, 320 px",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-62/docs/design/shots/item-62-tally-320/a-6.png"
+        },
+        {
+          "label": "Mockup page",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-62/docs/design/item-62-tally-320/a.html"
+        }
+      ],
+      "lose": "The card is 14 px taller at rest at 320 px, a blank slot where the hidden button sits (measured on a copy with the hidden button added, not built code)."
     },
     {
       "gain": "The card keeps its look.",
@@ -20,12 +34,35 @@
       "id": "accept-move-at-320",
       "key": "b",
       "label": "Accept the move at 320 px",
-      "lose": "On the narrowest phones a tap can land on the wrong button."
+      "links": [
+        {
+          "label": "Picture: check-in 1, 320 px",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-62/docs/design/shots/item-62-tally-320/b-1.png"
+        },
+        {
+          "label": "Picture: check-in 6, 320 px",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-62/docs/design/shots/item-62-tally-320/b-6.png"
+        },
+        {
+          "label": "Mockup page",
+          "url": "https://github.com/shivinate7/mailaudit/blob/look-mockup-62/docs/design/item-62-tally-320/b.html"
+        }
+      ],
+      "lose": "On the narrowest phones a tap can land on the wrong button: the rows move 14 px on check-in 1 and back on check-in 6 at 320 px (measured on the built page)."
+    },
+    {
+      "gain": "Nothing moves and there is no blank slot.",
+      "how": "The two bulk buttons get shorter words, so they sit on one line at 320 px and nothing moves.",
+      "id": "shorten-the-labels",
+      "key": "c",
+      "label": "Shorten the button labels so both fit on one line",
+      "lose": "The button words change. Not drawn yet; the designer put the saving at about 20 px, an estimate, not measured."
     }
   ],
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
   "rank": 19,
+  "recommended": "a",
   "ref": "debt tally-card-moves-at-320px (the Tally card moves at 320px); invariant no-layout-shift-under-pointer; decision card-reserved-geometry",
   "reply": "You asked to see this. Pictures of both options are being drawn; they appear on this item when done.",
   "repo": "shivinate7/mailaudit",
@@ -40,6 +77,11 @@
       "id": "accept-move-at-320",
       "key": "b",
       "label": "Accept the move at 320 px"
+    },
+    {
+      "id": "shorten-the-labels",
+      "key": "c",
+      "label": "Shorten the button labels so both fit on one line"
     }
   ],
   "status": "open",
