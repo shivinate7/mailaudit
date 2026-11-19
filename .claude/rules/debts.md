@@ -65,3 +65,4 @@ One known gap per file under `docs/debts/`. Each carries a Status line and a Dec
 - `orders-job-unbuilt` — The orders status screen is unbuilt, and the first live run has not happened.
 - `claim-17a-ci-red-unexplained` — Claim 17a failed twice on CI, and why only those runs is unknown.
 - `suite-flakes-under-load` — A suite case fails under load and passes on a re-run.
+- `suite-size-placeholder-ungraded` — A measurement record can keep an unfilled placeholder and pass `check:docs`.
