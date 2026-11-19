@@ -1,5 +1,6 @@
 {
   "added": "2026-11-09T01:50:00Z",
+  "closed": "2026-11-18T23:42:00-06:00",
   "context": "You asked for visuals (10:55 CST). Each option now has its mockup, drawn on the folded Duo (466 pt wide), with extra pictures for a tap on \"0 stamped\" and for the open Duo.\nGoal: the phone's order stamps look and work like the web's.\nProblem (goal): step 6 ships two choices the mockup didn't have. The note field is two lines tall where the mockup shows one, so it fits the 44-point tap minimum at larger text sizes. And the \"0 stamped\" filter cell is disabled when nothing is stamped, but it is not greyed out: its button style dims only on press, so it looks active and does nothing. Both depart from the mockup, so they need your word.\nBased on (read): the step 6 design review.\nBased on (ruling): house rule ux-house-rules-govern: tap targets at least 44 points.\nBased on (read): the step 6 mockup is not in the repo, so option b is drawn from this item's own description and the web's one-line note field.\nDeparts from: main ships a two-line note field and a dead \"0 stamped\" cell \u2014 option b changes them to a one-line field and an always-active cell, as the step 6 mockup had.\nMeanwhile: step 6 ships with both. A change later is a small edit.",
   "designs": [
     {
@@ -65,8 +66,9 @@
   "id": "stamp-note-two-lines",
   "kind": "decision",
   "lastAnswer": {
-    "at": "2026-11-08T22:30:22.188Z",
-    "note": "have they landed tho"
+    "at": "2026-11-19T03:54:59Z",
+    "choice": "a",
+    "note": "Keep both"
   },
   "look": true,
   "n": 39,
@@ -94,8 +96,8 @@
   "pick": "a",
   "rank": 5,
   "ref": "step 6 design review; decision stamp-band-opens-the-editor",
-  "replied": "2026-11-09T01:50:00Z",
-  "reply": "Answer a (keep both) received. It is being filed as an owner ruling in the stamp decision record; this item closes when that record change is open.",
+  "replied": "2026-11-18T23:42:00-06:00",
+  "reply": "Filed. Your answer a, keep both (2026-11-18 21:54 CST), is recorded in the stamp decision on main (pull request 351, merged 2026-11-18 23:01 CST). Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Stamp note field",
   "shown": [
@@ -110,7 +112,7 @@
       "label": "Match the mockup"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "The phone's stamp editor: a two-line note field and a \"0 stamped\" cell that looks active but does nothing. Keep both?",
   "why": "Both follow the house tap-size rule, and neither can show you a dead end."
 }

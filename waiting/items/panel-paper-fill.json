@@ -1,5 +1,6 @@
 {
   "added": "2026-11-09T02:06:00Z",
+  "closed": "2026-11-18T23:42:00-06:00",
   "context": "Goal: an open panel reads cleanly against the list around it.\nProblem (rule): on 2026-10-11 an orchestrator set the default that a panel takes the paper fill. You never confirmed or overruled it, and it was never built.\nBased on (read): src/app.jsx panelWrap has padding and a top border, and no background.\nBased on (read): the overlay of decision motion-disclosure-panels-arrive is not built. On main the panel pushes the rows down, so nothing shows through it today.\nDeparts from: main panelWrap has no background \u2014 option a adds the paper fill.",
   "designs": [
     {
@@ -21,8 +22,9 @@
   "id": "panel-paper-fill",
   "kind": "decision",
   "lastAnswer": {
-    "at": "2026-11-08T22:30:22.188Z",
-    "note": "why no visuals ?"
+    "at": "2026-11-19T03:56:38Z",
+    "choice": "a",
+    "note": "Confirm the paper fill"
   },
   "n": 63,
   "options": [
@@ -85,8 +87,8 @@
   "pick": "a",
   "rank": 25,
   "ref": "debt panel-paper-fill-unbuilt (overlay panels carry no paper fill); src/app.jsx panelWrap",
-  "replied": "2026-11-09T02:06:00Z",
-  "reply": "Answer a (confirm the paper fill) received. It is being filed as an owner ruling in the panel paper fill debt record; this item closes when that record change is open.",
+  "replied": "2026-11-18T23:42:00-06:00",
+  "reply": "Filed. Your answer a, confirm the paper fill for the web's Sorted by and History panels (2026-11-18 21:56 CST), is recorded on main (pull request 351, merged 2026-11-18 23:01 CST). The fill is not built yet; its debt stays open. Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Panel paper fill",
   "shown": [
@@ -101,7 +103,7 @@
       "label": "Overrule it: panels stay with no fill"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "Should the web's Sorted by and History panels get the paper fill?",
   "why": "It costs nothing today and keeps the panel clean once the overlay lands."
 }
