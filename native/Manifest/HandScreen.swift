@@ -63,7 +63,7 @@ struct HandScreen: View {
     /// What a Post left in the offer's slot, so the lines keep their place under the finger that pressed it. It goes with the
     /// next typed card or New envelope.
     @State private var receipt: Receipt?
-    /// The system keys are up. The Post bar then sits above their drawn top, not above the floating tab bar.
+    /// The system keys are up. The Post bar then sits on the keys, not above the floating tab bar.
     @State private var keysUp = false
     @Environment(\.duoCustomBar) private var customBar
 
@@ -369,20 +369,17 @@ struct HandScreen: View {
         }
     }
 
-    /// A hairline, the manila tint, and 8 pt above and below the 44 pt row. The foot pad clears the keys' drawn top while they
-    /// are up (duo-fold-and-keyboard: the panel draws 44 pt above its reported frame), else the floating tab bar.
-    /// Default, not owner: the pad is the simulator's figure, unmeasured on a device (duo-keyboard-gap-unmeasured).
+    /// A hairline, the manila tint, and 8 pt above and below the 44 pt row. With the keys up the page's own keyboard safe area
+    /// already ends at their drawn top, so the bar needs no pad of its own (duo-ui run 44469334404: a 44 pt pad left the Post
+    /// button 52 pt above the drawn top). With the keys down it clears the floating tab bar.
     private func pinned(_ content: some View) -> some View {
         VStack(spacing: 0) {
             Rectangle().fill(Parchment.line).frame(height: 1)
             content.padding(.vertical, 8).padding(.horizontal, 16).frame(maxWidth: .infinity, alignment: .leading)
         }
         .background(Parchment.manila.opacity(0.5)).background(Parchment.paper)
-        .padding(.bottom, keysUp ? Self.keysDrawnAbove : (customBar ? DuoBarMetrics.height : 0))
+        .padding(.bottom, keysUp ? 0 : (customBar ? DuoBarMetrics.height : 0))
     }
-
-    /// How far above its reported frame the keys draw on the open Duo (duo-fold-and-keyboard, one screenshot reading).
-    private static let keysDrawnAbove: CGFloat = 44
 
     /// Only for a held card. It checks in the offered copies, the typed card with them, and never runs by itself. The sentence
     /// sits beside the button; when the two do not fit on one row (large text) the button drops under the sentence.
