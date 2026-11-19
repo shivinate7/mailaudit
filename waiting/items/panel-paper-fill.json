@@ -86,7 +86,7 @@
   "rank": 25,
   "ref": "debt panel-paper-fill-unbuilt (overlay panels carry no paper fill); src/app.jsx panelWrap",
   "replied": "2026-11-09T02:06:00Z",
-  "reply": "You asked why there were no visuals. Each option now links its screenshots; the full mockup is in PR 252 (docs/design/panel-paper-fill.html).",
+  "reply": "Answer a (confirm the paper fill) received. It is being filed as an owner ruling in the panel paper fill debt record; this item closes when that record change is open.",
   "repo": "shivinate7/mailaudit",
   "short": "Panel paper fill",
   "shown": [

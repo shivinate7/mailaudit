@@ -95,7 +95,7 @@
   "rank": 5,
   "ref": "step 6 design review; decision stamp-band-opens-the-editor",
   "replied": "2026-11-09T01:50:00Z",
-  "reply": "Yes, both are on main now: the note field is 2 to 6 lines tall (StampViews.swift:273-274), and the \"0 stamped\" cell is disabled with no dimming (StampViews.swift:30). That is option a. Option b is not built; draft PR 240 waits on your pick.",
+  "reply": "Answer a (keep both) received. It is being filed as an owner ruling in the stamp decision record; this item closes when that record change is open.",
   "repo": "shivinate7/mailaudit",
   "short": "Stamp note field",
   "shown": [

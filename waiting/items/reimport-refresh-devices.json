@@ -20,7 +20,7 @@
       "how": "The importing device sends a list of tracking updates to the Worker, and the Worker applies those updates to its stored copy.",
       "id": "refresh-map-on-post",
       "key": "b",
-      "label": "Send a refresh map with the POST",
+      "label": "Send a refresh map with the sync",
       "lose": "A Worker change and a new merge rule to review, and a stale device could still send an old update."
     },
     {
@@ -29,14 +29,22 @@
       "id": "tracking-stamp-per-line",
       "key": "c",
       "label": "Stamp each line's tracking with a time",
-      "lose": "It changes the saved-state shape, which invariant saved-state-shape freezes, so it needs your ruling on that invariant too."
+      "lose": "It changes the saved data's layout, which a standing rule freezes, so it needs your ruling on that rule too."
+    },
+    {
+      "gain": "All your devices follow the refresh, a stale CSV cannot put old tracking back over newer tracking, and the saved data's layout does not change.",
+      "how": "The importing device sends a list of tracking updates with the value it saw before. The Worker applies an update only if its stored tracking still equals that old value.",
+      "id": "refresh-map-with-check",
+      "key": "d",
+      "label": "Send a refresh map, applied only if the Worker's copy is unchanged",
+      "lose": "Not designed or tested yet: the Worker's sync merge changes, and what happens when two devices import at once is unmeasured."
     }
   ],
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "c",
   "ref": "PR 342 (the pull request that refreshes tracking on a re-import); debt reimport-refresh-stays-on-device (the refresh stays on the importing device); item 89 reimport-changed-lines (your ruling that a re-import refreshes tracking only); invariant saved-state-shape (the saved-state shape is fixed)",
   "replied": "2026-11-18T22:01:40-06:00",
-  "reply": "You ruled out a. B against C: B is the smaller change. The importing device sends a list of tracking updates and the Worker applies them, so all devices follow. The cost: the Worker cannot tell a stale CSV from a fresh one, so an old export can put old tracking back on every device (the debt record also says an old export could put an old-style name back; unmeasured, never tried). C stamps each line's tracking with the time it was set, and the newest value wins everywhere, so a stale device cannot revert anything. The cost: the saved data's layout changes, which a standing rule freezes, so C needs your ruling on that rule too, and it is more work; how many saved lines it touches is unmeasured. Only two designs are on the debt record besides a. One more shape I have not designed or tested: B with a check, where the Worker applies an update only if its copy still holds the old value the importing device saw. Say if you want that on the page as option d.",
+  "reply": "You ruled out a. B against C: B is the smaller change. The importing device sends a list of tracking updates and the Worker applies them, so all devices follow. The cost: the Worker cannot tell a stale CSV from a fresh one, so an old export can put old tracking back on every device (the debt record also says an old export could put an old-style name back; unmeasured, never tried). C stamps each line's tracking with the time it was set, and the newest value wins everywhere, so a stale device cannot revert anything. The cost: the saved data's layout changes, which a standing rule freezes, so C needs your ruling on that rule too, and it is more work; how many saved lines it touches is unmeasured. Only two designs are on the debt record besides a. I added a third, option d: B with a check, so the Worker applies an update only if its copy still holds the old value the importing device saw. It is not designed or tested.",
   "repo": "shivinate7/mailaudit",
   "short": "Tracking refresh on all devices",
   "shown": [
@@ -54,6 +62,11 @@
       "id": "tracking-stamp-per-line",
       "key": "c",
       "label": "Stamp each line's tracking with a time"
+    },
+    {
+      "id": "refresh-map-with-check",
+      "key": "d",
+      "label": "Send a refresh map, applied only if the Worker's copy is unchanged"
     }
   ],
   "status": "open",
