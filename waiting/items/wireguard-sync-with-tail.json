@@ -3,6 +3,7 @@
   "closed": "2026-11-16T01:06:00Z",
   "context": "Goal: find out why Manifest on your phone does not reach the Worker with WireGuard on.\nWhy yours: it needs the iPhone in hand to switch WireGuard on and open Manifest, and no session can drive the phone (measured 2026-11-15, the only phone requests the Worker logged 14:04-14:19 CST came from Cloudflare's network, ASN 13335, not the home connection).\nWhat is known: DNS is clear. AdGuard Home, Quad9 and Cloudflare all return the Worker's real addresses, and the AdGuard query log shows the phone's lookups unfiltered. The Worker replies over the same tunnel from the Mac in 0.15 s.\nWhat runs meanwhile: that session reruns the Worker log (wrangler tail) on your word, then you turn WireGuard on and sync once.",
   "home": "chat in session iPhone WireGuard DNS resolution issue (no step yet)",
+  "id": "wireguard-sync-with-tail",
   "kind": "task",
   "lastAnswer": {
     "at": "2026-11-16T01:06:00Z",

@@ -3,16 +3,18 @@
   "context": "Goal: a day's-end check of what came and what is short.\nProblem (goal): the view needs a way in.\nBased on (read): decision ux-control-earns-place (a control earns its place).\nDeparts from: main's empty query shows the start hint \u2014 it shows today's pile once a card is in today.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
   "designs": [
     {
+      "drawn": 951,
       "file": "docs/design/duo-hand-gaps.html",
-      "focus": "#focus-eod-empty",
+      "focus": "figure[data-opt=\"eod-empty\"] .duo",
       "label": "The empty query",
       "option": "a",
       "slug": "duo-hand-gaps",
       "state": "end-of-day"
     },
     {
+      "drawn": 951,
       "file": "docs/design/duo-hand-gaps.html",
-      "focus": "#focus-eod-control",
+      "focus": "figure[data-opt=\"eod-control\"] .duo",
       "label": "A Day's end control",
       "option": "b",
       "slug": "duo-hand-gaps",
@@ -29,6 +31,7 @@
       "design": "duo-hand-gaps",
       "gain": "No new control.",
       "how": "Once one card is in today, an empty query shows the day's pile and what is not normal.",
+      "id": "empty-query",
       "key": "a",
       "label": "The empty query",
       "links": [
@@ -51,6 +54,7 @@
       "design": "duo-hand-gaps",
       "gain": "It shows only on purpose.",
       "how": "A Day's end button in the header opens the same view.",
+      "id": "days-end-control",
       "key": "b",
       "label": "A Day's end control",
       "links": [
@@ -76,6 +80,18 @@
   "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
   "repo": "shivinate7/mailaudit",
   "short": "End of day opener",
+  "shown": [
+    {
+      "id": "empty-query",
+      "key": "a",
+      "label": "The empty query"
+    },
+    {
+      "id": "days-end-control",
+      "key": "b",
+      "label": "A Day's end control"
+    }
+  ],
   "status": "open",
   "title": "What opens the End of mail day view: an empty query, or a Day's end control?",
   "why": "No new control, and the day shows exactly when the pile is done."

@@ -75,14 +75,16 @@
       "design": "d39-a",
       "gain": "The note field is easy to tap, and the filter can't show an empty list.",
       "how": "A two-line note field, and a \"0 stamped\" cell that looks active but does nothing.",
+      "id": "keep-both",
       "key": "a",
       "label": "Keep both",
       "lose": "It differs a little from the mockup, and the dead cell gives no sign that it is off."
     },
     {
       "design": "d39-b",
-      "gain": "It looks like the step 6 mockup and the web.",
+      "gain": "It matches the earlier design for the stamp editor (a one-line note field and an active \"0 stamped\" cell) and the web.",
       "how": "A one-line note field with a taller tap area; \"0 stamped\" always active.",
+      "id": "match-mockup",
       "key": "b",
       "label": "Match the mockup",
       "lose": "More work. Tapping \"0 stamped\" shows an empty list."
@@ -96,6 +98,18 @@
   "reply": "Yes, both are on main now: the note field is 2 to 6 lines tall (StampViews.swift:273-274), and the \"0 stamped\" cell is disabled with no dimming (StampViews.swift:30). That is option a. Option b is not built; draft PR 240 waits on your pick.",
   "repo": "shivinate7/mailaudit",
   "short": "Stamp note field",
+  "shown": [
+    {
+      "id": "keep-both",
+      "key": "a",
+      "label": "Keep both"
+    },
+    {
+      "id": "match-mockup",
+      "key": "b",
+      "label": "Match the mockup"
+    }
+  ],
   "status": "open",
   "title": "The phone's stamp editor: a two-line note field and a \"0 stamped\" cell that looks active but does nothing. Keep both?",
   "why": "Both follow the house tap-size rule, and neither can show you a dead end."

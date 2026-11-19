@@ -3,16 +3,18 @@
   "context": "Goal: see what this package still owes while the keys are up.\nProblem (goal): round 2 puts it under the lines, which falls under the keys at 3 or more lines.\nBased on (read): decision outstanding-value-per-level (each level states what is still outstanding).\nDeparts from: the round 2 place under the lines \u2014 the trailing end of the \"ordered\" line.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
   "designs": [
     {
+      "drawn": 951,
       "file": "docs/design/duo-hand-gaps.html",
-      "focus": "#focus-owed-meta",
+      "focus": "figure[data-opt=\"owed-meta\"] .duo",
       "label": "On the order line",
       "option": "a",
       "slug": "duo-hand-gaps",
       "state": "still-owed"
     },
     {
+      "drawn": 951,
       "file": "docs/design/duo-hand-gaps.html",
-      "focus": "#focus-owed-under",
+      "focus": "figure[data-opt=\"owed-under\"] .duo",
       "label": "Under the lines",
       "option": "b",
       "slug": "duo-hand-gaps",
@@ -29,6 +31,7 @@
       "design": "duo-hand-gaps",
       "gain": "No new row, and it stays above the keys.",
       "how": "\"Still owed here\" and the figure sit at the trailing end of the \"ordered\" line.",
+      "id": "order-line",
       "key": "a",
       "label": "On the order line",
       "links": [
@@ -50,7 +53,8 @@
     {
       "design": "duo-hand-gaps",
       "gain": "It reads after the lines it sums.",
-      "how": "It sits under the card lines, as round 2 drew it.",
+      "how": "It sits under the card lines, as the earlier design drew it.",
+      "id": "under-lines",
       "key": "b",
       "label": "Under the lines",
       "links": [
@@ -76,6 +80,18 @@
   "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
   "repo": "shivinate7/mailaudit",
   "short": "Still owed place",
+  "shown": [
+    {
+      "id": "order-line",
+      "key": "a",
+      "label": "On the order line"
+    },
+    {
+      "id": "under-lines",
+      "key": "b",
+      "label": "Under the lines"
+    }
+  ],
   "status": "open",
   "title": "Where does \"Still owed here\" sit: on the order line, or under the card lines?",
   "why": "It stays in view while you type, at every length of envelope."

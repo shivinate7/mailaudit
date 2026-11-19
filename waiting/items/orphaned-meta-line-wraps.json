@@ -31,6 +31,7 @@
       "design": "orphaned-meta-line-wraps",
       "gain": "The whole order number shows at every text size, and the audit passes.",
       "how": "The meta line wraps at large text, as shipped today, and the debt closes.",
+      "id": "keep-wrap",
       "key": "a",
       "label": "Keep the wrap",
       "links": [
@@ -61,6 +62,7 @@
       "design": "orphaned-meta-line-wraps",
       "gain": "The phone matches the web's one line.",
       "how": "A lane measures the Cut line and Capped size versions against the audit; one ships if it passes.",
+      "id": "keep-looking-for-oneline",
       "key": "b",
       "label": "Keep looking for a one-line version",
       "links": [
@@ -97,6 +99,18 @@
   "reply": "You asked for a visual example. Each option now links its screenshots; the full mockup is in PR 252 (docs/design/orphaned-meta-line-wraps.html).",
   "repo": "shivinate7/mailaudit",
   "short": "Candidate line wraps",
+  "shown": [
+    {
+      "id": "keep-wrap",
+      "key": "a",
+      "label": "Keep the wrap"
+    },
+    {
+      "id": "keep-looking-for-oneline",
+      "key": "b",
+      "label": "Keep looking for a one-line version"
+    }
+  ],
   "status": "open",
   "title": "On the phone, an Orphaned candidate's date and order line wraps at large text. Keep the wrap?",
   "why": "Only the wrap shows the whole order number at large text, and it already passes the audit."

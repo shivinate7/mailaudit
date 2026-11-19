@@ -9,6 +9,7 @@
     {
       "gain": "You can reach the tabs mid-draft and keep the draft, and the test goes green.",
       "how": "The Orphaned list gets the same drag-to-hide as Card in Hand. The test drags first, then switches tabs.",
+      "id": "add-drag-list-that",
       "key": "a",
       "label": "Add a drag on the list that hides the keys",
       "lose": "A change to the app: one builder, one reviewer and one Mac run."
@@ -16,6 +17,7 @@
     {
       "gain": "No change to the app.",
       "how": "No change to the app. The test stays red under a debt.",
+      "id": "leave-as-is",
       "key": "b",
       "label": "Leave it as it is",
       "lose": "You can't switch tabs while typing an Orphaned note, and main's iPhone UI run keeps a red."
@@ -23,6 +25,7 @@
     {
       "gain": "Only the test changes.",
       "how": "Only the test changes: it presses Return to leave the field, once someone reads what Return does to the keys.",
+      "id": "point-test-at-return",
       "key": "c",
       "label": "Point the test at the Return key instead",
       "lose": "Return also adds the typed name (OrphanedView.swift:199), so it may not be how you switch tabs, and the keys may still stay up."
@@ -33,6 +36,23 @@
   "ref": "step pro-ui-main-reds (the iPhone UI test reds on main); decision ux-house-rules-govern (L2: the envelope draft survives a view change); test testComposerDraftSurvivesAViewChange",
   "repo": "shivinate7/mailaudit",
   "short": "Hide keys in Orphaned",
+  "shown": [
+    {
+      "id": "add-drag-list-that",
+      "key": "a",
+      "label": "Add a drag on the list that hides the keys"
+    },
+    {
+      "id": "leave-as-is",
+      "key": "b",
+      "label": "Leave it as it is"
+    },
+    {
+      "id": "point-test-at-return",
+      "key": "c",
+      "label": "Point the test at the Return key instead"
+    }
+  ],
   "status": "open",
   "title": "On the iPhone, the keyboard in the Orphaned note form covers the tabs, and nothing hides it. Add a drag that hides the keys?",
   "why": "It gives you the tab switch the ruling promises, with a drag the app already uses on Card in Hand."

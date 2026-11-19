@@ -4,6 +4,7 @@
   "context": "Goal: the 4 test commits of the restyle step 8 lane reach PR 238 on GitHub.\nProblem (rule): the push guard refuses the lane's 4 test commits while earlier commit 5b4f3fa has no Red-run trailer, and only your typed override or your word to rewrite that pushed commit can clear it.\nBased on (read): decision red-run-trailer-on-test-commits: a commit that adds test lines needs a Red-run trailer, either with a failed run or the form Red-run: none: <reason>, and a reword of a pushed branch needs the owner.\nBased on (notes): the coordinator says the case failed in run 43762232891, so the owed reason is true.\nDeparts from: main, where 5b4f3fa has no trailer \u2014 option a lets the push go through on your typed override, and option b adds the trailer by rewriting 5b4f3fa.\nMeanwhile: the lane holds 4 test commits unpushed and works on nothing that needs the push.",
   "holds": "Lane restyle-step8 holds 4 test commits unpushed until you answer.",
   "home": "lane restyle-step8 (PR 238); decision red-run-trailer-on-test-commits in claude-settings",
+  "id": "pr238-red-run-5b4f3fa",
   "kind": "decision",
   "lastAnswer": {
     "at": "2026-11-16T02:29:00Z",

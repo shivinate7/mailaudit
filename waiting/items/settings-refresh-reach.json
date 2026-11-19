@@ -4,6 +4,7 @@
   "context": "Goal: the team works from the newest shared settings.\nProblem (rule): the cloud refresh hook says it could not reach the newest settings commit, so the coordinator runs on an older one, and only your word says whether to adopt a commit whose changes nobody has read.\nBased on (read): the refresh hook output at 20:32 CST on 2026-11-18: \"reinstall did not reach d19ac53 (record at c4347c9)\".\nDeparts from: the coordinator session runs claude-settings at c4347c932 \u2014 option a moves it to d19ac53 after the changelog is read.\nWaiting on: nothing stopped; the coordinator keeps working on c4347c932 and acts on your answer next.",
   "holds": "Nothing waits on it.",
   "home": "claude-settings, the cloud refresh hook (the hook that reinstalls the shared settings at session start)",
+  "id": "settings-refresh-reach",
   "kind": "decision",
   "lastAnswer": {
     "at": "2026-11-18T21:53:31-06:00",

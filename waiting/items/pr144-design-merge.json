@@ -13,6 +13,7 @@
     {
       "gain": "The citations resolve, and the only drawing of the stacked poses is on main.",
       "how": "The page lands on main with a note at the top naming each part a later ruling overrides.",
+      "id": "merge-as-reference-page",
       "key": "a",
       "label": "Merge it as a reference page with an override note",
       "links": [
@@ -46,6 +47,7 @@
     {
       "gain": "No out-of-date page on main.",
       "how": "The branch moves to an archive name, the PR closes, and the code and records cite the archive.",
+      "id": "archive-and-repoint-citations",
       "key": "b",
       "label": "Archive it and re-point the citations",
       "links": [
@@ -85,6 +87,18 @@
   "reply": "The pictures are linked under each option: the design's screens on PR 144's branch, design/duo-round2. Later rulings (items 24 b, 25, 27 and 48) override some of them.",
   "repo": "shivinate7/mailaudit",
   "short": "Merge PR 144 design",
+  "shown": [
+    {
+      "id": "merge-as-reference-page",
+      "key": "a",
+      "label": "Merge it as a reference page with an override note"
+    },
+    {
+      "id": "archive-and-repoint-citations",
+      "key": "b",
+      "label": "Archive it and re-point the citations"
+    }
+  ],
   "status": "open",
   "title": "The Card in Hand design page (PR #144) never merged, but main cites it. Merge it as a reference?",
   "why": "Open debts already depend on it, and the note keeps readers from building the overridden parts."

@@ -9,6 +9,7 @@
     {
       "gain": "Packages stays the list you know, and Card in Hand is one tap away.",
       "how": "Packages stays as it is. A \"Card in Hand\" control at the top of Packages opens the two-page screen.",
+      "id": "keep-packages-add-card",
       "key": "a",
       "label": "Keep Packages; add a Card in Hand control",
       "lose": "One extra tap each mail day."
@@ -16,6 +17,7 @@
     {
       "gain": "No extra tap, and it matches the mockup.",
       "how": "On the open Duo, the Packages tab opens Card in Hand, and you reach the list from inside it.",
+      "id": "packages-becomes-card-hand",
       "key": "b",
       "label": "Packages becomes Card in Hand",
       "lose": "The Packages list moves from where it sits on the phone."
@@ -27,6 +29,18 @@
   "ref": "decision duo-card-in-hand, Defaults; PR 144 mockup README line 5",
   "repo": "shivinate7/mailaudit",
   "short": "Card in Hand entry",
+  "shown": [
+    {
+      "id": "keep-packages-add-card",
+      "key": "a",
+      "label": "Keep Packages; add a Card in Hand control"
+    },
+    {
+      "id": "packages-becomes-card-hand",
+      "key": "b",
+      "label": "Packages becomes Card in Hand"
+    }
+  ],
   "status": "open",
   "title": "On the open Duo, is Card in Hand the Packages tab, or one tap inside it?",
   "why": "It keeps the phone's Packages list where it is, and it's what Duo is building now."

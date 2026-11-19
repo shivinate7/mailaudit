@@ -1,19 +1,27 @@
 {
   "added": "2026-11-16T01:04:40Z",
+  "closed": "2026-11-18T22:00:54-06:00",
   "command": {
     "mac": "gh auth switch -u shivinate7\n(\ncd ~/Desktop || { echo \"No Desktop folder\"; exit 1; }\n[ -s dev.p12 ] || { echo \"dev.p12 is missing or empty in $(pwd)\"; exit 1; }\nb64=$(base64 < dev.p12 | tr -d '\\n')\n[ -n \"$b64\" ] || { echo \"base64 of dev.p12 came out empty\"; exit 1; }\ngh secret set ASC_DEV_CERT_P12 --repo shivinate7/mailaudit --body \"$b64\" || { echo \"Setting ASC_DEV_CERT_P12 failed\"; exit 1; }\nprintf 'Passphrase of dev.p12: '; read -r -s pw; echo\n[ -n \"$pw\" ] || { echo \"Empty passphrase: nothing set\"; exit 1; }\ngh secret set ASC_DEV_CERT_PASSWORD --repo shivinate7/mailaudit --body \"$pw\" || { echo \"Setting the second secret failed\"; exit 1; }\ngh secret list --repo shivinate7/mailaudit | grep ASC_DEV_CERT\n)",
     "powershell": "gh auth switch -u shivinate7\n$f = Join-Path $env:USERPROFILE 'Desktop\\dev.p12'\nif (-not (Test-Path $f) -or (Get-Item $f).Length -eq 0) { Write-Host \"dev.p12 is missing or empty: $f\"; return }\n$b64 = [Convert]::ToBase64String([IO.File]::ReadAllBytes($f))\nif (-not $b64) { Write-Host 'base64 of dev.p12 came out empty'; return }\ngh secret set ASC_DEV_CERT_P12 --repo shivinate7/mailaudit --body $b64\nif ($LASTEXITCODE -ne 0) { Write-Host 'Setting ASC_DEV_CERT_P12 failed'; return }\n$sec = Read-Host 'Passphrase of dev.p12' -AsSecureString\n$pw = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($sec))\nif (-not $pw) { Write-Host 'Empty passphrase: nothing set'; return }\ngh secret set ASC_DEV_CERT_PASSWORD --repo shivinate7/mailaudit --body $pw\nif ($LASTEXITCODE -ne 0) { Write-Host 'Setting the second secret failed'; return }\ngh secret list --repo shivinate7/mailaudit | Select-String ASC_DEV_CERT"
   },
   "context": "Goal: the TestFlight dry run can sign the build with your Apple Development certificate.\nWhy yours: the certificate sits in your login Keychain and the repo secrets take your own GitHub login, and no cloud session reaches either (measured 2026-11-16, list_computer_folders returned no usable folder on MacBook-Pro-2: Documents, joyous and Developer all report not_available).\nWhat went wrong: the earlier commands set ASC_DEV_CERT_P12 empty twice. First the command ran in the wrong folder, then the file was gone, and a pipe hid the error. You have since deleted the old export, and the P12 secret is empty now. The new command checks each step and stops on the first error.\nThe secret holds the file in base64, and the workflow reads it that way (.github/workflows/testflight.yml, line 7).\nWhat runs next: pull request 344 makes the TestFlight run fail at once when the P12 secret is empty, instead of signing without it. When it has landed and the two secrets are set, the coordinator starts one dry run and the lane reads its log.\nThe bash block was run against a stand-in for gh in bash, and not in zsh. The PowerShell block is for a Windows machine and is not tested here.",
   "home": "testflight-p12-reset",
+  "id": "testflight-p12-reset",
   "kind": "task",
+  "lastAnswer": {
+    "at": "2026-11-18T21:56:38-06:00",
+    "note": "Owner: not done (is this stale or still needed?)"
+  },
   "minutes": "5 min",
   "n": 93,
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "ref": "step testflight-p12-reset (owner act: re-export the cert and re-set its two secrets); lane testflight-identity (the TestFlight identity lane); PR 344 (fail on an empty P12)",
+  "replied": "2026-11-18T22:00:54-06:00",
+  "reply": "Stale, so nothing is needed from you. After the fix that stops an empty P12 secret, the TestFlight run at 20:01 CST on 15 Nov (run 43789154854) read 1 signing identity before and 1 after, 0 log lines about creating a certificate, and ended TESTFLIGHT OK. An empty secret would have failed that run, so the secret holds a certificate now. The run's own record shows no step that you did or did not take; I read only the run.",
   "repo": "shivinate7/mailaudit",
   "short": "Reset the TestFlight cert secrets",
-  "status": "open",
+  "status": "closed",
   "steps": [
     "Open Keychain Access on your Mac. In the login keychain, under My Certificates, choose the Apple Development entry and export it as dev.p12 to your Desktop. Pick a password, and remember it.",
     "Paste the command below in a terminal on your Mac. On Windows, copy dev.p12 to your Desktop first and use the PowerShell block.",

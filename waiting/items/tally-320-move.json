@@ -9,6 +9,7 @@
     {
       "gain": "Nothing moves under your finger at any width.",
       "how": "Every Tally card holds room for all three buttons and hides the one that does not apply, then the screens check adds 320 px.",
+      "id": "keep-all-three-buttons",
       "key": "a",
       "label": "Keep all three buttons in place",
       "lose": "The card looks a little different: a gap where the hidden button sits."
@@ -16,6 +17,7 @@
     {
       "gain": "The card keeps its look.",
       "how": "No change; the debt records 320 px as a known gap.",
+      "id": "accept-move-at-320",
       "key": "b",
       "label": "Accept the move at 320 px",
       "lose": "On the narrowest phones a tap can land on the wrong button."
@@ -27,6 +29,18 @@
   "ref": "debt tally-card-moves-at-320px (the Tally card moves at 320px); invariant no-layout-shift-under-pointer; decision card-reserved-geometry",
   "repo": "shivinate7/mailaudit",
   "short": "Tally card at 320 px",
+  "shown": [
+    {
+      "id": "keep-all-three-buttons",
+      "key": "a",
+      "label": "Keep all three buttons in place"
+    },
+    {
+      "id": "accept-move-at-320",
+      "key": "b",
+      "label": "Accept the move at 320 px"
+    }
+  ],
   "status": "open",
   "title": "At a 320 px screen, the Tally card jumps 14 px when you check in. Fix it, though the look changes?",
   "why": "The no-shift rule is one of the eight that must not break, and a mis-tap there checks in the wrong card."

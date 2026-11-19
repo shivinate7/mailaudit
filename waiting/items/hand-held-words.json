@@ -10,6 +10,7 @@
     {
       "gain": "The tint is never the only sign, and when the box sits under the keys the line still says it.",
       "how": "\"held\" is the card's state, \"Suspense line\" is the place. Both stay on screen; the glossary records which is which.",
+      "id": "keep-both-words-fix",
       "key": "a",
       "label": "Keep both words, fix their roles in the glossary",
       "links": [
@@ -31,6 +32,7 @@
     {
       "gain": "The label shows once.",
       "how": "One of the two words goes from the screen.",
+      "id": "one-word-only",
       "key": "b",
       "label": "One word only",
       "links": [
@@ -56,6 +58,18 @@
   "ref": "decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
   "repo": "shivinate7/mailaudit",
   "short": "Held card words",
+  "shown": [
+    {
+      "id": "keep-both-words-fix",
+      "key": "a",
+      "label": "Keep both words, fix their roles in the glossary"
+    },
+    {
+      "id": "one-word-only",
+      "key": "b",
+      "label": "One word only"
+    }
+  ],
   "status": "open",
   "title": "A held card: keep both words, \"held\" for the state and \"Suspense line\" for the place?",
   "why": "Each word then has one meaning, and the held line still reads when the keys cover the box."

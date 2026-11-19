@@ -38,7 +38,8 @@
     {
       "design": "d42",
       "gain": "No new work, and the seller stays on screen.",
-      "how": "Post stays right under \"It came from\" and the seller, as PR #217 built it. A debt records that the pinned-above-the-keys layout was never tried.",
+      "how": "Post stays right under \"It came from\" and the seller, as built today. A debt records that the pinned-above-the-keys layout was never tried.",
+      "id": "keep-as-built-park",
       "key": "a",
       "label": "Keep it as built, park B as a debt",
       "lose": "The other layout stays untried until the debt is picked up."
@@ -47,9 +48,10 @@
       "design": "d42",
       "gain": "The card lines keep their old order.",
       "how": "The lines go back to the old order, and Post is pinned just above the keyboard.",
+      "id": "build-b-now",
       "key": "b",
       "label": "Build B now",
-      "lose": "A lane rebuilds what PR #217 shipped, and its four pins are redone."
+      "lose": "A lane rebuilds the layout that is built today, and its four tests are redone."
     }
   ],
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
@@ -59,6 +61,18 @@
   "reply": "Option a is the less-work path: it already landed in PR #217. Pick a and the question goes to a debt.",
   "repo": "shivinate7/mailaudit",
   "short": "Post offer order",
+  "shown": [
+    {
+      "id": "keep-as-built-park",
+      "key": "a",
+      "label": "Keep it as built, park B as a debt"
+    },
+    {
+      "id": "build-b-now",
+      "key": "b",
+      "label": "Build B now"
+    }
+  ],
   "status": "open",
   "title": "Keep the Post offer under the sender, as built, and park option B as a debt?",
   "why": "It is the least work from here, as you asked: it is already on main."

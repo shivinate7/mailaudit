@@ -30,6 +30,7 @@
       "design": "panel-paper-fill",
       "gain": "The panel reads as one surface, and stays clean once the overlay is built.",
       "how": "The Sorted by and History panels get the paper background. The designer also drew it with a 1 px ruled foot.",
+      "id": "confirm-paper-fill",
       "key": "a",
       "label": "Confirm the paper fill",
       "links": [
@@ -56,6 +57,7 @@
       "design": "panel-paper-fill",
       "gain": "No change to today's look.",
       "how": "The default is dropped, and the debt closes.",
+      "id": "overrule-panels-stay-with",
       "key": "b",
       "label": "Overrule it: panels stay with no fill",
       "links": [
@@ -87,6 +89,18 @@
   "reply": "You asked why there were no visuals. Each option now links its screenshots; the full mockup is in PR 252 (docs/design/panel-paper-fill.html).",
   "repo": "shivinate7/mailaudit",
   "short": "Panel paper fill",
+  "shown": [
+    {
+      "id": "confirm-paper-fill",
+      "key": "a",
+      "label": "Confirm the paper fill"
+    },
+    {
+      "id": "overrule-panels-stay-with",
+      "key": "b",
+      "label": "Overrule it: panels stay with no fill"
+    }
+  ],
   "status": "open",
   "title": "Should the web's Sorted by and History panels get the paper fill?",
   "why": "It costs nothing today and keeps the panel clean once the overlay lands."
