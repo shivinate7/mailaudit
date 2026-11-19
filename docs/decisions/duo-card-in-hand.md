@@ -4,7 +4,7 @@ Kind: build
 
 Plan: docs/design/duo-blind/README.md#pick (native)
 
-**Status:** ruled on 2026-10-27 at 12:25 CDT. Round 2 answers came on 2026-10-27 at 14:26 CDT, on the waiting page. Defaults and deferrals came at 15:34 CDT. Item 22 is provisional. Item 25 (the Lost stamp) is deferred. Item 27 (held Suspense cards) is default, not owner. Built: the Duo shell (the tab bar under the right page), Card in Hand on side-by-side pages, and the past-transit page, which the `hand-open` control on Packages opens. Not built: the spread tabs; the stacked poses (`duo-stacked-poses-unbuilt`); and eight mockup parts (`duo-hand-mockup-gaps`). The round 2 design is PR 144, the Duo round 2 design pull request.
+**Status:** ruled on 2026-10-27 at 12:25 CDT. Round 2 answers came on 2026-10-27 at 14:26 CDT, on the waiting page. Defaults and deferrals came at 15:34 CDT. Item 22 is provisional. Item 25 (the Lost stamp) is deferred. Item 27 (held Suspense cards) is default, not owner. Item 35 is ruled: option a, "Keep Packages; add a Card in Hand control", 2026-11-18 23:17 CST. Built: the Duo shell (the tab bar under the right page), Card in Hand on side-by-side pages, and the past-transit page, which the `hand-open` control on Packages opens. Not built: the spread tabs; the stacked poses (`duo-stacked-poses-unbuilt`); and eight mockup parts (`duo-hand-mockup-gaps`). The round 2 design is PR 144, the Duo round 2 design pull request.
 
 On the iPhone Duo, Card in Hand checks cards in by name. The concept comes from PR 139, the Duo blind-design pull request. The card you hold is the search, and the envelope is the answer. Two parts come from other concepts in the same PR: the past-transit page from the Sorting Frame, and the Suspense line from the Account Book.
 
@@ -23,6 +23,8 @@ The owner ruled on 2026-10-27, 12:25 CDT. Round 2 answers, 14:26 CDT, are marked
 - **Other tabs.** Round 2 item 24 (option b): on the open Duo, Tally and Orphaned spread over both pages. Ledger stays full width.
 - **Stacked poses.** Round 2 item 28 (option a): in stacked poses (laptop, held tall), the answer page goes on top. At 15:34 CDT (owner, a), the system tab bar sits at the bottom of the screen.
 - **Tracked late packages.** At 15:34 CDT (owner, a), keep today's `lostMail` rule, which skips tracked packages. See `lost-mail-flags-use-order-date`.
+- **Card in Hand entry.** Owner, page item 35 (`duo-card-in-hand-entry`), option a, 2026-11-18 23:17 CST: "Keep Packages; add a Card in Hand control". Card in Hand is not the Packages tab. Option b, Packages becomes Card in Hand, is not chosen.
+- **Still owed place.** Owner, page item 78 (`hand-still-owed-place`), option a, 2026-11-18 23:22 CST: "Still owed here" sits on the order line. Option b, under the lines, is not chosen.
 
 ## Keys across the fold
 
@@ -57,7 +59,7 @@ A typed query matches as the web search does: a case-insensitive part of the car
 
 Packages does not spread on the open Duo. It keeps the web's one-page layout. Default, not owner.
 
-Card in Hand opens from a `hand-open` control at the top of Packages, on two pages side by side only, and covers both pages. The mockup makes it the Packages tab itself. Default, not owner. Item 35 on the owner's waiting page, `duo-card-in-hand-entry`, asks whether Card in Hand should be the Packages tab itself. It is open.
+Card in Hand opens from a `hand-open` control in Packages. The control is ruled, item 35 a (see Ruled). Default, not owner: the control sits at the top of Packages, on two pages side by side only, and covers both pages. The mockup makes Card in Hand the Packages tab itself, which is not chosen.
 
 A unique name shows its envelope with a check-in tap on each line. Post shows only when a held card came with the typed one, and it never runs by itself. Default, not owner.
 
@@ -67,7 +69,7 @@ On Card in Hand, the Suspense and Released boxes sit below the matches, not abov
 
 On Card in Hand, the lines keep the order sender, then lines. The sender (the "It came from" line, the seller and the order date) is pinned at the top of the answer page, and the lines scroll under it. The Post offer is a one-row bar pinned just above the keys: "Your held card came with this envelope." beside the Post button, on a hairline, 61 pt at the normal text sizes (S, M and L). When the two do not fit on one row, the button drops under the sentence. "Nothing is checked in until you post." is the button's VoiceOver hint. The bar's foot sits on the keys' drawn top, 44 pt above the keyboard frame XCTest reports (`duo-fold-and-keyboard`); SwiftUI's keyboard safe area already ends there, so the bar adds no pad (duo-ui run 44469334404). With the keys down it clears the floating tab bar. After a Post that saves or is refused, a receipt of the bar's height and one row holds the slot until the next card or New envelope: "Posted." with the count, or "Not posted." with "Type the card again to post." in red. A failed save keeps the offer. Owner ruling: item 42 b, `duo-hand-post-order`, "Build B now", 2026-11-18 23:22 CST, with the note "make the pin not so thick". Departs from: the order of the Post-under-sender build (offer under the sender, scroll to the top on show) and its two-sentence stacked offer, both in `HandScreen.swift` before this change. At accessibility sizes (AX3 and AX5) the bar and the head scale as they did: the xxxLarge text cap and the seller-only head in the mockup notes (items 2 and 3) wait for an owner grant and are not built. The drawn top is the simulator's figure, unmeasured on a device (`duo-keyboard-gap-unmeasured`). The mockup is the page duo-hand-post-pin.html and its notes, on the design branch design-duo-post-pins until it merges; the earlier drawing is `docs/design/duo-hand-post-sender.html`.
 
-**Holds while:** the owner's pick of Card in Hand stands. Item 22 holds until the owner reviews the test build. The `hand-open` entry holds until the owner answers item 35.
+**Holds while:** the owner's pick of Card in Hand stands. Item 22 holds until the owner reviews the test build.
 
 ## See also
 
