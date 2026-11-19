@@ -209,9 +209,10 @@ function route() {
   document.querySelectorAll('nav a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === '#s=' + s)));
   fit();
 }
-// Below 402 px of room the phone scales down whole; at 402 and wider it is drawn 1 px to 1 pt.
+// Below 360 px of room the phone scales down whole; from 360 up it is drawn 1 px to 1 pt, so a host that scales the page
+// itself (a 402 frame less a scrollbar) never meets a phone that has already shrunk.
 function fit() {
-  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; const k = Math.min(1, w.clientWidth / 402);
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; const k = w.clientWidth < 360 ? w.clientWidth / 402 : 1;
     d.style.transform = k < 1 ? `scale(${k})` : ''; w.style.height = k < 1 ? (874 * k) + 'px' : ''; });
 }
 const hide = document.getElementById('hide-labels');
