@@ -19,7 +19,7 @@ Each option has one URL and one focus id, checked headless: each focus finds one
 
 3. **Panel placement** (`#panel-mode`). Options: in the flow under the Recent row, pushing History down, with the card fill, as `historyOpen` and `panelWrap` do today. Or an overlay with the paper fill that covers History and the rows below. Gain of the overlay: it is the ruled behaviour, and no row moves. Loss: it covers History, Re-import and Backup while open, and the paper fill's square edge inside a rounded card is unmeasured. Pick: in the flow, so Recent matches History until the overlay is built for both.
    Options: `#s=open&w=375&mode=inflow`, `&mode=overlay`. Focus: `data-card-375`.
-   Departs from: `motion-disclosure-panels-arrive` (panels overlay the list) and `ruled-head-panels-carry-no-fill` (overlay panels take the paper fill). Both are unbuilt (debts `panels-overlay-unbuilt`, `panel-paper-fill-unbuilt`). Not blocking. Owner grant: yes.
+   Departs from: `motion-disclosure-panels-arrive` (panels overlay the list) and `head-panels-carry-paper-fill` (overlay panels take the paper fill). Both are unbuilt (debts `panels-overlay-unbuilt`, `panel-paper-fill-unbuilt`). Not blocking. Owner grant: yes.
 
 4. **Row geometry.** One fixed height of 72px: a 14px line (micro-label left, time right, mono 10px), a 22px line (Cochin 16px subject, mono figure such as `1 of 4`), an 18px line (Cochin 13.5px seller in inkSoft). Each line is cut with an ellipsis. Gain: a long name never changes the height. Loss: three lines cost more height than History's one-line rows, so about four rows show at once. Pick: this. The decision asks for both the label and the seller line.
 

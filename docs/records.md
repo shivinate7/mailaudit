@@ -67,6 +67,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `csv-import-stays-web` | Kind: build | [`docs/decisions/csv-import-stays-web.md`](../docs/decisions/csv-import-stays-web.md) |
 | `duo-card-in-hand` | Kind: build | [`docs/decisions/duo-card-in-hand.md`](../docs/decisions/duo-card-in-hand.md) |
 | `duo-ui-runs-on-pr-label` | The workflow `.github/workflows/duo-ui.yml` runs the UI tests that need a simulator the milestone run does not cover. | [`docs/decisions/duo-ui-runs-on-pr-label.md`](../docs/decisions/duo-ui-runs-on-pr-label.md) |
+| `head-panels-carry-paper-fill` | **Status:** ruled. | [`docs/decisions/head-panels-carry-paper-fill.md`](../docs/decisions/head-panels-carry-paper-fill.md) |
 | `ledger-remote-needed-for-seed` | Kind: build | [`docs/decisions/ledger-remote-needed-for-seed.md`](../docs/decisions/ledger-remote-needed-for-seed.md) |
 | `live-verification` | This file draws the line between proven and unproven. | [`docs/decisions/live-verification.md`](../docs/decisions/live-verification.md) |
 | `masthead-tallies-unequal-thirds` | The tallies are three ruled cells: cards, packages, and value. | [`docs/decisions/masthead-tallies-unequal-thirds.md`](../docs/decisions/masthead-tallies-unequal-thirds.md) |
@@ -95,7 +96,6 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `remote-is-transport-not-storage` | `window.remote` is transport, not storage. | [`docs/decisions/remote-is-transport-not-storage.md`](../docs/decisions/remote-is-transport-not-storage.md) |
 | `ruled-head-masthead-vocabulary` | Kind: build | [`docs/decisions/ruled-head-masthead-vocabulary.md`](../docs/decisions/ruled-head-masthead-vocabulary.md) |
 | `ruled-head-one-advisory-entrance` | Kind: build | [`docs/decisions/ruled-head-one-advisory-entrance.md`](../docs/decisions/ruled-head-one-advisory-entrance.md) |
-| `ruled-head-panels-carry-no-fill` | **Status:** orchestrator default, 2026-10-11, not built. | [`docs/decisions/ruled-head-panels-carry-no-fill.md`](../docs/decisions/ruled-head-panels-carry-no-fill.md) |
 | `rules-run-in-javascriptcore` | **Status:** ruled. | [`docs/decisions/rules-run-in-javascriptcore.md`](../docs/decisions/rules-run-in-javascriptcore.md) |
 | `screens-checked-headless-in-ci` | Each view (Ledger tab, Orphaned, Tally, Packages) is checked in a headless browser at 375px and 760px. | [`docs/decisions/screens-checked-headless-in-ci.md`](../docs/decisions/screens-checked-headless-in-ci.md) |
 | `seed-load-guards` | Kind: build | [`docs/decisions/seed-load-guards.md`](../docs/decisions/seed-load-guards.md) |

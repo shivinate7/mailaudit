@@ -13,6 +13,6 @@ Before the collapse, seven chips wrapped to two rows. The custom pair claimed a 
 ## See also
 
 - `ruled-head-range-picked` — how the custom range is chosen.
-- `ruled-head-panels-carry-no-fill` — the style the range panel follows.
+- `head-panels-carry-paper-fill` — the style the range panel follows.
 - `ruled-head-masthead-vocabulary` — the head cell that shows the range.
 - `search-filters-inside-package` — the search the date filter shares.

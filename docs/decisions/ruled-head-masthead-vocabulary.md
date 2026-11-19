@@ -20,5 +20,5 @@ Three ruled cells report the state and say what changes it:
 
 - `ledger-tab-holds-options` — the Ledger tab record that holds the View group.
 - `native-ledger-tab-unbuilt` — the debt for the native View group that is not built yet.
-- `ruled-head-panels-carry-no-fill` — the same vocabulary applied to disclosure panels.
+- `head-panels-carry-paper-fill` — the same vocabulary applied to disclosure panels.
 - `ruled-head-one-advisory-entrance` — the one line that carries sync vocabulary instead.
