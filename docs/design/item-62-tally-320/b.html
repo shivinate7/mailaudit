@@ -70,7 +70,7 @@ code { font:12px/1.4 var(--mono); }
 </head>
 <body>
 <main>
-<div class="banner" role="note">Sample. No figure on this page is real. The card is the test fixture's Lightning Bolt: six copies at $1.00 from six made-up sellers.</div>
+<div class="banner" role="note">Sample. No order, seller, date or dollar figure on this page is real: the card is the test fixture's Lightning Bolt, six copies at $1.00 from six made-up sellers. The px figures are measured.</div>
 <h1 id="title">Accept the move</h1>
 <p class="sub" id="sub"></p>
 
@@ -95,10 +95,12 @@ code { font:12px/1.4 var(--mono); }
 <div id="option">
   <div class="tags" id="tags"></div>
   <p class="verdict" id="verdict"></p>
+  <div id="choice">
   <p class="cap" id="cap-before"></p>
   <div class="scroll"><div class="frame" id="before"></div></div>
   <p class="cap" id="cap-after"></p>
   <div class="scroll"><div class="frame" id="after"></div></div>
+  </div>
   <p class="read" id="read"></p>
 </div>
 
@@ -239,7 +241,7 @@ function render() {
   const before = document.getElementById("before"), after = document.getElementById("after");
   for (const f of [before, after]) f.style.width = width + "px";
   before.innerHTML = tallyCard(from);
-  after.innerHTML = tallyCard(step, "choice");
+  after.innerHTML = tallyCard(step);
   document.getElementById("cap-before").innerHTML = `Before check-in ${step} <small>${from} of 6 received. The ring marks the tap, on ${esc(ROWS[tapped].seller)}'s box.</small>`;
   document.getElementById("cap-after").innerHTML = `After check-in ${step} <small>${step} of 6 received. The ring stays where the finger was. The dashed line is where the tapped row's top edge was before the tap.</small>`;
 
