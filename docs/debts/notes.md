@@ -128,7 +128,3 @@ One line per finding that is not likely in normal work. A note becomes a debt af
 - 2026-11-16, #342 review: cases 33.66a and 33.66b in `test/app.test.mjs` were edited in a24f14b1 after the builder's fixes; whether a test-author wrote them is unconfirmed.
 - 2026-11-16, #342 review: the copy "Updated the shipping status on" at `src/app.jsx:3911` can read "Updated shipping status on".
 - 2026-11-16, #342 review: the PR body says `cloud-session-reach` and `csv-import-shows-a-summary` are "no change", but the diff edits both files.
-
-## Tools
-
-- 2026-11-18, mailaudit #342 and #350: the standalone lane lint (`merge --lane-lint`) reads "unknown" here, because the lane-touched-tests workflow lives in claude-settings and no `touched` job exists in this repo's workflows. Use `merge --confirm`, never `--lint-unknown-ok`. Decision: none.
