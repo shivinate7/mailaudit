@@ -12,3 +12,4 @@ paths:
 - `pull-needs-a-key-too` — Sync no longer pulls from GitHub, and no device holds a GitHub token, so no pull needs a key.
 - `token-expires-without-warning` — No device holds a GitHub token, so no token lapses.
 - `native-composer-fields-two-lines` — Closed by owner ruling, item 57 a, 2026-11-08: the two-line composer fields are right on the phone.
+- `native-candidate-lines-wrap` — Closed by owner ruling, item 56 a, 2026-11-18 23:17 CST: the candidate meta line wraps at large text on the phone, and the wrap is right.

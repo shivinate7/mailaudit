@@ -35,7 +35,7 @@ Screenshots: `shots/orphaned-meta-line-wraps/<option>-<size>.png`, one per optio
 1. **Wrap (today).** `CandidateRow.body`: the meta `Text` has no line limit. Drawn as `#o=wrap`.
    - Gain: every character shows at every size. The audit raises no clipped-text finding on the line (commit 7c887ab, 2026-10-27). Nothing to build: the ruling closes the debt.
    - Lose: rows grow with text size. Row 1 reads 63, 120, 293 and 598 pt tall at the four sizes; at AX5 one candidate takes most of the 678 pt screen. Tied rows can differ by a line (row 1 carries the untracked tag): at AX3, 4 lines against 3. The phone differs from the web.
-   - Pick: yes.
+   - Pick: yes. Ruled: option a, page item 56, 2026-11-18 23:17 CST.
 
 2. **Shrink to fit.** `lineLimit(1)` with `minimumScaleFactor(0.5)`, then "…": what the seller line ships today. Drawn as `#o=shrink`.
    - Gain: one line at every size, as on the web.
@@ -65,7 +65,7 @@ Departs from: `EnvelopeCard` in `src/app.jsx` keeps the meta line on one line wi
 
 ## What the pick changes
 
-Nothing in Swift. The debt `native-candidate-lines-wrap` closes on the ruling; its Status line and the waiting item's home need the owner's answer, outside this folder.
+Nothing in Swift. The debt `native-candidate-lines-wrap` closed on the owner's ruling, page item 56 a, 2026-11-18 23:17 CST; its Status line is set.
 
 ## Critique (impeccable, single context: no sub-agent tool in a designer; native method, design review only)
 
