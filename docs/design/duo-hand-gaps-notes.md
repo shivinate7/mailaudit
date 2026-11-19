@@ -58,9 +58,9 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
    - Test: `hand-owed` reads `packages.pills[gk]`. Its frame's maxY is less than 405 with five lines and the keys up. A line tap updates it with no change in the line frames.
 
 4. **Keep held.** Carried over.
-   - Source: round 2 mockup index.html:271 to :272. Today the offer has Post only (`HandScreen.swift:324` to `:334`).
-   - Placement: Keep held goes beside Post in the offer slot under the sender. That is the place in decision `duo-card-in-hand`, Post offer paragraph. Item 42 is still open.
-   - A press hides the offer and leaves a receipt of the same height, as `receiptBox` does (`HandScreen.swift:341` to `:353`). The receipt says "Kept on the Suspense line. Nothing is checked in." It clears with the next card or New envelope. The held card stays held, and the typed card's own line tap still works.
+   - Source: round 2 mockup index.html:271 to :272. Today the offer has Post only (`offerRow` in `HandScreen.swift`).
+   - Placement: Keep held goes beside Post in the offer slot, the bar pinned above the keys. That is the place in decision `duo-card-in-hand`, Post offer paragraph (item 42 b, built on PR 362).
+   - A press hides the offer and leaves a receipt of the same height, as the Post receipt does (`receiptRow` in `HandScreen.swift`). The receipt says "Kept on the Suspense line. Nothing is checked in." It clears with the next card or New envelope. The held card stays held, and the typed card's own line tap still works.
    - Test: Keep held changes no line frame and no slot height. `hand.held` is unchanged. Nothing is saved: the store generation is the same.
 
 5. **Held cards marked on their lines.** Carried over.

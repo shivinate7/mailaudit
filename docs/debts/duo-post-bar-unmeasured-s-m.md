@@ -7,6 +7,11 @@ Two design-review findings sit beside it. Both have unmeasured causes:
 - At L the Post sentence wraps to 2 lines. Real Cochin is wider than the mockup's stand-in font.
 - At rest 2 whole lines of the answer page show, where the mockup showed 3. The mockup assumed a 20 pt status bar. The measured top inset is about 80 pt.
 
+Two more unmeasured notes, from the code. Neither has a test.
+
+- **Bottom pad.** `HandScreen.swift` pads the pinned bar by `DuoBarMetrics.height` (76 pt) from the right page's bottom. `DuoTabBar`'s pill sits 76 pt above the window bottom. With a bottom safe inset, the bar may float above the pill. Unmeasured. No test runs with the keys down.
+- **Keys state at build.** `keysUp` starts `false`. It changes only on the keyboard show and hide notifications. A screen built while the keys are up would take the keys-down pad. Reach is low, because native Packages has no text field. Unverified.
+
 **Status:** open. Waits for a shot of the pinned Post bar at S and M. AX3 and AX5 wait for owner items 104 and 105.
 
 **Decision:** `duo-card-in-hand`.

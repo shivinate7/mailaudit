@@ -43,9 +43,9 @@ Focus ids for the waiting page (default text, two matches): `focus-today` (the S
 
 4. **A tap on the chip.** Not drawn. A tap could close the keys and scroll the left page to the boxes. Gain: one press to see which card. Lose: a control that moves the page; the keys' own close does it today. Pick: no; the chip stays inert. Owner grant: no.
 
-5. **Not drawn: the header row and the right page.** The header at AX3 already wraps to 94 pt (title and count), so "1 held" there would move every part below it. The right page was drawn and rejected in `duo-hand-notice-match-notes` item 1: a box above the sender puts Post under the keys, and item 42 (`duo-hand-post-order`) is open. Owner grant: no.
+5. **Not drawn: the header row and the right page.** The header at AX3 already wraps to 94 pt (title and count), so "1 held" there would move every part below it. The right page was drawn and rejected in `duo-hand-notice-match-notes` item 1: a box above the sender puts Post under the keys, Its Post reason predates item 42 b (`duo-hand-post-order`, built on PR 362), which pinned the Post bar above the keys; that reason is not re-measured. Owner grant: no.
 
-6. **Post at AX3, outside this lane.** On the right page at AX3, Post sits under the keys in every frame here, today included. That is the place item 42 asks about. Reported, not drawn as a change.
+6. **Post at AX3, outside this lane.** On the right page at AX3, Post sits under the keys in every frame here, today included. That was the place item 42 asked about; item 42 b is ruled and built on PR 362. Reported, not drawn as a change.
 
 7. **Folded pose.** Card in Hand opens only on two pages (`HandScreen.swift:32`, `PackagesTab.twoPages`). The folded frame is drawn at the 2026-11-08 outer screen, 466 by 678 pt (`duo-fold-and-keyboard`), only to say nothing changes. Owner grant: no.
 
