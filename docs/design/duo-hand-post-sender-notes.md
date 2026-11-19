@@ -10,22 +10,22 @@ Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash show
 - `layout.py devices` gives `unknown` for this repo. So the open pose is drawn at the brief's size: 951 by 669 pt, fold 40 pt at 455.5 to 495.5 pt (`duo-fold-and-keyboard`).
 - The keys top is the brief's 405 pt: the panel draws there, 44 pt above the 449 pt frame (`duo-keyboard-gap-unmeasured`).
 - The status bar foot on the inner screen is unmeasured. It is drawn at 20 pt, the floor in `DuoHandUITests.statusBarFloor`.
-- Row heights come from the code at the default text size, and are estimates. Sender block: 16 + 13 + 8 + 27 + 8 + 14 = 86 pt to the date's foot. One-copy `ItemLine`: about 64 pt. Offer box (`HandScreen.postBox`): about 110 pt. The Today frame is offset so "It came from" sits at y -152, as the simulator measured. The seller at y -131 then checks only the sender block, not the row or box heights, so the row counts below are estimates.
+- Row heights come from the code at the default text size, and are estimates. Sender block: 16 + 13 + 8 + 27 + 8 + 14 = 86 pt to the date's foot. One-copy `ItemLine`: about 64 pt. Offer bar (`offerRow`, pinned above the keys): 61 pt at the normal text size, measured at L through the receipt test, not the bar itself. The old box's 110 pt estimate no longer applies. The Today frame is offset so "It came from" sits at y -152, as the simulator measured. The seller at y -131 then checks only the sender block, not the row or box heights, so the row counts below are estimates.
 - Theme: one. The native app is held to light (`design-parchment-ledger`).
 - Apple pages read 2026-10-29, each answered 200: Layout (respect the system safe areas), Buttons (a hit region of at least 44x44 pt), Accessibility (44x44 pt default control size on iOS).
 
 ## Items
 
 1. **Where the offer sits.**
-   - Today (`HandScreen.envelope`, `postBox` after the lines; `revealOffer` scrolls it to the foot above the keys). Gain: the order of mockup pose 2. Loss: the sender leaves the top, and rows sit under the status bar.
+   - Today (`slotBar` pins `offerRow` at the foot above the keys; no reveal scroll is in `HandScreen.swift`). Gain: the order of mockup pose 2. Loss: the sender leaves the top, and rows sit under the status bar.
    - A: the offer sits under the sender and the date, above the lines. Sender at y 36 to 106; Post hit frame at y 168 to 212. Gain: it clears the keys by 193 pt, with no keyboard figure. It also holds at large text sizes. Loss: the offer comes before the lines it posts. Lines above the offer: 0. Below it: 2 whole lines, and the top 44 pt of the third.
    - B: the sender is pinned above the scroll view, and the offer is pinned above the keys (`safeAreaInset(edge: .bottom)`). Gain: today's order. Lines above the offer: 2 whole lines, and the top 28 pt of the third. Loss: SwiftUI's keyboard inset ends at the 449 pt frame. So Post clears the drawn panel only with a 44 pt pad, an unmeasured figure. If the panel draws higher, a pinned Post is under the keys and no scroll reaches it.
    - Pick: A.
-   - Departs from: today's order (`HandScreen.envelope`) and mockup pose 2 of round 2 (offer under the lines). Not blocking.
+   - Departs from: today's order (the offer in `slotBar`, after the lines) and mockup pose 2 of round 2 (offer under the lines). Not blocking.
    - Owner grant: no.
 
 2. **What scrolls.**
-   - A replaces `scrollTo(offerID, anchor: .bottom)` with a scroll to the page top when the offer shows: the scroll position at edge `.top`, or an id on the padded VStack. Not an id on the sender text, which could align it to the bounds top, under the status bar. It drops both `onScrollGeometryChange` handlers and `revealPending`. The page then sits at its top, so no row is under the status bar. Gain: less code, and no read of the keyboard. Loss: none found.
+   - A replaces `scrollTo(offerID, anchor: .bottom)`, now gone from `HandScreen.swift`, with a scroll to the page top when the offer shows: the scroll position at edge `.top`, or an id on the padded VStack. Not an id on the sender text, which could align it to the bounds top, under the status bar. It drops both `onScrollGeometryChange` handlers and `revealPending`. The page then sits at its top, so no row is under the status bar (unmeasured). Gain: less code, and no read of the keyboard. Loss: none found.
    - Pick: A.
    - Owner grant: no.
 
@@ -45,4 +45,4 @@ Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash show
 
 ## SwiftUI change implied by A
 
-In `HandScreen.envelope`, move `postBox` up, under the date, above the lines. Scroll to the page top when the offer shows. Drop the two geometry handlers. Keep the slot as a receipt after Post, on success and on refusal.
+Superseded by item 42 b (`duo-hand-post-order`): the offer is pinned above the keys, not moved above the lines (`slotBar` and `offerRow` in `HandScreen.swift`). The slot still holds a receipt after Post, on success and on refusal (`receiptRow`).
