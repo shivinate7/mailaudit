@@ -12,7 +12,7 @@ Plan: docs/decisions/ruled-head-panels-carry-no-fill.md#the-open-edge-question (
 
 ## The open edge question
 
-The old no-fill rule kept panels free of square, full-bleed edges, because every other filled surface here is a rounded inset card. The default uses `paper`, not `card`. It does not answer the edge point. Whether the square edges show with `paper` is unmeasured. The owner should check it on a screen. Build the fill once the owner rules.
+The old no-fill rule kept panels free of square, full-bleed edges, because every other filled surface here is a rounded inset card. The default uses `paper`, not `card`. It does not answer the edge point. Whether the square edges show with `paper` is unmeasured. The owner should check it on a screen. The owner ruled, 2026-11-18 21:56 CST, and the fill is not yet built.
 
 The option grids still read, because `optGrid` paints `line` and each `optCell` paints `card` over it. The cells sit slightly raised against the page. The rule "do not reintroduce the fill" is superseded for overlay panels by the default above.
 
