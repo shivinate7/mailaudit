@@ -1,5 +1,6 @@
 {
   "added": "2026-11-09T01:50:00Z",
+  "closed": "2026-11-19T04:36:00-06:00",
   "context": "Goal: on the open Duo, Card in Hand shows who sent the card and the Post button at the same time.\nProblem (goal): you asked for whichever needs less work from here, then to park the question as a debt. Option a is that: the offer under the sender already landed.\nBased on (read): roadmap step duo-post-sender: the Post offer under the sender landed in PR #217, 2026-11-07 20:01 CST.\nBased on (read): plan cloud-lane-cut, lane duo-post-pins: four pins for it went green at 6d7bc95 on the Duo.\nDeparts from: main has no debt for the untried layout \u2014 option a adds a debt that records option B (Post pinned above the keys) as untried.",
   "designs": [
     {
@@ -30,8 +31,9 @@
   "id": "duo-hand-post-order",
   "kind": "decision",
   "lastAnswer": {
-    "at": "2026-11-08T22:30:22.188Z",
-    "note": "do whichever needs less work from where we are right now, and then park this as a debt"
+    "at": "2026-11-19T05:22:56Z",
+    "choice": "b",
+    "note": "make the pin not so thickkk though"
   },
   "n": 42,
   "options": [
@@ -57,8 +59,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "pick": "a",
   "ref": "duo-card-in-hand (On the iPhone Duo, Card in Hand checks cards in by name)",
-  "replied": "2026-11-18T23:25:00-06:00",
-  "reply": "You answered b, build B now, with the note \"make the pin not so thick\" (2026-11-18 23:22 CST). The coordinator starts a build lane for it. Your note reads as: the pinned Post bar should be thinner than drawn. The lane needs a target height, which is unmeasured; say a number or a range if you have one.",
+  "replied": "2026-11-19T04:36:00-06:00",
+  "reply": "Built. Your answer b, build B now, with the note make the pin not so thick (2026-11-18 23:22 CST), is on main: the Post bar is pinned above the keys in one row, 61 pt at the default text size, down from 128 pt as drawn (pull request 362, merged 2026-11-19 04:33 CST). Still open on the page: items 103, 104 and 105 (the bar's final thickness and the largest text sizes). Not measured: the S and M text sizes and the bar on a real device. Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Post offer order",
   "shown": [
@@ -73,7 +75,7 @@
       "label": "Build B now"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "Keep the Post offer under the sender, as built, and park option B as a debt?",
   "why": "It is the least work from here, as you asked: it is already on main."
 }
