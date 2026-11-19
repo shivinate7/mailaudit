@@ -1,5 +1,6 @@
 {
   "added": "2026-11-09T02:06:00Z",
+  "closed": "2026-11-19T00:17:00-06:00",
   "context": "Goal: the Orphaned candidates read clearly on the phone at every text size.\nProblem (rule): the line with the date, the untracked tag and the order id wraps at large text on the phone; the web keeps it on one line. The debt closes only on your ruling or on a one-line version that passes Apple's audit.\nBased on (measured): from AX3 on, the order number needs 354 pt and the column has 214 pt, so no one-line version shows it in full.\nBased on (measured): Shrink to fit and Cut at full size fail Apple's audit. Cut line and Capped size are unmeasured on this row, and no record names the text size the 2026-10-27 audit used.\nDeparts from: OrphanedView.swift:CandidateRow \u2014 the web's one-line meta becomes a wrap at large text on the phone, ruled right, and the debt closes.",
   "designs": [
     {
@@ -22,8 +23,9 @@
   "id": "orphaned-meta-line-wraps",
   "kind": "decision",
   "lastAnswer": {
-    "at": "2026-11-08T22:30:22.188Z",
-    "note": "will need a visual example to decide.."
+    "at": "2026-11-19T05:17:06Z",
+    "choice": "a",
+    "note": "Keep the wrap"
   },
   "n": 56,
   "options": [
@@ -95,8 +97,8 @@
   "port": true,
   "rank": 21,
   "ref": "debt native-candidate-lines-wrap (the candidate meta line wraps); decision orphaned-colours-by-meaning",
-  "replied": "2026-11-09T02:06:00Z",
-  "reply": "You asked for a visual example. Each option now links its screenshots; the full mockup is in PR 252 (docs/design/orphaned-meta-line-wraps.html).",
+  "replied": "2026-11-19T00:17:00-06:00",
+  "reply": "Filed. Your answer a, keep the wrap (2026-11-18 23:17 CST), is recorded on main and its debt is closed (pull request 361, merged 2026-11-19 00:12 CST). Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Candidate line wraps",
   "shown": [
@@ -111,7 +113,7 @@
       "label": "Keep looking for a one-line version"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "On the phone, an Orphaned candidate's date and order line wraps at large text. Keep the wrap?",
   "why": "Only the wrap shows the whole order number at large text, and it already passes the audit."
 }

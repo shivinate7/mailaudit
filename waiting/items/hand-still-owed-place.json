@@ -1,5 +1,6 @@
 {
   "added": "2026-11-09T01:50:00Z",
+  "closed": "2026-11-19T00:17:00-06:00",
   "context": "Goal: see what this package still owes while the keys are up.\nProblem (goal): round 2 puts it under the lines, which falls under the keys at 3 or more lines.\nBased on (read): decision outstanding-value-per-level (each level states what is still outstanding).\nDeparts from: the round 2 place under the lines \u2014 the trailing end of the \"ordered\" line.\nAsked by lane duo-gaps-design-review (PR 237, mockup docs/design/duo-hand-gaps.html at 4362dc5). The picks per part live in docs/design/duo-hand-gaps-notes.md.",
   "designs": [
     {
@@ -25,6 +26,11 @@
   "home": "docs/design/duo-hand-gaps-notes.md (PR 237)",
   "id": "hand-still-owed-place",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-19T05:22:00Z",
+    "choice": "a",
+    "note": "On the order line"
+  },
   "n": 78,
   "options": [
     {
@@ -78,6 +84,8 @@
   "pick": "a",
   "rank": 33,
   "ref": "debt duo-hand-mockup-gaps; decision duo-card-in-hand; lane duo-gaps-design-review (PR 237)",
+  "replied": "2026-11-19T00:17:00-06:00",
+  "reply": "Filed. Your answer a, Still owed here sits on the order line (2026-11-18 23:22 CST), is recorded on main (pull request 361, merged 2026-11-19 00:12 CST). A builder lane places it; nothing is built yet. Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Still owed place",
   "shown": [
@@ -92,7 +100,7 @@
       "label": "Under the lines"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "Where does \"Still owed here\" sit: on the order line, or under the card lines?",
   "why": "It stays in view while you type, at every length of envelope."
 }

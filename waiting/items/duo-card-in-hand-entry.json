@@ -1,5 +1,6 @@
 {
   "added": "2026-10-28T20:14:00-05:00",
+  "closed": "2026-11-19T00:17:00-06:00",
   "context": "Goal: check cards in by name on the open Duo.\nProblem (rule): the PR 144 mockup makes Card in Hand the Packages tab itself on the open Duo. The record duo-card-in-hand says Packages keeps its one-page layout. Those two disagree, and you haven't ruled either way.\nBased on (read): the PR 144 mockup README, line 5.\nBased on (read): record duo-card-in-hand, Defaults (a default, not your ruling).\nDeparts from: main's Packages tab opens the Packages list \u2014 option b makes it open Card in Hand on the open Duo.\nMeanwhile: Duo builds option a. Switching to b later is a small change to the entry point.",
   "designs": [
     {
@@ -24,6 +25,11 @@
   "home": "decision duo-card-in-hand (manifest-duo)",
   "id": "duo-card-in-hand-entry",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-19T05:17:06Z",
+    "choice": "a",
+    "note": "Keep Packages; add a Card in Hand control"
+  },
   "n": 35,
   "options": [
     {
@@ -69,6 +75,8 @@
   "pick": "a",
   "rank": 2,
   "ref": "decision duo-card-in-hand, Defaults; PR 144 mockup README line 5",
+  "replied": "2026-11-19T00:17:00-06:00",
+  "reply": "Filed. Your answer a, keep Packages and add a Card in Hand control (2026-11-18 23:17 CST), is recorded in the Card in Hand decision on main (pull request 361, merged 2026-11-19 00:12 CST). Only the control is ruled; the top placement stays a default. Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Card in Hand entry",
   "shown": [
@@ -83,7 +91,7 @@
       "label": "Packages becomes Card in Hand"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "On the open Duo, is Card in Hand the Packages tab, or one tap inside it?",
   "why": "It keeps the phone's Packages list where it is, and it's what Duo is building now."
 }
