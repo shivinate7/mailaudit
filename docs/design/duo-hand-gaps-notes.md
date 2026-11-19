@@ -48,7 +48,7 @@ None of the eight parts lives in PackagesView, TallyView, OrphanedView or RootVi
    - Test 1: check in two cards. `hand-new-envelope` keeps its frame across both check-ins, and the `hand-this-envelope` value names both.
    - Test 2: New envelope resets the value to "Nothing checked in yet".
 
-3. **Still owed here.** Option picked: on the order line.
+3. **Still owed here.** Owner ruling, page item 78 a, 2026-11-18 23:22 CST: on the order line. Option b, under the lines, is not chosen.
    - Source: decision `outstanding-value-per-level` (each level states what is still outstanding) asks each package for "N left · $Y". That text is the bundle's `packagePill`, which `PackagesModel.pills[gk]` already holds (`native/ManifestKit/Sources/ManifestKit/Packages.swift:32`). Use it; do not build a second formatter. The round 2 mockup puts card names under the lines (index.html:167).
    - Options:
      - On the order line, the pick. "Still owed here" with the red figure at the trailing end of the "ordered" line, y 92 to 106. Gain: it adds no row, the Post offer does not move, and it shows above the keys at any envelope length. Loss: the line is busier. At large text it wraps under the date.
