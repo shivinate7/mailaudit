@@ -33,8 +33,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "claude-settings commit d19ac53 (the newest shared settings, changes unread); claude-settings commit c4347c9 (the settings this coordinator runs on)",
-  "replied": "2026-11-18T21:54:30-06:00",
-  "reply": "Answered a at 21:53 CST. The coordinator re-runs the refresh hook and reads the changelog of d19ac53 before lanes start. The home is claude-settings, not this repo, so no record is filed here.",
+  "replied": "2026-11-18T22:05:00-06:00",
+  "reply": "Premise wrong, so no refresh was made. The coordinator read the changelog as you asked: the commit d19ac53 is one merge dated 15 Nov 13:42 CST, while the settings installed here are from 18 Nov 17:20 CST, three days newer, and d19ac53 is not an ancestor of them. The install is not behind: the stable pointer sits on an older commit, and the hook's stale line compares against it, so that message is misleading (a claude-settings follow-up for you). Re-running the refresh would have moved the coordinator back three days. If you still want the older stable, say so and the coordinator does it.",
   "repo": "shivinate7/mailaudit",
   "short": "Move to newest settings?",
   "shown": [
