@@ -80,7 +80,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .page { position:absolute; top:0; width:455.5px; overflow:hidden; }
 .page.l { left:0; bottom:0; } .page.r { left:495.5px; }
 .fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); }
-.fold span { position:absolute; top:200px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+.fold span { position:absolute; top:200px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
 .keys { position:absolute; left:0; right:0; top:var(--keys-top); bottom:0; background:var(--kbBg); z-index:6; padding:8px 6px; }
 .keys .row { display:flex; gap:6px; margin-bottom:8px; justify-content:center; }
 .keys .k { height:42px; flex:0 0 42px; background:var(--kbKey); border-radius:6px; display:grid; place-items:center; font-size:18px; color:var(--kbInk); }
@@ -145,6 +145,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .ghost { visibility:hidden; }
 .receipt { position:absolute; inset:0; display:flex; align-items:center; gap:12px; padding:0 16px; font-family:var(--mono); font-size:calc(12px * var(--kc)); line-height:1.333; color:var(--manilaInk); }
 .receipt span { font-family:var(--cochin); font-size:calc(13px * var(--kf)); line-height:1.385; color:var(--ink); }
+.receipt.refused .why { color:var(--red); }
 
 /* head scrolls with the lines: the pinned head collapses to the seller alone */
 .head.slim { padding:8px 16px; gap:0; }
@@ -157,7 +158,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 .tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .tag-new::before { color:var(--new); }
 .tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .tag-today::before { color:var(--today); }
 .head[data-tag]::before { top:auto; bottom:2px; }
-.lines[data-tag]::before { top:2px; }
+.lines[data-tag]::before { top:2px; right:64px; }
 
 .folded { position:relative; width:191px; height:322px; border:1px solid var(--ink); border-radius:12px; background:var(--paper);
   padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px); font-size:12px; color:var(--inkSoft); }
@@ -187,6 +188,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
   <a data-s="capped" href="#s=capped">One-row pin, capped text</a>
   <a data-s="slimhead" href="#s=slimhead">Capped, slim head</a>
   <a data-s="posted" href="#s=posted">After Post</a>
+  <a data-s="refused" href="#s=refused">Refused Post</a>
   <a data-s="folded" href="#s=folded">Folded</a>
 </nav>
 <nav aria-label="Hide an option">
@@ -232,7 +234,7 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
   </div>
 </template>
 <template id="lines-open">
-  <div class="mid"><div class="lines tag-today" data-tag="Today: lines, back under the sender">
+  <div class="mid"><div class="lines tag-today" data-tag="Today: lines">
     <div class="line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set · NM</small></span></div>
     <div class="line"><span class="box"><i></i></span><span class="t"><b>Path to Exile<span>$0.31</span></b><small>Sample Set · NM</small></span></div>
     <div class="line"><span class="box"><i></i></span><span class="t"><b>Swords to Plowshares<span>$0.55</span></b><small>Sample Set · LP</small></span></div>
@@ -354,7 +356,23 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
       </div>
     </div>
   </div></div>
-  <figcaption><b>After Post.</b> The receipt takes the bar's place at the bar's height, as today's receipt does: the hidden offer sizes it, so the lines above do not grow into the bar. A refused Post reads "Not posted. Type the card again to post." in the same place. It holds until the next card or New envelope. <span class="m" data-m></span></figcaption>
+  <figcaption><b>After Post.</b> The receipt takes the bar's place at the bar's height, as today's receipt does: the hidden offer sizes it, so the lines above do not grow into the bar. It is one row, like the bar, and capped like it. It holds until the next card or New envelope. <span class="m" data-m></span></figcaption>
+</figure>
+
+<!-- After a refused Post: the same slot, the refusal in red Cochin as HandScreen.receiptBox sets it. -->
+<figure id="s-refused" data-state="refused" data-focus="pin-refused">
+  <div class="fit"><div class="duo" data-device="iphone-duo-unfolded" data-fill="left chrome">
+    <div class="page r" data-fill="head lines-open">
+      <div class="pin onerow capped tag-new" id="pin-refused" data-tag="New: refusal holds the bar's height">
+        <div class="bar ghost" aria-hidden="true">
+          <p>Your held card came with this envelope.</p>
+          <span class="hit"><span class="pill post">Post 2 cards here, 1 held</span></span>
+        </div>
+        <div class="receipt refused"><span>Not posted.</span><span class="why">Type the card again to post.</span></div>
+      </div>
+    </div>
+  </div></div>
+  <figcaption><b>Refused Post.</b> The ledger changed since the offer, so Post saved nothing. The left page's error says why; the slot keeps its height, so no line moves. <span class="m" data-m></span></figcaption>
 </figure>
 </main>
 
