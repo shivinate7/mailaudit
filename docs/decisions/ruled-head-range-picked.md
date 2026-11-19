@@ -13,4 +13,4 @@ All **seven** RANGES options ship. They are laid out four to a row, so they cost
 ## See also
 
 - `ruled-head-masthead-vocabulary` — the region this control lives in.
-- `ruled-head-panels-carry-no-fill` — the disclosure style this control shares.
+- `head-panels-carry-paper-fill` — the disclosure style this control shares.

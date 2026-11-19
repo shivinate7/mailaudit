@@ -20,4 +20,4 @@ Position `.mdl-panel` over the list so its arrival moves no row. Keep the 220ms 
 
 - `motion-timings` — the exact duration this fade uses.
 - `motion-nothing-may-reflow` — the rule that keeps this arrival from touching layout.
-- `ruled-head-panels-carry-no-fill` — the orchestrator default that an overlay panel takes the paper fill, so the list rows do not show through it.
+- `head-panels-carry-paper-fill` — the owner-confirmed rule that an overlay panel takes the paper fill, so the list rows do not show through it.

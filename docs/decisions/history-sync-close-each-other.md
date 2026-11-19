@@ -21,6 +21,6 @@ The Sync row is not gated on Reset. An open Sync panel keeps its own close contr
 - `ledger-tab-holds-options` — both panels sit in the Ledger tab.
 - `sync-line-toggles-its-panel` — the sync line. Its current behaviour is not checked here.
 - `armed-reset-takes-the-row` — the armed Reset, arming in place.
-- `ruled-head-panels-carry-no-fill` — the panel fill both share. An overlay takes the paper fill (orchestrator default).
+- `head-panels-carry-paper-fill` — the panel fill both share. An overlay takes the paper fill (owner-confirmed).
 
 **Pinned by:** 63.12 (opening History closes an open Sync), 63.13 (History is open after the tap), 63.26 (an armed Reset leaves History open). Debt: `reset-leaves-sync-unpinned`.

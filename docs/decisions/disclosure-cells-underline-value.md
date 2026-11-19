@@ -11,5 +11,5 @@ The underline is a form's write-on rule, not a button box. So the thesis in `rul
 ## See also
 
 - `ruled-head-masthead-vocabulary` — the thesis the underline keeps.
-- `ruled-head-panels-carry-no-fill` — the panel style that the opened cell leads into.
+- `head-panels-carry-paper-fill` — the panel style that the opened cell leads into.
 - `action-row-is-ruled-cells` — the row that holds the other cells.

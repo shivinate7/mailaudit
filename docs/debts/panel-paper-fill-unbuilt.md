@@ -4,4 +4,4 @@
 
 **Status:** open. The owner confirmed the default, 2026-11-18 21:56 CST. The fill is not built.
 
-**Decision:** `ruled-head-panels-carry-no-fill`.
+**Decision:** `head-panels-carry-paper-fill`.
