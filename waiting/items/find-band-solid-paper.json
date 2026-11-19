@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-19T04:55:00Z",
+  "context": "Goal: the phone's Find pill reads clearly and passes the contrast audit.\nProblem (goal): the band ends the list above the pill; drawn as solid paper it hides the last list line cleanly, but a fade looks lighter, and only you can pick the look.\nBased on (read): the designer drew the band solid, at 402 wide, and left the fade as a question; whether a fade passes the contrast audit is unmeasured.\nDeparts from: main floats the pill over the list \u2014 either option ends the list above the pill, one with a solid band and one with a fade.\nWaiting on: your answer on the Find pill question. This matters only if you pick the paper band there.",
+  "home": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Find pill item",
+  "id": "find-band-solid-paper",
+  "kind": "decision",
+  "n": 101,
+  "options": [
+    {
+      "gain": "Passes the audit by design; matches the picture.",
+      "how": "The list ends in a solid strip of paper, then the pill.",
+      "id": "band-solid",
+      "key": "a",
+      "label": "Solid paper band",
+      "lose": "A hard edge under the last row."
+    },
+    {
+      "gain": "A softer look.",
+      "how": "The last rows fade to paper above the pill.",
+      "id": "band-fade",
+      "key": "b",
+      "label": "Fade into the list",
+      "lose": "Unmeasured: faded row text may still fail the audit."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Find pill item",
+  "repo": "shivinate7/mailaudit",
+  "short": "Find pill band: solid paper or a fade",
+  "shown": [
+    {
+      "id": "band-solid",
+      "key": "a",
+      "label": "Solid paper band"
+    },
+    {
+      "id": "band-fade",
+      "key": "b",
+      "label": "Fade into the list"
+    }
+  ],
+  "status": "open",
+  "title": "Should the paper band under the Find pill be solid, or fade into the list?",
+  "why": "It is what the picture shows and what the audit can pass for sure."
+}

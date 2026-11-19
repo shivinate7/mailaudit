@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-19T04:55:00Z",
+  "context": "Goal: the Orphaned composer passes Apple's contrast audit without hiding a real failure.\nProblem (rule): the option text says composer audit only, but the code keeps one shared list of skipped checks that the ready screen audit also reads, so skipping there also skips the ready screen; only your word says which reach you ruled.\nBased on (read): the designer found that the ready audit already reads the shared list, which already holds the Cancel button.\nDeparts from: main skips the Cancel button in the shared list \u2014 this adds the Save button and the count, either there or only in the composer's own audit.\nWaiting on: your answer on the Orphaned composer contrast question. This matters only if you pick the named skips there.",
+  "home": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Orphaned composer contrast item",
+  "id": "composer-skip-where-it-lives",
+  "kind": "decision",
+  "n": 99,
+  "options": [
+    {
+      "gain": "The ready screen audit keeps checking them.",
+      "how": "Add the Save button and the count to the composer audit only.",
+      "id": "composer-audit-only",
+      "key": "a",
+      "label": "Skip them in the composer's own audit",
+      "lose": "A second list to keep in step."
+    },
+    {
+      "gain": "One list, no new code.",
+      "how": "Add them next to the Cancel button in the one shared list.",
+      "id": "shared-list",
+      "key": "b",
+      "label": "Skip them in the shared list",
+      "lose": "The ready screen audit stops checking those names too; unmeasured whether the ready screen shows them."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Orphaned composer contrast item",
+  "repo": "shivinate7/mailaudit",
+  "short": "Where the composer contrast skip lives",
+  "shown": [
+    {
+      "id": "composer-audit-only",
+      "key": "a",
+      "label": "Skip them in the composer's own audit"
+    },
+    {
+      "id": "shared-list",
+      "key": "b",
+      "label": "Skip them in the shared list"
+    }
+  ],
+  "status": "open",
+  "title": "Should the Save button and card count skip the contrast audit in the composer only, or in the shared list that the ready screen also uses?",
+  "why": "It matches the option text you read and cannot weaken the ready screen audit."
+}

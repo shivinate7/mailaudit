@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-19T04:55:00Z",
+  "context": "Goal: a held card reads clearly, with one word for one thing.\nProblem (goal): the one-word option on the held-words question does not say which word goes where; on the whole frame the chip, the offer and the Post button also say held, and each needs a new string, so only your word fixes the size of the change.\nBased on (read): the designer's picture on the held-words question draws the line and the box only, and notes the other three places still say held.\nDeparts from: main shows held on the line, the chip, the offer and Post \u2014 this adds a rule for how far a one-word change reaches.\nWaiting on: your answer on the held-words question. This matters only if you pick one word only there.",
+  "home": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the held-words item",
+  "id": "held-words-one-word-scope",
+  "kind": "decision",
+  "n": 97,
+  "options": [
+    {
+      "gain": "Smallest change; the picture you saw is exactly what ships.",
+      "how": "The word leaves the held line and the box. The chip, the offer and Post keep held.",
+      "id": "line-and-box-only",
+      "key": "a",
+      "label": "Change only the line and the box",
+      "lose": "Held and the new word can both show on one screen."
+    },
+    {
+      "gain": "One word everywhere.",
+      "how": "The chip, the offer and Post take the new word too.",
+      "id": "whole-frame",
+      "key": "b",
+      "label": "Change every place the word shows",
+      "lose": "Three more strings to write and draw; the picture does not show them yet."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the held-words item",
+  "repo": "shivinate7/mailaudit",
+  "short": "One word: whole frame or the line only",
+  "shown": [
+    {
+      "id": "line-and-box-only",
+      "key": "a",
+      "label": "Change only the line and the box"
+    },
+    {
+      "id": "whole-frame",
+      "key": "b",
+      "label": "Change every place the word shows"
+    }
+  ],
+  "status": "open",
+  "title": "If a held card keeps one word only, does the change reach the whole frame or only the line and the box?",
+  "why": "The picture you looked at shows the smaller change, so you rule on what you saw."
+}

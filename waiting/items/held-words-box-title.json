@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-19T04:55:00Z",
+  "context": "Goal: a held card reads clearly, with one word for one thing.\nProblem (goal): keep-both pairs held (the card's state) with Suspense line (the place); the box over the list is titled only Suspense today, so it does not use the place word, and only you can say if the title should match.\nBased on (read): the built Card in Hand screen titles the box Suspense, in the screen's notice.\nDeparts from: main titles the box Suspense \u2014 option a changes the title to Suspense line, option b leaves it.\nWaiting on: your answer on the held-words question. This matters only if you pick keep both words there.",
+  "home": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the held-words item",
+  "id": "held-words-box-title",
+  "kind": "decision",
+  "n": 98,
+  "options": [
+    {
+      "gain": "The place word is the same everywhere.",
+      "how": "The box title reads Suspense line, like the place word on the held line.",
+      "id": "title-suspense-line",
+      "key": "a",
+      "label": "Change the title to Suspense line",
+      "lose": "A longer title in a narrow box; unmeasured."
+    },
+    {
+      "gain": "No change to the screen.",
+      "how": "The box keeps its built title.",
+      "id": "title-stays",
+      "key": "b",
+      "label": "Leave the title as Suspense",
+      "lose": "The title and the place word differ by one word."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "b",
+  "ref": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the held-words item",
+  "repo": "shivinate7/mailaudit",
+  "short": "Box title: Suspense or Suspense line",
+  "shown": [
+    {
+      "id": "title-suspense-line",
+      "key": "a",
+      "label": "Change the title to Suspense line"
+    },
+    {
+      "id": "title-stays",
+      "key": "b",
+      "label": "Leave the title as Suspense"
+    }
+  ],
+  "status": "open",
+  "title": "Under keep both words, should the box title change from Suspense to Suspense line?",
+  "why": "It is a one-word title and the screen is built; changing it adds width risk for no new meaning."
+}

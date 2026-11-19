@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-19T04:55:00Z",
+  "context": "Goal: nobody reads the old Card in Hand design page as the current look.\nProblem (risk): the design page differs from main in nine ways, and the note at its top names only five; a reader could take the four unlisted ones as still current, and only you say how much the note must carry.\nBased on (read): the designer drew the note and a hideable group for the four others: keys spanning the fold, the Suspense box order, and the two questions still open on the page for the entry tab and the post order.\nDeparts from: main has no such note \u2014 this adds a note at the top of the design page that lists what later rulings override.\nWaiting on: your answer on the Card in Hand design page question. This matters only if you pick merge it as a reference.",
+  "home": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Card in Hand design page item",
+  "id": "card-in-hand-note-extras",
+  "kind": "decision",
+  "n": 100,
+  "options": [
+    {
+      "gain": "The note stays correct as the two open questions close.",
+      "how": "The note names the five overrides; the others are not listed.",
+      "id": "five-rulings",
+      "key": "a",
+      "label": "List the five rulings only",
+      "lose": "Two differences are unlisted until they close."
+    },
+    {
+      "gain": "A reader sees every difference at once.",
+      "how": "The note also lists the four others, two of them still open.",
+      "id": "all-nine",
+      "key": "b",
+      "label": "List all nine differences",
+      "lose": "Two lines go stale when the open questions close."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Card in Hand design page item",
+  "repo": "shivinate7/mailaudit",
+  "short": "Design page note: five rulings or nine",
+  "shown": [
+    {
+      "id": "five-rulings",
+      "key": "a",
+      "label": "List the five rulings only"
+    },
+    {
+      "id": "all-nine",
+      "key": "b",
+      "label": "List all nine differences"
+    }
+  ],
+  "status": "open",
+  "title": "Should the note on the merged Card in Hand design page list five overriding rulings, or those and four other differences too?",
+  "why": "The two open questions will change, so a list that names them is wrong within days."
+}

@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-19T04:55:00Z",
+  "context": "Goal: on the iPhone you can type an Orphaned note, switch tabs and come back to the same draft.\nProblem (goal): a drag that ends on the keys could mean hide only, or hide and save; the plan does not say, and only you can say whether a hidden keyboard may save your words.\nBased on (read): the designer found no rule for it: the Card in Hand drag hides the keys and saves nothing there.\nDeparts from: main has no way to hide the keys in this form \u2014 either option adds the drag, one with a save and one without.\nWaiting on: your answer on the keyboard question for the Orphaned form. This matters only if you pick the drag there.",
+  "home": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Orphaned keyboard item",
+  "id": "keys-drag-saves-draft",
+  "kind": "decision",
+  "n": 102,
+  "options": [
+    {
+      "gain": "Same as Card in Hand; no surprise saves.",
+      "how": "The drag hides the keys; the draft stays in the form as typed.",
+      "id": "hide-only",
+      "key": "a",
+      "label": "Hide the keys only",
+      "lose": "A draft lost if the app closes before you save."
+    },
+    {
+      "gain": "The draft survives a closed app.",
+      "how": "The drag also saves what you typed.",
+      "id": "hide-and-save",
+      "key": "b",
+      "label": "Hide the keys and save the draft",
+      "lose": "A half-written note saved without you pressing Save."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Orphaned keyboard item",
+  "repo": "shivinate7/mailaudit",
+  "short": "Hiding the keys: does it also save the draft",
+  "shown": [
+    {
+      "id": "hide-only",
+      "key": "a",
+      "label": "Hide the keys only"
+    },
+    {
+      "id": "hide-and-save",
+      "key": "b",
+      "label": "Hide the keys and save the draft"
+    }
+  ],
+  "status": "open",
+  "title": "When a drag hides the keys in the Orphaned form, should it also save the draft, or only hide the keys?",
+  "why": "It matches how Card in Hand already behaves, and a save should be a press."
+}
