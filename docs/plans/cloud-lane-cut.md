@@ -32,7 +32,7 @@ macOS means that the item needs GitHub's `xcode-27` macOS runner. The cloud VM i
 | orders-ext-ui-tests | PR 243 step 1 | tests for the UI helpers in extension/core.mjs; the 72.13 mutant; fix check; design review; code review round 2 | extension | n | round 1 FAIL, fixed at 9e4facc, unreviewed | none | checks.yml, docs/todo.md |
 | orders-live-run | PR 243 steps 3-5 | Worker deploy; mint the extension key; the owner's first run; then remove the cookie secret | Worker, extension | owner's Mac | n/a | the owner's go per act; orders-ext-ui-tests | worker/, extension/ |
 | records-batch | PR 246; branch records-owner-1523; PR 221 todo lines | merge the records; todo line 7 is stale, line 8 is answered by PR 243 | records | n | none | page item 67 | docs/todo.md, docs/debts/notes.md |
-| stamp-editor-pick | PR 240 | a builder builds item 39 a, Keep both (owner 2026-11-18 21:54 CST; decision `stamp-band-opens-the-editor`) | native UI | y | none | none | none |
+| stamp-editor-pick | PR 240 | none: item 39 ruled Keep both (owner 2026-11-18 21:54 CST; decision `stamp-band-opens-the-editor`), no build lane needed | native UI | y | none | none | none |
 | head-cells-ref | PR 241 | reference only (owner ruled 47 a); close it | design | n | none | coordinator | none |
 | ste-lint-pin | PRs 245, 246 | move the checks.yml pin from 422cbbd to 2ac382c | CI | n | none | PR 243 (same file) | checks.yml |
 
@@ -43,7 +43,7 @@ Each lane is one cloud session. No two lanes in a wave share a file.
 - **Wave 1, start together:** `duo-ci-path`, `orders-ext-ui-tests`, `duo-gaps-design-review`, `merge-notice-r2`. The batch runner runs `records-batch` beside them once item 67 allows it.
 - **Wave 2, after wave 1 merges:** `duo-held-chip` (PRs 232, 233 and 234 as one batch); then `duo-post-pins`; `restyle-step8` (with PR 236) after the chip lane; `photo-fetch-order`; `ste-lint-pin` after PR 243; `orders-live-run`, which asks the owner before each act.
 - **Wave 3, one serial lane after restyle-step8:** `restyle-tail`, holding armed-audit-run, ask-cancel-focus-pin, photo-sweep, photo-sync-wiring and steps 9-10.
-- **Gated, no lane yet:** stamp-editor-pick, head-cells-ref, native-key-scan, duo-open-probes (after duo-ci-path), and the shared phone workflow in claude-settings (the owner pastes it).
+- **Gated, no lane yet:** head-cells-ref, native-key-scan, duo-open-probes (after duo-ci-path), and the shared phone workflow in claude-settings (the owner pastes it). stamp-editor-pick is not gated and needs no build lane: item 39 is ruled Keep both (decision `stamp-band-opens-the-editor`).
 
 ## Handoff claims that did not hold
 
