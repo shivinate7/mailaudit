@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-18T20:34:31-06:00",
+  "context": "Goal: the team works from the newest shared settings.\nProblem (rule): the cloud refresh hook says it could not reach the newest settings commit, so the coordinator runs on an older one, and only your word says whether to adopt a commit whose changes nobody has read.\nBased on (read): the refresh hook output at 20:32 CST on 2026-11-18: \"reinstall did not reach d19ac53 (record at c4347c9)\".\nDeparts from: the coordinator session runs claude-settings at c4347c932 \u2014 option a moves it to d19ac53 after the changelog is read.\nWaiting on: nothing stopped; the coordinator keeps working on c4347c932 and acts on your answer next.",
+  "holds": "Nothing waits on it.",
+  "home": "claude-settings, the cloud refresh hook (the hook that reinstalls the shared settings at session start)",
+  "kind": "decision",
+  "n": 96,
+  "options": [
+    {
+      "gain": "The coordinator and its lanes run on the newest shared settings, with the changelog read first so no rule changes unseen.",
+      "how": "Re-run the cloud refresh hook now. Read the changelog of d19ac53 before any lane starts.",
+      "id": "refresh-now",
+      "key": "a",
+      "label": "Re-run the refresh and read the changelog first",
+      "lose": "Lanes wait for the changelog read, and the new commit may change rules the team already works to."
+    },
+    {
+      "gain": "No rule changes under running lanes.",
+      "how": "The coordinator stays on c4347c932 until you say to move.",
+      "id": "stay-on-record",
+      "key": "b",
+      "label": "Stay on c4347c932 until you say",
+      "lose": "The team keeps running on settings that are not the newest, and the hook's warning stays."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "claude-settings commit d19ac53 (the newest shared settings, changes unread); claude-settings commit c4347c9 (the settings this coordinator runs on)",
+  "repo": "shivinate7/mailaudit",
+  "short": "Move to newest settings?",
+  "shown": [
+    {
+      "id": "refresh-now",
+      "key": "a",
+      "label": "Re-run the refresh and read the changelog first"
+    },
+    {
+      "id": "stay-on-record",
+      "key": "b",
+      "label": "Stay on c4347c932 until you say"
+    }
+  ],
+  "status": "open",
+  "title": "The coordinator runs on older shared settings than the newest. Re-run the refresh, or stay put?",
+  "why": "The newest commit may carry rule changes nobody has read, so reading the changelog before lanes start costs little."
+}
