@@ -1,0 +1,17 @@
+# Item 62, tally-320-move: notes
+
+Mockups: `a.html` (Keep both buttons) and `b.html` (Accept the move). Shots: `../shots/item-62-tally-320/`. Deep links: `#s=1` or `#s=6` (the check-in), `#w=320` or `#w=375`, `#t=light`, `#g=off` (marks off, the true look).
+
+1. **The Tally card has two bulk buttons, not three.** `ItemTotalRow` in `src/app.jsx` mounts Mark all received on `!done` and Clear check-ins on `gotQty > 0`. The three-button row is the Packages card. The debt `tally-card-moves-at-320px` and the item say "three". Gain: the mockups draw the real card. Loss: none. Pick: two buttons. The debt text needs a fix by a records writer.
+
+2. **Keep both buttons** (`a.html`). Both buttons stay mounted. The one that does not apply is `visibility: hidden`, so it keeps its slot. Gain: at 320 px no row moves on check-in 1 or 6 (measured 0 px, with a hidden copy injected into the built page). The invariant `no-layout-shift-under-pointer` then holds at 320 px. Loss: a blank slot sits beside the visible button at every width, before the first check-in and after the last. At 320 px the button row is 54 px at every step, so the card is 14 px taller at rest than today (688.34 against 674.34). At 375 px the height is unchanged (674.34). Pick: this one. Departs from: `ItemTotalRow`'s conditional mount, and the sentence in `card-the-action-row-is-reserved` that the Tally row is deliberately not reserved. Owner grant: yes.
+
+3. **Accept the move** (`b.html`). No change. Gain: no blank slot, and the card is 14 px shorter at rest at 320 px. Loss: at 320 px every row moves 14 px down on check-in 1 and 14 px up on check-in 6. The finger ends 14 px off the middle of a 30 px box. 320 px is below the app's stated 380 px floor (`card-reserved-geometry`). Pick: not this one. Owner grant: yes, since it keeps an open break of `no-layout-shift-under-pointer` at 320 px.
+
+4. **Not drawn: shorter labels.** If both labels fit one line at 320 px, nothing wraps and nothing moves, with no blank slot. Measured at 320 px, Mark all received is 143.7 px and Clear check-ins 129.86 px on one line, with 8 px between. The row gives them 262 px (286 less 24 px padding), so about 20 px must go. Gain: no move and no gap. Loss: new labels, which the Packages card shares. Their wording is a text change for the owner. Pick: offered only. Owner grant: yes.
+
+5. **Sample data.** The card is the `test/screens.mjs` fixture's Lightning Bolt with order H1 left out, so it has six copies and check-in 6 completes it, as in the record. The fixture holds seven copies today.
+
+6. **What is measured and what is drawn.** `../shots/item-62-tally-320/measure.mjs` measures the built `index.html` at main `b825fd27`. Keep both buttons is measured on that page with a hidden copy of the missing button put in its slot. It is not built code. The four PNGs are shots of the drawn mockups (`capture.mjs`). Their card heights, button-row heights and row moves equal the measured ones to 0.01 px at 320 px. Fonts: this machine has no Cochin or Menlo. The mono stack falls to DejaVu Sans Mono, which has Menlo's widths. The record's heights at `1607933` are 1 px lower (673.34 and 687.34), and its 14 px move is the same. Unmeasured: a real phone, WebKit, and any width other than 320 and 375 px.
+
+7. **Marks.** The ring marks the tap and stays where the finger was. The dashed line is the tapped row's old top. The dashed green box marks the hidden slot, which is invisible in the build. Marks off (`#g=off`) shows the true look.

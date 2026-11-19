@@ -1,0 +1,281 @@
+<!doctype html>
+<html lang="en" data-theme="light" data-option="keep">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Tally Card, Keep Both</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The web ships one theme, light, so this page has one. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --silver:#C4C3C0; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  /* the font stacks of src/app.jsx: mono and cochin */
+  --mono: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  --cochin: Cochin, 'Hoefler Text', Palatino, Georgia, serif;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: light; } }
+:root[data-theme="dark"] { color-scheme: light; }
+* { box-sizing:border-box; }
+html, body { margin:0; background:var(--paper); color:var(--ink); }
+body { font-family:var(--cochin); font-size:16px; line-height:1.45; }
+button, input { font-family:inherit; }
+main { padding:16px; max-width:760px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font:12px/1.5 var(--mono); }
+h1 { font-size:24px; font-weight:400; line-height:1.2; margin:16px 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; font-size:15px; max-width:62ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:8px 0; align-items:center; }
+nav .lab { font:12px/1.4 var(--mono); color:var(--inkSoft); min-width:48px; }
+nav a, nav button { font:12px/1.4 var(--mono); min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:700; }
+nav button[aria-pressed="true"] { color:var(--inkSoft); text-decoration:line-through; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.tags { margin:12px 0 4px; }
+/* Tag text is ink: green and red on paper fall under 4.5:1 at this size, so the colour rides on the dashed border. */
+.tag { display:inline-block; font:12px/1.4 var(--mono); color:var(--ink); border:1px dashed var(--inkSoft); border-radius:4px; padding:2px 6px; margin:0 4px 4px 0; }
+.tag.today { border-color:var(--red); } .tag.new { border-color:var(--green); }
+.cap { font-size:17px; margin:20px 0 8px; }
+.cap small { font:12px/1.4 var(--mono); color:var(--inkSoft); display:block; }
+.scroll { overflow-x:auto; margin:0 -16px; padding:0 16px; }
+/* the app sets no line height, so its card lays out at normal */
+.frame { position:relative; line-height:normal; font-size:16px; }
+.verdict { font:12px/1.5 var(--mono); margin:8px 0 0; padding:8px 12px; border-radius:8px; border:1px dashed var(--inkSoft); }
+.verdict.bad { border-color:var(--red); } .verdict.good { border-color:var(--green); }
+.verdict b { font-weight:700; }
+/* overlays: absolutely placed, so they add no height to what they mark */
+.thumb { position:absolute; width:22px; height:22px; margin:-11px 0 0 -11px; border-radius:50%; border:2px solid var(--ink);
+  background:rgba(111,92,166,.22); pointer-events:none; z-index:3; }
+.ghost { position:absolute; left:-8px; right:-8px; border-top:2px dashed var(--red); pointer-events:none; z-index:3; }
+.ghost.zero { border-top-color:var(--green); }
+.bracket { position:absolute; left:-12px; width:8px; border:2px solid var(--red); border-right:0; pointer-events:none; z-index:3; }
+html[data-guides="off"] .thumb, html[data-guides="off"] .ghost, html[data-guides="off"] .bracket { display:none; }
+/* the hidden slot of the kept button: drawn only as a guide, it is invisible in the build */
+/* a hidden box draws no outline, so the guide is a child set visible again */
+.slot { position:relative; }
+html[data-guides="on"] .slot::after { content:"hidden"; visibility:visible; position:absolute; inset:0; display:flex; align-items:center; justify-content:center;
+  border:1px dashed var(--green); border-radius:5px; font:10.5px/1 var(--mono); color:var(--inkSoft); }
+.read { font:12px/1.55 var(--mono); color:var(--inkSoft); margin:12px 0 0; }
+.read b { color:var(--ink); }
+section { margin-top:28px; border-top:1px solid var(--line); padding-top:16px; }
+section h2 { font-size:19px; font-weight:400; margin:0 0 8px; }
+section ul { margin:0; padding-left:20px; font-size:15px; max-width:62ch; }
+section li { margin-bottom:4px; }
+table { border-collapse:collapse; font:12px/1.4 var(--mono); margin:8px 0; }
+th, td { text-align:left; padding:4px 8px 4px 0; border-bottom:1px solid var(--line); vertical-align:top; }
+th { font-weight:700; }
+code { font:12px/1.4 var(--mono); }
+[hidden] { display:none !important; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner" role="note">Sample. No figure on this page is real. The card is the test fixture's Lightning Bolt: six copies at $1.00 from six made-up sellers.</div>
+<h1 id="title">Keep both buttons</h1>
+<p class="sub" id="sub"></p>
+
+<nav aria-label="Check-in">
+  <span class="lab">Tap</span>
+  <a href="#s=1" data-k="s" data-v="1">Check-in 1</a>
+  <a href="#s=6" data-k="s" data-v="6">Check-in 6</a>
+</nav>
+<nav aria-label="Width">
+  <span class="lab">Width</span>
+  <a href="#w=320" data-k="w" data-v="320">320 px</a>
+  <a href="#w=375" data-k="w" data-v="375">375 px</a>
+</nav>
+<nav aria-label="Theme and marks">
+  <span class="lab">Show</span>
+  <a href="#t=light" data-k="t" data-v="light">Light, the only theme</a>
+  <a href="#g=on" data-k="g" data-v="on">Marks on</a>
+  <a href="#g=off" data-k="g" data-v="off">Marks off</a>
+  <button type="button" id="hide" aria-pressed="false">Hide this option</button>
+</nav>
+
+<div id="option">
+  <div class="tags" id="tags"></div>
+  <p class="verdict" id="verdict"></p>
+  <p class="cap" id="cap-before"></p>
+  <div class="scroll"><div class="frame" id="before"></div></div>
+  <p class="cap" id="cap-after"></p>
+  <div class="scroll"><div class="frame" id="after"></div></div>
+  <p class="read" id="read"></p>
+</div>
+
+<section aria-label="Measured on the real card">
+  <h2>Measured on the real card</h2>
+  <p class="read" style="margin-top:0">Built page <code>index.html</code> at main <code>b825fd27</code>, headless Chromium (Playwright 1.63.0), Tally view, Everything, card open, six copies. Script: <code>docs/design/shots/item-62-tally-320/measure.mjs</code>. "Keep both buttons" is measured on the same page with a hidden copy of the missing button put in its slot. It is not built.</p>
+  <table>
+    <thead><tr><th>Width, option</th><th>Card height: rest, 1 to 5, 6</th><th>Rows move: tap 1, tap 6</th><th>Button row</th></tr></thead>
+    <tbody>
+      <tr><td>320, accept the move</td><td>674.34, 688.34, 674.34</td><td><b>+14, −14</b></td><td>40, 54, 40</td></tr>
+      <tr><td>320, keep both buttons</td><td>688.34 at every step</td><td><b>0, 0</b></td><td>54 at every step</td></tr>
+      <tr><td>375, accept the move</td><td>674.34 at every step</td><td>0, 0</td><td>40 at every step</td></tr>
+      <tr><td>375, keep both buttons</td><td>674.34 at every step</td><td>0, 0</td><td>40 at every step</td></tr>
+    </tbody>
+  </table>
+  <ul>
+    <li>The move is 14 px here, as the record <code>card-reserved-geometry</code> says (taken at <code>1607933</code>). Its card heights are 1 px lower (673.34 and 687.34). The serif face differs: this machine has no Cochin or Menlo, so the mono stack falls to DejaVu Sans Mono, which has Menlo's widths.</li>
+    <li>The cards on this page are drawn from <code>ItemTotalRow</code> and <code>ItemRow</code> in <code>src/app.jsx</code>, with their inline styles. The line under the cards reads the drawn page live.</li>
+    <li>The Tally card has two bulk buttons, Mark all received and Clear check-ins. It has no Stamp button.</li>
+    <li>Not measured: a real phone, WebKit, and widths other than 320 and 375.</li>
+  </ul>
+</section>
+</main>
+<script>
+const OPTION = document.documentElement.dataset.option; // "keep" or "accept"
+const C = { card:"#FCF6EA", ink:"#332E3F", inkSoft:"#6E6379", line:"#DCCDB6", accent:"#6F5CA6", green:"#2E7A5E", greenSoft:"#E6E7D7", red:"#A8443C", silver:"#C4C3C0", manilaInk:"#695832", shadow:"rgba(28,43,36,0.06)" };
+const mono = "ui-monospace, SFMono-Regular, Menlo, Consolas, monospace";
+const cochin = "Cochin, 'Hoefler Text', Palatino, Georgia, serif";
+/* The six source rows in the order the real card lists them; warn is the lost-mail age. */
+const ROWS = [
+  { o:"G1", seller:"Eta Cards", date:"2026-07-05" },
+  { o:"B1", seller:"Beta Games", date:"2026-07-02", warn:"140d" },
+  { o:"A1", seller:"Alpha Cards", date:"2026-07-01", warn:"141d" },
+  { o:"F1", seller:"Zeta Games", date:"2026-06-20", warn:"152d" },
+  { o:"E1", seller:"Epsilon Cards", date:"2026-06-15" },
+  { o:"C1", seller:"Gamma Cards", date:"2026-06-01" },
+];
+const TOTAL = ROWS.length;
+const css = (o) => Object.entries(o).map(([k, v]) => `${k}:${v}`).join(";");
+const esc = (s) => s.replace(/[&<>"]/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
+/* miniBtn in src/app.jsx */
+const miniBtn = css({ "font-family":mono, "font-size":"11.5px", padding:"8px 12px", "border-radius":"5px", border:`1px solid ${C.line}`, background:C.card, color:C.ink, cursor:"pointer" });
+
+function bulkButton(label, shown, isNew) {
+  if (shown) return `<button type="button" style="${miniBtn}">${label}</button>`;
+  /* only "keep both buttons" keeps the inapplicable one, mounted and hidden */
+  return isNew ? `<button type="button" class="slot" aria-hidden="true" tabindex="-1" style="${miniBtn};visibility:hidden">${label}</button>` : "";
+}
+
+function itemRow(r, got, idx) {
+  const done = idx < got;
+  const box = done
+    ? `<button type="button" aria-label="Mark as not received" data-box style="${css({ width:"30px", height:"30px", "flex-shrink":0, "border-radius":"8px", border:`2px solid ${C.green}`, background:C.green, color:C.card, display:"flex", "align-items":"center", "justify-content":"center", "font-size":"16px", "line-height":1, padding:0 })}"><svg width="17" height="17" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5 L9.5 18 L20 6" fill="none" stroke="#FCF6EA" stroke-width="3.2" stroke-linecap="round" stroke-linejoin="round"></path></svg></button>`
+    : `<button type="button" aria-label="Mark as received" data-box style="${css({ width:"30px", height:"30px", "flex-shrink":0, "border-radius":"8px", border:`2px solid ${C.inkSoft}`, background:C.card, color:C.manilaInk, padding:0 })}"></button>`;
+  const warn = !done && r.warn ? `<span style="color:${C.red};font-weight:700">⚠ ${r.warn} · </span>` : "";
+  return `<div data-row="${idx}" style="${css({ display:"flex", "align-items":"flex-start", gap:"12px", padding:"12px", "border-top":`1px solid ${C.line}`, background: done ? C.greenSoft : "transparent" })}">
+    ${box}
+    <div style="flex:1 1 0%;min-width:0">
+      <div style="display:flex;gap:8px;align-items:baseline">
+        <div style="${css({ flex:"1 1 0%", "min-width":0, "font-weight":600, "font-size":"14px", "line-height":1.35, color: done ? C.inkSoft : C.ink })}">${esc(r.seller)}</div>
+        <span style="font-family:${mono};font-size:12px;color:${C.inkSoft};flex-shrink:0">$1.00</span>
+      </div>
+      <div style="${css({ "margin-top":"4px", "font-size":"11.5px", "line-height":"13px", color:C.inkSoft, overflow:"hidden", "text-overflow":"ellipsis", "white-space":"nowrap" })}">${warn}${r.date} · Test Set · Near Mint</div>
+      <button type="button" aria-label="Show the whole order ${r.o}" style="${css({ "min-height":"30px", width:"100%", display:"flex", "align-items":"center", gap:"4px", padding:"4px 0", border:0, background:"transparent", "font-family":mono, "font-size":"10.5px", color:C.inkSoft, "text-align":"left" })}"><span style="text-decoration:underline;text-underline-offset:2px">${r.o}</span><span>›</span></button>
+    </div>
+  </div>`;
+}
+
+/* ItemTotalRow in src/app.jsx, open */
+function tallyCard(got, rowId) {
+  const done = got >= TOTAL;
+  const keep = OPTION === "keep";
+  const bar = got > 0 && !done
+    ? `<div style="position:absolute;top:0;left:0;right:0;pointer-events:none"><div style="height:3px;background:${C.silver};overflow:hidden;position:relative"><div style="width:${(got / TOTAL) * 100}%;height:100%;background:${C.accent}"></div></div></div>`
+    : "";
+  return `<div data-card style="${css({ position:"relative", background:C.card, border:`1px solid ${done ? C.green : C.line}`, "border-radius":"8px", overflow:"clip", "box-shadow":`0 1px 2px ${C.shadow}` })}">
+    <button type="button" style="${css({ width:"100%", "text-align":"left", background:"transparent", border:"none", padding:"12px", display:"flex", "align-items":"center", gap:"8px", color:C.ink })}">
+      <span style="font-family:${mono};font-size:10px;color:${C.inkSoft};transform:rotate(90deg);display:inline-block;flex-shrink:0">▶</span>
+      <div style="flex:1 1 0%;min-width:0">
+        <div style="font-weight:700;font-size:15px;line-height:1.3;color:${C.ink}">Lightning Bolt</div>
+        <div style="font-family:${mono};font-size:11px;color:${C.inkSoft};overflow:hidden;text-overflow:ellipsis;white-space:nowrap">6 sellers · 6 orders · Test Set</div>
+      </div>
+      <div style="flex-shrink:0;text-align:right">
+        <div style="font-family:${mono};font-size:15px;font-weight:700;color:${done ? C.green : C.ink};white-space:nowrap">${got}/${TOTAL}${done ? " ✓" : ""}</div>
+        <div style="font-family:${mono};font-size:11.5px;color:${C.inkSoft};white-space:nowrap">$1.00 / copy</div>
+        <div style="font-family:${cochin};font-size:12px;font-weight:700;color:${C.red};white-space:nowrap;${done ? "visibility:hidden" : ""}">${TOTAL - got} left · $${(TOTAL - got).toFixed(2)}</div>
+      </div>
+    </button>
+    ${bar}
+    <div style="padding:0 12px 4px;font-family:${mono};font-size:10.5px;color:${C.inkSoft}">$6.00 across 6 copies · $1.00 avg</div>
+    <div ${rowId ? `id="${rowId}"` : ""} data-actions style="display:flex;gap:8px;padding:0 12px 8px;justify-content:flex-end">
+      ${bulkButton("Mark all received", !done, keep)}
+      ${bulkButton("Clear check-ins", got > 0, keep)}
+    </div>
+    ${ROWS.map((r, i) => itemRow(r, got, i)).join("")}
+  </div>`;
+}
+
+const TEXT = {
+  keep: {
+    title: "Keep both buttons",
+    sub: "Waiting item 62, tally-320-move. The Tally card always holds the room of both bulk buttons, and hides the one that does not apply. On a 320 px phone nothing moves when you check in. The cost is a blank slot beside the visible button, and at 320 px a button row 14 px taller at rest.",
+    tags: {
+      1: [["today", "Today: Mark all received"], ["today", "Today: Clear check-ins appears on check-in 1"], ["new", "New: Clear check-ins kept in its slot, hidden, from the start"]],
+      6: [["today", "Today: Clear check-ins"], ["today", "Today: Mark all received leaves on check-in 6"], ["new", "New: Mark all received kept in its slot, hidden, after check-in 6"]],
+    },
+  },
+  accept: {
+    title: "Accept the move",
+    sub: "Waiting item 62, tally-320-move. No change: the card stays as built. On a 320 px phone the bulk buttons wrap to two lines when both show, so the card grows 14 px on check-in 1 and shrinks 14 px on check-in 6. Every row below moves under the thumb.",
+    tags: {
+      1: [["today", "Today: Mark all received, alone, one line"], ["today", "Today: Clear check-ins appears on check-in 1, both labels wrap"]],
+      6: [["today", "Today: both buttons, labels wrapped"], ["today", "Today: Mark all received leaves on check-in 6, Clear check-ins goes back to one line"]],
+    },
+  },
+}[OPTION];
+
+let hidden = false;
+function state() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  return { s: h.get("s") === "6" ? "6" : "1", w: h.get("w") === "375" ? "375" : "320", t: "light", g: h.get("g") === "off" ? "off" : "on" };
+}
+
+function render() {
+  const s = state();
+  document.documentElement.dataset.guides = s.g;
+  for (const a of document.querySelectorAll("nav a[data-k]")) {
+    a.setAttribute("aria-current", String(s[a.dataset.k] === a.dataset.v));
+    a.href = "#" + new URLSearchParams({ ...s, [a.dataset.k]: a.dataset.v }).toString();
+  }
+  document.getElementById("title").textContent = TEXT.title;
+  document.getElementById("sub").textContent = TEXT.sub;
+  document.getElementById("option").hidden = hidden;
+  document.getElementById("tags").innerHTML = TEXT.tags[s.s].map(([k, t]) => `<span class="tag ${k}">${esc(t)}</span>`).join("");
+  const step = Number(s.s), from = step - 1, tapped = step - 1;
+  const width = Number(s.w) - 32; // the card's box: the viewport less the 16 px page padding each side
+  const before = document.getElementById("before"), after = document.getElementById("after");
+  for (const f of [before, after]) f.style.width = width + "px";
+  before.innerHTML = tallyCard(from);
+  after.innerHTML = tallyCard(step, "choice");
+  document.getElementById("cap-before").innerHTML = `Before check-in ${step} <small>${from} of 6 received. The ring marks the tap, on ${esc(ROWS[tapped].seller)}'s box.</small>`;
+  document.getElementById("cap-after").innerHTML = `After check-in ${step} <small>${step} of 6 received. The ring stays where the finger was. The dashed line is where the tapped row's top edge was before the tap.</small>`;
+
+  /* read the drawn boxes, then lay the marks over the after frame */
+  const rel = (frame, el) => { const a = frame.getBoundingClientRect(), b = el.getBoundingClientRect(); return { top: b.top - a.top, left: b.left - a.left, w: b.width, h: b.height }; };
+  const bRow = rel(before, before.querySelector(`[data-row="${tapped}"]`));
+  const bBox = rel(before, before.querySelector(`[data-row="${tapped}"] [data-box]`));
+  const aRow = rel(after, after.querySelector(`[data-row="${tapped}"]`));
+  const aBox = rel(after, after.querySelector(`[data-row="${tapped}"] [data-box]`));
+  const move = +(aRow.top - bRow.top).toFixed(2);
+  const ring = (f) => `<div class="thumb" style="top:${bBox.top + bBox.h / 2}px;left:${bBox.left + bBox.w / 2}px"></div>`;
+  before.insertAdjacentHTML("beforeend", ring(before));
+  const sign = move > 0 ? "+" : move < 0 ? "−" : "";
+  after.insertAdjacentHTML("beforeend",
+    ring(after) +
+    `<div class="ghost${move === 0 ? " zero" : ""}" style="top:${bRow.top}px"></div>` +
+    (move !== 0 ? `<div class="bracket" style="top:${Math.min(bRow.top, aRow.top)}px;height:${Math.abs(move)}px"></div>` : ""));
+  const off = +((bBox.top + bBox.h / 2) - (aBox.top + aBox.h / 2)).toFixed(2);
+  const v = document.getElementById("verdict");
+  v.className = "verdict " + (move === 0 ? "good" : "bad");
+  v.innerHTML = move === 0
+    ? `<b>Nothing moves.</b> The rows stay put on check-in ${step}. The finger is still in the middle of the box.`
+    : `<b>The rows move ${sign}${Math.abs(move)} px</b> on check-in ${step}, ${move > 0 ? "down" : "up"}. The finger is now ${Math.abs(off)} px off the middle of a 30 px box. A quick next tap can miss the box or land on the row beside it.`;
+  const ch = (f) => +f.querySelector("[data-card]").getBoundingClientRect().height.toFixed(2);
+  const rh = (f) => +f.querySelector("[data-actions]").getBoundingClientRect().height.toFixed(2);
+  document.getElementById("read").innerHTML = `Drawn here, read live at ${s.w} px: card ${ch(before)} then ${ch(after)} px; button row ${rh(before)} then ${rh(after)} px; tapped row moves <b>${move} px</b>.`;
+  document.body.dataset.read = JSON.stringify({ w: Number(s.w), s: step, cardBefore: ch(before), cardAfter: ch(after), rowBefore: rh(before), rowAfter: rh(after), move });
+}
+
+document.getElementById("hide").addEventListener("click", (e) => {
+  hidden = !hidden;
+  e.currentTarget.setAttribute("aria-pressed", String(hidden));
+  render();
+});
+addEventListener("hashchange", render);
+render();
+</script>
+</body>
+</html>
