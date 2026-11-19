@@ -1,0 +1,696 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Card in Hand Reference</title>
+<meta name="description" content="Waiting item 51: what merging the PR 144 Card in Hand design page puts on main, against archiving it, with each part a later ruling overrides marked.">
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). Chrome follows the theme; the redrawn screens keep PR 144's light palette. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --amber:#846008; --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Iowan Old Style", Georgia, serif;
+  --mono: Menlo, ui-monospace, "SF Mono", monospace;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px; --space-8:32px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+    --green:#6DBB98; --red:#E3857B; --redSoft:#3A2426; --manila:#3A3122; --manilaInk:#E2CB96; --amber:#D9AE4A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+  --green:#6DBB98; --red:#E3857B; --redSoft:#3A2426; --manila:#3A3122; --manilaInk:#E2CB96; --amber:#D9AE4A; color-scheme: dark;
+}
+* { box-sizing:border-box; }
+html, body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--cochin); font-size:16px; line-height:1.45; }
+main { max-width:1040px; margin:0 auto; padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-4); }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:var(--space-2) var(--space-3); font:13px/1.45 var(--mono); }
+h1 { font-size:26px; font-weight:400; line-height:1.15; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+.navs { display:flex; flex-direction:column; gap:var(--space-2); }
+nav { display:flex; flex-wrap:wrap; gap:var(--space-2); align-items:center; }
+nav .lab { font-size:14px; color:var(--inkSoft); min-width:56px; }
+nav a, nav button { font:14px/1.3 var(--cochin); min-height:44px; padding:0 var(--space-3); display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); }
+nav button[aria-pressed="true"] { color:var(--inkSoft); text-decoration:line-through; }
+nav a:focus-visible, nav button:focus-visible, .shown button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+[data-state] { display:none; flex-direction:column; gap:var(--space-4); }
+[data-state].on { display:flex; }
+.optline { display:flex; flex-direction:column; gap:var(--space-2); }
+.optline h2 { font-size:21px; font-weight:400; margin:0; }
+.optline p { margin:0; max-width:72ch; }
+.tags { display:flex; flex-wrap:wrap; gap:var(--space-1); }
+/* Tag text is ink: the colour rides on the dashed border, as panel-paper-fill does. */
+.tag { font:12px/1.4 var(--mono); color:var(--ink); border:1px dashed var(--inkSoft); border-radius:4px; padding:2px 6px; }
+.tag.today { border-color:var(--red); } .tag.new { border-color:var(--green); }
+.shown { display:none; align-items:center; gap:var(--space-3); padding:var(--space-3); border:1px dashed var(--line); border-radius:8px; color:var(--inkSoft); }
+.shown button { font:inherit; min-height:44px; padding:0 var(--space-3); border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer; }
+[data-state].gone > :not(.shown) { display:none; }
+[data-state].gone > .shown { display:flex; }
+
+/* The repo as it stands after the option: a path bar over a sheet. */
+.repo { border:1px solid var(--line); border-radius:8px; background:var(--card); display:flex; flex-direction:column; }
+.path { display:flex; flex-wrap:wrap; justify-content:space-between; gap:var(--space-1) var(--space-2); padding:var(--space-2) var(--space-3); border-bottom:1px solid var(--line); font:12px/1.5 var(--mono); color:var(--inkSoft); }
+.path b { color:var(--ink); font-weight:400; overflow-wrap:anywhere; }
+.sheet { padding:var(--space-3); display:flex; flex-direction:column; gap:var(--space-4); }
+.note { border:2px solid var(--red); background:var(--redSoft); border-radius:8px; padding:var(--space-3); display:flex; flex-direction:column; gap:var(--space-2); }
+.note h3 { font-size:18px; font-weight:400; margin:0; }
+.note ol { margin:0; padding-left:20px; display:flex; flex-direction:column; gap:var(--space-2); font-size:15px; }
+.note p { margin:0; font-size:14px; color:var(--inkSoft); }
+.extra { border:1px dashed var(--amber); border-radius:8px; padding:var(--space-3); display:flex; flex-direction:column; gap:var(--space-2); }
+.extra h3 { font-size:17px; font-weight:400; margin:0; }
+.extra ul { margin:0; padding-left:20px; display:flex; flex-direction:column; gap:var(--space-2); font-size:15px; }
+body.no-extra .extra, body.no-extra .xmark { display:none; }
+body.no-extra .scr .xo { outline:none; }
+.lede { margin:0; max-width:72ch; }
+.code { display:flex; flex-direction:column; gap:var(--space-2); }
+.cite { border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.cite .f { font:12px/1.5 var(--mono); padding:var(--space-1) var(--space-2); border-bottom:1px solid var(--line); color:var(--inkSoft); }
+.cite pre { margin:0; padding:var(--space-1) var(--space-2); font:12px/1.5 var(--mono); white-space:pre-wrap; overflow-wrap:anywhere; }
+.cite pre.del { background:var(--redSoft); }
+.cite pre.add { background:color-mix(in srgb, var(--green) 14%, var(--card)); }
+.cite pre.keep { color:var(--ink); }
+.ok { color:var(--green); }
+.missing { border:1px dashed var(--red); border-radius:8px; padding:var(--space-3); display:flex; flex-direction:column; gap:var(--space-1); }
+.missing b { font-weight:400; font-size:17px; }
+
+/* Each pose of the PR 144 page. */
+.gallery { display:flex; flex-direction:column; gap:var(--space-6); }
+.gallery h3.gh { font-size:20px; font-weight:400; margin:0; }
+.pose { display:flex; flex-direction:column; gap:var(--space-2); }
+.pose h4 { font-size:17px; font-weight:400; margin:0; }
+.pose .cap { margin:0; font-size:15px; color:var(--inkSoft); max-width:72ch; }
+.frames { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 420px), 1fr)); gap:var(--space-4); }
+.frames figure { margin:0; display:flex; flex-direction:column; gap:var(--space-1); }
+.frames figcaption { font-size:14px; color:var(--inkSoft); }
+/* A mark repeats the frame's outline: solid red for a named override, dashed amber for another record. */
+.mark { border:1px solid var(--red); padding:var(--space-2) var(--space-3); background:var(--redSoft); border-radius:8px; font-size:15px; }
+.xmark { border:1px dashed var(--amber); padding:var(--space-2) var(--space-3); border-radius:8px; font-size:15px; }
+.mark b, .xmark b { font-weight:400; font-family:var(--mono); font-size:13px; }
+.archived .mark, .archived .xmark { display:none; }
+.archived .scr .ovr, .archived .scr .xo { outline:none; }
+.archived .fit { opacity:.82; }
+.archived .cap s { text-decoration:none; }
+.gallery:not(.archived) .struck figcaption { text-decoration:line-through; text-decoration-color:var(--red); }
+
+/* Redrawn PR 144 screens: its own CSS and palette, light only, scoped under .scr. */
+.fit { position:relative; overflow:hidden; }
+.fit > .dev { position:absolute; top:0; left:0; transform-origin:0 0; }
+.scr { --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --manila:#EADBBA; --manilaInk:#695832; --amber:#846008; --shadow:rgba(28,43,36,0.06);
+  color-scheme:light; color:var(--ink); background:var(--card); border:6px solid var(--ink); border-radius:32px; overflow:hidden; font:15px/1.3 var(--cochin); }
+.scr.inner { width:963px; height:681px; } .scr.outer { width:478px; height:690px; } .scr.tall { width:681px; height:963px; }
+.scr .ovr { outline:6px solid var(--red); outline-offset:4px; border-radius:8px; }
+.scr .xo { outline:6px dashed var(--amber); outline-offset:4px; border-radius:8px; }
+.scr .n { font-family:var(--mono); font-variant-numeric:tabular-nums; }
+.scr .ok { color:var(--green); } .scr .amb { color:var(--amber); } .scr .bad { color:var(--red); } .scr .soft { color:var(--inkSoft); }
+.scr .fold, .scr .hfold { position:absolute; z-index:3; background:repeating-linear-gradient(90deg,transparent 0 3px,rgba(110,99,121,.1) 3px 4px); }
+.scr .fold { top:0; bottom:0; left:465px; width:21px; border-left:1px dashed var(--silver); border-right:1px dashed var(--silver); }
+.scr .hfold { left:0; right:0; top:465px; height:21px; border-top:1px dashed var(--silver); border-bottom:1px dashed var(--silver); }
+.scr .pg { position:absolute; top:0; bottom:0; width:465px; padding:16px 24px; display:flex; flex-direction:column; gap:12px; }
+.scr .pg.l { left:0; } .scr .pg.r { left:486px; }
+.scr .pg.t { bottom:auto; height:465px; width:auto; left:0; right:0; } .scr .pg.b { top:486px; width:auto; left:0; right:0; }
+.scr .pg.solo { left:0; right:0; width:auto; }
+.scr .pg.kbon { padding-bottom:272px; } .scr .pg.baron { padding-bottom:96px; }
+.scr .push { margin-top:auto; }
+.scr .kb { position:absolute; left:0; right:0; bottom:0; height:256px; padding:8px 4px; display:flex; flex-direction:column; gap:8px; background:#E1DCD5; z-index:2; }
+.scr .kb .sg { height:40px; display:grid; grid-template-columns:repeat(3,1fr); align-items:center; text-align:center; }
+.scr .kb .ks { flex:1; display:grid; grid-template-columns:repeat(10,1fr); grid-auto-rows:44px; gap:8px 4px; }
+.scr .kb .ks span { background:var(--card); border-radius:6px; display:grid; place-items:center; font-size:18px; white-space:nowrap; overflow:hidden; }
+.scr .kb .w2 { grid-column:span 2; } .scr .kb .w3 { grid-column:span 3; } .scr .kb .w4 { grid-column:span 4; } .scr .kb .w5 { grid-column:span 5; }
+.scr .kb.pad { background:var(--paper); border-top:1px solid var(--ink); }
+.scr .kb.pad .ks span { border:1px solid var(--line); }
+.scr .kb.pad .ks span.go { background:var(--accent); color:var(--card); font-size:15px; }
+.scr .kb.pad .sg { display:flex; gap:8px; }
+.scr .kb.pad .sg span { border:1px solid var(--accent); border-radius:8px; padding:0 12px; min-height:40px; display:flex; align-items:center; color:var(--accent); background:var(--card); }
+.scr .bar { position:absolute; left:24px; right:24px; bottom:12px; height:64px; border:1px solid var(--line); border-radius:32px; background:rgba(242,233,218,.8);
+  display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px; z-index:4; }
+.scr .bar span { display:flex; align-items:center; justify-content:center; border-radius:28px; font-size:13px; color:var(--inkSoft); }
+.scr .bar span.on { background:var(--card); color:var(--accent); }
+.scr .hd, .scr .k { font:12px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--inkSoft); }
+.scr .hd { display:flex; justify-content:space-between; gap:8px; }
+.scr .q { display:flex; align-items:center; gap:8px; border-bottom:2px solid var(--ink); min-height:56px; }
+.scr .q b { font-weight:400; font-size:36px; letter-spacing:.04em; flex:1; white-space:nowrap; overflow:hidden; }
+.scr .q.empty b { color:var(--inkSoft); font-size:24px; letter-spacing:0; }
+.scr .q .x { width:44px; height:44px; display:grid; place-items:center; font-size:24px; color:var(--inkSoft); }
+.scr .hits { display:flex; flex-direction:column; gap:4px; }
+.scr .hitrow { display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:52px; padding:4px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); }
+.scr .hitrow.on { border-color:var(--accent); }
+.scr small { display:block; color:var(--inkSoft); font-size:13px; }
+.scr .hitrow .n { font-size:13px; text-align:right; }
+.scr .hand { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; }
+.scr .hand > div { display:flex; flex-direction:column; gap:4px; }
+.scr .btn { min-height:44px; min-width:44px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--paper); font-size:16px; display:inline-flex; align-items:center; justify-content:center; white-space:nowrap; }
+.scr .btn.p { background:var(--accent); border-color:var(--accent); color:var(--card); }
+.scr .btns { display:flex; gap:8px; flex-wrap:wrap; }
+.scr .susp { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; display:flex; flex-direction:column; gap:4px; }
+.scr .susp .k { color:var(--manilaInk); }
+.scr .who { font-size:30px; line-height:1.1; }
+.scr .meta { font:13px var(--mono); color:var(--inkSoft); }
+.scr .rule { border:0; border-top:1px solid var(--gold); margin:0; width:100%; }
+.scr .lines { display:flex; flex-direction:column; }
+.scr .line { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:52px; border-bottom:1px solid var(--line); }
+.scr .line.now { background:var(--greenSoft); border-radius:8px; padding:0 8px; margin:0 -8px; }
+.scr .line.held { background:#F2E7CF; border-radius:8px; padding:0 8px; margin:0 -8px; }
+.scr .step { display:inline-flex; align-items:center; gap:4px; } .scr .step .n { min-width:44px; text-align:center; font-size:18px; }
+.scr .owed { margin:0; font-size:16px; }
+.scr .box { border:1px solid var(--line); border-radius:8px; padding:12px; background:var(--paper); display:flex; flex-direction:column; gap:8px; }
+.scr .box.link { flex-direction:row; align-items:center; justify-content:space-between; gap:12px; }
+.scr .tie { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.scr .tie > div { border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.scr .mini { display:flex; justify-content:space-between; gap:8px; font-size:14px; border-bottom:1px solid var(--line); min-height:28px; align-items:center; }
+.scr .nt { font-size:14px; color:var(--inkSoft); margin:0; }
+.scr .big { font:96px/1 var(--mono); }
+.scr .pt { display:grid; grid-template-columns:1fr auto; gap:4px 12px; padding:8px 0; border-bottom:1px solid var(--line); align-items:center; }
+.scr .pt > div:first-child { display:flex; flex-direction:column; gap:4px; min-width:0; }
+.scr .pt .nm { display:flex; justify-content:space-between; gap:8px; font-size:17px; }
+.scr .stamp { grid-column:1/-1; display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:44px; padding-left:12px; border-left:3px solid var(--inkSoft); }
+.scr .cell { display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:52px; border-bottom:1px solid var(--line); }
+.scr .cell.sel { background:rgba(111,92,166,.08); border-radius:8px; padding:0 8px; margin:0 -8px; }
+.scr .wide-col { position:absolute; top:0; bottom:0; left:235px; width:480px; padding:16px 24px; display:flex; flex-direction:column; gap:12px; border-inline:1px solid var(--line); }
+
+.sources h2 { font-size:20px; font-weight:400; margin:0 0 var(--space-2); }
+.sources ul { margin:0; padding-left:20px; max-width:90ch; font-size:15px; display:flex; flex-direction:column; gap:var(--space-1); }
+code { font:13px/1.4 var(--mono); overflow-wrap:anywhere; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner" role="note">Sample. No figure on this page is real. The screens redraw PR 144's own sample mail day (Tue 27 Oct, 8 invented sellers), and its card names, counts and dollar figures are invented.</div>
+<h1>The Card in Hand design page, on main or archived</h1>
+<p class="sub">Waiting item 51. Draft PR 144 holds the iPhone Duo round 2 design page for Card in Hand. Code, tests and debts on main cite it, but it never merged. Each state below shows the repo after one option. The red marks show where a later ruling overrides the page.</p>
+
+<div class="navs">
+<nav aria-label="Option">
+  <span class="lab">Option</span>
+  <a href="#s=merge" data-k="s" data-v="merge">Merge it as a reference page</a>
+  <a href="#s=archive" data-k="s" data-v="archive">Archive it, re-point the citations</a>
+</nav>
+<nav aria-label="Theme">
+  <span class="lab">Theme</span>
+  <a href="#t=light" data-k="t" data-v="light">Light</a>
+  <a href="#t=dark" data-k="t" data-v="dark">Dark</a>
+</nav>
+<nav aria-label="Hide">
+  <span class="lab">Hide</span>
+  <button type="button" data-hide="merge" aria-pressed="false">Merge it</button>
+  <button type="button" data-hide="archive" aria-pressed="false">Archive it</button>
+  <button type="button" data-hide="extra" aria-pressed="false">Other differences</button>
+</nav>
+</div>
+
+<!-- ============ merge ============ -->
+<section data-state="merge" id="opt-merge">
+  <div class="shown">This option is hidden. <button type="button" data-show="merge">Show it</button></div>
+  <div class="optline">
+    <h2>Merge it as a reference page</h2>
+    <p>PR 144 merges as it is, docs only, with one note added at the top of the page. The citations on main then open a real file.</p>
+    <div class="tags"><span class="tag today">Today: no duo-card-in-hand folder on main</span><span class="tag new">New: the page on main</span><span class="tag new">New: an override note at its top</span></div>
+  </div>
+  <div class="repo" id="merge-main">
+    <div class="path"><b>docs/design/duo-card-in-hand/index.html</b><span>main, after the merge</span></div>
+    <div class="sheet">
+      <div class="note" id="merge-note">
+        <h3>Later rulings override four parts of this page</h3>
+        <ol>
+          <li><b>Screens 1, 2, 3, 10 and 11, the match list.</b> Item 48 (owner, 2026-11-07 18:35 CST): the list sits below This envelope and New envelope, and holds still after a tap.</li>
+          <li><b>Screen 3, Suspense at the end of the day.</b> Item 27 (default, not owner, 2026-10-27 15:34 CDT): held cards stay on the Suspense line. They do not move to Orphaned.</li>
+          <li><b>Screen 4, the Lost stamp.</b> Item 25 (deferred, 2026-10-27 15:34 CDT): no Lost kind. The built row offers Claim filed, Refunded and More.</li>
+          <li><b>Screen 9, Ledger.</b> Item 24 (owner, 2026-10-27 14:26 CDT): Ledger stays full width. Tally and Orphaned spread as drawn.</li>
+        </ol>
+        <p>The ruling's home is decision <code>duo-card-in-hand</code>. Where this page and that record differ, the record wins.</p>
+      </div>
+      <div class="extra">
+        <h3>Not in the note yet: other records that also differ</h3>
+        <ul>
+          <li>Screen 10, keys: item 22 (owner, provisional, 2026-10-27 14:26 CDT) builds the system keys across both pages, with no in-app key pad.</li>
+          <li>Screens 2 and 3, the Suspense box: it sits below the matches, not above This envelope (default, not owner).</li>
+          <li>Screen 2, the Post offer: built under the sender and date, above the lines. Item 42 asks about it and is open.</li>
+          <li>Screen 1, the entry: Card in Hand opens from a control on Packages, not as the Packages tab. Item 35 asks about it and is open.</li>
+        </ul>
+        <p class="lede"><span class="tag new">New: designer's addition, not in item 51</span></p>
+      </div>
+      <div class="code">
+        <div class="cite"><div class="f">native/Manifest/HandScreen.swift:4-5, unchanged</div>
+          <pre class="keep">// Card in Hand on the open iPhone Duo (duo-card-in-hand, new-envelope-ends-an-envelope; mockup poses 1, 2 and 4 of
+// docs/design/duo-card-in-hand on origin/design/duo-round2). The query and the held cards sit on the left page, the</pre></div>
+        <p class="lede ok">This path now opens on main. DuoHandUITests.swift:2 and debt <code>duo-hand-mockup-gaps</code> resolve the same way.</p>
+      </div>
+      <div class="gallery" id="merge-gallery"></div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ archive ============ -->
+<section data-state="archive" id="opt-archive">
+  <div class="shown">This option is hidden. <button type="button" data-show="archive">Show it</button></div>
+  <div class="optline">
+    <h2>Archive it and re-point the citations</h2>
+    <p>The branch moves to an archive name and PR 144 closes. Main never holds the page. Each citation names the archive branch instead.</p>
+    <div class="tags"><span class="tag today">Today: the page lives on design/duo-round2, draft PR 144</span><span class="tag new">New: branch archive/design/duo-round2, PR closed</span><span class="tag new">New: re-pointed citations</span></div>
+  </div>
+  <div class="repo" id="archive-main">
+    <div class="path"><b>docs/design/duo-card-in-hand/</b><span>main, after the archive</span></div>
+    <div class="sheet">
+      <div class="missing"><b>Not on main</b><span>The folder stays absent. The page is kept only on archive/design/duo-round2, with no override note.</span></div>
+      <div class="code">
+        <div class="cite"><div class="f">native/Manifest/HandScreen.swift:5</div>
+          <pre class="del">// docs/design/duo-card-in-hand on origin/design/duo-round2). The query and the held cards sit on the left page, the</pre>
+          <pre class="add">// docs/design/duo-card-in-hand on origin/archive/design/duo-round2). The query and the held cards sit on the left page, the</pre></div>
+        <div class="cite"><div class="f">native/ManifestUITests/DuoHandUITests.swift:2</div>
+          <pre class="del">// poses 1, 2, 4 and 6 of docs/design/duo-card-in-hand on origin/design/duo-round2). The model is HandModel and</pre>
+          <pre class="add">// poses 1, 2, 4 and 6 of docs/design/duo-card-in-hand on origin/archive/design/duo-round2). The model is HandModel and</pre></div>
+        <div class="cite"><div class="f">debt duo-hand-mockup-gaps, line 3; decision duo-card-in-hand, status line</div>
+          <pre class="del">PR 144, the Duo round 2 design pull request</pre>
+          <pre class="add">the Duo round 2 design, kept on branch archive/design/duo-round2 (PR 144, closed)</pre></div>
+      </div>
+      <div class="gallery archived" id="archive-gallery"></div>
+    </div>
+  </div>
+</section>
+
+<hr style="border:0;border-top:1px solid var(--line);width:100%;margin:0">
+<section class="sources" aria-label="Sizes and sources">
+  <h2>Sizes and sources</h2>
+  <ul>
+    <li>Drawn at 390 px wide, the waiting page's default width: <code>layout.py devices</code> prints <code>unknown</code> for this repo. The page reflows up to 1040 px.</li>
+    <li>Themes: the chrome follows light and dark from <code>shared/tokens.json</code>. The redrawn screens stay light, because PR 144 drew light only.</li>
+    <li>Screens: redrawn from <code>docs/design/duo-card-in-hand/index.html</code> on design/duo-round2 at 441b4e4, read 2026-11-18. Its CSS and sample data are kept. Its option captions are renamed, so no letter names an option here.</li>
+    <li>Overrides: decision <code>duo-card-in-hand</code> (sections Ruled, Deferred and default answers, Defaults). The built stamp row: <code>PastTransitRowView</code> in native/Manifest/HandScreen.swift shows the first two of <code>STAMP_KINDS</code> (src/view-rules.mjs) and a More menu.</li>
+    <li>Deep links: <code>#s=merge</code>, <code>#s=archive</code>, <code>#s=merge&amp;t=dark</code>, <code>#s=archive&amp;t=dark</code>, <code>#hide=extra</code>.</li>
+  </ul>
+</section>
+</main>
+
+<template id="mailL">
+  <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">30 in · 28 out</span></div>
+  <div class="q"><b>LIGH</b><span class="x">×</span></div>
+  <div class="hits ovr">
+    <div class="hitrow on"><div>Lightning Bolt<small>Magic 2011 · NM</small></div><span class="n">Kestrel<br>14 Oct</span></div>
+    <div class="hitrow"><div>Lightning Greaves<small>Commander Legends · NM</small></div><span class="n ok">Low Tide<br>all in</span></div>
+  </div>
+  <div class="hand"><div><span class="k">This envelope</span><span>Lightning Bolt ×3 · Counterspell ×2</span></div><span class="btn">New envelope</span></div>
+</template>
+<template id="kestrelR">
+  <div class="k">It came from</div>
+  <div class="who">Kestrel Card Co.</div>
+  <div class="meta">ordered 14 Oct · 13 d · order …5E91A</div>
+  <hr class="rule">
+  <div class="k">In this envelope</div>
+  <div class="lines">
+    <div class="line now"><div>Lightning Bolt<small>Magic 2011 · NM · <span class="n">$1.12</span> each</small></div><div class="step"><span class="btn">−</span><span class="n">3/4</span><span class="btn p">+</span></div></div>
+    <div class="line"><div>Counterspell<small>Dominaria Remastered · NM · <span class="n">$0.48</span> each</small></div><span class="n ok">2/2 ✓</span></div>
+    <div class="line"><div>Brainstorm<small>Commander Masters · LP · <span class="n">$0.62</span></small></div><div class="step"><span class="btn">−</span><span class="n">0/1</span><span class="btn">+</span></div></div>
+  </div>
+  <p class="owed">Still owed here: 1 Lightning Bolt, 1 Brainstorm · <span class="n">$1.74</span></p>
+  <div class="box link"><div>Past 14 days: <span class="n">4</span> envelopes, <span class="n">16</span> cards<br><span class="bad">1 refund window closing</span></div><span class="btn">Open</span></div>
+</template>
+<template id="endR">
+  <div class="k">Not normal today</div>
+  <div class="lines">
+    <div class="line"><div>Kestrel Card Co. came 1 short<small>14 Oct · 1 Lightning Bolt · <span class="n">$1.12</span> · 13 d</small></div><span class="btn">Open</span></div>
+    <div class="line"><div><span class="n">4</span> envelopes past 14 days<small><span class="n">16</span> cards · <span class="n">$9.55</span> · <span class="bad">1 refund window closing</span></small></div><span class="btn">Open</span></div>
+  </div>
+  <hr class="rule">
+  <div class="k">Still out</div>
+  <p class="owed"><span class="n">19</span> cards, <span class="n">$11.07</span>, in <span class="n">6</span> envelopes. Cost only: shipping and tax stay out.</p>
+</template>
+
+<template id="gallery">
+  <h3 class="gh">The page's eleven screens</h3>
+
+  <article class="pose">
+    <h4>1. Open flat, mid-pile</h4>
+    <p class="cap">The query on the left page. The envelope it came from on the right, with its envelope-mates. Three of four Lightning Bolt are in.</p>
+    <div class="frames"><figure><div class="fit"><div class="dev scr inner">
+      <section class="pg l kbon"><div data-use="mailL"></div><div data-keys="sys"></div></section>
+      <div class="fold"></div>
+      <section class="pg r baron"><div data-use="kestrelR"></div><div data-bar="Packages"></div></section>
+    </div></div><figcaption>Inner screen 951×669 pt. On the open Duo the page makes this the Packages tab.</figcaption></figure></div>
+    <div class="mark"><b>Item 48</b> moves the match list below This envelope and New envelope.</div>
+    <div class="xmark"><b>Item 35, open</b> The build opens Card in Hand from a control on Packages instead of making it the tab.</div>
+  </article>
+
+  <article class="pose">
+    <h4>2. A stray</h4>
+    <p class="cap">A name in two open envelopes waits on the Suspense line, not checked in. The two envelopes show as a tie. The next card from the same envelope decides it, and the app offers to post the held cards. It never posts by itself.</p>
+    <div class="frames">
+      <figure><div class="fit"><div class="dev scr inner">
+        <section class="pg l kbon">
+          <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">31 in · 27 out</span></div>
+          <div class="q"><b>FELLW</b><span class="x">×</span></div>
+          <div class="hits ovr"><div class="hitrow on"><div>Fellwar Stone<small>Dominaria · NM · in 2 open envelopes</small></div><span class="btn">Hold</span></div></div>
+          <div class="susp xo"><span class="k">Suspense</span><span>Beast Within</span><small>Fits 2 envelopes. Not checked in.</small></div>
+          <div class="hand"><div><span class="k">This envelope</span><span class="soft">Nothing checked in yet</span></div><span class="btn">New envelope</span></div>
+          <div data-keys="sys" data-sg="Fellwar|Fellow|Fell"></div>
+        </section>
+        <div class="fold"></div>
+        <section class="pg r baron">
+          <div class="k">Two envelopes hold Fellwar Stone</div>
+          <p class="nt">Name the next card from this envelope. It tells them apart.</p>
+          <div class="tie">
+            <div><div>Brass Lantern TCG<small class="n">16 Oct · 11 d</small></div>
+              <div class="mini"><span>Beast Within</span><span class="n">held</span></div><div class="mini"><span>Fellwar Stone</span><span class="n">in hand</span></div>
+              <div class="mini"><span>Mind Stone</span><span class="n">0/2</span></div><div class="mini"><span>Chaos Warp</span><span class="n">0/1</span></div>
+              <span class="btn push">Post here</span></div>
+            <div><div>Quillon Hobby<small class="n">10 Oct · 17 d</small></div>
+              <div class="mini"><span>Beast Within</span><span class="n">held</span></div><div class="mini"><span>Fellwar Stone</span><span class="n">in hand</span></div>
+              <div class="mini"><span>Swiftfoot Boots</span><span class="n">0/1</span></div>
+              <span class="btn push">Post here</span></div>
+          </div>
+          <p class="nt">A tie has no first choice. Nothing checks in until you post.</p>
+          <div data-bar="Packages"></div>
+        </section>
+      </div></div><figcaption>Held: Beast Within waits on the Suspense line.</figcaption></figure>
+      <figure><div class="fit"><div class="dev scr inner">
+        <section class="pg l kbon">
+          <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">33 in · 25 out</span></div>
+          <div class="q"><b>MIND ST</b><span class="x">×</span></div>
+          <div class="hits ovr"><div class="hitrow on"><div>Mind Stone<small>Commander Masters · NM</small></div><span class="n">Brass Lantern<br>only</span></div></div>
+          <div class="susp xo"><span class="k">Suspense</span><span>Beast Within · Fellwar Stone</span><small>Not checked in.</small></div>
+          <div class="hand"><div><span class="k">This envelope</span><span>Mind Stone ×2</span></div><span class="btn">New envelope</span></div>
+          <div data-keys="sys" data-sg="Mind|Minds|Mindful"></div>
+        </section>
+        <div class="fold"></div>
+        <section class="pg r baron">
+          <div class="k">It came from</div><div class="who">Brass Lantern TCG</div><div class="meta">ordered 16 Oct · 11 d · order …2B7C4</div>
+          <hr class="rule">
+          <div class="lines">
+            <div class="line now"><div>Mind Stone<small>Commander Masters · NM · <span class="n">$0.29</span> each</small></div><span class="n ok">2/2 ✓</span></div>
+            <div class="line held"><div>Beast Within<small>on the Suspense line</small></div><span class="n">0/1</span></div>
+            <div class="line held"><div>Fellwar Stone<small>on the Suspense line</small></div><span class="n">0/1</span></div>
+            <div class="line"><div>Chaos Warp<small>Commander 2011 · NM · <span class="n">$0.42</span></small></div><div class="step"><span class="btn">−</span><span class="n">0/1</span><span class="btn">+</span></div></div>
+          </div>
+          <div class="box xo"><div>Mind Stone is only in this envelope. Your 2 held cards came with it.</div>
+            <div class="btns"><span class="btn p">Post 2 held cards here</span><span class="btn">Keep held</span></div></div>
+          <div data-bar="Packages"></div>
+        </section>
+      </div></div><figcaption>Decided: the next card names one envelope, and one tap posts the held cards.</figcaption></figure>
+    </div>
+    <div class="mark"><b>Item 48</b> puts the matches under This envelope, and a tapped list holds its rows.</div>
+    <div class="xmark"><b>Built default</b> The Suspense box sits below the matches. <b>Item 42, open</b> The Post offer sits under the sender, above the lines.</div>
+  </article>
+
+  <article class="pose">
+    <h4>3. Suspense</h4>
+    <p class="cap">An envelope with no sender, every card in two envelopes. The right page ranks the accounts it fits by named copies. Post checks in the named cards only. <s>A line left at the end of the day becomes an envelope on the Orphaned tab.</s></p>
+    <div class="frames"><figure><div class="fit"><div class="dev scr inner">
+      <section class="pg l kbon">
+        <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">36 in · 22 out</span></div>
+        <div class="q"><b>COMMAND T</b><span class="x">×</span></div>
+        <div class="hits ovr"><div class="hitrow on"><div>Command Tower<small>Commander Masters · NM · in 2 open envelopes</small></div><span class="n">held</span></div></div>
+        <div class="susp xo"><span class="k">Suspense · <span class="n">3</span> cards</span><span>Arcane Signet ×2 · Command Tower</span><small>Not checked in.</small></div>
+        <div class="hand"><div><span class="k">This envelope</span><span class="soft">Nothing checked in yet</span></div><span class="btn">New envelope</span></div>
+        <div data-keys="sys" data-sg="Command|Commander|Commands"></div>
+      </section>
+      <div class="fold"></div>
+      <section class="pg r baron">
+        <div class="k">Suspense</div><div class="who">One envelope, no sender</div><div class="meta">named today · 3 cards</div>
+        <hr class="rule">
+        <div class="k">Accounts it fits</div>
+        <div class="lines">
+          <div class="line"><div>Low Tide Singles<small><span class="n">19 Oct · 8 d</span> · fits 3 of 3</small></div><span class="btn p">Post 3 cards</span></div>
+          <div class="line"><div>Tinpot Cards<small><span class="n">6 Oct · 21 d</span> · fits 2 of 3 · ordered 1 Arcane Signet</small></div><span class="btn">Post 2 cards</span></div>
+        </div>
+        <p class="nt">Post checks in only the cards named here. A card that does not fit stays on the line.</p>
+        <div class="btns"><span class="btn">Leave in Suspense</span></div>
+        <div data-bar="Packages"></div>
+      </section>
+    </div></div><figcaption>Named: three cards on the line, ranked by fit.</figcaption></figure></div>
+    <div class="mark"><b>Item 27</b> keeps held cards on the Suspense line when Card in Hand closes; nothing moves to Orphaned. <b>Item 48</b> also moves this match list down.</div>
+  </article>
+
+  <article class="pose">
+    <h4>4. Past transit</h4>
+    <p class="cap">Envelopes past 14 days, oldest last. Amber at 14 days, red at 30, both from the order date. A press offers Undo, and the row keeps its place.</p>
+    <div class="frames">
+      <figure><div class="fit"><div class="dev scr inner">
+        <section class="pg l">
+          <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">39 in · 19 out</span></div>
+          <div class="q empty"><b>Type the card in hand</b></div>
+          <div class="k">Under 14 days</div>
+          <div class="lines">
+            <div class="line"><div>Kestrel Card Co.<small><span class="n">14 Oct · 13 d</span> · 1 Lightning Bolt short</small></div><span class="n">6/7</span></div>
+            <div class="line"><div>Ashgrove Games<small><span class="n">23 Oct · 4 d</span> · Farseek ×2</small></div><span class="n">0/2</span></div>
+          </div>
+        </section>
+        <div class="fold"></div>
+        <section class="pg r baron">
+          <div class="hand"><span class="who">Past 14 days</span><span class="btn">Back</span></div>
+          <div class="meta"><span class="n">4</span> envelopes · <span class="n">16</span> cards · <span class="n">$9.55</span> · oldest last</div>
+          <div>
+            <div class="pt"><div><div class="nm"><span>Quillon Hobby</span><span class="n amb">17 d</span></div><span class="meta">10 Oct · 3 cards · $1.95 · claim by Mon 9 Nov</span></div><div class="btns ovr"><span class="btn">Claim filed</span><span class="btn">Refunded</span></div></div>
+            <div class="pt"><div><div class="nm"><span>Tinpot Cards</span><span class="n">21 d</span></div><span class="meta">6 Oct · 4 cards · $2.09</span></div><div></div>
+              <div class="stamp"><span>Stamped Claim filed · today</span><span class="btn">Undo</span></div></div>
+            <div class="pt"><div><div class="nm"><span>Ashgrove Games</span><span class="n amb">25 d</span></div><span class="meta">2 Oct · 4 cards · $3.60 · claim by Sun 1 Nov</span></div><div class="btns"><span class="btn">Claim filed</span><span class="btn">Refunded</span></div></div>
+            <div class="pt"><div><div class="nm"><span>Marrow &amp; Vine</span><span class="n bad">31 d</span></div><span class="meta bad">26 Sep · 5 cards · $1.91 · refund window closing</span></div><div class="btns"><span class="btn">Claim filed</span><span class="btn">Refunded</span></div></div>
+          </div>
+          <p class="nt">Days count from the order date. TCGplayer counts 30 days from the delivery estimate, so its window can close later.</p>
+          <div data-bar="Packages"></div>
+        </section>
+      </div></div><figcaption>The page's pick: the existing stamp, Claim filed.</figcaption></figure>
+      <figure class="struck"><div class="fit"><div class="dev scr inner">
+        <section class="pg l"><div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">39 in · 19 out</span></div><div class="q empty"><b>Type the card in hand</b></div></section>
+        <div class="fold"></div>
+        <section class="pg r baron">
+          <div class="hand"><span class="who">Past 14 days</span><span class="btn">Back</span></div>
+          <div class="pt"><div><div class="nm"><span>Quillon Hobby</span><span class="n amb">17 d</span></div><span class="meta">10 Oct · 3 cards · $1.95</span></div><div class="btns ovr"><span class="btn">Lost</span><span class="btn">Refunded</span></div></div>
+          <div class="pt"><div><div class="nm"><span>Ashgrove Games</span><span class="n amb">25 d</span></div><span class="meta">2 Oct · 4 cards · $3.60</span></div><div class="btns"><span class="btn">Lost</span><span class="btn">Refunded</span></div></div>
+          <div data-bar="Packages"></div>
+        </section>
+      </div></div><figcaption>The page also draws the brief's word, Lost, as a new stamp kind.</figcaption></figure>
+    </div>
+    <div class="mark"><b>Item 25</b> is deferred: no Lost kind. The built row shows Claim filed, Refunded and a More menu with the other four stamps.</div>
+  </article>
+
+  <article class="pose">
+    <h4>5. End of mail day</h4>
+    <p class="cap">Left: today's envelopes. Right: only what is not normal. Not built yet (debt <code>duo-hand-mockup-gaps</code>).</p>
+    <div class="frames"><figure><div class="fit"><div class="dev scr inner">
+      <section class="pg l">
+        <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">39 in · 19 out</span></div>
+        <div class="q empty"><b>Type the card in hand</b></div>
+        <div class="k">Today's pile · <span class="n">7</span> envelopes · <span class="n">39</span> cards · <span class="n">$19.79</span></div>
+        <div class="lines">
+          <div class="line"><span>Fernhill Cards <span class="meta">20 Oct</span></span><span class="n ok">8/8 ✓</span></div>
+          <div class="line"><span>Kestrel Card Co. <span class="meta">21 Oct</span></span><span class="n ok">6/6 ✓</span></div>
+          <div class="line"><span>Low Tide Singles <span class="meta">22 Oct</span></span><span class="n ok">5/5 ✓</span></div>
+          <div class="line"><span>Kestrel Card Co. <span class="meta">14 Oct</span></span><span class="n">6/7</span></div>
+          <div class="line"><span>Brass Lantern TCG <span class="meta">16 Oct</span></span><span class="n ok">5/5 ✓</span></div>
+        </div>
+      </section>
+      <div class="fold"></div>
+      <section class="pg r baron"><div data-use="endR"></div><div data-bar="Packages"></div></section>
+    </div></div><figcaption>Pile done, keys down.</figcaption></figure></div>
+  </article>
+
+  <article class="pose">
+    <h4>6. Closed, on the outer screen</h4>
+    <p class="cap">Closing keeps the right page, with the query on top. The tab bar sits at the bottom of the outer screen.</p>
+    <div class="frames"><figure><div class="fit"><div class="dev scr outer">
+      <section class="pg solo baron">
+        <div class="hd"><span>Mail day</span><span class="n">30 in · 28 out</span></div>
+        <div class="q empty"><b>Type the card in hand</b></div>
+        <div><div class="who" style="font-size:24px">Kestrel Card Co.</div><div class="meta">14 Oct · 13 d</div></div>
+        <div class="lines">
+          <div class="line"><div>Lightning Bolt</div><div class="step"><span class="btn">−</span><span class="n">3/4</span><span class="btn">+</span></div></div>
+          <div class="line"><div>Counterspell</div><span class="n ok">2/2 ✓</span></div>
+          <div class="line"><div>Brainstorm</div><div class="step"><span class="btn">−</span><span class="n">0/1</span><span class="btn">+</span></div></div>
+        </div>
+        <div class="box link"><div>Past 14 days: <span class="n">4</span> envelopes</div><span class="btn">Open</span></div>
+        <div data-bar="Packages"></div>
+      </section>
+    </div></div><figcaption>Outer screen 466×678 pt, keys down.</figcaption></figure></div>
+  </article>
+
+  <article class="pose">
+    <h4>7 and 8. Stacked poses</h4>
+    <p class="cap">Laptop and held tall: the answer on top, the query and keys below (item 28 kept this order). Not built yet (debt <code>duo-stacked-poses-unbuilt</code>).</p>
+    <div class="frames">
+      <figure><div class="fit"><div class="dev scr tall">
+        <section class="pg t">
+          <div class="k">It came from Kestrel Card Co. · <span class="n">14 Oct · 13 d</span></div>
+          <div style="font-size:44px">Lightning Bolt</div>
+          <div class="big">3<span class="soft">/4</span></div>
+          <div style="font-size:20px">Counterspell <span class="n ok">2/2 ✓</span> · Brainstorm <span class="n">0/1</span></div>
+        </section>
+        <div class="hfold"></div>
+        <section class="pg b kbon">
+          <div class="q"><b>LIGH</b><span class="btn">−</span><span class="btn p">+</span></div>
+          <div class="hitrow on"><div>Lightning Bolt<small>Kestrel · 14 Oct</small></div><span class="btn">Brainstorm +</span></div>
+          <div data-keys="sys"></div>
+        </section>
+      </div></div><figcaption>Laptop pose: the top page only shows, in large type.</figcaption></figure>
+      <figure><div class="fit"><div class="dev scr tall">
+        <section class="pg t"><div data-use="kestrelR"></div></section>
+        <div class="hfold"></div>
+        <section class="pg b kbon">
+          <div class="hd"><span>Mail day · Tue 27 Oct</span><span class="n">30 in · 28 out</span></div>
+          <div class="q"><b>LIGH</b><span class="x">×</span></div>
+          <div class="hitrow on"><div>Lightning Bolt<small>Magic 2011 · NM</small></div><span class="n">Kestrel · 14 Oct</span></div>
+          <div data-keys="sys"></div>
+        </section>
+      </div></div><figcaption>Held tall: the top page has buttons again.</figcaption></figure>
+    </div>
+  </article>
+
+  <article class="pose">
+    <h4>9. The other tabs on the open Duo</h4>
+    <p class="cap">The page's rule: a tab with a list and a thing you open from it spreads, list left, opened thing right.</p>
+    <div class="frames">
+      <figure><div class="fit"><div class="dev scr inner">
+        <section class="pg l">
+          <div class="hd"><span>Tally · unreceived</span><span class="n">16 names · 19 cards</span></div>
+          <div class="lines">
+            <div class="cell sel"><span>Arcane Signet</span><span class="n">2/3</span></div><div class="cell"><span>Beast Within</span><span class="n">1/2</span></div>
+            <div class="cell"><span>Command Tower</span><span class="n">1/2</span></div><div class="cell"><span>Cultivate</span><span class="n">0/2</span></div>
+            <div class="cell"><span>Farseek</span><span class="n">0/2</span></div><div class="cell"><span>Lightning Bolt</span><span class="n">3/4</span></div>
+          </div>
+        </section>
+        <div class="fold"></div>
+        <section class="pg r baron">
+          <div class="who">Arcane Signet</div><div class="meta">bought 3 · in 2 · basis $1.32 · <span class="bad">out $0.42</span></div>
+          <hr class="rule">
+          <div class="lines">
+            <div class="line"><div>Low Tide Singles<small><span class="n">19 Oct · 2 × $0.45</span></small></div><span class="n ok">2/2 ✓</span></div>
+            <div class="line"><div>Tinpot Cards<small><span class="n">6 Oct · 1 × $0.42</span> · stamped Claim filed</small></div><span class="n">0/1</span></div>
+          </div>
+          <div data-bar="Tally"></div>
+        </section>
+      </div></div><figcaption>Tally spreads.</figcaption></figure>
+      <figure><div class="fit"><div class="dev scr inner">
+        <section class="pg l">
+          <div class="hd"><span>Orphaned</span><span class="n">2 envelopes</span></div>
+          <div class="lines">
+            <div class="cell sel"><div>Envelope · <span class="n">24 Oct</span><br><span class="meta">Cultivate ×2</span></div><span class="n">2 cards</span></div>
+            <div class="cell"><div>Envelope · <span class="n">23 Oct</span><br><span class="meta">Llanowar Elves</span></div><span class="n">1 card</span></div>
+          </div>
+        </section>
+        <div class="fold"></div>
+        <section class="pg r baron">
+          <div class="who">Envelope of 24 Oct</div><div class="meta">Cultivate ×2 · no sender</div>
+          <hr class="rule">
+          <div class="k">Could have come from</div>
+          <div class="lines"><div class="line"><div>Ashgrove Games<small><span class="n">2 Oct · 25 d</span> · fits 2 of 2</small></div><span class="btn">Assign</span></div></div>
+          <div data-bar="Orphaned"></div>
+        </section>
+      </div></div><figcaption>Orphaned spreads.</figcaption></figure>
+      <figure class="struck"><div class="fit"><div class="dev scr inner ovr" style="outline-offset:-6px">
+        <section class="pg l">
+          <div class="hd"><span>Ledger</span><span></span></div>
+          <div class="lines">
+            <div class="cell"><span>Showing</span><span>● Unreceived</span></div><div class="cell"><span>Sorted by</span><u>Order date</u></div>
+            <div class="cell sel"><span>Sync</span><u>Up to date</u></div><div class="cell"><span>History</span><u><span class="n">14</span> saved</u></div>
+            <div class="cell"><span>Backup</span><u>Save a file</u></div>
+          </div>
+        </section>
+        <div class="fold"></div>
+        <section class="pg r baron">
+          <div class="who">Sync</div>
+          <div class="lines"><div class="cell"><span>Server</span><span>Reachable</span></div><div class="cell"><span>Last sync</span><span class="n">12:31 today</span></div></div>
+          <div data-bar="Ledger"></div>
+        </section>
+      </div></div><figcaption>The page's pick: Ledger spreads too.</figcaption></figure>
+      <figure><div class="fit"><div class="dev scr inner">
+        <div class="wide-col">
+          <div class="hd"><span>Ledger</span><span></span></div>
+          <div class="lines">
+            <div class="cell"><span>Showing</span><span>● Unreceived</span></div><div class="cell"><span>Sorted by</span><u>Order date</u></div>
+            <div class="cell"><span>Sync</span><u>Up to date</u></div><div class="cell"><span>History</span><u><span class="n">14</span> saved</u></div>
+            <div class="cell"><span>Backup</span><u>Save a file</u></div>
+          </div>
+        </div>
+        <div class="fold"></div>
+        <div data-bar="Ledger" style="left:259px;right:259px"></div>
+      </div></div><figcaption>Also drawn: Ledger full width, every row across the fold.</figcaption></figure>
+    </div>
+    <div class="mark"><b>Item 24</b> keeps Ledger full width, the fourth frame. Tally and Orphaned spread as drawn.</div>
+  </article>
+
+  <article class="pose">
+    <h4>10. Two keyboard cases</h4>
+    <p class="cap">Which case is real was unmeasured. The page picks the system keys inside the left page, with an in-app key pad if the keys span the fold.</p>
+    <div class="frames">
+      <figure><div class="fit"><div class="dev scr inner">
+        <section class="pg l kbon"><div data-use="mailL"></div><div data-keys="sys"></div></section>
+        <div class="fold"></div>
+        <section class="pg r baron"><div data-use="kestrelR"></div><div data-bar="Packages"></div></section>
+      </div></div><figcaption>System keys inside the left page.</figcaption></figure>
+      <figure><div class="fit"><div class="dev scr inner">
+        <section class="pg l kbon"><div data-use="mailL"></div><div class="xo" data-keys="pad" data-sg="Lightning Bolt|Lightning Greaves"></div></section>
+        <div class="fold"></div>
+        <section class="pg r baron"><div data-use="kestrelR"></div><div data-bar="Packages"></div></section>
+      </div></div><figcaption>In-app key pad on the left page, the page's fallback.</figcaption></figure>
+    </div>
+    <div class="mark"><b>Item 48</b> applies here too: the list goes under New envelope.</div>
+    <div class="xmark"><b>Item 22, provisional</b> The build lets the system keys span both pages, with no key pad.</div>
+  </article>
+
+  <article class="pose">
+    <h4>11. The tab bar on two pages</h4>
+    <p class="cap">Under the right page, always (item 23 ruled this). The page also draws two left-page places, which the ruling dropped.</p>
+    <div class="frames"><figure><div class="fit"><div class="dev scr inner">
+      <section class="pg l kbon"><div data-use="mailL"></div><div data-keys="sys"></div></section>
+      <div class="fold"></div>
+      <section class="pg r baron"><div data-use="kestrelR"></div><div data-bar="Packages"></div></section>
+    </div></div><figcaption>Under the right page, while typing.</figcaption></figure></div>
+    <div class="mark"><b>Item 48</b> The left page here repeats screen 1, so its list moves down as well.</div>
+  </article>
+</template>
+
+<script>
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+// Build the gallery once per state from one template, then fill its repeated parts.
+for (const id of ["merge-gallery", "archive-gallery"]) document.getElementById(id).append(document.getElementById("gallery").content.cloneNode(true));
+$$("[data-use]").forEach((el) => el.replaceWith(document.getElementById(el.dataset.use).content.cloneNode(true)));
+const ROWS = ["QWERTYUIOP", "ASDFGHJKL'", "⇧ZXCVBNM-⌫"];
+$$("[data-keys]").forEach((el) => {
+  const pad = el.dataset.keys === "pad", sg = (el.dataset.sg || (pad ? "" : "Light|Lightning|Lights")).split("|").filter(Boolean);
+  el.classList.add("kb"); if (pad) el.classList.add("pad");
+  el.innerHTML = '<div class="sg">' + sg.map((s) => "<span>" + s + "</span>").join("") + '</div><div class="ks">'
+    + ROWS.map((r) => [...r].map((c) => "<span>" + c + "</span>").join("")).join("")
+    + (pad ? '<span class="w3">System keys</span><span class="w4">space</span><span class="go w3">Next card</span>'
+           : '<span class="w2">123</span><span class="w5">space</span><span class="w3">next</span>') + "</div>";
+});
+$$("[data-bar]").forEach((el) => {
+  el.classList.add("bar");
+  el.innerHTML = ["Packages", "Tally", "Orphaned", "Ledger"].map((t) => '<span class="' + (t === el.dataset.bar ? "on" : "") + '">' + t + "</span>").join("");
+});
+function fit() {
+  $$(".fit").forEach((f) => { const d = f.firstElementChild; if (!f.clientWidth) return; const s = Math.min(1, f.clientWidth / d.offsetWidth);
+    d.style.transform = "scale(" + s + ")"; f.style.height = d.offsetHeight * s + "px"; });
+}
+const hidden = new Set();
+function read() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  (p.get("hide") || "").split(",").filter(Boolean).forEach((h) => hidden.add(h));
+  return { s: p.get("s") === "archive" ? "archive" : "merge", t: p.get("t") };
+}
+function render() {
+  const st = read();
+  if (st.t === "light" || st.t === "dark") document.documentElement.dataset.theme = st.t; else delete document.documentElement.dataset.theme;
+  $$("[data-state]").forEach((el) => { el.classList.toggle("on", el.dataset.state === st.s); el.classList.toggle("gone", hidden.has(el.dataset.state)); });
+  document.body.classList.toggle("no-extra", hidden.has("extra"));
+  $$("nav a[data-k]").forEach((a) => {
+    const cur = a.dataset.k === "s" ? st.s : (st.t || "");
+    a.setAttribute("aria-current", String(cur === a.dataset.v));
+    const q = new URLSearchParams({ s: st.s }); if (st.t) q.set("t", st.t); q.set(a.dataset.k, a.dataset.v);
+    a.href = "#" + q.toString();
+  });
+  $$("button[data-hide]").forEach((b) => b.setAttribute("aria-pressed", String(hidden.has(b.dataset.hide))));
+  fit();
+}
+$$("button[data-hide]").forEach((b) => b.addEventListener("click", () => { const h = b.dataset.hide; hidden.has(h) ? hidden.delete(h) : hidden.add(h); render(); }));
+$$("button[data-show]").forEach((b) => b.addEventListener("click", () => { hidden.delete(b.dataset.show); render(); }));
+addEventListener("hashchange", render);
+addEventListener("resize", fit);
+render();
+</script>
+</body>
+</html>
