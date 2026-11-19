@@ -1,0 +1,144 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Keys Stay Up</title>
+<style>
+/* Tokens: shared/tokens.json (Parchment). Paints: OrphanedPaint (ManifestKit) and ControlPaint. The native app is held to
+   light (UIUserInterfaceStyle), so this page has one theme: light. 1 CSS px = 1 pt on an iPhone 18 Pro, 402 x 874 pt. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --wax:#A8443C;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Liberation Serif", Georgia, serif;
+  --mono: Menlo, "DejaVu Sans Mono", ui-monospace, monospace;
+  --sys: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  --new:#2E7A5E; --today:#A8443C;
+  /* Drawn, not measured: no record measures the 18 Pro's safe insets or keys. */
+  --top: max(env(safe-area-inset-top), 62px);
+  --bottom: max(env(safe-area-inset-bottom), 34px);
+  --keys: 336px;
+  /* The system keyboard's own grey, drawn: it is iOS chrome, not a Parchment token. */
+  --kbd:#D3D5DB; --key:#FFFFFF; --keyDark:#ABB0BA;
+}
+* { box-sizing:border-box; }
+html, body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); }
+.page { width:402px; max-width:100%; padding:12px 0; }
+.page p, .page h1 { margin:0 12px 8px; }
+.pbanner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; font-size:14px; margin:0 12px 8px; }
+.page h1 { font-family:var(--cochin); font-size:20px; line-height:1.25; }
+.page p { font-size:13px; line-height:1.45; color:var(--inkSoft); }
+.page code { font-family:var(--mono); font-size:12px; overflow-wrap:anywhere; }
+
+/* ---- the phone: exactly 402 x 874; the bezel is a shadow, so the content stays 402 wide ---- */
+#phone { position:relative; width:402px; height:874px; overflow:hidden; background:var(--paper); border-radius:48px;
+  box-shadow:0 0 0 2px var(--ink); }
+.sample { position:absolute; inset:0 0 auto 0; height:var(--top); background:var(--manila); color:var(--manilaInk);
+  display:flex; align-items:flex-end; justify-content:center; padding-bottom:10px; font:700 18px/1 var(--sys); z-index:9; }
+
+/* The running head: MastheadScreen.swift RunningHead, 46 pt, pinned once the masthead has scrolled up. */
+.rhead { position:absolute; top:var(--top); left:0; right:0; height:46px; background:var(--paper); border-bottom:1px solid var(--line);
+  display:flex; align-items:center; gap:8px; padding:0 16px; z-index:5; }
+.seal { width:22px; height:22px; border-radius:50%; background:var(--wax); box-shadow:inset 0 0 0 3px #C86A5F; }
+.rhead b { font:700 16px var(--cochin); letter-spacing:0.02em; }
+.mast { position:absolute; left:16px; right:16px; top:calc(var(--top) + 58px); height:104px; border:1px dashed var(--line); border-radius:8px;
+  display:flex; align-items:center; justify-content:center; color:var(--inkSoft); font:13px var(--sys); }
+
+/* ComposerView: card fill, 1 pt ink border, radius 8, 12 pt padding, 8 pt spacing. */
+.composer { position:absolute; left:16px; right:16px; background:var(--card); border:1px solid var(--ink); border-radius:8px;
+  box-shadow:0 1px 2px var(--shadow); padding:12px; display:flex; flex-direction:column; gap:8px; }
+.micro { font:11px var(--mono); text-transform:uppercase; letter-spacing:0.14em; color:var(--inkSoft); }
+.field { min-height:52px; border:1px solid var(--line); border-radius:8px; background:var(--card); padding:8px 12px;
+  font:16px/18px var(--cochin); color:var(--ink); display:flex; align-items:flex-start; }
+.field.focus { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.field .ph { color:var(--inkSoft); }
+.caret { display:inline-block; width:2px; height:18px; background:var(--accent); margin-left:1px; vertical-align:top; }
+.found { border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.found .row { min-height:44px; display:flex; align-items:center; gap:8px; padding:8px 12px; }
+.found .row + .row { border-top:1px solid var(--line); }
+.found .name { flex:1; font:14px var(--cochin); }
+.found .meta { font:10.5px var(--mono); color:var(--inkSoft); }
+.found .typed { background:var(--manila); color:var(--manilaInk); font:13px var(--cochin); }
+.foot { display:flex; align-items:center; gap:8px; padding-top:4px; }
+.foot .count { flex:1; font:11px var(--mono); color:var(--inkSoft); }
+.mini { font:11.5px var(--mono); color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:5px; padding:6px 10px; }
+.mini.empty { color:var(--inkSoft); }
+
+/* The system keyboard, drawn: height, rows and keys are not measured on the 18 Pro. Return reads "done" (submitLabel(.done)). */
+.keys { position:absolute; left:0; right:0; bottom:0; height:var(--keys); background:var(--kbd); z-index:7; padding:0 3px var(--bottom);
+  display:flex; flex-direction:column; font-family:var(--sys); color:#000; }
+.sugg { height:44px; display:flex; align-items:center; font:16px var(--sys); }
+.sugg span { flex:1; text-align:center; }
+.sugg span + span { border-left:1px solid var(--keyDark); }
+.krow { display:flex; justify-content:center; gap:6px; padding:5px 0; }
+.k { width:34px; height:44px; border-radius:6px; background:var(--key); box-shadow:0 1px 0 rgba(0,0,0,0.3); display:flex; align-items:center; justify-content:center; font:22px var(--sys); }
+.k.mod { background:var(--keyDark); width:44px; font-size:16px; }
+.k.space { flex:1; max-width:190px; font-size:16px; }
+.k.done { width:92px; background:var(--accent); color:#fff; font-size:16px; }
+
+/* Labels: dashed outline on what exists today (red). Sized to read on a 0.55 card. */
+.tag { position:absolute; z-index:10; font:700 18px/1.25 var(--sys); padding:6px 10px; border-radius:6px; background:var(--card); border:2px dashed currentColor; }
+.tag.today { color:var(--today); }
+.ring { position:absolute; z-index:8; pointer-events:none; border:3px dashed var(--today); }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="pbanner">Sample. No name, date, count or order number on this page is real.</div>
+  <h1>Leave it as it is</h1>
+  <p>Owner page item 86, <code>orphaned-composer-dismiss</code>. The Orphaned note form as main draws it, with the keys up. The keys cover the tab bar, and nothing on the screen takes them down. iPhone 18 Pro, 402 x 874 pt, light theme (the app ships light only).</p>
+</div>
+
+<div id="phone" data-state="keys-up" role="img" aria-label="Orphaned tab with the note form open and the keys up over the tab bar">
+  <div class="sample">Sample: no figure here is real</div>
+
+  <div class="rhead"><span class="seal" aria-hidden="true"></span><b>Manifest</b></div>
+  <div class="mast">Masthead, scrolled up (not drawn)</div>
+
+  <!-- ComposerView scrolls its Save row to the bottom of the space above the keys (scrollTo, anchor .bottom). -->
+  <div class="composer" style="top:254px">
+    <div class="micro">New envelope</div>
+    <div class="field focus">Light<span class="caret"></span></div>
+    <div class="found">
+      <div class="row"><span class="name">Lightning Bolt</span><span class="meta">3 out · 2 sellers</span></div>
+      <div class="row typed">Add “Light” as typed</div>
+    </div>
+    <div class="field"><span class="ph">Note (optional) — tracking #, sender, mailer…</span></div>
+    <div class="foot"><span class="count">0 cards</span><span class="mini">Cancel</span><span class="mini empty">Save envelope</span></div>
+  </div>
+
+  <div class="tag today" style="left:16px;top:118px;width:330px">Today: nothing here hides the keys. Only Cancel or Save close the form.</div>
+  <div class="keys" aria-hidden="true">
+    <div class="sugg"><span>“Light”</span><span>Lights</span><span>Lighting</span></div>
+    <div class="krow"><span class="k">Q</span><span class="k">W</span><span class="k">E</span><span class="k">R</span><span class="k">T</span><span class="k">Y</span><span class="k">U</span><span class="k">I</span><span class="k">O</span><span class="k">P</span></div>
+    <div class="krow"><span class="k">A</span><span class="k">S</span><span class="k">D</span><span class="k">F</span><span class="k">G</span><span class="k">H</span><span class="k">J</span><span class="k">K</span><span class="k">L</span></div>
+    <div class="krow"><span class="k mod">⇧</span><span class="k">Z</span><span class="k">X</span><span class="k">C</span><span class="k">V</span><span class="k">B</span><span class="k">N</span><span class="k">M</span><span class="k mod">⌫</span></div>
+    <div class="krow"><span class="k mod">123</span><span class="k mod">☺</span><span class="k space">space</span><span class="k done">done</span></div>
+  </div>
+  <!-- Where the tab bar sits when the keys are down (same box as the other option's tab bar). -->
+  <div class="ring" style="left:12px;right:12px;bottom:var(--bottom);height:70px;border-radius:34px;display:flex;align-items:flex-end;justify-content:center;padding-bottom:4px">
+    <span class="tag today" style="position:static">Today: the tab bar, under the keys</span>
+  </div>
+</div>
+
+<div class="page">
+  <p><b>Measured versus drawn.</b> Nothing on this phone is measured on the 18 Pro. Drawn: the safe insets (62 pt top, 34 pt bottom), the keys' height (336 pt) and rows, the masthead's height and the scroll offset. Read from code: the 46 pt running head (<code>RunningHead.height</code>), the 16 pt gutters (<code>OrphanedView.list</code>), the form's parts and paints (<code>ComposerView</code>, <code>OrphanedPaint</code>), the Save row scrolled above the keys (<code>ComposerView</code>, <code>scrollTo</code>).</p>
+  <p><b>Why nothing hides the keys.</b> <code>ComposerView</code> sets <code>focused = .name</code> on appear and never clears it. The Orphaned scroll has no <code>scrollDismissesKeyboard</code>, no tap to hide and no keyboard toolbar. The "done" key adds the typed name (<code>onSubmit</code>); whether it also takes the keys down is unread. The tab bar sits under the keys, so the test <code>testComposerDraftSurvivesAViewChange</code> stays red.</p>
+  <p>State link: <code>#s=keys-up</code>. Cochin and Menlo fall back to a serif and DejaVu Sans Mono off a Mac.</p>
+</div>
+<script>
+// One state per option file. #s=<state> picks it; an unknown state falls back to the one drawn.
+(function () {
+  function read() {
+    var m = /(?:^|[#&])s=([\w-]+)/.exec(location.hash);
+    var want = m ? m[1] : "keys-up";
+    var el = document.querySelector('[data-state="' + want + '"]') || document.querySelector("[data-state]");
+    document.querySelectorAll("[data-state]").forEach(function (n) { n.hidden = n !== el; });
+  }
+  window.addEventListener("hashchange", read);
+  read();
+})();
+</script>
+</body>
+</html>
