@@ -4,14 +4,14 @@
   "designs": [
     {
       "file": "docs/design/orphaned-meta-line-wraps.html",
-      "focus": "#focus-wrap",
+      "focus": "#open",
       "label": "Keep the wrap",
       "option": "a",
       "slug": "orphaned-meta-line-wraps"
     },
     {
       "file": "docs/design/orphaned-meta-line-wraps.html",
-      "focus": "#focus-one-line",
+      "focus": "#grid",
       "label": "Keep looking for a one-line version",
       "option": "b",
       "slug": "orphaned-meta-line-wraps"

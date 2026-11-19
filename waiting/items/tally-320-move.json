@@ -1,12 +1,29 @@
 {
   "added": "2026-11-08T13:14:00-06:00",
   "context": "Goal: nothing moves under your finger, on any phone width.\nProblem (rule): at 320 px wide the Tally card moves 14 px under your finger when you check in, which breaks your rule that nothing moves under a tap, and the fix changes the card's look.\nBased on (measured): the pictures drawn from the built card at 320 px, which show the 14 px move on check-ins 1 and 6.\nBased on (read): the record of this known gap, which says three buttons where the card has two bulk buttons.\nDeparts from: main lets the Tally card's buttons come and go \u2014 option a reserves room for both bulk buttons and hides the one that does not apply.\nWaiting on: nothing stopped; the coordinator acts on your pick next.",
+  "designs": [
+    {
+      "file": "docs/design/item-62-tally-320/a.html",
+      "focus": "#choice",
+      "label": "Keep both buttons in place",
+      "option": "a",
+      "slug": "tally-320-move"
+    },
+    {
+      "file": "docs/design/item-62-tally-320/b.html",
+      "focus": "#choice",
+      "label": "Accept the move at 320 px",
+      "option": "b",
+      "slug": "tally-320-move-b"
+    }
+  ],
   "home": "debt tally-card-moves-at-320px; decision card-reserved-geometry",
   "id": "tally-320-move",
   "kind": "decision",
   "n": 62,
   "options": [
     {
+      "design": "tally-320-move",
       "gain": "Nothing moves under your finger at any width.",
       "how": "Every Tally card holds room for both bulk buttons and hides the one that does not apply, then the screens check adds 320 px.",
       "id": "keep-all-three-buttons",
@@ -29,6 +46,7 @@
       "lose": "The card is 14 px taller at rest at 320 px, a blank slot where the hidden button sits (measured on a copy with the hidden button added, not built code)."
     },
     {
+      "design": "tally-320-move-b",
       "gain": "The card keeps its look.",
       "how": "No change; the debt records 320 px as a known gap.",
       "id": "accept-move-at-320",

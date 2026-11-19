@@ -1,12 +1,33 @@
 {
   "added": "2026-10-28T20:14:00-05:00",
   "context": "Goal: check cards in by name on the open Duo.\nProblem (rule): the PR 144 mockup makes Card in Hand the Packages tab itself on the open Duo. The record duo-card-in-hand says Packages keeps its one-page layout. Those two disagree, and you haven't ruled either way.\nBased on (read): the PR 144 mockup README, line 5.\nBased on (read): record duo-card-in-hand, Defaults (a default, not your ruling).\nDeparts from: main's Packages tab opens the Packages list \u2014 option b makes it open Card in Hand on the open Duo.\nMeanwhile: Duo builds option a. Switching to b later is a small change to the entry point.",
+  "designs": [
+    {
+      "drawn": 951,
+      "file": "docs/design/item-35-card-in-hand-entry/a.html",
+      "focus": "#duo-keep-packages",
+      "label": "Keep Packages; add a Card in Hand control",
+      "option": "a",
+      "slug": "duo-card-in-hand-entry",
+      "state": "keep-packages"
+    },
+    {
+      "drawn": 951,
+      "file": "docs/design/item-35-card-in-hand-entry/b.html",
+      "focus": "#duo-packages-is-hand",
+      "label": "Packages becomes Card in Hand",
+      "option": "b",
+      "slug": "duo-card-in-hand-entry-b",
+      "state": "packages-is-hand"
+    }
+  ],
   "home": "decision duo-card-in-hand (manifest-duo)",
   "id": "duo-card-in-hand-entry",
   "kind": "decision",
   "n": 35,
   "options": [
     {
+      "design": "duo-card-in-hand-entry",
       "gain": "Packages stays the list you know, and Card in Hand is one tap away.",
       "how": "Packages stays as it is. A \"Card in Hand\" control at the top of Packages opens the two-page screen.",
       "id": "keep-packages-add-card",
@@ -25,6 +46,7 @@
       "lose": "One extra tap each mail day."
     },
     {
+      "design": "duo-card-in-hand-entry-b",
       "gain": "No extra tap, and it matches the mockup.",
       "how": "On the open Duo, the Packages tab opens Card in Hand, and you reach the list from inside it.",
       "id": "packages-becomes-card-hand",
