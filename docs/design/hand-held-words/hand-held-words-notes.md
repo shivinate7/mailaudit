@@ -31,10 +31,10 @@ Designer kind: informed. The brief named no kind.
    - Owner grant: yes (the item asks the owner).
 
 2. **One word only.** The option text does not name the word that goes. Its loss names two forms, so both are drawn:
-   - 2a, state `one-word`, focus `#focus-one-word` (the right page): the line loses its words and keeps the tint only. The box keeps "Suspense". This is the option's card picture.
-   - 2b, state `one-word-no-title`, focus `#focus-one-word-no-title` (the box): the line keeps "on the Suspense line" and the box drops its title.
+   - Line without words, state `one-word`, focus `#focus-one-word` (the right page): the line loses its words and keeps the tint only. The box keeps "Suspense". This is the option's card picture.
+   - Box without a name, state `one-word-no-title`, focus `#focus-one-word-no-title` (the box): the line keeps "on the Suspense line" and the box drops its title.
    - Gain: the label shows once.
-   - Loss: 2a leaves the tint as the only sign on the line. 2b leaves the box with no name.
+   - Loss: line without words leaves the tint as the only sign on the line. Box without a name leaves the box with no name.
    - Neither form changes the chip, the offer or Post, which keep "held". The item's goal covers the line and the box only.
    - Owner grant: yes.
 
@@ -47,5 +47,5 @@ Designer kind: informed. The brief named no kind.
 ## Out of scope, for the orchestrator
 
 - The first option says the repo glossary records each word's role. The repo has no glossary file. A record must hold it.
-- `check_ios_mockup.py` faults the repo's Cochin face (`system-font`). It may be a false alarm for a repo with a ruled custom face.
+- `check_ios_mockup.py` exits 1 on the Cochin face (`system-font`). It clashes with decision `typography-cochin-and-mono`, the ruled face. Main's `duo-hand-gaps.html` fails it the same way, so the check has tightened since that mockup landed.
 - The built micro labels are 10.5 pt (`HandScreen.micro`), under the 11 pt iOS minimum. The critique's detector flags them here too.
