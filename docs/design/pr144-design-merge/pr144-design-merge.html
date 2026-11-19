@@ -217,9 +217,10 @@ code { font:13px/1.4 var(--mono); overflow-wrap:anywhere; }
     <div class="path"><b>docs/design/duo-card-in-hand/index.html</b><span>main, after the merge</span></div>
     <div class="sheet">
       <div class="note" id="merge-note">
-        <h3>Later rulings override four parts of this page</h3>
+        <h3>Later rulings override five parts of this page</h3>
         <ol>
-          <li><b>Screens 1, 2, 3, 10 and 11, the match list.</b> Item 48 (owner, 2026-11-07 18:35 CST): the list sits below This envelope and New envelope, and holds still after a tap.</li>
+          <li><b>Screens 1, 2, 3, 10 and 11, the match list's place.</b> Invariant <code>no-layout-shift-under-pointer</code> (not the owner): the list sits below This envelope and New envelope.</li>
+          <li><b>The same screens, a tapped match.</b> Item 48 (owner, 2026-11-07 18:35 CST): after a tap every row holds its place. The tapped row is bold with an accent bar, not an outlined box, and the others stay in soft ink.</li>
           <li><b>Screen 3, Suspense at the end of the day.</b> Item 27 (default, not owner, 2026-10-27 15:34 CDT): held cards stay on the Suspense line. They do not move to Orphaned.</li>
           <li><b>Screen 4, the Lost stamp.</b> Item 25 (deferred, 2026-10-27 15:34 CDT): no Lost kind. The built row offers Claim filed, Refunded and More.</li>
           <li><b>Screen 9, Ledger.</b> Item 24 (owner, 2026-10-27 14:26 CDT): Ledger stays full width. Tally and Orphaned spread as drawn.</li>
@@ -333,7 +334,7 @@ code { font:13px/1.4 var(--mono); overflow-wrap:anywhere; }
       <div class="fold"></div>
       <section class="pg r baron"><div data-use="kestrelR"></div><div data-bar="Packages"></div></section>
     </div></div><figcaption>Inner screen 951×669 pt. On the open Duo the page makes this the Packages tab.</figcaption></figure></div>
-    <div class="mark"><b>Item 48</b> moves the match list below This envelope and New envelope.</div>
+    <div class="mark"><b>Invariant</b> The match list moves below This envelope and New envelope. <b>Item 48</b> A tapped match turns bold with an accent bar, and the list holds still.</div>
     <div class="xmark"><b>Item 35, open</b> The build opens Card in Hand from a control on Packages instead of making it the tab.</div>
   </article>
 
@@ -393,7 +394,7 @@ code { font:13px/1.4 var(--mono); overflow-wrap:anywhere; }
         </section>
       </div></div><figcaption>Decided: the next card names one envelope, and one tap posts the held cards.</figcaption></figure>
     </div>
-    <div class="mark"><b>Item 48</b> puts the matches under This envelope, and a tapped list holds its rows.</div>
+    <div class="mark"><b>Invariant</b> The matches go under This envelope. <b>Item 48</b> The tapped row is marked by weight and a bar, not this outlined box.</div>
     <div class="xmark"><b>Built default</b> The Suspense box sits below the matches. <b>Item 42, open</b> The Post offer sits under the sender, above the lines.</div>
   </article>
 
@@ -423,7 +424,7 @@ code { font:13px/1.4 var(--mono); overflow-wrap:anywhere; }
         <div data-bar="Packages"></div>
       </section>
     </div></div><figcaption>Named: three cards on the line, ranked by fit.</figcaption></figure></div>
-    <div class="mark"><b>Item 27</b> keeps held cards on the Suspense line when Card in Hand closes; nothing moves to Orphaned. <b>Item 48</b> also moves this match list down.</div>
+    <div class="mark"><b>Item 27</b> keeps held cards on the Suspense line when Card in Hand closes; nothing moves to Orphaned. <b>Invariant</b> This match list moves down too.</div>
   </article>
 
   <article class="pose">
@@ -628,7 +629,7 @@ code { font:13px/1.4 var(--mono); overflow-wrap:anywhere; }
         <section class="pg r baron"><div data-use="kestrelR"></div><div data-bar="Packages"></div></section>
       </div></div><figcaption>In-app key pad on the left page, the page's fallback.</figcaption></figure>
     </div>
-    <div class="mark"><b>Item 48</b> applies here too: the list goes under New envelope.</div>
+    <div class="mark"><b>Invariant</b> applies here too: the list goes under New envelope.</div>
     <div class="xmark"><b>Item 22, provisional</b> The build lets the system keys span both pages, with no key pad.</div>
   </article>
 
@@ -640,7 +641,7 @@ code { font:13px/1.4 var(--mono); overflow-wrap:anywhere; }
       <div class="fold"></div>
       <section class="pg r baron"><div data-use="kestrelR"></div><div data-bar="Packages"></div></section>
     </div></div><figcaption>Under the right page, while typing.</figcaption></figure></div>
-    <div class="mark"><b>Item 48</b> The left page here repeats screen 1, so its list moves down as well.</div>
+    <div class="mark"><b>Invariant</b> The left page here repeats screen 1, so its list moves down as well.</div>
   </article>
 </template>
 
