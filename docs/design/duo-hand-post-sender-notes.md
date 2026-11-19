@@ -18,9 +18,9 @@ Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash show
 
 1. **Where the offer sits.** Ruled: owner item 42 b (`duo-hand-post-order`, 2026-11-18 23:22 CST), "Build B now", with the note "make the pin not so thick". The ruled parts are the pinned bar, the dropped Post-under-sender order, and the thinner bar (decision `duo-card-in-hand`).
    - Built (`rightPage`, `slotBar` and `offerRow` in `HandScreen.swift`): the sender is pinned at the top of the answer page, outside the scroll view. The lines scroll in that view, below it. `slotBar` pins `offerRow` at the foot, above the keys (`safeAreaInset(edge: .bottom)`). No reveal scroll is in `HandScreen.swift`. The bar is one row, 61 pt at the normal text size, measured only through the receipt test (run 44479867180). No test measures the bar itself.
-   - Gain: the offer stays after the lines, the order of mockup pose 2. Lines above the offer: 2 whole lines, and the top 28 pt of the third.
-   - Loss: with the keys up, SwiftUI's keyboard safe area ends at the keys' drawn top, so the bar adds no pad. A 44 pt pad left Post 52 pt above the drawn top (duo-ui run 44469334404). The drawn top is the simulator's figure, unmeasured on a device (`duo-keyboard-gap-unmeasured`). If the device draws higher, a pinned Post sits under the keys and no scroll reaches it. With the keys down, the bar clears the floating tab bar, unmeasured (debt `duo-post-bar-unmeasured-s-m`).
-   - Superseded by item 42 b: pick A and its geometry, and the old loss that the sender leaves the top (the sender is pinned now). The 449 pt keyboard-inset reading and its 44 pt pad are replaced by the run above.
+   - Gain: the offer stays after the lines, the order of mockup pose 2. At rest 2 whole lines show above the bar, where the mockup showed 3 (design-review finding in debt `duo-post-bar-unmeasured-s-m`; unmeasured).
+   - Loss: with the keys up, SwiftUI's keyboard safe area ends at the keys' drawn top, so the bar adds no pad. A 44 pt pad left Post 52 pt above the drawn top (duo-ui run 44469334404). The drawn top is the simulator's figure, unmeasured on a device (`duo-keyboard-gap-unmeasured`). With the keys down, the bar clears the floating tab bar, unmeasured (debt `duo-post-bar-unmeasured-s-m`).
+   - Items 2 and 4 below are superseded by the built pinned layout and owner item 42 b.
    - Departs from: the Post-under-sender build (offer under the sender, scroll to the top on show), which item 42 b replaces.
 
 2. **What scrolls.**
