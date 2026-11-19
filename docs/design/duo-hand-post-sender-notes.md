@@ -16,13 +16,12 @@ Deep links: `#s=today`, `#s=a`, `#s=a-posted`, `#s=b`, `#s=folded`. No hash show
 
 ## Items
 
-1. **Where the offer sits.**
-   - Today (`slotBar` pins `offerRow` at the foot above the keys; no reveal scroll is in `HandScreen.swift`). Gain: the order of mockup pose 2. Loss: the sender leaves the top, and rows sit under the status bar.
-   - A: the offer sits under the sender and the date, above the lines. Sender at y 36 to 106; Post hit frame at y 168 to 212. Gain: it clears the keys by 193 pt, with no keyboard figure. It also holds at large text sizes. Loss: the offer comes before the lines it posts. Lines above the offer: 0. Below it: 2 whole lines, and the top 44 pt of the third.
-   - B: the sender is pinned above the scroll view, and the offer is pinned above the keys (`safeAreaInset(edge: .bottom)`). Gain: today's order. Lines above the offer: 2 whole lines, and the top 28 pt of the third. Loss: SwiftUI's keyboard inset ends at the 449 pt frame. So Post clears the drawn panel only with a 44 pt pad, an unmeasured figure. If the panel draws higher, a pinned Post is under the keys and no scroll reaches it.
-   - Pick: A.
-   - Departs from: today's order (the offer in `slotBar`, after the lines) and mockup pose 2 of round 2 (offer under the lines). Not blocking.
-   - Owner grant: no.
+1. **Where the offer sits.** Ruled: owner item 42 b (`duo-hand-post-order`, 2026-11-18 23:22 CST), "Build B now", with the note "make the pin not so thick". The ruled parts are the pinned bar, the dropped Post-under-sender order, and the thinner bar (decision `duo-card-in-hand`).
+   - Built (`rightPage`, `slotBar` and `offerRow` in `HandScreen.swift`): the sender is pinned at the top of the answer page, outside the scroll view. The lines scroll in that view, below it. `slotBar` pins `offerRow` at the foot, above the keys (`safeAreaInset(edge: .bottom)`). No reveal scroll is in `HandScreen.swift`. The bar is one row, 61 pt at the normal text size, measured only through the receipt test (run 44479867180). No test measures the bar itself.
+   - Gain: the offer stays after the lines, the order of mockup pose 2. Lines above the offer: 2 whole lines, and the top 28 pt of the third.
+   - Loss: with the keys up, SwiftUI's keyboard safe area ends at the keys' drawn top, so the bar adds no pad. A 44 pt pad left Post 52 pt above the drawn top (duo-ui run 44469334404). The drawn top is the simulator's figure, unmeasured on a device (`duo-keyboard-gap-unmeasured`). If the device draws higher, a pinned Post sits under the keys and no scroll reaches it. With the keys down, the bar clears the floating tab bar, unmeasured (debt `duo-post-bar-unmeasured-s-m`).
+   - Superseded by item 42 b: pick A and its geometry, and the old loss that the sender leaves the top (the sender is pinned now). The 449 pt keyboard-inset reading and its 44 pt pad are replaced by the run above.
+   - Departs from: the Post-under-sender build (offer under the sender, scroll to the top on show), which item 42 b replaces.
 
 2. **What scrolls.**
    - A replaces `scrollTo(offerID, anchor: .bottom)`, now gone from `HandScreen.swift`, with a scroll to the page top when the offer shows: the scroll position at edge `.top`, or an id on the padded VStack. Not an id on the sender text, which could align it to the bounds top, under the status bar. It drops both `onScrollGeometryChange` handlers and `revealPending`. The page then sits at its top, so no row is under the status bar (unmeasured). Gain: less code, and no read of the keyboard. Loss: none found.
