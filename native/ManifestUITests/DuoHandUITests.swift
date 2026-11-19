@@ -49,7 +49,9 @@
 //             container whose children are reachable), and inside a row the buttons labelled "Claim filed" and "Refunded".
 //             There is no button labelled "Lost" (item 25, deferred). past-transit-summary (the page's count line; its label
 //             starts "<N> envelope"). A red row (30 days from the order date) shows no "claim by" in any of its texts.
-//   Keys      With the system keys up, hand-post lies wholly above the keyboard's top edge, with no scroll by the user.
+//   Keys      With the system keys up, hand-post lies wholly above the keys' drawn top (keyboardDrawnAbove, 44 pt above the keyboard
+//             frame), with no scroll by the user. The pinned bar puts its bottom about 8 pt above that drawn top.
+//   Receipt   A saved Post leaves hand-receipt in the same slot: "Posted." and "N cards checked in · M was held", one row.
 //   Sender    With the offer shown and the keys up, the "It came from" line and hand-who lie below the status bar and above the
 //             keyboard's top edge, hittable, together with hand-post. The "It came from" line has no identifier: the test finds it
 //             by its label, any case (the screen sets it in capitals).
@@ -463,7 +465,8 @@ final class DuoHandUITests: XCTestCase {
 
         let k = requireKeysUp(app)
         let f = post.frame
-        XCTAssertLessThanOrEqual(f.maxY, k.minY, "the Post button, frame \(f), is under the keys, which start at y \(k.minY): the owner must scroll to reach it")
+        let drawnTop = k.minY - Self.keyboardDrawnAbove
+        XCTAssertLessThanOrEqual(f.maxY, drawnTop, "the Post button, frame \(f), is under the keys' drawn top at y \(drawnTop) (the keyboard frame starts at y \(k.minY), drawn \(Self.keyboardDrawnAbove) pt higher): the owner must scroll to reach it")
         XCTAssertTrue(post.isHittable, "the Post button, frame \(f), is not hittable with the keys up and no scroll")
         keepShot(app, "hand-post-clears-keys")
     }
@@ -497,6 +500,41 @@ final class DuoHandUITests: XCTestCase {
         clear(who, "the seller name (hand-who)")
         clear(post, "the Post button (hand-post)")
         keepShot(app, "hand-post-keeps-sender")
+    }
+
+    /// Pose: flat, system keys up, normal text size. The Post bar is pinned at the foot of the page, above the keys: the Post button's
+    /// bottom edge sits about 8 pt above the keys' drawn top (keyboardDrawnAbove), 2 pt of tolerance on top. Main puts the offer high
+    /// under the sender, far above the keys, so this fails there. Frames only: no tap, no scroll.
+    func testPostBarPinsAboveTheKeysAtTheirDrawnTop() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        let keys = app.keyboards.firstMatch
+        waitUntilStill([keys, post])
+
+        let keysTop = keys.frame.minY - Self.keyboardDrawnAbove
+        let f = post.frame
+        XCTAssertLessThanOrEqual(abs(f.maxY - keysTop), 8 + Self.tolerance, "the Post button, frame \(f), ends at y \(f.maxY), not about 8 pt above the keys' drawn top at y \(keysTop) (the keyboard frame starts at y \(keys.frame.minY), drawn \(Self.keyboardDrawnAbove) pt higher): the offer is not pinned at the foot")
+        keepShot(app, "hand-post-pinned")
+    }
+
+    /// Pose: flat, system keys up, normal text size. The Post bar sits below the lines pane: the Post button's top is at or under the
+    /// bottom of the envelope's first line, Lightning Bolt. The lines scroll above the bar, not under it. Main puts the offer above
+    /// the lines, so this fails there. Frames only: no tap, no scroll.
+    func testPostBarSitsBelowTheFirstLine() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        let line = need(app, "hand-line:\(Self.bolt)", "the first line of Gamma Cards, which the Post bar must sit under")
+        _ = requireKeysUp(app)
+        waitUntilStill([post, line])
+
+        let lineFrame = line.frame, postFrame = post.frame
+        XCTAssertGreaterThanOrEqual(postFrame.minY, lineFrame.maxY - Self.tolerance, "the Post button, frame \(postFrame), starts above the bottom of the first line, frame \(lineFrame): the offer sits above the lines, not below them")
+        keepShot(app, "hand-post-below-lines")
     }
 
     /// Pose: flat, system keys up. A held name's Suspense box shows, and the one match row must clear the keys. A box above
@@ -764,8 +802,8 @@ final class DuoHandUITests: XCTestCase {
         assertLinesStayPut(app, before, after: "when Post was refused")
     }
 
-    /// Pose: flat. A Post that saves leaves its receipt in the offer's slot, under the sender: its text, and the line that says the
-    /// next card clears it (HandScreen `receiptBox`). The next card is in the same envelope, so a receipt that stayed would show.
+    /// Pose: flat. A Post that saves leaves its receipt in the offer's slot at the foot of the page: "Posted." and the count
+    /// (HandScreen `receiptRow`). The next card is in the same envelope, so a receipt that stayed would show.
     /// The envelope is read first, so the receipt is judged on the page that should carry it.
     func testPostReceiptShowsItsTextThenClearsOnTheNextCard() {
         let app = XCUIApplication.launchedOnSeed()
@@ -777,14 +815,32 @@ final class DuoHandUITests: XCTestCase {
 
         let receipt = need(app, "hand-receipt", "the receipt a saved Post leaves in the offer's slot")
         onRightPage(receipt, app, "the receipt")
-        XCTAssertTrue(receipt.label.contains("Posted with this envelope. The next card you type clears this line."),
-                      "the receipt does not read the saved line: \"\(receipt.label)\"")
+        XCTAssertTrue(receipt.label.contains("Posted."), "the receipt does not read \"Posted.\": \"\(receipt.label)\"")
         XCTAssertTrue(receipt.label.contains("2 cards checked in \u{00B7} 1 was held"), "the receipt does not count the post: \"\(receipt.label)\"")
         keepShot(app, "hand-post-receipt")
 
         typeCard(app, "Swords to Plowshares")
         XCTAssertEqual(need(app, "hand-who", "the envelope of the next card").label, "Gamma Cards", "the next card does not show its envelope")
         waitGone(app.element("hand-receipt"), "the receipt is still shown after the next card was typed")
+    }
+
+    /// Pose: flat, system keys up, normal text size. A saved Post leaves one row in the offer's slot: hand-receipt is 61 pt tall (a 1 pt
+    /// hairline, 8 pt, the 44 pt button row, 8 pt), so the slot keeps the offer's height and no line moves under the finger. Main's
+    /// receipt is the old offer card with its text above a 44 pt row, well taller than one row. Frames only, read after the one Post tap.
+    func testPostReceiptIsOneRowAboutSixtyOnePointsTall() {
+        let app = XCUIApplication.launchedOnSeed()
+        guard app.requirePose(.flat) else { return }
+        openHand(app)
+        let post = offerPost(app)
+        _ = requireKeysUp(app)
+        post.tap()
+        waitGone(app.element("hand-post"), "the post is still offered after it posted")
+
+        let receipt = need(app, "hand-receipt", "the receipt a saved Post leaves in the offer's slot")
+        waitUntilStill([receipt])
+        let h = receipt.frame.height
+        XCTAssertEqual(h, 61, accuracy: 3, "the receipt, frame \(receipt.frame), is \(h) pt tall, not one 61 pt row: the slot would change height under the finger")
+        keepShot(app, "hand-post-receipt-row")
     }
 
     /// Pose: flat. New envelope ends the envelope with its receipt. The answer page is then on its empty state, and when the same
