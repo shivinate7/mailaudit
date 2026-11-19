@@ -53,7 +53,7 @@ Not logged: a CSV import, a merge or live apply, a restore, a pull, a Reset, and
 
 ## What a row shows
 
-A row uses the ledger's own vocabulary. It has no artwork and no fill of its own. The panel that holds it takes the paper fill (`head-panels-carry-paper-fill`). Its colours come from `C` (`design-parchment-ledger`).
+A row uses the ledger's own vocabulary. It has no artwork and no fill of its own. The panel that holds it takes the paper fill by default, not owner-confirmed (`head-panels-carry-paper-fill`). Its colours come from `C` (`design-parchment-ledger`).
 
 - A mono uppercase micro-label names the action: `CHECKED`, `UN-CHECKED`, `COUNT 2 → 3`, `PACKAGE CHECKED`, `STAMP · REFUNDED`, `STAMP REMOVED`, `ENVELOPE RECORDED`, `ENVELOPE EDITED`, `ENVELOPE DISCARDED`, `ASSIGNED`.
 - Cochin sets the subject: the card name, or the seller and order for a package or stamp, or the envelope's note. Mono sets the numbers, such as `1 of 4`, and the time `14:32` (`typography-cochin-and-mono`).
