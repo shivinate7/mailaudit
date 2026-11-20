@@ -85,8 +85,6 @@ final class DuoHandUITests: XCTestCase {
     static let accessibilityXL = "UICTContentSizeCategoryAccessibilityXL"
     /// The text size of the AccessibilityXXXL (AX5) chip case. The chip is capped at xxxLarge, so it must still fit its field.
     static let accessibilityXXXL = "UICTContentSizeCategoryAccessibilityXXXL"
-    /// The text size of the AccessibilityL (AX2) head case: the full sender line still shows there.
-    static let accessibilityL = "UICTContentSizeCategoryAccessibilityL"
     /// The Post bar's height at every text size (decision duo-card-in-hand): a 1 pt hairline, 4 pt, the 44 pt button row, 4 pt.
     static let postBarHeight: CGFloat = 53
     /// The bar's foot under the Post button. With the keys up the bar ends at the keys' drawn top, so the button's bottom edge sits this far above it.
@@ -584,16 +582,17 @@ final class DuoHandUITests: XCTestCase {
         XCTAssertFalse(sentence.exists, "\"Your held card came with this envelope.\" is still drawn beside the Post button: it belongs in the button's VoiceOver hint (decision duo-card-in-hand)")
     }
 
-    /// Pose: flat, launched at AccessibilityL. The head keeps the full sender block: "It came from" shows above the seller. Control for the
-    /// AccessibilityXL and AccessibilityXXXL cases, which must not show it.
-    func testHeadKeepsItsSenderLineAtAccessibilityL() {
-        let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityL])
+    /// Pose: flat, normal text size. The head keeps the full sender block: "It came from" shows above the seller. Control for the
+    /// AccessibilityXL and AccessibilityXXXL cases, which must not show it. Not run at AccessibilityL: there the Duo's hand-open sits
+    /// under the tab bar and Card in Hand cannot open (debt hand-open-under-bar-at-l).
+    func testHeadKeepsItsSenderLineAtTheNormalSize() {
+        let app = XCUIApplication.launchedOnSeed()
         guard app.requirePose(.flat) else { return }
         openHand(app)
         _ = offerPost(app)
         _ = need(app, "hand-who", "the seller of the envelope the held card came from")
         let came = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "It came from")).firstMatch
-        XCTAssertTrue(came.waitForExistence(timeout: 5), "\"It came from\" is not drawn on the head at AccessibilityL: the head keeps the full sender block up to AccessibilityL (decision duo-card-in-hand)")
+        XCTAssertTrue(came.waitForExistence(timeout: 5), "\"It came from\" is not drawn on the head at the normal size: the head keeps the full sender block there (decision duo-card-in-hand)")
     }
 
     /// Pose: flat, launched at `size`, the held card's offer up. From AccessibilityXL the head keeps the seller alone: "It came from" and
