@@ -215,7 +215,7 @@ figcaption b { font-size:17px; }
 <figure id="s-folded" data-state="folded">
   <div class="card-note" data-device="iphone-duo-folded">
     <b>Folded: unchanged</b>
-    Card in Hand opens only on two pages side by side (<code>HandScreen.twoPages</code>, <code>DuoSpread.pages(for:)</code>). Folded, Packages keeps its one page.
+    Card in Hand opens only on two pages side by side (<code>HandScreen.twoPages</code>; <code>DuoSpread.layout</code> splits the window only at an open hinge's fold). Folded, Packages keeps its one page.
   </div>
   <figcaption><b>Folded.</b> No change in this lane.</figcaption>
 </figure>
@@ -344,7 +344,7 @@ figcaption b { font-size:17px; }
 <figure id="s-pro" data-state="pro">
   <div class="card-note" data-device="iphone-18-pro">
     <b>iPhone 18 Pro: no Card in Hand</b>
-    Card in Hand opens only on two pages side by side (<code>HandScreen.twoPages</code>, <code>DuoSpread.pages(for:)</code>). The 18 Pro has one page, so its Packages has no opener and no Post bar. Nothing to draw, and no frame size is invented.
+    Card in Hand opens only on two pages side by side (<code>HandScreen.twoPages</code>; <code>DuoSpread.layout</code> splits the window only at an open hinge's fold). The 18 Pro has one page, so its Packages has no opener and no Post bar. Nothing to draw, and no frame size is invented.
   </div>
   <figcaption><b>iPhone 18 Pro.</b> No change in this lane.</figcaption>
 </figure>
@@ -464,7 +464,8 @@ function route() {
     }
     // The focus id names the element the figure is about, on its first frame.
     const pin = frames.querySelector('.pin'); if (pin && f.dataset.focus) pin.id = f.dataset.focus;
-    if (f.id === 's-bar') { const h = frames.querySelector('.head'); if (h) h.id = 'head-slim'; }
+    // head-slim names the head of the first frame drawn at AX3 or AX5, where item 105 a slims it.
+    if (f.id === 's-bar') { const h = frames.querySelector('.duo[data-size="ax3"] .head, .duo[data-size="ax5"] .head'); if (h) h.id = 'head-slim'; }
     if (!focused && !f.hidden && state.s) focused = true;
   });
   document.querySelectorAll('nav a[data-z]').forEach(a => { a.href = link('z', a.dataset.z); a.setAttribute('aria-current', String(a.dataset.z === state.z)); });
