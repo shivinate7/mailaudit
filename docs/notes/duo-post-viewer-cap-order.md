@@ -1,0 +1,1 @@
+- duo-post-viewer-cap-order: The large-content viewer on the Post button (`native/Manifest/HandScreen.swift`, `offerRow`) sits outside the button's own `xxxLarge` cap, but inside the bar's `xxxLarge` cap in `pinned`. Whether SwiftUI honors that order is unmeasured. Seen: 2026-11-20 x1 Decision: duo-card-in-hand.
