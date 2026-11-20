@@ -27,6 +27,8 @@ public struct HandShortRow: Equatable, Sendable {
 public struct HandNotNormal: Equatable, Sendable {
     public let rows: [HandShortRow]
     public let allWell: Bool
+    /// What the page says when `allWell` (ux-all-is-well). One home, so a test can pin it.
+    public static let allWellText = "All is well."
 }
 
 /// Card in Hand session state (duo-card-in-hand). The rules are handHits and handStep in the bundle

@@ -51,6 +51,7 @@ struct HandScreen: View {
     let close: () -> Void
 
     @Environment(\.duoSpread) private var spread
+    @Environment(\.scenePhase) private var scenePhase
     @State private var query = ""
     @FocusState private var fieldFocused: Bool
     /// The names the list showed at the first tap on a match, and the one tapped. While they are set, the list keeps every
@@ -63,6 +64,8 @@ struct HandScreen: View {
     /// Today's pile and Not normal today (item 79 a): empty until a card is checked in today.
     @State private var dayPile: [HandDayRow] = []
     @State private var dayNotNormal: HandNotNormal?
+    /// Set when the day's read throws, so a failed read does not pass for "no check-in today" (ux-unknown-is-not-empty).
+    @State private var dayFailure: String?
     /// What a Post left in the offer's slot, so the lines keep their place under the finger that pressed it. It goes with the
     /// next typed card or New envelope.
     @State private var receipt: Receipt?
@@ -81,6 +84,9 @@ struct HandScreen: View {
                 .task { try? await kit.transit.load() }
                 // The day's end reads the ledger again after each check-in or un-check, and when the late list changes.
                 .task(id: DayKey(received: packages.received, past: kit.transit.rows.count)) { await loadDay() }
+                // A screen left open past midnight must not keep yesterday's pile: read again when the app comes back and at the day change.
+                .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await loadDay() } } }
+                .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantDayChangeNotification)) { _ in Task { await loadDay() } }
         }
     }
 
@@ -88,10 +94,15 @@ struct HandScreen: View {
 
     private func loadDay() async {
         let (now, calendar) = (Date(), Calendar.current)
-        let pile = (try? await hand.todaysPile(now: now, calendar: calendar)) ?? []
-        let odd = try? await hand.notNormalToday(now: now, calendar: calendar, pastCount: kit.transit.rows.count)
-        guard !Task.isCancelled else { return }
-        (dayPile, dayNotNormal) = (pile, odd)
+        do {
+            let pile = try await hand.todaysPile(now: now, calendar: calendar)
+            let odd = try await hand.notNormalToday(now: now, calendar: calendar, pastCount: kit.transit.rows.count)
+            guard !Task.isCancelled else { return }
+            (dayPile, dayNotNormal, dayFailure) = (pile, odd, nil)
+        } catch {
+            guard !Task.isCancelled else { return }
+            (dayPile, dayNotNormal, dayFailure) = ([], nil, "Could not read today\u{2019}s check-ins. \(error.localizedDescription)")
+        }
     }
 
     // MARK: left page
@@ -302,7 +313,9 @@ struct HandScreen: View {
             lines(pkg)
         } else if trimmed.isEmpty {
             // Once one card is in today, the empty query shows the day's end; before that the start hint stays (item 79 a).
-            if !dayPile.isEmpty, let nn = dayNotNormal {
+            if let failure = dayFailure {
+                Text(failure).font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.red).accessibilityIdentifier("hand-day-error")
+            } else if !dayPile.isEmpty, let nn = dayNotNormal {
                 notNormalBox(nn)
             } else {
                 Text("Type the card in hand. The envelope it came from shows here.")
@@ -500,7 +513,7 @@ struct HandScreen: View {
     private var pileBox: some View {
         let cards = dayPile.reduce(0) { $0 + $1.got }
         return VStack(alignment: .leading, spacing: 8) {
-            micro("Today\u{2019}s pile \u{00B7} \(dayPile.count) envelope\(dayPile.count == 1 ? "" : "s") \u{00B7} \(cards) card\(cards == 1 ? "" : "s")")
+            micro("Today\u{2019}s pile \u{00B7} \(dayPile.count) envelope\(dayPile.count == 1 ? "" : "s") \u{00B7} \(cards) card\(cards == 1 ? "" : "s")", size: 11)
                 .accessibilityAddTraits(.isHeader)
             VStack(spacing: 0) {
                 ForEach(Array(dayPile.enumerated()), id: \.element.gk) { i, row in
@@ -516,8 +529,9 @@ struct HandScreen: View {
 
     private func pileRow(_ row: HandDayRow) -> some View {
         let date = packages.liveRows.first { $0.gk == row.gk }?.date ?? ""
-        return HStack(alignment: .firstTextBaseline, spacing: 8) {
-            VStack(alignment: .leading, spacing: 2) {
+        return HStack(alignment: .center, spacing: 8) {
+            // The order date sits inline after the seller, 8 pt off, as the mockup draws it (eod-empty).
+            HStack(alignment: .firstTextBaseline, spacing: 8) {
                 Text(row.seller).font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.ink)
                 if !date.isEmpty { Text(date).font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft) }
             }
@@ -527,7 +541,7 @@ struct HandScreen: View {
         }
         .padding(.horizontal, 12).padding(.vertical, 6).frame(minHeight: 44)
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel("\(row.seller), \(row.got) of \(row.qty)\(row.short ? ", short" : "")")
+        .accessibilityLabel("\(row.seller), \(date.isEmpty ? "" : "ordered \(date), ")\(row.got) of \(row.qty)\(row.short ? ", short" : "")")
         .accessibilityIdentifier("hand-today-row:\(row.gk)")
     }
 
@@ -536,12 +550,11 @@ struct HandScreen: View {
     /// says "All is well." (ux-all-is-well).
     private func notNormalBox(_ nn: HandNotNormal) -> some View {
         VStack(alignment: .leading, spacing: 8) {
-            micro("Not normal today").accessibilityAddTraits(.isHeader)
+            micro("Not normal today", size: 11).accessibilityAddTraits(.isHeader)
             if nn.rows.isEmpty {
+                // Nothing short and something past 14 days: the header alone, and the past-14-days box below it.
                 if nn.allWell {
-                    Text("All is well.").font(.cochin(20, relativeTo: .title3).weight(.bold)).foregroundStyle(Parchment.green)
-                } else {
-                    Text("Nothing short today.").font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
+                    Text(HandNotNormal.allWellText).font(.cochin(20, relativeTo: .title3).weight(.bold)).foregroundStyle(Parchment.green)
                 }
             } else {
                 VStack(spacing: 0) {
@@ -560,17 +573,24 @@ struct HandScreen: View {
     private func shortRow(_ row: HandShortRow) -> some View {
         // The pill is the bundle's packagePill, "N left · $Y", the words Packages uses for the same figure.
         let left = packages.pills[row.gk] ?? "\(row.left) left"
+        let pkg = packages.liveRows.first { $0.gk == row.gk }
+        // Each missing card with its copies still owed, "1 Lightning Bolt", in the envelope's own line order.
+        let owed = pkg?.items.compactMap { it -> String? in
+            let n = it.qty - min(it.qty, packages.received[it.key] ?? 0)
+            return n > 0 ? "\(n) \(it.name)" : nil
+        } ?? row.missing
+        let detail = (pkg.map { [$0.date] } ?? []).filter { !$0.isEmpty } + [owed.joined(separator: ", "), left]
         return VStack(alignment: .leading, spacing: 2) {
             Text("\(row.seller) came \(row.left) short").font(.cochin(14, relativeTo: .body).weight(.bold)).foregroundStyle(Parchment.ink)
-            Text("\(row.missing.joined(separator: ", ")) \u{00B7} \(left)").font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.red)
+            Text(detail.joined(separator: " \u{00B7} ")).font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
         }
         .padding(.horizontal, 12).padding(.vertical, 8).frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
         .accessibilityElement(children: .combine)
         .accessibilityIdentifier("hand-short-row:\(row.gk)")
     }
 
-    private func micro(_ s: String) -> some View {
-        Text(s.uppercased()).font(.mono(10.5, relativeTo: .caption)).tracking(1.2).foregroundStyle(Parchment.inkSoft)
+    private func micro(_ s: String, size: CGFloat = 10.5) -> some View {
+        Text(s.uppercased()).font(.mono(size, relativeTo: .caption)).tracking(1.2).foregroundStyle(Parchment.inkSoft)
     }
 }
 
