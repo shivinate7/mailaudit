@@ -11,6 +11,11 @@ public enum HandPostBar {
         "It came from \(seller), ordered \(date)."
     }
 
+    /// The slim head's spoken value on hand-who, after the seller its label: "seller, the sender, ordered D".
+    public static func headValue(date: String) -> String {
+        "the sender, ordered \(date)"
+    }
+
     /// The receipt's VoiceOver label: the visible long count may drop "Posted." at large sizes, but the label keeps both.
     public static func receiptLabel(refused: Bool, line: String) -> String {
         "\(refused ? "Not posted." : "Posted.") \(line)"

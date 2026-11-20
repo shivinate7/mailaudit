@@ -319,14 +319,14 @@ struct HandScreen: View {
     /// The sender, pinned above the lines so "Post ... here" always names its envelope.
     /// From AX3 up the head draws the seller alone, so the lines keep room (owner item 105 a, 2026-11-19); the sender line and
     /// the order date move into the head's VoiceOver label. hand-who keeps the seller as its label for the UI tests, and its
-    /// value carries the rest, so one VoiceOver stop reads "seller, the sender, ordered D" (the container label alone is not a stop).
+    /// value (HandPostBar.headValue) carries the rest, so one VoiceOver stop reads "seller, the sender, ordered D" (the container label alone is not a stop).
     @ViewBuilder private func head(_ pkg: Package) -> some View {
         let slim = typeSize >= .accessibility3
         let stack = VStack(alignment: .leading, spacing: 8) {
             if !slim { micro("It came from") }
             Text(pkg.seller).font(.cochin(22, relativeTo: .title2).weight(.bold)).foregroundStyle(Parchment.ink)
                 .accessibilityIdentifier("hand-who")
-                .accessibilityValue(slim ? "the sender, ordered \(pkg.date)" : "")
+                .accessibilityValue(slim ? HandPostBar.headValue(date: pkg.date) : "")
             if !slim { Text("ordered \(pkg.date)").font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft) }
         }
         .padding(.horizontal, 16).padding(.top, slim ? 8 : 16).padding(.bottom, 8).frame(maxWidth: .infinity, alignment: .leading)
@@ -381,9 +381,8 @@ struct HandScreen: View {
 
     /// A hairline, the manila tint, and 4 pt above and below the 44 pt row: 1 + 4 + 44 + 4 = 53 pt. The text is capped at
     /// xxxLarge, so the bar holds 53 pt while the title fits one line at the cap (a long title wraps and grows the bar); the Post button's large-content viewer shows it large. With the keys up
-    /// the page's own keyboard safe area already ends at their drawn top, so the bar needs no pad of its own (duo-ui run
-    /// 44469334404: a 44 pt pad left the Post button 52 pt above the drawn top). With the keys down it clears the floating tab
-    /// bar. The id sits on the bar before that pad, so its frame is the 53 pt and not the tab-bar clearance.
+    /// the page's own keyboard safe area already ends at their drawn top, so a pad of its own would lift the Post button off
+    /// the keys. With the keys down it clears the floating tab bar. The id sits on the bar before that pad, so its frame is the 53 pt and not the tab-bar clearance.
     private func pinned(_ content: some View, id: String, children: AccessibilityChildBehavior) -> some View {
         VStack(spacing: 0) {
             Rectangle().fill(Parchment.line).frame(height: 1)
