@@ -1,5 +1,6 @@
 {
   "added": "2026-11-19T05:40:00Z",
+  "closed": "2026-11-20T00:38:00-06:00",
   "context": "Goal: the Post button stays pinned above the keyboard without covering the card lines.\nProblem (goal): you asked for a thinner pin; the drawn bar was 128 pt, and the two thinner shapes trade the sender sentence against 8 pt, so only your eye can choose.\nBased on (ruling): you answered build B now on the Post bar question, with the note make the pin not so thick (2026-11-18 23:22 CST).\nBased on (measured): the designer measured the bar at the default large text size: 128 pt as drawn, 61 pt in one row, 53 pt button only.\nDeparts from: main puts Post under the sender \u2014 option b of the pin question builds it pinned above the keys; this picks the bar's shape.\nWaiting on: your answer; the builder starts now on the 61 pt one-row bar at normal text sizes, so a different pick changes that work.",
   "designs": [
     {
@@ -32,6 +33,11 @@
   "home": "decision duo-card-in-hand and the open duo-hand-post-order",
   "id": "post-pin-thin-enough",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-20T01:26:26Z",
+    "choice": "b",
+    "note": ""
+  },
   "n": 103,
   "options": [
     {
@@ -56,8 +62,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "decision duo-card-in-hand; plan cloud-lane-cut (lane duo-post-pins)",
-  "replied": "2026-11-19T19:31:00-06:00",
-  "reply": "You chose b, the 53 pt button-only bar (19:26 CST). Filed in git. The coordinator starts the build, and a records pull request files the ruling. The merged bar is 61 pt today.",
+  "replied": "2026-11-20T00:38:00-06:00",
+  "reply": "Built. Your answer b, the 53 pt button-only bar, is on main (pull request 365, merged 2026-11-20 00:35 CST), with the ruling in the decision record. Not measured: the S, M and AX3 bar heights. Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Post bar: 61 pt one row or 53 pt button only",
   "shown": [
@@ -72,7 +78,7 @@
       "label": "53 pt button-only bar"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "Is a 61 pt Post bar thin enough, or should it drop the sentence for a 53 pt button-only bar?",
   "why": "It keeps the sentence you saw and is already thin enough to answer your note."
 }

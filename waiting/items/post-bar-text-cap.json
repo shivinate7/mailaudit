@@ -1,5 +1,6 @@
 {
   "added": "2026-11-19T05:40:00Z",
+  "closed": "2026-11-20T00:38:00-06:00",
   "context": "Goal: the Post bar stays small enough that a card line still shows above it at every text size.\nProblem (goal): without a cap the bar grows to 212 pt at the largest text size and no whole card line shows above it, and a cap needs your grant because it limits how big the bar's text gets.\nBased on (ruling): you answered build B now on the Post bar question, with the note make the pin not so thick (2026-11-18 23:22 CST).\nBased on (measured): the designer measured the bar at the default large text size: 128 pt as drawn, 61 pt in one row, 53 pt button only.\nDeparts from: main sets no cap on the bar's text \u2014 this caps it at the extra extra extra large size and shows the full text in the large-content viewer on press.\nWaiting on: your answer; the builder waits on this for the largest text sizes.",
   "designs": [
     {
@@ -19,6 +20,11 @@
   "home": "decision duo-card-in-hand and the open duo-hand-post-order",
   "id": "post-bar-text-cap",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-20T01:26:26Z",
+    "choice": "a",
+    "note": ""
+  },
   "n": 104,
   "options": [
     {
@@ -42,8 +48,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "decision duo-card-in-hand; plan cloud-lane-cut (lane duo-post-pins)",
-  "replied": "2026-11-19T19:31:00-06:00",
-  "reply": "You chose a, cap the text and use the large-content viewer (19:26 CST). Filed in git. It goes with the 53 pt bar build.",
+  "replied": "2026-11-20T00:38:00-06:00",
+  "reply": "Built. Your answer a, the text capped at the extra extra extra large size, is on main (pull request 365, merged 2026-11-20 00:35 CST). Not measured: the large-content viewer on a device. Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Post bar: cap its text at the extra large size",
   "shown": [
@@ -58,7 +64,7 @@
       "label": "No cap"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "At the largest text sizes, may the Post bar's text stop growing at the extra extra extra large size, with the large-content viewer for the rest?",
   "why": "A bar that hides every card line is worse than text one step smaller, and the viewer keeps the full text reachable."
 }

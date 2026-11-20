@@ -1,5 +1,6 @@
 {
   "added": "2026-11-19T05:40:00Z",
+  "closed": "2026-11-20T00:38:00-06:00",
   "context": "Goal: the sender and the Post button both stay on screen at every text size.\nProblem (goal): with the full sender head and the bar, the two together fill the screen at the largest sizes, and dropping the head's other text needs your grant.\nBased on (ruling): you answered build B now on the Post bar question, with the note make the pin not so thick (2026-11-18 23:22 CST).\nBased on (measured): the designer measured the bar at the default large text size: 128 pt as drawn, 61 pt in one row, 53 pt button only.\nDeparts from: main shows the full sender head at every size \u2014 this shows only the seller at the largest sizes.\nWaiting on: your answer; the builder waits on this together with the text cap for the largest sizes.",
   "designs": [
     {
@@ -15,6 +16,11 @@
   "home": "decision duo-card-in-hand and the open duo-hand-post-order",
   "id": "post-head-seller-only",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-20T01:26:26Z",
+    "choice": "a",
+    "note": ""
+  },
   "n": 105,
   "options": [
     {
@@ -38,8 +44,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "decision duo-card-in-hand; plan cloud-lane-cut (lane duo-post-pins)",
-  "replied": "2026-11-19T19:31:00-06:00",
-  "reply": "You chose a, show only the seller (19:26 CST). Filed in git. It goes with the 53 pt bar build.",
+  "replied": "2026-11-20T00:38:00-06:00",
+  "reply": "Built. Your answer a, the head shows only the seller from the third accessibility size, is on main (pull request 365, merged 2026-11-20 00:35 CST). Not measured: the VoiceOver reading of the slim head. Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "At the largest text sizes, show only the seller in the sender head",
   "shown": [
@@ -54,7 +60,7 @@
       "label": "Keep the full head"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "At the largest text sizes, may the sender head show only the seller?",
   "why": "With the text cap it is what leaves a card line on screen; without it the screen is only head and bar."
 }

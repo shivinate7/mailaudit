@@ -1,9 +1,15 @@
 {
   "added": "2026-11-20T04:03:00Z",
+  "closed": "2026-11-20T00:38:00-06:00",
   "context": "Goal: the Post bar stays 53 pt at the biggest text sizes and nothing moves under your thumb when you press Post.\nProblem (rule): when the saved-card receipt replaces the Post button at the text cap, a long count such as \"12 cards checked in, 2 were held\" does not fit one 53 pt row beside the word \"Posted.\", so one of two words has to give, and your rule against shifting layout under the pointer decides which.\nBased on (read): the designer's notes, item 4, on the 53 pt bar mockup (branch design-duo-post-bar-53).\nBased on (ruling): you chose the 53 pt button-only bar (item 103 b, 2026-11-19 19:26 CST).\nDeparts from: main shows both \"Posted.\" and the count at every size \u2014 the build shows the count alone, only at the largest sizes where both do not fit one row.\nWaiting on: your answer; the builder keeps the count alone as built until you answer.",
   "home": "decision duo-card-in-hand",
   "id": "post-bar-receipt-words",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-20T05:23:30Z",
+    "choice": "a",
+    "note": ""
+  },
   "n": 106,
   "options": [
     {
@@ -26,8 +32,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "decision duo-card-in-hand; lane duo-post-bar-53",
-  "replied": "2026-11-19T23:25:00-06:00",
-  "reply": "You chose a, the count alone at the largest sizes (23:23 CST). Filed in git. This is what the build already does, so the coordinator keeps it and files the ruling.",
+  "replied": "2026-11-20T00:38:00-06:00",
+  "reply": "Built. Your answer a, the receipt shows the count alone at the largest sizes, is on main (pull request 365, merged 2026-11-20 00:35 CST). Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Post receipt at the largest sizes",
   "shown": [
@@ -42,7 +48,7 @@
       "label": "Keep both words"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "At the largest text sizes, may the saved-card receipt show the count alone, without the word \"Posted.\"?",
   "why": "The bar stays one row and nothing moves under your thumb; the screen reader still says \"Posted.\"."
 }
