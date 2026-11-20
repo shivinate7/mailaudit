@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-20T04:03:00Z",
+  "context": "Goal: the Post bar stays 53 pt at the biggest text sizes and nothing moves under your thumb when you press Post.\nProblem (rule): when the saved-card receipt replaces the Post button at the text cap, a long count such as \"12 cards checked in, 2 were held\" does not fit one 53 pt row beside the word \"Posted.\", so one of two words has to give, and your rule against shifting layout under the pointer decides which.\nBased on (read): the designer's notes, item 4, on the 53 pt bar mockup (branch design-duo-post-bar-53).\nBased on (ruling): you chose the 53 pt button-only bar (item 103 b, 2026-11-19 19:26 CST).\nDeparts from: main shows both \"Posted.\" and the count at every size \u2014 the build shows the count alone, only at the largest sizes where both do not fit one row.\nWaiting on: your answer; the builder keeps the count alone as built until you answer.",
+  "home": "decision duo-card-in-hand",
+  "id": "post-bar-receipt-words",
+  "kind": "decision",
+  "n": 106,
+  "options": [
+    {
+      "gain": "The bar stays 53 pt and nothing shifts when Post is pressed.",
+      "how": "At the largest sizes the receipt shows the count alone; VoiceOver still says \"Posted.\"",
+      "id": "count-alone",
+      "key": "a",
+      "label": "Show the count alone at the largest sizes",
+      "lose": "At the largest sizes the word \"Posted.\" is spoken by VoiceOver only."
+    },
+    {
+      "gain": "Both words are always visible.",
+      "how": "The receipt keeps \"Posted.\" and the count, and grows taller when they do not fit.",
+      "id": "both-words",
+      "key": "b",
+      "label": "Keep both words",
+      "lose": "The bar jumps taller at the cap and the layout above it moves when Post is pressed."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "decision duo-card-in-hand; lane duo-post-bar-53",
+  "repo": "shivinate7/mailaudit",
+  "short": "Post receipt at the largest sizes",
+  "shown": [
+    {
+      "id": "count-alone",
+      "key": "a",
+      "label": "Show the count alone at the largest sizes"
+    },
+    {
+      "id": "both-words",
+      "key": "b",
+      "label": "Keep both words"
+    }
+  ],
+  "status": "open",
+  "title": "At the largest text sizes, may the saved-card receipt show the count alone, without the word \"Posted.\"?",
+  "why": "The bar stays one row and nothing moves under your thumb; the screen reader still says \"Posted.\"."
+}
