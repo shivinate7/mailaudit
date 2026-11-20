@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-20T05:47:00Z",
+  "context": "Goal: the End of mail day view shows what came in today and what is still short.\nProblem (rule): a restore from backup stamps every checked line with the restore's time, so right after a restore every envelope with a count reads as checked in today and every short one lands under \"Not normal today\" until midnight; fixing that needs a second stamp, which changes the saved data's layout, and your rule freezes that layout.\nBased on (read): the code review finding of lane hand-end-of-day: the received time is set by the restore code on the phone and by the merge code in the web app.\nBased on (ruling): you chose the empty query to open the End of mail day view (item 79 a, 2026-11-19 23:23 CST).\nDeparts from: main's empty query always shows the start hint \u2014 the view shows today's check-ins, and after a restore it counts the restored lines as today's.\nWaiting on: your answer; the builder builds option a meanwhile.",
+  "home": "decision duo-card-in-hand; lane hand-end-of-day",
+  "id": "hand-end-of-day-restore-stamp",
+  "kind": "decision",
+  "n": 107,
+  "options": [
+    {
+      "gain": "No new stamp is built.",
+      "how": "A restore counts as today's check-ins. A debt record notes the gap.",
+      "id": "accept-restore-as-today",
+      "key": "a",
+      "label": "Accept it: a restore counts as today",
+      "lose": "One noisy day after each restore: every counted envelope reads as checked in today."
+    },
+    {
+      "gain": "The view stays true after a restore.",
+      "how": "The view ignores restore stamps and shows only real check-ins, using a second stamp in the saved data.",
+      "id": "ignore-restore-stamps",
+      "key": "b",
+      "label": "Ignore restore stamps",
+      "lose": "A change to the saved data's layout that your frozen-layout rule must allow, plus a stamp the web app does not have."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "decision duo-card-in-hand; lane hand-end-of-day",
+  "repo": "shivinate7/mailaudit",
+  "short": "End of mail day after a restore",
+  "shown": [
+    {
+      "id": "accept-restore-as-today",
+      "key": "a",
+      "label": "Accept it: a restore counts as today"
+    },
+    {
+      "id": "ignore-restore-stamps",
+      "key": "b",
+      "label": "Ignore restore stamps"
+    }
+  ],
+  "status": "open",
+  "title": "After a restore from backup, may the End of mail day view count every restored line as checked in today?",
+  "why": "A restore is rare, and ignoring its stamps adds a stamp to the saved data that the web app lacks."
+}
