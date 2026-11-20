@@ -66,6 +66,7 @@ struct HandScreen: View {
     /// The system keys are up. The Post bar then sits on the keys, not above the floating tab bar.
     @State private var keysUp = false
     @Environment(\.duoCustomBar) private var customBar
+    @Environment(\.dynamicTypeSize) private var typeSize
 
     private var hand: HandModel { kit.hand }
 
@@ -316,16 +317,26 @@ struct HandScreen: View {
     }
 
     /// The sender, pinned above the lines so "Post ... here" always names its envelope.
-    private func head(_ pkg: Package) -> some View {
-        VStack(alignment: .leading, spacing: 8) {
-            micro("It came from")
+    /// From AX3 up the head draws the seller alone, so the lines keep room (owner item 105 a, 2026-11-19); the sender line and
+    /// the order date move into the head's VoiceOver label. hand-who keeps the seller as its label for the UI tests, and its
+    /// value (HandPostBar.headValue) carries the rest, so one VoiceOver stop reads "seller, the sender, ordered D" (the container label alone is not a stop).
+    @ViewBuilder private func head(_ pkg: Package) -> some View {
+        let slim = typeSize >= .accessibility3
+        let stack = VStack(alignment: .leading, spacing: 8) {
+            if !slim { micro("It came from") }
             Text(pkg.seller).font(.cochin(22, relativeTo: .title2).weight(.bold)).foregroundStyle(Parchment.ink)
                 .accessibilityIdentifier("hand-who")
-            Text("ordered \(pkg.date)").font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
+                .accessibilityValue(slim ? HandPostBar.headValue(date: pkg.date) : "")
+            if !slim { Text("ordered \(pkg.date)").font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft) }
         }
-        .padding(.horizontal, 16).padding(.top, 16).padding(.bottom, 8).frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 16).padding(.top, slim ? 8 : 16).padding(.bottom, 8).frame(maxWidth: .infinity, alignment: .leading)
         .background(Parchment.paper)
         .overlay(alignment: .bottom) { Rectangle().fill(Parchment.line).frame(height: 1) }
+        if slim {
+            stack.accessibilityElement(children: .contain).accessibilityLabel(HandPostBar.headLabel(seller: pkg.seller, date: pkg.date))
+        } else {
+            stack
+        }
     }
 
     private func lines(_ pkg: Package) -> some View {
@@ -357,57 +368,58 @@ struct HandScreen: View {
 
     /// The foot of the page: the Post offer for a held card, or after a Post its receipt. The receipt holds the offer's height
     /// until the next card or New envelope, so the lines do not grow into the slot under the finger that pressed it
-    /// (no-layout-shift-under-pointer). One row, 61 pt at the normal text sizes.
+    /// (no-layout-shift-under-pointer). One row, 53 pt with a title that fits one line at the cap (a long title wraps and grows the bar) (owner items 103 b and 104 a, 2026-11-19).
     @ViewBuilder private var slotBar: some View {
         if let pkg = envelopePkg {
             if let o = hand.offer, o.gk == pkg.gk, o.heldCopies > 0 {
-                pinned(offerRow(o))
+                pinned(offerRow(o), id: "hand-offer-bar", children: .contain)
             } else if let r = receipt, r.offer.gk == pkg.gk {
-                pinned(offerRow(r.offer).hidden().overlay(alignment: .leading) { receiptRow(r) })
-                    .accessibilityElement(children: .combine).accessibilityIdentifier("hand-receipt")
+                pinned(offerRow(r.offer).hidden().overlay(alignment: .leading) { receiptRow(r) }, id: "hand-receipt", children: .combine)
             }
         }
     }
 
-    /// A hairline, the manila tint, and 8 pt above and below the 44 pt row. With the keys up the page's own keyboard safe area
-    /// already ends at their drawn top, so the bar needs no pad of its own (duo-ui run 44469334404: a 44 pt pad left the Post
-    /// button 52 pt above the drawn top). With the keys down it clears the floating tab bar.
-    private func pinned(_ content: some View) -> some View {
+    /// A hairline, the manila tint, and 4 pt above and below the 44 pt row: 1 + 4 + 44 + 4 = 53 pt. The text is capped at
+    /// xxxLarge, so the bar holds 53 pt while the title fits one line at the cap (a long title wraps and grows the bar); the Post button's large-content viewer shows it large. With the keys up
+    /// the page's own keyboard safe area already ends at their drawn top, so a pad of its own would lift the Post button off
+    /// the keys. With the keys down it clears the floating tab bar. The id sits on the bar before that pad, so its frame is the 53 pt and not the tab-bar clearance.
+    private func pinned(_ content: some View, id: String, children: AccessibilityChildBehavior) -> some View {
         VStack(spacing: 0) {
             Rectangle().fill(Parchment.line).frame(height: 1)
-            content.padding(.vertical, 8).padding(.horizontal, 16).frame(maxWidth: .infinity, alignment: .leading)
+            content.padding(.vertical, 4).padding(.horizontal, 16).frame(maxWidth: .infinity, alignment: .leading)
         }
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
         .background(Parchment.manila.opacity(0.5)).background(Parchment.paper)
+        .accessibilityElement(children: children).accessibilityIdentifier(id)
         .padding(.bottom, keysUp ? 0 : (customBar ? DuoBarMetrics.height : 0))
     }
 
-    /// Only for a held card. It checks in the offered copies, the typed card with them, and never runs by itself. The sentence
-    /// sits beside the button; when the two do not fit on one row (large text) the button drops under the sentence.
+    /// Only for a held card. The button alone, full width: it checks in the offered copies, the typed card with them, and never
+    /// runs by itself. The held sentence is not drawn; it opens the button's VoiceOver hint (HandPostBar.hint).
     private func offerRow(_ o: HandOffer) -> some View {
         let total = o.plan.reduce(0) { $0 + $1.take }
-        let sentence = Text("Your held card came with this envelope.")
-            .font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.ink)
-        let postButton = Button { Task { await post() } } label: {
-            MiniLabel(title: "Post \(total) cards here, \(o.heldCopies) held", bold: true, text: Parchment.card, fill: Parchment.accent, border: Parchment.accent)
+        let title = "Post \(total) cards here, \(o.heldCopies) held"
+        return Button { Task { await post() } } label: {
+            MiniLabel(title: title, bold: true, text: Parchment.card, fill: Parchment.accent, border: Parchment.accent, wide: true)
         }
-        .buttonStyle(.plain).accessibilityHint("Nothing is checked in until you post.").accessibilityIdentifier("hand-post")
-        return ViewThatFits(in: .horizontal) {
-            // The sentence may wrap to two lines beside the button, down to 160 pt wide.
-            HStack(spacing: 12) {
-                sentence.frame(minWidth: 160, idealWidth: 160, maxWidth: .infinity, alignment: .leading).fixedSize(horizontal: false, vertical: true)
-                postButton
-            }
-            VStack(alignment: .leading, spacing: 8) { sentence; postButton }
-        }
+        .buttonStyle(.plain).accessibilityHint(HandPostBar.hint).accessibilityIdentifier("hand-post")
+        .dynamicTypeSize(...DynamicTypeSize.xxxLarge)
+        .accessibilityShowsLargeContentViewer { Text(title) }
     }
 
-    /// What a Post left in the slot, on one row: "Posted." and the count, or "Not posted." and why.
+    /// What a Post left in the slot, on one row: "Posted." and the count, or "Not posted." and why. The long count can overrun
+    /// the row at the capped size, so the second text alone is the fallback; the explicit label keeps both for VoiceOver.
     private func receiptRow(_ r: Receipt) -> some View {
-        HStack(spacing: 12) {
-            Text(r.refused ? "Not posted." : "Posted.").font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.ink)
-            Text(r.line).font(r.refused ? .cochin(13, relativeTo: .footnote) : .mono(12, relativeTo: .caption))
-                .foregroundStyle(r.refused ? Parchment.red : Parchment.manilaInk)
+        let tail = Text(r.line).font(r.refused ? .cochin(13, relativeTo: .footnote) : .mono(12, relativeTo: .caption))
+            .foregroundStyle(r.refused ? Parchment.red : Parchment.manilaInk)
+        return ViewThatFits(in: .horizontal) {
+            HStack(spacing: 12) {
+                Text(r.refused ? "Not posted." : "Posted.").font(.cochin(13, relativeTo: .footnote)).foregroundStyle(Parchment.ink)
+                tail
+            }
+            tail
         }
+        .accessibilityElement(children: .ignore).accessibilityLabel(HandPostBar.receiptLabel(refused: r.refused, line: r.line))
     }
 
     private struct Receipt {

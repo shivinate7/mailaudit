@@ -1,0 +1,1 @@
+- duo-hint-pins-constant: The hint test (`native/ManifestKit/Tests/ManifestKitTests/HandPostBarTests.swift`) pins the `HandPostBar.hint` constant. It does not pin that the Post button uses it (`native/Manifest/HandScreen.swift`, `offerRow`). XCUITest cannot read a hint, so no UI test checks the button's hint. Seen: 2026-11-20 x1 Decision: duo-card-in-hand.
