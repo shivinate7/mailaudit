@@ -578,8 +578,8 @@ final class DuoHandUITests: XCTestCase {
         guard app.requirePose(.flat) else { return }
         openHand(app)
         _ = offerPost(app)
-        let sentence = app.staticTexts.matching(NSPredicate(format: "label ==[c] %@", "Your held card came with this envelope.")).firstMatch
-        XCTAssertFalse(sentence.exists, "\"Your held card came with this envelope.\" is still drawn beside the Post button: it belongs in the button's VoiceOver hint (decision duo-card-in-hand)")
+        let sentence = app.staticTexts.matching(NSPredicate(format: "label CONTAINS[c] %@", "Your held card came with this envelope.")).firstMatch
+        XCTAssertFalse(sentence.exists, "\"Your held card came with this envelope.\" is still drawn on the screen, alone or inside a longer text: it belongs in the button's VoiceOver hint (decision duo-card-in-hand)")
     }
 
     /// Pose: flat, normal text size. The head keeps the full sender block: "It came from" shows above the seller. Control for the
