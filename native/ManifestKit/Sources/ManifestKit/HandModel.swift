@@ -9,6 +9,26 @@ public struct HandOffer: Equatable, Sendable {
     public let heldCopies: Int
 }
 
+/// One envelope of today's pile: copies in over copies ordered, over the whole envelope and not today's alone.
+public struct HandDayRow: Equatable, Sendable {
+    public let gk, seller: String
+    public let got, qty: Int
+    public var short: Bool { got < qty }
+}
+
+/// A short envelope of today's pile: the cards still owed, and how many copies are owed.
+public struct HandShortRow: Equatable, Sendable {
+    public let gk, seller: String
+    public let missing: [String]
+    public let left: Int
+}
+
+/// The right page of the end of mail day. `allWell` is true when no envelope is short and none is past 14 days.
+public struct HandNotNormal: Equatable, Sendable {
+    public let rows: [HandShortRow]
+    public let allWell: Bool
+}
+
 /// Card in Hand session state (duo-card-in-hand). The rules are handHits and handStep in the bundle
 /// (rules-run-in-javascriptcore). Typing and closing write nothing. Only post() saves, as one save.
 /// It ranks and never picks: a card checks in only when it names one open envelope
@@ -127,5 +147,44 @@ public final class HandModel {
         offer = nil
         hits = []
         ended += 1
+    }
+
+    // MARK: end of mail day (duo-card-in-hand, owner ruling item 79 a)
+
+    /// The envelopes with a copy checked in since local midnight of `now`: a line whose count is above 0 and whose stamp
+    /// is at or after midnight (an un-check stamps a line with no count, so it is no check-in). Each row totals the whole
+    /// envelope. An envelope with no check-in today is not in the pile, a held card included. Writes nothing.
+    public func todaysPile(now: Date, calendar: Calendar) async throws -> [HandDayRow] {
+        try await todaysEnvelopes(now: now, calendar: calendar).map { e in
+            HandDayRow(gk: e.pkg.gk, seller: e.pkg.seller, got: e.got, qty: e.qty)
+        }
+    }
+
+    /// The short envelopes of today's pile, each with the cards it still owes. `pastCount` is the envelopes past 14 days
+    /// (PastTransitModel), which the page also counts before it says all is well.
+    public func notNormalToday(now: Date, calendar: Calendar, pastCount: Int) async throws -> HandNotNormal {
+        let rows = try await todaysEnvelopes(now: now, calendar: calendar).compactMap { e -> HandShortRow? in
+            guard e.got < e.qty else { return nil }
+            let owed = e.pkg.items.filter { (e.received[$0.key] ?? 0) < $0.qty }
+            return HandShortRow(gk: e.pkg.gk, seller: e.pkg.seller, missing: owed.map(\.name), left: e.qty - e.got)
+        }
+        return HandNotNormal(rows: rows, allWell: rows.isEmpty && pastCount == 0)
+    }
+
+    private struct DayEnvelope { let pkg: Package; let got, qty: Int; let received: [String: Int] }
+
+    /// The live packages (LiveItems.of: canceled and refunded are out) with a check-in since local midnight, in the
+    /// bundle's groupPackages order. The group keys come from the bundle, not a copy of gkOf.
+    private func todaysEnvelopes(now: Date, calendar: Calendar) async throws -> [DayEnvelope] {
+        let midnight = calendar.startOfDay(for: now).timeIntervalSince1970 * 1000
+        let (received, stamped) = (store.received(), store.receivedAt())
+        let live = try await LiveItems.of(store.items(), stamps: store.stamps(), engine: engine)
+        let out = try await engine.call("groupPackages", "[\(live)]")
+        let packages = try JSONDecoder().decode([Package].self, from: Data(out.utf8))
+        return packages.compactMap { pkg in
+            guard pkg.items.contains(where: { (received[$0.key] ?? 0) > 0 && (stamped[$0.key] ?? 0) >= midnight }) else { return nil }
+            let got = pkg.items.reduce(0) { $0 + min($1.qty, received[$1.key] ?? 0) }
+            return DayEnvelope(pkg: pkg, got: got, qty: pkg.items.reduce(0) { $0 + $1.qty }, received: received)
+        }
     }
 }

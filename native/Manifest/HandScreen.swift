@@ -60,6 +60,9 @@ struct HandScreen: View {
     /// The envelope the answer page shows. A post leaves it, so the lines you checked in stay under your finger until the next card.
     @State private var shown: String?
     @State private var pastTransit = false
+    /// Today's pile and Not normal today (item 79 a): empty until a card is checked in today.
+    @State private var dayPile: [HandDayRow] = []
+    @State private var dayNotNormal: HandNotNormal?
     /// What a Post left in the offer's slot, so the lines keep their place under the finger that pressed it. It goes with the
     /// next typed card or New envelope.
     @State private var receipt: Receipt?
@@ -76,7 +79,19 @@ struct HandScreen: View {
                 .background(Parchment.paper.ignoresSafeArea())
                 .contentShape(Rectangle())
                 .task { try? await kit.transit.load() }
+                // The day's end reads the ledger again after each check-in or un-check, and when the late list changes.
+                .task(id: DayKey(received: packages.received, past: kit.transit.rows.count)) { await loadDay() }
         }
+    }
+
+    private struct DayKey: Hashable { let received: [String: Int]; let past: Int }
+
+    private func loadDay() async {
+        let (now, calendar) = (Date(), Calendar.current)
+        let pile = (try? await hand.todaysPile(now: now, calendar: calendar)) ?? []
+        let odd = try? await hand.notNormalToday(now: now, calendar: calendar, pastCount: kit.transit.rows.count)
+        guard !Task.isCancelled else { return }
+        (dayPile, dayNotNormal) = (pile, odd)
     }
 
     // MARK: left page
@@ -140,6 +155,7 @@ struct HandScreen: View {
                            line: hand.strays.map(\.localizedCapitalized).joined(separator: ", "),
                            foot: hand.strays.count == 1 ? "It no longer decides an envelope." : "They no longer decide an envelope.")
                 }
+                if query.trimmingCharacters(in: .whitespaces).isEmpty, !dayPile.isEmpty { pileBox }
             }
             .padding(16)
         }
@@ -285,8 +301,13 @@ struct HandScreen: View {
         } else if let pkg = shown.flatMap({ gk in packages.liveRows.first { $0.gk == gk } }) {
             lines(pkg)
         } else if trimmed.isEmpty {
-            Text("Type the card in hand. The envelope it came from shows here.")
-                .font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
+            // Once one card is in today, the empty query shows the day's end; before that the start hint stays (item 79 a).
+            if !dayPile.isEmpty, let nn = dayNotNormal {
+                notNormalBox(nn)
+            } else {
+                Text("Type the card in hand. The envelope it came from shows here.")
+                    .font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
+            }
         } else {
             Text("No open envelope holds \u{201C}\(trimmed)\u{201D}.").font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
         }
@@ -472,6 +493,80 @@ struct HandScreen: View {
         .padding(12)
         .background(Parchment.card, in: RoundedRectangle(cornerRadius: 8))
         .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
+    }
+
+    /// The left page's read-out of the day: one row per envelope with a check-in today, copies in over copies ordered, red
+    /// when short. Rows are not controls, 44 pt at least, so nothing tappable hides under the keys.
+    private var pileBox: some View {
+        let cards = dayPile.reduce(0) { $0 + $1.got }
+        return VStack(alignment: .leading, spacing: 8) {
+            micro("Today\u{2019}s pile \u{00B7} \(dayPile.count) envelope\(dayPile.count == 1 ? "" : "s") \u{00B7} \(cards) card\(cards == 1 ? "" : "s")")
+                .accessibilityAddTraits(.isHeader)
+            VStack(spacing: 0) {
+                ForEach(Array(dayPile.enumerated()), id: \.element.gk) { i, row in
+                    if i > 0 { Rectangle().fill(Parchment.line).frame(height: 1) }
+                    pileRow(row)
+                }
+            }
+            .background(Parchment.card, in: RoundedRectangle(cornerRadius: 8))
+            .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
+        }
+        .accessibilityElement(children: .contain).accessibilityIdentifier("hand-today-pile")
+    }
+
+    private func pileRow(_ row: HandDayRow) -> some View {
+        let date = packages.liveRows.first { $0.gk == row.gk }?.date ?? ""
+        return HStack(alignment: .firstTextBaseline, spacing: 8) {
+            VStack(alignment: .leading, spacing: 2) {
+                Text(row.seller).font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.ink)
+                if !date.isEmpty { Text(date).font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft) }
+            }
+            Spacer(minLength: 8)
+            Text("\(row.got)/\(row.qty)").font(.mono(12, relativeTo: .caption).weight(row.short ? .bold : .regular))
+                .foregroundStyle(row.short ? Parchment.red : Parchment.green)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 6).frame(minHeight: 44)
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel("\(row.seller), \(row.got) of \(row.qty)\(row.short ? ", short" : "")")
+        .accessibilityIdentifier("hand-today-row:\(row.gk)")
+    }
+
+    /// The right page's read-out of what is not normal: only the short envelopes, each naming its missing cards and what
+    /// is left. No Open: a row has nothing to open (ux-control-earns-place). With nothing short and nothing past 14 days it
+    /// says "All is well." (ux-all-is-well).
+    private func notNormalBox(_ nn: HandNotNormal) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            micro("Not normal today").accessibilityAddTraits(.isHeader)
+            if nn.rows.isEmpty {
+                if nn.allWell {
+                    Text("All is well.").font(.cochin(20, relativeTo: .title3).weight(.bold)).foregroundStyle(Parchment.green)
+                } else {
+                    Text("Nothing short today.").font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.inkSoft)
+                }
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(Array(nn.rows.enumerated()), id: \.element.gk) { i, row in
+                        if i > 0 { Rectangle().fill(Parchment.line).frame(height: 1) }
+                        shortRow(row)
+                    }
+                }
+                .background(Parchment.card, in: RoundedRectangle(cornerRadius: 8))
+                .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
+            }
+        }
+        .accessibilityElement(children: .contain).accessibilityIdentifier("hand-not-normal")
+    }
+
+    private func shortRow(_ row: HandShortRow) -> some View {
+        // The pill is the bundle's packagePill, "N left · $Y", the words Packages uses for the same figure.
+        let left = packages.pills[row.gk] ?? "\(row.left) left"
+        return VStack(alignment: .leading, spacing: 2) {
+            Text("\(row.seller) came \(row.left) short").font(.cochin(14, relativeTo: .body).weight(.bold)).foregroundStyle(Parchment.ink)
+            Text("\(row.missing.joined(separator: ", ")) \u{00B7} \(left)").font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.red)
+        }
+        .padding(.horizontal, 12).padding(.vertical, 8).frame(maxWidth: .infinity, minHeight: 60, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityIdentifier("hand-short-row:\(row.gk)")
     }
 
     private func micro(_ s: String) -> some View {

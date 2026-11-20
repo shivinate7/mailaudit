@@ -121,6 +121,9 @@ public final class LedgerStore {
     /// The `received` map, key to count.
     public func received() -> [String: Int] { (doc["received"] as? [String: Any] ?? [:]).compactMapValues { $0 as? Int } }
 
+    /// The `receivedAt` map, key to the time of its last check-in or un-check, in milliseconds.
+    public func receivedAt() -> [String: Double] { (doc["receivedAt"] as? [String: Any] ?? [:]).compactMapValues { ($0 as? NSNumber)?.doubleValue } }
+
     /// The raw `stamps` map, group key to stamp.
     public func stamps() -> [String: [String: Any]] { (doc["stamps"] as? [String: Any] ?? [:]).compactMapValues { $0 as? [String: Any] } }
 
