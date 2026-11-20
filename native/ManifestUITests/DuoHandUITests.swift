@@ -51,8 +51,8 @@
 //             starts "<N> envelope"). A red row (30 days from the order date) shows no "claim by" in any of its texts.
 //   Keys      With the system keys up, hand-post lies wholly above the keys' drawn top (keyboardDrawnAbove, 44 pt above the keyboard
 //             frame), with no scroll by the user. The Post button's bottom sits 4 pt (the bar's foot) above that drawn top.
-//   Bar       hand-offer-bar is the pinned Post bar while a held card offers: its whole frame, the 1 pt hairline included, 53 pt tall.
-//             The builder adds this id to the offer branch of HandScreen.slotBar; main has none.
+//   Bar       hand-offer-bar is the pinned Post bar while a held card offers: its whole frame, the 1 pt hairline included. The bar
+//             tests read its height and expect 53 pt.
 //   Receipt   A saved Post leaves hand-receipt in the same slot: "Posted." and "N cards checked in · M was held", one row, 53 pt tall.
 //   Sender    With the offer shown and the keys up, the "It came from" line and hand-who lie below the status bar and above the
 //             keyboard's top edge, hittable, together with hand-post. The "It came from" line has no identifier: the test finds it
@@ -85,12 +85,15 @@ final class DuoHandUITests: XCTestCase {
     static let accessibilityXL = "UICTContentSizeCategoryAccessibilityXL"
     /// The text size of the AccessibilityXXXL (AX5) chip case. The chip is capped at xxxLarge, so it must still fit its field.
     static let accessibilityXXXL = "UICTContentSizeCategoryAccessibilityXXXL"
-    /// The Post bar's height at every text size (decision duo-card-in-hand): a 1 pt hairline, 4 pt, the 44 pt button row, 4 pt.
+    /// The Post bar's height (decision duo-card-in-hand): a 1 pt hairline, 4 pt, the 44 pt button row, 4 pt. The tests hold it at the normal
+    /// size and at AccessibilityXXXL, with a title that fits one line at the cap. A long title wraps and grows the bar; no test here forces that.
     static let postBarHeight: CGFloat = 53
     /// The bar's foot under the Post button. With the keys up the bar ends at the keys' drawn top, so the button's bottom edge sits this far above it.
     static let postBarFoot: CGFloat = 4
     /// The seller of the envelope the held Lightning Bolt and Path to Exile offer name (C1, Gamma Cards in the seed).
     static let gammaSeller = "Gamma Cards"
+    /// The order date of that envelope: every C1 item in shared/fixtures/ledger.json is dated this.
+    static let gammaDate = "2026-06-01"
 
     static let bolt = "C1|0|pLightningBolt"
     static let path = "C1|1|pPathtoExile"
@@ -621,8 +624,8 @@ final class DuoHandUITests: XCTestCase {
         assertHeadShowsOnlyTheSeller(at: Self.accessibilityXXXL)
     }
 
-    /// Pose: flat, launched at AccessibilityXL. The text the size hides is spoken: one element's VoiceOver label holds "It came from", the
-    /// seller and the order date ("ordered ..."). Labels only.
+    /// Pose: flat, launched at AccessibilityXL. The text the size hides is spoken twice: one element's label holds "It came from", the seller
+    /// and the order date ("ordered ..."), and hand-who's value holds the sender and the order date. Labels and values only.
     func testHeadSpeaksItsFullTextAtAccessibilityXL() {
         let app = XCUIApplication.launchedOnSeed(extra: ["-UIPreferredContentSizeCategoryName", Self.accessibilityXL])
         guard app.requirePose(.flat) else { return }
@@ -632,6 +635,10 @@ final class DuoHandUITests: XCTestCase {
             .matching(NSPredicate(format: "label CONTAINS[c] %@ AND label CONTAINS %@ AND label CONTAINS %@", "came from", Self.gammaSeller, "ordered"))
             .firstMatch
         XCTAssertTrue(spoken.waitForExistence(timeout: 5), "no one element's label holds \"It came from\", the seller and \"ordered\" at AccessibilityXL: the head's VoiceOver label does not carry the text the size hides (decision duo-card-in-hand)")
+
+        let who = need(app, "hand-who", "the seller of the envelope the held card came from")
+        let value = who.value as? String ?? ""
+        XCTAssertTrue(value.contains("ordered") && value.contains(Self.gammaDate), "hand-who's value is \"\(value)\", not the sender and the order date \"\(Self.gammaDate)\": the slim head's spoken value is dropped (decision duo-card-in-hand)")
     }
 
     /// Pose: flat, system keys up. A held name's Suspense box shows, and the one match row must clear the keys. A box above

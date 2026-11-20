@@ -16,6 +16,11 @@ final class HandPostBarTests: XCTestCase {
         XCTAssertEqual(HandPostBar.headLabel(seller: "Gamma Cards", date: "Nov 3"), "It came from Gamma Cards, ordered Nov 3.", "the head's VoiceOver label does not carry the sender line, the seller and the order date")
     }
 
+    /// The slim head's spoken value on hand-who, read after the seller in its label: the sender and the order date.
+    func testHeadValueNamesTheSenderAndTheOrderDate() {
+        XCTAssertEqual(HandPostBar.headValue(date: "Nov 3"), "the sender, ordered Nov 3", "the slim head's value does not name the sender and the order date")
+    }
+
     /// The receipt's VoiceOver label keeps "Posted." or "Not posted." first, then the line the receipt shows.
     func testReceiptLabelReadsPostedThenTheCount() {
         XCTAssertEqual(HandPostBar.receiptLabel(refused: false, line: "12 cards checked in · 2 were held"), "Posted. 12 cards checked in · 2 were held", "the saved receipt's label does not read \"Posted.\" then the count")
