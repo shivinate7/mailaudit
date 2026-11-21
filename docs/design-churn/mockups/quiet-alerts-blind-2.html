@@ -1,0 +1,1060 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quiet alerts, blind 2</title>
+<script>
+  // Apply the theme from the hash before first paint.
+  (function () {
+    var m = /(?:^|[#&])t=(light|dark)/.exec(location.hash);
+    if (m) document.documentElement.setAttribute('data-theme', m[1]);
+  })();
+</script>
+<style>
+:root {
+  /* Space: 4 px step (house tokens.md). Radius: 8 px. */
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --radius: 8px;
+  --tap: 44px;
+
+  /* Placeholder chrome heights: no page read gives them (see notes). */
+  --inset-top: 28px;
+  --inset-bottom: 20px;
+
+  /* Dynamic Type, Large (default), from Apple HIG typography, read 2026-11-21. size/leading in pt. */
+  --t-large: 34px; --l-large: 41px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap: 12px; --l-cap: 16px;
+
+  /* Colour by role: light set. */
+  --bg: #F2F4F7;
+  --surface: #FFFFFF;
+  --surface-2: #E6E9EF;
+  --text: #151922;
+  --muted: #555D6C;
+  --line: #CDD3DC;
+  --accent: #2F43B2;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E3E7FA;
+  --quiet-ink: #4E5563;
+  --quiet-bg: #ECEEF2;
+  --danger: #A8241C;
+  --danger-soft: #FBE9E7;
+  --glass: rgba(255, 255, 255, 0.78);
+  --scrim: rgba(10, 14, 24, 0.32);
+  --sample-bg: #FFF1B8;
+  --sample-ink: #3F3300;
+  --anno: #A3166F;
+  --frame: #2A2E36;
+  --letter-paper: #FFFFFF;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000; --surface: #16181D; --surface-2: #24272E; --text: #ECEEF2; --muted: #A2A9B5;
+    --line: #353A43; --accent: #93A2FF; --accent-ink: #0E1333; --accent-soft: #1D2347;
+    --quiet-ink: #A9AFBA; --quiet-bg: #1B1D22; --danger: #FF9C92; --danger-soft: #3A1714;
+    --glass: rgba(30, 32, 38, 0.78); --scrim: rgba(0, 0, 0, 0.55);
+    --sample-bg: #3A3000; --sample-ink: #FFE58A; --anno: #FF8AD0; --frame: #5A606B;
+    --letter-paper: #16181D; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #16181D; --surface-2: #24272E; --text: #ECEEF2; --muted: #A2A9B5;
+  --line: #353A43; --accent: #93A2FF; --accent-ink: #0E1333; --accent-soft: #1D2347;
+  --quiet-ink: #A9AFBA; --quiet-bg: #1B1D22; --danger: #FF9C92; --danger-soft: #3A1714;
+  --glass: rgba(30, 32, 38, 0.78); --scrim: rgba(0, 0, 0, 0.55);
+  --sample-bg: #3A3000; --sample-ink: #FFE58A; --anno: #FF8AD0; --frame: #5A606B;
+  --letter-paper: #16181D; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, system-ui, "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-size: var(--t-body); line-height: var(--l-body);
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Review page chrome (not part of the app) ---------- */
+.sample {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--sample-bg); color: var(--sample-ink);
+  padding: var(--space-2) var(--space-4); font-size: var(--t-sub); line-height: var(--l-sub);
+}
+.doc { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-inline-size: 1500px; margin-inline: auto; }
+.doc-head { display: flex; flex-direction: column; gap: var(--space-2); }
+.doc-head h1 { margin: 0; font-size: var(--t-large); line-height: var(--l-large); }
+.doc-head p { margin: 0; color: var(--muted); max-inline-size: 70ch; }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+.ctl { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ctl > span { color: var(--muted); font-size: var(--t-foot); }
+.pill {
+  min-height: var(--tap); padding: 0 var(--space-4); border-radius: 999px;
+  border: 1px solid var(--line); background: var(--surface); cursor: pointer;
+}
+.pill[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); padding-block: var(--space-6); border-top: 1px solid var(--line); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; justify-content: space-between; }
+.concept-head h2 { margin: 0; font-size: var(--t-title3); line-height: var(--l-title3); }
+.concept-head p { margin: 0; color: var(--muted); max-inline-size: 72ch; flex-basis: 100%; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+figcaption { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+figure.hl .device { outline: 3px solid var(--anno); outline-offset: 6px; }
+
+/* ---------- Device frames ---------- */
+.device {
+  position: relative; overflow: hidden; background: var(--bg);
+  border: 2px solid var(--frame); border-radius: 20px;
+  container-type: inline-size;
+}
+.device.folded { width: 466px; height: 678px; }
+.device.phone { width: 430px; height: 932px; border-radius: 40px; }
+.device.open { width: 955px; height: 673px; border: 0; background: transparent; overflow: visible; }
+.duo-open { display: grid; grid-template-columns: 455.5px 40px 455.5px; height: 669px; }
+.pg { position: relative; overflow: hidden; background: var(--bg); border: 2px solid var(--frame); border-radius: 16px; }
+.hinge {
+  background: repeating-linear-gradient(90deg, transparent 0 18px, var(--frame) 18px 22px, transparent 22px 40px);
+  opacity: 0.5;
+}
+.app { position: absolute; inset: 0; }
+.device.open .app { position: static; }
+
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.statusbar {
+  flex: none; height: max(var(--inset-top), env(safe-area-inset-top));
+  padding-inline: var(--space-6); display: flex; align-items: center; justify-content: space-between;
+  font-size: var(--t-cap); line-height: var(--l-cap); font-weight: 600;
+}
+.homebar {
+  position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
+  width: 120px; height: 4px; border-radius: 2px; background: var(--text); opacity: 0.35; pointer-events: none;
+}
+.scroll {
+  flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  padding-inline: max(var(--space-4), env(safe-area-inset-left));
+  padding-bottom: calc(max(var(--inset-bottom), env(safe-area-inset-bottom)) + var(--space-6));
+}
+.scroll.has-tabbar { padding-bottom: calc(max(var(--inset-bottom), env(safe-area-inset-bottom)) + 96px); }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-lg { display: flex; flex-direction: column; gap: var(--space-6); }
+.stack-sm { display: flex; flex-direction: column; gap: var(--space-1); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+
+.large-title { margin: 0; padding-top: var(--space-2); font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; }
+.title3 { margin: 0; font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 600; }
+.headline { margin: 0; font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
+.body { margin: 0; font-size: var(--t-body); line-height: var(--l-body); }
+.sub { margin: 0; font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); }
+.foot { margin: 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+.cap { margin: 0; font-size: var(--t-cap); line-height: var(--l-cap); color: var(--muted); }
+
+/* Buttons */
+.btn {
+  min-height: var(--tap); min-width: var(--tap); padding: 0 var(--space-4);
+  border-radius: 999px; border: 0; cursor: pointer;
+  background: var(--accent-soft); color: var(--accent); font-weight: 600;
+  font-size: var(--t-body); line-height: var(--l-body);
+}
+.btn.fill { background: var(--accent); color: var(--accent-ink); }
+.btn.plain { background: transparent; padding: 0 var(--space-2); }
+.icon-btn {
+  width: var(--tap); height: var(--tap); flex: none; display: grid; place-items: center;
+  border-radius: 999px; border: 0; background: transparent; color: var(--accent); cursor: pointer;
+}
+.icon-btn svg, .kicon svg { width: 22px; height: 22px; }
+
+/* Kind icon */
+.kicon { flex: none; width: 36px; height: 36px; display: grid; place-items: center; border-radius: var(--radius); background: var(--accent-soft); color: var(--accent); }
+.quiet .kicon { background: var(--surface-2); color: var(--quiet-ink); }
+
+/* List rows */
+.list { display: flex; flex-direction: column; gap: 1px; background: var(--line); border-radius: var(--radius); overflow: hidden; }
+.row {
+  display: flex; gap: var(--space-3); align-items: flex-start; text-align: left;
+  min-height: 64px; padding: var(--space-3); background: var(--surface); border: 0; width: 100%; cursor: pointer;
+}
+.row .rbody { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.row .rsub { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
+.row .rreason { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); }
+.row .rtime { flex: none; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+.row.quiet { background: var(--quiet-bg); cursor: default; align-items: center; }
+.row.quiet .rsub { font-weight: 500; color: var(--quiet-ink); }
+.row.note { background: var(--accent-soft); cursor: default; flex-direction: column; gap: var(--space-2); }
+.row.skel { cursor: default; }
+.skel-bar { height: 14px; border-radius: 4px; background: var(--surface-2); }
+
+/* State blocks */
+.block { padding: var(--space-4); border-radius: var(--radius); background: var(--surface); display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.block.bad { background: var(--danger-soft); }
+.block.bad .headline { color: var(--danger); }
+.block.unknown { border: 2px dashed var(--line); background: transparent; }
+details summary { min-height: var(--tap); display: flex; align-items: center; cursor: pointer; color: var(--accent); font-size: var(--t-sub); }
+details pre { margin: 0; padding: var(--space-2); background: var(--surface-2); border-radius: 4px; font-size: var(--t-foot); white-space: pre-wrap; }
+.all-well { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 600; margin: 0; }
+
+/* Concept: Quiet line */
+.band { display: flex; flex-direction: column; gap: var(--space-2); }
+.band-head { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between; min-height: var(--tap); }
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--tap);
+  padding: 0 var(--space-3) 0 var(--space-2); border-radius: 999px; border: 1px solid var(--line);
+  background: var(--surface); cursor: pointer; font-size: var(--t-sub); line-height: var(--l-sub);
+}
+.chip svg { width: 18px; height: 18px; color: var(--accent); }
+.chip .q { font-weight: 700; color: var(--danger); }
+/* The line sticks to the bottom of the folded screen until it is reached, so the quiet band is always one tap away. */
+.the-line {
+  position: sticky; bottom: calc(max(var(--inset-bottom), env(safe-area-inset-bottom)) + var(--space-1)); z-index: 3;
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--tap);
+  padding: var(--space-1) 0; border: 0; background: var(--bg); cursor: pointer; color: var(--text);
+}
+.the-line::before, .the-line::after { content: ""; flex: 1; border-top: 3px solid var(--text); }
+.the-line .count { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); }
+.the-line .headline { white-space: nowrap; }
+.quiet-band { opacity: 1; }
+.bell svg { width: 22px; height: 22px; }
+
+/* Sheets */
+.sheet-wrap { position: absolute; inset: 0; z-index: 20; display: flex; flex-direction: column; justify-content: flex-end; }
+.scrim { position: absolute; inset: 0; background: var(--scrim); border: 0; }
+.sheet {
+  position: relative; max-height: 88%; display: flex; flex-direction: column;
+  background: var(--surface); border-radius: 16px 16px 0 0; box-shadow: 0 -8px 32px rgba(0,0,0,0.18);
+}
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-2) auto 0; }
+.sheet-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 var(--space-2); min-height: 52px; }
+.sheet-bar > :first-child { justify-self: start; }
+.sheet-bar > :last-child { justify-self: end; }
+.sheet-bar strong { font-size: var(--t-head); line-height: var(--l-head); text-align: center; }
+.sheet-body { overflow-y: auto; padding: var(--space-2) var(--space-4) calc(max(var(--inset-bottom), env(safe-area-inset-bottom)) + var(--space-4)); display: flex; flex-direction: column; gap: var(--space-4); }
+.group { background: var(--bg); border-radius: var(--radius); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* Segmented control */
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 2px; border-radius: 999px; background: var(--surface-2); }
+.seg button { min-height: var(--tap); border: 0; border-radius: 999px; background: transparent; cursor: pointer; font-size: var(--t-sub); line-height: var(--l-sub); padding: 0 var(--space-2); }
+.seg button[aria-pressed="true"] { background: var(--surface); color: var(--text); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,0.15); }
+.answer { margin: 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--accent); min-height: var(--l-foot); }
+.stepper { display: flex; align-items: center; gap: var(--space-2); justify-content: space-between; flex-wrap: wrap; }
+.stepper .val { min-width: 4ch; text-align: center; font-weight: 600; font-variant-numeric: tabular-nums; }
+.step-btns { display: flex; align-items: center; gap: var(--space-1); background: var(--surface-2); border-radius: 999px; }
+.check-list { display: flex; flex-direction: column; gap: 1px; background: var(--line); border-radius: var(--radius); overflow: hidden; }
+.check-list button { min-height: var(--tap); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-4); background: var(--surface); border: 0; cursor: pointer; text-align: left; }
+.check-list svg { width: 20px; height: 20px; color: var(--accent); }
+
+/* Floating tab bar */
+.tabbar {
+  position: absolute; z-index: 10; left: 50%; transform: translateX(-50%);
+  bottom: calc(max(var(--inset-bottom), env(safe-area-inset-bottom)) + var(--space-2));
+  display: flex; gap: var(--space-1); padding: var(--space-1); border-radius: 999px;
+  background: var(--glass); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+  border: 1px solid var(--line); box-shadow: 0 6px 24px rgba(0,0,0,0.14);
+}
+.tabbar button {
+  min-width: 96px; min-height: 52px; border: 0; border-radius: 999px; background: transparent; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-size: var(--t-cap); line-height: var(--l-cap); color: var(--muted);
+}
+.tabbar button svg { width: 22px; height: 22px; }
+.tabbar button[aria-selected="true"] { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+
+/* Nav bar for pushed views */
+.navbar { display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); }
+.navbar .back { display: inline-flex; align-items: center; gap: 2px; color: var(--accent); background: transparent; border: 0; min-height: var(--tap); padding: 0 var(--space-2) 0 0; cursor: pointer; }
+.navbar .back svg { width: 20px; height: 20px; }
+
+/* Concept: Sentences */
+.rule-card { background: var(--surface); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.rule-card .kname { display: flex; align-items: center; gap: var(--space-2); }
+.rule-card .kname svg { width: 20px; height: 20px; color: var(--accent); }
+.sentence { margin: 0; font-size: var(--t-body); line-height: 32px; }
+.tok {
+  display: inline; padding: 6px var(--space-2); margin: 0 1px; border: 0; border-radius: 6px; cursor: pointer;
+  background: var(--accent-soft); color: var(--accent); font-weight: 600; line-height: 32px;
+  -webkit-box-decoration-break: clone; box-decoration-break: clone;
+}
+.tok.picked { outline: 2px solid var(--accent); }
+.day-head { margin: 0; padding-top: var(--space-2); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); font-weight: 600; }
+.chev { flex: none; align-self: center; color: var(--muted); width: 16px; height: 16px; }
+.row[aria-current="true"] { background: var(--accent-soft); }
+.preview-count { font-size: var(--t-title3); line-height: var(--l-title3); margin: 0; }
+
+/* Concept: Letter */
+.letter-bar { display: grid; grid-template-columns: var(--tap) 1fr var(--tap); align-items: center; gap: var(--space-2); min-height: var(--tap); }
+.letter-bar .day { text-align: center; font-weight: 600; font-size: var(--t-head); line-height: var(--l-head); }
+.letter {
+  background: var(--letter-paper); border-radius: var(--radius); padding: var(--space-6) var(--space-5);
+  display: flex; flex-direction: column; gap: var(--space-4);
+  font-family: -apple-system-ui-serif, ui-serif, "New York", Georgia, serif; font-size: var(--t-body); line-height: 26px;
+}
+.letter p { margin: 0; }
+.letter .greet { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 600; }
+.letter .item { display: flex; gap: var(--space-3); align-items: flex-start; }
+.letter .item .kicon { margin-top: 2px; }
+.letter .sign { color: var(--muted); font-size: var(--t-sub); line-height: var(--l-sub); }
+.letter .leftout { border-top: 1px solid var(--line); padding-top: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); font-family: -apple-system, system-ui, sans-serif; }
+.letter .leftout ul { margin: 0; padding-left: var(--space-5); color: var(--quiet-ink); font-size: var(--t-sub); line-height: var(--l-sub); display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* "New:" annotation */
+.labels-on .app [data-new]:not(.tabbar):not(.the-line) { position: relative; }
+.labels-on .app [data-new] { outline: 2px dashed var(--anno); outline-offset: 2px; }
+.labels-on .app [data-new]::after {
+  content: "New: " attr(data-new); position: absolute; top: -10px; right: 4px; z-index: 5;
+  background: var(--anno); color: #FFFFFF; font-size: 11px; line-height: 14px; padding: 1px 6px; border-radius: 4px;
+  pointer-events: none; font-weight: 600;
+}
+.labels-on .app .tabbar[data-new] { position: absolute; }
+
+/* Largest accessibility size (AX5), Apple HIG typography, read 2026-11-21 */
+.ax5 {
+  --t-large: 60px; --l-large: 70px; --t-title3: 55px; --l-title3: 65px;
+  --t-head: 53px; --l-head: 62px; --t-body: 53px; --l-body: 62px;
+  --t-callout: 51px; --l-callout: 60px; --t-sub: 49px; --l-sub: 58px;
+  --t-foot: 44px; --l-foot: 52px; --t-cap: 43px; --l-cap: 51px;
+}
+.ax5 .row { flex-direction: column; }
+.ax5 .chip { flex-wrap: wrap; text-align: left; padding: var(--space-2) var(--space-4); border-radius: var(--radius); max-width: 100%; }
+.ax5 .chip span { min-width: 0; overflow-wrap: anywhere; }
+.ax5 .row .rtime { order: -1; }
+.ax5 .kicon { width: 64px; height: 64px; }
+.ax5 .kicon svg, .ax5 .icon-btn svg, .ax5 .chip svg { width: 40px; height: 40px; }
+.ax5 .icon-btn { width: 64px; height: 64px; }
+.ax5 .sentence, .ax5 .tok { line-height: 76px; }
+.ax5 .letter { line-height: 66px; }
+.ax5 .tabbar button { min-width: 140px; min-height: 80px; }
+.ax5 .seg { grid-auto-flow: row; border-radius: var(--radius); }
+.ax5 .seg button { border-radius: 6px; }
+.ax5 .statusbar { font-size: 12px; line-height: 16px; }
+.ax5 .the-line { flex-wrap: wrap; }
+.ax5 .the-line .headline { white-space: normal; }
+.ax5 .letter-bar { grid-template-columns: 64px 1fr 64px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { animation: rise 220ms ease-out; }
+  @keyframes rise { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+}
+@media (forced-colors: active) {
+  .tok, .chip, .btn, .seg button[aria-pressed="true"], .tabbar button[aria-selected="true"] { border: 2px solid ButtonText; }
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note"><strong>Sample.</strong> No figure, name, date or order on this page is real. Designer kind: blind.</div>
+
+<main class="doc">
+  <div class="doc-head">
+    <h1>Quiet alerts</h1>
+    <p>Job: speak up only when it matters, never nag. The person picks which kinds they hear about (mail likely lost, a sync that did not agree, an order overdue) and when. Three concepts, each with its own structure, movement and first screen. Every part drawn is new: as a blind designer I have not seen what exists today.</p>
+  </div>
+  <div class="controls" role="group" aria-label="Review controls">
+    <div class="ctl"><span>Theme</span>
+      <button class="pill" data-ctl="t" data-v="auto">Auto</button>
+      <button class="pill" data-ctl="t" data-v="light">Light</button>
+      <button class="pill" data-ctl="t" data-v="dark">Dark</button>
+    </div>
+    <div class="ctl"><span>State</span>
+      <button class="pill" data-ctl="s" data-v="loaded">Loaded</button>
+      <button class="pill" data-ctl="s" data-v="empty">Empty</button>
+      <button class="pill" data-ctl="s" data-v="loading">Loading</button>
+      <button class="pill" data-ctl="s" data-v="failed">Failed</button>
+      <button class="pill" data-ctl="s" data-v="unknown">Unknown</button>
+    </div>
+    <div class="ctl"><span>Marks</span>
+      <button class="pill" data-ctl="l" data-v="toggle">Show "New" marks</button>
+    </div>
+    <div class="ctl" id="shown-ctl"><span>Concepts shown</span></div>
+  </div>
+
+  <section class="concept" data-concept="line" id="concept-line">
+    <div class="concept-head">
+      <h2>Quiet line (the bold one)</h2>
+      <button class="pill" data-ctl="hide" data-v="line">Hide this concept</button>
+      <p>One surface, no tabs. This week's alerts sit in three bands: right away, at the round-up, and below a heavy line, kept quiet. The settings are the bands: tap a kind to move it, or tap the bell on a quiet row you would regret missing. Open, the hinge is the line.</p>
+    </div>
+    <div class="frames">
+      <figure data-frame="folded"><figcaption>Duo folded, 466 by 678 pt</figcaption>
+        <div class="device folded" data-device="iphone-duo-folded" id="focus-line"><div class="app" data-concept="line" data-pose="folded"></div></div></figure>
+      <figure data-frame="open"><figcaption>Duo open, 951 by 669 pt, hinge x 455.5 to 495.5</figcaption>
+        <div class="device open" data-device="iphone-duo-unfolded"><div class="app" data-concept="line" data-pose="open"></div></div></figure>
+      <figure data-frame="phone"><figcaption>Large phone. Size not written: drawn at a 430 by 932 pt placeholder</figcaption>
+        <div class="device phone" data-device="iphone-large"><div class="app" data-concept="line" data-pose="phone"></div></div></figure>
+      <figure data-frame="ax5"><figcaption>Duo folded, largest accessibility text (AX5)</figcaption>
+        <div class="device folded ax5" data-device="iphone-duo-folded-ax5"><div class="app" data-concept="line" data-pose="folded"></div></div></figure>
+    </div>
+  </section>
+
+  <section class="concept" data-concept="sentences" id="concept-sentences">
+    <div class="concept-head">
+      <h2>Sentences</h2>
+      <button class="pill" data-ctl="hide" data-v="sentences">Hide this concept</button>
+      <p>Two tabs. Alerts is a plain list by day; each alert opens to the one sentence that caused it. Rules is that set of sentences, with the words you can change tinted. Open, the right page shows what the rules would have told you this week.</p>
+    </div>
+    <div class="frames">
+      <figure data-frame="folded"><figcaption>Duo folded, 466 by 678 pt</figcaption>
+        <div class="device folded" data-device="iphone-duo-folded" id="focus-sentences"><div class="app" data-concept="sentences" data-pose="folded"></div></div></figure>
+      <figure data-frame="open"><figcaption>Duo open, 951 by 669 pt, hinge x 455.5 to 495.5</figcaption>
+        <div class="device open" data-device="iphone-duo-unfolded"><div class="app" data-concept="sentences" data-pose="open"></div></div></figure>
+      <figure data-frame="phone"><figcaption>Large phone. Size not written: drawn at a 430 by 932 pt placeholder</figcaption>
+        <div class="device phone" data-device="iphone-large"><div class="app" data-concept="sentences" data-pose="phone"></div></div></figure>
+      <figure data-frame="ax5"><figcaption>Duo folded, largest accessibility text (AX5)</figcaption>
+        <div class="device folded ax5" data-device="iphone-duo-folded-ax5"><div class="app" data-concept="sentences" data-pose="folded"></div></div></figure>
+    </div>
+  </section>
+
+  <section class="concept" data-concept="letter" id="concept-letter">
+    <div class="concept-head">
+      <h2>Morning letter</h2>
+      <button class="pill" data-ctl="hide" data-v="letter">Hide this concept</button>
+      <p>The tool speaks once a day, in a short letter. Page back through past days. Only a kind you allow may break the letter and reach you right away. Open, the letter sits on the left and what goes into it on the right, so each change shows at once.</p>
+    </div>
+    <div class="frames">
+      <figure data-frame="folded"><figcaption>Duo folded, 466 by 678 pt</figcaption>
+        <div class="device folded" data-device="iphone-duo-folded" id="focus-letter"><div class="app" data-concept="letter" data-pose="folded"></div></div></figure>
+      <figure data-frame="open"><figcaption>Duo open, 951 by 669 pt, hinge x 455.5 to 495.5</figcaption>
+        <div class="device open" data-device="iphone-duo-unfolded"><div class="app" data-concept="letter" data-pose="open"></div></div></figure>
+      <figure data-frame="phone"><figcaption>Large phone. Size not written: drawn at a 430 by 932 pt placeholder</figcaption>
+        <div class="device phone" data-device="iphone-large"><div class="app" data-concept="letter" data-pose="phone"></div></div></figure>
+      <figure data-frame="ax5"><figcaption>Duo folded, largest accessibility text (AX5)</figcaption>
+        <div class="device folded ax5" data-device="iphone-duo-folded-ax5"><div class="app" data-concept="letter" data-pose="folded"></div></div></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Icons ---------- */
+  var I = {
+    lost: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 8l9 6 9-6"/><path d="M17 3.5v0"/><circle cx="19.5" cy="4.5" r="2.5" fill="currentColor" stroke="none"/></svg>',
+    sync: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 8h13l-3-3"/><path d="M20 16H7l3 3"/><path d="M11 11l2 2M13 11l-2 2"/></svg>',
+    overdue: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M9 3h6"/></svg>',
+    bell: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 16V11a6 6 0 0 1 12 0v5l2 2H4l2-2z"/><path d="M10 21h4"/><path d="M12 2v2"/></svg>',
+    rules: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12l5 5 9-10"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+    fwd: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></svg>'
+  };
+
+  /* ---------- Sample data: kind, reason, time, subject only ---------- */
+  var KINDS = {
+    lost:    { name: 'Mail likely lost',   thrLabel: 'Call it lost after',          unit: 'days with no check-in', opts: [7, 10, 14, 21] },
+    sync:    { name: 'Sync did not agree', thrLabel: 'Tell me once it stays split', unit: 'minutes', opts: [5, 30, 60] },
+    overdue: { name: 'Order overdue',      thrLabel: 'Tell me once it is',          unit: 'days past due', opts: [1, 2, 3, 5] }
+  };
+  var KIND_ORDER = ['lost', 'sync', 'overdue'];
+  var WHEN = { now: 'Right away', roundup: 'At the round-up', never: 'Never' };
+  var DEFAULT_RULES = { lost: { when: 'now', thr: 14 }, sync: { when: 'now', thr: 30 }, overdue: { when: 'roundup', thr: 2 } };
+
+  // val: the measure the threshold compares (days, minutes, days past due).
+  var ITEMS = [
+    { id: 'a1', kind: 'lost',    val: 19, subject: 'Order from Harbor Lane Shop',  reason: 'Shipped 19 days ago and not checked in. Mail from this shop takes about 6 days.', time: 'Today, 8:02 am' },
+    { id: 'a2', kind: 'sync',    val: 45, subject: 'Order from Pinecrest Trading', reason: 'This phone says it arrived. Your other device has said not yet for 45 minutes.', time: 'Today, 7:41 am' },
+    { id: 'a3', kind: 'overdue', val: 4,  subject: 'Order from Low Tide Goods',    reason: 'Due Nov 17. Four days past due.', time: 'Yesterday, 6:00 pm' },
+    { id: 'a4', kind: 'overdue', val: 2,  subject: 'Order from Field and Fen',     reason: 'Due Nov 19. Two days past due.', time: 'Yesterday, 6:00 pm' },
+    { id: 'q1', kind: 'overdue', val: 1,  subject: 'Order from Copperline',        reason: 'Due Nov 20. One day past due.', time: 'Today, 6:00 am' },
+    { id: 'q2', kind: 'sync',    val: 3,  subject: 'Order from Saltmarsh Supply',  reason: 'Your devices disagreed for 3 minutes, then agreed.', time: 'Thu, 9:14 pm' },
+    { id: 'q3', kind: 'lost',    val: 9,  subject: 'Order from North Quay',        reason: 'Shipped 9 days ago, not checked in yet.', time: 'Wed, 8:00 am' }
+  ];
+  var ROUNDUP_TIMES = ['8:00 am', '12:00 pm', '6:00 pm', '9:00 pm'];
+  var SERVER_TEXT = 'GET /check 503\nupstream timed out after 30 s';
+
+  function byId(id) { for (var i = 0; i < ITEMS.length; i++) if (ITEMS[i].id === id) return ITEMS[i]; }
+  function clone(o) { return JSON.parse(JSON.stringify(o)); }
+  function esc(s) { return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;'); }
+  function bandOf(item, rules) {
+    var r = rules[item.kind];
+    if (r.when === 'never' || item.val < r.thr) return 'quiet';
+    return r.when;
+  }
+  function whyQuiet(item, rules) {
+    var r = rules[item.kind];
+    if (r.when === 'never') return 'You chose never for this kind.';
+    return 'Under your line of ' + r.thr + ' ' + KINDS[item.kind].unit + '.';
+  }
+  function unitShort(kind, n) {
+    var u = KINDS[kind].unit;
+    return n + ' ' + u;
+  }
+
+  /* ---------- Hash state ---------- */
+  function parseHash() {
+    var o = {};
+    location.hash.replace(/^#/, '').split('&').forEach(function (kv) {
+      if (!kv) return;
+      var p = kv.split('=');
+      o[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || '');
+    });
+    return o;
+  }
+  var H = parseHash();
+  var G = {
+    s: ['loaded', 'empty', 'loading', 'failed', 'unknown'].indexOf(H.s) >= 0 ? H.s : 'loaded',
+    t: H.t === 'light' || H.t === 'dark' ? H.t : 'auto',
+    l: H.l !== '0',
+    c: H.c ? H.c.split(',') : null,
+    hide: H.h ? H.h.split(',') : [],
+    p: H.p || null
+  };
+  function writeHash() {
+    var parts = [];
+    if (G.c) parts.push('c=' + G.c.join(','));
+    if (G.s !== 'loaded') parts.push('s=' + G.s);
+    if (G.t !== 'auto') parts.push('t=' + G.t);
+    if (!G.l) parts.push('l=0');
+    if (G.hide.length) parts.push('h=' + G.hide.join(','));
+    if (G.p) parts.push('p=' + G.p);
+    history.replaceState(null, '', parts.length ? '#' + parts.join('&') : location.pathname);
+  }
+
+  /* ---------- Shared bits ---------- */
+  function statusbar() { return '<div class="statusbar" aria-hidden="true"><span>8:15</span><span>Sample</span></div>'; }
+  function screen(inner, extra, opt) {
+    opt = opt || {};
+    return '<div class="screen">' + statusbar() +
+      '<div class="scroll' + (opt.tabbar ? ' has-tabbar' : '') + '" data-scroll="' + (opt.key || 'main') + '">' + inner + '</div>' +
+      (extra || '') + '<div class="homebar" aria-hidden="true"></div></div>';
+  }
+  function nw(a, label) { return a.pose === 'folded' && !a.ax5 ? ' data-new="' + label + '"' : ''; }
+  function kicon(kind) { return '<span class="kicon" role="img" aria-label="' + esc(KINDS[kind].name) + '">' + I[kind] + '</span>'; }
+
+  function stateBlock(a, opts) {
+    var v = a.st.view;
+    opts = opts || {};
+    if (v === 'loading') {
+      return '<div class="block" role="status"><p class="headline">' + (opts.loadingText || 'Checking for anything new.') + '</p>' +
+        '<p class="sub">This can take a minute while each device answers.</p>' +
+        '<button class="btn" data-act="stop">Stop</button></div>';
+    }
+    if (v === 'failed') {
+      return '<div class="block bad" role="alert"><p class="headline">' + (opts.failedText || 'Could not check for new alerts.') + '</p>' +
+        '<p class="sub">What you see is from the last good check, today at 7:40 am.</p>' +
+        '<div class="cluster"><button class="btn fill" data-act="retry">Try again</button></div>' +
+        '<details><summary>What the server said</summary><pre>' + esc(SERVER_TEXT) + '</pre></details></div>';
+    }
+    if (v === 'unknown') {
+      return '<div class="block unknown" role="status"><p class="headline">Sync not checked since Tuesday, 9:12 pm.</p>' +
+        '<p class="sub">So nothing here can say whether your devices agree. That is unknown, not fine.</p>' +
+        '<button class="btn" data-act="retry">Check sync now</button></div>';
+    }
+    return '';
+  }
+  function skeletonRows(n) {
+    var s = '';
+    for (var i = 0; i < n; i++) {
+      s += '<div class="row skel" aria-hidden="true"><span class="kicon"></span><span class="rbody"><span class="skel-bar" style="width:70%"></span><span class="skel-bar" style="width:90%"></span></span></div>';
+    }
+    return '<div class="list">' + s + '</div>';
+  }
+  function visibleItems(a) {
+    if (a.st.view === 'empty') return [];
+    if (a.st.view === 'unknown') return ITEMS.filter(function (it) { return it.kind !== 'sync'; });
+    return ITEMS;
+  }
+  function emptyBlock(text) {
+    return '<div class="block"><p class="all-well">All is well.</p><p class="sub">' + text + '</p>' +
+      '<button class="btn" data-act="checknow">Check now</button></div>';
+  }
+
+  /* ---------- Concept: Quiet line ---------- */
+  function lineInit() { return { rules: clone(DEFAULT_RULES), roundup: '6:00 pm', sheet: null, note: null }; }
+
+  function lineChips(a, when) {
+    return KIND_ORDER.filter(function (k) { return a.st.rules[k].when === when; }).map(function (k) {
+      var unknown = a.st.view === 'unknown' && k === 'sync';
+      return '<button class="chip" data-act="kind" data-kind="' + k + '">' + I[k] + '<span>' + KINDS[k].name + '</span>' +
+        (unknown ? '<span class="q" aria-label="unknown">?</span>' : '') + '</button>';
+    }).join('');
+  }
+  function lineRow(a, it) {
+    return '<button class="row" data-act="item" data-id="' + it.id + '">' + kicon(it.kind) +
+      '<span class="rbody"><span class="rsub">' + esc(it.subject) + '</span><span class="rreason">' + esc(it.reason) + '</span></span>' +
+      '<span class="rtime">' + esc(it.time.replace(/^Today, /, '')) + '</span></button>';
+  }
+  function lineQuietRow(a, it) {
+    if (a.st.note && a.st.note.id === it.id) {
+      return '<div class="row note" role="status"><p class="body">' + esc(a.st.note.text) + '</p>' +
+        '<div class="cluster"><button class="btn" data-act="undo">Undo</button><button class="btn fill" data-act="notedone">OK</button></div></div>';
+    }
+    return '<div class="row quiet">' + kicon(it.kind) +
+      '<span class="rbody"><span class="rsub">' + esc(it.subject) + '</span><span class="rreason">' + esc(it.reason) + ' ' + esc(whyQuiet(it, a.st.rules)) + '</span></span>' +
+      '<button class="icon-btn bell" data-act="tell" data-id="' + it.id + '" aria-label="Tell me about one like this next time">' + I.bell + '</button></div>';
+  }
+  function lineBand(a, when, items) {
+    var head = when === 'now'
+      ? '<div class="band-head"><h2 class="headline">' + WHEN.now + '</h2></div>'
+      : '<div class="band-head"><h2 class="headline">At the ' + esc(a.st.roundup) + ' round-up</h2><button class="btn plain" data-act="time" aria-label="Change round-up time">Change time</button></div>';
+    var chips = '<div class="cluster">' + lineChips(a, when) + '</div>';
+    var rows;
+    if (a.st.view === 'loading') rows = skeletonRows(when === 'now' ? 2 : 1);
+    else if (!items.length) rows = '<p class="foot">Nothing this week.</p>';
+    else rows = '<div class="list">' + items.map(function (it) { return lineRow(a, it); }).join('') + '</div>';
+    return '<section class="band"' + nw(a, when === 'now' ? 'band of kinds that reach you at once' : 'round-up band with its time') + '>' + head + chips + rows + '</section>';
+  }
+  function lineQuiet(a, items, asPageTitle) {
+    var neverChips = lineChips(a, 'never');
+    var head = asPageTitle
+      ? '<h1 class="large-title">Kept quiet</h1><p class="sub">Noticed, and not sent to you. Tap the bell on one you would regret missing.</p>'
+      : '<p class="sub">Noticed, and not sent to you. Tap the bell on one you would regret missing.</p>';
+    // Folded: the line is a direct child of the page stack, so sticky bottom can hold it in view.
+    var line = asPageTitle ? '' : '<button class="the-line" data-act="toline" aria-label="Kept quiet, ' + items.length + ', go to the quiet band"' + nw(a, 'the quiet line') + '><span class="headline">Kept quiet</span><span class="count">' + (a.st.view === 'loading' ? '' : items.length) + '</span></button>';
+    var rows;
+    if (a.st.view === 'loading') rows = skeletonRows(2);
+    else if (!items.length) rows = '<p class="foot">Nothing kept quiet this week.</p>';
+    else rows = '<div class="list">' + items.map(function (it) { return lineQuietRow(a, it); }).join('') + '</div>';
+    return line + '<section class="band quiet-band" data-quiet="1">' + head +
+      (neverChips ? '<div class="cluster"><span class="foot">Never:</span>' + neverChips + '</div>' : '') + rows + '</section>';
+  }
+  function lineSplit(a) {
+    var items = visibleItems(a);
+    var b = { now: [], roundup: [], quiet: [] };
+    items.forEach(function (it) {
+      var band = bandOf(it, a.st.rules);
+      if (a.st.note && a.st.note.id === it.id) band = 'quiet'; // the note holds the row's slot until OK
+      b[band].push(it);
+    });
+    return b;
+  }
+  function lineTop(a) {
+    var sb = stateBlock(a);
+    var empty = a.st.view === 'empty' ? emptyBlock('Alerts land here when mail looks lost, a sync disagrees or an order runs late.') : '';
+    return '<h1 class="large-title">Alerts</h1><p class="sub">This week, sorted by how you hear about each kind.</p>' + sb + empty;
+  }
+  function lineSheet(a) {
+    var sh = a.st.sheet;
+    if (!sh) return '';
+    var body, title;
+    if (sh.type === 'time') {
+      title = 'Round-up time';
+      body = '<p class="sub">One message a day holds everything set to the round-up.</p><div class="check-list" role="radiogroup">' +
+        ROUNDUP_TIMES.map(function (t) {
+          return '<button role="radio" aria-checked="' + (sh.draft === t) + '" data-act="pick" data-v="' + t + '"><span>' + t + '</span>' + (sh.draft === t ? I.check : '') + '</button>';
+        }).join('') + '</div><p class="answer" aria-live="polite">' + (sh.answer || '') + '</p>';
+    } else {
+      var k = sh.kind, d = sh.draft, K = KINDS[k];
+      var it = sh.id ? byId(sh.id) : null;
+      title = K.name;
+      body = (it ? '<div class="stack-sm"><p class="headline">' + esc(it.subject) + '</p><p class="body">' + esc(it.reason) + '</p><p class="foot">' + esc(it.time) + '</p></div>' : '') +
+        '<div class="group"><p class="foot">How you hear about this kind</p>' +
+        '<div class="seg" role="radiogroup">' + ['now', 'roundup', 'never'].map(function (w) {
+          var lbl = w === 'roundup' ? 'Round-up' : WHEN[w];
+          return '<button role="radio" aria-pressed="' + (d.when === w) + '" data-act="when" data-v="' + w + '">' + lbl + '</button>';
+        }).join('') + '</div><p class="answer" aria-live="polite">' + (sh.answer || '') + '</p>' +
+        '<div class="stepper"><span class="sub">' + K.thrLabel + '</span><span class="step-btns">' +
+        '<button class="icon-btn" data-act="thr" data-v="-1" aria-label="Less">&minus;</button><span class="val">' + d.thr + '</span>' +
+        '<button class="icon-btn" data-act="thr" data-v="1" aria-label="More">+</button></span><span class="foot">' + K.unit + '</span></div></div>';
+    }
+    return '<div class="sheet-wrap"><button class="scrim" data-act="close" aria-label="Close"></button><div class="sheet" role="dialog" aria-label="' + esc(title) + '">' +
+      '<div class="grabber" aria-hidden="true"></div><div class="sheet-bar"><button class="btn plain" data-act="close">Cancel</button><strong>' + esc(title) + '</strong>' +
+      '<button class="btn plain" data-act="apply"><b>Done</b></button></div><div class="sheet-body">' + body + '</div></div></div>';
+  }
+  function renderLine(a) {
+    var b = lineSplit(a);
+    if (a.pose === 'open') {
+      var L = '<div class="stack-lg">' + lineTop(a) + lineBand(a, 'now', b.now) + lineBand(a, 'roundup', b.roundup) + '</div>';
+      var R = '<div class="stack-lg">' + lineQuiet(a, b.quiet, true) + '</div>';
+      return '<div class="duo-open"><div class="pg" data-pg="L">' + screen(L, a.st.sheetPg === 'L' ? lineSheet(a) : '', { key: 'L' }) + '</div>' +
+        '<div class="hinge" aria-hidden="true"></div>' +
+        '<div class="pg" data-pg="R">' + screen(R, a.st.sheetPg === 'R' ? lineSheet(a) : '', { key: 'R' }) + '</div></div>';
+    }
+    var inner = '<div class="stack-lg">' + lineTop(a) + lineBand(a, 'now', b.now) + lineBand(a, 'roundup', b.roundup) + lineQuiet(a, b.quiet, false) + '</div>';
+    return screen(inner, lineSheet(a));
+  }
+  function lineAct(a, act, d, el) {
+    var st = a.st;
+    var pg = el.closest('.pg');
+    switch (act) {
+      case 'item': {
+        var it = byId(d.id);
+        st.sheet = { type: 'kind', kind: it.kind, id: it.id, draft: clone(st.rules[it.kind]) }; st.sheetPg = pg ? pg.dataset.pg : null; break;
+      }
+      case 'kind': st.sheet = { type: 'kind', kind: d.kind, draft: clone(st.rules[d.kind]) }; st.sheetPg = pg ? pg.dataset.pg : null; break;
+      case 'time': st.sheet = { type: 'time', draft: st.roundup }; st.sheetPg = pg ? pg.dataset.pg : null; break;
+      case 'pick': st.sheet.draft = d.v; st.sheet.answer = 'Done saves it. The next round-up comes at ' + d.v + '.'; break;
+      case 'when': {
+        st.sheet.draft.when = d.v;
+        var nm = KINDS[st.sheet.kind].name;
+        st.sheet.answer = d.v === 'now' ? 'From now on, ' + nm + ' reaches you the moment it happens.'
+          : d.v === 'roundup' ? 'From now on, ' + nm + ' waits for the ' + st.roundup + ' round-up.'
+          : 'From now on, ' + nm + ' is kept quiet. It still shows below the line.';
+        break;
+      }
+      case 'thr': {
+        var o = KINDS[st.sheet.kind].opts, i = o.indexOf(st.sheet.draft.thr);
+        if (i < 0) i = 0;
+        i = Math.max(0, Math.min(o.length - 1, i + Number(d.v)));
+        st.sheet.draft.thr = o[i]; break;
+      }
+      case 'apply':
+        if (st.sheet.type === 'time') st.roundup = st.sheet.draft; else st.rules[st.sheet.kind] = st.sheet.draft;
+        st.sheet = null; break;
+      case 'close': st.sheet = null; break;
+      case 'tell': {
+        var q = byId(d.id), r = st.rules[q.kind];
+        var prev = clone(r);
+        var nr = { when: r.when === 'never' ? 'now' : r.when, thr: Math.min(r.thr, q.val) };
+        var opts = KINDS[q.kind].opts;
+        if (opts.indexOf(nr.thr) < 0) opts.push(nr.thr), opts.sort(function (x, y) { return x - y; });
+        st.rules[q.kind] = nr;
+        st.note = { id: q.id, kind: q.kind, prev: prev, text: 'You will hear about one like this. ' + KINDS[q.kind].name + ' now reaches you from ' + unitShort(q.kind, nr.thr) + ', ' + (nr.when === 'now' ? 'right away' : 'at the round-up') + '.' };
+        break;
+      }
+      case 'undo': st.rules[st.note.kind] = st.note.prev; st.note = null; break;
+      case 'notedone': st.note = null; break;
+      case 'toline': {
+        var sc = el.closest('.scroll');
+        var qb = sc && sc.querySelector('[data-quiet]');
+        if (qb) sc.scrollTop += qb.getBoundingClientRect().top - sc.getBoundingClientRect().top - 56;
+        return 'norender';
+      }
+    }
+  }
+
+  /* ---------- Concept: Sentences ---------- */
+  function sentInit() { return { rules: clone(DEFAULT_RULES), roundup: '6:00 pm', quietFrom: '10:00 pm', quietTo: '7:00 am', quietExcept: 'lost', tab: 'alerts', detail: null, sel: 'a1', sheet: null, saved: null }; }
+
+  var TOLD = ['a1', 'a2', 'a3', 'a4'];
+  function whenWord(st, w) { return w === 'now' ? 'right away' : w === 'roundup' ? 'at ' + st.roundup : 'never'; }
+  function tok(a, field, kind, text) {
+    var picked = a.st.sheet && a.st.sheet.field === field && a.st.sheet.kind === kind;
+    return '<button class="tok' + (picked ? ' picked' : '') + '" data-act="tok" data-field="' + field + '" data-kind="' + (kind || '') + '">' + esc(text) + '</button>';
+  }
+  function ruleSentence(a, k) {
+    var r = a.st.rules[k], st = a.st;
+    if (k === 'lost') return 'Tell me ' + tok(a, 'when', k, whenWord(st, r.when)) + ' when an order has gone ' + tok(a, 'thr', k, r.thr + ' days') + ' with no check-in.';
+    if (k === 'sync') return 'Tell me ' + tok(a, 'when', k, whenWord(st, r.when)) + ' when my devices stay split for ' + tok(a, 'thr', k, r.thr + ' minutes') + '.';
+    return 'Tell me ' + tok(a, 'when', k, whenWord(st, r.when)) + ' when an order is ' + tok(a, 'thr', k, r.thr + (r.thr === 1 ? ' day' : ' days')) + ' past due.';
+  }
+  function ruleCard(a, k) {
+    var saved = a.st.saved === k ? '<p class="answer" role="status">Saved. The next one follows this sentence.</p>' : '';
+    return '<div class="rule-card"><p class="kname headline">' + I[k] + '<span>' + KINDS[k].name + '</span></p><p class="sentence">' + ruleSentence(a, k) + '</p>' + saved + '</div>';
+  }
+  function quietCard(a) {
+    var st = a.st;
+    var saved = a.st.saved === 'quiet' ? '<p class="answer" role="status">Saved. Quiet hours start tonight.</p>' : '';
+    return '<div class="rule-card"><p class="headline">Quiet hours</p><p class="sentence">Between ' + tok(a, 'qfrom', '', st.quietFrom) + ' and ' + tok(a, 'qto', '', st.quietTo) +
+      ', hold everything until morning, except ' + tok(a, 'qexcept', '', st.quietExcept === 'none' ? 'nothing' : KINDS[st.quietExcept].name.toLowerCase()) + '.</p>' + saved + '</div>';
+  }
+  function sentRow(a, it, current) {
+    return '<button class="row" data-act="open" data-id="' + it.id + '"' + (current ? ' aria-current="true"' : '') + '>' + kicon(it.kind) +
+      '<span class="rbody"><span class="rsub">' + esc(it.subject) + '</span><span class="rreason">' + esc(it.reason) + '</span></span>' +
+      '<span class="rtime">' + esc(it.time.split(', ')[1]) + '</span><span class="chev">' + I.fwd + '</span></button>';
+  }
+  function sentAlertsList(a, markSel) {
+    var sb = stateBlock(a);
+    var v = a.st.view;
+    var body;
+    if (v === 'loading') body = skeletonRows(3);
+    else if (v === 'empty') body = emptyBlock('Alerts land here when mail looks lost, a sync disagrees or an order runs late.');
+    else {
+      var items = TOLD.map(byId).filter(function (it) { return !(v === 'unknown' && it.kind === 'sync'); });
+      var groups = {};
+      items.forEach(function (it) { var g = it.time.split(', ')[0]; (groups[g] = groups[g] || []).push(it); });
+      body = Object.keys(groups).map(function (g) {
+        return '<div class="stack-sm"><h2 class="day-head">' + g + '</h2><div class="list">' + groups[g].map(function (it) { return sentRow(a, it, markSel && a.st.sel === it.id); }).join('') + '</div></div>';
+      }).join('');
+    }
+    return '<div class="stack-lg"><h1 class="large-title">Alerts</h1>' + sb + '<div class="stack"' + nw(a, 'alert list by day') + '>' + body + '</div></div>';
+  }
+  function sentDetail(a, id, withBack) {
+    var it = byId(id);
+    var back = withBack ? '<div class="navbar"><button class="back" data-act="back">' + I.back + '<span>Alerts</span></button></div>' : '';
+    return '<div class="stack-lg" style="padding-top:var(--space-2)">' + back +
+      '<div class="stack">' + kicon(it.kind) +
+      '<h1 class="title3">' + esc(it.subject) + '</h1><p class="body">' + esc(it.reason) + '</p><p class="foot">' + esc(it.time) + '</p></div>' +
+      '<div class="stack"' + nw(a, 'the rule behind this alert') + '><p class="foot">You heard this because of this sentence. Tap a tinted word to change it.</p>' + ruleCard(a, it.kind) + '</div></div>';
+  }
+  function sentRules(a) {
+    return '<div class="stack-lg"><h1 class="large-title">Rules</h1><p class="sub">Each sentence is one rule. Tap a tinted word to change it.</p>' +
+      '<div class="stack"' + nw(a, 'rules as sentences') + '>' + KIND_ORDER.map(function (k) { return ruleCard(a, k); }).join('') + quietCard(a) + '</div></div>';
+  }
+  function sentPreview(a) {
+    var c = { now: [], roundup: [], quiet: [] };
+    ITEMS.forEach(function (it) { c[bandOf(it, a.st.rules)].push(it); });
+    function grp(key, title) {
+      if (!c[key].length) return '';
+      return '<div class="stack-sm"><h2 class="day-head">' + title + '</h2><div class="list">' + c[key].map(function (it) {
+        return '<div class="row' + (key === 'quiet' ? ' quiet' : '') + '" style="cursor:default">' + kicon(it.kind) + '<span class="rbody"><span class="rsub">' + esc(it.subject) + '</span></span></div>';
+      }).join('') + '</div></div>';
+    }
+    return '<div class="stack-lg"><h1 class="large-title">This week</h1>' +
+      '<p class="preview-count">These rules would have told you ' + c.now.length + ' times right away and ' + c.roundup.length + ' times at ' + esc(a.st.roundup) + '. They would have kept ' + c.quiet.length + ' quiet.</p>' +
+      grp('now', 'Right away') + grp('roundup', 'At ' + a.st.roundup) + grp('quiet', 'Kept quiet') + '</div>';
+  }
+  function sentTabbar(a) {
+    return '<div class="tabbar" role="tablist"' + nw(a, 'two tabs') + '>' +
+      '<button role="tab" aria-selected="' + (a.st.tab === 'alerts') + '" data-act="tab" data-v="alerts">' + I.bell + '<span>Alerts</span></button>' +
+      '<button role="tab" aria-selected="' + (a.st.tab === 'rules') + '" data-act="tab" data-v="rules">' + I.rules + '<span>Rules</span></button></div>';
+  }
+  function sentSheet(a) {
+    var sh = a.st.sheet;
+    if (!sh) return '';
+    var title, opts, cur;
+    var st = a.st;
+    if (sh.field === 'when') { title = 'When'; opts = ['now', 'roundup', 'never'].map(function (w) { return { v: w, t: w === 'now' ? 'Right away' : w === 'roundup' ? 'At ' + st.roundup : 'Never' }; }); }
+    else if (sh.field === 'thr') { title = 'After'; opts = KINDS[sh.kind].opts.map(function (n) { return { v: n, t: n + ' ' + KINDS[sh.kind].unit }; }); }
+    else if (sh.field === 'qfrom' || sh.field === 'qto') { title = sh.field === 'qfrom' ? 'From' : 'Until'; opts = ['9:00 pm', '10:00 pm', '11:00 pm', '6:00 am', '7:00 am', '8:00 am'].map(function (t) { return { v: t, t: t }; }); }
+    else { title = 'Except'; opts = [{ v: 'none', t: 'Nothing' }].concat(KIND_ORDER.map(function (k) { return { v: k, t: KINDS[k].name }; })); }
+    cur = sh.draft;
+    return '<div class="sheet-wrap"><button class="scrim" data-act="close" aria-label="Close"></button><div class="sheet" role="dialog" aria-label="' + title + '">' +
+      '<div class="grabber" aria-hidden="true"></div><div class="sheet-bar"><button class="btn plain" data-act="close">Cancel</button><strong>' + title + '</strong>' +
+      '<button class="btn plain" data-act="apply"><b>Done</b></button></div><div class="sheet-body"><div class="check-list" role="radiogroup">' +
+      opts.map(function (o) { var on = String(o.v) === String(cur); return '<button role="radio" aria-checked="' + on + '" data-act="pick" data-v="' + o.v + '"><span>' + esc(o.t) + '</span>' + (on ? I.check : '') + '</button>'; }).join('') +
+      '</div></div></div></div>';
+  }
+  function renderSentences(a) {
+    var st = a.st;
+    if (a.pose === 'open') {
+      var L = st.tab === 'alerts' ? sentAlertsList(a, true) : sentRules(a);
+      var R;
+      if (st.tab === 'alerts') {
+        R = (st.view === 'empty' || st.view === 'loading') ? '<div class="stack-lg"><p class="sub" style="padding-top:var(--space-12)">Pick an alert to see the sentence that sent it.</p></div>'
+          : sentDetail(a, st.sel, false);
+      } else R = sentPreview(a);
+      var sheetHere = st.sheetPg || 'L';
+      return '<div class="duo-open"><div class="pg" data-pg="L">' + screen(L, sentTabbar(a) + (sheetHere === 'L' ? sentSheet(a) : ''), { key: 'L' + st.tab, tabbar: true }) + '</div>' +
+        '<div class="hinge" aria-hidden="true"></div>' +
+        '<div class="pg" data-pg="R">' + screen(R, sheetHere === 'R' ? sentSheet(a) : '', { key: 'R' + st.tab }) + '</div></div>';
+    }
+    var inner;
+    if (st.tab === 'alerts') inner = st.detail ? sentDetail(a, st.detail, true) : sentAlertsList(a, false);
+    else inner = sentRules(a);
+    return screen(inner, sentTabbar(a) + sentSheet(a), { key: st.tab + (st.detail || ''), tabbar: true });
+  }
+  function sentAct(a, act, d, el) {
+    var st = a.st;
+    var pg = el.closest('.pg');
+    switch (act) {
+      case 'tab': st.tab = d.v; st.detail = null; st.sheet = null; st.saved = null; break;
+      case 'open': if (a.pose === 'open') st.sel = d.id; else st.detail = d.id; st.saved = null; break;
+      case 'back': st.detail = null; break;
+      case 'tok': {
+        var f = d.field, k = d.kind, cur;
+        if (f === 'when') cur = st.rules[k].when; else if (f === 'thr') cur = st.rules[k].thr;
+        else if (f === 'qfrom') cur = st.quietFrom; else if (f === 'qto') cur = st.quietTo; else cur = st.quietExcept;
+        st.sheet = { field: f, kind: k, draft: cur }; st.sheetPg = pg ? pg.dataset.pg : null; st.saved = null; break;
+      }
+      case 'pick': st.sheet.draft = d.v; break;
+      case 'apply': {
+        var s = st.sheet;
+        if (s.field === 'when') st.rules[s.kind].when = s.draft;
+        else if (s.field === 'thr') st.rules[s.kind].thr = Number(s.draft);
+        else if (s.field === 'qfrom') st.quietFrom = s.draft;
+        else if (s.field === 'qto') st.quietTo = s.draft;
+        else st.quietExcept = s.draft;
+        st.saved = s.kind || 'quiet'; st.sheet = null; break;
+      }
+      case 'close': st.sheet = null; break;
+    }
+  }
+
+  /* ---------- Concept: Morning letter ---------- */
+  function letterInit() { return { rules: clone(DEFAULT_RULES), letterAt: '8:00 am', day: 0, sheet: null, showLeft: false, answer: null }; }
+  // Letter placement per kind: 'now' breaks the letter, 'roundup' goes in the letter, 'never' is left out.
+  var DAYS = [
+    { label: 'Today, Sat Nov 21', items: ['a1', 'a2', 'a3', 'a4', 'q1', 'q2', 'q3'] },
+    { label: 'Fri Nov 20', items: [] },
+    { label: 'Thu Nov 19', items: ['q2'] }
+  ];
+  function letterSentence(it) {
+    var shop = it.subject.replace(/^Order from /, '');
+    if (it.kind === 'lost') return 'The order from ' + shop + ' is likely lost. ' + it.reason;
+    if (it.kind === 'sync') return 'Your devices do not agree about the order from ' + shop + '. ' + it.reason;
+    return 'The order from ' + shop + ' is late. ' + it.reason;
+  }
+  function letterBody(a) {
+    var st = a.st, v = st.view;
+    var day = DAYS[st.day];
+    if (st.day === 0 && v === 'loading') return '<div class="block" role="status"><p class="headline">Writing today\'s letter.</p><p class="sub">This can take a minute while each device answers.</p><button class="btn" data-act="stop">Stop</button></div>';
+    if (st.day === 0 && v === 'failed') return stateBlock(a, { failedText: 'Today\'s letter could not be written.' });
+    var ids = st.day === 0 && v === 'empty' ? [] : day.items;
+    var items = ids.map(byId).filter(function (it) { return !(st.day === 0 && v === 'unknown' && it.kind === 'sync'); });
+    var inLetter = [], sent = [], left = [];
+    items.forEach(function (it) {
+      var b = bandOf(it, st.rules);
+      if (b === 'roundup') inLetter.push(it); else if (b === 'now') sent.push(it); else left.push(it);
+    });
+    var unk = st.day === 0 && v === 'unknown' ? '<div class="block unknown"><p class="headline">Sync was not checked since Tuesday, 9:12 pm.</p><p class="sub">So this letter cannot say whether your devices agree.</p><button class="btn" data-act="retry">Check sync now</button></div>' : '';
+    var p = [];
+    if (!inLetter.length && !sent.length) {
+      p.push('<p class="greet">All is well.</p>');
+      p.push('<p>' + (st.day === 0 && v === 'empty' ? 'Nothing needs you today. A letter fills in when mail looks lost, a sync disagrees or an order runs late.' : 'Nothing needed you this day.') + '</p>');
+      if (st.day === 0 && v === 'empty') p.push('<div><button class="btn" data-act="checknow">Check now</button></div>');
+    } else {
+      p.push('<p class="greet">Good morning. ' + (inLetter.length === 1 ? 'One thing' : inLetter.length ? (inLetter.length === 2 ? 'Two things' : inLetter.length + ' things') : 'Nothing new') + ' for you.</p>');
+      inLetter.forEach(function (it) { p.push('<div class="item">' + kicon(it.kind) + '<p>' + esc(letterSentence(it)) + '</p></div>'); });
+      if (sent.length) p.push('<p class="sign">Already sent to you right away: ' + sent.map(function (it) { return esc(it.subject.replace(/^Order from /, '')); }).join(', ') + '.</p>');
+    }
+    if (left.length) {
+      p.push('<div class="leftout"' + nw(a, 'what the letter left out') + '><button class="btn plain" data-act="left" aria-expanded="' + st.showLeft + '">' + (st.showLeft ? 'Hide the ' : 'I left out ') + left.length + ' small ' + (left.length === 1 ? 'thing' : 'things') + '</button>' +
+        (st.showLeft ? '<ul>' + left.map(function (it) { return '<li>' + esc(letterSentence(it)) + '</li>'; }).join('') + '</ul>' : '') + '</div>');
+    }
+    return unk + '<article class="letter"' + nw(a, 'the daily letter') + '>' + p.join('') + '</article>';
+  }
+  function letterSettings(a, inline) {
+    var st = a.st;
+    var rows = KIND_ORDER.map(function (k) {
+      var ans = st.answer && st.answer.kind === k ? st.answer.text : '';
+      return '<div class="group"><p class="kname headline cluster">' + I[k].replace('<svg', '<svg width="20" height="20"') + '<span>' + KINDS[k].name + '</span></p>' +
+        '<div class="seg" role="radiogroup">' + [['now', 'Right away'], ['roundup', 'In the letter'], ['never', 'Leave out']].map(function (w) {
+          return '<button role="radio" aria-pressed="' + (st.rules[k].when === w[0]) + '" data-act="lwhen" data-kind="' + k + '" data-v="' + w[0] + '">' + w[1] + '</button>';
+        }).join('') + '</div><p class="answer" aria-live="polite">' + esc(ans) + '</p></div>';
+    }).join('');
+    var times = '<div class="stack-sm"><p class="foot">The letter comes at</p><div class="seg" role="radiogroup">' + ['7:00 am', '8:00 am', '9:00 am'].map(function (t) {
+      return '<button role="radio" aria-pressed="' + (st.letterAt === t) + '" data-act="lat" data-v="' + t + '">' + t + '</button>';
+    }).join('') + '</div></div>';
+    var head = inline ? '<h1 class="large-title">What goes in</h1>' : '';
+    return '<div class="stack-lg"' + (inline ? nw(a, 'letter contents') : '') + '>' + head + '<p class="sub">Right away breaks the letter and reaches you at once. Use it only for what you would regret missing.</p>' + times + rows + '</div>';
+  }
+  function letterBar(a) {
+    var st = a.st;
+    return '<div class="letter-bar"><button class="icon-btn" data-act="older" aria-label="Older letter"' + (st.day >= DAYS.length - 1 ? ' disabled title="No older letter in this sample"' : '') + '>' + I.back + '</button>' +
+      '<span class="day">' + DAYS[st.day].label + '</span>' +
+      '<button class="icon-btn" data-act="newer" aria-label="Newer letter"' + (st.day === 0 ? ' disabled title="This is the newest letter"' : '') + '>' + I.fwd + '</button></div>';
+  }
+  function letterSheet(a) {
+    if (!a.st.sheet) return '';
+    return '<div class="sheet-wrap"><button class="scrim" data-act="close" aria-label="Close"></button><div class="sheet" role="dialog" aria-label="What goes in">' +
+      '<div class="grabber" aria-hidden="true"></div><div class="sheet-bar"><span></span><strong>What goes in</strong><button class="btn plain" data-act="close"><b>Done</b></button></div>' +
+      '<div class="sheet-body">' + letterSettings(a, false) + '</div></div></div>';
+  }
+  function renderLetter(a) {
+    var st = a.st;
+    var next = '<p class="foot">Next letter: tomorrow at ' + st.letterAt + '.</p>';
+    if (a.pose === 'open') {
+      var L = '<div class="stack-lg"><h1 class="large-title">Letter</h1>' + letterBar(a) + letterBody(a) + next + '</div>';
+      return '<div class="duo-open"><div class="pg" data-pg="L">' + screen(L, '', { key: 'L' }) + '</div><div class="hinge" aria-hidden="true"></div>' +
+        '<div class="pg" data-pg="R">' + screen(letterSettings(a, true), '', { key: 'R' }) + '</div></div>';
+    }
+    var inner = '<div class="stack-lg"><div class="cluster" style="justify-content:space-between"><h1 class="large-title">Letter</h1>' +
+      '<button class="btn" data-act="settings"' + nw(a, 'contents control') + '>What goes in</button></div>' + letterBar(a) + letterBody(a) + next + '</div>';
+    return screen(inner, letterSheet(a));
+  }
+  function letterAct(a, act, d) {
+    var st = a.st;
+    switch (act) {
+      case 'older': if (st.day < DAYS.length - 1) st.day++; st.showLeft = false; break;
+      case 'newer': if (st.day > 0) st.day--; st.showLeft = false; break;
+      case 'left': st.showLeft = !st.showLeft; break;
+      case 'settings': st.sheet = true; st.answer = null; break;
+      case 'close': st.sheet = null; break;
+      case 'lat': st.letterAt = d.v; break;
+      case 'lwhen': {
+        st.rules[d.kind].when = d.v;
+        var nm = KINDS[d.kind].name;
+        st.answer = { kind: d.kind, text: d.v === 'now' ? nm + ' will break the letter and reach you at once.' : d.v === 'roundup' ? nm + ' waits for the ' + st.letterAt + ' letter.' : nm + ' is left out, and listed at the letter\'s foot.' };
+        break;
+      }
+    }
+  }
+
+  /* ---------- App mount and events ---------- */
+  var R = { line: renderLine, sentences: renderSentences, letter: renderLetter };
+  var A = { line: lineAct, sentences: sentAct, letter: letterAct };
+  var INIT = { line: lineInit, sentences: sentInit, letter: letterInit };
+  var apps = [];
+
+  function render(a) {
+    var keep = {};
+    a.el.querySelectorAll('[data-scroll]').forEach(function (s) { keep[s.dataset.scroll] = s.scrollTop; });
+    a.el.innerHTML = R[a.concept](a);
+    a.el.querySelectorAll('[data-scroll]').forEach(function (s) { if (keep[s.dataset.scroll]) s.scrollTop = keep[s.dataset.scroll]; });
+  }
+  function mount() {
+    document.querySelectorAll('.app').forEach(function (el) {
+      var a = { el: el, concept: el.dataset.concept, pose: el.dataset.pose, ax5: !!el.closest('.ax5') };
+      a.st = INIT[a.concept]();
+      a.st.view = G.s;
+      apps.push(a);
+      render(a);
+    });
+  }
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]');
+    if (!t || t.disabled) return;
+    var el = t.closest('.app');
+    var a = apps.filter(function (x) { return x.el === el; })[0];
+    if (!a) return;
+    var act = t.dataset.act;
+    if (act === 'stop') a.st.view = 'failed';
+    else if (act === 'retry') a.st.view = 'loaded';
+    else if (act === 'checknow') a.st.view = 'loading';
+    else if (A[a.concept](a, act, t.dataset, t) === 'norender') return;
+    render(a);
+  });
+
+  /* ---------- Review controls ---------- */
+  var CONCEPTS = ['line', 'sentences', 'letter'];
+  var NAMES = { line: 'Quiet line', sentences: 'Sentences', letter: 'Morning letter' };
+  function applyGlobal() {
+    var root = document.documentElement;
+    if (G.t === 'auto') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', G.t);
+    document.body.classList.toggle('labels-on', G.l);
+    document.querySelectorAll('[data-ctl="t"]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.v === G.t); });
+    document.querySelectorAll('[data-ctl="s"]').forEach(function (b) { b.setAttribute('aria-pressed', b.dataset.v === G.s); });
+    document.querySelectorAll('[data-ctl="l"]').forEach(function (b) { b.setAttribute('aria-pressed', G.l); });
+    CONCEPTS.forEach(function (c) {
+      var sec = document.getElementById('concept-' + c);
+      var shown = (!G.c || G.c.indexOf(c) >= 0) && G.hide.indexOf(c) < 0;
+      sec.hidden = !shown;
+      var b = document.querySelector('[data-ctl="show"][data-v="' + c + '"]');
+      if (b) b.setAttribute('aria-pressed', shown);
+    });
+    document.querySelectorAll('figure[data-frame]').forEach(function (f) { f.classList.toggle('hl', G.p === f.dataset.frame); });
+  }
+  var shownCtl = document.getElementById('shown-ctl');
+  CONCEPTS.forEach(function (c) {
+    var b = document.createElement('button');
+    b.className = 'pill'; b.dataset.ctl = 'show'; b.dataset.v = c; b.textContent = NAMES[c];
+    shownCtl.appendChild(b);
+  });
+  document.querySelector('.controls').addEventListener('click', function (e) {
+    var b = e.target.closest('[data-ctl]');
+    if (!b) return;
+    var c = b.dataset.ctl, v = b.dataset.v;
+    if (c === 't') G.t = v;
+    if (c === 'l') G.l = !G.l;
+    if (c === 's') { G.s = v; apps.forEach(function (a) { a.st = INIT[a.concept](); a.st.view = v; render(a); }); }
+    if (c === 'show') {
+      G.c = null;
+      var i = G.hide.indexOf(v);
+      if (i >= 0) G.hide.splice(i, 1); else G.hide.push(v);
+    }
+    applyGlobal(); writeHash();
+  });
+  document.querySelectorAll('[data-ctl="hide"]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      G.c = null;
+      if (G.hide.indexOf(b.dataset.v) < 0) G.hide.push(b.dataset.v);
+      applyGlobal(); writeHash();
+    });
+  });
+  window.addEventListener('hashchange', function () {
+    var h = parseHash();
+    G.s = h.s || 'loaded'; G.t = h.t || 'auto'; G.l = h.l !== '0'; G.c = h.c ? h.c.split(',') : null; G.hide = h.h ? h.h.split(',') : []; G.p = h.p || null;
+    apps.forEach(function (a) { a.st = INIT[a.concept](); a.st.view = G.s; render(a); });
+    applyGlobal();
+  });
+
+  mount();
+  applyGlobal();
+  if (G.p) {
+    var f = document.querySelector('section:not([hidden]) figure[data-frame="' + G.p + '"]');
+    if (f) f.scrollIntoView({ block: 'start' });
+  }
+})();
+</script>
+</body>
+</html>

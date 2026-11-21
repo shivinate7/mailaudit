@@ -139,6 +139,9 @@ figcaption b { color: var(--ink); }
 .entry { background: var(--paper); border-radius: 8px; padding: 12px 16px; display: flex; flex-direction: column; gap: 2px; }
 .entry .k { font-family: var(--cochin); font-size: var(--body); }
 .entry .d { font-family: var(--mono); font-size: var(--cap); color: var(--inkSoft); }
+/* 16 pt at least, so iOS does not zoom (stamp-band-opens-the-editor) */
+.note { font-family: var(--cochin); font-size: max(16px, var(--sub)); min-height: 44px; padding: 8px 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); color: var(--ink); width: 100%; }
+.note:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
 .cluster { display: flex; flex-wrap: wrap; gap: 8px; }
 .chip { font-family: var(--mono); font-size: var(--cap); min-height: 44px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: var(--paper); display: inline-flex; align-items: center; }
 .chip.sel { border-color: var(--accent); color: var(--accent); background: color-mix(in srgb, var(--accent) 10%, var(--paper)); }
@@ -148,6 +151,8 @@ figcaption b { color: var(--ink); }
 .pane .foot { padding-bottom: 12px; }
 .slip { background: var(--manila); color: var(--manilaInk); border-radius: 8px; padding: 12px 16px; min-height: 88px; display: flex; flex-direction: column; gap: 4px; border-left: 4px solid var(--gold); }
 .ax5 .slip { min-height: 0; max-height: 170px; overflow-y: auto; }
+/* At AX5 nothing holds a fixed height, so the empty slip reserves nothing; the disabled button says what is missing. */
+.ax5 .slip.empty { display: none; }
 .slip .h { font-family: var(--mono); font-size: var(--micro); letter-spacing: 0.08em; text-transform: uppercase; }
 .slip .big { font-family: var(--cochin); font-size: var(--body); color: var(--ink); line-height: 1.3; }
 .slip .big .was { color: var(--manilaInk); }
@@ -155,7 +160,7 @@ figcaption b { color: var(--ink); }
 .slip .s { font-family: var(--cochin); font-size: var(--sub); line-height: 1.3; }
 .slip .s.warn { color: var(--amber); }
 .slip.empty { justify-content: center; }
-.apply { min-height: 50px; border-radius: 12px; background: var(--accent); color: var(--card); font-size: 17px; font-weight: 600; text-align: center; padding: 8px 16px; }
+.apply { min-height: 50px; border-radius: 12px; background: var(--accent); color: var(--card); font-size: var(--hl); line-height: 1.2; font-weight: 600; text-align: center; padding: 8px 16px; }
 .apply[disabled] { background: var(--line); color: var(--inkSoft); cursor: default; }
 .apply.danger { background: var(--red); }
 .empty-pane { margin: auto; padding: 32px; text-align: center; display: flex; flex-direction: column; gap: 8px; max-width: 360px; }
@@ -199,7 +204,7 @@ body.nolabels .lbl > .tag { display: none; }
 .bline.moved .k { color: var(--inkSoft); }
 .inrange::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 4px; background: var(--accent); }
 .inrange.endA::before { top: 50%; } .inrange.endB::before { bottom: 50%; }
-.bnone { font-family: var(--cochin); font-size: var(--sub); color: var(--inkSoft); font-style: italic; }
+.bnone { font-family: var(--cochin); font-size: var(--sub); color: var(--inkSoft); font-style: italic; text-transform: none; letter-spacing: 0; }
 .tray { position: absolute; left: 0; right: 0; bottom: calc(var(--bar) + var(--sab)); z-index: 6; background: var(--card); border-top: 1px solid var(--line); box-shadow: 0 -4px 12px color-mix(in srgb, var(--ink) 12%, transparent); padding: 8px 16px 12px; display: flex; flex-direction: column; gap: 8px; max-height: 72%; }
 .tbody { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; }
 .tray .slip { min-height: 0; }
@@ -301,11 +306,11 @@ body.nolabels .lbl > .tag { display: none; }
   <div class="choices">
     <div class="choice" id="choice-date-keep">
       <div class="choice-head"><b>Keep the stamp's date</b><button class="pagebtn" type="button" data-hide="choice-date-keep">Hide</button></div>
-      <div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-concept="slip" data-size="default" data-init="stamp-preview" data-date="keep" data-focus="focus-date-keep" id="f-opt-keep"></div></div>
+      <div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-concept="slip" data-size="default" data-init="stamp-preview" data-date="keep" data-focus="focus-date-keep" data-focus-on="foot" id="f-opt-keep"></div></div>
     </div>
     <div class="choice" id="choice-date-today">
       <div class="choice-head"><b>Date it today</b><button class="pagebtn" type="button" data-hide="choice-date-today">Hide</button></div>
-      <div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-concept="slip" data-size="default" data-init="stamp-preview" data-date="today" data-focus="focus-date-today" id="f-opt-today"></div></div>
+      <div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-concept="slip" data-size="default" data-init="stamp-preview" data-date="today" data-focus="focus-date-today" data-focus-on="foot" id="f-opt-today"></div></div>
     </div>
   </div>
 </section>
@@ -325,7 +330,7 @@ const relDay = (k) => k === TODAY ? "Today" : k === TODAY - 1 ? "Yesterday" : ""
 
 const PKGS = [
   { id: "p1", seller: "Alpha Cards", order: "7C41B09E", ordered: 10, tracked: true, lines: [["Lightning Bolt", 2, 1.10], ["Counterspell", 1, 2.40], ["Brainstorm", 1, 1.20]], got: { day: 20, time: "19:42" } },
-  { id: "p2", seller: "Beta Games", order: "E93A6D21", ordered: 2, tracked: false, lines: [["Path to Exile", 1, 1.20], ["Swords to Plowshares", 1, 1.45], ["Ponder", 1, 0.25]], got: null, stamp: { kind: "refunded", at: 18 } },
+  { id: "p2", seller: "Beta Games", order: "E93A6D21", ordered: 2, tracked: false, lines: [["Path to Exile", 1, 1.20], ["Swords to Plowshares", 1, 1.45], ["Ponder", 1, 0.25]], got: null, stamp: { kind: "refunded", at: 18, note: "Claim opened, no reply yet" } },
   { id: "p3", seller: "Gamma Hobby", order: "2B90C411", ordered: 4, tracked: true, lines: [["Opt", 1, 0.15], ["Consider", 1, 0.30]], got: { day: 19, time: "10:05" } },
   { id: "p4", seller: "Delta Decks", order: "5D02E7A3", ordered: 15, tracked: true, lines: [["Fatal Push", 1, 0.90]], got: { day: 21, time: "09:12" } },
   { id: "p5", seller: "Zeta TCG", order: "9A11F3C0", ordered: 12, tracked: true, lines: [["Thoughtseize", 1, 6.50]], got: { day: 20, time: "19:40" } },
@@ -439,7 +444,9 @@ function recentRow(f, st, r) {
   }
   if (fixed && r.kind === "stamp") {
     const a = st.applied.p2;
-    fix = und ? `<span class="rfix soft">Fix undone ${NOW}</span>` : (a.remove ? `<span class="rfix">Stamp removed</span>` : `<span class="rfix"><span class="was">Refunded</span> → ${esc(KLABEL[a.kind])}, ${shortDay(a.at).slice(4)}</span>`);
+    fix = und ? `<span class="rfix soft">Fix undone ${NOW}</span>` : a.remove ? `<span class="rfix">Stamp removed</span>`
+      : a.kind === p.stamp.kind ? `<span class="rfix">Dated <span class="was">${shortDay(p.stamp.at).slice(4)}</span> → ${shortDay(a.at).slice(4)}</span>`
+      : `<span class="rfix"><span class="was">Refunded</span> → ${esc(KLABEL[a.kind])}, ${shortDay(a.at).slice(4)}</span>`;
   }
   if (fixed && !und) right = `<button type="button" class="rright act" data-act="undo-fix" data-row="${r.id}" aria-label="Undo the correction to ${esc(r.subj)}, ${esc(p.seller)}">UNDO</button>`;
   else if (fixed && und) right = `<span class="rright">FIX<br>UNDONE</span>`;
@@ -451,7 +458,7 @@ function recentRow(f, st, r) {
     <button type="button" class="rmain" data-act="open-row" data-row="${r.id}" aria-label="Correct ${esc(r.micro.toLowerCase())} ${esc(r.subj)}, ${esc(p.seller)}">
       <span class="rline1"><span class="micro">${micro}</span><span class="t">${r.time}</span></span>
       <span class="rsubj">${esc(r.subj)} <span class="fig">${esc(r.fig)}</span></span>
-      ${fix || `<span class="rseller">${esc(p.seller)} <span class="chev">›</span></span>`}
+      <span class="rseller">${esc(p.seller)} ${fix ? "· " + fix : `<span class="chev">›</span>`}</span>
     </button>${right}</div>`;
 }
 function ledgerScreen(f, st) {
@@ -509,7 +516,8 @@ function stampBody(f, st) {
   return `<div class="entry">
       <span class="k">Refunded, ${esc(p.seller)}, ${plural(cards(p), "card")}</span>
       <span class="d">Stamped ${shortDay(s.at)} · ordered ${shortDay(p.ordered)} · untracked</span></div>
-    <div class="sect"><span class="micro">Stamp</span><div class="grp lbl today" id="${f.id}-kinds">${tag("today", "the six kinds")}${kinds}</div></div>${dates}`;
+    <div class="sect"><span class="micro">Stamp</span><div class="grp lbl today" id="${f.id}-kinds">${tag("today", "the six kinds")}${kinds}</div></div>${dates}
+    ${st.remove ? "" : `<label class="sect lbl today">${tag("today", "note field")}<span class="micro">Note</span><input class="note" type="text" value="${esc(st.note ?? s.note)}" data-note aria-label="Stamp note"></label>`}`;
 }
 function stampFoot(f, st) {
   const p = pkgOf("p2"), s = p.stamp;
@@ -533,7 +541,8 @@ function stampFoot(f, st) {
     else if (!st.remove) lines.push(`<span class="s">No lost-mail flag while it is stamped.</span>`);
     const big = st.remove ? `Stamp <span class="was">Refunded</span> → none` : `Stamp <span class="was">Refunded, ${shortDay(s.at).slice(4)}</span> → <span class="now">${esc(KLABEL[kind])}, ${shortDay(at).slice(4)}</span>`;
     slip = `<div class="slip"><span class="h">Will change</span><span class="big">${big}</span>${lines.join("")}</div>`;
-    btn = st.remove ? `<button type="button" class="apply danger" data-act="apply-stamp">Remove stamp</button>` : `<button type="button" class="apply" data-act="apply-stamp">Change to ${esc(KLABEL[st.kind])}</button>`;
+    if (!st.remove) lines.push(`<span class="s">The note goes with the stamp.</span>`);
+    btn = st.remove ? `<button type="button" class="apply danger" data-act="apply-stamp">Remove stamp from ${plural(cards(p), "card")}</button>` : `<button type="button" class="apply" data-act="apply-stamp">Change to ${esc(KLABEL[st.kind])}</button>`;
   }
   return `<div class="foot lbl new" id="${f.id}-foot">${tag("new", "what will change")}${slip}${btn}</div>`;
 }
@@ -613,7 +622,7 @@ function bookLines(f, st, k) {
       const a = st.applied[p.id], fixed = a && !st.undone[p.id], und = a && st.undone[p.id];
       const isLift = lifted === p.id && st.mode === "stamp";
       const row = RECENT.find(r => r.pkg === p.id);
-      const label = fixed ? (a.remove ? `<span class="was">Refunded</span> removed` : `<span class="was">Refunded</span> ${esc(KLABEL[a.kind])}`) : "Refunded";
+      const label = !fixed ? "Refunded" : a.remove ? `<span class="was">Refunded</span> removed` : a.kind === s0.kind ? "Refunded" : `<span class="was">Refunded</span> ${esc(KLABEL[a.kind])}`;
       const right = fixed ? `<button type="button" class="rright act" data-act="undo-fix" data-row="${row.id}" aria-label="Undo the stamp correction on ${esc(p.seller)}">UNDO</button>`
         : und ? `<span class="rright">FIX<br>UNDONE</span>` : `<span class="rright"><span class="chev" aria-hidden="true">›</span></span>`;
       out += `<div class="bline stamp${isLift ? " lift" : ""}" id="${f.id}-stamp-${p.id}">
@@ -641,7 +650,7 @@ function mailBook(f, st) {
       slot = k === at ? `<span class="endtag">${at === lifted.stamp.at ? "Dated here" : "New date"}</span>`
         : `<button type="button" class="target" data-act="stamp-day" data-day="${k}">Date here</button>`;
     }
-    out += `<div class="bday" id="${f.id}-day-${k}"><span class="dl"><b>${dayLabel(k)}${rel ? " · " + rel.toUpperCase() : ""}</b>${lines ? "" : `<span class="bnone">No mail</span>`}</span><span class="slot">${slot}</span></div>${lines}`;
+    out += `<div class="bday" id="${f.id}-day-${k}"><span class="dl"><b>${dayLabel(k)}${rel ? " · " + rel.toUpperCase() : ""}</b></span><span class="slot">${slot}</span></div>${lines}`;
   }
   out += `<div class="bday"><span class="dl"><span class="bnone">Older days are in Packages.</span></span><span class="slot"></span></div>`;
   return `<div class="book lbl new" id="${f.id}-book">${tag("new", "day book, mail days")}${out}<div class="pad-for-tray"></div></div>`;
@@ -745,14 +754,17 @@ function act(f, el) {
   render(f);
   const again = f.el.querySelector(".sbody, .tray, .content"); if (again && keepScroll && keepScroll.className === again.className) again.scrollTop = y;
 }
-function bookAct() { return false; }
 
 /* ===================== frames ===================== */
 const HASH = Object.fromEntries(location.hash.slice(1).split("&").filter(Boolean).map(kv => kv.split("=").map(decodeURIComponent)));
 const FRAMES = [...document.querySelectorAll(".dev[data-concept]")].map(el => ({
   el, id: el.id, concept: el.dataset.concept, pose: el.classList.contains("open") ? "open" : el.classList.contains("phone") ? "phone" : "folded",
 }));
-function render(f) { f.el.innerHTML = f.concept === "slip" ? slipConcept(f, f.st) : bookConcept(f, f.st); }
+function render(f) {
+  f.el.innerHTML = f.concept === "slip" ? slipConcept(f, f.st) : bookConcept(f, f.st);
+  /* the stamp-date options differ only in the slip, so their focus sits on the slip's foot */
+  if (f.el.dataset.focusOn === "foot") { const sh = document.getElementById(f.el.dataset.focus), ft = f.el.querySelector(".foot"); if (sh && ft) { sh.removeAttribute("id"); ft.id = f.el.dataset.focus; } }
+}
 function boot() {
   for (const f of FRAMES) { f.st = preset(f.el.dataset.init || HASH.s || "rest", f.el); render(f); }
   /* A deep link stands for "you scrolled to it, then tapped": show the lifted line or the day list near the top. */
@@ -766,7 +778,11 @@ function boot() {
   if (HASH.labels === "off") setLabels(false);
   fit();
 }
-for (const f of FRAMES) f.el.addEventListener("click", (e) => { const el = e.target.closest("[data-act]"); if (el && f.el.contains(el) && !el.disabled) act(f, el); });
+for (const f of FRAMES) {
+  f.el.addEventListener("click", (e) => { const el = e.target.closest("[data-act]"); if (el && f.el.contains(el) && !el.disabled) act(f, el); });
+  /* typed note survives every re-render (ux-keep-what-was-made) */
+  f.el.addEventListener("input", (e) => { if (e.target.hasAttribute("data-note")) f.st.note = e.target.value; });
+}
 document.addEventListener("click", (e) => { const h = e.target.closest("[data-hide]"); if (h) { document.getElementById(h.dataset.hide).hidden = true; } });
 function setLabels(on) { document.body.classList.toggle("nolabels", !on); const b = document.getElementById("toggle-labels"); b.setAttribute("aria-pressed", String(on)); b.textContent = on ? "Hide Today and New labels" : "Show Today and New labels"; }
 document.getElementById("toggle-labels").addEventListener("click", () => setLabels(document.body.classList.contains("nolabels")));

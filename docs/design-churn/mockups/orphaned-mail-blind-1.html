@@ -5,13 +5,884 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Unknown Envelope Mockup</title>
 <style>
-:root { font-family: -apple-system, system-ui, sans-serif; }
-body { margin: 0; }
+/* House tokens: 4 px step, 8 px radius, colour by role, system font. Values are this designer's own. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-11: 44px; --space-12: 48px;
+  --radius: 8px;
+  --font: -apple-system, system-ui, sans-serif;
+
+  --page: #E4E8ED;
+  --bg: #F2F4F7;
+  --surface: #FFFFFF;
+  --surface-2: #E6EAF0;
+  --text: #16202B;
+  --text-2: #4F5D6C;
+  --line: #C9D2DC;
+  --accent: #2346B8;
+  --accent-soft: #DCE3FA;
+  --on-accent: #FFFFFF;
+  --fit: #1D6E46;
+  --fit-soft: #D7EEE1;
+  --warn: #8A4F00;
+  --warn-soft: #FBEBD3;
+  --hatch: #D3DAE2;
+  --scrim: rgba(22, 32, 43, 0.38);
+  --sample: #7A3E00;
+  --sample-bg: #FFE6C2;
+
+  /* Dynamic Type, Large (default), from Apple's typography page, read 2026-11-21. */
+  --t-large: 34px; --l-large: 41px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap: 12px; --l-cap: 16px;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #090C10; --bg: #10151B; --surface: #19212B; --surface-2: #232D39;
+    --text: #E9EEF3; --text-2: #A3B0BE; --line: #344252;
+    --accent: #93A9FF; --accent-soft: #24305A; --on-accent: #0E1422;
+    --fit: #6FD3A0; --fit-soft: #173A2A; --warn: #F0B35C; --warn-soft: #3A2A12;
+    --hatch: #2A3440; --scrim: rgba(0, 0, 0, 0.55);
+    --sample: #FFD39A; --sample-bg: #4A2C08;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #090C10; --bg: #10151B; --surface: #19212B; --surface-2: #232D39;
+  --text: #E9EEF3; --text-2: #A3B0BE; --line: #344252;
+  --accent: #93A9FF; --accent-soft: #24305A; --on-accent: #0E1422;
+  --fit: #6FD3A0; --fit-soft: #173A2A; --warn: #F0B35C; --warn-soft: #3A2A12;
+  --hatch: #2A3440; --scrim: rgba(0, 0, 0, 0.55);
+  --sample: #FFD39A; --sample-bg: #4A2C08;
+}
+:root[data-theme="light"] { color-scheme: light; }
+:root[data-theme="dark"] { color-scheme: dark; }
+
+* { box-sizing: border-box; }
+body { margin: 0; background: var(--page); color: var(--text); font-family: var(--font);
+  font-size: var(--t-body); line-height: var(--l-body); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+
+/* ---------- The review page around the frames ---------- */
+.sample-banner { position: sticky; top: 0; z-index: 10; background: var(--sample-bg); color: var(--sample);
+  padding: var(--space-2) var(--space-4); font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600;
+  padding-top: max(var(--space-2), env(safe-area-inset-top)); }
+.wrap { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-6) var(--space-4) var(--space-12);
+  padding-left: max(var(--space-4), env(safe-area-inset-left)); padding-right: max(var(--space-4), env(safe-area-inset-right)); }
+.intro { display: flex; flex-direction: column; gap: var(--space-2); max-width: 72ch; }
+.intro h1 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); }
+.intro p { margin: 0; color: var(--text-2); font-size: var(--t-sub); line-height: var(--l-sub); }
+.toolbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.pbtn { min-height: 44px; padding: 0 var(--space-4); border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--surface); font-size: var(--t-sub); }
+.pbtn[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); scroll-margin-top: var(--space-12); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.concept-head h2 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); }
+.concept-head p { margin: 0; flex-basis: 100%; color: var(--text-2); font-size: var(--t-sub); line-height: var(--l-sub); max-width: 80ch; }
+.new-tag { border: 1.5px dashed var(--accent); color: var(--accent); border-radius: var(--radius);
+  padding: var(--space-1) var(--space-2); font-size: var(--t-foot); line-height: var(--l-foot); }
+.states { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.states a { min-height: 44px; display: inline-flex; align-items: center; padding: 0 var(--space-3);
+  border-radius: var(--radius); background: var(--surface); color: var(--text); text-decoration: none;
+  border: 1px solid var(--line); font-size: var(--t-sub); }
+.states a[aria-current="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
+.frames { display: flex; gap: var(--space-6); overflow-x: auto; padding-bottom: var(--space-4); align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); flex: none; }
+figcaption { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+
+/* ---------- Device frames (sizes from the brief) ---------- */
+.device { position: relative; overflow: hidden; background: var(--bg); border: 1px solid var(--line);
+  border-radius: 28px; box-shadow: 0 0 0 6px var(--surface-2); }
+.device.folded { width: 466px; height: 678px; }
+.device.phone { width: 466px; height: 678px; resize: both; max-width: 100%; min-width: 320px; min-height: 480px; }
+.device.open { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.hinge { background: repeating-linear-gradient(90deg, var(--surface-2) 0 2px, var(--page) 2px 6px); }
+.page { position: relative; overflow: hidden; height: 100%; }
+
+/* Type scale at the largest accessibility size, AX5, from the same Apple table. */
+.ax5 {
+  --t-large: 60px; --l-large: 70px; --t-title2: 56px; --l-title2: 66px; --t-title3: 55px; --l-title3: 65px;
+  --t-head: 53px; --l-head: 62px; --t-body: 53px; --l-body: 62px; --t-sub: 49px; --l-sub: 58px;
+  --t-foot: 44px; --l-foot: 52px; --t-cap: 43px; --l-cap: 51px;
+}
+
+/* ---------- One screen ---------- */
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--bg);
+  font-size: var(--t-body); line-height: var(--l-body);
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.status { flex: none; height: max(var(--space-11), env(safe-area-inset-top)); display: flex; align-items: center;
+  padding: 0 var(--space-6); font-size: 13px; line-height: 18px; font-weight: 600; color: var(--text); }
+.homebar { flex: none; height: max(var(--space-5), env(safe-area-inset-bottom)); display: grid; place-items: center; }
+.homebar::after { content: ""; width: 120px; height: 4px; border-radius: 4px; background: var(--text); opacity: .35; }
+.body { flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column; gap: var(--space-5);
+  padding: var(--space-2) var(--space-4) var(--space-4); }
+.navbar { flex: none; display: flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-2); }
+.navbar .title { flex: 1; text-align: center; font-size: var(--t-head); line-height: var(--l-head); font-weight: 600;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navbar .spacer { min-width: 44px; }
+.back { min-height: 44px; min-width: 44px; padding: 0 var(--space-2); border: 0; background: none; color: var(--accent);
+  font-size: var(--t-body); display: inline-flex; align-items: center; gap: var(--space-1); }
+.large-title { margin: 0; font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; letter-spacing: 0.01em; }
+h3.sec { margin: 0; font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 600; }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-tight { display: flex; flex-direction: column; gap: var(--space-2); }
+.cluster { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.muted { color: var(--text-2); }
+.foot { font-size: var(--t-foot); line-height: var(--l-foot); }
+.sub { font-size: var(--t-sub); line-height: var(--l-sub); }
+.cap { font-size: var(--t-cap); line-height: var(--l-cap); }
+p { margin: 0; }
+
+.btn { min-height: 44px; border-radius: var(--radius); border: 0; padding: var(--space-2) var(--space-4);
+  font-size: var(--t-body); line-height: var(--l-body); font-weight: 600; text-align: center; }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.quiet { background: var(--surface-2); color: var(--text); }
+.btn.plain { background: none; color: var(--accent); padding-left: var(--space-2); padding-right: var(--space-2); }
+.btn.wide { width: 100%; }
+
+.chip { min-height: 44px; display: inline-flex; align-items: center; gap: var(--space-1); border-radius: var(--radius);
+  background: var(--surface); border: 1px solid var(--line); padding: 0 var(--space-1) 0 var(--space-3);
+  font-size: var(--t-sub); line-height: var(--l-sub); max-width: 100%; }
+.chip.fixed { padding-right: var(--space-3); }
+.chip.kept { border-style: dashed; color: var(--text-2); }
+.chip .x { min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--text-2); font-size: var(--t-body);
+  display: grid; place-items: center; }
+.chip button.chip-main { border: 0; background: none; min-height: 44px; padding: 0; text-align: left; }
+mark { background: var(--fit-soft); color: var(--fit); border-radius: 3px; }
+.tag { display: inline-flex; align-items: center; border-radius: var(--radius); padding: 0 var(--space-2);
+  font-size: var(--t-foot); line-height: var(--l-foot); background: var(--fit-soft); color: var(--fit); }
+.tag.dim { background: var(--surface-2); color: var(--text-2); }
+
+.card { background: var(--surface); border-radius: var(--radius); }
+.list { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+.list > * + * { border-top: 1px solid var(--line); }
+.row { display: flex; gap: var(--space-3); align-items: center; width: 100%; min-height: 64px; padding: var(--space-3) var(--space-4);
+  border: 0; background: none; text-align: left; }
+.row .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.row .name { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
+.row[aria-current="true"] { background: var(--accent-soft); }
+.chev { color: var(--text-2); }
+.fitbar { width: 6px; align-self: stretch; border-radius: 4px; background: var(--fit); flex: none; }
+.fitbar.part { background: linear-gradient(var(--fit) 0 50%, var(--surface-2) 50% 100%); }
+.thumb { width: 56px; height: 44px; flex: none; border-radius: var(--radius); background: var(--surface-2); display: grid; place-items: center; overflow: hidden; }
+.count { min-width: 32px; min-height: 32px; border-radius: 16px; line-height: var(--l-sub); display: grid; place-items: center; font-weight: 700;
+  font-size: var(--t-sub); background: var(--surface-2); color: var(--text); flex: none; padding: 0 var(--space-2); }
+.count.one { background: var(--fit); color: var(--surface); }
+.count.unk { background: none; border: 1.5px dashed var(--text-2); color: var(--text-2); }
+.notice { border-radius: var(--radius); padding: var(--space-3) var(--space-4); background: var(--warn-soft); color: var(--text);
+  display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.notice.ok { background: var(--fit-soft); }
+.empty { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-4) 0; }
+.photo { border-radius: var(--radius); overflow: hidden; background: var(--surface-2); height: 150px; display: grid; place-items: center; flex: none; }
+.photo svg { width: 100%; height: 100%; }
+.ax5 .photo { height: 200px; }
+
+/* Bottom of a compact screen: main action in thumb reach, then the floating tab bar. */
+.dock { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4) 0; }
+.tabbar { display: flex; gap: var(--space-1); background: var(--surface); border: 1px solid var(--line);
+  border-radius: 28px; padding: var(--space-1); box-shadow: 0 4px 16px rgba(0,0,0,.12); }
+.tabbar button { flex: 1; min-height: 48px; border: 0; border-radius: 24px; background: none; font-size: var(--t-cap);
+  line-height: var(--l-cap); color: var(--text-2); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; }
+.tabbar button[aria-current="true"] { background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.tabbar svg { width: 22px; height: 22px; }
+
+/* Sheets */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 4; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: var(--space-12); z-index: 5; background: var(--bg);
+  border-radius: 16px 16px 0 0; display: flex; flex-direction: column; box-shadow: 0 -4px 24px rgba(0,0,0,.18); }
+.sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-2) auto 0; flex: none; }
+.sheet-bar { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); flex: none; }
+.sheet-bar .title { flex: 1; text-align: center; font-weight: 600; font-size: var(--t-head); line-height: var(--l-head); min-width: 0; }
+.ax5 .sheet-bar .title { flex-basis: 100%; order: -1; text-align: left; padding-left: var(--space-2); }
+.ax5 .sheet-bar { justify-content: space-between; }
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.field label { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.device input { min-height: 44px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface);
+  padding: var(--space-2) var(--space-3); font-size: var(--t-body); width: 100%; }
+.seg { display: flex; flex-wrap: wrap; gap: var(--space-1); background: var(--surface-2); border-radius: var(--radius); padding: var(--space-1); }
+.seg button { flex: 1 1 auto; min-height: 44px; border: 0; border-radius: 6px; background: none; font-size: var(--t-sub); line-height: var(--l-sub); padding: var(--space-1) var(--space-2); }
+.seg button[aria-pressed="true"] { background: var(--surface); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.15); }
+.sugg { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+.sugg > * + * { border-top: 1px solid var(--line); }
+.sugg button { min-height: 44px; display: flex; gap: var(--space-3); align-items: center; justify-content: space-between;
+  border: 0; background: none; padding: var(--space-2) var(--space-4); text-align: left; flex-wrap: wrap; }
+.check-list { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius); }
+.check-list > * + * { border-top: 1px solid var(--line); }
+.check-list div { display: flex; gap: var(--space-3); align-items: center; min-height: 44px; padding: var(--space-2) var(--space-4); }
+.mark { width: 22px; height: 22px; flex: none; border-radius: 11px; border: 1.5px solid var(--line); display: grid; place-items: center; }
+.mark.on { background: var(--fit); border-color: var(--fit); color: var(--surface); }
+.toggle-row { display: flex; gap: var(--space-3); align-items: center; justify-content: space-between; min-height: 44px; }
+.switch { width: 52px; height: 32px; border-radius: 16px; border: 0; background: var(--surface-2); position: relative; flex: none; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 28px; height: 28px; border-radius: 14px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: left .15s; }
+.switch[aria-checked="true"] { background: var(--fit); }
+.switch[aria-checked="true"]::after { left: 22px; }
+.inline-answer { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between;
+  background: var(--fit-soft); border-radius: var(--radius); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); min-height: 64px; }
+
+/* ---------- Sieve: the elimination board ---------- */
+.strip { flex: none; display: flex; gap: var(--space-2); overflow-x: auto; padding: var(--space-1) var(--space-4) var(--space-2); }
+.env { flex: none; position: relative; min-width: 76px; min-height: 52px; border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--surface); display: flex; flex-direction: column; align-items: center; justify-content: center;
+  font-size: var(--t-foot); line-height: var(--l-foot); padding: var(--space-1) var(--space-2); overflow: hidden; }
+.env::before { content: ""; position: absolute; left: 0; right: 0; top: 0; height: 14px;
+  background: linear-gradient(to bottom right, transparent 49%, var(--line) 50%, transparent 52%) left / 50% 100% no-repeat,
+              linear-gradient(to bottom left, transparent 49%, var(--line) 50%, transparent 52%) right / 50% 100% no-repeat; }
+.env[aria-current="true"] { border: 2px solid var(--accent); background: var(--accent-soft); font-weight: 600; }
+.env.add { border-style: dashed; color: var(--accent); }
+.env.add::before { display: none; }
+.board-head { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; justify-content: space-between; }
+.board-head .big { font-size: var(--t-title2); line-height: var(--l-title2); font-weight: 700; }
+.board { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: var(--space-2); }
+.open-board .board { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.ax5 .board { grid-template-columns: 1fr; }
+.tile { position: relative; min-height: 84px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface);
+  padding: var(--space-2); text-align: left; display: flex; flex-direction: column; justify-content: space-between; gap: var(--space-1);
+  transition: background .2s, border-color .2s; }
+.ax5 .tile { min-height: 0; }
+.tile .who { font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600; overflow-wrap: anywhere; }
+.tile .meta { font-size: var(--t-cap); line-height: var(--l-cap); color: var(--text-2); }
+.tile .cards { font-size: var(--t-cap); line-height: var(--l-cap); color: var(--text-2); }
+.tile .cards b { color: var(--fit); font-weight: 600; }
+.tile.down { background: repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 9px), var(--bg); border-style: dashed; }
+.tile.down .who { color: var(--text-2); font-weight: 400; }
+.tile.sel { border: 2px solid var(--accent); box-shadow: 0 0 0 2px var(--accent-soft); }
+.tile.last { border: 2px solid var(--fit); background: var(--fit-soft); }
+.tile.why .meta { color: var(--warn); font-weight: 600; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; font-size: var(--t-cap); line-height: var(--l-cap); color: var(--text-2); }
+.legend i { display: inline-block; width: 18px; height: 14px; border-radius: 3px; vertical-align: -2px; margin-right: var(--space-1);
+  border: 1px dashed var(--line); background: repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 6px), var(--bg); }
+.tray { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4) 0;
+  border-top: 1px solid var(--line); background: var(--surface); }
+.tray .chips { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: var(--space-1); }
+.ax5 .tray .chips { flex-wrap: wrap; max-height: 180px; overflow-y: auto; }
+.tray .chips .chip { flex: none; background: var(--bg); }
+.actions { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.actions .btn { flex: 1 1 160px; }
+.clue-rows { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+.clue-rows > * + * { border-top: 1px solid var(--line); }
+.clue-rows div { display: flex; align-items: center; gap: var(--space-3); min-height: 44px; padding-left: var(--space-4); }
+.clue-rows div span { flex: 1; min-width: 0; }
+.clue-rows .x { min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--text-2); }
+.open-left .body { gap: var(--space-4); }
+
+/* Largest text: the screen scrolls as one, rows and bars wrap instead of clipping. */
+.ax5 .screen.scroll-all { overflow-y: auto; }
+.ax5 .screen.scroll-all > .body { flex: none; overflow: visible; }
+.ax5 .screen.scroll-all > .dock { position: sticky; bottom: 0; background: var(--bg); padding-bottom: var(--space-2); }
+.ax5 .navbar { flex-wrap: wrap; }
+.ax5 .navbar .spacer { display: none; }
+.ax5 .navbar .title { flex-basis: 100%; text-align: left; white-space: normal; padding: 0 var(--space-2); }
+.ax5 .row { flex-wrap: wrap; }
+.ax5 .row .main { flex: 1 1 70%; }
+.ax5 .tabbar svg { display: none; }
+.ax5 .env { min-width: 0; }
+.ax5 .count { border-radius: var(--radius); padding: 0 var(--space-3); }
+.ax5 .status, .ax5 .legend i { font-size: 13px; }
 </style>
 </head>
 <body>
-<p>Sample. Designer kind: blind. Skeleton; concepts follow.</p>
-<div data-device="iphone-duo-folded"></div>
-<div data-device="iphone-duo-unfolded"></div>
+<div class="sample-banner" role="note">Sample: every sender, card, date and photo on this page is made up. No figure here is real.</div>
+<div class="wrap">
+  <header class="intro">
+    <h1>Unknown envelope: two concepts</h1>
+    <p>Designer kind: blind. The job: "I have an envelope, I do not know whose it is, and I do not want to lose it." Each concept is drawn on the folded Duo, the folded Duo at the largest text size, the open Duo, and a large phone. Every press works.</p>
+    <div class="toolbar" aria-label="Page controls">
+      <span class="sub muted">Theme</span>
+      <button class="pbtn" data-theme-set="auto">Auto</button>
+      <button class="pbtn" data-theme-set="light">Light</button>
+      <button class="pbtn" data-theme-set="dark">Dark</button>
+      <button class="pbtn" id="opt-also" data-opt-hide="alsoCheck">Hide option: mark cards received at match</button>
+      <button class="pbtn" id="show-hidden" hidden>Show hidden options</button>
+    </div>
+  </header>
+
+  <section class="concept" id="concept-shelf" data-concept="shelf" aria-labelledby="h-shelf">
+    <div class="concept-head">
+      <h2 id="h-shelf">Shelf</h2>
+      <span class="new-tag">New: whole screen</span>
+      <button class="pbtn" data-hide="concept-shelf">Hide this concept</button>
+      <p>A list of kept envelopes. Open one to see what you know about it and who could have sent it, ranked by how many clues each open order shares. Wrong clues only lower a rank; nothing is struck out.</p>
+    </div>
+    <nav class="states" aria-label="Shelf states" data-states="shelf"></nav>
+    <div class="frames">
+      <figure><figcaption>Duo, folded, 466 x 678</figcaption><div class="device folded" data-device="iphone-duo-folded" data-c="shelf" data-dev="folded"></div></figure>
+      <figure><figcaption>Duo, folded, text size AX5</figcaption><div class="device folded ax5" data-device="iphone-duo-folded" data-text-size="ax5" data-c="shelf" data-dev="ax5"></div></figure>
+      <figure><figcaption>Duo, open, 951 x 669, hinge 455.5 to 495.5</figcaption><div class="device open" data-device="iphone-duo-unfolded" data-c="shelf" data-dev="open"></div></figure>
+      <figure><figcaption>Large phone, size not written: drawn at 466 x 678, drag the corner to resize</figcaption><div class="device phone" data-device="iphone-regular" data-c="shelf" data-dev="phone"></div></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-sieve" data-concept="sieve" aria-labelledby="h-sieve">
+    <div class="concept-head">
+      <h2 id="h-sieve">Sieve</h2>
+      <span class="new-tag">New: whole screen</span>
+      <button class="pbtn" data-hide="concept-sieve">Hide this concept</button>
+      <p>The bold one. Every open order sits on a board in a fixed place. Each clue you add turns over the orders it rules out, until one is left. Before you add a clue, it shows how many orders it would leave. Envelopes you keep sit in a strip along the top.</p>
+    </div>
+    <nav class="states" aria-label="Sieve states" data-states="sieve"></nav>
+    <div class="frames">
+      <figure><figcaption>Duo, folded, 466 x 678</figcaption><div class="device folded" data-device="iphone-duo-folded" data-c="sieve" data-dev="folded"></div></figure>
+      <figure><figcaption>Duo, folded, text size AX5</figcaption><div class="device folded ax5" data-device="iphone-duo-folded" data-text-size="ax5" data-c="sieve" data-dev="ax5"></div></figure>
+      <figure><figcaption>Duo, open, 951 x 669, hinge 455.5 to 495.5</figcaption><div class="device open" data-device="iphone-duo-unfolded" data-c="sieve" data-dev="open"></div></figure>
+      <figure><figcaption>Large phone, size not written: drawn at 466 x 678, drag the corner to resize</figcaption><div class="device phone" data-device="iphone-regular" data-c="sieve" data-dev="phone"></div></figure>
+    </div>
+  </section>
+</div>
+
+<script>
+'use strict';
+/* ---------- Sample data (made up). Shapes from the brief: an order has a day, a sender and cards. ---------- */
+const TODAY = '2026-11-21';
+const ORDERS = [
+  { id: 'o1', sender: 'Bramble Cards', placed: '2026-11-03', cards: ['Ember Wyrm', 'Quiet Orchard'] },
+  { id: 'o2', sender: 'North Pier Games', placed: '2026-11-05', cards: ['Glass Lantern', 'Tidecaller Adept', 'Moth of Dusk'] },
+  { id: 'o3', sender: 'kestrel_tcg', placed: '2026-11-06', cards: ['Ironbark Sentinel'] },
+  { id: 'o4', sender: 'Pinegate TCG', placed: '2026-11-09', cards: ['Ember Wyrm', 'Glass Lantern', 'Salt Marsh Hound'] },
+  { id: 'o5', sender: "Ollie's Singles", placed: '2026-11-10', cards: ['Moth of Dusk', 'Lantern Keeper'] },
+  { id: 'o6', sender: 'Copper Fox Collectibles', placed: '2026-11-11', cards: ['Quiet Orchard', 'Ashen Pilgrim'] },
+  { id: 'o7', sender: 'Halfmoon Hobby', placed: '2026-11-12', cards: ['Glass Lantern', 'Ember Wyrm'] },
+  { id: 'o8', sender: 'Driftwood Cards', placed: '2026-11-13', cards: ['Tidecaller Adept'] },
+  { id: 'o9', sender: 'Pine Hollow Games', placed: '2026-11-14', cards: ['Ember Wyrm', 'Salt Marsh Hound', 'Vesper Owl'] },
+  { id: 'o10', sender: 'Sable and Co', placed: '2026-11-15', cards: ['Ashen Pilgrim', 'Ironbark Sentinel'] },
+  { id: 'o11', sender: 'Ninebark Games', placed: '2026-11-17', cards: ['Vesper Owl', 'Glass Lantern'] },
+  { id: 'o12', sender: 'Low Tide Singles', placed: '2026-11-20', cards: ['Ember Wyrm'] },
+];
+const ALL_CARDS = [...new Set(ORDERS.flatMap(o => o.cards))].sort();
+const DAYS = ['2026-11-21', '2026-11-20', '2026-11-19', '2026-11-18', '2026-11-17'];
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fmt = d => MONTHS[+d.slice(5, 7) - 1] + ' ' + (+d.slice(8, 10));
+const dayName = d => d === TODAY ? 'Today' : fmt(d);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const clone = x => JSON.parse(JSON.stringify(x));
+const byId = id => ORDERS.find(o => o.id === id);
+const plural = (n, one, many) => n + ' ' + (n === 1 ? one : many);
+function markFrag(sender, frag) {
+  if (!frag) return esc(sender);
+  const i = sender.toLowerCase().indexOf(frag.toLowerCase());
+  if (i < 0) return esc(sender);
+  return esc(sender.slice(0, i)) + '<mark>' + esc(sender.slice(i, i + frag.length)) + '</mark>' + esc(sender.slice(i + frag.length));
+}
+
+const ICON = {
+  env: '<svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" aria-hidden="true"><path d="M5 12l4 4 10-10"/></svg>',
+  wait: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+};
+function photoSvg(small) {
+  /* A drawn stand-in for the photo of the envelope front: smudged label, stamp, no readable sender. */
+  return '<svg viewBox="0 0 300 150" preserveAspectRatio="xMidYMid slice" role="img" aria-label="Sample photo of the envelope front">' +
+    '<rect width="300" height="150" fill="#F4EFE4"/><rect x="236" y="14" width="46" height="54" fill="#C9D7EE" stroke="#8FA4C8"/>' +
+    '<circle cx="226" cy="40" r="22" fill="none" stroke="#9AA3AE" stroke-width="2" stroke-dasharray="4 3"/>' +
+    (small ? '' : '<rect x="24" y="18" width="80" height="8" rx="4" fill="#B8B2A6"/><rect x="24" y="32" width="56" height="8" rx="4" fill="#CFC8BA"/>') +
+    '<rect x="96" y="80" width="130" height="10" rx="5" fill="#8C8577"/><rect x="96" y="98" width="100" height="10" rx="5" fill="#A7A091"/>' +
+    '<rect x="96" y="116" width="116" height="10" rx="5" fill="#A7A091"/><path d="M20 140 Q80 120 150 138 T290 128" stroke="#D9CFBD" stroke-width="10" fill="none" opacity=".7"/></svg>';
+}
+
+/* =====================================================================
+   Concept one: Shelf. Rank by shared clues; never strike out.
+   ===================================================================== */
+const SHELF_ENVS = [
+  { id: 'e1', day: '2026-11-19', photo: true, cards: ['Ember Wyrm', 'Glass Lantern'], name: 'pine', city: 'Ashford' },
+  { id: 'e2', day: '2026-11-18', photo: false, cards: ['Ironbark Sentinel'], name: '', city: '' },
+  { id: 'e3', day: '2026-11-14', photo: true, cards: ['Harbor Bell'], name: '', city: 'Ashford' },
+];
+const newDraft = () => ({ photo: false, day: TODAY, cards: [], q: '', name: '', city: '' });
+function shelfFresh() {
+  return { tab: 'waiting', screen: 'list', cur: 'e1', sheet: null, conf: null, more: false, loadError: false,
+    undo: null, alsoCheck: false, draft: newDraft(), editing: null, envs: clone(SHELF_ENVS), matched: [], seq: 4 };
+}
+function shelfFits(env) {
+  const inTime = ORDERS.filter(o => o.placed <= env.day);
+  const late = ORDERS.length - inTime.length;
+  const clueCount = env.cards.length + (env.name ? 1 : 0);
+  const scored = inTime.map(o => {
+    const cards = env.cards.filter(c => o.cards.includes(c));
+    const name = !!env.name && o.sender.toLowerCase().includes(env.name.toLowerCase());
+    return { o, cards, name, score: cards.length + (name ? 1 : 0) };
+  });
+  const fits = scored.filter(x => x.score > 0).sort((a, b) => b.score - a.score || b.o.placed.localeCompare(a.o.placed));
+  const rest = scored.filter(x => x.score === 0);
+  fits.forEach(x => { x.full = x.score === clueCount; });
+  return { fits, rest, late, clueCount };
+}
+function shelfEnv(s, id) { return s.envs.find(e => e.id === id); }
+
+function shelfListRows(s, dev) {
+  if (s.tab === 'matched') {
+    if (!s.matched.length) return '<div class="empty"><p>No envelope is matched yet. An envelope lands here when you match it to an order.</p><button class="btn quiet" data-a="tab" data-v="waiting">Show waiting envelopes</button></div>';
+    return '<div class="list">' + s.matched.map(m => '<div class="row"><div class="thumb">' + (m.env.photo ? photoSvg(true) : ICON.env) + '</div><div class="main"><span class="name">' + esc(byId(m.order).sender) + '</span><span class="sub muted">Envelope of ' + fmt(m.env.day) + '</span></div></div>').join('') + '</div>';
+  }
+  if (!s.envs.length && !s.undo) {
+    return '<div class="empty"><p>No unknown envelopes. Add one when mail comes and you cannot tell who sent it.</p><button class="btn primary" data-a="add">Add an envelope</button></div>';
+  }
+  let html = '';
+  if (s.loadError) html += '<div class="notice" role="status"><p>Open orders did not load, so who could have sent each envelope is unknown. Your envelopes are safe.</p><button class="btn quiet" data-a="retry">Try again</button></div>';
+  html += '<div class="list">';
+  const rows = s.envs.map(e => {
+    const f = shelfFits(e);
+    let badge;
+    if (s.loadError) badge = '<span class="count unk" aria-label="unknown">?</span>';
+    else if (!f.clueCount) badge = '';
+    else { const full = f.fits.filter(x => x.full).length; badge = '<span class="count' + (full === 1 ? ' one' : '') + '">' + full + '</span>'; }
+    const cur = dev === 'open' && s.cur === e.id ? ' aria-current="true"' : '';
+    const clues = e.cards.length ? esc(e.cards.join(', ')) : (e.name || e.city ? esc([e.name, e.city].filter(Boolean).join(', ')) : 'Nothing written down yet');
+    return { id: e.id, html: '<button class="row" data-a="open" data-v="' + e.id + '"' + cur + '><div class="thumb">' + (e.photo ? photoSvg(true) : ICON.env) + '</div><div class="main"><span class="name">' + dayName(e.day) + '</span><span class="sub muted">' + clues + '</span></div>' + badge + '<span class="chev" aria-hidden="true">›</span></button>' };
+  });
+  if (s.undo) {
+    const at = Math.min(s.undo.at, rows.length);
+    rows.splice(at, 0, { html: '<div class="inline-answer" role="status"><span class="sub">Matched to ' + esc(byId(s.undo.order).sender) + '.</span><button class="btn plain" data-a="undo">Undo</button></div>' });
+  }
+  html += rows.map(r => r.html).join('') + '</div>';
+  html += '<p class="foot muted">The number is how many open orders share every clue. Green means one.</p>';
+  return html;
+}
+
+function shelfListScreen(s, dev) {
+  const showAdd = s.tab === 'waiting' && (s.envs.length || s.undo);
+  return '<div class="status">9:41</div><div class="body"><h1 class="large-title">' + (s.tab === 'waiting' ? 'Unknown mail' : 'Matched') + '</h1>' + shelfListRows(s, dev) + '</div>' +
+    '<div class="dock">' + (showAdd ? '<button class="btn primary wide" data-a="add">Add an envelope</button>' : '') +
+    '<nav class="tabbar" aria-label="Sections"><button data-a="tab" data-v="waiting"' + (s.tab === 'waiting' ? ' aria-current="true"' : '') + '>' + ICON.wait + 'Waiting</button>' +
+    '<button data-a="tab" data-v="matched"' + (s.tab === 'matched' ? ' aria-current="true"' : '') + '>' + ICON.done + 'Matched</button></nav></div><div class="homebar"></div>';
+}
+
+function shelfDetailBody(s, env) {
+  const f = shelfFits(env);
+  const chips = ['<span class="chip fixed">Came ' + dayName(env.day) + '</span>']
+    .concat(env.cards.map((c, i) => '<span class="chip">' + esc(c) + '<button class="x" data-a="rmcard" data-v="' + i + '" aria-label="Remove ' + esc(c) + '">×</button></span>'))
+    .concat(env.name ? ['<span class="chip">Label: ' + esc(env.name) + '<button class="x" data-a="rmname" aria-label="Remove label name">×</button></span>'] : [])
+    .concat(env.city ? ['<span class="chip kept" title="Kept with the envelope; open orders hold no city">City: ' + esc(env.city) + '<button class="x" data-a="rmcity" aria-label="Remove city">×</button></span>'] : []);
+  let fitsHtml;
+  const noClues = !f.clueCount;
+  const noFit = !noClues && !f.fits.length;
+  if (s.loadError) {
+    fitsHtml = '<div class="notice" role="status"><p>Open orders did not load, so who could have sent it is unknown.</p><button class="btn quiet" data-a="retry">Try again</button></div>';
+  } else if (noClues) {
+    fitsHtml = '<div class="empty"><p>Add a card name or a name from the label to see who could have sent it.</p><button class="btn primary" data-a="edit">Edit clues</button></div>';
+  } else if (noFit) {
+    fitsHtml = '<div class="empty"><p>No open order shares these clues. The envelope stays kept here.</p><button class="btn primary" data-a="edit">Edit clues</button></div>';
+  } else {
+    fitsHtml = '<div class="list">' + f.fits.map(x => {
+      const other = x.o.cards.length - x.cards.length;
+      return '<button class="row" data-a="pick" data-v="' + x.o.id + '"><span class="fitbar' + (x.full ? '' : ' part') + '" aria-label="' + (x.full ? 'shares every clue' : 'shares some clues') + '"></span><div class="main"><span class="name">' + markFrag(x.o.sender, x.name ? env.name : '') + '</span><div class="cluster">' +
+        x.cards.map(c => '<span class="tag">' + esc(c) + '</span>').join('') + (other ? '<span class="tag dim">+' + other + '</span>' : '') + '</div></div><span class="foot muted">' + fmt(x.o.placed) + '</span><span class="chev" aria-hidden="true">›</span></button>';
+    }).join('') + '</div>' +
+    '<p class="foot muted">A full bar shares every clue; a half bar shares some.</p>' +
+    '<button class="btn plain" data-a="more" aria-expanded="' + s.more + '">' + (s.more ? 'Hide' : 'Show') + ' the ' + plural(f.rest.length, 'order', 'orders') + ' that share no clue</button>' +
+    (s.more ? '<div class="list">' + f.rest.map(x => '<button class="row" data-a="pick" data-v="' + x.o.id + '"><div class="main"><span class="sub">' + esc(x.o.sender) + '</span></div><span class="foot muted">' + fmt(x.o.placed) + '</span></button>').join('') + '</div>' +
+      (f.late ? '<p class="foot muted">' + plural(f.late, 'order was', 'orders were') + ' placed after this envelope came, so ' + (f.late === 1 ? 'it is' : 'they are') + ' left out.</p>' : '') : '');
+  }
+  return '<div class="photo">' + (env.photo ? photoSvg(false) : '<button class="btn quiet" data-a="photo">Add a photo of the front</button>') + '</div>' +
+    '<div class="stack"><h3 class="sec">What you know</h3><div class="cluster">' + chips.join('') + '</div>' +
+    (noClues || noFit ? '' : '<div><button class="btn quiet" data-a="edit">Edit clues</button></div>') + '</div>' +
+    '<div class="stack"><h3 class="sec">Who could have sent it</h3>' + fitsHtml + '</div>';
+}
+
+function shelfDetailScreen(s, dev, env) {
+  const back = dev === 'open' ? '<span class="spacer"></span>' : '<button class="back" data-a="back">‹ Unknown mail</button>';
+  return '<div class="status">9:41</div><div class="navbar">' + back + '<span class="title">Envelope of ' + fmt(env.day) + '</span><span class="spacer"></span></div>' +
+    '<div class="body">' + shelfDetailBody(s, env) + '</div><div class="homebar"></div>';
+}
+
+function cardSuggest(draft, prefix) {
+  const q = draft.q.trim().toLowerCase();
+  const list = ALL_CARDS.filter(c => !draft.cards.includes(c) && (!q || c.toLowerCase().includes(q))).slice(0, q ? 5 : 4);
+  let html = list.map(c => {
+    const n = ORDERS.filter(o => o.cards.includes(c)).length;
+    return '<button data-a="' + prefix + 'addcard" data-v="' + esc(c) + '"><span>' + esc(c) + '</span>' + (S.shelf.loadError ? '' : '<span class="foot muted">' + plural(n, 'open order', 'open orders') + '</span>') + '</button>';
+  }).join('');
+  if (q && !ALL_CARDS.some(c => c.toLowerCase() === q)) html += '<button data-a="' + prefix + 'addcard" data-v="' + esc(draft.q.trim()) + '"><span>Add "' + esc(draft.q.trim()) + '" as written</span>' + (S.shelf.loadError ? '' : '<span class="foot muted">on no open order</span>') + '</button>';
+  return html;
+}
+
+function shelfSheet(s) {
+  if (s.sheet === 'confirm') {
+    const o = byId(s.conf), env = shelfEnv(s, s.cur);
+    return '<div class="scrim" data-a="cancel"></div><div class="sheet" role="dialog" aria-label="Match envelope"><div class="grab"></div>' +
+      '<div class="sheet-bar"><button class="btn plain" data-a="cancel">Cancel</button><span class="title">Match envelope</span><span class="spacer" style="min-width:64px"></span></div>' +
+      '<div class="body"><div class="stack-tight"><span class="large-title" style="font-size:var(--t-title2);line-height:var(--l-title2)">' + esc(o.sender) + '</span><span class="sub muted">Order placed ' + fmt(o.placed) + '</span></div>' +
+      '<div class="check-list">' + o.cards.map(c => '<div><span class="mark' + (env.cards.includes(c) ? ' on' : '') + '">' + (env.cards.includes(c) ? '✓' : '') + '</span><span>' + esc(c) + '</span></div>').join('') + '</div>' +
+      '<p class="foot muted">A tick means you wrote that card down from the envelope.</p>' +
+      (OPTS.alsoCheck ? '<div class="toggle-row" data-opt="alsoCheck"><span class="sub">Also mark the ticked cards received</span><button class="switch" role="switch" aria-checked="' + s.alsoCheck + '" data-a="also" aria-label="Also mark the ticked cards received"></button></div>' : '') +
+      '<p class="sub">The envelope moves to Matched. ' + (s.alsoCheck ? 'The ticked cards are marked received on this order.' : 'Cards on the order stay as they are until you mark them yourself.') + '</p>' +
+      '<button class="btn primary wide" data-a="confirm">Match to ' + esc(o.sender) + '</button></div><div class="homebar"></div></div>';
+  }
+  if (s.sheet === 'add') {
+    const d = s.draft;
+    return '<div class="scrim" data-a="cancel"></div><div class="sheet" role="dialog" aria-label="' + (s.editing ? 'Edit clues' : 'New envelope') + '"><div class="grab"></div>' +
+      '<div class="sheet-bar"><button class="btn plain" data-a="cancel">Cancel</button><span class="title">' + (s.editing ? 'Edit clues' : 'New envelope') + '</span><button class="btn plain" data-a="save">Save</button></div>' +
+      '<div class="body">' +
+      '<div class="photo" style="height:110px">' + (d.photo ? photoSvg(false) : '<button class="btn quiet" data-a="dphoto">Take a photo of the front</button>') + '</div>' +
+      '<div class="field"><label>Day it came</label><div class="seg">' + DAYS.map(x => '<button data-a="dday" data-v="' + x + '" aria-pressed="' + (d.day === x) + '">' + dayName(x) + '</button>').join('') + '</div></div>' +
+      '<div class="field"><label for="q-' + 'shelf">Cards inside</label>' + (d.cards.length ? '<div class="cluster">' + d.cards.map((c, i) => '<span class="chip">' + esc(c) + '<button class="x" data-a="drmcard" data-v="' + i + '" aria-label="Remove ' + esc(c) + '">×</button></span>').join('') + '</div>' : '') +
+      '<input data-f="q" value="' + esc(d.q) + '" placeholder="Type a card name" autocomplete="off"><div class="sugg" data-sugg="shelf">' + cardSuggest(d, 'd') + '</div></div>' +
+      '<div class="field"><label>Name on the label, even part of it</label><input data-f="name" value="' + esc(d.name) + '" placeholder="For example: pine"></div>' +
+      '<div class="field"><label>City on the label</label><input data-f="city" value="' + esc(d.city) + '" placeholder="For example: Ashford"><p class="foot muted">Kept with the envelope. Open orders hold no city, so a city does not change who could have sent it.</p></div>' +
+      '</div><div class="homebar"></div></div>';
+  }
+  return '';
+}
+
+function shelfView(s, dev) {
+  const env = shelfEnv(s, s.cur);
+  if (dev === 'open') {
+    const right = env && s.tab === 'waiting'
+      ? shelfDetailScreen(s, dev, env)
+      : '<div class="status">9:41</div><div class="body"><div class="empty"><p>' + (s.tab === 'matched' ? 'Matched envelopes are listed on the left.' : s.envs.length ? 'Pick an envelope on the left to see who could have sent it.' : 'An envelope you add opens here.') + '</p></div></div><div class="homebar"></div>';
+    return '<div class="page open-left"><div class="screen">' + shelfListScreen(s, dev) + '</div></div><div class="hinge" aria-hidden="true"></div>' +
+      '<div class="page"><div class="screen">' + right + '</div>' + shelfSheet(s) + '</div>';
+  }
+  const main = s.screen === 'detail' && env && s.tab === 'waiting' ? shelfDetailScreen(s, dev, env) : shelfListScreen(s, dev);
+  return '<div class="screen scroll-all">' + main + '</div>' + shelfSheet(s);
+}
+
+function shelfAct(s, a, v) {
+  const env = shelfEnv(s, s.cur);
+  switch (a) {
+    case 'open': s.cur = v; s.screen = 'detail'; s.more = false; s.undo = null; break;
+    case 'back': s.screen = 'list'; break;
+    case 'tab': s.tab = v; s.screen = 'list'; break;
+    case 'add': s.editing = null; if (!s.draft || s.draft.fromEdit) s.draft = newDraft(); s.sheet = 'add'; break;
+    case 'edit': s.editing = s.cur; s.draft = Object.assign(clone(env), { q: '', fromEdit: true }); s.sheet = 'add'; break;
+    case 'cancel': s.sheet = null; break;
+    case 'retry': s.loadError = false; break;
+    case 'more': s.more = !s.more; break;
+    case 'photo': env.photo = true; break;
+    case 'rmcard': env.cards.splice(+v, 1); break;
+    case 'rmname': env.name = ''; break;
+    case 'rmcity': env.city = ''; break;
+    case 'pick': s.conf = v; s.alsoCheck = false; s.sheet = 'confirm'; break;
+    case 'also': s.alsoCheck = !s.alsoCheck; break;
+    case 'confirm': {
+      const at = s.envs.findIndex(e => e.id === s.cur);
+      s.matched.unshift({ env: clone(env), order: s.conf, at });
+      s.undo = { env: clone(env), order: s.conf, at };
+      s.envs.splice(at, 1); s.sheet = null; s.screen = 'list'; s.cur = s.envs[0] ? s.envs[0].id : null; break;
+    }
+    case 'undo': {
+      const u = s.undo; s.envs.splice(u.at, 0, u.env); s.matched = s.matched.filter(m => m.env.id !== u.env.id);
+      s.cur = u.env.id; s.undo = null; break;
+    }
+    case 'dphoto': s.draft.photo = true; break;
+    case 'dday': s.draft.day = v; break;
+    case 'daddcard': s.draft.cards.push(v); s.draft.q = ''; break;
+    case 'drmcard': s.draft.cards.splice(+v, 1); break;
+    case 'save': {
+      const d = s.draft; const data = { day: d.day, photo: d.photo, cards: d.cards.slice(), name: d.name.trim(), city: d.city.trim() };
+      if (s.editing) Object.assign(shelfEnv(s, s.editing), data);
+      else { const id = 'e' + (s.seq++); s.envs.unshift(Object.assign({ id }, data)); s.cur = id; s.draft = newDraft(); }
+      s.sheet = null; s.screen = 'detail'; s.tab = 'waiting'; s.undo = null; break;
+    }
+  }
+}
+
+const SHELF_STATES = {
+  list: ['Kept envelopes', s => {}],
+  detail: ['Envelope with fits', s => { s.screen = 'detail'; s.cur = 'e1'; }],
+  more: ['Fits and the rest', s => { s.screen = 'detail'; s.cur = 'e1'; s.more = true; }],
+  confirm: ['Match sheet', s => { s.screen = 'detail'; s.cur = 'e1'; s.conf = 'o4'; s.sheet = 'confirm'; }],
+  matched: ['Just matched', s => { shelfAct(s, 'open', 'e1'); s.conf = 'o4'; shelfAct(s, 'confirm'); }],
+  add: ['New envelope', s => { s.sheet = 'add'; s.draft.cards = ['Vesper Owl']; s.draft.q = 'lan'; }],
+  noclue: ['No clues yet', s => { s.envs[0].cards = []; s.envs[0].name = ''; s.screen = 'detail'; s.cur = 'e1'; }],
+  nofit: ['Nothing fits', s => { s.screen = 'detail'; s.cur = 'e3'; }],
+  error: ['Orders did not load', s => { s.loadError = true; }],
+  empty: ['Nothing kept', s => { s.envs = []; s.cur = null; }],
+};
+
+/* =====================================================================
+   Concept two: Sieve. A board of every open order; clues turn orders over.
+   ===================================================================== */
+const SIEVE_ENVS = [
+  { id: 'e1', day: '2026-11-19', photo: true, clues: [] },
+  { id: 'e2', day: '2026-11-18', photo: false, clues: [{ k: 'card', v: 'Ironbark Sentinel' }] },
+  { id: 'e3', day: '2026-11-14', photo: true, clues: [{ k: 'card', v: 'Harbor Bell' }] },
+];
+function sieveFresh() {
+  return { envs: clone(SIEVE_ENVS), cur: 'e1', sel: null, why: null, sheet: null, kind: 'card', q: '', staged: [], stagedDay: null,
+    loadError: false, undo: null, alsoCheck: false, seq: 4 };
+}
+function outReason(o, day, clues) {
+  if (o.placed > day) return 'Placed ' + fmt(o.placed) + ', after it came';
+  for (const c of clues) {
+    if (c.k === 'card' && !o.cards.includes(c.v)) return 'No ' + c.v;
+    if (c.k === 'name' && !o.sender.toLowerCase().includes(c.v.toLowerCase())) return 'Name has no "' + c.v + '"';
+  }
+  return null;
+}
+function sieveLeft(day, clues) { return ORDERS.filter(o => !outReason(o, day, clues)); }
+function sEnv(s) { return s.envs.find(e => e.id === s.cur); }
+function clueText(c) { return c.k === 'card' ? c.v : c.k === 'name' ? 'Label: ' + c.v : 'City: ' + c.v; }
+
+function sieveStrip(s) {
+  return '<nav class="strip" aria-label="Kept envelopes">' + s.envs.map(e => '<button class="env" data-a="s-env" data-v="' + e.id + '"' + (e.id === s.cur ? ' aria-current="true"' : '') + '><span>' + dayName(e.day) + '</span></button>').join('') +
+    '<button class="env add" data-a="s-new">+ New</button></nav>';
+}
+function sieveBoard(s, wide) {
+  const env = sEnv(s);
+  if (!env) return '<div class="empty"><p>No unknown envelopes. Add one when mail comes and you cannot tell who sent it.</p><button class="btn primary" data-a="s-new">Add an envelope</button></div>';
+  if (s.loadError) return '<div class="notice" role="status"><p>Open orders did not load, so the board is unknown. This envelope and its clues are saved.</p><button class="btn quiet" data-a="s-retry">Try again</button></div>';
+  const left = sieveLeft(env.day, env.clues);
+  const solo = left.length === 1 ? left[0].id : null;
+  let head;
+  if (!left.length) {
+    head = '<div class="notice" role="status"><p>No open order fits every clue. One clue may be wrong.</p><button class="btn quiet" data-a="s-undoclue">Remove the last clue</button></div>';
+  } else {
+    head = '<div class="board-head"><span><span class="big">' + left.length + '</span> <span class="sub muted">of ' + ORDERS.length + ' open orders still fit</span></span></div>';
+  }
+  const tiles = ORDERS.map(o => {
+    const r = outReason(o, env.day, env.clues);
+    const cls = ['tile'];
+    if (r) cls.push('down'); if (o.id === s.sel) cls.push('sel'); if (o.id === solo && !s.sel) cls.push('last'); if (r && s.why === o.id) cls.push('why');
+    const cardClues = env.clues.filter(c => c.k === 'card').map(c => c.v);
+    const cards = wide ? '<span class="cards">' + o.cards.map(c => cardClues.includes(c) ? '<b>' + esc(c) + '</b>' : esc(c)).join(', ') + '</span>' : '';
+    const nameClue = (env.clues.find(c => c.k === 'name') || {}).v;
+    const inner = '<span class="who">' + (r ? esc(o.sender) : markFrag(o.sender, nameClue)) + '</span>' + cards + '<span class="meta">' + (r && s.why === o.id ? esc(r) : fmt(o.placed)) + '</span>';
+    if (s.undo) return '<div class="' + cls.join(' ') + '"' + (r ? ' aria-label="' + esc(o.sender) + ', ruled out"' : '') + '>' + inner + '</div>';
+    return '<button class="' + cls.join(' ') + '" data-a="s-tile" data-v="' + o.id + '" aria-pressed="' + (o.id === s.sel) + '"' + (r ? ' aria-label="' + esc(o.sender) + ', ruled out: ' + esc(r) + '"' : '') + '>' + inner + '</button>';
+  }).join('');
+  return head + '<div class="board" role="group" aria-label="Open orders">' + tiles + '</div>' +
+    '<div class="legend"><span><i></i>Turned over: a clue rules it out. Tap one to see which.</span><span>Tap an order still face up to pick it yourself.</span></div>';
+}
+function sieveActions(s) {
+  const env = sEnv(s);
+  if (!env) return '';
+  if (s.undo) return '<div class="inline-answer" role="status"><span class="sub">Matched to ' + esc(byId(s.undo.order).sender) + '.</span><button class="btn plain" data-a="s-undo">Undo</button></div>';
+  const left = s.loadError ? [] : sieveLeft(env.day, env.clues);
+  const pick = s.sel || (left.length === 1 ? left[0].id : null);
+  return '<div class="actions"><button class="btn ' + (pick ? 'quiet' : 'primary') + '" data-a="s-clue">Add a clue</button>' +
+    (pick ? '<button class="btn primary" data-a="s-pick">It is from ' + esc(byId(pick).sender) + '</button>' : '') + '</div>';
+}
+function sieveClueChips(s) {
+  const env = sEnv(s);
+  if (!env) return '';
+  const live = !s.undo;
+  return (live ? '<button class="chip fixed" data-a="s-clue" data-v="day">' : '<span class="chip fixed">') + 'Came ' + dayName(env.day) + (live ? '</button>' : '</span>') +
+    env.clues.map((c, i) => '<span class="chip' + (c.k === 'city' ? ' kept' : '') + (live ? '' : ' fixed') + '">' + esc(clueText(c)) + (live ? '<button class="x" data-a="s-rm" data-v="' + i + '" aria-label="Remove ' + esc(clueText(c)) + '">×</button>' : '') + '</span>').join('');
+}
+
+function sieveSheet(s) {
+  const env = sEnv(s);
+  if (!s.sheet || !env) return '';
+  if (s.sheet === 'confirm') {
+    const o = byId(s.sel || sieveLeft(env.day, env.clues)[0].id);
+    const cardClues = env.clues.filter(c => c.k === 'card').map(c => c.v);
+    return '<div class="scrim" data-a="s-cancel"></div><div class="sheet" role="dialog" aria-label="Match envelope"><div class="grab"></div>' +
+      '<div class="sheet-bar"><button class="btn plain" data-a="s-cancel">Cancel</button><span class="title">Match envelope</span><span class="spacer" style="min-width:64px"></span></div>' +
+      '<div class="body"><div class="stack-tight"><span class="large-title" style="font-size:var(--t-title2);line-height:var(--l-title2)">' + esc(o.sender) + '</span><span class="sub muted">Order placed ' + fmt(o.placed) + '</span></div>' +
+      '<div class="check-list">' + o.cards.map(c => '<div><span class="mark' + (cardClues.includes(c) ? ' on' : '') + '">' + (cardClues.includes(c) ? '✓' : '') + '</span><span>' + esc(c) + '</span></div>').join('') + '</div>' +
+      '<p class="foot muted">A tick means you wrote that card down from the envelope.</p>' +
+      (OPTS.alsoCheck ? '<div class="toggle-row" data-opt="alsoCheck"><span class="sub">Also mark the ticked cards received</span><button class="switch" role="switch" aria-checked="' + s.alsoCheck + '" data-a="s-also" aria-label="Also mark the ticked cards received"></button></div>' : '') +
+      '<p class="sub">The envelope leaves the strip. ' + (s.alsoCheck ? 'The ticked cards are marked received on this order.' : 'Cards on the order stay as they are until you mark them yourself.') + '</p>' +
+      '<button class="btn primary wide" data-a="s-confirm">Match to ' + esc(o.sender) + '</button></div><div class="homebar"></div></div>';
+  }
+  /* Clue sheet: staged clues, each choice shows how many orders it would leave. */
+  const staged = env.clues.concat(s.staged);
+  const day = s.stagedDay || env.day;
+  const leaves = extra => sieveLeft(extra.day || day, staged.concat(extra.clue ? [extra.clue] : [])).length;
+  const kinds = [['card', 'Card inside'], ['name', 'Name on label'], ['city', 'City'], ['day', 'Day it came']];
+  let body = '<div class="seg" role="group" aria-label="Kind of clue">' + kinds.map(k => '<button data-a="s-kind" data-v="' + k[0] + '" aria-pressed="' + (s.kind === k[0]) + '">' + k[1] + '</button>').join('') + '</div>';
+  if (s.staged.length || s.stagedDay) body += '<div class="cluster">' + (s.stagedDay ? '<span class="chip fixed">Came ' + dayName(s.stagedDay) + '</span>' : '') + s.staged.map((c, i) => '<span class="chip">' + esc(clueText(c)) + '<button class="x" data-a="s-unstage" data-v="' + i + '" aria-label="Remove ' + esc(clueText(c)) + '">×</button></span>').join('') + '</div>';
+  body += '<div class="sugg" data-sugg="sieve">' + sieveSugg(s, leaves) + '</div>';
+  if (s.kind === 'card' || s.kind === 'name' || s.kind === 'city') {
+    body = body.replace('<div class="sugg"', '<input data-f="sq" value="' + esc(s.q) + '" placeholder="' + (s.kind === 'card' ? 'Type a card name' : s.kind === 'name' ? 'Type what you can read' : 'Type the city') + '" autocomplete="off" aria-label="Clue text"><div class="sugg"');
+  }
+  if (s.kind === 'city') body += '<p class="foot muted">A city is kept with the envelope. Open orders hold no city, so it turns nothing over.</p>';
+  const now = sieveLeft(day, staged).length;
+  return '<div class="scrim" data-a="s-cancel"></div><div class="sheet" role="dialog" aria-label="Add a clue"><div class="grab"></div>' +
+    '<div class="sheet-bar"><button class="btn plain" data-a="s-cancel">Cancel</button><span class="title">Add a clue</span><button class="btn plain" data-a="s-done">Done</button></div>' +
+    '<div class="body">' + body + '<p class="sub" data-now>' + (s.loadError ? 'Open orders did not load, so how many fit is unknown. Your clues are saved.' : 'With these clues, ' + plural(now, 'order fits', 'orders fit') + '.') + '</p></div><div class="homebar"></div></div>';
+}
+function sieveSugg(s, leavesFn) {
+  const env = sEnv(s);
+  const staged = env.clues.concat(s.staged);
+  const day = s.stagedDay || env.day;
+  const leaves = leavesFn || (extra => sieveLeft(extra.day || day, staged.concat(extra.clue ? [extra.clue] : [])).length);
+  const q = s.q.trim();
+  const row = (a, v, text, n) => '<button data-a="' + a + '" data-v="' + esc(v) + '"><span>' + text + '</span>' +
+    (s.loadError ? '' : '<span class="foot ' + (n ? 'muted' : '') + '" style="' + (n ? '' : 'color:var(--warn)') + '">leaves ' + n + '</span>') + '</button>';
+  if (s.kind === 'day') return DAYS.map(d => row('s-setday', d, dayName(d), leaves({ day: d }))).join('');
+  if (s.kind === 'card') {
+    const have = staged.filter(c => c.k === 'card').map(c => c.v);
+    let list = ALL_CARDS.filter(c => !have.includes(c) && (!q || c.toLowerCase().includes(q.toLowerCase())));
+    list = list.slice(0, q ? 5 : 4);
+    let h = list.map(c => row('s-stage', 'card|' + c, esc(c), leaves({ clue: { k: 'card', v: c } }))).join('');
+    if (q && !ALL_CARDS.some(c => c.toLowerCase() === q.toLowerCase())) h += row('s-stage', 'card|' + q, 'Add "' + esc(q) + '" as written', leaves({ clue: { k: 'card', v: q } }));
+    return h;
+  }
+  if (s.kind === 'name') return q ? row('s-stage', 'name|' + q, 'Label has "' + esc(q) + '"', leaves({ clue: { k: 'name', v: q } })) : '';
+  if (s.kind === 'city') return q ? '<button data-a="s-stage" data-v="city|' + esc(q) + '"><span>Keep "' + esc(q) + '"</span></button>' : '';
+  return '';
+}
+
+function sieveView(s, dev) {
+  const env = sEnv(s);
+  if (dev === 'open') {
+    const left = '<div class="status">9:41</div>' + sieveStrip(s) + '<div class="body">' +
+      (env ? '<div class="stack-tight"><h1 class="large-title" style="font-size:var(--t-title2);line-height:var(--l-title2)">Envelope of ' + fmt(env.day) + '</h1></div>' +
+        '<div class="photo">' + (env.photo ? photoSvg(false) : '<button class="btn quiet" data-a="s-photo">Add a photo of the front</button>') + '</div>' +
+        '<div class="stack-tight"><h3 class="sec">What you know</h3><div class="clue-rows"><div><span>Came ' + dayName(env.day) + '</span>' + (s.undo ? '' : '<button class="x" data-a="s-clue" data-v="day" aria-label="Change the day">✎</button>') + '</div>' +
+        env.clues.map((c, i) => '<div' + (c.k === 'city' ? ' class="muted"' : '') + '><span>' + esc(clueText(c)) + '</span>' + (s.undo ? '' : '<button class="x" data-a="s-rm" data-v="' + i + '" aria-label="Remove ' + esc(clueText(c)) + '">×</button>') + '</div>').join('') + '</div></div>' : '') +
+      '</div><div class="tray">' + sieveActions(s) + '</div><div class="homebar"></div>';
+    const right = '<div class="status">9:41</div><div class="body open-board">' + sieveBoard(s, true) + '</div><div class="homebar"></div>';
+    return '<div class="page"><div class="screen">' + left + '</div>' + sieveSheet(s) + '</div><div class="hinge" aria-hidden="true"></div><div class="page"><div class="screen">' + right + '</div></div>';
+  }
+  const title = env ? '<h1 class="large-title" style="font-size:var(--t-title2);line-height:var(--l-title2)">Envelope of ' + fmt(env.day) + '</h1>' : '';
+  return '<div class="screen scroll-all"><div class="status">9:41</div>' + sieveStrip(s) + '<div class="body">' + title + sieveBoard(s, false) + '</div>' +
+    (env ? '<div class="tray"><div class="chips">' + sieveClueChips(s) + '</div>' + sieveActions(s) + '</div>' : '') + '<div class="homebar"></div></div>' + sieveSheet(s);
+}
+
+function sieveAct(s, a, v) {
+  const env = sEnv(s);
+  switch (a) {
+    case 's-env': s.cur = v; s.sel = null; s.why = null; s.undo = null; break;
+    case 's-new': { const id = 'e' + (s.seq++); s.envs.unshift({ id, day: TODAY, photo: false, clues: [] }); s.cur = id; s.sel = null; s.why = null; s.undo = null; s.sheet = 'clue'; s.kind = 'card'; s.q = ''; s.staged = []; s.stagedDay = null; break; }
+    case 's-retry': s.loadError = false; break;
+    case 's-photo': env.photo = true; break;
+    case 's-tile': {
+      const r = outReason(byId(v), env.day, env.clues);
+      if (r) { s.why = s.why === v ? null : v; } else { s.sel = s.sel === v ? null : v; s.why = null; }
+      s.undo = null; break;
+    }
+    case 's-clue': s.sheet = 'clue'; s.kind = v === 'day' ? 'day' : 'card'; s.q = ''; s.staged = []; s.stagedDay = null; break;
+    case 's-kind': s.kind = v; s.q = ''; break;
+    case 's-stage': { const i = v.indexOf('|'); s.staged.push({ k: v.slice(0, i), v: v.slice(i + 1) }); s.q = ''; break; }
+    case 's-unstage': s.staged.splice(+v, 1); break;
+    case 's-setday': s.stagedDay = v; break;
+    case 's-done': env.clues = env.clues.concat(s.staged); if (s.stagedDay) env.day = s.stagedDay; s.staged = []; s.stagedDay = null; s.sheet = null; s.sel = null; s.why = null; break;
+    case 's-cancel': s.sheet = null; s.staged = []; s.stagedDay = null; break;
+    case 's-rm': env.clues.splice(+v, 1); s.why = null; break;
+    case 's-undoclue': env.clues.pop(); break;
+    case 's-pick': s.sheet = 'confirm'; s.alsoCheck = false; break;
+    case 's-also': s.alsoCheck = !s.alsoCheck; break;
+    case 's-confirm': {
+      const order = s.sel || sieveLeft(env.day, env.clues)[0].id;
+      const at = s.envs.findIndex(e => e.id === env.id);
+      s.undo = { env: clone(env), order, at }; s.sheet = null; s.sel = null;
+      break;
+    }
+    case 's-undo': s.undo = null; break;
+  }
+}
+const SIEVE_STATES = {
+  start: ['New envelope, no clues', s => {}],
+  board: ['One card added', s => { s.envs[0].clues = [{ k: 'card', v: 'Ember Wyrm' }]; }],
+  clue: ['Clue sheet', s => { s.envs[0].clues = [{ k: 'card', v: 'Ember Wyrm' }]; s.sheet = 'clue'; s.kind = 'card'; s.q = 'lan'; }],
+  why: ['Why one is out', s => { s.envs[0].clues = [{ k: 'card', v: 'Ember Wyrm' }]; s.why = 'o2'; }],
+  one: ['One left', s => { s.envs[0].clues = [{ k: 'card', v: 'Ember Wyrm' }, { k: 'card', v: 'Glass Lantern' }, { k: 'name', v: 'pine' }, { k: 'city', v: 'Ashford' }]; }],
+  confirm: ['Match sheet', s => { s.envs[0].clues = [{ k: 'card', v: 'Ember Wyrm' }, { k: 'card', v: 'Glass Lantern' }, { k: 'name', v: 'pine' }]; s.sheet = 'confirm'; }],
+  matched: ['Just matched', s => { s.envs[0].clues = [{ k: 'card', v: 'Ember Wyrm' }, { k: 'card', v: 'Glass Lantern' }, { k: 'name', v: 'pine' }]; sieveAct(s, 's-confirm'); }],
+  zero: ['Nothing fits', s => { s.envs[0].clues = [{ k: 'card', v: 'Ember Wyrm' }, { k: 'name', v: 'tide' }]; }],
+  error: ['Orders did not load', s => { s.loadError = true; }],
+  empty: ['Nothing kept', s => { s.envs = []; s.cur = null; }],
+};
+
+/* After a match the envelope stays on screen with its answer and Undo; moving to another envelope takes it out of the strip. */
+function sieveLeave(s) {
+  if (!s.undo) return;
+  s.envs = s.envs.filter(e => e.id !== s.undo.env.id);
+  s.cur = s.envs[0] ? s.envs[0].id : null;
+  s.undo = null;
+}
+
+/* ---------- Shared plumbing ---------- */
+const OPTS = { alsoCheck: true };
+const S = { shelf: shelfFresh(), sieve: sieveFresh() };
+const VIEW = { shelf: shelfView, sieve: sieveView };
+const STATES = { shelf: SHELF_STATES, sieve: SIEVE_STATES };
+const CUR = { shelf: 'list', sieve: 'start' };
+
+function render(c) {
+  document.querySelectorAll('.device[data-c="' + c + '"]').forEach(f => { f.innerHTML = VIEW[c](S[c], f.dataset.dev); });
+  const nav = document.querySelector('[data-states="' + c + '"]');
+  nav.innerHTML = Object.entries(STATES[c]).map(([k, v]) => '<a href="#c=' + c + '&s=' + k + themeHash() + '"' + (CUR[c] === k ? ' aria-current="true"' : '') + '>' + v[0] + '</a>').join('');
+}
+function themeHash() { const t = document.documentElement.dataset.theme; return t ? '&t=' + t : ''; }
+function applyState(c, k) {
+  if (!STATES[c][k]) return;
+  S[c] = c === 'shelf' ? shelfFresh() : sieveFresh();
+  STATES[c][k][1](S[c]);
+  CUR[c] = k;
+  render(c);
+}
+function setTheme(t) {
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeSet === (t || 'auto'))));
+  render('shelf'); render('sieve');
+}
+/* On first load the page does not scroll: the focus ids lead a capture tool to the concept. */
+function readHash(ev) {
+  const p = new URLSearchParams(location.hash.slice(1));
+  setTheme(p.get('t'));
+  const c = p.get('c');
+  if (c && STATES[c]) {
+    applyState(c, p.get('s') || Object.keys(STATES[c])[0]);
+    const sec = document.getElementById('concept-' + c);
+    if (sec) { sec.hidden = false; if (ev) sec.scrollIntoView({ block: 'start' }); }
+  }
+}
+
+document.addEventListener('click', e => {
+  const sl = e.target.closest('[data-states] a');
+  if (sl) {
+    /* Re-pressing the current state link resets it, even when the hash already matches. */
+    const p = new URLSearchParams(sl.getAttribute('href').slice(1));
+    if (location.hash === sl.getAttribute('href')) { e.preventDefault(); applyState(p.get('c'), p.get('s')); }
+    return;
+  }
+  const tb = e.target.closest('[data-theme-set]');
+  if (tb) { setTheme(tb.dataset.themeSet); return; }
+  const hide = e.target.closest('[data-hide]');
+  if (hide) { document.getElementById(hide.dataset.hide).hidden = true; document.getElementById('show-hidden').hidden = false; return; }
+  const oh = e.target.closest('[data-opt-hide]');
+  if (oh) { OPTS[oh.dataset.optHide] = false; oh.hidden = true; document.getElementById('show-hidden').hidden = false; render('shelf'); render('sieve'); return; }
+  if (e.target.closest('#show-hidden')) {
+    document.querySelectorAll('.concept').forEach(x => { x.hidden = false; });
+    OPTS.alsoCheck = true; document.querySelectorAll('[data-opt-hide]').forEach(x => { x.hidden = false; });
+    e.target.hidden = true; render('shelf'); render('sieve'); return;
+  }
+  const btn = e.target.closest('[data-a]');
+  if (!btn) return;
+  const f = btn.closest('.device');
+  if (!f) return;
+  const c = f.dataset.c;
+  if (c === 'shelf') shelfAct(S.shelf, btn.dataset.a, btn.dataset.v);
+  else {
+    const a = btn.dataset.a;
+    /* A matched envelope holds still with its Undo until the person moves to another envelope. */
+    if (S.sieve.undo && (a === 's-env' || a === 's-new')) { sieveLeave(S.sieve); sieveAct(S.sieve, a, btn.dataset.v); }
+    else if (!S.sieve.undo || a === 's-undo') sieveAct(S.sieve, a, btn.dataset.v);
+  }
+  render(c);
+});
+document.addEventListener('input', e => {
+  const inp = e.target; const f = inp.closest('.device'); if (!f || !inp.dataset.f) return;
+  const c = f.dataset.c;
+  if (c === 'shelf') {
+    S.shelf.draft[inp.dataset.f] = inp.value;
+    if (inp.dataset.f === 'q') document.querySelectorAll('.device[data-c="shelf"] [data-sugg="shelf"]').forEach(x => { x.innerHTML = cardSuggest(S.shelf.draft, 'd'); });
+  } else {
+    S.sieve.q = inp.value;
+    document.querySelectorAll('.device[data-c="sieve"] [data-sugg="sieve"]').forEach(x => { x.innerHTML = sieveSugg(S.sieve); });
+  }
+  document.querySelectorAll('.device[data-c="' + c + '"] input[data-f="' + inp.dataset.f + '"]').forEach(x => { if (x !== inp) x.value = inp.value; });
+});
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Enter') return;
+  const inp = e.target; const f = inp.closest && inp.closest('.device'); if (!f || !inp.dataset.f) return;
+  const first = inp.parentElement.querySelector('.sugg button');
+  if (first) first.click();
+});
+window.addEventListener('hashchange', readHash);
+readHash();
+</script>
 </body>
 </html>

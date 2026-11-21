@@ -112,6 +112,8 @@ figcaption b { color:var(--ink); }
 .field input { flex:1; min-width:0; border:0; background:transparent; font:calc(16px * var(--ts)) var(--cochin); color:var(--ink); min-height:46px; outline:none; }
 .field input::placeholder { color:var(--inkSoft); }
 .field .chip { font:calc(11px * var(--ts)) var(--mono); background:var(--manila); color:var(--manilaInk); border-radius:5px; padding:4px 8px; white-space:nowrap; }
+.dock { position:absolute; left:0; right:0; z-index:5; padding:8px 16px; background:var(--paper); border-top:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
+.dock .matches { box-shadow:0 4px 16px var(--shadow); }
 .matches { display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:8px; }
 .match { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 12px; font-size:calc(15px * var(--ts));
   border-top:1px solid var(--line); background:transparent; border-left:0; border-right:0; border-bottom:0; font-family:var(--cochin); color:var(--ink); text-align:left; cursor:pointer; }
@@ -235,7 +237,7 @@ figcaption b { color:var(--ink); }
   <div class="toolbar" aria-label="States">
     <span class="micro" style="font-size:13px">State</span>
     <a href="#s=start">Start of day</a><a href="#s=working">Mid pile</a><a href="#s=typing">Typing</a><a href="#s=held">Shared name held</a>
-    <a href="#s=post">Held card decided</a><a href="#s=nomatch">No match</a><a href="#s=done">Day done</a><a href="#s=away">Left the app</a>
+    <a href="#s=post">Held card decided</a><a href="#s=nomatch">No match</a><a href="#s=done">Day done</a><a href="#s=away">Left the app</a><a href="#s=failed">Save failed</a><a href="#s=typing&f=top">Field at the top</a>
   </div>
   <div class="toolbar">
     <button class="ctl" type="button" data-page="tags">Tags on or off</button>
@@ -317,7 +319,7 @@ const money = n => "$" + n.toFixed(2);
 
 /* ---------- state, one per concept ---------- */
 function blank() { return { piles: [], draft: 5, q: "", keys: false, bench: null, tie: null, held: [], loose: [], got: {}, done: [], aside: [],
-  touched: {}, receipt: null, composing: false, tray: null, away: false, count: 0, lastName: null }; }
+  touched: {}, receipt: null, composing: false, tray: null, away: false, count: 0, lastName: null, dock: true }; }
 const KEY = "mail-day-flow-directed-2";
 let ST = { bench: blank(), wall: blank(), piles: blank(), count: blank() };
 let PAGE = { hidden: [], tags: true, only: null, dev: null };
@@ -404,6 +406,7 @@ function preset(name) {
   A.type(s, "Gilded Lotus"); A.setAside(s);
   A.type(s, "Llanowar Elves"); A.tapLine(s, "CC|0");
   if (name === "working" || name === "away") { s.away = name === "away"; return s; }
+  if (name === "failed") { s.failSaves = true; s.err = { at: "tap", key: "CC|1" }; return s; }
   A.newEnvelope(s);
   if (name === "typing") { s.q = "arc"; s.keys = true; return s; }
   A.type(s, "Arcane Signet"); s.keys = true;
@@ -598,19 +601,25 @@ function onePage(c, s, dev, H, W) {
   const keysTop = H - 289;  // duo-fold-and-keyboard: outer keys 250 to 289 pt tall; the taller reading is drawn
   const barTop = H - 83;    // duo-fold-and-keyboard: the system tab bar starts at y 595 pt and is 83 pt tall
   const bottom = s.keys ? keysTop : barTop;
+  // Docked low (ux-thumb-zone): the field sits on the tab bar, or on the keys while they are up, and its matches
+  // open above it as an overlay, so nothing in the scroll moves.
+  const dock = !!s.dock && dev !== "ax5";
+  const fieldTop = dock ? "" : field(s, c, c + dev);
   let body;
   if (c === "wall") {
     const cols = dev === "ax5" ? 1 : 4;
     // The wall sits right under the field, so the tiles a typed card lights stay above the keys. The lit tiles are the
     // match list, so the wall draws no list of names.
-    body = `${rail(s, c)}${field(s, c, c + dev)}${wall(s, c, cols)}${benchCard(s, c, dev)}${asideStrip(s)}`;
+    body = `${rail(s, c)}${fieldTop}${wall(s, c, cols)}${benchCard(s, c, dev)}${asideStrip(s)}`;
   } else {
     const trays = dev === "phone" ? `${oddList(s)}${doneList(s)}${asideList(s)}` : s.tray ? trayPanel(s, c) : trayChips(s, c);
-    body = `${rail(s, c)}${field(s, c, c + dev)}${matchList(s, c)}${benchCard(s, c, dev)}${trays}`;
+    body = `${rail(s, c)}${fieldTop}${dock ? "" : matchList(s, c)}${benchCard(s, c, dev)}${trays}`;
   }
   body += `<div class="list tag-today" data-tag="Today: package list"><h3>All packages<span class="num">${PKGS.filter(p => openPkg(s, p)).length} open</span></h3><p class="note">Today's Packages list goes on below, as it is now.</p></div>`;
+  const dockH = dock ? 64 : 0;
+  const dockHtml = dock ? `<div class="dock app" style="bottom:${H - bottom}px">${c === "wall" ? "" : matchList(s, c)}${field(s, c, c + dev)}</div>` : "";
   return `<div class="dev ${dev === "phone" ? "" : dev}" style="width:${W}px;height:${H}px" data-frame="${c}-${dev}">
-    ${status()}<div class="scroll app" style="bottom:${H - bottom}px"><div class="pad">${body}</div></div>
+    ${status()}<div class="scroll app" style="bottom:${H - bottom + dockH}px"><div class="pad">${body}</div></div>${dockHtml}
     ${s.keys ? keys(keysTop, c) : tabbar(`left:16px;right:16px;top:${barTop + 8}px;height:64px`, s.aside.length)}
     ${s.away ? `<div class="home">MANIFEST is in the background.<br>Press Open Again above to come back.</div>` : ""}</div>`;
 }
@@ -655,7 +664,9 @@ function renderDemo(c) {
   const cards = ["Lightning Bolt", "Arcane Signet", "Swords to Plowshares", "Path to Exile", "Brainstorm", "Jeweled Lotus"];
   host.innerHTML = `<span class="lbl">Card in hand</span>${cards.map(n => `<button class="ctl chip" type="button" data-act="type" data-arg="${esc(n)}" data-c="${c}">${n}</button>`).join("")}
     <span class="lbl">Leave and return</span><button class="ctl ${s.away ? "on" : ""}" type="button" data-act="away" data-c="${c}">${s.away ? "Open Again" : "Leave the App"}</button>
-    <button class="ctl" type="button" data-act="reset" data-c="${c}">Start the Day Over</button>`;
+    <button class="ctl" type="button" data-act="reset" data-c="${c}">Start the Day Over</button>
+    <span class="lbl">Card field</span><button class="ctl ${s.dock ? "" : "on"}" type="button" data-act="dock" data-arg="top" data-c="${c}" aria-pressed="${!s.dock}">At the Top</button><button class="ctl ${s.dock ? "on" : ""}" type="button" data-act="dock" data-arg="low" data-c="${c}" aria-pressed="${!!s.dock}">Docked Low</button>
+    <span class="lbl">Saves</span><button class="ctl ${s.failSaves ? "on" : ""}" type="button" data-act="failsaves" data-c="${c}" aria-pressed="${!!s.failSaves}">${s.failSaves ? "Saves Fail: on" : "Make Saves Fail"}</button>`;
 }
 function renderTray() {
   for (const c of ["piles", "count"]) {
@@ -676,6 +687,8 @@ function render() {
     const k = sec.dataset.opt; sec.hidden = PAGE.hidden.includes(k) || (PAGE.only && ["bench", "wall"].includes(k) && PAGE.only !== k);
   }
   if (focusMemo) { const el = document.querySelector(`[data-fid="${focusMemo.fid}"]`); if (el) { el.focus(); try { el.setSelectionRange(focusMemo.pos, focusMemo.pos); } catch (e) {} } }
+  // The day-done rule has drawn once; every later render leaves it drawn. It plays again only after the day reopens.
+  for (const s of Object.values(ST)) s.celebrated = ended(s);
   save();
 }
 
@@ -740,6 +753,7 @@ function fromHash() {
   const h = new URLSearchParams(location.hash.slice(1));
   const sname = h.get("s");
   if (sname) { ST.bench = preset(sname); ST.wall = preset(sname); ST.piles = preset(sname === "start" ? "start" : "working"); ST.count = preset(sname === "start" ? "start" : "working"); }
+  if (h.get("f")) for (const k of ["bench", "wall"]) ST[k].dock = h.get("f") === "low";
   PAGE.only = h.get("c"); PAGE.dev = h.get("d");
   if (h.get("hide")) PAGE.hidden = h.get("hide").split(",");
   render();

@@ -1,0 +1,722 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Find a Card Concepts</title>
+<style>
+/* Tokens: house 4 px step and 8 px radius (tokens.md). Colours are this designer's own, by role. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --radius: 8px;
+  --bg: #E7EAF0; --surface: #FFFFFF; --surface-2: #F2F4F8; --text: #151922; --text-2: #525A69;
+  --line: #D2D7E0; --accent: #2B47C9; --on-accent: #FFFFFF; --arrived: #16795A; --waiting: #A65400;
+  --hit: #FFE38A; --hit-text: #151922; --hinge: #20242C; --annot: #9B2C8A;
+  --map-dim: #C9CED8;
+  color-scheme: light;
+  font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0D1015; --surface: #171B22; --surface-2: #1F242D; --text: #E9ECF2; --text-2: #A3ABBA;
+    --line: #2F3643; --accent: #93A6FF; --on-accent: #0D1015; --arrived: #55CB9D; --waiting: #F2A24B;
+    --hit: #6A5410; --hit-text: #FFF3C4; --hinge: #000000; --annot: #E38AD5; --map-dim: #333A47;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0D1015; --surface: #171B22; --surface-2: #1F242D; --text: #E9ECF2; --text-2: #A3ABBA;
+  --line: #2F3643; --accent: #93A6FF; --on-accent: #0D1015; --arrived: #55CB9D; --waiting: #F2A24B;
+  --hit: #6A5410; --hit-text: #FFF3C4; --hinge: #000000; --annot: #E38AD5; --map-dim: #333A47;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, sans-serif; font-size: 100%; line-height: 1.35; }
+button, input, select { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Bench: the page around the device frames ---------- */
+.sample { position: sticky; top: 0; z-index: 5; padding: var(--space-2) var(--space-4); background: var(--text); color: var(--surface); font-size: 0.9375rem; }
+.bench { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); max-inline-size: 90rem; margin-inline: auto; }
+.bench h1 { margin: 0; font-size: 1.75rem; line-height: 1.2; }
+.bench .who p { margin: 0; color: var(--text-2); font-size: 0.9375rem; }
+.who { display: flex; flex-direction: column; gap: var(--space-1); }
+.tabs, .ctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.tabgrp { display: flex; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); overflow: hidden; }
+.tabgrp button { border: 0; background: none; padding: var(--space-2) var(--space-3); min-height: 44px; cursor: pointer; }
+.tabgrp button[aria-selected="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.tabgrp .hide { border-inline-start: 1px solid var(--line); color: var(--text-2); font-size: 0.875rem; }
+.ctl label { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; }
+.ctl select { min-height: 44px; padding: 0 var(--space-2); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.seg { display: flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.seg button { border: 0; background: none; min-height: 44px; padding: 0 var(--space-3); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface-2); font-weight: 600; box-shadow: inset 0 -3px 0 var(--accent); }
+.plain { border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); min-height: 44px; padding: 0 var(--space-3); cursor: pointer; }
+.blurb { margin: 0; max-inline-size: 70ch; font-size: 1.0625rem; }
+.stage { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-8); padding: var(--space-4); max-inline-size: 90rem; margin-inline: auto; }
+.device { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 100%; }
+.device figcaption { font-size: 0.875rem; color: var(--text-2); max-inline-size: 466px; }
+.device figcaption b { color: var(--text); }
+.scroller { max-inline-size: 100%; overflow-x: auto; }
+.screen {
+  position: relative; overflow: hidden; background: var(--surface); border: 1px solid var(--line);
+  border-radius: var(--radius); flex: none;
+  /* Dynamic Type, Large (default) row of the HIG typography table. */
+  --t-lt: 34px; --l-lt: 41px; --t-t2: 22px; --l-t2: 28px; --t-t3: 20px; --l-t3: 25px;
+  --t-head: 17px; --l-head: 22px; --t-body: 17px; --l-body: 22px; --t-call: 16px; --l-call: 21px;
+  --t-sub: 15px; --l-sub: 20px; --t-foot: 13px; --l-foot: 18px; --t-c1: 12px; --l-c1: 16px; --t-c2: 11px; --l-c2: 13px;
+  font-size: var(--t-body); line-height: var(--l-body);
+}
+/* Dynamic Type, AX5 row of the same table. */
+.screen[data-ax="5"] {
+  --t-lt: 60px; --l-lt: 70px; --t-t2: 56px; --l-t2: 66px; --t-t3: 55px; --l-t3: 65px;
+  --t-head: 53px; --l-head: 62px; --t-body: 53px; --l-body: 62px; --t-call: 51px; --l-call: 60px;
+  --t-sub: 49px; --l-sub: 58px; --t-foot: 44px; --l-foot: 52px; --t-c1: 43px; --l-c1: 51px; --t-c2: 40px; --l-c2: 48px;
+}
+.pose-folded, .pose-phone { width: 466px; height: 678px; }
+.pose-phone { resize: horizontal; }
+.pose-open { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.hinge { background: var(--hinge); }
+.page { position: relative; overflow: hidden; container-type: inline-size; }
+
+/* ---------- The app inside a frame ---------- */
+.app { position: absolute; inset: 0; display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.nav { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4) var(--space-2); flex: none; }
+.lt { margin: 0; font-size: var(--t-lt); line-height: var(--l-lt); font-weight: 700; letter-spacing: 0.01em; }
+.back { align-self: flex-start; display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; min-width: 44px; padding: 0 var(--space-2) 0 0; border: 0; background: none; color: var(--accent); font-size: var(--t-body); line-height: var(--l-body); cursor: pointer; }
+.back svg { width: 12px; height: 20px; flex: none; }
+.body { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-4) var(--space-4); }
+.dock { flex: none; padding: var(--space-2) var(--space-4) var(--space-3); border-top: 1px solid var(--line); background: var(--surface); display: flex; flex-direction: column; gap: var(--space-2); }
+.field { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-1) 0 var(--space-3); border-radius: var(--radius); background: var(--surface-2); border: 1px solid var(--line); }
+.field:focus-within { border-color: var(--accent); }
+.field svg { width: 18px; height: 18px; flex: none; color: var(--text-2); }
+.field input { flex: 1 1 auto; min-width: 0; border: 0; background: none; outline: none; font-size: var(--t-body); line-height: var(--l-body); padding: var(--space-2) 0; }
+.field input::placeholder { color: var(--text-2); }
+.field input::-webkit-search-cancel-button { display: none; }
+.clear { width: 44px; height: 44px; border: 0; background: none; color: var(--text-2); cursor: pointer; display: grid; place-items: center; flex: none; }
+.clear svg { width: 18px; height: 18px; }
+.clear[data-off] { visibility: hidden; }
+
+.hint { margin: 0; color: var(--text-2); font-size: var(--t-call); line-height: var(--l-call); max-inline-size: 36ch; }
+.sect { margin: 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); font-weight: 600; }
+.recent { display: flex; flex-direction: column; }
+.recent button { display: flex; align-items: center; gap: var(--space-3); min-height: 44px; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: start; padding: 0; cursor: pointer; font-size: var(--t-body); line-height: var(--l-body); }
+.recent svg { width: 16px; height: 16px; color: var(--text-2); flex: none; }
+
+.sum { margin: 0; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.sum strong { color: var(--text); font-size: var(--t-sub); line-height: var(--l-sub); }
+.k { display: inline-flex; align-items: center; gap: var(--space-1); }
+.mk { display: inline-block; width: 10px; height: 10px; border-radius: 50%; flex: none; forced-color-adjust: none; }
+.mk.arr { background: var(--arrived); }
+.mk.wait { border: 2px solid var(--waiting); background: transparent; }
+.screen[data-ax="5"] .mk { width: 24px; height: 24px; }
+.screen[data-ax="5"] .mk.wait { border-width: 4px; }
+
+.list { display: flex; flex-direction: column; }
+.row { display: grid; grid-template-columns: auto 1fr auto; grid-template-areas: "mk name price" ". meta meta"; align-items: center; column-gap: var(--space-3); row-gap: 2px;
+  min-height: 44px; padding: var(--space-2) 0; border: 0; border-bottom: 1px solid var(--line); background: none; text-align: start; cursor: pointer; width: 100%; }
+.row.on { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); }
+.row .mk { grid-area: mk; }
+.rname { grid-area: name; font-size: var(--t-body); line-height: var(--l-body); }
+.rmeta { grid-area: meta; display: flex; flex-wrap: wrap; gap: 0 var(--space-3); font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); }
+.rprice { grid-area: price; font-size: var(--t-body); line-height: var(--l-body); font-variant-numeric: tabular-nums; }
+.hitf { color: var(--text); font-weight: 600; }
+mark { background: var(--hit); color: var(--hit-text); border-radius: 2px; padding: 0 1px; }
+.screen[data-ax="5"] .row { grid-template-columns: auto 1fr; grid-template-areas: "mk name" ". meta" ". price"; }
+.screen[data-ax="5"] .rmeta { flex-direction: column; }
+.more { min-height: 44px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); cursor: pointer; font-size: var(--t-call); line-height: var(--l-call); }
+
+.answer { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); }
+.answer h2 { margin: 0; font-size: var(--t-t2); line-height: var(--l-t2); font-weight: 700; }
+.answer dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-4); font-size: var(--t-body); line-height: var(--l-body); }
+.answer dt { color: var(--text-2); }
+.answer dd { margin: 0; font-variant-numeric: tabular-nums; }
+.answer dd.late { color: var(--waiting); font-weight: 600; }
+.answer dd.got { color: var(--arrived); font-weight: 600; }
+.screen[data-ax="5"] .answer dl { grid-template-columns: 1fr; gap: 0; }
+.screen[data-ax="5"] .answer dd { margin-bottom: var(--space-3); }
+.btn { min-height: 44px; padding: var(--space-2) var(--space-4); border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); cursor: pointer; font-size: var(--t-body); line-height: var(--l-body); font-weight: 600; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+
+.order { display: flex; flex-direction: column; gap: var(--space-3); }
+.order h2 { margin: 0; font-size: var(--t-t2); line-height: var(--l-t2); font-weight: 700; }
+.order .sub { margin: 0; color: var(--text-2); font-size: var(--t-sub); line-height: var(--l-sub); }
+.order .say { margin: 0; font-size: var(--t-call); line-height: var(--l-call); }
+.olines { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.olines li { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: var(--space-3); min-height: 44px; padding: var(--space-2) var(--space-2); border-bottom: 1px solid var(--line); font-size: var(--t-body); line-height: var(--l-body); }
+.olines li.hit { background: var(--surface-2); box-shadow: inset 3px 0 0 var(--accent); font-weight: 600; }
+.olines .p { font-variant-numeric: tabular-nums; }
+.olines .ad { color: var(--text-2); font-size: var(--t-foot); line-height: var(--l-foot); min-width: 6ch; text-align: end; }
+.screen[data-ax="5"] .olines li { grid-template-columns: auto 1fr; }
+.screen[data-ax="5"] .olines .p, .screen[data-ax="5"] .olines .ad { grid-column: 2; text-align: start; }
+
+.msg { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding-top: var(--space-6); }
+.msg p { margin: 0; font-size: var(--t-body); line-height: var(--l-body); max-inline-size: 32ch; }
+.msg details { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.msg summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.said { color: var(--text-2); font-size: var(--t-foot); line-height: var(--l-foot); }
+.skel { display: flex; flex-direction: column; }
+.skel i { display: block; height: 61px; border-bottom: 1px solid var(--line); background: linear-gradient(90deg, var(--surface-2) 0 60%, transparent 60%) 28px 14px / 70% 16px no-repeat, linear-gradient(90deg, var(--surface-2) 0 40%, transparent 40%) 28px 38px / 50% 12px no-repeat; }
+@media (prefers-reduced-motion: no-preference) { .skel i { animation: pulse 1.2s ease-in-out infinite alternate; } }
+@keyframes pulse { to { opacity: 0.5; } }
+
+/* Order map */
+.map { display: flex; flex-direction: column; gap: var(--space-1); flex: none; }
+.band { position: relative; display: grid; grid-template-columns: 44px 1fr; align-items: center; gap: var(--space-2); min-height: 44px; width: 100%; padding: var(--space-1) var(--space-1) var(--space-1) 0; border: 1px solid transparent; border-radius: var(--radius); background: none; cursor: pointer; text-align: start; touch-action: pan-y; }
+.band.on { border-color: var(--accent); background: var(--surface-2); }
+.band canvas { display: block; width: 100%; }
+.bm { display: flex; flex-direction: column; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); padding-inline-start: var(--space-1); }
+.bm .bc { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.screen[data-ax="5"] .band { grid-template-columns: 1fr; }
+.screen[data-ax="5"] .bm { flex-direction: row; gap: var(--space-3); }
+.loupe { position: absolute; bottom: calc(100% + 4px); left: 0; z-index: 3; padding: var(--space-1) var(--space-2); border-radius: var(--radius); background: var(--text); color: var(--surface); font-size: var(--t-foot); line-height: var(--l-foot); white-space: nowrap; pointer-events: none; }
+.loupe.below { bottom: auto; top: calc(100% + 4px); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.cluster:empty { display: none; }
+.chip { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; padding: 0 var(--space-1) 0 var(--space-3); border: 1px solid var(--accent); border-radius: var(--radius); background: var(--surface-2); color: var(--text); cursor: pointer; font-size: var(--t-sub); line-height: var(--l-sub); }
+.chip svg { width: 18px; height: 18px; margin: 0 var(--space-2); color: var(--text-2); }
+.pose-open .page[data-page="left"] .map { gap: var(--space-2); }
+
+.wait-note { margin: 0; color: var(--text-2); font-size: var(--t-call); line-height: var(--l-call); padding-top: var(--space-6); max-inline-size: 30ch; }
+
+/* "New:" labels: a dashed frame around what this concept adds. */
+.labels-on .screen[data-labels] [data-new] { outline: 2px dashed var(--annot); outline-offset: 2px; border-radius: var(--radius); }
+.labels-on .screen[data-labels] [data-new]::before { content: "New: " attr(data-new); display: block; color: var(--annot); font-size: 11px; line-height: 14px; font-weight: 600; padding-bottom: var(--space-1); }
+
+@media (forced-colors: active) {
+  .mk.arr { background: CanvasText; }
+  .mk.wait { border-color: CanvasText; }
+  .row.on, .olines li.hit { outline: 2px solid Highlight; }
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note"><b>Sample.</b> Every card, seller, price and day on this page is made up. No figure on it is real.</div>
+
+<header class="bench">
+  <div class="who">
+    <h1>Find a card</h1>
+    <p>Designer kind: blind. Designer: search-everything-blind-2. Each concept is a live sample: type, tap and go back in any frame.</p>
+  </div>
+  <div class="tabs" role="tablist" aria-label="Concepts" id="tabs"></div>
+  <div class="ctl">
+    <label>State <select id="stateSel">
+      <option value="idle">Nothing typed</option>
+      <option value="results">Many matches</option>
+      <option value="one">One match</option>
+      <option value="order">Order open</option>
+      <option value="none">No match</option>
+      <option value="loading">Reading orders</option>
+      <option value="failed">Read failed</option>
+      <option value="empty">No orders yet</option>
+    </select></label>
+    <div class="seg" role="group" aria-label="Theme">
+      <button type="button" data-theme-set="auto">Auto</button>
+      <button type="button" data-theme-set="light">Light</button>
+      <button type="button" data-theme-set="dark">Dark</button>
+    </div>
+    <label><input type="checkbox" id="newChk" checked> Show "New" labels</label>
+  </div>
+  <p class="blurb" id="blurb"></p>
+</header>
+
+<main class="stage labels-on" id="stage">
+  <figure class="device">
+    <figcaption><b>Duo, folded.</b> 466 × 678 pt, one hand. Drawn first.</figcaption>
+    <div class="scroller"><div class="screen pose-folded" data-device="iphone-duo-folded" data-mode="folded" data-labels></div></div>
+  </figure>
+  <figure class="device">
+    <figcaption><b>Duo, open.</b> 951 × 669 pt. Hinge gap from x 455.5 to 495.5: nothing crosses it.</figcaption>
+    <div class="scroller"><div class="screen pose-open" data-device="iphone-duo-unfolded" data-mode="open">
+      <div class="page" data-page="left"></div><div class="hinge" aria-hidden="true"></div><div class="page" data-page="right"></div>
+    </div></div>
+  </figure>
+  <figure class="device">
+    <figcaption><b>Large phone.</b> Size not written. Drawn at the folded size, 466 × 678 pt. Drag the corner to try other widths.</figcaption>
+    <div class="scroller"><div class="screen pose-phone" data-device="iphone-large" data-mode="phone"></div></div>
+  </figure>
+  <figure class="device">
+    <figcaption><b>Duo, folded, largest text.</b> Dynamic Type AX5: body 53 pt.</figcaption>
+    <div class="scroller"><div class="screen pose-folded" data-device="iphone-duo-folded-ax5" data-mode="ax" data-ax="5"></div></div>
+  </figure>
+</main>
+
+<script>
+(function () {
+'use strict';
+/* ---------- Sample data: made up, seeded so every load is the same ---------- */
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const FULL = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+const MLEN = [31,28,31,30,31,30,31,31,30,31,30,31];
+const dayOf = (m, d) => { let n = 0; for (let i = 0; i < m; i++) n += MLEN[i]; return n + d - 1; };
+const md = n => { let m = 0; while (n >= MLEN[m]) { n -= MLEN[m]; m++; } return [m, n + 1]; };
+const TODAY = dayOf(10, 21);
+const FIRST = dayOf(4, 1);
+const fmtDay = n => { const [m, d] = md(n); return MONTHS[m] + ' ' + d; };
+const money = c => '$' + (c / 100).toFixed(2);
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const R = rng(20261121);
+const pick = a => a[Math.floor(R() * a.length)];
+const A = ['Gilded','Ashen','Hollow','Vexing','Silent','Copper','Brine','Thorn','Ember','Frost','Gloam','Rook','Moss','Quill','Storm','Velvet','Iron','Saffron','Wicker','Tidal','Cinder','Pale','Briar','Hush','Bramble','Glass','Oaken','Rust','Signal','Lantern'];
+const B = ['Heron','Warden','Tideguard','Familiar','Sentinel','Oracle','Hound','Archivist','Courier','Mystic','Harbinger','Sprite','Colossus','Pilgrim','Duelist','Alchemist','Wyrm','Scout','Cartographer','Bellringer','Smith','Shade','Ferryman','Herald','Lantern'];
+const S1 = ['Kestrel','Northgate','Blue Fen','Harbor','Copperline','Owl Street','Riverbend','Sixpenny','Lamplight','Granite','Foxglove','Tin Soldier','Larkspur','Pinecrest','Saltmarsh','Wren','Juniper','Tallow','Cobble','Quarry'];
+const S2 = ['Cards','Games','Collectibles','Card Shop','Gaming','Hobbies'];
+const NAMES = []; { const seen = new Set(); while (NAMES.length < 300) { const a = pick(A), b = pick(B); const n = a + ' ' + b; if (a !== b && !seen.has(n)) { seen.add(n); NAMES.push(n); } } }
+const SELLERS = []; { const seen = new Set(); while (SELLERS.length < 90) { const n = pick(S1) + ' ' + pick(S2); if (!seen.has(n)) { seen.add(n); SELLERS.push(n); } } }
+const ORDERS = [], LINES = [];
+{
+  const days = []; for (let i = 0; i < 420; i++) days.push(FIRST + Math.floor(R() * (TODAY - 2 - FIRST)));
+  days.sort((a, b) => a - b);
+  const COMMON = [10, 15, 25, 50, 75, 99];
+  days.forEach((day, oi) => {
+    const age = TODAY - day;
+    const p = age > 20 ? 0.97 : age > 8 ? 0.6 : 0.12;
+    const arr = R() < p;
+    const arrDay = Math.min(TODAY, day + 4 + Math.floor(R() * 9));
+    const o = { id: oi, day, seller: pick(SELLERS), arr, arrDay, lines: [] };
+    const n = 1 + Math.floor(Math.pow(R(), 1.8) * 14);
+    for (let k = 0; k < n; k++) {
+      let c = 10 + Math.round(Math.pow(R(), 3) * 590); if (R() < 0.4) c = pick(COMMON);
+      const l = { id: LINES.length, o: oi, name: NAMES[Math.floor(Math.pow(R(), 1.6) * NAMES.length)], price: c, arr: arr && R() > 0.02, arrDay };
+      LINES.push(l); o.lines.push(l.id);
+    }
+    ORDERS.push(o);
+  });
+}
+const NAMECOUNT = {}; LINES.forEach(l => { NAMECOUNT[l.name] = (NAMECOUNT[l.name] || 0) + 1; });
+const uniqueIn = l => NAMECOUNT[l.name] === 1 && ORDERS[l.o].lines.length >= 4;
+const ONE = LINES.slice().reverse().find(l => uniqueIn(l) && !l.arr && TODAY - ORDERS[l.o].day > 12) || LINES.slice().reverse().find(uniqueIn) || LINES.find(l => NAMECOUNT[l.name] === 1);
+const fmtInt = n => n.toLocaleString('en-US');
+
+/* ---------- Search: one query string, read token by token ---------- */
+function parse(q) {
+  const P = { text: [], price: null, dollars: null, month: null, day: null, raw: q.trim() };
+  const toks = q.toLowerCase().split(/[\s,]+/).filter(Boolean);
+  const ints = [];
+  toks.forEach(t => {
+    let m;
+    if ((m = t.match(/^\$(\d+)(?:\.(\d{1,2}))?$/)) || (m = t.match(/^(\d*)\.(\d{1,2})$/))) {
+      const cents = (parseInt(m[1] || '0', 10) * 100) + (m[2] ? parseInt((m[2] + '0').slice(0, 2), 10) : 0);
+      if (m[2] === undefined) P.dollars = parseInt(m[1], 10); else P.price = cents;
+    } else if ((m = t.match(/^(\d{1,2})\/(\d{1,2})$/))) { P.month = parseInt(m[1], 10) - 1; P.day = parseInt(m[2], 10); }
+    else if (t.length >= 3 && /^[a-z]+\.?$/.test(t) && FULL.some(f => f.startsWith(t.replace('.', '')))) { P.month = FULL.findIndex(f => f.startsWith(t.replace('.', ''))); }
+    else if (/^\d{1,2}$/.test(t)) ints.push(parseInt(t, 10));
+    else P.text.push(t);
+  });
+  ints.forEach(n => { if (P.month !== null && P.day === null) P.day = n; else P.dollars = n; });
+  return P;
+}
+function lineMatches(l, P) {
+  const o = ORDERS[l.o];
+  const hay = (l.name + ' ' + o.seller).toLowerCase();
+  if (!P.text.every(t => hay.includes(t))) return false;
+  if (P.price !== null && l.price !== P.price) return false;
+  if (P.dollars !== null && Math.floor(l.price / 100) !== P.dollars) return false;
+  if (P.month !== null || P.day !== null) {
+    const [m, d] = md(o.day);
+    if (P.month !== null && m !== P.month) return false;
+    if (P.day !== null && d !== P.day) return false;
+  }
+  return true;
+}
+function search(P) {
+  if (!P.raw) return [];
+  const out = [];
+  for (let i = LINES.length - 1; i >= 0; i--) if (lineMatches(LINES[i], P)) out.push(LINES[i]);
+  return out;
+}
+function hl(s, P) {
+  if (!P || !P.text.length) return esc(s);
+  const re = new RegExp('(' + P.text.map(t => t.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')).join('|') + ')', 'ig');
+  return s.split(re).map((part, i) => i % 2 ? '<mark>' + esc(part) + '</mark>' : esc(part)).join('');
+}
+
+/* ---------- State, deep linked in the hash ---------- */
+const PRESET = {
+  results: { q: 'heron' },
+  one: { q: ONE.name.toLowerCase() },
+  order: { q: ONE.name.toLowerCase(), sel: ONE.id },
+  none: { q: 'zzq' }
+};
+const state = { c: 'answer', s: 'idle', t: 'auto', q: '', sel: null, month: null, more: 0, hidden: [], labels: true, clues: { name: '', seller: '', day: '', price: '' } };
+function applyPreset(s) {
+  state.s = s; state.q = ''; state.sel = null; state.month = null; state.more = 0;
+  state.clues = { name: '', seller: '', day: '', price: '' };
+  const p = PRESET[s]; if (!p) return;
+  state.q = p.q; state.sel = p.sel === undefined ? null : p.sel;
+  state.clues.name = p.q;
+}
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('c') && CONCEPTS[h.get('c')]) state.c = h.get('c');
+  applyPreset(h.get('s') || 'idle');
+  if (h.get('t')) state.t = h.get('t');
+  if (h.get('h')) state.hidden = h.get('h').split('.').filter(k => CONCEPTS[k]);
+  if (h.get('q') !== null && h.get('q') !== undefined && h.has('q')) { state.q = h.get('q'); state.clues.name = state.q; }
+}
+function derivedState() {
+  if (['loading', 'failed', 'empty'].includes(state.s)) return state.s;
+  if (state.sel !== null) return 'order';
+  const n = CONCEPTS[state.c].count();
+  if (n === null) return 'idle';
+  return n === 0 ? 'none' : n === 1 ? 'one' : 'results';
+}
+function writeHash() {
+  const h = new URLSearchParams();
+  h.set('c', state.c); h.set('s', derivedState());
+  if (state.t !== 'auto') h.set('t', state.t);
+  if (state.hidden.length) h.set('h', state.hidden.join('.'));
+  history.replaceState(null, '', '#' + h.toString());
+}
+
+/* ---------- Shared pieces ---------- */
+const ICON = {
+  search: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  clear: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="currentColor" opacity=".35"/><path d="M6.5 6.5l7 7M13.5 6.5l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  back: '<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  clock: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M8 4.5V8l2.5 1.5" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+};
+const RECENT = ['heron', 'Kestrel', '$0.25', 'oct 3'];
+const PLACEHOLDER = 'Name, seller, $0.25 or Oct 3';
+function fieldHTML() {
+  return '<label class="field">' + ICON.search + '<input type="search" enterkeyhint="search" autocomplete="off" spellcheck="false" data-q aria-label="Search every card line" placeholder="' + PLACEHOLDER + '">' +
+    '<button type="button" class="clear" data-clear aria-label="Clear search">' + ICON.clear + '</button></label>';
+}
+function arrLabel(l) { return l.arr ? 'arrived ' + fmtDay(l.arrDay) : 'not arrived'; }
+function rowHTML(l, P) {
+  const o = ORDERS[l.o];
+  const dayHit = P && (P.month !== null || P.day !== null), priceHit = P && (P.price !== null || P.dollars !== null);
+  return '<button type="button" class="row' + (state.sel === l.id ? ' on' : '') + '" data-line="' + l.id + '" aria-label="' + esc(l.name + ', ' + o.seller + ', ordered ' + fmtDay(o.day) + ', ' + money(l.price) + ', ' + arrLabel(l)) + '">' +
+    '<span class="mk ' + (l.arr ? 'arr' : 'wait') + '" aria-hidden="true"></span>' +
+    '<span class="rname">' + hl(l.name, P) + '</span>' +
+    '<span class="rmeta"><span>' + hl(o.seller, P) + '</span><span class="' + (dayHit ? 'hitf' : '') + '">' + fmtDay(o.day) + '</span></span>' +
+    '<span class="rprice' + (priceHit ? ' hitf' : '') + '">' + money(l.price) + '</span></button>';
+}
+function summaryHTML(res, extra) {
+  const a = res.filter(l => l.arr).length, w = res.length - a;
+  return '<p class="sum" role="status"><strong>' + fmtInt(res.length) + (res.length === 1 ? ' line' : ' lines') + '</strong>' +
+    (extra || '') +
+    '<span class="k"><span class="mk arr" aria-hidden="true"></span>' + fmtInt(a) + ' arrived</span>' +
+    '<span class="k"><span class="mk wait" aria-hidden="true"></span>' + fmtInt(w) + ' not yet</span><span>Newest first</span></p>';
+}
+function listHTML(res, P) {
+  const cap = 60 + state.more;
+  let h = '<div class="list">' + res.slice(0, cap).map(l => rowHTML(l, P)).join('') + '</div>';
+  if (res.length > cap) h += '<button type="button" class="more" data-more>Show 60 more of ' + fmtInt(res.length - cap) + ' left</button>';
+  return h;
+}
+function ageText(l) { const d = TODAY - ORDERS[l.o].day; return 'Not yet, ' + d + ' days since the order'; }
+function answerHTML(l, newLabel) {
+  const o = ORDERS[l.o];
+  return '<article class="answer"' + (newLabel ? ' data-new="' + newLabel + '"' : '') + ' aria-label="The one match">' +
+    '<h2>' + esc(l.name) + '</h2><dl>' +
+    '<dt>Seller</dt><dd>' + esc(o.seller) + '</dd>' +
+    '<dt>Ordered</dt><dd>' + fmtDay(o.day) + '</dd>' +
+    '<dt>Price</dt><dd>' + money(l.price) + '</dd>' +
+    '<dt>Arrived</dt>' + (l.arr ? '<dd class="got">' + fmtDay(l.arrDay) + '</dd>' : '<dd class="late">' + ageText(l) + '</dd>') +
+    '</dl><button type="button" class="btn primary" data-line="' + l.id + '">Open the order</button></article>';
+}
+function orderSay(o) {
+  const ls = o.lines.map(i => LINES[i]); const a = ls.filter(l => l.arr).length; const n = ls.length;
+  if (a === n) return (n === 1 ? 'It arrived on ' : 'All ' + n + ' arrived on ') + fmtDay(o.arrDay) + '.';
+  if (a === 0 && n === 1) return 'It has not arrived. Ordered ' + (TODAY - o.day) + ' days ago.';
+  if (a === 0) return 'None of the ' + n + ' arrived yet. Ordered ' + (TODAY - o.day) + ' days ago.';
+  return a + ' of ' + n + ' arrived on ' + fmtDay(o.arrDay) + '. ' + (n - a) + ' did not come in that package.';
+}
+function orderHTML(lineId) {
+  const l = LINES[lineId], o = ORDERS[l.o];
+  const ls = o.lines.map(i => LINES[i]); const total = ls.reduce((s, x) => s + x.price, 0);
+  return '<section class="order" aria-label="Order from ' + esc(o.seller) + '"><h2>' + esc(o.seller) + '</h2>' +
+    '<p class="sub">Ordered ' + fmtDay(o.day) + ', ' + ls.length + (ls.length === 1 ? ' card, ' : ' cards, ') + money(total) + '</p>' +
+    '<p class="say">' + orderSay(o) + '</p><ul class="olines">' +
+    ls.map(x => '<li class="' + (x.id === lineId ? 'hit' : '') + '"' + (x.id === lineId ? ' aria-current="true"' : '') + '>' +
+      '<span class="mk ' + (x.arr ? 'arr' : 'wait') + '" role="img" aria-label="' + arrLabel(x) + '"></span><span>' + esc(x.name) + '</span><span class="p">' + money(x.price) + '</span><span class="ad">' + (x.arr ? fmtDay(x.arrDay) : '') + '</span></li>').join('') +
+    '</ul></section>';
+}
+function msgHTML(kind) {
+  if (kind === 'loading') return '<div class="msg" aria-busy="true"><p>Reading your orders.</p></div><div class="skel" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>';
+  if (kind === 'failed') return '<div class="msg" role="alert"><p>Your orders could not be read, so nothing can be searched yet.</p><button type="button" class="btn primary" data-retry>Try again</button><details><summary>What the app said</summary><span class="said">Sample: storage read refused.</span></details></div>';
+  if (kind === 'empty') return '<div class="msg"><p>No orders yet. Import your order history to search every card in it.</p><button type="button" class="btn primary" data-import>Import orders</button><span class="said" data-import-note hidden>Sample: import is not drawn here.</span></div>';
+  return '';
+}
+function noneHTML(what) {
+  return '<div class="msg"><p>No card, seller, price or day matches “' + esc(what) + '”.</p><button type="button" class="btn" data-clear>Clear search</button></div>';
+}
+
+/* ---------- Concepts ---------- */
+const CONCEPTS = {};
+
+/* Answer list: one field at the thumb; a list of lines; one match becomes an answer card. */
+CONCEPTS.answer = {
+  name: 'Answer list', id: 'answer-list',
+  blurb: 'One field at the bottom, in thumb reach. Each match is a card line with its seller, order day, price and an arrival mark. When only one line matches, the list turns into a plain answer: who sent it, when, for how much, and whether it came.',
+  count() { const P = parse(state.q); return P.raw ? search(P).length : null; },
+  dock: 'field',
+  main(app) {
+    const P = parse(state.q);
+    if (!P.raw) return '<p class="hint">Type part of a card name or a seller, a price like $0.25, or a day like Oct 3.</p>' +
+      '<p class="sect" id="' + app.uid + '-recent">Recent</p><div class="recent" role="list" aria-labelledby="' + app.uid + '-recent">' + RECENT.map(r => '<button type="button" role="listitem" data-set-q="' + esc(r) + '">' + ICON.clock + esc(r) + '</button>').join('') + '</div>';
+    const res = search(P);
+    if (!res.length) return noneHTML(P.raw);
+    if (res.length === 1) return answerHTML(res[0], app.labels ? 'answer card' : '');
+    return '<div' + (app.labels ? ' data-new="summary and arrival marks"' : '') + '>' + summaryHTML(res) + '</div>' + listHTML(res, P);
+  }
+};
+
+/* Order map: the whole history as one dot per card, by month. Typing lights the matches in place. */
+const BY_MONTH = {};
+ORDERS.forEach(o => { const m = md(o.day)[0]; (BY_MONTH[m] = BY_MONTH[m] || []).push(o); });
+const MAP_MONTHS = Object.keys(BY_MONTH).map(Number).sort((a, b) => a - b);
+function monthLines(m) { const out = []; BY_MONTH[m].forEach(o => o.lines.forEach(i => out.push(LINES[i]))); return out; }
+function layoutMonth(m, cols) {
+  const pos = []; let c = 0, r = 0;
+  BY_MONTH[m].forEach(o => {
+    if (c + Math.min(o.lines.length, cols) > cols) { c = 0; r++; }
+    o.lines.forEach(i => { if (c >= cols) { c = 0; r++; } pos.push({ c, r, l: LINES[i] }); c++; });
+    c++; if (c >= cols) { c = 0; r++; }
+  });
+  return { pos, rows: (c === 0 ? r : r + 1) };
+}
+const mapMatches = () => { const P = parse(state.q); return P.raw ? new Set(search(P).map(l => l.id)) : null; };
+CONCEPTS.map = {
+  name: 'Order map', id: 'order-map',
+  blurb: 'Bold concept. The first screen is the whole history: one dot per card, one band per month, orders packed side by side. A filled dot arrived, a ring did not. Typing lights the matching dots in place, so the answer to "where is it" is a spot in time. Tap a month to list it. Slide a finger along a month to read the orders under it, and lift to open one.',
+  count() { const P = parse(state.q); if (!P.raw && state.month === null) return null; return this.results().length; },
+  results() {
+    const P = parse(state.q);
+    const base = P.raw ? search(P) : (state.month !== null ? monthLines(state.month).reverse() : []);
+    return state.month === null ? base : base.filter(l => md(ORDERS[l.o].day)[0] === state.month);
+  },
+  dock: 'field',
+  sideBack: true,
+  clear() { state.month = null; },
+  mapHTML(app) {
+    const hits = mapMatches();
+    return '<div class="map" data-focus' + (app.labels ? ' data-new="month map, one dot per card"' : '') + '>' +
+      MAP_MONTHS.map(m => {
+        const ls = monthLines(m); const lit = hits ? ls.filter(l => hits.has(l.id)).length : null; const wait = ls.filter(l => !l.arr).length;
+        const label = MONTHS[m] + ': ' + fmtInt(ls.length) + ' cards, ' + (lit !== null ? fmtInt(lit) + ' match, ' : '') + fmtInt(wait) + ' not arrived. ' + (state.month === m ? 'Listed below. Tap to list all months.' : 'Tap to list this month.');
+        return '<button type="button" class="band' + (state.month === m ? ' on' : '') + '" data-month="' + m + '" aria-pressed="' + (state.month === m) + '" aria-label="' + label + '">' +
+          '<span class="bm"><span>' + MONTHS[m] + '</span><span class="bc">' + (lit !== null ? fmtInt(lit) : '') + '</span></span><canvas aria-hidden="true"></canvas><span class="loupe" hidden></span></button>';
+      }).join('') + '</div>';
+  },
+  readout(app) {
+    const P = parse(state.q);
+    if (!P.raw && state.month === null) return '<p class="hint">Each dot is one card. Filled dots arrived, rings did not. Type to light up matches, tap a month to list it, or slide a finger along a month to read its orders.</p>';
+    const res = this.results();
+    const monthBar = state.month !== null ? '<button type="button" class="chip" data-all-months aria-label="Show all months">' + FULL[state.month].replace(/^./, c => c.toUpperCase()) + ' only<span aria-hidden="true">' + ICON.clear + '</span></button>' : '';
+    if (!res.length) return monthBar + noneHTML(P.raw || MONTHS[state.month]);
+    if (res.length === 1) return monthBar + answerHTML(res[0], '');
+    return '<div class="cluster">' + monthBar + '</div>' + summaryHTML(res) + listHTML(res, P);
+  },
+  main(app) { return app.mode === 'open' ? this.mapHTML(app) : this.mapHTML(app) + this.readout(app); },
+  side(app) { return this.readout(app); },
+  onClick(t, app) {
+    if (t.hasAttribute('data-month')) {
+      if (app._scrubbed) { app._scrubbed = false; return true; }
+      const m = +t.dataset.month; state.month = state.month === m ? null : m; state.more = 0; state.s = 'live'; update();
+      const b = app.root.querySelector('[data-month="' + m + '"]'); if (b) b.focus({ preventScroll: true });
+      return true;
+    }
+    if (t.hasAttribute('data-all-months')) { state.month = null; state.s = 'live'; update(); return true; }
+    return false;
+  },
+  after(app) {
+    const cs = getComputedStyle(app.root);
+    const col = n => cs.getPropertyValue(n).trim();
+    const hits = mapMatches();
+    const selOrder = state.sel !== null ? LINES[state.sel].o : null;
+    app.root.querySelectorAll('.band').forEach(band => {
+      const m = +band.dataset.month; const cv = band.querySelector('canvas');
+      const pitch = app.mode === 'open' ? 7 : app.mode === 'ax' ? 6 : 5;
+      const w = cv.clientWidth || 300; const cols = Math.max(8, Math.floor(w / pitch));
+      const L = layoutMonth(m, cols); band._layout = { L, pitch, cols };
+      const h = L.rows * pitch; cv.style.height = h + 'px';
+      const dpr = window.devicePixelRatio || 1; cv.width = Math.round(w * dpr); cv.height = Math.round(h * dpr);
+      const g = cv.getContext('2d'); g.setTransform(dpr, 0, 0, dpr, 0, 0); g.clearRect(0, 0, w, h);
+      const r = pitch * 0.34;
+      L.pos.forEach(p => {
+        const x = p.c * pitch + pitch / 2, y = p.r * pitch + pitch / 2;
+        const lit = hits ? hits.has(p.l.id) : true; const isSel = selOrder === p.l.o;
+        let c;
+        if (isSel) c = col('--accent'); else if (!lit) c = col('--map-dim'); else c = p.l.arr ? (hits ? col('--accent') : col('--arrived')) : col('--waiting');
+        g.beginPath(); g.arc(x, y, (hits && lit) || isSel ? r * 1.25 : r, 0, Math.PI * 2);
+        if (p.l.arr) { g.fillStyle = c; g.fill(); } else { g.lineWidth = Math.max(1, pitch * 0.17); g.strokeStyle = c; g.stroke(); }
+      });
+    });
+    if (!app._mapWired) { app._mapWired = true; wireScrub(app); }
+  }
+};
+function wireScrub(app) {
+  let start = null;
+  const find = (band, e) => {
+    const lay = band._layout; if (!lay) return null; const cv = band.querySelector('canvas'); const b = cv.getBoundingClientRect();
+    const scale = b.width / (cv.clientWidth || b.width);
+    const x = (e.clientX - b.left) / scale, y = Math.min(Math.max(0, (e.clientY - b.top) / scale), lay.L.rows * lay.pitch - 1);
+    const c = Math.floor(x / lay.pitch), r = Math.floor(y / lay.pitch);
+    let best = null, bd = 1e9; lay.L.pos.forEach(p => { const d = Math.abs(p.r - r) * 1000 + Math.abs(p.c - c); if (d < bd) { bd = d; best = p; } });
+    return best;
+  };
+  app.root.addEventListener('pointerdown', e => { const band = e.target.closest('.band'); if (!band) return; start = { band, x: e.clientX, y: e.clientY, on: false, order: null }; });
+  app.root.addEventListener('pointermove', e => {
+    if (!start) return;
+    if (!start.on && Math.abs(e.clientX - start.x) > 8) { start.on = true; try { start.band.setPointerCapture(e.pointerId); } catch (_) {} }
+    if (!start.on) return;
+    const p = find(start.band, e); if (!p) return;
+    const o = ORDERS[p.l.o]; start.order = o;
+    const hits = mapMatches(); const n = hits ? o.lines.filter(i => hits.has(i)).length : null;
+    const lp = start.band.querySelector('.loupe');
+    lp.hidden = false; lp.classList.toggle('below', !start.band.previousElementSibling);
+    lp.textContent = o.seller + ', ' + fmtDay(o.day) + ', ' + o.lines.length + (o.lines.length === 1 ? ' card' : ' cards') + (n ? ', ' + n + ' match' : '');
+    const bb = start.band.getBoundingClientRect(); const scale = bb.width / start.band.offsetWidth;
+    lp.style.left = Math.max(0, Math.min(start.band.offsetWidth - lp.offsetWidth, (e.clientX - bb.left) / scale - lp.offsetWidth / 2)) + 'px';
+  });
+  const end = () => {
+    if (!start) return; const s = start; start = null;
+    if (!s.on) return;
+    app._scrubbed = true;
+    if (s.order) { const hits = mapMatches(); const pickId = (hits && s.order.lines.find(i => hits.has(i))) ?? s.order.lines[0]; state.sel = pickId; update(); }
+    else { const lp = s.band.querySelector('.loupe'); if (lp) lp.hidden = true; }
+  };
+  app.root.addEventListener('pointerup', end);
+  app.root.addEventListener('pointercancel', () => { if (start) { const lp = start.band.querySelector('.loupe'); if (lp) lp.hidden = true; } start = null; });
+}
+
+const ORDER_KEYS = ['answer', 'map'];
+
+/* ---------- Frames ---------- */
+const apps = [];
+function shellHTML(app, dock) {
+  return '<div class="app">' +
+    '<div class="nav"><button type="button" class="back" data-back hidden>' + ICON.back + 'Find a card</button><h2 class="lt" data-title>Find a card</h2></div>' +
+    '<div class="top" data-region="top"></div>' +
+    '<div class="body" data-region="main"></div>' +
+    (dock ? '<div class="dock" data-region="dock"></div>' : '') + '</div>';
+}
+function sideShell() {
+  return '<div class="app"><div class="nav"><button type="button" class="back" data-side-back hidden>' + ICON.back + 'Matches</button></div><div class="body" data-region="side"></div></div>';
+}
+function mountAll() {
+  apps.length = 0;
+  const K = CONCEPTS[state.c];
+  document.querySelectorAll('.screen').forEach((scr, i) => {
+    const mode = scr.dataset.mode;
+    const app = { scr, mode, uid: 'f' + i + state.c, labels: scr.hasAttribute('data-labels') && state.labels };
+    if (mode === 'open') {
+      scr.querySelector('[data-page="left"]').innerHTML = shellHTML(app, true);
+      scr.querySelector('[data-page="right"]').innerHTML = sideShell();
+    } else scr.innerHTML = shellHTML(app, true);
+    app.root = scr;
+    app.r = name => scr.querySelector('[data-region="' + name + '"]');
+    const dock = app.r('dock');
+    dock.innerHTML = K.dock === 'field' ? fieldHTML() : K.dockHTML(app);
+    apps.push(app);
+  });
+  wire();
+  update();
+}
+function update() {
+  const K = CONCEPTS[state.c];
+  syncBench();
+  const ds = derivedState();
+  const special = ['loading', 'failed', 'empty'].includes(ds);
+  apps.forEach(app => {
+    const open = app.mode === 'open';
+    const pushed = !open && state.sel !== null && !special;
+    app.root.querySelector('[data-back]').hidden = !pushed;
+    app.root.querySelector('[data-title]').hidden = pushed;
+    app.r('dock').hidden = pushed || special || (K.dockHidden && K.dockHidden(app));
+    const top = app.r('top');
+    top.innerHTML = (!pushed && !special && K.top) ? K.top(app) : '';
+    top.hidden = !top.innerHTML;
+    app.r('main').innerHTML = special ? msgHTML(ds) : pushed ? orderHTML(state.sel) : K.main(app);
+    if (open) {
+      const side = app.r('side');
+      const sideBack = app.root.querySelector('[data-side-back]');
+      sideBack.hidden = !(state.sel !== null && K.sideBack && !special);
+      side.innerHTML = special ? '' : state.sel !== null ? orderHTML(state.sel) : (K.side ? K.side(app) : '<p class="wait-note">Pick a line to see its whole order here.</p>');
+    }
+    const input = app.root.querySelector('[data-q]');
+    if (input && input.value !== state.q && document.activeElement !== input) input.value = state.q;
+    const clr = app.root.querySelector('.field [data-clear]');
+    if (clr) { if (state.q) clr.removeAttribute('data-off'); else clr.setAttribute('data-off', ''); }
+    if (K.after && !special && !pushed) K.after(app);
+    if (app.mode === 'folded') {
+      document.querySelectorAll('[id="' + K.id + '"]').forEach(el => el.removeAttribute('id'));
+      (app.root.querySelector('[data-focus]') || app.r('main')).id = K.id;
+    }
+  });
+  syncBench();
+  writeHash();
+}
+function wire() {
+  apps.forEach(app => {
+    const scr = app.root;
+    if (scr._wired) return; scr._wired = true;
+    scr.addEventListener('input', e => {
+      if (e.target.matches('[data-q]')) { state.q = e.target.value; state.sel = null; state.more = 0; state.s = 'live';
+        apps.forEach(a => { const i = a.root.querySelector('[data-q]'); if (i && i !== e.target) i.value = state.q; });
+        update(); }
+      const K = CONCEPTS[state.c]; if (K.onInput) K.onInput(e, app);
+    });
+    scr.addEventListener('click', e => {
+      const t = e.target.closest('button, [data-line]'); if (!t || !scr.contains(t)) return;
+      const K = CONCEPTS[state.c];
+      if (K.onClick && K.onClick(t, app) === true) return;
+      if (t.hasAttribute('data-line')) { state.sel = +t.dataset.line; update(); focusAfter(app, 'push'); }
+      else if (t.hasAttribute('data-back') || t.hasAttribute('data-side-back')) { const was = state.sel; state.sel = null; update(); focusAfter(app, 'pop', was); }
+      else if (t.hasAttribute('data-clear')) { state.q = ''; state.sel = null; state.more = 0; if (K.clear) K.clear(); update(); const i = scr.querySelector('[data-q]'); if (i) { i.value = ''; i.focus(); } }
+      else if (t.hasAttribute('data-set-q')) { state.q = t.dataset.setQ; state.s = 'live'; update(); }
+      else if (t.hasAttribute('data-more')) { state.more += 60; update(); }
+      else if (t.hasAttribute('data-retry')) { state.s = 'idle'; update(); }
+      else if (t.hasAttribute('data-import')) { const n = scr.querySelector('[data-import-note]'); if (n) n.hidden = false; }
+    });
+  });
+}
+function focusAfter(app, how, was) {
+  if (how === 'push') { const b = app.mode === 'open' ? app.r('side').querySelector('h2') : app.root.querySelector('[data-back]'); if (b) { if (b.tagName === 'H2') b.tabIndex = -1; b.focus({ preventScroll: true }); } }
+  else { const r = app.root.querySelector('[data-line="' + was + '"]'); if (r) r.focus({ preventScroll: true }); }
+}
+
+/* ---------- Bench controls ---------- */
+function visibleKeys() { return ORDER_KEYS.filter(k => !state.hidden.includes(k)); }
+function renderTabs() {
+  const tabs = document.getElementById('tabs');
+  tabs.innerHTML = visibleKeys().map(k => '<div class="tabgrp"><button type="button" role="tab" aria-selected="' + (k === state.c) + '" data-c="' + k + '">' + CONCEPTS[k].name + '</button>' +
+    '<button type="button" class="hide" data-hide="' + k + '" aria-label="Hide ' + CONCEPTS[k].name + '">Hide</button></div>').join('') +
+    (state.hidden.length ? '<button type="button" class="plain" data-unhide>Show hidden (' + state.hidden.length + ')</button>' : '');
+}
+function syncBench() {
+  document.getElementById('blurb').textContent = CONCEPTS[state.c].blurb;
+  const sel = document.getElementById('stateSel'); sel.value = derivedState();
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeSet === state.t)));
+  if (state.t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', state.t);
+}
+document.getElementById('tabs').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.c) { state.c = b.dataset.c; applyPreset(derivedStateFor()); renderTabs(); mountAll(); }
+  else if (b.dataset.hide) {
+    if (visibleKeys().length === 1) return;
+    state.hidden.push(b.dataset.hide);
+    if (state.c === b.dataset.hide) state.c = visibleKeys()[0];
+    renderTabs(); mountAll();
+  } else if (b.hasAttribute('data-unhide')) { state.hidden = []; renderTabs(); update(); }
+});
+function derivedStateFor() { const s = document.getElementById('stateSel').value; return s; }
+document.getElementById('stateSel').addEventListener('change', e => { applyPreset(e.target.value); mountAll(); });
+document.querySelectorAll('[data-theme-set]').forEach(b => b.addEventListener('click', () => { state.t = b.dataset.themeSet; update(); mountAll(); }));
+document.getElementById('newChk').addEventListener('change', e => { state.labels = e.target.checked; document.getElementById('stage').classList.toggle('labels-on', state.labels); });
+window.addEventListener('hashchange', () => { readHash(); renderTabs(); mountAll(); });
+
+window.__mock = { CONCEPTS, ORDER_KEYS, state, LINES, ORDERS, parse, search, md, fmtDay, money, esc, hl, TODAY, FIRST, MONTHS, rowHTML, summaryHTML, listHTML, answerHTML, orderHTML, noneHTML, fieldHTML, ICON, fmtInt, update, mountAll };
+readHash(); renderTabs(); mountAll();
+})();
+</script>
+</body>
+</html>

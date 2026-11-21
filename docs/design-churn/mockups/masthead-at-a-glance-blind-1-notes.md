@@ -56,8 +56,8 @@ Append a hash to the file URL. Keys combine with `&`.
    upright at the hinge edge of the left page, and the list fills the right page.
    Gain: the whole order history shows as one shape, and a late package is visible as a hatch at the
    left end, with no count to read. No common checklist app uses a minimap as its navigation.
-   Loss: the owner buys hundreds of cards from many sellers, so at hundreds of packages the segments
-   become hairlines and the line reads by colour mass only. The line sits at the top, out of one-hand
+   Loss: the brief gives no order volume. At a large volume the segments become hairlines, and the
+   line reads by colour mass only. The line sits at the top, out of one-hand
    thumb reach on the folded Duo (`ux-thumb-zone` is met for Got it, not for the line). The list
    holds received packages too, so it is longer to scroll.
    Pick: show it, so the owner can cull it. It is worth a look for the late-package hatch alone.
@@ -88,6 +88,16 @@ Append a hash to the file URL. Keys combine with `&`.
    Dynamic Type table at the default size (Large) and, in the AX5 frame, at AX5. The tab bar and the
    status bar keep their default size at AX5, as iOS shows the large content viewer instead. Spacing
    is on the 4 pt step, with an 8 pt radius. Pick: keep.
+
+9. **Haptics** (house `ux-haptics-feel-substantial`). Got it gives a light haptic, and Undo gives
+   none. In Fill line, the line gives a selection tick for each package it crosses while you drag, as
+   a picker does. Pick: keep.
+
+10. **Count strip names each tab twice.** "May be lost" and "Sync" are both a tab label and that
+    tab's large title. House `ux-one-plain-name` asks for this ("the nav label is the page title"),
+    and `ux-label-once` would count it as a second showing. `label_once.py` printed nothing, but it
+    read only the static page, and this text is drawn by script. Pick: follow `ux-one-plain-name`,
+    the iOS norm.
 
 ## Devices and sizes
 

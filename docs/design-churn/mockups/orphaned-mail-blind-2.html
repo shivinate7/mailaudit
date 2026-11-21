@@ -5,10 +5,961 @@
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Unknown mail</title>
 <style>
-body { font-family: -apple-system, system-ui, sans-serif; padding: env(safe-area-inset-top) 16px; }
+/* Tokens. Spacing on the 4 px step, radius 8, colour by role. Type sizes are the
+   Dynamic Type text styles at the default (Large) size; the .ax frame swaps in AX5. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --radius: 8px;
+  --hit: 44px;
+  --fs-large: 34px; --lh-large: 41px;
+  --fs-title2: 22px; --lh-title2: 28px;
+  --fs-title3: 20px; --lh-title3: 25px;
+  --fs-head: 17px; --lh-head: 22px;
+  --fs-body: 17px; --lh-body: 22px;
+  --fs-callout: 16px; --lh-callout: 21px;
+  --fs-sub: 15px; --lh-sub: 20px;
+  --fs-foot: 13px; --lh-foot: 18px;
+  --fs-cap: 12px; --lh-cap: 16px;
+
+  --surface: #eef1f5;
+  --raised: #ffffff;
+  --ink: #18202c;
+  --ink-2: #4b5667;
+  --line: #d3d9e2;
+  --line-strong: #a9b3c2;
+  --accent: #2f49c9;
+  --accent-ink: #ffffff;
+  --accent-wash: #e3e8fb;
+  --safe: #17694f;
+  --safe-wash: #dcefe6;
+  --warn: #8a4b00;
+  --warn-wash: #f8ead6;
+  --out-wash: #e4e8ee;
+  --scrim: rgba(16, 22, 32, .36);
+  --label: #b0368a;
+  --bezel: #2a2f37;
+  --page-bg: #dfe3ea;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #0f1319; --raised: #1a2029; --ink: #e9edf3; --ink-2: #a6b0bf;
+    --line: #2c3542; --line-strong: #4a5566; --accent: #93a4ff; --accent-ink: #0f1319;
+    --accent-wash: #1e2647; --safe: #6fd3aa; --safe-wash: #12302a; --warn: #f2b36b;
+    --warn-wash: #33240f; --out-wash: #151a21; --scrim: rgba(0, 0, 0, .55);
+    --label: #f28ccf; --bezel: #050608; --page-bg: #070a0e; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #0f1319; --raised: #1a2029; --ink: #e9edf3; --ink-2: #a6b0bf;
+  --line: #2c3542; --line-strong: #4a5566; --accent: #93a4ff; --accent-ink: #0f1319;
+  --accent-wash: #1e2647; --safe: #6fd3aa; --safe-wash: #12302a; --warn: #f2b36b;
+  --warn-wash: #33240f; --out-wash: #151a21; --scrim: rgba(0, 0, 0, .55);
+  --label: #f28ccf; --bezel: #050608; --page-bg: #070a0e; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  background: var(--page-bg); color: var(--ink);
+  font-size: var(--fs-body); line-height: var(--lh-body);
+  padding: env(safe-area-inset-top, 0px) var(--space-4) env(safe-area-inset-bottom, 0px);
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Review chrome (outside the device frames) ---------- */
+.banner {
+  display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: center;
+  margin: var(--space-4) auto 0; max-width: 1480px;
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius);
+  background: var(--warn-wash); color: var(--warn); font-size: var(--fs-sub); line-height: var(--lh-sub);
+}
+.banner strong { font-weight: 700; }
+.review { max-width: 1480px; margin: 0 auto; padding: var(--space-4) 0; display: flex; flex-direction: column; gap: var(--space-4); }
+.review h1 { margin: 0; font-size: var(--fs-title2); line-height: var(--lh-title2); }
+.review p { margin: 0; color: var(--ink-2); font-size: var(--fs-sub); line-height: var(--lh-sub); max-width: 72ch; }
+.controls { display: flex; flex-direction: column; gap: var(--space-3); }
+.ctl-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ctl-row > .ctl-name { color: var(--ink-2); font-size: var(--fs-foot); min-width: 4.5rem; }
+.seg { display: flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1); background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); }
+.seg button { min-height: 36px; padding: 0 var(--space-3); border: 0; border-radius: 6px; background: transparent; font-size: var(--fs-sub); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.opt { display: inline-flex; align-items: center; gap: 0; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); }
+.opt > button { min-height: 40px; padding: 0 var(--space-3); border: 0; background: transparent; }
+.opt > button.pick[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-radius: 7px 0 0 7px; }
+.opt > button.hide { color: var(--ink-2); font-size: var(--fs-foot); border-left: 1px solid var(--line); }
+.restore { font-size: var(--fs-foot); color: var(--accent); background: none; border: 0; text-decoration: underline; min-height: 40px; }
+.direction { font-size: var(--fs-sub); color: var(--ink); max-width: 80ch; }
+
+.stage { max-width: 1480px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; padding-bottom: var(--space-12); }
+.dev { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.dev figcaption { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-2); max-width: 951px; }
+.bezel { padding: 10px; background: var(--bezel); border-radius: 30px; }
+.screen {
+  position: relative; overflow: hidden; background: var(--surface); color: var(--ink);
+  border-radius: 20px; container-type: inline-size;
+}
+.screen.duo-open { background: #000; }
+.page { position: absolute; top: 0; bottom: 0; background: var(--surface); overflow: hidden; }
+.page.left { left: 0; width: 455.5px; }
+.page.right { left: 495.5px; width: 455.5px; }
+.hinge { position: absolute; top: 0; bottom: 0; left: 455.5px; width: 40px;
+  background: linear-gradient(90deg, #000 0, #22262c 45%, #22262c 55%, #000 100%); }
+
+/* ---------- App frame ---------- */
+.app { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.status {
+  flex: none; height: calc(env(safe-area-inset-top, 0px) + var(--sa-top, 28px));
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--space-6); font-size: var(--fs-foot); font-weight: 600;
+}
+.phone .status { --sa-top: 54px; }
+.island { width: 120px; height: 34px; border-radius: 17px; background: #000; }
+.batt { width: 24px; height: 11px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+.batt::after { content: ""; position: absolute; inset: 1.5px 6px 1.5px 1.5px; background: currentColor; border-radius: 1px; }
+.homeind { flex: none; height: calc(env(safe-area-inset-bottom, 0px) + var(--sa-bottom, 20px)); display: grid; place-items: center; }
+.homeind::after { content: ""; width: 134px; height: 5px; border-radius: 3px; background: var(--ink); opacity: .85; }
+.scroll { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+.pad { padding: 0 var(--space-4) var(--space-6); display: flex; flex-direction: column; gap: var(--space-6); }
+
+.navbar { flex: none; min-height: var(--hit); display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 var(--space-2); }
+.navbar .t { font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; text-align: center; }
+.navbar .l { justify-self: start; } .navbar .r { justify-self: end; }
+.large { margin: 0; padding: 0 var(--space-4) var(--space-2); font-size: var(--fs-large); line-height: var(--lh-large); font-weight: 700; letter-spacing: -.01em; }
+.sub { margin: 0; color: var(--ink-2); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.tbtn { min-height: var(--hit); min-width: var(--hit); padding: 0 var(--space-2); border: 0; background: none; color: var(--accent); font-size: var(--fs-body); display: inline-flex; align-items: center; gap: var(--space-1); }
+.tbtn.strong { font-weight: 600; }
+
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-tight { display: flex; flex-direction: column; gap: var(--space-1); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+
+.group-h { margin: 0; padding: 0 var(--space-4); font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-2); font-weight: 600; }
+.list { list-style: none; margin: 0; padding: 0; background: var(--raised); border-radius: var(--radius); overflow: hidden; }
+.list > li + li { border-top: 1px solid var(--line); }
+.row { width: 100%; min-height: var(--hit); display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); border: 0; background: none; text-align: left; }
+.row .main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row .h { font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; }
+.row .b { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--ink-2); }
+.row .f { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-2); }
+.row[aria-current="true"] { background: var(--accent-wash); }
+.chev { flex: none; width: 10px; height: 16px; color: var(--line-strong); }
+.thumb { flex: none; width: 64px; height: 46px; border-radius: 4px; overflow: hidden; }
+.thumb svg, .photo svg { display: block; width: 100%; height: 100%; }
+:root[data-theme="dark"] .thumb, :root[data-theme="dark"] .photo { filter: brightness(.85); }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .thumb, :root:not([data-theme="light"]) .photo { filter: brightness(.85); } }
+
+.btn { min-height: 50px; padding: var(--space-3) var(--space-5); border-radius: 999px; border: 0; background: var(--accent); color: var(--accent-ink); font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); text-align: center; }
+.btn.wide { width: 100%; }
+.btn.quiet { background: var(--accent-wash); color: var(--accent); }
+.btn.plain { background: transparent; color: var(--accent); }
+.bottombar { flex: none; padding: var(--space-3) var(--space-4) 0; display: flex; flex-direction: column; gap: var(--space-2); background: var(--surface); border-top: 1px solid var(--line); }
+
+.photo { width: 100%; aspect-ratio: 16 / 10; max-height: 220px; border-radius: var(--radius); overflow: hidden; }
+.envhead { display: flex; align-items: center; gap: var(--space-3); }
+.thumb.big { width: 112px; height: 70px; }
+.ax .envhead { flex-direction: column; align-items: flex-start; }
+.ax .thumb.big { width: 100%; height: auto; aspect-ratio: 16 / 10; }
+.boardhead { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: var(--space-2); }
+.kept { display: flex; align-items: center; gap: var(--space-2); color: var(--safe); font-size: var(--fs-sub); line-height: var(--lh-sub); font-weight: 600; }
+.kept svg { flex: none; }
+.note { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-2); }
+.why { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-2); display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); }
+.why span { display: inline-flex; align-items: center; gap: var(--space-1); }
+.ok-i { color: var(--safe); } .no-i { color: var(--ink-2); }
+
+.switch { flex: none; width: 52px; height: var(--hit); display: grid; place-items: center; border: 0; background: none; padding: 0; }
+.switch i { width: 48px; height: 28px; border-radius: 14px; background: var(--line-strong); position: relative; transition: background .15s; }
+.switch i::after { content: ""; position: absolute; top: 2px; left: 2px; width: 24px; height: 24px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: transform .15s; }
+.switch[aria-checked="true"] i { background: var(--safe); }
+.switch[aria-checked="true"] i::after { transform: translateX(20px); }
+
+.msg { padding: var(--space-4); border-radius: var(--radius); background: var(--raised); display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.msg.warn { background: var(--warn-wash); }
+.msg p { margin: 0; }
+.skel { height: 68px; background: var(--raised); position: relative; }
+.skel::before, .skel::after { content: ""; position: absolute; left: var(--space-4); height: 12px; border-radius: 6px; background: var(--line); }
+.skel::before { top: 18px; width: 45%; } .skel::after { top: 40px; width: 70%; }
+@media (prefers-reduced-motion: no-preference) { .skel { animation: pulse 1.4s ease-in-out infinite; } }
+@keyframes pulse { 50% { opacity: .55; } }
+
+details.out > summary { list-style: none; min-height: var(--hit); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-4); cursor: pointer; color: var(--ink-2); font-size: var(--fs-sub); }
+details.out > summary::-webkit-details-marker { display: none; }
+details.out[open] > summary svg { transform: rotate(90deg); }
+
+/* Sheets */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: calc(var(--sa-top, 28px) + var(--space-3)); z-index: 6; background: var(--surface); border-radius: 12px 12px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+.phone .sheet { top: calc(54px + var(--space-3)); }
+.sheet .navbar { border-bottom: 1px solid var(--line); }
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--line-strong); margin: var(--space-2) auto 0; flex: none; }
+.viewfinder { aspect-ratio: 4 / 3; border-radius: var(--radius); background: #1c2128; display: grid; place-items: center; color: #dfe5ee; position: relative; overflow: hidden; }
+.viewfinder .guide { width: 78%; height: 62%; border: 2px dashed rgba(255,255,255,.7); border-radius: 6px; display: grid; place-items: center; text-align: center; padding: var(--space-3); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.shutter { width: 72px; height: 72px; border-radius: 50%; border: 4px solid var(--ink); background: transparent; display: grid; place-items: center; align-self: center; }
+.shutter::after { content: ""; width: 56px; height: 56px; border-radius: 50%; background: var(--ink); }
+.field { display: flex; flex-direction: column; gap: var(--space-2); }
+.field label, .field .lab { font-size: var(--fs-sub); line-height: var(--lh-sub); font-weight: 600; }
+.input { min-height: var(--hit); width: 100%; padding: var(--space-2) var(--space-3); border: 1px solid var(--line-strong); border-radius: var(--radius); background: var(--raised); font-size: var(--fs-body); }
+.input::placeholder { color: var(--ink-2); opacity: 1; }
+.chip { min-height: 36px; display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-3); border-radius: 999px; border: 1.5px solid var(--line-strong); background: var(--raised); font-size: var(--fs-sub); line-height: var(--lh-sub); position: relative; }
+.chip.hitpad::before { content: ""; position: absolute; inset: -4px 0; }
+.chip[aria-pressed="false"] { background: transparent; border-style: dashed; color: var(--ink-2); }
+.chip.notec { border-style: dotted; background: transparent; color: var(--ink-2); }
+.chipx { min-width: var(--hit); min-height: var(--hit); margin-inline-start: calc(-1 * var(--space-3)); border: 0; background: none; color: var(--ink-2); display: grid; place-items: center; }
+.chipgrp { display: inline-flex; align-items: center; }
+.sugg { list-style: none; margin: 0; padding: 0; background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; }
+.sugg:empty { display: none; }
+.sugg li + li { border-top: 1px solid var(--line); }
+.sugg button { width: 100%; min-height: var(--hit); padding: var(--space-2) var(--space-3); border: 0; background: none; text-align: left; display: flex; justify-content: space-between; gap: var(--space-3); font-size: var(--fs-callout); line-height: var(--lh-callout); }
+.sugg small { color: var(--ink-2); font-size: var(--fs-foot); }
+.days { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.days button { min-height: var(--hit); padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); font-size: var(--fs-sub); }
+.days button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.filed { display: flex; flex-direction: column; gap: var(--space-3); align-items: stretch; padding: var(--space-4); border-radius: var(--radius); background: var(--safe-wash); color: var(--ink); }
+.filed .kept { font-size: var(--fs-head); line-height: var(--lh-head); }
+.cards { list-style: none; margin: 0; padding: 0; background: var(--raised); border-radius: var(--radius); }
+.cards li { min-height: var(--hit); display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); font-size: var(--fs-body); line-height: var(--lh-body); }
+.cards li + li { border-top: 1px solid var(--line); }
+.cards li .tick { margin-inline-start: auto; font-size: var(--fs-foot); color: var(--safe); display: inline-flex; gap: var(--space-1); align-items: center; font-weight: 600; }
+
+/* Line-up concept */
+.pile { display: flex; gap: var(--space-2); overflow-x: auto; padding: var(--space-1) var(--space-4) var(--space-2); scrollbar-width: none; }
+.pile .stamp { flex: none; width: 84px; display: flex; flex-direction: column; align-items: center; gap: var(--space-1); padding: var(--space-1); border: 2px solid transparent; border-radius: 10px; background: none; font-size: var(--fs-foot); line-height: var(--lh-foot); }
+.pile .stamp .thumb { width: 72px; height: 50px; }
+.pile .stamp[aria-current="true"] { border-color: var(--accent); background: var(--raised); font-weight: 600; }
+.pile .stamp.addst .thumb { display: grid; place-items: center; border: 1.5px dashed var(--line-strong); color: var(--accent); }
+.count { display: flex; flex-direction: column; gap: var(--space-1); }
+.count .n { font-size: var(--fs-title2); line-height: var(--lh-title2); font-weight: 700; }
+.count .n b { font-size: var(--fs-large); line-height: var(--lh-large); color: var(--accent); font-variant-numeric: tabular-nums; }
+.board { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-2); align-items: start; }
+.tile { min-height: 96px; padding: var(--space-3); border-radius: var(--radius); border: 2px solid var(--accent); background: var(--raised); text-align: left; display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; }
+.tile .h { font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; }
+.tile .f { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-2); }
+.tile.isout { min-height: 60px; border: 1.5px dashed var(--line-strong); background: var(--out-wash); gap: 2px; }
+.tile.isout .h { font-weight: 500; font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.tile.isout .r { margin-top: 0; color: var(--ink-2); }
+.board.hide-out .tile.isout { display: none; }
+.tile .r { margin-top: auto; font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink); display: inline-flex; gap: var(--space-1); align-items: center; }
+.tile.skel-t { border: 0; background: var(--raised); }
+.cluebar { flex: none; padding: var(--space-2) var(--space-4) 0; background: var(--surface); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--space-2); position: relative; }
+.cluebar .sugg { position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(100% + var(--space-2)); box-shadow: 0 8px 24px rgba(0,0,0,.18); z-index: 4; }
+.filedline { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); border-radius: var(--radius); background: var(--safe-wash); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+
+/* Largest accessibility size: AX5 rows from the HIG typography table. */
+.ax {
+  --fs-large: 60px; --lh-large: 70px; --fs-title2: 56px; --lh-title2: 66px;
+  --fs-title3: 55px; --lh-title3: 65px; --fs-head: 53px; --lh-head: 62px;
+  --fs-body: 53px; --lh-body: 62px; --fs-callout: 51px; --lh-callout: 60px;
+  --fs-sub: 49px; --lh-sub: 58px; --fs-foot: 44px; --lh-foot: 52px;
+  --fs-cap: 43px; --lh-cap: 51px;
+}
+.ax .board { grid-template-columns: 1fr; }
+.ax .row { flex-wrap: wrap; }
+.ax .row .thumb { width: 96px; height: 68px; }
+.ax .navbar { grid-template-columns: auto 1fr; }
+.ax .navbar .t { text-align: start; grid-column: 1 / -1; grid-row: 2; padding: 0 var(--space-2); }
+.ax .navbar .r { grid-column: 2; grid-row: 1; }
+.ax .pile .stamp { width: 160px; }
+.ax .pile .stamp .thumb { width: 120px; height: 84px; }
+.ax .status { font-size: 13px; }
+.ax .chipx { margin-inline-start: 0; }
+/* At AX5 a pinned footer would leave no room for content: the sheet scrolls as one. */
+.ax .sheet { overflow-y: auto; }
+.ax .sheet > .scroll { flex: none; overflow: visible; }
+.ax .sheet > .bottombar { border-top: 0; }
+/* At AX5 the list screen scrolls as one too, so its add button follows the list. */
+.ax .app:has(> .bottombar) { overflow-y: auto; }
+.ax .app:has(> .bottombar) > .scroll { flex: none; overflow: visible; }
+
+/* "New:" review labels (toggle in the review chrome) */
+.labels-on .nw { position: relative; outline: 2px dashed var(--label); outline-offset: 3px; border-radius: var(--radius); }
+.labels-on .nw::before { content: attr(data-nw); position: absolute; z-index: 3; top: -10px; right: 6px; padding: 0 6px; background: var(--surface); color: var(--label); font: 600 11px/16px -apple-system, system-ui, sans-serif; border-radius: 4px; pointer-events: none; }
+.ax .nw::before { font-size: 13px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.hidden-opt { display: none; }
 </style>
 </head>
 <body>
-<p>Sample: every name, card, date and figure here is made up. Designer kind: blind. Work in progress.</p>
+<div class="banner" role="note"><strong>Sample.</strong> No figure, name, card, date or order on this page is real. Designer kind: blind (orphaned-mail-blind-2). Drawn from the job only; today's screen was not seen.</div>
+
+<div class="review">
+  <h1>Unknown mail: an envelope with no sender</h1>
+  <p>Two concepts for one job: keep an envelope safe the moment it arrives, then work out whose it is. Pick a concept, a state and a theme. Every control inside the frames works.</p>
+  <div class="controls">
+    <div class="ctl-row" id="opt-row"><span class="ctl-name">Concept</span></div>
+    <p class="direction" id="direction"></p>
+    <div class="ctl-row"><span class="ctl-name">State</span><div class="seg" id="state-seg"></div></div>
+    <div class="ctl-row"><span class="ctl-name">Theme</span><div class="seg" id="theme-seg"></div>
+      <span class="ctl-name">Labels</span><div class="seg" id="label-seg"></div></div>
+  </div>
+</div>
+
+<main class="stage" id="stage">
+  <figure class="dev" style="width:486px" data-device="iphone-duo-folded" data-frame="folded"><figcaption></figcaption>
+    <div class="bezel"><div class="screen" style="width:466px;height:678px"></div></div></figure>
+  <figure class="dev" style="width:971px" data-device="iphone-duo-unfolded" data-frame="open"><figcaption></figcaption>
+    <div class="bezel"><div class="screen duo-open" style="width:951px;height:669px"></div></div></figure>
+  <figure class="dev" style="width:486px" data-device="iphone-duo-folded-ax5" data-frame="ax"><figcaption></figcaption>
+    <div class="bezel"><div class="screen ax" style="width:466px;height:678px"></div></div></figure>
+  <figure class="dev" style="width:486px" data-device="iphone-large-phone" data-frame="phone"><figcaption></figcaption>
+    <div class="bezel"><div class="screen phone" style="width:466px;height:678px"></div></div></figure>
+</main>
+
+<script>
+(function () {
+'use strict';
+
+/* ---------- Sample data (all made up) ---------- */
+var TODAY = '2026-11-21';
+var ORDERS = [
+  { id: 'o11', sender: 'Ridgeback Singles',   day: '2026-11-05', cards: ['Lightning Bolt', 'Ponder'] },
+  { id: 'o4',  sender: 'Northbound Singles',  day: '2026-11-03', cards: ['Ponder', 'Opt'] },
+  { id: 'o7',  sender: 'Tidewater Games',     day: '2026-11-06', cards: ['Rampant Growth', 'Giant Growth'] },
+  { id: 'o2',  sender: 'Blue Heron Games',    day: '2026-11-08', cards: ['Counterspell', 'Brainstorm'] },
+  { id: 'o9',  sender: 'Copperfield Cards',   day: '2026-11-09', cards: ['Swords to Plowshares'] },
+  { id: 'o1',  sender: 'Hartley Cards',       day: '2026-11-10', cards: ['Counterspell', 'Ponder', 'Llanowar Elves'] },
+  { id: 'o8',  sender: 'Lantern Row TCG',     day: '2026-11-11', cards: ['Thought Scour', 'Brainstorm', 'Opt'] },
+  { id: 'o3',  sender: 'Pine Street TCG',     day: '2026-11-12', cards: ['Sol Ring', 'Arcane Signet', 'Cultivate'] },
+  { id: 'o10', sender: 'Gull Point Games',    day: '2026-11-13', cards: ['Sol Ring', 'Dark Ritual'] },
+  { id: 'o5',  sender: 'Kestrel Collectibles', day: '2026-11-14', cards: ['Path to Exile'] },
+  { id: 'o12', sender: 'Hartley Cards',       day: '2026-11-16', cards: ['Lightning Bolt', 'Giant Growth'] },
+  { id: 'o6',  sender: 'Oakhaven Cards',      day: '2026-11-19', cards: ['Counterspell', 'Duress'] }
+];
+ORDERS.sort(function (a, b) { return a.day < b.day ? -1 : a.day > b.day ? 1 : 0; });
+var ENVS = [
+  { id: 'e1', came: '2026-11-18', photo: true, frag: 'rtley', cards: ['Counterspell', 'Ponder'], name: 'rtley', city: 'Tulsa', off: {}, notThem: [], matched: null, unknownCards: [] },
+  { id: 'e2', came: '2026-11-19', photo: true, frag: '', cards: ['Sol Ring'], name: '', city: '', off: {}, notThem: [], matched: null, unknownCards: [] },
+  { id: 'e3', came: '2026-11-20', photo: true, frag: '', cards: [], name: '', city: 'Fresno', off: {}, notThem: [], matched: null, unknownCards: [] }
+];
+
+var CONCEPTS = {
+  shelf: { name: 'Shelf', direction: 'Shelf: a list of kept envelopes first. Open one to see its clues and the orders that fit, ranked, each with its reasons. Compare before you match.' },
+  lineup: { name: 'Line-up', direction: 'Line-up (the bold one): the first screen is the envelope and every open order at once. Each clue you add rules orders out in place, like a board game of elimination, until one is left. No list of envelopes, no ranking.' }
+};
+var STATES = [
+  ['loaded', 'Loaded'], ['detail', 'Envelope open'], ['compare', 'Order open'], ['capture', 'Add an envelope'],
+  ['loading', 'Orders loading'], ['failed', 'Orders failed'], ['nomatch', 'Nothing fits'], ['matched', 'Matched'], ['empty', 'Empty']
+];
+var FRAMES = [
+  { id: 'folded', dev: 'iphone-duo-folded', w: 466, h: 678, mode: 'compact', cap: 'Duo folded, 466 × 678 pt, one hand. Drawn first.' },
+  { id: 'open', dev: 'iphone-duo-unfolded', w: 951, h: 669, mode: 'regular', cap: 'Duo open, 951 × 669 pt, two pages. Hinge gap x 455.5 to 495.5 carries nothing.' },
+  { id: 'ax', dev: 'iphone-duo-folded-ax5', w: 466, h: 678, mode: 'compact', ax: true, cap: 'Duo folded at the largest accessibility text size (AX5). Scroll inside the frame.' },
+  { id: 'phone', dev: 'iphone-large-phone', w: 466, h: 678, mode: 'compact', phone: true, cap: 'Large phone, portrait. No size is written for it, so it is drawn at the brief’s folded size, 466 × 678 pt. Status bar height is a placeholder.' }
+];
+
+/* ---------- Review state ---------- */
+var R = { c: 'shelf', s: 'loaded', t: 'system', labels: true, hide: {} };
+var D = null;      // shared data
+var UI = {};       // per frame
+var focusAfter = null;
+
+function clone(o) { return JSON.parse(JSON.stringify(o)); }
+function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+var WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+var MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function dt(s) { var p = s.split('-'); return new Date(Date.UTC(+p[0], +p[1] - 1, +p[2])); }
+function fmt(s) { var d = dt(s); return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()]; }
+function short(s) { var d = dt(s); return WD[d.getUTCDay()] + ' ' + d.getUTCDate(); }
+function days(a, b) { return Math.round((dt(b) - dt(a)) / 86400000); }
+function addDays(s, n) { var d = dt(s); d.setUTCDate(d.getUTCDate() + n); return d.toISOString().slice(0, 10); }
+function order(id) { for (var i = 0; i < ORDERS.length; i++) if (ORDERS[i].id === id) return ORDERS[i]; return null; }
+function env(id) { for (var i = 0; i < D.envs.length; i++) if (D.envs[i].id === id) return D.envs[i]; return null; }
+function waiting() { return D.envs.filter(function (e) { return !e.matched; }); }
+function lc(s) { return s.toLowerCase(); }
+function hasCard(o, c) { return o.cards.some(function (x) { return lc(x) === lc(c); }); }
+
+/* ---------- Matching: suggestion only, the person decides ---------- */
+function clueList(e) {
+  var a = [{ k: 'day', type: 'day', label: 'Came ' + fmt(e.came) }];
+  e.cards.forEach(function (c) { a.push({ k: 'card:' + c, type: 'card', v: c, label: c }); });
+  if (e.name) a.push({ k: 'name', type: 'name', v: e.name, label: 'Label “' + e.name + '”' });
+  return a;
+}
+function judge(o, e, offOverride) {
+  var off = offOverride || e.off, why = [], good = [], score = 0;
+  if (e.notThem.indexOf(o.id) >= 0) why.push('You ruled it out');
+  if (!off.day) {
+    if (o.day >= e.came) why.push('Ordered after it came');
+    else { good.push('Ordered ' + days(o.day, e.came) + ' days before'); score += 1; }
+  }
+  e.cards.forEach(function (c) {
+    if (off['card:' + c]) return;
+    if (hasCard(o, c)) { good.push('Has ' + c); score += 2; } else why.push('No ' + c);
+  });
+  if (e.name && !off.name) {
+    if (lc(o.sender).indexOf(lc(e.name)) >= 0) { good.push('Name matches'); score += 3; }
+    else why.push('Name doesn’t match');
+  }
+  return { out: why.length > 0, why: why, good: good, score: score };
+}
+function fits(e) { return ORDERS.filter(function (o) { return !judge(o, e).out; }); }
+function bestClueToDrop(e) {
+  var best = null, bestN = 0;
+  clueList(e).forEach(function (c) {
+    if (e.off[c.k]) return;
+    var off = clone(e.off); off[c.k] = true;
+    var n = ORDERS.filter(function (o) { return !judge(o, e, off).out; }).length;
+    if (n > bestN) { bestN = n; best = c; }
+  });
+  return best;
+}
+function allCards() {
+  var m = {};
+  ORDERS.forEach(function (o) { o.cards.forEach(function (c) { m[c] = (m[c] || 0) + 1; }); });
+  return m;
+}
+function suggestions(q, mode) {
+  q = q.trim(); if (q.length < 2) return [];
+  var m = allCards(), out = [];
+  Object.keys(m).sort().forEach(function (c) { if (lc(c).indexOf(lc(q)) >= 0 && out.length < 4) out.push({ type: 'card', v: c, n: m[c] }); });
+  if (mode === 'card' || mode === 'any') {
+    var exact = out.some(function (s) { return lc(s.v) === lc(q); });
+    if (!exact) out.push({ type: 'card', v: q, n: 0 });
+  }
+  if (mode === 'any') {
+    out.push({ type: 'name', v: q });
+    out.push({ type: 'city', v: q });
+  }
+  return out;
+}
+
+/* ---------- Icons (inline SVG, aria-hidden) ---------- */
+function ic(name, size) {
+  size = size || 16;
+  var p = {
+    check: '<path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    shield: '<path d="M8 1.5l5.5 2v4.2c0 3.3-2.3 5.8-5.5 6.8-3.2-1-5.5-3.5-5.5-6.8V3.5z" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.3 8l1.9 1.9 3.6-3.6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>',
+    out: '<circle cx="8" cy="8" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M4 12L12 4" stroke="currentColor" stroke-width="1.6"/>',
+    chev: '<path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+    back: '<path d="M10 2L4 8l6 6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+    plus: '<path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+    x: '<path d="M4 4l8 8M12 4l-8 8" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>',
+    pin: '<path d="M8 15s5-4.6 5-8.5A5 5 0 003 6.5C3 10.4 8 15 8 15z" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="8" cy="6.5" r="1.7" fill="currentColor"/>'
+  }[name];
+  return '<svg aria-hidden="true" width="' + size + '" height="' + size + '" viewBox="0 0 16 16">' + p + '</svg>';
+}
+function chev() { return '<svg class="chev" aria-hidden="true" viewBox="0 0 10 16"><path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>'; }
+
+/* A drawn photo of an envelope front. Illustration colours are content, not tokens. */
+function envSvg(e) {
+  if (!e.photo) {
+    return '<svg viewBox="0 0 160 100" role="img" aria-label="No photo"><rect width="160" height="100" fill="#c9ced6"/><text x="80" y="55" text-anchor="middle" font-size="12" fill="#3b4350" font-family="system-ui">No photo</text></svg>';
+  }
+  var seed = e.id.charCodeAt(e.id.length - 1);
+  var paper = ['#e9dcc1', '#f2f0ea', '#dfe6ee', '#efe4d3'][seed % 4];
+  var lab = '<rect x="44" y="44" width="80" height="34" rx="2" fill="#fbfaf6" opacity=".95"/>';
+  var hand = '';
+  if (e.frag) hand += '<text x="52" y="58" font-size="10" font-family="Bradley Hand, Segoe Script, cursive" fill="#26303e" opacity=".9">…' + esc(e.frag) + '</text>';
+  else hand += '<rect x="52" y="51" width="44" height="5" rx="2" fill="#7d8796" opacity=".55"/>';
+  hand += '<rect x="52" y="62" width="58" height="4" rx="2" fill="#7d8796" opacity=".45"/>';
+  if (e.city) hand += '<text x="52" y="75" font-size="8.5" font-family="Bradley Hand, Segoe Script, cursive" fill="#26303e" opacity=".85">' + esc(e.city) + '</text>';
+  else hand += '<rect x="52" y="70" width="36" height="4" rx="2" fill="#7d8796" opacity=".4"/>';
+  var smudge = '<ellipse cx="' + (30 + seed % 30) + '" cy="30" rx="22" ry="9" fill="#8a7a62" opacity=".18"/>';
+  return '<svg viewBox="0 0 160 100" role="img" aria-label="Photo of the envelope front' + (e.frag ? ', label shows …' + esc(e.frag) : ', label smudged') + '">' +
+    '<rect width="160" height="100" fill="' + paper + '"/>' +
+    '<rect x="128" y="8" width="22" height="26" fill="#c75b4a" opacity=".85"/><rect x="131" y="11" width="16" height="20" fill="none" stroke="#fff" stroke-dasharray="2 2" opacity=".8"/>' +
+    '<rect x="10" y="10" width="40" height="4" rx="2" fill="#7d8796" opacity=".35"/><rect x="10" y="17" width="30" height="4" rx="2" fill="#7d8796" opacity=".3"/>' +
+    smudge + lab + hand + '</svg>';
+}
+
+/* ---------- Shared pieces ---------- */
+function nw(label, inner, tag) { tag = tag || 'div'; return '<' + tag + ' class="nw" data-nw="' + esc(label) + '">' + inner + '</' + tag + '>'; }
+function statusBar(f) {
+  return '<div class="status" aria-hidden="true"><span>9:41</span>' + (f.phone ? '<span class="island"></span>' : '') + '<span class="batt"></span></div>';
+}
+function fitsSummary(e) {
+  if (D.status === 'loading') return 'Orders still loading';
+  if (D.status === 'failed') return 'Orders didn’t load';
+  var f = fits(e);
+  if (!f.length) return 'No order fits every clue';
+  if (f.length === 1) return 'Best fit: ' + f[0].sender;
+  return f.length + ' orders fit';
+}
+function clueSummary(e) {
+  var a = e.cards.slice();
+  if (e.name) a.push('label “' + e.name + '”');
+  return a.length ? a.join(', ') : 'No clues yet';
+}
+
+function ordersMessage(f, where) {
+  if (D.status === 'loading') {
+    return '<div class="stack" aria-busy="true"><p class="sub" role="status">Reading open orders… The envelope is already kept.</p>' +
+      (where === 'board' ? '<div class="board">' + '<div class="tile skel skel-t"></div>'.repeat(4) + '</div>' : '<ul class="list"><li class="skel"></li><li class="skel"></li><li class="skel"></li></ul>') + '</div>';
+  }
+  if (D.status === 'failed') {
+    return '<div class="msg warn" role="alert"><p>Open orders didn’t load, so nothing is ruled in or out yet. The envelope is kept.</p>' +
+      '<button class="btn quiet" data-act="retry">Try again</button></div>';
+  }
+  return '';
+}
+
+/* Order sheet: one home for "is it this order?" in both concepts. */
+function orderSheet(f, u) {
+  var e = env(u.sheetEnv || u.env), o = order(u.order);
+  if (!e || !o) return '';
+  var j = judge(o, e);
+  var filed = e.matched === o.id;
+  var head = '<div class="grabber"></div><div class="navbar">' +
+    '<span class="l"><button class="tbtn" data-act="sheet-close">' + (filed ? 'Close' : 'Cancel') + '</button></span>' +
+    '<span class="t">' + esc(o.sender) + '</span><span class="r"></span></div>';
+  var lag = days(o.day, e.came);
+  var dayLine = lag > 0 ? 'Ordered ' + fmt(o.day) + ', ' + lag + ' days before the envelope came.' : 'Ordered ' + fmt(o.day) + ', after the envelope came on ' + fmt(e.came) + '.';
+  var cards = o.cards.map(function (c) {
+    var inEnv = e.cards.some(function (x) { return lc(x) === lc(c); });
+    return '<li><span>' + esc(c) + '</span>' + (inEnv ? '<span class="tick">' + ic('check', 14) + 'In the envelope</span>' : '') + '</li>';
+  }).join('');
+  var extra = e.cards.filter(function (c) { return !hasCard(o, c); });
+  var body = '<div class="pad" style="padding-top:var(--space-4)">' +
+    '<div class="stack"><p class="sub">' + esc(dayLine) + '</p>' +
+    (j.why.length ? '<p class="note">' + ic('out', 14) + ' Ruled out: ' + esc(j.why.join(', ')) + '. You can still match it.</p>' : '') + '</div>' +
+    '<div class="stack-tight"><h3 class="group-h">Cards in this order</h3><ul class="cards">' + cards + '</ul></div>' +
+    (extra.length ? '<p class="note">In the envelope but not in this order: ' + esc(extra.join(', ')) + '.</p>' : '') +
+    '</div>';
+  var foot;
+  if (filed) {
+    foot = '<div class="filed" role="status"><span class="kept">' + ic('check', 18) + 'Matched to ' + esc(o.sender) + '</span>' +
+      '<p class="note" style="margin:0">The envelope left the unknown pile. Its cards count as received for this order.</p>' +
+      '<div class="cluster"><button class="btn quiet" data-act="undo">Undo</button><button class="btn" data-act="done-filed">Done</button></div></div>';
+  } else {
+    var nt = e.notThem.indexOf(o.id) >= 0;
+    foot = '<button class="btn wide" data-act="confirm" id="' + (f.id === 'folded' ? 'confirm-' + R.c : '') + '">It’s from ' + esc(o.sender) + '</button>' +
+      '<button class="btn plain wide" data-act="notthem">' + (nt ? 'Rule it back in' : 'Not them') + '</button>';
+  }
+  return '<div class="scrim" data-act="sheet-close"></div><div class="sheet" role="dialog" aria-label="' + esc(o.sender) + '">' + head +
+    '<div class="scroll">' + body + '</div><div class="bottombar">' + foot + '</div><div class="homeind"></div></div>';
+}
+
+/* Capture sheet: one home for adding an envelope and its clues, in both concepts. */
+function captureSheet(f, u) {
+  var e = u.capEnv ? env(u.capEnv) : null;
+  var head, body, foot = '';
+  if (!e) {
+    head = '<div class="grabber"></div><div class="navbar"><span class="l"><button class="tbtn" data-act="sheet-close">Cancel</button></span><span class="t">Add an envelope</span><span class="r"></span></div>';
+    body = '<div class="pad" style="padding-top:var(--space-4)"><div class="viewfinder" aria-label="Camera"><div class="guide">Front of the envelope, label up</div></div>' +
+      '<p class="sub">The envelope is kept as soon as you take the photo. Clues come after, and they are optional.</p></div>';
+    foot = '<button class="shutter" data-act="shutter" aria-label="Take photo and keep"></button>' +
+      '<button class="btn plain wide" data-act="keep-nophoto">Keep without a photo</button>';
+  } else {
+    head = '<div class="grabber"></div><div class="navbar"><span class="l"><button class="tbtn" data-act="sheet-close">Close</button></span><span class="t">Clues</span><span class="r"><button class="tbtn strong" data-act="sheet-close">Done</button></span></div>';
+    var dayBtns = '';
+    if (u.datePick) {
+      dayBtns = '<div class="days" role="group" aria-label="Day it came">';
+      for (var i = 0; i < 8; i++) { var d = addDays(TODAY, -i); dayBtns += '<button data-act="set-day" data-v="' + d + '" aria-pressed="' + (d === e.came) + '">' + (i === 0 ? 'Today' : short(d)) + '</button>'; }
+      dayBtns += '</div>';
+    }
+    var chips = e.cards.map(function (c) {
+      var unk = e.unknownCards.indexOf(c) >= 0;
+      return '<span class="chipgrp"><span class="chip">' + esc(c) + (unk ? ' <small>(in no open order)</small>' : '') + '</span><button class="chipx" data-act="remove-card" data-v="' + esc(c) + '" aria-label="Remove ' + esc(c) + '">' + ic('x', 14) + '</button></span>';
+    }).join('');
+    body = '<div class="pad" style="padding-top:var(--space-4)">' +
+      '<div class="cluster" style="flex-wrap:nowrap"><div class="thumb">' + envSvg(e) + '</div><span class="kept" role="status">' + ic('shield', 18) + 'Kept. It stays here until you match it.</span></div>' +
+      '<div class="field"><span class="lab">Day it came</span><div class="cluster"><button class="chip" data-act="date-pick" aria-expanded="' + !!u.datePick + '">' + esc(fmt(e.came)) + '</button></div>' + dayBtns + '</div>' +
+      '<div class="field"><label for="' + f.id + '-cq">Card names inside</label>' + (chips ? '<div class="cluster">' + chips + '</div>' : '') +
+      '<input class="input" id="' + f.id + '-cq" data-input="cq" data-mode="card" placeholder="Start typing a card name" autocomplete="off" value="' + esc(u.q || '') + '">' +
+      '<ul class="sugg" data-sugg="cq">' + suggHtml(u.q, 'card') + '</ul></div>' +
+      '<div class="field"><label for="' + f.id + '-nm">Name on the label</label><input class="input" id="' + f.id + '-nm" data-field="name" placeholder="Part of a name is fine" value="' + esc(e.name) + '"></div>' +
+      '<div class="field"><label for="' + f.id + '-ct">City on the label</label><input class="input" id="' + f.id + '-ct" data-field="city" placeholder="Optional" value="' + esc(e.city) + '">' +
+      '<p class="note" style="margin:0">' + ic('pin', 14) + ' Kept as a note on the envelope. Orders carry no city, so it can’t narrow the list.</p></div>' +
+      '</div>';
+  }
+  return '<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Add an envelope">' + head +
+    '<div class="scroll">' + body + '</div>' + (foot ? '<div class="bottombar">' + foot + '</div>' : '') + '<div class="homeind"></div></div>';
+}
+function suggHtml(q, mode) {
+  return suggestions(q || '', mode).map(function (s) {
+    if (s.type === 'card') return '<li><button data-act="add-card" data-v="' + esc(s.v) + '"><span>' + esc(s.v) + '</span><small>' + (s.n ? 'in ' + s.n + ' open order' + (s.n > 1 ? 's' : '') : 'in no open order') + '</small></button></li>';
+    if (s.type === 'name') return '<li><button data-act="add-name" data-v="' + esc(s.v) + '"><span>Name on label: “' + esc(s.v) + '”</span><small>narrows by sender</small></button></li>';
+    return '<li><button data-act="add-city" data-v="' + esc(s.v) + '"><span>City on label: “' + esc(s.v) + '”</span><small>a note only</small></button></li>';
+  }).join('');
+}
+
+/* ---------- Concept: Shelf ---------- */
+function shelfList(f, u, regular) {
+  var w = waiting(), done = D.envs.filter(function (e) { return e.matched; });
+  var top = '<div class="navbar"><span class="l"></span><span class="t"></span><span class="r"></span></div><h2 class="large">Unknown mail</h2>';
+  if (!D.envs.length) {
+    return top + '<div class="scroll"><div class="pad"><div class="msg"><p>No envelopes are waiting. Add one when mail comes with no sender.</p>' +
+      '<button class="btn" data-act="add">Add an envelope</button></div></div></div>';
+  }
+  var rows = w.map(function (e) {
+    var cur = regular && u.env === e.id;
+    return '<li><button class="row" data-act="open-env" data-env="' + e.id + '" aria-current="' + cur + '"><span class="thumb">' + envSvg(e) + '</span>' +
+      '<span class="main"><span class="h">Came ' + esc(fmt(e.came)) + '</span><span class="b">' + esc(clueSummary(e)) + '</span><span class="f">' + esc(fitsSummary(e)) + '</span></span>' + chev() + '</button></li>';
+  }).join('');
+  var doneRows = done.map(function (e) {
+    var o = order(e.matched);
+    return '<li><div class="row"><span class="thumb">' + envSvg(e) + '</span><span class="main"><span class="h">' + esc(o.sender) + '</span><span class="f">Came ' + esc(fmt(e.came)) + '</span></span>' +
+      '<button class="tbtn" data-act="undo" data-env="' + e.id + '" data-order="' + o.id + '">Undo</button></div></li>';
+  }).join('');
+  var body = '<div class="scroll"><div class="pad">' +
+    '<p class="sub kept">' + ic('shield', 16) + w.length + ' kept safe until you find the sender</p>' +
+    (w.length ? nw('New: shelf of kept envelopes', '<ul class="list">' + rows + '</ul>') : '<div class="msg"><p>Every envelope has a sender now.</p></div>') +
+    (doneRows ? '<div class="stack-tight"><h3 class="group-h">Matched today</h3><ul class="list">' + doneRows + '</ul></div>' : '') +
+    '</div></div>';
+  var bar = '<div class="bottombar"><button class="btn wide" data-act="add">' + ic('plus', 18) + 'Add an envelope</button></div>';
+  return top + body + bar;
+}
+function shelfDetail(f, u, regular) {
+  var e = env(u.env);
+  if (regular && (!e || e.matched) && u.sheet !== 'order') { var w0 = waiting(); u.env = w0.length ? w0[0].id : null; e = env(u.env); }
+  if (!e || e.matched) {
+    return '<div class="navbar"></div><div class="scroll"><div class="pad"><div class="msg"><p>Pick an envelope on the left to see who may have sent it.</p></div></div></div>';
+  }
+  var nav = '<div class="navbar"><span class="l">' + (regular ? '' : '<button class="tbtn" data-act="back">' + ic('back', 16) + 'Unknown mail</button>') + '</span>' +
+    '<span class="t">Came ' + esc(short(e.came)) + '</span><span class="r"></span></div>';
+  var clues = clueList(e).map(function (c) {
+    var on = !e.off[c.k];
+    var unk = c.type === 'card' && e.unknownCards.indexOf(c.v) >= 0;
+    return '<li><div class="row"><span class="main"><span class="b" style="color:var(--ink)">' + esc(c.label) + '</span>' +
+      (unk ? '<span class="f">In no open order, so it starts off</span>' : '') + '</span>' +
+      '<button class="switch" role="switch" aria-checked="' + on + '" aria-label="Use ' + esc(c.label) + '" data-act="toggle" data-k="' + esc(c.k) + '"><i></i></button></div></li>';
+  }).join('');
+  var city = e.city ? '<li><div class="row"><span class="main"><span class="b" style="color:var(--ink)">' + ic('pin', 14) + ' ' + esc(e.city) + '</span><span class="f">A note only. Orders carry no city.</span></span></div></li>' : '';
+  var cands = '', outBlock = '';
+  var msg = ordersMessage(f, 'list');
+  if (msg) cands = msg;
+  else {
+    var res = ORDERS.map(function (o) { return { o: o, j: judge(o, e) }; });
+    var inn = res.filter(function (r) { return !r.j.out; }).sort(function (a, b) { return b.j.score - a.j.score || (a.o.day < b.o.day ? 1 : -1); });
+    var outs = res.filter(function (r) { return r.j.out; });
+    if (!inn.length) {
+      var drop = bestClueToDrop(e);
+      cands = '<div class="msg" role="status"><p>No open order fits every clue.' + (drop ? ' “' + esc(drop.label) + '” rules out the most.' : '') + '</p>' +
+        (drop ? '<button class="btn quiet" data-act="toggle" data-k="' + esc(drop.k) + '">Turn off “' + esc(drop.label) + '”</button>' : '') + '</div>';
+    } else {
+      cands = nw('New: orders that fit, with reasons', '<ul class="list">' + inn.map(function (r) {
+        return '<li><button class="row" data-act="open-order" data-order="' + r.o.id + '"><span class="main"><span class="h">' + esc(r.o.sender) + '</span>' +
+          '<span class="why">' + r.j.good.map(function (g) { return '<span>' + ic('check', 12).replace('<svg', '<svg class="ok-i"') + esc(g) + '</span>'; }).join('') + '</span></span>' + chev() + '</button></li>';
+      }).join('') + '</ul>');
+    }
+    if (outs.length) {
+      outBlock = '<details class="out list"' + (u.outOpen ? ' open' : '') + ' data-details="out"><summary>Ruled out (' + outs.length + ')' + ic('chev', 12) + '</summary><ul class="list" style="border-top:1px solid var(--line);border-radius:0">' +
+        outs.map(function (r) {
+          return '<li><button class="row" data-act="open-order" data-order="' + r.o.id + '"><span class="main"><span class="b" style="color:var(--ink)">' + esc(r.o.sender) + ', ' + esc(short(r.o.day)) + '</span><span class="f">' + esc(r.j.why.join(', ')) + '</span></span>' + chev() + '</button></li>';
+        }).join('') + '</ul></details>';
+    }
+  }
+  var body = '<div class="scroll"><div class="pad" style="padding-top:var(--space-2)">' +
+    '<div class="envhead"><span class="thumb big">' + envSvg(e) + '</span><span class="stack-tight"><span class="kept">' + ic('shield', 16) + 'Kept safe</span>' +
+    '<span class="note">' + esc(clueSummary(e)) + '</span></span></div>' +
+    '<div class="stack-tight"><h3 class="group-h">Who may have sent it</h3>' + cands + '</div>' +
+    '<div class="stack-tight"><h3 class="group-h">What you know</h3><ul class="list">' + clues + city +
+    '<li><button class="row" data-act="add-clue" style="color:var(--accent)">' + ic('plus', 16) + '<span class="main"><span class="b" style="color:var(--accent)">Add a clue</span></span></button></li></ul></div>' +
+    outBlock +
+    '</div></div>';
+  return nav + body;
+}
+function renderShelf(f, u) {
+  if (f.mode === 'regular') {
+    var left = '<div class="app">' + statusBar(f) + shelfList(f, u, true) + '<div class="homeind"></div></div>';
+    var right = '<div class="app">' + statusBar(f) + shelfDetail(f, u, true) + '<div class="homeind"></div>' +
+      (u.sheet === 'order' ? orderSheet(f, u) : '') + (u.sheet === 'capture' ? captureSheet(f, u) : '') + '</div>';
+    return '<div class="page left">' + left + '</div><div class="hinge" aria-hidden="true"></div><div class="page right">' + right + '</div>';
+  }
+  var inner = u.screen === 'detail' && env(u.env) && !env(u.env).matched ? shelfDetail(f, u, false) : shelfList(f, u, false);
+  return '<div class="app">' + statusBar(f) + inner + '<div class="homeind"></div>' +
+    (u.sheet === 'order' ? orderSheet(f, u) : '') + (u.sheet === 'capture' ? captureSheet(f, u) : '') + '</div>';
+}
+
+/* ---------- Concept: Line-up ---------- */
+function pile(u) {
+  var w = waiting();
+  return nw('New: pile of kept envelopes', '<div class="pile" role="tablist" aria-label="Kept envelopes">' + w.map(function (e) {
+    return '<button class="stamp" role="tab" aria-selected="' + (u.env === e.id) + '" aria-current="' + (u.env === e.id) + '" data-act="open-env" data-env="' + e.id + '"><span class="thumb">' + envSvg(e) + '</span>' + esc(short(e.came)) + '</button>';
+  }).join('') + '<button class="stamp addst" data-act="add"><span class="thumb">' + ic('plus', 20) + '</span>Add</button></div>');
+}
+function clueChips(e) {
+  var chips = clueList(e).map(function (c) {
+    var on = !e.off[c.k];
+    var x = c.type === 'card' || c.type === 'name' ? '<button class="chipx" data-act="' + (c.type === 'card' ? 'remove-card' : 'remove-name') + '" data-v="' + esc(c.v || '') + '" aria-label="Remove ' + esc(c.label) + '">' + ic('x', 12) + '</button>' : '';
+    return '<span class="chipgrp"><button class="chip hitpad" aria-pressed="' + on + '" data-act="toggle" data-k="' + esc(c.k) + '">' + (on ? '' : '<span class="sr">Off: </span>') + esc(c.label) + '</button>' + x + '</span>';
+  }).join('');
+  if (e.city) chips += '<span class="chip notec">' + ic('pin', 12) + esc(e.city) + ', a note only</span>';
+  return nw('New: clues you switch on and off', '<div class="cluster" role="group" aria-label="Clues">' + chips + '</div>');
+}
+function countLine(e, u) {
+  var msg = ordersMessage(null, 'board');
+  if (msg) return '';
+  var n = fits(e).length;
+  if (!n) {
+    var drop = bestClueToDrop(e);
+    return '<div class="msg" role="status"><p>No open order fits every clue.' + (drop ? ' “' + esc(drop.label) + '” rules out the most.' : '') + '</p>' +
+      (drop ? '<button class="btn quiet" data-act="toggle" data-k="' + esc(drop.k) + '">Turn off “' + esc(drop.label) + '”</button>' : '') + '</div>';
+  }
+  var outN = ORDERS.length - n;
+  return '<div class="boardhead"><div class="count" role="status"><span class="n"><b>' + n + '</b> of ' + ORDERS.length + ' open orders fit</span>' +
+    (n === 1 ? '<span class="sub">Tap it to check its cards, then match it.</span>' : '<span class="sub">Add a clue to rule more out. Tap any order to look closer.</span>') + '</div>' +
+    (outN ? '<button class="tbtn" data-act="hide-out" aria-pressed="' + !!u.hideOut + '">' + (u.hideOut ? 'Show ruled out (' + outN + ')' : 'Hide ruled out') + '</button>' : '') + '</div>';
+}
+function sentence(list) {
+  return list.map(function (g, i) { return i ? g.charAt(0).toLowerCase() + g.slice(1) : g; }).join(', ');
+}
+function boardHtml(e, u) {
+  var msg = ordersMessage(null, 'board');
+  if (msg) return msg;
+  return nw('New: every open order, ruled out in place', '<div class="board' + (u.hideOut ? ' hide-out' : '') + '">' + ORDERS.map(function (o) {
+    var j = judge(o, e);
+    var label = esc(o.sender) + ', ordered ' + esc(fmt(o.day)) + (j.out ? ', ruled out: ' + esc(j.why[0]) : ', fits');
+    if (j.out) {
+      return '<button class="tile isout" data-act="open-order" data-order="' + o.id + '" aria-label="' + label + '"><span class="h">' + esc(o.sender) + '</span>' +
+        '<span class="r">' + ic('out', 13) + esc(j.why[0]) + '</span></button>';
+    }
+    return '<button class="tile" data-act="open-order" data-order="' + o.id + '" aria-label="' + label + '">' +
+      '<span class="h">' + esc(o.sender) + '</span><span class="f">Ordered ' + esc(short(o.day)) + ', ' + o.cards.length + ' card' + (o.cards.length > 1 ? 's' : '') + '</span>' +
+      '<span class="r" style="color:var(--safe)">' + ic('check', 13) + esc(sentence(j.good.length > 1 ? j.good.slice(1) : j.good.length ? j.good : ['No clue against it'])) + '</span></button>';
+  }).join('') + '</div>');
+}
+function clueBar(f, u) {
+  return '<div class="cluebar"><ul class="sugg" data-sugg="lq">' + suggHtml(u.q, 'any') + '</ul>' +
+    '<label class="sr" for="' + f.id + '-lq">Add a clue</label><input class="input" id="' + f.id + '-lq" data-input="lq" data-mode="any" autocomplete="off" placeholder="' + (f.ax ? 'Add a clue' : 'Add a clue: a card, or part of the label') + '" value="' + esc(u.q || '') + '"></div>';
+}
+function filedLine() {
+  if (!D.lastFiled) return '';
+  var e = env(D.lastFiled.env), o = order(D.lastFiled.order);
+  if (!e || e.matched !== o.id) return '';
+  return '<div class="filedline" role="status"><span>' + ic('check', 14) + ' ' + esc(short(e.came)) + ' envelope matched to ' + esc(o.sender) + '</span><button class="tbtn" data-act="undo" data-env="' + e.id + '" data-order="' + o.id + '">Undo</button></div>';
+}
+function lineupEmpty() {
+  return '<div class="msg"><p>No envelopes are waiting. Add one when mail comes with no sender.</p><button class="btn" data-act="add">Add an envelope</button></div>';
+}
+function renderLineup(f, u) {
+  var e = env(u.env);
+  if (!e || e.matched) { var w0 = waiting(); u.env = w0.length ? w0[0].id : null; e = env(u.env); }
+  var sheets = (u.sheet === 'order' ? orderSheet(f, u) : '') + (u.sheet === 'capture' ? captureSheet(f, u) : '');
+  if (f.mode === 'regular') {
+    var lb, rb;
+    if (!e) {
+      lb = '<div class="navbar"></div><h2 class="large">Unknown mail</h2><div class="scroll"><div class="pad">' + filedLine() + lineupEmpty() + '</div></div>';
+      rb = '<div class="navbar"></div><div class="scroll"><div class="pad"><p class="sub">Open orders show here once an envelope is waiting.</p></div></div>';
+    } else {
+      lb = '<div class="navbar"><span class="l"></span><span class="t">Unknown mail</span><span class="r"></span></div>' + pile(u) +
+        '<div class="scroll"><div class="pad" style="padding-top:var(--space-2)">' + filedLine() +
+        '<div class="stack"><div class="photo">' + envSvg(e) + '</div><span class="kept">' + ic('shield', 16) + 'Kept since ' + esc(fmt(e.came)) + '</span></div>' +
+        clueChips(e) + '</div></div>' + clueBar(f, u);
+      rb = '<div class="navbar"><span class="l"></span><span class="t">Who sent it?</span><span class="r"></span></div><div class="scroll"><div class="pad" style="padding-top:var(--space-2)">' +
+        countLine(e, u) + boardHtml(e, u) + '</div></div>';
+    }
+    return '<div class="page left"><div class="app">' + statusBar(f) + lb + '<div class="homeind"></div>' + (u.sheet === 'capture' ? sheets : '') + '</div></div>' +
+      '<div class="hinge" aria-hidden="true"></div>' +
+      '<div class="page right"><div class="app">' + statusBar(f) + rb + '<div class="homeind"></div>' + (u.sheet === 'order' ? sheets : '') + '</div></div>';
+  }
+  var body;
+  if (!e) {
+    body = '<div class="navbar"></div><h2 class="large">Unknown mail</h2><div class="scroll"><div class="pad">' + filedLine() + lineupEmpty() + '</div></div>';
+  } else {
+    body = '<div class="navbar"><span class="l"></span><span class="t">Who sent it?</span><span class="r"></span></div>' + pile(u) +
+      '<div class="scroll"><div class="pad" style="padding-top:var(--space-2)">' + filedLine() + clueChips(e) + countLine(e, u) + boardHtml(e, u) + '</div></div>' + clueBar(f, u);
+  }
+  return '<div class="app">' + statusBar(f) + body + '<div class="homeind"></div>' + sheets + '</div>';
+}
+
+/* ---------- Frames ---------- */
+function renderFrame(f) {
+  var u = UI[f.id];
+  var html = R.c === 'shelf' ? renderShelf(f, u) : renderLineup(f, u);
+  var el = document.querySelector('[data-frame="' + f.id + '"] .screen');
+  var outEl = el.querySelector('details[data-details="out"]');
+  if (outEl) u.outOpen = outEl.open;
+  var scrolls = Array.prototype.map.call(el.querySelectorAll('.scroll'), function (s) { return s.scrollTop; });
+  el.innerHTML = html;
+  Array.prototype.forEach.call(el.querySelectorAll('.scroll'), function (s, i) { if (scrolls[i]) s.scrollTop = scrolls[i]; });
+}
+function renderAll() {
+  FRAMES.forEach(renderFrame);
+  if (focusAfter) {
+    var t = document.querySelector('[data-frame="' + focusAfter.frame + '"] [data-input="' + focusAfter.input + '"]');
+    if (t) { t.focus(); t.setSelectionRange(t.value.length, t.value.length); }
+    focusAfter = null;
+  }
+}
+function buildStage() {
+  // The four frames are static markup; this fills captions and sets the focus id the
+  // waiting page uses for the concept on show.
+  FRAMES.forEach(function (f) {
+    var fig = document.querySelector('[data-frame="' + f.id + '"]');
+    fig.querySelector('figcaption').textContent = f.cap;
+    if (f.id === 'folded') fig.id = 'opt-' + R.c;
+  });
+}
+
+/* ---------- State from the hash ---------- */
+function applyState() {
+  D = { status: 'loaded', envs: clone(ENVS), lastFiled: null };
+  FRAMES.forEach(function (f) { UI[f.id] = { screen: 'list', env: 'e1', sheet: null, order: null, capEnv: null, q: '', datePick: false, outOpen: false }; });
+  var s = R.s;
+  function each(fn) { FRAMES.forEach(function (f) { fn(UI[f.id], f); }); }
+  if (s === 'empty') D.envs = [];
+  if (s === 'loading') D.status = 'loading';
+  if (s === 'failed') D.status = 'failed';
+  if (s === 'detail' || s === 'loading' || s === 'failed') each(function (u) { u.screen = 'detail'; });
+  if (s === 'compare') each(function (u) { u.screen = 'detail'; u.sheet = 'order'; u.order = 'o1'; u.sheetEnv = 'e1'; });
+  if (s === 'capture') each(function (u) { u.sheet = 'capture'; u.capEnv = null; });
+  if (s === 'nomatch') { env('e1').cards.push('Sol Ring'); each(function (u) { u.screen = 'detail'; }); }
+  if (s === 'matched') { env('e1').matched = 'o1'; D.lastFiled = { env: 'e1', order: 'o1' }; each(function (u) { u.screen = 'detail'; u.sheet = 'order'; u.order = 'o1'; u.sheetEnv = 'e1'; }); }
+  document.documentElement.classList.toggle('labels-on', R.labels);
+  if (R.t === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', R.t);
+  buildStage();
+  renderAll();
+  renderControls();
+}
+function readHash() {
+  var h = location.hash.replace(/^#/, ''), p = {};
+  h.split('&').forEach(function (kv) { var a = kv.split('='); if (a[0]) p[a[0]] = decodeURIComponent(a[1] || ''); });
+  R.hide = {};
+  (p.hide || '').split(',').forEach(function (k) { if (CONCEPTS[k]) R.hide[k] = true; });
+  R.c = CONCEPTS[p.c] ? p.c : 'shelf';
+  if (R.hide[R.c]) R.c = R.c === 'shelf' ? 'lineup' : 'shelf';
+  R.s = STATES.some(function (x) { return x[0] === p.s; }) ? p.s : 'loaded';
+  R.t = p.t === 'dark' || p.t === 'light' ? p.t : 'system';
+  R.labels = p.labels !== 'off';
+}
+function writeHash() {
+  var parts = ['c=' + R.c, 's=' + R.s];
+  if (R.t !== 'system') parts.push('t=' + R.t);
+  if (!R.labels) parts.push('labels=off');
+  var hid = Object.keys(R.hide).filter(function (k) { return R.hide[k]; });
+  if (hid.length) parts.push('hide=' + hid.join(','));
+  var h = '#' + parts.join('&');
+  if (location.hash !== h) location.hash = h; else applyState();
+}
+function renderControls() {
+  var row = document.getElementById('opt-row');
+  var html = '<span class="ctl-name">Concept</span>';
+  Object.keys(CONCEPTS).forEach(function (k) {
+    if (R.hide[k]) return;
+    html += '<span class="opt"><button class="pick" data-pact="concept" data-v="' + k + '" aria-pressed="' + (R.c === k) + '">' + CONCEPTS[k].name + '</button>' +
+      (Object.keys(CONCEPTS).filter(function (x) { return !R.hide[x]; }).length > 1 ? '<button class="hide" data-pact="hide" data-v="' + k + '" aria-label="Hide ' + CONCEPTS[k].name + '">Hide</button>' : '') + '</span>';
+  });
+  if (Object.keys(R.hide).some(function (k) { return R.hide[k]; })) html += '<button class="restore" data-pact="unhide">Show hidden</button>';
+  row.innerHTML = html;
+  document.getElementById('direction').textContent = CONCEPTS[R.c].direction;
+  document.getElementById('state-seg').innerHTML = STATES.map(function (x) {
+    return '<button data-pact="state" data-v="' + x[0] + '" aria-pressed="' + (R.s === x[0]) + '">' + x[1] + '</button>';
+  }).join('');
+  document.getElementById('theme-seg').innerHTML = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']].map(function (x) {
+    return '<button data-pact="theme" data-v="' + x[0] + '" aria-pressed="' + (R.t === x[0]) + '">' + x[1] + '</button>';
+  }).join('');
+  document.getElementById('label-seg').innerHTML = '<button data-pact="labels" aria-pressed="' + R.labels + '">New: labels</button>';
+}
+
+/* ---------- Acts ---------- */
+function newEnvelope(photo) {
+  var id = 'n' + (D.envs.length + 1) + Math.floor(Math.random() * 1000);
+  D.envs.unshift({ id: id, came: TODAY, photo: photo, frag: '', cards: [], name: '', city: '', off: {}, notThem: [], matched: null, unknownCards: [] });
+  return id;
+}
+function addCard(e, v) {
+  v = v.trim(); if (!v) return;
+  var known = Object.keys(allCards()).filter(function (c) { return lc(c) === lc(v); })[0];
+  var name = known || v;
+  if (e.cards.some(function (c) { return lc(c) === lc(name); })) return;
+  e.cards.push(name);
+  if (!known) { e.unknownCards.push(name); e.off['card:' + name] = true; }
+}
+function act(a, el, f) {
+  var u = f ? UI[f] : null;
+  var e = u ? env(u.sheet === 'capture' && u.capEnv ? u.capEnv : u.sheet === 'order' && u.sheetEnv ? u.sheetEnv : u.env) : null;
+  switch (a) {
+    case 'open-env': u.env = el.dataset.env; u.screen = 'detail'; u.q = ''; break;
+    case 'back': u.screen = 'list'; break;
+    case 'add': u.sheet = 'capture'; u.capEnv = null; u.q = ''; u.datePick = false; break;
+    case 'add-clue': u.sheet = 'capture'; u.capEnv = u.env; u.q = ''; u.datePick = false; break;
+    case 'shutter': case 'keep-nophoto':
+      var id = newEnvelope(a === 'shutter'); u.capEnv = id; u.env = id;
+      FRAMES.forEach(function (fr) { if (fr.id !== f && !UI[fr.id].env) UI[fr.id].env = id; });
+      break;
+    case 'sheet-close':
+      if (u.sheet === 'capture' && u.capEnv) { u.env = u.capEnv; u.screen = 'detail'; }
+      u.sheet = null; u.capEnv = null; u.q = ''; break;
+    case 'date-pick': u.datePick = !u.datePick; break;
+    case 'set-day': e.came = el.dataset.v; u.datePick = false; break;
+    case 'toggle': e.off[el.dataset.k] = !e.off[el.dataset.k]; break;
+    case 'remove-card':
+      e.cards = e.cards.filter(function (c) { return c !== el.dataset.v; }); delete e.off['card:' + el.dataset.v]; break;
+    case 'remove-name': e.name = ''; delete e.off.name; break;
+    case 'add-card': addCard(e, el.dataset.v); u.q = ''; focusAfter = { frame: f, input: u.sheet === 'capture' ? 'cq' : 'lq' }; break;
+    case 'add-name': e.name = el.dataset.v.trim(); delete e.off.name; u.q = ''; break;
+    case 'add-city': e.city = el.dataset.v.trim(); u.q = ''; break;
+    case 'open-order': u.sheet = 'order'; u.order = el.dataset.order; u.sheetEnv = u.env; break;
+    case 'confirm': e.matched = u.order; D.lastFiled = { env: e.id, order: u.order }; break;
+    case 'undo':
+      var ue = el.dataset.env ? env(el.dataset.env) : e;
+      if (ue) ue.matched = null;
+      D.lastFiled = null;
+      if (el.dataset.env) { u.env = ue.id; u.screen = 'detail'; }
+      break;
+    case 'done-filed':
+      u.sheet = null; u.screen = 'list';
+      var w = waiting(); u.env = w.length ? w[0].id : null; break;
+    case 'notthem':
+      var i = e.notThem.indexOf(u.order);
+      if (i >= 0) e.notThem.splice(i, 1); else { e.notThem.push(u.order); u.sheet = null; }
+      break;
+    case 'retry': D.status = 'loaded'; break;
+    case 'hide-out': u.hideOut = !u.hideOut; break;
+    default: return;
+  }
+  renderAll();
+}
+document.addEventListener('click', function (ev) {
+  var p = ev.target.closest('[data-pact]');
+  if (p) {
+    var v = p.dataset.v;
+    if (p.dataset.pact === 'concept') R.c = v;
+    if (p.dataset.pact === 'state') R.s = v;
+    if (p.dataset.pact === 'theme') R.t = v;
+    if (p.dataset.pact === 'labels') R.labels = !R.labels;
+    if (p.dataset.pact === 'hide') { R.hide[v] = true; if (R.c === v) R.c = v === 'shelf' ? 'lineup' : 'shelf'; }
+    if (p.dataset.pact === 'unhide') R.hide = {};
+    writeHash(); return;
+  }
+  var a = ev.target.closest('[data-act]');
+  if (!a) return;
+  var fr = a.closest('[data-frame]');
+  act(a.dataset.act, a, fr ? fr.dataset.frame : null);
+});
+document.addEventListener('input', function (ev) {
+  var t = ev.target, fr = t.closest('[data-frame]');
+  if (!fr) return;
+  var u = UI[fr.dataset.frame];
+  if (t.dataset.input) {
+    u.q = t.value;
+    var box = fr.querySelector('[data-sugg="' + t.dataset.input + '"]');
+    if (box) box.innerHTML = suggHtml(u.q, t.dataset.mode);
+  }
+  if (t.dataset.field) {
+    var e = env(u.capEnv || u.env);
+    if (e) e[t.dataset.field] = t.value.trim();
+  }
+});
+document.addEventListener('change', function (ev) {
+  if (ev.target.dataset && ev.target.dataset.field) {
+    var fr = ev.target.closest('[data-frame]');
+    FRAMES.forEach(function (f) { if (!fr || f.id !== fr.dataset.frame) renderFrame(f); });
+  }
+});
+document.addEventListener('keydown', function (ev) {
+  var t = ev.target;
+  if (ev.key === 'Enter' && t.dataset && t.dataset.input) {
+    ev.preventDefault();
+    var fr = t.closest('[data-frame]');
+    var first = fr.querySelector('[data-sugg="' + t.dataset.input + '"] button');
+    if (first) first.click();
+  }
+  if (ev.key === 'Escape') {
+    var f2 = t.closest && t.closest('[data-frame]');
+    if (f2 && UI[f2.dataset.frame].sheet) act('sheet-close', t, f2.dataset.frame);
+  }
+});
+window.addEventListener('hashchange', function () { readHash(); applyState(); });
+readHash();
+applyState();
+})();
+</script>
 </body>
 </html>

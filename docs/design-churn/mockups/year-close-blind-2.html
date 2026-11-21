@@ -1,0 +1,772 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Year Close Mockups</title>
+<style>
+/* House tokens: 4 px space step, 8 px radius, colour by role, system font. Values are this designer's own. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-11: 44px;
+  --radius: 8px;
+  --bg: #E9EDF2; --surface: #F3F5F8; --raised: #FFFFFF; --text: #172031; --text-2: #556075;
+  --line: #CFD6E0; --accent: #2A52BE; --on-accent: #FFFFFF; --accent-soft: #E3EAFB;
+  --open: #8A5300; --open-soft: #FBEACB; --danger: #A8261C; --danger-soft: #FBE3E0;
+  --fold: #DDE4EE; --fold-edge: #A9B6C8; --new: #7A3FC2; --bezel: #1E242D; --hinge: #2A313B;
+  --banner: #FFF3B8; --on-banner: #3B3000;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #090C11; --surface: #10141B; --raised: #1A2029; --text: #E9EDF3; --text-2: #A3ADBC;
+    --line: #2C3542; --accent: #93ACFF; --on-accent: #0D1630; --accent-soft: #1E2945;
+    --open: #F0B85A; --open-soft: #3A2A10; --danger: #FF8E84; --danger-soft: #3E1A17;
+    --fold: #222A36; --fold-edge: #4A5668; --new: #CDA8FF; --bezel: #000000; --hinge: #05070A;
+    --banner: #4A3F00; --on-banner: #FFF3B8;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #090C11; --surface: #10141B; --raised: #1A2029; --text: #E9EDF3; --text-2: #A3ADBC;
+  --line: #2C3542; --accent: #93ACFF; --on-accent: #0D1630; --accent-soft: #1E2945;
+  --open: #F0B85A; --open-soft: #3A2A10; --danger: #FF8E84; --danger-soft: #3E1A17;
+  --fold: #222A36; --fold-edge: #4A5668; --new: #CDA8FF; --bezel: #000000; --hinge: #05070A;
+  --banner: #4A3F00; --on-banner: #FFF3B8;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--bg); color: var(--text);
+  font-family: -apple-system, system-ui, "SF Pro Text", "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+
+/* ---------- review page chrome (not part of the app) ---------- */
+.banner { background: var(--banner); color: var(--on-banner); padding: var(--space-3) var(--space-4);
+  font-weight: 600; font-size: 15px; line-height: 20px; }
+.page { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-4); max-width: 1500px; margin-inline: auto; }
+.page-head { display: flex; flex-direction: column; gap: var(--space-2); }
+.page-head h1 { margin: 0; font-size: 28px; line-height: 34px; }
+.page-head p { margin: 0; color: var(--text-2); font-size: 15px; line-height: 20px; max-width: 70ch; }
+.controls { display: flex; flex-direction: column; gap: var(--space-3); }
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ctl-name { font-size: 13px; color: var(--text-2); min-width: 64px; }
+.chip { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--raised); cursor: pointer; font-size: 14px; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.opt { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--raised); }
+.opt .chip { border: 0; border-radius: 0; }
+.opt .hide { border-left: 1px solid var(--line); color: var(--text-2); font-size: 13px; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+.host { display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; max-width: 100%; flex: none !important; width: var(--w); }
+.host figcaption { font-size: 13px; line-height: 18px; color: var(--text-2); }
+.host figcaption b { color: var(--text); font-weight: 600; }
+figure { margin: 0; }
+.fit { position: relative; overflow: hidden; }
+.device { position: absolute; top: 0; left: 0; transform-origin: 0 0; border: 10px solid var(--bezel);
+  border-radius: 28px; background: var(--bezel); }
+.kind { display: inline-block; padding: 2px var(--space-2); border: 1px solid var(--line); border-radius: var(--radius); font-size: 13px; }
+
+/* ---------- app screen ---------- */
+.scr {
+  /* Dynamic Type, Large (default), from Apple HIG Typography, read 2026-11-21 */
+  --fs-lt: 34px; --lh-lt: 41px; --fs-t1: 28px; --lh-t1: 34px; --fs-t2: 22px; --lh-t2: 28px;
+  --fs-t3: 20px; --lh-t3: 25px; --fs-hl: 17px; --lh-hl: 22px; --fs-body: 17px; --lh-body: 22px;
+  --fs-sub: 15px; --lh-sub: 20px; --fs-fn: 13px; --lh-fn: 18px; --fs-c1: 12px; --lh-c1: 16px;
+  /* drawn insets: this designer's values, no written source */
+  --inset-top: 28px; --inset-bottom: 20px;
+  position: relative; height: 100%; overflow: hidden; background: var(--surface); color: var(--text);
+  border-radius: 18px; font-size: var(--fs-body); line-height: var(--lh-body);
+}
+.scr.phone { --inset-top: 54px; --inset-bottom: 34px; }
+.scr.ax {
+  /* Dynamic Type, AX5, from Apple HIG Typography, read 2026-11-21 */
+  --fs-lt: 60px; --lh-lt: 70px; --fs-t1: 58px; --lh-t1: 68px; --fs-t2: 56px; --lh-t2: 66px;
+  --fs-t3: 55px; --lh-t3: 65px; --fs-hl: 53px; --lh-hl: 62px; --fs-body: 53px; --lh-body: 62px;
+  --fs-sub: 49px; --lh-sub: 58px; --fs-fn: 44px; --lh-fn: 52px; --fs-c1: 43px; --lh-c1: 51px;
+}
+.pg { position: relative; height: 100%; display: flex; flex-direction: column; overflow: hidden; background: var(--surface); }
+.sbar { flex: none; height: max(env(safe-area-inset-top), var(--inset-top)); padding: 0 var(--space-5);
+  display: flex; align-items: flex-end; font-size: 13px; font-weight: 600; line-height: 18px; padding-bottom: 2px; }
+.scr.ax .sbar { font-size: 13px; }
+.scroll { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.scroll::-webkit-scrollbar { display: none; }
+.col { display: flex; flex-direction: column; gap: var(--space-4);
+  padding: var(--space-2) var(--space-4) calc(max(env(safe-area-inset-bottom), var(--inset-bottom)) + 96px); }
+.col.notab { padding-bottom: calc(max(env(safe-area-inset-bottom), var(--inset-bottom)) + var(--space-6)); }
+.stack-2 { display: flex; flex-direction: column; gap: var(--space-2); }
+.stack-3 { display: flex; flex-direction: column; gap: var(--space-3); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+h1, h2, h3, p, dl, dd { margin: 0; }
+.lt { font-size: var(--fs-lt); line-height: var(--lh-lt); font-weight: 700; }
+.t1 { font-size: var(--fs-t1); line-height: var(--lh-t1); font-weight: 700; }
+.t2 { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; }
+.t3 { font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 600; }
+.hl { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; }
+.body { font-size: var(--fs-body); line-height: var(--lh-body); }
+.sub { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-2); }
+.fn { font-size: var(--fs-fn); line-height: var(--lh-fn); }
+.muted { color: var(--text-2); }
+.num { font-variant-numeric: tabular-nums; }
+.navbar { flex: none; display: flex; align-items: center; min-height: 44px; padding: 0 var(--space-2); }
+.back { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; min-width: 44px; padding: 0 var(--space-2);
+  background: none; border: 0; color: var(--accent); font-size: var(--fs-body); line-height: var(--lh-body); cursor: pointer; }
+.back svg { width: 12px; height: 20px; flex: none; }
+
+.card { background: var(--raised); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3);
+  border: 1px solid var(--line); }
+.figs { display: flex; flex-wrap: wrap; gap: var(--space-6); }
+.fig { display: flex; flex-direction: column-reverse; }
+.fig dd { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; font-variant-numeric: tabular-nums; }
+.fig dt { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); }
+.btn { min-height: 44px; padding: var(--space-2) var(--space-4); border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--raised); color: var(--accent); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; cursor: pointer; text-align: center; }
+.btn.primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.btn.wide { width: 100%; }
+.btn.small { min-height: 44px; padding: 0 var(--space-3); font-size: var(--fs-sub); }
+.err { color: var(--danger); background: var(--danger-soft); border-radius: var(--radius); padding: var(--space-3); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.ok { color: var(--text); background: var(--accent-soft); border-radius: var(--radius); padding: var(--space-3); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.sechead { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-fn); line-height: var(--lh-fn);
+  font-weight: 600; color: var(--text-2); padding: 0 var(--space-1); }
+.sechead .grow { flex: 1; }
+.dot { width: 10px; height: 10px; border-radius: 50%; flex: none; }
+.dot.open { background: var(--open); }
+.list { display: flex; flex-direction: column; background: var(--raised); border-radius: var(--radius); border: 1px solid var(--line); overflow: hidden; }
+.row { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: var(--space-3);
+  min-height: 56px; padding: var(--space-2) var(--space-4); background: none; border: 0; border-top: 1px solid var(--line);
+  text-align: left; cursor: pointer; width: 100%; }
+.list > .row:first-child { border-top: 0; }
+.row .mark { width: 4px; align-self: stretch; border-radius: 2px; background: transparent; }
+.row .mark.open { background: var(--open); }
+.row-main { display: flex; flex-direction: column; min-width: 0; }
+.row-main .hl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.amt { font-variant-numeric: tabular-nums; font-size: var(--fs-body); line-height: var(--lh-body); }
+.chev { width: 8px; height: 14px; color: var(--text-2); }
+.row.more { grid-template-columns: 1fr auto; color: var(--accent); font-weight: 600; }
+.row.sel { background: var(--accent-soft); }
+.yr { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 800; font-variant-numeric: tabular-nums; letter-spacing: -0.01em; }
+.notch { font-size: var(--fs-c1); line-height: var(--lh-c1); color: var(--open); background: var(--open-soft); border-radius: var(--radius); padding: 2px var(--space-2); font-weight: 600; white-space: nowrap; }
+.month { display: flex; flex-direction: column; gap: var(--space-2); }
+.kv { display: flex; flex-direction: column; }
+.kv > div { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) 0; border-top: 1px solid var(--line); }
+.kv > div:first-child { border-top: 0; }
+.kv dt { color: var(--text-2); }
+.kv dd { text-align: right; font-variant-numeric: tabular-nums; }
+.search { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-3);
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); }
+.search svg { width: 16px; height: 16px; color: var(--text-2); flex: none; }
+.search input { flex: 1; min-width: 0; border: 0; background: none; color: var(--text); font: inherit; font-size: var(--fs-body); min-height: 40px; outline: none; }
+.search:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+.toggle-row { display: flex; align-items: center; gap: var(--space-3); justify-content: space-between; }
+.switch { flex: none; width: 51px; height: 31px; border-radius: 16px; border: 1px solid var(--line); background: var(--line); position: relative; cursor: pointer; padding: 0; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 25px; height: 25px; border-radius: 50%; background: #fff; transition: left 0.15s; }
+.switch[aria-checked="true"] { background: var(--accent); border-color: var(--accent); }
+.switch[aria-checked="true"]::after { left: 22px; }
+.skel { background: var(--line); border-radius: var(--radius); opacity: 0.55; }
+details summary { cursor: pointer; color: var(--accent); min-height: 44px; display: flex; align-items: center; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* tab bar: floats above content (Apple HIG Tab bars, read 2026-11-21) */
+.tabbar { position: absolute; left: 50%; transform: translateX(-50%); bottom: max(env(safe-area-inset-bottom), var(--inset-bottom));
+  display: flex; gap: var(--space-1); padding: var(--space-1); border-radius: 32px; background: var(--raised); border: 1px solid var(--line); z-index: 4; }
+.tabbar button { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; min-width: 96px; min-height: 52px;
+  border: 0; border-radius: 26px; background: none; color: var(--text-2); font-size: 11px; line-height: 13px; font-weight: 600; cursor: pointer; }
+.tabbar button[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
+.tabbar svg { width: 24px; height: 24px; }
+.scr.ax .tabbar button { font-size: 20px; line-height: 24px; min-width: 150px; min-height: 72px; }
+.scr.ax .tabbar svg { width: 36px; height: 36px; }
+
+/* sheet */
+.scrim { position: absolute; inset: 0; background: rgba(8, 12, 20, 0.38); z-index: 8; border: 0; padding: 0; width: 100%; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 48px; background: var(--surface); z-index: 9; border-radius: var(--radius) var(--radius) 0 0;
+  display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.sheet-bar { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 52px; padding: 0 var(--space-2); }
+.sheet-bar .hl { text-align: center; }
+.tb { justify-self: start; min-height: 44px; min-width: 44px; padding: 0 var(--space-2); background: none; border: 0; color: var(--accent); font-size: var(--fs-body); cursor: pointer; }
+
+/* open pose */
+.duo-open { display: grid; grid-template-columns: 455.5px 40px 455.5px; height: 100%; background: var(--bezel); }
+.duo-open .hinge { background: var(--hinge); }
+.duo-open .pg:first-child { border-radius: 18px 0 0 18px; }
+.duo-open .pg:last-child { border-radius: 0 18px 18px 0; }
+
+/* AX5: rows stack */
+.scr.ax .row { grid-template-columns: auto 1fr; }
+.scr.ax .row .amt, .scr.ax .row .chev { grid-column: 2; }
+.scr.ax .row .chev { display: none; }
+.scr.ax .row-main .hl { white-space: normal; }
+.scr.ax .figs { flex-direction: column; gap: var(--space-3); }
+.scr.ax .toggle-row { flex-direction: column; align-items: flex-start; }
+.scr.ax .kv > div { flex-direction: column; }
+.scr.ax .kv dd { text-align: left; }
+
+/* fold concept */
+.stub { position: relative; background: var(--fold); border: 1px solid var(--fold-edge); border-radius: var(--radius); display: flex; flex-direction: column; }
+.stub-head { display: grid; grid-template-columns: auto 1fr auto auto; align-items: center; gap: var(--space-3); min-height: 64px;
+  padding: var(--space-3) var(--space-4); background: none; border: 0; text-align: left; cursor: pointer; width: 100%; }
+.stub-head .yr { font-size: var(--fs-t1); line-height: var(--lh-t1); }
+.stub-facts { display: flex; flex-direction: column; align-items: flex-end; }
+.stub-head .chev { transform: rotate(90deg); transition: transform 0.2s; }
+.stub[data-ex="1"] .stub-head .chev { transform: rotate(-90deg); }
+.stub-head[data-act="selYear"] .chev { transform: none; }
+.stub-body { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-3) var(--space-3); }
+.stub-note { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: 0 var(--space-4) var(--space-3); }
+.stub.sel { border: 2px solid var(--accent); }
+/* dog-ear: the corner crease that marks a folded year */
+.stub::before { content: ""; position: absolute; top: -1px; right: -1px; width: 18px; height: 18px; pointer-events: none;
+  background: linear-gradient(225deg, var(--surface) 0 50%, var(--fold-edge) 50% 100%); border-top-right-radius: var(--radius); }
+/* paper stack: one leaf per 40 orders, so a thicker year reads as more orders */
+.edges { display: flex; flex-direction: column; padding: 0 var(--space-2); }
+.edges i { display: block; height: 4px; background: var(--fold); border: 1px solid var(--fold-edge); border-top: 0; border-radius: 0 0 4px 4px; }
+.cur { display: flex; flex-direction: column; gap: var(--space-3); }
+.cur-head { display: flex; align-items: baseline; gap: var(--space-3); flex-wrap: wrap; padding: 0 var(--space-1); }
+.cur-head .yr { font-size: var(--fs-t1); line-height: var(--lh-t1); }
+.pleat { display: flex; flex-direction: column; }
+.pleat .list { border-radius: var(--radius) var(--radius) 0 0; }
+.pleat-foot .chev { transform: rotate(90deg); }
+.pleat-foot[aria-expanded="true"] .chev { transform: rotate(-90deg); }
+.sheet-foot { flex: none; display: flex; flex-direction: column; gap: var(--space-2); border-top: 1px solid var(--line); background: var(--surface);
+  padding: var(--space-3) var(--space-4) calc(max(env(safe-area-inset-bottom), var(--inset-bottom)) + var(--space-2)); }
+.pleat-foot { width: 100%; min-height: 44px; cursor: pointer; text-align: left; flex-wrap: nowrap;
+  display: flex; justify-content: space-between; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) var(--space-4); background: var(--raised); border: 1px solid var(--line); border-top: 1px dashed var(--fold-edge); border-radius: 0 0 var(--radius) var(--radius); }
+.arm { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border: 2px solid var(--accent); border-radius: var(--radius); background: var(--raised); }
+.ystack { display: flex; flex-direction: column; gap: var(--space-3); }
+.scr.ax .stub-head { grid-template-columns: 1fr; }
+.scr.ax .stub-facts { align-items: flex-start; }
+.scr.ax .stub-head .chev { display: none; }
+
+/* "New:" labels. A blind designer cannot see today's screen, so every marked part is New. */
+.labels [data-new]:not([data-new=""]) { position: relative; outline: 1.5px dashed var(--new); outline-offset: 2px; }
+.labels [data-new]:not([data-new=""])::after { content: "New: " attr(data-new); position: absolute; top: -10px; right: 6px; z-index: 3; pointer-events: none;
+  font: 600 11px/14px -apple-system, system-ui, sans-serif; color: var(--new); background: var(--surface); padding: 0 4px; border-radius: 4px; white-space: nowrap; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (forced-colors: active) { .dot.open, .row .mark.open { background: CanvasText; } .switch[aria-checked="true"] { background: Highlight; } }
+</style>
+</head>
+<body class="labels">
+<div class="banner" role="note">Sample. No figure, seller, order or date on this page is real.</div>
+<main class="page">
+  <header class="page-head">
+    <h1>Year close</h1>
+    <p><span class="kind">Designer kind: blind</span> year-close-blind-2. Job: put finished orders away at the end of the year, and never lose them. Each option below is clickable in every frame; all frames share one state.</p>
+  </header>
+  <section class="controls" aria-label="Mockup controls">
+    <div class="ctl" id="ctl-concept"><span class="ctl-name">Option</span></div>
+    <div class="ctl" id="ctl-state"><span class="ctl-name">State</span></div>
+    <div class="ctl" id="ctl-theme"><span class="ctl-name">Theme</span></div>
+    <div class="ctl"><span class="ctl-name">Labels</span><button class="chip" id="ctl-labels" aria-pressed="true">Show New labels</button></div>
+  </section>
+  <section class="frames" id="frames">
+    <figure class="host" style="--w:486px"><figcaption><b>Duo, folded.</b> 466 x 678 pt, from the brief.</figcaption>
+      <div class="fit" data-w="486" data-h="698"><div class="device" data-device="iphone-duo-folded" style="width:486px;height:698px">
+        <div class="scr" data-frame="folded" style="width:466px;height:678px"></div></div></div></figure>
+    <figure class="host" style="--w:971px"><figcaption><b>Duo, open.</b> 951 x 669 pt. Hinge gap from x 455.5 to 495.5; nothing crosses it. From the brief.</figcaption>
+      <div class="fit" data-w="971" data-h="689"><div class="device" data-device="iphone-duo-unfolded" style="width:971px;height:689px">
+        <div class="scr" data-frame="open" style="width:951px;height:669px"></div></div></div></figure>
+    <figure class="host" style="--w:422px"><figcaption><b>Large phone.</b> 402 x 874 pt is an assumed size: no source gives one.</figcaption>
+      <div class="fit" data-w="422" data-h="894"><div class="device" data-device="iphone-large" style="width:422px;height:894px">
+        <div class="scr phone" data-frame="phone" style="width:402px;height:874px"></div></div></div></figure>
+    <figure class="host" style="--w:486px"><figcaption><b>Duo, folded, largest text (AX5).</b> 466 x 678 pt.</figcaption>
+      <div class="fit" data-w="486" data-h="698"><div class="device" data-device="iphone-duo-folded-ax5" style="width:486px;height:698px">
+        <div class="scr ax" data-frame="ax" style="width:466px;height:678px"></div></div></div></figure>
+  </section>
+</main>
+<script>
+(function () {
+  'use strict';
+  /* ---------- sample data (seeded, so every reload shows the same figures) ---------- */
+  function mulberry32(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; var t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  var R = mulberry32(20261230);
+  function ri(a, b) { return a + Math.floor(R() * (b - a + 1)); }
+  var SELLERS = ['Harbor Lane Goods', 'Mossgate Trading', 'Kestrel Row', 'Blue Ferry Supply', 'Quarry Hill Lot', 'Northwick Sales',
+    'Tidewater Shop', 'Larkspur Lot', 'Pinecrest Finds', 'Old Mill Traders', 'Copperleaf Goods', 'Saltmarsh Store', 'Redwing Market',
+    'Fernbank Supply', 'Ashgrove Exchange', 'Lantern Row'];
+  function gen(year, count, open) {
+    var out = [];
+    for (var i = 0; i < count; i++) {
+      var isOpen = i >= count - open;
+      var doy = isOpen ? ri(326, 362) : ri(1, year === 2026 ? 340 : 360);
+      var placed = new Date(Date.UTC(year, 0, doy));
+      var items = ri(1, 7);
+      var total = items * ri(18, 420) + (R() < 0.5 ? 99 : 0);
+      var rec = isOpen ? null : new Date(placed.getTime() + ri(3, 16) * 864e5);
+      out.push({ id: year + '-' + String(i + 1).padStart(4, '0'), seller: SELLERS[ri(0, SELLERS.length - 1)], placed: placed, items: items, total: total, received: rec });
+    }
+    out.sort(function (a, b) { return a.placed - b.placed; });
+    return out;
+  }
+  var Y = { 2024: gen(2024, 241, 0), 2025: gen(2025, 388, 0), 2026: gen(2026, 223, 9) };
+  var BYID = {};
+  Object.keys(Y).forEach(function (y) { Y[y].forEach(function (o) { BYID[o.id] = o; }); });
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var MONTH = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  function dd(t) { return MON[t.getUTCMonth()] + ' ' + t.getUTCDate(); }
+  function dY(t) { return dd(t) + ', ' + t.getUTCFullYear(); }
+  function money(c) { return '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }); }
+  function sum(l) { return l.reduce(function (a, o) { return a + o.total; }, 0); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  /* ---------- model ---------- */
+  var CONCEPTS = [{ key: 'shelf', name: 'Shelf' }, { key: 'fold', name: 'Fold' }];
+  var STATES = [['ready', 'Ready to close'], ['done', 'Just closed'], ['record', 'A year record'], ['nomatch', 'Search finds nothing'],
+    ['empty', 'Nothing received'], ['closefail', 'Close fails once'], ['loading', 'Loading'], ['failed', 'Read failed']];
+  var M = { concept: 'shelf', state: 'ready', theme: '', labels: true, hidden: [] };
+  function resetUI() {
+    M.closed = { 2024: true, 2025: true, 2026: false };
+    M.justClosed = false; M.closeError = false; M.failOnce = false; M.tab = 'orders'; M.stack = []; M.sheet = null;
+    M.copy = true; M.exportYear = null; M.exported = null; M.query = ''; M.armed = false; M.expanded = []; M.selYear = 2026;
+    M.orderId = null; M.copied = null; M.scrollOpen = false; M.fresh = true; M.pleatOpen = false;
+  }
+  function applyState(s) {
+    resetUI(); M.state = s;
+    if (s === 'done') { M.closed[2026] = true; M.justClosed = true; }
+    if (s === 'closefail') M.failOnce = true;
+    if (s === 'record' || s === 'nomatch') {
+      if (M.concept === 'shelf') { M.tab = 'records'; M.stack = [{ kind: 'year', year: 2025 }]; }
+      else { M.expanded = [2025]; M.selYear = 2025; }
+      if (s === 'nomatch') M.query = 'Zephyr';
+    }
+  }
+  function rec26() { return M.state === 'empty' ? [] : Y[2026].filter(function (o) { return o.received; }); }
+  function open26() { return Y[2026].filter(function (o) { return !o.received; }); }
+  function yearAll(y) { return y === 2026 ? rec26().concat(open26()) : Y[y]; }
+  function recordOrders(y) { return y === 2026 ? rec26() : Y[y]; }
+  function closedYears() { return [2026, 2025, 2024].filter(function (y) { return M.closed[y]; }); }
+
+  /* ---------- icons ---------- */
+  var I = {
+    chev: '<svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    back: '<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    tray: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l2.5-8h13L21 13v6H3z M3 13h5l1.5 2.5h5L16 13h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    box: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 5h18v4H3z M5 9v10h14V9 M10 13h4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"/></svg>',
+    search: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 11l4 4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>'
+  };
+
+  /* ---------- shared parts ---------- */
+  function figs(list) {
+    return '<dl class="figs">' + list.map(function (f) { return '<div class="fig"><dt>' + f[1] + '</dt><dd>' + f[0] + '</dd></div>'; }).join('') + '</dl>';
+  }
+  function row(o, opts) {
+    opts = opts || {};
+    var open = !o.received;
+    return '<button class="row" data-act="order" data-id="' + o.id + '">' +
+      '<span class="mark' + (open ? ' open' : '') + '"></span>' +
+      '<span class="row-main"><span class="hl">' + esc(o.seller) + '</span><span class="sub num">' + dd(o.placed) + ', ' + o.items + (o.items === 1 ? ' item' : ' items') + '</span></span>' +
+      '<span class="amt">' + money(o.total) + '</span>' + I.chev + '</button>';
+  }
+  function openBlock(title) {
+    var op = open26();
+    var h = '<h3 class="sechead" id="' + '' + '"><span class="dot open" aria-hidden="true"></span>' + title + '<span class="grow"></span><span class="num">' + op.length + '</span></h3>';
+    if (!op.length) return '<div class="stack-2">' + h + '<p class="sub">Every 2026 order has arrived.</p></div>';
+    return '<div class="stack-2" data-open-list="1">' + h + '<div class="list">' + op.map(function (o) { return row(o); }).join('') + '</div></div>';
+  }
+  function monthGroups(list) {
+    var groups = {};
+    list.forEach(function (o) { var k = o.placed.getUTCMonth(); (groups[k] = groups[k] || []).push(o); });
+    return Object.keys(groups).map(Number).sort(function (a, b) { return b - a; }).map(function (m) {
+      var l = groups[m].slice().reverse();
+      return '<div class="month"><h3 class="sechead">' + MONTH[m] + '<span class="grow"></span><span class="num">' + money(sum(l)) + '</span></h3>' +
+        '<div class="list">' + l.map(function (o) { return row(o); }).join('') + '</div></div>';
+    }).join('');
+  }
+  function searchBox(y) {
+    return '<label class="search">' + I.search + '<span class="sr" hidden>Search ' + y + '</span><input type="search" data-role="q" aria-label="Search ' + y + ' by seller or order number" placeholder="Seller or order number" value="' + esc(M.query) + '"></label>';
+  }
+  function filtered(y) {
+    var q = M.query.trim().toLowerCase(); var l = recordOrders(y);
+    return q ? l.filter(function (o) { return o.seller.toLowerCase().indexOf(q) >= 0 || o.id.indexOf(q) >= 0; }) : l;
+  }
+  function exportLine(y) {
+    if (!M.exported || M.exported.y !== y) return '';
+    return '<p class="ok" role="status">Saved “' + y + ' orders.' + M.exported.fmt + '” to Files.</p>';
+  }
+  /* The record of one year: same body in both options. */
+  function recordBody(y, withTitle, noFigs) {
+    var all = yearAll(y), put = recordOrders(y), f = filtered(y);
+    var openN = y === 2026 ? open26().length : 0;
+    var h = '';
+    if (withTitle) h += '<h1 class="lt num">' + y + '</h1>';
+    h += '<section class="card" data-new="Year record">' + (noFigs ? '' : figs([[money(sum(all)), 'spent in ' + y], [put.length, 'orders put away']])) +
+      (openN ? '<p class="sub">The ' + y + ' total includes ' + openN + ' orders still open.</p>' : '') +
+      '<div class="cluster"><button class="btn" data-act="export" data-y="' + y + '" data-new="File copy">Save a copy</button></div>' + exportLine(y) + '</section>';
+    h += searchBox(y);
+    if (f.length) h += monthGroups(f);
+    else h += '<section class="card"><p class="body">No ' + y + ' order matches “' + esc(M.query.trim()) + '”.</p><div class="cluster"><button class="btn" data-act="clearSearch">Clear search</button></div></section>';
+    return h;
+  }
+  function orderBody(o) {
+    var open = !o.received;
+    return '<h1 class="t1">' + esc(o.seller) + '</h1>' +
+      '<section class="card"><dl class="kv">' +
+      '<div><dt>Order number</dt><dd>' + o.id + '</dd></div>' +
+      '<div><dt>Placed</dt><dd>' + dY(o.placed) + '</dd></div>' +
+      '<div><dt>Received</dt><dd>' + (open ? '<span class="notch">Not yet</span>' : dY(o.received)) + '</dd></div>' +
+      '<div><dt>Items</dt><dd>' + o.items + '</dd></div>' +
+      '<div><dt>Paid</dt><dd>' + money(o.total) + '</dd></div></dl></section>' +
+      '<div class="stack-2"><button class="btn wide" data-act="share" data-id="' + o.id + '">Copy details</button>' +
+      (M.copied === o.id ? '<p class="ok" role="status">Copied. Paste it into a message or a claim.</p>' : '') + '</div>';
+  }
+  function loadingBody(title) {
+    return '<h1 class="lt">' + title + '</h1><p class="sub" role="status">Reading your orders</p>' +
+      '<div class="skel" style="height:180px"></div><div class="skel" style="height:56px"></div><div class="skel" style="height:56px"></div><div class="skel" style="height:56px"></div>';
+  }
+  function failedBody(title) {
+    return '<h1 class="lt">' + title + '</h1><section class="card"><p class="body">Could not read your orders. Nothing was changed or lost.</p>' +
+      '<div class="cluster"><button class="btn primary" data-act="retryRead">Try again</button></div>' +
+      '<details><summary class="fn">What the device said</summary><p class="fn muted">Storage read failed (sample text).</p></details></section>';
+  }
+  function sheetHTML(title, body, foot) {
+    return '<button class="scrim" data-act="cancelSheet" aria-label="Close"></button>' +
+      '<div class="sheet" role="dialog" aria-modal="true" aria-label="' + esc(title) + '"><div class="sheet-bar"><button class="tb" data-act="cancelSheet">Cancel</button><span class="hl">' + esc(title) + '</span><span></span></div>' +
+      '<div class="scroll" data-scroll="sheet"><div class="col notab">' + body + '</div></div>' + (foot ? '<div class="sheet-foot">' + foot + '</div>' : '') + '</div>';
+  }
+  function exportSheet() {
+    var y = M.exportYear;
+    return sheetHTML('Save a copy of ' + y,
+      '<p class="body">Save every ' + y + ' order, with its dates and price, as a file.</p>' +
+      '<div class="list"><button class="row" data-act="doExport" data-fmt="csv" style="grid-template-columns:1fr auto"><span class="row-main"><span class="hl">Spreadsheet</span><span class="sub">For taxes. Opens in any spreadsheet app.</span></span>' + I.chev + '</button>' +
+      '<button class="row" data-act="doExport" data-fmt="pdf" style="grid-template-columns:1fr auto"><span class="row-main"><span class="hl">Printable list</span><span class="sub">For disputes. One page per month.</span></span>' + I.chev + '</button></div>');
+  }
+  function orderSheet() { return sheetHTML('Order', orderBody(BYID[M.orderId])); }
+
+  /* ---------- Shelf: two tabs, Orders and Records ---------- */
+  function shelfCloseCard(f, inOpenPose) {
+    var rec = rec26(), op = open26();
+    var id = f === 'folded' ? ' id="shelf-close"' : '';
+    if (M.closed[2026]) {
+      return '<section class="card"' + id + ' data-new="Put away card" aria-live="polite"><h2 class="t3">2026 is put away</h2>' +
+        '<p class="body">' + rec.length + ' orders moved to Records. ' + (op.length ? op.length + ' open orders stay here until they arrive.' : '') + '</p>' +
+        '<div class="cluster"><button class="btn" data-act="undo">Undo</button><button class="btn" data-act="gotoRecord" data-y="2026">Open the 2026 record</button></div></section>';
+    }
+    if (!rec.length) {
+      return '<section class="card"' + id + ' data-new="Put away card"><p class="body">No 2026 order is fully received yet. An order can be put away once all of it has arrived.</p>' +
+        '<div class="cluster"><button class="btn" data-act="showOpen">Show open orders</button></div></section>';
+    }
+    return '<section class="card"' + id + ' data-new="Put away card"><h2 class="t3">Put away 2026</h2>' +
+      '<p class="body">' + rec.length + ' orders are fully received. Put them away to clear this list. Records keeps them for good.</p>' +
+      figs([[money(sum(yearAll(2026))), 'spent in 2026']]) +
+      (inOpenPose ? '<p class="sub">Check the list on the right page, then put it away there.</p>'
+        : '<button class="btn primary wide" data-act="startClose">Put away ' + rec.length + ' orders</button>') + '</section>';
+  }
+  function closeAction() {
+    if (M.closeError) return '<p class="err" role="alert">Could not put away. Nothing moved.</p><button class="btn primary wide" data-act="retryClose">Try again</button>';
+    return '<button class="btn primary wide" data-act="confirmClose">Put away ' + rec26().length + ' orders</button>';
+  }
+  function closeReview(inPanel) {
+    var rec = rec26(), op = open26();
+    var h = inPanel ? '<h2 class="t1">Put away 2026</h2>' : '';
+    if (!rec.length) return h + '<p class="body">Nothing to put away yet. Orders show here once all of an order has arrived.</p>';
+    h += '<p class="body">' + rec.length + ' fully received orders move to Records, under 2026. They leave the Orders list. Nothing is deleted.</p>' +
+      figs([[money(sum(rec)), 'paid for these orders'], [op.length, 'open orders stay']]) +
+      '<div class="toggle-row"><span class="stack-2"><span class="hl">Save a file copy</span><span class="sub">A spreadsheet of these ' + rec.length + ' orders, for taxes and disputes.</span></span>' +
+      '<button class="switch" role="switch" aria-label="Save a file copy" aria-checked="' + M.copy + '" data-act="toggleCopy"></button></div>' +
+      (op.length ? '<p class="sub">The ' + op.length + ' open orders stay in Orders. Put each one away after it arrives.</p>' : '');
+    if (inPanel) h += closeAction();
+    if (inPanel) h += '<div class="stack-2"><h3 class="sechead">Received<span class="grow"></span><span class="num">' + rec.length + '</span></h3></div>' + monthGroups(rec);
+    return h;
+  }
+  function shelfOrdersRoot(f, inOpenPose) {
+    var rec = rec26(), c = M.closed[2026];
+    var h = '<h1 class="lt">Orders</h1>' + shelfCloseCard(f, inOpenPose) + openBlock('Open');
+    if (!c && rec.length && !inOpenPose) {
+      h += '<div class="stack-2"><h3 class="sechead">Received<span class="grow"></span><span class="num">' + rec.length + '</span></h3><div class="list">' +
+        rec.slice(-3).reverse().map(function (o) { return row(o); }).join('') +
+        '<button class="row more" data-act="showReceived"><span>Show all ' + rec.length + '</span>' + I.chev + '</button></div></div>';
+    }
+    return h;
+  }
+  function shelfRecordsRoot(selY) {
+    var ys = closedYears();
+    return '<h1 class="lt">Records</h1><p class="sub">Orders you put away, by year. Each year keeps every order, date and price.</p>' +
+      '<div class="list" data-new="Records">' + ys.map(function (y) {
+        var n = recordOrders(y).length, openN = y === 2026 ? open26().length : 0;
+        return '<button class="row' + (selY === y ? ' sel' : '') + '" data-act="openYear" data-y="' + y + '" style="grid-template-columns:auto 1fr auto auto">' +
+          '<span class="yr">' + y + '</span><span class="row-main"><span class="sub num">' + n + ' orders</span>' + (openN ? '<span><span class="notch">' + openN + ' still open</span></span>' : '') + '</span>' +
+          '<span class="amt">' + money(sum(yearAll(y))) + '</span>' + I.chev + '</button>';
+      }).join('') + '</div>';
+  }
+  function tabbar() {
+    return '<nav class="tabbar" aria-label="Sections">' +
+      '<button data-act="tab" data-tab="orders"' + (M.tab === 'orders' ? ' aria-current="page"' : '') + '>' + I.tray + '<span>Orders</span></button>' +
+      '<button data-act="tab" data-tab="records"' + (M.tab === 'records' ? ' aria-current="page"' : '') + '>' + I.box + '<span>Records</span></button></nav>';
+  }
+  function viewBody(v) {
+    if (v.kind === 'year') return recordBody(v.year, true);
+    if (v.kind === 'order') return orderBody(BYID[v.id]);
+    if (v.kind === 'received') { var r = rec26(); return '<h1 class="lt">Received</h1><p class="sub">Fully received 2026 orders, waiting to be put away.</p>' + monthGroups(r); }
+    return '';
+  }
+  function backLabel(i) {
+    if (i === 0) return M.tab === 'orders' ? 'Orders' : 'Records';
+    var p = M.stack[i - 1];
+    return p.kind === 'year' ? String(p.year) : p.kind === 'received' ? 'Received' : 'Back';
+  }
+  function shelfSingle(f) {
+    var top = M.stack[M.stack.length - 1];
+    var h = '<div class="pg"><div class="sbar">9:41</div>';
+    if (M.state === 'loading' || M.state === 'failed') {
+      h += '<div class="scroll"><div class="col">' + (M.state === 'loading' ? loadingBody('Orders') : failedBody('Orders')) + '</div></div>' + tabbar() + '</div>';
+      return h;
+    }
+    if (top) {
+      h += '<div class="navbar"><button class="back" data-act="back">' + I.back + backLabel(M.stack.length - 1) + '</button></div>';
+      h += '<div class="scroll" data-scroll="v' + M.stack.length + '"><div class="col">' + viewBody(top) + '</div></div>';
+    } else {
+      h += '<div class="scroll" data-scroll="root-' + M.tab + '"><div class="col">' + (M.tab === 'orders' ? shelfOrdersRoot(f, false) : shelfRecordsRoot(null)) + '</div></div>';
+    }
+    h += tabbar();
+    if (M.sheet === 'close') h += sheetHTML('Put away 2026', closeReview(false), closeAction());
+    if (M.sheet === 'export') h += exportSheet();
+    return h + '</div>';
+  }
+  function shelfOpen(f) {
+    var left = '<div class="pg"><div class="sbar">9:41</div>', right = '<div class="pg"><div class="sbar"></div>';
+    if (M.state === 'loading' || M.state === 'failed') {
+      var b = M.state === 'loading' ? loadingBody('Orders') : failedBody('Orders');
+      left += '<div class="scroll"><div class="col">' + b + '</div></div>' + tabbar() + '</div>';
+      right += '<div class="scroll"><div class="col notab">' + (M.state === 'loading' ? '<div class="skel" style="height:320px"></div>' : '') + '</div></div></div>';
+      return '<div class="duo-open">' + left + '<div class="hinge"></div>' + right + '</div>';
+    }
+    var top = M.stack[M.stack.length - 1];
+    var selY = M.tab === 'records' ? (top && top.kind === 'year' ? top.year : (M.stack[0] && M.stack[0].kind === 'year' ? M.stack[0].year : closedYears()[0])) : null;
+    left += '<div class="scroll" data-scroll="L-' + M.tab + '"><div class="col">' + (M.tab === 'orders' ? shelfOrdersRoot(f, true) : shelfRecordsRoot(selY)) + '</div></div>' + tabbar() + '</div>';
+    var rb;
+    if (top && top.kind === 'order') {
+      right += '<div class="navbar"><button class="back" data-act="back">' + I.back + backLabel(M.stack.length - 1) + '</button></div>';
+      rb = orderBody(BYID[top.id]);
+    } else if (M.tab === 'records') rb = recordBody(selY, true);
+    else if (M.closed[2026]) rb = recordBody(2026, true);
+    else rb = closeReview(true);
+    right += '<div class="scroll" data-scroll="R-' + M.tab + (top ? top.kind : '') + '"><div class="col notab">' + rb + '</div></div>';
+    if (M.sheet === 'export') right += exportSheet();
+    right += '</div>';
+    return '<div class="duo-open">' + left + '<div class="hinge"></div>' + right + '</div>';
+  }
+
+  /* ---------- Fold: one ledger, old years folded above, open work under the thumb ---------- */
+  function edges(n) {
+    var k = Math.max(1, Math.min(10, Math.round(n / 40))), h = '';
+    for (var i = 1; i <= k; i++) h += '<i style="margin-inline:' + (i * 3) + 'px"></i>';
+    return '<div class="edges" aria-hidden="true">' + h + '</div>';
+  }
+  function stub(y, f, selectable) {
+    var n = recordOrders(y).length, ex = M.expanded.indexOf(y) >= 0 && !selectable, openN = y === 2026 ? open26().length : 0;
+    var act = selectable ? 'selYear' : 'toggleStub';
+    var h = '<div class="ystack"><section class="stub' + (selectable && M.selYear === y ? ' sel' : '') + '" data-ex="' + (ex ? 1 : 0) + '"' + (y === 2026 ? ' data-new="Folded year"' : '') + '>' +
+      '<button class="stub-head" data-act="' + act + '" data-y="' + y + '" aria-expanded="' + (selectable ? (M.selYear === y) : ex) + '">' +
+      '<span class="yr">' + y + '</span><span></span><span class="stub-facts"><span class="hl amt">' + money(sum(yearAll(y))) + '</span><span class="sub num">' + n + ' orders</span>' +
+      (openN ? '<span class="notch">' + openN + ' still open</span>' : '') + '</span>' + I.chev + '</button>';
+    if (y === 2026 && M.justClosed) h += '<div class="stub-note" aria-live="polite"><span class="sub">Folded just now.</span><button class="btn small" data-act="undo">Undo</button></div>';
+    if (ex) h += '<div class="stub-body">' + recordBody(y, false, true) + '<button class="btn wide" data-act="toggleStub" data-y="' + y + '">Fold ' + y + ' again</button></div>';
+    h += '</section>' + edges(n) + '</div>';
+    return h;
+  }
+  function foldControl(f) {
+    var rec = rec26();
+    if (M.closeError) return '<p class="err" role="alert">Could not fold. Nothing moved.</p><button class="btn primary wide" data-act="retryClose">Try again</button>';
+    if (M.armed) return '<div class="arm"><p class="body">Fold ' + rec.length + ' orders into 2026? They stay one tap away, above.</p>' +
+      '<div class="cluster"><button class="btn primary" data-act="confirmClose">Fold ' + rec.length + ' orders</button><button class="btn" data-act="disarm">Keep them out</button></div></div>';
+    return '<button class="btn primary wide" data-act="arm">Fold ' + rec.length + ' received orders</button>';
+  }
+  function current(f, roomy) {
+    var rec = rec26(), id = f === 'folded' ? ' id="fold-close"' : '';
+    var h = '<section class="cur"' + id + ' data-new="Fold"><div class="cur-head"><span class="yr">2026</span><span class="sub">This year, not folded yet</span></div>';
+    if (!rec.length) {
+      h += '<section class="card"><p class="body">No 2026 order is fully received yet. Received orders gather here until you fold them.</p>' +
+        '<div class="cluster"><button class="btn" data-act="showOpen">Show open orders</button></div></section>';
+      return h + '</section>';
+    }
+    var shown = M.pleatOpen ? rec.slice().reverse() : roomy ? rec.slice(-3).reverse() : rec.slice(-1);
+    h += '<div class="pleat"><div class="list">' + shown.map(function (o) { return row(o); }).join('') + '</div>' +
+      '<button class="pleat-foot" data-act="pleat" aria-expanded="' + M.pleatOpen + '"><span class="sub num">' +
+      (M.pleatOpen ? 'All ' + rec.length + ' received, ' + money(sum(rec)) + '. Show fewer' : (rec.length - shown.length) + ' more received, ' + money(sum(rec)) + ' in all') +
+      '</span>' + I.chev + '</button></div>' + edges(rec.length);
+    return h + foldControl(f) + '</section>';
+  }
+  function foldDoneMark(f) {
+    return f === 'folded' ? '<span id="fold-close" hidden></span>' : '';
+  }
+  function foldSingle(f) {
+    var h = '<div class="pg"><div class="sbar">9:41</div>';
+    if (M.state === 'loading' || M.state === 'failed') {
+      return h + '<div class="scroll"><div class="col notab">' + (M.state === 'loading' ? loadingBody('Orders') : failedBody('Orders')) + '</div></div></div>';
+    }
+    var ys = [2024, 2025].concat(M.closed[2026] ? [2026] : []);
+    h += '<div class="scroll" data-scroll="fold"><div class="col notab">' +
+      '<h1 class="lt">Orders</h1><p class="sub">Past years sit folded at the top. Tap a year to open it.</p>' +
+      ys.map(function (y) { return stub(y, f, false); }).join('') +
+      (M.closed[2026] ? foldDoneMark(f) : current(f)) +
+      openBlock('Still open') + '</div></div>';
+    if (M.sheet === 'export') h += exportSheet();
+    if (M.sheet === 'order') h += orderSheet();
+    return h + '</div>';
+  }
+  function foldOpen(f) {
+    var left = '<div class="pg"><div class="sbar">9:41</div>', right = '<div class="pg"><div class="sbar"></div>';
+    if (M.state === 'loading' || M.state === 'failed') {
+      left += '<div class="scroll"><div class="col notab">' + (M.state === 'loading' ? loadingBody('Years') : failedBody('Years')) + '</div></div></div>';
+      right += '</div>';
+      return '<div class="duo-open">' + left + '<div class="hinge"></div>' + right + '</div>';
+    }
+    var ys = [2024, 2025, 2026];
+    left += '<div class="scroll" data-scroll="foldL"><div class="col notab"><h1 class="lt">Years</h1><p class="sub">Folded years keep every order. Pick one to read it on the right.</p>' +
+      ys.map(function (y) {
+        if (y === 2026 && !M.closed[2026]) {
+          var rec = rec26();
+          return '<button class="card" data-act="selYear" data-y="2026" style="text-align:left;cursor:pointer;' + (M.selYear === 2026 ? 'border:2px solid var(--accent)' : '') + '">' +
+            '<span class="yr" style="font-size:var(--fs-t1);line-height:var(--lh-t1)">2026</span><span class="sub">Not folded yet. ' + rec.length + ' received, ' + open26().length + ' still open.</span></button>';
+        }
+        return stub(y, f, true);
+      }).join('') + '</div></div></div>';
+    var y = M.selYear, rb;
+    if (y === 2026 && !M.closed[2026]) rb = current(f, true) + openBlock('Still open');
+    else rb = '<h2 class="t1 num">' + y + '</h2>' + (y === 2026 && M.justClosed ? '<div class="stub-note" style="padding:0"><span class="sub">Folded just now.</span><button class="btn small" data-act="undo">Undo</button></div>' : '') +
+      recordBody(y, false) + (y === 2026 ? openBlock('Still open') : '');
+    right += '<div class="scroll" data-scroll="foldR' + y + '"><div class="col notab">' + rb + '</div></div>';
+    if (M.sheet === 'export') right += exportSheet();
+    if (M.sheet === 'order') right += orderSheet();
+    right += '</div>';
+    return '<div class="duo-open">' + left + '<div class="hinge"></div>' + right + '</div>';
+  }
+
+  /* ---------- frames ---------- */
+  var FRAMES = [{ key: 'folded' }, { key: 'open' }, { key: 'phone' }, { key: 'ax' }];
+  function screenHTML(fr) {
+    var single = fr.key !== 'open';
+    if (M.concept === 'shelf') return single ? shelfSingle(fr.key) : shelfOpen(fr.key);
+    return single ? foldSingle(fr.key) : foldOpen(fr.key);
+  }
+  var built = false;
+  function buildFrames() { built = true; fit(); }
+  function fit() {
+    document.querySelectorAll('.fit').forEach(function (el) {
+      var w = +el.dataset.w, h = +el.dataset.h, s = Math.min(1, el.clientWidth / w);
+      el.style.height = (h * s) + 'px';
+      el.firstChild.style.transform = 'scale(' + s + ')';
+    });
+  }
+  function render() {
+    if (!built) buildFrames();
+    var ae = document.activeElement, focusFrame = null, caret = null;
+    if (ae && ae.dataset && ae.dataset.role === 'q') { focusFrame = ae.closest('[data-frame]').dataset.frame; caret = ae.selectionStart; }
+    var saved = {};
+    document.querySelectorAll('[data-frame]').forEach(function (s) {
+      s.querySelectorAll('[data-scroll]').forEach(function (el) { saved[s.dataset.frame + '|' + el.dataset.scroll] = el.scrollTop; });
+    });
+    FRAMES.forEach(function (fr) {
+      var s = document.querySelector('[data-frame="' + fr.key + '"]');
+      s.innerHTML = screenHTML(fr);
+      s.querySelectorAll('[data-scroll]').forEach(function (el) {
+        var k = fr.key + '|' + el.dataset.scroll;
+        if (k in saved && !M.fresh) el.scrollTop = saved[k];
+        else if (el.dataset.bottom) el.scrollTop = el.scrollHeight;
+      });
+      if (M.scrollOpen) { var ol = s.querySelector('[data-open-list]'); if (ol) ol.scrollIntoView({ block: 'start' }); }
+    });
+    M.fresh = false; M.scrollOpen = false;
+    if (focusFrame) { var inp = document.querySelector('[data-frame="' + focusFrame + '"] [data-role="q"]'); if (inp) { inp.focus(); try { inp.setSelectionRange(caret, caret); } catch (e) { } } }
+    renderControls(); writeHash();
+  }
+
+  /* ---------- acts ---------- */
+  function doClose() { M.closed[2026] = true; M.justClosed = true; M.sheet = null; M.armed = false; M.closeError = false; if (M.concept === 'shelf' && M.copy) M.exported = { y: 2026, fmt: 'csv' }; }
+  function act(a, ds) {
+    switch (a) {
+      case 'tab': M.tab = ds.tab; M.stack = []; M.query = ''; M.sheet = null; break;
+      case 'openYear': M.stack = [{ kind: 'year', year: +ds.y }]; M.query = ''; break;
+      case 'gotoRecord': M.tab = 'records'; M.stack = [{ kind: 'year', year: +ds.y }]; M.query = ''; break;
+      case 'order':
+        if (M.concept === 'fold') { M.sheet = 'order'; M.orderId = ds.id; }
+        else { if (M.sheet) M.sheet = null; M.stack.push({ kind: 'order', id: ds.id }); }
+        break;
+      case 'showReceived': M.stack = [{ kind: 'received' }]; break;
+      case 'back': M.stack.pop(); break;
+      case 'startClose': M.sheet = 'close'; break;
+      case 'cancelSheet': M.sheet = null; break;
+      case 'confirmClose': if (M.failOnce) { M.failOnce = false; M.closeError = true; M.armed = false; } else doClose(); break;
+      case 'retryClose': doClose(); break;
+      case 'arm': M.armed = true; break;
+      case 'disarm': M.armed = false; break;
+      case 'pleat': M.pleatOpen = !M.pleatOpen; break;
+      case 'undo': M.closed[2026] = false; M.justClosed = false; M.exported = null; M.selYear = 2026; if (M.stack.length && M.stack[0].year === 2026) M.stack = []; break;
+      case 'toggleCopy': M.copy = !M.copy; break;
+      case 'export': M.sheet = 'export'; M.exportYear = +ds.y; break;
+      case 'doExport': M.exported = { y: M.exportYear, fmt: ds.fmt }; M.sheet = null; break;
+      case 'clearSearch': M.query = ''; break;
+      case 'toggleStub': var y = +ds.y, i = M.expanded.indexOf(y); if (i >= 0) M.expanded.splice(i, 1); else { M.expanded.push(y); M.query = ''; } break;
+      case 'selYear': M.selYear = +ds.y; M.query = ''; break;
+      case 'retryRead': applyState('ready'); break;
+      case 'showOpen': M.tab = 'orders'; M.stack = []; M.scrollOpen = true; break;
+      case 'share': M.copied = ds.id; break;
+      default: return;
+    }
+    render();
+  }
+  document.getElementById('frames').addEventListener('click', function (e) {
+    var el = e.target.closest('[data-act]'); if (!el) return;
+    e.preventDefault(); act(el.dataset.act, el.dataset);
+  });
+  document.getElementById('frames').addEventListener('input', function (e) {
+    if (e.target.dataset.role === 'q') { M.query = e.target.value; render(); }
+  });
+
+  /* ---------- page controls and hash ---------- */
+  function visibleConcepts() { return CONCEPTS.filter(function (c) { return M.hidden.indexOf(c.key) < 0; }); }
+  function renderControls() {
+    var cc = document.getElementById('ctl-concept');
+    cc.innerHTML = '<span class="ctl-name">Option</span>' + visibleConcepts().map(function (c) {
+      return '<span class="opt"><button class="chip" data-concept="' + c.key + '" aria-pressed="' + (M.concept === c.key) + '">' + c.name + '</button>' +
+        '<button class="chip hide" data-hide="' + c.key + '" aria-label="Hide the ' + c.name + ' option">Hide</button></span>';
+    }).join('') + (M.hidden.length ? '<button class="chip" data-unhide="1">Show hidden (' + M.hidden.length + ')</button>' : '');
+    document.getElementById('ctl-state').innerHTML = '<span class="ctl-name">State</span>' + STATES.map(function (s) {
+      return '<button class="chip" data-state="' + s[0] + '" aria-pressed="' + (M.state === s[0]) + '">' + s[1] + '</button>';
+    }).join('');
+    document.getElementById('ctl-theme').innerHTML = '<span class="ctl-name">Theme</span>' + [['', 'Device'], ['light', 'Light'], ['dark', 'Dark']].map(function (t) {
+      return '<button class="chip" data-theme-pick="' + t[0] + '" aria-pressed="' + (M.theme === t[0]) + '">' + t[1] + '</button>';
+    }).join('');
+    var lb = document.getElementById('ctl-labels'); lb.setAttribute('aria-pressed', String(M.labels));
+    document.body.classList.toggle('labels', M.labels);
+    if (M.theme) document.documentElement.setAttribute('data-theme', M.theme); else document.documentElement.removeAttribute('data-theme');
+  }
+  document.querySelector('.controls').addEventListener('click', function (e) {
+    var b = e.target.closest('button'); if (!b) return;
+    if (b.dataset.concept) { M.concept = b.dataset.concept; applyState(M.state); }
+    else if (b.dataset.hide) {
+      M.hidden.push(b.dataset.hide);
+      var v = visibleConcepts(); if (M.concept === b.dataset.hide && v.length) { M.concept = v[0].key; applyState(M.state); }
+    }
+    else if (b.dataset.unhide) M.hidden = [];
+    else if (b.dataset.state) { M.concept = M.concept; applyState(b.dataset.state); }
+    else if ('themePick' in b.dataset) M.theme = b.dataset.themePick;
+    else if (b.id === 'ctl-labels') M.labels = !M.labels;
+    else return;
+    document.getElementById('frames').style.display = visibleConcepts().length ? '' : 'none';
+    render();
+  });
+  function writeHash() {
+    var p = ['c=' + M.concept, 's=' + M.state];
+    if (M.theme) p.push('t=' + M.theme);
+    if (!M.labels) p.push('l=0');
+    if (M.hidden.length) p.push('h=' + M.hidden.join(','));
+    var h = '#' + p.join('&');
+    if (location.hash !== h) history.replaceState(null, '', h);
+  }
+  function readHash() {
+    var q = {}; location.hash.replace(/^#/, '').split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) q[p[0]] = decodeURIComponent(p[1] || ''); });
+    M.concept = CONCEPTS.some(function (c) { return c.key === q.c; }) ? q.c : 'shelf';
+    M.theme = q.t === 'dark' || q.t === 'light' ? q.t : '';
+    M.labels = q.l !== '0';
+    M.hidden = q.h ? q.h.split(',').filter(function (k) { return k !== M.concept; }) : [];
+    applyState(STATES.some(function (s) { return s[0] === q.s; }) ? q.s : 'ready');
+  }
+  window.addEventListener('hashchange', function () { readHash(); render(); });
+  window.addEventListener('resize', fit);
+  readHash(); render();
+})();
+</script>
+</body>
+</html>

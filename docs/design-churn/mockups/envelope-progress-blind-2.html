@@ -235,6 +235,9 @@ details.machine summary { min-height: var(--tap); display: flex; align-items: ce
   background: var(--surface-raised); border-radius: var(--radius);
   padding: var(--space-4); border: 1px solid var(--line);
 }
+/* The count stays in view while the list scrolls under it, so "how many left" never leaves the screen. */
+.progress { position: sticky; top: 0; z-index: 2; }
+.ax .progress { position: static; }
 .progress.complete { background: var(--found-soft); border-color: var(--found); }
 .progress.complete .large { color: var(--found); }
 .progress.short { background: var(--short-soft); border-color: var(--short); }
@@ -337,7 +340,7 @@ details.machine summary { min-height: var(--tap); display: flex; align-items: ce
 .labels-on [data-new] { outline: 1.5px dashed var(--note); outline-offset: 2px; position: relative; }
 .labels-on [data-new]::after {
   content: "New: " attr(data-new);
-  position: absolute; top: 2px; right: 4px; z-index: 4;
+  position: absolute; top: -9px; right: 8px; z-index: 4;
   font-size: 11px; line-height: 16px; padding: 0 var(--space-1);
   background: var(--note-bg); color: var(--note); border: 1px dashed var(--note); border-radius: 4px;
   pointer-events: none; font-weight: 500;
@@ -553,8 +556,15 @@ details.machine summary { min-height: var(--tap); display: flex; align-items: ce
     name = name.trim(); if (!name) return;
     const st = S.data[S.env]; st.extras.push(name); st.log.push('x:' + name); S.q = ''; S.sh = '';
   }
+  const nextOf = () => ENVS.find(e => e.id !== S.env && !tally(e.id).complete && !S.data[e.id].short);
+  // The next envelope is named on the screen, so the press has no surprise. With none left, the control leads to the envelope list.
+  function nextBlock(listAct) {
+    const n = nextOf();
+    if (!n) return '<p class="callout">Every envelope is checked.</p><button class="btn quiet" data-act="' + listAct + '">Envelopes</button>';
+    return '<button class="btn" data-act="next">Next envelope</button><p class="foot muted num">' + esc(n.sender) + ', ' + tally(n.id).total + ' cards</p>';
+  }
   function nextEnv() {
-    const n = ENVS.find(e => e.id !== S.env && !tally(e.id).complete && !S.data[e.id].short);
+    const n = nextOf();
     if (n) { S.env = n.id; S.v = 'env'; S.l = ''; S.last = null; S.q = ''; }
   }
 
@@ -642,7 +652,7 @@ details.machine summary { min-height: var(--tap); display: flex; align-items: ce
     const extras = st.extras.map(x => '<li class="row extra"><span class="row-main" role="text"><span class="mark">+</span><span class="name">' + esc(x) + '</span><span class="count">Not on the list</span></span><span></span></li>').join('');
     const segc = '<div class="seg" role="group" aria-label="Show"><button data-act="filter" data-f="all" aria-pressed="' + (S.filter === 'all') + '">All ' + e.cards.length + ' names</button><button data-act="filter" data-f="left" aria-pressed="' + (S.filter === 'left') + '">Still to find</button></div>';
     let bottom;
-    if (t.complete) bottom = '<button class="btn" data-act="next">Next envelope</button>';
+    if (t.complete) bottom = nextBlock('back');
     else if (t.short) bottom = '<button class="btn quiet" data-act="reopen">Reopen envelope</button>';
     else bottom = '<label class="field" data-new="name field">' + ICON.search + '<input data-act="q" type="search" enterkeyhint="done" autocomplete="off" placeholder="Card name" aria-label="Find a card by name" value="' + esc(S.q) + '"></label>';
     const nav = '<div class="nav-bar">' + (showBack ? '<button class="link" data-act="back">' + ICON.back + 'Envelopes</button>' : '') + '<span class="spacer"></span>' +
@@ -675,7 +685,8 @@ details.machine summary { min-height: var(--tap); display: flex; align-items: ce
     return '<div class="board' + (L.length > 12 ? ' many' : '') + (t.short ? ' is-short' : '') + '"' + (id ? ' id="' + id + '"' : '') + ' role="group" aria-label="First letters" data-new="letter board">' + L.map(([letter, cards]) => {
       const left = cards.reduce((n, c) => n + Math.max(0, c.want - (st.found[c.id] || 0)), 0);
       const all = cards.reduce((n, c) => n + c.want, 0);
-      let p = ''; for (const c of cards) { const got = Math.min(st.found[c.id] || 0, c.want); for (let i = 0; i < c.want; i++) p += '<i class="pip' + (i < got ? ' found' : '') + '"></i>'; }
+      // Dots still to find come first, so a tile reads as "how many left" at a glance.
+      let p = '<i class="pip"></i>'.repeat(left) + '<i class="pip found"></i>'.repeat(all - left);
       return '<button class="tile' + (left === 0 ? ' clear' : '') + '" data-act="letter" data-l="' + letter + '" aria-pressed="' + (S.l === letter) + '" aria-label="' + letter + ', ' + left + ' of ' + all + ' still to find">' +
         '<span class="letter">' + letter + (left === 0 ? ICON.check : '') + '</span><span class="pips" aria-hidden="true">' + p + '</span></button>';
     }).join('') + '</div>';
@@ -685,7 +696,7 @@ details.machine summary { min-height: var(--tap); display: flex; align-items: ce
     const lastName = S.last ? (cardById(S.env, S.last) || {}).name : '';
     const undoBtn = S.last ? '<button class="link" data-act="undo-last">' + ICON.uturn + 'Undo</button>' : '';
     if (S.s === 'loading') return '<div class="tray-head"><span class="what callout muted"></span></div><span class="skel" style="height:56px"></span><span class="skel" style="height:56px"></span>';
-    if (t.complete) return '<div class="tray-head"><span class="what callout">' + (lastName ? 'Last found: ' + esc(lastName) : 'Every card in this envelope is found.') + '</span>' + undoBtn + '</div><button class="btn" data-act="next">Next envelope</button>';
+    if (t.complete) return '<div class="tray-head"><span class="what callout">' + (lastName ? 'Found ' + esc(lastName) + ', the last card.' : '') + '</span>' + undoBtn + '</div>' + nextBlock('envs');
     if (t.short) {
       const miss = e.cards.filter(c => (st.found[c.id] || 0) < c.want);
       return '<div class="tray-head"><span class="what callout">Not in the envelope</span></div><div class="names is-short">' + miss.map(c =>
@@ -699,6 +710,7 @@ details.machine summary { min-height: var(--tap); display: flex; align-items: ce
     }
     if (!S.l) {
       return '<div class="tray-head"><span class="what callout">' + (lastName ? 'Found ' + esc(lastName) + '. Tap the next first letter.' : 'Tap the first letter of the card’s name.') + '</span>' + undoBtn + '</div>' +
+        '<p class="foot muted">Each filled dot is a card still to find. A hollow dot is found.</p>' +
         (roomy ? '' : '<button class="link" data-act="extra">Card not on the list</button>');
     }
     const cards = letters(S.env).find(([L]) => L === S.l);

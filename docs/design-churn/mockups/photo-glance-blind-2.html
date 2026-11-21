@@ -30,6 +30,8 @@
   --on-stage: #F2F5F8;
   --on-stage-2: #B4BEC8;
   --stage-raised: #2A323B;
+  --unknown-on-stage: #F2AE5C;
+  --accent-on-stage: #A9C2FF;
   --scrim: rgb(10 14 18 / 0.45);
   --label: #7A3FB8;
   --bezel: #2B2F35;
@@ -72,7 +74,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   background: var(--ink); color: var(--surface);
   padding: var(--space-2) var(--space-4); font-size: 15px; line-height: 20px; font-weight: 600;
 }
-.head { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) var(--space-4) var(--space-4); max-width: 72rem; margin-inline: auto; }
+.head { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) var(--space-4) var(--space-4); max-width: 128rem; margin-inline: auto; line-height: 24px; }
+.concept-head p { line-height: 24px; }
 .head h1 { margin: 0; font-size: 28px; line-height: 34px; }
 .head p { margin: 0; color: var(--ink-2); max-width: 64ch; }
 .controls { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: end; }
@@ -218,7 +221,131 @@ main { display: flex; flex-direction: column; gap: var(--space-12); padding: var
 .ax5.screen [data-new]::after { font-size: 11px; }
 
 @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
-@media (forced-colors: active) { .btn-icon, .btn-text, .btn-fill, .notch .tick { border: 1px solid ButtonText; } }
+@media (forced-colors: active) {
+  .btn-icon, .btn-text, .btn-fill, .notch .tick { border: 1px solid ButtonText; }
+  .dot span { border: 1px solid CanvasText; }
+  .dot[aria-current="true"] span { background: Highlight; border-color: Highlight; }
+  .band.cur { outline: 2px solid Highlight; outline-offset: -2px; }
+}
+/* A disabled control says why on focus as well as on hover. */
+[data-reason] { position: relative; }
+[data-reason]:focus-visible::before {
+  content: attr(data-reason); position: absolute; z-index: 13; bottom: calc(100% + 4px); left: 0;
+  background: var(--ink); color: var(--surface); font: 400 13px/18px -apple-system, system-ui, sans-serif;
+  padding: 4px 8px; border-radius: var(--radius); white-space: nowrap; pointer-events: none;
+}
+
+/* ---------- Lightbox ---------- */
+.lb { background: var(--stage); color: var(--on-stage); }
+.lb .unknown-name { color: var(--unknown-on-stage); }
+.lb-top { display: flex; justify-content: space-between; align-items: center; min-height: var(--hit); padding: 0 var(--space-2) 0 var(--space-4); color: var(--on-stage-2); flex: none; }
+.lb-top .btn-icon { color: var(--on-stage); }
+.lb-stage { padding: var(--space-2) 0; }
+.lb-dock { flex: none; padding: 0 var(--space-2); display: flex; flex-direction: column; min-height: 0; }
+.lb-plate { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-1); background: var(--stage-raised); border-radius: calc(var(--radius) * 2); }
+.lb-plate .btn-icon { color: var(--on-stage); }
+.lb-plate .btn-icon[aria-disabled="true"] { color: var(--on-stage-2); }
+.lb-id { display: flex; flex-direction: column; gap: var(--space-1); text-align: left; min-width: 0; min-height: var(--hit); padding: var(--space-1) var(--space-1); color: var(--on-stage); border-radius: var(--radius); }
+.lb-meta { display: flex; flex-wrap: wrap; column-gap: var(--space-3); color: var(--on-stage-2); }
+.lb-sum { color: var(--accent-on-stage); }
+.ax5 .lb-dock { max-height: 60%; }
+.ax5 .lb-plate { grid-template-columns: 1fr 1fr; overflow: auto; }
+.ax5 .lb-plate > [data-act="prev"] { grid-column: 1; grid-row: 1; justify-self: start; }
+.ax5 .lb-plate > [data-act="next"] { grid-column: 2; grid-row: 1; justify-self: end; }
+.ax5 .lb-plate > .lb-id { grid-column: 1 / -1; grid-row: 2; }
+.ax5 .lb-sum { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lb-side { background: var(--surface); }
+.lb-side-scroll { flex: 1 1 auto; overflow: auto; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-4) var(--space-4) var(--space-4); position: relative; }
+.lb-side-id { display: flex; flex-direction: column; gap: var(--space-1); position: relative; }
+.lb-side .list { padding: 0; }
+.thumbs { display: flex; gap: var(--space-3); }
+.thumb { width: 104px; aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden; border: 3px solid transparent; padding: 0; }
+.thumb img { width: 100%; height: 100%; display: block; }
+.thumb[aria-current="true"] { border-color: var(--accent); }
+.section-title { margin: 0; }
+.toolbar { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) 0; border-top: 1px solid var(--line); background: var(--surface); }
+.toolbar > :first-child { justify-self: start; }
+.toolbar > :last-child { justify-self: end; }
+.toolbar .btn-text svg { width: 20px; height: 20px; }
+/* At AX5 the toolbar keeps its arrows and the count; the words stay as the buttons' spoken names. */
+.ax5 .toolbar .btn-text { min-width: var(--hit); justify-content: center; }
+.ax5 .toolbar .btn-text span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ax5 .toolbar .btn-text svg { width: 36px; height: 36px; }
+.ax5 .toolbar .t-foot { white-space: nowrap; }
+
+/* ---------- Mail log ---------- */
+.log, .log-detail { background: var(--surface); }
+.log-scroll { flex: 1 1 auto; overflow: auto; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-2) var(--space-4) var(--space-6); position: relative; }
+.log-title { margin: 0; }
+.log-day { display: flex; flex-direction: column; gap: var(--space-2); }
+.log-dayhead { margin: 0; color: var(--ink-2); position: sticky; top: calc(-1 * var(--space-2)); background: var(--surface); padding: var(--space-1) 0; z-index: 2; }
+.log-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.log-row { position: relative; width: 100%; display: flex; flex-direction: column; gap: var(--space-2); text-align: left; background: var(--raised); border-radius: calc(var(--radius) * 1.5); padding: var(--space-2); outline: 2px solid transparent; outline-offset: -2px; }
+.log-row[aria-current="true"] { outline-color: var(--accent); }
+.crop { display: block; width: 100%; aspect-ratio: 3 / 1; border-radius: var(--radius); background-color: var(--stage); background-repeat: no-repeat; background-size: 230% auto; background-position: 21% 25%; }
+.crop-fail { display: flex; align-items: center; justify-content: center; gap: var(--space-3); padding: var(--space-3); color: var(--on-stage); background: var(--stage-raised); }
+.log-row-text { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-1); min-width: 0; }
+.log-row-meta { display: flex; flex-wrap: wrap; column-gap: var(--space-3); }
+.side .log-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: var(--space-3); }
+.side .crop { aspect-ratio: 4 / 3; background-size: 300% auto; background-position: 21% 30%; }
+.nav { flex: none; display: grid; grid-template-columns: 1fr minmax(0, 2fr) 1fr; align-items: center; min-height: var(--hit); padding: 0 var(--space-2); }
+.nav-title { text-align: center; }
+.nav > :last-child { justify-self: end; }
+.nav .btn-text { padding-left: 0; }
+.ax5 .nav { grid-template-columns: auto minmax(0, 1fr) auto; }
+.ax5 .nav .back-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.ax5 .nav-title { text-align: left; }
+.detail-scroll { flex: 1 1 auto; overflow: auto; display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-4) var(--space-4); }
+.detail-photo { flex: none; position: relative; background: var(--stage); border-radius: var(--radius); overflow: hidden; }
+.detail-photo .photo-box { width: 100%; }
+.dots { display: flex; justify-content: center; }
+.dot { width: var(--hit); height: var(--hit); display: grid; place-items: center; }
+.dot span { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.ax5 .dot span { width: 16px; height: 16px; }
+.dot[aria-current="true"] span { background: var(--accent); }
+.detail-id { display: flex; flex-direction: column; gap: var(--space-1); }
+.log-detail .list { padding: 0; }
+
+/* ---------- Sorting dial ---------- */
+.dial-page { background: var(--stage); }
+.dial-page:has(.dial-dock) { padding-bottom: 0; }
+.dial-page .dial-dock { padding-bottom: max(env(safe-area-inset-bottom), var(--inset-bottom)); }
+.dial-page:has(.state-block) { background: var(--surface); }
+.dial-index > *, .lb-id > *, .log-row-text > *, .detail-id > * { flex: none; }
+.dial-stage { background: var(--stage); }
+.dial-stage .photo-box { touch-action: none; user-select: none; }
+.loupe-btn { position: absolute; top: var(--space-1); right: var(--space-1); z-index: 5; color: var(--on-stage); background: rgb(0 0 0 / 0.35); }
+.loupe-btn[aria-pressed="true"] { background: var(--on-stage); color: var(--stage); }
+.dial-dock { flex: none; position: relative; display: flex; flex-direction: column; gap: var(--space-2); background: var(--raised); padding: var(--space-3) var(--space-2) 0; min-height: 0; }
+.dial-index { position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--space-1); text-align: center; padding: 0 var(--space-2); min-width: 0; }
+.dial-index > * { max-width: 100%; }
+.meta-row { display: flex; flex-wrap: wrap; justify-content: center; column-gap: var(--space-3); color: var(--ink-2); }
+.cards-link { color: var(--accent); min-height: var(--hit); padding: 0 var(--space-2); border-radius: var(--radius); }
+.dial-row { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-1); }
+.dial { position: relative; height: 92px; overflow: hidden; touch-action: none; user-select: none; border-radius: var(--radius); background: var(--surface); cursor: grab;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
+.dial-track { position: absolute; top: 0; bottom: 0; left: 50%; transition: transform 180ms ease-out; }
+.band { position: absolute; top: var(--space-1); height: 64px; border-radius: var(--radius); background: color-mix(in srgb, var(--line) 55%, transparent); }
+.band.alt { background: color-mix(in srgb, var(--line) 30%, transparent); }
+.band.cur { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.band-label { display: block; padding: 3px 6px 0; color: var(--ink-2); }
+.band.cur .band-label { color: var(--ink); font-weight: 600; }
+.band-label.unknown { color: var(--unknown); }
+.notch { position: absolute; top: 26px; width: 44px; height: 44px; display: grid; place-items: center; }
+.notch .tick { width: 3px; height: 22px; border-radius: 2px; background: var(--ink-2); }
+.notch.cur .tick { width: 5px; height: 34px; background: var(--accent); }
+.daymark { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--ink); }
+.daymark span { position: absolute; bottom: 4px; left: 5px; white-space: nowrap; color: var(--ink); font-weight: 600; }
+.needle { position: absolute; left: 50%; top: 22px; bottom: 20px; width: 2px; margin-left: -1px; background: var(--accent); pointer-events: none; }
+.needle::before { content: ""; position: absolute; top: 0; left: -6px; border: 7px solid transparent; border-top-color: var(--accent); }
+.ax5 .band-label, .ax5 .daymark span { display: none; }
+.ax5 .dial-dock { max-height: 64%; }
+.ax5 .dial-index { overflow: auto; }
+.dial-side { background: var(--raised); }
+.dial-side .dial-index { align-items: flex-start; text-align: left; flex: 1 1 auto; overflow: auto; gap: var(--space-2); padding: var(--space-4) var(--space-4) var(--space-2); }
+.dial-side .meta-row { justify-content: flex-start; }
+.dial-side .list { padding: 0; width: 100%; }
+.dial-side .dial-row { padding: var(--space-2) var(--space-2) 0; border-top: 1px solid var(--line); }
 
 /* CONCEPT-CSS */
 </style>
@@ -290,7 +417,41 @@ main { display: flex; flex-direction: column; gap: var(--space-12); padding: var
       <div class="fit"><div class="screen ax5" data-frame="folded" data-device="iphone-duo-folded" data-text="ax5"></div></div></figure>
   </div>
 </section>
-<!-- CONCEPT-SECTIONS -->
+<section class="concept" data-concept="log" aria-labelledby="h-log">
+  <div class="concept-head">
+    <h2 id="h-log">Mail log</h2>
+    <p>The first screen is a list by day. Each row shows the envelope cut down to its return address, so the sender's own writing is readable before any tap. Tap a row to open the photo; Previous and Next step from there.</p>
+    <button class="hide-btn" data-hide="log">Hide this option</button>
+  </div>
+  <div class="frames">
+    <figure class="dev" data-pose="folded"><figcaption>Duo folded, 466 × 678 pt</figcaption>
+      <div class="fit"><div class="screen" id="choice-log" data-frame="folded" data-device="iphone-duo-folded"></div></div></figure>
+    <figure class="dev" data-pose="open"><figcaption>Duo open, 951 × 669 pt. Hinge gap from x 455.5 to 495.5.</figcaption>
+      <div class="fit"><div class="screen open" data-frame="open" data-device="iphone-duo-unfolded"></div></div></figure>
+    <figure class="dev" data-pose="phone"><figcaption>Large phone. No size is written for it, so it is drawn at 466 × 678. Drag its corner to resize.</figcaption>
+      <div class="fit"><div class="screen phone" data-frame="phone" data-device="phone-large"></div></div></figure>
+    <figure class="dev" data-pose="ax5"><figcaption>Duo folded at the largest text size (AX5)</figcaption>
+      <div class="fit"><div class="screen ax5" data-frame="folded" data-device="iphone-duo-folded" data-text="ax5"></div></div></figure>
+  </div>
+</section>
+<section class="concept" data-concept="dial" aria-labelledby="h-dial">
+  <div class="concept-head">
+    <h2 id="h-dial">Sorting dial</h2>
+    <span class="bold-tag">Bold option</span>
+    <p>A ruler of the mail sits under the thumb: one notch per photo, notches of one envelope grouped in a band, days cut by a tall line. Drag it, or tap a notch. The sender's name stands over the needle. Press and hold the photo, or turn on the loupe, to read the writing without losing your place.</p>
+    <button class="hide-btn" data-hide="dial">Hide this option</button>
+  </div>
+  <div class="frames">
+    <figure class="dev" data-pose="folded"><figcaption>Duo folded, 466 × 678 pt</figcaption>
+      <div class="fit"><div class="screen" id="choice-dial" data-frame="folded" data-device="iphone-duo-folded"></div></div></figure>
+    <figure class="dev" data-pose="open"><figcaption>Duo open, 951 × 669 pt. Hinge gap from x 455.5 to 495.5.</figcaption>
+      <div class="fit"><div class="screen open" data-frame="open" data-device="iphone-duo-unfolded"></div></div></figure>
+    <figure class="dev" data-pose="phone"><figcaption>Large phone. No size is written for it, so it is drawn at 466 × 678. Drag its corner to resize.</figcaption>
+      <div class="fit"><div class="screen phone" data-frame="phone" data-device="phone-large"></div></div></figure>
+    <figure class="dev" data-pose="ax5"><figcaption>Duo folded at the largest text size (AX5)</figcaption>
+      <div class="fit"><div class="screen ax5" data-frame="folded" data-device="iphone-duo-folded" data-text="ax5"></div></div></figure>
+  </div>
+</section>
 </main>
 
 <script>
@@ -355,7 +516,7 @@ function photoSVG(pi) {
     s += `<path d="M150 170L600 470L1050 170" stroke="#000" stroke-opacity="0.18" stroke-width="4" fill="none"/><path d="M150 730L520 430M1050 730L680 430" stroke="#000" stroke-opacity="0.12" stroke-width="3"/>`;
     s += `<rect x="520" y="440" width="160" height="40" fill="#E8E2C8" opacity="0.8" transform="rotate(-6 600 460)"/>`;
     s += `<g transform="rotate(-4 380 560)"><rect x="250" y="480" width="300" height="210" fill="#FBE98A"/>`;
-    s += `<g font-family="${HAND}" font-size="26" fill="${e.ink}"><text x="270" y="530">Thanks for</text><text x="270" y="566">your order!</text><text x="270" y="612">${e.cards.length} cards, sleeved</text><text x="300" y="660">– ${esc(e.sender || "")}</text></g></g>`;
+    s += `<g font-family="${HAND}" font-size="26" fill="${e.ink}"><text x="270" y="530">Thanks for</text><text x="270" y="566">your order!</text><text x="270" y="612">${cardsN(e)}, sleeved</text><text x="300" y="660">– ${esc(e.sender || "")}</text></g></g>`;
   }
   s += `</g><defs><pattern id="bub" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="12" cy="12" r="7" fill="#fff"/></pattern></defs></svg>`;
   return s;
@@ -383,6 +544,7 @@ function senderHTML(e, cls) {
     : `<span class="${cls} unknown-name">${I.unknown}<span>Sender unknown</span></span>`;
 }
 function cardCount(e) { return e.cards.reduce((n, c) => n + c[1], 0); }
+function cardsN(e) { const n = cardCount(e); return n === 1 ? "1 card" : `${n} cards`; }
 function cardSummary(e) { return e.cards.map(c => c[1] > 1 ? `${c[0]} ×${c[1]}` : c[0]).join(", "); }
 function photoOfEnv(pi) { const p = PHOTOS[pi]; return env(pi).photos > 1 ? `Photo ${p.k + 1} of ${env(pi).photos}` : "One photo"; }
 function senderPlain(e) { return e.sender || "sender unknown"; }
@@ -391,7 +553,7 @@ function cardsSheet(pi) {
   const e = env(pi);
   return `<div class="scrim" data-act="close"></div>
   <div class="sheet" role="dialog" aria-label="Cards in this envelope">
-    <div class="sheet-bar"><button class="btn-text" data-act="close">Close</button><span class="t-head">${cardCount(e)} cards</span><span class="spacer"></span></div>
+    <div class="sheet-bar"><button class="btn-text" data-act="close">Close</button><span class="t-head">${cardsN(e)}</span><span class="spacer"></span></div>
     <div class="sheet-sub t-foot muted">${e.sender ? esc(e.sender) : "Sender unknown"}, ${DAYS[e.day].short}</div>
     ${cardsList(e)}
   </div>`;
@@ -419,12 +581,12 @@ function stateBlock(c, ctx, onStage) {
   }
   if (s === "failed") {
     return `<div class="state-block" role="alert"><p class="t-t3">Could not read your envelope photos.</p>
-      <p class="t-sub muted">Your photos are not lost. Check the connection, then try again.</p>
+      <p class="t-sub muted">Check the connection, then try again.</p>
       <button class="btn-fill" data-act="retry">Try again</button>
       <details class="t-foot"><summary>What the server said</summary><span>503 Service Unavailable (sample)</span></details></div>`;
   }
   if (s === "empty") {
-    return `<div class="state-block"><p class="t-t3">No envelope photos yet. A photo you take of an envelope shows here with its sender.</p>
+    return `<div class="state-block"><p class="t-t3">Each envelope you photograph shows here, with its sender.</p>
       <button class="btn-fill" data-act="add">Photograph an envelope</button>
       <span class="t-foot press-note" data-note="add" aria-live="polite">${G.addPressed ? "Opens the camera. The camera is not drawn here." : ""}</span></div>`;
   }
@@ -433,6 +595,193 @@ function stateBlock(c, ctx, onStage) {
 
 /* ---------- Concept renderers ---------- */
 const R = {};
+/* Previous and Next, one home for every concept. At the last photo, Next goes back to the newest. */
+function prevBtn(cs, cls) {
+  return cs.p === 0
+    ? `<button class="${cls}" data-act="prev" aria-disabled="true" aria-label="Previous photo. This is the newest photo." title="This is the newest photo" data-reason="This is the newest photo">${I.prev}</button>`
+    : `<button class="${cls}" data-act="prev" aria-label="Previous photo">${I.prev}</button>`;
+}
+function nextBtn(cs, cls) {
+  const last = cs.p === N - 1;
+  return `<button class="${cls}" data-act="next" aria-label="${last ? "Back to the newest photo" : "Next photo"}" title="${last ? "Last photo. Press to go back to the newest." : "Next photo"}">${last ? I.first : I.next}</button>`;
+}
+function countText(cs) { return cs.p === N - 1 ? `${N} of ${N}, the last` : `${cs.p + 1} of ${N}`; }
+function textBar(cs) {
+  const last = cs.p === N - 1;
+  return `<div class="toolbar">
+    <button class="btn-text" data-act="prev" ${cs.p === 0 ? 'aria-disabled="true" title="This is the newest photo" data-reason="This is the newest photo" style="opacity:.45"' : ""}>${I.prev}<span>Previous</span></button>
+    <span class="t-foot muted">${countText(cs)}</span>
+    <button class="btn-text" data-act="next">${last ? `<span>Newest</span>${I.first}` : `<span>Next</span>${I.next}`}</button></div>`;
+}
+function envThumbs(cs) {
+  const e = env(cs.p); if (e.photos < 2) return "";
+  const first = PHOTOS.findIndex(p => p.e === PHOTOS[cs.p].e);
+  let h = `<div class="thumbs" role="group" aria-label="Photos of this envelope">`;
+  for (let k = 0; k < e.photos; k++) {
+    const i = first + k;
+    h += `<button class="thumb" data-act="go" data-i="${i}" aria-current="${i === cs.p}" aria-label="Photo ${k + 1} of ${e.photos}"><img src="${photoURL(i)}" alt=""></button>`;
+  }
+  return h + `</div>`;
+}
+function blankPage(cls) { return `<div class="page ${cls || ""}"></div>`; }
+function hinge() { return `<div class="hinge" aria-hidden="true"><span>hinge</span></div>`; }
+
+R.lightbox = (ctx, cs) => {
+  const sb = stateBlock("lightbox", ctx);
+  if (sb) return ctx.pose === "open" ? `<div class="page">${sb}</div>${hinge()}${blankPage()}` : `<div class="page">${sb}</div>`;
+  const e = env(cs.p);
+  const zoomBtn = `<button class="btn-icon" data-act="zoom" aria-pressed="${cs.z > 1}" aria-label="${cs.z > 1 ? "Zoom out" : "Zoom in"}">${cs.z > 1 ? I.unzoom : I.zoom}</button>`;
+  const stage = `<div class="photo-fit lb-stage" data-new="swipe and zoom">${photoBox(cs.p, cs, { z: cs.z, g: "lb" })}</div>`;
+  if (ctx.pose === "open") {
+    return `<div class="page lb">
+      <div class="lb-top"><span></span>${zoomBtn}</div>${stage}</div>${hinge()}
+      <div class="page lb-side">
+        <div class="lb-side-scroll" data-keep-scroll="side">
+          <div class="lb-side-id" data-new="envelope page">
+            ${senderHTML(e, "t-large")}
+            <span class="t-t3 muted">${DAYS[e.day].long}</span>
+          </div>
+          ${envThumbs(cs)}
+          <h3 class="t-head section-title">${cardsN(e)} in this envelope</h3>
+          ${cardsList(e)}
+        </div>
+        ${textBar(cs)}
+      </div>`;
+  }
+  return `<div class="page lb">
+    <div class="lb-top"><span class="t-foot">${countText(cs)}</span>${zoomBtn}</div>
+    ${stage}
+    <div class="lb-dock">
+      <div class="lb-plate" data-new="identity plate">
+        ${prevBtn(cs, "btn-icon")}
+        <button class="lb-id" data-act="cards" aria-label="${esc(senderPlain(e))}, ${DAYS[e.day].short}. Show the ${cardsN(e)}">
+          ${senderHTML(e, "t-t3 one-line")}
+          <span class="lb-meta t-foot"><span>${DAYS[e.day].short}</span><span>${photoOfEnv(cs.p)}</span></span>
+          <span class="t-sub one-line lb-sum">${cardsN(e)}: ${esc(cardSummary(e))}</span>
+        </button>
+        ${nextBtn(cs, "btn-icon")}
+      </div>
+    </div>
+    ${cs.sheet ? cardsSheet(cs.p) : ""}
+  </div>`;
+};
+function logList(cs, mode) {
+  let first = true;
+  const rows = ei => {
+    const e = ENVS[ei], fi = PHOTOS.findIndex(p => p.e === ei);
+    const cur = PHOTOS[cs.p].e === ei;
+    const lab = first ? ` data-new="crop on the writing"` : ""; first = false;
+    return `<li><button class="log-row" data-act="go" data-i="${fi}" aria-current="${cur}"${lab}>
+      ${G.s === "photofail" && fi === FAIL_I && !cs.retried
+        ? `<span class="crop crop-fail t-foot">${I.broken}<span>This photo did not load. Open it to try again.</span></span>`
+        : `<span class="crop" style="background-image:url(&quot;${photoURL(fi)}&quot;)" role="img" aria-label="Return address on the envelope"></span>`}
+      <span class="log-row-text">
+        ${senderHTML(e, "t-head one-line")}
+        <span class="log-row-meta t-foot muted"><span>${cardsN(e)}</span>${e.photos > 1 ? `<span>${e.photos} photos</span>` : ""}</span>
+        <span class="t-sub muted one-line">${esc(cardSummary(e))}</span>
+      </span></button></li>`;
+  };
+  return `<div class="log-scroll ${mode}" data-keep-scroll="list" data-scroll-sel>
+    <h2 class="t-large log-title">Envelopes</h2>
+    ${DAYS.map((d, di) => `<section class="log-day"><h3 class="t-head log-dayhead">${d.long}</h3>
+      <ul class="log-rows">${ENVS.map((e, ei) => e.day === di ? rows(ei) : "").join("")}</ul></section>`).join("")}
+  </div>`;
+}
+function logDetail(cs, withBack) {
+  const e = env(cs.p), pk = PHOTOS[cs.p].k;
+  const first = PHOTOS.findIndex(p => p.e === PHOTOS[cs.p].e);
+  const dots = e.photos > 1 ? `<div class="dots" role="group" aria-label="Photos of this envelope">${Array.from({ length: e.photos }, (_, k) =>
+    `<button class="dot" data-act="go" data-i="${first + k}" aria-current="${k === pk}" aria-label="Photo ${k + 1} of ${e.photos}"><span></span></button>`).join("")}</div>` : "";
+  return `<div class="nav">
+      ${withBack ? `<button class="btn-text" data-act="back" aria-label="Back to envelopes">${I.back}<span class="back-label">Envelopes</span></button>` : "<span></span>"}
+      ${senderHTML(e, "t-head one-line nav-title")}
+      <button class="btn-icon" data-act="zoom" aria-pressed="${cs.z > 1}" aria-label="${cs.z > 1 ? "Zoom out" : "Zoom in"}">${cs.z > 1 ? I.unzoom : I.zoom}</button>
+    </div>
+    <div class="detail-scroll" data-keep-scroll="detail">
+      <div class="detail-photo" data-new="photo, then its cards">${photoBox(cs.p, cs, { z: cs.z, g: "lb" })}</div>
+      ${dots}
+      <div class="detail-id"><span class="t-t3">${DAYS[e.day].long}</span><span class="t-sub muted">${photoOfEnv(cs.p)}</span></div>
+      <h3 class="t-head section-title">${cardsN(e)} in this envelope</h3>
+      ${cardsList(e)}
+    </div>
+    ${textBar(cs)}`;
+}
+R.log = (ctx, cs) => {
+  const sb = stateBlock("log", ctx);
+  const title = `<div class="log-scroll" style="flex:none"><h2 class="t-large log-title">Envelopes</h2></div>`;
+  if (sb) return ctx.pose === "open" ? `<div class="page log">${title}${sb}</div>${hinge()}${blankPage("log")}` : `<div class="page log">${title}${sb}</div>`;
+  if (ctx.pose === "open") return `<div class="page log">${logList(cs, "side")}</div>${hinge()}<div class="page log-detail">${logDetail(cs, false)}</div>`;
+  return cs.open ? `<div class="page log-detail">${logDetail(cs, true)}</div>` : `<div class="page log">${logList(cs, "full")}</div>`;
+};
+/* The dial's geometry: one 64 pt slot per photo, a small gap between envelopes, a wide gap at each day. */
+const DIAL = (() => {
+  const slots = [], bands = [], days = [];
+  let x = 0, pe = -1, pd = -1;
+  PHOTOS.forEach((p, i) => {
+    const e = ENVS[p.e];
+    if (i > 0 && e.day !== pd) x += 28; else if (i > 0 && p.e !== pe) x += 10;
+    if (e.day !== pd) days.push({ d: e.day, x: i === 0 ? -14 : x - 14 });
+    if (p.e !== pe) bands.push({ e: p.e, x0: x, x1: x });
+    slots.push(x + 32); x += 64; bands[bands.length - 1].x1 = x;
+    pe = p.e; pd = e.day;
+  });
+  return { slots, bands, days };
+})();
+function nearestSlot(x) { let b = 0; DIAL.slots.forEach((s, i) => { if (Math.abs(s - x) < Math.abs(DIAL.slots[b] - x)) b = i; }); return b; }
+function dialStrip(cs) {
+  const cur = PHOTOS[cs.p].e, e = env(cs.p);
+  let t = "";
+  DIAL.bands.forEach((b, bi) => {
+    const be = ENVS[b.e];
+    t += `<div class="band${bi % 2 ? " alt" : ""}${b.e === cur ? " cur" : ""}" style="left:${b.x0}px;width:${b.x1 - b.x0}px"><span class="band-label t-cap2 one-line${be.sender ? "" : " unknown"}">${be.sender ? esc(be.sender) : "Unknown"}</span></div>`;
+  });
+  DIAL.days.forEach(d => { t += `<div class="daymark" style="left:${d.x}px"><span class="t-cap2">${DAYS[d.d].dial}</span></div>`; });
+  DIAL.slots.forEach((s, i) => {
+    const pe = env(i);
+    t += `<button class="notch${i === cs.p ? " cur" : ""}" data-act="go" data-i="${i}" tabindex="-1" style="left:${s - 22}px" aria-label="Photo ${i + 1}: ${esc(senderPlain(pe))}, ${DAYS[pe.day].short}"><span class="tick"></span></button>`;
+  });
+  return `<div class="dial-row">
+    ${prevBtn(cs, "btn-icon")}
+    <div class="dial" data-gesture="dial" data-new="sorting dial" role="slider" tabindex="0" aria-label="Envelope photos" aria-valuemin="1" aria-valuemax="${N}" aria-valuenow="${cs.p + 1}" aria-valuetext="${esc(senderPlain(e))}, ${DAYS[e.day].short}, ${countText(cs)}">
+      <div class="dial-track" style="transform:translateX(${-DIAL.slots[cs.p]}px)">${t}</div>
+      <div class="needle" aria-hidden="true"></div>
+    </div>
+    ${nextBtn(cs, "btn-icon")}
+  </div>`;
+}
+function dialIndexInner(pi, big) {
+  const e = env(pi);
+  const head = `${senderHTML(e, big ? "t-large" : "t-t1 one-line")}
+    <div class="meta-row t-foot"><span>${DAYS[e.day].short}</span><span>${photoOfEnv(pi)}</span><span>${countText({ p: pi })}</span></div>`;
+  return big ? `${head}<h3 class="t-head section-title">${cardsN(e)} in this envelope</h3>${cardsList(e)}`
+    : `${head}<button class="cards-link t-sub one-line" data-act="cards">${cardsN(e)}: ${esc(cardSummary(e))}</button>`;
+}
+function dialStage(cs) {
+  const lp = `<div class="loupe" aria-hidden="true" ${cs.lp ? "" : "hidden"}></div>`;
+  return `<div class="photo-fit dial-stage" data-new="hold for loupe">
+    ${photoBox(cs.p, cs, { g: "loupe", extra: lp })}
+    <button class="btn-icon loupe-btn" data-act="loupe" aria-pressed="${cs.loupe}" aria-label="${cs.loupe ? "Put the loupe away" : "Loupe: drag over the photo to read it"}">${I.loupe}</button>
+  </div>`;
+}
+R.dial = (ctx, cs) => {
+  const sb = stateBlock("dial", ctx);
+  if (sb) return ctx.pose === "open" ? `<div class="page dial-page">${sb}</div>${hinge()}${blankPage()}` : `<div class="page dial-page">${sb}</div>`;
+  if (ctx.pose === "open") {
+    return `<div class="page dial-page dial-stage">${dialStage(cs)}</div>${hinge()}
+      <div class="page dial-side">
+        <div class="dial-index" data-live-index="big" data-new="index card" data-keep-scroll="idx">${dialIndexInner(cs.p, true)}</div>
+        ${dialStrip(cs)}
+      </div>`;
+  }
+  return `<div class="page dial-page">
+    ${dialStage(cs)}
+    <div class="dial-dock">
+      <div class="dial-index" data-live-index="small" data-new="index tab">${dialIndexInner(cs.p, false)}</div>
+      ${dialStrip(cs)}
+    </div>
+    ${cs.sheet ? cardsSheet(cs.p) : ""}
+  </div>`;
+};
 /* CONCEPT-JS */
 
 /* ---------- Global state, hash, render ---------- */
@@ -452,8 +801,10 @@ function readHash() {
   const p = G.s in STATE_P ? STATE_P[G.s] : 0;
   const hp = parseInt(h.get("p"), 10);
   CONCEPTS.forEach(c => { CS[c] = freshCS(Number.isInteger(hp) && hp >= 0 && hp < N ? hp : p); });
-  if (h.get("v") === "detail") CS.log.open = true;
+  if (h.get("v") === "detail" || G.s === "pair") CS.log.open = true;
   if (h.get("sheet") === "1") CONCEPTS.forEach(c => CS[c].sheet = true);
+  if (h.get("loupe") === "1") { CS.dial.loupe = true; CS.dial.lp = { x: 0.25, y: 0.3 }; }
+  if (h.get("zoom") === "1") CONCEPTS.forEach(c => { CS[c].z = 2.5; CS[c].ox = 0.25; CS[c].oy = 0.3; });
 }
 function writeHash() {
   const h = new URLSearchParams();
@@ -519,7 +870,7 @@ function scaleOf(el) { const w = el.closest(".fit"); return w ? parseFloat(w.dat
 /* ---------- Acts ---------- */
 function go(c, i) {
   const cs = CS[c];
-  cs.p = Math.max(0, Math.min(N - 1, i)); cs.sheet = false; cs.z = 1; cs.ox = cs.oy = 0.5; cs.lp = null;
+  cs.p = Math.max(0, Math.min(N - 1, i)); cs.sheet = false; cs.z = 1; cs.ox = cs.oy = 0.5; if (!cs.loupe) cs.lp = null;
   render(c);
 }
 function act(c, a, el) {
@@ -597,10 +948,94 @@ function endDrag(ev) {
 document.addEventListener("pointerup", endDrag);
 document.addEventListener("pointercancel", endDrag);
 const GESTURE = {};
+/* Photo stage: swipe to step at normal size, drag to pan when zoomed, double-tap to zoom at the point. */
+let lastTap = null;
+function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+GESTURE.lb = {
+  down(d) { d.w = d.g.offsetWidth; d.h = d.g.offsetHeight; d.ox = CS[d.c].ox; d.oy = CS[d.c].oy; d.img = d.g.querySelector("img"); },
+  move(d, ev, dx, dy) {
+    if (!d.moved || !d.img) return;
+    const cs = CS[d.c];
+    d.g.classList.add("panning");
+    if (cs.z > 1) {
+      cs.ox = clamp01(d.ox - dx / (d.w * (cs.z - 1)));
+      cs.oy = clamp01(d.oy - dy / (d.h * (cs.z - 1)));
+      d.img.style.transformOrigin = `${cs.ox * 100}% ${cs.oy * 100}%`;
+    } else {
+      d.img.style.transform = `translateX(${dx}px)`;
+    }
+  },
+  up(d, ev, dx) {
+    const cs = CS[d.c];
+    if (!d.moved) {
+      const now = Date.now();
+      if (lastTap && now - lastTap.t < 320 && lastTap.c === d.c) {
+        lastTap = null;
+        if (cs.z > 1) cs.z = 1;
+        else { const r = d.g.getBoundingClientRect(); cs.ox = clamp01((ev.clientX - r.left) / r.width); cs.oy = clamp01((ev.clientY - r.top) / r.height); cs.z = 2.5; }
+        render(d.c);
+      } else lastTap = { t: now, c: d.c };
+      return;
+    }
+    if (cs.z > 1) { render(d.c); return; }
+    if (dx < -50) act(d.c, "next"); else if (dx > 50) act(d.c, "prev"); else render(d.c);
+  },
+};
+/* Dial: drag scrubs; the index above the needle follows live; release snaps to the nearest notch. */
+GESTURE.dial = {
+  down(d) { d.base = DIAL.slots[CS[d.c].p]; d.track = d.g.querySelector(".dial-track"); d.live = CS[d.c].p; },
+  move(d, ev, dx) {
+    if (!d.moved) return;
+    const x = Math.max(DIAL.slots[0], Math.min(DIAL.slots[N - 1], d.base - dx));
+    d.x = x; d.track.style.transition = "none"; d.track.style.transform = `translateX(${-x}px)`;
+    const i = nearestSlot(x);
+    if (i !== d.live) {
+      d.live = i;
+      d.g.closest(".concept").querySelectorAll("[data-live-index]").forEach(el => { el.innerHTML = dialIndexInner(i, el.dataset.liveIndex === "big"); });
+    }
+  },
+  up(d) { if (d.moved) go(d.c, nearestSlot(d.x != null ? d.x : d.base)); },
+};
+/* Photo under the dial: press and hold shows the loupe; with the loupe on, a press places it. A quick swipe steps. */
+function fracOf(box, ev) { const r = box.getBoundingClientRect(); return { x: clamp01((ev.clientX - r.left) / r.width), y: clamp01((ev.clientY - r.top) / r.height) }; }
+GESTURE.loupe = {
+  down(d, ev) {
+    const cs = CS[d.c];
+    d.loupeEl = d.g.querySelector(".loupe");
+    if (cs.loupe) { cs.lp = fracOf(d.g, ev); placeLoupe(d.loupeEl, cs.lp); d.held = true; return; }
+    d.timer = setTimeout(() => { d.held = true; cs.lp = fracOf(d.g, ev); placeLoupe(d.loupeEl, cs.lp); }, 350);
+  },
+  move(d, ev) {
+    const cs = CS[d.c];
+    if (d.held) { cs.lp = fracOf(d.g, ev); placeLoupe(d.loupeEl, cs.lp); }
+    else if (d.moved) clearTimeout(d.timer);
+  },
+  up(d, ev, dx) {
+    const cs = CS[d.c];
+    if (d.held && !cs.loupe) { cs.lp = null; render(d.c); return; }
+    if (d.held) { render(d.c); return; }
+    if (d.moved && dx < -50) act(d.c, "next"); else if (d.moved && dx > 50) act(d.c, "prev");
+  },
+};
 /* GESTURE-JS */
 
-function placeLoupes() {}
-/* LOUPE-JS */
+/* The loupe shows the photo at 3x under the finger, lifted above it so the finger does not hide it.
+   It lives inside its page, so it never crosses the hinge. */
+function placeLoupe(el, lp) {
+  if (!el) return;
+  if (!lp) { el.hidden = true; return; }
+  const box = el.parentElement, W = box.offsetWidth, H = box.offsetHeight, L = 168, M = 3;
+  const img = box.querySelector("img"); if (!img) { el.hidden = true; return; }
+  el.hidden = false;
+  let top = lp.y * H - L / 2 - 96;
+  if (top < -L / 3) top = lp.y * H + 40;
+  el.style.left = (lp.x * W - L / 2) + "px";
+  el.style.top = top + "px";
+  el.style.backgroundImage = `url("${img.getAttribute("src")}")`;
+  el.style.backgroundSize = `${W * M}px ${H * M}px`;
+  el.style.backgroundPosition = `${-(lp.x * W * M - L / 2)}px ${-(lp.y * H * M - L / 2)}px`;
+}
+function placeLoupes() { document.querySelectorAll('.concept[data-concept="dial"] .loupe').forEach(el => placeLoupe(el, CS.dial.lp)); }
 
 window.addEventListener("resize", fitFrames);
 window.addEventListener("hashchange", () => { readHash(); renderAll(); });

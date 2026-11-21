@@ -15,7 +15,8 @@
   --radius: 8px;
   --hit: 44px;
   --font-ui: -apple-system, system-ui, "Helvetica Neue", sans-serif;
-  --font-letter: ui-serif, "New York", "Iowan Old Style", Georgia, serif;
+  /* The system serif (New York on Apple platforms), for the letter content only. */
+  --font-letter: -apple-system-ui-serif, ui-serif, Georgia, serif;
 
   --fs-lt: 34px; --lh-lt: 41px;
   --fs-t2: 22px; --lh-t2: 28px;
@@ -182,7 +183,7 @@ button { font: inherit; color: inherit; }
 .screen.scrolled .nav { border-bottom-color: var(--line); }
 .nav-title {
   grid-column: 2; font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600;
-  text-align: center; opacity: 0; transition: opacity 120ms; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 60cqi;
+  text-align: center; opacity: 0; transition: opacity 120ms; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46cqi;
 }
 .screen.scrolled .nav-title, .nav-title.always { opacity: 1; }
 .nav-lead { grid-column: 1; justify-self: start; }
@@ -191,7 +192,7 @@ button { font: inherit; color: inherit; }
   min-height: var(--hit); min-width: var(--hit); padding: 0 var(--space-2);
   border: 0; background: transparent; color: var(--accent); cursor: pointer;
   font-size: var(--fs-body); line-height: var(--lh-body);
-  display: inline-flex; align-items: center; gap: var(--space-1);
+  display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap;
 }
 .tbtn svg { width: 0.75em; height: 1.1em; }
 
@@ -288,7 +289,7 @@ details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywher
 .bar-note svg { width: 1em; height: 1em; }
 .primary, .secondary {
   min-height: 50px; border-radius: var(--radius); padding: var(--space-2) var(--space-4); cursor: pointer;
-  font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; flex: 1 1 10em;
+  font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; flex: 1 1 0; min-width: 0;
 }
 .primary { background: var(--accent); color: var(--on-accent); border: 0; }
 .secondary { background: var(--surface); color: var(--accent); border: 1px solid var(--line); }
@@ -297,7 +298,11 @@ details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywher
   background: var(--surface); color: var(--accent); cursor: pointer; display: grid; place-items: center;
 }
 .icon-btn svg { width: 22px; height: 22px; }
-.ax5 .primary, .ax5 .secondary { flex-basis: 100%; }
+.ax5 .primary, .ax5 .secondary { flex: 1 1 0; min-width: 0; }
+.ax5 .bk-label { display: none; }
+.ax5 .sheet-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--space-2); padding: 0 var(--space-4); }
+.ax5 .sheet-head b { text-align: left; }
+.sheet .ev h3 { display: none; }
 
 /* Toast, inside the page whose press it answers */
 .toast {
@@ -374,17 +379,20 @@ details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywher
 .letter p:last-child { margin: 0; }
 .letter .lines { display: flex; flex-direction: column; margin: 0 0 0.7em; }
 .tok {
-  font: inherit; color: inherit; border: 0; padding: 1px 3px; margin: 0 -1px; cursor: pointer;
-  background: var(--accent-soft); border-bottom: 2px solid var(--accent); border-radius: 3px 3px 0 0;
+  font: inherit; line-height: 1.3; color: inherit; border: 0; padding: 1px 0; margin: 0; cursor: pointer;
+  background: transparent; border-bottom: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 0;
   text-align: left;
 }
+/* The card lines are one fact; a dotted mark keeps the list readable as a list. */
+.tok[data-k="cards"] { border-bottom-style: dotted; }
 .tok.unknown { background: transparent; border-bottom: 2px dashed var(--text-3); color: var(--text-2); }
 .tok.lit { background: var(--accent); color: var(--on-accent); }
 .letter.closed .tok { border-bottom-color: var(--danger); }
 .stamp {
-  position: absolute; right: var(--space-4); top: var(--space-4); width: 104px; height: 104px; border-radius: 50%;
+  /* Sits beside the short greeting line, so it covers no words of the letter. */
+  position: absolute; right: var(--space-2); top: var(--space-1); width: 64px; height: 64px; border-radius: 50%;
   border: 3px double var(--ok); color: var(--ok); display: grid; place-items: center; text-align: center;
-  font-family: var(--font-ui); font-weight: 700; font-size: 15px; line-height: 18px; transform: rotate(-12deg);
+  font-family: var(--font-ui); font-weight: 700; font-size: var(--fs-c1); line-height: var(--lh-c1); transform: rotate(-12deg);
   background: color-mix(in srgb, var(--paper) 70%, transparent); pointer-events: none;
 }
 @media (prefers-reduced-motion: no-preference) {
@@ -746,7 +754,7 @@ details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywher
     var showToast = split || st.view === 'claim';
 
     return statusBar() +
-      '<div class="nav">' + (split ? '' : '<div class="nav-lead"><button type="button" class="tbtn" data-act="back">' + IC.back + 'Late orders</button></div>') +
+      '<div class="nav">' + (split ? '' : '<div class="nav-lead"><button type="button" class="tbtn" data-act="back" aria-label="Late orders">' + IC.back + '<span class="bk-label">Late orders</span></button></div>') +
       '<div class="nav-title">' + esc(o.seller) + '</div></div>' +
       '<div class="scroll" data-lt><div class="content">' + head + banner + facts + msg + cards + arrived + '</div></div>' +
       '<div class="bar">' + (showToast ? toastHtml(st) : '') + bar + '</div>' +
@@ -842,7 +850,7 @@ details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywher
     return '<section class="ev' + (lit ? ' lit' : '') + '" id="ev-' + sec + '" data-sec="' + sec + '"><h3>' + h + '</h3>' + body + '</section>';
   }
 
-  function letterPage(st, slot) {
+  function letterPage(st, slot, ax) {
     var split = slot === 'left';
     var list = letters(st);
     var nav = '<div class="nav"><div class="nav-title always">Claim letters</div>';
@@ -863,7 +871,7 @@ details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywher
       '<button type="button" class="tbtn" data-act="next" aria-label="Next letter"' + (i === list.length - 1 ? ' disabled title="This is the last letter"' : '') + '>' + IC.fwd + '</button></div>' +
       '<div class="dots" role="group" aria-label="Letters">' + list.map(function (x, j) {
         var cls = 'dot' + (j === i ? ' cur' : '') + (statusOf(st, x) === 'sent' ? ' sent' : '') + (statusOf(st, x) === 'closed' ? ' closed' : '');
-        return '<button type="button" class="' + cls + '" data-act="go" data-id="' + x.id + '" aria-label="' + esc(x.seller) + '"' + (j === i ? ' aria-current="true"' : '') + '><i></i></button>';
+        return '<button type="button" class="' + cls + '" data-act="go" data-id="' + x.id + '" aria-label="' + esc(x.seller) + ({ sent: ', sent', closed: ', window closed', lost: ', marked lost', open: '' })[statusOf(st, x)] + '"' + (j === i ? ' aria-current="true"' : '') + '><i></i></button>';
       }).join('') + '</div>';
     var main = st.editing ?
       '<label class="fine" for="lt-' + slot + o.id + '" style="padding:0 var(--space-4)">Edit the letter. Your words stay when you move between letters.</label><textarea class="msg" id="lt-' + slot + o.id + '" data-draft="' + o.id + '" style="font-family:var(--font-letter);min-height:22em">' + esc(messageText(st, o)) + '</textarea>' :
@@ -896,8 +904,10 @@ details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywher
         '<div class="sheet-body" style="padding:var(--space-4) 0">' + evidence(st, o, sec, false) + '</div></div>';
     }
     if (st.sheet && st.sheet.type === 'share') sheet = shareSheet(st, o, 'letter');
-    return statusBar() + nav + pager + fuse(o, st) +
-      '<div class="scroll"><div class="content">' + main + rows + arrived + '</div></div>' +
+    // At the largest text sizes the pager and fuse scroll with the letter, so the letter keeps the screen.
+    var head = pager + fuse(o, st);
+    return statusBar() + nav + (ax ? '' : head) +
+      '<div class="scroll"><div class="content">' + (ax ? '<div class="head-stack">' + head + '</div>' : '') + main + rows + arrived + '</div></div>' +
       '<div class="bar">' + toastHtml(st) + bar + '</div>' + sheet + homeInd();
   }
 
@@ -913,9 +923,9 @@ details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywher
       '</div></div>' + homeInd();
   }
 
-  function renderLetter(st, slot) {
+  function renderLetter(st, slot, ax) {
     if (slot === 'right') return letterEvidencePage(st);
-    return letterPage(st, slot);
+    return letterPage(st, slot, ax);
   }
 
   // ---------- Render ----------
@@ -926,7 +936,7 @@ details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywher
       var slot = el.dataset.slot;
       var key = (c === 'desk' && slot !== 'left' && slot !== 'right') ? st.view + st.sel : (c === 'letter' ? st.cur : '');
       var sc = el.querySelector('.scroll'), keep = sc && el.dataset.key === key ? sc.scrollTop : 0;
-      el.innerHTML = c === 'desk' ? renderDesk(st, slot) : renderLetter(st, slot);
+      el.innerHTML = c === 'desk' ? renderDesk(st, slot) : renderLetter(st, slot, el.classList.contains('ax5'));
       el.dataset.key = key;
       var ns = el.querySelector('.scroll');
       if (ns) {
@@ -935,7 +945,7 @@ details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywher
         if (ns.hasAttribute('data-lt')) ns.addEventListener('scroll', function () { el.classList.toggle('scrolled', ns.scrollTop > 30); }, { passive: true });
       }
       if (c === 'letter' && slot === 'right' && st.focus) {
-        var t = el.querySelector('.ev.lit'); if (t && ns) ns.scrollTop = Math.max(0, t.offsetTop - 16);
+        var t = el.querySelector('.ev.lit'); if (t && ns) ns.scrollTop = Math.max(0, ns.scrollTop + t.getBoundingClientRect().top - ns.getBoundingClientRect().top - 16);
       }
     });
     st.stampFresh = null;
@@ -1007,7 +1017,9 @@ details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywher
       case 'open': st.view = 'claim'; st.sel = id; st.sheet = null; st.toast = null; break;
       case 'back': st.view = 'list'; st.sheet = null; break;
       case 'copy':
-        st.copied[id] = true; st.toast = null;
+        // A second copy has no new mark to show, so it answers with a toast.
+        st.toast = st.copied[id] ? { text: 'Copied again.' } : null;
+        st.copied[id] = true;
         try { navigator.clipboard && navigator.clipboard.writeText(c === 'desk' ? messageText(st, BY_ID[id]) : messageText(st, BY_ID[id])).catch(function () {}); } catch (e) {}
         break;
       case 'share': st.sheet = { type: 'share' }; break;

@@ -54,7 +54,7 @@ button{font:inherit;color:inherit}
 .controls{display:flex;flex-wrap:wrap;gap:var(--space-4) var(--space-6);align-items:center}
 .cgroup{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
 .cgroup>span{color:var(--ink-2);font-size:13px}
-.seg{display:inline-flex;background:var(--surface-3);border-radius:var(--radius);padding:2px;gap:2px}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--surface-3);border-radius:var(--radius);padding:var(--space-1);gap:var(--space-1)}
 .seg button{border:0;background:transparent;min-height:36px;padding:0 var(--space-3);border-radius:6px;cursor:pointer;font-size:14px}
 .seg button[aria-pressed="true"]{background:var(--surface);font-weight:600;box-shadow:0 0 0 1px var(--rule)}
 .chk{display:inline-flex;gap:var(--space-2);align-items:center;font-size:14px;min-height:36px}
@@ -173,9 +173,12 @@ details.fine .row{border-top:1px solid var(--rule)}
 
 /* detail */
 .verdict{padding:0 var(--space-4)}
-.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(132px,100%),1fr));gap:1px;background:var(--rule);border-radius:var(--radius);overflow:hidden;margin:0 var(--space-4)}
-.figs>div{background:var(--surface);padding:var(--space-3);display:flex;flex-direction:column;gap:var(--space-1)}
-.figs .v{font-size:var(--t2);line-height:var(--t2-l);font-weight:700}
+.figs{display:grid;grid-template-columns:1fr 1fr;gap:1px;background:var(--rule);border-radius:var(--radius);overflow:hidden;margin:0 var(--space-4)}
+[data-ax="5"] .figs{grid-template-columns:1fr}
+.figs>div{background:var(--surface);padding:var(--space-2) var(--space-3);display:flex;flex-direction:column;gap:var(--space-1)}
+.figs .v{font-size:var(--hl);line-height:var(--hl-l);font-weight:500;color:var(--ink-2)}
+.figs .hot{padding:var(--space-3)}
+.figs .hot .v{font-size:var(--lt);line-height:var(--lt-l);font-weight:700;color:var(--ink)}
 .orders{list-style:none;margin:0 var(--space-4);padding:0;background:var(--surface);border-radius:var(--radius);overflow:hidden}
 .orders li{display:grid;grid-template-columns:auto 1fr auto;gap:var(--space-1) var(--space-3);align-items:center;padding:var(--space-3) var(--space-4);border-top:1px solid var(--rule)}
 .orders li:first-child{border-top:0}
@@ -190,7 +193,7 @@ details.fine .row{border-top:1px solid var(--rule)}
 .actions{display:flex;gap:var(--space-2);padding:0 var(--space-4)}
 [data-ax="5"] .actions{flex-direction:column}
 .actbar{position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3) 0 calc(var(--sim-bottom) + var(--space-2));background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 -1px 0 var(--rule)}
-.actbar.over-tabs{bottom:0;padding-bottom:calc(var(--sim-bottom) + 76px);box-shadow:none;background:linear-gradient(to top,var(--surface-2) 72%,transparent);backdrop-filter:none;-webkit-backdrop-filter:none}
+.actbar.over-tabs{z-index:2;bottom:0;padding-bottom:calc(var(--sim-bottom) + 76px);box-shadow:none;background:linear-gradient(to top,var(--surface-2) 72%,transparent);backdrop-filter:none;-webkit-backdrop-filter:none}
 .actbar .answer{background:var(--surface);margin:0 var(--space-4);padding:var(--space-2) var(--space-3);border-radius:var(--radius)}
 .body.has-bar{padding-bottom:calc(var(--sim-bottom) + 150px)}
 .body.tabbed.has-bar{padding-bottom:calc(var(--sim-bottom) + 220px)}
@@ -208,7 +211,7 @@ details.fine .row{border-top:1px solid var(--rule)}
 
 /* segmented control */
 .segc{display:flex;background:var(--surface-3);border-radius:22px;padding:2px;gap:2px;margin:0 var(--space-4)}
-.segc button{flex:1;min-height:40px;border:0;border-radius:20px;background:transparent;font-size:var(--sb);line-height:var(--sb-l);font-weight:600;cursor:pointer;color:var(--ink)}
+.segc button{flex:1;min-height:44px;border:0;border-radius:20px;background:transparent;font-size:var(--sb);line-height:var(--sb-l);font-weight:600;cursor:pointer;color:var(--ink)}
 .segc button[aria-pressed="true"]{background:var(--surface);box-shadow:0 1px 0 var(--rule)}
 
 /* plot */
@@ -219,6 +222,9 @@ details.fine .row{border-top:1px solid var(--rule)}
 .plot .dot[aria-pressed="true"]{box-shadow:0 0 0 2px var(--tint) inset}
 .axis{display:flex;justify-content:space-between;gap:var(--space-2);color:var(--ink-2)}
 [data-ax="5"] .axis{flex-direction:column}
+.search{margin:0 var(--space-4)}
+.search input{width:100%;min-height:44px;border:0;border-radius:22px;background:var(--surface-3);color:var(--ink);padding:0 var(--space-4);font:inherit;font-size:var(--bd);line-height:var(--bd-l)}
+.search input::placeholder{color:var(--ink-2)}
 .slider{margin:0 var(--space-4);background:var(--surface);border-radius:var(--radius);padding:var(--space-3) var(--space-4);display:flex;flex-direction:column;gap:var(--space-2)}
 .slider label{display:flex;justify-content:space-between;gap:var(--space-2);flex-wrap:wrap}
 .slider input{width:100%;min-height:44px;accent-color:var(--tint);margin:0}
@@ -237,7 +243,8 @@ details.fine .row{border-top:1px solid var(--rule)}
   @keyframes rise{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
 }
 .checks{margin:0 var(--space-4);background:var(--surface-2);border-radius:var(--radius);overflow:hidden;border:0;padding:0}
-.checks legend{padding:var(--space-3) var(--space-4) var(--space-1);color:var(--ink-2)}
+.checks legend{float:left;width:100%;padding:var(--space-3) var(--space-4) var(--space-1);color:var(--ink-2)}
+.checks legend+label{clear:both}
 .checks label{display:flex;gap:var(--space-3);align-items:center;min-height:44px;padding:var(--space-2) var(--space-4);border-top:1px solid var(--rule);cursor:pointer}
 .checks input{width:22px;height:22px;accent-color:var(--tint);flex:none}
 textarea{margin:0 var(--space-4);min-height:150px;border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface-2);color:var(--ink);font:inherit;font-size:var(--bd);line-height:var(--bd-l);padding:var(--space-3);resize:vertical}
@@ -293,7 +300,12 @@ body.show-new .new::after{content:attr(data-new);position:absolute;top:0;right:0
       <p>A ranked list of sellers. Each row shows one tile per order, and the tile's shape says what went wrong. Tabs hold the sellers you stopped and the complaints you drafted.</p>
       <button class="hide-btn" data-hide="strike">Hide Strike strip</button>
     </div>
-    <div class="frames" data-concept="strike"></div>
+    <div class="frames" data-concept="strike">
+      <div class="fwrap" data-frame="folded"><div class="device" data-device="iphone-duo-folded" role="region"></div><div class="fcap"></div></div>
+      <div class="fwrap" data-frame="ax5"><div class="device" data-device="iphone-duo-folded" data-ax="5" role="region"></div><div class="fcap"></div></div>
+      <div class="fwrap" data-frame="open"><div class="device" data-device="iphone-duo-unfolded" role="region"></div><div class="fcap"></div></div>
+      <div class="fwrap" data-frame="phone"><div class="device" data-device="iphone-regular" role="region"></div><div class="fcap"></div></div>
+    </div>
   </section>
 
   <section class="option" id="opt-map" aria-labelledby="h-map">
@@ -302,7 +314,12 @@ body.show-new .new::after{content:attr(data-new);position:absolute;top:0;right:0
       <p>One field, no tabs. Each seller is a dot: how long their mail takes, against how many cards never came right. You drag your own line for "slow", and the dots past it are the ones burning you.</p>
       <button class="hide-btn" data-hide="map">Hide Burn map</button>
     </div>
-    <div class="frames" data-concept="map"></div>
+    <div class="frames" data-concept="map">
+      <div class="fwrap" data-frame="folded"><div class="device" data-device="iphone-duo-folded" role="region"></div><div class="fcap"></div></div>
+      <div class="fwrap" data-frame="ax5"><div class="device" data-device="iphone-duo-folded" data-ax="5" role="region"></div><div class="fcap"></div></div>
+      <div class="fwrap" data-frame="open"><div class="device" data-device="iphone-duo-unfolded" role="region"></div><div class="fcap"></div></div>
+      <div class="fwrap" data-frame="phone"><div class="device" data-device="iphone-regular" role="region"></div><div class="fcap"></div></div>
+    </div>
   </section>
 </main>
 
@@ -378,7 +395,7 @@ function sum(s, T) {
 }
 function datasetFor(state) {
   if (state === "loaded") return ALL;
-  if (state === "calm") return ALL.filter(s => !sum(s, 10).burned);
+  if (state === "calm") return ALL.filter(s => { const x = sum(s, 10); return !x.burned && !x.onlyPending; });
   if (state === "early") return EARLY;
   return [];
 }
@@ -482,6 +499,7 @@ class App {
       case "tab": st.tab = arg; st.view = "list"; break;
       case "filter": st.filter = st.filter === arg ? "all" : arg; break;
       case "clearfilter": st.filter = "all"; break;
+      case "clearq": st.q = ""; break;
       case "stop": st.stopped[arg] = "2026-11-21"; break;
       case "unstop": delete st.stopped[arg]; break;
       case "complaint": if (!st.drafts[arg]) st.drafts[arg] = this.newDraft(arg); st.sel = arg; st.sheetFrom = st.sheet === "seller" ? "seller" : null; st.sheet = "complaint"; st.large = true; st.copied = false; break;
@@ -503,6 +521,7 @@ class App {
     const t = e.target;
     if (t.matches("[data-tol]")) { this.st.T = +t.value; this.renderParts(); }
     if (t.matches("[data-text]")) { this.st.drafts[this.st.sel].text = t.value; }
+    if (t.matches("[data-q]")) { this.st.q = t.value; this.render(); }
   }
   onChange(e) {
     const t = e.target;
@@ -539,18 +558,21 @@ class App {
     if (x.onlyPending) verdict = "Too early to tell. " + plural(x.pend, "order is", "orders are") + " still in the mail.";
     else if (x.burned) verdict = "Burned you on " + x.hurt + " of " + x.settled + " orders.";
     else verdict = "No trouble on " + plural(x.settled, "order", "orders") + ".";
+    if (x.typical != null) verdict += " Typical wait " + fmtDays(x.typical) + " days.";
+    // The two trouble figures lead; the two volume figures sit quieter below them.
     const figs = [
-      ["Orders", x.s.orders.length], ["Cards ordered", x.cards], ["Received", x.got],
-      ["Late or lost", x.late], ["Never came right", x.never, "New: lost, short or wrong"], ["Typical days", fmtDays(x.typical)]
+      ["Late or lost", x.late, "", "hot"], ["Never came right", x.never, "New: lost, short or wrong", "hot"],
+      ["Cards ordered", x.cards, "", ""], ["Received", x.got, "", ""]
     ];
     const T = st.T, MAXD = 30;
     const orders = x.rows.slice().reverse().map(r => {
       const o = r.o; let right, bar;
       if (r.k === "pending") { right = "In the mail, day " + ageOf(o); bar = '<i style="width:' + Math.min(100, ageOf(o) / MAXD * 100) + '%;opacity:.4"></i>'; }
-      else if (r.k === "lost") { right = "Never came"; bar = '<i class="never"></i>'; }
+      else if (r.k === "lost") { right = ageOf(o) + " days"; bar = '<i class="never"></i>'; }
       else { right = o.days + " days"; bar = '<i class="' + (o.days > T ? "over" : "") + '" style="width:' + Math.min(100, o.days / MAXD * 100) + '%"></i>'; }
       let mid = o.got + " of " + o.n + " cards";
-      if (r.k === "pending" || r.k === "lost") mid = o.n + " cards";
+      if (r.k === "pending") mid = o.n + " cards";
+      if (r.k === "lost") mid = o.n + " cards, none arrived";
       if (o.wrong) mid += ", " + plural(o.wrong, "wrong card", "wrong cards");
       return '<li>' + tile(r.k) + '<span class="grow"><span class="sb">' + fd(o.d) + '</span> <span class="ft ink2 num">' + mid + '</span></span><span class="right sb num">' + right + '</span><span class="bar" aria-hidden="true">' + bar + '<b style="left:' + (T / MAXD * 100) + '%"></b></span></li>';
     }).join("");
@@ -572,7 +594,7 @@ class App {
       '<div class="verdict stack"><p class="t3">' + verdict + '</p>' +
       '<div class="strip big new" data-new="New: strike strip" aria-hidden="true">' + x.rows.map(r => tile(r.k)).join("") + '</div></div>' +
       (acts ? '<div class="stack">' + acts + '</div>' : "") +
-      '<div class="figs num">' + figs.map(f => '<div' + (f[2] ? ' class="new" data-new="' + f[2] + '"' : "") + '><span class="ft ink2">' + f[0] + '</span><span class="v">' + f[1] + '</span></div>').join("") + '</div>' +
+      '<div class="figs num">' + figs.map(f => '<div class="' + f[3] + (f[2] ? ' new" data-new="' + f[2] + '"' : '"') + '><span class="ft ink2">' + f[0] + '</span><span class="v">' + f[1] + '</span></div>').join("") + '</div>' +
       '<div class="stack"><div class="ghead ft"><span>Each order, newest first</span><span>Days to arrive</span></div><ul class="orders">' + orders + '</ul>' +
       '<p class="ft ink2 pad">The dark tick on each bar marks ' + T + ' days, where an order turns slow.</p></div>' +
       '</div>';
@@ -591,7 +613,7 @@ class App {
       '<span class="grow"><span class="hl">' + esc(x.s.name) + '</span>' +
       '<span class="strip" aria-hidden="true">' + x.rows.map(r => tile(r.k)).join("") + '</span>' +
       '<span class="ft ink2">' + (x.burned ? phrase(x.kc) : x.onlyPending ? plural(x.pend, "order", "orders") + " in the mail" : plural(x.settled, "order", "orders") + ", no trouble") +
-      (stopped ? ' <span class="stopped-mark">' + IC.stop + ' stopped</span>' : "") + '</span></span>' +
+      (stopped ? ' <span class="stopped-mark" role="img" aria-label="You stopped buying from them">' + IC.stop + '</span>' : "") + '</span></span>' +
       (x.burned ? '<span class="fig"><span class="hl num">' + x.trouble + '</span><span class="c1 ink2 num">of ' + x.cards + '</span></span>' : "") +
       IC.chev + '</button>';
   }
@@ -604,13 +626,22 @@ class App {
     const list = this.list, burned = rank(list.filter(x => x.burned)), pend = list.filter(x => x.onlyPending), fine = list.filter(x => !x.burned && !x.onlyPending);
     if (st.data === "early") {
       h += '</div><div class="state"><p class="bd">Too early to tell. All ' + pend.reduce((a, x) => a + x.pend, 0) + ' orders are still in the mail.</p><p class="sb ink2">A seller shows here once an order arrives, or once one has waited ' + LOST_AFTER + ' days.</p></div>';
-      return h + '<div class="stack"><div class="ghead ft"><span>Still in the mail</span></div><div class="group">' + pend.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</div></div>';
+      return h + '<div class="stack"><div class="group">' + pend.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</div></div>';
     }
     if (!burned.length) {
       h += '</div><div class="state"><p class="well t3">' + IC.check + 'All is well.</p></div>';
     } else h += this.summaryLine(list) + '</div>';
-    let shown = burned;
-    if (st.filter !== "all") shown = burned.filter(x => x.kc[st.filter] > 0);
+    h += this.searchField();
+    if (st.q) {
+      const m = list.filter(x => this.matchQ(x));
+      if (!m.length) return h + this.noMatch();
+      if (!m.some(x => x.burned)) {
+        return h + '<div class="group">' + m.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</div>';
+      }
+    }
+    let shown = burned.filter(x => this.matchQ(x));
+    if (st.filter !== "all") shown = shown.filter(x => x.kc[st.filter] > 0);
+    const pendQ = pend.filter(x => this.matchQ(x)), fineQ = fine.filter(x => this.matchQ(x));
     h += this.chips(burned);
     if (burned.length) {
       h += '<div class="stack"' + (this.primary ? ' id="strike-choice"' : "") + '><div class="ghead ft"><span>Burned you</span><span>Cards with trouble</span></div>';
@@ -618,9 +649,16 @@ class App {
       else h += '<div class="group new" data-new="New: strike strip">' + shown.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</div>';
       h += '</div>';
     }
-    if (pend.length) h += '<div class="stack"><div class="ghead ft"><span>Too early to tell</span></div><div class="group">' + pend.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</div></div>';
-    if (fine.length) h += '<details class="fine"' + (burned.length ? "" : " open") + '><summary class="bd">' + plural(fine.length, "seller", "sellers") + ' with no trouble</summary>' + fine.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</details>';
+    if (pendQ.length) h += '<div class="stack"><div class="ghead ft"><span>Too early to tell</span></div><div class="group">' + pendQ.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</div></div>';
+    if (fineQ.length) h += '<details class="fine"' + (burned.length && !st.q ? "" : " open") + '><summary class="bd">' + plural(fineQ.length, "seller", "sellers") + ' with no trouble</summary>' + fineQ.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</details>';
     return h;
+  }
+  matchQ(x) { const q = (this.st.q || "").trim().toLowerCase(); return !q || x.s.name.toLowerCase().includes(q); }
+  searchField() {
+    return '<div class="search new" data-new="New: search"><input type="search" data-q placeholder="Search sellers" aria-label="Search sellers" autocomplete="off" value="' + esc(this.st.q || "") + '"></div>';
+  }
+  noMatch() {
+    return '<div class="state"><p class="bd">No seller matches “' + esc(this.st.q.trim()) + '”.</p><button class="btn" data-act="clearq">Clear search</button></div>';
   }
   strikeStopped() {
     const ids = Object.keys(this.st.stopped);
@@ -709,29 +747,34 @@ class App {
       if (x.burned) {
         if (!ax5) {
           const right = cx < w - 150;
-          s += '<text x="' + (right ? cx + r + 5 : cx - r - 5) + '" y="' + (x.never ? cy + 4 : cy - r - 6) + '" font-size="12" ' + (right ? "" : 'text-anchor="end" ') + 'fill="var(--ink)">' + esc(x.s.name.split(" ")[0]) + '</text>';
+          s += '<text x="' + (right ? cx + r + 8 : cx - r - 8) + '" y="' + (x.never ? cy + 4 : cy - r - 6) + '" font-size="12" ' + (right ? "" : 'text-anchor="end" ') + 'fill="var(--ink)">' + esc(x.s.name.split(" ")[0]) + '</text>';
         }
         btns.push('<button class="dot" style="left:' + cx + 'px;top:' + cy + 'px" data-act="open:' + x.s.id + '" aria-pressed="' + (st.sel === x.s.id) + '" aria-label="' + esc(x.s.name) + ': ' + Math.round(x.neverPct * 100) + '% of cards never came right, about ' + fmtDays(x.typical) + ' days' + (stopped ? ', stopped' : '') + '"></button>');
       }
     });
     s += '</svg>';
     return '<div class="plot new" data-new="New: burn map"' + (this.primary ? ' id="map-choice"' : "") + ' style="width:' + w + 'px;height:' + h + 'px">' + s + btns.join("") + '</div>' +
-      '<div class="axis c1"><span>Across: typical days to arrive</span><span>Up: share of cards that never came right</span></div>';
+      '<div class="axis c1"><span>Across: typical days to arrive</span><span>Up: share of cards that never came right</span></div>' +
+      '<div class="cluster c1 ink2" aria-label="Dot colour shows the worst trouble">' + ["lost", "wrong", "short", "slow"].map(k => '<span class="cluster" style="gap:var(--space-1)">' + tile(k) + KLABEL[k] + '</span>').join("") + '</div>';
   }
   mapRanked(list, compact) {
-    const st = this.st, burned = rank(list.filter(x => x.burned)), pend = list.filter(x => x.onlyPending), fine = list.filter(x => !x.burned && !x.onlyPending);
-    let h = "";
-    if (burned.length) h += '<div class="stack"><div class="ghead ft"><span>Burning you, worst first</span><span>Cards with trouble</span></div><div class="group">' + burned.map(x => this.mapRow(x)).join("") + '</div></div>';
+    const st = this.st, searchable = compact || st.mode === "list";
+    const q = searchable ? (x => this.matchQ(x)) : (() => true);
+    const burned = rank(list.filter(x => x.burned && q(x))), pend = list.filter(x => x.onlyPending && q(x)), fine = list.filter(x => !x.burned && !x.onlyPending && q(x));
+    let h = searchable ? this.searchField() : "";
+    if (searchable && st.q && !burned.length && !pend.length && !fine.length) return h + this.noMatch();
+    if (searchable && st.q && !burned.length) h += "";
+    else if (burned.length) h +='<div class="stack"><div class="ghead ft"><span>' + (compact ? "" : "Worst first") + '</span><span>Cards with trouble</span></div><div class="group">' + burned.map(x => this.mapRow(x)).join("") + '</div></div>';
     else h += '<div class="state" style="padding-top:0;padding-bottom:0"><p class="well t3">' + IC.check + 'All is well.</p></div>';
     if (pend.length) h += '<p class="sb ink2 pad">' + plural(pend.length, "seller is", "sellers are") + ' not on the map yet: every order is still in the mail. ' + pend.map(x => esc(x.s.name)).join(", ") + '.</p>';
-    if (fine.length) h += '<details class="fine"><summary class="bd">' + plural(fine.length, "seller", "sellers") + ' in the Fine corner</summary>' + fine.map(x => this.mapRow(x)).join("") + '</details>';
+    if (fine.length) h += '<details class="fine"' + (st.q && searchable ? " open" : "") + '><summary class="bd">' + plural(fine.length, "seller", "sellers") + ' in the Fine corner</summary>' + fine.map(x => this.mapRow(x)).join("") + '</details>';
     return h;
   }
   mapRow(x) {
     const id = x.s.id, stopped = this.st.stopped[id];
     return '<button class="row" data-act="open:' + id + '"' + (this.st.sel === id ? ' aria-current="true"' : "") + '>' + tile(x.burned ? x.worst : "fine") +
       '<span class="grow"><span class="hl">' + esc(x.s.name) + '</span><span class="ft ink2">' + (x.burned ? phrase(x.kc) : plural(x.settled, "order", "orders") + ", about " + fmtDays(x.typical) + " days") +
-      (stopped ? ' <span class="stopped-mark">' + IC.stop + ' stopped</span>' : "") + '</span></span>' +
+      (stopped ? ' <span class="stopped-mark" role="img" aria-label="You stopped buying from them">' + IC.stop + '</span>' : "") + '</span></span>' +
       (x.burned ? '<span class="fig"><span class="hl num">' + x.trouble + '</span><span class="c1 ink2 num">of ' + x.cards + '</span></span>' : "") + IC.chev + '</button>';
   }
   slider() {
@@ -750,11 +793,12 @@ class App {
       return h + '</div><div class="state"><p class="bd">Too early to tell. All ' + pend.reduce((a, x) => a + x.pend, 0) + ' orders are still in the mail.</p><p class="sb ink2">A seller lands on the map once an order arrives, or once one has waited ' + LOST_AFTER + ' days. Waiting on: ' + pend.map(x => esc(x.s.name)).join(", ") + '.</p></div>';
     }
     h += this.summaryLine(list) + '</div>';
-    h += '<div class="segc" role="group" aria-label="View"><button data-act="mode:map" aria-pressed="' + (st.mode === "map") + '">Map</button><button data-act="mode:list" aria-pressed="' + (st.mode === "list") + '">List</button></div>';
+    // Open pose: the right page already holds the list, so a Map/List switch would change nothing.
+    if (this.pose !== "open") h += '<div class="segc" role="group" aria-label="View"><button data-act="mode:map" aria-pressed="' + (st.mode === "map") + '">Map</button><button data-act="mode:list" aria-pressed="' + (st.mode === "list") + '">List</button></div>';
     h += '<div class="stack-lg" style="padding-top:var(--space-3)">';
-    if (st.mode === "map") h += '<div class="plotwrap" data-part="plot">' + this.plot(list, plotW, plotH) + '</div>';
+    if (st.mode === "map" || this.pose === "open") h += '<div class="plotwrap" data-part="plot">' + this.plot(list, plotW, plotH) + '</div>';
     h += this.slider();
-    if (withList || st.mode === "list") h += '<div data-part="ranked" class="stack-lg">' + this.mapRanked(list) + '</div>';
+    if (withList || (st.mode === "list" && this.pose !== "open")) h += '<div data-part="ranked" class="stack-lg">' + this.mapRanked(list) + '</div>';
     return h + '</div>';
   }
   sellerSheet() {
@@ -783,8 +827,8 @@ class App {
       const list = this.list;
       let right, rbar = "";
       if (["empty", "loading", "failed", "early"].includes(st.data)) right = '<p class="rpage-empty bd">The sellers burning you are listed on this page.</p>';
-      else if (st.sel && this.find(st.sel)) { const x = this.find(st.sel); right = '<div class="nav"><button class="tb" data-act="back">' + IC.back + 'All sellers</button><span class="title"></span></div><div class="large-title" style="padding-top:0"><h2 class="t2">' + esc(x.s.name) + '</h2></div>' + this.detail(x, { bar: this.ax !== "5" }); rbar = this._bar; }
-      else right = '<div class="large-title"><h2 class="t2">Burning you</h2></div><div data-part="ranked" class="stack-lg">' + this.mapRanked(list).replace('<span>Burning you, worst first</span>', '<span>Worst first</span>') + '</div>';
+      else if (st.sel && this.find(st.sel)) { const x = this.find(st.sel); right = '<div class="nav"><button class="tb" data-act="back">' + IC.back + 'Worst first</button><span class="title"></span></div><div class="large-title" style="padding-top:0"><h2 class="t2">' + esc(x.s.name) + '</h2></div>' + this.detail(x, { bar: this.ax !== "5" }); rbar = this._bar; }
+      else right = '<div class="large-title"><h2 class="t2">Worst first</h2></div><div data-part="ranked" class="stack-lg">' + this.mapRanked(list, true) + '</div>';
       const leftSheet = st.sheet === "stopped" ? this.stoppedSheet() : "";
       const rightSheet = st.sheet === "complaint" ? this.complaintSheet() : "";
       return '<div class="page" data-page="left"><div class="scr">' + this.status("L") + '<div class="body plain">' + left + '</div>' + leftSheet + '</div></div>' +
@@ -802,16 +846,18 @@ class App {
     const p = this.host.querySelector('[data-part="plot"]');
     if (p) { const pl = p.querySelector(".plot"); p.innerHTML = this.plot(list, pl.offsetWidth, pl.offsetHeight); }
     this.host.querySelectorAll('[data-part="ranked"]').forEach(r => {
-      if (this.pose === "open" && r.closest('[data-page="right"]')) r.innerHTML = this.mapRanked(list).replace('<span>Burning you, worst first</span>', '<span>Worst first</span>');
+      if (this.pose === "open" && r.closest('[data-page="right"]')) r.innerHTML = this.mapRanked(list, true);
       else r.innerHTML = this.mapRanked(list);
     });
     const sum1 = this.host.querySelector(".large-title .sb"); if (sum1) sum1.outerHTML = this.summaryLine(list) || '<p class="sb ink2"></p>';
   }
   render() {
     this.uid = this.uid || (Math.random().toString(36).slice(2, 8));
-    const ta = this.host.querySelector("textarea"), keep = ta && document.activeElement === ta;
+    // Keep focus and caret in a text field across a redraw, so typing is never cut off.
+    const a = document.activeElement, sel = a && this.host.contains(a) ? (a.matches("textarea") ? "textarea" : a.matches("[data-q]") ? "[data-q]" : null) : null;
+    const caret = sel ? a.selectionStart : 0;
     this.host.innerHTML = this.concept === "strike" ? this.renderStrike() : this.renderMap();
-    if (keep) { const n = this.host.querySelector("textarea"); if (n) n.focus(); }
+    if (sel) { const n = this.host.querySelector(sel); if (n) { n.focus({ preventScroll: true }); try { n.setSelectionRange(caret, caret); } catch (e) {} } }
   }
 }
 
@@ -827,13 +873,13 @@ function build() {
   apps = [];
   document.querySelectorAll(".frames").forEach(fr => {
     const concept = fr.getAttribute("data-concept");
-    fr.innerHTML = "";
     FRAMES.forEach((f, i) => {
-      const wrap = document.createElement("div"); wrap.className = "fwrap"; wrap.setAttribute("data-frame", f.key);
-      const dev = document.createElement("div"); dev.className = "device"; dev.setAttribute("data-device", f.device); if (f.ax) dev.setAttribute("data-ax", f.ax);
+      // Frames are static in the markup (one per device); a rebuild swaps in a fresh copy to drop old listeners.
+      const wrap = fr.querySelector('[data-frame="' + f.key + '"]');
+      const old = wrap.querySelector(".device"), dev = old.cloneNode(false);
+      old.replaceWith(dev);
       dev.setAttribute("aria-label", (concept === "strike" ? "Strike strip" : "Burn map") + ", " + f.cap);
-      const cap = document.createElement("div"); cap.className = "fcap"; cap.textContent = f.cap;
-      wrap.appendChild(dev); wrap.appendChild(cap); fr.appendChild(wrap);
+      wrap.querySelector(".fcap").textContent = f.cap;
       apps.push(new App(dev, concept, f.pose, f.ax, i === 0, H));
       if (f.pose === "phone" && concept === "map" && "ResizeObserver" in window) {
         let lastW = 0; new ResizeObserver(() => { if (Math.abs(dev.clientWidth - lastW) > 8) { lastW = dev.clientWidth; const a = apps.find(x => x.host === dev); if (a) a.render(); } }).observe(dev);

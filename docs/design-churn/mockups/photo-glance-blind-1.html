@@ -105,7 +105,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .review .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .review .row > span:first-child { min-width: 88px; color: var(--text-2); }
 .seg { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1); background: var(--surface-2); border-radius: var(--radius); }
-.seg button { min-height: 36px; padding: 0 var(--space-3); border-radius: 6px; }
+.seg button { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .hide-btn { min-height: 36px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); color: var(--text-2); }
 .concept { padding: var(--space-6) var(--space-4) var(--space-12); display: flex; flex-direction: column; gap: var(--space-4); }
@@ -131,7 +131,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .labels-on .nl::after {
   content: attr(data-new); position: absolute; top: 4px; right: 4px; z-index: 5; pointer-events: none;
   font: 600 11px/14px -apple-system, system-ui, sans-serif; padding: 2px 6px;
-  background: var(--surface); color: var(--accent); border: 1px dashed var(--accent); border-radius: 6px;
+  background: var(--surface); color: var(--accent); border: 1px dashed var(--accent); border-radius: var(--radius);
 }
 
 /* A label on a part that holds other labelled parts sits at its foot, so two tags never stack. */
@@ -217,10 +217,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .ax5 .zoom-hint .zh-t { display: none; }
 .ax5 .zoom-hint svg { width: 24px; height: 24px; }
 .strip .slip { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); }
-.strip .slip .cards { margin-top: var(--space-1); }
 .film { display: flex; gap: var(--space-1); padding: var(--space-2) var(--space-4); overflow-x: auto; border-top: 1px solid var(--line); scrollbar-width: none; }
-.film .grp { display: flex; gap: 2px; padding-inline-end: var(--space-2); }
-.thumb { flex: none; width: var(--tap); height: var(--tap); border-radius: 6px; overflow: hidden; background: var(--photo-bg); position: relative; }
+.film .grp { display: flex; gap: var(--space-1); padding-inline-end: var(--space-2); }
+.thumb { flex: none; width: var(--tap); height: var(--tap); border-radius: var(--radius); overflow: hidden; background: var(--photo-bg); position: relative; }
 .thumb[aria-current="true"] { box-shadow: 0 0 0 3px var(--accent); }
 .thumb .bad { position: absolute; inset: 0; display: grid; place-items: center; color: var(--danger); font-weight: 700; }
 .strip .stepbar .count { min-width: 76px; text-align: center; }
@@ -239,7 +238,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 /* Card file option. */
 .file .box { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 var(--space-3); }
 .ax5 .file .box, .file.ax5 .box { overflow: auto; }
-.depth { flex: none; display: flex; flex-direction: column; gap: 2px; padding: 0 var(--space-2); }
+.depth { flex: none; display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-2); }
 .depth i { height: 2px; background: var(--manila-2); border-radius: 1px; opacity: .8; }
 .tab { flex: none; display: block; width: auto; min-height: var(--tap); text-align: left; position: relative; }
 .tab .ear { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); width: fit-content; min-width: 56%; max-width: 100%; min-height: var(--tap); padding: var(--space-1) var(--space-3); background: var(--manila); color: var(--manila-text); border-radius: var(--radius) var(--radius) 0 0; border-bottom: 2px solid var(--manila-2); font-weight: 600; font-size: var(--t-callout); line-height: var(--l-callout); }
@@ -257,12 +256,12 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .divider-ear { align-self: flex-start; display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); padding: var(--space-1) var(--space-3); background: var(--manila); color: var(--manila-text); border-radius: var(--radius) var(--radius) 0 0; max-width: 100%; }
 .divider-ear .sender { font-size: var(--t-title2); line-height: var(--l-title2); color: var(--manila-text); }
 .divider-ear .sender.unknown { color: var(--manila-text); font-style: italic; }
-.divider .photo { flex: 1; min-height: 160px; border-radius: 6px; }
+.divider .photo { flex: 1; min-height: 160px; border-radius: var(--radius); }
 .ax5 .divider .photo { flex: none; height: 300px; }
 .pager { display: flex; align-items: center; justify-content: center; gap: var(--space-2); color: var(--manila-text); font-size: var(--t-foot); line-height: var(--l-foot); }
 .pager button { min-width: var(--tap); min-height: var(--tap); display: inline-grid; place-items: center; border-radius: var(--radius); }
 .pager button[aria-disabled="true"] { opacity: .35; }
-.cardline { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--tap); padding: var(--space-1) var(--space-2); border-radius: 6px; background: var(--surface); color: var(--text); text-align: left; font-size: var(--t-sub); line-height: var(--l-sub); }
+.cardline { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--tap); padding: var(--space-1) var(--space-2); border-radius: var(--radius); background: var(--surface); color: var(--text); text-align: left; font-size: var(--t-sub); line-height: var(--l-sub); }
 .cardline .cl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .ax5 .cardline .cl { white-space: normal; }
 .cardline .more { flex: none; color: var(--accent); font-weight: 600; }
@@ -277,13 +276,12 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .file .open .tabs .tab[aria-current="true"] { padding-inline-end: 0; }
 .file .open .tabs .tab[aria-current="true"] .ear { width: 100%; border-radius: var(--radius) 0 0 var(--radius); background: var(--manila); box-shadow: inset 4px 0 0 var(--accent); }
 .file .open .tabs .tab[aria-current="true"].off1 .ear, .file .open .tabs .tab[aria-current="true"].off2 .ear { width: auto; }
-.file .open .tabs .nextday { margin-top: var(--space-2); }
 .file .open .tabs .nextday .ear { background: var(--surface-2); color: var(--text); border: 1px dashed var(--line); }
 .file .open .right { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--manila); margin: 0 var(--space-3) 0 0; border-radius: 0 var(--radius) var(--radius) 0; padding: var(--space-3); gap: var(--space-3); }
 .file .open .right .sender { font-size: var(--t-title1); line-height: var(--l-title1); color: var(--manila-text); }
 .file .open .right .sender.unknown { font-style: italic; }
-.file .open .right .photo { flex: 1; min-height: 0; border-radius: 6px; }
-.file .open .right .cards { background: var(--surface); border-radius: 6px; padding: 0 var(--space-3); max-height: 180px; overflow: auto; }
+.file .open .right .photo { flex: 1; min-height: 0; border-radius: var(--radius); }
+.file .open .right .cards { background: var(--surface); border-radius: var(--radius); padding: 0 var(--space-3); max-height: 180px; overflow: auto; }
 .file .open .right .sub { color: var(--manila-text); opacity: .85; }
 </style>
 </head>
@@ -588,6 +586,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   var G = { c: "strip", s: "loaded", t: "auto", d: "all", l: "1", h: [] };
   var frameStates = {};
   function readHash() {
+    // Each deep link stands alone: keys it leaves out fall back to their defaults.
+    G.c = "strip"; G.s = "loaded"; G.t = "auto"; G.d = "all"; G.l = "1"; G.h = [];
     var h = (location.hash || "").replace(/^#/, "");
     h.split("&").forEach(function (kv) { var p = kv.split("="); if (!p[0]) return; var v = decodeURIComponent(p[1] || ""); if (p[0] === "h") G.h = v ? v.split(",") : []; else if (p[0] in G) G[p[0]] = v; });
   }
@@ -670,7 +670,10 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     }
   }
   var lastFrame = null;
+  var swallowClick = false;
   document.addEventListener("click", function (ev) {
+    // A swipe ends with a click on the photo; that click must not also open the zoom.
+    if (swallowClick) { swallowClick = false; return; }
     var g = ev.target.closest("[data-g]");
     if (g) {
       G[g.getAttribute("data-g")] = g.getAttribute("data-v");
@@ -714,6 +717,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     if (el.getAttribute("data-swipe") === "h") step(key, fo.c, dx < 0 ? 1 : -1);
     else { var e = env(fs.di, fs.ei); fs.pi = Math.max(0, Math.min(e.photos.length - 1, fs.pi + (dx < 0 ? 1 : -1))); }
     ev.preventDefault();
+    swallowClick = true;
+    setTimeout(function () { swallowClick = false; }, 0);
     renderFrame(fo.c, fo.fr);
   });
   document.addEventListener("keydown", function (ev) {

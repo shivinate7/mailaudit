@@ -859,6 +859,7 @@ main { padding: var(--space-4); display: flex; flex-direction: column; gap: var(
   }
   function reset() {
     timers.splice(0).forEach(clearTimeout);
+    if (D) clearTimeout(D.syncTimer);
     D = build(view.s);
     Object.keys(UI).forEach((k) => delete UI[k]);
   }
@@ -895,10 +896,13 @@ main { padding: var(--space-4); display: flex; flex-direction: column; gap: var(
       case 'opensheet': ui.sheet = b.dataset.sheet; break;
       case 'closesheet': case 'closesheet-bg': ui.sheet = null; break;
       case 'syncnow':
+        D.syncBefore = D.sync;
         D.sync = { kind: 'syncing', diffs: [] };
-        later(1600, () => { if (D.sync.kind === 'syncing') D.sync = { kind: 'agreed', mins: 0, diffs: [] }; });
+        clearTimeout(D.syncTimer);
+        D.syncTimer = setTimeout(() => { if (D.sync.kind === 'syncing') D.sync = { kind: 'agreed', mins: 0, diffs: [] }; renderAll(); }, 1600);
         break;
-      case 'syncstop': timers.splice(0).forEach(clearTimeout); D.sync = { kind: 'agreed', mins: 4, diffs: [] }; break;
+      // Stop puts back the sync state from before the press; it never claims an agreement.
+      case 'syncstop': clearTimeout(D.syncTimer); D.sync = D.syncBefore || { kind: 'unknown' }; break;
       case 'keep':
         if (b.dataset.side === 'other') { p.status = 'today'; p.touched = true; }
         D.sync.diffs = D.sync.diffs.filter((id) => id !== b.dataset.id);

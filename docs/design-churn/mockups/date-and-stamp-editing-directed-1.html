@@ -86,6 +86,9 @@ button { cursor:pointer; }
 .mastwrap { flex:none; margin:0 16px; display:flex; flex-direction:column; }
 .mast { display:flex; align-items:stretch; border-bottom:1px solid var(--ink); min-height:48px; }
 .mastwrap.inled { margin:0; }
+.seg { display:grid; grid-template-columns:1fr 1fr; padding:2px; border-radius:9px; background:color-mix(in srgb, var(--line) 60%, transparent); flex:none; }
+.seg button { min-height:44px; border:0; border-radius:7px; background:none; font:600 14px var(--sys); color:var(--ink); }
+.seg button[aria-pressed="true"] { background:var(--card); box-shadow:0 1px 2px var(--line); }
 .missing { font:12px/20px var(--mono); color:var(--inkSoft); text-align:center; }
 .missing.pv { color:var(--accent); }
 .mast .cell { flex:1 1 0; display:flex; flex-direction:column; justify-content:center; gap:2px; padding:6px 0; }
@@ -209,6 +212,7 @@ button { cursor:pointer; }
 
 /* ---------- Ledger calendar concept ---------- */
 .dayled { flex:1 1 auto; overflow-y:auto; padding:8px 16px; display:flex; flex-direction:column; gap:8px; min-height:0; }
+.dayled > *, .body > * { flex-shrink:0; }
 .dayled h3 { margin:0; font:italic 700 var(--t-t3)/1.2 var(--cochin); display:flex; align-items:baseline; gap:8px; }
 .dayled h3 small { font:12px var(--mono); color:var(--inkSoft); font-style:normal; font-weight:400; }
 .entry { display:flex; align-items:center; gap:10px; min-height:52px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 6px 4px 12px; }
@@ -266,7 +270,9 @@ button { cursor:pointer; }
 .ax .why { font-size:40px; }
 .ax .pbar { height:auto; max-height:46%; flex-direction:column; align-items:stretch; padding:8px 12px; overflow-y:auto; }
 .ax .pbar .msg { font-size:40px; -webkit-line-clamp:unset; display:block; flex:none; overflow:visible; }
-.ax .pbar .btns { display:flex; flex-direction:column; gap:8px; }
+.ax .pbar .btns { display:flex; gap:8px; flex:none; }
+.ax .pbar .btns > * { flex:1 1 0; padding:0 4px; }
+.ax .pbar { max-height:52%; }
 .ax .entry { flex-direction:column; align-items:stretch; padding:8px 12px; }
 .ax .entry .t b { font-size:var(--t-body); white-space:normal; }
 .ax .entry .t span { white-space:normal; }
@@ -462,12 +468,24 @@ function act(st, a, v) {
   if (a !== "day" && a !== "cday") u.why = "";
   switch (a) {
     /* --- Calendar sheet --- */
-    case "open-recv": { const p = pkgOf(st, v); const src = recvDays(p).slice(-1)[0];
+    /* Ledger calendar: List / Month, and a tap on a list value opens the month at that value */
+    case "mode": st.ui = v === "list" ? { list: true, notice: null } : { sel: TODAY, ym: TODAY.slice(0, 7) }; return;
+    case "open-recv":
+    case "open-stamp":
+    case "open-range":
+      if (st.concept === "ledger") {
+        const p = v && pkgOf(st, v);
+        if (a === "open-range") { st.ui = { sel: TODAY, ym: TODAY.slice(0, 7) }; act(st, "range"); return; }
+        const day = a === "open-recv" ? recvDays(p).slice(-1)[0] : p.stamp.at;
+        st.ui = { sel: day, ym: day.slice(0, 7) }; act(st, a === "open-recv" ? "lift" : "sedit", v); return;
+      }
+      if (a === "open-stamp") { const p = pkgOf(st, v);
+        st.ui = { sheet: "stamp", gk: v, kind: p.stamp.kind, day: p.stamp.at, note: p.stamp.note, touched: false, armed: false, ym: p.stamp.at.slice(0, 7) }; break; }
+      if (a === "open-range") { const f = st.filter;
+        st.ui = { sheet: "range", a: f ? f.from : null, b: f ? f.to : null, preset: f ? (f.preset || "custom") : "all", ym: (f ? f.to : TODAY).slice(0, 7) }; break; }
+    { const p = pkgOf(st, v); const src = recvDays(p).slice(-1)[0];
       st.ui = { sheet: "received", gk: v, src, pick: null, cards: new Set(p.cards.filter((c) => c.day === src).map((c) => c.k)), ym: src.slice(0, 7), notice: u.notice && null }; break; }
-    case "open-range": { const f = st.filter;
-      st.ui = { sheet: "range", a: f ? f.from : null, b: f ? f.to : null, preset: f ? (f.preset || "custom") : "all", ym: (f ? f.to : TODAY).slice(0, 7) }; break; }
-    case "open-stamp": { const p = pkgOf(st, v);
-      st.ui = { sheet: "stamp", gk: v, kind: p.stamp.kind, day: p.stamp.at, note: p.stamp.note, touched: false, armed: false, ym: p.stamp.at.slice(0, 7) }; break; }
+    case "hand": st.ui = { why: "Card in Hand opens over both pages, as it does today. It is not drawn in this mockup." }; break;
     case "mon": { const n = ymAdd(u.ym, +v); if (n >= MIN_YM && n <= MAX_YM) u.ym = n; break; }
     case "day": {
       const off = dayOff(st, v);
@@ -625,8 +643,10 @@ function sheetPage(st, pv) {
   const datesUndo = n && n.at === "dates";
   const dval = pv && pv.f !== undefined ? `<span class="hval pv">${esc(rangeLabel(pv.f))}</span>` : `<span class="hval">${esc(rangeLabel(st.filter))}</span>`;
   h += `<div class="head"><div class="hcell"><span class="micro">Showing</span><span class="hval">Unreceived</span></div>`
-    + `<div class="hcell t-today" data-tag="Today: date cell"><button type="button" class="rowbtn" data-a="open-range" aria-label="Order dates, ${esc(rangeLabel(st.filter))}"><span class="micro">Dates</span>${datesUndo && n.undone ? `<span class="hval">Undone</span>` : dval}</button>${datesUndo && !n.undone ? `<button type="button" class="undo" data-a="undo">Undo</button>` : ""}</div></div>`;
+    + `<div class="hcell t-today" data-tag="Today on web: date cell"><button type="button" class="rowbtn" data-a="open-range" aria-label="Order dates, ${esc(rangeLabel(st.filter))}"><span class="micro">Dates</span>${datesUndo && n.undone ? `<span class="hval">Undone</span>` : dval}</button>${datesUndo && !n.undone ? `<button type="button" class="undo" data-a="undo">Undo</button>` : ""}</div></div>`;
   h += `<div class="list">`;
+  /* the open Duo's Packages head offers Card in Hand today (PackagesTab, HandScreen.swift) */
+  if (st.dev === "open") h += `<div class="t-today" data-tag="Today: Card in Hand"><button type="button" class="act" data-a="hand" aria-label="Card in Hand, not drawn here">Card in Hand</button></div>`;
   const shown = st.L.slice(0, 3);
   for (const p of shown) {
     const ov = pv && pv.ov && pv.ov.gk === p.gk ? pv.ov : null;
@@ -760,7 +780,7 @@ function drawSheet(st) {
     const pv = pendingPreview(st);
     const left = `<div class="page l"><div class="screen">${sheetPage(st, pv)}</div></div>`;
     const right = ed ? `<div class="page r"><div class="editor"><div style="height:var(--sat)"></div>${toolbar(ed.title, ed.can, ed.label, ed.reason)}<div class="body">${ed.body}</div></div>${tabbar()}</div>`
-      : `<div class="page r"><div class="screen"><div class="blank-page"><b>Nothing open</b>Tap a received day, a stamp or Dates on the left page. The editor opens here, and the left page shows each change as you tap.</div></div>${tabbar()}</div>`;
+      : `<div class="page r"><div class="screen"><div class="blank-page"><b>Packages is one page today</b>Tap a received day, a stamp or Dates on the left page. The editor opens on this page while you edit, and the left page shows each change as you tap.<span role="status">${esc(st.ui.why || "")}</span></div></div>${tabbar()}</div>`;
     return status() + left + `<div class="fold" aria-hidden="true"></div>` + right;
   }
   let h = status() + `<div class="screen">${sheetPage(st, null)}</div>` + tabbar();
@@ -845,22 +865,29 @@ function pbar(st) {
   else { msg = `Dates: <b>${esc(rangeLabel(st.filter))}</b>. Tap a day to read it.`; btns = (st.filter ? b("rall", "All time") : "") + b("range", "Pick dates"); }
   return `<div class="pbar t-new" data-tag="New: action bar" role="status"><div class="msg${err ? " err" : ""}">${msg}</div><div class="btns">${btns}</div></div>`;
 }
+/* the way in and out: a List / Month switch at the head of Packages. List is today's view. */
+const seg = (st) => `<div class="seg t-new" data-tag="New: List / Month" role="group" aria-label="Packages as"><button type="button" data-a="mode" data-v="list" aria-pressed="${!!st.ui.list}">List</button><button type="button" data-a="mode" data-v="month" aria-pressed="${!st.ui.list}">Month</button></div>`;
 function drawLedger(st) {
   const u = st.ui;
   if (!u.ym) u.ym = (u.sel || TODAY).slice(0, 7);
+  if (u.list) {
+    const list = sheetPage(st, null).replace('<div class="list">', `<div class="list">${seg(st)}`);
+    if (st.dev === "open") return status() + `<div class="page l"><div class="screen">${list}</div></div><div class="fold" aria-hidden="true"></div><div class="page r"><div class="screen"><div class="blank-page"><b>Packages is one page today</b>Tap a received day, a stamp or Dates to open the month at that day.</div></div>${tabbar()}</div>`;
+    return status() + `<div class="screen">${list}</div>` + tabbar();
+  }
   const pvf = u.range && u.a ? { f: { from: u.a, to: u.b || u.a } } : u.edit ? (() => { const p = pkgOf(st, u.edit.gk); return isRefund(u.edit.kind) !== isRefund(p.stamp.kind) ? { ov: { gk: p.gk, stamp: { kind: u.edit.kind, at: u.edit.day } } } : null; })() : null;
   const cell = ledgerCell(st);
   if (st.dev === "open") {
-    const left = `<div class="page l"><div class="screen"><div class="letter" aria-hidden="true">MANIFEST</div>${mast(st, pvf)}<div class="lcal big">${cal(st, u.ym, cell, "cday", true)}</div><div class="key" style="padding:0 16px 10px"><span>${mk("o")} ordered</span><span>${mk("r")} received</span><span>${mk("s")} stamp</span></div></div></div>`;
+    const left = `<div class="page l"><div class="screen"><div class="letter" aria-hidden="true">MANIFEST</div>${mast(st, pvf)}<div style="padding:8px 16px 0">${seg(st)}</div><div class="lcal big">${cal(st, u.ym, cell, "cday", true)}</div><div class="key" style="padding:0 16px 10px"><span>${mk("o")} ordered</span><span>${mk("r")} received</span><span>${mk("s")} stamp</span></div></div></div>`;
     const right = `<div class="page r"><div class="screen">${dayLedger(st)}${pbar(st)}</div>${tabbar()}</div>`;
     return status() + left + `<div class="fold" aria-hidden="true"></div>` + right;
   }
   if (st.ax) {
     const around = u.wk || u.to || (u.edit && u.edit.day) || u.b || u.a || u.sel || TODAY;
-    return status() + `<div class="screen"><div class="dayled">${dayList(st, u.ym, cell, "cday", around)}${dayLedger(st).replace(/^<div class="dayled">|<\/div>$/g, "")}</div>${pbar(st)}</div>` + tabbar();
+    return status() + `<div class="screen"><div class="dayled">${seg(st)}${dayList(st, u.ym, cell, "cday", around)}${dayLedger(st).replace(/^<div class="dayled">|<\/div>$/g, "")}</div>${pbar(st)}</div>` + tabbar();
   }
   /* compact: the tallies scroll with the day's ledger, so the day gets the room; the bar and the month stay put */
-  return status() + `<div class="screen">${dayLedger(st).replace('<div class="dayled">', `<div class="dayled">${mast(st, pvf).replace('class="mastwrap', 'class="mastwrap inled')}`)}${pbar(st)}<div class="lcal">${cal(st, u.ym, cell, "cday")}</div></div>` + tabbar();
+  return status() + `<div class="screen">${dayLedger(st).replace('<div class="dayled">', `<div class="dayled">${mast(st, pvf).replace('class="mastwrap', 'class="mastwrap inled')}${seg(st)}`)}${pbar(st)}<div class="lcal">${cal(st, u.ym, cell, "cday")}</div></div>` + tabbar();
 }
 
 /* ---------- frames, presets, deep links ---------- */
@@ -934,6 +961,9 @@ function draw(el) {
   /* compact Ledger calendar: while editing, the day's ledger opens at its heading, past the tallies */
   const led = el.querySelector(".dayled"), h3 = led && led.querySelector("h3");
   if (led && h3 && (st.ui.edit || st.ui.lift || st.ui.range)) led.scrollTop = h3.getBoundingClientRect().top - led.getBoundingClientRect().top - 8;
+  /* an armed Remove brings itself into view, so the second tap and its effect are on screen */
+  const rm = el.querySelector('.remove[data-armed="true"]'), sc = rm && rm.closest(".body, .dayled");
+  if (rm && sc) sc.scrollTop += rm.getBoundingClientRect().top - sc.getBoundingClientRect().top - 120;
   if (keep) { const t = el.querySelector(`[data-a="${keep[0]}"]${keep[1] ? `[data-v="${keep[1]}"]` : ""}`); if (t) t.focus(); }
 }
 function opts() {
