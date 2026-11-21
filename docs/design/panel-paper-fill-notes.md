@@ -11,7 +11,7 @@ Deep links: `#p=sort` or `#p=history` for the panel, `w=375` or `w=760` for the 
 - Sample data: the fixture's counts and dollar figures are not real. The px readings are real measurements of the built page.
 - `layout.py devices` gives `unknown` for this repo. Widths 375 and 760 px at height 812 come from `WIDTHS` and `openSeeded` in `test/screens.mjs`.
 - One theme, light. `shared/tokens.json` holds one palette and `src/app.jsx` has no dark rule. The brief named light and dark tokens; there are no dark tokens.
-- Panel style: `panelWrap` in `src/app.jsx` (padding 4px 8px 12px, a 1px `line` top rule, no background). Its callers: the Sorted by and Orders from panels in the View card, and `RecentPanel`, the Sync panel and the History panel in the Data card. All five open inside an `.mdl-lcard`, which paints `card`.
+- Panel style: `panelWrap` in `src/app.jsx` (padding 4px 8px 12px, a 1px `line` top rule, `background: paper`; the frames compare no fill, card and paper). Its callers: the Sorted by and Orders from panels in the View card, and `RecentPanel`, the Sync panel and the History panel in the Data card. All five open inside an `.mdl-lcard`, which paints `card`.
 - Fill: `paper` #F2E9DA. Card: `card` #FCF6EA. So a paper panel reads darker than the card it opens from. Rule: `line` #DCCDB6.
 - The overlay is not built. A style tag draws it: `.mdl-lcard:has(> .mdl-panel) { position: relative; overflow: visible }` and `.mdl-lcard > .mdl-panel { position: absolute; left: 0; right: 0; z-index: 4 }`. The panel keeps its place in flow and takes no space. The fill frames add `background: paper`. This geometry is the mockup's guess: `motion-disclosure-panels-arrive` names no geometry.
 - Panels drawn: Sorted by (an option grid; little shows through) and History (text; much shows through). Figures read from the page, in document px:
@@ -28,7 +28,7 @@ Deep links: `#p=sort` or `#p=history` for the panel, `w=375` or `w=760` for the 
    - Lose: a square, full-bleed band, darker than the card, in a region with no other fill (the reason the old no-fill rule gave). Its foot has no rule. With the guessed geometry (the panel runs past its card's foot), it cuts the row under it through the text: the Sync row at 375 in Sorted by, Backup in History. A geometry that kept the panel inside its card would not make this cut. The owner ruled only that panels overlay, not this geometry.
    - Pick: yes, with item 3's rule. Owner grant: yes (this confirms an orchestrator default; the pick is the owner's).
 
-2. **No fill** (the item's second option, `#o=none`). `panelWrap` as on main today, over the rows once the overlay is built.
+2. **No fill** (the item's second option, `#o=none`). `panelWrap` as it was before the build, over the rows once the overlay is built.
    - Gain: no web change. The region stays free of fills.
    - Lose: the rows show through. The History text prints over Re-import CSV and Backup, and Orders from shows in the Sorted by panel's gutters. A row you can still see sits under the panel, so a tap on it reaches the panel's padding, not the row.
    - Pick: no. Owner grant: yes.
@@ -40,7 +40,7 @@ Deep links: `#p=sort` or `#p=history` for the panel, `w=375` or `w=760` for the 
 
 4. **As built today** (`#o=built`). Not an option: the page on main, where the panel pushes the rows down and nothing shows through. Drawn so the owner sees why the question exists only once the overlay lands. Owner grant: no.
 
-Departs from: `panelWrap` in `src/app.jsx` (no background), which items 1 and 3 change. Not blocking.
+Departs from: `panelWrap` in `src/app.jsx` before the build (no background); the build gives it the paper fill, as items 1 and 3 draw. Not blocking.
 
 ## Notes for the builder
 

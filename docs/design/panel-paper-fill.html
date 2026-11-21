@@ -85,7 +85,7 @@ code { font:13px/1.4 var(--mono); }
   </figure>
   <figure id="focus-none" data-o="none">
     <p class="cap">No fill <small>the item's second option</small></p>
-    <div class="tags"><span class="tag today">Today: panelWrap, padding and top rule, no background</span><span class="tag new">New: overlay, ruled; geometry is a guess</span></div>
+    <div class="tags"><span class="tag today">Before the build: panelWrap, padding and top rule, no background</span><span class="tag new">New: overlay, ruled; geometry is a guess</span></div>
     <a class="shot" href="shots/panel-paper-fill/sort-none-375-light.png" title="Open the full-size screenshot"><img src="shots/panel-paper-fill/sort-none-375-light.png" alt="Ledger tab with the panel open over the rows, with no fill, so the rows show through"></a>
     <figcaption>The rows under the panel show through its gaps. The History text prints over Re-import CSV and Backup. A row you can still see sits under the panel, so a tap on it reaches the panel instead.</figcaption>
     <div class="read"></div>
@@ -113,7 +113,7 @@ code { font:13px/1.4 var(--mono); }
     <li>Shots and readings come from shots/panel-paper-fill/capture.mjs; run it again to retake them.</li>
     <li>Widths 375 and 760 px, height 812: <code>WIDTHS</code> and <code>openSeeded</code> in test/screens.mjs. Device scale 2.</li>
     <li>One theme, light: shared/tokens.json holds one palette, and src/app.jsx has no dark rule.</li>
-    <li>Panel style: <code>panelWrap</code> in src/app.jsx (padding 4px 8px 12px, top rule <code>line</code>, no background). Callers: the Sorted by and Orders from panels in the View card, and the Sync, Recent and History panels in the Data card.</li>
+    <li>Panel style: <code>panelWrap</code> in src/app.jsx (padding 4px 8px 12px, top rule <code>line</code>; before the build, no background). Callers: the Sorted by and Orders from panels in the View card, and the Sync, Recent and History panels in the Data card.</li>
     <li>Paper: <code>paper</code> #F2E9DA. The Ledger cards are <code>card</code> #FCF6EA (<code>.mdl-lcard</code>), so a paper panel reads darker than the card it opens from.</li>
     <li>The overlay is drawn by a style override, not built: the panel is absolute at its own place in flow, as wide as its card, over the rows. The card drops <code>overflow: hidden</code> so the panel can pass its foot. That geometry is this mockup's guess; motion-disclosure-panels-arrive gives no geometry.</li>
     <li>Row tops are read from the page. They are the same in all three overlay frames at each width, so the fill and the rule move nothing (no-layout-shift-under-pointer).</li>
