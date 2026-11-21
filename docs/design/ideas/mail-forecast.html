@@ -1,0 +1,374 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mail Forecast</title>
+<style>
+/* Tokens: own neutral choices for an idea mockup. Type sizes are the iOS Dynamic Type
+   styles at the default (Large) size, read from the HIG typography page on 2026-11-21. */
+:root{
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#767369;
+  --line:#dcd9d1; --accent:#a8402a; --accent-soft:#f3dcd4; --accent-faint:#f8ece7; --on-accent:#ffffff;
+  --ok:#256b41; --warn:#8a5200; --warn-bg:#f8ecd6; --tag-new:#2c5aa8; --tag-today:#5c5a55;
+  --chrome:#ffffff; --chrome-line:#d6d3cb; --scrim:rgba(20,18,15,.32); --hinge:#2a2926; --bezel:#151412;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+    --line:#35332e; --accent:#e2795d; --accent-soft:#4a2a20; --accent-faint:#2e211c; --on-accent:#1a0f0b;
+    --ok:#7cc898; --warn:#e6aa52; --warn-bg:#3b2c13; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+    --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+  --line:#35332e; --accent:#e2795d; --accent-soft:#4a2a20; --accent-faint:#2e211c; --on-accent:#1a0f0b;
+  --ok:#7cc898; --warn:#e6aa52; --warn-bg:#3b2c13; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+  --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--tag-new);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* Page chrome (outside the phone) */
+.sample{background:var(--warn-bg);color:var(--warn);font-size:13px;line-height:18px;padding:8px 12px;border-radius:10px;margin:0 0 12px;max-width:1100px}
+header.page{max-width:1100px;margin:0 0 8px}
+header.page h1{font-size:28px;line-height:34px;margin:0;font-weight:700;letter-spacing:-.01em}
+header.page .meta{font-size:15px;line-height:20px;color:var(--ink2);margin:4px 0 0}
+header.page .meta b{color:var(--accent);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:12px 0 0;max-width:1100px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg a,.seg button{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);
+  font-size:15px;text-decoration:none;color:var(--ink)}
+.seg a[aria-current="true"],.seg button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.ctl-label{font-size:13px;color:var(--ink3);min-width:44px}
+.note{font-size:13px;line-height:18px;color:var(--ink3);max-width:1100px;margin:16px 0 0}
+.caption{font-size:15px;line-height:20px;color:var(--ink2);max-width:760px;margin:14px 0 0;min-height:40px}
+
+.stage{display:flex;gap:32px;align-items:flex-start;overflow-x:auto;padding:8px 2px 12px;margin-top:8px}
+
+/* Phone frames. No Duo size is written in the device list, so the frames are drawn
+   at an illustrative size, not a measured one. */
+.phone{flex:none;background:var(--bezel);border-radius:46px;padding:10px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.phone[hidden]{display:none}
+.screen{position:relative;width:375px;height:780px;border-radius:36px;overflow:hidden;background:var(--screen);display:flex;flex-direction:column;
+  --sat:calc(env(safe-area-inset-top,0px) + 50px); --sab:calc(env(safe-area-inset-bottom,0px) + 30px)}
+.duo{display:flex;gap:0}
+.duo .screen{width:360px;border-radius:30px}
+.duo .screen.left{border-top-right-radius:6px;border-bottom-right-radius:6px}
+.duo .screen.right{border-top-left-radius:6px;border-bottom-left-radius:6px}
+.hinge{width:14px;background:var(--hinge);margin:30px 0;border-radius:3px}
+.status{flex:none;height:var(--sat);padding:16px 30px 0;display:flex;justify-content:space-between;font-size:15px;font-weight:600}
+.status .ind{display:flex;gap:5px;align-items:center}
+.status .ind i{display:block;width:22px;height:11px;border-radius:3px;border:1.5px solid currentColor;opacity:.85}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:32px;border-radius:16px;background:#000}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.8;z-index:30}
+
+/* Navigation stack, large title */
+.nav{flex:none;padding:4px 16px 6px;display:flex;align-items:flex-end;justify-content:space-between}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;margin:0}
+.navbtn{min-width:44px;min-height:44px;font-size:17px;color:var(--accent);display:inline-flex;align-items:center;justify-content:flex-end}
+
+.scroll{flex:1;overflow:hidden;padding:4px 16px calc(var(--sab) + 64px)}
+
+/* Forecast band: fixed height, so the rows under it never move when its contents change */
+.band{position:relative;height:184px;background:var(--surface);border-radius:14px;padding:0 6px 0 12px;display:flex;flex-direction:column;margin:0 0 18px}
+.band.collapsed{height:52px}
+.band-h{height:44px;display:flex;align-items:center;justify-content:space-between;flex:none}
+.band-h h2{font-size:17px;line-height:22px;font-weight:600;margin:0}
+.band-h .sub{font-size:15px;color:var(--ink2);margin-left:8px;font-weight:400}
+.chev{width:44px;height:44px;display:grid;place-items:center;color:var(--ink2)}
+.chev svg{transition:transform .2s}
+.collapsed .chev svg{transform:rotate(180deg)}
+.days{display:grid;grid-template-columns:repeat(7,1fr);gap:3px;height:92px;padding-right:6px;flex:none}
+.day{position:relative;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding-top:8px;border-radius:10px;min-width:44px;min-height:44px}
+.day .wd{font-size:12px;line-height:16px;color:var(--ink2)}
+.day .ct{width:100%;text-align:center;font-size:20px;line-height:25px;font-weight:600;margin-top:4px}
+.day .ct.range{font-size:17px}
+.day .ex{font-size:11px;line-height:13px;color:var(--ink2);margin-top:4px;min-height:13px}
+.day.solid{background:var(--accent);color:var(--on-accent)}
+.day.solid .wd,.day.solid .ex{color:var(--on-accent)}
+.day.faded{background:var(--accent-soft)}
+.day.zero .ct{color:var(--ink3);font-weight:400}
+.day.past .ct,.day.past .wd{color:var(--ink3)}
+.day.today{box-shadow:0 0 0 2px var(--ink) inset}
+.day.today .wd{font-weight:700}
+.day.sel{box-shadow:0 0 0 2px var(--ink) inset,0 0 0 4px var(--tag-new)}
+.day .ct.drop{animation:drop .32s ease-out}
+@keyframes drop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
+.band-f{height:44px;display:flex;align-items:center;justify-content:space-between;padding-right:6px;flex:none}
+.band-f .sum{font-size:15px;line-height:20px;color:var(--ink2)}
+.band-f .sum b{color:var(--ink);font-weight:600}
+.chip{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 4px 0 8px;font-size:15px;color:var(--warn)}
+.chip .dot{width:8px;height:8px;border-radius:4px;background:var(--warn)}
+.band .msg{flex:1;display:flex;flex-direction:column;justify-content:center;gap:10px;padding:0 10px 12px 0}
+.band .msg p{margin:0;font-size:15px;line-height:20px;color:var(--ink2)}
+.band .msg p.small{font-size:13px;line-height:18px;color:var(--ink3)}
+.meter{height:8px;border-radius:4px;background:var(--line);overflow:hidden}
+.meter i{display:block;height:100%;background:var(--accent);width:60%}
+
+/* Lists */
+.sect{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:0 4px 6px}
+.list{background:var(--surface);border-radius:14px;margin:0 0 18px}
+.row{display:flex;align-items:center;gap:10px;min-height:56px;padding:6px 6px 6px 14px;border-top:.5px solid var(--line)}
+.row:first-child{border-top:0}
+.row.top{align-items:flex-start;padding-top:10px;padding-bottom:10px}
+.row .main{flex:1;min-width:0}
+.row .t{font-size:17px;line-height:22px}
+.row .s{font-size:15px;line-height:20px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .s2{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .side{padding-right:8px;display:flex;flex-direction:column;align-items:flex-end;gap:6px}
+.tick{width:44px;height:44px;display:grid;place-items:center;flex:none}
+.tick span{width:26px;height:26px;border-radius:13px;border:2px solid var(--ink3);display:grid;place-items:center}
+.row.got .tick span{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.row.got .t{color:var(--ink2)}
+.badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap}
+.badge.warn{background:var(--warn-bg);color:var(--warn)}
+.badge.soft{background:var(--accent-faint);color:var(--accent)}
+.stamp{display:inline-block;margin-top:6px;padding:2px 8px;border:1.5px solid var(--accent);color:var(--accent);border-radius:4px;font-size:12px;line-height:16px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;transform:rotate(-3deg)}
+
+/* Tab bar: floats above content */
+.tabbar{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) - 8px);height:58px;border-radius:29px;background:var(--chrome);border:.5px solid var(--chrome-line);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);display:grid;grid-template-columns:repeat(3,1fr);align-items:center;z-index:5}
+.tab{min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:13px;color:var(--ink2);gap:2px}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent)}
+
+/* Sheet */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:10}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:118px;background:var(--screen);border-radius:24px 24px 0 0;z-index:11;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:6px auto 0}
+.sheet-bar{height:52px;display:grid;grid-template-columns:72px 1fr 72px;align-items:center;padding:0 8px}
+.sheet-bar h3{margin:0;text-align:center;font-size:17px;line-height:22px;font-weight:600}
+.sheet-bar .done{justify-self:end;font-weight:600}
+.sheet-body{padding:8px 16px 24px;overflow:hidden}
+.lead{font-size:15px;line-height:20px;color:var(--ink2);margin:0 4px 14px}
+
+/* Dashed labels: what exists today, and what this idea adds */
+.lbl{position:relative;outline:1.5px dashed var(--tag-new);outline-offset:3px}
+.lbl[data-k="today"]{outline-color:var(--tag-today)}
+.lbl::after{content:attr(data-lbl);position:absolute;top:-11px;right:10px;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;
+  background:var(--tag-new);color:var(--surface);white-space:nowrap;z-index:4;pointer-events:none}
+.lbl[data-k="today"]::after{background:var(--tag-today)}
+span.lbl{display:inline-block}
+:root[data-labels="off"] .lbl{outline:none}
+:root[data-labels="off"] .lbl::after{display:none}
+
+.inline-title{height:44px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:600;flex:none}
+
+@media (prefers-reduced-motion:reduce){*{transition:none!important;animation:none!important}}
+</style>
+</head>
+<body>
+<p class="sample" role="note"><b>Sample.</b> Every seller, card, date and price on this page is invented. No figure is real.</p>
+<header class="page">
+  <h1>Mail Forecast</h1>
+  <p class="meta"><b>Idea mockup, not built.</b> See which days the mail should bring cards, and spot a package running late before it is lost.</p>
+  <nav class="controls" aria-label="Screen states">
+    <span class="ctl-label">State</span>
+    <div class="seg" id="states"></div>
+  </nav>
+  <div class="controls">
+    <span class="ctl-label">Theme</span>
+    <div class="seg" id="themes"></div>
+    <span class="ctl-label">Labels</span>
+    <div class="seg"><button type="button" id="lblBtn" aria-pressed="true">Today / New</button></div>
+  </div>
+</header>
+
+<p class="caption" id="caption" aria-live="polite"></p>
+
+<div class="stage">
+  <div class="phone" data-device="iphone-duo-folded" id="folded">
+    <div class="screen" id="fscreen"></div>
+  </div>
+  <div class="phone duo" data-device="iphone-duo-unfolded" id="unfolded" hidden>
+    <div class="screen left" id="uleft"></div>
+    <div class="hinge" aria-hidden="true"></div>
+    <div class="screen right" id="uright"></div>
+  </div>
+</div>
+
+<p class="note">Frames: the folded pose is the iPhone frame; the unfolded pose is the two-screen fold. The device list writes no size for either pose, so both are drawn at an illustrative size, not a measured one. Type uses the iOS Dynamic Type styles at the default size; tap targets are at least 44 by 44 pt (Apple HIG Typography and Accessibility pages, read 2026-11-21). Haptics cannot be shown on a page.</p>
+
+<script>
+(function(){
+"use strict";
+var PK=[
+  {id:"A",seller:"Seller A",cards:6,cost:14.60,day:"Wed",items:"Lantern Wyrm ×1, Tidecaller Apprentice ×4, Ashgrove Sentry ×1"},
+  {id:"B",seller:"Seller B",cards:2,cost:3.10,day:"Wed",items:"Mirelight Totem ×2"},
+  {id:"C",seller:"Seller C",cards:1,cost:0.95,day:"Wed",items:"Quiet Harbor ×1"},
+  {id:"E",seller:"Seller E",cards:3,cost:12.40,day:"Thu",items:"Copperleaf Scout ×3"},
+  {id:"F",seller:"Seller F",cards:2,cost:7.15,day:"Fri",items:"Gloamfen Toad ×2"}
+];
+var LATE=[
+  {seller:"Seller G",cards:1,range:"Nov 12–17",late:"2 days late",lost:false,stamp:""},
+  {seller:"Seller D",cards:3,range:"Nov 3–10",late:"9 days late",lost:true,stamp:"Claim filed"}
+];
+var STATES=[
+  {k:"strip",n:"Week strip",cap:"Wednesday morning. The band holds a fixed height above the working list. Solid days are likely; the faded day is the spread. Tap Seller A's circle to check it in, or tap Today to open the day."},
+  {k:"day",n:"Day opened",cap:"Today opened as a sheet, so the list under it never moves. Each expected package shows its seller, card count, cost and first cards. Check one in here, and the count behind the sheet drops."},
+  {k:"checkin",n:"Checked in",cap:"Seller A checked in. Today's count drops from 3 to 2 in place, and the totals drop with it. Nothing else on screen moves."},
+  {k:"late",n:"Late shelf",cap:"The running-late shelf. Seller G is past its range: the soft step, no warning. Seller D is past the lost threshold, so it carries today's lost-mail warning and its claim stamp."},
+  {k:"few",n:"Too little history",cap:"Fewer than 20 deliveries so far. The band keeps its height and shows progress instead of a guess."},
+  {k:"done-out",n:"Done, 2 out",cap:"Every package due today is in. The band reads what is still out and the last day it is due."},
+  {k:"done-all",n:"Done, all in",cap:"Everything expected this week has arrived."},
+  {k:"collapsed",n:"Band collapsed",cap:"The band collapses to one line. The toggle sits in the band header, so it stays under the finger. The choice is remembered on this device only."},
+  {k:"fold",n:"Two-screen fold",cap:"Unfolded: the strip and the late shelf on the left, the opened day on the right. Its own layout, not the folded one made wider. Check-ins on the right update the strip on the left."}
+];
+var S={s:"strip",t:"auto",labels:true,got:{},collapsed:false,dropped:""};
+
+function money(v){return "$"+v.toFixed(2)}
+function L(k,text,inner,cls,tag){tag=tag||"div";return "<"+tag+' class="lbl '+(cls||"")+'" data-k="'+k+'" data-lbl="'+(k==="today"?"Today: ":"New: ")+text+'">'+inner+"</"+tag+">"}
+
+function preset(k){
+  S.got={};S.collapsed=false;S.dropped="";
+  if(k==="checkin")S.got={A:1};
+  if(k==="done-out")S.got={A:1,B:1,C:1};
+  if(k==="done-all")S.got={A:1,B:1,C:1,E:1,F:1};
+  if(k==="collapsed")S.collapsed=true;
+}
+function out(){return PK.filter(function(p){return !S.got[p.id]})}
+function dayCount(d){return PK.filter(function(p){return p.day===d&&!S.got[p.id]}).length}
+function sumOf(list,f){return list.reduce(function(a,p){return a+p[f]},0)}
+
+var ICON={
+  chev:'<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 10l5-5 5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  check:'<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7.5l2.6 2.6L11 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  right:'<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  box:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  sum:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M5 12h14M5 19h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  q:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 10.5a2 2 0 1 1 2.5 1.9V14M12 16v.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
+};
+
+function status(){return '<div class="island" aria-hidden="true"></div><div class="status" aria-hidden="true"><span class="num">9:41</span><span class="ind"><i></i></span></div>'}
+function tabbar(){
+  return L("today","tab bar",'<div class="tab" aria-current="page">'+ICON.box+'Packages</div><div class="tab">'+ICON.sum+'Tally</div><div class="tab">'+ICON.q+'Orphaned</div>',"tabbar","nav")+'<div class="homebar" aria-hidden="true"></div>';
+}
+
+function band(opts){
+  opts=opts||{};
+  var o=out(), cards=sumOf(o,"cards"), cost=sumOf(o,"cost");
+  if(S.s==="few"){
+    return L("new","forecast band",'<div class="band-h"><h2>This week</h2></div><div class="msg"><p>Forecast starts after 20 deliveries (12 so far).</p><div class="meter" role="progressbar" aria-valuemin="0" aria-valuemax="20" aria-valuenow="12" aria-label="Deliveries so far"><i></i></div><p class="small">Your packages still show in the list below.</p></div>',"band");
+  }
+  var collapsed=S.collapsed&&!opts.noCollapse;
+  var todayDone=S.got.A&&S.got.B&&S.got.C;
+  var summary=!o.length?"All in":(todayDone?o.length+" still out, due by Sat":cards+" cards on the way, "+money(cost));
+  var head='<h2>This week'+(collapsed?'<span class="sub num">'+summary+'</span>':'')+'</h2>'+
+    (opts.noCollapse?'':'<button class="chev" type="button" data-act="collapse" aria-expanded="'+(!collapsed)+'" aria-label="'+(collapsed?"Show forecast":"Hide forecast")+'">'+ICON.chev+'</button>');
+  var body="";
+  if(!collapsed){
+    var thu=dayCount("Thu"),fri=dayCount("Fri"),w=dayCount("Wed");
+    var days=[
+      {d:"Mon",cls:"past zero",ct:"0",ex:"",lab:"Monday, none came"},
+      {d:"Tue",cls:"past",ct:"2",ex:"arrived",lab:"Tuesday, 2 arrived"},
+      {d:"Wed",cls:"today "+(w?"solid":"zero"),ct:w?String(w):"✓",ex:"+1 orphan",today:true,lab:"Today, "+(w?w+" envelopes likely":"all in")+", plus 1 orphaned envelope"},
+      {d:"Thu",cls:thu?"faded":"zero",ct:thu?"2–4":"0",range:!!thu,ex:"",lab:"Thursday, "+(thu?"2 to 4 envelopes, spread":"none")},
+      {d:"Fri",cls:fri?"solid":"zero",ct:String(fri),ex:"",lab:"Friday, "+fri+" envelope likely"},
+      {d:"Sat",cls:"zero",ct:"0",ex:"",lab:"Saturday, none"},
+      {d:"Sun",cls:"zero",ct:"0",ex:"",lab:"Sunday, none"}
+    ];
+    var cells=days.map(function(x){
+      return '<button type="button" class="day num '+x.cls+(opts.selWed&&x.d==="Wed"?" sel":"")+'" data-act="day" data-d="'+x.d+'" aria-label="'+x.lab+'"><span class="wd">'+(x.today?"Today":x.d)+'</span><span class="ct'+(x.range?" range":"")+(S.dropped===x.d?" drop":"")+'">'+x.ct+'</span><span class="ex">'+x.ex+'</span></button>';
+    }).join("");
+    var sumHtml=!o.length?"<b>All in</b>":(todayDone?"<b>"+summary+"</b>":"<b>"+cards+" cards</b> on the way, "+money(cost));
+    var chip=opts.noChip?'':L("new","late shelf",'<button type="button" class="chip" data-act="late"><span class="dot"></span>2 running late'+ICON.right+'</button>',"","span");
+    body='<div class="days">'+cells+'</div><div class="band-f"><span class="sum num">'+sumHtml+'</span>'+chip+'</div>';
+  }
+  return L("new","forecast band",'<div class="band-h">'+head+'</div>'+body,"band"+(collapsed?" collapsed":""));
+}
+
+function pkgRow(p,withItems){
+  var got=!!S.got[p.id];
+  return '<div class="row'+(got?" got":"")+'"><div class="main"><div class="t">'+p.seller+'</div><div class="s num">'+p.cards+' card'+(p.cards>1?"s":"")+' · '+money(p.cost)+(got?" · received":" · due "+p.day)+'</div>'+(withItems?'<div class="s2">'+p.items+'</div>':'')+'</div>'+
+    '<button type="button" class="tick" data-act="tick" data-id="'+p.id+'" aria-pressed="'+got+'" aria-label="'+(got?"Undo check-in for ":"Check in ")+p.seller+'"><span>'+(got?ICON.check:"")+'</span></button></div>';
+}
+function workingList(){return '<p class="sect">Open packages</p>'+L("today","package list",PK.map(function(p){return pkgRow(p,false)}).join(""),"list")}
+function lateRows(){
+  return LATE.map(function(r){
+    return '<div class="row top"><div class="main"><div class="t">'+r.seller+', '+r.cards+' card'+(r.cards>1?"s":"")+'</div><div class="s num">Expected '+r.range+'</div>'+
+      (r.stamp?'<span class="stamp">'+r.stamp+'</span>':'')+'</div><div class="side">'+
+      (r.lost?L("today","lost warning",'<span class="badge warn">May be lost</span>',"","span"):'')+
+      L("new","soft step",'<span class="badge soft num">'+r.late+'</span>',"","span")+'</div></div>';
+  }).join("");
+}
+function wed(){return PK.filter(function(p){return p.day==="Wed"})}
+function dayList(){return wed().map(function(p){return pkgRow(p,true)}).join("")}
+function dayLead(prefix){var w=wed();return '<p class="lead num">'+prefix+'3 envelopes likely · '+sumOf(w,"cards")+' cards · '+money(sumOf(w,"cost"))+'</p>'}
+function sheet(title,body){
+  return '<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="'+title+'"><div class="grabber" aria-hidden="true"></div><div class="sheet-bar"><span></span><h3>'+title+'</h3><button type="button" class="navbtn done" data-act="close">Done</button></div><div class="sheet-body">'+body+'</div></div>';
+}
+
+function renderFolded(){
+  var html=status()+'<div class="nav"><h1 class="largetitle">Packages</h1><button type="button" class="navbtn">Import</button></div><div class="scroll">'+band()+workingList()+'</div>'+tabbar();
+  if(S.s==="day")html+=sheet("Wednesday, Nov 19",dayLead("")+L("new","opened day",dayList(),"list"));
+  if(S.s==="late")html+=sheet("Running late",'<p class="lead">Past their expected range. The lost-mail warning still decides when a package may be lost.</p>'+L("new","running-late shelf",lateRows(),"list"));
+  document.getElementById("fscreen").innerHTML=html;
+}
+function renderUnfolded(){
+  document.getElementById("uleft").innerHTML=status()+'<div class="nav"><h1 class="largetitle">Packages</h1></div><div class="scroll">'+band({noCollapse:true,noChip:true,selWed:true})+'<p class="sect">Running late</p>'+L("new","running-late shelf",lateRows(),"list")+'</div>'+tabbar();
+  document.getElementById("uright").innerHTML=status()+'<div class="inline-title">Wednesday, Nov 19</div><div class="scroll">'+dayLead("Today · ")+L("new","opened day",dayList(),"list")+'<p class="sect">Also today</p><div class="list"><div class="row"><div class="main"><div class="t">1 orphaned envelope</div><div class="s">Logged at 9:12, sender unknown</div></div></div></div></div><div class="homebar" aria-hidden="true"></div>';
+}
+
+function link(s,t){return "#s="+s+(t!=="auto"?"&t="+t:"")}
+function render(){
+  var r=document.documentElement;
+  if(S.t==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",S.t);
+  r.setAttribute("data-labels",S.labels?"on":"off");
+  var fold=S.s==="fold";
+  document.getElementById("folded").hidden=fold;
+  document.getElementById("unfolded").hidden=!fold;
+  if(fold)renderUnfolded();else renderFolded();
+  S.dropped="";
+  document.getElementById("caption").textContent=STATES.filter(function(x){return x.k===S.s})[0].cap;
+  document.getElementById("states").innerHTML=STATES.map(function(x){return '<a href="'+link(x.k,S.t)+'" aria-current="'+(x.k===S.s)+'">'+x.n+'</a>'}).join("");
+  document.getElementById("themes").innerHTML=["auto","light","dark"].map(function(t){return '<a href="'+link(S.s,t)+'" aria-current="'+(t===S.t)+'">'+t.charAt(0).toUpperCase()+t.slice(1)+'</a>'}).join("");
+  document.getElementById("lblBtn").setAttribute("aria-pressed",String(S.labels));
+}
+function setHash(){history.replaceState(null,"",link(S.s,S.t))}
+function readHash(){
+  var h={};location.hash.replace(/^#/,"").split("&").forEach(function(kv){var p=kv.split("=");if(p[0])h[p[0]]=decodeURIComponent(p[1]||"")});
+  S.s=STATES.some(function(x){return x.k===h.s})?h.s:"strip";
+  S.t=/^(light|dark)$/.test(h.t||"")?h.t:"auto";
+  preset(S.s);render();
+}
+function refocus(sel){var el=document.querySelector(sel);if(el)el.focus()}
+
+document.addEventListener("click",function(e){
+  var b=e.target.closest("[data-act]");if(!b)return;
+  var a=b.getAttribute("data-act");
+  if(a==="tick"){
+    var id=b.getAttribute("data-id");
+    if(S.got[id])delete S.got[id];else S.got[id]=1;
+    S.dropped=PK.filter(function(p){return p.id===id})[0].day;
+    if(S.s!=="fold"&&S.s!=="day"&&S.s!=="collapsed"){
+      S.s=(S.got.A&&S.got.B&&S.got.C)?(out().length?"done-out":"done-all"):(Object.keys(S.got).length?"checkin":"strip");
+    }
+    render();setHash();refocus('[data-act="tick"][data-id="'+id+'"]');return;
+  }
+  if(a==="day"){if(S.s==="fold")return;S.s="day";render();setHash();refocus('.sheet .done');return}
+  if(a==="late"){S.s="late";render();setHash();refocus('.sheet .done');return}
+  if(a==="close"){S.s=Object.keys(S.got).length?"checkin":"strip";render();setHash();return}
+  if(a==="collapse"){
+    S.collapsed=!S.collapsed;S.s=S.collapsed?"collapsed":"strip";
+    try{localStorage.setItem("mockForecastCollapsed",S.collapsed?"1":"0")}catch(err){}
+    render();setHash();refocus('[data-act="collapse"]');return;
+  }
+});
+document.getElementById("lblBtn").addEventListener("click",function(){S.labels=!S.labels;render()});
+window.addEventListener("hashchange",readHash);
+readHash();
+})();
+</script>
+</body>
+</html>
