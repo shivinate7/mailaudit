@@ -43,3 +43,60 @@ Blind pass: I read no repo code, screens or docs, as the brief asked. I checked 
 - **Owner decides:** Show the destination always, or only within N days of the event? Is the proxy sheet in scope at all?
 
 Strongest: Need-by dates (the event board). The other four directions depend on it: they need a date to count down to, and the board alone turns a passive mail checklist into a deadline tool.
+
+## Phase 2: Need-by dates (fleshed out)
+
+The collector gives a dated event the cards it needs. The tool then answers "will I have them by Thursday?" from the check-in data it already holds. Names, dates and counts below are invented.
+
+### Flow
+1. **Create an event.** In Tally, tap "Need by a date?". An inline sheet opens (no browser dialog) with a name ("Thursday league") and a local date ("2026-12-03"). Save.
+2. **Tag needs.** On a Tally row ("Ember Warden, 4 ordered from 3 sellers"), tap "Need for…", pick the event and set the count. The count defaults to the quantity ordered and can go up or down ("need 4", "need 2").
+3. **Read the strip.** A filter chip "Thursday league" sits at the top of Tally. Selecting it narrows Tally to the tagged rows and shows a one-line strip: "5 days · 22 of 26 in hand · 3 in transit · 1 at risk". Tap a count to narrow further.
+4. **Mail day.** In Packages, a checked card that an event needs shows a small event chip ("Thu") in space reserved for it, so nothing moves under the thumb. Where the card goes is the job of **shelf at check-in**; this chip only names the event.
+5. **Act on risk.** An at-risk row links to what already exists: the lost-mail warning, the **claim clock**, and the "claim filed" and "refunded" stamps. This slice adds no new action.
+6. **The event passes.** The next day the event collapses into "Past events" with one line: "Covered 25 of 26 · 1 short". It stays as history until the user removes it, with undo through the recent-checks log pattern.
+
+### Screen states
+- **Empty:** no events. Tally shows one quiet link, "Need by a date?", and no strip and no chip. Packages is unchanged.
+- **Normal:** one or more event chips. The strip shows days left, in hand, in transit and at risk. Rows carry a need count ("2 of 4 needed").
+- **Edge, event today:** the strip reads "Today". At-risk rows say "proxy" instead of a count of days.
+- **Edge, need above ordered:** "need 4, ordered 3" shows "1 not ordered" in a separate, neutral line. It never counts as at risk.
+- **Edge, refunded order:** its copies count as not coming. A "claim filed" order counts as at risk.
+- **Edge, Orphaned arrival:** if a card the event needs may be sitting in Orphaned, the row shows "maybe in Orphaned" as a hint only. It never changes any count (`orphaned-mail-never-decides`).
+- **Edge, undo of a check-in:** counts move back at once. Undo goes through the same recent-checks log.
+- **Edge, two events on one date need the same card:** warn on both strips ("shared with Kai's night, same day"). Events on different dates count independently, because a card plays in both.
+- **Edge, re-import:** CSV import merges, so tags keyed to a product survive and counts update.
+- **Error, past date at creation:** an inline message, "That date has passed". Save stays disabled.
+- **Error, sync conflict:** two devices edit one event. It resolves by the same later-change-wins merge that check-ins use. The strip shows nothing extra. Delete uses a tombstone so the deleted event does not come back.
+- **Error, tag points at a product Tally no longer shows:** the tag is kept, and a line reads "1 need has no matching card". Do not delete the tag silently.
+
+### Data
+- `events`: `[{id, name, date: "YYYY-MM-DD" local, updatedAt, deletedAt?}]`. A new field in saved state, so it touches `saved-state-shape` and needs an owner ruling. It is stored under the existing key, which keeps `storage-keys-are-frozen`. The date is a local calendar string, not a timestamp, so a UTC offset cannot move Thursday to Wednesday.
+- `needs`: `[{eventId, productKey, count, updatedAt, deletedAt?}]`. `productKey` is the key Tally pools on, so it touches `saved-state-shape` too. It must survive the import merge (`imports-merge-never-replace`): import code must not rebuild or drop it.
+- Everything else is derived on read: in hand, in transit and at risk come from check-ins, the lost-mail warning and stamps. No new stored status.
+- Unchanged: the parser (`parser-filters`), storage keys, the device key and sync transport. Events and needs ride the existing sync to the Worker.
+
+### Smallest first slice (ships alone)
+Events, needs, the Tally filter chip and strip, and the empty, normal and past-event states. At risk means only "lost-mail warning showing, or claim filed, or refunded". Slice 1 makes no new timing guess. No Packages chip, no new view.
+
+### Later slices
+2. **Packages event chip** in reserved space, plus "maybe in Orphaned" hints.
+3. **Last safe re-buy day.** For each at-risk card it gives a cutoff: event date minus a fast seller's median days, taken from the **seller record card** and **mail forecast**, minus a margin. Actions: "Re-bought", "Proxy", "Wait". The re-buy link is a new field and needs its own ruling. Cost must not count both copies: coordinate with **landed cost** and **recovery ledger**, and the link belongs to whichever of them owns refunds and replacements.
+4. **Deck-list coverage.** Paste a deck list. The tool matches it against Tally keys and creates `needs` in one step, with a column for cards that were never ordered. It reuses **already coming**'s name matcher (one home per capability) rather than building a second.
+5. **Proxy sheet** on event day: the missing cards with set codes, exported only when the user taps it.
+
+### Risks
+- Tagging takes effort. If tagging one deck takes more than a minute, nobody uses it. Slice 4 is the real fix, so slice 1 must make tagging fast: bulk-tag the current Tally filter.
+- At-risk false alarms. If late orders show red too early, the strip trains the user to ignore it. Slice 1 uses only signals the app already trusts.
+- Product-key drift. Two printings under one name, or a renamed product, give wrong counts. Show the unmatched-need line instead of guessing.
+- Two new saved-state arrays. Old clients must ignore them, and sync must merge them field by field with tombstones.
+- Scope creep toward a collection tracker. "Already own" stays out of this direction.
+
+### Owner decisions
+1. **Add `events` and `needs` to saved state?** Recommend yes: two optional arrays, where absent means no events, under the existing key.
+2. **Tag by product name or by single copy?** Recommend product name plus a count, because Tally is already where "did all four arrive" lives.
+3. **A new view or a Tally filter?** Recommend a filter chip and strip in Tally. Add no fourth view until use shows the need.
+4. **What does at risk mean in slice 1?** Recommend the lost-mail warning, "claim filed" or "refunded" only. Timing-based risk waits for the seller record card.
+5. **Two events need one card?** Recommend counting them independently, and warning only when they fall on the same date.
+6. **Past events?** Recommend keeping them collapsed with a result line. Removal by the user, with undo.
+7. **A card in Orphaned may be the missing one?** Recommend a hint only, never a count (`orphaned-mail-never-decides`).
