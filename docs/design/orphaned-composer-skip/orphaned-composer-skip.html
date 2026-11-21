@@ -1,0 +1,232 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Composer Audit Skips</title>
+<style>
+/* Tokens: shared/tokens.json. The native app is held to light (native/project.yml UIUserInterfaceStyle: Light),
+   so this page draws one theme; t=dark is not drawn. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  /* Cochin and Menlo are Apple fonts. Off a Mac, Menlo falls back to DejaVu Sans Mono, which Menlo is drawn from. */
+  --cochin: Cochin, "Liberation Serif", Georgia, serif;
+  --mono: Menlo, "DejaVu Sans Mono", ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+}
+* { box-sizing:border-box; }
+html, body { margin:0; background:var(--paper); color:var(--ink); }
+body { font:15px/1.4 var(--sys); }
+[hidden] { display:none !important; }
+code, .id { font-family:var(--mono); font-size:0.88em; overflow-wrap:anywhere; }
+
+/* Page chrome, outside the pictures. */
+.top { padding:12px 16px 0; padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right)); padding-top:max(12px, env(safe-area-inset-top)); max-width:880px; margin:0 auto; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font:600 22px/1.25 var(--sys); margin:16px 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:68ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:0 0 16px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"], nav button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+nav .lab { align-self:center; font-size:13px; color:var(--ink); width:100%; }
+.states { display:flex; flex-wrap:wrap; justify-content:center; gap:24px; padding:0 0 32px; padding-bottom:max(32px, env(safe-area-inset-bottom)); }
+
+/* ---- One picture per state: 390 pt wide (the page's FIT_W; the repo's device list names no size). Fixed height,
+   so the card's reserved size holds whatever font the viewer has. 1 CSS px = 1 pt. ---- */
+.pic { width:390px; max-width:100%; height:840px; overflow:hidden; background:var(--paper); display:flex; flex-direction:column; gap:12px;
+  padding:12px 16px 16px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.pic-sample { font-size:12.5px; font-weight:600; color:var(--manilaInk); background:var(--manila); border-radius:6px; padding:4px 8px; }
+.pic h2 { font:600 17px/1.25 var(--sys); margin:0; }
+.pic .say { font-size:13.5px; margin:-4px 0 0; color:var(--ink); }
+.tags { display:flex; flex-wrap:wrap; gap:8px; }
+.tag { font-size:12.5px; font-weight:600; padding:2px 8px; border:2px dashed currentColor; border-radius:6px; background:var(--card); }
+.tag.today { color:var(--red); } .tag.new { color:var(--green); }
+
+/* The composer, as native/Manifest/OrphanedView.swift ComposerView draws it. */
+.crop { padding:0 0 30px; }
+.crop.tall { padding-bottom:54px; }
+.composer { background:var(--card); border:1px solid var(--ink); border-radius:8px; box-shadow:0 1px 2px var(--shadow); padding:12px;
+  display:flex; flex-direction:column; gap:8px; line-height:normal; }
+.micro { font:11px var(--mono); text-transform:uppercase; letter-spacing:0.14em; color:var(--inkSoft); }
+.field { font:16px/18px var(--cochin); color:var(--inkSoft); min-height:48px; padding:6px 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); display:flex; align-items:center; }
+.entries { padding-top:8px; }
+.rule { height:1px; background:var(--line); }
+.entry { display:flex; align-items:center; padding-left:12px; }
+.entry .name { flex:1; font:14px var(--cochin); color:var(--ink); }
+.entry .step { width:44px; height:44px; display:flex; align-items:center; justify-content:center; font:15px var(--mono); color:var(--ink); }
+.entry .qty { min-width:20px; text-align:center; font:13px var(--mono); color:var(--ink); }
+.foot { display:flex; align-items:center; gap:8px; padding-top:4px; }
+.count { font:11px/1.164 var(--mono); color:var(--inkSoft); white-space:nowrap; position:relative; }
+.spacer { flex:1; }
+/* MiniLabel (ControlViews.swift): Menlo 11.5, padding 8 x 12, radius 5, 1 pt border, in a 44 pt hit frame. */
+.hit { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:center; position:relative; flex:none; }
+.pill { font:11.5px/1.164 var(--mono); padding:7px 11px; border-radius:5px; border:1px solid var(--line); background:var(--card); color:var(--ink); white-space:nowrap; }
+.pill.save { font-weight:700; background:var(--ink); border-color:var(--ink); color:var(--card); }
+
+/* What the audit does with each flagged element: a frame drawn round it, and a flag under it. */
+.mark { position:relative; }
+.mark::after { content:""; position:absolute; inset:-3px; border:2px dashed var(--red); border-radius:4px; pointer-events:none; }
+.mark.skipped::after { border-color:var(--accent); }
+.flag { position:absolute; top:calc(100% + 6px); white-space:nowrap; font:600 12px/1 var(--sys); padding:4px 6px; border-radius:4px; background:var(--red); color:var(--card); }
+/* The count is 13 pt tall in a 44 pt row: drop its flag 15.5 pt more, so both flags sit on one line. */
+.count .flag { left:-3px; top:calc(100% + 21.5px); } .hit .flag { right:-3px; }
+.skipped .flag { background:var(--accent); }
+.idnote { position:absolute; top:calc(100% + 45px); left:-3px; white-space:nowrap; font:600 12px/1 var(--mono); color:var(--green); background:var(--card); border:1.5px dashed var(--green); border-radius:4px; padding:2px 4px; }
+
+/* Ratios, printed on each picture. */
+.ratios { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 12px; display:grid; grid-template-columns:auto 1fr auto; gap:6px 10px; align-items:center; font-size:13px; }
+.ratios .sw { width:28px; height:20px; border-radius:4px; border:1px solid var(--line); display:flex; align-items:center; justify-content:center; font:700 12px var(--mono); }
+.ratios .r { font:700 15px var(--mono); color:var(--green); text-align:right; }
+.ratios .floor { grid-column:1 / -1; color:var(--inkSoft); font-size:12.5px; border-top:1px solid var(--line); padding-top:6px; }
+
+/* The audit's verdict for this state. */
+.verdict { border-radius:8px; padding:10px 12px; font-size:13.5px; border:1px solid; }
+.verdict b { display:block; font-size:15px; margin-bottom:2px; }
+.verdict.red { background:var(--redSoft); border-color:var(--red); color:var(--ink); }
+.verdict.red b { color:var(--red); }
+.verdict.green { background:var(--card); border-color:var(--green); color:var(--ink); }
+.verdict.green b { color:var(--green); }
+.skips { display:flex; flex-wrap:wrap; gap:6px; margin-top:8px; }
+.chip { font:12px var(--mono); padding:3px 6px; border-radius:4px; border:1px solid var(--line); background:var(--card); color:var(--ink); }
+.chip.added { border:1.5px dashed var(--green); color:var(--green); font-weight:700; }
+.trade { font-size:13px; margin:0; display:grid; grid-template-columns:auto 1fr; gap:4px 8px; }
+.trade dt { font-weight:700; } .trade dd { margin:0; }
+
+@media (min-width:860px) { .pic { border:1px solid var(--line); border-radius:12px; } }
+</style>
+</head>
+<body>
+<div class="top">
+  <div class="banner">Sample. No card name, count or figure here is real data. Colours are the app's tokens; ratios are computed from them.</div>
+  <h1>Orphaned composer: two contrast flags that measure clear</h1>
+  <p class="sub">Apple's accessibility audit flags "Contrast failed" on the ready composer's Save envelope button and its "1 card" count. Both colour pairs clear the 4.5:1 floor by the tokens. Neither choice below changes a pixel; each changes what the audit does with these two elements.</p>
+  <nav aria-label="State">
+    <span class="lab">Show one state</span>
+    <a href="#s=today" data-s="today">Today</a>
+    <a href="#s=named-skips" data-s="named-skips">Named skips</a>
+    <a href="#s=skip-nothing" data-s="skip-nothing">Skip nothing</a>
+    <a href="#" data-s="">All</a>
+  </nav>
+  <nav aria-label="Hide an option">
+    <span class="lab">Hide one option</span>
+    <button type="button" data-hide="named-skips" aria-pressed="false">Hide Named skips</button>
+    <button type="button" data-hide="skip-nothing" aria-pressed="false">Hide Skip nothing</button>
+  </nav>
+</div>
+
+<div class="states">
+
+<!-- ======================= Today ======================= -->
+<section data-state="today">
+<div class="pic" id="pic-today">
+  <div class="pic-sample">Sample. Today, on main.</div>
+  <h2>Today: the ready audit is red</h2>
+  <p class="say">Both flags fire, though both pairs clear the floor.</p>
+  <div class="tags"><span class="tag today">Today: Save and the "1 card" count</span></div>
+  <div class="crop"><div class="composer">
+    <div class="micro">New envelope</div>
+    <div class="field">Type a card name…</div>
+    <div class="entries"><div class="rule"></div><div class="entry"><span class="name">Urza's Saga</span><span class="step" aria-hidden="true">–</span><span class="qty">1</span><span class="step" aria-hidden="true">+</span></div><div class="rule"></div></div>
+    <div class="field">Note (optional) — tracking #, sender, mailer…</div>
+    <div class="foot">
+      <span class="count mark">1 card<span class="flag">Contrast failed</span></span>
+      <span class="spacer"></span>
+      <span class="hit"><span class="pill">Cancel</span></span>
+      <span class="hit mark"><span class="pill save">Save envelope</span><span class="flag">Contrast failed</span></span>
+    </div>
+  </div></div>
+  <div class="ratios">
+    <span class="sw" style="background:#FCF6EA;color:#6E6379">Aa</span><span>"1 card": inkSoft #6E6379 on card #FCF6EA, Menlo 11</span><span class="r">5.24:1</span>
+    <span class="sw" style="background:#332E3F;color:#FCF6EA;border-color:#332E3F">Aa</span><span>Save text: card #FCF6EA on ink #332E3F, Menlo 11.5 bold</span><span class="r">12.17:1</span>
+    <span class="floor">Floor 4.5:1 for text. Save's fill on card: 12.17:1, floor 3:1.</span>
+  </div>
+  <div class="verdict red"><b>Audit: red, 2 findings</b>On <span class="id">orphaned-save</span> and on the count, which has no id. 2 of 2 tries. Contrast skips today:
+    <div class="skips"><span class="chip">orphaned-cancel</span><span class="chip">orphaned-edit:…</span><span class="chip">discard:…</span></div>
+  </div>
+</div>
+</section>
+
+<!-- ======================= Named skips ======================= -->
+<section data-state="named-skips" data-opt="named-skips">
+<div class="pic" id="pic-named-skips">
+  <div class="pic-sample">Sample. Named skips: what this option leaves.</div>
+  <h2>Add named contrast skips for Save and the card count</h2>
+  <p class="say">Same pixels. Contrast skipped on these two only.</p>
+  <div class="tags"><span class="tag today">Today: colours and sizes kept</span><span class="tag new">New: 2 named skips</span></div>
+  <div class="crop tall"><div class="composer">
+    <div class="micro">New envelope</div>
+    <div class="field">Type a card name…</div>
+    <div class="entries"><div class="rule"></div><div class="entry"><span class="name">Urza's Saga</span><span class="step" aria-hidden="true">–</span><span class="qty">1</span><span class="step" aria-hidden="true">+</span></div><div class="rule"></div></div>
+    <div class="field">Note (optional) — tracking #, sender, mailer…</div>
+    <div class="foot">
+      <span class="count mark skipped"><span class="idnote">New: id orphaned-count</span>1 card<span class="flag">Contrast skipped</span></span>
+      <span class="spacer"></span>
+      <span class="hit"><span class="pill">Cancel</span></span>
+      <span class="hit mark skipped"><span class="pill save">Save envelope</span><span class="flag">Contrast skipped</span></span>
+    </div>
+  </div></div>
+  <div class="ratios">
+    <span class="sw" style="background:#FCF6EA;color:#6E6379">Aa</span><span>"1 card": inkSoft #6E6379 on card #FCF6EA, Menlo 11</span><span class="r">5.24:1</span>
+    <span class="sw" style="background:#332E3F;color:#FCF6EA;border-color:#332E3F">Aa</span><span>Save text: card #FCF6EA on ink #332E3F, Menlo 11.5 bold</span><span class="r">12.17:1</span>
+    <span class="floor">Unchanged. Floor 4.5:1 for text. Save's fill on card: 12.17:1, floor 3:1.</span>
+  </div>
+  <div class="verdict green"><b>Audit: green</b>Every other check stays on. Contrast skips:
+    <div class="skips"><span class="chip">orphaned-cancel</span><span class="chip">orphaned-edit:…</span><span class="chip">discard:…</span><span class="chip added">New: orphaned-save</span><span class="chip added">New: orphaned-count</span></div>
+  </div>
+</div>
+</section>
+
+<!-- ======================= Skip nothing ======================= -->
+<section data-state="skip-nothing" data-opt="skip-nothing">
+<div class="pic" id="pic-skip-nothing">
+  <div class="pic-sample">Sample. Skip nothing: what this option leaves.</div>
+  <h2>Skip nothing: both stay red until a measured fix exists</h2>
+  <p class="say">Same pixels, same audit. No new blind spot.</p>
+  <div class="tags"><span class="tag today">Today: screen, audit and skips kept</span></div>
+  <div class="crop"><div class="composer">
+    <div class="micro">New envelope</div>
+    <div class="field">Type a card name…</div>
+    <div class="entries"><div class="rule"></div><div class="entry"><span class="name">Urza's Saga</span><span class="step" aria-hidden="true">–</span><span class="qty">1</span><span class="step" aria-hidden="true">+</span></div><div class="rule"></div></div>
+    <div class="field">Note (optional) — tracking #, sender, mailer…</div>
+    <div class="foot">
+      <span class="count mark">1 card<span class="flag">Contrast failed</span></span>
+      <span class="spacer"></span>
+      <span class="hit"><span class="pill">Cancel</span></span>
+      <span class="hit mark"><span class="pill save">Save envelope</span><span class="flag">Contrast failed</span></span>
+    </div>
+  </div></div>
+  <div class="ratios">
+    <span class="sw" style="background:#FCF6EA;color:#6E6379">Aa</span><span>"1 card": inkSoft #6E6379 on card #FCF6EA, Menlo 11</span><span class="r">5.24:1</span>
+    <span class="sw" style="background:#332E3F;color:#FCF6EA;border-color:#332E3F">Aa</span><span>Save text: card #FCF6EA on ink #332E3F, Menlo 11.5 bold</span><span class="r">12.17:1</span>
+    <span class="floor">Unchanged. Both clear, so no colour change is known to pass.</span>
+  </div>
+  <div class="verdict red"><b>Audit: stays red, 2 findings</b>Main's iPhone UI audit stays red here. The known gap stays open until a measured change passes. Contrast skips kept:
+    <div class="skips"><span class="chip">orphaned-cancel</span><span class="chip">orphaned-edit:…</span><span class="chip">discard:…</span></div>
+  </div>
+</div>
+</section>
+
+</div>
+
+<script>
+const hidden = new Set();
+function apply() {
+  const s = new URLSearchParams(location.hash.slice(1)).get("s") || "";
+  const sections = document.querySelectorAll("[data-state]");
+  const known = [...sections].some(el => el.dataset.state === s);
+  sections.forEach(el => { el.hidden = (known && el.dataset.state !== s) || hidden.has(el.dataset.opt); });
+  document.querySelectorAll("[data-s]").forEach(a => a.setAttribute("aria-current", a.dataset.s === (known ? s : "") ? "true" : "false"));
+  document.querySelectorAll("[data-hide]").forEach(b => b.setAttribute("aria-pressed", hidden.has(b.dataset.hide) ? "true" : "false"));
+}
+document.querySelectorAll("[data-hide]").forEach(b => b.addEventListener("click", () => {
+  const k = b.dataset.hide; hidden.has(k) ? hidden.delete(k) : hidden.add(k); apply();
+}));
+window.addEventListener("hashchange", apply);
+apply();
+</script>
+</body>
+</html>
