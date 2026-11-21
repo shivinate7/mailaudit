@@ -34,6 +34,8 @@ h1 { font-size:24px; margin:16px 0 4px; }
 .group a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
 .group button[aria-pressed="true"] { background:var(--line); }
 .group a:focus-visible, .group button:focus-visible, .dev button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.pose { margin:0 0 32px; } .pose[hidden] { display:none; }
+.pose h2 { font-size:18px; margin:8px 0 12px; }
 .stage { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
 figure { margin:0; display:flex; flex-direction:column; gap:8px; }
 figure[hidden] { display:none; }
@@ -150,7 +152,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
 .envh .micro.anywhere { flex:1 1 0; min-width:0; overflow-wrap:anywhere; }
 .envh .micro.parts { flex:1 1 auto; display:flex; flex-wrap:wrap; column-gap:.5em; }
 .disc { font:inherit; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--red); min-height:44px; padding:0 10px; cursor:pointer; text-transform:uppercase; letter-spacing:.12em; }
-.disc.anywhere { flex:0 1 0; min-width:0; overflow-wrap:anywhere; padding:0 4px; }
+.disc.anywhere { flex:0 1 auto; max-width:35%; min-width:0; overflow-wrap:anywhere; padding:0 4px; }
 .disc.armed { background:var(--red); color:var(--card); border-color:var(--red); font-weight:700; text-transform:none; letter-spacing:0; }
 .envh.wrap .disc { margin-left:auto; }
 .envlines { display:flex; flex-direction:column; gap:4px; }
@@ -224,6 +226,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
     <a data-set="d=folded" href="#d=folded">Duo folded 466 x 678</a>
     <a data-set="d=open" href="#d=open">Duo open 951 x 669</a>
     <a data-set="d=phone" href="#d=phone">Large phone (size not written)</a>
+    <a data-set="d=all" href="#d=all">All three</a>
   </div>
   <div class="group" role="group" aria-label="Text size"><span>Text size</span>
     <a data-set="ts=L" href="#ts=L">Large (default)</a>
@@ -255,7 +258,14 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
   <div class="toast" id="toast" aria-live="polite"></div>
 </div>
 
-<div class="stage" id="stage"></div>
+<div id="stage">
+  <!-- one section per pose, folded first (skill ios-apps, Mockups); the device control shows one or all -->
+  <section class="pose" data-device="iphone-duo-folded" data-pose="folded"><h2>Duo folded</h2><div class="stage"></div></section>
+  <section class="pose" data-device="iphone-duo-unfolded" data-pose="open"><h2>Duo open</h2><div class="stage"></div></section>
+  <section class="pose" data-device="iphone-large" data-pose="phone"><h2>Large phone</h2><div class="stage"></div></section>
+</div>
+<!-- the wax seal's gradient (waxLit, wax, waxDeep), defined once outside the frames so a hidden frame never hides it -->
+<svg width="0" height="0" style="position:absolute" aria-hidden="true"><defs><radialGradient id="wx" cx=".37" cy=".3" r=".78"><stop offset="0" stop-color="#C86A5F"/><stop offset=".6" stop-color="#A8443C"/><stop offset="1" stop-color="#66231D"/></radialGradient></defs></svg>
 </main>
 
 <script>
@@ -316,6 +326,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
   ];
 
   var st = { d:'folded', ts:'AX5', tab:'tally', s:'rest' };
+  var D = 'folded';  // the pose being drawn
   var hidden = {}; var tagsOn = true;
   var armed = { reset:false, discard:false }; var handOpen = false; var pickedRow = 0; var pickedEnv = 0;
   var save = 'idle'; var saveTimer = null, armTimer = null;
@@ -325,7 +336,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
     h.split('&').forEach(function (kv) {
       var p = kv.split('='); if (p.length !== 2) return;
       var k = p[0], v = decodeURIComponent(p[1]);
-      if (k === 'd' && DEVICES[v]) st.d = v;
+      if (k === 'd' && (DEVICES[v] || v === 'all')) st.d = v;
       if (k === 'ts' && T[v]) st.ts = v;
       if (k === 'tab' && TABS.some(function (t) { return t.key === v; })) st.tab = v;
       if (k === 's' && ['rest','scrolled','armed','hand','viewer','done'].indexOf(v) >= 0) st.s = v;
@@ -358,7 +369,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
   function tag(kind, text) { return ' data-tag="' + (kind === 'new' ? 'New: ' : 'Today: ') + text + '" class-tag="' + kind + '"'; }
   function cls(base, kind) { return base + (kind ? ' tag-' + kind : ''); }
 
-  var SEAL = '<svg class="seal" viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="wx" cx=".37" cy=".3" r=".78"><stop offset="0" stop-color="#C86A5F"/><stop offset=".6" stop-color="#A8443C"/><stop offset="1" stop-color="#66231D"/></radialGradient></defs><path fill="url(#wx)" d="M50 2C69 2 80 9 88 20C96 31 99 45 96 59C92 75 81 90 65 95C50 100 34 98 22 89C9 78 2 62 3 47C5 30 15 15 31 7C37 4 43 2 50 2Z"/><circle cx="50" cy="50" r="39" fill="none" stroke="#5E1F1A" stroke-width="3.5"/><path d="M29 58L50 38L71 58M31 72H69" fill="none" stroke="#5E1F1A" stroke-width="8" stroke-linecap="round"/><path d="M29 54.5L50 34.5L71 54.5M31 68.5H69" fill="none" stroke="#E09A90" stroke-width="3.4" stroke-linecap="round"/></svg>';
+  var SEAL = '<svg class="seal" viewBox="0 0 100 100" aria-hidden="true"><path fill="url(#wx)" d="M50 2C69 2 80 9 88 20C96 31 99 45 96 59C92 75 81 90 65 95C50 100 34 98 22 89C9 78 2 62 3 47C5 30 15 15 31 7C37 4 43 2 50 2Z"/><circle cx="50" cy="50" r="39" fill="none" stroke="#5E1F1A" stroke-width="3.5"/><path d="M29 58L50 38L71 58M31 72H69" fill="none" stroke="#5E1F1A" stroke-width="8" stroke-linecap="round"/><path d="M29 54.5L50 34.5L71 54.5M31 68.5H69" fill="none" stroke="#E09A90" stroke-width="3.4" stroke-linecap="round"/></svg>';
 
   function countLines() {
     return { ledger: n(1046) + ' packages · autosaves', packages: n(1046) + ' packages · autosaves', tally: n(1117) + ' unique items', orphaned: envelopes.length + ' envelopes waiting' };
@@ -516,18 +527,20 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
     var h = '<div class="env app' + (detail ? '' : (i === pickedEnv ? ' sel' : '')) + '" data-act="env" data-i="' + i + '">';
     if (c === 'today') {
       h += '<div class="envh' + (ax && i === 0 ? ' tag-today" data-tag="Today: ENVELOP/E, Discar/d' : '') + '"><span class="micro mono anywhere" style="' + f(11, 'caption') + '">Envelope · ' + e.date + ' · ' + count + '</span>';
-      if (detail || st.d !== 'open') h += '<button type="button" class="disc anywhere mono' + (on ? ' armed' : '') + '" style="' + f(11, 'caption') + '" data-act="discard">' + (on ? 'Tap again to discard ' + count : 'Discard') + '</button>';
+      if (detail || D !== 'open') h += '<button type="button" class="disc anywhere mono' + (on ? ' armed' : '') + '" style="' + f(11, 'caption') + '" data-act="discard">' + (on ? 'Tap again to discard ' + count : 'Discard') + '</button>';
       h += '</div>';
     } else {
       h += '<div class="envh wrap' + (ax && i === 0 ? ' tag-new" data-tag="New: breaks at the dots, Discard drops' : '') + '"><span class="micro mono parts" style="' + f(11, 'caption') + '">' + wrapUnits('Envelope · ' + e.date + ' · ' + count) + '</span>';
-      if (detail || st.d !== 'open') h += '<button type="button" class="disc mono' + (on ? ' armed' : '') + '" style="' + f(11, 'caption') + '" data-act="discard">' + (on ? 'Tap again to discard ' + count : 'Discard') + '</button>';
+      if (detail || D !== 'open') h += '<button type="button" class="disc mono' + (on ? ' armed' : '') + '" style="' + f(11, 'caption') + '" data-act="discard">' + (on ? 'Tap again to discard ' + count : 'Discard') + '</button>';
       h += '</div>';
     }
+    var hasAsk = detail || D !== 'open';
+    var v = c !== 'today' && ax;
+    var askRow = '<div class="discask' + (v ? ' v' : '') + '"><button type="button" class="cx' + (on ? '' : ' off') + '" style="' + f(17, 'body') + '" data-act="discard-cancel"' + (on ? '' : ' tabindex="-1" aria-hidden="true"') + '>Cancel</button></div>';
+    // at accessibility sizes Cancel's row, kept free all along, sits right under Discard, so the answer shows at the press
+    if (hasAsk && v) h += askRow;
     h += '<div class="envlines">' + e.cards.map(function (x) { return '<span style="' + f(15, 'body') + '">' + x + '</span>'; }).join('') + '</div>';
-    if (detail || st.d !== 'open') {
-      var v = c !== 'today' && ax;
-      h += '<div class="discask' + (v ? ' v' : '') + '"><button type="button" class="cx' + (on ? '' : ' off') + '" style="' + f(17, 'body') + '" data-act="discard-cancel"' + (on ? '' : ' tabindex="-1" aria-hidden="true"') + '>Cancel</button></div>';
-    }
+    if (hasAsk && !v) h += askRow;
     h += '</div>';
     return h;
   }
@@ -583,10 +596,10 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
 
   // ---- one device frame for one concept ----
   function frame(c) {
-    var dv = DEVICES[st.d];
-    var h = '<div class="dev" data-device="' + dv.id + '" data-concept="' + c + '" style="width:' + dv.w + 'px;height:' + dv.h + 'px">';
+    var dv = DEVICES[D];
+    var h = '<div class="dev" data-pose="' + D + '" data-concept="' + c + '" style="width:' + dv.w + 'px;height:' + dv.h + 'px">';
     h += '<div class="status"><span>9:41</span><span>●●● 100%</span></div>';
-    if (st.d !== 'open') {
+    if (D !== 'open') {
       h += '<div class="scroll" data-scroll="main"><div class="col">' + letterhead(c) + (c === 'dock' ? '' : '<div class="headslot" aria-hidden="true"></div>') + listFor(c, 'one') + dockReserve(c) + '</div></div>';
       if (c !== 'dock') h += runningHead(c);
       if (c === 'dock') h += '<div data-dock-wrap style="position:absolute;left:0;right:0;bottom:calc(var(--bar-pill) + var(--bar-lift) + var(--sab) + 8px);z-index:6">' + dock(primaryFor(c, 'one')).replace('class="dock', 'style="position:relative;left:auto;right:auto;margin:0 12px" class="dock') + '</div>';
@@ -598,7 +611,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
       var todayPkgRight = c === 'today' && (st.tab === 'packages' || st.tab === 'ledger');
       if (todayPkgRight) {
         // Today, Packages and Ledger are one page; debt hand-open-under-bar-at-l puts the masthead and the control on the right page.
-        h += '<div class="scroll"><div class="col"><div class="sec app" style="color:var(--inkSoft);' + f(13, 'footnote') + '">Today Packages and Ledger are one page, not split at the fold. Drawn here from debt hand-open-under-bar-at-l, which names only the right page.</div></div></div>';
+        h += '<div class="scroll"><div class="col"><div class="sec" style="color:var(--inkSoft);font-size:13px;line-height:18px">Mockup note: today Packages and Ledger are one page, not split at the fold. Drawn here from debt hand-open-under-bar-at-l, which names only the right page.</div></div></div>';
       } else {
         h += '<div class="scroll" data-scroll="left"><div class="col">' + letterhead(c) + (c === 'dock' ? '' : '<div class="headslot" aria-hidden="true"></div>') + listFor(c, 'left') +
              '<div style="height:calc(' + (c === 'dock' ? 'var(--dock-h, 0px) + 24px' : '16px') + ')"></div></div></div>';
@@ -673,14 +686,21 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
     var stage = document.getElementById('stage');
     var keep = {};
     stage.querySelectorAll('[data-concept]').forEach(function (d) {
-      var sc = d.querySelector('[data-scroll]'); if (sc) keep[d.getAttribute('data-concept')] = sc.scrollTop;
+      var sc = d.querySelector('[data-scroll]'); if (sc) keep[d.getAttribute('data-pose') + d.getAttribute('data-concept')] = sc.scrollTop;
     });
-    var h = '';
-    CONCEPTS.forEach(function (c) {
-      h += '<figure id="opt-' + c.key + '"' + (hidden[c.key] ? ' hidden' : '') + '><div class="fit' + (tagsOn ? ' tags-on' : '') + '">' + frame(c.key) + '</div>' +
-           '<figcaption><b>' + c.name + '</b>' + c.cap + '<br>' + DEVICES[st.d].label + ', ' + st.ts + '.</figcaption></figure>';
+    stage.querySelectorAll('section.pose').forEach(function (sec) {
+      D = sec.getAttribute('data-pose');
+      var on = st.d === 'all' || st.d === D;
+      sec.hidden = !on;
+      var h = '';
+      if (on) CONCEPTS.forEach(function (c) {
+        h += '<figure id="opt-' + c.key + '"' + (hidden[c.key] ? ' hidden' : '') + '><div class="fit' + (tagsOn ? ' tags-on' : '') + '">' + frame(c.key) + '</div>' +
+             '<figcaption><b>' + c.name + '</b>' + c.cap + '<br>' + DEVICES[D].label + ', ' + st.ts + '.</figcaption></figure>';
+      });
+      sec.querySelector('.stage').innerHTML = h;
+      // ids stay unique when all three poses show; the single-pose links keep the plain ids for focus
+      if (st.d === 'all') sec.querySelectorAll('[id]').forEach(function (el) { el.id += '-' + D; });
     });
-    stage.innerHTML = h;
     // tag classes
     stage.querySelectorAll('[class-tag]').forEach(function (el) { el.classList.add('tag-' + el.getAttribute('class-tag')); });
     // lineLimit(1).minimumScaleFactor(k): shrink to fit, down to k, then clip
@@ -712,7 +732,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
         var lh = sc.querySelector('.lh');
         var pin = function () { rh.classList.toggle('on', lh && sc.scrollTop >= lh.offsetHeight); };
         sc.addEventListener('scroll', pin, { passive:true });
-        if (st.s === 'scrolled') sc.scrollTop = (lh ? lh.offsetHeight : 0) + 60; else if (keep[c] != null) sc.scrollTop = keep[c];
+        if (st.s === 'scrolled') sc.scrollTop = (lh ? lh.offsetHeight : 0) + 60; else if (keep[dev.getAttribute('data-pose') + c] != null) sc.scrollTop = keep[dev.getAttribute('data-pose') + c];
         pin();
       } else if (sc && st.s === 'scrolled') {
         var lh2 = sc.querySelector('.lh'); sc.scrollTop = (lh2 ? lh2.offsetHeight : 0) + 60;
@@ -749,23 +769,24 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
     if (e.target.closest('[data-tags]')) { tagsOn = !tagsOn; render(); return; }
     var a = e.target.closest('[data-set]');
     if (a) { e.preventDefault(); var p = a.getAttribute('data-set').split('='); st[p[0]] = p[1];
-      if (p[0] === 's') { armed.reset = armed.discard = p[1] === 'armed'; handOpen = p[1] === 'hand'; if (p[1] === 'armed') { st.tab = st.tab === 'orphaned' ? 'orphaned' : 'ledger'; } if (p[1] === 'hand') { st.d = 'open'; st.tab = 'packages'; } }
+      if (p[0] === 's') { armed.reset = armed.discard = p[1] === 'armed'; handOpen = p[1] === 'hand'; if (p[1] === 'armed') { st.tab = st.tab === 'orphaned' ? 'orphaned' : 'ledger'; } if (p[1] === 'hand') { if (st.d !== 'all') st.d = 'open'; st.tab = 'packages'; } }
       render(); return; }
     var t = e.target.closest('[data-act]'); if (!t) return;
     var act = t.getAttribute('data-act');
+    var devEl = t.closest('.dev'); var pose = devEl ? devEl.getAttribute('data-pose') : st.d;
     if (act === 'tab') { st.tab = t.getAttribute('data-tab'); armed.reset = armed.discard = false; handOpen = false; if (st.s === 'armed' || st.s === 'hand') st.s = 'rest'; render(); return; }
     if (act === 'row') { e.stopPropagation(); var i = +t.getAttribute('data-i'); var r = rows[i];
-      if (st.d === 'open') { pickedRow = i; }
+      if (pose === 'open') { pickedRow = i; }
       if (r.got < r.qty) { r.got++; base.got++; base.owed -= r.each; toast('Checked in one copy of ' + r.name + ' (sample).'); bumpSave(); return; }
       render(); return; }
     if (act === 'pkg') { var pk = packages[+t.getAttribute('data-i')]; if (pk.got < pk.qty) { pk.got++; base.got++; base.owed -= 132; toast('Checked in one card from ' + pk.name + ' (sample).'); bumpSave(); } return; }
-    if (act === 'env') { if (st.d === 'open') { pickedEnv = +t.getAttribute('data-i'); render(); } return; }
+    if (act === 'env') { if (pose === 'open') { pickedEnv = +t.getAttribute('data-i'); render(); } return; }
     if (act === 'reset') { e.stopPropagation(); if (armed.reset) { armed.reset = false; toast('Second tap: the ledger would clear. Nothing is cleared on this sample page.'); } else { armed.reset = true; arm('reset'); } render(); return; }
     if (act === 'reset-cancel') { armed.reset = false; render(); return; }
     if (act === 'discard') { e.stopPropagation(); if (armed.discard) { armed.discard = false; toast('Second tap: the envelope would be discarded. Nothing is removed here.'); } else { armed.discard = true; arm('discard'); } render(); return; }
     if (act === 'discard-cancel') { e.stopPropagation(); armed.discard = false; render(); return; }
     if (act === 'newenv') { toast('New envelope: the current envelope ends and a fresh one starts (new-envelope-ends-an-envelope).'); return; }
-    if (act === 'hand') { if (st.d === 'open') { handOpen = true; st.s = 'hand'; render(); } else toast('Card in Hand opens only on two pages side by side (PackagesTab.twoPages).'); return; }
+    if (act === 'hand') { if (pose === 'open') { handOpen = true; st.s = 'hand'; render(); } else toast('Card in Hand opens only on two pages side by side (PackagesTab.twoPages).'); return; }
     if (act === 'hand-close') { handOpen = false; st.s = 'rest'; render(); return; }
   });
 
