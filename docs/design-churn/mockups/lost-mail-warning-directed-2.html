@@ -1,0 +1,716 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Overdue Mail Triage</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle Light,
+   InterfaceStyleTests), so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --gold:#C9A961; --amber:#846008; --silver:#C4C3C0;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, "SF Pro Text", sans-serif;
+  /* Status bar foot: unmeasured on every pose here. Drawn at the 20 pt floor the Duo UI tests use (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  /* Tab bar: starts at y 595 and is 83 pt tall with the bottom inset, on the folded Duo (duo-fold-and-keyboard). */
+  --tabbar: 83px;
+  --new:#2E7A5E; --today:#A8443C;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px;
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1100px; margin:0 auto; padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-4); }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+.page-head { display:flex; flex-direction:column; gap:var(--space-1); }
+.page-head h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
+.page-head p { margin:0; color:var(--inkSoft); max-width:70ch; }
+.kind { font:13px var(--mono); color:var(--inkSoft); }
+.kind b { color:var(--ink); }
+.controls { display:flex; flex-direction:column; gap:var(--space-3); background:var(--card); border:1px solid var(--line); border-radius:8px; padding:var(--space-3); }
+.controls fieldset { border:0; padding:0; margin:0; display:flex; flex-wrap:wrap; gap:var(--space-2); align-items:center; }
+.controls legend { font-weight:600; font-size:13px; color:var(--inkSoft); padding:0; margin-bottom:var(--space-1); width:100%; }
+.chip { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line);
+  border-radius:8px; background:var(--paper); color:var(--ink); cursor:pointer; }
+.chip[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; background:var(--card); }
+.chip input { width:18px; height:18px; accent-color:var(--accent); margin:0; }
+.chip:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.links { font:12px var(--mono); color:var(--inkSoft); display:flex; flex-wrap:wrap; gap:4px 12px; }
+.links a { color:var(--accent); min-height:24px; display:inline-flex; align-items:center; }
+.concept { display:flex; flex-direction:column; gap:var(--space-3); border-top:2px solid var(--ink); padding-top:var(--space-4); }
+.concept[hidden] { display:none; }
+.concept h2 { font-family:var(--cochin); font-size:24px; margin:0; }
+.concept > p { margin:0; max-width:72ch; color:var(--inkSoft); }
+.frames { display:flex; flex-direction:column; gap:var(--space-6); }
+figure { margin:0; display:flex; flex-direction:column; gap:var(--space-2); }
+figcaption { font-size:14px; color:var(--inkSoft); max-width:72ch; }
+figcaption b { font-family:var(--cochin); font-size:17px; color:var(--ink); }
+.fit { max-width:100%; overflow-x:auto; padding:12px 4px; }
+
+/* ---------------- device frames: 1 CSS px = 1 pt ---------------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; font-family:var(--sys); color:var(--ink);
+  padding-top:var(--sat); padding-bottom:var(--sab); }
+.dev[data-device="iphone-duo-folded"] { width:466px; height:678px; }
+.dev[data-device="iphone-duo-unfolded"] { width:951px; height:669px; }
+.dev[data-device="iphone-regular"] { width:440px; height:900px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center; padding:0 20px;
+  font:600 12px var(--sys); z-index:8; background:var(--paper); }
+.scr { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; padding:0 16px calc(var(--tabbar) + 16px);
+  display:flex; flex-direction:column; gap:12px; overscroll-behavior:contain; }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.page .scr { top:var(--sat); }
+.page.l .scr { padding-bottom:24px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:9; }
+.fold span { position:absolute; top:260px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+
+/* tab bar: iOS glass, system colours (not app tokens), floats over content (HIG tab bars) */
+.tabbar { position:absolute; left:0; right:0; bottom:0; height:var(--tabbar); z-index:7; display:flex; align-items:flex-start; justify-content:center; padding-top:4px; }
+.page.r .tabbar { left:0; right:0; }
+.tabbar .glass { display:flex; height:62px; padding:4px; gap:2px; border-radius:31px; background:rgba(255,255,255,.72); backdrop-filter:blur(18px) saturate(1.4);
+  -webkit-backdrop-filter:blur(18px) saturate(1.4); box-shadow:0 1px 0 rgba(0,0,0,.06), 0 8px 24px rgba(0,0,0,.08); border:1px solid rgba(0,0,0,.06); }
+.tabbar button { all:unset; position:relative; width:72px; height:54px; border-radius:27px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  font:600 10px var(--sys); color:#3C3C43; cursor:pointer; }
+.tabbar button[aria-selected="true"] { color:var(--accent); background:rgba(111,92,166,.12); }
+.tabbar svg { width:24px; height:24px; }
+.badge { position:absolute; top:3px; left:42px; min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--red); color:var(--card); font:700 11px/18px var(--sys); text-align:center; }
+
+/* nav bar */
+.nav { display:flex; flex-direction:column; gap:4px; padding-top:4px; }
+.nav .back { all:unset; cursor:pointer; min-height:44px; min-width:44px; display:inline-flex; align-items:center; gap:2px; font:17px var(--sys); color:var(--accent); align-self:flex-start; margin-left:-8px; padding:0 8px; }
+.nav .back svg { width:12px; height:20px; }
+.nav h1 { margin:0; font:700 34px/41px var(--sys); letter-spacing:.2px; }
+.nav.notop { padding-top:44px; }
+
+/* ---------------- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---------------- */
+.mast { display:flex; flex-direction:column; gap:8px; padding-top:12px; font-family:var(--cochin); }
+.mast .seal { display:flex; align-items:center; gap:8px; } .mast .seal i { flex:1; height:1px; background:var(--gold); opacity:.75; }
+.mast .seal b { width:22px; height:22px; border-radius:50%; background:var(--red); box-shadow:inset 0 0 0 2px #C86A5F; }
+.mast .title { text-align:center; font-size:30px; letter-spacing:6px; font-weight:700; line-height:34px; }
+.mast .house { text-align:center; font:10px var(--mono); letter-spacing:2.4px; color:var(--inkSoft); }
+.mast .div { height:1px; background:var(--line); }
+.mast .cells { display:grid; grid-template-columns:1fr 1fr 1.25fr; }
+.mast .cell { text-align:center; display:flex; flex-direction:column; gap:4px; }
+.mast .cell + .cell { border-left:1px solid var(--line); }
+.mast .cell small { font:10px var(--mono); color:var(--inkSoft); letter-spacing:1px; }
+.mast .cell span { font:13px var(--mono); color:var(--inkSoft); } .mast .cell span b { color:var(--accent); }
+.mast .bar { height:8px; border-radius:4px; background:var(--line); overflow:hidden; } .mast .bar i { display:block; height:100%; width:88%; background:var(--accent); border-radius:4px; }
+.mast .count, .mast .miss { font:10.5px var(--mono); color:var(--inkSoft); display:flex; justify-content:space-between; }
+.mast .miss { color:var(--red); }
+.entry { all:unset; cursor:pointer; display:grid; grid-template-columns:20px 1fr auto 12px; align-items:center; gap:10px; min-height:56px; padding:6px 0;
+  border-top:1px solid var(--line); border-bottom:1px solid var(--line); font-family:var(--cochin); }
+.entry .dot { width:12px; height:12px; border-radius:50%; background:var(--amber); }
+.entry .dot.deadline { background:var(--red); }
+.entry b { font-size:15px; display:block; line-height:19px; }
+.entry small { font:11px var(--mono); color:var(--red); display:block; line-height:15px; }
+.entry small.soft { color:var(--inkSoft); }
+.entry .sum { font:13px var(--mono); color:var(--ink); }
+.entry svg { width:8px; height:14px; color:var(--inkSoft); }
+.entry[disabled] { cursor:default; } .entry[disabled] .dot { background:var(--green); box-shadow:none; }
+
+.pcard { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px; font-family:var(--cochin); }
+.pcard .who { font-size:17px; font-weight:700; display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.pcard .who span { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.pcard .dl { font:11px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pcard .dl .f { font-weight:700; }
+.pcard .pb { height:4px; background:var(--line); border-radius:2px; overflow:hidden; } .pcard .pb i { display:block; height:100%; background:var(--accent); }
+.f.maybe { color:var(--amber); } .f.deadline { color:var(--red); }
+.trow { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:6px; font-family:var(--cochin); }
+.trow .who { font-size:17px; font-weight:700; display:flex; justify-content:space-between; }
+.trow .who span { font:13px var(--mono); font-weight:400; color:var(--inkSoft); }
+.trow .copy { font:11px var(--mono); color:var(--inkSoft); border-top:1px solid var(--line); padding-top:6px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+
+/* the worklist */
+.lede { display:flex; flex-direction:column; gap:2px; font-family:var(--cochin); }
+.lede p { margin:0; font-size:15px; line-height:20px; }
+.lede .fig { font:12px/16px var(--mono); color:var(--inkSoft); }
+.band { display:flex; flex-direction:column; gap:0; }
+.bandhead { display:grid; grid-template-columns:52px 1fr; gap:12px; align-items:end; padding:0 12px 6px; }
+.bandhead small { font:11px/13px var(--mono); color:var(--inkSoft); }
+.bandhead b { font:700 15px/20px var(--cochin); }
+.bandhead.deadline b { color:var(--red); } .bandhead.maybe b { color:var(--amber); }
+.rows { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.row { position:relative; display:grid; grid-template-columns:52px minmax(0,1fr) 132px; gap:12px; align-items:center; padding:12px; min-height:88px; border-top:1px solid var(--line); }
+.row:first-child { border-top:0; }
+.row.sel { box-shadow:inset 3px 0 0 var(--accent); background:color-mix(in srgb, var(--accent) 6%, var(--card)); }
+.row .n { font:700 28px/34px var(--mono); text-align:center; }
+.row .n.deadline { color:var(--red); } .row .n.maybe { color:var(--amber); }
+.row .t { display:flex; flex-direction:column; gap:2px; min-width:0; font-family:var(--cochin); }
+.row .t b { font-size:17px; line-height:22px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.row .t .owed { font-size:15px; line-height:20px; }
+.row .t .owed em { font:normal 13px var(--mono); }
+.row .t .meta { font:12px/16px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.row .pick { all:unset; position:absolute; inset:0 144px 0 0; cursor:pointer; }
+.slot { position:relative; z-index:1; width:132px; height:44px; display:flex; align-items:center; justify-content:flex-end; gap:0; }
+.act { all:unset; cursor:pointer; box-sizing:border-box; height:44px; padding:0 12px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; gap:6px;
+  font:700 12px var(--mono); letter-spacing:.3px; }
+.act.claim { width:132px; background:var(--accent); color:var(--card); }
+.act.claim svg { width:16px; height:16px; }
+.act.open { width:96px; border:1px solid var(--accent); color:var(--accent); background:var(--card); }
+.act.undo { width:44px; padding:0; font-weight:400; color:var(--accent); text-decoration:underline; text-underline-offset:3px; }
+.act.retry { width:132px; border:1px solid var(--red); color:var(--red); background:var(--card); flex-direction:column; gap:0; font-size:11px; line-height:14px; }
+.act.retry span { font-weight:400; }
+.impr { width:88px; height:34px; display:grid; place-items:center; border:2px solid var(--red); border-radius:4px; color:var(--red); font:700 10.5px/12px var(--mono);
+  letter-spacing:.8px; text-align:center; transform:rotate(-4deg); background:color-mix(in srgb, var(--redSoft) 55%, transparent); }
+.impr.lands { animation:land .22s cubic-bezier(.2,.8,.3,1.2) both; }
+@keyframes land { from { transform:rotate(-4deg) scale(1.35); opacity:0; } to { transform:rotate(-4deg) scale(1); opacity:1; } }
+.ruler { position:relative; height:10px; margin-top:4px; }
+.ruler i { position:absolute; top:4px; left:0; right:0; height:2px; background:var(--line); }
+.ruler s { position:absolute; top:3px; left:0; height:4px; border-radius:2px; text-decoration:none; }
+.ruler s.maybe { background:var(--amber); } .ruler s.deadline { background:var(--red); }
+.ruler u { position:absolute; top:0; width:1px; height:10px; background:var(--inkSoft); text-decoration:none; }
+.foot { font:13px/18px var(--cochin); color:var(--inkSoft); margin:0; }
+.skel { height:88px; border-top:1px solid var(--line); display:grid; grid-template-columns:52px 1fr 132px; gap:12px; align-items:center; padding:12px; }
+.skel:first-child { border-top:0; }
+.skel i { display:block; height:12px; border-radius:6px; background:color-mix(in srgb, var(--line) 70%, transparent); }
+.state { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.state p { margin:0; font-size:17px; line-height:22px; }
+.state p small { display:block; font-size:15px; color:var(--inkSoft); margin-top:4px; }
+.btn { all:unset; cursor:pointer; box-sizing:border-box; min-height:44px; padding:0 16px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center;
+  font:700 13px var(--mono); background:var(--accent); color:var(--card); align-self:flex-start; }
+.btn.ghost { background:var(--card); color:var(--accent); border:1px solid var(--accent); }
+.btn.wide { align-self:stretch; min-height:50px; }
+
+/* the claim sheet (Claims tab) */
+.scrim { position:absolute; inset:0; background:rgba(0,0,0,.22); z-index:10; }
+.sheet { position:absolute; left:0; right:0; bottom:0; top:120px; z-index:11; background:var(--paper); border-radius:16px 16px 0 0; box-shadow:0 -8px 30px rgba(0,0,0,.18);
+  display:flex; flex-direction:column; animation:rise .28s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes rise { from { transform:translateY(100%); } to { transform:none; } }
+.sheet .grab { width:36px; height:5px; border-radius:3px; background:rgba(60,60,67,.3); align-self:center; margin-top:6px; }
+.sheet .bar { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; height:44px; padding:0 8px; }
+.sheet .bar button { all:unset; cursor:pointer; min-height:44px; min-width:44px; padding:0 8px; font:17px var(--sys); color:var(--accent); }
+.sheet .bar b { font:600 17px var(--sys); }
+.facts { flex:1; overflow-y:auto; padding:8px 16px 24px; display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.facts h3 { margin:0; font-size:22px; line-height:27px; }
+.facts .tier { font:12px/16px var(--mono); }
+.facts .tier.deadline { color:var(--red); } .facts .tier.maybe { color:var(--amber); }
+.facts .note { font-size:14px; line-height:19px; color:var(--inkSoft); margin:0; }
+.facts dl { margin:0; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.facts .kv { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; min-height:44px; padding:0 12px; border-top:1px solid var(--line); }
+.facts .kv:first-child { border-top:0; }
+.facts dt { font-size:15px; } .facts dd { margin:0; font:13px var(--mono); display:flex; align-items:center; gap:8px; }
+.facts .copybtn { all:unset; cursor:pointer; min-height:44px; min-width:56px; display:inline-flex; align-items:center; justify-content:center; font:700 12px var(--mono); color:var(--accent); }
+.facts .lines .kv dt small { display:block; font-size:12.5px; color:var(--inkSoft); }
+.facts .acts { display:flex; flex-direction:column; gap:8px; }
+.facts .acts .two { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.facts .acts .two .btn { align-self:stretch; }
+
+/* calendar (Overdue desk, open Duo right page) */
+.cal { display:flex; flex-direction:column; gap:8px; font-family:var(--cochin); }
+.cal h2 { margin:0; font-size:22px; line-height:27px; }
+.cal .wk { display:grid; grid-template-columns:repeat(7, 1fr); gap:4px; }
+.cal .dh { font:11px var(--mono); color:var(--inkSoft); text-align:center; }
+.cal .d { all:unset; box-sizing:border-box; height:52px; border-radius:8px; border:1px solid transparent; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font:13px var(--mono); color:var(--ink); }
+.cal .d.past { color:var(--inkSoft); opacity:.7; }
+.cal .d.today { border-color:var(--ink); font-weight:700; }
+.cal .d.has { cursor:pointer; background:var(--card); border-color:var(--line); }
+.cal .d.has.on { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+.cal .d i { width:18px; height:4px; border-radius:2px; }
+.cal .d i.deadline { background:var(--red); } .cal .d i.maybe { background:var(--amber); }
+.cal .mon { font:11px var(--mono); color:var(--inkSoft); }
+.detail { display:flex; flex-direction:column; gap:8px; font-family:var(--cochin); border-top:1px solid var(--line); padding-top:12px; }
+.detail h3 { margin:0; font-size:17px; } .detail .meta { font:12px var(--mono); color:var(--inkSoft); }
+.detail ul { list-style:none; margin:0; padding:0; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.detail li { display:flex; justify-content:space-between; gap:8px; min-height:44px; align-items:center; padding:0 12px; border-top:1px solid var(--line); font-size:15px; }
+.detail li:first-child { border-top:0; } .detail li span { font:12px var(--mono); color:var(--inkSoft); }
+.placeholder { font:14px var(--cochin); color:var(--inkSoft); border:1px dashed var(--line); border-radius:8px; padding:16px; margin-top:44px; }
+
+/* push transition: a pushed page slides in from the trailing edge */
+.push-in { animation:push .28s cubic-bezier(.2,.8,.2,1) both; }
+@keyframes push { from { transform:translateX(40px); opacity:.0; } to { transform:none; opacity:1; } }
+
+/* ---------------- AX5, the largest accessibility text size (HIG typography, AX5 table) ---------------- */
+.ax5 .nav h1 { font-size:60px; line-height:70px; }               /* Large Title 60/70 */
+.ax5 .nav .back { font-size:53px; }                              /* Body 53 */
+.ax5 .lede p { font-size:49px; line-height:58px; }               /* Subhead 49/58 */
+.ax5 .lede .fig { font-size:43px; line-height:51px; }            /* Caption 1 43/51 */
+.ax5 .bandhead { grid-template-columns:1fr; gap:4px; }
+.ax5 .bandhead small { font-size:43px; line-height:51px; }
+.ax5 .bandhead b { font-size:49px; line-height:58px; }
+.ax5 .row { display:flex; flex-direction:column; align-items:stretch; gap:8px; }
+.ax5 .row .n { text-align:left; font-size:34px; line-height:41px; }  /* capped at xxxLarge Title 1, 34/41 */
+.ax5 .row .t b { font-size:53px; line-height:62px; white-space:normal; }  /* Headline 53/62 */
+.ax5 .row .t .owed { font-size:49px; line-height:58px; }
+.ax5 .row .t .owed em { font-size:43px; }
+.ax5 .row .t .meta { font-size:43px; line-height:51px; white-space:normal; }
+.ax5 .row .pick { inset:0 0 72px 0; }
+.ax5 .slot { width:100%; height:56px; justify-content:stretch; }
+.ax5 .act.claim, .ax5 .act.open { width:100%; height:56px; font-size:23px; }  /* capped at xxxLarge Body 23, with the large content viewer */
+.ax5 .act.undo { width:auto; padding:0 12px; font-size:23px; height:56px; }
+.ax5 .impr { width:auto; flex:1; height:48px; font-size:20px; line-height:24px; }
+.ax5 .foot { font-size:44px; line-height:52px; }                 /* Footnote 44/52 */
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+:where([data-tag]) { position:relative; }
+.tags-on [data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:6;
+  white-space:nowrap; pointer-events:none; }
+.tags-on .tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tags-on .tag-new::before { color:var(--new); }
+.tags-on .tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tags-on .tag-today::before { color:var(--today); }
+.tags-on .tabbar.tag-today::before { top:-12px; right:20px; }
+
+[data-opt][hidden], .opt-hidden { display:none !important; }
+@media (prefers-reduced-motion: reduce) { *, *::before, *::after { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body class="tags-on">
+<main>
+<div class="banner" role="note">Sample. No seller, card, order number, date, count or amount on this page is real. Sizes marked unmeasured are drawn, not read off a device.</div>
+
+<header class="page-head">
+  <h1>Overdue mail: a triage list</h1>
+  <p class="kind"><b>Designer kind:</b> directed &nbsp; <b>Direction:</b> triage list: a dedicated worklist ordered by days left, each row ends in a claim action</p>
+  <p>Two concepts. Both list every untracked, unreceived, unstamped order from day 14, ordered by the days left before day 30, and both end each row in the claim stamp. The <b>Overdue desk</b> is a page the masthead opens on any tab. The <b>Claims tab</b> is its own tab, with a claim sheet that holds the facts a claim needs. Tap rows, stamps, the masthead line, tabs and the calendar: they work.</p>
+</header>
+
+<section class="controls" aria-label="Mockup controls">
+  <fieldset><legend>State (applies to every frame)</legend><div id="stateBtns" style="display:contents"></div></fieldset>
+  <fieldset><legend>Order of rows past day 30</legend><div id="orderBtns" style="display:contents"></div></fieldset>
+  <fieldset><legend>Options: clear a box to hide that option</legend><div id="optBtns" style="display:contents"></div></fieldset>
+  <fieldset><legend>Annotations</legend><label class="chip"><input type="checkbox" id="tagsBox" checked> Today / New tags</label>
+    <button class="chip" type="button" id="resetBtn">Reset taps</button></fieldset>
+  <div class="links" id="links" aria-label="Deep links"></div>
+</section>
+
+<section class="concept" id="concept-desk" data-opt="concept-desk">
+  <h2>Overdue desk</h2>
+  <p>A new line under the masthead's missing line says how many orders may be lost and what they hold up. It opens the Overdue mail page, pushed on the tab you are on. Each row ends in a one-press Claim filed stamp, with Undo in the same slot. On the open Duo the list takes the left page and a claim-by calendar takes the right page.</p>
+  <div class="frames" id="frames-desk">
+    <figure><div class="fit"><div class="dev" id="dev-desk-folded" data-device="iphone-duo-folded" data-concept="desk" data-dev="folded"></div></div>
+      <figcaption><b>iPhone Duo, folded</b>. 466 x 678 pt (duo-fold-and-keyboard, outer window). Status bar foot unmeasured: drawn at 20 pt.</figcaption></figure>
+    <figure><div class="fit"><div class="dev" id="dev-desk-open" data-device="iphone-duo-unfolded" data-concept="desk" data-dev="open"></div></div>
+      <figcaption><b>iPhone Duo, open</b>. 951 x 669 pt, fold strip 455.5 to 495.5 pt. Nothing sits across it. Tab bar under the right page (duo-card-in-hand, item 23 a); its height is the folded reading.</figcaption></figure>
+    <figure><div class="fit"><div class="dev" id="dev-desk-phone" data-device="iphone-regular" data-concept="desk" data-dev="phone"></div></div>
+      <figcaption><b>Large iPhone</b>. No size is written in the device list or the brief. Drawn at a placeholder 440 x 900 pt, not a device figure.</figcaption></figure>
+    <figure><div class="fit"><div class="dev ax5" id="dev-desk-ax5" data-device="iphone-duo-folded" data-concept="desk" data-dev="ax5"></div></div>
+      <figcaption><b>iPhone Duo, folded, AX5</b>. The largest accessibility text size. Sizes from the HIG AX5 table; the day figure and the button text are capped at xxxLarge.</figcaption></figure>
+  </div>
+</section>
+
+<section class="concept" id="concept-tab" data-opt="concept-tab">
+  <h2>Claims tab</h2>
+  <p>A Claims tab between Orphaned and Ledger, with a badge of the orders listed. Each row carries a 30-day ruler. Its Claim button opens a sheet with the order number to copy, the cards still owed and the stamps. The masthead stays as it is today. On the open Duo the list takes the left page and the claim facts take the right page, as Tally and Orphaned spread.</p>
+  <div class="frames" id="frames-tab">
+    <figure><div class="fit"><div class="dev" id="dev-tab-folded" data-device="iphone-duo-folded" data-concept="tab" data-dev="folded"></div></div>
+      <figcaption><b>iPhone Duo, folded</b>. 466 x 678 pt (duo-fold-and-keyboard, outer window). Status bar foot unmeasured: drawn at 20 pt.</figcaption></figure>
+    <figure><div class="fit"><div class="dev" id="dev-tab-open" data-device="iphone-duo-unfolded" data-concept="tab" data-dev="open"></div></div>
+      <figcaption><b>iPhone Duo, open</b>. 951 x 669 pt, fold strip 455.5 to 495.5 pt. Nothing sits across it. Tab bar under the right page (duo-card-in-hand, item 23 a); its height is the folded reading.</figcaption></figure>
+    <figure><div class="fit"><div class="dev" id="dev-tab-phone" data-device="iphone-regular" data-concept="tab" data-dev="phone"></div></div>
+      <figcaption><b>Large iPhone</b>. No size is written in the device list or the brief. Drawn at a placeholder 440 x 900 pt, not a device figure.</figcaption></figure>
+    <figure><div class="fit"><div class="dev ax5" id="dev-tab-ax5" data-device="iphone-duo-folded" data-concept="tab" data-dev="ax5"></div></div>
+      <figcaption><b>iPhone Duo, folded, AX5</b>. The largest accessibility text size. Sizes from the HIG AX5 table; the day figure and the button text are capped at xxxLarge.</figcaption></figure>
+  </div>
+</section>
+</main>
+
+<script>
+(() => {
+  const TODAY = Date.UTC(2026, 10, 21);
+  const DAY = 86400000;
+  const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+  const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+  const iso = (t) => new Date(t).toISOString().slice(0,10);
+  const short = (t) => { const d = new Date(t); return `${MON[d.getUTCMonth()]} ${d.getUTCDate()}`; };
+  const money = (v) => `$${v.toFixed(2)}`;
+
+  /* Sample orders. gk is "orderId::seller" (gkOf). Each card: [name, set, copies still owed, price each]. */
+  const ORDERS = [
+    { id:"4C81A7", seller:"Brass Lantern Games", date:"2026-10-14", of:3, cards:[["Counterspell","Dominaria Remastered",1,1.85],["Ponder","Magic 2012",1,2.25]] },
+    { id:"9E20B3", seller:"Kettle & Quill", date:"2026-10-21", of:5, cards:[["Lightning Bolt","Magic 2010",2,1.40],["Swords to Plowshares","Commander Masters",1,3.65],["Brainstorm","Masters 25",2,2.70]] },
+    { id:"71D4C0", seller:"Moss Hollow TCG", date:"2026-10-24", of:4, cards:[["Opt","Dominaria",1,0.89]] },
+    { id:"B35E91", seller:"Northgate Singles", date:"2026-10-30", of:3, cards:[["Thoughtseize","Theros",1,3.95],["Fatal Push","Aether Revolt",1,1.35],["Path to Exile","Conflux",1,0.90]] },
+    { id:"0F6A2D", seller:"Pine & Pixel", date:"2026-11-04", of:7, cards:[["Spell Pierce","Zendikar Rising",2,0.67]] },
+    { id:"C8172E", seller:"Saltmarsh Cards", date:"2026-11-07", of:1, cards:[["Island","Unfinity",1,0.25]] },
+  ].map((o) => {
+    const t = Date.parse(o.date + "T00:00:00Z");
+    const days = Math.floor((TODAY - t) / DAY);
+    const owed = o.cards.reduce((a, c) => a + c[2], 0);
+    const value = Math.round(o.cards.reduce((a, c) => a + c[2] * c[3], 0) * 100) / 100;
+    return { ...o, gk:`${o.id}::${o.seller}`, t, days, left:30 - days, tier: days >= 30 ? "deadline" : "maybe", claimBy: t + 30 * DAY, owed, value };
+  });
+
+  const STATES = [
+    ["loaded","Loaded"],["claimed","Two stamped"],["savefail","Stamp not saved"],["unknown","Owed unknown"],["loading","Loading"],["failed","Read failed"],["empty","Empty"],
+  ];
+  const OPTS = [
+    ["concept-desk","Overdue desk (concept)"],["concept-tab","Claims tab (concept)"],
+    ["desk-line","Desk: masthead line"],["desk-calendar","Desk: claim-by calendar (open Duo)"],
+    ["tab-badge","Tab: badge"],["tab-ruler","Tab: 30-day ruler"],["sheet-copy","Tab: copy order number"],
+    ["card-flag","Packages card flag"],["tally-flag","Tally copy flag"],
+  ];
+  const DEVICES = ["folded","open","phone","ax5"];  /* the frames are written in the page, folded first */
+
+  /* ---- page state, from the hash: #c=desk|tab  s=<state>  p=packages|tally|list|sheet  o=closing|strict  hide=a,b  sel=<orderId> ---- */
+  const g = { s:"loaded", o:"closing", hide:new Set(), c:null, p:null, sel:null };
+  function readHash() {
+    const h = new URLSearchParams(location.hash.slice(1));
+    g.s = STATES.some(([k]) => k === h.get("s")) ? h.get("s") : "loaded";
+    g.o = h.get("o") === "strict" ? "strict" : "closing";
+    g.hide = new Set((h.get("hide") || "").split(",").filter(Boolean));
+    g.c = ["desk","tab"].includes(h.get("c")) ? h.get("c") : null;
+    g.p = ["packages","tally","list","sheet"].includes(h.get("p")) ? h.get("p") : null;
+    g.sel = h.get("sel");
+  }
+  function writeHash() {
+    const h = new URLSearchParams();
+    if (g.c) h.set("c", g.c);
+    if (g.s !== "loaded") h.set("s", g.s);
+    if (g.p) h.set("p", g.p);
+    if (g.o !== "closing") h.set("o", g.o);
+    if (g.hide.size) h.set("hide", [...g.hide].join(","));
+    history.replaceState(null, "", "#" + h.toString());
+  }
+  const on = (k) => !g.hide.has(k);
+
+  /* ---- per-frame state ---- */
+  const frames = {};
+  function freshFrame(concept, dev) {
+    const def = dev === "open" || dev === "ax5" ? "list" : "packages";
+    let screen = g.p || def;
+    if (screen === "sheet" && concept === "desk") screen = "list";
+    const claimed = new Set(), failed = new Set();
+    if (g.s === "claimed") { claimed.add(ORDERS[1].gk); claimed.add(ORDERS[0].gk); }
+    if (g.s === "savefail") failed.add(ORDERS[1].gk);
+    const first = sorted()[0];
+    const sel = (g.sel && ORDERS.find((o) => o.id === g.sel)) || first;
+    return { concept, dev, screen, claimed, landed:null, failed, sel: sel ? sel.gk : null,
+      sheet: screen === "sheet" && dev !== "open" ? (sel ? sel.gk : null) : null, copied:false, pushed:false };
+  }
+
+  function sorted() {
+    const red = ORDERS.filter((o) => o.tier === "deadline"), amber = ORDERS.filter((o) => o.tier === "maybe");
+    amber.sort((a, b) => a.left - b.left);
+    if (g.o === "closing") red.sort((a, b) => a.days - b.days); else red.sort((a, b) => a.left - b.left);
+    return [...red, ...amber];
+  }
+  /* Rows listed: every row while loaded; a stamped row keeps its place until the page reloads (PastTransitModel sticky). */
+  const listed = () => (g.s === "empty" || g.s === "loading" || g.s === "failed") ? [] : sorted();
+
+  /* ---- glyphs ---- */
+  const svgBack = `<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const svgChev = `<svg viewBox="0 0 8 14" aria-hidden="true"><path d="M1.5 1.5 6.5 7l-5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  const svgStamp = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M6 1.5h4v4.5l3 2v2H3V8l3-2zM2.5 12.5h11v2h-11z" fill="currentColor"/></svg>`;
+  const ICON = {
+    packages:`<path d="M4 8.5 12 4l8 4.5v8L12 21l-8-4.5z M4 8.5l8 4.5 8-4.5 M12 13v8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>`,
+    tally:`<path d="M5 6h14M5 12h14M5 18h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`,
+    orphaned:`<path d="M3.5 6.5h17v11h-17z M3.5 6.5l8.5 6.5 8.5-6.5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>`,
+    claims:`<circle cx="12" cy="12.5" r="8" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M12 8v5l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/>`,
+    ledger:`<path d="M6 3.5h11a1.5 1.5 0 0 1 1.5 1.5v15H7.5A1.5 1.5 0 0 1 6 18.5zM6 17h12.5M9.5 7.5h6" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/>`,
+  };
+
+  /* ---- pieces ---- */
+  function entryLine(f) {
+    if (f.concept !== "desk" || !on("desk-line")) return "";
+    const tag = `data-tag="New: overdue line" class="entry tag-new"`;
+    const L = listed();
+    if (g.s === "loading") return `<button ${tag} disabled aria-label="Overdue mail, reading"><span class="dot" style="background:var(--line);box-shadow:none"></span><span><b>Overdue mail</b><small class="soft">reading the ledger</small></span><span></span><span></span></button>`;
+    if (g.s === "failed") return `<button ${tag} data-act="open-list"><span class="dot" style="background:var(--inkSoft);box-shadow:none"></span><span><b>Overdue mail: unknown</b><small class="soft">the ledger could not be read</small></span><span></span>${svgChev}</button>`;
+    if (!L.length) return `<button ${tag} disabled><span class="dot"></span><span><b>No overdue mail</b><small class="soft">no untracked order past day 14</small></span><span></span><span></span></button>`;
+    const red = L.filter((o) => o.tier === "deadline" && !f.claimed.has(o.gk)).length;
+    const open = L.filter((o) => !f.claimed.has(o.gk));
+    const sum = g.s === "unknown" ? "owed ?" : money(open.reduce((a, o) => a + o.value, 0));
+    return `<button ${tag} data-act="open-list" aria-label="${open.length} orders may be lost, ${red} past day 30, ${sum} held up. Open overdue mail.">
+      <span class="dot${red ? " deadline" : ""}"></span><span><b>${open.length} orders may be lost</b><small>${red ? `${red} past day 30` : `none past day 30`}</small></span>
+      <span class="sum">${sum}</span>${svgChev}</button>`;
+  }
+
+  function masthead(f) {
+    return `<div class="mast">
+      <div class="seal" aria-hidden="true"><i></i><b></b><i></i></div>
+      <div class="title">MANIFEST</div><div class="house">C.H POSTAL COMPANY</div>
+      <div class="div"></div>
+      <div class="cells"><div class="cell"><small>cards</small><span><b>212</b>/240</span></div><div class="cell"><small>packages</small><span><b>31</b>/44</span></div><div class="cell"><small>value</small><span><b>$93</b>/$141</span></div></div>
+      <div class="bar" aria-label="Cards received, 88 percent"><i></i></div>
+      <div class="count"><span>44 packages · newest first</span></div>
+      <div class="miss"><span class="tag-today" data-tag="Today: missing line">28 still missing · $48.20</span><span style="color:var(--green)">Saved</span></div>
+      ${entryLine(f)}
+    </div>`;
+  }
+
+  function flag(o) {
+    if (!on("card-flag")) return "";
+    return o.tier === "deadline"
+      ? `<span class="f deadline">⚠ ${o.days}d — refund window closing, contact seller · </span>`
+      : `<span class="f maybe">⚠ ${o.days}d — may be lost · </span>`;
+  }
+  function packagesBody(f) {
+    const moss = ORDERS[2], kettle = ORDERS[1];
+    const card = (o, got, flagged) => `<article class="pcard${flagged ? "" : " tag-today"}" ${flagged ? "" : `data-tag="Today: package card"`}>
+      <div class="who">${esc(o.seller)}<span>${got}/${o.of}</span></div>
+      <div class="dl${flagged && on("card-flag") ? " tag-new" : ""}" ${flagged && on("card-flag") ? `data-tag="New: flag (web port)"` : ""}>${flagged && g.s !== "loading" && g.s !== "failed" && g.s !== "empty" ? flag(o) : ""}${o.date} · <span style="color:var(--inkSoft)">○</span> untracked</div>
+      <div class="pb"><i style="width:${Math.round(got / o.of * 100)}%"></i></div></article>`;
+    return `${masthead(f)}
+      ${card(moss, moss.of - moss.owed, true)}
+      ${card(kettle, kettle.of - kettle.owed, true)}
+      <article class="pcard tag-today" data-tag="Today: tracked, never flagged"><div class="who">Tidewater Cards<span>0/2</span></div>
+        <div class="dl">2026-10-19 · <span style="color:var(--green)">●</span> tracked</div><div class="pb"><i style="width:0"></i></div></article>`;
+  }
+  function tallyBody(f) {
+    const show = on("tally-flag") && !["loading","failed","empty"].includes(g.s);
+    return `${masthead(f)}
+      <article class="trow"><div class="who">Opt<span>3/4</span></div>
+        <div class="copy">${show ? `<span class="f maybe tag-new" data-tag="New: flag (web port)" style="font-weight:700">⚠ 28d · </span>` : ""}Moss Hollow TCG · 2026-10-24 · DOM · 0/1</div>
+        <div class="copy">Tidewater Cards · 2026-10-19 · DOM · 3/3</div></article>
+      <article class="trow"><div class="who">Lightning Bolt<span>2/4</span></div>
+        <div class="copy">${on("tally-flag") && !["loading","failed","empty"].includes(g.s) ? `<span class="f deadline" style="font-weight:700">⚠ 31d · </span>` : ""}Kettle &amp; Quill · 2026-10-21 · M10 · 0/2</div>
+        <div class="copy">Saltmarsh Cards · 2026-11-12 · M10 · 2/2</div></article>`;
+  }
+
+  function nav(f) {
+    if (f.concept === "desk") {
+      const back = f.dev === "open" ? "" : `<button class="back" data-act="back" aria-label="Back to ${f.from === "tally" ? "Tally" : "Packages"}">${svgBack}${f.from === "tally" ? "Tally" : "Packages"}</button>`;
+      return `<div class="nav${back ? "" : " notop"}">${back}<h1>Overdue mail</h1></div>`;
+    }
+    return `<div class="nav notop"><h1>Claims</h1></div>`;
+  }
+
+  function lede(f) {
+    const L = listed();
+    if (!L.length) return "";
+    const owedTxt = g.s === "unknown" ? "cards and money still owed: unknown" : `${L.reduce((a, o) => a + o.owed, 0)} cards · ${money(L.reduce((a, o) => a + o.value, 0))} still owed`;
+    return `<div class="lede"><p>${L.length} untracked orders have waited 14 days or more.</p><span class="fig">${owedTxt}</span></div>`;
+  }
+
+  function slot(f, o) {
+    if (f.claimed.has(o.gk)) {
+      return `<div class="slot"><span class="impr${f.landed === o.gk ? " lands" : ""}" role="img" aria-label="Stamped Claim filed">CLAIM<br>FILED</span>
+        <button class="act undo" data-act="undo" data-gk="${esc(o.gk)}" aria-label="Undo Claim filed for ${esc(o.seller)}">Undo</button></div>`;
+    }
+    if (f.failed.has(o.gk)) {
+      return `<div class="slot"><button class="act retry" data-act="claim" data-gk="${esc(o.gk)}" aria-label="Stamp not saved. Press to stamp Claim filed again.">Not saved<span>press again</span></button></div>`;
+    }
+    if (f.concept === "desk") {
+      return `<div class="slot"><button class="act claim" data-act="claim" data-gk="${esc(o.gk)}" aria-label="Stamp Claim filed on ${esc(o.seller)}" aria-describedby="">${svgStamp}Claim filed</button></div>`;
+    }
+    return `<div class="slot"><button class="act open" data-act="sheet" data-gk="${esc(o.gk)}" aria-label="Claim: ${esc(o.seller)}">Claim</button></div>`;
+  }
+
+  function ruler(o) {
+    if (!on("tab-ruler")) return "";
+    const span = 38; /* the ruler reads 0 to day 38, so a row past day 30 still shows how far past */
+    const w = Math.min(o.days, span) / span * 100;
+    return `<div class="ruler tag-new" data-tag="New: ruler" aria-hidden="true"><i></i><s class="${o.tier}" style="width:${w}%"></s>
+      <u style="left:${14 / span * 100}%"></u><u style="left:${30 / span * 100}%;background:var(--red);width:2px"></u></div>`;
+  }
+
+  function rowHTML(f, o) {
+    const owed = g.s === "unknown" ? `owed: unknown` : `<em>${o.owed}</em> of <em>${o.of}</em> cards · <em>${money(o.value)}</em>`;
+    const n = o.tier === "deadline" ? o.days - 30 : o.left;
+    const sel = f.dev === "open" && f.sel === o.gk ? " sel" : "";
+    const pick = f.dev === "open" ? `<button class="pick" data-act="select" data-gk="${esc(o.gk)}" aria-label="Show ${esc(o.seller)}"></button>` : "";
+    return `<div class="row${sel}" data-row="${esc(o.id)}">
+      ${pick}
+      <div class="n ${o.tier}" aria-label="${o.tier === "deadline" ? `${n} days past day 30` : `${n} days left`}">${n}</div>
+      <div class="t"><b>${esc(o.seller)}</b><span class="owed">${owed}</span>
+        <span class="meta">ordered ${short(o.t)} · by ${short(o.claimBy)}</span>${f.concept === "tab" ? ruler(o) : ""}</div>
+      ${slot(f, o)}</div>`;
+  }
+
+  function listBody(f) {
+    let body = "";
+    if (g.s === "loading") {
+      body = `<div class="lede"><p>Reading the ledger.</p></div><div class="rows" aria-busy="true">${[0,1,2].map(() => `<div class="skel"><i style="height:28px"></i><span style="display:flex;flex-direction:column;gap:8px"><i style="width:70%"></i><i style="width:50%"></i></span><i style="height:44px;border-radius:8px"></i></div>`).join("")}</div>`;
+    } else if (g.s === "failed") {
+      body = `<div class="state" role="alert"><p>The ledger could not be read, so overdue mail is unknown.<small>Nothing was changed. No order is shown as safe.</small></p><button class="btn" data-act="retry">Try again</button></div>`;
+    } else if (g.s === "empty") {
+      body = `<div class="state"><p>All is well.<small>No untracked order has waited 14 days. An order shows here on its 14th day.</small></p>
+        <button class="btn ghost" data-act="${f.concept === "desk" ? "back" : "tab"}" data-tab="packages">Open Packages</button></div>`;
+    } else {
+      const L = listed();
+      const red = L.filter((o) => o.tier === "deadline"), amber = L.filter((o) => o.tier === "maybe");
+      const band = (rows, tier, small, title) => rows.length ? `<div class="band"><div class="bandhead ${tier}"><small>${small}</small><b>${title}</b></div>
+        <div class="rows">${rows.map((o) => rowHTML(f, o)).join("")}</div></div>` : "";
+      body = `${lede(f)}
+        <div class="tag-new" data-tag="New: replaces the Past 14 days page" style="display:flex;flex-direction:column;gap:16px">
+        ${band(red, "deadline", "days over", "Past day 30 by order date")}
+        ${band(amber, "maybe", "days left", "Claim window open")}</div>
+        <p class="foot">Tracked mail is not listed: the carrier watches it. Days count from the order date. TCGplayer counts 30 days from the delivery estimate, so its window can close later.</p>`;
+    }
+    return `${nav(f)}${body}`;
+  }
+
+  function factsBody(f, o, inSheet) {
+    if (!o) return `<div class="facts"><p class="note">Pick an order on the left page.</p></div>`;
+    const tier = o.tier === "deadline"
+      ? `<span class="tier deadline">day ${o.days} · past day 30 by order date</span>`
+      : `<span class="tier maybe">day ${o.days} · claim by ${short(o.claimBy)}</span>`;
+    const stamped = f.claimed.has(o.gk);
+    const copy = on("sheet-copy")
+      ? `<button class="copybtn tag-new" data-tag="New: copy" data-act="copy" aria-label="Copy order number">${f.copied ? "Copied" : "Copy"}</button>` : "";
+    const lines = g.s === "unknown" ? `<div class="kv"><dt>Cards still owed</dt><dd>unknown</dd></div>`
+      : o.cards.map((c) => `<div class="kv"><dt>${esc(c[0])}<small>${esc(c[1])}</small></dt><dd>${c[2]} × ${money(c[3])}</dd></div>`).join("")
+        + `<div class="kv"><dt><b>Still owed</b></dt><dd><b>${o.owed} cards · ${money(o.value)}</b></dd></div>`;
+    const acts = stamped
+      ? `<div class="slot" style="width:auto;justify-content:flex-start;gap:12px"><span class="impr${f.landed === o.gk ? " lands" : ""}" role="img" aria-label="Stamped Claim filed">CLAIM<br>FILED</span>
+          <button class="act undo" data-act="undo" data-gk="${esc(o.gk)}">Undo</button></div>`
+      : `<button class="btn wide" data-act="claim" data-gk="${esc(o.gk)}">${f.failed.has(o.gk) ? "Not saved. Press again to stamp Claim filed" : "Claim filed"}</button>
+         <div class="two"><button class="btn ghost" data-act="stamp-other" data-gk="${esc(o.gk)}">Seller contacted</button><button class="btn ghost" data-act="stamp-other" data-gk="${esc(o.gk)}">Other stamps</button></div>`;
+    return `<div class="facts"${inSheet ? "" : ` style="padding-top:44px"`}>
+      <h3>${esc(o.seller)}</h3>${tier}
+      <p class="note">File the claim with TCGplayer, then stamp it here. The stamp takes the order off this list at the next load.</p>
+      <dl><div class="kv"><dt>Order</dt><dd>${esc(o.id)}${copy}</dd></div><div class="kv"><dt>Ordered</dt><dd>${o.date}</dd></div><div class="kv"><dt>Tracking</dt><dd>none</dd></div></dl>
+      <dl class="lines">${lines}</dl>
+      <div class="acts">${acts}</div></div>`;
+  }
+
+  function sheetHTML(f) {
+    const o = ORDERS.find((x) => x.gk === f.sheet);
+    return `<div class="scrim" data-act="sheet-close"></div><div class="sheet tag-new" data-tag="New: claim sheet" role="dialog" aria-modal="true" aria-label="Claim">
+      <span class="grab" aria-hidden="true"></span>
+      <div class="bar"><button data-act="sheet-close" style="justify-self:start">Cancel</button><b>Claim</b><span></span></div>
+      ${factsBody(f, o, true)}</div>`;
+  }
+
+  function calendar(f) {
+    if (!on("desk-calendar")) return `<div class="placeholder">Calendar hidden. The right page would show the chosen order's cards only.</div>${detail(f)}`;
+    const start = Date.UTC(2026, 10, 8), L = listed();
+    const byDate = {};
+    L.forEach((o) => { (byDate[iso(o.claimBy)] = byDate[iso(o.claimBy)] || []).push(o); });
+    const sel = ORDERS.find((o) => o.gk === f.sel);
+    let cells = ["S","M","T","W","T","F","S"].map((d) => `<span class="dh" aria-hidden="true">${d}</span>`).join("");
+    for (let i = 0; i < 35; i++) {
+      const t = start + i * DAY, k = iso(t), hits = byDate[k] || [];
+      const d = new Date(t).getUTCDate(), first = d === 1 || i === 0;
+      const cls = ["d", t < TODAY ? "past" : "", t === TODAY ? "today" : "", hits.length ? "has" : "", sel && hits.includes(sel) ? "on" : ""].join(" ");
+      const label = `${short(t)}${t === TODAY ? ", today" : ""}${hits.length ? `, claim by for ${hits.map((h) => h.seller).join(", ")}` : ""}`;
+      const inner = `${first ? `<span class="mon">${MON[new Date(t).getUTCMonth()]}</span>` : ""}<span>${d}</span>${hits.map((h) => `<i class="${h.tier}"></i>`).join("")}`;
+      cells += hits.length ? `<button class="${cls}" data-act="select" data-gk="${esc(hits[0].gk)}" aria-label="${esc(label)}">${inner}</button>`
+                           : `<span class="${cls}" aria-label="${esc(label)}">${inner}</span>`;
+    }
+    return `<div class="cal tag-new" data-tag="New: claim-by calendar"><h2>Claim by</h2><div class="wk">${cells}</div></div>${detail(f)}`;
+  }
+  function detail(f) {
+    const o = ORDERS.find((x) => x.gk === f.sel);
+    if (!o || !listed().length) return "";
+    const items = g.s === "unknown" ? `<li>Cards still owed<span>unknown</span></li>` : o.cards.map((c) => `<li>${esc(c[0])}<span>${c[2]} × ${money(c[3])}</span></li>`).join("");
+    return `<div class="detail"><h3>${esc(o.seller)}</h3><span class="meta">order ${esc(o.id)} · ${short(o.t)} → ${short(o.claimBy)}</span><ul>${items}</ul></div>`;
+  }
+
+  function tabbar(f) {
+    const tabs = f.concept === "tab" ? ["packages","tally","orphaned","claims","ledger"] : ["packages","tally","orphaned","ledger"];
+    const cur = f.screen === "list" || f.screen === "sheet" ? (f.concept === "tab" ? "claims" : (f.from || "packages")) : f.screen;
+    const n = listed().filter((o) => !f.claimed.has(o.gk)).length;
+    const badge = (t) => {
+      if (t === "orphaned") return `<span class="badge">2</span>`;
+      if (t !== "claims" || !on("tab-badge")) return "";
+      if (g.s === "failed") return `<span class="badge" aria-label="unknown">?</span>`;
+      if (g.s === "loading" || !n) return "";
+      return `<span class="badge tag-new" data-tag="New: badge">${n}</span>`;
+    };
+    const label = { packages:"Packages", tally:"Tally", orphaned:"Orphaned", claims:"Claims", ledger:"Ledger" };
+    return `<nav class="tabbar${f.concept === "desk" ? " tag-today" : ""}" ${f.concept === "desk" ? `data-tag="Today: tab bar"` : ""} role="tablist" aria-label="Sections"><div class="glass">
+      ${tabs.map((t) => `<button role="tab" aria-selected="${t === cur}" data-act="tab" data-tab="${t}" class="${t === "claims" ? "tag-new" : ""}" ${t === "claims" ? `data-tag="New: tab"` : ""}><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[t]}</svg>${label[t]}${badge(t)}</button>`).join("")}
+    </div></nav>`;
+  }
+
+  const status = (left, right) => `<div class="status" aria-hidden="true"><span>${left}</span><span>${right}</span></div>`;
+
+  function screenBody(f) {
+    if (f.screen === "packages") return packagesBody(f);
+    if (f.screen === "tally") return tallyBody(f);
+    if (f.screen === "orphaned" || f.screen === "ledger") return `<div class="placeholder">${f.screen === "orphaned" ? "Orphaned" : "Ledger"}, as today. Not drawn.</div>`;
+    return listBody(f);
+  }
+
+  function render(f) {
+    const el = document.getElementById(`dev-${f.concept}-${f.dev}`);
+    const keepL = el.querySelector(".page.l .scr, .scr");
+    const scrollTop = keepL && !f.pushed ? keepL.scrollTop : 0;
+    let html;
+    if (f.dev === "open") {
+      let left, right;
+      if (f.screen === "list" || f.screen === "sheet") {
+        left = listBody(f);
+        right = f.concept === "desk" ? `<div class="nav notop" style="height:0;padding-top:12px"></div>${calendar(f)}` : factsBody(f, ORDERS.find((o) => o.gk === f.sel) && listed().length ? ORDERS.find((o) => o.gk === f.sel) : null, false);
+        if (f.concept === "tab" && !listed().length) right = `<div class="placeholder">The claim facts show here when an order is listed.</div>`;
+      } else {
+        left = screenBody(f);
+        right = `<div class="placeholder">${f.screen === "tally" ? "Tally spreads over both pages, as today (duo-card-in-hand, item 24 b). Not drawn." : "Packages keeps its one-page layout, as today. Not drawn."}</div>`;
+      }
+      html = `${status("9:41", "")}
+        <div class="page l"><div class="scr${f.pushed ? " push-in" : ""}" style="padding-bottom:24px">${left}</div></div>
+        <div class="fold" aria-hidden="true"><span>FOLD 455.5–495.5</span></div>
+        <div class="page r"><div class="status" aria-hidden="true" style="justify-content:flex-end"><span>100%</span></div>
+          <div class="scr" style="padding-bottom:calc(var(--tabbar) + 16px)">${right}</div>${tabbar(f)}</div>`;
+    } else {
+      html = `${status("9:41", "100%")}<div class="scr${f.pushed ? " push-in" : ""}">${screenBody(f)}</div>${f.sheet ? sheetHTML(f) : ""}${tabbar(f)}`;
+    }
+    el.innerHTML = html;
+    const sc = el.querySelector(".page.l .scr, .scr");
+    if (sc) sc.scrollTop = scrollTop;
+    f.pushed = false; f.landed = null;
+  }
+
+  function build() {
+    for (const concept of ["desk","tab"]) {
+      for (const dev of DEVICES) { frames[`${concept}-${dev}`] = freshFrame(concept, dev); render(frames[`${concept}-${dev}`]); }
+    }
+    document.getElementById("concept-desk").hidden = !on("concept-desk") || g.c === "tab";
+    document.getElementById("concept-tab").hidden = !on("concept-tab") || g.c === "desk";
+  }
+
+  /* ---- the controls ---- */
+  function controls() {
+    const sb = document.getElementById("stateBtns");
+    sb.innerHTML = STATES.map(([k, l]) => `<button class="chip" type="button" data-state="${k}" aria-pressed="${g.s === k}">${l}</button>`).join("");
+    document.getElementById("orderBtns").innerHTML = [["closing","Nearest day 30 first"],["strict","Strict days left (oldest first)"]]
+      .map(([k, l]) => `<button class="chip" type="button" data-order="${k}" aria-pressed="${g.o === k}">${l}</button>`).join("");
+    document.getElementById("optBtns").innerHTML = OPTS.map(([k, l]) => `<label class="chip"><input type="checkbox" data-opt-box="${k}" ${on(k) ? "checked" : ""}> ${l}</label>`).join("");
+    const base = location.href.split("#")[0];
+    const L = [["#","both concepts, loaded"],["#c=desk&p=list","desk list"],["#c=desk&p=packages","desk masthead line"],["#c=desk&s=claimed&p=list","desk, two stamped"],
+      ["#c=tab&p=list","Claims tab"],["#c=tab&p=sheet","claim sheet"],["#c=tab&p=tally","Tally flag"],["#s=savefail&p=list","stamp not saved"],["#s=unknown&p=list","owed unknown"],
+      ["#s=loading&p=list","loading"],["#s=failed&p=list","read failed"],["#s=empty&p=list","empty"],["#o=strict&p=list","strict order"]];
+    document.getElementById("links").innerHTML = "Deep links: " + L.map(([h, l]) => `<a href="${esc(base + h)}">${l}</a>`).join("");
+  }
+
+  document.addEventListener("click", (e) => {
+    const st = e.target.closest("[data-state]");
+    if (st) { g.s = st.dataset.state; writeHash(); controls(); build(); return; }
+    const od = e.target.closest("[data-order]");
+    if (od) { g.o = od.dataset.order; writeHash(); controls(); build(); return; }
+    if (e.target.id === "resetBtn") { build(); return; }
+    const a = e.target.closest("[data-act]");
+    if (!a) return;
+    const dev = a.closest(".dev");
+    if (!dev) return;
+    const f = frames[`${dev.dataset.concept}-${dev.dataset.dev}`];
+    const gk = a.dataset.gk;
+    switch (a.dataset.act) {
+      case "open-list": f.from = f.screen === "tally" ? "tally" : "packages"; f.screen = "list"; f.pushed = true; break;
+      case "back": f.screen = f.from || "packages"; f.pushed = true; break;
+      case "tab": {
+        const t = a.dataset.tab;
+        if (f.concept === "tab" && t === "claims") { f.screen = "list"; f.sheet = null; }
+        else { f.screen = t; f.from = t === "tally" ? "tally" : "packages"; f.sheet = null; }
+        break; }
+      case "claim":
+        if (g.s === "savefail" && !f.failed.has(gk) && gk === ORDERS[1].gk) { f.failed.add(gk); break; }
+        f.failed.delete(gk); f.claimed.add(gk); f.landed = gk;
+        if (f.sheet) f.sheet = null;
+        break;
+      case "undo": f.claimed.delete(gk); break;
+      case "retry": g.s = "loaded"; writeHash(); controls(); build(); return;
+      case "sheet": if (f.dev === "open") { f.sel = gk; } else { f.sheet = gk; f.copied = false; } break;
+      case "sheet-close": f.sheet = null; break;
+      case "copy": f.copied = true; break;
+      case "select": f.sel = gk; f.copied = false; break;
+      case "stamp-other": break; /* the other five stamps open the existing stamp editor; not drawn */
+    }
+    render(f);
+  });
+  document.addEventListener("change", (e) => {
+    const k = e.target.dataset && e.target.dataset.optBox;
+    if (k) { if (e.target.checked) g.hide.delete(k); else g.hide.add(k); writeHash(); build(); }
+    if (e.target.id === "tagsBox") document.body.classList.toggle("tags-on", e.target.checked);
+  });
+  window.addEventListener("hashchange", () => { readHash(); controls(); build(); });
+
+  readHash(); controls(); build();
+})();
+</script>
+</body>
+</html>

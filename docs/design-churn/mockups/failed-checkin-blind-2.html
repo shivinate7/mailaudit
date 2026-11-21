@@ -101,7 +101,7 @@ button { font: inherit; color: inherit; }
   --fs-c1: 43px; --lh-c1: 51px; --fs-c2: 40px; --lh-c2: 48px; --pip: 36px; --tap: 64px;
 }
 .screen.open { display: grid; grid-template-columns: 455.5px 40px 455.5px; border-radius: 22px; }
-.hinge { background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 39px, var(--line) 39px 40px), var(--page); }
+.hinge { background: var(--page); border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
 .page { position: relative; height: 100%; overflow: hidden; display: flex; flex-direction: column; background: var(--surface); }
 .solo { position: absolute; inset: 0; display: flex; flex-direction: column; }
 .safe { padding-top: max(var(--sa-top), env(safe-area-inset-top)); padding-bottom: max(var(--sa-bottom), env(safe-area-inset-bottom));
@@ -329,6 +329,7 @@ button { font: inherit; color: inherit; }
 .ax .lg-only { display: none; }
 .ax .tray .t2, .ax .lg .lx .b { display: none; }
 .ax .tapehead, .ax .tapeflow { display: none; }
+.ax .lg .pip { display: none; }
 .ax .tapewrap { height: auto; padding-top: 0; }
 .ax .tape { display: none; }
 .chip > span:first-child { display: flex; flex-direction: column; }
@@ -581,7 +582,7 @@ function tray(dev, first, notab) {
   const icon = f ? ICON.alert : u ? ICON.q : ICON.clock;
   const top = list.slice().sort((a, b) => b.at - a.at)[0]; const c = card(top.card);
   const t1 = list.length === 1 ? `${esc(c.name)}, copy ${top.n}` : `${list.length} ticks not saved`;
-  const t2 = list.length === 1 ? (top.st === "failed" ? "Did not save. Count not changed." : top.st === "unknown" ? "No answer yet. Redo cannot count it twice." : "Waiting for signal. Kept on this phone.") : `Newest: ${esc(c.name)}, copy ${top.n}`;
+  const t2 = list.length === 1 ? (top.st === "failed" ? "The count stays as it was until Redo works." : top.st === "unknown" ? "Redo is safe: it cannot count a copy twice." : "Kept on this phone. It sends itself when signal returns.") : `Newest: ${esc(c.name)}, copy ${top.n}`;
   const short = `${list.length} not saved`;
   const btn = list.length === 1 ? `<button class="redo ${kind === "bad" ? "" : stClass(top.st)}" data-act="redo" data-tick="${top.id}" aria-label="Redo ${esc(c.name)}, copy ${top.n}">Redo</button>`
                                 : `<button class="redo ${kind === "bad" ? "" : kind}" data-act="redoall">Redo all</button>`;

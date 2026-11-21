@@ -1,0 +1,1160 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Find a Package</title>
+<style>
+/* Tokens. Spacing on the 4 px house step, radius 8 px, colour by role. Colour values are this
+   designer's own picks (blind brief: no repo or product colour). Type sizes are Apple Dynamic Type
+   text styles: default (Large) size, and AX5 for the largest accessibility size. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --radius: 8px;
+  --hit: 44px;
+  /* Safe-area fallbacks: designer's pick, not an Apple figure (no Apple page read gives one). */
+  --inset-top: max(env(safe-area-inset-top), 48px);
+  --inset-bottom: max(env(safe-area-inset-bottom), 20px);
+
+  --t-large: 34px; --l-large: 41px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-headline: 17px; --l-headline: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-subhead: 15px; --l-subhead: 20px;
+  --t-footnote: 13px; --l-footnote: 18px;
+  --t-caption: 12px; --l-caption: 16px;
+
+  --bg: #EEF0F4;
+  --surface: #FFFFFF;
+  --surface-2: #F5F6F9;
+  --text: #15171C;
+  --text-2: #4F5564;
+  --line: #D3D7DF;
+  --accent: #2A44C2;
+  --on-accent: #FFFFFF;
+  --ok: #1B7347;
+  --part: #965705;
+  --none: #5E6475;
+  --match: #FFE08A;
+  --match-text: #15171C;
+  --paper: #E6EDF7;
+  --stripe-a: #2A44C2;
+  --stripe-b: #C23A2B;
+  --danger: #B42318;
+  --hinge: #20232A;
+  --chrome-bg: #D9DDE5;
+  --chrome-surface: #FFFFFF;
+  --scrim: rgba(21, 23, 28, 0.32);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #000000; --surface: #17191F; --surface-2: #22252D; --text: #F1F3F7; --text-2: #AEB4C2;
+    --line: #333743; --accent: #97A7FF; --on-accent: #0A1240; --ok: #66CC92; --part: #F2B865;
+    --none: #A3A9B7; --match: #6E5813; --match-text: #FFF6DA; --paper: #1D2433;
+    --stripe-a: #97A7FF; --stripe-b: #F0826F; --danger: #FF8A80; --hinge: #3B3F48;
+    --chrome-bg: #111318; --chrome-surface: #1C1F26; --scrim: rgba(0, 0, 0, 0.55);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #000000; --surface: #17191F; --surface-2: #22252D; --text: #F1F3F7; --text-2: #AEB4C2;
+  --line: #333743; --accent: #97A7FF; --on-accent: #0A1240; --ok: #66CC92; --part: #F2B865;
+  --none: #A3A9B7; --match: #6E5813; --match-text: #FFF6DA; --paper: #1D2433;
+  --stripe-a: #97A7FF; --stripe-b: #F0826F; --danger: #FF8A80; --hinge: #3B3F48;
+  --chrome-bg: #111318; --chrome-surface: #1C1F26; --scrim: rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--chrome-bg);
+  color: var(--text);
+  font-family: -apple-system, system-ui, BlinkMacSystemFont, "Helvetica Neue", sans-serif;
+  font-size: var(--t-body); line-height: var(--l-body);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (forced-colors: active) {
+  .glyph svg, .tick svg { forced-color-adjust: auto; }
+  .row, .field, .btn, .tick, .step { border: 1px solid CanvasText !important; }
+}
+
+/* ---------- Mockup chrome (outside the device frames) ---------- */
+.sample {
+  position: sticky; top: 0; z-index: 20;
+  background: #A3201A; color: #FFFFFF;
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--t-subhead); line-height: var(--l-subhead); font-weight: 600;
+}
+.chrome { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); max-inline-size: 1500px; margin-inline: auto; }
+.chrome h1 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); }
+.chrome p { margin: 0; color: var(--text-2); font-size: var(--t-subhead); line-height: var(--l-subhead); max-inline-size: 70ch; }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-start; }
+.ctl { display: flex; flex-direction: column; gap: var(--space-1); }
+.ctl-name { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--text-2); }
+.seg { display: flex; flex-wrap: wrap; gap: var(--space-1); background: var(--chrome-surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-1); }
+.seg button { min-height: 36px; padding: 0 var(--space-3); border: 0; border-radius: 6px; background: transparent; font-size: var(--t-subhead); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.concept-pick { display: flex; align-items: center; gap: 0; }
+.concept-pick .hide { min-width: 36px; font-size: var(--t-footnote); color: var(--text-2); text-decoration: underline; }
+.restore { min-height: 36px; border: 1px dashed var(--text-2); border-radius: var(--radius); background: transparent; padding: 0 var(--space-3); font-size: var(--t-subhead); }
+.key { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; font-size: var(--t-subhead); color: var(--text-2); }
+.key span { display: inline-flex; gap: var(--space-2); align-items: center; }
+.checks { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--text-2); }
+.checks b { color: var(--text); }
+.concept-head { display: flex; flex-direction: column; gap: var(--space-1); }
+.concept-head h2 { margin: 0; font-size: var(--t-title3); line-height: var(--l-title3); }
+.devices { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+.device { display: flex; flex-direction: column; gap: var(--space-2); }
+.device-name { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--text-2); }
+.frame {
+  position: relative; overflow: hidden;
+  background: var(--bg); border-radius: var(--radius);
+  outline: 6px solid var(--hinge);
+  container-type: inline-size;
+}
+.frame[data-device="iphone-duo-folded"] { width: 466px; height: 678px; }
+.frame[data-device="iphone-duo-unfolded"] { width: 951px; height: 669px; }
+.frame[data-device="iphone-regular"] { width: 430px; height: 900px; resize: both; min-width: 320px; min-height: 560px; max-width: 600px; }
+.frame.resizable-note { }
+
+/* ---------- Device content ---------- */
+.duo-open { position: absolute; inset: 0; }
+.page { position: absolute; top: 0; bottom: 0; overflow: hidden; background: var(--bg); }
+.page.left { left: 0; width: 455px; }
+.page.right { left: 496px; width: 455px; }
+.hinge { position: absolute; top: 0; bottom: 0; left: 455.5px; width: 40px; background: var(--hinge); }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.statusbar {
+  height: var(--inset-top); flex: none;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--space-6); font-size: 15px; font-weight: 600;
+}
+.statusbar svg { display: block; }
+.homeind { flex: none; height: var(--inset-bottom); display: flex; align-items: center; justify-content: center; }
+.homeind i { display: block; width: 134px; max-width: 40%; height: 5px; border-radius: 3px; background: var(--text); opacity: .85; }
+.scroll { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+.scroll-pad { display: flex; flex-direction: column; gap: var(--space-4); padding: 0 var(--space-4) var(--space-6); }
+
+.navbar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--hit); padding: 0 var(--space-2); }
+.navbar .nav-title { flex: 1; text-align: center; font-size: 17px; line-height: 22px; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navbtn { min-height: var(--hit); min-width: var(--hit); padding: 0 var(--space-2); border: 0; background: transparent; color: var(--accent); font-size: 17px; display: inline-flex; align-items: center; gap: var(--space-1); border-radius: var(--radius); }
+.navbtn.ghost { visibility: hidden; }
+.largetitle { margin: 0; padding: 0 var(--space-4); font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; }
+.subline { padding: 0 var(--space-4); color: var(--text-2); font-size: var(--t-subhead); line-height: var(--l-subhead); }
+
+.group-title { margin: 0; padding: 0 var(--space-4); color: var(--text-2); font-size: var(--t-footnote); line-height: var(--l-footnote); font-weight: 600; }
+.group { display: flex; flex-direction: column; gap: var(--space-2); }
+.list { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+.list > * + * { border-top: 1px solid var(--line); }
+.row {
+  display: flex; align-items: center; gap: var(--space-3);
+  min-height: 60px; padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  border: 0; background: transparent; text-align: start; width: 100%;
+}
+.row[aria-current="true"] { background: var(--surface-2); box-shadow: inset 4px 0 0 var(--accent); }
+.row.faded { opacity: .55; }
+.row-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row-title { font-size: var(--t-headline); line-height: var(--l-headline); font-weight: 600; overflow-wrap: anywhere; }
+.row-sub { font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--text-2); overflow-wrap: anywhere; }
+.row-meta { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.chev { flex: none; color: var(--text-2); }
+.glyph { flex: none; width: 24px; height: 24px; display: inline-flex; }
+mark { background: var(--match); color: var(--match-text); border-radius: 3px; padding: 0 1px; }
+
+.bottombar { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3) 0; background: var(--bg); border-top: 1px solid var(--line); }
+.searchfield { display: flex; align-items: center; gap: var(--space-2); min-height: var(--hit); padding: 0 var(--space-1) 0 var(--space-3); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.searchfield svg { flex: none; color: var(--text-2); }
+.searchfield input { flex: 1 1 auto; min-width: 0; border: 0; background: transparent; min-height: var(--hit); font-size: var(--t-body); outline: none; }
+.searchfield:focus-within { border-color: var(--accent); box-shadow: 0 0 0 2px var(--accent); }
+.iconbtn { flex: none; width: var(--hit); height: var(--hit); border: 0; background: transparent; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius); }
+.iconbtn.ghost { visibility: hidden; }
+.tabbar { display: flex; justify-content: space-around; gap: var(--space-1); }
+.tab { flex: 1 1 0; min-height: 48px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--text-2); font-size: 11px; line-height: 13px; font-weight: 500; border-radius: var(--radius); }
+.tab[aria-current="page"] { color: var(--accent); }
+
+.empty { display: flex; flex-direction: column; gap: var(--space-4); align-items: flex-start; padding: var(--space-6) var(--space-4); }
+.empty p { margin: 0; font-size: var(--t-body); line-height: var(--l-body); }
+.btn { min-height: 50px; padding: 0 var(--space-4); border-radius: var(--radius); border: 0; font-size: var(--t-headline); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.plain { background: var(--surface); color: var(--accent); border: 1px solid var(--line); }
+.btn.wide { width: 100%; }
+.linkbtn { min-height: var(--hit); border: 0; background: transparent; color: var(--accent); font-size: var(--t-subhead); padding: 0 var(--space-4); text-align: start; border-radius: var(--radius); }
+.toggle-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--hit); padding: var(--space-2) var(--space-4); background: var(--surface); border-radius: var(--radius); border: 0; width: 100%; text-align: start; font-size: var(--t-subhead); line-height: var(--l-subhead); }
+.switch { flex: none; width: 51px; height: 31px; border-radius: 16px; background: var(--line); position: relative; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 50%; background: #FFFFFF; transition: left .15s; }
+.switch.on { background: var(--ok); }
+.switch.on::after { left: 22px; }
+details.why { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--text-2); }
+details.why summary { min-height: var(--hit); display: flex; align-items: center; gap: var(--space-2); cursor: pointer; color: var(--accent); }
+details.why summary::before { content: ""; width: 0; height: 0; border-style: solid; border-width: 5px 0 5px 7px; border-color: transparent transparent transparent currentColor; }
+details.why[open] summary::before { transform: rotate(90deg); }
+details.why code { font-family: ui-monospace, monospace; overflow-wrap: anywhere; }
+.skeleton { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); min-height: 60px; justify-content: center; }
+.skeleton i { display: block; height: 12px; border-radius: 4px; background: var(--line); }
+.skeleton i:first-child { width: 55%; }
+.skeleton i:last-child { width: 80%; opacity: .6; }
+
+/* Order detail */
+.order-head { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-4); }
+.order-head h2 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); font-weight: 700; overflow-wrap: anywhere; }
+.facts { display: flex; flex-direction: column; gap: 2px; font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.facts b { color: var(--text); font-weight: 600; }
+.progress { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-4); }
+.progress-words { font-size: var(--t-headline); line-height: var(--l-headline); font-weight: 600; }
+.bar { display: flex; gap: 2px; height: 8px; }
+.bar i { flex: 1; border-radius: 2px; background: var(--line); }
+.bar i.got { background: var(--ok); }
+.tag { align-self: flex-start; font-size: var(--t-footnote); line-height: var(--l-footnote); font-weight: 600; color: var(--accent); }
+.line { display: flex; align-items: center; gap: var(--space-2); min-height: 60px; padding: var(--space-1) var(--space-3) var(--space-1) var(--space-1); flex-wrap: wrap; }
+.tick { flex: none; width: var(--hit); height: var(--hit); border: 0; background: transparent; display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius); color: var(--none); }
+.tick[aria-pressed="true"] { color: var(--ok); }
+.tick[aria-pressed="mixed"] { color: var(--part); }
+.line-main { flex: 1 1 10rem; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.line-name { font-size: var(--t-body); line-height: var(--l-body); overflow-wrap: anywhere; }
+.line-price { font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.stepper { flex: none; display: flex; align-items: center; gap: var(--space-1); }
+.step { width: var(--hit); height: var(--hit); border: 1px solid var(--line); background: var(--surface-2); border-radius: var(--radius); display: inline-flex; align-items: center; justify-content: center; }
+.step:disabled { opacity: .4; cursor: default; }
+.step-val { min-width: 4.2em; text-align: center; font-size: var(--t-subhead); line-height: var(--l-subhead); font-variant-numeric: tabular-nums; }
+.actionbar { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4) 0; background: var(--bg); border-top: 1px solid var(--line); }
+.actionrow { display: flex; gap: var(--space-2); }
+.actionrow .btn { flex: 1 1 0; }
+.answer { font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--ok); font-weight: 600; min-height: var(--l-subhead); }
+.placeholder-panel { display: flex; flex-direction: column; justify-content: center; gap: var(--space-2); height: 100%; padding: var(--space-8); color: var(--text-2); }
+
+/* Envelope concept */
+.tray { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-3) var(--space-2); background: var(--bg); border-top: 1px solid var(--line); }
+.tray-head { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); min-height: var(--hit); padding-left: var(--space-1); }
+.tray-head span { font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--text-2); }
+.envelope {
+  position: relative;
+  border-radius: var(--radius);
+  padding: 6px;
+  background: repeating-linear-gradient(135deg, var(--stripe-a) 0 12px, var(--paper) 12px 18px, var(--stripe-b) 18px 30px, var(--paper) 30px 36px);
+}
+.envelope-inner { position: relative; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); padding: var(--space-2); background: var(--paper); border-radius: 4px; }
+.envelope-inner::before {
+  content: ""; position: absolute; inset: 0; pointer-events: none; border-radius: 4px;
+  background:
+    linear-gradient(to top right, transparent calc(50% - 1px), var(--line) 50%, transparent calc(50% + 1px)) left top / 50% 46% no-repeat,
+    linear-gradient(to top left, transparent calc(50% - 1px), var(--line) 50%, transparent calc(50% + 1px)) right top / 50% 46% no-repeat;
+  opacity: .9;
+}
+.field {
+  position: relative; display: flex; flex-direction: column; justify-content: center; gap: 2px; text-align: start;
+  min-height: 64px; padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface);
+}
+.field.set { border-color: var(--accent); box-shadow: inset 0 0 0 1px var(--accent); }
+.field-name { display: flex; align-items: center; gap: var(--space-1); font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--text-2); }
+.field-val { font-size: var(--t-headline); line-height: var(--l-headline); font-weight: 600; overflow-wrap: anywhere; }
+.field-val.empty-val { color: var(--accent); font-weight: 500; }
+.field-kind { font-size: var(--t-caption); line-height: var(--l-caption); color: var(--text-2); }
+.pile-head { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) var(--space-4) var(--space-3); }
+.pile-count { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 700; }
+.pile-sub { font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--text-2); }
+.cand { display: flex; flex-direction: column; }
+.cand-body { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 0 var(--space-3); background: var(--surface-2); }
+.cand-body .facts { padding: var(--space-2) var(--space-4) 0; }
+.cand-body .progress { padding-top: 0; }
+.cand-body .list { margin: 0 var(--space-3); }
+.cand-body .actionrow { padding: 0 var(--space-3); }
+.big-envelope .envelope-inner { grid-template-columns: 1fr 1fr; gap: var(--space-3); padding: var(--space-4); }
+.big-envelope .field { min-height: 120px; padding: var(--space-3) var(--space-4); }
+.big-envelope { padding: 8px; }
+
+/* Sheet */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: 18%; z-index: 6; display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; }
+.grabber { flex: none; display: flex; justify-content: center; padding-top: var(--space-2); }
+.grabber i { width: 36px; height: 5px; border-radius: 3px; background: var(--line); }
+.sheet-bar { flex: none; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: 0 var(--space-2); min-height: var(--hit); }
+.sheet-bar .nav-title { flex: 1; text-align: center; font-size: 17px; line-height: 22px; font-weight: 600; }
+.sheet-body { flex: 1 1 auto; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-2) var(--space-4) var(--space-4); }
+.sheet-body p { margin: 0; font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--text-2); }
+.pickrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--hit); padding: var(--space-2) var(--space-3); border: 0; background: transparent; width: 100%; text-align: start; font-size: var(--t-body); line-height: var(--l-body); }
+.pickrow small { color: var(--text-2); font-size: var(--t-footnote); }
+.pickrow[aria-pressed="true"] { color: var(--accent); font-weight: 600; }
+.cal { display: grid; grid-template-columns: repeat(7, minmax(0, 1fr)); gap: var(--space-1); }
+.cal-h { text-align: center; font-size: var(--t-caption); line-height: var(--l-caption); color: var(--text-2); }
+.day { min-height: var(--hit); border: 0; border-radius: var(--radius); background: var(--surface-2); font-size: var(--t-subhead); font-variant-numeric: tabular-nums; padding: 0; }
+.day[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 700; }
+.day.today { box-shadow: inset 0 0 0 1px var(--accent); }
+.day.blank { visibility: hidden; }
+.thick { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); }
+.thick button { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-2); min-height: 96px; padding: var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); text-align: start; font-size: var(--t-body); line-height: var(--l-body); }
+.thick button[aria-pressed="true"] { border-color: var(--accent); box-shadow: inset 0 0 0 2px var(--accent); font-weight: 600; }
+.textfield { min-height: var(--hit); width: 100%; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-2); font-size: var(--t-body); }
+textarea.textfield { min-height: 96px; padding: var(--space-2) var(--space-3); resize: none; }
+.toast { position: absolute; left: var(--space-4); right: var(--space-4); top: calc(var(--inset-top) + var(--hit) + var(--space-2)); z-index: 7; padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: var(--text); color: var(--bg); font-size: var(--t-subhead); line-height: var(--l-subhead); }
+
+/* Largest accessibility size (AX5). Rows restack instead of truncating. */
+.ax5 {
+  --t-large: 60px; --l-large: 70px;
+  --t-title2: 56px; --l-title2: 66px;
+  --t-title3: 55px; --l-title3: 65px;
+  --t-headline: 53px; --l-headline: 62px;
+  --t-body: 53px; --l-body: 62px;
+  --t-callout: 51px; --l-callout: 60px;
+  --t-subhead: 49px; --l-subhead: 58px;
+  --t-footnote: 44px; --l-footnote: 52px;
+  --t-caption: 43px; --l-caption: 51px;
+}
+.ax5 .row { flex-wrap: wrap; align-items: flex-start; padding-top: var(--space-3); padding-bottom: var(--space-3); }
+.ax5 .row .glyph { width: 40px; height: 40px; margin-top: 12px; }
+.ax5 .row-main { flex-basis: calc(100% - 64px); }
+.ax5 .row-meta { flex-basis: 100%; flex-direction: row; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-4); padding-left: 52px; }
+.ax5 .row .chev { display: none; }
+.ax5 .navbtn .lbl { display: none; }
+.ax5 .stepper { flex-basis: 100%; padding-left: 52px; }
+.ax5 .envelope-inner { grid-template-columns: 1fr; }
+.ax5 .envelope-inner::before { display: none; }
+.ax5 .screen.env-ax5 .scroll { }
+.ax5 .tab { font-size: 11px; line-height: 13px; }
+.ax5 .thick { grid-template-columns: 1fr; }
+.ax5 .cal { gap: 2px; }
+.ax5 .day { font-size: 26px; min-height: 56px; }
+.ax5 .cal-h { font-size: 20px; line-height: 24px; }
+.ax5 .sheet { top: 6%; }
+.ax5 .btn { min-height: 72px; }
+.ax5 .tray-head span { display: none; }
+
+/* "New:" labels: every part is new to a blind designer, who saw no current screen. */
+body.show-new [data-new] { outline: 2px dashed var(--accent); outline-offset: -2px; position: relative; }
+body.show-new .sheet[data-new] { position: absolute; }
+body.show-new [data-new]::after {
+  content: "New: " attr(data-new); position: absolute; top: 0; right: 0; z-index: 4;
+  padding: 0 6px; background: var(--accent); color: var(--on-accent);
+  font-size: 11px; line-height: 16px; font-weight: 600; border-radius: 0 0 0 4px; pointer-events: none;
+}
+.hidden { display: none !important; }
+</style>
+</head>
+<body class="show-new">
+<div class="sample" role="note">Sample: every seller, card, order number, date and price on this page is made up. No figure here is real.</div>
+
+<main class="chrome">
+  <header class="concept-head">
+    <h1>Find the order an envelope belongs to</h1>
+    <p>Designer kind: blind. Two concepts for one job: an envelope in one hand, the phone in the other, land on the right order in a few seconds and tick off the cards. Every tap works. Ticks are shared across all frames, so a tick in one frame shows in the others.</p>
+  </header>
+
+  <div class="controls">
+    <div class="ctl">
+      <span class="ctl-name">Concept</span>
+      <div class="seg" id="concept-seg"></div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-name">State</span>
+      <div class="seg" id="state-seg"></div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-name">Theme</span>
+      <div class="seg" id="theme-seg">
+        <button type="button" data-theme-set="auto">System</button>
+        <button type="button" data-theme-set="light">Light</button>
+        <button type="button" data-theme-set="dark">Dark</button>
+      </div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-name">Frames</span>
+      <div class="seg" id="device-seg"></div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-name">Options inside the concept</span>
+      <div class="seg" id="option-seg"></div>
+    </div>
+    <div class="ctl">
+      <span class="ctl-name">Labels</span>
+      <div class="seg"><button type="button" id="new-toggle" aria-pressed="true">Show "New:" labels</button></div>
+    </div>
+  </div>
+
+  <div class="key" aria-label="Key to the package glyphs">
+    <span><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="var(--none)" stroke-width="2"/></svg>Nothing arrived</span>
+    <span><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="var(--part)" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z" fill="var(--part)"/></svg>Some arrived</span>
+    <span><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="var(--ok)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="var(--surface)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>All arrived</span>
+  </div>
+
+  <section id="stage" aria-live="polite"></section>
+  <p class="checks" id="checks"></p>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------------- Sample data ---------------- */
+  var TODAY = new Date(2026, 10, 20);
+  var DAY = 86400000;
+  function daysAgo(n) { return new Date(TODAY.getTime() - n * DAY); }
+  function ago(d) { return Math.round((TODAY - d) / DAY); }
+  var MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  var MONTHS_LONG = ['january', 'february', 'march', 'april', 'may', 'june', 'july', 'august', 'september', 'october', 'november', 'december'];
+  function fmtDate(d) { return MONTHS[d.getMonth()] + ' ' + d.getDate(); }
+  function money(n) { return '$' + n.toFixed(2); }
+
+  function rng(seed) {
+    return function () {
+      seed |= 0; seed = seed + 0x6D2B79F5 | 0;
+      var t = Math.imul(seed ^ seed >>> 15, 1 | seed);
+      t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t;
+      return ((t ^ t >>> 14) >>> 0) / 4294967296;
+    };
+  }
+  var SELLERS = ['MintCondition Max', 'Two Rivers Games', 'Lantern Hobby', 'Badger Box Breaks',
+    'Corner Pocket Collectibles', 'northwind.cards', 'Gilded Sleeve', 'Tabletop Annex', 'Sixty-Card Shop',
+    'Old Mill Gaming', 'KestrelTCG', 'Bluefin Comics and Cards', 'Hollow Oak Games', 'Reliquary Cards',
+    'Quarter Bin Heroes', 'Second Spin Cards', 'The Card Cellar', 'ridgeback_singles'];
+  var CARDS = ['Grove Sentinel', 'Mirror-Glass Adept', 'Copperback Drake', 'Saltmarsh Witch', 'Quiet Archivist',
+    'Ember Courier', 'Thornwall Ranger', 'Vault of Whispers', 'Gale Scribe', 'Hollowbone Hound', 'Starfall Herald',
+    'Ironroot Elder', 'Tidepool Seer', 'Duskwing Owl', 'Brass Familiar', 'Riverstone Monk', 'Pale Harbinger',
+    'Cinder Acolyte', 'Moss-Covered Golem', 'Frostglass Shard', 'Wandering Tinker', 'Oathbound Squire',
+    'Veilpiercer', 'Smoke and Mirrors', 'Lighthouse Keeper', 'Barrow Wight', 'Sunscorch Nomad', 'Kelp Strangler',
+    'Glimmer Moth', 'Ruin Cartographer', 'Hearth Guardian', 'Stormcall Ritual', 'Bramble Pact',
+    'Night Market Fence', 'Silver Lantern', 'Patchwork Scarecrow', 'Echoing Bell', 'Wildfire Envoy'];
+  var HEX = '0123456789ABCDEF';
+
+  function makeOrders() {
+    var r = rng(7);
+    function pick(a) { return a[Math.floor(r() * a.length)]; }
+    function oid() { var s = ''; for (var i = 0; i < 12; i++) { s += HEX[Math.floor(r() * 16)]; if (i === 3 || i === 7) s += '-'; } return s; }
+    var orders = [
+      { id: '4F2A-91C0-7B3E', seller: 'Pike Street Cards', bought: daysAgo(12), ship: 1.31, lines: [
+        { name: 'Ashen Tidecaller', qty: 4, price: 0.18, got: 0 },
+        { name: 'Lantern of Five Roads', qty: 1, price: 1.25, got: 0 },
+        { name: 'Grove Sentinel', qty: 2, price: 0.35, got: 0 }] },
+      { id: '9D03-5E7A-C214', seller: 'Pike Street Cards', bought: daysAgo(3), ship: 0.99, lines: [
+        { name: 'Copperback Drake', qty: 1, price: 0.75, got: 0 }] },
+      { id: 'B7E1-04AF-3392', seller: 'dragonhoard_tcg', bought: daysAgo(9), ship: 0.99, lines: [
+        { name: 'Ashen Tidecaller', qty: 1, price: 0.22, got: 0 },
+        { name: 'Quiet Archivist', qty: 1, price: 0.40, got: 0 }] },
+      { id: '61C8-D2B0-7A5F', seller: 'Lantern Hobby', bought: daysAgo(15), ship: 1.31, lines: [
+        { name: 'Starfall Herald', qty: 2, price: 0.30, got: 2 },
+        { name: 'Vault of Whispers', qty: 1, price: 2.10, got: 0 },
+        { name: 'Echoing Bell', qty: 1, price: 0.15, got: 0 }] }
+    ];
+    for (var i = 0; i < 60; i++) {
+      var n = 1 + Math.floor(r() * r() * 6);
+      var lines = [], used = {};
+      for (var j = 0; j < n; j++) {
+        var c = pick(CARDS); if (used[c]) continue; used[c] = 1;
+        lines.push({ name: c, qty: r() < 0.75 ? 1 : 2 + Math.floor(r() * 3), price: Math.round((0.1 + r() * r() * 2.4) * 100) / 100, got: 0 });
+      }
+      var a = 1 + Math.floor(r() * 46);
+      var o = { id: oid(), seller: pick(SELLERS), bought: daysAgo(a), ship: r() < 0.5 ? 0.99 : 1.31, lines: lines };
+      var p = a > 26 ? 0.92 : a > 10 ? 0.45 : 0.05;
+      lines.forEach(function (l) { if (r() < p) l.got = l.qty; });
+      orders.push(o);
+    }
+    return orders;
+  }
+
+  var orders = makeOrders();
+  function byId(id) { for (var i = 0; i < orders.length; i++) if (orders[i].id === id) return orders[i]; return null; }
+  function cardCount(o) { return o.lines.reduce(function (s, l) { return s + l.qty; }, 0); }
+  function gotCount(o) { return o.lines.reduce(function (s, l) { return s + l.got; }, 0); }
+  function stateOf(o) { var g = gotCount(o), c = cardCount(o); return g === 0 ? 'none' : g === c ? 'all' : 'some'; }
+  function isOpen(o) { return stateOf(o) !== 'all'; }
+  function total(o) { return o.lines.reduce(function (s, l) { return s + l.qty * l.price; }, 0) + o.ship; }
+  var STATE_WORD = { none: 'Nothing arrived', some: 'Some arrived', all: 'All arrived' };
+
+  /* ---------------- Matching ---------------- */
+  function norm(s) { return String(s).toLowerCase().replace(/[^a-z0-9]/g, ''); }
+  function esc(s) { return String(s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+  function hl(text, q) {
+    var nq = norm(q); if (!nq) return esc(text);
+    var map = [], flat = '';
+    for (var i = 0; i < text.length; i++) { var ch = text[i].toLowerCase(); if (/[a-z0-9]/.test(ch)) { map.push(i); flat += ch; } }
+    var at = flat.indexOf(nq); if (at < 0) return esc(text);
+    var s = map[at], e = map[at + nq.length - 1] + 1;
+    return esc(text.slice(0, s)) + '<mark>' + esc(text.slice(s, e)) + '</mark>' + esc(text.slice(e));
+  }
+  function parseDate(q) {
+    var t = q.trim().toLowerCase(); if (!t) return null;
+    var m;
+    if (t === 'today') return { from: 0, to: 0, label: 'Bought today' };
+    if (t === 'yesterday') return { from: 1, to: 1, label: 'Bought yesterday' };
+    if (t === 'this week') return { from: 0, to: 6, label: 'Bought this week' };
+    if (t === 'last week') return { from: 7, to: 13, label: 'Bought last week' };
+    if ((m = t.match(/^(\d+)\s*(day|days|week|weeks)\s*ago$/))) {
+      var n = +m[1] * (m[2][0] === 'w' ? 7 : 1); var w = m[2][0] === 'w' ? 3 : 1;
+      return { from: Math.max(0, n - w), to: n + w, label: 'Bought about ' + m[1] + ' ' + m[2] + ' ago' };
+    }
+    if ((m = t.match(/^(\d{1,2})\/(\d{1,2})$/))) return around(+m[1] - 1, +m[2]);
+    if ((m = t.match(/^([a-z]{3,})\.?\s*(\d{1,2})?$/))) {
+      var mi = -1;
+      for (var i = 0; i < 12; i++) if (MONTHS_LONG[i].indexOf(m[1]) === 0 && m[1].length >= 3) mi = i;
+      if (mi < 0) return null;
+      if (m[2]) return around(mi, +m[2]);
+      var y = mi > TODAY.getMonth() ? TODAY.getFullYear() - 1 : TODAY.getFullYear();
+      var first = new Date(y, mi, 1), last = new Date(y, mi + 1, 0);
+      return { from: Math.max(0, ago(last)), to: ago(first), label: 'Bought in ' + MONTHS_LONG[mi][0].toUpperCase() + MONTHS_LONG[mi].slice(1) };
+    }
+    return null;
+    function around(mo, d) {
+      var y = mo > TODAY.getMonth() ? TODAY.getFullYear() - 1 : TODAY.getFullYear();
+      var at = ago(new Date(y, mo, d));
+      if (isNaN(at) || at < -1) return null;
+      return { from: Math.max(0, at - 3), to: at + 3, label: 'Bought around ' + MONTHS[mo] + ' ' + d };
+    }
+  }
+
+  /* ---------------- View state ---------------- */
+  var ui = {
+    concept: 'search', state: 'ready', theme: 'auto', device: 'all',
+    hidden: {}, opts: { dates: true, thickness: true, postmark: true }
+  };
+  var S; // per-run state, reset by the hash
+  function freshState() {
+    return {
+      data: 'ready',          // ready | loading | error | empty
+      tab: 'find',
+      search: { q: '', open: null, includeArrived: false, answer: null },
+      env: { from: null, postmark: null, thick: null, inside: '', open: null, more: false, includeArrived: false, sheet: null, answer: null },
+      setAside: null, toast: null
+    };
+  }
+
+  var CONCEPTS = {
+    search: { name: 'Clue search', states: [
+      ['ready', 'Start'], ['typing', 'Card clue'], ['date', 'Date clue'], ['detail', 'Order open'], ['done', 'All ticked'],
+      ['nomatch', 'No match'], ['loading', 'Loading'], ['error', 'Read failed'], ['empty', 'No orders yet']] },
+    envelope: { name: 'Envelope', states: [
+      ['ready', 'Start'], ['narrowed', 'Two clues'], ['one', 'One fits'], ['sheet', 'Picking a clue'], ['done', 'All ticked'],
+      ['nomatch', 'No match'], ['loading', 'Loading'], ['error', 'Read failed'], ['empty', 'No orders yet']] }
+  };
+  var OPTIONS = {
+    search: [['dates', 'Date clues']],
+    envelope: [['postmark', 'Postmark clue'], ['thickness', 'Thickness clue']]
+  };
+  var DEVICES = [
+    ['iphone-duo-folded', 'Duo folded'], ['iphone-duo-unfolded', 'Duo open'],
+    ['iphone-regular', 'Large phone'], ['ax5', 'Duo folded, largest text']
+  ];
+
+  function applyState(concept, st) {
+    orders = makeOrders();
+    S = freshState();
+    var F1 = '4F2A-91C0-7B3E';
+    if (st === 'loading' || st === 'error' || st === 'empty') S.data = st;
+    if (concept === 'search') {
+      if (st === 'typing') S.search.q = 'tidecaller';
+      if (st === 'date') S.search.q = 'nov 8';
+      if (st === 'nomatch') S.search.q = 'zebra';
+      if (st === 'detail' || st === 'done') { S.search.q = 'pike'; S.search.open = F1; }
+      if (st === 'done') { byId(F1).lines.forEach(function (l) { l.got = l.qty; }); S.search.answer = 'all'; }
+    } else {
+      if (st === 'narrowed') { S.env.from = 'Pike Street Cards'; S.env.thick = 'some'; }
+      if (st === 'one' || st === 'done') { S.env.from = 'Pike Street Cards'; S.env.inside = 'lantern'; }
+      if (st === 'done') { byId(F1).lines.forEach(function (l) { l.got = l.qty; }); S.env.answer = 'all'; }
+      if (st === 'sheet') { S.env.from = 'Pike Street Cards'; S.env.sheet = { field: 'postmark', draft: null }; }
+      if (st === 'nomatch') { S.env.from = 'Two Rivers Games'; S.env.inside = 'tidecaller'; }
+    }
+  }
+
+  /* ---------------- Search logic ---------------- */
+  function searchResults() {
+    var q = S.search.q.trim(), nq = norm(q);
+    var groups = [
+      { key: 'seller', title: 'Seller matches', items: [] },
+      { key: 'card', title: 'Card matches', items: [] },
+      { key: 'order', title: 'Order number matches', items: [] },
+      { key: 'date', title: '', items: [] }
+    ];
+    var dr = ui.opts.dates ? parseDate(q) : null;
+    if (dr) groups[3].title = dr.label;
+    var hiddenArrived = 0;
+    orders.forEach(function (o) {
+      var g = null, card = null;
+      if (nq && norm(o.seller).indexOf(nq) >= 0) g = 0;
+      else if (nq.length >= 3) {
+        for (var i = 0; i < o.lines.length; i++) if (norm(o.lines[i].name).indexOf(nq) >= 0) { card = o.lines[i]; break; }
+        if (card) g = 1;
+        else if (norm(o.id).indexOf(nq) >= 0) g = 2;
+      }
+      if (g === null && dr) { var a = ago(o.bought); if (a >= dr.from && a <= dr.to) g = 3; }
+      if (g === null) return;
+      if (!isOpen(o) && !S.search.includeArrived) { hiddenArrived++; return; }
+      groups[g].items.push({ o: o, card: card });
+    });
+    groups.forEach(function (gr) { gr.items.sort(function (a, b) { return b.o.bought - a.o.bought; }); });
+    return { groups: groups.filter(function (gr) { return gr.items.length; }), hiddenArrived: hiddenArrived };
+  }
+  function likelyGroups() {
+    var open = orders.filter(isOpen).sort(function (a, b) { return b.bought - a.bought; });
+    return [
+      { title: 'Bought 5 to 20 days ago', items: open.filter(function (o) { var a = ago(o.bought); return a >= 5 && a <= 20; }) },
+      { title: 'Bought in the last 4 days', items: open.filter(function (o) { return ago(o.bought) < 5; }) },
+      { title: 'Bought more than 20 days ago', items: open.filter(function (o) { return ago(o.bought) > 20; }) }
+    ].filter(function (g) { return g.items.length; });
+  }
+
+  /* ---------------- Envelope logic ---------------- */
+  var THICK = { one: [1, 1, 'One card'], few: [2, 3, '2 or 3 cards'], some: [4, 8, '4 to 8 cards'], many: [9, 999, '9 or more'] };
+  var THICK_ORDER = ['one', 'few', 'some', 'many'];
+  function envPostmarkDate() { return S.env.postmark == null ? null : daysAgo(S.env.postmark); }
+  function envResults() {
+    var E = S.env, ni = norm(E.inside);
+    var hiddenArrived = 0;
+    var hard = orders.filter(function (o) {
+      if (E.from && o.seller !== E.from) return false;
+      if (ni.length >= 2) {
+        var hit = norm(o.id).indexOf(ni) >= 0 || o.lines.some(function (l) { return norm(l.name).indexOf(ni) >= 0; });
+        if (!hit) return false;
+      }
+      if (!isOpen(o) && !E.includeArrived) { hiddenArrived++; return false; }
+      return true;
+    });
+    var scored = hard.map(function (o) {
+      var s = 0, why = [];
+      if (ui.opts.postmark && E.postmark != null) {
+        var diff = ago(o.bought) - E.postmark;
+        if (diff < 0) { s -= 3; why.push('bought after the postmark'); }
+        else if (diff <= 10) s += 2; else if (diff <= 20) s += 1;
+      }
+      if (ui.opts.thickness && E.thick) {
+        var c = cardCount(o), b = THICK[E.thick];
+        var idx = THICK_ORDER.indexOf(E.thick), cb = THICK_ORDER.filter(function (k) { return c >= THICK[k][0] && c <= THICK[k][1]; })[0];
+        var d = Math.abs(THICK_ORDER.indexOf(cb) - idx);
+        if (c >= b[0] && c <= b[1]) s += 2; else if (d === 1) s += 0.5; else { s -= 1; why.push(c + (c === 1 ? ' card' : ' cards') + ', thinner or thicker than felt'); }
+      }
+      return { o: o, score: s, why: why };
+    });
+    scored.sort(function (a, b) { return b.score - a.score || b.o.bought - a.o.bought; });
+    var likely = scored.filter(function (x) { return x.score >= 0; });
+    var less = scored.filter(function (x) { return x.score < 0; });
+    return { likely: likely, less: less, count: hard.length, hiddenArrived: hiddenArrived };
+  }
+  function cluesSet() { var E = S.env; return !!(E.from || (ui.opts.postmark && E.postmark != null) || (ui.opts.thickness && E.thick) || E.inside); }
+
+  /* ---------------- Icons ---------------- */
+  function glyph(st) {
+    var label = STATE_WORD[st];
+    if (st === 'all') return '<span class="glyph" role="img" aria-label="' + label + '"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" fill="var(--ok)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="var(--surface)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg></span>';
+    if (st === 'some') return '<span class="glyph" role="img" aria-label="' + label + '"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="var(--part)" stroke-width="2"/><path d="M12 3a9 9 0 0 1 0 18z" fill="var(--part)"/></svg></span>';
+    return '<span class="glyph" role="img" aria-label="' + label + '"><svg width="24" height="24" viewBox="0 0 24 24"><circle cx="12" cy="12" r="9" fill="none" stroke="var(--none)" stroke-width="2"/></svg></span>';
+  }
+  var I = {
+    search: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5L21 21" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+    clear: '<svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor" opacity=".35"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="var(--surface)" stroke-width="2" stroke-linecap="round"/></svg>',
+    chev: '<svg class="chev" width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    back: '<svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    minus: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    plus: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M8 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    tabFind: '<svg width="26" height="22" viewBox="0 0 26 22" aria-hidden="true"><rect x="1" y="3" width="18" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M1.5 4l8.5 6 8.5-6" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="19" cy="15" r="4" fill="var(--bg)" stroke="currentColor" stroke-width="2"/><path d="M22 18l3 3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    tabAll: '<svg width="24" height="22" viewBox="0 0 24 22" aria-hidden="true"><path d="M3 4h18M3 11h18M3 18h18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    tabAside: '<svg width="24" height="22" viewBox="0 0 24 22" aria-hidden="true"><path d="M2 12l3-8h14l3 8v7H2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M2 12h6l1 3h6l1-3h6" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    from: '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M4 20V9l8-5 8 5v11h-5v-6H9v6z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    postmark: '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M2 9c3-2 5 2 8 0s5 2 8 0 4 0 4 0M2 15c3-2 5 2 8 0s5 2 8 0 4 0 4 0" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+    thick: '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7h18M3 12h18M3 17h18" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+    inside: '<svg width="14" height="14" viewBox="0 0 24 24" aria-hidden="true"><rect x="6" y="2" width="12" height="20" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9 7h6M9 11h6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+  };
+  function tickIcon(st) {
+    if (st === 'all') return '<svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="currentColor"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="var(--surface)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+    if (st === 'some') return '<svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M7.5 12h9" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+    return '<svg width="28" height="28" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+  }
+  function thickPic(n) {
+    var s = '<svg width="56" height="28" viewBox="0 0 56 28" aria-hidden="true">';
+    var h = Math.min(24, 3 + n * 2.2), y = 26 - h;
+    s += '<rect x="2" y="' + y + '" width="52" height="' + h + '" rx="2" fill="var(--paper)" stroke="currentColor" stroke-width="1.5"/>';
+    for (var i = 1; i < Math.min(n, 10); i++) s += '<path d="M6 ' + (y + i * h / Math.min(n, 10)) + 'h44" stroke="currentColor" stroke-width=".8" opacity=".5"/>';
+    return s + '</svg>';
+  }
+
+  /* ---------------- Shared pieces ---------------- */
+  function statusbar() {
+    return '<div class="statusbar" aria-hidden="true"><span>9:41</span><span><svg width="44" height="12" viewBox="0 0 44 12"><rect x="0" y="7" width="3" height="5" rx="1" fill="currentColor"/><rect x="5" y="5" width="3" height="7" rx="1" fill="currentColor"/><rect x="10" y="2" width="3" height="10" rx="1" fill="currentColor"/><rect x="15" y="0" width="3" height="12" rx="1" fill="currentColor"/><rect x="22" y="1" width="20" height="10" rx="3" fill="none" stroke="currentColor"/><rect x="24" y="3" width="13" height="6" rx="1.5" fill="currentColor"/></svg></span></div>';
+  }
+  function homeind() { return '<div class="homeind" aria-hidden="true"><i></i></div>'; }
+  function tabbar() {
+    function t(k, icon, label) { return '<button type="button" class="tab" data-act="tab" data-tab="' + k + '"' + (S.tab === k ? ' aria-current="page"' : '') + '>' + icon + '<span>' + label + '</span></button>'; }
+    return '<nav class="tabbar" aria-label="Sections">' + t('find', I.tabFind, 'Find') + t('all', I.tabAll, 'All orders') + t('aside', I.tabAside, 'Unmatched') + '</nav>';
+  }
+  function otherTab() {
+    var name = S.tab === 'all' ? 'All orders' : 'Unmatched';
+    return '<div class="screen">' + statusbar() + '<div class="scroll"><h1 class="largetitle">' + name + '</h1>' +
+      '<div class="empty"><p>This tab is outside this mockup. Your clues on Find are kept.</p>' +
+      '<button type="button" class="btn plain" data-act="tab" data-tab="find">Back to Find</button></div>' +
+      (S.setAside ? '<div class="scroll-pad"><div class="list"><div class="row"><span class="row-main"><span class="row-title">Envelope set aside today</span><span class="row-sub">' + esc(S.setAside || 'No note') + '</span></span></div></div></div>' : '') +
+      '</div><div class="bottombar">' + tabbar() + homeind() + '</div></div>';
+  }
+  function dataState(ax) {
+    if (S.data === 'loading') {
+      var sk = ''; for (var i = 0; i < 6; i++) sk += '<div class="skeleton" aria-hidden="true"><i></i><i></i></div>';
+      return '<div class="scroll-pad"><p class="group-title" role="status">Reading your orders</p><div class="list">' + sk + '</div></div>';
+    }
+    if (S.data === 'error') {
+      return '<div class="empty" role="alert"><p>Your orders could not be read, so nothing here can be matched yet.</p>' +
+        '<button type="button" class="btn primary" data-act="retry">Try again</button>' +
+        '<details class="why"><summary>What the app said</summary><code>read orders: storage returned no data (sample text)</code></details></div>';
+    }
+    if (S.data === 'empty') {
+      return '<div class="empty"><p>Import your order history to match envelopes to orders.</p>' +
+        '<button type="button" class="btn primary" data-act="import">Import orders</button></div>';
+    }
+    return null;
+  }
+  function setAsideBtn() { return '<button type="button" class="navbtn" data-act="aside-open">Set aside</button>'; }
+  function toast() { return S.toast ? '<div class="toast" role="status">' + esc(S.toast) + '</div>' : ''; }
+
+  function orderRow(o, q, card, opts) {
+    opts = opts || {};
+    var n = cardCount(o);
+    var sub;
+    if (card) sub = card.qty + ' × ' + hl(card.name, q);
+    else {
+      var first = o.lines[0];
+      sub = esc(first.name) + (o.lines.length > 1 ? ' and ' + (o.lines.length - 1) + ' more' : '');
+    }
+    var title = q ? hl(o.seller, q) : esc(o.seller);
+    var idLine = opts.idMatch ? '<span class="row-sub">Order ' + hl(o.id, q) + '</span>' : '';
+    var attrs = opts.expandable ? ' aria-expanded="' + (opts.expanded ? 'true' : 'false') + '"' : '';
+    return '<button type="button" class="row' + (opts.faded ? ' faded' : '') + '" data-act="' + (opts.act || 'open') + '" data-id="' + o.id + '"' +
+      (opts.current ? ' aria-current="true"' : '') + attrs + '>' + glyph(stateOf(o)) +
+      '<span class="row-main"><span class="row-title">' + title + '</span><span class="row-sub">' + sub + '</span>' + idLine +
+      (opts.why ? '<span class="row-sub">' + esc(opts.why) + '</span>' : '') + '</span>' +
+      '<span class="row-meta"><span>' + fmtDate(o.bought) + '</span><span>' + n + (n === 1 ? ' card' : ' cards') + '</span></span>' +
+      (opts.expandable ? '' : I.chev) + '</button>';
+  }
+
+  function linesList(o, ax) {
+    return '<div class="list" data-new="tick each card">' + o.lines.map(function (l, i) {
+      var st = l.got === 0 ? 'none' : l.got === l.qty ? 'all' : 'some';
+      var pressed = st === 'all' ? 'true' : st === 'some' ? 'mixed' : 'false';
+      var stepper = l.qty > 1 ? '<span class="stepper"><button type="button" class="step" data-act="dec" data-id="' + o.id + '" data-i="' + i + '" aria-label="One fewer ' + esc(l.name) + ' arrived"' + (l.got === 0 ? ' disabled' : '') + '>' + I.minus + '</button>' +
+        '<span class="step-val" aria-live="polite">' + l.got + ' of ' + l.qty + '</span>' +
+        '<button type="button" class="step" data-act="inc" data-id="' + o.id + '" data-i="' + i + '" aria-label="One more ' + esc(l.name) + ' arrived"' + (l.got === l.qty ? ' disabled' : '') + '>' + I.plus + '</button></span>' : '';
+      return '<div class="line"><button type="button" class="tick" data-act="tick" data-id="' + o.id + '" data-i="' + i + '" aria-pressed="' + pressed + '" aria-label="' + esc(l.name) + ' arrived">' + tickIcon(st) + '</button>' +
+        '<span class="line-main"><span class="line-name">' + (l.qty > 1 ? l.qty + ' × ' : '') + esc(l.name) + '</span><span class="line-price">' + money(l.price) + (l.qty > 1 ? ' each' : '') + '</span></span>' + stepper + '</div>';
+    }).join('') + '</div>';
+  }
+  function progress(o) {
+    var g = gotCount(o), c = cardCount(o), bar = '';
+    for (var i = 0; i < c; i++) bar += '<i' + (i < g ? ' class="got"' : '') + '></i>';
+    return '<div class="progress"><span class="progress-words">' + g + ' of ' + c + ' cards arrived</span><span class="bar" aria-hidden="true">' + bar + '</span></div>';
+  }
+  function facts(o) {
+    return '<div class="facts"><span>Order <b>' + o.id + '</b></span><span>Bought ' + fmtDate(o.bought) + ', ' + ago(o.bought) + ' days ago</span><span>Total ' + money(total(o)) + ' with ' + money(o.ship) + ' shipping</span></div>';
+  }
+  function actions(o, answer, next) {
+    var c = cardCount(o), g = gotCount(o);
+    if (g === c) {
+      return '<div class="answer" role="status">' + (answer === 'all' ? 'All ' + c + ' cards marked as arrived.' : 'Every card on this order has arrived.') + '</div>' +
+        '<div class="actionrow"><button type="button" class="btn plain" data-act="undo-all" data-id="' + o.id + '">Undo</button>' +
+        '<button type="button" class="btn primary" data-act="' + next + '">Next envelope</button></div>';
+    }
+    return '<div class="answer" role="status"></div><div class="actionrow"><button type="button" class="btn primary wide" data-act="all" data-id="' + o.id + '">Mark ' + (g === 0 ? 'all ' + c : 'the other ' + (c - g)) + ' arrived</button></div>';
+  }
+
+  /* ---------------- Concept: Clue search ---------------- */
+  function searchList(ax, open, isOpenPose) {
+    var q = S.search.q;
+    var html = '';
+    if (!q.trim()) {
+      var lg = likelyGroups();
+      html += lg.map(function (g) {
+        return '<div class="group"><h2 class="group-title">' + g.title + '</h2><div class="list">' + g.items.map(function (o) {
+          return orderRow(o, '', null, { current: isOpenPose && S.search.open === o.id });
+        }).join('') + '</div></div>';
+      }).join('');
+    } else {
+      var res = searchResults();
+      if (!res.groups.length && !res.hiddenArrived) {
+        return '<div class="empty"><p>No open order matches “' + esc(q.trim()) + '”.</p><button type="button" class="btn plain" data-act="clear-q">Clear the search</button></div>';
+      }
+      var best = res.groups.length ? res.groups[0].items[0].o.id : null;
+      html += res.groups.map(function (g, gi) {
+        return '<div class="group"' + (gi === 0 ? ' data-new="results grouped by what matched"' : '') + '><h2 class="group-title">' + esc(g.title) + '</h2><div class="list">' + g.items.map(function (it) {
+          var cur = isOpenPose && (S.search.open ? S.search.open === it.o.id : best === it.o.id);
+          return orderRow(it.o, g.key === 'date' ? '' : q, it.card, { current: cur, idMatch: g.key === 'order' });
+        }).join('') + '</div></div>';
+      }).join('');
+      if (res.hiddenArrived || S.search.includeArrived) {
+        html += '<button type="button" class="toggle-row" data-act="arrived-search" aria-pressed="' + S.search.includeArrived + '"><span>Include orders that already arrived' + (res.hiddenArrived ? ' (' + res.hiddenArrived + ' match)' : '') + '</span><span class="switch' + (S.search.includeArrived ? ' on' : '') + '" aria-hidden="true"></span></button>';
+      }
+    }
+    return '<div class="scroll-pad">' + html + '</div>';
+  }
+  function searchBar(ax, focusId) {
+    var q = S.search.q;
+    return '<div class="bottombar"><div class="searchfield"' + (focusId ? ' id="' + focusId + '"' : '') + ' data-new="one box for any clue">' + I.search +
+      '<input type="search" data-focus="q" aria-label="Search by seller, card, order number or date" placeholder="' + (ax ? 'Any clue' : 'Seller, card, order number or date') + '" value="' + esc(q) + '" enterkeyhint="search" autocomplete="off">' +
+      '<button type="button" class="iconbtn' + (q ? '' : ' ghost') + '" data-act="clear-q" aria-label="Clear the search"' + (q ? '' : ' tabindex="-1" aria-hidden="true"') + '>' + I.clear + '</button></div>' +
+      tabbar() + homeind() + '</div>';
+  }
+  function searchHome(ax, focusId, isOpenPose) {
+    var ds = dataState(ax);
+    var n = orders.filter(isOpen).length;
+    var body = ds || searchList(ax, null, isOpenPose);
+    return '<div class="screen">' + statusbar() +
+      '<div class="navbar"><span class="navbtn ghost" aria-hidden="true"></span><span></span>' + setAsideBtn() + '</div>' +
+      '<div class="scroll"><div style="display:flex;flex-direction:column;gap:var(--space-1);padding-bottom:var(--space-4)"><h1 class="largetitle">Find</h1>' +
+      (ds ? '' : '<div class="subline">' + n + ' orders still on the way</div>') + '</div>' + body + '</div>' +
+      (S.data !== 'ready' ? '<div class="bottombar">' + tabbar() + homeind() + '</div>' : searchBar(ax, focusId)) + toast() + '</div>';
+  }
+  function searchDetail(o, ax, isOpenPose, isBest) {
+    return '<div class="screen">' + statusbar() +
+      '<div class="navbar">' + (isOpenPose ? '<span class="navbtn ghost" aria-hidden="true"></span>' : '<button type="button" class="navbtn" data-act="back">' + I.back + '<span class="lbl">Find</span></button>') +
+      '<span class="nav-title"></span><span class="navbtn ghost" aria-hidden="true"></span></div>' +
+      '<div class="scroll"><div class="scroll-pad" style="padding-inline:0">' +
+      '<div class="order-head">' + (isBest ? '<span class="tag">Best match for your clue</span>' : '') + '<h2>' + esc(o.seller) + '</h2>' + facts(o) + '</div>' +
+      progress(o) + '<div style="padding:0 var(--space-4)">' + linesList(o, ax) + '</div></div></div>' +
+      '<div class="actionbar" data-new="one press for the whole order">' + actions(o, S.search.answer, 'next-search') + homeind() + '</div></div>';
+  }
+  function searchScreen(layout, ax, focusId) {
+    if (S.tab !== 'find') return layout === 'open' ? openPose(otherTab(), panel('Pick Find to match an envelope.')) : otherTab();
+    if (layout === 'open') {
+      var right;
+      if (S.data !== 'ready') right = panel('');
+      else {
+        var o = S.search.open ? byId(S.search.open) : null, best = false;
+        if (!o && S.search.q.trim()) { var r = searchResults(); if (r.groups.length) { o = r.groups[0].items[0].o; best = true; } }
+        right = o ? searchDetail(o, ax, true, best) : panel('Type any clue on the left. The best match opens here, ready to tick.');
+      }
+      return openPose(searchHome(ax, focusId, true), right);
+    }
+    if (S.search.open && S.data === 'ready') return searchDetail(byId(S.search.open), ax, false, false);
+    return searchHome(ax, focusId, false);
+  }
+  function panel(text) { return '<div class="screen">' + statusbar() + '<div class="placeholder-panel"><p style="margin:0">' + esc(text) + '</p></div>' + homeind() + '</div>'; }
+  function openPose(left, right) {
+    return '<div class="duo-open"><div class="page left">' + left + '</div><div class="hinge" aria-hidden="true"></div><div class="page right">' + right + '</div></div>';
+  }
+
+  /* ---------------- Concept: Envelope ---------------- */
+  function fieldBtn(key, icon, name, val, kind) {
+    var set = val != null && val !== '';
+    return '<button type="button" class="field' + (set ? ' set' : '') + '" data-act="field" data-field="' + key + '" aria-label="' + name + (set ? ': ' + esc(val) : ': add a clue') + '">' +
+      '<span class="field-name">' + icon + name + '</span>' +
+      '<span class="field-val' + (set ? '' : ' empty-val') + '">' + (set ? esc(val) : 'Add') + '</span>' +
+      (kind ? '<span class="field-kind">' + kind + '</span>' : '') + '</button>';
+  }
+  function envelopeFace(big, ax, focusId) {
+    var E = S.env;
+    var f = [];
+    f.push(fieldBtn('from', I.from, 'From', E.from, big ? 'Return address or seller name' : ''));
+    if (ui.opts.postmark) f.push(fieldBtn('postmark', I.postmark, 'Postmark', E.postmark != null ? fmtDate(daysAgo(E.postmark)) : null, big ? 'The date stamped on it' : ''));
+    if (ui.opts.thickness) f.push(fieldBtn('thick', I.thick, 'Thickness', E.thick ? THICK[E.thick][2] : null, big ? 'How many cards it feels like' : ''));
+    f.push(fieldBtn('inside', I.inside, 'Inside', E.inside || null, big ? 'A card name or order number you can read' : ''));
+    return '<div class="envelope' + (big ? ' big-envelope' : '') + '"' + (focusId ? ' id="' + focusId + '"' : '') + ' data-new="the envelope is the search"><div class="envelope-inner">' + f.join('') + '</div></div>';
+  }
+  function envTray(ax, focusId) {
+    return '<div class="tray"><div class="tray-head"><span>Fill in what the envelope shows</span>' +
+      (cluesSet() ? '<button type="button" class="navbtn" data-act="clear-clues">Clear clues</button>' : '<span class="navbtn ghost" aria-hidden="true"></span>') + '</div>' +
+      envelopeFace(false, ax, focusId) + '</div>';
+  }
+  function envPile(ax) {
+    var ds = dataState(ax); if (ds) return ds;
+    var R = envResults(), E = S.env;
+    if (R.count === 0 && !R.hiddenArrived) {
+      var last = E.inside ? 'inside' : E.from ? 'from' : null;
+      return '<div class="empty"><p>No open order fits all these clues together.</p>' +
+        (last ? '<button type="button" class="btn plain" data-act="drop" data-field="' + last + '">Drop the ' + (last === 'inside' ? 'Inside' : 'From') + ' clue</button>' : '') + '</div>';
+    }
+    var only = R.count === 1;
+    var openId = only ? (R.likely[0] || R.less[0]).o.id : E.open;
+    var head = only ? '<span class="pile-count">One order fits</span><span class="pile-sub">Tick the cards that came in this envelope.</span>'
+      : '<span class="pile-count">' + R.count + ' could be this one</span><span class="pile-sub">' + (cluesSet() ? 'Best fit first. Add a clue to narrow it.' : 'Newest first. Add a clue from the envelope below.') + '</span>';
+    var limit = E.more ? 999 : 6;
+    function cand(x, faded) {
+      var ex = x.o.id === openId;
+      var h = '<div class="cand">' + orderRow(x.o, E.inside, null, { act: 'expand', expandable: true, expanded: ex, faded: faded && !ex, why: faded ? x.why.join(', ') : '' });
+      if (ex) h += '<div class="cand-body" data-new="tick in place, no new screen">' + facts(x.o) + progress(x.o) + linesList(x.o, ax) + '<div class="actionrow" style="flex-direction:column">' + actions(x.o, E.answer, 'next-env') + '</div></div>';
+      return h + '</div>';
+    }
+    var shown = R.likely.slice(0, limit), rest = R.likely.length - shown.length;
+    var html = '<div class="pile-head" role="status">' + head + '</div><div class="scroll-pad"><div class="list" data-new="pile that shrinks as clues are added">' + shown.map(function (x) { return cand(x, false); }).join('') + '</div>';
+    if (rest > 0) html += '<button type="button" class="linkbtn" data-act="more">Show ' + rest + ' more</button>';
+    if (R.less.length) html += '<div class="group"><h2 class="group-title">Less likely, by postmark or thickness</h2><div class="list">' + R.less.slice(0, E.more ? 999 : 4).map(function (x) { return cand(x, true); }).join('') + '</div></div>';
+    if (R.hiddenArrived || E.includeArrived) html += '<button type="button" class="toggle-row" data-act="arrived-env" aria-pressed="' + E.includeArrived + '"><span>Include orders that already arrived' + (R.hiddenArrived ? ' (' + R.hiddenArrived + ' fit)' : '') + '</span><span class="switch' + (E.includeArrived ? ' on' : '') + '" aria-hidden="true"></span></button>';
+    return html + '</div>';
+  }
+  function envSheet(ax) {
+    var sh = S.env.sheet; if (!sh) return '';
+    var E = S.env, body = '', title = '';
+    if (sh.field === 'from') {
+      title = 'From';
+      var f = norm(sh.filter || '');
+      var counts = {};
+      orders.forEach(function (o) { if (isOpen(o) || E.includeArrived) counts[o.seller] = (counts[o.seller] || 0) + 1; });
+      var names = Object.keys(counts).sort(function (a, b) { return a.toLowerCase() < b.toLowerCase() ? -1 : 1; }).filter(function (n) { return !f || norm(n).indexOf(f) >= 0; });
+      body = '<p>Type part of the return address. Sellers with open orders only.</p><input class="textfield" type="search" data-focus="from-filter" aria-label="Filter sellers" placeholder="Part of a seller name" value="' + esc(sh.filter || '') + '" autocomplete="off">' +
+        '<div class="list">' + (names.length ? names.map(function (n) {
+          var on = (sh.draft !== undefined ? sh.draft : E.from) === n;
+          return '<button type="button" class="pickrow" data-act="pick-from" data-v="' + esc(n) + '" aria-pressed="' + on + '"><span>' + hl(n, sh.filter || '') + '</span><small>' + counts[n] + (counts[n] === 1 ? ' order' : ' orders') + '</small></button>';
+        }).join('') : '<div class="empty"><p>No seller with open orders matches.</p><button type="button" class="btn plain" data-act="from-filter-clear">Clear the filter</button></div>') + '</div>';
+    } else if (sh.field === 'postmark') {
+      title = 'Postmark';
+      var cur = sh.draft !== undefined && sh.draft !== null ? sh.draft : E.postmark;
+      var start = daysAgo(41); var lead = (start.getDay() + 6) % 7;
+      var cells = ['Mo', 'Tu', 'We', 'Th', 'Fr', 'Sa', 'Su'].map(function (d) { return '<span class="cal-h" aria-hidden="true">' + d + '</span>'; }).join('');
+      for (var b = 0; b < lead; b++) cells += '<span class="day blank" aria-hidden="true"></span>';
+      for (var a = 41; a >= 0; a--) {
+        var d = daysAgo(a);
+        cells += '<button type="button" class="day' + (a === 0 ? ' today' : '') + '" data-act="pick-day" data-v="' + a + '" aria-pressed="' + (cur === a) + '" aria-label="' + MONTHS[d.getMonth()] + ' ' + d.getDate() + (a === 0 ? ', today' : '') + '">' + (d.getDate() === 1 || a === 41 ? MONTHS[d.getMonth()] + ' ' + d.getDate() : d.getDate()) + '</button>';
+      }
+      body = '<p>Pick the day stamped on the envelope. Orders bought after it sink to the bottom; none are hidden.</p><div class="cal" role="group" aria-label="Last six weeks">' + cells + '</div>';
+    } else if (sh.field === 'thick') {
+      title = 'Thickness';
+      var curT = sh.draft !== undefined && sh.draft !== null ? sh.draft : E.thick;
+      body = '<p>Feel the envelope. Orders with about that many cards move up; none are hidden.</p><div class="thick">' + THICK_ORDER.map(function (k) {
+        var n = k === 'one' ? 1 : k === 'few' ? 3 : k === 'some' ? 6 : 10;
+        return '<button type="button" data-act="pick-thick" data-v="' + k + '" aria-pressed="' + (curT === k) + '">' + thickPic(n) + '<span>' + THICK[k][2] + '</span></button>';
+      }).join('') + '</div>';
+    } else if (sh.field === 'inside') {
+      title = 'Inside';
+      var v = sh.draft !== undefined && sh.draft !== null ? sh.draft : E.inside;
+      var nv = norm(v), sugg = [];
+      if (nv.length >= 2) {
+        var seen = {};
+        orders.forEach(function (o) {
+          if (!isOpen(o) && !E.includeArrived) return;
+          if (E.from && o.seller !== E.from) return;
+          o.lines.forEach(function (l) { if (norm(l.name).indexOf(nv) >= 0 && !seen[l.name]) { seen[l.name] = 1; sugg.push(l.name); } });
+        });
+      }
+      body = '<p>Open it and type part of any card name, or the order number on the slip.</p><input class="textfield" type="search" data-focus="inside" aria-label="Card name or order number" placeholder="Part of a card name" value="' + esc(v || '') + '" autocomplete="off">' +
+        (sugg.length ? '<div class="list">' + sugg.slice(0, 6).map(function (n) { return '<button type="button" class="pickrow" data-act="pick-inside" data-v="' + esc(n) + '"><span>' + hl(n, v) + '</span></button>'; }).join('') + '</div>' : '');
+    }
+    return '<div class="scrim" data-act="sheet-cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="' + title + '" data-new="one clue per sheet"><div class="grabber" aria-hidden="true"><i></i></div>' +
+      '<div class="sheet-bar"><button type="button" class="navbtn" data-act="sheet-cancel">Cancel</button><span class="nav-title">' + title + '</span><button type="button" class="navbtn" data-act="sheet-done" style="font-weight:600">Done</button></div>' +
+      '<div class="sheet-body">' + body + (sh.field !== 'from' || E.from ? (E[sh.field === 'thick' ? 'thick' : sh.field] != null && E[sh.field === 'thick' ? 'thick' : sh.field] !== '' ? '<button type="button" class="linkbtn" data-act="drop" data-field="' + sh.field + '" style="padding:0">Remove this clue</button>' : '') : '') + '</div></div>';
+  }
+  function asideSheet() {
+    if (!S.asideSheet) return '';
+    return '<div class="scrim" data-act="aside-cancel"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Set aside"><div class="grabber" aria-hidden="true"><i></i></div>' +
+      '<div class="sheet-bar"><button type="button" class="navbtn" data-act="aside-cancel">Cancel</button><span class="nav-title">Set aside</span><button type="button" class="navbtn" data-act="aside-done" style="font-weight:600">Done</button></div>' +
+      '<div class="sheet-body"><p>Keep an envelope you cannot match. It waits under Unmatched until you open it.</p><textarea class="textfield" data-focus="aside-note" aria-label="Note about the envelope" placeholder="What is on it, if anything">' + esc(S.asideNote || '') + '</textarea></div></div>';
+  }
+  function envScreen(layout, ax, focusId) {
+    if (S.tab !== 'find') return layout === 'open' ? openPose(otherTab(), panel('Pick Find to match an envelope.')) : otherTab();
+    var ds = S.data !== 'ready';
+    if (layout === 'open') {
+      var left = '<div class="screen">' + statusbar() + '<div class="navbar"><span class="navbtn ghost" aria-hidden="true"></span><span class="nav-title"></span>' + setAsideBtn() + '</div>' +
+        '<div class="scroll"><h1 class="largetitle">Read the envelope</h1>' +
+        (ds ? '' : '<div class="scroll-pad" style="padding-top:var(--space-4)"><p class="group-title" style="padding:0">Each clue you fill in narrows or reorders the orders on the right.</p>' + envelopeFace(true, ax, focusId) +
+          (cluesSet() ? '<button type="button" class="btn plain" data-act="clear-clues">Clear clues</button>' : '') + '</div>') +
+        '</div><div class="bottombar">' + tabbar() + homeind() + '</div>' + envSheet(ax) + asideSheet() + toast() + '</div>';
+      var right = '<div class="screen">' + statusbar() + '<div class="scroll">' + envPile(ax) + '</div>' + homeind() + '</div>';
+      return openPose(left, right);
+    }
+    var cls = ax ? ' env-ax5' : '';
+    if (ax) {
+      return '<div class="screen' + cls + '">' + statusbar() + '<div class="navbar"><span class="navbtn ghost" aria-hidden="true"></span><span class="nav-title"></span>' + setAsideBtn() + '</div>' +
+        '<div class="scroll">' + (ds ? '' : envTray(ax, focusId)) + envPile(ax) + '</div><div class="bottombar">' + tabbar() + homeind() + '</div>' + envSheet(ax) + asideSheet() + toast() + '</div>';
+    }
+    return '<div class="screen' + cls + '">' + statusbar() + '<div class="navbar"><span class="navbtn ghost" aria-hidden="true"></span><span class="nav-title">Read the envelope</span>' + setAsideBtn() + '</div>' +
+      '<div class="scroll">' + envPile(ax) + '</div>' + (ds ? '' : envTray(ax, focusId)) + '<div class="bottombar" style="border-top:0;padding-top:0">' + tabbar() + homeind() + '</div>' + envSheet(ax) + asideSheet() + toast() + '</div>';
+  }
+
+  /* ---------------- Frames and chrome ---------------- */
+  var stage = document.getElementById('stage');
+  function frameHTML(c) {
+    var html = '<div class="concept-head"><h2>' + CONCEPTS[c].name + '</h2><p>' + (c === 'search'
+      ? 'One box takes any clue: seller, card, order number or a date. Results group by what matched. Tap a package to tick its cards.'
+      : 'Bold concept. The screen is the envelope: fill in what you can read or feel on it, and the pile of open orders shrinks or reorders until one fits. Ticking happens in the pile, with no second screen.') + '</p></div><div class="devices">';
+    DEVICES.forEach(function (d, i) {
+      var show = ui.device === 'all' || ui.device === d[0];
+      if (!show) return;
+      var devAttr = d[0] === 'ax5' ? 'iphone-duo-folded' : d[0];
+      var note = d[0] === 'iphone-regular' ? ' (no size written; starts at 430 x 900, my pick; drag the corner)' : d[0] === 'iphone-duo-unfolded' ? ' (951 x 669, hinge 455.5 to 495.5)' : d[0] === 'ax5' ? ' (AX5 text, 466 x 678)' : ' (466 x 678)';
+      html += '<div class="device"><span class="device-name">' + d[1] + note + '</span><div class="frame' + (d[0] === 'ax5' ? ' ax5' : '') + '" data-device="' + devAttr + '" data-frame="' + d[0] + '"></div></div>';
+    });
+    return html + '</div>';
+  }
+  function renderFrames() {
+    var focusInfo = null, ae = document.activeElement;
+    if (ae && ae.dataset && ae.dataset.focus) {
+      var fr = ae.closest('.frame');
+      focusInfo = { key: ae.dataset.focus, frame: fr && fr.dataset.frame, s: ae.selectionStart, e: ae.selectionEnd };
+    } else if (ae && ae.closest && ae.closest('.frame')) {
+      var fr2 = ae.closest('.frame');
+      focusInfo = { frame: fr2.dataset.frame, act: ae.dataset.act, id: ae.dataset.id, i: ae.dataset.i, field: ae.dataset.field, v: ae.dataset.v, tab: ae.dataset.tab };
+    }
+    var scrolls = {};
+    document.querySelectorAll('.frame').forEach(function (f) {
+      scrolls[f.dataset.frame] = Array.prototype.map.call(f.querySelectorAll('.scroll, .sheet-body'), function (s) { return s.scrollTop; });
+    });
+    document.querySelectorAll('.frame').forEach(function (f) {
+      var dev = f.dataset.frame, ax = dev === 'ax5';
+      var layout = dev === 'iphone-duo-unfolded' ? 'open' : 'compact';
+      var focusId = dev === 'iphone-duo-folded' ? (ui.concept === 'search' ? 'find-clue-search' : 'find-envelope') : null;
+      f.innerHTML = ui.concept === 'search' ? (searchScreen(layout, ax, focusId) + (S.asideSheet ? '<div class="screen" style="pointer-events:none"></div>' : '')) : envScreen(layout, ax, focusId);
+      if (ui.concept === 'search' && S.asideSheet) {
+        var host = layout === 'open' ? f.querySelector('.page.left .screen') : f.querySelector('.screen');
+        host.insertAdjacentHTML('beforeend', asideSheet());
+      }
+      var sc = scrolls[dev]; if (sc) f.querySelectorAll('.scroll, .sheet-body').forEach(function (s, i) { if (sc[i] != null) s.scrollTop = sc[i]; });
+    });
+    if (focusInfo) {
+      var f = document.querySelector('.frame[data-frame="' + focusInfo.frame + '"]');
+      if (f) {
+        var el = null;
+        if (focusInfo.key) {
+          el = f.querySelector('[data-focus="' + focusInfo.key + '"]');
+          if (el) { el.focus(); try { el.setSelectionRange(focusInfo.s, focusInfo.e); } catch (e) {} }
+        } else if (focusInfo.act) {
+          var sel = '[data-act="' + focusInfo.act + '"]';
+          ['id', 'i', 'field', 'v', 'tab'].forEach(function (k) { if (focusInfo[k] != null) sel += '[data-' + k + '="' + String(focusInfo[k]).replace(/"/g, '\\"') + '"]'; });
+          el = f.querySelector(sel);
+          if (el) el.focus({ preventScroll: true });
+        }
+      }
+    }
+    checkHinge();
+  }
+  function renderAll() {
+    var visible = Object.keys(CONCEPTS).filter(function (c) { return !ui.hidden[c]; });
+    if (ui.hidden[ui.concept] && visible.length) ui.concept = visible[0];
+    var cs = document.getElementById('concept-seg');
+    cs.innerHTML = visible.map(function (c) {
+      return '<span class="concept-pick"><button type="button" data-concept="' + c + '" aria-pressed="' + (ui.concept === c) + '">' + CONCEPTS[c].name + '</button>' +
+        '<button type="button" class="hide" data-hide="' + c + '" aria-label="Hide the ' + CONCEPTS[c].name + ' concept">Hide</button></span>';
+    }).join('') + (Object.keys(ui.hidden).some(function (k) { return ui.hidden[k] && CONCEPTS[k]; }) ? '<button type="button" class="restore" data-restore="1">Show hidden concepts</button>' : '');
+    var ss = document.getElementById('state-seg');
+    ss.innerHTML = visible.length ? CONCEPTS[ui.concept].states.map(function (s) { return '<button type="button" data-state="' + s[0] + '" aria-pressed="' + (ui.state === s[0]) + '">' + s[1] + '</button>'; }).join('') : '';
+    document.getElementById('device-seg').innerHTML = [['all', 'All four']].concat(DEVICES).map(function (d) { return '<button type="button" data-device-set="' + d[0] + '" aria-pressed="' + (ui.device === d[0]) + '">' + d[1] + '</button>'; }).join('');
+    document.getElementById('option-seg').innerHTML = (OPTIONS[ui.concept] || []).map(function (o) {
+      return '<button type="button" data-opt="' + o[0] + '" aria-pressed="' + !!ui.opts[o[0]] + '">' + (ui.opts[o[0]] ? 'Hide ' : 'Show ') + o[1] + '</button>';
+    }).join('');
+    document.querySelectorAll('#theme-seg button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.themeSet === ui.theme)); });
+    if (ui.theme === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', ui.theme);
+    stage.innerHTML = visible.length ? '<div id="concept-' + ui.concept + '">' + frameHTML(ui.concept) + '</div>' : '<p>Every concept is hidden. Use Show hidden concepts.</p>';
+    renderFrames();
+  }
+  function checkHinge() {
+    var out = [];
+    var f = document.querySelector('.frame[data-frame="iphone-duo-unfolded"]');
+    if (f) {
+      var fr = f.getBoundingClientRect(), bad = 0;
+      f.querySelectorAll('.page *').forEach(function (el) {
+        var r = el.getBoundingClientRect(); if (!r.width) return;
+        var l = r.left - fr.left, rt = r.right - fr.left;
+        if (l < 495.5 && rt > 455.5) bad++;
+      });
+      out.push('<b>Hinge check:</b> ' + (bad ? bad + ' element(s) cross the hinge' : 'nothing crosses the hinge'));
+    }
+    var spill = [];
+    document.querySelectorAll('.frame').forEach(function (fr) {
+      var fb = fr.getBoundingClientRect();
+      fr.querySelectorAll('.screen').forEach(function (s) {
+        var r = s.getBoundingClientRect();
+        if (Math.abs(r.height - (s.parentElement.getBoundingClientRect().height)) > 1 || fr.scrollTop) spill.push(fr.dataset.frame + ' ' + Math.round(r.height) + '/' + Math.round(fb.height) + ' st' + fr.scrollTop);
+      });
+    });
+    out.push('<b>Frame fit:</b> ' + (spill.length ? spill.join('; ') : 'each screen fits its frame'));
+    document.getElementById('checks').innerHTML = out.join(' ');
+  }
+
+  /* ---------------- Hash ---------------- */
+  function readHash() {
+    var p = {}; location.hash.replace(/^#/, '').split('&').forEach(function (kv) { var a = kv.split('='); if (a[0]) p[a[0]] = decodeURIComponent(a[1] || ''); });
+    if (CONCEPTS[p.c]) ui.concept = p.c;
+    var states = CONCEPTS[ui.concept].states.map(function (s) { return s[0]; });
+    ui.state = states.indexOf(p.s) >= 0 ? p.s : 'ready';
+    ui.theme = p.t === 'light' || p.t === 'dark' ? p.t : 'auto';
+    ui.device = p.d && DEVICES.some(function (d) { return d[0] === p.d; }) ? p.d : 'all';
+    ui.hidden = {}; (p.hide || '').split(',').forEach(function (k) { if (k) ui.hidden[k] = true; });
+    ui.opts = { dates: !ui.hidden.dates, postmark: !ui.hidden.postmark, thickness: !ui.hidden.thickness };
+    applyState(ui.concept, ui.state);
+    renderAll();
+  }
+  function writeHash() {
+    var parts = ['c=' + ui.concept, 's=' + ui.state];
+    if (ui.theme !== 'auto') parts.push('t=' + ui.theme);
+    if (ui.device !== 'all') parts.push('d=' + ui.device);
+    var h = Object.keys(ui.hidden).filter(function (k) { return ui.hidden[k]; });
+    Object.keys(ui.opts).forEach(function (k) { if (!ui.opts[k] && h.indexOf(k) < 0) h.push(k); });
+    if (h.length) parts.push('hide=' + h.join(','));
+    var nh = '#' + parts.join('&');
+    if (location.hash === nh) readHash(); else location.hash = nh;
+  }
+  window.addEventListener('hashchange', readHash);
+
+  /* ---------------- Events ---------------- */
+  document.addEventListener('click', function (ev) {
+    var b = ev.target.closest('button, [data-act]');
+    if (!b) return;
+    if (b.dataset.concept) { ui.concept = b.dataset.concept; ui.state = 'ready'; writeHash(); return; }
+    if (b.dataset.hide) { ui.hidden[b.dataset.hide] = true; writeHash(); return; }
+    if (b.dataset.restore) { Object.keys(CONCEPTS).forEach(function (k) { delete ui.hidden[k]; }); writeHash(); return; }
+    if (b.dataset.state) { ui.state = b.dataset.state; writeHash(); return; }
+    if (b.dataset.themeSet) { ui.theme = b.dataset.themeSet; writeHash(); return; }
+    if (b.dataset.deviceSet) { ui.device = b.dataset.deviceSet; writeHash(); return; }
+    if (b.dataset.opt) { ui.opts[b.dataset.opt] = !ui.opts[b.dataset.opt]; if (ui.opts[b.dataset.opt]) delete ui.hidden[b.dataset.opt]; else ui.hidden[b.dataset.opt] = true; renderAll(); return; }
+    if (b.id === 'new-toggle') { var on = document.body.classList.toggle('show-new'); b.setAttribute('aria-pressed', String(on)); b.textContent = on ? 'Show "New:" labels' : 'Labels hidden'; return; }
+    var act = b.dataset.act; if (!act) return;
+    var o = b.dataset.id ? byId(b.dataset.id) : null, i = +b.dataset.i;
+    var E = S.env;
+    switch (act) {
+      case 'tab': S.tab = b.dataset.tab; break;
+      case 'open': S.search.open = b.dataset.id; S.search.answer = null; break;
+      case 'back': S.search.open = null; S.search.answer = null; break;
+      case 'clear-q': S.search.q = ''; S.search.open = null; break;
+      case 'arrived-search': S.search.includeArrived = !S.search.includeArrived; break;
+      case 'arrived-env': E.includeArrived = !E.includeArrived; break;
+      case 'tick': { var l = o.lines[i]; l.got = l.got === l.qty ? 0 : l.qty; S.search.answer = null; E.answer = null; break; }
+      case 'inc': o.lines[i].got = Math.min(o.lines[i].qty, o.lines[i].got + 1); S.search.answer = null; E.answer = null; break;
+      case 'dec': o.lines[i].got = Math.max(0, o.lines[i].got - 1); S.search.answer = null; E.answer = null; break;
+      case 'all': o.lines.forEach(function (l) { l.got = l.qty; }); S.search.answer = 'all'; E.answer = 'all'; E.open = o.id; break;
+      case 'undo-all': o.lines.forEach(function (l) { l.got = 0; }); S.search.answer = null; E.answer = null; break;
+      case 'next-search': S.search = { q: '', open: null, includeArrived: false, answer: null }; break;
+      case 'next-env': S.env = { from: null, postmark: null, thick: null, inside: '', open: null, more: false, includeArrived: false, sheet: null, answer: null }; break;
+      case 'retry': S.data = 'ready'; break;
+      case 'import': S.data = 'ready'; break;
+      case 'expand': E.open = E.open === b.dataset.id ? null : b.dataset.id; E.answer = null; break;
+      case 'more': E.more = true; break;
+      case 'field': E.sheet = { field: b.dataset.field, draft: undefined, filter: '' }; break;
+      case 'sheet-cancel': E.sheet = null; break;
+      case 'sheet-done': {
+        var sh = E.sheet;
+        if (sh && sh.draft !== undefined && sh.draft !== null) { var k = sh.field; E[k] = sh.draft; E.open = null; E.more = false; E.answer = null; }
+        E.sheet = null; break;
+      }
+      case 'pick-from': E.sheet.draft = b.dataset.v; break;
+      case 'from-filter-clear': E.sheet.filter = ''; break;
+      case 'pick-day': E.sheet.draft = +b.dataset.v; break;
+      case 'pick-thick': E.sheet.draft = b.dataset.v; break;
+      case 'pick-inside': E.sheet.draft = b.dataset.v; break;
+      case 'drop': { var fk = b.dataset.field; E[fk] = fk === 'inside' ? '' : null; E.open = null; E.sheet = null; E.answer = null; break; }
+      case 'clear-clues': E.from = null; E.postmark = null; E.thick = null; E.inside = ''; E.open = null; E.more = false; E.answer = null; break;
+      case 'aside-open': S.asideSheet = true; break;
+      case 'aside-cancel': S.asideSheet = false; break;
+      case 'aside-done': S.setAside = S.asideNote || 'No note'; S.asideNote = ''; S.asideSheet = false; S.toast = 'Envelope set aside under Unmatched.'; setTimeout(function () { S.toast = null; renderFrames(); }, 3200); break;
+      default: return;
+    }
+    renderFrames();
+  });
+  document.addEventListener('input', function (ev) {
+    var t = ev.target; if (!t.dataset || !t.dataset.focus) return;
+    var k = t.dataset.focus;
+    if (k === 'q') { S.search.q = t.value; S.search.open = null; S.search.answer = null; }
+    else if (k === 'from-filter') S.env.sheet.filter = t.value;
+    else if (k === 'inside') S.env.sheet.draft = t.value;
+    else if (k === 'aside-note') { S.asideNote = t.value; return; }
+    renderFrames();
+  });
+  document.addEventListener('keydown', function (ev) {
+    if (ev.key === 'Escape') {
+      if (S.env.sheet) { S.env.sheet = null; renderFrames(); }
+      else if (S.asideSheet) { S.asideSheet = false; renderFrames(); }
+    }
+    if (ev.key === 'Enter' && ev.target.dataset && ev.target.dataset.focus === 'inside') { ev.preventDefault(); var sh = S.env.sheet; if (sh && sh.draft != null) { S.env.inside = sh.draft; S.env.open = null; } S.env.sheet = null; renderFrames(); }
+  });
+
+  readHash();
+})();
+</script>
+</body>
+</html>

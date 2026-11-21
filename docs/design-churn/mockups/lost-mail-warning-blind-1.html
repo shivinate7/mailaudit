@@ -1,0 +1,1037 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Overdue mail concepts</title>
+<style>
+/* Tokens. Space on the 4 px step (house tokens.md). Radius 8 px (house). Colours are this
+   designer's own choice: tokens.md names roles only. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --radius: 8px;
+  --sb: 44px;   /* drawn status bar; designer's choice, no Apple page gives it */
+  --hi: 20px;   /* drawn home indicator area; designer's choice */
+  --canvas: #E7EBEF;
+  --surface: #F5F6F8;
+  --raised: #FFFFFF;
+  --fill: #E4E8ED;
+  --text: #172029;
+  --text-2: #4C5864;
+  --line: #D6DCE2;
+  --tint: #1F5FBF;
+  --on-tint: #FFFFFF;
+  --tint-soft: #DCE7F8;
+  --nudge: #8E5400;
+  --nudge-fill: #FBEACB;
+  --urgent: #B3261E;
+  --on-urgent: #FFFFFF;
+  --urgent-fill: #FBE0DC;
+  --closed: #5B636C;
+  --closed-fill: #E3E6EA;
+  --ok: #1D6E40;
+  --scrim: rgba(23, 32, 41, .32);
+  --hinge: #2A3038;
+  --new: #6A3FB5;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #0C0F12; --surface: #14181D; --raised: #1D232A; --fill: #2A323B;
+    --text: #E8ECF1; --text-2: #A5AFBA; --line: #2E363F;
+    --tint: #7FA9FF; --on-tint: #0C1A33; --tint-soft: #1D2B45;
+    --nudge: #F2B75E; --nudge-fill: #3B2B12;
+    --urgent: #FF8C82; --on-urgent: #2B0906; --urgent-fill: #45191A;
+    --closed: #A2AAB3; --closed-fill: #262C33; --ok: #63CF90;
+    --scrim: rgba(0, 0, 0, .5); --hinge: #05070A; --new: #B99BF0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --canvas: #0C0F12; --surface: #14181D; --raised: #1D232A; --fill: #2A323B;
+  --text: #E8ECF1; --text-2: #A5AFBA; --line: #2E363F;
+  --tint: #7FA9FF; --on-tint: #0C1A33; --tint-soft: #1D2B45;
+  --nudge: #F2B75E; --nudge-fill: #3B2B12;
+  --urgent: #FF8C82; --on-urgent: #2B0906; --urgent-fill: #45191A;
+  --closed: #A2AAB3; --closed-fill: #262C33; --ok: #63CF90;
+  --scrim: rgba(0, 0, 0, .5); --hinge: #05070A; --new: #B99BF0;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--canvas); color: var(--text);
+  font-family: -apple-system, system-ui, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  font-size: 15px; line-height: 20px;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--tint); outline-offset: 2px; }
+p { margin: 0; }
+
+/* Review page chrome (not part of the app) */
+.sample {
+  background: var(--nudge-fill); color: var(--text); padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--line); font-weight: 600;
+}
+.review { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.review h1 { margin: 0; font-size: 22px; line-height: 28px; }
+.review .kind { color: var(--text-2); }
+.ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ctl-row > .lbl { color: var(--text-2); min-width: 72px; }
+.pill {
+  min-height: 44px; padding: 0 var(--space-4); border-radius: 22px; border: 1px solid var(--line);
+  background: var(--raised); cursor: pointer;
+}
+.pill[aria-pressed="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+.ctab { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: 22px; background: var(--raised); }
+.ctab > button { min-height: 44px; border: 0; background: none; cursor: pointer; padding: 0 var(--space-4); border-radius: 22px; }
+.ctab > button.hide { padding: 0 var(--space-3); color: var(--text-2); }
+.ctab.on { background: var(--text); color: var(--surface); border-color: var(--text); }
+.ctab.on > button.hide { color: var(--surface); }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); padding: 0 var(--space-4) var(--space-12); }
+.concept[hidden] { display: none; }
+.concept > header { display: flex; flex-direction: column; gap: var(--space-2); max-width: 72ch; }
+.concept h2 { margin: 0; font-size: 20px; line-height: 25px; }
+.concept .why { color: var(--text-2); }
+.frames { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-8); }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+figcaption { color: var(--text-2); font-size: 13px; line-height: 18px; max-width: 466px; }
+
+/* Device frames, 1 CSS px = 1 pt */
+.device {
+  --fs-lt: 34px; --lh-lt: 41px; --fs-t1: 28px; --lh-t1: 34px; --fs-t2: 22px; --lh-t2: 28px;
+  --fs-t3: 20px; --lh-t3: 25px; --fs-hl: 17px; --lh-hl: 22px; --fs-body: 17px; --lh-body: 22px;
+  --fs-co: 16px; --lh-co: 21px; --fs-sh: 15px; --lh-sh: 20px; --fs-fn: 13px; --lh-fn: 18px;
+  --fs-c1: 12px; --lh-c1: 16px; --fs-c2: 11px; --lh-c2: 13px;
+  position: relative; width: 466px; height: 678px; overflow: hidden;
+  border-radius: var(--radius); box-shadow: 0 0 0 1px var(--line);
+  background: var(--surface); color: var(--text);
+  font-family: -apple-system, system-ui, "SF Pro Text", "Helvetica Neue", Arial, sans-serif;
+  font-size: var(--fs-body); line-height: var(--lh-body);
+  font-variant-numeric: tabular-nums;
+}
+/* Dynamic Type AX5, from Apple's typography page */
+.device.ax5 {
+  --fs-lt: 60px; --lh-lt: 70px; --fs-t1: 58px; --lh-t1: 68px; --fs-t2: 56px; --lh-t2: 66px;
+  --fs-t3: 55px; --lh-t3: 65px; --fs-hl: 53px; --lh-hl: 62px; --fs-body: 53px; --lh-body: 62px;
+  --fs-co: 51px; --lh-co: 60px; --fs-sh: 49px; --lh-sh: 58px; --fs-fn: 44px; --lh-fn: 52px;
+  --fs-c1: 43px; --lh-c1: 51px; --fs-c2: 40px; --lh-c2: 48px;
+}
+.device.phone { resize: both; }
+.device.open {
+  width: 951px; height: 669px; display: grid;
+  grid-template-columns: 455.5px 40px 455.5px; background: transparent; box-shadow: none;
+}
+.page { position: relative; overflow: hidden; background: var(--surface); border-radius: var(--radius); box-shadow: 0 0 0 1px var(--line); container-type: inline-size; }
+.device:not(.open) { container-type: inline-size; }
+.hinge {
+  background: var(--hinge); border-radius: 4px; display: grid; place-items: center;
+  color: #8A949E; font-size: 11px; writing-mode: vertical-rl; letter-spacing: .04em;
+}
+
+.scr {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  padding-top: max(env(safe-area-inset-top), var(--sb));
+  padding-bottom: max(env(safe-area-inset-bottom), var(--hi));
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+}
+.statusbar {
+  position: absolute; top: 0; left: 0; right: 0; height: var(--sb); display: flex;
+  align-items: center; justify-content: space-between; padding: 0 var(--space-6);
+  font-size: 15px; line-height: 20px; font-weight: 600; pointer-events: none;
+}
+.statusbar .sig { display: flex; gap: var(--space-1); align-items: center; }
+.statusbar .sig i { display: block; width: 4px; background: currentColor; border-radius: 1px; }
+.statusbar .batt { width: 24px; height: 12px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+.statusbar .batt::after { content: ""; position: absolute; inset: 1.5px; right: 6px; background: currentColor; border-radius: 1px; }
+.homebar { position: absolute; left: 50%; bottom: 7px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--text); opacity: .85; pointer-events: none; }
+
+.t-lt { font-size: var(--fs-lt); line-height: var(--lh-lt); font-weight: 700; }
+.t-t1 { font-size: var(--fs-t1); line-height: var(--lh-t1); font-weight: 700; }
+.t-t2 { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; }
+.t-t3 { font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 600; }
+.t-hl { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; }
+.t-body { font-size: var(--fs-body); line-height: var(--lh-body); }
+.t-co { font-size: var(--fs-co); line-height: var(--lh-co); }
+.t-sh { font-size: var(--fs-sh); line-height: var(--lh-sh); }
+.t-fn { font-size: var(--fs-fn); line-height: var(--lh-fn); }
+.t-c1 { font-size: var(--fs-c1); line-height: var(--lh-c1); }
+.t-c2 { font-size: var(--fs-c2); line-height: var(--lh-c2); }
+.muted { color: var(--text-2); }
+.z-urgent { color: var(--urgent); }
+.z-nudge { color: var(--nudge); }
+.z-closed, .z-unknown { color: var(--closed); }
+
+.nav { min-height: 44px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-2); }
+.nav .mid { flex: 1; text-align: center; font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.nav .side { min-width: 88px; display: flex; }
+.nav .side.end { justify-content: flex-end; }
+.navbtn {
+  min-height: 44px; min-width: 44px; padding: 0 var(--space-2); border: 0; background: none;
+  color: var(--tint); font-size: var(--fs-body); line-height: var(--lh-body); cursor: pointer;
+  display: inline-flex; align-items: center; gap: var(--space-1);
+}
+.navbtn .chev { font-size: 1.4em; line-height: 1; margin-top: -2px; }
+.largetitle { padding: 0 var(--space-4); }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.content { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-2) var(--space-4) var(--space-6); }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-1 { display: flex; flex-direction: column; gap: var(--space-1); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+
+/* Summary */
+.summary { display: flex; flex-direction: column; gap: var(--space-1); }
+.summary .money { font-size: var(--fs-t1); line-height: var(--lh-t1); font-weight: 700; color: var(--urgent); }
+
+/* Segmented control */
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; background: var(--fill); border-radius: var(--radius); padding: 2px; }
+.seg button { min-height: 44px; border: 0; border-radius: 6px; background: none; cursor: pointer; font-size: var(--fs-sh); line-height: var(--lh-sh); font-weight: 500; }
+.seg button[aria-pressed="true"] { background: var(--raised); box-shadow: 0 0 0 1px var(--line); font-weight: 600; }
+.ax5 .seg { grid-auto-flow: row; }
+
+/* Grouped list */
+.sect { display: flex; flex-direction: column; gap: var(--space-2); }
+.sect-h { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); padding: 0 var(--space-1); font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); }
+.sect-h b { font-weight: 600; }
+.sect-h .zdot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: var(--space-2); vertical-align: 1px; }
+.group { background: var(--raised); border-radius: var(--radius); overflow: hidden; }
+.row {
+  width: 100%; display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-3);
+  min-height: 60px; padding: var(--space-2) var(--space-3) var(--space-2) var(--space-4);
+  border: 0; background: none; text-align: left; cursor: pointer; color: var(--text);
+}
+.row + .row { box-shadow: inset 0 1px 0 var(--line); }
+.row.sel { background: var(--tint-soft); }
+.row .who { display: flex; flex-direction: column; min-width: 0; }
+.row .who .name { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .who .meta { font-size: var(--fs-sh); line-height: var(--lh-sh); color: var(--text-2); }
+.row .amt { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+.row .amt .chev { color: var(--text-2); font-weight: 400; }
+.ax5 .row { grid-template-columns: 1fr; gap: var(--space-1); }
+.ax5 .row .who .name { white-space: normal; }
+.ax5 .row .amt .chev { display: none; }
+
+/* Days-left mark */
+.dl { width: 44px; height: 44px; border-radius: 50%; display: grid; place-content: center; text-align: center; }
+.dl b { font-size: 17px; line-height: 18px; font-weight: 700; }
+.dl span { font-size: 11px; line-height: 12px; }
+.dl.urgent { background: var(--urgent); color: var(--on-urgent); }
+.dl.nudge { box-shadow: inset 0 0 0 2px var(--nudge); color: var(--nudge); }
+.dl.closed { background: var(--closed-fill); color: var(--closed); }
+.dl.unknown { box-shadow: inset 0 0 0 2px var(--closed); color: var(--closed); }
+.dl.filed { background: var(--fill); color: var(--ok); }
+.ax5 .dl { width: auto; height: auto; border-radius: var(--radius); padding: var(--space-1) var(--space-3); display: inline-flex; gap: var(--space-2); align-items: baseline; justify-self: start; }
+.ax5 .dl b, .ax5 .dl span { font-size: var(--fs-sh); line-height: var(--lh-sh); }
+
+.disclose { width: 100%; min-height: 44px; display: flex; justify-content: space-between; align-items: center; padding: 0 var(--space-4); border: 0; background: var(--raised); border-radius: var(--radius); cursor: pointer; color: var(--text); font-size: var(--fs-body); line-height: var(--lh-body); text-align: left; }
+.disclose .muted { font-size: var(--fs-sh); }
+.ax5 .disclose { flex-direction: column; align-items: flex-start; padding: var(--space-2) var(--space-4); }
+.foot { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); padding: 0 var(--space-1); }
+
+/* Detail (one home for all three concepts) */
+.detail { display: flex; flex-direction: column; gap: var(--space-5); }
+.dhead { display: flex; flex-direction: column; gap: var(--space-1); }
+.bar { display: flex; flex-direction: column; gap: var(--space-2); }
+.bar .rail { position: relative; height: 12px; display: grid; grid-template-columns: 14fr 11fr 5fr; gap: 2px; }
+.bar .rail i { display: block; border-radius: 3px; }
+.bar .rail i:nth-child(1) { background: var(--fill); }
+.bar .rail i:nth-child(2) { background: var(--nudge-fill); box-shadow: inset 0 0 0 1px var(--nudge); }
+.bar .rail i:nth-child(3) { background: var(--urgent-fill); box-shadow: inset 0 0 0 1px var(--urgent); }
+.bar .mark { position: absolute; top: -6px; width: 4px; height: 24px; margin-left: -2px; border-radius: 2px; background: var(--text); }
+.bar .ticks { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-c1); line-height: var(--lh-c1); color: var(--text-2); }
+.ax5 .bar .ticks { flex-direction: column; }
+.frow { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); min-height: 44px; padding: var(--space-1) var(--space-4); }
+.frow + .frow { box-shadow: inset 0 1px 0 var(--line); }
+.frow > span:first-child { color: var(--text-2); }
+.ax5 .frow { flex-direction: column; align-items: flex-start; gap: 0; padding: var(--space-2) var(--space-4); }
+.stepper { display: inline-flex; align-items: center; gap: var(--space-2); }
+.stepper button { width: 44px; height: 44px; border-radius: var(--radius); border: 0; background: var(--fill); cursor: pointer; font-size: 22px; line-height: 1; color: var(--text); }
+.stepper button:disabled { opacity: .4; cursor: default; }
+.stepper output { min-width: 4.5em; text-align: center; font-weight: 600; }
+.ax5 .stepper output { min-width: 0; }
+.actions { display: flex; flex-direction: column; gap: var(--space-2); }
+.btn { min-height: 48px; padding: 0 var(--space-4); border-radius: var(--radius); border: 0; cursor: pointer; font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+.btn.primary { background: var(--tint); color: var(--on-tint); }
+.btn.secondary { background: var(--tint-soft); color: var(--tint); }
+.btn.plain { background: none; color: var(--tint); }
+.answer { min-height: 48px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: 0 var(--space-2) 0 var(--space-4); border-radius: var(--radius); background: var(--fill); color: var(--ok); font-weight: 600; }
+.answer .btn { min-height: 44px; }
+.ax5 .answer { flex-direction: column; align-items: flex-start; padding: var(--space-2) var(--space-4); }
+.pushdown { margin-top: auto; }
+
+/* States */
+.state { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) var(--space-4); }
+.state details { color: var(--text-2); font-size: var(--fs-fn); line-height: var(--lh-fn); }
+.state summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.state code { display: block; padding: var(--space-2); background: var(--fill); border-radius: var(--radius); font-size: 12px; }
+.skel { background: var(--fill); border-radius: var(--radius); }
+.skel-row { height: 60px; }
+.skel-money { height: 34px; width: 50%; }
+.skel-line { height: 18px; width: 80%; }
+@media (prefers-reduced-motion: no-preference) {
+  .skel { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: .55; } }
+}
+
+/* Notification banner */
+.notice {
+  position: absolute; top: calc(var(--sb) + var(--space-2)); left: var(--space-2); right: var(--space-2); z-index: 20;
+  display: grid; grid-template-columns: 40px 1fr; gap: var(--space-3); padding: var(--space-3) var(--space-4);
+  border-radius: 20px; border: 0; text-align: left; cursor: pointer; color: var(--text);
+  background: color-mix(in srgb, var(--raised) 92%, transparent); box-shadow: 0 0 0 1px var(--line), 0 8px 24px rgba(0,0,0,.18);
+  backdrop-filter: blur(12px);
+}
+.notice .ico { width: 40px; height: 40px; border-radius: 10px; background: var(--urgent); color: var(--on-urgent); display: grid; place-items: center; font-weight: 700; }
+.notice .top { display: flex; justify-content: space-between; font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); }
+.notice .ttl { font-size: var(--fs-sh); line-height: var(--lh-sh); font-weight: 600; }
+.notice .msg { font-size: var(--fs-sh); line-height: var(--lh-sh); }
+
+/* Sheet (calendar) */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 10; border: 0; cursor: pointer; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 11; max-height: 86%;
+  display: flex; flex-direction: column; background: var(--surface); border-radius: 16px 16px 0 0;
+  padding-bottom: max(env(safe-area-inset-bottom), var(--hi)); box-shadow: 0 -8px 24px rgba(0,0,0,.2);
+}
+.sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--line); align-self: center; margin-top: var(--space-2); }
+.sheet .scroll { padding: var(--space-2) var(--space-4) var(--space-4); }
+
+/* Calendar */
+.week { display: flex; gap: var(--space-1); overflow-x: auto; padding: 0 var(--space-4) var(--space-2); scrollbar-width: none; }
+.wday { flex: 0 0 48px; min-height: 64px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border-radius: var(--radius); border: 0; background: none; cursor: pointer; color: var(--text); }
+.wday .wd { font-size: 11px; line-height: 13px; color: var(--text-2); }
+.wday .dn { font-size: 17px; line-height: 22px; font-weight: 600; }
+.wday .dot { width: 6px; height: 6px; border-radius: 50%; background: transparent; }
+.wday.has-urgent .dot { background: var(--urgent); }
+.wday.has-nudge .dot { background: var(--nudge); }
+.wday.on { background: var(--text); color: var(--surface); }
+.wday.on .wd { color: var(--surface); }
+.wday.today .dn { color: var(--tint); }
+.wday.today.on .dn { color: var(--surface); }
+.agenda-h { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); padding: 0 var(--space-1); }
+.agenda-h .d { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; }
+.agenda-h .m { font-size: var(--fs-sh); line-height: var(--lh-sh); font-weight: 600; }
+.ax5 .agenda-h { flex-direction: column; }
+.month { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.month .wh { text-align: center; font-size: 12px; line-height: 16px; color: var(--text-2); padding-bottom: var(--space-1); }
+.mcell { min-height: 56px; border: 0; border-radius: 6px; background: var(--raised); display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; padding: var(--space-1) var(--space-1); cursor: pointer; color: var(--text); text-align: left; }
+.mcell.out { background: transparent; color: var(--text-2); cursor: default; }
+.mcell .n { font-size: 13px; line-height: 16px; font-weight: 600; }
+.mcell .v { font-size: 12px; line-height: 16px; font-weight: 600; }
+.mcell.urgent { background: var(--urgent-fill); }
+.mcell.urgent .v { color: var(--urgent); }
+.mcell.nudge { background: var(--nudge-fill); }
+.mcell.nudge .v { color: var(--nudge); }
+.mcell.on { box-shadow: inset 0 0 0 2px var(--text); }
+.mcell.today .n { color: var(--tint); }
+
+/* Track (bold concept) */
+.readout { padding: 0 var(--space-4) var(--space-2); display: flex; flex-direction: column; gap: 2px; }
+.readout .money { font-size: var(--fs-t1); line-height: var(--lh-t1); font-weight: 700; color: var(--urgent); }
+.track { position: relative; flex: 1; min-height: 0; margin: 0 var(--space-4); }
+.track .band { position: absolute; left: 40px; right: 0; border-radius: 6px; }
+.track .band.nudge { background: var(--nudge-fill); }
+.track .band.urgent { background: var(--urgent-fill); }
+.track .bandlbl { position: absolute; right: var(--space-2); font-size: 11px; line-height: 13px; font-weight: 600; }
+.track .tick { position: absolute; left: 0; width: 34px; text-align: right; font-size: 11px; line-height: 13px; color: var(--text-2); }
+.track .cliff { position: absolute; left: 0; right: 0; height: 0; border-top: 3px solid var(--urgent); }
+.track .cliff span { position: absolute; right: 0; top: 2px; font-size: 11px; line-height: 13px; font-weight: 700; color: var(--urgent); }
+.chip {
+  position: absolute; height: 40px; width: 128px; border-radius: var(--radius); border: 0; cursor: pointer;
+  display: flex; flex-direction: column; justify-content: center; padding: 0 var(--space-2); text-align: left;
+  background: var(--raised); color: var(--text); box-shadow: 0 0 0 1px var(--line), 0 1px 2px rgba(0,0,0,.08);
+}
+.chip::before { content: ""; position: absolute; left: -4px; right: -4px; top: -2px; bottom: -2px; } /* 44 pt tall hit area */
+.chip b { font-size: 15px; line-height: 18px; }
+.chip span { font-size: 11px; line-height: 13px; color: var(--text-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chip.urgent { box-shadow: inset 4px 0 0 var(--urgent), 0 0 0 1px var(--line); }
+.chip.nudge { box-shadow: inset 4px 0 0 var(--nudge), 0 0 0 1px var(--line); }
+.chip.filed { background: transparent; box-shadow: inset 0 0 0 1.5px var(--ok); }
+.chip.filed b::after { content: " filed"; font-size: 11px; font-weight: 600; color: var(--ok); }
+.chip.gone { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); opacity: .7; }
+.chip.on { outline: 3px solid var(--tint); outline-offset: 1px; }
+.chip.entering { box-shadow: inset 4px 0 0 var(--nudge), 0 0 0 2px var(--tint); }
+.tray { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-4) 0; }
+.tray .chips { display: flex; gap: var(--space-2); overflow-x: auto; min-height: 44px; align-items: center; }
+.tray .chip { position: relative; flex: 0 0 128px; }
+.tray .chip.closed { background: var(--closed-fill); box-shadow: none; }
+.toolbar { min-height: 56px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); padding: var(--space-1) var(--space-4); border-top: 1px solid var(--line); background: var(--surface); }
+.toolbar .lk { display: flex; flex-direction: column; }
+.ax5 .toolbar { flex-direction: column; align-items: flex-start; padding: var(--space-2) var(--space-4); }
+.pop {
+  position: absolute; z-index: 15; left: var(--space-4); right: var(--space-4);
+  background: var(--raised); border-radius: 12px; padding: var(--space-4);
+  box-shadow: 0 0 0 1px var(--line), 0 12px 32px rgba(0,0,0,.22); display: flex; flex-direction: column; gap: var(--space-3);
+}
+.pop .ph { display: flex; justify-content: space-between; align-items: flex-start; gap: var(--space-2); }
+.pop .x { min-width: 44px; min-height: 44px; border: 0; border-radius: 22px; background: var(--fill); cursor: pointer; margin: -8px -8px 0 0; }
+.pop .detail { gap: var(--space-3); }
+.pop .bar, .pop .frow-wrap { display: none; }
+.tally { display: flex; flex-direction: column; }
+.tally .frow b { font-weight: 600; }
+
+/* "New:" labels (dashed) */
+.np { position: relative; outline: 1.5px dashed var(--new); outline-offset: 3px; }
+.np::after {
+  content: "New: " attr(data-new); position: absolute; top: -10px; right: 6px; z-index: 5;
+  font: 600 10px/14px -apple-system, system-ui, sans-serif; color: var(--new); background: var(--surface);
+  padding: 0 4px; border-radius: 3px; pointer-events: none; white-space: nowrap;
+}
+body.labels-off .np { outline: 0; }
+body.labels-off .np::after { display: none; }
+
+.notes-ref { color: var(--text-2); font-size: 13px; }
+.srnote { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample. No figure, seller, date or count on this page is real.</div>
+
+<section class="review" aria-label="Review controls">
+  <h1>Overdue mail: three concepts</h1>
+  <p class="kind">Designer kind: blind. Designer lost-mail-warning-blind-1. Every part is drawn as new, because a blind designer does not see today's screen.</p>
+  <div class="ctl-row" role="group" aria-label="Concept"><span class="lbl">Concept</span><span id="ctabs" class="cluster"></span></div>
+  <div class="ctl-row" role="group" aria-label="State"><span class="lbl">State</span><span id="states" class="cluster"></span></div>
+  <div class="ctl-row" role="group" aria-label="Theme"><span class="lbl">Theme</span><span id="themes" class="cluster"></span></div>
+  <div class="ctl-row" role="group" aria-label="Page"><span class="lbl">Page</span>
+    <button class="pill" id="labelsBtn" data-r="labels" aria-pressed="true">New labels</button>
+    <button class="pill" data-r="reset">Reset sample</button>
+  </div>
+  <p class="notes-ref">Deep links: <code>#c=clock</code>, <code>#c=calendar</code>, <code>#c=track</code>, with <code>&amp;s=empty|loading|failed|unknown|notice</code> and <code>&amp;t=dark|light</code>. Press a package, a stepper or a button: each one works.</p>
+</section>
+
+<main id="stage"></main>
+
+<script>
+(() => {
+'use strict';
+const DAY = 86400000;
+const TODAY = Date.UTC(2026, 10, 21);          // sample "today", Sat 21 Nov 2026
+const WIN = 30, NUDGE = 14, URGENT = 25;       // claim window, nudge day, urgent day
+const TRACKED = 41;                            // sample count of tracked packages, left out
+
+const BASE = [
+  { id: 'tdr', seller: 'Tiny Dragon TCG', ordered: '2026-10-23', cards: 4, got: 0, owed: 6.12 },
+  { id: 'lks', seller: 'Lakeside Singles', ordered: '2026-10-24', cards: 3, got: 1, owed: 2.35 },
+  { id: 'ppl', seller: 'Pocket Pulls', ordered: '2026-10-26', cards: 1, got: 0, owed: 0.79 },
+  { id: 'gyg', seller: 'Graveyard Games', ordered: '2026-10-27', cards: 6, got: 0, owed: 14.80 },
+  { id: 'mcc', seller: 'Mint Condition Co', ordered: '2026-10-30', cards: 2, got: 0, owed: 3.10 },
+  { id: 'cbh', seller: 'Cardboard Hollow', ordered: '2026-11-02', cards: 5, got: 2, owed: 4.45 },
+  { id: 'npc', seller: 'North Pole Cards', ordered: '2026-11-04', cards: 1, got: 0, owed: 1.25 },
+  { id: 'sns', seller: 'Sleeve and Shield', ordered: '2026-11-06', cards: 3, got: 0, owed: 5.60 },
+  { id: 'rdg', seller: 'Ridgeline Collectibles', ordered: '2026-11-07', cards: 2, got: 0, owed: 0.98 },
+  { id: 'bbb', seller: 'Bulk Bin Bros', ordered: '2026-10-19', cards: 8, got: 0, owed: 9.20 },
+  { id: 'fxf', seller: 'Foxglove Foils', ordered: '2026-11-09', cards: 2, got: 0, owed: 2.20 },
+  { id: 'oml', seller: 'Old Mill Cards', ordered: '2026-11-11', cards: 4, got: 1, owed: 3.75 },
+  { id: 'hbh', seller: 'Harbor Hobby', ordered: '2026-11-13', cards: 1, got: 0, owed: 0.65 },
+];
+const NODATE = [
+  { id: 'u1', seller: 'Foil Fox', ordered: null, cards: 2, got: 0, owed: 1.90 },
+  { id: 'u2', seller: 'Deep Cut Games', ordered: null, cards: 1, got: 0, owed: 0.55 },
+];
+
+const CONCEPTS = [
+  { key: 'clock', name: 'Claim clock',
+    why: 'Structure: one list ranked by days left to claim, in two bands. Move around: push a package to its detail; a segmented control splits open from filed. First screen: the money that must be claimed within 5 days, then the packages in the order they run out.' },
+  { key: 'calendar', name: 'Claim calendar',
+    why: 'Structure: an agenda by the day each claim window closes. Move around: tap a day in the strip to jump to it; a package opens in a sheet. First screen: the next deadline and what it costs. Unfolded, a month grid sits beside the chosen day.' },
+  { key: 'track', name: 'Day-30 track',
+    why: 'The bold one. Structure: no list. Each package is a chip on a ruler from day 14 down to the day-30 cliff, nearest the thumb. Move around: tap a chip for a popover; step Look ahead to watch packages slide toward the cliff. First screen: where the money sits on the clock.' },
+];
+const STATES = [['loaded', 'Loaded'], ['empty', 'All is well'], ['loading', 'Loading'], ['failed', 'Read failed'], ['unknown', 'Age unknown'], ['notice', 'Notification']];
+const THEMES = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
+const FRAMES = [
+  ['folded', 'iphone-duo-folded', 'Duo folded, 466 x 678 pt (brief size)'],
+  ['open', 'iphone-duo-unfolded', 'Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief size)'],
+  ['phone', 'iphone-regular', 'Large phone. No size is written: drawn at the brief’s folded width, 466 x 678. Drag the corner to try others.'],
+  ['ax5', 'iphone-duo-folded', 'Duo folded at the largest accessibility text size (AX5)'],
+];
+
+const R = { c: 'clock', s: 'loaded', t: 'system', labels: true, hidden: new Set() };
+let CS = {}, FN = {};
+function freshConcept() { return { filed: {}, got: {}, sel: null, seg: 'open', look: 0, list: false, closedOpen: false, pop: null, sheet: null, calDay: null }; }
+function reset() { CS = {}; FN = {}; CONCEPTS.forEach(k => { CS[k.key] = freshConcept(); }); }
+reset();
+const fn = (c, f) => (FN[c + ':' + f] ||= { view: 'list' });
+
+const ms = s => { const [y, m, d] = s.split('-').map(Number); return Date.UTC(y, m - 1, d); };
+const WD = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
+const MO = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const fd = t => { const d = new Date(t); return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MO[d.getUTCMonth()]; };
+const money = v => '$' + v.toFixed(2);
+const plural = (n, a, b) => n + ' ' + (n === 1 ? a : b);
+const np = (on, what) => on ? ` np" data-new="${what}` : '';
+
+function view(c, p) {
+  const st = CS[c], look = c === 'track' ? st.look : 0;
+  const got = st.got[p.id] ?? p.got;
+  const missing0 = p.cards - p.got, missing = p.cards - got;
+  const owedNow = missing0 > 0 ? p.owed * missing / missing0 : 0;
+  const v = { ...p, got, owedNow, done: got >= p.cards, filed: st.filed[p.id] || null };
+  if (!p.ordered) { v.age = null; v.zone = 'unknown'; return v; }
+  v.age = Math.round((TODAY - ms(p.ordered)) / DAY) + look;
+  v.left = WIN - v.age;
+  v.closes = ms(p.ordered) + WIN * DAY;
+  v.zone = v.age > WIN ? 'closed' : v.age >= URGENT ? 'urgent' : v.age >= NUDGE ? 'nudge' : 'young';
+  return v;
+}
+function all(c) {
+  const list = BASE.slice();
+  if (R.s === 'unknown') list.push(...NODATE);
+  return list.map(p => view(c, p));
+}
+const open = c => all(c).filter(p => !p.done && !p.filed && p.zone !== 'young');
+const sum = a => a.reduce((t, p) => t + p.owedNow, 0);
+function find(c, id) { const p = BASE.concat(NODATE).find(x => x.id === id); return p ? view(c, p) : null; }
+
+function leftText(p) {
+  if (p.filed) return 'Claim filed ' + fd(p.filed);
+  if (p.zone === 'unknown') return 'Age unknown';
+  if (p.zone === 'closed') return 'Claim window closed ' + plural(-p.left, 'day', 'days') + ' ago';
+  if (p.left === 0) return 'Last day to claim';
+  return plural(p.left, 'day', 'days') + ' left to claim';
+}
+function dl(p) {
+  if (p.filed) return `<span class="dl filed" aria-hidden="true"><b>✓</b><span>filed</span></span>`;
+  if (p.zone === 'unknown') return `<span class="dl unknown" aria-hidden="true"><b>?</b><span>days</span></span>`;
+  if (p.zone === 'closed') return `<span class="dl closed" aria-hidden="true"><b>${p.age}</b><span>day</span></span>`;
+  return `<span class="dl ${p.zone}" aria-hidden="true"><b>${p.left}</b><span>${p.left === 1 ? 'day' : 'days'}</span></span>`;
+}
+function meta(p, kind) {
+  const cards = `${p.got} of ${p.cards} ${p.cards === 1 ? 'card' : 'cards'}`;
+  if (p.zone === 'unknown') return `No order date. ${cards}`;
+  if (kind === 'cal') return `Ordered ${fd(ms(p.ordered))}. ${cards}`;
+  return `Day ${p.age}. ${cards}`;
+}
+// One row, used by every concept.
+function row(c, f, p, kind) {
+  const sel = CS[c].sel === p.id && f === 'open' ? ' sel' : '';
+  const label = `${p.seller}. ${leftText(p)}. ${meta(p, kind)}. ${money(p.owedNow)} owed.`;
+  return `<button class="row${sel}" data-a="sel" data-id="${p.id}" data-f="${f}" aria-label="${label}">
+    ${dl(p)}
+    <span class="who"><span class="name">${p.seller}</span><span class="meta">${meta(p, kind)}</span></span>
+    <span class="amt">${money(p.owedNow)}<span class="chev" aria-hidden="true">›</span></span>
+  </button>`;
+}
+
+function statusbar() {
+  return `<div class="statusbar" aria-hidden="true"><span>9:41</span><span class="sig"><i style="height:4px"></i><i style="height:6px"></i><i style="height:8px"></i><i style="height:10px"></i><span class="batt"></span></span></div>`;
+}
+const homebar = () => `<div class="homebar" aria-hidden="true"></div>`;
+function nav(left, mid, right) {
+  return `<div class="nav"><span class="side">${left || ''}</span><span class="mid">${mid || ''}</span><span class="side end">${right || ''}</span></div>`;
+}
+const back = (f, txt) => `<button class="navbtn" data-a="back" data-f="${f}"><span class="chev" aria-hidden="true">‹</span>${txt}</button>`;
+
+/* ---- Shared detail ---- */
+function bar(p) {
+  if (p.zone === 'unknown') return '';
+  const pos = Math.min(p.age, WIN) / WIN * 100;
+  return `<div class="bar" role="img" aria-label="Day ${p.age} of the ${WIN}-day claim window">
+    <div class="rail"><i></i><i></i><i></i><span class="mark" style="left:${pos}%"></span></div>
+    <div class="ticks"><span>Ordered ${fd(ms(p.ordered))}</span><span>Day 14</span><span>Day 30, ${fd(p.closes)}</span></div>
+  </div>`;
+}
+function detail(c, p, newLabels) {
+  const L = newLabels && R.labels;
+  const zc = p.filed ? '' : ' z-' + p.zone;
+  const sub = p.zone === 'unknown' ? 'This order has no order date, so its days cannot be counted. Check the order and add its date.'
+    : p.zone === 'closed' ? 'The window closed ' + fd(p.closes) + '. A late claim may still be worth a message to the seller.'
+    : 'The claim window closes ' + fd(p.closes) + '.';
+  const fileAct = p.filed
+    ? `<div class="answer" role="status"><span>Claim filed ${fd(p.filed)}</span><button class="btn plain" data-a="unfile" data-id="${p.id}">Undo</button></div>`
+    : `<button class="btn primary" data-a="file" data-id="${p.id}">Mark claim filed</button>`;
+  const arriveAct = p.done
+    ? `<div class="answer" role="status"><span>All ${p.cards} cards arrived. It left the list.</span><button class="btn plain" data-a="unarrive" data-id="${p.id}">Undo</button></div>`
+    : `<button class="btn secondary" data-a="arrived" data-id="${p.id}">All cards arrived</button>`;
+  return `<div class="detail">
+    <div class="dhead">
+      <p class="t-t2${zc}">${leftText(p)}</p>
+      <p class="t-sh muted">${sub}</p>
+    </div>
+    <div class="${L ? 'np' : ''}" ${L ? 'data-new="30-day bar"' : ''}>${bar(p)}</div>
+    <div class="group frow-wrap">
+      <div class="frow"><span>Ordered</span><span>${p.ordered ? fd(ms(p.ordered)) + ', day ' + p.age : 'No date'}</span></div>
+      <div class="frow"><span>Tracking</span><span>None</span></div>
+      <div class="frow"><span id="ca-${c}-${p.id}">Cards arrived</span>
+        <span class="stepper" role="group" aria-labelledby="ca-${c}-${p.id}">
+          <button data-a="step" data-id="${p.id}" data-d="-1" aria-label="One fewer card arrived" ${p.got <= 0 ? 'disabled title="None arrived yet"' : ''}>−</button>
+          <output aria-live="polite">${p.got} of ${p.cards}</output>
+          <button data-a="step" data-id="${p.id}" data-d="1" aria-label="One more card arrived" ${p.got >= p.cards ? 'disabled title="All cards arrived"' : ''}>+</button>
+        </span></div>
+      <div class="frow"><span>Still owed</span><span class="t-hl">${money(p.owedNow)}</span></div>
+    </div>
+    <div class="actions ${L ? 'np' : ''}" ${L ? 'data-new="claim actions"' : ''}>${fileAct}${arriveAct}</div>
+  </div>`;
+}
+
+/* ---- Shared states ---- */
+function stateBody(c, f) {
+  const L = R.labels;
+  if (R.s === 'loading') {
+    return `<div class="state" aria-busy="true"><p class="t-sh muted">Reading your orders.</p>
+      <div class="skel skel-money"></div><div class="skel skel-line"></div>
+      <div class="group stack">${'<div class="skel skel-row"></div>'.repeat(5)}</div></div>`;
+  }
+  if (R.s === 'failed') {
+    return `<div class="state"><p class="t-t3">Your orders could not be read.</p>
+      <p class="t-sh muted">Overdue mail is unknown until they load. Nothing here means zero.</p>
+      <button class="btn primary" data-a="retry">Try again</button>
+      <details><summary>What the app said</summary><code>sample: order file unreadable at line 1</code></details></div>`;
+  }
+  if (R.s === 'empty') {
+    return `<div class="state ${L ? 'np' : ''}" ${L ? 'data-new="all is well"' : ''}><p class="t-t2">All is well.</p>
+      <p class="t-sh muted">An untracked package shows here once it passes day 14 with cards missing.</p>
+      <button class="btn secondary" data-a="retry">Check again</button></div>`;
+  }
+  return null;
+}
+function noticeBanner(c, f) {
+  if (R.s !== 'notice') return '';
+  return `<button class="notice" data-a="notice" data-f="${f}" aria-label="Notification. Tiny Dragon TCG closes tomorrow. Claim 6.12 dollars today.">
+    <span class="ico" aria-hidden="true">!</span>
+    <span class="stack-1"><span class="top"><span>Overdue mail</span><span>now</span></span>
+    <span class="ttl">Tiny Dragon TCG closes tomorrow</span>
+    <span class="msg">Claim $6.12 today. 3 more packages close within 5 days.</span></span>
+  </button>`;
+}
+
+function closedBtn(st, closed) {
+  return `<button class="disclose" data-a="closed" aria-expanded="${st.closedOpen}"><span>Window closed</span>
+    <span class="muted">${plural(closed.length, 'package', 'packages')}, ${money(sum(closed))} <span aria-hidden="true">${st.closedOpen ? '⌃' : '⌄'}</span></span></button>`;
+}
+
+/* ---- Concept: Claim clock ---- */
+function clockSummary(c) {
+  const o = open(c), u = o.filter(p => p.zone === 'urgent'), n = o.filter(p => p.zone === 'nudge');
+  const L = R.labels;
+  if (!u.length && !n.length) return '';
+  return `<div class="summary ${L ? 'np' : ''}" ${L ? 'data-new="money summary"' : ''}>
+    ${u.length ? `<p class="money">${money(sum(u))}</p><p class="t-sh">to claim within 5 days, in ${plural(u.length, 'package', 'packages')}.</p>` : ''}
+    ${n.length ? `<p class="t-sh muted">${money(sum(n))} more is past day 14, in ${plural(n.length, 'package', 'packages')}.</p>` : ''}
+  </div>`;
+}
+function clockList(c, f) {
+  const st = CS[c], L = R.labels;
+  const sb = stateBody(c, f);
+  let body;
+  if (sb) body = sb;
+  else {
+    const a = all(c);
+    const o = a.filter(p => !p.done && !p.filed && p.zone !== 'young');
+    const filed = a.filter(p => p.filed && !p.done);
+    const seg = `<div class="seg ${L ? 'np' : ''}" ${L ? 'data-new="open and filed"' : ''} role="group" aria-label="Show">
+      <button data-a="seg" data-v="open" aria-pressed="${st.seg === 'open'}">Open (${o.length})</button>
+      <button data-a="seg" data-v="filed" aria-pressed="${st.seg === 'filed'}">Claim filed (${filed.length})</button></div>`;
+    let lists = '';
+    if (st.seg === 'open') {
+      const by = z => o.filter(p => p.zone === z).sort((x, y) => (x.left ?? 99) - (y.left ?? 99));
+      const sect = (z, title, rows) => rows.length ? `<div class="sect"><div class="sect-h"><b><span class="zdot" style="background:var(--${z === 'unknown' ? 'closed' : z})"></span>${title}</b><span>${money(sum(rows))}</span></div>
+        <div class="group">${rows.map(p => row(c, f, p)).join('')}</div></div>` : '';
+      const closed = by('closed');
+      lists = sect('urgent', 'Claim within 5 days', by('urgent')) + sect('nudge', 'Past day 14', by('nudge'))
+        + (R.s === 'unknown' ? sect('unknown', 'Age unknown: no order date', by('unknown')) : '')
+        + (closed.length ? `<div class="sect">${closedBtn(st, closed)}
+          ${st.closedOpen ? `<div class="group">${closed.map(p => row(c, f, p)).join('')}</div>` : ''}</div>` : '');
+      if (!o.length) lists = `<div class="state"><p class="t-t3">All is well.</p><p class="t-sh muted">No open package is past day 14.</p></div>`;
+    } else {
+      lists = filed.length ? `<div class="group">${filed.map(p => row(c, f, p)).join('')}</div>`
+        : `<div class="state"><p class="t-sh">No claim is filed yet. Open a package to file one.</p><button class="btn secondary" data-a="seg" data-v="open">Show open packages</button></div>`;
+    }
+    body = `<div class="content">${clockSummary(c)}${seg}${lists}
+      <p class="foot">Tracked packages are left out, ${TRACKED} today: the carrier watches them. ${a.filter(p => p.zone === 'young' && !p.done).length} untracked packages are under day 14.</p></div>`;
+  }
+  return statusbar() + `<div class="scr">${nav('', '', '')}<div class="largetitle t-lt">Overdue</div>
+    <div class="scroll">${body}</div></div>` + noticeBanner(c, f) + homebar();
+}
+function clockDetail(c, f, p, showBack) {
+  return statusbar() + `<div class="scr">${nav(showBack ? back(f, 'Overdue') : '', p.seller, '')}
+    <div class="scroll"><div class="content" style="min-height:100%">${detail(c, p, true)}</div></div></div>` + homebar();
+}
+function clockFrame(c, f) {
+  const st = CS[c], nav0 = fn(c, f);
+  if (f === 'open') {
+    const left = `<div class="page">${clockList(c, f)}</div>`;
+    let p = st.sel ? find(c, st.sel) : null;
+    if (!p && !stateBody(c, f)) p = open(c).filter(x => x.zone === 'urgent' || x.zone === 'nudge').sort((a, b) => a.left - b.left)[0] || null;
+    const right = p && !stateBody(c, f) ? clockDetail(c, f, p, false)
+      : statusbar() + `<div class="scr">${nav('', '', '')}<div class="state"><p class="t-sh muted">${stateBody(c, f) ? '' : 'Pick a package to see its claim window.'}</p></div></div>` + homebar();
+    return left + `<div class="hinge" aria-hidden="true">hinge</div><div class="page">${right}</div>`;
+  }
+  if (nav0.view === 'detail' && st.sel && !stateBody(c, f)) return clockDetail(c, f, find(c, st.sel), true);
+  return clockList(c, f);
+}
+
+/* ---- Concept: Claim calendar ---- */
+function deadlines(c) {
+  const o = open(c).filter(p => p.zone === 'urgent' || p.zone === 'nudge');
+  const m = new Map();
+  o.forEach(p => { if (!m.has(p.closes)) m.set(p.closes, []); m.get(p.closes).push(p); });
+  return [...m.entries()].sort((a, b) => a[0] - b[0]);
+}
+function dayName(t) {
+  const d = Math.round((t - TODAY) / DAY);
+  return d === 0 ? 'Today, ' + fd(t) : d === 1 ? 'Tomorrow, ' + fd(t) : fd(t);
+}
+function weekStrip(c, f) {
+  const dmap = new Map(deadlines(c));
+  let h = '';
+  for (let i = 0; i < 17; i++) {
+    const t = TODAY + i * DAY, d = new Date(t), ps = dmap.get(t);
+    const z = ps ? (ps.some(p => p.zone === 'urgent') ? 'has-urgent' : 'has-nudge') : '';
+    const on = CS[c].calDay === t ? ' on' : '';
+    h += `<button class="wday ${z}${on}${i === 0 ? ' today' : ''}" data-a="calday" data-t="${t}" data-f="${f}" aria-label="${fd(t)}${ps ? ', ' + plural(ps.length, 'window closes', 'windows close') : ', nothing closes'}">
+      <span class="wd">${WD[d.getUTCDay()].slice(0, 3)}</span><span class="dn">${d.getUTCDate()}</span><span class="dot"></span></button>`;
+  }
+  return `<div class="week ${R.labels ? 'np' : ''}" ${R.labels ? 'data-new="deadline strip"' : ''} role="group" aria-label="Days ahead">${h}</div>`;
+}
+function agenda(c, f, onlyDay) {
+  const st = CS[c];
+  let dl = deadlines(c);
+  if (onlyDay != null) dl = dl.filter(([t]) => t === onlyDay);
+  const closed = open(c).filter(p => p.zone === 'closed');
+  const unk = open(c).filter(p => p.zone === 'unknown');
+  let h = '';
+  if (onlyDay == null && closed.length) {
+    h += `<div class="sect">${closedBtn(st, closed)}
+      ${st.closedOpen ? `<div class="group">${closed.map(p => row(c, f, p, 'cal')).join('')}</div>` : ''}</div>`;
+  }
+  if (onlyDay == null && unk.length) {
+    h += `<div class="sect"><div class="agenda-h"><span class="d z-unknown">Age unknown</span><span class="m">${money(sum(unk))}</span></div>
+      <div class="group">${unk.map(p => row(c, f, p, 'cal')).join('')}</div></div>`;
+  }
+  dl.forEach(([t, ps]) => {
+    const z = ps.some(p => p.zone === 'urgent') ? 'urgent' : 'nudge';
+    h += `<div class="sect" id="ag-${c}-${f}-${t}"><div class="agenda-h"><span class="d z-${z}">${dayName(t)}</span><span class="m">${money(sum(ps))}</span></div>
+      <div class="group">${ps.map(p => row(c, f, p, 'cal')).join('')}</div></div>`;
+  });
+  if (!dl.length && onlyDay != null) h = `<div class="state"><p class="t-sh">No claim window closes ${fd(onlyDay)}.</p><button class="btn secondary" data-a="calday" data-t="" data-f="${f}">Show every day</button></div>`;
+  if (!dl.length && onlyDay == null && !closed.length && !unk.length) h = `<div class="state"><p class="t-t3">All is well.</p><p class="t-sh muted">No open package is past day 14.</p></div>`;
+  return h;
+}
+function calTop(c) {
+  const o = open(c).filter(p => p.zone === 'urgent' || p.zone === 'nudge');
+  if (!o.length) return '';
+  const soon = o.filter(p => p.zone === 'urgent');
+  return `<div class="summary ${R.labels ? 'np' : ''}" ${R.labels ? 'data-new="money waiting"' : ''}>
+    <p class="t-sh">${money(sum(o))} is waiting across ${plural(o.length, 'package', 'packages')}.</p>
+    ${soon.length ? `<p class="t-sh z-urgent">${money(sum(soon))} of it closes within 5 days.</p>` : ''}</div>`;
+}
+function calSheet(c, f) {
+  const id = fn(c, f).sheet;
+  if (!id || stateBody(c, f)) return '';
+  const p = find(c, id);
+  return `<button class="scrim" data-a="sheetclose" data-f="${f}" aria-label="Close"></button>
+    <div class="sheet" role="dialog" aria-label="${p.seller}"><span class="grab" aria-hidden="true"></span>
+    ${nav('', p.seller, `<button class="navbtn" data-a="sheetclose" data-f="${f}"><b>Done</b></button>`)}
+    <div class="scroll">${detail(c, p, true)}</div></div>`;
+}
+function calMain(c, f) {
+  const sb = stateBody(c, f);
+  const body = sb || `<div class="content">${calTop(c)}${agenda(c, f, null)}
+    <p class="foot">Tracked packages are left out, ${TRACKED} today: the carrier watches them.</p></div>`;
+  const strip = sb || f === 'ax5' ? '' : weekStrip(c, f);
+  return statusbar() + `<div class="scr">${nav('', '', '')}<div class="largetitle t-lt">Claim by</div>${strip}
+    <div class="scroll" data-agenda="${c}-${f}">${body}</div></div>` + calSheet(c, f) + noticeBanner(c, f) + homebar();
+}
+function monthGrid(c, f) {
+  const dmap = new Map(deadlines(c));
+  const start = Date.UTC(2026, 10, 16);   // Mon 16 Nov
+  let h = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'].map(d => `<span class="wh">${d}</span>`).join('');
+  for (let i = 0; i < 28; i++) {
+    const t = start + i * DAY, d = new Date(t), ps = dmap.get(t);
+    const past = t < TODAY;
+    const z = ps ? (ps.some(p => p.zone === 'urgent') ? ' urgent' : ' nudge') : '';
+    const on = CS[c].calDay === t ? ' on' : '';
+    if (past) { h += `<span class="mcell out"><span class="n">${d.getUTCDate()}</span></span>`; continue; }
+    h += `<button class="mcell${z}${on}${t === TODAY ? ' today' : ''}" data-a="calday" data-t="${t}" data-f="${f}" aria-label="${fd(t)}${ps ? ', ' + money(sum(ps)) + ' closes' : ''}">
+      <span class="n">${d.getUTCDate() === 1 ? '1 ' + MO[d.getUTCMonth()] : d.getUTCDate()}</span><span class="v">${ps ? money(sum(ps)) : ''}</span></button>`;
+  }
+  return `<div class="month ${R.labels ? 'np' : ''}" ${R.labels ? 'data-new="month of deadlines"' : ''} role="group" aria-label="Nov and Dec 2026">${h}</div>`;
+}
+function calFrame(c, f) {
+  const st = CS[c];
+  if (f !== 'open') return calMain(c, f);
+  const sb = stateBody(c, f);
+  const left = statusbar() + `<div class="scr">${nav('', '', '')}<div class="largetitle t-lt">Claim by</div>
+    <div class="scroll">${sb || `<div class="content">${calTop(c)}${monthGrid(c, f)}<p class="foot">Tracked packages are left out, ${TRACKED} today.</p></div>`}</div></div>` + noticeBanner(c, f) + homebar();
+  let right;
+  if (sb) right = statusbar() + `<div class="scr">${nav('', '', '')}</div>` + homebar();
+  else {
+    const dls = deadlines(c);
+    const day = st.calDay ?? (dls[0] ? dls[0][0] : null);
+    const ps = day != null ? (dls.find(([t]) => t === day) || [0, []])[1] : [];
+    const p = st.sel ? find(c, st.sel) : ps[0];
+    right = statusbar() + `<div class="scr">${nav('', '', '')}
+      <div class="scroll"><div class="content">${day != null ? agenda(c, f, day) : agenda(c, f, null)}
+      ${p ? detail(c, p, true) : ''}</div></div></div>` + homebar();
+  }
+  return `<div class="page">${left}</div><div class="hinge" aria-hidden="true">hinge</div><div class="page">${right}</div>`;
+}
+
+/* ---- Concept: Day-30 track ---- */
+function trackReadout(c) {
+  const o = open(c), st = CS[c];
+  const u = o.filter(p => p.zone === 'urgent'), n = o.filter(p => p.zone === 'nudge'), cl = o.filter(p => p.zone === 'closed');
+  const when = st.look ? 'In ' + plural(st.look, 'day', 'days') + ': ' : '';
+  return `<div class="readout ${R.labels ? 'np' : ''}" ${R.labels ? 'data-new="money on the clock"' : ''} aria-live="polite">
+    <p class="money">${when}${money(sum(u))}</p>
+    <p class="t-fn">inside the last 5 days, ${plural(u.length, 'package', 'packages')}. <span class="muted">${money(sum(n))} past day 14.${cl.length ? ' ' + money(sum(cl)) + ' past day 30.' : ''}</span></p>
+  </div>`;
+}
+function lookBar(c) {
+  const st = CS[c];
+  return `<div class="toolbar ${R.labels ? 'np' : ''}" ${R.labels ? 'data-new="look ahead"' : ''}>
+    <span class="lk"><span class="t-sh" id="lk-${c}">Look ahead</span><span class="t-fn muted">${st.look ? fd(TODAY + st.look * DAY) : 'Today'}</span></span>
+    <span class="stepper" role="group" aria-labelledby="lk-${c}">
+      <button data-a="look" data-d="-1" aria-label="One day sooner" ${st.look <= 0 ? 'disabled title="Already at today"' : ''}>−</button>
+      <output>${st.look ? '+' + plural(st.look, 'day', 'days') : 'Today'}</output>
+      <button data-a="look" data-d="1" aria-label="One day later" ${st.look >= 14 ? 'disabled title="Looks 14 days ahead at most"' : ''}>+</button>
+    </span></div>`;
+}
+function chip(c, f, p, extra) {
+  const st = CS[c];
+  const cls = p.filed ? 'filed' : (p.done ? 'gone' : p.zone);
+  const enter = st.look && (p.age - st.look) < NUDGE && p.zone !== 'young' ? ' entering' : '';
+  return `<button class="chip ${cls}${enter}${st.pop === p.id && fn(c, f).pop ? ' on' : ''}${f === 'open' && st.sel === p.id ? ' on' : ''}" data-a="chip" data-id="${p.id}" data-f="${f}" data-age="${p.age ?? ''}" ${extra || ''}
+    aria-label="${p.seller}, day ${p.age ?? 'unknown'}, ${money(p.owedNow)} owed${p.filed ? ', claim filed' : ''}"><b>${money(p.owedNow)}</b><span>${p.seller}</span></button>`;
+}
+function trackChips(c, f) {
+  const st = CS[c];
+  return all(c).filter(p => p.age != null && p.age >= NUDGE && p.age <= WIN && (!p.done || st.pop === p.id)).map(p => chip(c, f, p)).join('');
+}
+function trackBody(c, f) {
+  let h = `<div class="band nudge" data-from="${NUDGE}" data-to="${URGENT}"><span class="bandlbl z-nudge">Past day 14</span></div>
+    <div class="band urgent" data-from="${URGENT}" data-to="${WIN + 1}"><span class="bandlbl z-urgent">Claim now</span></div>`;
+  for (let d = NUDGE; d <= WIN; d++) if (d >= URGENT || d % 2 === 0) h += `<span class="tick" data-day="${d}">${d}</span>`;
+  h += `<div class="cliff" data-day="${WIN + 1}"><span>Day 30: the window closes</span></div>`;
+  return `<div class="track ${R.labels ? 'np' : ''}" ${R.labels ? 'data-new="day-30 track"' : ''} data-c="${c}" data-f="${f}" role="group" aria-label="Packages by day, day 14 at the top, day 30 at the bottom">${h}${trackChips(c, f)}</div>`;
+}
+function tray(c, f) {
+  const o = all(c).filter(p => !p.done && (p.zone === 'closed'));
+  const unk = all(c).filter(p => !p.done && p.zone === 'unknown');
+  const t = (lbl, ps) => `<div class="tray"><span class="t-c1 muted">${lbl}</span><div class="chips">${ps.length ? ps.map(p => chip(c, f, p).replace('chip ', 'chip closed ')).join('') : '<span class="t-c1 muted">None</span>'}</div></div>`;
+  return (unk.length ? t('Age unknown: no order date', unk) : '') + t('Past the window', o);
+}
+function trackPop(c, f) {
+  const st = CS[c], nv = fn(c, f);
+  if (!st.pop || !nv.pop || f === 'open') return '';
+  const p = find(c, st.pop);
+  return `<div class="pop" role="dialog" aria-label="${p.seller}" data-anchor="${p.id}" data-f="${f}">
+    <div class="ph"><span class="stack-1"><span class="t-hl">${p.seller}</span><span class="t-fn muted">Day ${p.age ?? '?'}. ${p.got} of ${p.cards} cards. ${money(p.owedNow)} owed.</span></span>
+    <button class="x" data-a="popclose" data-f="${f}" aria-label="Close">✕</button></div>
+    ${detail(c, p, false)}</div>`;
+}
+function trackList(c, f) {
+  const o = all(c).filter(p => !p.done && p.zone !== 'young').sort((a, b) => (b.age ?? -1) - (a.age ?? -1));
+  return `<div class="content">${f === 'ax5' ? '<p class="t-fn muted">At this text size the track shows as a list.</p>' : ''}
+    ${o.length ? `<div class="group">${o.map(p => row(c, f, p)).join('')}</div>` : '<div class="state"><p class="t-t3">All is well.</p></div>'}</div>`;
+}
+function trackMain(c, f) {
+  const st = CS[c], sb = stateBody(c, f);
+  const asList = st.list || f === 'ax5';
+  const toggle = f === 'ax5' || sb ? '' : `<button class="navbtn" data-a="listmode">${st.list ? 'Track' : 'List'}</button>`;
+  let mid;
+  if (sb) mid = `<div class="scroll">${sb}</div>`;
+  else if (asList) {
+    const nv = fn(c, f);
+    if (nv.view === 'detail' && st.sel) {
+      const p = find(c, st.sel);
+      return statusbar() + `<div class="scr">${nav(back(f, 'Overdue'), p.seller, '')}<div class="scroll"><div class="content">${detail(c, p, false)}</div></div></div>` + homebar();
+    }
+    mid = f === 'ax5'
+      ? `<div class="scroll">${trackReadout(c)}${trackList(c, f)}${lookBar(c)}</div>`
+      : trackReadout(c) + `<div class="scroll">${trackList(c, f)}</div>` + lookBar(c);
+  } else mid = trackReadout(c) + trackBody(c, f) + tray(c, f) + lookBar(c);
+  return statusbar() + `<div class="scr">${nav('', 'Overdue', toggle)}${mid}</div>` + trackPop(c, f) + noticeBanner(c, f) + homebar();
+}
+function trackFrame(c, f) {
+  const st = CS[c];
+  if (f !== 'open') return trackMain(c, f);
+  const sb = stateBody(c, f);
+  const left = statusbar() + `<div class="scr">${nav('', 'Overdue', '')}${sb ? `<div class="scroll">${sb}</div>` : trackBody(c, f) + tray(c, f)}</div>` + noticeBanner(c, f) + homebar();
+  let right;
+  if (sb) right = statusbar() + `<div class="scr">${nav('', '', '')}</div>` + homebar();
+  else {
+    const o = open(c);
+    const z = k => o.filter(p => p.zone === k);
+    const p = st.sel ? find(c, st.sel) : z('urgent').sort((a, b) => b.age - a.age)[0];
+    right = statusbar() + `<div class="scr">${nav('', 'On the clock', '')}${trackReadout(c)}
+      <div class="scroll"><div class="content">
+      <div class="group tally">
+        <div class="frow"><span class="z-urgent">Claim now, day 25 to 30</span><b>${money(sum(z('urgent')))} in ${z('urgent').length}</b></div>
+        <div class="frow"><span class="z-nudge">Past day 14</span><b>${money(sum(z('nudge')))} in ${z('nudge').length}</b></div>
+        <div class="frow"><span>Past the window</span><b>${money(sum(z('closed')))} in ${z('closed').length}</b></div>
+      </div>
+      ${p ? `<div class="sect"><div class="sect-h"><b>${p.seller}</b></div>${detail(c, p, true)}</div>` : ''}
+      </div></div>${lookBar(c)}</div>` + homebar();
+  }
+  return `<div class="page">${left}</div><div class="hinge" aria-hidden="true">hinge</div><div class="page">${right}</div>`;
+}
+
+/* Place chips on each track by measuring it. */
+function layoutTracks(root) {
+  root.querySelectorAll('.track').forEach(tr => {
+    const H = tr.clientHeight, W = tr.clientWidth;
+    if (!H) return;
+    const n = WIN - NUDGE + 1, per = H / (n + 0.4);
+    const y = d => (d - NUDGE) * per;
+    tr.querySelectorAll('.band').forEach(b => { b.style.top = y(+b.dataset.from) + 'px'; b.style.height = (y(+b.dataset.to) - y(+b.dataset.from) - 2) + 'px'; b.querySelector('.bandlbl').style.top = '4px'; });
+    tr.querySelectorAll('.tick').forEach(t => { t.style.top = (y(+t.dataset.day) + per / 2 - 7) + 'px'; });
+    tr.querySelectorAll('.cliff').forEach(t => { t.style.top = y(+t.dataset.day) + 'px'; });
+    const laneW = 128, gap = 8, x0 = 48;
+    const lanes = Math.max(1, Math.floor((W - x0 + gap) / (laneW + gap)));
+    const bottoms = new Array(lanes).fill(-1e9);
+    const chips = [...tr.querySelectorAll('.chip')].sort((a, b) => +a.dataset.age - +b.dataset.age);
+    chips.forEach(ch => {
+      let top = Math.max(0, Math.min(H - 40, y(+ch.dataset.age) + per / 2 - 20));
+      let lane = bottoms.findIndex(bt => bt + 4 <= top);
+      if (lane < 0) { lane = bottoms.indexOf(Math.min(...bottoms)); top = bottoms[lane] + 4; }
+      bottoms[lane] = top + 40;
+      ch.style.top = top + 'px';
+      ch.style.left = (x0 + lane * (laneW + gap)) + 'px';
+    });
+  });
+  root.querySelectorAll('.pop').forEach(pop => {
+    const scr = pop.parentElement;
+    const anchor = scr.querySelector(`.chip[data-id="${pop.dataset.anchor}"]`);
+    if (!anchor) { pop.style.top = '96px'; return; }
+    const sr = scr.getBoundingClientRect(), ar = anchor.getBoundingClientRect();
+    const ph = pop.offsetHeight, below = ar.bottom - sr.top + 8, above = ar.top - sr.top - ph - 8;
+    pop.style.top = Math.max(48, (ar.top - sr.top > sr.height / 2 && above > 48) ? above : Math.min(below, sr.height - ph - 24)) + 'px';
+  });
+}
+
+const RENDER = { clock: clockFrame, calendar: calFrame, track: trackFrame };
+
+/* ---- Page ---- */
+function build() {
+  const stage = document.getElementById('stage');
+  stage.innerHTML = CONCEPTS.map(k => `<section class="concept" id="concept-${k.key}" data-concept="${k.key}" aria-labelledby="h-${k.key}" hidden>
+    <header><h2 id="h-${k.key}">${k.name}</h2><p class="why">${k.why}</p></header>
+    <div class="frames">${FRAMES.map(([f, dev, cap]) => `<figure><figcaption>${cap}</figcaption>
+      <div class="device ${f === 'ax5' ? 'ax5' : f}" data-device="${dev}" data-frame="${f}" data-c="${k.key}" id="${k.key}-${f}"></div></figure>`).join('')}</div>
+  </section>`).join('');
+  stage.querySelectorAll('.device.phone').forEach(d => new ResizeObserver(() => layoutTracks(d)).observe(d));
+}
+function renderControls() {
+  const vis = CONCEPTS.filter(k => !R.hidden.has(k.key));
+  document.getElementById('ctabs').innerHTML = vis.map(k => `<span class="ctab${R.c === k.key ? ' on' : ''}">
+    <button data-r="concept" data-v="${k.key}" aria-pressed="${R.c === k.key}">${k.name}</button>
+    <button class="hide" data-r="hide" data-v="${k.key}" aria-label="Hide ${k.name}" title="Hide this concept">✕</button></span>`).join('')
+    + (R.hidden.size ? `<button class="pill" data-r="showall">Show hidden (${R.hidden.size})</button>` : '');
+  document.getElementById('states').innerHTML = STATES.map(([k, n]) => `<button class="pill" data-r="state" data-v="${k}" aria-pressed="${R.s === k}">${n}</button>`).join('');
+  document.getElementById('themes').innerHTML = THEMES.map(([k, n]) => `<button class="pill" data-r="theme" data-v="${k}" aria-pressed="${R.t === k}">${n}</button>`).join('');
+  document.getElementById('labelsBtn').setAttribute('aria-pressed', R.labels);
+}
+function render() {
+  if (R.t === 'system') document.documentElement.removeAttribute('data-theme');
+  else document.documentElement.setAttribute('data-theme', R.t);
+  document.body.classList.toggle('labels-off', !R.labels);
+  renderControls();
+  document.querySelectorAll('.concept').forEach(sec => {
+    const c = sec.dataset.concept;
+    sec.hidden = c !== R.c || R.hidden.has(c);
+    if (sec.hidden) return;
+    sec.querySelectorAll('.device').forEach(d => {
+      const keep = [...d.querySelectorAll('.scroll')].map(s => s.scrollTop);
+      d.innerHTML = RENDER[c](c, d.dataset.frame);
+      d.querySelectorAll('.scroll').forEach((s, i) => { if (keep[i]) s.scrollTop = keep[i]; });
+    });
+    layoutTracks(sec);
+  });
+  writeHash();
+}
+function writeHash() {
+  const st = CS[R.c], parts = ['c=' + R.c];
+  if (R.s !== 'loaded') parts.push('s=' + R.s);
+  if (R.t !== 'system') parts.push('t=' + R.t);
+  if (st.sel) parts.push('sel=' + st.sel);
+  history.replaceState(null, '', '#' + parts.join('&'));
+}
+function readHash() {
+  const q = new URLSearchParams(location.hash.slice(1));
+  if (CONCEPTS.some(k => k.key === q.get('c'))) R.c = q.get('c');
+  if (STATES.some(([k]) => k === q.get('s'))) R.s = q.get('s');
+  if (THEMES.some(([k]) => k === q.get('t'))) R.t = q.get('t');
+  const sel = q.get('sel');
+  if (sel && find(R.c, sel)) { CS[R.c].sel = sel; }
+}
+
+let retryTimer = null;
+document.addEventListener('click', e => {
+  const r = e.target.closest('[data-r]');
+  if (r) {
+    const v = r.dataset.v;
+    switch (r.dataset.r) {
+      case 'concept': R.c = v; break;
+      case 'hide': R.hidden.add(v); if (R.c === v) { const nx = CONCEPTS.find(k => !R.hidden.has(k.key)); R.c = nx ? nx.key : v; } break;
+      case 'showall': R.hidden.clear(); break;
+      case 'state': R.s = v; break;
+      case 'theme': R.t = v; break;
+      case 'labels': R.labels = !R.labels; break;
+      case 'reset': reset(); break;
+    }
+    render(); return;
+  }
+  const a = e.target.closest('[data-a]');
+  if (!a) return;
+  const dev = a.closest('.device'); if (!dev) return;
+  const c = dev.dataset.c, st = CS[c], f = a.dataset.f || dev.dataset.frame, id = a.dataset.id;
+  const nv = fn(c, f);
+  switch (a.dataset.a) {
+    case 'sel':
+      st.sel = id;
+      if (c === 'calendar' && f !== 'open') nv.sheet = id;
+      else if (f !== 'open') nv.view = 'detail';
+      break;
+    case 'chip':
+      st.sel = id;
+      if (f !== 'open') { st.pop = id; nv.pop = true; }
+      break;
+    case 'popclose': st.pop = null; nv.pop = false; break;
+    case 'sheetclose': nv.sheet = null; break;
+    case 'back': nv.view = 'list'; break;
+    case 'seg': st.seg = a.dataset.v; nv.view = 'list'; break;
+    case 'closed': st.closedOpen = !st.closedOpen; break;
+    case 'file': st.filed[id] = TODAY; break;
+    case 'unfile': delete st.filed[id]; break;
+    case 'arrived': { const p = BASE.concat(NODATE).find(x => x.id === id); st.got[id] = p.cards; break; }
+    case 'unarrive': delete st.got[id]; break;
+    case 'step': { const p = BASE.concat(NODATE).find(x => x.id === id); const g = (st.got[id] ?? p.got) + +a.dataset.d; st.got[id] = Math.max(0, Math.min(p.cards, g)); break; }
+    case 'look': st.look = Math.max(0, Math.min(14, st.look + +a.dataset.d)); st.pop = null; break;
+    case 'listmode': st.list = !st.list; st.pop = null; break;
+    case 'calday': {
+      const t = a.dataset.t === '' ? null : +a.dataset.t;
+      st.calDay = st.calDay === t ? null : t; st.sel = null;
+      render();
+      if (t != null && f !== 'open') {
+        const target = dev.querySelector(`#ag-${c}-${f}-${t}`), sc = dev.querySelector('[data-agenda]');
+        if (target && sc) sc.scrollTop = target.offsetTop - sc.offsetTop - 8;
+      }
+      return;
+    }
+    case 'retry':
+      R.s = 'loading'; render();
+      clearTimeout(retryTimer); retryTimer = setTimeout(() => { R.s = 'loaded'; render(); }, 900);
+      return;
+    case 'notice':
+      R.s = 'loaded'; st.sel = 'tdr';
+      if (c === 'calendar' && f !== 'open') nv.sheet = 'tdr';
+      else if (c === 'track' && f !== 'open') { st.pop = 'tdr'; nv.pop = true; }
+      else if (f !== 'open') nv.view = 'detail';
+      break;
+  }
+  render();
+});
+
+build();
+readHash();
+render();
+window.addEventListener('hashchange', () => { readHash(); render(); });
+})();
+</script>
+</body>
+</html>

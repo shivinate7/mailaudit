@@ -1,0 +1,692 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Find the Package</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (native/project.yml,
+   UIUserInterfaceStyle: Light), so this page draws one theme. Cochin sets words, Menlo sets numbers
+   (typography-cochin-and-mono). App chrome (status bar, tab bars, this page's own controls) uses the system font. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --amber:#846008; --shadow:rgba(28,43,36,0.06);
+  --sys:-apple-system, system-ui, sans-serif;
+  --cochin:Cochin, Georgia, serif;
+  --mono:Menlo, ui-monospace, monospace;
+  --new:#2E7A5E; --today:#A8443C;
+  /* Top safe area: unmeasured on both phones; drawn as PR 238's mockup drew it (18 Pro 54 pt, Duo 20 pt). */
+  --sat-pro:max(env(safe-area-inset-top), 54px);
+  --sat-duo:max(env(safe-area-inset-top), 20px);
+  --sab:env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1100px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-size:24px; line-height:1.2; margin:0; }
+h2 { font-size:19px; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+.pain { display:grid; gap:4px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 16px; }
+.pain ol { margin:0; padding-left:20px; display:grid; gap:4px; max-width:80ch; }
+nav { display:flex; flex-direction:column; gap:8px; }
+nav .grp { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+nav .grp > span { font-size:13px; color:var(--inkSoft); min-width:88px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav button[aria-pressed="true"] { border-color:var(--ink); background:var(--ink); color:var(--card); }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; padding-top:8px; border-top:1px solid var(--line); }
+figure[hidden] { display:none; }
+figcaption { max-width:80ch; }
+figcaption b { font-size:16px; }
+.frames { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
+.fit { max-width:100%; display:flex; flex-direction:column; gap:4px; }
+.fit > .lab { font-size:13px; color:var(--inkSoft); }
+
+/* ---- device frames, 1 CSS px = 1 pt ---- */
+.dev { position:relative; flex:none; background:var(--paper); border:1px solid var(--ink); border-radius:24px; overflow:hidden; --ts:1; }
+.dev.fold { width:466px; height:678px; --sat:var(--sat-duo); --barh:83px; }
+.dev.pro { width:402px; height:874px; --sat:var(--sat-pro); --barh:83px; }
+.dev.duo { width:951px; height:669px; border-radius:12px; --sat:var(--sat-duo); }
+/* Largest accessibility size: Apple's AX5 Body is 53 pt against 17 at Large, so body-relative text is drawn at 53/17. */
+.dev.ax { --ts:3.12; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 24px; font:600 12px var(--sys); z-index:9; background:var(--paper); }
+.body { position:absolute; left:0; right:0; top:var(--sat); bottom:0; display:flex; flex-direction:column; }
+.content { flex:1; min-height:0; overflow:auto; scrollbar-width:thin; }
+.fold-strip { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, var(--paper)); z-index:8; }
+.fold-strip span { position:absolute; top:260px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+.page { position:absolute; top:var(--sat); bottom:0; width:455.5px; display:flex; flex-direction:column; }
+.page.l { left:0; } .page.r { left:495.5px; }
+
+/* system tab bar (iOS chrome): starts 83 pt above the bottom on both phones (duo-fold-and-keyboard; FindPillUITests log) */
+.sysbar { flex:none; height:var(--barh); display:flex; justify-content:center; padding-top:8px; }
+.sysbar .cap { width:calc(100% - 32px); height:56px; border-radius:28px; border:1px solid var(--line);
+  background:color-mix(in srgb, var(--paper) 62%, white); display:grid; grid-template-columns:repeat(4,1fr); align-items:center; }
+.tabi { display:flex; flex-direction:column; align-items:center; gap:2px; font:11px var(--sys); color:var(--inkSoft); }
+.tabi i { width:22px; height:22px; border:1.5px solid currentColor; border-radius:6px; display:block; }
+.tabi.on { color:var(--accent); }
+/* the open Duo's own bar on the right page: 24 pt in, 12 pt up, 64 pt tall (DuoBar, DuoBarMetrics.height 76) */
+.duobar { position:absolute; left:519.5px; width:407.5px; bottom:12px; height:64px; border-radius:32px; z-index:7; padding:4px;
+  display:grid; grid-template-columns:repeat(4,1fr); gap:4px; border:1px solid var(--line); background:color-mix(in srgb, var(--paper) 62%, white); }
+.duobar .tabi { justify-content:center; border-radius:28px; font-family:var(--cochin); font-size:12px; }
+.duobar .tabi.on { background:var(--card); }
+/* the system keyboard: iOS chrome, not an app colour, so its greys sit outside the tokens */
+.keys { flex:none; background:#D2D0D6; padding:8px 4px; display:flex; flex-direction:column; gap:10px; }
+.keys .row { display:flex; gap:6px; justify-content:center; }
+.keys .k { height:42px; flex:0 1 38px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font:18px var(--sys); color:#111; }
+.keys .k.w { flex-basis:240px; font-size:14px; } .keys .k.s { flex-basis:88px; font-size:14px; background:#ABA9B1; }
+.keys .note { font:11px var(--mono); color:#333; text-align:center; }
+.duokeys { position:absolute; left:0; right:0; top:405px; bottom:0; z-index:9; }
+
+/* ---- the ruled paper band under the Find pill (item 101 a): solid paper, 1 pt line rule on its top edge ---- */
+.band { flex:none; display:flex; flex-direction:column; gap:4px; padding:8px 16px 8px; background:var(--paper); border-top:1px solid var(--line); position:relative; z-index:5; }
+.page.r .band { padding-bottom:calc(76px + 8px); }
+.page.r.keysup { bottom:264px; }
+.page.r.keysup .band { padding-bottom:8px; }
+/* item 95, open: the pill floats over the list with no band */
+body.float .band { position:absolute; left:0; right:0; bottom:var(--barh, 0px); background:transparent; border-top-color:transparent; }
+body.float .page.r .band { bottom:0; }
+body.float .body:has(.keys) .band { bottom:289px; }
+body.float .band .clue { background:color-mix(in srgb, var(--paper) 88%, transparent); border-radius:14px; }
+.pill { height:52px; display:flex; align-items:center; gap:8px; padding:4px 6px 4px 16px; border-radius:26px; border:1px solid var(--line); background:var(--paper); }
+.dev.ax .pill { height:auto; min-height:52px; }
+.pill:focus-within { border-color:var(--accent); }
+.pill svg { flex:none; width:20px; height:20px; fill:none; stroke:var(--inkSoft); stroke-width:1.8; stroke-linecap:round; }
+.pill input { flex:1; min-width:0; border:0; background:transparent; font-family:var(--cochin); font-size:calc(16px * var(--ts)); color:var(--ink); padding:0; outline:none; }
+.pill input::placeholder { color:var(--inkSoft); }
+.pill .clr { flex:none; width:44px; height:44px; display:grid; place-items:center; border:0; background:none; padding:0; cursor:pointer; }
+.pill .clr i { width:20px; height:20px; border-radius:50%; background:var(--inkSoft); color:var(--paper); display:grid; place-items:center; font:700 11px var(--sys); font-style:normal; }
+.pill .clr[hidden] { display:grid; visibility:hidden; }
+/* The clue line: how each typed word was read. Always laid out, so the first letter moves nothing. Text capped at xxxLarge (about 23/17). */
+.clue { height:28px; display:flex; align-items:center; gap:8px; overflow:hidden; white-space:nowrap; font:12px var(--mono); color:var(--inkSoft); padding:0 4px; }
+.dev.ax .clue { height:auto; min-height:28px; flex-wrap:wrap; white-space:normal; font-size:calc(12px * 1.35); padding:4px; }
+.clue .hint { font:italic 13px var(--cochin); overflow:hidden; text-overflow:ellipsis; }
+.dev.ax .clue .hint { font-size:calc(13px * 1.35); }
+.clue .w { display:inline-flex; align-items:baseline; gap:4px; padding:2px 8px; border-radius:10px; background:var(--card); border:1px solid var(--line); color:var(--ink); }
+.clue .w em { font:italic 12px var(--cochin); color:var(--inkSoft); }
+.dev.ax .clue .w em { font-size:calc(12px * 1.35); }
+.clue .w.miss { border-color:var(--red); color:var(--red); } .clue .w.miss em { color:var(--red); }
+.clue .n { margin-left:auto; color:var(--ink); }
+body.noclue .clue { visibility:hidden; height:0; min-height:0; padding:0; margin-top:-4px; }
+
+/* ---- masthead: unchanged here, drawn short with sample figures ---- */
+.mast { display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 24px 8px; }
+.mast .lh { font:700 26px var(--cochin); letter-spacing:6px; }
+.mast .rule { align-self:stretch; height:4px; border-top:1px solid var(--gold); border-bottom:1px solid var(--gold); }
+.mast .count { font:11px var(--mono); color:var(--inkSoft); }
+.ruled { display:flex; flex-direction:column; padding:0 16px 8px; }
+.ruled .r1 { height:1px; background:var(--line); }
+.ruled .cells { display:flex; justify-content:flex-end; }
+.ruled .cell { min-height:44px; padding:0 12px; display:flex; align-items:center; gap:4px; border-left:1px solid var(--line); font:11px var(--mono); color:var(--inkSoft); }
+.cih { display:flex; justify-content:flex-end; padding:0 16px; }
+.mini { font:11.5px var(--mono); color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:5px; padding:8px 12px; white-space:nowrap; cursor:pointer; }
+.hit { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
+.hint-page { padding:16px 24px; font:italic calc(15px * var(--ts)) var(--cochin); color:var(--inkSoft); max-width:36ch; }
+
+/* ---- package card (PackageRow), the one home both concepts draw ---- */
+.list { display:flex; flex-direction:column; gap:8px; padding:0 16px 12px; }
+.pcard { position:relative; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 1px var(--shadow); display:flex; flex-direction:column; }
+.pcard.done { border-color:var(--green); }
+.pbar { position:absolute; left:0; right:0; top:0; height:3px; background:var(--silver); border-radius:8px 8px 0 0; overflow:hidden; }
+.pbar i { display:block; height:100%; background:var(--accent); }
+.phead { display:flex; flex-direction:column; padding:12px 12px 0; }
+.phead .top { display:flex; align-items:center; gap:8px; }
+.phead .who { flex:1; min-width:0; display:flex; flex-direction:column; }
+.phead .seller { font:700 calc(15px * var(--ts))/1.25 var(--cochin); overflow:hidden; text-overflow:ellipsis; }
+.dev:not(.ax) .phead .seller { white-space:nowrap; }
+.phead .date { font:calc(11px * var(--ts)) var(--mono); color:var(--inkSoft); }
+.spill { font:700 calc(12.5px * var(--ts)) var(--cochin); padding:4px 8px; border-radius:999px; background:var(--redSoft); color:var(--red); white-space:nowrap; min-height:28px; display:inline-flex; align-items:center; }
+.stampx { font:700 11px var(--mono); letter-spacing:1px; color:var(--green); border:2px solid var(--green); border-radius:4px; padding:4px 8px; transform:rotate(-4deg); }
+.oid { font:calc(11px * var(--ts)) var(--mono); color:var(--inkSoft); text-decoration:underline; min-height:45px; display:flex; align-items:center; overflow-wrap:anywhere; }
+.srow, .brow { display:flex; align-items:center; min-height:48px; padding:0 12px; }
+.brow { justify-content:flex-end; }
+.dev.ax .srow, .dev.ax .brow { font-size:calc(11.5px * var(--ts)); }
+.dev.ax .mini { font-size:calc(11.5px * 2); }
+.line { display:flex; gap:8px; align-items:flex-start; padding-left:4px; border-top:1px solid var(--line); background:var(--card); }
+.line.done { background:var(--greenSoft); }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; border:0; background:none; padding:0; cursor:pointer; margin-top:8px; }
+.line .box i { width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; display:block; background:var(--card); position:relative; }
+.line.done .box i { background:var(--green); border-color:var(--green); }
+.line.done .box i::after { content:""; position:absolute; left:8px; top:3px; width:7px; height:13px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.line .t { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; padding:12px 12px 12px 0; }
+.line .t b { font:600 calc(14px * var(--ts))/1.25 var(--cochin); display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.line .t b span { font:calc(12px * var(--ts)) var(--mono); color:var(--inkSoft); font-weight:400; }
+.line.done .t b { color:var(--inkSoft); }
+.line .t small { font:calc(11.5px * var(--ts)) var(--cochin); color:var(--inkSoft); }
+.reveal { font:calc(11px * var(--ts)) var(--mono); color:var(--inkSoft); border-top:1px solid var(--line); min-height:44px; padding:8px 12px; display:flex; align-items:center; gap:8px; justify-content:space-between; }
+.reveal button { font:inherit; color:var(--ink); text-decoration:underline; background:none; border:0; min-height:44px; cursor:pointer; padding:0 4px; }
+mark { background:none; color:inherit; text-decoration:underline; text-decoration-color:var(--accent); text-decoration-thickness:2px; text-underline-offset:3px; }
+body.nomarks mark { text-decoration:none; }
+.empty { padding:24px 16px; display:flex; flex-direction:column; gap:12px; align-items:flex-start; font:calc(15px * var(--ts)) var(--cochin); }
+
+/* ---- Line-up ---- */
+.lu { height:100%; display:flex; flex-direction:column; }
+.dev.ax .lu { height:auto; }
+.lu-head { flex:none; display:flex; align-items:center; gap:8px; padding:8px 16px 4px; }
+.lu-head h3 { margin:0; flex:1; font:700 calc(20px * var(--ts))/1.2 var(--cochin); }
+.lu-head .closeb { font:600 15px var(--sys); color:var(--accent); background:none; border:0; min-height:44px; min-width:44px; cursor:pointer; }
+.lu-say { flex:none; padding:0 16px 8px; font:italic calc(13px * var(--ts)) var(--cochin); color:var(--inkSoft); }
+.rail { flex:none; display:flex; gap:8px; padding:0 16px 8px; overflow-x:auto; scrollbar-width:none; }
+.dev.ax .rail { flex-direction:column; overflow:visible; }
+.tile { flex:0 0 136px; min-height:88px; text-align:left; display:flex; flex-direction:column; gap:2px; padding:8px 10px 8px 10px; border-radius:8px; border:1px solid var(--line);
+  background:var(--card); color:var(--inkSoft); cursor:pointer; font:inherit; position:relative; }
+.dev.ax .tile { flex-basis:auto; }
+/* item 48's ruled hold: the picked row is bold with an accent bar; every row pads 10 pt, so the bar sits in a gutter and nothing moves */
+.tile::before { content:""; position:absolute; left:0; top:8px; bottom:8px; width:3px; border-radius:2px; background:transparent; }
+.tile.on { color:var(--ink); border-color:var(--accent); }
+.tile.on::before { background:var(--accent); }
+.tile .s { font:calc(14px * var(--ts))/1.2 var(--cochin); color:var(--ink); overflow:hidden; text-overflow:ellipsis; }
+.dev:not(.ax) .tile .s { white-space:nowrap; }
+.tile.on .s { font-weight:700; }
+.tile .d, .tile .c { font:calc(11px * var(--ts)) var(--mono); }
+.tile .d .late { color:var(--amber); } .tile .d .lost { color:var(--red); }
+body.noage .tile .d .late, body.noage .tile .d .lost { color:inherit; }
+.tile .f { font:italic calc(12px * var(--ts)) var(--cochin); }
+.tile.all .f { color:var(--green); }
+.ans { flex:1; min-height:0; overflow:auto; padding:0 16px 12px; }
+.dev.ax .ans { overflow:visible; }
+.ans .pick { padding:16px 8px; font:italic calc(14px * var(--ts)) var(--cochin); color:var(--inkSoft); border:1px dashed var(--line); border-radius:8px; }
+.rows { display:flex; flex-direction:column; padding:0 16px 12px; }
+.rows .tile { flex:none; min-height:64px; border-radius:0; border-width:0 0 1px; background:transparent; display:grid; grid-template-columns:1fr auto; column-gap:8px; }
+.rows .tile:first-child { border-top-width:1px; }
+.rows .tile.on { background:var(--card); }
+.rows .tile .d, .rows .tile .f { grid-column:1; } .rows .tile .c { grid-column:2; grid-row:1; text-align:right; }
+.more { padding:4px 16px; font:italic 12px var(--cochin); color:var(--inkSoft); }
+
+/* tags: a dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+body:not(.notags) [data-tag] { outline:2px dashed var(--new); outline-offset:-2px; }
+body:not(.notags) [data-tag]::after { content:attr(data-tag); position:absolute; right:6px; top:2px; font:600 10.5px/14px var(--sys); padding:0 4px; color:var(--new);
+  background:var(--paper); z-index:6; white-space:nowrap; pointer-events:none; }
+body:not(.notags) [data-tag^="Today"] { outline-color:var(--today); }
+body:not(.notags) [data-tag^="Today"]::after { color:var(--today); }
+.tagnote { font-size:13px; color:var(--inkSoft); }
+@media (prefers-reduced-motion: no-preference) { .tile, .line { transition:background-color 120ms linear, border-color 120ms linear; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No seller, card, order number, date, price or count on this page is real.</div>
+<h1>Find the order an envelope came from</h1>
+<p class="sub">Designer kind: informed (find-package-informed-1). Two concepts, Clue Words (quiet) and Line-up (bold). Frames: iPhone Duo folded 466 x 678 pt, then open 951 x 669 pt with the fold at 455.5 to 495.5 pt, then iPhone 18 Pro 402 x 874 pt, then the folded Duo at the largest accessibility size. Light theme only: the native app is held to light. Every frame works: type in the pill, tap a box, tap an order.</p>
+
+<section class="pain" aria-label="The pain">
+  <h2>The pain</h2>
+  <ol>
+    <li>Two clues find nothing. Today's matcher reads the query as one phrase (<code>lineHit</code> in <code>src/view-rules.mjs</code>), so "gamma ponder" matches no line. See the Today frames.</li>
+    <li>One seller often has several open orders. Only the date or a card tells them apart, and the date cannot be searched.</li>
+    <li>A result never says why it matched, so a person reads every card to check.</li>
+    <li>On the open Duo, today's Packages list runs across the fold (a code read: <code>PackagesTab</code> draws <code>MastheadScreen</code>, which has no two-page layout).</li>
+  </ol>
+</section>
+
+<nav aria-label="States and options">
+  <div class="grp"><span>Today</span><a href="#s=today">At rest</a><a href="#s=today-typed">Two words, PR 238 pill</a></div>
+  <div class="grp"><span>Clue Words</span><a href="#s=words-rest">At rest</a><a href="#s=words-seller">"gamma"</a><a href="#s=words-two">"gamma ponder"</a><a href="#s=words-three">"gamma ponder oct"</a><a href="#s=words-none">No match</a><a href="#s=words-keys">Keys up</a><a href="#s=words-ax">AX5</a></div>
+  <div class="grp"><span>Line-up</span><a href="#s=lineup-rest">At rest</a><a href="#s=lineup-seller">"gamma"</a><a href="#s=lineup-picked">Picked</a><a href="#s=lineup-two">"gamma ponder"</a><a href="#s=lineup-three">"gamma ponder oct"</a><a href="#s=lineup-order">"4417"</a><a href="#s=lineup-none">No match</a><a href="#s=lineup-keys">Keys up</a><a href="#s=lineup-ax">AX5</a></div>
+  <div class="grp"><span>All</span><a href="#">Every state</a></div>
+  <div class="grp"><span>Options</span>
+    <button type="button" data-hideopt="words" aria-pressed="false">Hide Clue Words</button>
+    <button type="button" data-hideopt="lineup" aria-pressed="false">Hide Line-up</button>
+    <button type="button" data-flag="nomonth" aria-pressed="false">Hide month words</button>
+    <button type="button" data-flag="noclue" aria-pressed="false">Hide the clue line</button>
+    <button type="button" data-flag="nomarks" aria-pressed="false">Hide match marks</button>
+    <button type="button" data-flag="noage" aria-pressed="false">Hide age colour</button>
+    <button type="button" data-flag="float" aria-pressed="false">Float the pill (item 95, open)</button>
+    <button type="button" data-flag="notags" aria-pressed="false">Hide tags</button>
+  </div>
+</nav>
+<p class="tagnote">Tags: red dashed "Today" is on main now. Green dashed "New" is what a concept adds. The Find pill is PR 238's, on a branch that is not merged (its state is unknown), so it is tagged New.</p>
+
+<!-- Frames in document order: Duo folded first, then open, then the 18 Pro (ios-apps, Mockups). The script fills each. -->
+<figure data-state="today" data-opt="today"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="today-typed" data-opt="today"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="words-rest" data-opt="words"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="words-seller" data-opt="words"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="words-two" data-opt="words"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="words-three" data-opt="words"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="words-none" data-opt="words"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="words-keys" data-opt="words"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="words-ax" data-opt="words"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, largest accessibility text (AX5)</span><div class="dev" data-dev="ax" data-device="iphone-duo-folded"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="lineup-rest" data-opt="lineup"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="lineup-seller" data-opt="lineup"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="lineup-picked" data-opt="lineup"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="lineup-two" data-opt="lineup"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="lineup-three" data-opt="lineup"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="lineup-order" data-opt="lineup"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="lineup-none" data-opt="lineup"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone 18 Pro, 402 x 874 pt</span><div class="dev" data-dev="pro" data-device="iphone-18-pro"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="lineup-keys" data-opt="lineup"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, 466 x 678 pt</span><div class="dev" data-dev="fold" data-device="iphone-duo-folded"></div></div>
+  <div class="fit"><span class="lab">iPhone Duo, open, 951 x 669 pt</span><div class="dev" data-dev="duo" data-device="iphone-duo-unfolded"></div></div>
+</div><figcaption></figcaption></figure>
+<figure data-state="lineup-ax" data-opt="lineup"><h2></h2><div class="frames">
+  <div class="fit"><span class="lab">iPhone Duo, folded, largest accessibility text (AX5)</span><div class="dev" data-dev="ax" data-device="iphone-duo-folded"></div></div>
+</div><figcaption></figcaption></figure>
+</main>
+
+<script>
+/* ---------- sample data: the hard case is three open Gamma Cards orders across four weeks ---------- */
+const TODAY = new Date('2026-11-20T12:00:00');
+const MONTHS = ['january','february','march','april','may','june','july','august','september','october','november','december'];
+const RAW = [
+  ['g1','Gamma Cards','2026-10-22','3F2A1C77-0B14E5-A1D90',[['Ponder','Sample Set A',1,0.18,0],['Preordain','Sample Set B',2,0.20,0],['Brainstorm','Sample Set A',1,0.35,0]]],
+  ['g2','Gamma Cards','2026-11-04','3F2A88D0-4417C2-B83E1',[['Lightning Bolt','Sample Set C',1,0.42,0],['Counterspell','Sample Set B',1,0.30,0],['Opt','Sample Set D',4,0.10,0]]],
+  ['g3','Gamma Cards','2026-11-13','3F2A91E2-7C05AA-C04F7',[['Path to Exile','Sample Set C',1,0.31,0],['Ponder','Sample Set D',2,0.18,0]]],
+  ['a1','Alpha Cards','2026-11-15','7B11E0A4-2290F1-D5C32',[['Llanowar Elves','Sample Set E',1,0.25,0],['Giant Growth','Sample Set E',2,0.12,0]]],
+  ['d1','Delta Collectibles','2026-11-09','5C0D7731-A0B2E4-11F08',[['Ponder','Sample Set A',1,0.18,0],['Swords to Plowshares','Sample Set C',1,0.55,0]]],
+  ['o1','Omega Singles','2026-11-02','9A4410BE-3D77C1-02E6A',[['Dark Ritual','Sample Set F',2,0.22,0],['Duress','Sample Set F',1,0.15,0]]],
+  ['e1','Epsilon TCG','2026-10-30','2E6F0C19-5B88D3-7A41C',[['Counterspell','Sample Set B',1,0.30,0],['Mana Leak','Sample Set D',1,0.20,1]]],
+  ['k1','Kappa Card Co','2026-10-12','84D1A3F0-9C2E57-B3300',[['Fatal Push','Sample Set G',1,0.65,0],['Thoughtseize','Sample Set G',1,0.90,0]]],
+  ['s1','Sigma Cardhouse','2026-11-17','1D93B6E2-07F4A8-E92C5',[['Brainstorm','Sample Set A',2,0.35,0],['Opt','Sample Set D',1,0.10,0]]],
+  ['l1','Lambda Loot','2026-10-26','6E20C4D7-B1A9F3-0D8E2',[['Lightning Bolt','Sample Set C',4,0.42,0]]],
+  ['z1','Zeta Hobby','2026-11-11','C7F5E812-6A03D9-4B17F',[['Elvish Mystic','Sample Set E',1,0.20,0],['Giant Growth','Sample Set E',3,0.12,0]]],
+  ['b1','Beta Games','2026-11-06','0B8E2D45-F6C170-9E3A6',[['Preordain','Sample Set B',1,0.20,0],['Consider','Sample Set H',2,0.15,0]]],
+  ['a0','Alpha Cards','2026-10-18','7B10FF02-1E6D4B-C7A19',[['Opt','Sample Set D',3,0.10,3]]],
+];
+function freshData() {
+  return RAW.map(([gk, seller, date, orderId, lines]) => ({ gk, seller, date, orderId,
+    items: lines.map(([name, set, qty, price, got], i) => ({ key: gk + ':' + i, name, set, qty, price, got })) }));
+}
+const ageDays = (p) => Math.round((TODAY - new Date(p.date + 'T12:00:00')) / 86400000);
+const monthOf = (p) => new Date(p.date + 'T12:00:00').getMonth();
+const left = (p) => p.items.reduce((s, it) => s + it.qty - it.got, 0);
+const owed = (p) => p.items.reduce((s, it) => s + (it.qty - it.got) * it.price, 0);
+const isOpen = (p) => left(p) > 0;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const flags = new Set();
+
+/* ---------- the clue matcher (New): every word reads against seller, card, set, month and order no. ---------- */
+const WEIGHT = { order: 10, card: 3, seller: 3, month: 2, set: 1 };
+const wordsOf = (q) => q.toLowerCase().split(/\s+/).filter(Boolean);
+function kindsFor(p, w) {
+  const k = new Set();
+  if (p.seller.toLowerCase().includes(w)) k.add('seller');
+  if (p.items.some((it) => it.name.toLowerCase().includes(w))) k.add('card');
+  if (p.items.some((it) => it.set.toLowerCase().includes(w))) k.add('set');
+  if (/\d/.test(w) && w.length >= 3 && p.orderId.replace(/-/g, '').toLowerCase().includes(w.replace(/-/g, ''))) k.add('order');
+  if (!flags.has('nomonth') && w.length >= 3 && /^[a-z]+$/.test(w) && MONTHS[monthOf(p)].startsWith(w)) k.add('month');
+  return k;
+}
+const best = (k) => Math.max(0, ...[...k].map((x) => WEIGHT[x]));
+/* how each word was read across the open orders, for the clue line */
+function readWords(q, data) {
+  const open = data.filter(isOpen);
+  return wordsOf(q).map((w) => {
+    const all = new Set(); open.forEach((p) => kindsFor(p, w).forEach((x) => all.add(x)));
+    return { w, kinds: ['order', 'seller', 'card', 'set', 'month'].filter((x) => all.has(x)) };
+  });
+}
+/* Clue Words: an open order stays when every word hits it somewhere. Lines narrow only on card or set words. */
+function clueWords(q, data) {
+  const ws = wordsOf(q);
+  return data.filter(isOpen).flatMap((p) => {
+    const ks = ws.map((w) => kindsFor(p, w));
+    if (ks.some((k) => k.size === 0)) return [];
+    const lineWords = ws.filter((w, i) => ks[i].has('card') || ks[i].has('set'));
+    const lines = lineWords.length ? p.items.filter((it) => lineWords.some((w) => (it.name + ' ' + it.set).toLowerCase().includes(w))) : p.items;
+    return [{ p, lines }];
+  });
+}
+/* Line-up: every open order a word hits, ranked by words hit, then by weight. Equal ranks are a tie, never a pick. */
+function lineUp(q, data) {
+  const ws = wordsOf(q);
+  const out = data.filter(isOpen).map((p) => {
+    const ks = ws.map((w) => kindsFor(p, w));
+    return { p, hit: ks.filter((k) => k.size).length, score: ks.reduce((s, k) => s + best(k), 0) };
+  }).filter((r) => r.hit > 0);
+  out.sort((a, b) => b.hit - a.hit || b.score - a.score || (b.p.date > a.p.date ? 1 : -1));
+  const n = ws.length;
+  const top = out.filter((r) => r.hit === n && out[0] && r.score === out[0].score);
+  return { rows: out, top, n };
+}
+/* Today: one phrase against each line's joined fields (src/view-rules.mjs lineHit) */
+function todayMatch(q, data) {
+  const s = q.trim().toLowerCase();
+  return data.filter(isOpen).flatMap((p) => {
+    if (!s) return [{ p, lines: p.items }];
+    const lines = p.items.filter((it) => [it.name, it.set, p.seller, p.orderId].join(' ').toLowerCase().includes(s));
+    return lines.length ? [{ p, lines }] : [];
+  });
+}
+
+/* ---------- drawing ---------- */
+const ICON = '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg>';
+function markText(text, ws) {
+  let h = esc(text);
+  ws.filter((w) => w.length >= 2).forEach((w) => {
+    const re = new RegExp('(' + w.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') + ')', 'ig');
+    h = h.replace(/(<[^>]+>)|([^<]+)/g, (m, tag, txt) => tag || txt.replace(re, '<mark>$1</mark>'));
+  });
+  return h;
+}
+const fmtDate = (p) => { const d = new Date(p.date + 'T12:00:00'); return MONTHS[d.getMonth()].slice(0, 3).replace(/^./, (c) => c.toUpperCase()) + ' ' + d.getDate(); };
+function ageSpan(p) {
+  const a = ageDays(p);
+  const cls = a >= 30 ? 'lost' : a >= 14 ? 'late' : '';
+  return `<span class="${cls}">${a} days</span>`;
+}
+function card(st, p, lines, ws, tag) {
+  const l = left(p), all = p.items.length, shown = lines.length;
+  const inCopies = p.items.reduce((s, it) => s + it.got, 0), copies = p.items.reduce((s, it) => s + it.qty, 0);
+  const bar = inCopies > 0 && inCopies < copies ? `<div class="pbar"><i style="width:${100 * inCopies / copies}%"></i></div>` : '';
+  const slot = l === 0 ? '<span class="stampx">RECEIVED</span>' : `<span class="spill">${l} left</span>`;
+  const rev = st.revealed.has(p.gk);
+  const ls = rev ? p.items : lines;
+  const foot = shown < all ? `<div class="reveal">${rev ? 'Showing the whole order' : `+${all - shown} more ${all - shown === 1 ? 'line' : 'lines'} in this order`}<button type="button" data-reveal="${p.gk}">${rev ? 'Back to Matches' : 'Show All'}</button></div>` : '';
+  return `<div class="pcard${l === 0 ? ' done' : ''}"${tag ? ` data-tag="${tag}"` : ''}>${bar}
+    <div class="phead"><div class="top"><div class="who"><span class="seller">${markText(p.seller, ws)}</span><span class="date">${p.date}</span></div>${slot}</div>
+    <span class="oid">${markText(p.orderId, ws.filter((w) => /\d/.test(w)))}</span></div>
+    <div class="srow"><span class="mini">Stamp</span></div>
+    <div class="brow"><span class="mini" data-markall="${p.gk}">Mark All Received</span></div>
+    ${ls.map((it) => `<div class="line${it.got >= it.qty ? ' done' : ''}"><button type="button" class="box" data-box="${it.key}" aria-label="${esc(it.name)}, ${it.got} of ${it.qty} in"><i></i></button>
+      <span class="t"><b>${markText(it.name, ws)}<span>$${it.price.toFixed(2)}</span></b><small>${markText(it.set, ws)} · ${it.got}/${it.qty}</small></span></div>`).join('')}
+    ${foot}</div>`;
+}
+function masthead(data, tag) {
+  const open = data.filter(isOpen);
+  const cIn = data.reduce((s, p) => s + p.items.reduce((a, it) => a + it.got, 0), 0);
+  const cOut = open.reduce((s, p) => s + left(p), 0);
+  return `<div class="mast"${tag ? ` data-tag="${tag}"` : ''}><span class="lh">MANIFEST</span><span class="rule"></span><span class="count">${cIn} in · ${cOut} out · $${open.reduce((s, p) => s + owed(p), 0).toFixed(2)} owed</span></div>
+    <div class="ruled"><span class="r1"></span><div class="cells"><span class="cell">0 stamped ○</span></div></div>`;
+}
+const cih = (tag) => `<div class="cih"${tag ? ` data-tag="${tag}"` : ''}><span class="hit"><span class="mini">Card in Hand</span></span></div>`;
+function clueLine(st) {
+  if (st.concept === 'today') return '';
+  const read = readWords(st.q, st.data);
+  if (!read.length) return `<span class="hint">Words can name a seller, a card, a set${flags.has('nomonth') ? '' : ', a month'} or an order no.</span>`;
+  let n = '';
+  if (st.concept === 'words') { const c = clueWords(st.q, st.data).length; n = `${c} ${c === 1 ? 'order' : 'orders'}`; }
+  else { const lu = lineUp(st.q, st.data); n = `${lu.top.length} fit every word`; }
+  return read.map((r) => r.kinds.length ? `<span class="w">${esc(r.w)} <em>${r.kinds.join(' or ')}</em></span>` : `<span class="w miss">${esc(r.w)} <em>no match</em></span>`).join('') + `<span class="n">${n}</span>`;
+}
+function emptyBlock(text) { return `<div class="empty">${text}<span class="hit"><button type="button" class="mini" data-clear>Clear Search</button></span></div>`; }
+
+function listHTML(st, tagFirst) {
+  const ws = st.concept === 'today' ? [] : wordsOf(st.q);
+  const rows = st.concept === 'today' ? todayMatch(st.q, st.data) : st.q ? clueWords(st.q, st.data) : st.data.filter(isOpen).map((p) => ({ p, lines: p.items }));
+  if (!rows.length) return emptyBlock(st.concept === 'today' ? 'No cards match that search.' : 'No open order matches every word.');
+  return `<div class="list"${st.focusId ? ` id="${st.focusId}"` : ''}>${rows.map((r, i) => card(st, r.p, r.lines, ws, i === 0 ? tagFirst : '')).join('')}</div>`;
+}
+function tileHTML(r, n, on, tag) {
+  const f = r.hit === n ? (n > 1 ? 'Fits every word' : 'Fits') : `Fits ${r.hit} of ${n} words`;
+  return `<button type="button" class="tile${on ? ' on' : ''}${r.hit === n ? ' all' : ''}" data-pick="${r.p.gk}" aria-pressed="${on}"${tag ? ` data-tag="${tag}"` : ''}>
+    <span class="s">${esc(r.p.seller)}</span><span class="d">${fmtDate(r.p)} · ${ageSpan(r.p)}</span><span class="c">${left(r.p)} left · $${owed(r.p).toFixed(2)}</span><span class="f">${f}</span></button>`;
+}
+/* the Line-up parts: what to say, which order shows */
+function lineupState(st) {
+  const lu = lineUp(st.q, st.data);
+  const shown = st.picked || (lu.top.length === 1 ? lu.top[0].p.gk : null);
+  let say;
+  if (!lu.rows.length) say = '';
+  else if (st.picked) say = 'Picked. The line-up holds still until you type again.';
+  else if (lu.top.length === 1) say = 'One order fits every word. The others fit some.';
+  else if (lu.top.length > 1) say = `${lu.top.length} orders fit equally. Pick one by its date, or add a word.`;
+  else say = 'No order fits every word. These fit some.';
+  return { lu, shown, say };
+}
+function answerHTML(st, shown) {
+  if (!shown) return `<div class="pick">The order you pick shows here, with its cards to tick.</div>`;
+  const p = st.data.find((x) => x.gk === shown);
+  const ws = wordsOf(st.q);
+  return card(st, p, p.items, ws, '');
+}
+
+/* ---------- frames ---------- */
+const DEVICES = {
+  fold: { cls: 'fold', dev: 'iphone-duo-folded', lab: 'iPhone Duo, folded, 466 x 678 pt' },
+  duo: { cls: 'duo', dev: 'iphone-duo-unfolded', lab: 'iPhone Duo, open, 951 x 669 pt' },
+  pro: { cls: 'pro', dev: 'iphone-18-pro', lab: 'iPhone 18 Pro, 402 x 874 pt' },
+  ax: { cls: 'fold ax', dev: 'iphone-duo-folded-ax5', lab: 'iPhone Duo, folded, largest accessibility text (AX5)' },
+};
+const statusHTML = '<div class="status"><span>9:41</span><span>●●● 100%</span></div>';
+const sysbarHTML = '<div class="sysbar"><div class="cap"><span class="tabi on"><i></i>Packages</span><span class="tabi"><i></i>Tally</span><span class="tabi"><i></i>Orphaned</span><span class="tabi"><i></i>Ledger</span></div></div>';
+const duobarHTML = '<div class="duobar"><span class="tabi on">Packages</span><span class="tabi">Tally</span><span class="tabi">Orphaned</span><span class="tabi">Ledger</span></div>';
+function keysHTML(h, note) {
+  const row = (s) => `<div class="row">${s.split('').map((c) => `<span class="k">${c}</span>`).join('')}</div>`;
+  return `<div class="keys" style="height:${h}px" aria-hidden="true"><div class="note">${note}</div>${row('qwertyuiop')}${row('asdfghjkl')}${row('zxcvbnm')}<div class="row"><span class="k s">123</span><span class="k w">space</span><span class="k s">search</span></div></div>`;
+}
+function pillHTML(st, ax) {
+  const ph = ax ? 'Find' : st.concept === 'today' ? 'Find card, set, seller, order' : 'Seller, card, month or order no.';
+  return `<label class="pill" data-tag="${st.tagPill || ''}">${ICON}<input type="text" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Find" placeholder="${ph}" value="${esc(st.q)}"><button type="button" class="clr" data-clear aria-label="Clear search"${st.q ? '' : ' hidden'}><i>✕</i></button></label>`;
+}
+
+function buildFrame(el, concept, init) {
+  const devKey = el.dataset.dev, d = DEVICES[devKey];
+  const st = Object.assign({ concept, q: '', picked: null, revealed: new Set(), data: freshData(), keys: false, devKey }, init);
+  if (concept === 'today' && devKey !== 'duo' && st.q) st.tagPill = 'New: PR 238 Find pill (unmerged)';
+  if (concept !== 'today') st.tagPill = devKey === 'fold' ? 'New: Find pill, as PR 238 draws it' : '';
+  el.className = 'dev ' + d.cls;
+  const ax = devKey === 'ax';
+  if (devKey === 'duo') {
+    el.innerHTML = statusHTML + '<div class="fold-strip" aria-hidden="true"><span>FOLD</span></div>'
+      + `<div class="page l"><div class="content" data-slot="left"></div></div>`
+      + (concept === 'today' && !st.q ? '' : `<div class="page r${st.keys ? ' keysup' : ''}"><div class="content" data-slot="right"></div><div class="band"${devKey === 'duo' && concept !== 'today' ? ' data-tag="New: band on the right page"' : ''}><div class="clue" data-slot="clue"></div>${pillHTML(st, false)}</div></div>`)
+      + (st.keys ? '' : duobarHTML)
+      + (st.keys ? `<div class="duokeys">${keysHTML(264, 'keys drawn from y 405 pt (frame from 449; duo-fold-and-keyboard)')}</div>` : '');
+    if (concept === 'today' && !st.q) {
+      // Today (code read): one list across both pages, Card in Hand control on top.
+      el.querySelector('.page.l').style.width = '951px';
+    }
+  } else {
+    const showBand = concept !== 'today' || st.q;
+    el.innerHTML = statusHTML + `<div class="body"><div class="content" data-slot="main"></div>`
+      + (showBand ? `<div class="band"${devKey === 'fold' && concept !== 'today' ? ' data-tag="New: ruled paper band (item 101 a)"' : ''}><div class="clue" data-slot="clue"></div>${pillHTML(st, ax)}</div>` : '')
+      + (st.keys ? keysHTML(289, 'keys frame 289 pt tall (measured 250 to 289)') : sysbarHTML) + '</div>';
+  }
+  el._st = st;
+  wire(el);
+  render(el);
+  if (st.keys) el.previousElementSibling.textContent += ', keys up';
+}
+
+function render(el) {
+  const st = el._st, ax = st.devKey === 'ax';
+  const slot = (n) => el.querySelector(`[data-slot="${n}"]`);
+  if (slot('clue')) slot('clue').innerHTML = clueLine(st);
+  if (st.concept === 'today') {
+    if (st.devKey === 'duo') {
+      slot('left').innerHTML = masthead(st.data, 'Today: masthead, drawn short') + cih('Today: Card in Hand control') + listHTML(Object.assign({}, st, { q: '' }), 'Today (code read): the list runs across the fold');
+      if (slot('right')) slot('right').innerHTML = '';
+    } else {
+      slot('main').innerHTML = masthead(st.data, st.q ? '' : 'Today: masthead, drawn short') + listHTML(st, st.q ? '' : 'Today: package card');
+    }
+    return;
+  }
+  if (st.concept === 'words') {
+    if (st.devKey === 'duo') {
+      slot('left').innerHTML = `<div style="padding-top:8px"></div>` + listHTML(st, 'New: list on the left page only');
+      slot('right').innerHTML = masthead(st.data, '') + cih('Today: Card in Hand control, moved to this page')
+        + (st.q ? '' : `<p class="hint-page">Type any words you can read on the envelope. Every word must match one order.</p>`);
+    } else {
+      const top = ax ? '' : masthead(st.data, '');
+      slot('main').innerHTML = top + listHTML(st, st.devKey === 'fold' && st.q ? 'New: marks show why it matched' : '');
+    }
+    return;
+  }
+  // Line-up
+  const { lu, shown, say } = lineupState(st);
+  const maxRows = st.devKey === 'duo' ? 7 : 6;
+  if (st.devKey === 'duo') {
+    let leftH = masthead(st.data, '') + cih('Today: Card in Hand control');
+    if (!st.q) {
+      const all = st.data.filter(isOpen).map((p) => ({ p, hit: 0, score: 0 }));
+      leftH += `<div class="lu-head"><h3>Open orders</h3></div><div class="rows" data-tag="New: line-up beside the order">${all.map((r) => tileHTML(r, 0, r.p.gk === shown, '').replace('Fits 0 of 0 words', '')).join('')}</div>`;
+    } else if (!lu.rows.length) {
+      leftH += emptyBlock('No open order matches any word.');
+    } else {
+      leftH += `<div class="lu-head"><h3>Which order?</h3></div><p class="lu-say">${say}</p><div class="rows"${st.focusId ? ` id="${st.focusId}"` : ''} data-tag="New: line-up beside the order">${lu.rows.slice(0, maxRows).map((r) => tileHTML(r, lu.n, r.p.gk === shown, '')).join('')}</div>`
+        + (lu.rows.length > maxRows ? `<p class="more">${lu.rows.length - maxRows} more fit some words. Add a word to narrow.</p>` : '');
+    }
+    slot('left').innerHTML = leftH;
+    slot('right').innerHTML = `<div class="ans" style="padding-top:16px">${st.q || shown ? answerHTML(st, shown) : '<div class="pick">Pick an order on the left, or type what the envelope shows.</div>'}</div>`;
+    return;
+  }
+  if (!st.q) { slot('main').innerHTML = masthead(st.data, '') + listHTML(st, ''); return; }
+  if (!lu.rows.length) { slot('main').innerHTML = `<div class="lu"><div class="lu-head"><h3>Which order?</h3><button type="button" class="closeb" data-clear>Close</button></div>${emptyBlock('No open order matches any word.')}</div>`; return; }
+  slot('main').innerHTML = `<div class="lu"><div class="lu-head"><h3>Which order?</h3><button type="button" class="closeb" data-clear>Close</button></div>
+    <p class="lu-say">${say}</p>
+    <div class="rail"${st.focusId ? ` id="${st.focusId}"` : ''}${st.devKey === 'fold' ? ' data-tag="New: line-up rail"' : ''}>${lu.rows.slice(0, maxRows).map((r) => tileHTML(r, lu.n, r.p.gk === shown, '')).join('')}</div>
+    <div class="ans">${answerHTML(st, shown)}</div></div>`;
+}
+
+function wire(el) {
+  el.addEventListener('input', (e) => {
+    if (e.target.tagName !== 'INPUT') return;
+    const st = el._st; st.q = e.target.value; st.picked = null; st.revealed.clear();
+    el.querySelector('.clr').hidden = !st.q;
+    render(el);
+  });
+  el.addEventListener('keydown', (e) => { if (e.key === 'Enter' && e.target.tagName === 'INPUT') e.target.blur(); });
+  el.addEventListener('click', (e) => {
+    const st = el._st, t = e.target.closest('button, [data-markall]');
+    if (!t) return;
+    if (t.hasAttribute('data-clear')) {
+      st.q = ''; st.picked = null; st.revealed.clear();
+      const inp = el.querySelector('input'); if (inp) { inp.value = ''; el.querySelector('.clr').hidden = true; }
+    } else if (t.dataset.pick) { st.picked = t.dataset.pick; }
+    else if (t.dataset.reveal) { const g = t.dataset.reveal; st.revealed.has(g) ? st.revealed.delete(g) : st.revealed.add(g); }
+    else if (t.dataset.box) {
+      const it = st.data.flatMap((p) => p.items).find((x) => x.key === t.dataset.box);
+      it.got = it.got >= it.qty ? 0 : it.got + 1;
+    } else if (t.dataset.markall) { st.data.find((p) => p.gk === t.dataset.markall).items.forEach((it) => { it.got = it.qty; }); }
+    else return;
+    render(el);
+  });
+}
+
+/* ---------- states: each figure is one state; frames run Duo folded, Duo open, 18 Pro ---------- */
+const STATES = [
+  { id: 'today', opt: 'today', title: 'Today, at rest', concept: 'today', q: '', devs: ['fold', 'duo', 'pro'],
+    cap: 'Main today: masthead, the stamped cell and the package cards. No Find pill on Packages (native-filters-tally-only). On the open Duo the list runs across the fold, from a code read, not a screenshot.' },
+  { id: 'today-typed', opt: 'today', title: 'Today with PR 238\'s pill: two words find nothing', concept: 'today', q: 'gamma ponder', devs: ['fold', 'pro'],
+    cap: 'PR 238\'s pill with today\'s matcher. "gamma ponder" is read as one phrase, so no line matches, though two open Gamma orders hold Ponder. This is the pain.' },
+  { id: 'words-rest', opt: 'words', title: 'Clue Words, at rest', concept: 'words', q: '', devs: ['fold', 'duo', 'pro'],
+    cap: 'The list stays. The band under the pill is solid paper with a top rule (item 101 a). Its clue line is laid out at rest, as a hint, so the first letter moves nothing. On the open Duo the list keeps to the left page; the right page holds the masthead, Card in Hand and the pill.' },
+  { id: 'words-seller', opt: 'words', title: 'Clue Words: "gamma"', concept: 'words', q: 'gamma', devs: ['fold', 'duo', 'pro'],
+    cap: 'One word, read as a seller. Three open Gamma orders stay, every line shown. The underline marks why each one matched.' },
+  { id: 'words-two', opt: 'words', title: 'Clue Words: "gamma ponder"', concept: 'words', q: 'gamma ponder', devs: ['fold', 'duo', 'pro'],
+    cap: 'Two words, both must match one order. Two Gamma orders hold Ponder; each shows only its Ponder line, with Show All for the rest (search-filters-inside-package).' },
+  { id: 'words-three', opt: 'words', title: 'Clue Words: "gamma ponder oct"', concept: 'words', q: 'gamma ponder oct', devs: ['fold', 'duo', 'pro'], focus: 'focus-words',
+    cap: 'The month from the postmark settles it: one order. Tick the box on the card.' },
+  { id: 'words-none', opt: 'words', title: 'Clue Words: no match', concept: 'words', q: 'gamma bolt oct', devs: ['fold', 'pro'],
+    cap: 'No open order fits all three words. One sentence and Clear Search (ux-unknown-is-not-empty). The clue line still says each word matched something, so the person drops one word.' },
+  { id: 'words-keys', opt: 'words', title: 'Clue Words, keys up', concept: 'words', q: 'gamma pon', keys: true, devs: ['fold', 'duo'],
+    cap: 'While typing, the band rides on the keys and the list shrinks from its foot. The clue line sits above the keys, so the count shows as each letter lands.' },
+  { id: 'words-ax', opt: 'words', title: 'Clue Words at AX5', concept: 'words', q: 'gamma ponder oct', devs: ['ax'],
+    cap: 'Largest text. Prompt reads "Find" (as PR 238). The clue line wraps and is capped near xxxLarge; the card text grows in full. Scrolled to the first result.' },
+  { id: 'lineup-rest', opt: 'lineup', title: 'Line-up, at rest', concept: 'lineup', q: '', devs: ['fold', 'duo', 'pro'],
+    cap: 'On one page, Packages looks as in Clue Words until a word is typed. On the open Duo, Packages becomes list beside order: the open orders on the left, the picked order on the right.' },
+  { id: 'lineup-seller', opt: 'lineup', title: 'Line-up: "gamma"', concept: 'lineup', q: 'gamma', devs: ['fold', 'duo', 'pro'],
+    cap: 'Typing turns the screen into a line-up of the orders that could be this envelope. Three Gamma orders fit equally, so none is picked (rankCandidates: a tie is reported, never decided). Each shows its date and age, which is the clue a person reads off the postmark.' },
+  { id: 'lineup-picked', opt: 'lineup', title: 'Line-up: picked by date', concept: 'lineup', q: 'gamma', picked: 'g2', devs: ['fold', 'duo', 'pro'],
+    cap: 'A tap picks one. The tile goes bold with an accent bar and the others hold their place (item 48\'s hold). The card shows below, or on the right page, with its boxes to tick.' },
+  { id: 'lineup-two', opt: 'lineup', title: 'Line-up: "gamma ponder"', concept: 'lineup', q: 'gamma ponder', devs: ['fold', 'duo', 'pro'],
+    cap: 'Two orders fit every word and tie. Orders that fit one word follow, marked "Fits 1 of 2 words", so a typo or a wrong guess still leaves a way in.' },
+  { id: 'lineup-three', opt: 'lineup', title: 'Line-up: "gamma ponder oct"', concept: 'lineup', q: 'gamma ponder oct', devs: ['fold', 'duo', 'pro'], focus: 'focus-lineup',
+    cap: 'One order fits every word, so its card shows at once. The rest stay in the line-up, ranked by how many words they fit.' },
+  { id: 'lineup-order', opt: 'lineup', title: 'Line-up: "4417", part of an order no.', concept: 'lineup', q: '4417', devs: ['fold', 'pro'],
+    cap: 'A few digits from the packing slip find the order. A word with a digit reads against the order no.' },
+  { id: 'lineup-none', opt: 'lineup', title: 'Line-up: no match', concept: 'lineup', q: 'zzz', devs: ['fold', 'pro'],
+    cap: 'No open order fits any word: one sentence and Clear Search.' },
+  { id: 'lineup-keys', opt: 'lineup', title: 'Line-up, keys up', concept: 'lineup', q: 'gamma pon', keys: true, devs: ['fold', 'duo'],
+    cap: 'Folded, the rail stays at the top while typing, so the person sees the line-up narrow above the keys. On the open Duo the keys span both pages from y 405.' },
+  { id: 'lineup-ax', opt: 'lineup', title: 'Line-up at AX5', concept: 'lineup', q: 'gamma ponder oct', devs: ['ax'],
+    cap: 'Largest text. The rail turns into a stack (ViewThatFits), and the head, stack and card scroll as one.' },
+];
+/* The figure shells and their frames are static HTML above, in document order; this fills each one. */
+STATES.forEach((s) => {
+  const f = document.querySelector(`figure[data-state="${s.id}"]`);
+  f.querySelector('h2').textContent = s.title;
+  f.querySelector('figcaption').textContent = s.cap;
+  f.querySelectorAll('.dev').forEach((el, i) => buildFrame(el, s.concept, { q: s.q, picked: s.picked || null, keys: !!s.keys, focusId: i === 0 ? s.focus : null }));
+});
+
+/* ---------- routing, options and fit ---------- */
+const hiddenOpts = new Set();
+function fit() {
+  document.querySelectorAll('.fit').forEach((w) => {
+    const d = w.querySelector('.dev'); const avail = w.parentElement.clientWidth;
+    const z = Math.min(1, avail / d.offsetWidth); d.style.zoom = z;
+  });
+}
+function route() {
+  const m = location.hash.match(/s=([\w-]+)/), s = m && m[1];
+  document.querySelectorAll('figure').forEach((f) => { f.hidden = (s && f.dataset.state !== s) || hiddenOpts.has(f.dataset.opt); });
+  document.querySelectorAll('nav a').forEach((a) => a.setAttribute('aria-current', String(a.getAttribute('href') === (location.hash || '#'))));
+  fit();
+}
+document.querySelectorAll('[data-hideopt]').forEach((b) => b.addEventListener('click', () => {
+  const o = b.dataset.hideopt; hiddenOpts.has(o) ? hiddenOpts.delete(o) : hiddenOpts.add(o);
+  b.setAttribute('aria-pressed', String(hiddenOpts.has(o))); route();
+}));
+document.querySelectorAll('[data-flag]').forEach((b) => b.addEventListener('click', () => {
+  const f = b.dataset.flag; flags.has(f) ? flags.delete(f) : flags.add(f);
+  document.body.classList.toggle(f, flags.has(f));
+  b.setAttribute('aria-pressed', String(flags.has(f)));
+  document.querySelectorAll('.dev').forEach(render);
+}));
+addEventListener('hashchange', route); addEventListener('resize', fit); route();
+</script>
+</body>
+</html>

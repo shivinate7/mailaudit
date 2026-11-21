@@ -180,7 +180,11 @@ ul.tags { margin:0; padding-left:20px; color:var(--inkSoft); font-size:14px; max
 .ax .pkg .hd b { font-size:53px; line-height:1.1; }
 .ax .runhead .ttl { font-size:23px; } /* the running head is capped, as the Duo bar is */
 .ax .rt span { font-size:19px; } /* capped at xxxLarge, as item 104 a caps the Post bar */
-.ax.mode-pill-row .tx { padding-right:0; }
+/* At AX sizes Retry drops to the failure line's end, so the title keeps the row's full width and is never cut. */
+.ax .failed.mode-pill .tx { padding-right:12px; }
+.ax .failed.mode-pill .t2 .f { right:84px; }
+.ax .failed.mode-pill .t1 .pr { visibility:visible; }
+.ax .rt { top:auto; bottom:8px; transform:none; }
 
 /* tags: dashed outline on what exists today, and on what an option adds */
 [data-tag] { position:relative; }
@@ -243,7 +247,7 @@ ul.tags { margin:0; padding-left:20px; color:var(--inkSoft); font-size:14px; max
 <section class="opt" data-opt="box">
   <h2>Struck box: the box you tapped is the retry</h2>
   <p>The failed row turns red-soft with a red lead bar. Its box draws a dashed red edge and a turn arrow, and the detail line reads "Not saved. Tap the box again." The thumb is already on that box: one more tap writes the same count, because a failed save left the stored count as it was. Other rows' saves leave the mark alone. Only that row's own good save clears it.</p>
-  <figure data-states="failed retried offscreen">
+  <figure data-states="failed retried">
     <div class="ctlrow" data-for="box-fold"></div>
     <div class="fit" style="max-width:468px"><div class="dev folded" id="box-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="box" data-preset="failed" data-focus="focus-box"></div></div>
     <figcaption><b>Struck box, folded: Packages.</b> Swords to Plowshares failed; Ponder and Preordain saved after it, and the mark stayed. The save slot in the running head holds "1 not saved" until the row is fixed.</figcaption>
@@ -268,7 +272,7 @@ ul.tags { margin:0; padding-left:20px; color:var(--inkSoft); font-size:14px; max
 <section class="opt" data-opt="pill">
   <h2>Retry at the row's end</h2>
   <p>The box keeps showing what is stored, so an unticked box means "not in". The price slot gives way to a red Retry button on the row, at the thumb's side. The detail line says "Not saved" and the time of the tap. Retry writes the count the failed tap meant, so it is the same act whichever way the box sits.</p>
-  <figure data-states="failed retried offscreen">
+  <figure data-states="failed retried">
     <div class="ctlrow" data-for="pill-fold"></div>
     <div class="fit" style="max-width:468px"><div class="dev folded" id="pill-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="pill" data-preset="failed" data-focus="focus-pill"></div></div>
     <figcaption><b>Retry at the row's end, folded: Packages.</b> The Retry hit frame is 72 x 44 pt, inside the row's own 59 pt; the title gives up width, never height.</figcaption>
@@ -285,7 +289,7 @@ ul.tags { margin:0; padding-left:20px; color:var(--inkSoft); font-size:14px; max
   </figure>
   <figure data-states="ax5">
     <div class="fit" style="max-width:468px"><div class="dev folded ax" id="pill-ax" data-device="iphone-duo-folded" data-view="packages" data-concept="pill" data-preset="failed" data-ax="1"></div></div>
-    <figcaption><b>Retry at the row's end, folded, AX5.</b> Retry's label is capped at xxxLarge (19 pt) and offers the large content viewer, as the Post bar does. A long title at AX5 wraps beside the button and can add a line: the row is taller, but it grows downward from the failed tap's own row only (see notes).</figcaption>
+    <figcaption><b>Retry at the row's end, folded, AX5.</b> Retry's label is capped at xxxLarge (19 pt) and offers the large content viewer, as the Post bar does. At accessibility sizes Retry drops to the end of the "Not saved" line, so the card name keeps the full width and the row keeps its height.</figcaption>
   </figure>
 </section>
 
@@ -293,7 +297,7 @@ ul.tags { margin:0; padding-left:20px; color:var(--inkSoft); font-size:14px; max
 <section class="opt" data-opt="ink">
   <h2>Pencil until sent</h2>
   <p>"I never know if it actually took" covers two cases. A save on the phone can fail (rare), and a saved tick can wait for signal before the sync server has it (common at the mailbox). Here every tick shows both on its own row: a dashed green box is saved on this phone and not yet sent; it sets to solid green when the server has it. A failed save is the Struck box. The running head says the count once; the rows say it by shape.</p>
-  <figure data-states="failed retried offscreen">
+  <figure data-states="failed retried">
     <div class="ctlrow" data-for="ink-fold"></div>
     <div class="fit" style="max-width:468px"><div class="dev folded" id="ink-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="ink" data-preset="failed" data-focus="focus-ink"></div></div>
     <figcaption><b>Pencil until sent, folded: Packages.</b> No signal: Ponder and Preordain are saved here, not sent (dashed). Swords to Plowshares did not save. Press "Signal" to send: the dashed boxes set solid in 300 ms.</figcaption>
@@ -478,7 +482,8 @@ function render(f) {
     h += `<div class="runhead"><span class="ttl">Packages</span><span class="cnt">41 in · 23 out</span><span class="slot${bad ? ' bad' : ''}" aria-live="polite">${slot}</span></div>`;
     h += `<div class="list">${PKGS.map((p, i) => pkgHTML(f, p, { bulk: f.dataset.preset === 'bulk' && i === 0 })).join('')}</div>`;
     h += tabbar('Packages');
-    if (c === 'today') h += `<div class="todaybar${s.todayErr ? ' show' : ''}" style="bottom:0">${s.todayErr || ''}</div>`;
+    // Today's overlay sits at the bottom of the tab's safe area, just above the floating bar (PackagesView, overlay(alignment: .bottom)).
+    if (c === 'today') h += `<div class="todaybar${s.todayErr ? ' show' : ''}" style="bottom:calc(var(--sab) + 76px)">${s.todayErr || ''}</div>`;
     h += `<button class="ptr up" type="button" data-act="ptr"><span>1 not saved ↑</span></button><button class="ptr down" type="button" data-act="ptr"><span>1 not saved ↓</span></button>`;
   } else if (v === 'hand') {
     const ride = s.ride;
@@ -516,6 +521,8 @@ function render(f) {
   f.innerHTML = h;
   f.querySelectorAll('.list,.rlist').forEach(el => { if (keepScroll[el.className] != null) el.scrollTop = keepScroll[el.className]; });
   if (s.scrollTo) { const L = f.querySelector('.list'); if (L) L.scrollTop = s.scrollTo; s.scrollTo = 0; }
+  // AX5: rows are three times taller, so open the frame with the failed row in view.
+  if (f.dataset.ax && !s.axPlaced) { const L = f.querySelector('.list'), r = L && L.querySelector('.ln.failed'); if (r) L.scrollTop = r.offsetTop - 60; s.axPlaced = true; }
   const L = f.querySelector('.list'); if (L) L.addEventListener('scroll', () => pointer(f), { passive:true });
   pointer(f);
   placeFocus(f);
@@ -576,7 +583,7 @@ function placeTags(f) {
 }
 
 // ---------- acts ----------
-function now() { const d = new Date(); return d.getHours() + ':' + String(d.getMinutes()).padStart(2, '0'); }
+function now() { return '9:41'; }  // the status bar's sample time; the build shows the tap's own time
 function tap(f, k, viaRetry) {
   const s = f.st, c = f.dataset.concept;
   s.anyTick = true;

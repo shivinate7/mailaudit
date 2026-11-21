@@ -1,0 +1,892 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Failed tick mockup</title>
+<style>
+/* Colour by role. Light set first, dark set under prefers-color-scheme and data-theme. */
+:root {
+  --page: #E7E9EC;
+  --surface: #F3F4F6;
+  --raised: #FFFFFF;
+  --text: #16181B;
+  --muted: #565C65;
+  --line: #D8DBE0;
+  --accent: #2155C2;
+  --accent-ink: #FFFFFF;
+  --ok: #17703D;
+  --fail: #B8241A;
+  --fail-bg: #FDECEA;
+  --fail-ink: #FFFFFF;
+  --bead-empty: #C4C8CF;
+  --hinge: #202226;
+  --device-edge: #2B2E33;
+  --banner-bg: #FFF1B8;
+  --banner-text: #4A3800;
+  --scrim: rgba(10, 12, 16, 0.32);
+  --chrome-bg: rgba(255, 255, 255, 0.86);
+
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --radius: 8px;
+  --bp-wide: 64rem;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #1B1D20; --surface: #000000; --raised: #1C1D21; --text: #F2F3F5; --muted: #A1A7B0;
+    --line: #34373D; --accent: #7EA8FF; --accent-ink: #0B1836; --ok: #56C487; --fail: #FF7468;
+    --fail-bg: #3A1512; --fail-ink: #1E0503; --bead-empty: #4B4F57; --hinge: #050506;
+    --device-edge: #3A3D43; --banner-bg: #3A3000; --banner-text: #FFE79A;
+    --scrim: rgba(0, 0, 0, 0.5); --chrome-bg: rgba(28, 29, 33, 0.88);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #1B1D20; --surface: #000000; --raised: #1C1D21; --text: #F2F3F5; --muted: #A1A7B0;
+  --line: #34373D; --accent: #7EA8FF; --accent-ink: #0B1836; --ok: #56C487; --fail: #FF7468;
+  --fail-bg: #3A1512; --fail-ink: #1E0503; --bead-empty: #4B4F57; --hinge: #050506;
+  --device-edge: #3A3D43; --banner-bg: #3A3000; --banner-text: #FFE79A;
+  --scrim: rgba(0, 0, 0, 0.5); --chrome-bg: rgba(28, 29, 33, 0.88);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 15px;
+  line-height: 20px;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Page chrome around the device frames */
+.banner {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--banner-bg); color: var(--banner-text);
+  padding: var(--space-2) var(--space-4);
+  font-weight: 600;
+}
+.top { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); max-inline-size: 80rem; }
+.top h1 { margin: 0; font-size: 28px; line-height: 34px; }
+.kind { color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+.ctl { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ctl > span { color: var(--muted); }
+.seg { display: inline-flex; background: var(--line); border-radius: var(--radius); padding: 2px; gap: 2px; }
+.seg button { border: 0; background: transparent; min-height: 32px; padding: 0 var(--space-3); border-radius: 6px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--raised); font-weight: 600; }
+.pbtn { border: 1px solid var(--line); background: var(--raised); min-height: 32px; padding: 0 var(--space-3); border-radius: var(--radius); cursor: pointer; }
+
+.concept { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6) var(--space-4); border-top: 1px solid var(--line); }
+.concept[hidden] { display: none; }
+.c-head { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 60rem; }
+.c-title { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.c-title h2 { margin: 0; font-size: 22px; line-height: 28px; }
+.c-head p { margin: 0; max-inline-size: 70ch; }
+.tags { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tag { border: 1.5px dashed var(--accent); color: var(--text); border-radius: var(--radius); padding: 2px var(--space-2); font-size: 13px; line-height: 18px; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+figure[hidden] { display: none; }
+figcaption { color: var(--muted); font-size: 13px; line-height: 18px; max-inline-size: 466px; }
+
+/* Device frames: 1 CSS px stands for 1 pt */
+.device {
+  position: relative; overflow: hidden;
+  border: 6px solid var(--device-edge); border-radius: 20px;
+  background: var(--surface);
+  box-sizing: content-box;
+}
+.dev-folded { width: 466px; height: 678px; }
+.dev-phone { width: 440px; height: 956px; }
+.dev-open { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.hinge { background: var(--hinge); }
+
+/* Type: Dynamic Type text styles, Large (default) */
+.app, .page {
+  --t-lt: 34px; --l-lt: 41px; --t-t2: 22px; --l-t2: 28px; --t-t3: 20px; --l-t3: 25px;
+  --t-hl: 17px; --l-hl: 22px; --t-body: 17px; --l-body: 22px; --t-co: 16px; --l-co: 21px;
+  --t-sub: 15px; --l-sub: 20px; --t-ft: 13px; --l-ft: 18px; --t-c1: 12px; --l-c1: 16px;
+  --t-c2: 11px; --l-c2: 13px;
+}
+/* AX5, the largest accessibility size */
+.ax5 .app {
+  --t-lt: 60px; --l-lt: 70px; --t-t2: 56px; --l-t2: 66px; --t-t3: 55px; --l-t3: 65px;
+  --t-hl: 53px; --l-hl: 62px; --t-body: 53px; --l-body: 62px; --t-co: 51px; --l-co: 60px;
+  --t-sub: 49px; --l-sub: 58px; --t-ft: 44px; --l-ft: 52px; --t-c1: 43px; --l-c1: 51px;
+  --t-c2: 40px; --l-c2: 48px;
+}
+.app, .page {
+  position: relative; height: 100%; min-width: 0;
+  display: flex; flex-direction: column; overflow: hidden;
+  background: var(--surface); color: var(--text);
+  font-size: var(--t-body); line-height: var(--l-body);
+}
+.sb {
+  flex: none; display: flex; justify-content: space-between; align-items: center;
+  min-height: 44px; padding: env(safe-area-inset-top, 0px) var(--space-6) 0;
+  font-size: 15px; line-height: 20px; font-weight: 600;
+}
+.sb-net { display: flex; gap: var(--space-1); align-items: center; font-weight: 600; }
+.sb-net .off { color: var(--fail); }
+.home { flex: none; height: 20px; padding-bottom: env(safe-area-inset-bottom, 0px); display: flex; justify-content: center; align-items: center; }
+.home::before { content: ""; width: 120px; height: 4px; border-radius: 2px; background: var(--text); opacity: .7; }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.stack { display: flex; flex-direction: column; gap: var(--space-6); padding: 0 var(--space-4) var(--reserve, var(--space-6)); }
+.nav { flex: none; padding: var(--space-1) var(--space-4) var(--space-2); display: flex; flex-direction: column; gap: var(--space-2); }
+.lt { margin: 0; font-size: var(--t-lt); line-height: var(--l-lt); font-weight: 700; }
+.t2 { margin: 0; font-size: var(--t-t2); line-height: var(--l-t2); font-weight: 700; }
+.muted { color: var(--muted); }
+
+.sec { display: flex; flex-direction: column; gap: var(--space-2); }
+.sec-h { display: flex; flex-direction: column; padding-inline: var(--space-4); }
+.sec-t { font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; }
+.sec-m { font-size: var(--t-ft); line-height: var(--l-ft); color: var(--muted); }
+.group { background: var(--raised); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+.group > * + * { border-top: 1px solid var(--line); }
+
+/* Shared row states */
+.st-failed { background: var(--fail-bg); }
+.fail-text { color: var(--fail); font-weight: 600; }
+.ok-text { color: var(--ok); font-weight: 600; }
+.spin { display: inline-block; width: 18px; height: 18px; border-radius: 50%; border: 2.5px solid var(--bead-empty); border-top-color: var(--accent); animation: spin .8s linear infinite; vertical-align: middle; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) {
+  .spin { animation: none; border-top-color: var(--bead-empty); border-style: dotted; }
+  .b-saving { animation: none !important; }
+  .pulse { animation: none !important; }
+}
+.ico { width: 20px; height: 20px; flex: none; }
+
+/* Row receipt */
+.row {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto 76px; align-items: center;
+  gap: var(--space-3); min-height: 64px;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-3);
+  border-inline-start: 4px solid transparent;
+}
+.row.st-failed { border-inline-start-color: var(--fail); }
+.r-main { display: flex; flex-direction: column; min-width: 0; }
+.r-name { font-size: var(--t-body); line-height: var(--l-body); }
+.r-sub { font-size: var(--t-ft); line-height: var(--l-ft); color: var(--muted); }
+.r-count { display: flex; align-items: baseline; gap: var(--space-1); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.r-count b { font-size: var(--t-t3); line-height: var(--l-t3); }
+.r-count span { font-size: var(--t-ft); color: var(--muted); }
+.ghost { color: var(--accent); font-weight: 600; font-size: var(--t-ft); min-width: 2ch; }
+.tick {
+  width: 76px; min-height: 44px; border-radius: 22px; border: 0;
+  background: var(--accent); color: var(--accent-ink);
+  font-weight: 600; font-size: 17px; display: flex; align-items: center; justify-content: center; gap: var(--space-1);
+  cursor: pointer;
+}
+.tick.is-saving { background: var(--line); color: var(--text); }
+.tick.is-flash { background: var(--ok); color: var(--raised); }
+.tick.is-full { background: transparent; color: var(--ok); border: 1.5px solid var(--line); cursor: default; }
+.tick.is-failed { background: var(--fail); color: var(--fail-ink); }
+.ax5 .row { grid-template-columns: 1fr; gap: var(--space-2); padding: var(--space-3); }
+.ax5 .r-tools { display: flex; justify-content: space-between; align-items: center; }
+.r-tools { display: contents; }
+
+/* Floating tab bar */
+.tabbar {
+  position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px));
+  display: flex; justify-content: space-around; min-height: 56px; padding: var(--space-1);
+  background: var(--chrome-bg); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--line); border-radius: 28px;
+}
+.tab { position: relative; flex: 1; min-height: 48px; border: 0; background: transparent; border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; line-height: 13px; color: var(--muted); cursor: pointer; }
+.tab[aria-current="page"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
+.badge { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; height: 18px; padding: 0 5px; border-radius: 9px; background: var(--fail); color: var(--fail-ink); font-size: 12px; line-height: 18px; font-weight: 700; text-align: center; }
+
+/* Not-saved bar: an overlay, so its arrival moves no row */
+.nsbar {
+  position: absolute; left: var(--space-4); right: var(--space-4);
+  bottom: calc(var(--space-6) + 56px + var(--space-2) + env(safe-area-inset-bottom, 0px));
+  display: flex; align-items: center; gap: var(--space-2);
+  background: var(--fail); color: var(--fail-ink); border-radius: var(--radius); padding: var(--space-1);
+}
+.nsbar.no-tab { bottom: calc(var(--space-6) + env(safe-area-inset-bottom, 0px)); }
+.ns-open { flex: 1; min-width: 0; min-height: 44px; border: 0; background: transparent; color: inherit; text-align: start; display: flex; gap: var(--space-2); align-items: center; padding: 0 var(--space-2); cursor: pointer; }
+.ns-open .t { display: flex; flex-direction: column; min-width: 0; font-size: 15px; line-height: 20px; }
+.ns-open .t span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-size: 13px; line-height: 18px; }
+.ns-retry { flex: none; font-size: 17px; line-height: 22px; min-height: 44px; padding: 0 var(--space-4); border: 0; border-radius: 6px; background: var(--fail-ink); color: var(--fail); font-weight: 700; cursor: pointer; }
+.pulse { animation: pulse .6s ease-out 1; }
+@keyframes pulse { from { filter: brightness(1.5); } to { filter: none; } }
+
+/* Open pose: list beside detail */
+.mrow { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); width: 100%; min-height: 60px; border: 0; background: transparent; text-align: start; padding: var(--space-2) var(--space-4); cursor: pointer; border-inline-start: 4px solid transparent; }
+.mrow[aria-current="true"] { background: color-mix(in srgb, var(--accent) 14%, var(--raised)); border-inline-start-color: var(--accent); }
+.mrow .m { font-size: var(--t-ft); line-height: var(--l-ft); color: var(--muted); }
+.mbadge { min-width: 24px; height: 24px; padding: 0 7px; border-radius: 12px; background: var(--fail); color: var(--fail-ink); font-size: 13px; line-height: 24px; font-weight: 700; text-align: center; }
+
+/* Tick tape */
+.nav-inline { padding-top: 0; }
+.inline-t { text-align: center; font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; }
+.lseg { display: flex; background: var(--line); border-radius: var(--radius); padding: 2px; gap: 2px; }
+.lseg button { flex: 1; min-height: 36px; border: 0; background: transparent; border-radius: 6px; font-size: 13px; line-height: 18px; cursor: pointer; position: relative; }
+.lseg button[aria-pressed="true"] { background: var(--raised); font-weight: 600; }
+.lseg .dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: var(--fail); margin-inline-start: var(--space-1); vertical-align: middle; }
+.trow { display: grid; grid-template-columns: minmax(0, 1fr) 24px auto; align-items: center; gap: var(--space-3); width: 100%; min-height: 60px; border: 0; background: var(--raised); text-align: start; padding: var(--space-2) var(--space-4) var(--space-2) var(--space-3); border-inline-start: 4px solid transparent; cursor: pointer; }
+.trow.st-failed { background: var(--fail-bg); border-inline-start-color: var(--fail); }
+.trow:active { background: color-mix(in srgb, var(--accent) 10%, var(--raised)); }
+.trow.st-full { cursor: default; }
+.tr-mark { display: flex; justify-content: center; }
+.tr-count { font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tr-count b { font-size: var(--t-t3); line-height: var(--l-t3); }
+.tr-count span { color: var(--muted); font-size: var(--t-ft); }
+.ax5 .trow { grid-template-columns: 1fr auto; }
+.ax5 .tr-mark { display: none; }
+
+.tape { flex: none; height: 196px; display: flex; flex-direction: column; background: var(--raised); border-top: 1px solid var(--line); }
+.tape-h { display: flex; justify-content: space-between; align-items: center; padding: var(--space-2) var(--space-4) var(--space-1); font-size: 13px; line-height: 18px; color: var(--muted); }
+.tape-h b { color: var(--text); }
+.tlines { display: flex; flex-direction: column; }
+.tline { display: grid; grid-template-columns: minmax(0, 1fr) auto; align-items: center; gap: var(--space-2); min-height: 48px; padding: 0 var(--space-2) 0 var(--space-4); border-top: 1px dashed var(--line); font-size: 15px; line-height: 20px; }
+.tline.st-failed { background: var(--fail-bg); border-top: 1px solid var(--fail); }
+.tl-what { display: flex; flex-direction: column; min-width: 0; }
+.tl-what b, .tl-what span { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.tl-what span { font-size: 13px; line-height: 18px; color: var(--muted); }
+.tl-state { display: flex; align-items: center; gap: var(--space-1); white-space: nowrap; font-size: 13px; font-variant-numeric: tabular-nums; }
+.sbtn { min-height: 44px; min-width: 76px; padding: 0 var(--space-3); border: 0; border-radius: 22px; background: var(--fail); color: var(--fail-ink); font-weight: 700; font-size: 15px; cursor: pointer; }
+.sbtn.quiet { background: transparent; color: var(--accent); }
+.tape.big { height: auto; flex: 1; border-top: 0; background: transparent; }
+.tape.big .tline { background: var(--raised); }
+.tape.big .tline.st-failed { background: var(--fail-bg); }
+.ax5 .tape { height: 82px; }
+.scroll > .nav, .scroll > .env-head { padding-inline: var(--space-4); }
+
+/* Envelope */
+.env-head { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) var(--space-4) var(--space-3); }
+.env-pos { font-size: var(--t-ft); line-height: var(--l-ft); color: var(--muted); }
+.env-meta { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); }
+.beads { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+.beads .gap { width: var(--space-2); }
+.b { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--bead-empty); background: transparent; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; line-height: 10px; font-weight: 800; color: var(--fail-ink); }
+.b-in { background: var(--ok); border-color: var(--ok); }
+.b-saving { border-color: var(--accent); border-style: dashed; animation: beadspin 1s linear infinite; }
+@keyframes beadspin { to { transform: rotate(360deg); } }
+.b-fail { background: var(--fail); border-color: var(--fail); }
+.b-fail::after { content: "!"; }
+.big-beads .b { width: 22px; height: 22px; font-size: 14px; }
+.erow { display: flex; flex-direction: column; gap: var(--space-2); width: 100%; min-height: 76px; border: 0; background: var(--raised); text-align: start; padding: var(--space-3) var(--space-4) var(--space-3) var(--space-3); border-inline-start: 4px solid transparent; cursor: pointer; }
+.erow.st-failed { background: var(--fail-bg); border-inline-start-color: var(--fail); }
+.erow.st-full { cursor: default; }
+.erow:active { background: color-mix(in srgb, var(--accent) 10%, var(--raised)); }
+.er-top { display: flex; justify-content: space-between; gap: var(--space-2); align-items: baseline; }
+.er-name { font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; }
+.er-count { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.er-sub { font-size: var(--t-ft); line-height: var(--l-ft); color: var(--muted); }
+.ax5 .er-top { flex-direction: column; }
+.toolbar { flex: none; display: grid; grid-template-columns: 52px minmax(0, 1fr) auto 52px; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3); background: var(--chrome-bg); border-top: 1px solid var(--line); }
+.tbtn { white-space: nowrap; min-height: 44px; min-width: 44px; border: 0; background: transparent; color: var(--accent); border-radius: 22px; font-weight: 600; font-size: 17px; cursor: pointer; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); padding: 0 var(--space-2); }
+.tbtn[aria-disabled="true"] { color: var(--bead-empty); cursor: default; }
+.tbtn.fail { background: var(--fail); color: var(--fail-ink); padding: 0 var(--space-3); }
+.tbtn.hide { visibility: hidden; }
+.rack-row { display: flex; flex-direction: column; gap: var(--space-1); width: 100%; min-height: 60px; border: 0; background: transparent; text-align: start; padding: var(--space-2) var(--space-4); border-inline-start: 4px solid transparent; cursor: pointer; }
+.rack-row[aria-current="true"] { background: color-mix(in srgb, var(--accent) 14%, var(--raised)); border-inline-start-color: var(--accent); }
+.rack-row .rt { display: flex; justify-content: space-between; gap: var(--space-2); }
+
+/* Sheet */
+.sheet-wrap { position: absolute; inset: 0; background: var(--scrim); display: flex; align-items: flex-end; z-index: 5; }
+.sheet { width: 100%; max-height: 78%; min-height: 50%; display: flex; flex-direction: column; background: var(--surface); border-radius: 12px 12px 0 0; padding-bottom: env(safe-area-inset-bottom, 0px); }
+.grab { align-self: center; width: 36px; height: 5px; border-radius: 3px; background: var(--bead-empty); margin-top: var(--space-2); }
+.sheet-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: var(--space-1) var(--space-2); }
+.sheet-bar b { font-size: 17px; line-height: 22px; }
+.sheet-bar .tbtn:last-child { justify-self: end; }
+.sheet-bar .tbtn:first-child { justify-self: start; }
+.sheet .stack { padding-top: var(--space-2); }
+.fitem { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); align-items: center; padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4); }
+.fitem .fi-t { display: flex; flex-direction: column; min-width: 0; }
+.fitem .fi-t span { font-size: var(--t-ft); line-height: var(--l-ft); color: var(--muted); }
+.ax5 .fitem { grid-template-columns: 1fr; }
+
+/* Data states */
+.state { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) var(--space-4); }
+.state p { margin: 0; }
+.fill { min-height: 44px; padding: 0 var(--space-4); border: 0; border-radius: 22px; background: var(--accent); color: var(--accent-ink); font-weight: 600; cursor: pointer; }
+.skel { height: 64px; border-radius: var(--radius); background: var(--raised); opacity: .7; }
+details summary { cursor: pointer; color: var(--accent); min-height: 44px; display: flex; align-items: center; }
+details code { font-size: 13px; }
+.allwell { padding: var(--space-6) var(--space-4); }
+
+@media (forced-colors: active) {
+  .row.st-failed, .trow.st-failed, .erow.st-failed { border-inline-start-color: Mark; }
+  .b-fail, .b-in { forced-color-adjust: none; }
+}
+</style>
+</head>
+<body>
+<div class="banner" role="note">Sample. No figure, card, seller, order, name or time on this page is real.</div>
+
+<header class="top">
+  <h1>A tick that did not take</h1>
+  <div class="kind">Designer kind: blind. Designer: failed-checkin-blind-1. Three concepts, each drawn on the Duo folded, the Duo open, a large phone, and the Duo folded at the largest text size.</div>
+  <div class="controls">
+    <div class="ctl"><span>Theme</span><div class="seg" id="ctl-t">
+      <button data-v="auto">Auto</button><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+    <div class="ctl"><span>Signal</span><div class="seg" id="ctl-n">
+      <button data-v="good">Good</button><button data-v="flaky">Flaky, every third tick fails</button><button data-v="offline">Offline</button></div></div>
+    <div class="ctl"><span>Start state</span><div class="seg" id="ctl-s">
+      <button data-v="live">Live</button><button data-v="failed">One failed</button><button data-v="many">Three failed</button><button data-v="offline">Offline</button><button data-v="saving">No answer yet</button><button data-v="empty">Empty</button><button data-v="loading">Loading</button><button data-v="readfail">Read failed</button></div></div>
+    <div class="ctl"><span>Devices</span><div class="seg" id="ctl-d">
+      <button data-v="all">All</button><button data-v="folded">Duo folded</button><button data-v="open">Duo open</button><button data-v="phone">Large phone</button><button data-v="ax5">Largest text</button></div></div>
+    <button class="pbtn" id="reset">Reset sample</button>
+    <button class="pbtn" id="unhide" hidden>Show hidden concepts</button>
+  </div>
+</header>
+
+<main id="concepts"></main>
+
+<script>
+(function () {
+  'use strict';
+  var CONCEPTS = [
+    { key: 'row', name: 'Row receipt',
+      pitch: 'Each row carries its own receipt. The tick button turns into the save state: a spinner, then Saved with the time, or a red Retry. A red bar above the tab bar keeps every unsaved tick in view, wherever you scroll.',
+      tags: ['New: save state inside the tick button', 'New: red Not saved bar above the tab bar', 'New: failure count on each tab'] },
+    { key: 'tape', name: 'Tick tape',
+      pitch: 'Every tick prints a line on a tape at the bottom of the screen, under your thumb. A line that did not save stays pinned to the top of the tape, in red, with its own Retry, until it saves. The lists switch with a segmented control at the top.',
+      tags: ['New: tape of the last ticks under the list', 'New: unsaved lines pinned to the tape', 'New: whole row is the tick', 'New: the open Duo shows the whole session tape'] },
+    { key: 'envelope', name: 'Envelope',
+      pitch: 'Bold. You work one package at a time, the way it sits in your hand. Each expected card is a bead. A bead fills when its save is confirmed and turns red with a mark when it is not. You page from package to package, and a rack of all packages shows every red bead in the session.',
+      tags: ['New: one package per screen, paged', 'New: one bead per expected card, filled only on a confirmed save', 'New: package rack with every red bead', 'New: Not saved button in the toolbar'] }
+  ];
+  var LISTS = [['packages', 'Packages'], ['tally', 'Tally'], ['orphaned', 'Orphaned']];
+  var LISTNAME = { packages: 'Packages', tally: 'Tally', orphaned: 'Orphaned' };
+  var DEVICES = [
+    { key: 'folded', cls: 'dev-folded', data: 'iphone-duo-folded', cap: 'Duo folded, 466 x 678 pt, portrait.' },
+    { key: 'open', cls: 'dev-open', data: 'iphone-duo-unfolded', cap: 'Duo open, 951 x 669 pt. Two pages; the hinge gap from x 455.5 to x 495.5 holds nothing.' },
+    { key: 'phone', cls: 'dev-phone', data: 'iphone-regular', cap: 'Large phone, portrait. No size is written for it: drawn at 440 x 956 pt, a placeholder (see notes).' },
+    { key: 'ax5', cls: 'dev-folded ax5', data: 'iphone-duo-folded-ax5', cap: 'Duo folded at AX5, the largest accessibility text size.' }
+  ];
+
+  var NET = 'good';
+  var PRESET = 'live';
+  var THEME = 'auto';
+  var DEV = 'all';
+  var CONLY = '';
+  var hiddenConcepts = {};
+  var stores = {};
+  var frames = [];
+  var seq = 0;
+  var clockN = 0;
+
+  function fmt(sec, withSec) {
+    var h = Math.floor(sec / 3600) % 24, m = Math.floor(sec / 60) % 60, s = sec % 60;
+    var ap = h >= 12 ? 'PM' : 'AM'; var h12 = h % 12 || 12;
+    return h12 + ':' + (m < 10 ? '0' : '') + m + (withSec ? ':' + (s < 10 ? '0' : '') + s : '') + ' ' + ap;
+  }
+  function now() { clockN += 1; var t = 19 * 3600 + 42 * 60 + clockN * 9; return { s: fmt(t, false), l: fmt(t, true) }; }
+
+  function L(id, name, set, qty, rec, by, at) { return { id: id, name: name, set: set, qty: qty, rec: rec, by: by || '', at: at || '' }; }
+  function sampleData() {
+    return {
+      packages: [
+        { id: 'p1', seller: 'Northside Cards', order: '1182', lines: [
+          L('l1', 'Lightning Bolt', 'Core set', 2, 1, 'Ana', '7:31 PM'),
+          L('l2', 'Counterspell', 'Remastered', 2, 0),
+          L('l3', 'Llanowar Elves', 'Core set', 3, 3, 'You', '7:29 PM') ] },
+        { id: 'p2', seller: 'Blue Heron Games', order: '2240', lines: [
+          L('l4', 'Brainstorm', 'Masters', 4, 0),
+          L('l5', 'Swords to Plowshares', 'Masters', 1, 0),
+          L('l6', 'Dark Ritual', 'Classic', 2, 2, 'Ana', '7:35 PM') ] },
+        { id: 'p3', seller: 'Quarry Street TCG', order: '0917', lines: [
+          L('l7', 'Lightning Bolt', 'Masters', 2, 0),
+          L('l8', 'Giant Growth', 'Classic', 3, 1, 'You', '7:38 PM'),
+          L('l9', 'Opt', 'Core set', 4, 0) ] },
+        { id: 'p4', seller: 'Maple and Pine Cards', order: '3305', lines: [
+          L('l10', 'Duress', 'Core set', 2, 0),
+          L('l11', 'Ponder', 'Masters', 3, 0),
+          L('l12', 'Counterspell', 'Classic', 1, 0) ] },
+        { id: 'p5', seller: 'Tidewater Singles', order: '4471', lines: [
+          L('l13', 'Thoughtseize', 'Remastered', 1, 0),
+          L('l14', 'Fatal Push', 'Remastered', 2, 0),
+          L('l15', 'Path to Exile', 'Masters', 2, 0),
+          L('l16', 'Brainstorm', 'Core set', 1, 0) ] }
+      ],
+      orphans: [
+        { id: 'o1', seller: 'Plain envelope, no return address', order: '', orphan: true, arrived: '7:20 PM', lines: [
+          L('o1a', 'Sol Ring', 'Commander', null, 1, 'You', '7:20 PM'),
+          L('o1b', 'Arcane Signet', 'Commander', null, 0) ] }
+      ]
+    };
+  }
+
+  function makeStore() {
+    var d = sampleData();
+    var s = { mode: 'ok', packages: d.packages, orphans: d.orphans, ticks: [], n: 0, saved: 37, byId: {} };
+    index(s);
+    return s;
+  }
+  function index(s) {
+    s.byId = {};
+    s.packages.concat(s.orphans).forEach(function (p) { p.lines.forEach(function (l) { s.byId[l.id] = { line: l, pkg: p }; }); });
+  }
+  function seedFail(s, lineId, reason) {
+    var t = { id: 't' + (++seq), lineId: lineId, status: 'failed', reason: reason, tries: 1, at: now(), wasFailed: true };
+    s.ticks.push(t);
+  }
+  function applyPreset(s, p) {
+    if (p === 'failed') seedFail(s, 'l2', 'signal');
+    if (p === 'many') { seedFail(s, 'l2', 'signal'); seedFail(s, 'l14', 'sync'); seedFail(s, 'o1b', 'timeout'); }
+    if (p === 'offline') { seedFail(s, 'l2', 'signal'); seedFail(s, 'l4', 'signal'); }
+    if (p === 'saving') { var t = { id: 't' + (++seq), lineId: 'l2', status: 'saving', at: now(), slow: true }; s.ticks.push(t); resolve(s, t, 6000); }
+    if (p === 'empty') { s.mode = 'empty'; }
+    if (p === 'loading') { s.mode = 'loading'; }
+    if (p === 'readfail') { s.mode = 'readfail'; }
+  }
+
+  function ticksOf(s, id) { return s.ticks.filter(function (t) { return t.lineId === id; }); }
+  function fails(s) { return s.ticks.filter(function (t) { return t.status === 'failed'; }); }
+  function lstate(s, l) {
+    var ts = ticksOf(s, l.id), f = null, sv = 0, fl = null;
+    ts.forEach(function (t) { if (t.status === 'failed' && !f) f = t; if (t.status === 'saving') sv++; if (t.flash) fl = t; });
+    if (f) return { k: 'failed', t: f, sv: sv };
+    if (sv) return { k: 'saving', sv: sv };
+    if (fl) return { k: 'flash', t: fl };
+    if (l.qty != null && l.rec >= l.qty) return { k: 'full' };
+    return { k: 'idle' };
+  }
+  function reasonText(t) {
+    if (t.reason === 'signal') return (t.tries > 1 ? 'Still not saved.' : 'Not saved.') + ' No signal.';
+    if (t.reason === 'sync') return 'Not saved. Sync problem.';
+    return 'No answer. It may not have saved.';
+  }
+  function subText(st, l) {
+    if (st.k === 'failed') return '<span class="fail-text">' + reasonText(st.t) + '</span>';
+    if (st.k === 'saving') return 'Saving…';
+    if (st.k === 'flash') return '<span class="ok-text">Saved ' + st.t.at.s + ', You</span>';
+    if (l.by) return 'Last: ' + l.by + ', ' + l.at;
+    return 'None in yet';
+  }
+  function countOf(l) { return l.qty == null ? l.rec + ' logged' : l.rec + ' of ' + l.qty; }
+
+  function press(s, id) {
+    var e = s.byId[id]; if (!e) return;
+    var l = e.line, st = lstate(s, l);
+    if (st.k === 'failed') { retry(s, st.t.id); return; }
+    var inflight = ticksOf(s, id).filter(function (t) { return t.status === 'saving'; }).length;
+    if (l.qty != null && l.rec + inflight >= l.qty) return;
+    var t = { id: 't' + (++seq), lineId: id, status: 'saving', at: now() };
+    s.ticks.push(t);
+    resolve(s, t, 650);
+    paint(s);
+  }
+  function retry(s, tid) {
+    var t = s.ticks.filter(function (x) { return x.id === tid; })[0];
+    if (!t || t.status !== 'failed') return;
+    t.status = 'saving'; t.wasFailed = true; t.tries = (t.tries || 1) + 1;
+    resolve(s, t, 650);
+    paint(s);
+  }
+  function retryAll(s) { fails(s).forEach(function (t) { retry(s, t.id); }); }
+  function resolve(s, t, ms) {
+    setTimeout(function () {
+      if (t.status !== 'saving') return;
+      var fail = null;
+      if (t.slow) fail = 'timeout';
+      else if (NET === 'offline') fail = 'signal';
+      else if (NET === 'flaky') { s.n += 1; if (s.n % 3 === 0) fail = (s.n % 2) ? 'sync' : 'timeout'; }
+      t.slow = false;
+      if (fail) {
+        t.status = 'failed'; t.reason = fail; t.at = now(); t.fresh = true;
+        if (navigator.vibrate) { try { navigator.vibrate([30, 40, 30]); } catch (e) {} }
+      } else {
+        var e = s.byId[t.lineId];
+        t.status = 'saved'; t.at = now(); t.flash = true;
+        e.line.rec += 1; e.line.by = 'You'; e.line.at = t.at.s; s.saved += 1;
+        setTimeout(function () { t.flash = false; paint(s); }, 1400);
+      }
+      paint(s);
+      t.fresh = false;
+    }, ms);
+  }
+
+  /* ---------- list model shared by Row receipt and Tick tape ---------- */
+  function sum(p) { var a = 0, b = 0; p.lines.forEach(function (l) { a += l.rec; b += (l.qty == null ? l.rec : l.qty); }); return [a, b]; }
+  function failCount(s, lines) { var ids = {}; lines.forEach(function (x) { ids[x.l.id] = 1; }); return fails(s).filter(function (t) { return ids[t.lineId]; }).length; }
+  function sections(s, list) {
+    if (list === 'packages') return s.packages.map(function (p) { var u = sum(p); return { id: p.id, title: p.seller, meta: 'Order ' + p.order + ', ' + u[0] + ' of ' + u[1] + ' in', lines: p.lines.map(function (l) { return { l: l, label: l.name, set: l.set }; }) }; });
+    if (list === 'orphaned') return s.orphans.map(function (p) { return { id: p.id, title: p.seller, meta: 'Arrived ' + p.arrived + '. Counts toward no order until you match it.', lines: p.lines.map(function (l) { return { l: l, label: l.name, set: l.set }; }) }; });
+    var by = {}, order = [];
+    s.packages.forEach(function (p) { p.lines.forEach(function (l) { if (!by[l.name]) { by[l.name] = []; order.push(l.name); } by[l.name].push({ l: l, label: p.seller, set: l.set + ', order ' + p.order }); }); });
+    order.sort();
+    return order.map(function (n, i) { var a = 0, b = 0; by[n].forEach(function (x) { a += x.l.rec; b += x.l.qty; }); return { id: 'g' + i, title: n, meta: a + ' of ' + b + ' in, from ' + by[n].length + (by[n].length > 1 ? ' sellers' : ' seller'), lines: by[n] }; });
+  }
+  function listFails(s, list) { var n = 0; sections(s, list).forEach(function (sec) { n += failCount(s, sec.lines); }); return n; }
+
+  /* ---------- shared pieces ---------- */
+  var IC = {
+    check: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10.5l4 4 8-9" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    retry: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M15.5 8A6 6 0 1 0 16 12" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><path d="M16 3.5V8h-4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    warn: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 5.5v5.5" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/><circle cx="10" cy="14.3" r="1.3" fill="currentColor"/></svg>',
+    box: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M3 6.5l7-3.5 7 3.5v7l-7 3.5-7-3.5z M3 6.5l7 3.5 7-3.5 M10 10v7" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+    sum: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 5h12M4 10h12M4 15h7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    q: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="5" width="14" height="10" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M8.3 8.6a1.8 1.8 0 1 1 2.4 1.7c-.5.2-.7.6-.7 1v.3" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>',
+    prev: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4l-6 6 6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    next: '<svg class="ico" viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+  };
+  function sb() {
+    var n = NET === 'offline' ? '<span class="off">No signal</span>' : (NET === 'flaky' ? 'Weak signal' : '5G');
+    return '<div class="sb"><span>7:42</span><span class="sb-net">' + n + '</span></div>';
+  }
+  function home() { return '<div class="home" aria-hidden="true"></div>'; }
+  function modeBody(s) {
+    if (s.mode === 'empty') return '<div class="state"><p>No orders yet. Import your order history to fill this list.</p><button class="fill" data-act="import">Import order history</button></div>';
+    if (s.mode === 'loading') return '<div class="state" aria-busy="true"><p class="muted">Loading your orders…</p></div><div class="stack" aria-hidden="true"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>';
+    if (s.mode === 'readfail') return '<div class="state"><p>Your check-ins could not be read. Nothing here is shown as missing until they load.</p><button class="fill" data-act="reload">Try again</button><details><summary>What the device said</summary><code>Sample: storage read returned an error</code></details></div>';
+    return '';
+  }
+  function failSheet(s) {
+    var all = s.ticks.filter(function (t) { return t.wasFailed || t.status === 'failed'; });
+    var open = fails(s).length;
+    var items = all.slice().reverse().map(function (t) {
+      var e = s.byId[t.lineId], l = e.line, p = e.pkg;
+      var where = p.orphan ? p.seller : p.seller + ', order ' + p.order;
+      var right, sub;
+      if (t.status === 'failed') { right = '<button class="sbtn" data-act="retry" data-arg="' + t.id + '">Retry</button>'; sub = '<span class="fail-text">' + reasonText(t) + '</span> ' + t.at.s; }
+      else if (t.status === 'saving') { right = '<span class="spin" role="img" aria-label="Saving"></span>'; sub = 'Saving…'; }
+      else { right = '<span class="ok-text">' + IC.check + '</span>'; sub = '<span class="ok-text">Saved ' + t.at.s + '</span>'; }
+      return '<div class="fitem' + (t.status === 'failed' ? ' st-failed' : '') + '"><div class="fi-t"><b>+1 ' + l.name + '</b><span>' + where + '</span><span>' + sub + '</span></div>' + right + '</div>';
+    }).join('');
+    var body = open === 0 ? '<p class="allwell">All is well. Every tick saved.</p>' : '';
+    return '<div class="sheet-wrap" data-act="closebg"><div class="sheet" role="dialog" aria-label="Not saved"><div class="grab"></div>' +
+      '<div class="sheet-bar"><button class="tbtn" data-act="sheet" data-arg="">Close</button><b>Not saved</b>' +
+      (open ? '<button class="tbtn" data-act="retryAll">Retry all</button>' : '<span></span>') + '</div>' +
+      '<div class="scroll" data-scroll="sheet"><div class="stack">' + body + (items ? '<div class="group">' + items + '</div>' : '') + '</div></div></div></div>';
+  }
+  function nsBar(s, noTab, fresh) {
+    var f = fails(s); if (!f.length) return '';
+    var names = f.map(function (t) { return s.byId[t.lineId].line.name; }).join(', ');
+    return '<div class="nsbar' + (noTab ? ' no-tab' : '') + (fresh ? ' pulse' : '') + '" role="status"><button class="ns-open" data-act="sheet" data-arg="fails">' + IC.warn +
+      '<span class="t"><b>' + f.length + (f.length > 1 ? ' ticks' : ' tick') + ' not saved</b><span>' + names + '</span></span></button>' +
+      '<button class="ns-retry" data-act="retryAll">Retry all</button></div>';
+  }
+  function anyFresh(s) { return s.ticks.some(function (t) { return t.fresh; }); }
+
+  /* ---------- Row receipt ---------- */
+  function rowHTML(s, x) {
+    var l = x.l, st = lstate(s, l), btn;
+    if (st.k === 'failed') btn = '<button class="tick is-failed" data-act="tick" data-arg="' + l.id + '" aria-label="Retry ' + l.name + '">' + IC.retry + 'Retry</button>';
+    else if (st.k === 'saving') btn = '<button class="tick is-saving" data-act="tick" data-arg="' + l.id + '" aria-label="Saving ' + l.name + ', tick again for one more"><span class="spin" aria-hidden="true"></span></button>';
+    else if (st.k === 'flash') btn = '<button class="tick is-flash" data-act="tick" data-arg="' + l.id + '" aria-label="Saved. Tick ' + l.name + ' again">' + IC.check + '</button>';
+    else if (st.k === 'full') btn = '<button class="tick is-full" aria-disabled="true" title="All ' + l.qty + ' are in" aria-label="All ' + l.qty + ' ' + l.name + ' are in">' + IC.check + '</button>';
+    else btn = '<button class="tick" data-act="tick" data-arg="' + l.id + '" aria-label="Tick one ' + l.name + '">+1</button>';
+    var ghost = st.sv ? '+' + st.sv : '';
+    var cnt = l.qty == null ? '<b>' + l.rec + '</b><span>logged</span>' : '<b>' + l.rec + '</b><span>of ' + l.qty + '</span>';
+    return '<div class="row st-' + st.k + '"><div class="r-main"><span class="r-name">' + x.label + '</span><span class="r-sub">' + subText(st, l) + '</span></div>' +
+      '<div class="r-tools"><div class="r-count">' + cnt + '<span class="ghost">' + ghost + '</span></div>' + btn + '</div></div>';
+  }
+  function tabBar(s, f) {
+    return '<nav class="tabbar" aria-label="Lists">' + LISTS.map(function (x) {
+      var n = s.mode === 'ok' ? listFails(s, x[0]) : 0;
+      var ic = x[0] === 'packages' ? IC.box : x[0] === 'tally' ? IC.sum : IC.q;
+      return '<button class="tab" data-act="list" data-arg="' + x[0] + '"' + (f.ui.list === x[0] ? ' aria-current="page"' : '') + '>' + ic + x[1] + (n ? '<span class="badge" aria-label="' + n + ' not saved">' + n + '</span>' : '') + '</button>';
+    }).join('') + '</nav>';
+  }
+  var RESERVE_ROW = 'style="--reserve: 180px"';
+  function rowPage(f, s) {
+    var list = f.ui.list, mb = modeBody(s);
+    var body = mb || '<div class="stack" ' + RESERVE_ROW + '>' + sections(s, list).map(function (sec) {
+      return '<section class="sec"><header class="sec-h"><span class="sec-t">' + sec.title + '</span><span class="sec-m">' + sec.meta + '</span></header><div class="group">' + sec.lines.map(function (x) { return rowHTML(s, x); }).join('') + '</div></section>';
+    }).join('') + '</div>';
+    var nav = '<div class="nav"><h1 class="lt">' + LISTNAME[list] + '</h1></div>';
+    var ax = f.d.key === 'ax5';
+    return (ax ? '' : nav) + '<div class="scroll" data-scroll="row-' + list + '">' + (ax ? nav : '') + body + '</div>' +
+      (s.mode === 'ok' ? nsBar(s, false, anyFresh(s)) : '') + tabBar(s, f) + (f.ui.sheet === 'fails' ? failSheet(s) : '');
+  }
+  function rowOpen(f, s) {
+    var list = f.ui.list, mb = modeBody(s);
+    var secs = s.mode === 'ok' ? sections(s, list) : [];
+    var selId = f.ui.sel[list] || (secs[0] && secs[0].id);
+    var sel = secs.filter(function (x) { return x.id === selId; })[0] || secs[0];
+    var left = '<div class="nav"><h1 class="lt">' + LISTNAME[list] + '</h1></div><div class="scroll" data-scroll="rowL-' + list + '">' + (mb || '<div class="stack" style="--reserve: 100px"><div class="group">' + secs.map(function (sec) {
+      var n = failCount(s, sec.lines);
+      return '<button class="mrow" data-act="sel" data-arg="' + sec.id + '"' + (sel && sec.id === sel.id ? ' aria-current="true"' : '') + '><span><span class="r-name">' + sec.title + '</span><br><span class="m">' + sec.meta + '</span></span>' + (n ? '<span class="mbadge" aria-label="' + n + ' not saved">' + n + '</span>' : '<span></span>') + '</button>';
+    }).join('') + '</div></div>') + '</div>' + tabBar(s, f);
+    var right = !sel ? '<div class="state"><p class="muted">Nothing to show yet.</p></div>' :
+      '<div class="nav"><h2 class="t2">' + sel.title + '</h2><span class="sec-m">' + sel.meta + '</span></div><div class="scroll" data-scroll="rowR-' + sel.id + '"><div class="stack" style="--reserve: 100px"><div class="group">' + sel.lines.map(function (x) { return rowHTML(s, x); }).join('') + '</div></div></div>' +
+      nsBar(s, true, anyFresh(s)) + (f.ui.sheet === 'fails' ? failSheet(s) : '');
+    return [left, right];
+  }
+
+  /* ---------- Tick tape ---------- */
+  function trowHTML(s, x) {
+    var l = x.l, st = lstate(s, l), mark = '';
+    if (st.k === 'failed') mark = '<span class="fail-text">' + IC.warn + '</span>';
+    else if (st.k === 'saving') mark = '<span class="spin" aria-hidden="true"></span>';
+    else if (st.k === 'flash' || st.k === 'full') mark = '<span class="ok-text">' + IC.check + '</span>';
+    var cnt = l.qty == null ? '<b>' + l.rec + '</b><span> logged</span>' : '<b>' + l.rec + '</b><span>/' + l.qty + (st.sv ? ' +' + st.sv : '') + '</span>';
+    var dis = st.k === 'full' ? ' aria-disabled="true" title="All ' + l.qty + ' are in"' : ' data-act="tick" data-arg="' + l.id + '"';
+    var lab = st.k === 'failed' ? 'Retry ' + l.name : st.k === 'full' ? 'All ' + l.qty + ' ' + l.name + ' are in' : 'Tick one ' + l.name;
+    return '<button class="trow st-' + st.k + '"' + dis + ' aria-label="' + lab + '"><span class="r-main"><span class="r-name">' + x.label + '</span><span class="r-sub">' + (st.k === 'failed' ? subText(st, l) + ' Tap to retry.' : x.set) + '</span></span><span class="tr-mark">' + mark + '</span><span class="tr-count">' + cnt + '</span></button>';
+  }
+  function lseg(f, s) {
+    return '<div class="lseg" role="group" aria-label="List">' + LISTS.map(function (x) {
+      var n = listFails(s, x[0]);
+      return '<button data-act="list" data-arg="' + x[0] + '" aria-pressed="' + (f.ui.list === x[0]) + '">' + x[1] + (n ? '<span class="dot" aria-label="' + n + ' not saved"></span>' : '') + '</button>';
+    }).join('') + '</div>';
+  }
+  function tlineHTML(s, t) {
+    var e = s.byId[t.lineId], l = e.line, p = e.pkg;
+    var where = p.orphan ? p.seller : p.seller + ', order ' + p.order;
+    var st;
+    if (t.status === 'failed') st = '<span class="fail-text">' + (t.reason === 'timeout' ? 'No answer' : 'Not saved') + '</span><button class="sbtn" data-act="retry" data-arg="' + t.id + '" aria-label="Retry ' + l.name + '">Retry</button>';
+    else if (t.status === 'saving') st = '<span class="spin" aria-hidden="true"></span>Saving';
+    else st = '<span class="ok-text">' + IC.check + '</span>' + t.at.l;
+    return '<div class="tline st-' + t.status + '"><span class="tl-what"><b>+1 ' + l.name + '</b><span>' + where + '</span></span><span class="tl-state">' + st + '</span></div>';
+  }
+  function tapeCompact(f, s) {
+    var f0 = fails(s), lines = [], rest = s.ticks.filter(function (t) { return t.status !== 'failed'; }).slice().reverse();
+    var max = f.d.key === 'ax5' ? 1 : 3, cap = max === 1 ? 1 : 2;
+    if (f0.length > cap) {
+      var more = cap > 1 ? f0.slice(1) : f0;
+      if (cap > 1) lines.push(tlineHTML(s, f0[0]));
+      lines.push('<div class="tline st-failed"><span class="tl-what"><b>' + more.length + (cap > 1 ? ' more' : '') + ' not saved</b><span>' + more.map(function (t) { return s.byId[t.lineId].line.name; }).join(', ') + '</span></span><span class="tl-state"><button class="sbtn" data-act="sheet" data-arg="fails">Show</button></span></div>');
+    }
+    else f0.forEach(function (t) { lines.push(tlineHTML(s, t)); });
+    rest.slice(0, Math.max(0, max - lines.length)).forEach(function (t) { lines.push(tlineHTML(s, t)); });
+    if (!lines.length) lines.push('<div class="tline"><span class="tl-what"><span>Each tick prints a line here and turns to a time when it saves.</span></span></div>');
+    var head = f0.length ? '<span><b class="fail-text">' + f0.length + ' not saved</b>, pinned until they save</span>' : '<span>Last ticks</span>';
+    return '<section class="tape" aria-label="Tape" aria-live="polite"><div class="tape-h">' + head + '<span>' + s.saved + ' saved this session</span></div><div class="tlines">' + lines.join('') + '</div></section>';
+  }
+  function tapeFull(f, s) {
+    var f0 = fails(s), filt = f.ui.tf, rest = s.ticks.filter(function (t) { return t.status !== 'failed'; }).slice().reverse();
+    var seg = '<div class="lseg" role="group" aria-label="Show"><button data-act="tf" data-arg="all" aria-pressed="' + (filt === 'all') + '">All ticks</button><button data-act="tf" data-arg="fail" aria-pressed="' + (filt === 'fail') + '">Not saved' + (f0.length ? ' (' + f0.length + ')' : '') + '</button></div>';
+    var body = '';
+    if (f0.length) body += '<section class="sec"><header class="sec-h"><span class="sec-t fail-text">Not saved</span><span class="sec-m">Pinned here until each one saves.</span></header><div class="group">' + f0.map(function (t) { return tlineHTML(s, t); }).join('') + '</div>' + (f0.length > 1 ? '<button class="fill" data-act="retryAll">Retry all ' + f0.length + '</button>' : '') + '</section>';
+    else if (filt === 'fail') body += '<p class="allwell">All is well. Every tick this session saved.</p>';
+    if (filt === 'all') body += rest.length ? '<section class="sec"><header class="sec-h"><span class="sec-t">Saved and saving</span><span class="sec-m">Newest first. ' + s.saved + ' saved this session; the sample shows only the ticks made here.</span></header><div class="group">' + rest.map(function (t) { return tlineHTML(s, t); }).join('') + '</div></section>' : '<p class="allwell muted">Tick a card on the left page. Each tick prints a line here.</p>';
+    return '<div class="nav"><h1 class="lt">Tape</h1>' + seg + '</div><div class="scroll" data-scroll="tapeR"><div class="stack tape big">' + body + '</div></div>';
+  }
+  function tapeList(f, s, lead) {
+    var list = f.ui.list, mb = modeBody(s);
+    return mb ? '<div class="scroll">' + (lead || '') + mb + '</div>' :
+      '<div class="scroll" data-scroll="tape-' + list + '">' + (lead || '') + '<div class="stack">' + sections(s, list).map(function (sec) {
+        return '<section class="sec"><header class="sec-h"><span class="sec-t">' + sec.title + '</span><span class="sec-m">' + sec.meta + '</span></header><div class="group">' + sec.lines.map(function (x) { return trowHTML(s, x); }).join('') + '</div></section>';
+      }).join('') + '</div></div>';
+  }
+  function tapePage(f, s) {
+    var ok = s.mode === 'ok', ax = f.d.key === 'ax5';
+    var nav = '<div class="nav nav-inline"><div class="inline-t">Check-in</div>' + (ok ? lseg(f, s) : '') + '</div>';
+    return (ax ? '' : nav) + tapeList(f, s, ax ? nav : '') + (ok ? tapeCompact(f, s) : '') + (f.ui.sheet === 'fails' ? failSheet(s) : '');
+  }
+  function tapeOpen(f, s) {
+    var ok = s.mode === 'ok';
+    var left = '<div class="nav nav-inline"><div class="inline-t">Check-in</div>' + (ok ? lseg(f, s) : '') + '</div>' + tapeList(f, s);
+    var right = ok ? tapeFull(f, s) : '<div class="nav"><h1 class="lt">Tape</h1></div><div class="state"><p class="muted">The tape fills once your orders load.</p></div>';
+    return [left, right];
+  }
+
+  /* ---------- Envelope ---------- */
+  function allPk(s) { return s.packages.concat(s.orphans); }
+  function beadsFor(s, l) {
+    var ts = ticksOf(s, l.id), sv = ts.filter(function (t) { return t.status === 'saving'; }).length, fl = ts.filter(function (t) { return t.status === 'failed'; }).length;
+    var total = l.qty == null ? l.rec + sv + fl + 1 : l.qty, out = [];
+    for (var i = 0; i < total; i++) {
+      var c = 'b';
+      if (i < l.rec) c += ' b-in'; else if (i < l.rec + sv) c += ' b-saving'; else if (i < l.rec + sv + fl) c += ' b-fail';
+      out.push('<span class="' + c + '"></span>');
+    }
+    return out.join('');
+  }
+  function pkgBeads(s, p) { return p.lines.map(function (l) { return beadsFor(s, l); }).join('<span class="gap"></span>'); }
+  function pkgFails(s, p) { var ids = {}; p.lines.forEach(function (l) { ids[l.id] = 1; }); return fails(s).filter(function (t) { return ids[t.lineId]; }).length; }
+  function erowHTML(s, l) {
+    var st = lstate(s, l);
+    var dis = st.k === 'full' ? ' aria-disabled="true" title="All ' + l.qty + ' are in"' : ' data-act="tick" data-arg="' + l.id + '"';
+    var lab = st.k === 'failed' ? 'Retry ' + l.name : st.k === 'full' ? 'All ' + l.qty + ' ' + l.name + ' are in' : 'Tick one ' + l.name + ', ' + countOf(l);
+    var sub = st.k === 'failed' ? subText(st, l) + ' Tap the card to retry.' : l.set + '. ' + subText(st, l);
+    return '<button class="erow st-' + st.k + '"' + dis + ' aria-label="' + lab + '"><span class="er-top"><span class="er-name">' + l.name + '</span><span class="er-count">' + countOf(l) + '</span></span><span class="beads big-beads" aria-hidden="true">' + beadsFor(s, l) + '</span><span class="er-sub">' + sub + '</span></button>';
+  }
+  function curPkg(f, s) { var all = allPk(s); return all.filter(function (p) { return p.id === f.ui.pkg; })[0] || all[0]; }
+  function envBody(f, s) {
+    var p = curPkg(f, s), all = allPk(s), i = all.indexOf(p), u = sum(p);
+    var head = '<div class="env-head"><span class="env-pos">' + (p.orphan ? 'Orphaned mail' : 'Package ' + (i + 1) + ' of ' + s.packages.length) + '</span><h1 class="t2">' + p.seller + '</h1><span class="env-meta">' + (p.orphan ? 'Arrived ' + p.arrived + '. Counts toward no order.' : 'Order ' + p.order + ', ' + u[0] + ' of ' + u[1] + ' cards in') + '</span><span class="beads" role="img" aria-label="' + u[0] + ' of ' + u[1] + ' cards in' + (pkgFails(s, p) ? ', ' + pkgFails(s, p) + ' not saved' : '') + '">' + pkgBeads(s, p) + '</span></div>';
+    var ax = f.d.key === 'ax5';
+    return (ax ? '' : head) + '<div class="scroll" data-scroll="env-' + p.id + '" data-swipe="1">' + (ax ? head : '') + '<div class="stack"><div class="group">' + p.lines.map(function (l) { return erowHTML(s, l); }).join('') + '</div></div></div>';
+  }
+  function envToolbar(f, s, withRack) {
+    var all = allPk(s), p = curPkg(f, s), i = all.indexOf(p), n = fails(s).length, fresh = anyFresh(s);
+    var prev = i > 0 ? '<button class="tbtn" data-act="pkgstep" data-arg="-1" aria-label="Previous package">' + IC.prev + '</button>' : '<button class="tbtn" aria-disabled="true" title="This is the first package" aria-label="Previous package, none before this one">' + IC.prev + '</button>';
+    var next = i < all.length - 1 ? '<button class="tbtn" data-act="pkgstep" data-arg="1" aria-label="Next package">' + IC.next + '</button>' : '<button class="tbtn" aria-disabled="true" title="This is the last package" aria-label="Next package, none after this one">' + IC.next + '</button>';
+    var mid = withRack ? '<button class="tbtn" data-act="sheet" data-arg="rack">' + IC.box + 'All packages</button>' : '<span></span>';
+    var ns = '<button class="tbtn fail' + (n ? '' : ' hide') + (fresh ? ' pulse' : '') + '" data-act="sheet" data-arg="fails"' + (n ? '' : ' tabindex="-1" aria-hidden="true"') + '>' + IC.warn + n + ' not saved</button>';
+    return '<div class="toolbar">' + prev + mid + ns + next + '</div>';
+  }
+  function rackList(f, s) {
+    var list = f.ui.rl, cur = curPkg(f, s), rows;
+    if (list === 'tally') {
+      rows = sections(s, 'tally').map(function (sec) {
+        var n = failCount(s, sec.lines), target = (sec.lines.filter(function (x) { return x.l.rec < x.l.qty; })[0] || sec.lines[0]);
+        var pid = s.byId[target.l.id].pkg.id;
+        return '<button class="rack-row" data-act="pkg" data-arg="' + pid + '" aria-label="' + sec.title + ', ' + sec.meta + ', open ' + target.label + '"><span class="rt"><span class="r-name">' + sec.title + '</span>' + (n ? '<span class="mbadge">' + n + '</span>' : '') + '</span><span class="sec-m">' + sec.meta + '. Opens ' + target.label + '.</span><span class="beads" aria-hidden="true">' + sec.lines.map(function (x) { return beadsFor(s, x.l); }).join('<span class="gap"></span>') + '</span></button>';
+      });
+    } else {
+      var src = list === 'orphaned' ? s.orphans : s.packages;
+      rows = src.map(function (p) {
+        var u = sum(p), n = pkgFails(s, p);
+        return '<button class="rack-row" data-act="pkg" data-arg="' + p.id + '"' + (p.id === cur.id ? ' aria-current="true"' : '') + '><span class="rt"><span class="r-name">' + p.seller + '</span>' + (n ? '<span class="mbadge" aria-label="' + n + ' not saved">' + n + '</span>' : '') + '</span><span class="sec-m">' + (p.orphan ? 'Arrived ' + p.arrived : 'Order ' + p.order + ', ' + u[0] + ' of ' + u[1] + ' in') + '</span><span class="beads" aria-hidden="true">' + pkgBeads(s, p) + '</span></button>';
+      });
+    }
+    var seg = '<div class="lseg" role="group" aria-label="List">' + LISTS.map(function (x) {
+      var n = x[0] === 'packages' ? s.packages.reduce(function (a, p) { return a + pkgFails(s, p); }, 0) : x[0] === 'orphaned' ? s.orphans.reduce(function (a, p) { return a + pkgFails(s, p); }, 0) : 0;
+      return '<button data-act="rl" data-arg="' + x[0] + '" aria-pressed="' + (list === x[0]) + '">' + x[1] + (n ? '<span class="dot" aria-label="' + n + ' not saved"></span>' : '') + '</button>';
+    }).join('') + '</div>';
+    return { seg: seg, rows: '<div class="group">' + rows.join('') + '</div>' };
+  }
+  function rackSheet(f, s) {
+    var r = rackList(f, s);
+    return '<div class="sheet-wrap" data-act="closebg"><div class="sheet" role="dialog" aria-label="All packages"><div class="grab"></div><div class="sheet-bar"><button class="tbtn" data-act="sheet" data-arg="">Close</button><b>All packages</b><span></span></div><div class="nav">' + r.seg + '</div><div class="scroll" data-scroll="rack-' + f.ui.rl + '"><div class="stack">' + r.rows + '</div></div></div></div>';
+  }
+  function envPage(f, s) {
+    var mb = modeBody(s);
+    if (mb) return '<div class="nav"><h1 class="lt">Packages</h1></div><div class="scroll">' + mb + '</div>';
+    return envBody(f, s) + envToolbar(f, s, true) + (f.ui.sheet === 'fails' ? failSheet(s) : f.ui.sheet === 'rack' ? rackSheet(f, s) : '');
+  }
+  function envOpen(f, s) {
+    var mb = modeBody(s);
+    if (mb) return ['<div class="nav"><h1 class="lt">Packages</h1></div><div class="scroll">' + mb + '</div>', '<div class="state"><p class="muted">A package opens here once your orders load.</p></div>'];
+    var r = rackList(f, s);
+    var left = '<div class="nav"><h1 class="lt">Rack</h1>' + r.seg + '</div><div class="scroll" data-scroll="rackL-' + f.ui.rl + '"><div class="stack">' + r.rows + '</div></div>';
+    var right = envBody(f, s) + envToolbar(f, s, false) + (f.ui.sheet === 'fails' ? failSheet(s) : '');
+    return [left, right];
+  }
+
+  var RENDER = { row: [rowPage, rowOpen], tape: [tapePage, tapeOpen], envelope: [envPage, envOpen] };
+
+  /* ---------- frames ---------- */
+  function renderFrame(f) {
+    var s = stores[f.c], root = f.root;
+    root.querySelectorAll('[data-scroll]').forEach(function (el) { f.ui.scroll[el.getAttribute('data-scroll')] = el.scrollTop; });
+    if (f.d.key === 'open') {
+      var parts = RENDER[f.c][1](f, s);
+      root.innerHTML = '<div class="page">' + sb() + parts[0] + home() + '</div><div class="hinge" aria-hidden="true"></div><div class="page">' + sb() + parts[1] + home() + '</div>';
+    } else {
+      root.innerHTML = '<div class="app">' + sb() + RENDER[f.c][0](f, s) + home() + '</div>';
+    }
+    root.querySelectorAll('[data-scroll]').forEach(function (el) { var v = f.ui.scroll[el.getAttribute('data-scroll')]; if (v) el.scrollTop = v; });
+  }
+  function paint(s) { frames.forEach(function (f) { if (stores[f.c] === s) renderFrame(f); }); }
+  function paintAll() { frames.forEach(renderFrame); }
+
+  function onAct(f, act, arg, ev) {
+    var s = stores[f.c];
+    if (act === 'tick') press(s, arg);
+    else if (act === 'retry') retry(s, arg);
+    else if (act === 'retryAll') retryAll(s);
+    else if (act === 'list') { f.ui.list = arg; renderFrame(f); }
+    else if (act === 'sel') { f.ui.sel[f.ui.list] = arg; renderFrame(f); }
+    else if (act === 'tf') { f.ui.tf = arg; renderFrame(f); }
+    else if (act === 'rl') { f.ui.rl = arg; renderFrame(f); }
+    else if (act === 'sheet') { f.ui.sheet = arg || null; renderFrame(f); }
+    else if (act === 'closebg') { if (ev.target.classList.contains('sheet-wrap')) { f.ui.sheet = null; renderFrame(f); } }
+    else if (act === 'pkg') { f.ui.pkg = arg; if (f.ui.sheet === 'rack') f.ui.sheet = null; renderFrame(f); }
+    else if (act === 'pkgstep') { var all = allPk(s), i = all.indexOf(curPkg(f, s)) + Number(arg); if (all[i]) { f.ui.pkg = all[i].id; renderFrame(f); } }
+    else if (act === 'import' || act === 'reload') { s.mode = 'ok'; paint(s); }
+  }
+  function newUI() { return { list: 'packages', sel: {}, tf: 'all', rl: 'packages', sheet: null, pkg: 'p1', scroll: {} }; }
+
+  function build() {
+    var main = document.getElementById('concepts');
+    main.innerHTML = '';
+    frames = [];
+    CONCEPTS.forEach(function (c) {
+      var sec = document.createElement('section');
+      sec.className = 'concept'; sec.id = 'concept-' + c.key;
+      sec.innerHTML = '<div class="c-head"><div class="c-title"><h2>' + c.name + '</h2><button class="pbtn" data-hide="' + c.key + '">Hide this concept</button></div><p>' + c.pitch + '</p><div class="tags">' + c.tags.map(function (t) { return '<span class="tag">' + t + '</span>'; }).join('') + '</div></div><div class="frames"></div>';
+      var wrap = sec.querySelector('.frames');
+      DEVICES.forEach(function (d) {
+        var fig = document.createElement('figure');
+        fig.setAttribute('data-dev', d.key);
+        var dv = document.createElement('div');
+        dv.className = 'device ' + d.cls;
+        dv.setAttribute('data-device', d.data);
+        dv.id = c.key + '-' + d.key;
+        fig.appendChild(dv);
+        var cap = document.createElement('figcaption'); cap.textContent = d.cap; fig.appendChild(cap);
+        wrap.appendChild(fig);
+        var f = { c: c.key, d: d, root: dv, ui: newUI() };
+        frames.push(f);
+        dv.addEventListener('click', function (ev) {
+          if (f.swiped) { f.swiped = false; return; }
+          var el = ev.target.closest('[data-act]'); if (!el || !dv.contains(el)) return;
+          onAct(f, el.getAttribute('data-act'), el.getAttribute('data-arg'), ev);
+        });
+        var sx = null;
+        dv.addEventListener('pointerdown', function (ev) { if (ev.target.closest('[data-swipe]')) sx = [ev.clientX, ev.clientY]; else sx = null; });
+        dv.addEventListener('pointerup', function (ev) {
+          if (!sx || f.c !== 'envelope') return;
+          var dx = ev.clientX - sx[0], dy = ev.clientY - sx[1]; sx = null;
+          if (Math.abs(dx) > 70 && Math.abs(dy) < 40) { f.swiped = true; setTimeout(function () { f.swiped = false; }, 400); onAct(f, 'pkgstep', dx < 0 ? '1' : '-1', ev); }
+        });
+      });
+      sec.querySelector('[data-hide]').addEventListener('click', function () { hiddenConcepts[c.key] = 1; applyView(); });
+      main.appendChild(sec);
+    });
+  }
+
+  function reset() {
+    seq = 0; clockN = 0;
+    CONCEPTS.forEach(function (c) { var s = makeStore(); stores[c.key] = s; applyPreset(s, PRESET); });
+    frames.forEach(function (f) { f.ui = newUI(); });
+    if (PRESET === 'many') frames.forEach(function (f) { if (f.c === 'envelope') f.ui.pkg = 'p1'; });
+    paintAll();
+  }
+
+  function setPressed(id, v) { document.querySelectorAll('#' + id + ' button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === v)); }); }
+  function applyView() {
+    var r = document.documentElement;
+    if (THEME === 'auto') r.removeAttribute('data-theme'); else r.setAttribute('data-theme', THEME);
+    setPressed('ctl-t', THEME); setPressed('ctl-n', NET); setPressed('ctl-s', PRESET); setPressed('ctl-d', DEV);
+    document.querySelectorAll('figure[data-dev]').forEach(function (fig) { fig.hidden = !(DEV === 'all' || fig.getAttribute('data-dev') === DEV); });
+    var nh = 0;
+    CONCEPTS.forEach(function (c) { var el = document.getElementById('concept-' + c.key); var hide = !!hiddenConcepts[c.key] || (CONLY && CONLY !== c.key); el.hidden = hide; if (hiddenConcepts[c.key]) nh++; });
+    document.getElementById('unhide').hidden = nh === 0;
+    writeHash();
+  }
+  function readHash() {
+    var h = location.hash.replace(/^#/, ''); var o = {};
+    h.split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) o[p[0]] = decodeURIComponent(p[1] || ''); });
+    if (o.t && /^(auto|light|dark)$/.test(o.t)) THEME = o.t;
+    if (o.n && /^(good|flaky|offline)$/.test(o.n)) NET = o.n;
+    if (o.s && /^(live|failed|many|offline|saving|empty|loading|readfail)$/.test(o.s)) PRESET = o.s;
+    if (o.d && /^(all|folded|open|phone|ax5)$/.test(o.d)) DEV = o.d;
+    CONLY = o.c && /^(row|tape|envelope)$/.test(o.c) ? o.c : '';
+    if (PRESET === 'offline' && !o.n) NET = 'offline';
+  }
+  function writeHash() {
+    var parts = [];
+    if (CONLY) parts.push('c=' + CONLY);
+    if (PRESET !== 'live') parts.push('s=' + PRESET);
+    if (THEME !== 'auto') parts.push('t=' + THEME);
+    if (NET !== 'good') parts.push('n=' + NET);
+    if (DEV !== 'all') parts.push('d=' + DEV);
+    var h = parts.length ? '#' + parts.join('&') : ' ';
+    if (('#' + location.hash.replace(/^#/, '')) !== h) history.replaceState(null, '', h === ' ' ? location.pathname + location.search : h);
+  }
+
+  function wire() {
+    document.getElementById('ctl-t').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; THEME = b.getAttribute('data-v'); applyView(); });
+    document.getElementById('ctl-n').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; NET = b.getAttribute('data-v'); applyView(); paintAll(); });
+    document.getElementById('ctl-s').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; PRESET = b.getAttribute('data-v'); NET = PRESET === 'offline' ? 'offline' : 'good'; applyView(); reset(); });
+    document.getElementById('ctl-d').addEventListener('click', function (e) { var b = e.target.closest('button'); if (!b) return; DEV = b.getAttribute('data-v'); applyView(); });
+    document.getElementById('reset').addEventListener('click', function () { reset(); });
+    document.getElementById('unhide').addEventListener('click', function () { hiddenConcepts = {}; applyView(); });
+    window.addEventListener('hashchange', function () { var p = PRESET; readHash(); applyView(); if (p !== PRESET) reset(); else paintAll(); });
+  }
+
+  readHash();
+  build();
+  wire();
+  applyView();
+  reset();
+})();
+</script>
+</body>
+</html>

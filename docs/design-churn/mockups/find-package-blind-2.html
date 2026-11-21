@@ -14,7 +14,7 @@
   --surface: #F2F4F7; --raised: #FFFFFF; --sunk: #E5E9EF; --text: #172131; --text-2: #4E5A6C;
   --line: #CDD4DE; --accent: #2346A3; --on-accent: #FFFFFF; --accent-soft: #DCE4F7;
   --arrived: #24703F; --partial: #995A08; --danger: #A8262F; --mark: #FFE38A; --mark-text: #172131;
-  --new: #7A3FB8; --chrome: #E8EBF0; --frame-edge: #8E99A8; --dot-off: #C6CDD8;
+  --new: #7A3FB8; --chrome: #E8EBF0; --frame-edge: #8E99A8; --dot-off: #8592A3;
   --sb: 32px; --hi: 20px;
   color-scheme: light;
 }
@@ -23,7 +23,7 @@
     --surface: #0F141B; --raised: #18202A; --sunk: #222B37; --text: #E6EBF1; --text-2: #A3AEBD;
     --line: #2E3846; --accent: #8EAAF3; --on-accent: #0D1626; --accent-soft: #1E2B47;
     --arrived: #66C48F; --partial: #E6AC58; --danger: #F4848B; --mark: #6E5C10; --mark-text: #FFF6D6;
-    --new: #C9A4F3; --chrome: #151A21; --frame-edge: #4D5868; --dot-off: #2D3745;
+    --new: #C9A4F3; --chrome: #151A21; --frame-edge: #4D5868; --dot-off: #66748A;
     color-scheme: dark;
   }
 }
@@ -31,7 +31,7 @@
   --surface: #0F141B; --raised: #18202A; --sunk: #222B37; --text: #E6EBF1; --text-2: #A3AEBD;
   --line: #2E3846; --accent: #8EAAF3; --on-accent: #0D1626; --accent-soft: #1E2B47;
   --arrived: #66C48F; --partial: #E6AC58; --danger: #F4848B; --mark: #6E5C10; --mark-text: #FFF6D6;
-  --new: #C9A4F3; --chrome: #151A21; --frame-edge: #4D5868; --dot-off: #2D3745;
+  --new: #C9A4F3; --chrome: #151A21; --frame-edge: #4D5868; --dot-off: #66748A;
   color-scheme: dark;
 }
 
@@ -70,6 +70,7 @@ button { font: inherit; color: inherit; }
 .concept-blurb { max-inline-size: 46rem; margin: 0; }
 .restore { background: none; border: 0; color: var(--accent); text-decoration: underline; cursor: pointer; min-block-size: 44px; padding: 0; }
 .stage { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+[hidden] { display: none !important; }
 figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 100%; }
 figcaption { font-size: 0.875rem; color: var(--text-2); max-inline-size: 30rem; }
 figcaption b { color: var(--text); }
@@ -78,7 +79,8 @@ figcaption b { color: var(--text); }
 /* ---------- Device frames ---------- */
 .device {
   position: relative; overflow: hidden; background: var(--surface);
-  border: 1px solid var(--frame-edge); border-radius: 28px; flex: none;
+  outline: 1px solid var(--frame-edge); outline-offset: 0; border-radius: 28px; flex: none;
+  margin: 1px; /* the edge is an outline, so the frame keeps its exact point size */
 }
 .device[data-device="iphone-duo-folded"] { inline-size: 466px; block-size: 678px; }
 .device[data-device="iphone-duo-unfolded"] {
@@ -211,6 +213,8 @@ details.said summary { min-block-size: var(--tap); display: flex; align-items: c
 .field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
 .field input { flex: 1; min-inline-size: 0; border: 0; background: transparent; color: var(--text); font: inherit; font-size: var(--fs-b); min-block-size: var(--tap); outline: none; }
 .field input::placeholder { color: var(--text-2); }
+.field input::-webkit-search-cancel-button { display: none; }
+.app p { margin: 0; }
 .field svg { inline-size: 1em; block-size: 1em; color: var(--text-2); flex: none; }
 .clear { background: none; border: 0; min-inline-size: var(--tap); min-block-size: var(--tap); color: var(--text-2); cursor: pointer; display: grid; place-items: center; }
 .buckets { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
@@ -304,7 +308,12 @@ details.said summary { min-block-size: var(--tap); display: flex; align-items: c
     <div class="ctl"><span>Part labels</span><div class="seg" id="labels"></div></div>
   </div>
   <p class="concept-blurb" id="blurb"></p>
-  <div class="stage" id="stage"></div>
+  <div class="stage" id="stage">
+    <figure data-frame="folded"><figcaption></figcaption><div class="scroller"><div class="device" data-device="iphone-duo-folded"></div></div></figure>
+    <figure data-frame="open"><figcaption></figcaption><div class="scroller"><div class="device" data-device="iphone-duo-unfolded"></div></div></figure>
+    <figure data-frame="phone"><figcaption></figcaption><div class="scroller"><div class="device" data-device="iphone-regular"></div></div></figure>
+    <figure data-frame="ax5"><figcaption></figcaption><div class="scroller"><div class="device" data-device="iphone-duo-folded" data-text="ax5"></div></div></figure>
+  </div>
 </main>
 
 <script>
@@ -451,18 +460,15 @@ function freshState() {
 function frameState(f) { return f.st.loaded || G.state; } // a frame can recover from failed/empty on its own button
 
 function buildStage() {
-  const stage = document.getElementById("stage");
-  stage.innerHTML = "";
   live = [];
   for (const def of FRAMES) {
-    if (G.device !== "all" && G.device !== def.key) continue;
-    const fig = document.createElement("figure");
-    const cap = document.createElement("figcaption"); cap.innerHTML = def.cap;
-    const sc = document.createElement("div"); sc.className = "scroller";
-    const dev = document.createElement("div"); dev.className = "device"; dev.dataset.device = def.device;
-    if (def.ax5) dev.dataset.text = "ax5";
+    const fig = document.querySelector(`figure[data-frame="${def.key}"]`);
+    fig.hidden = G.device !== "all" && G.device !== def.key;
+    if (fig.hidden) continue;
+    fig.querySelector("figcaption").innerHTML = def.cap;
+    const old = fig.querySelector(".device"), dev = old.cloneNode(false); // fresh node drops old listeners
+    old.replaceWith(dev);
     dev.setAttribute("role", "region"); dev.setAttribute("aria-label", def.cap.replace(/<[^>]+>/g, ""));
-    sc.append(dev); fig.append(cap, sc); stage.append(fig);
     const f = { def, el: dev, st: freshState() };
     live.push(f);
     dev.addEventListener("click", e => onClick(f, e));
@@ -583,7 +589,7 @@ function clueFinder(f) {
     : `<div class="chips" role="group" aria-label="Look in" data-new="clue chips">${SCOPES.map(([k, n]) => `<button class="chip" data-act="scope" data-scope="${k}" aria-pressed="${st.scope === k}">${n}</button>`).join("")}</div>`;
   const input = st.scope === "when"
     ? `<div class="buckets" role="group" aria-label="When you bought it" data-new="time spans">${BUCKETS.map(([k, n]) => `<button class="bucket" data-act="when" data-when="${k}" aria-pressed="${st.when === k}">${n}</button>`).join("")}</div>`
-    : `<label class="field" data-new="one box for any clue">${ICON.search}<input type="search" data-key="q" data-act-input="q" value="${esc(st.q)}" placeholder="${PH[st.scope]}" aria-label="${PH[st.scope]}" autocomplete="off" enterkeyhint="search">${st.q ? `<button class="clear" data-act="clue-clear" aria-label="Clear the search">${ICON.x}</button>` : ""}</label>`;
+    : `<label class="field" data-new="one box for any clue">${ICON.search}<input type="search" data-key="q" data-act-input="q" value="${esc(st.q)}" placeholder="${ax ? "Any clue" : PH[st.scope]}" aria-label="${PH[st.scope]}" autocomplete="off" enterkeyhint="search">${st.q ? `<button class="clear" data-act="clue-clear" aria-label="Clear the search">${ICON.x}</button>` : ""}</label>`;
   const dock = `<div class="dock">${chipRow}${input}</div>`;
   if (ax) return `<div class="screen" data-scroll="s-find">${title}${dock}<div class="scroll">${body}</div></div>`;
   return `<div class="screen">${title}<div class="scroll" data-scroll="clue-list">${body}</div>${dock}</div>`;
@@ -616,7 +622,8 @@ function askHtml(f) {
   const st = f.st, c = st.clues, base = sieveBase();
   const k = ASKS[st.ask];
   const pos = `<span class="t-ft muted">Clue ${st.ask + 1} of 4</span>`;
-  const foot = (skipLabel) => `<div class="ask-foot"><button class="btn btn-plain" data-act="ask-prev"${st.ask === 0 ? " disabled aria-disabled=\"true\" title=\"This is the first clue\"" : ""}>Previous clue</button><button class="btn btn-plain" data-act="ask-next">${skipLabel}</button></div>`;
+  // On clue 1, Previous changes nothing, so it is absent; the empty span keeps Skip in place.
+  const foot = (skipLabel) => `<div class="ask-foot">${st.ask === 0 ? "<span></span>" : `<button class="btn btn-plain" data-act="ask-prev">Previous clue</button>`}<button class="btn btn-plain" data-act="ask-next"${st.ask === 3 ? " data-key=\"done\"" : ""}>${skipLabel}</button></div>`;
   if (k === "thick") return `<div class="ask" data-new="one question at a time"><div class="ask-head"><span class="t-hl">How thick is it?</span>${pos}</div><div class="answers">${THICK.map(([v, n, h]) => `<button class="answer" data-act="clue" data-clue="thick" data-v="${v}" aria-pressed="${c.thick === v}">${n}<small>${h}</small></button>`).join("")}</div>${foot("Not sure, skip")}</div>`;
   if (k === "letter") {
     const pool = base.filter(o => sieveMatch(o, c, "letter"));

@@ -88,7 +88,7 @@ figcaption b { color:var(--ink); }
 .res .late { color:var(--red); }
 mark { background:none; color:inherit; font-weight:700; text-decoration:underline; text-underline-offset:2px; }
 .glyph { width:14px; height:14px; flex:0 0 14px; color:var(--inkSoft); }
-.tie-note { font-size:var(--fs-foot); line-height:var(--lh-foot); color:var(--inkSoft); padding:4px 4px 0; flex-shrink:0; }
+.tie-note { position:relative; margin:0; font-size:var(--fs-foot); line-height:var(--lh-foot); color:var(--inkSoft); padding:4px 4px 0; flex-shrink:0; }
 
 /* the order: the whole order, ticked line by line */
 .order { display:flex; flex-direction:column; gap:8px; }
@@ -98,7 +98,7 @@ mark { background:none; color:inherit; font-weight:700; text-decoration:underlin
 .ohead .meta { font:12px var(--mono); color:var(--inkSoft); }
 .pill { font:700 12.5px var(--cochin); padding:4px 8px; border-radius:14px; background:color-mix(in srgb, var(--accent) 14%, var(--card)); color:var(--ink); white-space:nowrap; }
 .stampx { font:700 11px var(--mono); letter-spacing:1px; color:var(--green); border:2px solid var(--green); border-radius:4px; padding:2px 6px; transform:rotate(-4deg); }
-.cells { display:flex; gap:8px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.cells { position:relative; display:flex; gap:8px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
 .cells button { font:600 13px var(--sys); color:var(--accent); background:none; border:0; min-height:44px; padding:0 4px; cursor:pointer; }
 .lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; flex-shrink:0; }
 .ln { all:unset; box-sizing:border-box; display:flex; align-items:center; gap:8px; min-height:56px; width:100%; padding:4px 12px 4px 4px; border-top:1px solid var(--line); cursor:pointer; }
@@ -131,22 +131,23 @@ mark { background:none; color:inherit; font-weight:700; text-decoration:underlin
 
 /* the band under the box: solid paper, ruled on top (item 101 a); the list ends at the rule */
 .band { position:absolute; background:var(--paper); border-top:1px solid var(--line); padding:8px 16px; z-index:4; }
-.box { display:flex; align-items:center; gap:8px; min-height:52px; padding:0 4px 0 16px; border:1px solid var(--line); border-radius:26px; background:var(--paper); }
-.box:focus-within { border-color:var(--accent); }
-.box svg { width:20px; height:20px; flex:0 0 20px; color:var(--inkSoft); }
-.box input { flex:1; min-width:0; border:0; background:none; font:16px var(--cochin); font-size:max(16px, var(--fs-body)); color:var(--ink); padding:12px 0; outline:none; }
-.box input::placeholder { color:var(--inkSoft); }
-.box .count { font:12px var(--mono); color:var(--inkSoft); width:28px; text-align:right; flex:0 0 28px; }
-.box .clear { flex:0 0 44px; height:44px; border:0; background:none; display:grid; place-items:center; cursor:pointer; }
-.box .clear i { width:20px; height:20px; border-radius:50%; background:var(--inkSoft); color:var(--paper); font:700 11px/20px var(--sys); font-style:normal; text-align:center; }
-.box .clear[aria-hidden="true"] { visibility:hidden; }
+.findbox { display:flex; align-items:center; gap:8px; min-height:52px; padding:0 4px 0 16px; border:1px solid var(--line); border-radius:26px; background:var(--paper); }
+.findbox:focus-within { border-color:var(--accent); }
+.findbox svg { width:20px; height:20px; flex:0 0 20px; color:var(--inkSoft); }
+.findbox input { flex:1; min-width:0; border:0; background:none; font:16px var(--cochin); font-size:max(16px, var(--fs-body)); color:var(--ink); padding:12px 0; outline:none; }
+.findbox input::placeholder { color:var(--inkSoft); }
+.findbox .count { font:12px var(--mono); color:var(--inkSoft); width:28px; text-align:right; flex:0 0 28px; }
+.findbox .clear { flex:0 0 44px; height:44px; border:0; background:none; display:grid; place-items:center; cursor:pointer; }
+.findbox .clear i { width:20px; height:20px; border-radius:50%; background:var(--inkSoft); color:var(--paper); font:700 11px/20px var(--sys); font-style:normal; text-align:center; }
+.findbox .clear[aria-hidden="true"] { visibility:hidden; }
 
 /* system chrome: iOS colours, outside the tokens */
 .keys { position:absolute; left:0; right:0; bottom:0; background:#D2D0D6; z-index:6; padding:8px 4px; font-family:var(--sys); }
 .keys .kr { display:flex; gap:6px; justify-content:center; margin-bottom:10px; }
 .keys .k { flex:0 0 36px; height:42px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font-size:18px; color:#111; }
 .keys .k.w { flex-basis:220px; font-size:14px; }
-.keys .note { position:absolute; left:12px; top:0; transform:translateY(-100%); font:11px var(--mono); color:var(--inkSoft); background:var(--paper); padding:2px 4px; }
+.keys .note { position:absolute; right:8px; bottom:4px; font:11px var(--mono); color:#3C3C43; }
+.keys { padding-bottom:24px; }
 .tabbar { position:absolute; height:83px; bottom:0; display:flex; justify-content:center; padding-top:4px; z-index:5; }
 .tabbar .cap { display:flex; gap:0; height:62px; padding:4px; border-radius:31px; background:color-mix(in srgb, var(--paper) 62%, #FFFFFF);
   border:1px solid var(--line); box-shadow:0 2px 8px rgba(28,43,36,.06); }
@@ -155,20 +156,33 @@ mark { background:none; color:inherit; font-weight:700; text-decoration:underlin
 .tabbar .tab.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
 
 /* tags: dashed outline on what exists today, and on what an option adds */
-[data-tag] { position:relative; }
+/* every tagged element is positioned already: frames are absolute, rows and cells relative */
 .tags-on [data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:-8px; font:600 11px/14px var(--sys); padding:0 4px;
   background:var(--paper); z-index:12; white-space:nowrap; pointer-events:none; }
 .tags-on .t-new { outline:2px dashed var(--new); outline-offset:-2px; } .tags-on .t-new::after { color:var(--new); }
 .tags-on .t-today { outline:2px dashed var(--today); outline-offset:-2px; } .tags-on .t-today::after { color:var(--today); }
 
+.tags-on .mini[data-tag]::after, .tags-on .strip[data-tag]::after { top:auto; bottom:-10px; }
+
 /* AX5 on the folded Duo: Apple's AX5 row (Body 53/62, Footnote 44/52, Caption 2 40/48) */
 .dev.ax5 { --fs-head:53px; --lh-head:62px; --fs-body:53px; --lh-body:62px; --fs-foot:44px; --lh-foot:52px; --fs-cap:40px; --lh-cap:48px; }
 .dev.ax5 .res .top { flex-direction:column; align-items:flex-start; }
 .dev.ax5 .res .who { white-space:normal; }
-.dev.ax5 .res .left, .dev.ax5 .res .when, .dev.ax5 .box .count, .dev.ax5 .ohead .meta, .dev.ax5 .ln .n, .dev.ax5 .strip .pos { font-size:40px; line-height:48px; }
-.dev.ax5 .box { min-height:70px; }
-.dev.ax5 .box .count { width:auto; flex-basis:auto; }
+.dev.ax5 .res .when { display:none; }          /* AX5: the date joins the count line, so the best match stays whole above the box */
+.dev.ax5 .pill { font-size:40px; line-height:48px; border-radius:30px; }
+.dev.ax5 .ohead { flex-direction:column; }
+.dev.ax5 .ohead .meta { white-space:normal; }
+.dev.ax5 .res .left, .dev.ax5 .findbox .count, .dev.ax5 .ohead .meta, .dev.ax5 .ln .n, .dev.ax5 .strip .pos { font-size:40px; line-height:48px; }
+.dev.ax5 .findbox { min-height:70px; }
+.dev.ax5 .findbox .count { width:auto; flex-basis:auto; }
 .dev.ax5 .ln .t b, .dev.ax5 .ohead .who { font-size:53px; line-height:62px; }
+.dev.ax5 .back { font-size:53px; line-height:62px; }
+.dev.ax5 .btn { font-size:44px; min-height:68px; border-radius:34px; }
+.dev.ax5 .cells { flex-wrap:wrap; }
+.dev.ax5 .cells button { font-size:44px; line-height:52px; text-align:left; }
+.dev.ax5 .ln { flex-wrap:wrap; }
+.dev.ax5 .ln .t { flex-basis:calc(100% - 52px); }
+.dev.ax5 .ln .n { flex-direction:row; gap:16px; width:100%; padding-left:52px; }
 .dev.ax5 .glyph { width:40px; height:40px; flex-basis:40px; }
 .dev.ax5 .strip { height:auto; min-height:56px; }
 .dev.ax5 .strip .pos em { font-size:40px; line-height:48px; }
@@ -407,7 +421,7 @@ class Frame {
     el.innerHTML = "";
     el.insertAdjacentHTML("beforeend", `<div class="status" aria-hidden="true"><span>9:41</span><span>100%</span></div>`);
     if (this.poseName === "open") return this.renderOpen(g);
-    const showHead = !(P.ax && g.keysOn);
+    const showHead = !P.ax;   // at AX5 the running head leaves: its 44 pt cannot hold AX5 type (debt masthead-at-ax-sizes)
     const headTop = P.sat, regionTop = showHead ? P.sat + 44 : P.sat;
     if (showHead) el.insertAdjacentHTML("beforeend", this.runhead(headTop, 16, 16));
     const region = document.createElement("div");
@@ -448,7 +462,7 @@ class Frame {
     d.style.left = l + "px"; d.style.width = w + "px"; d.style.top = top + "px";
     const ph = this.pose.ax ? "Find" : "Seller, card, order number or month";
     const n = this.ranked.list.length;
-    d.innerHTML = `<label class="box"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m13 13 5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
+    d.innerHTML = `<label class="findbox"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m13 13 5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       <input type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Find an order" placeholder="${ph}" value="${esc(this.q)}" ${this.ledgerState === "loading" ? "disabled" : ""}>
       <span class="count" aria-live="polite">${this.q.trim() && this.ledgerState === "ok" ? n : ""}</span>
       <button type="button" class="clear" aria-label="Clear search" ${this.q ? "" : 'aria-hidden="true" tabindex="-1"'}><i>&#x2715;</i></button></label>`;
@@ -518,9 +532,14 @@ class Frame {
       const b = document.createElement("button"); b.type = "button"; b.setAttribute("role", "listitem");
       b.className = "res" + (r.tied ? " tied" : "") + (this.poseName === "open" && i === this.sel ? " sel" : "");
       if (i === 0 && this.q.trim()) { b.classList.add("t-new"); b.dataset.tag = "New: best match, nearest the thumb"; }
-      const why = r.hits.length ? whyLine(r) : `<span>${G.month}ordered ${fmtDate(r.p.date)}, ${days(r.p.date)} days ago</span>`;
-      b.innerHTML = `<span class="top"><span class="who">${esc(r.p.seller)}</span><span class="left">${left(r.p)} left</span></span>
-        <span class="why">${why}</span><span class="when">${fmtDate(r.p.date)}${lateNote(r.p)}</span>`;
+      // A seller hit is marked in the seller's own name, so the row never says the seller twice.
+      const sh = r.hits.find(h => h.kind === "seller");
+      const who = sh ? marked(sh) : esc(r.p.seller);
+      const rest = { ...r, hits: r.hits.filter(h => h.kind !== "seller") };
+      const why = !r.hits.length ? `<span>${G.month}ordered ${fmtDate(r.p.date)}, ${days(r.p.date)} days ago</span>` : whyLine(rest);
+      const ax = this.pose.ax ? `, ${fmtDate(r.p.date)}` : "";
+      b.innerHTML = `<span class="top"><span class="who">${who}</span><span class="left">${left(r.p)} left${ax}</span></span>
+        ${why ? `<span class="why">${why}</span>` : ""}${r.hits.length ? `<span class="when">${fmtDate(r.p.date)}${lateNote(r.p)}</span>` : ""}`;
       b.addEventListener("click", () => { this.sel = i; this.opened = true; this.keys = false; this.render(); });
       sc.append(b);
     });
@@ -537,8 +556,10 @@ class Frame {
         <span class="t"><b>${esc(it.name)}</b><small>${esc(it.set)}, ${it.cond}</small></span>
         <span class="n"><span>$${it.price.toFixed(2)}</span><span>${it.got}/${it.qty}</span></span></button>`;
     }).join("");
-    return `<div class="ohead"><div><div class="who">${esc(p.seller)}</div><div class="meta">${fmtDate(p.date)}, 2026 &nbsp;${p.orderId}</div></div>${status}</div>
-      ${r.hits.length ? `<div class="why" style="font-size:var(--fs-foot);line-height:var(--lh-foot);display:flex;flex-wrap:wrap;gap:4px 12px">${whyLine(r)}</div>` : ""}
+    const sh = r.hits.find(h => h.kind === "seller"), rest = { ...r, hits: r.hits.filter(h => h.kind !== "seller") };
+    const why = rest.hits.length ? whyLine(rest) : "";
+    return `<div class="ohead"><div><div class="who">${sh ? marked(sh) : esc(p.seller)}</div><div class="meta">${fmtDate(p.date)}, 2026 &nbsp;${p.orderId}</div></div>${status}</div>
+      ${why ? `<div class="why" style="font-size:var(--fs-foot);line-height:var(--lh-foot);display:flex;flex-wrap:wrap;gap:4px 12px">${why}</div>` : ""}
       <div class="cells t-today" data-tag="Today: Stamp, Mark All Received"><button type="button">${p.stamp ? esc(p.stamp) : "Stamp"}</button><button type="button" data-all>Mark All Received</button></div>
       <div class="lines">${lines}</div>`;
   }
@@ -599,7 +620,7 @@ class Frame {
     parts.push(keys ? "Keys up." : P.keysTop ? "Keys down." : "Keys down: no keyboard height is measured on the 18 Pro, so none is drawn.");
     if (this.poseName !== "open") parts.push(`Band ${Math.round(g.bandTop)} to ${Math.round(g.bottom)} pt; the list ends at its rule.`);
     if (this.poseName === "ax5") parts.push(this.concept === "index"
-      ? "AX5 type from Apple's table. With keys up the running head leaves, and the best match stays whole right above the box. Scroll up for the rest."
+      ? "AX5 type from Apple's table. The running head leaves, and the best match stays whole right above the box, keys up or down. Scroll up for the rest."
       : "AX5 type from Apple's table. With keys up, the page holds the order's head only. Search or a tap on a line drops the keys and shows the lines.");
     if (this.poseName === "open") parts.push(this.concept === "index" ? "Results left, box under them; the chosen order right. Nothing crosses the fold." : "Two orders side by side, the strip under the right one. Nothing crosses the fold.");
     if (this.fixed === "due") parts.push("No words typed: unreceived orders 5 to 14 days old, oldest first.");

@@ -106,7 +106,7 @@ code { font:13px var(--mono); }
 .ph .who { flex:1; min-width:0; display:flex; flex-direction:column; }
 .ph .who b { font-size:calc(15px * var(--k)); line-height:1.2; overflow-wrap:anywhere; }
 .ph .who span { font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); }
-.ph .oid { font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); text-decoration:underline; min-height:45px; display:flex; align-items:center; padding:0 12px; }
+.pcard .oid { font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); text-decoration:underline; min-height:45px; display:flex; align-items:center; padding:0 12px; }
 .slot { flex:none; display:grid; place-items:center end; min-height:28px; }
 .pill { font:700 calc(12.5px * var(--k)) var(--cochin); color:var(--red); background:var(--redSoft); border-radius:999px; padding:4px 8px; white-space:nowrap; }
 .rcv { font:700 calc(10.5px * var(--k)) var(--mono); letter-spacing:1px; color:var(--green); border:2px solid var(--green); border-radius:4px; padding:4px 8px; transform:rotate(-4deg); }
@@ -135,6 +135,8 @@ code { font:13px var(--mono); }
 .findkey { flex:none; width:44px; min-height:44px; border:1px solid var(--line); border-radius:22px; background:var(--card); display:grid; place-items:center; cursor:pointer; padding:0; }
 .findkey svg, .fpill svg { width:20px; height:20px; fill:none; stroke:var(--inkSoft); stroke-width:1.8; stroke-linecap:round; }
 .fpill { display:flex; align-items:center; gap:8px; min-height:48px; padding:0 6px 0 16px; border:1px solid var(--line); border-radius:999px; background:var(--paper); }
+.fpill { flex:1; min-width:0; }
+.done-btn { min-height:44px; border:0; background:none; color:var(--accent); font:600 calc(15px * var(--k)) var(--cochin); padding:0 8px; cursor:pointer; }
 .fpill input { flex:1; min-width:0; border:0; background:transparent; font:calc(16px * var(--k)) var(--cochin); color:var(--ink); outline:none; padding:0; }
 .fpill input::placeholder { color:var(--inkSoft); }
 .fpill .x { width:44px; height:44px; border:0; background:none; display:grid; place-items:center; cursor:pointer; padding:0; }
@@ -267,9 +269,10 @@ code { font:13px var(--mono); }
 /* dashed tags, page chrome */
 .tag { outline:2px dashed var(--tc); outline-offset:-2px; position:relative; }
 .tag.today { --tc:var(--today); } .tag.new { --tc:var(--new); }
-.tag::after { content:attr(data-tag); position:absolute; z-index:40; left:4px; top:-1px; transform:translateY(-55%); background:var(--paper); color:var(--tc);
+.tag::after { content:attr(data-tag); position:absolute; z-index:40; left:4px; top:2px; background:var(--paper); color:var(--tc);
   font:600 11px/1.3 var(--sys); padding:0 4px; border:1px dashed var(--tc); border-radius:4px; white-space:nowrap; pointer-events:none; letter-spacing:0; text-transform:none; }
 .notags .tag { outline:none; } .notags .tag::after { display:none; }
+.band.tag { position:absolute; }
 .band.tag::after { top:2px; transform:none; }
 .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 </style>
@@ -350,7 +353,7 @@ function addPkg(seller, age, lines, state) {
   PKGS.push(p);
 }
 for (var i = 0; i < 150; i++) {
-  var age = Math.floor(Math.pow(rnd(), 1.5) * 78), r = rnd(), st;
+  var age = Math.floor(Math.pow(rnd(), 1.15) * 78), r = rnd(), st;
   if (age < 7) st = r < 0.86 ? 'none' : r < 0.95 ? 'some' : 'all';
   else if (age < 14) st = r < 0.45 ? 'none' : r < 0.62 ? 'some' : 'all';
   else if (age < 30) st = r < 0.11 ? 'none' : r < 0.17 ? 'some' : 'all';
@@ -412,7 +415,12 @@ function Frame(concept, devKey) {
   this.sticky = {};
   var s = H.s || 'rest';
   if (s === 'picked') { this.ui.seller = 'Gilded Owl'; this.ui.sel = STORY; this.ui.open[STORY] = true; this.ui.range = 2; }
-  if (s === 'filtered') { this.ui.age = 'new'; if (concept === 'thumb-index') { this.ui.range = 2; this.ui.st = 'none'; } if (concept === 'week-ruler') this.ui.week = 'pick'; }
+  if (s === 'filtered') {
+    if (concept === 'pigeonholes') this.ui.age = 'new';
+    if (concept === 'thumb-index') { this.ui.age = 'new'; this.ui.range = 2; this.ui.st = 'none'; }
+    if (concept === 'week-ruler') { this.ui.week = weekStart(TODAY - 21 * DAY); this.pendingWeek = this.ui.week; }
+  }
+  if (s === 'picked' && concept === 'week-ruler') { this.ui.week = weekStart(TODAY - 9 * DAY); this.pendingWeek = this.ui.week; }
   if (s === 'empty') { this.ui.age = 'over'; this.ui.range = 5; this.ui.st = 'some'; if (concept !== 'thumb-index') this.ui.q = 'Mox Opal'; if (concept !== 'thumb-index') this.ui.find = true; }
   if (s === 'find') { this.ui.find = true; this.ui.q = 'Pond'; }
 }
@@ -443,11 +451,11 @@ function totals() {
   owed.forEach(function (p) { p.lines.forEach(function (l) { cards += l.qty - l.got; value += (l.qty - l.got) * l.price; }); });
   return [owed.length, cards, value];
 }
-function card(p, f) {
+function card(p, f, coll) {
   var st = stateOf(p), left = qty(p) - got(p), frac = got(p) / qty(p);
   var h = '<div class="pcard' + (st === 'all' ? ' done' : '') + '" data-gk="' + esc(p.gk) + '">';
   if (frac > 0) h += '<div class="bar"><i style="width:' + (frac * 100) + '%"></i></div>';
-  h += '<div class="ph"><div class="who"><b>' + esc(p.seller) + '</b><span>' + fmtDate(p.t) + '</span></div><div class="slot">' +
+  h += '<div class="ph"' + (coll ? ' data-act="collapse" data-gk="' + esc(p.gk) + '" role="button" tabindex="0" aria-expanded="true" aria-label="' + esc(p.seller) + ', close"' : '') + '><div class="who"><b>' + esc(p.seller) + '</b><span>' + fmtDate(p.t) + '</span></div><div class="slot">' +
     (st === 'all' ? '<span class="rcv">RECEIVED</span>' : '<span class="pill">' + left + ' left</span>') + '</div></div>';
   h += '<div style="display:flex"><span class="oid">' + p.oid + '</span></div>';
   h += '<div class="crow"><span class="mini" role="button" tabindex="0">Stamp</span>' +
@@ -473,7 +481,7 @@ function findRow(f) {
   if (f.ui.find) return '<div class="fpill tag today" data-tag="Today: Find pill"><span aria-hidden="true">' + m + '</span>' +
     '<input type="text" aria-label="Find" placeholder="' + (f.d.ax ? 'Find' : 'Find card, set, seller, order') + '" value="' + esc(f.ui.q) + '" data-act="q">' +
     '<button type="button" class="x" data-act="qclear" aria-label="Clear search"' + (f.ui.q ? '' : ' hidden') + '></button>' +
-    '<button type="button" class="x" data-act="findclose" aria-label="Close Find" style="width:auto;padding:0 8px;color:var(--accent);font:600 15px var(--cochin)">Done</button></div>';
+    '<button type="button" class="done-btn" data-act="findclose">Done</button></div>';
   return '';
 }
 function findKey() { return '<button type="button" class="findkey" data-act="find" aria-label="Find by typing">' + document.getElementById('mag').innerHTML + '</button>'; }
@@ -568,7 +576,7 @@ function rulerHTML(f, primary) {
   for (var w = minW; w <= weekStart(TODAY); w += 7 * DAY) {
     var n = cnt[w] || 0, age = Math.round((TODAY - w) / DAY), tr = tier(age - 6);
     h += '<button type="button" data-act="week" data-w="' + w + '" class="' + tr + (n ? '' : ' zero') + '" aria-current="' + (f.ui.week === w) + '" aria-label="Week of ' + wkLabel(w) + ', ' + pl(n, 'package') + ' owed"' + (n ? '' : ' disabled') + '>' +
-      '<i style="height:' + (f.d.ax ? 0 : Math.round(4 + 24 * n / max)) + 'px"></i><span>' + (f.d.ax ? wkLabel(w) + ' (' + n + ')' : wkLabel(w)) + '</span></button>';
+      '<i style="height:' + (f.d.ax ? 0 : Math.round(4 + 24 * n / max)) + 'px"></i><span>' + (f.d.ax ? wkLabel(w) + ' (' + n + ')' : wkLabel(w).replace(' ', '<br>')) + '</span></button>';
   }
   return h + '</div>';
 }
@@ -580,7 +588,7 @@ function weekList(f) {
     var lab = tr === 'over' ? 'over 30 d' : tr === 'late' ? 'over 2 wk' : '';
     return '<div class="wk ' + tr + (f.ui.week === W.w ? ' hit' : '') + '" data-week="' + W.w + '"><b>Week of ' + wkLabel(W.w) + '</b><span>' +
       (lab ? '<span class="wk-tier">' + lab + '</span> &middot; ' : '') + W.ps.length + '</span></div>' +
-      W.ps.map(function (p) { return (!f.d.two && f.ui.open[p.gk]) ? card(p, f) : slip(p, f, f.d.two && f.ui.sel === p.gk); }).join('');
+      W.ps.map(function (p) { return (!f.d.two && f.ui.open[p.gk]) ? card(p, f, true) : slip(p, f, f.d.two && f.ui.sel === p.gk); }).join('');
   }).join('');
 }
 function renderWeek(f) {
@@ -648,7 +656,7 @@ function trayHTML(f, primary) {
 function matchList(f, inline) {
   var vis = f.visible();
   if (!vis.length) return emptyState(f);
-  return vis.map(function (p) { return f.ui.open[p.gk] ? card(p, f) : slip(p, f, false); }).join('');
+  return vis.map(function (p) { return f.ui.open[p.gk] ? card(p, f, true) : slip(p, f, false); }).join('');
 }
 function renderThumb(f) {
   var d = f.d, t = totals();
@@ -709,23 +717,29 @@ Frame.prototype.render = function (keepFocus) {
   var el = this.el;
   Object.keys(scrolls).forEach(function (k) { var s = el.querySelector('[data-scroll="' + k + '"]'); if (s) s.scrollTop = scrolls[k]; });
   if (fx) { var inp = this.el.querySelector('input[data-act="q"]'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
-  if (this.c === 'week-ruler') this.spy();
+  if (this.c === 'week-ruler') {
+    // The ruler opens on its newest weeks, under the right thumb, and keeps where the person left it.
+    var ru = this.el.querySelector('.ruler');
+    if (ru) { ru.scrollLeft = this.rulerX == null ? ru.scrollWidth : this.rulerX; var me = this; ru.addEventListener('scroll', function () { me.rulerX = ru.scrollLeft; }, { passive: true }); }
+    this.spy();
+  }
   if (this.pendingWeek) { this.jump(this.pendingWeek); this.pendingWeek = null; }
 };
 Frame.prototype.draw = function () { return this.c === 'pigeonholes' ? renderPigeon(this) : this.c === 'week-ruler' ? renderWeek(this) : renderThumb(this); };
+function offTop(el, anc) { var y = 0; while (el && el !== anc) { y += el.offsetTop; el = el.offsetParent; } return y; }
 Frame.prototype.jump = function (w) {
   var sc = this.el.querySelector('[data-scroll="' + (this.d.two ? 'l' : 'm') + '"]'), hd = this.el.querySelector('.wk[data-week="' + w + '"]');
   if (!sc || !hd) return;
-  // The header pins at the scroll's top; scroll so its slips start just under it.
-  sc.scrollTop = hd.offsetTop - 0;
-  hd.classList.add('hit');
+  // A pinned header reports where it is stuck, so measure from the slip under it.
+  var nx = hd.nextElementSibling; if (!nx) return;
+  sc.scrollTop = offTop(nx, sc) - hd.offsetHeight;
 };
 Frame.prototype.spy = function () {
   var self = this, sc = this.el.querySelector('[data-scroll="' + (this.d.two ? 'l' : 'm') + '"]');
   if (!sc) return;
   sc.addEventListener('scroll', function () {
     var top = sc.scrollTop + 4, cur = null;
-    sc.querySelectorAll('.wk').forEach(function (h) { if (h.offsetTop <= top) cur = +h.dataset.week; });
+    sc.querySelectorAll('.wk').forEach(function (h) { var nx = h.nextElementSibling; if (nx && offTop(nx, sc) - h.offsetHeight <= top) cur = +h.dataset.week; });
     self.el.querySelectorAll('.ruler button').forEach(function (b) { b.setAttribute('aria-current', String(+b.dataset.w === cur)); });
   }, { passive: true });
 };
@@ -759,6 +773,7 @@ Frame.prototype.onClick = function (e) {
     var gk = t.dataset.gk;
     if (this.d.two && this.c === 'week-ruler') ui.sel = gk; else ui.open[gk] = true;
   }
+  else if (a === 'collapse') { delete ui.open[t.dataset.gk]; }
   else if (a === 'week') { ui.week = +t.dataset.w; this.pendingWeek = +t.dataset.w; }
   this.render();
 };
@@ -769,7 +784,7 @@ Frame.prototype.visible = function (extra) {
   if (this.c === 'thumb-index' && this.ui.letter) return baseVisible.call(this, function (p) { return p.seller.charAt(0) === self.ui.letter && (extra ? extra(p) : true); });
   return baseVisible.call(this, extra);
 };
-function rerenderAll(src) { FRAMES.forEach(function (f) { f.render(); }); }
+function rerenderAll(src) { FRAMES.forEach(function (f) { if (f.el) f.render(); }); }
 
 // ---------------- build the page ----------------
 var CAPS = {

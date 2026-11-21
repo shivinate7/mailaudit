@@ -208,8 +208,8 @@ ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14p
 <h2>Today</h2>
 <p class="lede">On Packages, a failed save shows a footnote bar in the system font on material at the bottom (<code>PackagesView.swift</code>, overlay <code>checkin-error</code>). It names no card. The masthead slot says "couldn’t save", but the masthead has scrolled away. The next good tick on any card clears the bar (<code>PackagesModel.checkIn</code>, <code>checkInError = nil</code>), so in a fast run the only sign lasts one tap. Try it: fail one tick, then tick another card.</p>
 <figure data-state="today">
-  <div class="fit"><div class="dev folded live" data-device="iphone-duo-folded" data-concept="today" data-tab="Packages"></div></div>
-  <figcaption><b>Today, folded.</b> Packages, scrolled, one card open. <span class="feel" data-feel>no haptic today</span></figcaption>
+  <div class="fit"><div class="dev folded live" data-device="iphone-duo-folded" data-concept="today" data-tab="Packages" data-preset="k2"></div></div>
+  <figcaption><b>Today, folded.</b> Packages, scrolled. "Path to Exile" did not save; the line looks untouched. Tick another card and the bar goes. <span class="feel" data-feel>no haptic today</span></figcaption>
   <ul class="tags"><li>The line that failed looks like a line not yet ticked.</li><li>The bar's text is the system's <code>localizedDescription</code> (debt note of 2026-10-29), shown here as a sample.</li><li>A tap on the stamped toggle clears it too (debt <code>stamped-toggle-clears-error</code>).</li></ul>
 </figure>
 <figure data-state="today">
@@ -324,7 +324,7 @@ function slipHTML(st, style) {
   const k = st.miss[st.miss.length - 1], more = st.miss.length - 1;
   return `<div class="slip ${st.landed ? 'landed' : ''} tag-new" data-tag="New: Returned slip" style="${style}" role="status">
     <span class="stamp" aria-hidden="true">RETURNED</span>
-    <div class="w" data-open tabindex="0"><b>${byKey(k).n}</b><small>${more ? `Not saved. ${more} more not saved.` : `From ${SELLER}. Not saved.`}</small></div>
+    <div class="w" data-open tabindex="0"><b>${byKey(k).n}</b><small>${more ? `Not saved. ${more} more in the list.` : `From ${SELLER}. Not saved.`}</small></div>
     <button class="btn" data-retry="${k}">Tick again</button></div>`;
 }
 

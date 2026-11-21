@@ -59,8 +59,8 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
 .seal-row { display:flex; align-items:center; gap:12px; width:100%; max-width:270px; padding-bottom:12px; }
 .seal-row i { flex:1; height:1px; background:var(--gold); opacity:.75; }
 .seal { width:36px; height:36px; flex:none; }
-.title { text-transform:uppercase; letter-spacing:.18em; white-space:nowrap; font-weight:700; }
-.house { text-transform:uppercase; letter-spacing:.2em; color:var(--inkSoft); white-space:nowrap; padding-top:8px; }
+.title { text-transform:uppercase; letter-spacing:.18em; white-space:nowrap; font-weight:700; max-width:100%; overflow:hidden; }
+.house { text-transform:uppercase; letter-spacing:.2em; color:var(--inkSoft); white-space:nowrap; padding-top:8px; max-width:100%; overflow:hidden; }
 .tallies { width:100%; display:flex; flex-direction:column; }
 .rule { height:1px; background:var(--line); }
 .cells { display:grid; grid-template-columns:1fr 1fr 1.7fr; padding-top:12px; }
@@ -70,11 +70,14 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
 .cell .lab { text-transform:uppercase; letter-spacing:.14em; color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:clip; max-width:100%; }
 .cell .fig { white-space:nowrap; overflow:hidden; max-width:100%; }
 .lead { color:var(--accent); font-weight:700; } .rest { color:var(--inkSoft); }
+.cell .fig .miss { color:var(--red); font-weight:700; } .cell .fig .miss.done { color:var(--green); }
 /* the ruled form of a cell (new): label leads, figure trails, and the figure drops under the label when the pair does not fit */
 .cells.ruled { display:flex; flex-direction:column; gap:0; padding-top:4px; }
 .cells.ruled .cell { flex-direction:row; flex-wrap:wrap; justify-content:space-between; align-items:baseline; column-gap:12px; row-gap:0; padding:8px 0; border-top:1px solid var(--line); }
 .cells.ruled .cell:first-child { border-top:0; }
 .cells.ruled .cell + .cell { border-left:0; }
+.cells.ruled .fig { white-space:normal; overflow:visible; }
+.cells.ruled .fig > span { white-space:nowrap; }
 .bar { height:8px; border-radius:4px; background:var(--line); margin-top:8px; overflow:hidden; }
 .bar b { display:block; height:100%; background:var(--accent); border-radius:4px; transition:width .24s ease-out; }
 .bar b.full { background:var(--green); }
@@ -103,7 +106,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
 
 /* lists */
 .sec { display:flex; flex-direction:column; gap:12px; padding:12px 16px; }
-.trow { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; gap:12px; cursor:pointer; text-align:left; font:inherit; color:inherit; width:100%; }
+.trow { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; gap:12px; cursor:pointer; text-align:left; font:inherit; font-family:var(--cochin); color:inherit; width:100%; }
 .trow.sel { border-color:var(--accent); }
 .trow .main { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
 .trow .nm { font-weight:600; }
@@ -266,7 +269,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
   var ORDER = ['L','xxxL','AX1','AX3','AX5'];
   var CONCEPTS = [
     { key:'today',   name:'Today',               cap:'Today, drawn from the four debts: the running head reads "MANIF… 1,2…", the count line clips at four digits, set names and the envelope header break mid-word, and Cancel shows "C…".' },
-    { key:'stacked', name:'Stacked letterhead',  cap:'Keeps today\'s structure. At accessibility sizes each part stacks instead of clipping: tallies become ruled rows, the missing line gets its own row, Cancel gets its own reserved row, and the running head keeps 46 pt by capping its text and dropping its title word.' },
+    { key:'stacked', name:'Stacked letterhead',  cap:'Keeps today\'s structure. At accessibility sizes each part stacks instead of clipping: tallies become ruled rows, the missing line moves up under the cards row, Cancel gets its own reserved row, and the running head keeps 46 pt by capping its text and dropping its title word.' },
     { key:'dock',    name:'Facts dock',          cap:'Bold. The two figures leave the letterhead for a manila dock that is always mounted above the tab bar, with the tab\'s main button beside them. Nothing pins or unpins, so nothing can move. The row fixes of Stacked letterhead apply here too.' }
   ];
   var TABS = [
@@ -359,20 +362,28 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
     var h = '<div class="lh app">';
     h += '<div class="seal-row"><i></i>' + SEAL + '<i></i></div>';
     var titleSize = c === 'today' ? f(31, 'largeTitle') : f(31, 'largeTitle');
-    h += '<div class="title" style="' + titleSize + '">Manifest</div>';
-    h += '<div class="house" style="' + f(10, 'caption') + '">C.H Postal Company</div>';
+    h += '<div class="title" data-minscale="0.5" style="' + titleSize + '">Manifest</div>';
+    h += '<div class="house" data-minscale="0.5" style="' + f(10, 'caption') + '">C.H Postal Company</div>';
     var cells = [
       { lab:'cards', lead:n(got()), rest:'/' + n(TOTAL) },
       { lab:'packages', lead:n(st.s === 'done' ? 468 : 412), rest:'/' + n(468) },
       { lab:'value', lead:'$3,104.20', rest:'/$4,388.80' }
     ];
     if (c === 'dock') cells = cells.slice(1);  // the cards figure lives in the dock (ux-label-once)
+    // Stacked letterhead, accessibility sizes: the missing line becomes the second ruled row, so both facts sit at the top
+    // (Apple typography: keep primary elements toward the top of a view even when the font size is very large)
+    if (c === 'stacked' && ax) cells.splice(1, 0, { lab:'missing', miss:true });
     var cellCls = c === 'today' ? (ax ? 'cells stacked' : 'cells') : (ax ? 'cells ruled' : 'cells');
     var cellTag = (c !== 'today' && ax) ? 'new' : '';
     h += '<div class="tallies"><div class="rule" style="margin-top:12px"></div>';
     h += '<div class="' + cls(cellCls, cellTag) + '"' + (cellTag ? ' data-tag="New: ruled tallies"' : '') + (c === 'dock' && !ax ? ' style="grid-template-columns:1fr 1.7fr"' : '') + '>';
     cells.forEach(function (x) {
-      h += '<div class="cell"><span class="lab" style="' + f(10, 'caption') + '">' + x.lab + '</span><span class="fig mono" style="' + f(13, 'footnote') + '"><span class="lead">' + x.lead + '</span><span class="rest">' + x.rest + '</span></span></div>';
+      if (x.miss) {
+        var mt = owed() === 0 ? '<span class="miss done">All accounted for ✓</span>' : '<span class="miss">' + n(TOTAL - got()) + ' ·</span><wbr> <span class="miss">' + money(owed()) + '</span>';
+        h += '<div class="cell tag-new" data-tag="New: missing moves up"><span class="lab" style="' + f(10, 'caption') + '">missing</span><span class="fig mono" style="' + f(13, 'footnote') + '">' + mt + '</span></div>';
+        return;
+      }
+      h += '<div class="cell"><span class="lab" data-minscale="0.6" style="' + f(10, 'caption') + '">' + x.lab + '</span><span class="fig mono"' + (cellCls === 'cells ruled' ? '' : ' data-minscale="0.6"') + ' style="' + f(13, 'footnote') + '"><span class="lead">' + x.lead + '</span>' + (cellCls === 'cells ruled' ? '<wbr>' : '') + '<span class="rest">' + x.rest + '</span></span></div>';
     });
     h += '</div>';
     if (c !== 'dock') h += '<div class="bar"><b class="' + (pct() >= 100 ? 'full' : '') + '" style="width:' + pct() + '%"></b></div>';
@@ -393,8 +404,8 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
     var slot = '<span class="reserve slot mono' + (save === 'bad' ? ' bad' : '') + '" style="' + f(10.5, 'caption') + ';min-width:13ch"><span>' + saveLabel() + '</span><span aria-hidden="true">couldn’t save</span></span>';
     if (c === 'today') {
       h += '<div class="' + cls('foot', ax ? 'today' : '') + '"' + (ax ? ' data-tag="Today: wraps over three lines"' : '') + '><span class="missing' + (owed() === 0 ? ' done' : '') + '" style="' + f(10.5, 'caption') + '">' + missingText() + '</span>' + slot + '</div>';
-    } else if (c === 'stacked') {
-      h += '<div class="' + cls('foot' + (ax ? ' split' : ''), ax ? 'new' : '') + '"' + (ax ? ' data-tag="New: own row, slot below"' : '') + '><span class="missing' + (owed() === 0 ? ' done' : '') + '" style="' + f(10.5, 'caption') + '">' + wrapUnits(missingText()) + '</span>' + slot + '</div>';
+    } else if (c === 'stacked' && !ax) {
+      h += '<div class="foot"><span class="missing' + (owed() === 0 ? ' done' : '') + '" style="' + f(10.5, 'caption') + '">' + wrapUnits(missingText()) + '</span>' + slot + '</div>';
     } else {
       h += '<div class="foot' + (ax ? ' split' : '') + '"><span style="flex:1"></span>' + slot + '</div>';
     }
@@ -659,6 +670,17 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
     stage.innerHTML = h;
     // tag classes
     stage.querySelectorAll('[class-tag]').forEach(function (el) { el.classList.add('tag-' + el.getAttribute('class-tag')); });
+    // lineLimit(1).minimumScaleFactor(k): shrink to fit, down to k, then clip
+    stage.querySelectorAll('[data-minscale]').forEach(function (el) {
+      var k = +el.getAttribute('data-minscale');
+      if (el.scrollWidth > el.clientWidth + 1) {
+        var r = Math.max(k, el.clientWidth / el.scrollWidth);
+        var fs = parseFloat(el.style.fontSize), lh = parseFloat(el.style.lineHeight);
+        el.style.fontSize = (fs * r).toFixed(1) + 'px';
+        el.style.letterSpacing = getComputedStyle(el).letterSpacing === 'normal' ? '' : (parseFloat(getComputedStyle(el).letterSpacing) * r).toFixed(2) + 'px';
+        if (lh) el.style.lineHeight = lh + 'px';
+      }
+    });
     stage.querySelectorAll('[data-concept]').forEach(function (dev) {
       var c = dev.getAttribute('data-concept');
       var dk = dev.querySelector('[data-dock]');
@@ -677,6 +699,14 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
         pin();
       } else if (sc && st.s === 'scrolled') {
         var lh2 = sc.querySelector('.lh'); sc.scrollTop = (lh2 ? lh2.offsetHeight : 0) + 60;
+      }
+      if (st.s === 'armed') {
+        // bring the armed ask into view, below the pinned head
+        dev.querySelectorAll('.go.armed, .disc.armed').forEach(function (el) {
+          var box = el.closest('.scroll'); if (!box) return;
+          box.scrollTop = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 64;
+          if (rh && box === sc) { var l4 = sc.querySelector('.lh'); rh.classList.toggle('on', l4 && sc.scrollTop >= l4.offsetHeight); }
+        });
       }
       if (st.s === 'viewer') { var v = dev.querySelector('[data-lcv]'); if (v && (c === 'dock' || rh)) { v.classList.add('on'); if (rh) { rh.classList.add('on'); if (sc && sc.scrollTop < 1) { var l3 = sc.querySelector('.lh'); sc.scrollTop = (l3 ? l3.offsetHeight : 0) + 60; } } } }
     });

@@ -1,0 +1,541 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lost Mail Warning</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light, so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --amber:#846008; --gold:#C9A961;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:26px; line-height:1.2; margin:0; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+.bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.bar .lbl { font-size:13px; color:var(--inkSoft); }
+.bar a, .bar button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.bar a[aria-current="true"], .bar button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+section.concept { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:16px; }
+section.concept[hidden], body.st-today section.concept:not(#today) { display:none; }
+.kind { font-size:13px; color:var(--inkSoft); }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
+.fit { max-width:100%; overflow-x:auto; }
+:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+
+/* ---------- device frames, 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; font-family:var(--sys); flex:none; }
+.dev.folded { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+.dev.phone { width:375px; }
+.status { height:var(--sat); display:flex; justify-content:space-between; align-items:center; padding:0 16px; font-size:12px; font-weight:600; }
+.folded .scroll { position:absolute; top:var(--sat); left:0; right:0; bottom:83px; overflow-y:auto; }
+.phone .scroll { padding-bottom:8px; }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.page .scroll { position:absolute; top:var(--sat); left:0; right:0; bottom:0; overflow-y:auto; }
+.page.r .scroll { bottom:88px; }
+.hinge { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); }
+.hinge span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+/* system tab bar, folded: y 595, 83 pt tall with the bottom inset (duo-fold-and-keyboard) */
+.tabs { display:flex; justify-content:space-around; align-items:flex-start; padding-top:8px; background:color-mix(in srgb, var(--paper) 62%, transparent);
+  border-top:1px solid var(--line); font-size:10px; color:var(--inkSoft); }
+.folded .tabs { position:absolute; left:0; right:0; bottom:0; height:83px; padding-bottom:var(--sab); }
+.phone .tabs { height:83px; padding-bottom:var(--sab); }
+.open .tabs { position:absolute; left:calc(495.5px + 24px); width:407.5px; bottom:12px; height:64px; border:1px solid var(--line); border-radius:32px; align-items:center; padding-top:0; }
+.tab { position:relative; display:flex; flex-direction:column; align-items:center; gap:2px; min-width:64px; min-height:44px; }
+.tab i { font-style:normal; font-size:18px; line-height:22px; }
+.tab.on { color:var(--accent); font-weight:600; }
+.badge { position:absolute; top:-4px; left:calc(50% + 6px); min-width:18px; height:18px; padding:0 5px; border-radius:9px; background:var(--red); color:var(--card);
+  font:600 12px/18px var(--sys); text-align:center; }
+
+/* ---------- masthead: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---------- */
+.mast { padding:12px 24px 0; display:flex; flex-direction:column; align-items:center; font-family:var(--cochin); }
+.seal { display:flex; align-items:center; gap:12px; width:100%; max-width:270px; }
+.seal hr { flex:1; border:0; border-top:1px solid var(--gold); margin:0; opacity:.75; }
+.seal b { width:36px; height:36px; border-radius:50%; background:var(--red); display:block; box-shadow:inset 0 0 0 3px color-mix(in srgb, var(--card) 25%, transparent); }
+.title { font-size:31px; letter-spacing:.18em; text-transform:uppercase; margin-top:12px; line-height:38px; }
+.house { font-size:10px; letter-spacing:.2em; text-transform:uppercase; color:var(--inkSoft); margin-top:8px; }
+.tallies { width:100%; border-top:1px solid var(--line); margin-top:12px; padding-top:12px; display:flex; flex-direction:column; gap:8px; }
+.thirds { display:flex; }
+.thirds > div { flex:1; text-align:center; display:flex; flex-direction:column; gap:4px; }
+.thirds > div + div { border-left:1px solid var(--line); }
+.thirds .wide { flex:1.7; }
+.thirds small { font:10px var(--mono); letter-spacing:.1em; color:var(--inkSoft); }
+.thirds span { font:13px var(--mono); color:var(--inkSoft); }
+.thirds span em { font-style:normal; font-weight:700; color:var(--accent); }
+.prog { height:8px; border-radius:4px; background:var(--line); overflow:hidden; }
+.prog i { display:block; height:100%; width:77%; background:var(--accent); }
+.mline { display:flex; justify-content:space-between; font:10.5px var(--mono); color:var(--inkSoft); gap:8px; }
+.mline .miss { color:var(--red); }
+
+/* ---------- Claim ruler (the bold concept) ---------- */
+.ruler { all:unset; box-sizing:border-box; width:100%; display:flex; flex-direction:column; gap:4px; padding:8px 0 4px; min-height:44px; cursor:pointer;
+  border-top:1px solid var(--line); }
+.ruler svg { display:block; width:100%; height:30px; overflow:visible; }
+.ruler .rl { display:flex; justify-content:space-between; align-items:center; gap:8px; font:10.5px var(--mono); color:var(--ink); }
+.ruler .rl b { font-weight:700; }
+.ruler.quiet .rl { color:var(--inkSoft); }
+.mini { font:12px var(--mono); border:1px solid var(--line); background:var(--card); border-radius:8px; padding:6px 10px; color:var(--ink); white-space:nowrap; }
+.mini.hit { min-height:44px; display:inline-flex; align-items:center; }
+
+/* ---------- ruled row and the Late cell (the quiet concept) ---------- */
+.ruled { margin:16px 16px 16px; border-top:1px solid var(--line); border-bottom:1px solid color-mix(in srgb, var(--line) 55%, transparent);
+  display:flex; justify-content:flex-end; }
+.cell { all:unset; box-sizing:border-box; min-height:44px; min-width:44px; padding:0 12px; display:flex; align-items:center; gap:4px;
+  font:10px var(--mono); color:var(--inkSoft); border-left:1px solid var(--line); cursor:pointer; white-space:nowrap; }
+.cell.on { color:var(--accent); font-weight:700; }
+.cell.late:not([disabled]) { color:var(--amber); font-weight:700; }
+.cell.late.on { color:var(--accent); }
+.cell[disabled] { cursor:default; }
+.summary { margin:-8px 16px 8px; font:11px var(--mono); color:var(--inkSoft); }
+
+/* ---------- package card ---------- */
+.list { display:flex; flex-direction:column; gap:8px; padding:0 16px 8px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px rgba(28,43,36,0.06); padding:12px 12px 0; display:flex; flex-direction:column; }
+.card .hd { display:flex; align-items:center; gap:8px; }
+.card .col { flex:1; min-width:0; }
+.card .seller { font:700 15px var(--cochin); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.card .date { font:11px/14px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.flag { font-weight:700; }
+.flag.maybe { color:var(--amber); } .flag.deadline { color:var(--red); }
+.g-t { color:var(--green); } .g-u { color:var(--manilaInk); }
+.pill { font:700 12.5px var(--cochin); background:color-mix(in srgb, var(--accent) 14%, var(--card)); color:var(--accent); border-radius:14px; padding:4px 8px; white-space:nowrap; }
+.card .oid { min-height:45px; display:flex; align-items:center; font:11px var(--mono); color:var(--inkSoft); text-decoration:underline; }
+.band { margin:0 -12px; padding:8px 12px; background:var(--manila); color:var(--manilaInk); font:700 10.5px var(--mono); letter-spacing:.1em; display:flex; justify-content:space-between; align-items:center; }
+.acts { display:flex; gap:8px; align-items:center; min-height:44px; margin-bottom:8px; }
+.acts .soft { font:13px var(--cochin); color:var(--inkSoft); flex:1; }
+.card.lit { border-color:var(--accent); box-shadow:0 0 0 2px color-mix(in srgb, var(--accent) 35%, transparent); }
+/* the card words option: web words or the figure alone (ux-label-once) */
+body[data-words="web"] .w-short, body[data-words="short"] .w-web { display:none; }
+
+/* ---------- Past 14 days page ---------- */
+.ptp { padding:8px 16px 16px; display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.ptp .nav { display:flex; justify-content:space-between; align-items:center; }
+.ptp .nav .back { all:unset; min-height:44px; min-width:44px; display:flex; align-items:center; font:17px var(--sys); color:var(--accent); cursor:pointer; }
+.ptp h3 { margin:0; font:700 28px/34px var(--cochin); }
+.ptp .sum { font:11px var(--mono); color:var(--inkSoft); }
+.ptp .foot { font-size:12.5px; color:var(--inkSoft); }
+.trow { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; cursor:pointer; }
+.trow.sel { border-color:var(--accent); }
+.trow .r1, .trow .r2 { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.trow .r1 b { font-size:15px; }
+.trow .dd { font:700 12px var(--mono); }
+.trow .r2 { font:11px var(--mono); color:var(--inkSoft); }
+.trow .r2 .closing { color:var(--red); }
+.track { position:relative; height:6px; border-radius:3px; background:color-mix(in srgb, var(--line) 70%, transparent); margin:4px 0 2px; }
+.track i { position:absolute; left:0; top:0; bottom:0; border-radius:3px; }
+.track::after { content:""; position:absolute; right:0; top:-3px; bottom:-3px; width:2px; background:var(--red); }
+.refunded { font-size:13px; color:var(--inkSoft); border-top:1px solid var(--line); padding-top:8px; display:flex; justify-content:space-between; }
+
+/* ---------- Card in Hand left page (today's route to the page on the open Duo) ---------- */
+.hand { padding:16px; display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.rowx { display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.field { height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:16px; color:var(--inkSoft); }
+.tbox { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.tbox .t1 { font-size:14px; } .tbox .t2 { font-size:12.5px; color:var(--red); } .tbox .t3 { font:11px var(--mono); color:var(--inkSoft); }
+.placeholder { margin:16px; border:1px dashed var(--line); border-radius:8px; padding:16px; color:var(--inkSoft); font:14px var(--cochin); }
+
+/* ---------- Tally ---------- */
+.tctl { padding:0 16px 8px; display:flex; flex-direction:column; }
+.tctl .search { min-height:44px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font:16px var(--cochin); color:var(--inkSoft); }
+.tctl .row { display:flex; justify-content:space-between; align-items:center; min-height:44px; font:11.5px var(--mono); color:var(--accent); }
+.tctl .row span:last-child { font:15px var(--cochin); color:var(--ink); }
+.trow2 { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.trow2 .h { padding:12px; display:flex; justify-content:space-between; gap:8px; font-family:var(--cochin); }
+.trow2 .h b { font-size:15px; } .trow2 .h span { font:12px var(--mono); color:var(--inkSoft); }
+.line { display:flex; gap:8px; padding-left:4px; border-top:1px solid var(--line); }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; }
+.line .box i { width:30px; height:30px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; }
+.line.done { background:var(--greenSoft); } .line.done .box i { background:var(--green); border-color:var(--green); }
+.line .t { flex:1; padding:12px 12px 12px 0; display:flex; flex-direction:column; gap:4px; min-width:0; }
+.line .t b { font:600 14px var(--cochin); display:flex; justify-content:space-between; gap:8px; }
+.line .t b span { font:400 12px var(--mono); color:var(--inkSoft); }
+.line .t small { font:11.5px var(--cochin); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.line .t small .flag { font-family:var(--mono); font-size:11px; }
+.line .t code { font:10.5px var(--mono); color:var(--inkSoft); }
+
+/* ---------- accessibility size frames (AX5, folded) ---------- */
+.ax .scroll { font-size:1px; }
+.ax5 { padding:16px; display:flex; flex-direction:column; gap:12px; }
+.ax5 .c { font:36px/44px var(--mono); color:var(--amber); font-weight:700; border-top:1px solid var(--line); border-bottom:1px solid var(--line); min-height:44px; padding:4px 0; }
+.ax5 .card { padding:16px; gap:8px; }
+.ax5 .card .seller { font-size:47px; line-height:56px; white-space:normal; }
+.ax5 .card .flag { font:700 34px/42px var(--mono); display:block; }
+.ax5 .card .date { font-size:34px; line-height:42px; white-space:normal; }
+.ax5 .card .pill { font-size:39px; border-radius:28px; padding:4px 16px; align-self:flex-start; }
+.ax5 .txt { font:36px/44px var(--mono); color:var(--ink); display:flex; flex-direction:column; gap:4px; border-top:1px solid var(--line); padding-top:8px; }
+.ax5 .txt .r { color:var(--red); } .ax5 .txt .a { color:var(--amber); }
+.ax5 .mini { font-size:36px; padding:8px 16px; align-self:flex-start; }
+
+/* ---------- tags: dashed outline on what exists today, and on what an option adds ---------- */
+[data-tag] { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:4; white-space:nowrap; pointer-events:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+.trow ~ .trow [data-tag]::before, .card ~ .card [data-tag]::before { display:none; }
+body.notags [data-tag]::before { display:none; } body.notags .tag-new, body.notags .tag-today { outline:none; }
+body[data-badge="off"] .badge.opt, body[data-owed="off"] .owe { display:none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .card.lit { transition:box-shadow 200ms cubic-bezier(.16,1,.3,1); }
+}
+</style>
+</head>
+<body data-words="short" data-badge="on" data-owed="on">
+<main>
+<div class="banner" role="note">Sample. No seller, order, card, count or dollar figure on this page is real. Heights are estimates from the code, not measurements.</div>
+<h1>Lost-mail warning: told before day 31</h1>
+<p class="kind">Designer kind: informed. Designer lost-mail-warning-informed-1.</p>
+<p class="sub">Two concepts, each drawn on the iPhone Duo folded (466 x 678 pt), the Duo open (951 x 669 pt, hinge x 455.5 to 495.5), and a phone drawn 375 pt wide (no phone size is written; 375 pt is the width the repo's own masthead test uses). Light only: the native app is held to light. The sample day is 2026-11-21. Ruled and kept: amber from 14 days, red from 30, both from the order date; tracked packages show no flag; a stamp hides the flag; no Lost stamp kind; the past-transit list runs oldest last.</p>
+
+<nav class="bar" aria-label="States">
+  <span class="lbl">State</span>
+  <a href="#s=packages">Packages</a>
+  <a href="#s=late">Late list</a>
+  <a href="#s=stamped">After Claim filed</a>
+  <a href="#s=tally">Tally</a>
+  <a href="#s=none">Nothing late</a>
+  <a href="#s=unknown">Owed unknown</a>
+  <a href="#s=today">Today</a>
+</nav>
+<div class="bar" aria-label="Options">
+  <span class="lbl">Options</span>
+  <button type="button" data-hide="late-cell" aria-pressed="false">Hide Late cell</button>
+  <button type="button" data-hide="claim-ruler" aria-pressed="false">Hide Claim ruler</button>
+  <button type="button" data-toggle="words" aria-pressed="false">Card words: figure only</button>
+  <button type="button" data-toggle="badge" aria-pressed="true">Packages tab badge: on</button>
+  <button type="button" data-toggle="owed" aria-pressed="true">Owed money per row: on</button>
+  <button type="button" data-toggle="tags" aria-pressed="true">Today/New tags: on</button>
+</div>
+
+<!-- Today: what ships now. Folded first (ios-apps, Mockups). -->
+<section class="concept" id="today" data-state-only="today">
+  <h2>Today</h2>
+  <p class="sub">The native card paints the date alone (debt native-card-lost-flags-unbuilt). A Tally copy has no flag (debt native-tally-copy-no-flags). The masthead says nothing about late mail. The past-transit page opens only inside Card in Hand on the open Duo (HandScreen.swift, transitBox and PastTransitPage).</p>
+  <div class="frames">
+    <figure><div class="dev folded" data-device="iphone-duo-folded" data-render="today:folded"></div><figcaption><b>Duo folded.</b> Dogwood Collectibles is 28 days out with three cards owed. Nothing on screen says so.</figcaption></figure>
+    <figure><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-render="today:open"></div></div><figcaption><b>Duo open, Card in Hand.</b> The only place the late list shows today.</figcaption></figure>
+  </div>
+</section>
+
+<section class="concept" id="concept-late-cell">
+  <h2>Late cell</h2>
+  <p class="sub">The quiet concept. Late mail becomes a filter cell in the ruled row under the masthead, beside "N stamped", in the same vocabulary. One press lists the late packages, oldest last, with what they still owe and the stamp buttons the past-transit page already has. A red badge on the Packages tab carries the count to the thumb. The open Duo keeps today's route through Card in Hand.</p>
+  <div class="frames">
+    <figure><div class="dev folded" data-device="iphone-duo-folded" data-render="late-cell:folded"></div><figcaption><b>Duo folded.</b> Choosing element: <code>#focus-late-cell</code>. Press the cell, press Claim filed, press the cell again.</figcaption></figure>
+    <figure><div class="dev phone" data-render="late-cell:phone"></div><figcaption><b>Phone, 375 pt wide.</b> The same layout as folded; the cell row fits at this width.</figcaption></figure>
+    <figure><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-render="late-cell:open"></div></div><figcaption><b>Duo open.</b> Card in Hand, as today, with what the late mail owes. Press Open on the box. In the Tally state, the Tally spread.</figcaption></figure>
+    <figure><div class="dev folded ax" data-render="late-cell:ax5"></div><figcaption><b>Duo folded, AX5 text.</b> The cells stack, one per line. The flag takes its own line above the date.</figcaption></figure>
+  </div>
+</section>
+
+<section class="concept" id="concept-claim-ruler">
+  <h2>Claim ruler</h2>
+  <p class="sub">The bold concept. The masthead gains a 14-to-30-day ruler under its tallies. Each late package is a small envelope set at its age, so the ones nearest the 30-day line are plain at a glance on every working tab. The ruler opens the Past 14 days page, now on every pose. Each row there has a track that fills toward the 30-day line. On the open Duo, Packages takes two pages: the list on the left, the claim desk on the right.</p>
+  <div class="frames">
+    <figure><div class="dev folded" data-device="iphone-duo-folded" data-render="claim-ruler:folded"></div><figcaption><b>Duo folded.</b> Choosing element: <code>#focus-claim-ruler</code>. Press the ruler, press Claim filed, press Back.</figcaption></figure>
+    <figure><div class="dev phone" data-render="claim-ruler:phone"></div><figcaption><b>Phone, 375 pt wide.</b> The ruler spans the masthead column, 327 pt.</figcaption></figure>
+    <figure><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-render="claim-ruler:open"></div></div><figcaption><b>Duo open.</b> Packages on the left page, the claim desk on the right. Press a row to find its card. In the Tally state, the Tally spread.</figcaption></figure>
+    <figure><div class="dev folded ax" data-render="claim-ruler:ax5"></div><figcaption><b>Duo folded, AX5 text.</b> The ruler gives way to three lines of text and an Open button.</figcaption></figure>
+  </div>
+</section>
+</main>
+
+<script>
+/* ---- sample data. Days count from 2026-11-21. Claim by is the order date plus 30 days (pastTransit in src/view-rules.mjs). ---- */
+const PKGS = [
+  { gk:"f", seller:"Fir & Co",            id:"SAMPLE-0F17", date:"2026-11-15", days:6,  tracked:false, left:3, owed:"$1.05" },
+  { gk:"g", seller:"Gale Cards",          id:"SAMPLE-0G22", date:"2026-11-12", days:9,  tracked:true,  left:1, owed:"$0.40" },
+  { gk:"a", seller:"Alder Cards",         id:"SAMPLE-0A31", date:"2026-11-07", days:14, tracked:false, left:2, owed:"$0.84", by:"2026-12-07" },
+  { gk:"b", seller:"Birch Games",         id:"SAMPLE-0B48", date:"2026-11-03", days:18, tracked:false, left:4, owed:"$1.62", by:"2026-12-03" },
+  { gk:"c", seller:"Cedar TCG",           id:"SAMPLE-0C55", date:"2026-10-29", days:23, tracked:false, left:1, owed:"$0.35", by:"2026-11-28" },
+  { gk:"d", seller:"Dogwood Collectibles",id:"SAMPLE-0D63", date:"2026-10-24", days:28, tracked:false, left:3, owed:"$2.10", by:"2026-11-23" },
+  { gk:"h", seller:"Hazel Cards",         id:"SAMPLE-0H70", date:"2026-10-20", days:32, tracked:true,  left:2, owed:"$0.66" },
+  { gk:"e", seller:"Elm Street Cards",    id:"SAMPLE-0E84", date:"2026-10-18", days:34, tracked:false, left:2, owed:"$1.15", by:"2026-11-17" },
+];
+const tier = p => p.tracked ? null : p.days >= 30 ? "deadline" : p.days >= 14 ? "maybe" : null;
+const S = { state:"packages", stamped:new Set(), sel:"d", lit:null };
+const cents = s => Math.round(parseFloat(s.slice(1)) * 100);
+const money = c => "$" + (c / 100).toFixed(2);
+
+function late() {
+  /* in the "none" state every late package has its cards; the list is empty */
+  if (S.state === "none") return [];
+  return PKGS.filter(p => tier(p)).sort((x, y) => x.days - y.days); /* oldest last */
+}
+/* rows still flagged: a stamp takes the flag away (stamped-package-hides-lost-flag) */
+const flagged = () => late().filter(p => !S.stamped.has(p.gk));
+const isStamped = p => S.stamped.has(p.gk);
+const unknown = () => S.state === "unknown";
+function totals(rows) {
+  return { n: rows.length, cards: rows.reduce((a, p) => a + p.left, 0), owed: money(rows.reduce((a, p) => a + cents(p.owed), 0)),
+           closing: rows.filter(p => tier(p) === "deadline").length };
+}
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+
+/* ---- pieces ---- */
+const status = () => `<div class="status"><span>9:41</span><span>●●● 100%</span></div>`;
+function tabs(concept, active) {
+  const n = flagged().length;
+  const badge = concept === "late-cell" && n > 0 && S.state !== "today"
+    ? `<span class="badge opt tag-new">${n}</span>` : "";
+  const t = (k, g, lbl, extra = "") => `<span class="tab ${active === k ? "on" : ""}" role="tab" aria-selected="${active === k}"><i aria-hidden="true">${g}</i>${lbl}${extra}</span>`;
+  return `<nav class="tabs" role="tablist" aria-label="Views">${t("ledger", "⚙", "Ledger")}${t("orphaned", "✉", "Orphaned", `<span class="badge">2</span>`)}${t("tally", "#", "Tally")}${t("packages", "▣", "Packages", badge)}</nav>`;
+}
+
+function flagHTML(p) {
+  const t = tier(p);
+  if (!t || isStamped(p) || S.state === "today" || S.state === "none") return "";
+  const web = t === "deadline" ? `⚠ ${p.days}d — refund window closing, contact seller · ` : `⚠ ${p.days}d — may be lost · `;
+  return `<span class="flag ${t}"><span class="w-web">${web}</span><span class="w-short">⚠ ${p.days} d · </span></span>`;
+}
+const glyph = p => p.tracked ? `<span class="g-t">●</span> tracked` : `<span class="g-u">○</span> untracked`;
+
+function svgRuler(rows, w, big) {
+  /* 14 at the left, 30 near the right, then one bin for 30 and over */
+  const pad = 6, bin = 34, x30 = w - bin, span = x30 - pad;
+  const x = d => d >= 30 ? x30 + bin / 2 : pad + (d - 14) / 16 * span;
+  const h = big ? 44 : 30, base = h - 10;
+  let s = `<svg viewBox="0 0 ${w} ${h}" style="height:${h}px" aria-hidden="true">`;
+  s += `<line x1="${pad}" y1="${base}" x2="${w - 2}" y2="${base}" stroke="var(--inkSoft)" stroke-width="1"/>`;
+  for (const d of [14, 21, 28]) s += `<line x1="${x(d)}" y1="${base}" x2="${x(d)}" y2="${base + 4}" stroke="var(--inkSoft)"/><text x="${x(d)}" y="${h}" font-family="Menlo, monospace" font-size="10" fill="var(--inkSoft)" text-anchor="middle">${d}</text>`;
+  s += `<line x1="${x30}" y1="2" x2="${x30}" y2="${base + 4}" stroke="var(--red)" stroke-width="2"/><text x="${x30 + bin / 2}" y="${h}" font-family="Menlo, monospace" font-size="10" fill="var(--red)" text-anchor="middle">30+</text>`;
+  rows.forEach(p => {
+    const t = tier(p), c = t === "deadline" ? "var(--red)" : "var(--amber)", cx = x(p.days), ew = big ? 16 : 12, eh = big ? 11 : 8, y = base - eh - 3;
+    s += `<g><rect x="${cx - ew / 2}" y="${y}" width="${ew}" height="${eh}" rx="1.5" fill="${p.gk === S.sel && big ? c : "var(--card)"}" stroke="${c}" stroke-width="1.5"/>` +
+         `<polyline points="${cx - ew / 2},${y} ${cx},${y + eh * .6} ${cx + ew / 2},${y}" fill="none" stroke="${p.gk === S.sel && big ? "var(--card)" : c}" stroke-width="1.2"/></g>`;
+  });
+  return s + `</svg>`;
+}
+
+function rulerBlock(w, dev) {
+  const rows = flagged(), tt = totals(rows), id = dev === "folded" ? ` id="focus-claim-ruler"` : "";
+  if (S.state === "none" || rows.length === 0)
+    return `<div class="ruler quiet tag-new" data-tag="New: ruler, empty"${id}>${svgRuler([], w)}<div class="rl"><span>Nothing past 14 days.</span></div></div>`;
+  const owed = unknown() ? "owed unknown" : `${plural(tt.cards, "card")} · ${tt.owed}`;
+  const label = `Past 14 days: ${plural(tt.n, "package")}${tt.closing ? `, ${tt.closing} past 30 days` : ""}. ${unknown() ? "Owed amount unknown." : `${plural(tt.cards, "card")}, ${tt.owed} owed.`}`;
+  return `<button class="ruler tag-new" data-tag="New: claim ruler"${id} data-act="open-page" aria-label="${label}">${svgRuler(rows, w)}` +
+    `<span class="rl"><span><b>Past 14 days · ${tt.n}</b> · ${owed}</span><span class="mini">Open</span></span></button>`;
+}
+
+function masthead(concept, w, dev, tab = "packages") {
+  const ruler = concept === "claim-ruler" && S.state !== "today" ? rulerBlock(w, dev) : "";
+  const count = tab === "tally" ? "214 cards · 61 open" : "97 packages · 36 open";
+  return `<header class="mast"><div class="seal"><hr><b aria-label="MANIFEST seal"></b><hr></div><div class="title">Manifest</div><div class="house">C.H Postal Company</div>` +
+    `<div class="tallies"><div class="thirds"><div><small>CARDS</small><span><em>412</em>/538</span></div><div><small>PACKAGES</small><span><em>61</em>/97</span></div>` +
+    `<div class="wide"><small>VALUE</small><span><em>$182</em>/$242</span></div></div><div class="prog"><i></i></div><div class="mline"><span>${count}</span></div>` +
+    `<div class="mline"><span class="miss">126 still missing · $59.47</span><span>Saved</span></div>${ruler}</div></header>`;
+}
+
+function lateCell(dev) {
+  const n = flagged().length, on = S.state === "late" || S.state === "stamped", id = dev === "folded" ? ` id="focus-late-cell"` : "";
+  const dis = n === 0 && !on;
+  const shown = on ? late().length - [...S.stamped].length : n;
+  return `<button class="cell late ${on ? "on" : ""} tag-new" data-tag="New: Late cell"${id} data-act="toggle-late" ${dis ? "disabled" : ""}` +
+    ` aria-pressed="${on}" aria-label="${shown} past 14 days" title="${dis ? "Nothing untracked has waited 14 days." : "Shows only the packages past 14 days, oldest last"}">${shown} past 14 days <span aria-hidden="true">${on ? "●" : "○"}</span></button>`;
+}
+
+function card(p, { actions = false } = {}) {
+  const st = isStamped(p);
+  const flag = flagHTML(p);
+  const dateCls = !flag || S.state === "today" ? "" : p.gk === (flagged()[0] || {}).gk ? ` tag-new" data-tag="New: flag and glyph` : ` tag-new`;
+  const band = st ? `<div class="band" role="button">CLAIM FILED · 2026-11-21<span>Edit</span></div>` : "";
+  let acts = "";
+  if (actions) acts = st
+    ? `<div class="acts"><span class="soft">Stamped Claim filed. It leaves this list when you turn the filter off.</span><button class="mini hit" data-act="undo" data-gk="${p.gk}">Undo</button></div>`
+    : `<div class="acts tag-new" data-tag="New: past-transit stamp buttons"><button class="mini hit" data-act="stamp" data-gk="${p.gk}">Claim filed</button><button class="mini hit">Refunded</button><button class="mini hit">More</button></div>`;
+  return `<div class="card ${S.lit === p.gk ? "lit" : ""}" data-gk="${p.gk}"><div class="hd"><div class="col"><div class="seller">${p.seller}</div>` +
+    `<div class="date${dateCls}" aria-label="Ordered ${p.date}">${flag}${p.date}${S.state === "today" ? "" : " · " + glyph(p)}</div></div>` +
+    `<span class="pill">${p.left} left · ${p.owed}</span></div><div class="oid">${p.id}</div>${band}${acts}</div>`;
+}
+
+function stampedCell() { return `<button class="cell" disabled>0 stamped <span aria-hidden="true">○</span></button>`; }
+
+function packagesTab(concept, w, dev) {
+  let h = masthead(concept, w, dev);
+  const on = concept === "late-cell" && (S.state === "late" || S.state === "stamped");
+  h += `<div class="ruled">${concept === "late-cell" && S.state !== "today" ? lateCell(dev) : ""}${stampedCell()}</div>`;
+  if (on) {
+    const rows = late(), tt = totals(rows.filter(p => !isStamped(p)));
+    h += `<div class="summary tag-new" data-tag="New: summary">${plural(rows.length, "package")} · ${unknown() ? "owed unknown" : `${plural(tt.cards, "card")} · ${tt.owed}`} · oldest last</div>`;
+    h += `<div class="list">${rows.map(p => card(p, { actions: true })).join("")}</div>`;
+  } else {
+    h += `<div class="list">${PKGS.map(p => card(p)).join("")}</div>`;
+  }
+  return h;
+}
+
+function tRow(p, big, desk) {
+  const t = tier(p), st = isStamped(p), c = t === "deadline" ? "var(--red)" : "var(--amber)";
+  const pct = Math.min(p.days / 30, 1) * 100;
+  const when = t === "deadline" ? `<span class="closing">refund window closing</span>` : `<span>claim by ${p.by}</span>`;
+  const owe = unknown() ? "" : `<span class="owe tag-new" data-tag="New: owed">${plural(p.left, "card")} · ${p.owed}</span>`;
+  const acts = st
+    ? `<div class="acts"><span class="soft">Stamped Claim filed</span><button class="mini hit" data-act="undo" data-gk="${p.gk}">Undo</button></div>`
+    : `<div class="acts"><button class="mini hit" data-act="stamp" data-gk="${p.gk}">Claim filed</button><button class="mini hit">Refunded</button><button class="mini hit">More</button></div>`;
+  return `<div class="trow ${desk && S.sel === p.gk ? "sel" : ""}" data-act="select" data-gk="${p.gk}" role="group" aria-label="${p.seller}, ${p.days} days">` +
+    `<div class="r1"><b>${p.seller}</b><span class="dd" style="color:${st ? "var(--inkSoft)" : c}">${p.days} d</span></div>` +
+    (big ? `<div class="track tag-new" data-tag="New: track to day 30"><i style="width:${pct}%;background:${st ? "var(--line)" : c}"></i></div>` : "") +
+    `<div class="r2">${when}${owe}</div>${acts}</div>`;
+}
+
+function pastPage(concept, { back = true, big = false } = {}) {
+  const rows = late(), tt = totals(rows);
+  const parts = [plural(tt.n, "package"), unknown() ? null : plural(tt.cards, "card"), unknown() ? null : tt.owed, "oldest last"].filter(Boolean);
+  const unk = unknown() ? `<div class="sum">Owed amounts could not be read. The list is complete.</div>` : "";
+  const body = rows.length
+    ? rows.map(p => tRow(p, big, !back)).join("")
+    : `<p style="margin:0">Nothing untracked has waited 14 days.</p>`;
+  return `<div class="ptp"><div class="nav">${back ? `<button class="back" data-act="close-page">‹ Back</button>` : `<span></span>`}</div>` +
+    `<h3>Past 14 days</h3><div class="sum">${parts.join(" · ")}</div>${unk}${big && rows.length ? svgRuler(rows.filter(p => !isStamped(p)), 423, true) : ""}${body}` +
+    `<div class="refunded tag-today" data-tag="Today: ruled, not built"><span>Refunded</span><span style="font-family:var(--mono);font-size:11px">2 packages</span></div>` +
+    `<div class="foot">Days count from the order date. TCGplayer counts 30 days from the delivery estimate, so its window can close later.</div></div>`;
+}
+
+function tallyTab(concept, w, dev, detailOnly) {
+  const d = PKGS.find(p => p.gk === "d");
+  const copy = (seller, p, done, flag) => `<div class="line ${done ? "done" : ""}"><span class="box"><i></i></span><span class="t"><b>${seller}<span>$0.70</span></b>` +
+    `<small class="${flag ? "tag-new" : ""}" ${flag ? `data-tag="New: copy flag"` : ""}>${flag}${p.date} · Sample Set · NM</small><code>${p.id}</code></span></div>`;
+  const rowHTML = `<div class="trow2"><div class="h"><b>Sample Card One</b><span>2/4 · $1.40 left</span></div>` +
+    copy("Gale Cards", PKGS[1], true, "") + copy("Fir & Co", PKGS[0], true, "") +
+    copy("Dogwood Collectibles", d, false, S.state === "none" || S.state === "today" ? "" : flagHTML(d)) +
+    copy("Hazel Cards", PKGS[6], false, "") + `</div>`;
+  if (detailOnly) return `<div style="padding:16px">${rowHTML}</div>`;
+  return masthead(concept, w, dev, "tally") + `<div class="tctl"><div class="search">Find card, set, seller, order</div><div class="row"><span>Name A–Z ⌃</span><span>Hide received</span></div></div>` +
+    `<div class="list">${rowHTML}<div class="trow2"><div class="h"><b>Sample Card Two</b><span>1/1</span></div></div></div>`;
+}
+
+function handLeft(concept) {
+  const rows = late(), tt = totals(rows.filter(p => !isStamped(p))), clos = tt.closing;
+  const box = rows.length === 0 || S.state === "none" ? "" :
+    `<div class="tbox ${S.state === "today" ? "tag-today\" data-tag=\"Today: the only way in" : ""}"><div style="display:flex;flex-direction:column;gap:2px"><span class="t1">Past 14 days: ${plural(rows.length, "envelope")}</span>` +
+    (clos ? `<span class="t2">${clos} refund window closing</span>` : "") +
+    (S.state === "today" ? "" : `<span class="t3 tag-new" data-tag="New: owed">${unknown() ? "owed unknown" : `${plural(tt.cards, "card")} · ${tt.owed} owed`}</span>`) +
+    `</div><button class="mini hit" data-act="open-page">Open</button></div>`;
+  return `<div class="hand"><div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="mini hit">Close</span></div>` +
+    `<div class="field">Type a card's name</div>${box}</div>`;
+}
+
+/* ---- frames ---- */
+function render(concept, dev) {
+  const st = S.state;
+  const pageOpen = S.page && (st === "late" || st === "stamped");
+  if (concept === "today") S.state = "today";
+  let html = "";
+  if (dev === "folded" || dev === "phone") {
+    const w = dev === "folded" ? 418 : 327;
+    let inner, active = "packages";
+    if (st === "tally" && concept !== "today") { inner = tallyTab(concept, w, dev); active = "tally"; }
+    else if (concept === "claim-ruler" && (st === "late" || st === "stamped")) inner = pastPage(concept, { big: true });
+    else inner = packagesTab(concept, w, dev);
+    html = status() + `<div class="scroll">${inner}${dev === "phone" ? "" : ""}</div>` + tabs(concept, active);
+  } else if (dev === "open") {
+    let left, right;
+    if (st === "tally" && concept !== "today") { left = tallyTab(concept, 423, dev); right = tallyTab(concept, 423, dev, true); }
+    else if (concept === "claim-ruler") {
+      left = packagesTab(concept, 423, dev);
+      right = `<div class="tag-new" style="min-height:100%">${pastPage(concept, { back: false, big: true })}</div>`;
+    } else {
+      left = handLeft(concept);
+      right = (concept === "today" ? (S.todayPage ? pastPage(concept) : "") : (st === "late" || st === "stamped") ? pastPage(concept) : "") ||
+        `<div class="placeholder">The answer page: type a card's name on the left to see the envelope it came from. Unchanged.</div>`;
+    }
+    html = `<div class="page l">${status()}<div class="scroll">${left}</div></div><div class="hinge"><span>HINGE</span></div>` +
+      `<div class="page r">${status()}<div class="scroll">${right}</div></div>` + tabs(concept, st === "tally" ? "tally" : "packages");
+  } else if (dev === "ax5") {
+    html = status() + `<div class="scroll">${concept === "late-cell" ? axLate() : axRuler()}</div>`;
+  }
+  S.state = st;
+  return html;
+}
+
+function axCard(p) {
+  return `<div class="card"><div class="seller">${p.seller}</div><span class="flag ${tier(p)} tag-new" data-tag="New: own line at AX sizes">⚠ ${p.days} d</span>` +
+    `<div class="date">${p.date}<br>${glyph(p)}</div><span class="pill">${p.left} left · ${p.owed}</span></div>`;
+}
+function axLate() {
+  const n = flagged().length;
+  return `<div class="ax5"><div class="c tag-new" data-tag="New: cell, stacked">${n} past 14 days ○</div><div class="c" style="color:var(--inkSoft);font-weight:400">0 stamped ○</div>${axCard(PKGS.find(p => p.gk === "d"))}</div>`;
+}
+function axRuler() {
+  const tt = totals(flagged());
+  return `<div class="ax5"><div class="txt tag-new" data-tag="New: ruler as text"><span>Past 14 days: ${tt.n}</span><span class="r">${tt.closing} past 30 days</span><span>${unknown() ? "owed unknown" : `${tt.owed} owed`}</span></div>` +
+    `<button class="mini hit" data-act="open-page">Open</button>${axCard(PKGS.find(p => p.gk === "d"))}</div>`;
+}
+
+function paint() {
+  document.querySelectorAll("[data-render]").forEach(el => {
+    const [c, d] = el.dataset.render.split(":");
+    el.innerHTML = render(c, d);
+    el.dataset.concept = c;
+  });
+  document.querySelectorAll('nav[aria-label="States"] a').forEach(a => a.setAttribute("aria-current", String(a.getAttribute("href") === "#s=" + S.state)));
+  document.getElementById("today").hidden = S.state !== "today";
+  document.body.classList.toggle("st-today", S.state === "today");
+}
+
+/* ---- hash: #s=<state> ---- */
+function fromHash() {
+  const m = /s=([a-z]+)/.exec(location.hash);
+  const s = m ? m[1] : "packages";
+  S.state = ["packages", "late", "stamped", "tally", "none", "unknown", "today"].includes(s) ? s : "packages";
+  S.stamped = new Set(S.state === "stamped" ? ["d"] : []);
+  paint();
+}
+window.addEventListener("hashchange", fromHash);
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act],[data-hide],[data-toggle]");
+  if (!b) return;
+  if (b.dataset.hide) {
+    const sec = document.getElementById("concept-" + b.dataset.hide);
+    sec.hidden = !sec.hidden; b.setAttribute("aria-pressed", String(sec.hidden));
+    return;
+  }
+  if (b.dataset.toggle) {
+    const k = b.dataset.toggle, body = document.body;
+    if (k === "words") { body.dataset.words = body.dataset.words === "short" ? "web" : "short"; b.textContent = "Card words: " + (body.dataset.words === "web" ? "web words" : "figure only"); }
+    if (k === "badge") { body.dataset.badge = body.dataset.badge === "on" ? "off" : "on"; b.textContent = "Packages tab badge: " + body.dataset.badge; b.setAttribute("aria-pressed", String(body.dataset.badge === "on")); }
+    if (k === "owed") { body.dataset.owed = body.dataset.owed === "on" ? "off" : "on"; b.textContent = "Owed money per row: " + body.dataset.owed; b.setAttribute("aria-pressed", String(body.dataset.owed === "on")); }
+    if (k === "tags") { body.classList.toggle("notags"); const on = !body.classList.contains("notags"); b.textContent = "Today/New tags: " + (on ? "on" : "off"); b.setAttribute("aria-pressed", String(on)); }
+    return;
+  }
+  const frame = b.closest("[data-render]"), concept = frame && frame.dataset.concept;
+  const act = b.dataset.act;
+  if (concept === "today") { if (act === "open-page") { S.todayPage = true; paint(); } if (act === "close-page") { S.todayPage = false; paint(); } return; }
+  if (act === "toggle-late") { location.hash = (S.state === "late" || S.state === "stamped") ? "s=packages" : "s=late"; return; }
+  if (act === "open-page") { if (S.state !== "late" && S.state !== "stamped") location.hash = "s=late"; return; }
+  if (act === "close-page") { location.hash = "s=packages"; return; }
+  if (act === "stamp") { e.stopPropagation(); S.stamped.add(b.dataset.gk); history.replaceState(null, "", "#s=stamped"); S.state = "stamped"; paint(); return; }
+  if (act === "undo") { e.stopPropagation(); S.stamped.delete(b.dataset.gk); paint(); return; }
+  if (act === "select") {
+    if (e.target.closest("button")) return;
+    S.sel = b.dataset.gk; S.lit = b.dataset.gk; paint();
+    /* on the open Duo the left page scrolls the chosen card into view (list beside its desk) */
+    const pane = frame.querySelector(".page.l .scroll"), left = pane && pane.querySelector(`[data-gk="${S.sel}"]`);
+    if (left) pane.scrollTop = left.offsetTop - pane.clientHeight / 3;
+  }
+});
+fromHash();
+</script>
+</body>
+</html>

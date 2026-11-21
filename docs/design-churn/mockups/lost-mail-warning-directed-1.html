@@ -1,0 +1,559 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Lost Mail Line</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle),
+   so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --gold:#C9A961; --amber:#846008; --wax:#A8443C; --waxLit:#C86A5F; --waxDeep:#66231D; --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot on the Duo: unmeasured. Drawn at the UI tests' 20 pt floor, as duo-hand-post-sender.html does. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+html { color-scheme:light; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:70ch; }
+.kind { font-family:-apple-system, system-ui, sans-serif; font-size:14px; color:var(--ink); margin:0; }
+.kind b { font-weight:600; }
+.controls { display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:8px 0; }
+.ctl { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.ctl > span { font-size:13px; color:var(--inkSoft); min-width:9.5em; }
+.ctl button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer; }
+.ctl button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl button:focus-visible, .frame button:focus-visible, .opt-head button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.opt { display:flex; flex-direction:column; gap:12px; border-top:2px solid var(--ink); padding-top:12px; }
+section.opt[hidden] { display:none; }
+.opt-head { display:flex; flex-wrap:wrap; align-items:baseline; justify-content:space-between; gap:8px; }
+.opt-head button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer; }
+.gallery { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; max-width:100%; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:60ch; }
+figcaption b { color:var(--ink); font-weight:600; }
+.fit { position:relative; overflow:hidden; max-width:100%; }
+.restore { display:none; }
+.restore.on { display:block; }
+
+/* ---------- device frames, 1 CSS px = 1 pt ---------- */
+.frame { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; transform-origin:0 0; }
+.frame[data-device="iphone-duo-folded"] { width:466px; height:678px; }
+.frame[data-device="iphone-duo-unfolded"] { width:951px; height:669px; }
+.frame[data-device="iphone-regular"] { width:375px; height:812px; border-radius:40px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center; padding:0 20px; font:600 12px -apple-system, system-ui, sans-serif; z-index:9; background:var(--paper); }
+.iphone-regular-status { height:max(env(safe-area-inset-top), 47px); }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:8; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow:hidden; }
+.sheet { display:flex; flex-direction:column; transition:none; }
+
+/* ---------- the letterhead (MastheadView.swift) ---------- */
+.mast { padding:12px 24px 0; display:flex; flex-direction:column; align-items:center; font-family:var(--cochin); }
+.sealrow { display:flex; align-items:center; gap:12px; width:100%; max-width:270px; }
+.sealrow i { flex:1; height:1px; background:var(--gold); opacity:.75; }
+.seal { width:36px; height:36px; border-radius:50%; background:radial-gradient(circle at 37% 30%, var(--waxLit), var(--wax) 55%, var(--waxDeep)); box-shadow:inset 0 0 0 3px rgba(94,31,26,.35); }
+.title { margin-top:12px; font-size:31px; line-height:38px; letter-spacing:.24em; text-transform:uppercase; font-weight:700; color:var(--ink); white-space:nowrap; }
+.house { margin-top:8px; font:10px/13px var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--inkSoft); }
+.tallies { width:100%; margin-top:12px; border-top:1px solid var(--line); padding-top:12px; display:grid; grid-template-columns:1fr 1fr 1.7fr; }
+.cell { text-align:center; display:flex; flex-direction:column; gap:4px; }
+.cell + .cell { border-left:1px solid var(--line); }
+.cell small { font:10px var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--inkSoft); }
+.cell b { font:700 13px var(--mono); color:var(--accent); } .cell b span { font-weight:400; color:var(--inkSoft); }
+.bar { width:100%; height:8px; border-radius:4px; background:var(--line); margin-top:8px; overflow:hidden; } .bar i { display:block; height:100%; width:78%; background:var(--accent); border-radius:4px; }
+.count { width:100%; margin-top:8px; font:10.5px/13px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; }
+.foot { width:100%; margin-top:4px; display:flex; justify-content:space-between; gap:8px; font:10.5px/13px var(--mono); }
+.foot .miss { color:var(--red); } .foot .slot { color:var(--green); }
+.gap47 { height:47px; flex:none; }
+
+/* AX5 masthead: Dynamic Type scales each style (Apple typography page, AX5 table). Approximate: the title shrinks to fit. */
+.ax .title { font-size:44px; line-height:52px; letter-spacing:.1em; }
+.ax .house { font-size:30px; line-height:36px; letter-spacing:.04em; }
+.ax .tallies { grid-template-columns:1fr; gap:8px; }
+.ax .cell { text-align:left; } .ax .cell + .cell { border-left:0; }
+.ax .cell small { font-size:36px; letter-spacing:.02em; } .ax .cell b { font-size:44px; }
+.ax .count, .ax .foot { font-size:37px; line-height:44px; white-space:normal; flex-direction:column; }
+
+/* ---------- the new line ---------- */
+.lmwrap { position:relative; width:100%; }
+.lm { width:100%; min-height:44px; display:flex; align-items:center; gap:8px; padding:0; border:0; background:none; color:var(--ink); font-family:var(--cochin); font-size:14px; line-height:18px; text-align:left; cursor:pointer; }
+.mast .lmwrap { margin-top:8px; border-top:1px solid var(--line); }
+.lm .txt { flex:1; min-width:0; }
+.lm .fig { font:700 12px var(--mono); white-space:nowrap; }
+.lm .chev { width:10px; height:10px; border-right:2px solid var(--inkSoft); border-bottom:2px solid var(--inkSoft); transform:rotate(45deg) translateY(-3px); flex:none; margin-right:4px; transition:transform .22s ease-out; }
+.lm[aria-expanded="true"] .chev { transform:rotate(-135deg) translate(-2px,-2px); }
+.lm.static { cursor:default; color:var(--inkSoft); }
+.lm .redt { color:var(--red); } .lm .ambt { color:var(--amber); }
+.lm .try { font:600 12px var(--mono); min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer; }
+/* postmark: a ring with the oldest wait in days */
+.pm .mark { flex:none; width:32px; height:32px; border-radius:50%; border:2px solid var(--amber); display:grid; place-items:center; font:700 11px/1 var(--mono); color:var(--amber); }
+.pm .mark.red { border-color:var(--red); color:var(--red); border-style:double; border-width:3px; }
+.pm .mark.calm { border-color:var(--line); color:var(--inkSoft); }
+/* ruler: one pip per late package on the 14 to 34 day scale; the wall is day 30 */
+.ru .n { font:700 13px var(--mono); min-width:16px; text-align:right; }
+.ru .rule { flex:1; position:relative; height:28px; }
+.ru .rule .base { position:absolute; left:0; right:0; top:14px; height:1px; background:var(--inkSoft); }
+.ru .rule .zone { position:absolute; left:80%; right:0; top:8px; height:13px; background:var(--redSoft); }
+.ru .rule .wall { position:absolute; left:80%; top:4px; height:21px; width:2px; background:var(--red); }
+.ru .rule .tk { position:absolute; top:22px; font:10px/1 var(--mono); color:var(--inkSoft); transform:translateX(-50%); }
+.ru .rule .pip { position:absolute; width:10px; height:10px; border-radius:50%; background:var(--amber); top:10px; transform:translateX(-50%); box-shadow:0 0 0 1.5px var(--paper); }
+.ru .rule .pip.red { background:var(--red); }
+.ru .rule .pip.off { background:var(--line); }
+/* shared advisory slot: manila fill, manilaInk text; amber and red fail 4.5:1 on manila, so colour stays in the mark only */
+.adv { background:var(--manila); border-top:1px solid var(--line); padding:0 16px; }
+.adv .lm, .adv .lm .fig, .adv .lm .redt, .adv .lm .ambt { color:var(--manilaInk); }
+.adv.deadline { background:var(--redSoft); } .adv.deadline .lm, .adv.deadline .lm .fig, .adv.deadline .lm .redt { color:var(--red); }
+.syncline { background:var(--manila); color:var(--manilaInk); font:13.5px/1.4 var(--cochin); padding:8px 16px; min-height:44px; border-top:1px solid var(--line); display:flex; align-items:center; }
+.crown { padding:8px 24px 0; }
+.crown .lmwrap { border-bottom:1px solid var(--line); }
+.ax .lm { font-size:var(--axline, 19px); line-height:1.25; } .ax .lm .fig { font-size:calc(var(--axline, 19px) * .85); }
+.ax .pm .mark { width:48px; height:48px; font-size:15px; }
+
+/* ---------- the drawer: overlays, never pushes (motion-disclosure-panels-arrive), paper fill (head-panels-carry-paper-fill) ---------- */
+.drawer { position:absolute; left:-8px; right:-8px; top:100%; z-index:7; background:var(--paper); border:1px solid var(--line); border-radius:0 0 8px 8px;
+  box-shadow:0 8px 16px var(--shadow); display:flex; flex-direction:column; overflow:hidden; opacity:1; transform:none; transition:opacity .22s ease-out, transform .22s ease-out; }
+.drawer.arriving { opacity:0; transform:translateY(-4px); }
+@media (prefers-reduced-motion: reduce) { .drawer, .lm .chev { transition:none; } }
+.dhead { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px 0; font-family:var(--cochin); }
+.dhead b { font-size:20px; line-height:26px; }
+.dsum { padding:0 12px 8px; font:11px/14px var(--mono); color:var(--inkSoft); border-bottom:1px solid var(--line); }
+.dlist { flex:1; overflow-y:auto; overscroll-behavior:contain; padding:8px 12px; display:flex; flex-direction:column; gap:8px; }
+.dlist > * { flex:none; }
+.dnote { font:12.5px/1.35 var(--cochin); color:var(--inkSoft); padding:0 0 4px; }
+.mini { font:11.5px var(--mono); min-height:44px; min-width:44px; padding:0 12px; border:0; background:none; display:inline-flex; align-items:center; cursor:pointer; color:var(--ink); }
+.mini span { border:1px solid var(--line); background:var(--card); border-radius:8px; padding:7px 12px; white-space:nowrap; }
+.prow { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 12px 0; display:flex; flex-direction:column; gap:4px; font-family:var(--cochin); }
+.prow .r1 { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.prow .r1 b { font-size:15px; } .prow .d { font:700 12px var(--mono); }
+.prow .r2 { display:flex; justify-content:space-between; gap:8px; font:11px/14px var(--mono); color:var(--inkSoft); }
+.prow .acts { display:flex; align-items:center; gap:8px; min-height:44px; margin-left:-12px; }
+.prow .acts .st { font:13px var(--cochin); color:var(--inkSoft); padding-left:12px; flex:1; }
+.red { color:var(--red); } .amb { color:var(--amber); }
+/* ruler drawer rows: each wait drawn on the same 14 to 34 day scale as the line */
+.axis { position:relative; height:16px; margin:0 56px 0 0; font:10px/1 var(--mono); color:var(--inkSoft); }
+.axis span { position:absolute; top:2px; transform:translateX(-50%); }
+.rrow { display:grid; grid-template-columns:1fr 56px; align-items:center; column-gap:0; min-height:56px; border-bottom:1px solid var(--line); font-family:var(--cochin); }
+.rrow .top { display:flex; justify-content:space-between; gap:8px; font-size:14px; }
+.rrow .top b { font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.rrow .top span { font:11px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.rrow .track { position:relative; height:14px; margin-top:4px; }
+.rrow .track .base { position:absolute; left:0; right:0; top:6px; height:1px; background:var(--line); }
+.rrow .track .wall { position:absolute; left:80%; top:0; bottom:0; width:2px; background:var(--red); }
+.rrow .track .fill { position:absolute; left:0; top:3px; height:8px; border-radius:4px; background:var(--amber); }
+.rrow .track .fill.red { background:var(--red); }
+.rrow.stamped .track .fill { background:var(--line); }
+.rrow .track em { position:absolute; top:-1px; font:700 11px/14px var(--mono); font-style:normal; padding-left:4px; white-space:nowrap; }
+.rrow .sub2 { font:11px/14px var(--mono); color:var(--inkSoft); min-height:14px; }
+.rrow .mini { justify-self:end; padding:0; }
+/* the iOS menu a More or Stamp press opens: drawn, not built */
+.menu { position:absolute; z-index:9; right:12px; width:220px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 12px 32px rgba(28,43,36,.18); overflow:hidden; font-family:-apple-system, system-ui, sans-serif; }
+.menu button { display:block; width:100%; min-height:44px; text-align:left; padding:0 16px; border:0; border-top:1px solid var(--line); background:none; font:15px -apple-system, system-ui, sans-serif; color:var(--ink); cursor:pointer; }
+.menu button:first-child { border-top:0; }
+
+/* ---------- running head (MastheadScreen.swift RunningHead, 46 pt) ---------- */
+.rhead { position:absolute; left:0; right:0; top:var(--sat); height:47px; z-index:6; background:var(--paper); border-bottom:1px solid var(--line); display:flex; align-items:center; gap:8px; padding:0 16px; font-family:var(--cochin); }
+.rhead .s { width:22px; height:22px; border-radius:50%; background:radial-gradient(circle at 37% 30%, var(--waxLit), var(--wax) 55%, var(--waxDeep)); }
+.rhead b { font-size:16px; letter-spacing:.2em; text-transform:uppercase; } .rhead .f { font:11px var(--mono); color:var(--inkSoft); flex:1; }
+.rhead .lmk { min-width:44px; min-height:44px; display:flex; align-items:center; justify-content:flex-end; gap:4px; border:0; background:none; padding:0; cursor:pointer; font:700 11px var(--mono); color:var(--red); }
+.rhead .lmk i { width:12px; height:12px; border-radius:50%; border:2px solid var(--red); display:block; }
+
+/* ---------- content below the band ---------- */
+.content { padding:0 16px 120px; display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.pcard { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; }
+.pcard b { font-size:15px; } .pcard .dl { font:11px/14px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.pcard .it { display:flex; justify-content:space-between; gap:8px; font-size:14px; border-top:1px solid var(--line); padding-top:8px; margin-top:4px; }
+.pcard .it span { font:12px var(--mono); color:var(--inkSoft); }
+.trow { display:flex; justify-content:space-between; gap:8px; padding:12px 0; border-bottom:1px solid var(--line); font-size:15px; }
+.trow span { font:12px var(--mono); color:var(--inkSoft); }
+.trow.sel { border-left:3px solid var(--accent); padding-left:8px; }
+/* iOS 26 tab bar: floats over content (Apple tab-bars page) */
+.tabbar { position:absolute; bottom:calc(var(--sab) - 8px); height:64px; border-radius:32px; background:color-mix(in srgb, var(--card) 82%, transparent); border:1px solid var(--line);
+  box-shadow:0 6px 20px rgba(28,43,36,.12); display:flex; align-items:center; justify-content:space-around; padding:0 8px; z-index:5; font:10px -apple-system, system-ui, sans-serif; color:var(--inkSoft); }
+.tabbar span { display:flex; flex-direction:column; align-items:center; gap:2px; min-width:56px; }
+.tabbar span i { width:20px; height:20px; border:2px solid currentColor; border-radius:6px; display:block; }
+.tabbar span.on { color:var(--accent); font-weight:600; }
+.below { position:absolute; left:8px; right:8px; bottom:72px; z-index:9; font:600 11px -apple-system, system-ui, sans-serif; color:var(--card); background:var(--ink); border-radius:8px; padding:8px; }
+
+/* dashed tags: Today is what ships, New is what this option adds */
+[data-tag] { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:2px; font:600 10.5px/14px -apple-system, system-ui, sans-serif; padding:0 4px; background:var(--paper); z-index:4; white-space:nowrap; pointer-events:none; }
+.mast[data-tag]::before { right:auto; left:4px; }
+.lmwrap[data-tag]::before { top:auto; bottom:-16px; right:auto; left:4px; }
+.r2 [data-tag]::before { display:none; }
+.crown .lmwrap[data-tag]::before { left:auto; right:4px; }
+.dl[data-tag]::before { top:-18px; }
+.tag-new { outline:2px dashed var(--new); outline-offset:-1px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:-1px; } .tag-today::before { color:var(--today); }
+body.notags [data-tag]::before { display:none; } body.notags .tag-new, body.notags .tag-today { outline:0; }
+@media (forced-colors: active) { .pip, .fill, .mark { forced-color-adjust:none; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner">Sample. No seller, date, count or dollar figure on this page is real. Sizes for the Duo come from the brief; the phone is drawn at 375 pt, a width the repo measures.</div>
+  <h1>Lost mail, one line in the top band</h1>
+  <p class="kind"><b>Designer kind:</b> directed. <b>Direction:</b> glance-only: one line in the top band, tap to expand; never a separate screen.</p>
+  <p class="sub">Two concepts of the same line. The line sits in the letterhead on Packages, Tally and Orphaned. A tap opens the late list in place, over the list below, and a second tap closes it. The past-transit page and its Open box are folded into that list. Tap the lines, the stamps and More in any frame.</p>
+
+  <div class="controls" aria-label="Mockup controls">
+    <div class="ctl" role="group" aria-label="State"><span>State</span>
+      <button data-k="s" data-v="closing">Late, two past 30</button>
+      <button data-k="s" data-v="late">Late, none past 30</button>
+      <button data-k="s" data-v="open">List open</button>
+      <button data-k="s" data-v="stamped">One stamped</button>
+      <button data-k="s" data-v="quiet">No late mail</button>
+      <button data-k="s" data-v="unread">Not read yet</button>
+      <button data-k="s" data-v="failed">Read failed</button>
+      <button data-k="s" data-v="scrolled">Scrolled</button>
+      <button data-k="s" data-v="sync">Sync also broken</button>
+    </div>
+    <div class="ctl" role="group" aria-label="Where the line sits"><span>Slot (item 3)</span>
+      <button data-k="slot" data-v="own">Own line in the letterhead</button>
+      <button data-k="slot" data-v="sync-first">Shared advisory slot, sync first</button>
+      <button data-k="slot" data-v="lost-first">Shared advisory slot, lost first</button>
+    </div>
+    <div class="ctl" role="group" aria-label="Place in the letterhead"><span>Place (item 4)</span>
+      <button data-k="place" data-v="foot">Under the still-missing line</button>
+      <button data-k="place" data-v="crown">Above the seal</button>
+    </div>
+    <div class="ctl" role="group" aria-label="Order"><span>Order (item 6)</span>
+      <button data-k="o" data-v="last">Oldest last (today)</button>
+      <button data-k="o" data-v="first">Oldest first</button>
+    </div>
+    <div class="ctl" role="group" aria-label="Running head"><span>Running head (item 8)</span>
+      <button data-k="rh" data-v="mark">Late mark on</button>
+      <button data-k="rh" data-v="none">No mark (today)</button>
+    </div>
+    <div class="ctl" role="group" aria-label="Largest text"><span>Largest text (item 9)</span>
+      <button data-k="ax" data-v="cap">Line capped at xxxLarge</button>
+      <button data-k="ax" data-v="grow">Line grows to AX5</button>
+    </div>
+    <div class="ctl" role="group" aria-label="Tags"><span>Tags</span>
+      <button data-k="tags" data-v="on">Show Today and New</button>
+      <button data-k="tags" data-v="off">Hide tags</button>
+    </div>
+    <div class="ctl restore" id="restore"><span>Hidden options</span></div>
+  </div>
+
+  <section class="opt" id="opt-postmark" data-concept="postmark" aria-labelledby="h-postmark">
+    <div class="opt-head"><h2 id="h-postmark">Postmark line</h2><button data-hide="postmark">Hide this option</button></div>
+    <p class="sub">A sentence with a postmark. The ring holds the oldest wait in days, amber from 14, a double red ring from 30. The open list is today's past-transit rows: two stamp buttons and More.</p>
+    <div class="gallery">
+      <figure><div class="fit"><div class="frame" data-device="iphone-duo-folded" data-f="folded"></div></div><figcaption><b>Duo folded</b>, 466 x 678 pt, default text, Packages.</figcaption></figure>
+      <figure><div class="fit"><div class="frame ax" data-device="iphone-duo-folded" data-f="ax5"></div></div><figcaption><b>Duo folded, AX5</b>, the largest accessibility size, Packages.</figcaption></figure>
+      <figure><div class="fit"><div class="frame" data-device="iphone-duo-unfolded" data-f="open"></div></div><figcaption><b>Duo open</b>, 951 x 669 pt, Tally on two pages. The line and its list stay on the left page; the hinge strip holds nothing.</figcaption></figure>
+      <figure><div class="fit"><div class="frame" data-device="iphone-regular" data-f="phone"></div></div><figcaption><b>Large phone</b>, drawn at 375 x 812 pt (no size is written for it), Packages.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="opt" id="opt-ruler" data-concept="ruler" aria-labelledby="h-ruler">
+    <div class="opt-head"><h2 id="h-ruler">Thirty-day rule</h2><button data-hide="ruler">Hide this option</button></div>
+    <p class="sub">A ruler in place of a sentence. Each late package is a pip at its day, on a scale from 14 to 34 days, with a red wall at 30. The open list draws every wait as a bar on the same scale, so the eye reads distance to the wall. Stamps sit in one menu per row.</p>
+    <div class="gallery">
+      <figure><div class="fit"><div class="frame" data-device="iphone-duo-folded" data-f="folded"></div></div><figcaption><b>Duo folded</b>, 466 x 678 pt, default text, Packages.</figcaption></figure>
+      <figure><div class="fit"><div class="frame ax" data-device="iphone-duo-folded" data-f="ax5"></div></div><figcaption><b>Duo folded, AX5</b>, the largest accessibility size, Packages.</figcaption></figure>
+      <figure><div class="fit"><div class="frame" data-device="iphone-duo-unfolded" data-f="open"></div></div><figcaption><b>Duo open</b>, 951 x 669 pt, Tally on two pages.</figcaption></figure>
+      <figure><div class="fit"><div class="frame" data-device="iphone-regular" data-f="phone"></div></div><figcaption><b>Large phone</b>, drawn at 375 x 812 pt, Packages.</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+/* Sample data. Today is 2026-11-21. Days count from the order date (lost-mail-flags-use-order-date). */
+const ROWS = [
+  { gk:"r1", seller:"Tidepool Singles",  date:"2026-11-07", days:14, left:1, value:2.75 },
+  { gk:"r2", seller:"Brass Lantern TCG", date:"2026-11-05", days:16, left:2, value:6.40 },
+  { gk:"r3", seller:"Kestrel Games",     date:"2026-10-30", days:22, left:4, value:9.86 },
+  { gk:"r4", seller:"Mint Row Cards",    date:"2026-10-25", days:27, left:1, value:14.99 },
+  { gk:"r5", seller:"Pocket Dungeon",    date:"2026-10-21", days:31, left:3, value:11.02 },
+  { gk:"r6", seller:"Wyvern Hollow",     date:"2026-10-19", days:33, left:3, value:13.12 },
+];
+/* STAMP_KINDS in src/view-rules.mjs, in its order. No Lost kind: item 25 is deferred. */
+const KINDS = [["claim","Claim filed"],["refunded","Refunded"],["contacted","Seller contacted"],["reshipped","Reshipped"],["partial","Partial refund"],["other","Other"]];
+const LABEL = Object.fromEntries(KINDS);
+const money = v => "$" + v.toFixed(2);
+const tier = r => r.days >= 30 ? "deadline" : "maybe";
+const claimBy = r => { const [y,m,d] = r.date.split("-").map(Number); return new Date(Date.UTC(y, m-1, d+30)).toISOString().slice(0,10); };
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const pos = d => (Math.min(Math.max(d, 14), 34) - 14) / 20 * 100;   // 14 to 34 days across the rule; 30 sits at 80%
+
+const P = { s:"closing", slot:"own", place:"foot", o:"last", rh:"mark", ax:"cap", tags:"on", h:"" };
+function readHash() {
+  for (const part of location.hash.replace(/^#/, "").split("&")) {
+    const [k, v] = part.split("="); if (k && v !== undefined && k in P) P[k] = decodeURIComponent(v);
+  }
+}
+function writeHash() {
+  const keep = Object.entries(P).filter(([k, v]) => v !== { s:"closing", slot:"own", place:"foot", o:"last", rh:"mark", ax:"cap", tags:"on", h:"" }[k]);
+  history.replaceState(null, "", keep.length ? "#" + keep.map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&") : location.pathname);
+}
+
+/* Each frame keeps its own live state: which rows it holds, which are stamped, open or not, its menu, its read state. */
+function freshState() {
+  const st = { read:"loaded", open:false, stamps:{}, menu:null, scrolled:false, sync:false };
+  const s = P.s;
+  st.rows = s === "late" ? ROWS.filter(r => r.days < 30) : s === "quiet" ? [] : ROWS.slice();
+  if (s === "unread") st.read = "unread";
+  if (s === "failed") st.read = "failed";
+  if (s === "open" || s === "stamped") st.open = true;
+  if (s === "stamped") st.stamps = { r4:"claim" };
+  if (s === "scrolled") st.scrolled = true;
+  if (s === "sync") st.sync = true;
+  return st;
+}
+const ordered = rows => {
+  const asc = rows.slice().sort((a, b) => a.days - b.days);     // newest first, so the oldest is last (PastTransitPage today)
+  return P.o === "first" ? asc.reverse() : asc;
+};
+
+function summary(st) {
+  const live = st.rows.filter(r => !st.stamps[r.gk]);
+  return { live, n: live.length, red: live.filter(r => tier(r) === "deadline").length,
+           oldest: live.reduce((m, r) => Math.max(m, r.days), 0),
+           cards: live.reduce((t, r) => t + r.left, 0), value: live.reduce((t, r) => t + r.value, 0) };
+}
+
+/* ---------- the line ---------- */
+function lineHTML(concept, st, fid, inAdv) {
+  if (st.read === "unread") return `<div class="lm static" data-line><span class="txt">Late mail not read yet</span></div>`;
+  if (st.read === "failed") return `<div class="lm static" data-line role="group" aria-label="Late mail"><span class="txt">Late mail could not be read.</span><button class="try" data-act="retry">Try again</button></div>`;
+  if (st.read === "loading") return `<div class="lm static" data-line><span class="txt">Reading late mail</span></div>`;
+  const S = summary(st);
+  if (!st.rows.length || (!S.n && !st.open)) {
+    const mark = concept === "postmark" ? `<span class="mark calm" aria-hidden="true">0</span>` : "";
+    return `<div class="lm static ${concept === "postmark" ? "pm" : "ru"}" data-line>${mark}<span class="txt">No untracked package is past 14 days.</span></div>`;
+  }
+  const idAttr = fid === "folded" ? ` id="lm-${concept}-line"` : "";
+  const aria = `${plural(S.n, "package")} past 14 days, ${S.red} past 30 days, ${money(S.value)} of cards not received`;
+  if (concept === "postmark") {
+    const red = S.red > 0;
+    return `<button class="lm pm" data-line data-act="toggle" aria-expanded="${st.open}" aria-label="${aria}"${idAttr}>
+      <span class="mark ${red ? "red" : ""}" aria-hidden="true">${S.oldest || "0"}</span>
+      <span class="txt">${S.n} past 14 days${red ? ` <span class="redt">· ${S.red} past 30</span>` : ""}</span>
+      <span class="fig ${red ? "redt" : "ambt"}">${money(S.value)}</span><span class="chev" aria-hidden="true"></span></button>`;
+  }
+  const pips = st.rows.map((r, i) => {
+    const off = st.stamps[r.gk] ? "off" : tier(r) === "deadline" ? "red" : "";
+    const nudge = st.rows.filter((q, j) => j < i && Math.abs(pos(q.days) - pos(r.days)) < 4).length * 6;   // pips one day apart stack upward
+    return `<i class="pip ${off}" style="left:${pos(r.days)}%;top:${10 - nudge}px"></i>`;
+  }).join("");
+  return `<button class="lm ru" data-line data-act="toggle" aria-expanded="${st.open}" aria-label="${aria}"${idAttr}>
+    <span class="n ${S.red ? "redt" : "ambt"}">${S.n}</span>
+    <span class="rule" aria-hidden="true"><i class="zone"></i><i class="base"></i><i class="wall"></i>${pips}
+      <span class="tk" style="left:0%">14</span><span class="tk" style="left:80%">30</span></span>
+    <span class="fig ${S.red ? "redt" : "ambt"}">${money(S.value)}</span><span class="chev" aria-hidden="true"></span></button>`;
+}
+
+/* ---------- the open list ---------- */
+function drawerHTML(concept, st) {
+  const S = summary(st);
+  const head = `<div class="dhead"><b>Past 14 days</b><button class="mini" data-act="toggle"><span>Close</span></button></div>
+    <div class="dsum">${[plural(S.n, "envelope"), plural(S.cards, "card"), money(S.value), P.o === "last" ? "oldest last" : "oldest first"].join(" · ")}</div>`;
+  const note = `<div class="dnote">Days count from the order date. TCGplayer counts 30 days from the delivery estimate, so its window can close later.</div>`;
+  const rows = ordered(st.rows);
+  if (concept === "postmark") {
+    const body = rows.map(r => {
+      const red = tier(r) === "deadline", k = st.stamps[r.gk];
+      const acts = k
+        ? `<span class="st">Stamped ${LABEL[k]}</span><button class="mini" data-act="undo" data-gk="${r.gk}"><span>Undo</span></button>`
+        : KINDS.slice(0, 2).map(([kk, l]) => `<button class="mini" data-act="stamp" data-gk="${r.gk}" data-k="${kk}"><span>${l}</span></button>`).join("")
+          + `<button class="mini" data-act="more" data-gk="${r.gk}" aria-haspopup="menu"><span>More</span></button>`;
+      return `<div class="prow" data-row="${r.gk}"><div class="r1"><b>${r.seller}</b><span class="d ${red ? "red" : "amb"}">${r.days} d</span></div>
+        <div class="r2"><span class="${red ? "red" : ""}">${red ? "refund window closing, contact seller" : "claim by " + claimBy(r)}</span><span data-tag="New: per row" class="tag-new">${r.left} left · ${money(r.value)}</span></div>
+        <div class="acts">${acts}</div></div>`;
+    }).join("");
+    return head + `<div class="dlist">${body}${note}</div>`;
+  }
+  const axis = `<div class="axis" aria-hidden="true"><span style="left:0%">14 d</span><span style="left:35%">21</span><span style="left:80%;color:var(--red)">30</span></div>`;
+  const body = rows.map(r => {
+    const red = tier(r) === "deadline", k = st.stamps[r.gk];
+    const w = pos(r.days);
+    return `<div class="rrow ${k ? "stamped" : ""}" data-row="${r.gk}">
+      <div><div class="top"><b>${r.seller}</b><span>${r.left} left · ${money(r.value)}</span></div>
+        <div class="track" aria-label="${r.days} days since the order"><i class="base"></i><i class="fill ${red ? "red" : ""}" style="width:${Math.max(w, 2)}%"></i><i class="wall"></i>
+          <em class="${k ? "" : red ? "red" : "amb"}" style="left:${Math.min(w, 86)}%">${r.days} d</em></div>
+        <div class="sub2 ${!k && red ? "red" : ""}">${k ? "Stamped " + LABEL[k] : red ? "refund window closing, contact seller" : "claim by " + claimBy(r)}</div></div>
+      ${k ? `<button class="mini" data-act="undo" data-gk="${r.gk}"><span>Undo</span></button>`
+          : `<button class="mini" data-act="more" data-gk="${r.gk}" data-all="1" aria-haspopup="menu"><span>Stamp</span></button>`}</div>`;
+  }).join("");
+  return head + `<div class="dlist" style="gap:0">${axis}${body}${note}</div>`;
+}
+
+/* ---------- a frame ---------- */
+function mastHTML(lineBlock) {
+  const crown = P.slot === "own" && P.place === "crown";
+  return `${crown ? `<div class="crown">${lineBlock}</div>` : ""}
+  <div class="mast tag-today" data-tag="Today: letterhead">
+    <div class="sealrow"><i></i><span class="seal" aria-label="MANIFEST seal"></span><i></i></div>
+    <div class="title">Manifest</div><div class="house">C.H Postal Company</div>
+    <div class="tallies"><div class="cell"><small>Cards</small><b>412<span>/530</span></b></div><div class="cell"><small>Packages</small><b>61<span>/88</span></b></div><div class="cell"><small>Value</small><b>$1.9k<span>/$2.46k</span></b></div></div>
+    <div class="bar"><i></i></div>
+    <div class="count">88 packages · autosaves</div>
+    <div class="foot"><span class="miss">$563.18 still missing</span><span class="slot">Saved</span></div>
+    ${P.slot === "own" && P.place === "foot" ? lineBlock : ""}
+  </div>`;
+}
+
+function lineBlock(concept, st, fid) {
+  const inner = lineHTML(concept, st, fid) + (st.open && st.read === "loaded" && st.rows.length ? `<div class="drawer" data-drawer>${drawerHTML(concept, st)}</div>` : "");
+  const id = fid === "folded" ? ` id="lm-${concept}"` : "";   // the waiting page's focus for this option
+  return `<div class="lmwrap tag-new" data-tag="New: lost-mail line"${id}>${inner}</div>`;
+}
+
+function advBlock(concept, st, fid) {
+  const syncLine = `<div class="syncline tag-today" data-tag="Today: sync line">Not backed up since Nov 18 — tap to fix</div>`;
+  if (P.slot === "own") return st.sync ? syncLine : "";
+  const S = summary(st);
+  const lostShows = st.read !== "loaded" || S.n > 0 || st.open;
+  if (st.sync && (P.slot === "sync-first" || !lostShows)) return syncLine;
+  if (!lostShows && st.read === "loaded") return "";   // the shared slot shows nothing when all is well, as the sync line does
+  return `<div class="adv ${S.red ? "deadline" : ""}">${lineBlock(concept, st, fid)}</div>`;
+}
+
+function contentHTML(fid) {
+  if (fid === "open") return "";
+  return `<div class="content">
+    <div class="pcard"><b>Mint Row Cards</b>
+      <div class="dl tag-today" data-tag="Today: web flag; native has none"><span class="amb" style="font-weight:700">⚠ 27d — may be lost · </span>2026-10-25 · ○ untracked</div>
+      <div class="it">Sample card one<span>0/1</span></div></div>
+    <div class="pcard"><b>Harbor Light Games</b><div class="dl">2026-11-12 · ● tracked</div>
+      <div class="it">Sample card two<span>2/2</span></div><div class="it">Sample card three<span>0/1</span></div></div>
+    <div class="pcard"><b>Kestrel Games</b><div class="dl"><span class="amb" style="font-weight:700">⚠ 22d — may be lost · </span>2026-10-30 · ○ untracked</div>
+      <div class="it">Sample card four<span>0/2</span></div></div>
+  </div>`;
+}
+
+function tallyRight() {
+  return `<div class="content" style="padding-top:16px"><b style="font-size:22px">Sample card four</b>
+    <div style="font:11px var(--mono);color:var(--inkSoft)">2 of 6 · 3 sellers · $9.12 basis</div>
+    <div class="trow">Kestrel Games<span>0/2</span></div><div class="trow">Harbor Light Games<span>2/2</span></div><div class="trow">Brass Lantern TCG<span>0/2</span></div></div>`;
+}
+
+const tabbar = (left, width, active) => `<div class="tabbar" style="left:${left}px;width:${width}px"><span class="${active === "Packages" ? "on" : ""}"><i></i>Packages</span><span class="${active === "Tally" ? "on" : ""}"><i></i>Tally</span><span><i></i>Orphaned</span><span><i></i>Ledger</span></div>`;
+
+function render(frame) {
+  const concept = frame.closest("section").dataset.concept, fid = frame.dataset.f, st = frame._st;
+  const status = `<div class="status ${fid === "phone" ? "iphone-regular-status" : ""}"><span>9:41</span><span>5G ▮▮▮</span></div>`;
+  const lb = lineBlock(concept, st, fid);
+  const band = mastHTML(P.slot === "own" ? lb : "") + `<div class="gap47"></div>` + advBlock(concept, st, fid);
+  frame.style.setProperty("--axline", P.ax === "grow" ? "44px" : "19px");   // footnote at AX5 is 44 pt, at xxxLarge 19 pt (Apple typography tables)
+  const rhMark = (() => { const S = summary(st); return P.rh === "mark" && st.read === "loaded" && S.n
+    ? `<button class="lmk" data-act="jump" aria-label="${plural(S.n, "package")} past 14 days. Show the list"><i></i>${S.n}</button>` : ""; })();
+  const rhead = st.scrolled ? `<div class="rhead ${P.rh === "mark" ? "tag-new" : "tag-today"}" data-tag="${P.rh === "mark" ? "New: late mark" : "Today: running head"}"><span class="s"></span><b>Manifest</b><span class="f">412/530 · $563.18</span>${rhMark}</div>` : "";
+  const shift = st.scrolled ? "transform:translateY(-330px)" : "";
+  let html;
+  if (fid === "open") {
+    html = status + `<div class="page" style="left:0;width:455.5px"><div class="scroll"><div class="sheet" style="${shift}">${band}
+        <div class="content"><div class="trow sel">Sample card four<span>2/6</span></div><div class="trow">Sample card one<span>0/1</span></div><div class="trow">Sample card two<span>2/2</span></div><div class="trow">Sample card five<span>1/3</span></div></div></div></div>${rhead.replace('class="rhead', 'style="right:0" class="rhead')}</div>
+      <div class="fold" aria-hidden="true"><span>HINGE, NOTHING HERE</span></div>
+      <div class="page" style="left:495.5px;width:455.5px"><div class="scroll">${tallyRight()}</div></div>
+      ${tabbar(495.5 + 40, 375, "Tally")}`;
+  } else {
+    const w = fid === "phone" ? 375 : 466;
+    html = status + `<div class="scroll" ${fid === "phone" ? 'style="top:max(env(safe-area-inset-top), 47px)"' : ""}><div class="sheet" style="${shift}">${band}${contentHTML(fid)}</div></div>${rhead}${tabbar(16, w - 32, "Packages")}`;
+  }
+  frame.innerHTML = html;
+  if (fid === "phone" && st.scrolled) frame.querySelector(".rhead").style.top = "max(env(safe-area-inset-top), 47px)";
+  placeDrawer(frame);
+  if (st.menu) drawMenu(frame);
+  if (frame.classList.contains("ax")) flagBelow(frame);
+}
+
+/* The open list stops above the floating tab bar, so its last row and its Close stay reachable. */
+function placeDrawer(frame) {
+  const d = frame.querySelector("[data-drawer]"); if (!d) return;
+  const fr = frame.getBoundingClientRect(), dr = d.getBoundingClientRect(), k = fr.width / frame.offsetWidth || 1;
+  const top = (dr.top - fr.top) / k, bar = frame.querySelector(".tabbar"), barTop = bar.offsetTop;
+  d.style.maxHeight = Math.max(120, barTop - 8 - top) + "px";
+  if (frame._arrive) { d.classList.add("arriving"); requestAnimationFrame(() => requestAnimationFrame(() => d.classList.remove("arriving"))); frame._arrive = false; }
+}
+/* At AX5 the letterhead fills the folded screen; say where the line went instead of hiding the fact. */
+function flagBelow(frame) {
+  const line = frame.querySelector("[data-line]"); if (!line) return;
+  const fr = frame.getBoundingClientRect(), lr = line.getBoundingClientRect(), k = fr.width / frame.offsetWidth || 1;
+  const y = (lr.top - fr.top) / k;
+  if (y > frame.offsetHeight - 90) {
+    const n = document.createElement("div"); n.className = "below";
+    n.textContent = `Drawn note: at AX5 the line sits at y ${Math.round(y)} pt, below this screen. One scroll reaches it; "Above the seal" puts it first.`;
+    frame.appendChild(n);
+  }
+}
+function drawMenu(frame) {
+  const st = frame._st, btn = frame.querySelector(`[data-act="more"][data-gk="${st.menu.gk}"]`); if (!btn) return;
+  const fr = frame.getBoundingClientRect(), br = btn.getBoundingClientRect(), k = fr.width / frame.offsetWidth || 1;
+  const kinds = st.menu.all ? KINDS : KINDS.slice(2);
+  const m = document.createElement("div"); m.className = "menu"; m.setAttribute("role", "menu");
+  m.innerHTML = kinds.map(([kk, l]) => `<button role="menuitem" data-act="stamp" data-gk="${st.menu.gk}" data-k="${kk}">${l}</button>`).join("");
+  const top = (br.bottom - fr.top) / k, h = kinds.length * 45;
+  m.style.top = (top + h > frame.offsetHeight - 80 ? (br.top - fr.top) / k - h : top) + "px";
+  m.style.left = Math.min(Math.max(8, (br.left - fr.left) / k), (frame.dataset.f === "open" ? 455.5 : frame.offsetWidth) - 228) + "px";
+  m.style.right = "auto";
+  frame.appendChild(m);
+}
+
+document.addEventListener("click", e => {
+  const b = e.target.closest("[data-act]"); const frame = e.target.closest(".frame");
+  if (!b || !frame) { if (frame && frame._st.menu) { frame._st.menu = null; render(frame); } return; }
+  const st = frame._st, act = b.dataset.act;
+  if (act === "toggle") { st.open = !st.open; st.menu = null; frame._arrive = st.open; }
+  if (act === "stamp") { st.stamps[b.dataset.gk] = b.dataset.k; st.menu = null; }   // the row keeps its place until a reload
+  if (act === "undo") { delete st.stamps[b.dataset.gk]; }
+  if (act === "more") { st.menu = st.menu && st.menu.gk === b.dataset.gk ? null : { gk: b.dataset.gk, all: !!b.dataset.all }; }
+  if (act === "jump") { st.scrolled = false; st.open = true; frame._arrive = true; }
+  if (act === "retry") { st.read = "loading"; render(frame); setTimeout(() => { st.read = "loaded"; st.rows = ROWS.slice(); render(frame); }, 700); return; }
+  render(frame);
+});
+
+function fit() {
+  document.querySelectorAll(".fit").forEach(f => {
+    const fr = f.firstElementChild, avail = f.parentElement.closest(".gallery").clientWidth;
+    const k = Math.min(1, avail / fr.offsetWidth);
+    fr.style.transform = k < 1 ? `scale(${k})` : "";
+    f.style.width = fr.offsetWidth * k + "px"; f.style.height = fr.offsetHeight * k + "px";
+  });
+}
+
+function applyControls() {
+  document.querySelectorAll(".ctl button[data-k]").forEach(b => b.setAttribute("aria-pressed", String(P[b.dataset.k] === b.dataset.v)));
+  document.body.classList.toggle("notags", P.tags === "off");
+  const hidden = P.h ? P.h.split(",") : [];
+  const restore = document.getElementById("restore");
+  restore.querySelectorAll("button").forEach(b => b.remove());
+  document.querySelectorAll("section.opt").forEach(s => {
+    const c = s.dataset.concept, off = hidden.includes(c); s.hidden = off;
+    if (off) { const b = document.createElement("button"); b.textContent = "Show " + s.querySelector("h2").textContent; b.dataset.show = c; restore.appendChild(b); }
+  });
+  restore.classList.toggle("on", hidden.length > 0);
+}
+function renderAll() {
+  applyControls();
+  document.querySelectorAll(".frame").forEach(f => { f._st = freshState(); render(f); });
+  fit();
+}
+document.addEventListener("click", e => {
+  const c = e.target.closest(".ctl button[data-k]");
+  if (c) { P[c.dataset.k] = c.dataset.v; writeHash(); renderAll(); return; }
+  const h = e.target.closest("[data-hide]"), s = e.target.closest("[data-show]");
+  if (h || s) {
+    const set = new Set(P.h ? P.h.split(",") : []);
+    h ? set.add(h.dataset.hide) : set.delete(s.dataset.show);
+    P.h = [...set].join(","); writeHash(); renderAll();
+  }
+});
+window.addEventListener("hashchange", () => { readHash(); renderAll(); });
+window.addEventListener("resize", fit);
+readHash(); renderAll();
+</script>
+</body>
+</html>

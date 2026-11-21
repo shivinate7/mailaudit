@@ -45,7 +45,7 @@ figcaption { max-width:90ch; }
 figcaption b { font-family:var(--cochin); font-size:18px; }
 .frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
 .fit { max-width:100%; overflow:hidden; }
-.cap { font:12px var(--mono); color:var(--inkSoft); margin-top:4px; }
+.cap { font:12px var(--mono); color:var(--inkSoft); margin-top:4px; width:0; min-width:100%; }
 
 /* ---- device frames: 1 CSS px = 1 pt ---- */
 .dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; font-family:var(--sys); color:var(--ink); }
@@ -154,8 +154,10 @@ figcaption b { font-family:var(--cochin); font-size:18px; }
 .rh-slot { position:sticky; top:var(--sat); z-index:21; }
 .ribbon.head { position:relative; height:47px; border-radius:0 0 8px 8px; margin-inline:-24px; padding-left:24px; padding-right:20px; }
 .open .ribbon.head { width:455.5px; margin-inline:-24px 0; border-radius:0 0 8px 0; }
-.hand .ribbon.head { position:absolute; left:0; width:455.5px; top:var(--sat); height:52px; border-radius:0 0 8px 0; padding-left:16px; padding-right:8px; }
-.ribbon.head .act { height:36px; min-height:36px; }
+.hand .ribbon.head { position:absolute; margin:0; left:0; width:455.5px; top:var(--sat); height:52px; border-radius:0 0 8px 0; padding-left:16px; padding-right:8px; }
+.ribbon.head .act { height:44px; }
+.ribbon .act.shut { width:auto; padding:0 14px; background:transparent; color:var(--card); border:1px solid color-mix(in srgb, var(--card) 60%, transparent); }
+.ax5 .panel.up { bottom:159px; }
 .ribbon.head .sum { min-height:44px; }
 
 /* motion: the ribbon is drawn on like a ruled line, once (motion-stationery-not-software: no overshoot, no loop) */
@@ -242,6 +244,13 @@ figcaption b { font-family:var(--cochin); font-size:18px; }
 .ax5 .ribbon.head { height:60px; }
 .ax5 .rh-slot { height:60px; flex-basis:60px; }
 .ax5 .panel .row { flex-wrap:wrap; }
+.ax5 .panel .row .tx { flex-basis:calc(100% - 40px); }
+.ax5 .panel .row button { margin-left:30px; }
+.ax5 .panel .row small .num, .ax5 .line .t small .num { font-size:36px; }
+.ax5 .panel details, .ax5 .panel summary { font-size:44px; line-height:52px; min-height:52px; }
+.ax5 .panel .ph { display:none; }
+.folded.ax5 .panel.up { max-height:500px; }
+.folded.ax5 .panel.down { max-height:540px; }
 .ax5 .panel .row b { font-size:53px; line-height:62px; }
 .ax5 .panel .row small { font-size:44px; line-height:52px; }
 .ax5 .panel .row button { font-size:23px; }
@@ -297,7 +306,7 @@ const PKGS = [
 ];
 const LINE = {}; PKGS.forEach(p => p.lines.forEach(l => { LINE[l.k] = { ...l, seller:p.seller }; }));
 const TIMES = ['12:02', '12:03', '12:03', '12:04', '12:04', '12:05'];
-const ERR = 'The file “ledger.json” couldn’t be saved. (sample text, behind the disclosure)';
+const ERR = 'The file “ledger.json” couldn’t be saved.';
 let failing = true;
 const hidden = new Set();
 
@@ -338,7 +347,8 @@ function ribbonHTML(inst, concept) {
     const words = s.phase === 'still'
       ? (ax || inst.narrow ? `Still <span class="num">${n}</span> not saved` : `Still not saved: <span class="num">${n}</span>`)
       : (ax || inst.narrow ? `<span class="num">${n}</span> not saved` : `<span class="num">${n}</span> ${plural(n,'check-in','check-ins')} not saved`);
-    return `<div class="ribbon ${home} fail${s.open ? ' isopen' : ''}${arrive}"${id}><button class="sum" data-do="toggle" aria-expanded="${s.open}" aria-label="${n} ${plural(n,'check-in','check-ins')} not saved. Show which."><span class="glyph"></span><span class="w">${words}</span><span class="chev"></span></button><button class="act" data-do="retry">${n === 1 ? 'Retry' : 'Retry all'}</button></div>`;
+    const close = inst.hand && concept === 'head' ? '<button class="act shut" data-do="none">Close</button>' : '';
+    return `<div class="ribbon ${home} fail${s.open ? ' isopen' : ''}${arrive}"${id}><button class="sum" data-do="toggle" aria-expanded="${s.open}" aria-label="${n} ${plural(n,'check-in','check-ins')} not saved. Show which."><span class="glyph"></span><span class="w">${words}</span><span class="chev"></span></button><button class="act" data-do="retry">${n === 1 ? 'Retry' : 'Retry all'}</button>${close}</div>`;
   }
   if (concept === 'foot' && !hidden.has('rest') && s.last) {
     const l = LINE[s.last.k], got = s.received[s.last.k] || 0;
@@ -361,7 +371,8 @@ function panelHTML(inst, concept) {
 }
 
 function lineHTML(inst, l) {
-  const s = inst.s, got = s.received[l.k] || 0, done = got >= l.q, held = s.held.has(l.k);
+  // Today the failed line shows nothing of its own: it just keeps its old look.
+  const s = inst.s, got = s.received[l.k] || 0, done = got >= l.q, held = inst.concept !== 'today' && s.held.has(l.k);
   const qty = l.q > 1 ? ` · <span class="num">${got} of ${l.q}</span>` : '';
   return `<div class="line${done ? ' done' : ''}${held ? ' held' : ''}" data-k="${l.k}"><button class="box" data-do="tap" data-k="${l.k}" aria-label="${l.n}${held ? ', not saved' : ''}"><i></i></button><span class="t"><b>${l.n}<span class="num">$${l.p}</span></b><small>${l.set}${qty}</small></span></div>`;
 }
@@ -375,8 +386,9 @@ const tabs = cls => `<div class="${cls}">` + [['Packages','box',1],['Tally','lis
   .map(([t, i, on]) => `<span class="tab${on ? ' on' : ''}">${ICON[i]}<span>${t}</span></span>`).join('') + '</div>';
 
 function mastHTML(inst) {
-  const s = inst.s, bad = inst.concept === 'today' && inst.state === 'today' ? false : false;
-  const slot = s.phase === 'retrying' ? 'saving…' : (s.held.size && s.lastFailed ? 'couldn’t save' : 'saved ✓');
+  // Today the slot reads the last write only. In both concepts it reads "couldn't save" while the ribbon holds any check-in.
+  const s = inst.s, failed = inst.concept === 'today' ? s.lastFailed : s.held.size > 0;
+  const slot = s.phase === 'retrying' ? 'saving…' : (failed ? 'couldn’t save' : 'saved ✓');
   const cls = slot === 'couldn’t save' ? 'bad' : (slot === 'saved ✓' ? 'ok' : '');
   return `<div class="mast"><div class="lh"><span class="seal"></span><span class="mh">Manifest</span></div>
     <div class="cl"><span>212 packages · autosaves</span></div>
@@ -476,6 +488,7 @@ function act(inst, e) {
       s.phase = 'idle'; s.lastFailed = true;
     } else {
       s.received[k] = intent; s.held.delete(k); s.last = { k }; s.lastFailed = false;
+      if (inst.concept === 'today') s.held.clear();   // today: any good save clears checkInError, and the failure is forgotten
       if (s.held.size && !hidden.has('carry')) {   // carry: the held check-ins ride the same good save
         s.carried = s.held.size; s.held.forEach((h, hk) => { s.received[hk] = h.intent; }); s.held.clear(); s.phase = 'carry'; s.open = false;
       } else s.phase = 'idle';
@@ -499,22 +512,26 @@ function act(inst, e) {
   draw(inst);
 }
 
-// dashed tags: drawn as notes beside the tagged parts of each frame
+// dashed tags: a dashed outline on each tagged part, named in the frame's caption line
 function tagFrame(inst) {
+  const parts = [], cap = inst.el.parentElement && inst.el.parentElement.querySelector('.cap');
   if (inst.concept === 'today') {
-    inst.el.querySelectorAll('.today-bar, .today-hand').forEach(t => { t.classList.add('tag-today'); note(inst, t, 'Today: one message; the next good save clears it', 'today'); });
-    return;
+    inst.el.querySelectorAll('.today-bar, .today-hand').forEach(t => t.classList.add('tag-today'));
+    if (inst.el.querySelector('.today-bar, .today-hand')) parts.push('Today: the error line, one message at a time');
+  } else {
+    const r = inst.el.querySelector('.ribbon'); if (r) { r.classList.add('tag-new'); parts.push('New: the ribbon'); }
+    const h = inst.el.querySelectorAll('.line.held'); h.forEach(x => x.classList.add('tag-new')); if (h.length) parts.push('New: the not-saved mark');
+    const p = inst.el.querySelector('.panel'); if (p) { p.classList.add('tag-new'); parts.push('New: the list'); }
   }
-  const r = inst.el.querySelector('.ribbon'); if (r) { r.classList.add('tag-new'); note(inst, r, 'New: the ribbon', 'new'); }
-  const h = inst.el.querySelector('.line.held'); if (h) { h.classList.add('tag-new'); }
-  const p = inst.el.querySelector('.panel'); if (p) { p.classList.add('tag-new'); }
-}
-function note(inst, t, text, kind) {
-  const fr = inst.el.getBoundingClientRect(), tr = t.getBoundingClientRect(), z = parseFloat(inst.el.style.zoom || getComputedStyle(inst.el).zoom || 1) || 1;
-  const n = document.createElement('span'); n.className = 'tagnote ' + kind; n.textContent = text;
-  n.style.right = '28px'; n.style.top = Math.max(0, (tr.top - fr.top) / (z === 0 ? 1 : 1) - 16) + 'px';
-  if (t.closest('.rh-slot')) { n.style.top = '0px'; }
-  inst.el.append(n);
+  if (cap) {
+    let t = cap.querySelector('.tags'); if (!t) { t = document.createElement('span'); t.className = 'tags'; cap.append(t); }
+    t.textContent = parts.length ? ' · dashed: ' + parts.join(', ') : '';
+  }
+  // The Head list drops from the ribbon: opening it pins the ribbon first, so the list hangs from it.
+  if (inst.concept === 'head' && !inst.hand && inst.s.open) {
+    const scr = inst.el.querySelector('.scr'), m = inst.el.querySelector('.mast');
+    if (scr && m && m.offsetParent && scr.scrollTop < m.offsetHeight) scr.scrollTop = m.offsetHeight + 12;
+  }
 }
 
 // ---------- the page: states x concepts x devices ----------
@@ -539,6 +556,7 @@ function build() {
     const a = document.createElement('a'); a.href = '#s=' + key; a.textContent = title; a.dataset.s = key; links.append(a);
     const sec = document.createElement('section'); sec.className = 'state'; sec.dataset.state = key;
     sec.innerHTML = `<h2>${title}</h2><p>${text}</p>`;
+    host.append(sec);  // in the page before any frame mounts, so a seeded scroll position takes
     const concepts = key === 'today' ? ['today'] : ['foot', 'head'];
     concepts.forEach(c => {
       if (key === 'rest' && c === 'head') return;
@@ -546,6 +564,7 @@ function build() {
       const name = c === 'foot' ? 'Foot ribbon' : c === 'head' ? 'Head ribbon' : 'Today';
       fig.innerHTML = `<figcaption><b>${name}.</b> ${caption(key, c)}</figcaption><div class="frames"></div>`;
       const fr = fig.querySelector('.frames');
+      sec.append(fig);
       let devs = ['folded', 'phone', 'open'];
       if (key === 'hand') devs = ['hand'];
       if (key === 'ax5') devs = ['ax5', 'ax5-list'];
@@ -564,17 +583,15 @@ function build() {
         wrap.append(cap);
         fr.append(wrap);
         const focusId = key === 'many' && d === 'folded' && c !== 'today' ? `${c}-ribbon` : (key === 'rest' && d === 'folded' ? 'foot-rest' : (key === 'carry' && d === 'folded' ? `${c}-carry` : null));
-        mount(el, { state: d === 'ax5-list' ? 'ax5-list' : (key === 'today' ? 'fail' : key), concept:c, dev:real, hand:d === 'hand', ax:d.startsWith('ax5'), narrow:real === 'phone' || real === 'open', focusId, w });
+        mount(el, { state: d === 'ax5-list' ? 'ax5-list' : (key === 'today' ? 'fail' : key), concept:c, dev:real, hand:d === 'hand', ax:d.startsWith('ax5'), narrow:false, focusId, w });
       });
-      sec.append(fig);
     });
-    host.append(sec);
   });
 }
 function caption(key, c) {
   const C = {
     foot: { rest:'A glass strip above the tab bar, the place of the system\'s tab-bar accessory. Not a control: it only says.', fail:'Red capsule above the tab bar. On the open Duo it sits under the left page, the pill bar\'s twin, so it never meets the bar or the fold.', many:'Thumb reach on every frame. The scroll view keeps a bottom margin of the ribbon\'s height, so the last line still scrolls clear.', list:'The list rises from the ribbon over the rows, paper filled.', retrying:'', saved:'', still:'', carry:'', hand:'Left page foot, y 352 to 405 pt, beside the Post bar at the same height. The matches list keeps 53 pt of margin.', ax5:'Capped at 60 pt tall.' },
-    head: { fail:'At the top of the list, the ribbon fills the 47 pt running-head slot that sits empty today. No row moves: the slot is already reserved.', many:'Scrolled: the slot is sticky, so the ribbon pins under the status bar in place of the running head. On the open Duo it spans the left page only.', list:'The list drops from the ribbon over the rows.', retrying:'', saved:'', still:'', carry:'', hand:'The header row (Mail day, the count, Close) gives way to the ribbon while a check-in is held. Close moves into the list.', ax5:'The running-head slot grows to 60 pt at the cap.' },
+    head: { fail:'At the top of the list, the ribbon fills the 47 pt running-head slot that sits empty today. No row moves: the slot is already reserved.', many:'Scrolled: the slot is sticky, so the ribbon pins under the status bar in place of the running head. On the open Duo it spans the left page only.', list:'The list drops from the ribbon over the rows.', retrying:'', saved:'', still:'', carry:'', hand:'The header row (Mail day and the count) gives way to the ribbon while a check-in is held. Close stays at the row\'s trailing end, in the ribbon.', ax5:'The running-head slot grows to 60 pt at the cap.' },
     today: { today:'Folded: the material bar at the tab foot (its place over the tab bar is unmeasured). Open: the same bar runs full width, and its right half sits under the pill bar (debt duo-checkin-error-under-bar). Card in Hand: the top line covers the first rows.' } };
   return (C[c] && C[c][key]) || '';
 }
