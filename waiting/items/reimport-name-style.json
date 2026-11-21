@@ -1,6 +1,5 @@
 {
   "added": "2026-11-15T19:38:00Z",
-  "closed": "2026-11-15T19:39:00Z",
   "context": "Measured 13:29 CST (coordinator): 472 stored lines have the older \" - \" style and the file now uses \", \". 13 product names split in Tally because the 59 new lines use the new style.\nAnswered in chat, 13:38 CST, by the owner (relayed by the coordinator): \"I agree\" to the coordinator's recommendation: yes. It is its own change, after item 89's change. It is cosmetic, names only, and leaves check-ins untouched.",
   "home": "reimport-name-style",
   "id": "reimport-name-style",

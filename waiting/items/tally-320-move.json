@@ -20,6 +20,10 @@
   "home": "debt tally-card-moves-at-320px; decision card-reserved-geometry",
   "id": "tally-320-move",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-19T03:54:59.294Z",
+    "note": "can i see this visually"
+  },
   "n": 62,
   "options": [
     {
@@ -82,7 +86,8 @@
   "rank": 19,
   "recommended": "a",
   "ref": "debt tally-card-moves-at-320px (the Tally card moves at 320px); invariant no-layout-shift-under-pointer; decision card-reserved-geometry",
-  "reply": "You asked to see this. Pictures of both options are being drawn; they appear on this item when done.",
+  "replied": "2026-11-21T14:10:59-06:00",
+  "reply": "The pictures of both options are now inside this item. Please look and pick an option.",
   "repo": "shivinate7/mailaudit",
   "short": "Tally card at 320 px",
   "shown": [

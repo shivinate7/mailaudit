@@ -31,8 +31,8 @@
   "id": "pr144-design-merge",
   "kind": "decision",
   "lastAnswer": {
-    "at": "2026-11-08T22:30:22.188Z",
-    "note": "can i get a visual of it "
+    "at": "2026-11-19T04:31:58.135Z",
+    "note": "bring the pictures in the artifact odnt link it check the ruels of how this artfiact should be built off of main of claude-settings"
   },
   "n": 51,
   "options": [
@@ -111,8 +111,8 @@
   "pick": "a",
   "rank": 14,
   "ref": "draft PR #144 (Duo round 2 Card in Hand design, branch design/duo-round2); HandScreen.swift:4-5; DuoHandUITests.swift:2",
-  "replied": "2026-11-18T22:34:00-06:00",
-  "reply": "You answered none of these (2026-11-18 22:31 CST): put the pictures inside the page, not as links, and build them as the page rules say. Triage has this. The pictures need the page republished with the mockup inside it. That waits on one held picture on another item. Until then the links stay, and the question stays open.",
+  "replied": "2026-11-21T14:10:59-06:00",
+  "reply": "The pictures you asked for are now inside this item, not as links. Please look and pick an option.",
   "repo": "shivinate7/mailaudit",
   "short": "Merge PR 144 design",
   "shown": [

@@ -33,6 +33,10 @@
   "home": "PR 238 (restyle step 8) and lane restyle-step8; decision phone-nav-is-bottom-bar",
   "id": "pr238-find-pill-band",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-19T04:37:23.488Z",
+    "note": "visual in line of artifact please"
+  },
   "n": 95,
   "options": [
     {
@@ -77,8 +81,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "PR 238 (the restyle step 8 pull request); lane restyle-step8 (the lane that builds it); FindPill.swift line 3 (the Find pill floats over the list); decision phone-nav-is-bottom-bar (the phone's navigation is a bottom bar); run 43848366093 (the phone UI run that shows the reds)",
-  "replied": "2026-11-18T22:38:00-06:00",
-  "reply": "You answered none of these (2026-11-18 22:37 CST): show the picture inside the page, in line, not as a link. Triage has this. The pictures need the page republished with the mockup inside it. That waits on one held picture on another item. Until then the link stays, and the question stays open.",
+  "replied": "2026-11-21T14:10:59-06:00",
+  "reply": "The pictures you asked for are now inside this item, in line, not as links. Please look and pick an option.",
   "repo": "shivinate7/mailaudit",
   "short": "Find pill: end list above it",
   "shown": [

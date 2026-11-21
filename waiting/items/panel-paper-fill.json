@@ -1,6 +1,5 @@
 {
   "added": "2026-11-09T02:06:00Z",
-  "closed": "2026-11-18T23:42:00-06:00",
   "context": "Goal: an open panel reads cleanly against the list around it.\nProblem (rule): on 2026-10-11 an orchestrator set the default that a panel takes the paper fill. You never confirmed or overruled it, and it was never built.\nBased on (read): src/app.jsx panelWrap has padding and a top border, and no background.\nBased on (read): the overlay of decision motion-disclosure-panels-arrive is not built. On main the panel pushes the rows down, so nothing shows through it today.\nDeparts from: main panelWrap has no background \u2014 option a adds the paper fill.",
   "designs": [
     {

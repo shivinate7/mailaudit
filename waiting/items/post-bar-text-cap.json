@@ -1,6 +1,5 @@
 {
   "added": "2026-11-19T05:40:00Z",
-  "closed": "2026-11-20T00:38:00-06:00",
   "context": "Goal: the Post bar stays small enough that a card line still shows above it at every text size.\nProblem (goal): without a cap the bar grows to 212 pt at the largest text size and no whole card line shows above it, and a cap needs your grant because it limits how big the bar's text gets.\nBased on (ruling): you answered build B now on the Post bar question, with the note make the pin not so thick (2026-11-18 23:22 CST).\nBased on (measured): the designer measured the bar at the default large text size: 128 pt as drawn, 61 pt in one row, 53 pt button only.\nDeparts from: main sets no cap on the bar's text \u2014 this caps it at the extra extra extra large size and shows the full text in the large-content viewer on press.\nWaiting on: your answer; the builder waits on this for the largest text sizes.",
   "designs": [
     {

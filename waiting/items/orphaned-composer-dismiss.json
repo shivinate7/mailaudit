@@ -1,6 +1,5 @@
 {
   "added": "2026-11-09T22:00:00Z",
-  "closed": "2026-11-19T00:17:00-06:00",
   "context": "Goal: on the iPhone, you can type an Orphaned note, switch tabs, and come back to the same draft.\nProblem (goal): with the form's keyboard up, the keys cover the tab bar, and nothing on the Orphaned screen hides them: no drag, no tap, no toolbar. Only Save or Cancel get out, so you can't switch tabs mid-draft, and the test for it (testComposerDraftSurvivesAViewChange) stays red on main.\nBased on (read): ux-house-rules-govern L2 says the envelope draft survives a view change.\nBased on (read): on main, OrphanedView.swift:279 puts the keyboard up when the form opens and nothing takes it down; HandScreen.swift:144 is the only drag-to-hide in the app.\nDeparts from: main has no way to hide the keys in the Orphaned form \u2014 adds a drag on the Orphaned list that hides them, the same one Card in Hand uses.\nMeanwhile: lane pro-ui-main-reds works on the other reds; no merge waits on this.",
   "designs": [
     {

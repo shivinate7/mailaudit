@@ -1,6 +1,5 @@
 {
   "added": "2026-11-15T19:10:00Z",
-  "closed": "2026-11-15T19:14:00Z",
   "context": "Goal: mailaudit's Mac test jobs run without blocking or being blocked by the other repos' Mac jobs.\nProblem (goal): the Mac-sharing agreement (07:47 CST 11-09) has mailaudit tell four named sessions when its Mac jobs queue and start, and all four are now archived.\nBased on (read): list_sessions on 2026-11-15 shows the home, degen and claude-settings sessions from the agreement archived.\nDeparts from: main, where mailaudit tells four named sessions \u2014 changes to telling whichever coordinators run now, or nobody.\nMeanwhile: the mailaudit coordinator runs one Mac job at a time and tells nobody.",
   "home": "docs/debts/notes.md (process-only ruling, records PR)",
   "id": "mac-share-partners",

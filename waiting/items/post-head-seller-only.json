@@ -1,6 +1,5 @@
 {
   "added": "2026-11-19T05:40:00Z",
-  "closed": "2026-11-20T00:38:00-06:00",
   "context": "Goal: the sender and the Post button both stay on screen at every text size.\nProblem (goal): with the full sender head and the bar, the two together fill the screen at the largest sizes, and dropping the head's other text needs your grant.\nBased on (ruling): you answered build B now on the Post bar question, with the note make the pin not so thick (2026-11-18 23:22 CST).\nBased on (measured): the designer measured the bar at the default large text size: 128 pt as drawn, 61 pt in one row, 53 pt button only.\nDeparts from: main shows the full sender head at every size \u2014 this shows only the seller at the largest sizes.\nWaiting on: your answer; the builder waits on this together with the text cap for the largest sizes.",
   "designs": [
     {

@@ -1,6 +1,5 @@
 {
   "added": "2026-11-20T04:03:00Z",
-  "closed": "2026-11-20T00:38:00-06:00",
   "context": "Goal: the Post bar stays 53 pt at the biggest text sizes and nothing moves under your thumb when you press Post.\nProblem (rule): when the saved-card receipt replaces the Post button at the text cap, a long count such as \"12 cards checked in, 2 were held\" does not fit one 53 pt row beside the word \"Posted.\", so one of two words has to give, and your rule against shifting layout under the pointer decides which.\nBased on (read): the designer's notes, item 4, on the 53 pt bar mockup (branch design-duo-post-bar-53).\nBased on (ruling): you chose the 53 pt button-only bar (item 103 b, 2026-11-19 19:26 CST).\nDeparts from: main shows both \"Posted.\" and the count at every size \u2014 the build shows the count alone, only at the largest sizes where both do not fit one row.\nWaiting on: your answer; the builder keeps the count alone as built until you answer.",
   "home": "decision duo-card-in-hand",
   "id": "post-bar-receipt-words",

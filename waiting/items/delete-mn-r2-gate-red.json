@@ -1,6 +1,5 @@
 {
   "added": "2026-11-09T05:15:00Z",
-  "closed": "2026-11-15T19:14:00Z",
   "command": {
     "mac": "gh auth switch -u shivinate7\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/wip/mn-r2-gate-red\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/mutant/photo-fetch-order\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/lane/duo-ci-path-next\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/probe/orphaned-audit\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/probe/pro-ui-main-reds",
     "powershell": "gh auth switch -u shivinate7\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/wip/mn-r2-gate-red\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/mutant/photo-fetch-order\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/lane/duo-ci-path-next\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/probe/orphaned-audit\ngh api -X DELETE repos/shivinate7/mailaudit/git/refs/heads/probe/pro-ui-main-reds"
