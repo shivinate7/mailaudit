@@ -1,0 +1,46 @@
+{
+  "added": "2026-11-21T19:53:00Z",
+  "context": "Goal: no leftover browser processes keep running in the coordinator's cloud machine.\nProblem (rule): twelve headless Chrome processes from a finished designer are still running (pids 23961, 23969, 23970, 23993, 23996, 24010, 24044, 24056, 24058, 24082, 24084, 24106); the coordinator's stop was refused by the guard against machine-wide kills, and only your typed override lets it through.\nBased on (ruling): you said at 13:30 CST on 2026-11-21 that leftover Chrome can end (passed by the coordinator at 13:54 CST).\nDeparts from: main refuses a stop of processes the session did not start \u2014 this allows stopping these twelve, once.\nWaiting on: your typed override in the coordinator's session; the coordinator does nothing further meanwhile.",
+  "home": "coordinator session, guard machine-wide-kill",
+  "id": "stop-leftover-chrome",
+  "kind": "task",
+  "n": 111,
+  "options": [
+    {
+      "gain": "The twelve processes end and stop using the machine.",
+      "how": "You type override in the coordinator's session; the coordinator stops only these twelve pids.",
+      "id": "stop-them",
+      "key": "a",
+      "label": "Yes, stop these twelve",
+      "lose": "If a process were still in use, it would end too (the designer is finished)."
+    },
+    {
+      "gain": "Nothing ends that you did not approve one by one.",
+      "how": "The processes keep running until the machine is reclaimed.",
+      "id": "leave-them",
+      "key": "b",
+      "label": "No, leave them",
+      "lose": "Twelve idle processes keep using memory."
+    }
+  ],
+  "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
+  "recommended": "a",
+  "ref": "guard machine-wide-kill; designer run design-churn",
+  "repo": "shivinate7/mailaudit",
+  "short": "Stop 12 leftover Chrome processes",
+  "shown": [
+    {
+      "id": "stop-them",
+      "key": "a",
+      "label": "Yes, stop these twelve"
+    },
+    {
+      "id": "leave-them",
+      "key": "b",
+      "label": "No, leave them"
+    }
+  ],
+  "status": "open",
+  "title": "May the coordinator stop twelve leftover headless Chrome processes from a finished designer?",
+  "why": "You already said leftover Chrome can end; only your typed override lets the stop through."
+}
