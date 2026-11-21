@@ -166,6 +166,11 @@ figcaption { max-width:466px; }
 .band--page .core-name { font:600 var(--b-body)/var(--b-body-l) var(--cochin); overflow-wrap:normal; }
 .band--page .core-name small { display:block; font:var(--b-lab)/var(--b-lab-l) var(--mono); color:var(--inkSoft); font-weight:400; }
 
+.band.waiting .facts, .band.waiting .facts *, .band.waiting .act, .band.waiting .act .face { visibility:hidden; }
+.band.waiting .wait { position:absolute; inset:var(--space-3) var(--space-4); margin:0; display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2);
+  font:var(--b-body)/var(--b-body-l) var(--cochin); color:var(--inkSoft); z-index:1; }
+.band.waiting .wait .face { visibility:visible; }
+.band--page.waiting .wait { top:40%; bottom:auto; }
 /* the large content viewer (Holds at AX3): press and hold the band */
 .lcv { position:absolute; inset:0; z-index:20; display:grid; place-items:center; background:color-mix(in srgb, var(--ink) 25%, transparent); }
 .lcv div { background:color-mix(in srgb, var(--card) 96%, transparent); border-radius:16px; padding:var(--space-4) var(--space-6); text-align:center; max-width:90%;
@@ -217,6 +222,10 @@ figcaption { max-width:466px; }
   <div class="ctl" role="group" aria-label="Show"><span>Show</span>
     <a href="#">All</a><a href="#s=today">Today</a><a href="#s=foot-folded-ax5">Foot band, AX5</a><a href="#s=core-open-ax5">Core page, AX5</a>
     <a href="#s=size-half">Holds at half</a><a href="#s=size-grows">Grows with the text</a><a href="#s=rows-ax5">Rows that scroll</a>
+  </div>
+  <div class="ctl" role="group" aria-label="States"><span>State</span>
+    <a href="#s=foot-folded-ax5&amp;k=armed">Clear asks</a><a href="#s=foot-folded-ax5&amp;k=undo">Undo held</a>
+    <a href="#s=foot-folded-ax5&amp;k=end">Scrolled to the end</a><a href="#s=foot-folded-ax5&amp;k=loading">Opening</a><a href="#s=foot-folded-ax5&amp;k=failed">Did not open</a>
   </div>
   <div class="ctl" role="group" aria-label="Hide an option"><span>Hide</span>
     <button type="button" data-hide="foot">Hide Foot band</button><button type="button" data-hide="core">Hide Core page</button>
@@ -466,6 +475,12 @@ class Frame {
     const cancel = cur === 'armed' ? `<button type="button" class="cancel" data-act="cancel">Cancel</button>` : '';
     const id = this.focus ? ` id="band-${this.id}"` : '';
     const tag = place === 'foot' ? 'New: Foot band' : place === 'head' ? 'New: head band, pins' : 'New: Core page';
+    // Not read yet, or failed: a sentence in the figures' place, never a zero (ux-unknown-is-not-empty). The band keeps its size.
+    if (this.k === 'loading' || this.k === 'failed') {
+      const say = this.k === 'loading' ? '<p class="wait">Opening the ledger</p>'
+        : '<p class="wait">The ledger did not open. <button type="button" class="face on clear" data-act="ledger"><span class="tx">Open Ledger</span></button></p>';
+      return `<section class="band band--${place} tag-new waiting" data-tag="${tag}"${id} aria-label="Core" data-tier="${place === 'page' ? 'page' : 'row'}">${say}${facts}${act}</section>`;
+    }
     if (place === 'page') {
       const r = this.openRow();
       return `<section class="band band--page tag-new" data-tag="${tag}"${id} aria-label="Core" data-tier="page">
@@ -492,7 +507,7 @@ class Frame {
   letterhead() { return `<div class="lh"><div class="rules"><i></i>${SEAL}<i></i></div><div class="title">Manifest</div><div class="house">C.H Postal Company</div></div>`; }
   html() {
     const dev = this.device, open = dev === 'iphone-duo-unfolded', foot = this.concept === 'foot';
-    const list = mode => `<div class="sect">Tally</div><div class="list">${this.st.names.map(r => this.rowHTML(r, mode)).join('')}</div>`;
+    const list = mode => this.k === 'loading' || this.k === 'failed' ? '' : `<div class="list" aria-label="Tally">${this.st.names.map(r => this.rowHTML(r, mode)).join('')}</div>`;
     let body;
     if (!open && foot) {
       body = `<div class="pg"><div class="scroll"><div class="scroll-in">${this.letterhead()}${list('inline')}</div></div>${this.bandHTML('foot')}</div>${bar('Tally')}`;
@@ -502,7 +517,7 @@ class Frame {
       const r = this.openRow();
       body = `<div class="pg l"><div class="scroll"><div class="scroll-in">${this.letterhead()}${list('cell')}</div></div></div>
         <div class="fold"><span>FOLD</span></div>
-        <div class="pg r"><div class="scroll"><div class="scroll-in">${r ? `<h2 class="detail-title">${esc(r.name)}</h2><div class="across">${new Set(r.copies.map(c => c.seller)).size} sellers · ${r.copies.length} orders · ${esc(r.set)}</div><div class="trow">${this.copiesHTML(r)}</div>` : ''}</div></div>${this.bandHTML('foot')}</div>${bar('Tally')}`;
+        <div class="pg r"><div class="scroll"><div class="scroll-in">${r && this.k !== 'loading' && this.k !== 'failed' ? `<h2 class="detail-title">${esc(r.name)}</h2><div class="across">${new Set(r.copies.map(c => c.seller)).size} sellers · ${r.copies.length} orders · ${esc(r.set)}</div><div class="trow">${this.copiesHTML(r)}</div>` : ''}</div></div>${this.bandHTML('foot')}</div>${bar('Tally')}`;
     } else {
       body = `<div class="pg l">${this.bandHTML('page')}</div><div class="fold"><span>FOLD</span></div>
         <div class="pg r"><div class="scroll"><div class="scroll-in">${list('inline')}</div></div></div>${bar('Tally')}`;
@@ -587,10 +602,10 @@ class Frame {
     const tier = band.dataset.tier, bad = clipped.length || outside || tall;
     const held = this.bandTs !== this.ts;
     out.classList.toggle('bad', !!bad);
-    out.textContent = `Reader at ${TSNAME[this.ts]}; band at ${TSNAME[this.bandTs]}${held ? ' (press and hold it for ' + TSNAME[this.ts] + ')' : ''}. `
-      + `Shape: ${tier === 'page' ? 'whole page' : tier}, ${h} pt tall${tier === 'page' ? '' : ', limit ' + this.limit + ' pt' + (this.grow ? ' (off)' : '')}. `
-      + (bad ? `CLIPS: ${clipped.length} element(s)${outside ? ', leaves its page' : ''}${tall ? ', taller than its page' : ''}. ` : 'Nothing clipped. ')
-      + (steady ? 'The action slot holds its tallest face, so Undo and the ask keep the height.' : 'HEIGHT CHANGES between faces.');
+    out.textContent = `Band at ${TSNAME[this.bandTs]} for a reader at ${TSNAME[this.ts]}${held ? ' (hold for full size)' : ''}; `
+      + `${tier === 'page' ? 'whole page' : tier}, ${h}${tier === 'page' ? '' : ' of ' + this.limit + (this.grow ? ' (no limit)' : '')} pt. `
+      + (bad ? `CLIPS ${clipped.length}${outside ? ', leaves its page' : ''}${tall ? ', taller than its page' : ''}. ` : 'Nothing clipped. ')
+      + (steady ? 'Same height in every state.' : 'HEIGHT CHANGES between states.');
   }
   click(e) {
     const b = e.target.closest('[data-act]'); if (!b) return;
@@ -602,6 +617,7 @@ class Frame {
     if (a === 'arm') { this.k = 'armed'; this.lapse(); }
     if (a === 'clear' && r) { r.copies.forEach(c => { c.got = false; }); this.k = 'rest'; clearTimeout(this.armTimer); }
     if (a === 'cancel') { this.k = 'rest'; clearTimeout(this.armTimer); }
+    if (a === 'ledger') this.k = 'loading';  // the Ledger tab holds recovery; here the press only shows the next read
     this.render();
     // Cancel takes first focus when the ask opens (armed-reset-takes-the-row); otherwise focus stays on the pressed control's place.
     const focusSel = a === 'arm' ? '.cancel' : a === 'mark' ? '.face.undo' : a === 'undo' || a === 'cancel' ? '.face.on' : null;
@@ -619,6 +635,7 @@ class Frame {
     const r = this.openRow();
     if (k === 'armed' && r) { r.copies.forEach(c => { c.got = true; }); this.k = 'armed'; }
     if (k === 'undo' && r) { this.undo = r.copies.filter(c => !c.got); this.undo.forEach(c => { c.got = true; }); this.k = 'undo'; }
+    if (k === 'loading' || k === 'failed') this.k = k;
     this.render(false);
     if (k === 'end') this.m.querySelectorAll('.scroll').forEach(s => { s.scrollTop = s.scrollHeight; });
   }
@@ -636,7 +653,7 @@ function route() {
   document.querySelectorAll('section.concept').forEach(c => { c.hidden = hidden.has(c.dataset.opt) || [...c.querySelectorAll('figure')].every(f => f.hidden); });
   document.querySelectorAll('[data-ts]').forEach(b => { if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', String((p.ts || '') === b.dataset.ts)); });
   document.querySelectorAll('[data-n]').forEach(b => b.setAttribute('aria-pressed', String((p.n || '4') === b.dataset.n)));
-  document.querySelectorAll('.controls a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href').slice(1).split('&')[0] === (s ? 's=' + s : ''))));
+  document.querySelectorAll('.controls a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === (location.hash || '#'))));
   fitZoom();
   insts.forEach(i => { i.k = 'rest'; i.undo = null; i.st = sample(+(p.n || 4)); i.n = +(p.n || 4); i.open = 'Brainstorm';
     if (!i.m.closest('figure').hidden) i.applyK(p.k); });
