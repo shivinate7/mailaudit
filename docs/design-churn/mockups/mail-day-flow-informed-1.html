@@ -167,18 +167,21 @@ section.concept[hidden] { display:none; }
 .strip { flex:none; padding:4px 16px 8px; display:flex; align-items:flex-end; justify-content:space-between; gap:12px; }
 .envs { display:flex; flex-wrap:wrap; gap:12px; align-items:flex-end; min-width:0; }
 .bundle { display:flex; gap:4px; align-items:flex-end; padding-bottom:2px; border-bottom:2px solid var(--line); }
-.env { width:26px; height:18px; border:1.5px solid var(--line); border-radius:2px; background:var(--card); position:relative; flex:none; transition:transform .2s ease; }
-.env::before { content:""; position:absolute; left:2px; right:2px; top:1px; height:9px; border-left:1.5px solid currentColor; border-bottom:1.5px solid currentColor; transform-origin:0 0;
-  clip-path:polygon(0 0,100% 0,50% 100%); background:linear-gradient(to bottom right, transparent 48%, currentColor 49%, currentColor 55%, transparent 56%) left/50% 100% no-repeat,
-  linear-gradient(to bottom left, transparent 48%, currentColor 49%, currentColor 55%, transparent 56%) right/50% 100% no-repeat; border:0; color:var(--line); }
-.env.done { background:var(--greenSoft); border-color:var(--green); } .env.done::before { color:var(--green); }
-.env.short { background:var(--redSoft); border-color:var(--red); } .env.short::before { color:var(--red); }
-.env.aside { background:var(--manila); border-color:var(--manilaInk); } .env.aside::before { color:var(--manilaInk); }
-.env.now { border:2px solid var(--accent); transform:translateY(-4px); box-shadow:0 2px 0 var(--line); } .env.now::before { color:var(--accent); }
+/* One envelope of the pile: a drawn envelope, by state. Shape and a mark carry the state too, not colour alone:
+   done has a tick, short a gap, set aside a band; the strip's label speaks the counts. */
+.env { --ef:var(--card); --es:var(--inkSoft); width:34px; height:24px; flex:none; display:block; transition:transform .2s ease; }
+.env svg { width:100%; height:100%; display:block; overflow:visible; }
+.env rect { fill:var(--ef); stroke:var(--es); stroke-width:1.5; }
+.env .flap { fill:none; stroke:var(--es); stroke-width:1.5; stroke-linejoin:round; }
+.env .mk { fill:none; stroke:var(--es); stroke-width:2.2; stroke-linecap:round; stroke-linejoin:round; display:none; }
+.env.done { --ef:var(--greenSoft); --es:var(--green); } .env.done .tick { display:block; }
+.env.short { --ef:var(--redSoft); --es:var(--red); } .env.short .gap { display:block; }
+.env.aside { --ef:var(--manila); --es:var(--manilaInk); } .env.aside .band { display:block; }
+.env.now { --es:var(--accent); transform:translateY(-6px); } .env.now rect { stroke-width:2.5; }
 .env.just { animation:file .32s ease-out; }
 @keyframes file { 0% { transform:translateY(-10px) rotate(-6deg); } 100% { transform:none; } }
 .leftfig { text-align:right; flex:none; display:flex; flex-direction:column; align-items:flex-end; }
-.leftfig b { font:700 calc(28px * var(--kbx)) / 1 var(--mono); color:var(--ink); }
+.leftfig b { font:700 calc(34px * var(--kbx)) / 1 var(--mono); color:var(--ink); }
 .leftfig span { font:calc(12px * var(--kcx)) var(--mono); color:var(--inkSoft); }
 .pilenote { flex:none; padding:0 16px 4px; font:calc(13px * var(--kf)) var(--cochin); color:var(--inkSoft); }
 .count { display:flex; flex-direction:column; gap:12px; }
@@ -189,6 +192,7 @@ section.concept[hidden] { display:none; }
 .bigpile { display:flex; flex-wrap:wrap; gap:16px; align-content:flex-start; }
 .bigpile .bundle { gap:6px; }
 .bigpile .env { width:52px; height:36px; }
+.lrow .env { width:26px; height:18px; transform:none; }
 .ledger { display:flex; flex-direction:column; gap:8px; }
 .lrow { display:flex; align-items:center; gap:12px; min-height:44px; padding:0 12px; background:var(--card); border:1px solid var(--line); border-radius:8px; font:calc(14px * var(--kb)) var(--cochin); }
 .lrow.now { border-color:var(--accent); box-shadow:inset 3px 0 0 var(--accent); }
@@ -244,7 +248,13 @@ section.concept[hidden] { display:none; }
 .tags-on [data-tag^="Today"] { outline-color:var(--today); }
 .tags-on [data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:2px; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper); color:var(--new); z-index:9; white-space:nowrap; pointer-events:none; }
 .tags-on [data-tag^="Today"]::after { color:var(--today); }
-.tags-on .line.now[data-tag]::after { width:auto; background:var(--paper); left:auto; top:2px; bottom:auto; }
+.tags-on .mini[data-tag]::after { content:none; }  /* a button's tag would cover its label: the outline stays, the name is in its tooltip */
+.tags-on [data-tagpos="b"]::after { top:auto; bottom:2px; }
+/* AX5: the head and the answer scroll as one; the Post bar and the dock stay pinned over the foot. */
+.dev.ax5 .main { overflow-y:auto; }
+.dev.ax5 .main > .ans { flex:none; overflow:visible; }
+.dev.ax5 .main > .dock { position:sticky; bottom:0; z-index:3; margin-top:auto; }
+.dev.ax5 .envrow .what span, .dev.ax5 .pilenote { font-size:calc(14px * var(--kbx)); }
 
 @media (prefers-reduced-motion: reduce) { .seal.lands, .env.just { animation:none; } .env { transition:none; } }
 @media (max-width: 520px) { main.doc { padding:16px; } .frames { gap:16px; } }

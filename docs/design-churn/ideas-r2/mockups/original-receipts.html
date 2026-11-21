@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Original Receipts</title>
+<style>
+/* Tokens: the same neutral idea-mockup set as round 1 (the-reveal.html), plus a mono face for raw CSV.
+   Type sizes are the iOS Dynamic Type styles at the default (Large) size. */
+:root{
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#6b685f;
+  --line:#dcd9d1; --accent:#a8402a; --accent-faint:#f8ece7; --ok:#256b41; --ok-bg:#e3f0e7; --ok-ink:#17462a;
+  --warn:#8a5200; --warn-bg:#f8ecd6; --danger:#b3261e; --tag-new:#2c5aa8; --tag-today:#5c5a55; --tag-r1:#7a5a12;
+  --mono-bg:#f0eee8; --hl:#fde9a8; --hl-ink:#3b2c00;
+  --chrome:#ffffff; --chrome-line:#d6d3cb; --scrim:rgba(20,18,15,.32); --hinge:#2a2926; --bezel:#151412; --toast:#2b2a27; --toast-ink:#f5f4f0;
+  --mono:ui-monospace,"SF Mono",Menlo,Consolas,monospace;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+    --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+    --warn:#e6aa52; --warn-bg:#3b2c13; --danger:#f2867c; --tag-new:#8fb2ef; --tag-today:#b5b1a8; --tag-r1:#d9b765;
+    --mono-bg:#191816; --hl:#5a4710; --hl-ink:#fff1c4;
+    --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+  --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+  --warn:#e6aa52; --warn-bg:#3b2c13; --danger:#f2867c; --tag-new:#8fb2ef; --tag-today:#b5b1a8; --tag-r1:#d9b765;
+  --mono-bg:#191816; --hl:#5a4710; --hl-ink:#fff1c4;
+  --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button[disabled]{cursor:default}
+:focus-visible{outline:3px solid var(--tag-new);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+.mono{font-family:var(--mono);font-size:13px}
+
+/* Page chrome */
+.sample{background:var(--warn-bg);color:var(--warn);font-size:13px;line-height:18px;padding:8px 12px;border-radius:10px;margin:0 0 12px;max-width:1100px}
+header.page{max-width:1100px;margin:0 0 8px}
+header.page h1{font-size:28px;line-height:34px;margin:0;font-weight:700;letter-spacing:-.01em}
+header.page .pitch{font-size:15px;line-height:20px;color:var(--ink2);margin:4px 0 0}
+header.page .pitch b{color:var(--accent);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:flex-start;margin:12px 0 0;max-width:1100px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg a,.seg button{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);
+  font-size:15px;text-decoration:none;color:var(--ink)}
+.seg a[aria-current="true"],.seg button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.ctl-label{font-size:13px;color:var(--ink3);min-width:44px;line-height:36px}
+.stategrid{display:grid;grid-template-columns:auto 1fr;gap:6px 12px;margin:12px 0 0;max-width:1100px;align-items:start}
+.stategrid .g{font-size:13px;color:var(--ink3);line-height:36px;white-space:nowrap}
+.caption{font-size:15px;line-height:20px;color:var(--ink2);max-width:780px;margin:14px 0 0;min-height:60px}
+.stage{display:flex;gap:32px;align-items:flex-start;overflow-x:auto;padding:8px 2px 12px;margin-top:8px}
+.note{font-size:13px;line-height:18px;color:var(--ink3);max-width:1100px;margin:16px 0 0}
+.choices{max-width:860px;margin:24px 0 0;font-size:15px;line-height:20px;color:var(--ink2)}
+.choices h2{font-size:20px;line-height:25px;color:var(--ink);margin:0 0 8px}
+.choices ol{padding-left:22px;margin:0}
+.choices li{margin:0 0 8px}
+.choices b{color:var(--ink)}
+
+/* Device frames: 390 x 844 per screen, the brief's size; the device list writes no size */
+.phone{flex:none;background:var(--bezel);border-radius:48px;padding:10px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.phone[hidden]{display:none}
+.screen{position:relative;width:390px;height:844px;border-radius:38px;overflow:hidden;background:var(--screen);display:flex;flex-direction:column;
+  --sat:calc(env(safe-area-inset-top,0px) + 54px); --sab:calc(env(safe-area-inset-bottom,0px) + 34px)}
+.duo{display:flex}
+.duo .screen.left{border-top-right-radius:6px;border-bottom-right-radius:6px}
+.duo .screen.right{border-top-left-radius:6px;border-bottom-left-radius:6px}
+.hinge{width:14px;background:var(--hinge);margin:30px 0;border-radius:3px}
+.status{flex:none;height:var(--sat);padding:18px 32px 0;display:flex;justify-content:space-between;font-size:15px;font-weight:600}
+.status i{display:block;width:24px;height:12px;border-radius:3px;border:1.5px solid currentColor;opacity:.85;margin-top:4px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:17px;background:#000;z-index:40}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.8;z-index:40}
+
+.nav{flex:none;padding:0 16px 6px}
+.nav-top{height:44px;display:flex;justify-content:space-between;align-items:center}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;margin:0}
+.sub{font-size:15px;line-height:20px;color:var(--ink2);margin:0;padding:0 20px 4px}
+.navbtn{min-width:44px;min-height:44px;font-size:17px;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.navbtn[disabled]{color:var(--ink3)}
+.navbtn.strong{font-weight:600}
+.scroll{flex:1;overflow:hidden;padding:4px 16px var(--sab)}
+
+/* Lists */
+.sect{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:12px 0 6px 4px}
+.list{background:var(--surface);border-radius:14px;margin:0 0 10px;overflow:hidden}
+.row{display:flex;align-items:center;gap:10px;width:100%;min-height:60px;padding:8px 10px 8px 14px;border-top:.5px solid var(--line)}
+.list > .row:first-child{border-top:0}
+.row .main{flex:1;min-width:0}
+.row .t,.row .s{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .t{font-size:17px;line-height:22px}
+.row .s{font-size:13px;line-height:18px;color:var(--ink2)}
+.row .q{color:var(--ink2)}
+.row.sel{background:var(--accent-faint)}
+.row .s2{display:flex;justify-content:space-between;align-items:center;gap:8px}
+.row .s2 .sync{margin-top:0;flex:none}
+.chev{width:8px;height:13px;flex:none;color:var(--ink3)}
+.circ{width:26px;height:26px;border-radius:13px;border:2px solid var(--ink3);flex:none}
+.circ.got{background:var(--ok);border-color:var(--ok)}
+
+/* Sync marks: shape and words, never colour alone */
+.sync{display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;margin-top:2px}
+.sync i{width:10px;height:10px;border-radius:5px;flex:none}
+.sync.ok i{background:var(--ok)}
+.sync.dev i{border:2px solid var(--warn)}
+.sync.srv i{border:2px solid var(--ink3);border-radius:2px}
+.sync.off{color:var(--warn)}
+.sync.off i{border:2px solid var(--warn);border-radius:2px}
+
+/* Tab bar */
+.tabbar{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) - 8px);height:58px;border-radius:29px;background:var(--chrome);border:.5px solid var(--chrome-line);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);display:grid;grid-template-columns:repeat(3,1fr);align-items:center;z-index:5}
+.tab{min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:13px;color:var(--ink2);gap:2px}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent)}
+
+/* Sheets */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:10}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:64px;background:var(--screen);border-radius:24px 24px 0 0;z-index:11;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:6px auto 0;flex:none}
+.sheet-bar,.pane-bar{height:52px;display:grid;grid-template-columns:88px 1fr 88px;align-items:center;padding:0 8px;flex:none}
+.sheet-bar h3,.pane-bar h3{margin:0;text-align:center;font-size:17px;line-height:22px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sheet-bar .r,.pane-bar .r{justify-self:end}
+.sheet-bar .l,.pane-bar .l{justify-self:start}
+.body{flex:1;overflow:hidden;padding:14px 16px var(--sab);position:relative}
+
+/* Import: picked file row, then the reserved slot */
+.filepick{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:14px;padding:10px 14px;margin:0 0 12px;min-height:60px}
+.filepick .main{flex:1;min-width:0}
+.filepick .t{font-size:17px;line-height:22px}
+.filepick .s{font-size:13px;line-height:18px;color:var(--ink2)}
+.fileicon{width:28px;height:34px;border-radius:4px;border:1.5px solid var(--ink3);position:relative;flex:none}
+.fileicon::after{content:"CSV";position:absolute;bottom:3px;left:0;right:0;text-align:center;font-size:8px;line-height:9px;font-weight:700;color:var(--ink2)}
+/* The slot: one fixed height whether it holds the receipt or the drift hold, so nothing moves under the pointer */
+.slot{height:510px;background:var(--surface);border-radius:16px;padding:14px;display:flex;flex-direction:column;position:relative}
+.duo .slot{height:560px}
+.slot h4{margin:0;font-size:17px;line-height:22px;font-weight:600}
+.slot .lead{font-size:15px;line-height:20px;color:var(--ink2);margin:4px 0 12px}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.stat{background:var(--screen);border-radius:12px;padding:10px 12px;min-height:64px}
+.stat .n{font-size:22px;line-height:28px;font-weight:700}
+.stat .k{font-size:13px;line-height:18px;color:var(--ink2)}
+.stat.zero .n{color:var(--ink3)}
+.rule{font-size:13px;line-height:18px;color:var(--ink2);margin:0 0 12px}
+/* Source line: a fixed two-line slot at phone width */
+.srcline{height:58px;display:flex;gap:10px;align-items:flex-start;padding:10px 12px;border-radius:12px;background:var(--screen)}
+.srcline .ic{width:18px;height:18px;flex:none;margin-top:1px}
+.srcline .txt{min-width:0;font-size:13px;line-height:18px;color:var(--ink2)}
+.srcline .txt b{color:var(--ink);font-weight:600}
+.srcline .txt .m{display:block;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.srcline.amber{background:var(--warn-bg)}
+.srcline.amber .txt,.srcline.amber .txt b{color:var(--warn)}
+.srcline.ok .ic{color:var(--ok)}
+.srcline.dev .ic{color:var(--warn)}
+.srcline.same .ic{color:var(--ink2)}
+
+/* Drift hold */
+.drift-flag{display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:18px;font-weight:600;color:var(--warn);background:var(--warn-bg);border-radius:8px;padding:3px 8px;margin:0 0 8px}
+.maprow{display:grid;grid-template-columns:1fr auto;gap:4px 10px;align-items:center;padding:10px 0;border-top:.5px solid var(--line)}
+.maprow.first{border-top:0}
+.maprow.focus .colname{box-shadow:0 0 0 2px var(--tag-new)}
+.colname{font-family:var(--mono);font-size:13px;line-height:18px;background:var(--mono-bg);border-radius:6px;padding:3px 6px;justify-self:start;max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.maphint{grid-column:1/2;font-size:13px;line-height:18px;color:var(--ink2)}
+.maphint.prot{color:var(--warn)}
+.pick{grid-row:1/3;grid-column:2;min-height:44px;width:140px;padding:0 12px;border-radius:12px;border:1px solid var(--line);display:inline-flex;align-items:center;justify-content:space-between;gap:6px;font-size:15px;color:var(--accent)}
+.pick.set{color:var(--ink);background:var(--ok-bg);border-color:transparent}
+.pick.set.ign{background:var(--screen);color:var(--ink2)}
+.pick svg{width:12px;height:12px;flex:none}
+.matched{font-size:13px;line-height:18px;color:var(--ink2);padding:10px 0 0;margin:0;border-top:.5px solid var(--line);display:-webkit-box;-webkit-line-clamp:3;-webkit-box-orient:vertical;overflow:hidden}
+.fp{font-size:13px;line-height:18px;color:var(--ink3);margin:0}
+.gate{font-size:13px;line-height:18px;color:var(--ink2);text-align:right;height:18px;margin:8px 4px 0}
+.errbox{display:flex;flex-direction:column;align-items:flex-start;gap:10px;padding:8px 2px}
+.errbox .big{font-size:20px;line-height:25px;font-weight:600;color:var(--ink)}
+.errbox .ico{width:36px;height:36px;color:var(--danger)}
+.errbox p{margin:0;font-size:15px;line-height:20px;color:var(--ink2)}
+.btn{min-height:50px;border-radius:14px;background:var(--accent);color:var(--surface);font-weight:600;font-size:17px;display:flex;align-items:center;justify-content:center;width:100%;padding:0 16px}
+.btn.ghost{background:var(--surface);color:var(--accent)}
+.btn.ghost.destr{color:var(--danger)}
+.btn[disabled]{background:var(--line);color:var(--ink3)}
+
+/* In-app action sheet: the column picker and the delete confirm (no native dialogs) */
+.asheet{position:absolute;left:8px;right:8px;bottom:calc(var(--sab) - 18px);z-index:21;display:flex;flex-direction:column;gap:8px}
+.asheet .grp{background:var(--surface);border-radius:14px;overflow:hidden}
+.asheet .hd{padding:12px 16px;text-align:center;font-size:13px;line-height:18px;color:var(--ink2);border-bottom:.5px solid var(--line)}
+.asheet .hd b{display:block;font-size:15px;line-height:20px;color:var(--ink);font-weight:600;margin-bottom:2px}
+.asheet .opt{display:flex;align-items:center;justify-content:space-between;width:100%;min-height:50px;padding:0 16px;border-top:.5px solid var(--line);font-size:17px;color:var(--accent)}
+.asheet .hd + .opt{border-top:0}
+.asheet .opt small{font-size:13px;color:var(--ink2)}
+.asheet .opt.cancel{justify-content:center;font-weight:600;border-top:0}
+.asheet .opt.destr{justify-content:center;color:var(--danger)}
+.ascrim{position:absolute;inset:0;background:var(--scrim);z-index:20}
+
+/* Sources */
+.banner{display:flex;gap:10px;align-items:flex-start;background:var(--warn-bg);color:var(--warn);border-radius:12px;padding:10px 12px;font-size:15px;line-height:20px;margin:0 0 10px}
+.banner .ic{width:18px;height:18px;flex:none;margin-top:1px}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:8px;padding:120px 24px 0;color:var(--ink2)}
+.empty .big{font-size:20px;line-height:25px;font-weight:600;color:var(--ink)}
+.empty p{margin:0;font-size:15px;line-height:20px}
+.yearrow .t{font-weight:600}
+.meta{display:grid;grid-template-columns:auto 1fr;background:var(--surface);border-radius:14px;overflow:hidden;margin:0 0 12px}
+.meta dt,.meta dd{margin:0;padding:12px 14px;border-top:.5px solid var(--line);font-size:15px;line-height:20px;min-height:44px}
+.meta dt{color:var(--ink2);padding-right:6px}
+.meta dd{text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.meta dt:first-of-type,.meta dt:first-of-type + dd{border-top:0}
+.actions{display:flex;flex-direction:column;gap:8px}
+.needs{font-size:13px;line-height:18px;color:var(--warn);text-align:center;height:18px;margin:0}
+
+/* Raw CSV */
+.raw{font-family:var(--mono);font-size:12px;line-height:17px;background:var(--mono-bg);border-radius:10px;padding:10px 12px;color:var(--ink2);overflow:hidden;word-break:break-all;margin:0 0 12px}
+.raw .ln{color:var(--ink3);user-select:none;margin-right:6px}
+.raw .cell{border-radius:3px;padding:0 1px}
+.raw .cell.on{background:var(--hl);color:var(--hl-ink)}
+.red{background:var(--line);color:var(--ink2);border-radius:3px;padding:0 4px;font-family:-apple-system,system-ui,sans-serif;font-size:11px;word-break:normal;white-space:nowrap}
+.rawslot{height:96px}
+.rawslot.off{display:flex;align-items:center;justify-content:center;font-family:-apple-system,system-ui,sans-serif;font-size:13px;color:var(--ink3)}
+
+/* Provenance */
+.prov{background:var(--surface);border-radius:14px;padding:12px 14px;margin:0 0 10px}
+.prov .from{font-size:15px;line-height:20px;display:flex;gap:8px;align-items:flex-start}
+.prov .from svg{width:18px;height:18px;flex:none;margin-top:1px;color:var(--ink2)}
+.prov .from b{font-weight:600}
+.prov .from .k{color:var(--ink2)}
+.prov.quiet .from{color:var(--ink2)}
+.prov .offl{color:var(--warn);margin-top:6px}
+.prov .offl svg{color:var(--warn)}
+.toggle{display:flex;align-items:center;justify-content:space-between;min-height:44px;margin-top:6px;width:100%;font-size:17px}
+.toggle[disabled]{color:var(--ink3)}
+.sw{width:51px;height:31px;border-radius:16px;background:var(--line);position:relative;flex:none;transition:background .2s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:14px;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.toggle[aria-checked="true"] .sw{background:var(--ok)}
+.toggle[aria-checked="true"] .sw::after{transform:translateX(20px)}
+.fields{width:100%;border-collapse:collapse;background:var(--surface);border-radius:14px;overflow:hidden;table-layout:fixed}
+.fields th{font-size:13px;line-height:18px;color:var(--ink2);font-weight:400;text-align:left;padding:8px 10px}
+.fields td{border-top:.5px solid var(--line);padding:0 10px;height:44px;font-size:15px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.fields td:first-child,.fields th:first-child{width:24%}
+.fields td:first-child{color:var(--ink2)}
+.fields .rc{width:32%;transition:opacity .15s}
+.fields td.rc{font-family:var(--mono);font-size:12px;color:var(--ink2)}
+.fields .rc.hide{opacity:0}
+.fields tr.pickable{cursor:pointer}
+.fields tr.on td{background:var(--hl);color:var(--hl-ink)}
+.cardhead{background:var(--surface);border-radius:14px;padding:12px 14px;margin:0 0 10px}
+.cardhead .t{font-size:20px;line-height:25px;font-weight:600}
+.cardhead .s{font-size:15px;line-height:20px;color:var(--ink2)}
+.hint{font-size:13px;line-height:18px;color:var(--ink2);margin:8px 4px 0;height:18px}
+
+/* Re-read diff */
+.dlead{font-size:15px;line-height:20px;color:var(--ink2);margin:0 0 10px;padding:10px 4px 0}
+.dgrp{background:var(--surface);border-radius:14px;padding:12px 14px;margin:0 0 10px}
+.dgrp h5{margin:0 0 6px;font-size:17px;line-height:22px;font-weight:600}
+.dgrp .ex{font-size:13px;line-height:18px;color:var(--ink2);margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dgrp .ex s{color:var(--ink3)}
+.dgrp .ex ins{text-decoration:none;color:var(--ink);font-weight:600}
+.dgrp .ex.okk{color:var(--ok);height:50px;margin-top:10px;display:flex;align-items:center}
+.dseg{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px;background:var(--screen);padding:3px;border-radius:12px}
+.dseg button{min-height:44px;border-radius:10px;font-size:15px;text-align:center;color:var(--ink2)}
+.dseg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);font-weight:600;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.locked{font-size:13px;line-height:18px;color:var(--ink2);border:1px dashed var(--line);border-radius:12px;padding:10px 12px;margin:0 0 12px}
+.locked b{color:var(--ink)}
+
+.toast{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) + 8px);background:var(--toast);color:var(--toast-ink);border-radius:14px;padding:12px 14px;font-size:15px;line-height:20px;z-index:30;box-shadow:0 8px 20px rgba(0,0,0,.2);pointer-events:none}
+
+/* Dashed labels: Today = in the app now, Round 1 = round 1's idea this builds on, New = this direction */
+.lbl{position:relative;outline:1.5px dashed var(--tag-new);outline-offset:3px;border-radius:12px}
+.lbl[data-k="today"]{outline-color:var(--tag-today)}
+.lbl[data-k="r1"]{outline-color:var(--tag-r1)}
+.lbl::after{content:attr(data-lbl);position:absolute;top:-11px;right:10px;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;
+  background:var(--tag-new);color:var(--surface);white-space:nowrap;z-index:4;pointer-events:none}
+.lbl[data-k="today"]::after{background:var(--tag-today)}
+.lbl[data-k="r1"]::after{background:var(--tag-r1)}
+:root[data-labels="off"] .lbl{outline:none}
+:root[data-labels="off"] .lbl::after{display:none}
+@media (prefers-reduced-motion:reduce){.sw,.sw::after,.fields .rc{transition:none}}
+@media (max-width:520px){.stategrid{grid-template-columns:1fr}.stategrid .g{line-height:18px;margin-top:6px}}
+</style>
+</head>
+<body>
+<p class="sample" role="note"><b>Sample.</b> Every file name, seller, card, order number, hash, date and price on this page is invented. No figure is real.</p>
+<header class="page">
+  <h1>Original Receipts</h1>
+  <p class="pitch"><b>Mockup, not built.</b>  Keep every imported CSV exactly as it arrived, point each ledger row at its file and line, and refuse to guess when the export format changes.</p>
+  <div class="stategrid" id="states" role="navigation" aria-label="Screen states"></div>
+  <div class="controls">
+    <span class="ctl-label">Pose</span><div class="seg" id="poses"></div>
+    <span class="ctl-label">Theme</span><div class="seg" id="themes"></div>
+    <span class="ctl-label">Labels</span><div class="seg"><button type="button" id="lblBtn" aria-pressed="true">Today / Round 1 / New</button></div>
+  </div>
+</header>
+
+<p class="caption" id="caption" aria-live="polite"></p>
+
+<div class="stage">
+  <div class="phone" data-device="iphone-duo-folded" id="folded">
+    <div class="screen" id="fscreen"></div>
+  </div>
+  <div class="phone duo" data-device="iphone-duo-unfolded" id="unfolded" hidden>
+    <div class="screen left" id="uleft"></div>
+    <div class="hinge" aria-hidden="true"></div>
+    <div class="screen right" id="uright"></div>
+  </div>
+</div>
+
+<p class="note">Frames: the phone (folded pose) is 390 by 844; the two-screen pose is two 390 by 844 screens with a hinge. The repo's device list writes no size, so both are drawn at the brief's size. The two-screen pose is its own layout: a list on the left and its detail on the right. Type uses the iOS Dynamic Type styles at the default size; tap targets are at least 44 by 44 pt. No desktop web frame: the plan names no web width. Labels: grey "Today" is in the app now, gold "Round 1" is round 1's import receipt idea this builds on, blue "New" is this direction.</p>
+
+<section class="choices" aria-labelledby="ch">
+  <h2 id="ch">Design choices</h2>
+  <ol>
+    <li><b>One slot, two contents.</b> The receipt and the drift hold share one fixed-height panel in the import sheet. Gain: Merge and Cancel never move. Loss: a short receipt leaves blank space. Pick: fixed slot.</li>
+    <li><b>Source line on two fixed lines.</b> The plan says one line; at 390 pt the full line does not fit. Gain: the file name never truncates. Loss: one more line of height. Pick: two fixed lines; the second ellipsizes.</li>
+    <li><b>Protected columns show a guess but never pick it.</b> Cost, quantity, order number and product name under a new name stay unset until tapped. Gain: no wrong price slips through. Loss: one more tap per format change. Pick: as the plan says.</li>
+    <li><b>Merge stays off, with the reason under it.</b> "Answer 2 columns to merge." Gain: the owner sees why. Pick: this.</li>
+    <li><b>Address cells hidden on screen.</b> Raw views mask the ship-to cell as "address hidden"; the kept file is unchanged. Not in the plan. Gain: a shared screenshot leaks no address. Loss: the view is not byte for byte. Pick: mask. Owner grant: yes.</li>
+    <li><b>Delete keeps the rows.</b> The delete sheet says the ledger rows stay and only "show raw line" stops working. The plan names the sheet, not this outcome. Owner grant: yes.</li>
+    <li><b>Sync mark is shape plus words.</b> Filled dot "On server", ring "Uploading", square "On server only". Gain: readable without colour. Pick: this.</li>
+    <li><b>Re-read groups start undecided.</b> Neither Accept nor Reject is pressed, and Apply counts only accepted groups. Pick: as the plan says.</li>
+    <li><b>Two-screen pose.</b> Left: the list or the import sheet. Right: the file, the column samples, the provenance pane or the diff. Gain: a mapped column sits beside its raw cells. Pick: this.</li>
+    <li><b>Sample clock.</b> The page is set in July 2027, so a sources list exists after receipts start in 2026-11. The 400-file state is set in June 2028.</li>
+  </ol>
+</section>
+
+<script>
+(function(){
+"use strict";
+var STATES=[
+  {k:"receipt",g:"Import receipt",n:"Known format",cap:"A known export goes straight to the round 1 receipt. One new line at the bottom says the file was kept, with size, format id, parser and row counts. Merge adds rows and never replaces one."},
+  {k:"dup",g:"Import receipt",n:"Already kept",cap:"Edge: the same bytes were kept before. The receipt says so and merges nothing. Merge turns into Done."},
+  {k:"bytes",g:"Import receipt",n:"Different bytes",cap:"Edge: the rows match a kept file but the bytes differ (line endings). The file is kept as a new source. No rows are added."},
+  {k:"uploading",g:"Import receipt",n:"Uploading",cap:"The file stays on this device until the server confirms it. The source line says “uploading” and retries at the next sync."},
+  {k:"full",g:"Import receipt",n:"Storage full (error)",cap:"Error: the copy could not be kept. The line turns amber. The rows still import: a failed copy never blocks the import."},
+  {k:"drift",g:"Drift hold",n:"New format",cap:"Unknown format: the drift hold takes the receipt's slot at the same height. Tap each column's picker. Merge stays off until both are answered. Cancel leaves the ledger untouched."},
+  {k:"renamed",g:"Drift hold",n:"Renamed column",cap:"Edge: cost and quantity appear under new names. The app shows its guess but never picks it: those four fields always need the owner's tap the first time."},
+  {k:"extra",g:"Drift hold",n:"Extra columns",cap:"Edge: every known column matches and three are new. They start as “Not used”, Merge is on, and the map is saved for this format."},
+  {k:"missing",g:"Drift hold",n:"Missing column (error)",cap:"Error: the file has no order number column. The only action is Close. The file is not kept and nothing merges."},
+  {k:"src-empty",g:"Sources",n:"Empty",cap:"Settings, then Sources, before any file is kept."},
+  {k:"sources",g:"Sources",n:"List",cap:"Newest first, with date, size, format id, row counts and a sync mark. Tap a file for its details; on the two-screen pose they open on the right."},
+  {k:"src-server",g:"Sources",n:"On server only",cap:"Edge: this file was kept from another device. Opening it fetches the bytes, and the detail fills in place."},
+  {k:"src-years",g:"Sources",n:"400+ files",cap:"Edge: past 400 files the list groups by year, each with its file count and size. The current year stays open."},
+  {k:"src-offline",g:"Sources",n:"Offline (error)",cap:"Error: the server can't be reached. The list still shows from the device's index. Anything that needs the bytes says “Needs connection”."},
+  {k:"src-delete",g:"Sources",n:"Delete sheet",cap:"Delete confirms in an in-app sheet, never a native dialog."},
+  {k:"prov",g:"Row provenance",n:"Normal",cap:"On any Packages or Tally row, the detail shows the file, line and parser. With “Show raw line” on, tap a field to light its raw cell."},
+  {k:"prov-legacy",g:"Row provenance",n:"Before receipts",cap:"Edge: a row imported before receipts. Plain text, no error styling: this is expected."},
+  {k:"prov-overlap",g:"Row provenance",n:"Many exports",cap:"Edge: a row seen in many overlapping exports keeps only first seen and last seen, so pointers never grow without limit."},
+  {k:"prov-offline",g:"Row provenance",n:"Offline (error)",cap:"Error: the source bytes can't be fetched. The parsed fields still show."},
+  {k:"reread",g:"Re-read (later slice)",n:"Diff",cap:"Later slice: re-read one file with today's parser. Changes come in groups; accept or reject each. Accepted groups go through the merge. Check-ins, claims, refunds and orphaned packages are never touched."}
+];
+
+var SOURCES=[
+  {id:"s1",f:"orders-2027-07.csv",d:"Jul 20",size:"212 KB",fmt:"OW-2026a",p:14,rows:"1,906",filt:"311",sync:"dev",sha:"9c1e…a07f"},
+  {id:"s2",f:"orders-2027-06.csv",d:"Jun 30",size:"205 KB",fmt:"OW-2026a",p:14,rows:"1,861",filt:"302",sync:"ok",sha:"4be0…91c2"},
+  {id:"s3",f:"orders-2027-05.csv",d:"May 31",size:"198 KB",fmt:"OW-2026a",p:14,rows:"1,788",filt:"296",sync:"srv",sha:"b7f3…0e44"},
+  {id:"s4",f:"orders-2027-04.csv",d:"Apr 30",size:"190 KB",fmt:"OW-2026a",p:13,rows:"1,742",filt:"281",sync:"ok",sha:"21ad…c9d0"},
+  {id:"s5",f:"orders-2027-02.csv",d:"Feb 28",size:"176 KB",fmt:"OW-2026a",p:13,rows:"1,702",filt:"274",sync:"ok",sha:"7d20…15be"},
+  {id:"s6",f:"orders-2026-12.csv",d:"Dec 31",size:"164 KB",fmt:"OW-2026a",p:13,rows:"1,655",filt:"259",sync:"ok",sha:"e81a…6c3f"},
+  {id:"s7",f:"orders-2026-11.csv",d:"Nov 30",size:"151 KB",fmt:"OW-2026a",p:13,rows:"1,598",filt:"240",sync:"ok",sha:"03c5…d812"}
+];
+var PKGS=[
+  {seller:"Tidepool Cards",order:"5C2E-71A0-94BD",cards:[
+    {id:"c1",n:"Ember Warden",q:2,c:"0.18",got:true},
+    {id:"c2",n:"Glasswing Courier",q:1,c:"0.35",got:false},
+    {id:"c3",n:"Tithe of Salt",q:4,c:"0.12",got:false}]},
+  {seller:"Brass Lantern Games",order:"8F03-2D6B-11C7",cards:[
+    {id:"c4",n:"Quiet Lamplighter",q:1,c:"1.40",got:false},
+    {id:"c5",n:"Moss-Back Sentry",q:3,c:"0.09",got:true}]}
+];
+var RAW=[
+  {k:"order",v:"\"5C2E-71A0-94BD\""},{k:"date",v:"\"2027-06-14\""},{k:"seller",v:"\"Tidepool Cards\""},
+  {k:"product",v:"\"Glasswing Courier - Rising Tides\""},{k:"qty",v:"\"1\""},{k:"price",v:"\"0.35\""},
+  {k:"ship",v:"\"0.99\""},{k:"addr",v:null},{k:"market",v:"\"TCGplayer\""}
+];
+var FIELDS=[["order","Order","5C2E-71A0-94BD"],["date","Date","Jun 14, 2027"],["seller","Seller","Tidepool Cards"],["product","Product","Glasswing Courier"],["qty","Quantity","1"],["price","Price each","$0.35"]];
+var TARGETS=[["order","Order number"],["date","Order date"],["seller","Seller"],["product","Product name"],["qty","Quantity"],["price","Price each"],["ship","Shipping"],["unused","Not used"]];
+var DRIFT={
+  drift:{lead:"14 of 16 columns match last time. 2 need you.",cols:[
+    {h:"Item Price (USD)",guess:"price",prot:true,hint:"Looks like price each. Cost needs your tap.",samples:["0.35","1.40","0.09","0.12","2.75"],last:"Item Price"},
+    {h:"Ship To",guess:"unused",hint:"Looks like not used.",samples:[null,null,null,null,null],last:"(no match)"}],
+    matched:"Matched: Order Number, Order Date, Seller, Product Name, Quantity, Shipping, Marketplace, Condition, Set, Rarity, Language, Printing, Status, Tracking"},
+  renamed:{lead:"14 of 16 columns match. Cost, quantity, order number and product name always need your tap under a new name.",cols:[
+    {h:"Unit Cost",guess:"price",prot:true,hint:"Was “Item Price”? Needs your tap.",samples:["0.35","1.40","0.09","0.12","2.75"],last:"Item Price"},
+    {h:"Qty",guess:"qty",prot:true,hint:"Was “Quantity”? Needs your tap.",samples:["1","1","3","4","2"],last:"Quantity"}],
+    matched:"Matched: Order Number, Order Date, Seller, Product Name, Shipping, Ship To, Marketplace, Condition, Set, Rarity, Language, Printing, Status, Tracking"},
+  extra:{lead:"All 16 known columns match. 3 new columns start as not used.",cols:[
+    {h:"Gift Note",guess:"unused",def:"unused",hint:"New. Ignored unless you map it.",samples:["","","","",""],last:"(new)"},
+    {h:"Loyalty Points",guess:"unused",def:"unused",hint:"New. Ignored unless you map it.",samples:["4","12","1","1","27"],last:"(new)"},
+    {h:"Ship Method",guess:"unused",def:"unused",hint:"New. Ignored unless you map it.",samples:["Letter","Letter","Tracked","Letter","Letter"],last:"(new)"}],
+    matched:"All 16 known columns matched."}
+};
+var GROUPS=[
+  {id:"g1",n:17,h:"17 rows: price now includes the shipping column",ex:[["Ember Warden ×2","$0.18","$0.27"],["Moss-Back Sentry ×3","$0.09","$0.14"]]},
+  {id:"g2",n:4,h:"4 rows: product name drops the set suffix",ex:[["Glasswing Courier - Rising Tides","","Glasswing Courier"],["Tithe of Salt - Rising Tides","","Tithe of Salt"]]}
+];
+var HEAD="Order Number,Order Date,Seller,Product Name,Quantity,Item Price,Shipping,Ship To,…";
+
+var S={s:"receipt",t:"auto",p:"phone",labels:true,map:{},col:0,raw:true,field:"price",sel:null,sheet:null,fetched:{},dec:{},applied:false,mapped:false,toast:""};
+var toastTimer=null,fetchTimer=null,booted=false;
+
+function esc(x){return String(x).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function L(k,text,inner){var pre=k==="today"?"Today: ":k==="r1"?"Round 1: ":"New: ";
+  return '<div class="lbl" data-k="'+k+'" data-lbl="'+pre+text+'">'+inner+"</div>"}
+var IC={
+  chev:'<svg class="chev" viewBox="0 0 8 13" aria-hidden="true"><path d="M1.5 1.5l5 5-5 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  back:'<svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  down:'<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  file:'<svg viewBox="0 0 18 18" aria-hidden="true"><path d="M4 1.5h6.5L14.5 5.5v11h-10.5z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M10.5 1.5v4h4" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+  check:'<svg class="ic" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="8" fill="currentColor"/><path d="M5 9.2l2.6 2.6L13 6.4" fill="none" stroke="var(--surface)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  ring:'<svg class="ic" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-dasharray="30 14"/></svg>',
+  same:'<svg class="ic" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="7.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M5.5 7.5h7M5.5 10.5h7" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  warn:'<svg class="ic" viewBox="0 0 18 18" aria-hidden="true"><path d="M9 1.8L17 16H1z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 7v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="9" cy="13.4" r="1.1" fill="currentColor"/></svg>',
+  stop:'<svg class="ico" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="16" fill="none" stroke="currentColor" stroke-width="2.4"/><path d="M11 11l14 14M25 11L11 25" stroke="currentColor" stroke-width="2.6" stroke-linecap="round"/></svg>',
+  box:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z M3 7.5l9 4.5 9-4.5 M12 12v9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  sum:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M17 4H6l6 8-6 8h11" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  q:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9.5 9.5a2.5 2.5 0 114 2c-.9.6-1.5 1.1-1.5 2.3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/><circle cx="12" cy="17" r="1.1" fill="currentColor"/></svg>'
+};
+function st(k){for(var i=0;i<STATES.length;i++)if(STATES[i].k===k)return STATES[i];return STATES[0]}
+function grp(){return st(S.s).g}
+function isImport(){var g=grp();return g==="Import receipt"||g==="Drift hold"}
+function src(id){for(var i=0;i<SOURCES.length;i++)if(SOURCES[i].id===id)return SOURCES[i];return null}
+function tname(k){for(var i=0;i<TARGETS.length;i++)if(TARGETS[i][0]===k)return TARGETS[i][1];return ""}
+function status(){return '<div class="island" aria-hidden="true"></div><div class="status" aria-hidden="true"><span class="num">9:41</span><i></i></div>'}
+function homebar(){return '<div class="homebar" aria-hidden="true"></div>'}
+function tabbar(cur){
+  function t(n,ic){return '<div class="tab"'+(cur===n?' aria-current="page"':'')+'>'+ic+n+'</div>'}
+  return '<nav class="tabbar" aria-label="Views">'+t("Packages",IC.box)+t("Tally",IC.sum)+t("Orphaned",IC.q)+'</nav>'}
+function syncMark(s,off){
+  if(s==="ok")return '<span class="sync ok"><i></i>On server</span>';
+  if(s==="dev")return '<span class="sync dev"><i></i>On this device, uploading</span>';
+  if(s==="load")return '<span class="sync dev"><i></i>Fetching from server…</span>';
+  if(off)return '<span class="sync off"><i></i>Needs connection</span>';
+  return '<span class="sync srv"><i></i>On server only</span>';
+}
+function paneBar(t,left,right){return '<div class="pane-bar">'+(left||"<span></span>")+'<h3>'+t+'</h3>'+(right||"<span></span>")+'</div>'}
+function rawBlock(lines,cls){return '<div class="raw'+(cls?" "+cls:"")+'">'+lines.map(function(l){return '<div><span class="ln">'+l[0]+'</span>'+l[1]+'</div>'}).join("")+'</div>'}
+var HIDDEN='<span class="red">address hidden</span>';
+
+/* ---------- Packages (background on the phone, left screen on the two-screen pose) ---------- */
+function packages(selId){
+  var g=PKGS.map(function(p){
+    var rows=p.cards.map(function(c){
+      return '<button type="button" class="row'+(c.id===selId?" sel":"")+'" data-act="noop" aria-label="'+esc(c.n)+' times '+c.q+'"><span class="circ'+(c.got?" got":"")+'" aria-hidden="true"></span><span class="main"><span class="t">'+esc(c.n)+' <span class="q">×'+c.q+'</span></span><span class="s">$'+c.c+' each</span></span>'+IC.chev+'</button>'}).join("");
+    return '<p class="sect">'+esc(p.seller)+' · <span class="num">'+p.order+'</span></p><div class="list">'+rows+'</div>'}).join("");
+  return '<div class="nav"><div class="nav-top"><span></span><button type="button" class="navbtn" data-act="noop">Import</button></div><h2 class="largetitle">Packages</h2></div>'+
+    '<div class="scroll">'+L("today","Packages",g)+'</div>'+tabbar("Packages");
+}
+
+/* ---------- Import sheet ---------- */
+function fileRow(){
+  var dup=S.s==="dup";
+  return L("today","CSV import",'<div class="filepick"><span class="fileicon" aria-hidden="true"></span><div class="main"><div class="t">'+(dup?"orders-2027-06 copy.csv":"orders-2027-07.csv")+'</div><div class="s">Picked from Files · '+(dup?"205 KB":"212 KB")+'</div></div></div>');
+}
+function srcLine(){
+  var s=S.s, fmt=S.mapped?"OW-2027a (your map)":"OW-2026a", body;
+  if(s==="dup")body='<div class="srcline same">'+IC.same+'<div class="txt"><b>Already kept:</b> orders-2027-06.csv (Jun 30).<span class="m">Nothing new.</span></div></div>';
+  else if(s==="bytes")body='<div class="srcline ok">'+IC.check+'<div class="txt"><b>Same rows, different bytes</b> (line endings).<span class="m">Kept as a new source · orders-2027-07.csv · 212 KB</span></div></div>';
+  else if(s==="uploading")body='<div class="srcline dev">'+IC.ring+'<div class="txt"><b>Source kept on this device, uploading.</b><span class="m">orders-2027-07.csv · 212 KB · '+fmt+' · retries at next sync</span></div></div>';
+  else if(s==="full")body='<div class="srcline amber">'+IC.warn+'<div class="txt"><b>Source not kept: device storage full.</b><span class="m">Rows still imported.</span></div></div>';
+  else body='<div class="srcline ok">'+IC.check+'<div class="txt"><b>Source kept:</b> orders-2027-07.csv · 212 KB<span class="m">'+fmt+' · parser 14 · 1,906 rows, 311 filtered</span></div></div>';
+  return L("new","source line",body);
+}
+function receiptSlot(){
+  var none=(S.s==="dup"||S.s==="bytes");
+  var stats=[["1,906","card rows read"],["311","filtered (not cards)"],[none?"0":"48","new packages"],[none?"1,906":"1,512","rows already here"]];
+  var grid=stats.map(function(x,i){return '<div class="stat'+(none&&i===2?" zero":"")+'"><div class="n num">'+x[0]+'</div><div class="k">'+x[1]+'</div></div>'}).join("");
+  return '<div class="slot">'+
+    L("r1","import receipt",'<h4>Receipt</h4><p class="lead">'+(none?"Every row is in the ledger already.":"Nothing merges until you press Merge.")+'</p><div class="stats">'+grid+'</div><p class="rule">Merge adds rows and never replaces one.</p>')+
+    '<div style="height:12px"></div>'+L("new","last seen",'<p class="rule" style="margin:0;padding:2px 0">On a row already here, only “last seen in” moves.</p>')+
+    '<div style="flex:1"></div>'+srcLine()+'</div>';
+}
+function driftCfg(){return DRIFT[S.s]}
+function mapped(i){var c=driftCfg();return S.map[S.s+":"+i]||c.cols[i].def||""}
+function remaining(){var c=driftCfg();if(!c)return 0;var n=0;for(var i=0;i<c.cols.length;i++)if(!mapped(i))n++;return n}
+function driftSlot(){
+  if(S.s==="missing"){
+    return '<div class="slot">'+L("new","drift hold, error",'<div class="errbox">'+IC.stop+'<div class="big">This file has no order number column.</div><p>It can’t be imported safely. Nothing merged, and the file is not kept.</p><p class="mono" style="color:var(--ink3)">Found 15 columns. Missing: Order Number.</p></div>')+
+      '<div style="flex:1"></div><button type="button" class="btn" data-act="close">Close</button></div>';
+  }
+  var c=driftCfg();
+  var rows=c.cols.map(function(col,i){
+    var v=mapped(i), set=!!v, lab=set?tname(v):"Choose";
+    return '<div class="maprow'+(i===0?" first":"")+(S.p==="duo"&&S.col===i?" focus":"")+'"><span class="colname" title="'+esc(col.h)+'">'+esc(col.h)+'</span>'+
+      '<button type="button" class="pick'+(set?" set":"")+(v==="unused"?" ign":"")+'" data-act="pick" data-i="'+i+'" aria-haspopup="dialog" aria-label="Map '+esc(col.h)+': '+(set?lab:"not chosen")+'"><span>'+lab+'</span>'+IC.down+'</button>'+
+      '<span class="maphint'+(col.prot&&!set?" prot":"")+'">'+(set?"Mapped to "+tname(v).toLowerCase()+".":col.hint)+'</span></div>'}).join("");
+  return '<div class="slot">'+L("new","drift hold",
+    '<span class="drift-flag">'+IC.warn.replace('class="ic"','width="14" height="14"')+'New export format</span>'+
+    '<p class="lead" style="margin-top:0">'+c.lead+'</p>'+rows+'<p class="matched">'+c.matched+'</p>')+
+    '<div style="flex:1"></div><p class="fp">Fingerprint: headers, delimiter, quoting, and the shape of date and price cells. Last import: OW-2026a. Merge saves this map for the new fingerprint.</p></div>';
+}
+function importBar(){
+  if(S.s==="missing")return '<div class="sheet-bar"><button type="button" class="navbtn l" data-act="close">Close</button><h3>Import</h3><span></span></div>';
+  var drift=grp()==="Drift hold", none=(S.s==="dup"||S.s==="bytes");
+  var right=none?'<button type="button" class="navbtn r strong" data-act="close">Done</button>':
+    '<button type="button" class="navbtn r strong" data-act="merge"'+(drift&&remaining()?" disabled":"")+'>Merge</button>';
+  return '<div class="sheet-bar"><button type="button" class="navbtn l" data-act="close">Cancel</button><h3>Import</h3>'+right+'</div>';
+}
+function gate(){
+  if(grp()!=="Drift hold"||S.s==="missing")return '<p class="gate"></p>';
+  var r=remaining();
+  return '<p class="gate" aria-live="polite">'+(r?"Answer "+r+" column"+(r>1?"s":"")+" to merge.":"Ready. Merge saves this map.")+'</p>';
+}
+function importBody(){return fileRow()+(grp()==="Drift hold"?driftSlot():receiptSlot())+gate()}
+function pickSheet(){
+  if(!S.sheet||S.sheet.indexOf("pick:")!==0)return "";
+  var i=+S.sheet.split(":")[1], col=driftCfg().cols[i], cur=mapped(i);
+  var opts=TARGETS.map(function(t){
+    return '<button type="button" class="opt" data-act="choose" data-i="'+i+'" data-v="'+t[0]+'"'+(cur===t[0]?' aria-current="true"':'')+'><span>'+t[1]+(cur===t[0]?" ✓":"")+'</span>'+(t[0]===col.guess?'<small>Looks like this</small>':'')+'</button>'}).join("");
+  return '<div class="ascrim" data-act="unsheet"></div><div class="asheet" role="dialog" aria-label="Map column">'+
+    L("new","in-app picker",'<div class="grp"><div class="hd"><b class="mono">'+esc(col.h)+'</b>Pick what this column holds.</div>'+opts+'</div>')+
+    '<div class="grp"><button type="button" class="opt cancel" data-act="unsheet">Cancel</button></div></div>';
+}
+function importRight(){
+  if(S.s==="missing")return paneBar("File")+'<div class="body">'+L("new","what was found",
+      '<dl class="meta"><dt>File</dt><dd>orders-2027-07.csv</dd><dt>Columns</dt><dd class="num">15</dd><dt>Order number</dt><dd>Not found</dd><dt>Kept</dt><dd>No</dd></dl>')+
+      '<p class="sect">Header row</p>'+rawBlock([["1","Order Date,Seller,Product Name,Quantity,Item Price,Shipping,Ship To,Marketplace,…"]])+'</div>';
+  if(grp()==="Drift hold"){
+    var c=driftCfg(), col=c.cols[S.col]||c.cols[0];
+    var cells=col.samples.map(function(v,i){return '<tr><td class="num">'+(i+2)+'</td><td'+(v===null?'':' class="mono"')+'>'+(v===null?HIDDEN:v===""?'<span style="color:var(--ink3);font-family:-apple-system,system-ui,sans-serif">(blank)</span>':esc(v))+'</td></tr>'}).join("");
+    return paneBar("Column samples")+'<div class="body">'+L("new","column samples",
+      '<div class="cardhead"><div class="t mono" style="font-size:17px">'+esc(col.h)+'</div><div class="s">Last time: '+esc(col.last)+'</div></div>'+
+      '<table class="fields"><thead><tr><th>Line</th><th>Cell</th></tr></thead><tbody>'+cells+'</tbody></table>')+
+      '<p class="hint">Tap a column on the left to see its cells here.</p></div>';
+  }
+  var s=S.s;
+  if(s==="dup")return paneBar("Source")+'<div class="body">'+L("new","matching source",'<dl class="meta"><dt>Matches</dt><dd>orders-2027-06.csv</dd><dt>Kept</dt><dd>Jun 30, 2027</dd><dt>SHA-256</dt><dd class="mono">4be0…91c2, same</dd><dt>New rows</dt><dd class="num">0</dd></dl>')+'</div>';
+  if(s==="full")return paneBar("Source")+'<div class="body">'+L("new","source not kept",'<div class="banner">'+IC.warn+'<span>This file’s bytes are not kept. The 48 new packages still merge.</span></div><dl class="meta"><dt>File</dt><dd>orders-2027-07.csv</dd><dt>Format</dt><dd>OW-2026a</dd><dt>Parser</dt><dd>14</dd><dt>Kept</dt><dd>No</dd></dl>')+'</div>';
+  var where=s==="uploading"?syncMark("dev"):syncMark("ok");
+  return paneBar("Source")+'<div class="body">'+L("new","source record",
+    '<dl class="meta"><dt>File</dt><dd>orders-2027-07.csv</dd><dt>Size</dt><dd>212 KB, 41 KB packed</dd><dt>SHA-256</dt><dd class="mono">9c1e…a07f</dd><dt>Format</dt><dd>'+(S.mapped?"OW-2027a":"OW-2026a")+'</dd><dt>Parser</dt><dd>14</dd><dt>Rows</dt><dd class="num">1,906 kept · 311 filtered</dd><dt>Where</dt><dd>'+where+'</dd></dl>')+
+    '<p class="sect">First lines</p>'+rawBlock([["1",HEAD],["2",'"5C2E-71A0-94BD","2027-07-02","Tidepool Cards","Ember Warden …","2","0.18","0.99",'+HIDDEN+',…'],["3",'"8F03-2D6B-11C7","2027-07-03","Brass Lantern Games","Quiet Lamplighter …",…']])+
+    '<p class="rule">Filtered rows live only in the kept file. They never reach a view, the Tally or a total.</p></div>';
+}
+
+/* ---------- Sources ---------- */
+function sourcesNav(){
+  return '<div class="nav"><div class="nav-top"><button type="button" class="navbtn" data-act="noop">'+IC.back+'Settings</button><span></span></div><h2 class="largetitle">Sources</h2></div>';
+}
+function rowSync(x,off,short){
+  var m;
+  if(x.sync!=="srv")m=syncMark(x.sync);
+  else if(off)m=syncMark("srv",true);
+  else if(S.fetched[x.id]==="loading")m=syncMark("load");
+  else if(S.fetched[x.id]==="done")m=syncMark("ok");
+  else m=syncMark("srv");
+  if(short)m=m.replace("On this device, uploading","Uploading").replace("Fetching from server\u2026","Fetching\u2026").replace("On server only","Server only");
+  return m;
+}
+function srcRow(x,off){
+  return '<button type="button" class="row'+(S.sel===x.id?" sel":"")+'" data-act="src" data-id="'+x.id+'" aria-label="'+x.f+'"><span class="main"><span class="t">'+x.f+'</span><span class="s num">'+x.d+' \u00b7 '+x.size+' \u00b7 '+x.fmt+(x.p?' \u00b7 parser '+x.p:'')+'</span><span class="s2"><span class="s num">'+x.rows+' rows, '+x.filt+' filtered</span>'+rowSync(x,off,true)+'</span></span>'+IC.chev+'</button>';
+}
+function sourcesList(){
+  var s=S.s, off=s==="src-offline";
+  if(s==="src-empty")return sourcesNav()+'<div class="scroll">'+L("new","empty state",'<div class="empty"><div class="big">No sources kept yet.</div><p>Imports from now on keep their file. Rows imported earlier show “before receipts”.</p></div>')+'</div>';
+  if(s==="src-years"){
+    var cur=[["orders-2028-06-14.csv","Jun 14","9 KB","96","11"],["orders-2028-06-13.csv","Jun 13","7 KB","71","9"],["orders-2028-06-11.csv","Jun 11","12 KB","128","20"]]
+      .map(function(r,i){return srcRow({id:"y"+i,f:r[0],d:r[1],size:r[2],fmt:"OW-2027a",rows:r[3],filt:r[4],sync:"ok"})}).join("");
+    var yrs=[["2027","241 files · 13.0 MB"],["2026","38 files · 2.1 MB"]].map(function(y){
+      return '<button type="button" class="row yearrow" data-act="noop" aria-expanded="false"><span class="main"><span class="t">'+y[0]+'</span><span class="s num">'+y[1]+'</span></span>'+IC.chev+'</button>'}).join("");
+    return sourcesNav()+'<p class="sub">410 files · 22.5 MB packed · June 2028</p><div class="scroll">'+
+      L("new","grouped by year",'<p class="sect">2028 · 131 files · 7.4 MB</p><div class="list">'+cur+'<button type="button" class="row" data-act="noop"><span class="main"><span class="t" style="color:var(--accent)">128 more in 2028</span></span>'+IC.chev+'</button></div><p class="sect">Earlier years</p><div class="list">'+yrs+'</div>')+'</div>';
+  }
+  var y27=SOURCES.filter(function(x){return x.f.indexOf("2027")>-1}).map(function(x){return srcRow(x,off)}).join("");
+  var y26=SOURCES.filter(function(x){return x.f.indexOf("2026")>-1}).map(function(x){return srcRow(x,off)}).join("");
+  var banner=off?L("new","offline",'<div class="banner">'+IC.warn+'<span>Can’t reach the server. This list is from this device.</span></div>'):"";
+  return sourcesNav()+'<p class="sub">7 files · 1.3 MB packed</p><div class="scroll">'+banner+
+    L("new","Sources",'<p class="sect">2027</p><div class="list">'+y27+'</div><p class="sect">2026</p><div class="list">'+y26+'</div>')+'</div>';
+}
+function sourceDetail(id){
+  var x=src(id), off=S.s==="src-offline";
+  if(!x)return '<div class="empty" style="padding-top:220px"><p>Pick a file to see where its rows came from.</p></div>';
+  var srvOnly=x.sync==="srv", st=S.fetched[id];
+  var ready=!srvOnly||st==="done";
+  var yr=x.f.slice(7,14);
+  var preview=ready?rawBlock([["1",HEAD],["2",'"5C2E-71A0-94BD","'+yr+'-02","Tidepool Cards",…'],["3",'"8F03-2D6B-11C7","'+yr+'-03","Brass Lantern Games",…']],"rawslot"):
+    '<div class="raw rawslot off">'+(off?"First lines need a connection.":st==="loading"?"Fetching from server…":"Opening fetches the file.")+'</div>';
+  var blocked=off;
+  return L("new","source detail",'<dl class="meta"><dt>Kept</dt><dd>'+x.d+', '+x.f.slice(7,11)+'</dd><dt>Size</dt><dd>'+x.size+'</dd><dt>SHA-256</dt><dd class="mono">'+x.sha+'</dd><dt>Format</dt><dd>'+x.fmt+'</dd><dt>Parser</dt><dd>'+x.p+'</dd><dt>Rows</dt><dd class="num">'+x.rows+' kept · '+x.filt+' filtered</dd><dt>Bytes</dt><dd>'+rowSync(x,off)+'</dd></dl>')+
+    '<p class="sect">First lines</p>'+preview+
+    '<div class="actions"><button type="button" class="btn ghost" data-act="reread"'+(blocked?" disabled":"")+'>Re-read with parser 15</button>'+
+    '<button type="button" class="btn ghost destr" data-act="del" data-id="'+x.id+'">Delete source</button><p class="needs">'+(blocked?"Re-read needs connection.":"")+'</p></div>';
+}
+function delSheet(){
+  if(S.sheet!=="delete")return "";
+  var x=src(S.sel)||src("s5");
+  return '<div class="ascrim" data-act="unsheet"></div><div class="asheet" role="dialog" aria-label="Delete source">'+
+    L("new","in-app confirm",'<div class="grp"><div class="hd"><b>Delete '+x.f+'?</b>The '+x.rows+' ledger rows from this file stay. Their “show raw line” stops working. The file can’t be brought back.</div><button type="button" class="opt destr" data-act="delyes">Delete source</button></div>')+
+    '<div class="grp"><button type="button" class="opt cancel" data-act="unsheet">Cancel</button></div></div>';
+}
+
+/* ---------- Provenance ---------- */
+function rawLine(){
+  return RAW.map(function(c){return c.v===null?HIDDEN:'<span class="cell'+(S.field===c.k?" on":"")+'">'+esc(c.v)+'</span>'}).join(",");
+}
+function provBlock(){
+  var s=S.s;
+  if(s==="prov-legacy")return L("new","provenance, before receipts",'<div class="prov quiet"><div class="from">'+IC.file+'<span>Imported before receipts (2026-11). No source line.</span></div></div>');
+  var off=s==="prov-offline", from;
+  if(s==="prov-overlap")from='<div class="from">'+IC.file+'<span><span class="k">First seen</span> <b>orders-2026-12.csv:88</b><br><span class="k">Last seen</span> <b>orders-2027-06.csv:1,204</b> · parser 14</span></div>';
+  else from='<div class="from">'+IC.file+'<span>From <b>orders-2027-06.csv</b>, line 212 · parser 14</span></div>';
+  if(off)from+='<div class="from offl">'+IC.warn.replace('class="ic"','width="18" height="18"')+'<span>Source on server; offline.</span></div>';
+  var on=S.raw&&!off;
+  var tog='<button type="button" class="toggle" role="switch" data-act="raw" aria-checked="'+on+'"'+(off?" disabled":"")+'><span>Show raw line'+(s==="prov-overlap"?" (last seen)":"")+'</span><span class="sw" aria-hidden="true"></span></button>';
+  var ln=s==="prov-overlap"?"1,204":"212";
+  var slot=off?'<div class="raw rawslot off">Raw line needs connection.</div>':on?'<div class="raw rawslot"><span class="ln">'+ln+'</span>'+rawLine()+'</div>':'<div class="raw rawslot off">Raw line hidden.</div>';
+  return L("new","provenance",'<div class="prov">'+from+tog+'</div>'+slot);
+}
+function fieldsTable(){
+  var showRaw=S.raw&&S.s!=="prov-legacy"&&S.s!=="prov-offline";
+  var rows=FIELDS.map(function(f){
+    var rc="";for(var i=0;i<RAW.length;i++)if(RAW[i].k===f[0])rc=RAW[i].v;
+    var act=showRaw?' data-act="field" data-k="'+f[0]+'" tabindex="0"':'';
+    return '<tr class="'+(showRaw?"pickable":"")+(showRaw&&S.field===f[0]?" on":"")+'"'+act+'><td>'+f[1]+'</td><td>'+esc(f[2])+'</td><td class="rc'+(showRaw?"":" hide")+'">'+esc(rc)+'</td></tr>'}).join("");
+  return '<table class="fields"><thead><tr><th>Field</th><th>Parsed</th><th class="rc'+(showRaw?"":" hide")+'">Raw cell</th></tr></thead><tbody>'+rows+'</tbody></table>'+
+    '<p class="hint">'+(showRaw?"Tap a field to light its raw cell.":"")+'</p>';
+}
+function provContent(){
+  return '<div class="cardhead"><div class="t">Glasswing Courier ×1</div><div class="s">Tidepool Cards · $0.35 each · not received</div></div>'+provBlock()+fieldsTable();
+}
+
+/* ---------- Re-read ---------- */
+function accepted(){return GROUPS.filter(function(g){return S.dec[g.id]==="acc"})}
+function rereadBody(){
+  var gs=GROUPS.map(function(g){
+    var d=S.dec[g.id]||"", done=S.applied&&d==="acc";
+    var ex=g.ex.map(function(e){return '<p class="ex">'+(e[1]?esc(e[0])+' · <s>'+e[1]+'</s> → <ins>'+e[2]+'</ins>':'<s>'+esc(e[0])+'</s> → <ins>'+esc(e[2])+'</ins>')+'</p>'}).join("");
+    var ctl=done?'<p class="ex okk">Applied through merge.</p>':
+      '<div class="dseg" role="group" aria-label="'+esc(g.h)+'"><button type="button" data-act="dec" data-g="'+g.id+'" data-v="rej" aria-pressed="'+(d==="rej")+'"'+(S.applied?" disabled":"")+'>Reject</button><button type="button" data-act="dec" data-g="'+g.id+'" data-v="acc" aria-pressed="'+(d==="acc")+'"'+(S.applied?" disabled":"")+'>Accept</button></div>';
+    return '<div class="dgrp"><h5>'+g.h+'</h5>'+ex+ctl+'</div>'}).join("");
+  var n=accepted().length;
+  return L("new","re-read diff",'<p class="dlead">orders-2027-02.csv · parser 13 → 15. Nothing changes until you accept a group.</p>'+gs+
+    '<div class="locked"><b>Never changed by a re-read:</b> order number, seller, check-in stamps, claim filed, refunded, and any orphaned package.</div>')+
+    '<button type="button" class="btn" data-act="apply"'+(n&&!S.applied?"":" disabled")+'>'+(S.applied?"Applied":n?"Apply "+n+" accepted group"+(n===1?"":"s"):"Accept a group to apply it")+'</button>';
+}
+
+/* ---------- Compose ---------- */
+function toastHtml(){return S.toast?'<div class="toast" role="status">'+esc(S.toast)+'</div>':""}
+function sheet(label,bar,body,extra){return '<div class="sheet" role="dialog" aria-label="'+label+'"><div class="grabber" aria-hidden="true"></div>'+bar+'<div class="body">'+body+'</div>'+(extra||"")+'</div>'}
+function renderPhone(){
+  var g=grp(), h=status();
+  if(isImport()){
+    h+=packages(null)+'<div class="scrim"></div>'+sheet("Import",importBar(),importBody(),pickSheet());
+  }else if(g==="Sources"){
+    h+=sourcesList();
+    if(S.sel&&S.sheet!=="delete"){
+      var x=src(S.sel);
+      h+='<div class="scrim" data-act="unsel"></div>'+sheet("Source",'<div class="sheet-bar"><span></span><h3>'+(x?x.f:"")+'</h3><button type="button" class="navbtn r strong" data-act="unsel">Done</button></div>',sourceDetail(S.sel));
+    }
+    h+=delSheet();
+  }else if(g==="Row provenance"){
+    h+=packages("c2")+'<div class="scrim"></div>'+sheet("Card detail",'<div class="sheet-bar"><span></span><h3>Card</h3><button type="button" class="navbtn r strong" data-act="noop">Done</button></div>',provContent());
+  }else{
+    h+=sourcesList()+'<div class="scrim"></div>'+sheet("Re-read",'<div class="sheet-bar"><button type="button" class="navbtn l" data-act="back">Cancel</button><h3>Re-read</h3><span></span></div>',rereadBody());
+  }
+  document.getElementById("fscreen").innerHTML=h+toastHtml()+homebar();
+}
+function renderDuo(){
+  var g=grp(), Lh=status(), R=status();
+  if(isImport()){
+    Lh+=importBar()+'<div class="body">'+importBody()+'</div>'+pickSheet();
+    R+=importRight();
+  }else if(g==="Sources"){
+    Lh+=sourcesList();
+    var x=src(S.sel);
+    R+=paneBar(x?x.f:"Source")+'<div class="body">'+sourceDetail(S.sel)+'</div>'+delSheet();
+  }else if(g==="Row provenance"){
+    Lh+=packages("c2");
+    R+=paneBar("Card")+'<div class="body">'+provContent()+'</div>';
+  }else{
+    Lh+=sourcesList();
+    R+=paneBar("Re-read",'<button type="button" class="navbtn l" data-act="back">Cancel</button>')+'<div class="body">'+rereadBody()+'</div>';
+  }
+  document.getElementById("uleft").innerHTML=Lh+homebar();
+  document.getElementById("uright").innerHTML=R+toastHtml()+homebar();
+}
+
+function link(s,t,p){return "#s="+s+(t!=="auto"?"&t="+t:"")+(p!=="phone"?"&p="+p:"")}
+function controls(){
+  var order=[],by={};
+  STATES.forEach(function(x){if(!by[x.g]){by[x.g]=[];order.push(x.g)}by[x.g].push(x)});
+  document.getElementById("states").innerHTML=order.map(function(gn){
+    return '<span class="g">'+gn+'</span><div class="seg">'+by[gn].map(function(x){return '<a href="'+link(x.k,S.t,S.p)+'" aria-current="'+(x.k===S.s)+'">'+x.n+'</a>'}).join("")+'</div>'}).join("");
+  document.getElementById("themes").innerHTML=["auto","light","dark"].map(function(t){return '<a href="'+link(S.s,t,S.p)+'" aria-current="'+(t===S.t)+'">'+t.charAt(0).toUpperCase()+t.slice(1)+'</a>'}).join("");
+  document.getElementById("poses").innerHTML=[["phone","Phone"],["duo","Two-screen"]].map(function(p){return '<a href="'+link(S.s,S.t,p[0])+'" aria-current="'+(p[0]===S.p)+'">'+p[1]+'</a>'}).join("");
+  document.getElementById("lblBtn").setAttribute("aria-pressed",String(S.labels));
+  document.getElementById("caption").textContent=st(S.s).cap;
+}
+function render(){
+  var r=document.documentElement;
+  if(S.t==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",S.t);
+  r.setAttribute("data-labels",S.labels?"on":"off");
+  var duo=S.p==="duo";
+  document.getElementById("folded").hidden=duo;
+  document.getElementById("unfolded").hidden=!duo;
+  if(duo)renderDuo();else renderPhone();
+  controls();
+}
+function startFetch(id){
+  if(fetchTimer)clearTimeout(fetchTimer);
+  if(S.fetched[id]==="done"||S.s==="src-offline")return;
+  S.fetched[id]="loading";
+  fetchTimer=setTimeout(function(){S.fetched[id]="done";render()},1200);
+}
+function enterState(){
+  S.sheet=null;S.toast="";S.col=0;S.raw=true;S.field="price";S.dec={};S.applied=false;S.fetched={};S.map={};S.mapped=false;
+  var duo=S.p==="duo";
+  if(S.s==="sources")S.sel=duo?"s2":null;
+  else if(S.s==="src-server")S.sel="s3";
+  else if(S.s==="src-offline")S.sel=duo?"s3":null;
+  else if(S.s==="src-delete"){S.sel="s5";S.sheet="delete"}
+  else if(S.s==="reread")S.sel="s5";
+  else S.sel=null;
+  if(S.s==="src-server")startFetch("s3");
+}
+function readHash(){
+  var h={};location.hash.replace(/^#/,"").split("&").forEach(function(kv){var p=kv.split("=");if(p[0])h[p[0]]=decodeURIComponent(p[1]||"")});
+  var ns=STATES.some(function(x){return x.k===h.s})?h.s:"receipt";
+  var nt=["light","dark"].indexOf(h.t)>-1?h.t:"auto";
+  var np=h.p==="duo"?"duo":"phone";
+  var changed=!booted||ns!==S.s||np!==S.p;
+  S.s=ns;S.t=nt;S.p=np;booted=true;
+  if(changed)enterState();
+}
+function toast(msg){S.toast=msg;if(toastTimer)clearTimeout(toastTimer);toastTimer=setTimeout(function(){S.toast="";render()},2600)}
+function go(s){history.replaceState(null,"",link(s,S.t,S.p));S.s=s;enterState()}
+
+document.addEventListener("click",function(e){
+  var el=e.target.closest("[data-act]");
+  if(!el||el.disabled)return;
+  var a=el.getAttribute("data-act");
+  if(a==="noop")return;
+  if(a==="pick"){S.col=+el.getAttribute("data-i");S.sheet="pick:"+S.col}
+  else if(a==="choose"){S.map[S.s+":"+el.getAttribute("data-i")]=el.getAttribute("data-v");S.sheet=null}
+  else if(a==="unsheet"){S.sheet=null}
+  else if(a==="merge"){
+    if(grp()==="Drift hold"){go("receipt");S.mapped=true;toast("Map saved as format OW-2027a. 48 new packages merged.")}
+    else toast("Merged: 48 new packages. Source kept.");
+  }
+  else if(a==="close"){toast(grp()==="Drift hold"?"Closed. The ledger is untouched.":"Closed.")}
+  else if(a==="src"){S.sel=el.getAttribute("data-id");var x=src(S.sel);if(x&&x.sync==="srv")startFetch(S.sel)}
+  else if(a==="unsel"){S.sel=null}
+  else if(a==="del"){S.sel=el.getAttribute("data-id");S.sheet="delete"}
+  else if(a==="delyes"){S.sheet=null;toast("Source deleted. Its rows stay in the ledger.")}
+  else if(a==="reread"){go("reread")}
+  else if(a==="back"){go("sources")}
+  else if(a==="raw"){S.raw=!S.raw}
+  else if(a==="field"){S.field=el.getAttribute("data-k")}
+  else if(a==="dec"){S.dec[el.getAttribute("data-g")]=el.getAttribute("data-v")}
+  else if(a==="apply"){var acc=accepted(),n=0;acc.forEach(function(g){n+=g.n});S.applied=true;toast("Applied through merge: "+n+" rows changed.")}
+  render();
+});
+document.addEventListener("keydown",function(e){
+  var t=e.target;
+  if((e.key==="Enter"||e.key===" ")&&t&&t.matches&&t.matches('tr[data-act="field"]')){e.preventDefault();S.field=t.getAttribute("data-k");render()}
+  if(e.key==="Escape"&&S.sheet){S.sheet=null;render()}
+});
+document.getElementById("lblBtn").addEventListener("click",function(){S.labels=!S.labels;render()});
+window.addEventListener("hashchange",function(){readHash();render()});
+readHash();render();
+})();
+</script>
+</body>
+</html>

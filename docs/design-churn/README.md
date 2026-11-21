@@ -2,6 +2,8 @@
 
 Branch design-churn. Mockups only. Open each .html; the -notes.md beside it says the pain, the choice, the cost and what needs your ruling.
 
+Planner round 1: [ideas/](ideas/). Planner round 2: [ideas-r2/](ideas-r2/) (plans, and mockups under ideas-r2/mockups/).
+
 | Screen | Kind | Mockup | Notes |
 |---|---|---|---|
 | cost-basis | informed | [cost-basis-informed-1](mockups/cost-basis-informed-1.html) | [notes](mockups/cost-basis-informed-1-notes.md) |

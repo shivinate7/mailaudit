@@ -114,8 +114,9 @@ button:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline
 .pillr { font:600 var(--t-cap) var(--mono); color:var(--red); background:var(--redSoft); border-radius:8px; padding:4px 8px; white-space:nowrap; }
 .stampd { font:700 var(--t-cap) var(--mono); color:var(--green); letter-spacing:1px; }
 .lost-m { color:var(--amber); font-weight:700; } .lost-d { color:var(--red); font-weight:700; }
-.carrier { display:flex; align-items:center; gap:6px; min-height:44px; margin:0 -12px -12px; padding:0 12px; border-top:1px dashed var(--line);
-  font:var(--t-foot)/1.25 var(--cochin); width:calc(100% + 24px); flex-wrap:wrap; }
+.carrier { display:flex; align-items:center; gap:6px; min-height:44px; padding:4px 12px; border-top:1px dashed var(--line);
+  font:var(--t-foot)/1.25 var(--cochin); width:100%; flex-wrap:wrap; }
+.card .ch + .carrier { margin-top:-4px; }
 .carrier .dot { width:9px; height:9px; border-radius:50%; flex:none; }
 .carrier .w { font-weight:700; }
 .carrier .t { color:var(--inkSoft); font:var(--t-cap) var(--mono); }
@@ -206,7 +207,7 @@ button:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline
 .ax5 .tabbar .tab span { display:none; }
 
 /* tags: dashed outline on what exists today, and on what an option adds */
-[data-tag] { position:relative; }
+[data-tag]:not(.tabbar) { position:relative; }
 [data-tag]::after { content:attr(data-tag); position:absolute; right:6px; top:-8px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:6; white-space:nowrap; pointer-events:none; }
 .tag-new { outline:2px dashed var(--tag-new); outline-offset:2px; } .tag-new::after { color:var(--tag-new); }
 .tag-today { outline:2px dashed var(--tag-today); outline-offset:2px; } .tag-today::after { color:var(--tag-today); }

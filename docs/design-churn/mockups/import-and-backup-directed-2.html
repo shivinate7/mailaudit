@@ -413,7 +413,7 @@ function restoreSheet(primary) {
     <p class="say bad">Restoring replaces the ledger with the backup: 142 lines, 1 stamp and 1 hand-typed envelope go.</p>
     <p ${T("say","new","a restore is a step you can undo")}>Now is kept first on this device, as a journal entry. Undo restore brings it back.</p>
     <div class="acts">${armed
-      ? `<button class="btn" data-set="restoreArmed=0">Cancel</button><button class="btn red" data-go="restored" ${primary ? 'id="restore-armed"' : ""}>Tap again to replace 943 lines</button>`
+      ? `<button class="btn" data-set="restoreArmed=0">Cancel</button><button class="btn red" data-go="restored" ${primary ? 'id="restore-armed"' : ""}>Tap again to replace 1,204 cards</button>`
       : `<button ${T("btn","new","restore after a look")} data-set="restoreArmed=1">Restore this backup</button>`}</div>`;
 }
 function sheetFor(primary) {

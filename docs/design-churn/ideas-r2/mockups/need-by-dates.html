@@ -1,0 +1,661 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Need-by Dates</title>
+<style>
+/* Tokens: the neutral set the round-1 idea mockups use, so the ideas read as one family.
+   Type sizes are the iOS Dynamic Type styles at the default (Large) size, from the HIG typography page read 2026-11-21. */
+:root{
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#6b685f;
+  --line:#dcd9d1; --accent:#a8402a; --accent-faint:#f8ece7; --ok:#256b41; --ok-bg:#e3f0e7;
+  --warn:#8a5200; --warn-bg:#f8ecd6; --danger:#b3261e; --tag-new:#2c5aa8; --tag-today:#5c5a55; --transit:#8d8a82;
+  --chrome:#ffffff; --chrome-line:#d6d3cb; --scrim:rgba(20,18,15,.32); --hinge:#2a2926; --bezel:#151412; --toast:#2b2a27; --toast-ink:#f5f4f0; --toast-act:#f0a58f;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+    --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123;
+    --warn:#e6aa52; --warn-bg:#3b2c13; --danger:#ff8a80; --tag-new:#8fb2ef; --tag-today:#b5b1a8; --transit:#7d7a73;
+    --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a; --toast-act:#a8402a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+  --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123;
+  --warn:#e6aa52; --warn-bg:#3b2c13; --danger:#ff8a80; --tag-new:#8fb2ef; --tag-today:#b5b1a8; --transit:#7d7a73;
+  --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a; --toast-act:#a8402a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button[disabled]{cursor:default}
+:focus-visible{outline:3px solid var(--tag-new);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* Page chrome */
+.sample{background:var(--warn-bg);color:var(--warn);font-size:13px;line-height:18px;padding:8px 12px;border-radius:10px;margin:0 0 12px;max-width:1100px}
+header.page{max-width:1100px;margin:0 0 8px}
+header.page h1{font-size:28px;line-height:34px;margin:0;font-weight:700;letter-spacing:-.01em}
+header.page .meta{font-size:15px;line-height:20px;color:var(--ink2);margin:4px 0 0;max-width:760px}
+header.page .meta b{color:var(--accent);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:12px 0 0;max-width:1100px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg a,.seg button{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);
+  font-size:15px;text-decoration:none;color:var(--ink)}
+.seg a[aria-current="true"],.seg button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.ctl-label{font-size:13px;color:var(--ink3);min-width:44px}
+.caption{font-size:15px;line-height:20px;color:var(--ink2);max-width:820px;margin:14px 0 0;min-height:60px}
+.caption b{color:var(--ink)}
+.stage{display:flex;gap:32px;align-items:flex-start;overflow-x:auto;padding:8px 2px 12px;margin-top:4px}
+.pose{flex:none;margin:0}
+.pose figcaption{font-size:13px;line-height:18px;color:var(--ink3);margin:0 0 8px 6px}
+.notes{max-width:820px;font-size:13px;line-height:18px;color:var(--ink2);margin:16px 0 0}
+.notes h2{font-size:15px;line-height:20px;color:var(--ink);margin:16px 0 4px}
+.notes ul{margin:0;padding-left:18px}
+.notes li{margin:0 0 4px}
+
+/* Frames. Folded: the brief's 390x844. Unfolded: no size is written, so each half is drawn at 390x844, illustrative. */
+.phone{flex:none;background:var(--bezel);border-radius:46px;padding:10px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.screen{position:relative;width:390px;height:844px;border-radius:36px;overflow:hidden;background:var(--screen);display:flex;flex-direction:column;
+  --sat:calc(env(safe-area-inset-top,0px) + 54px); --sab:calc(env(safe-area-inset-bottom,0px) + 30px)}
+.duo{display:flex}
+.duo .screen{border-radius:30px}
+.duo .screen.left{border-top-right-radius:6px;border-bottom-right-radius:6px}
+.duo .screen.right{border-top-left-radius:6px;border-bottom-left-radius:6px}
+.hinge{width:14px;background:var(--hinge);margin:30px 0;border-radius:3px}
+.status{flex:none;height:var(--sat);padding:18px 32px 0;display:flex;justify-content:space-between;font-size:15px;font-weight:600}
+.status i{display:block;width:22px;height:11px;border-radius:3px;border:1.5px solid currentColor;opacity:.85;margin-top:5px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:17px;background:#000}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.8;z-index:30}
+
+.nav{flex:none;padding:0 16px 2px}
+.nav-top{height:44px;display:flex;justify-content:flex-end;align-items:center}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;margin:0}
+.navbtn{min-width:44px;min-height:44px;font-size:17px;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.navbtn[disabled]{color:var(--ink3)}
+.navbtn.strong{font-weight:600}
+.scroll{flex:1;overflow-y:auto;scrollbar-width:none;padding:4px 16px calc(var(--sab) + 72px)}
+.scroll::-webkit-scrollbar{display:none}
+.sect{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:12px 4px 6px}
+.list{background:var(--surface);border-radius:14px;margin:0 0 10px;overflow:hidden}
+.list > * + *{border-top:.5px solid var(--line)}
+.empty-note{font-size:15px;line-height:20px;color:var(--ink2);padding:14px;margin:0}
+
+/* Event chips: one fixed-height row, so the list never moves when a chip is pressed */
+.chips{flex:none;height:52px;display:flex;align-items:center;gap:8px;padding:0 16px;overflow-x:auto;scrollbar-width:none}
+.chips::-webkit-scrollbar{display:none}
+.chip{flex:none;min-height:44px;display:inline-flex;align-items:center}
+.chip > span{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;border-radius:17px;border:1px solid var(--line);background:var(--surface);
+  font-size:15px;line-height:20px;white-space:nowrap;max-width:210px;overflow:hidden;text-overflow:ellipsis}
+.chip[aria-pressed="true"] > span{background:var(--ink);color:var(--screen);border-color:var(--ink)}
+.chip.add > span{border-style:dashed;color:var(--accent)}
+.chip .d{font-size:12px;opacity:.75}
+.quiet{min-height:44px;font-size:15px;color:var(--accent);display:inline-flex;align-items:center}
+
+/* The strip: one line of four cells */
+.strip{flex:none;margin:0 16px 4px;background:var(--surface);border-radius:14px;display:grid;grid-template-columns:1fr 1.25fr 1fr 1fr;overflow:hidden}
+.cell{min-height:60px;padding:8px 10px;display:flex;flex-direction:column;justify-content:center;border-left:.5px solid var(--line)}
+.cell:first-child{border-left:0}
+.cell b{font-size:20px;line-height:25px;font-weight:600;white-space:nowrap}
+.cell small{font-size:12px;line-height:16px;color:var(--ink2);white-space:nowrap}
+button.cell[aria-pressed="true"]{background:var(--accent-faint);box-shadow:inset 0 -3px 0 var(--accent)}
+button.cell[disabled] b{color:var(--ink3)}
+.cell.risk b{color:var(--warn)}
+.cell.today b{color:var(--accent)}
+.snote{grid-column:1/-1;border-top:.5px solid var(--line);padding:6px 12px;min-height:44px;display:flex;align-items:center;gap:8px;font-size:13px;line-height:18px;color:var(--ink2);width:100%}
+.snote.warn{color:var(--warn)}
+button.snote{color:var(--accent)}
+.dot{width:8px;height:8px;border-radius:4px;flex:none;background:currentColor}
+
+/* Rows: fixed height, so a changed status line never moves the next row */
+.row{display:flex;align-items:center;gap:10px;width:100%;height:72px;padding:0 12px 0 14px}
+.row .main{flex:1;min-width:0}
+.row[aria-current="true"]{background:var(--accent-faint)}
+.row .t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.row .s{font-size:13px;line-height:18px;color:var(--ink2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.s .w{color:var(--warn);font-weight:600}
+.s .ok{color:var(--ok)}
+.s .h{color:var(--ink3)}
+.needc{flex:none;min-width:64px;text-align:right}
+.needc b{display:block;font-size:17px;line-height:22px;font-weight:600}
+.needc small{font-size:12px;line-height:16px;color:var(--ink2)}
+.needc.full b{color:var(--ok)}
+.needc.risk b{color:var(--warn)}
+.tagbtn{flex:none;min-height:44px;min-width:44px;padding:0 4px;font-size:15px;color:var(--accent);display:inline-flex;align-items:center}
+.pastrow{flex:none;margin:0 16px 4px;background:var(--surface);border-radius:14px;display:flex;align-items:center;gap:8px;min-height:56px;padding:4px 6px 4px 14px}
+.pastrow .main{flex:1;min-width:0;font-size:13px;line-height:18px;color:var(--ink2)}
+.pastrow .main b{display:block;color:var(--ink);font-size:15px;line-height:20px;font-weight:600}
+
+/* Tab bar */
+.tabbar{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) - 8px);height:58px;border-radius:29px;background:var(--chrome);border:.5px solid var(--chrome-line);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);display:grid;grid-template-columns:repeat(3,1fr);align-items:center;z-index:5}
+.tab{min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:13px;color:var(--ink2);gap:2px}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent)}
+
+/* Sheets and panes */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:10}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--screen);border-radius:24px 24px 0 0;z-index:11;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.sheet.medium{top:330px}
+.sheet.large{top:96px}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:6px auto 0;flex:none}
+.bar{height:52px;display:grid;grid-template-columns:88px 1fr 88px;align-items:center;padding:0 8px;flex:none}
+.bar h3{margin:0;text-align:center;font-size:17px;line-height:22px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .lead{justify-self:start}
+.bar .trail{justify-self:end}
+.body{flex:1;overflow-y:auto;scrollbar-width:none;padding:14px 16px 40px}
+.group{background:var(--surface);border-radius:12px;margin:0 0 8px;overflow:hidden}
+.group > * + *{border-top:.5px solid var(--line)}
+.field{display:flex;align-items:center;gap:8px;min-height:48px;padding:0 6px 0 14px;width:100%}
+.field .lab{flex:1;font-size:17px}
+.field .val{font-size:17px;color:var(--ink2);display:flex;align-items:center;gap:4px}
+.field input{flex:2;min-width:0;border:0;background:none;font:inherit;color:var(--ink);text-align:right;min-height:44px;padding:0 8px}
+.field input::placeholder{color:var(--ink3)}
+.field.act .lab{color:var(--accent)}
+.field .chk{width:22px;color:var(--accent);flex:none;display:flex;justify-content:center}
+.sq{width:44px;height:44px;display:grid;place-items:center;color:var(--accent);border-radius:10px}
+.sq[disabled]{color:var(--ink3)}
+.stepv{min-width:40px;text-align:center;font-weight:600}
+.err{min-height:20px;font-size:13px;line-height:18px;color:var(--danger);margin:2px 16px 6px;font-weight:600}
+.foot{font-size:13px;line-height:18px;color:var(--ink2);margin:0 16px 12px}
+.copy{display:flex;align-items:center;gap:10px;min-height:56px;padding:6px 14px}
+.copy .main{flex:1;min-width:0}
+.copy .t{font-size:15px;line-height:20px}
+.copy .s{font-size:13px;line-height:18px;color:var(--ink2)}
+.copy .q{font-size:15px;font-weight:600;flex:none}
+.copy.w .s{color:var(--warn)}
+.hintbox{font-size:13px;line-height:18px;color:var(--ink2);background:var(--surface);border:1px dashed var(--line);border-radius:12px;padding:10px 12px;margin:0 0 8px}
+.dhead{margin:0 4px 10px}
+.dhead h4{margin:0;font-size:22px;line-height:28px;font-weight:700}
+.dhead p{margin:2px 0 0;font-size:15px;line-height:20px;color:var(--ink2)}
+
+/* Event board on the right half */
+.ev{display:block;width:100%;background:var(--surface);border-radius:14px;padding:12px 14px;margin:0 0 8px;min-height:44px}
+.ev[aria-pressed="true"]{box-shadow:inset 0 0 0 2px var(--accent)}
+.ev .top{display:flex;justify-content:space-between;align-items:baseline;gap:8px}
+.ev .nm{font-size:17px;line-height:22px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ev .dd{font-size:15px;line-height:20px;color:var(--ink2);white-space:nowrap}
+.ev .dd.today{color:var(--accent);font-weight:600}
+.meter{display:flex;height:8px;border-radius:4px;overflow:hidden;background:var(--line);margin:10px 0 6px}
+.meter i{display:block;height:100%}
+.ev .cts{font-size:13px;line-height:18px;color:var(--ink2)}
+.ev .warnl{font-size:13px;line-height:18px;color:var(--warn);margin-top:4px}
+
+/* Packages */
+.prow{display:flex;align-items:center;gap:10px;width:100%;height:56px;padding:0 10px 0 14px}
+.prow .main{flex:1;min-width:0}
+.prow .t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .s{font-size:13px;line-height:18px;color:var(--ink2)}
+.circ{width:26px;height:26px;border-radius:13px;border:2px solid var(--ink3);flex:none;display:grid;place-items:center}
+.prow[aria-pressed="true"] .circ{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.slot{width:46px;flex:none;display:flex;justify-content:flex-end}
+.echip{height:22px;padding:0 8px;border-radius:11px;background:var(--accent-faint);color:var(--accent);font-size:12px;line-height:22px;font-weight:600}
+
+.toast{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) + 60px);background:var(--toast);color:var(--toast-ink);border-radius:14px;padding:6px 6px 6px 14px;
+  font-size:15px;line-height:20px;z-index:20;box-shadow:0 8px 20px rgba(0,0,0,.2);display:flex;align-items:center;gap:8px;min-height:56px}
+.toast span{flex:1}
+.toast button{min-height:44px;min-width:44px;padding:0 10px;font-weight:600;color:var(--toast-act)}
+
+/* Dashed labels: what exists today, and what this direction adds */
+.lbl{position:relative;outline:1.5px dashed var(--tag-new);outline-offset:3px}
+.lbl[data-k="today"]{outline-color:var(--tag-today)}
+.lbl::after{content:attr(data-lbl);position:absolute;top:-11px;right:10px;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;
+  background:var(--tag-new);color:var(--surface);white-space:nowrap;z-index:4;pointer-events:none}
+.lbl[data-k="today"]::after{background:var(--tag-today)}
+:root[data-labels="off"] .lbl{outline:none}
+:root[data-labels="off"] .lbl::after{display:none}
+</style>
+</head>
+<body>
+<p class="sample" role="note"><b>Sample.</b> Every event, card, seller, order id, date and count on this page is invented. No figure is real.</p>
+<header class="page">
+  <h1>Need-by dates</h1>
+  <p class="meta"><b>Mockup, not built.</b> Direction: the deck due Friday. Give a dated event the cards it needs, and Tally answers "will I have them by Thursday?" from the check-ins it already holds.</p>
+  <nav class="controls" aria-label="Screen states">
+    <span class="ctl-label">State</span>
+    <div class="seg" id="states"></div>
+  </nav>
+  <div class="controls">
+    <span class="ctl-label">Theme</span>
+    <div class="seg" id="themes"></div>
+    <span class="ctl-label">Labels</span>
+    <div class="seg"><button type="button" id="lblBtn" aria-pressed="true">Today / New</button></div>
+  </div>
+</header>
+
+<p class="caption" id="caption" aria-live="polite"></p>
+
+<div class="stage">
+  <figure class="pose">
+    <figcaption>Folded, one screen</figcaption>
+    <div class="phone" data-device="iphone-duo-folded"><div class="screen" id="f"></div></div>
+  </figure>
+  <figure class="pose">
+    <figcaption>Unfolded, two screens: Tally beside the event board</figcaption>
+    <div class="phone duo" data-device="iphone-duo-unfolded">
+      <div class="screen left" id="ul"></div>
+      <div class="hinge" aria-hidden="true"></div>
+      <div class="screen right" id="ur"></div>
+    </div>
+  </figure>
+</div>
+
+<section class="notes">
+  <h2>How to read it</h2>
+  <ul>
+    <li>Every frame is live. Press an event chip, a count in the strip, a row, "Need for…", the stepper, the stamps and the tabs. The state picker resets the sample. Each state has a link: <code>#s=&lt;state&gt;</code>, and <code>&amp;t=dark</code> or <code>&amp;t=light</code> sets the theme.</li>
+    <li>The sample's "today" is fixed at Sat, Nov 28, 2026, so day counts do not drift. "Event today" moves it to Dec 3 and "Past event" to Dec 4.</li>
+    <li>Dashed "Today:" marks what the app has now. Dashed "New:" marks what this direction adds. The Labels button hides both.</li>
+    <li>Drawn reading for refunded copies: they sit in the at-risk count and are labelled "not coming". The plan's edge state ("count as not coming") and its slice-1 rule (at risk includes refunded) disagree, so this is a choice, not the plan's.</li>
+    <li>Not drawn: a desktop web width, because the plan names no web target. Later slices 3 to 5 (last safe re-buy day, deck-list coverage, proxy sheet) are out of the plan's screen states.</li>
+  </ul>
+  <h2>Sources</h2>
+  <ul>
+    <li>Frames: folded at the brief's 390 by 844. The device list writes no size for either pose, so the unfolded halves are illustrative, each 390 by 844.</li>
+    <li>Apple HIG, read 2026-11-21: Typography (Dynamic Type at the default size: Large Title 34, Title 2 22, Title 3 20, Body 17, Subhead 15, Footnote 13, Caption 1 12, Caption 2 11), Accessibility (44x44 pt default control size), Sheets (Cancel on the leading edge, Done on the trailing edge).</li>
+  </ul>
+</section>
+
+<script>
+(function(){
+"use strict";
+var SELLERS={d:"Driftwood Cards",h:"Hollow Pine Games",l:"Lantern Row TCG",m:"Mossback Cards",k:"Kettle & Crow",b:"Bramble Post",f:"Fernwick Games",g:"Gullhaven Cards"};
+var OID={d:"OW-48213",h:"OW-48240",l:"OW-48277",m:"OW-48302",k:"OW-48119",b:"OW-48355",f:"OW-48098",g:"OW-48391"};
+var LOST={days:19,claimLeft:11};
+var BASE={
+  ew:{n:"Ember Warden",c:[["d","hand",2],["h","hand",1],["l","transit",1]]},
+  so:{n:"Saltmarsh Oracle",c:[["d","hand",2],["m","hand",2]]},
+  gc:{n:"Gloomcap Courier",c:[["h","hand",1],["f","lost",1]]},
+  bl:{n:"Brindle Lookout",c:[["m","hand",4]]},
+  ct:{n:"Copperleaf Tutor",c:[["d","hand",1],["b","transit",2]]},
+  hl:{n:"Harrow Lantern",c:[["l","hand",2],["m","hand",1]]},
+  vt:{n:"Vesper Tide",c:[["d","hand",2],["h","hand",1],["b","hand",1]]},
+  mt:{n:"Mirefen Toll",c:[["k","hand",2]]},
+  ta:{n:"Tidecaller Apprentice",c:[["h","hand",2],["b","transit",2]]},
+  lw:{n:"Lantern Wyrm",c:[["l","transit",1]]},
+  as:{n:"Ashgrove Sentry",c:[["m","hand",2]]},
+  qh:{n:"Quiet Harbor",c:[["k","hand",1]]}
+};
+var ORDER=["ew","so","gc","bl","ct","hl","vt","mt","ta","lw","as","qh"];
+var MON=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"],WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];
+
+var STATES=[
+  {k:"empty",n:"Empty",cap:"<b>Empty.</b> No events yet. Tally shows one quiet link, \"Need by a date?\", in the chip row's own space. No strip, no chips. Packages is unchanged."},
+  {k:"create",n:"Create event",cap:"<b>Create an event.</b> An inline sheet, not a browser dialog: a name and a local calendar date. Step the date with the arrows; step it into the past to see the error."},
+  {k:"pasterr",n:"Error: past date",cap:"<b>Error, past date.</b> \"That date has passed\" sits in a line reserved under the field, so nothing moves. Save stays disabled until the date is today or later."},
+  {k:"tag",n:"Tag a need",cap:"<b>Tag needs.</b> \"Need for…\" on a Tally row. Pick the event and the count; the count starts at the quantity ordered. \"All 12 shown\" tags the whole current filter in one press, so one deck takes under a minute."},
+  {k:"normal",n:"Normal",cap:"<b>Normal.</b> The Thursday league chip narrows Tally to its 8 tagged rows. The strip reads 5 days, 22 of 26 in hand, 3 in transit, 1 at risk. Press a count to narrow further. Rows carry \"3 of 4\"."},
+  {k:"risk",n:"At risk, narrowed",cap:"<b>Act on risk.</b> \"1 at risk\" is pressed. The row's detail links only to what exists: the lost-mail warning, the claim clock, and the claim filed and refunded stamps. This slice adds no new action. Try a stamp: the count follows."},
+  {k:"today",n:"Edge: event today",cap:"<b>Event today.</b> The strip reads \"Today\". The at-risk row says \"proxy\" instead of a count of days."},
+  {k:"over",n:"Edge: need above ordered",cap:"<b>Need above ordered.</b> Ember Warden needs 5 and 4 were ordered. \"1 not ordered\" is a separate, neutral line. It never counts as at risk."},
+  {k:"refund",n:"Edge: refunded, claim filed",cap:"<b>Refunded and claim filed.</b> Copperleaf Tutor's Bramble Post order was refunded: its 2 copies read \"not coming\". Gloomcap Courier's lost order has a claim filed: still at risk. Drawn reading: refunded copies sit in the at-risk count (see notes)."},
+  {k:"orphan",n:"Edge: maybe in Orphaned",cap:"<b>Maybe in Orphaned.</b> Later slice 2. An unmatched package may hold the missing Gloomcap Courier. The row shows a hint only. No count changes (orphaned-mail-never-decides)."},
+  {k:"undo",n:"Edge: undo a check-in",cap:"<b>Undo a check-in.</b> A Harrow Lantern check-in was undone through the recent-checks log. In hand drops to 21 of 26 and in transit rises to 4 at once."},
+  {k:"shared",n:"Edge: two events, one day",cap:"<b>Two events on one date need one card.</b> Kai's Commander night moved to Dec 3 and also needs Ember Warden. Both strips warn. Events on different dates count on their own."},
+  {k:"reimport",n:"Edge: re-import",cap:"<b>Re-import.</b> The CSV import merged a new Copperleaf Tutor order. Tags keyed to the product survive; the row now reads 4 ordered from 3 sellers."},
+  {k:"sync",n:"Error: sync conflict",cap:"<b>Sync conflict.</b> Two devices edited one event. The later change wins, as with check-ins: the name is now \"Thursday league top 8\". Kai's Commander night was deleted on the other device and stays deleted. The strip shows nothing extra."},
+  {k:"unmatched",n:"Error: need with no card",cap:"<b>Need with no matching card.</b> A need points at \"Stormglass Relic\", which Tally no longer shows. The tag is kept, and one line says so. Nothing is deleted silently."},
+  {k:"past",n:"Past event",cap:"<b>The event passed.</b> On Dec 4 Thursday league collapses to one line: \"Covered 25 of 26 · 1 short\". It stays until removed. Remove it to see the undo toast."},
+  {k:"packages",n:"Packages chip (later)",cap:"<b>Mail day, later slice 2.</b> In Packages, a checked card that an event needs shows \"Thu\" in a slot every row keeps empty, so nothing moves under the thumb. Tap Lantern Row's unchecked Ember Warden to check it in: the chip fills its slot and the Thursday strip gains one in hand."}
+];
+var THEMES=[{k:"auto",n:"System"},{k:"light",n:"Light"},{k:"dark",n:"Dark"}];
+
+var S;
+function clone(o){return JSON.parse(JSON.stringify(o))}
+function base(){
+  return {today:"2026-11-28",tab:"tally",filter:"thu",narrow:null,sheet:null,form:null,detail:null,rp:null,open:false,toast:null,
+    events:[{id:"thu",name:"Thursday league",date:"2026-12-03"},{id:"kai",name:"Kai's Commander night",date:"2026-12-05"}],
+    needs:{thu:{ew:4,so:4,gc:2,bl:4,ct:3,hl:3,vt:4,mt:2},kai:{ta:4,lw:1,vt:2,as:2}},
+    prods:clone(BASE),hint:{},stash:null};
+}
+function setStatus(pid,seller,from,to){S.prods[pid].c.forEach(function(x){if(x[0]===seller&&x[1]===from)x[1]=to})}
+function preset(k){
+  S=base();S.s=k;
+  if(k==="empty"){S.events=[];S.needs={};S.filter="all"}
+  if(k==="create"){S.events=[];S.needs={};S.filter="all";S.sheet="create";S.form={name:"Thursday league",date:"2026-12-03"}}
+  if(k==="pasterr"){S.events=[];S.needs={};S.filter="all";S.sheet="create";S.form={name:"Thursday league",date:"2026-11-25"}}
+  if(k==="tag"){S.needs.thu={};S.events=[S.events[0]];delete S.needs.kai;S.filter="all";S.sheet="tag";S.form={pid:"ew",ev:"thu",count:4,scope:"one"}}
+  if(k==="risk"){S.narrow="risk";S.detail="gc";S.open=true}
+  if(k==="today"){S.today="2026-12-03";S.detail="gc"}
+  if(k==="over"){S.needs.thu.ew=5;S.detail="ew"}
+  if(k==="refund"){setStatus("ct","b","transit","refunded");setStatus("gc","f","lost","claim");S.detail="ct";S.rp="detail"}
+  if(k==="orphan"){S.hint.gc=true;S.detail="gc"}
+  if(k==="undo"){setStatus("hl","m","hand","transit");S.toast={msg:"Check-in undone: Harrow Lantern ×1, Mossback Cards."}}
+  if(k==="shared"){S.events[1].date="2026-12-03";S.needs.kai.ew=2}
+  if(k==="reimport"){S.prods.ct.c.push(["g","transit",1]);S.toast={msg:"Import merged 1 new order. 12 needs kept."};S.detail="ct"}
+  if(k==="sync"){S.events[0].name="Thursday league top 8";S.events.splice(1,1);delete S.needs.kai}
+  if(k==="unmatched"){S.needs.thu.sr=1;S.rp="unmatched"}
+  if(k==="past"){S.today="2026-12-04";setStatus("ew","l","transit","hand");setStatus("ct","b","transit","hand");S.filter="kai"}
+  if(k==="packages"){S.tab="packages"}
+  if(S.sheet)S.detail=null;
+}
+
+/* Dates are local calendar strings; arithmetic runs in UTC so no offset can move a day. */
+function pd(s){var a=s.split("-");return Date.UTC(+a[0],+a[1]-1,+a[2])}
+function ds(t){var d=new Date(t);return d.getUTCFullYear()+"-"+String(d.getUTCMonth()+1).padStart(2,"0")+"-"+String(d.getUTCDate()).padStart(2,"0")}
+function addDay(s,n){return ds(pd(s)+n*864e5)}
+function days(ev){return Math.round((pd(ev.date)-pd(S.today))/864e5)}
+function fmt(s,yr){var d=new Date(pd(s));return WD[d.getUTCDay()]+", "+MON[d.getUTCMonth()]+" "+d.getUTCDate()+(yr?", "+d.getUTCFullYear():"")}
+function wd(s){return WD[new Date(pd(s)).getUTCDay()]}
+function esc(t){return String(t).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function plural(n,w){return n+" "+w+(n===1?"":"s")}
+
+function upcoming(){return S.events.filter(function(e){return days(e)>=0})}
+function past(){return S.events.filter(function(e){return days(e)<0})}
+function ev(id){return S.events.filter(function(e){return e.id===id})[0]}
+function cur(){var e=ev(S.filter);return e&&days(e)>=0?e:null}
+function kc(pid){
+  var p=S.prods[pid],r={hand:0,transit:0,lost:0,claim:0,refunded:0},sel={};
+  p.c.forEach(function(x){r[x[1]]+=x[2];sel[x[0]]=1});
+  r.ordered=r.hand+r.transit+r.lost+r.claim+r.refunded;r.sellers=Object.keys(sel).length;return r;
+}
+function calc(pid,need){
+  if(!S.prods[pid])return null;
+  var k=kc(pid),h=Math.min(need,k.hand),t=Math.min(need-h,k.transit),rk=Math.min(need-h-t,k.lost+k.claim+k.refunded);
+  return {need:need,h:h,t:t,rk:rk,no:need-h-t-rk,k:k};
+}
+function sum(e){
+  var r={need:0,h:0,t:0,rk:0,no:0,unmatched:[]},n=S.needs[e.id]||{};
+  Object.keys(n).forEach(function(pid){var c=calc(pid,n[pid]);if(!c){r.unmatched.push(pid);return}
+    r.need+=c.need-c.no;r.h+=c.h;r.t+=c.t;r.rk+=c.rk;r.no+=c.no});
+  return r;
+}
+function shared(e){
+  var out=[];S.events.forEach(function(o){
+    if(o.id===e.id||o.date!==e.date)return;
+    Object.keys(S.needs[e.id]||{}).forEach(function(pid){if((S.needs[o.id]||{})[pid]&&S.prods[pid])out.push({pid:pid,o:o})});
+  });return out;
+}
+
+var ICON={
+  box:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  sum:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M5 12h14M5 19h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  q:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 10.5a2 2 0 1 1 2.5 1.9V14M12 16v.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>',
+  chev:'<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  left:'<svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><path d="M8 2L4 6l4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  right:'<svg width="14" height="14" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  check:'<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7.5l2.6 2.6L11 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  plus:'<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M10 4v12M4 10h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  minus:'<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><path d="M4 10h12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+};
+function L(k,text,inner,tag,cls,attrs){tag=tag||"div";return "<"+tag+' class="lbl'+(cls?" "+cls:"")+'" data-k="'+k+'" data-lbl="'+(k==="today"?"Today: ":"New: ")+esc(text)+'"'+(attrs||"")+">"+inner+"</"+tag+">"}
+function statusbar(){return '<div class="island" aria-hidden="true"></div><div class="status" aria-hidden="true"><span class="num">9:41</span><i></i></div>'}
+function tabbar(){
+  function t(k,n,ic){return '<button type="button" class="tab" data-act="tab" data-v="'+k+'"'+(S.tab===k?' aria-current="page"':'')+'>'+ic+n+'</button>'}
+  return L("today","views",t("packages","Packages",ICON.box)+t("tally","Tally",ICON.sum)+t("orphaned","Orphaned",ICON.q),"nav","tabbar")+'<div class="homebar" aria-hidden="true"></div>';
+}
+
+/* ---------- Tally ---------- */
+function chipRow(){
+  var up=upcoming();
+  if(!S.events.length)return L("new","quiet link",'<div class="chips"><button type="button" class="quiet" data-act="create">Need by a date?</button></div>',"div","",' style="flex:none"');
+  var h='<button type="button" class="chip" data-act="filter" data-v="all" aria-pressed="'+(S.filter==="all"||!cur())+'"><span>All</span></button>';
+  up.forEach(function(e){var d=days(e);
+    h+='<button type="button" class="chip" data-act="filter" data-v="'+e.id+'" aria-pressed="'+(S.filter===e.id)+'"><span>'+esc(e.name)+' <span class="d num">'+(d===0?"Today":wd(e.date))+'</span></span></button>'});
+  h+='<button type="button" class="chip add" data-act="create" aria-label="Need by a date?"><span>+ Date</span></button>';
+  return L("new","event chips",'<div class="chips" id="eventChips">'+h+'</div>',"div","",' style="flex:none"');
+}
+function strip(e){
+  var r=sum(e),d=days(e);
+  function cell(k,b,s,cls){var on=S.narrow===k,zero=(k==="risk"&&!r.rk)||(k==="transit"&&!r.t)||(k==="hand"&&!r.h);
+    return '<button type="button" class="cell num '+(cls||"")+'" data-act="narrow" data-v="'+k+'" aria-pressed="'+on+'"'+(zero?" disabled":"")+'><b>'+b+'</b><small>'+s+'</small></button>'}
+  var h='<div class="cell num'+(d===0?" today":"")+'"><b>'+(d===0?"Today":plural(d,"day"))+'</b><small>'+(d===0?fmt(e.date):"to "+fmt(e.date).replace(/^\w+, /,wd(e.date)+" "))+'</small></div>'+
+    cell("hand",r.h+" of "+r.need,"in hand")+cell("transit",r.t,"in transit")+cell("risk",r.rk,"at risk",r.rk?"risk":"");
+  if(r.no)h+='<div class="snote num"><span class="dot" aria-hidden="true"></span>'+plural(r.no,"card")+' not ordered. Not counted as at risk.</div>';
+  shared(e).forEach(function(x){h+='<div class="snote warn"><span class="dot" aria-hidden="true"></span>'+esc(S.prods[x.pid].n)+': shared with '+esc(x.o.name)+', same day</div>'});
+  if(r.unmatched.length)h+='<button type="button" class="snote" data-act="unmatched"><span class="dot" aria-hidden="true"></span>'+plural(r.unmatched.length,"need")+' '+(r.unmatched.length===1?"has":"have")+' no matching card</button>';
+  if(!Object.keys(S.needs[e.id]||{}).length)h+='<div class="snote">No cards yet. Choose All, then "Need for…" on a row.</div>';
+  return L("new","event strip",'<div class="strip" id="eventStrip">'+h+'</div>',"div","",' style="flex:none;margin:0 16px 4px;border-radius:14px"').replace('class="strip"','class="strip" style="margin:0"');
+}
+function pastRows(){
+  return past().map(function(e){var r=sum(e),short=r.need+r.no-r.h;
+    return L("new","past event",'<div class="pastrow"><div class="main"><b>'+esc(e.name)+' · '+fmt(e.date)+'</b><span class="num">Covered '+r.h+' of '+(r.need+r.no)+(short?" · "+short+" short":"")+'</span></div><button type="button" class="tagbtn" data-act="remove" data-v="'+e.id+'">Remove</button></div>',"div","",' style="flex:none;margin:0 16px 4px;border-radius:14px"').replace('class="pastrow"','class="pastrow" style="margin:0"');
+  }).join("");
+}
+function rowSub(pid,c,e){
+  var parts=[],k=c.k,d=days(e);
+  if(c.rk){
+    if(d===0)parts.push('<span class="w">At risk · proxy</span>');
+    else if(k.refunded&&k.claim)parts.push('<span class="w">At risk · refunded, claim filed</span>');
+    else if(k.refunded)parts.push('<span class="w">At risk · '+k.refunded+' refunded, not coming</span>');
+    else if(k.claim)parts.push('<span class="w">At risk · claim filed</span>');
+    else parts.push('<span class="w">At risk · lost-mail warning, '+LOST.days+' days</span>');
+  }
+  if(c.no)parts.push("need "+c.need+", ordered "+k.ordered+" · "+c.no+" not ordered");
+  if(c.t)parts.push(c.t+" in transit");
+  if(S.hint[pid])parts.push('<span class="h">Hint: maybe in Orphaned</span>');
+  if(!parts.length)parts.push('<span class="ok">All in hand</span>');
+  if(parts.length<2)parts.push(k.ordered+" ordered from "+plural(k.sellers,"seller"));
+  return parts.join(" · ");
+}
+function tagLine(pid){
+  var t=[];S.events.forEach(function(e){var n=(S.needs[e.id]||{})[pid];if(n&&days(e)>=0)t.push(esc(e.name)+" · need "+n)});
+  return t.length?t.join(" · "):"";
+}
+function list(e){
+  if(!e){
+    var rows=ORDER.map(function(pid){var k=kc(pid),tl=tagLine(pid);
+      var b='<div class="row"><div class="main"><div class="t">'+esc(S.prods[pid].n)+'</div><div class="s num">'+k.ordered+' ordered from '+plural(k.sellers,"seller")+(tl?' · <span class="ok">'+tl+'</span>':"")+'</div></div>'+
+        (S.events.length?'<button type="button" class="tagbtn" data-act="tag" data-v="'+pid+'">Need for…</button>':"")+'</div>';
+      return b;
+    }).join("");
+    var lst='<div class="list">'+rows+'</div>';
+    return '<p class="sect">All cards · '+ORDER.length+'</p>'+(S.events.length?L("new","Need for… on each row",lst):lst);
+  }
+  var n=S.needs[e.id]||{},ids=ORDER.filter(function(pid){return n[pid]});
+  if(S.narrow)ids=ids.filter(function(pid){var c=calc(pid,n[pid]);return S.narrow==="hand"?c.h:S.narrow==="transit"?c.t:c.rk});
+  var out=ids.map(function(pid,i){var c=calc(pid,n[pid]),cls=c.rk?"risk":(c.h===c.need?"full":"");
+    var b='<button type="button" class="row" data-act="detail" data-v="'+pid+'"'+(S.detail===pid?' aria-current="true"':'')+'><div class="main"><div class="t">'+esc(S.prods[pid].n)+'</div><div class="s num">'+rowSub(pid,c,e)+'</div></div>'+
+      '<div class="needc num '+cls+'"><b>'+c.h+' of '+c.need+'</b><small>in hand</small></div></button>';
+    return b;
+  }).join("");
+  var lab={hand:"In hand",transit:"In transit",risk:"At risk"}[S.narrow]||esc(e.name);
+  return '<p class="sect">'+lab+' · '+ids.length+(ids.length===1?" card":" cards")+'</p>'+(out?L("new","need counts",'<div class="list">'+out+'</div>'):'<div class="list"><p class="empty-note">Nothing here.</p></div>');
+}
+function tallyScreen(withPast){
+  var e=cur();
+  return statusbar()+'<div class="nav"><div class="nav-top"></div><h2 class="largetitle">Tally</h2></div>'+chipRow()+(e?strip(e):"")+(withPast?pastRows():"")+
+    '<div class="scroll">'+list(e)+'</div>'+tabbar();
+}
+
+/* ---------- Packages and Orphaned ---------- */
+function packagesScreen(){
+  var groups={},labelled=false;ORDER.forEach(function(pid){S.prods[pid].c.forEach(function(x,i){if(x[1]==="hand"||x[1]==="transit")(groups[x[0]]=groups[x[0]]||[]).push({pid:pid,i:i,x:x})})});
+  var h=["l","d","b"].map(function(s){
+    var rows=(groups[s]||[]).map(function(r,j){var on=r.x[1]==="hand",ne=null;
+      upcoming().forEach(function(e){if(!ne&&(S.needs[e.id]||{})[r.pid])ne=e});
+      var chip=on&&ne?'<span class="echip">'+wd(ne.date)+'</span>':"";
+      if(chip&&!labelled){chip=L("new","event chip",chip,"span");labelled=true}
+      return '<button type="button" class="prow" data-act="check" data-v="'+r.pid+'" data-i="'+r.i+'" aria-pressed="'+on+'"><span class="circ">'+(on?ICON.check:"")+'</span><div class="main"><div class="t">'+esc(S.prods[r.pid].n)+' ×'+r.x[2]+'</div><div class="s">'+(on?"Received":"Not yet received")+'</div></div><span class="slot">'+chip+'</span></button>';
+    }).join("");
+    return '<p class="sect">'+esc(SELLERS[s])+' · '+OID[s]+'</p>'+L("today","package rows",'<div class="list">'+rows+'</div>');
+  }).join("");
+  return statusbar()+'<div class="nav"><div class="nav-top"></div><h2 class="largetitle">Packages</h2></div><div class="scroll">'+h+'</div>'+tabbar();
+}
+function orphanedScreen(){
+  return statusbar()+'<div class="nav"><div class="nav-top"></div><h2 class="largetitle">Orphaned</h2></div><div class="scroll">'+
+    L("today","orphaned packages",'<div class="list"><div class="row"><div class="main"><div class="t">Padded mailer, no return address</div><div class="s">Arrived Nov 26 · 3 cards, no seller</div></div></div></div>')+
+    '<p class="foot">Unchanged by this direction. Orphaned mail never moves a need count.</p></div>'+tabbar();
+}
+
+/* ---------- Sheets, detail and board ---------- */
+function createBody(){
+  var f=S.form,past=pd(f.date)<pd(S.today),ok=!past&&f.name.trim().length>0;
+  return {title:"New date",lead:'<button type="button" class="navbtn" data-act="cancel">Cancel</button>',
+    trail:'<button type="button" class="navbtn strong save" data-act="savecreate"'+(ok?"":" disabled")+'>Save</button>',
+    body:L("new","event form",'<div class="group" style="margin:0"><label class="field"><span class="lab">Name</span><input type="text" data-act="name" value="'+esc(f.name)+'" placeholder="Thursday league" autocomplete="off"></label>'+
+      '<div class="field"><span class="lab">Date</span><button type="button" class="sq" data-act="date" data-v="-1" aria-label="Day earlier">'+ICON.left+'</button><span class="val num" style="min-width:120px;justify-content:center;color:var(--ink)">'+fmt(f.date,true)+'</span><button type="button" class="sq" data-act="date" data-v="1" aria-label="Day later">'+ICON.right+'</button></div></div>')+
+      '<p class="err" role="status">'+(past?"That date has passed":"")+'</p><p class="foot">A local calendar date, so a time zone cannot move Thursday to Wednesday.</p>'};
+}
+function tagBody(){
+  var f=S.form,p=S.prods[f.pid],k=kc(f.pid);
+  var evs=upcoming().map(function(e){return '<button type="button" class="field" data-act="tagev" data-v="'+e.id+'"><span class="lab">'+esc(e.name)+'</span><span class="val">'+fmt(e.date)+'</span><span class="chk">'+(f.ev===e.id?ICON.check:"")+'</span></button>'}).join("")+
+    '<button type="button" class="field act" data-act="create"><span class="lab">New date…</span></button>';
+  var scope='<button type="button" class="field" data-act="scope" data-v="one"><span class="lab">This card</span><span class="chk">'+(f.scope==="one"?ICON.check:"")+'</span></button>'+
+    '<button type="button" class="field" data-act="scope" data-v="all"><span class="lab">All '+ORDER.length+' shown, each at its ordered count</span><span class="chk">'+(f.scope==="all"?ICON.check:"")+'</span></button>';
+  var step='<div class="field"><span class="lab">Need</span><button type="button" class="sq" data-act="step" data-v="-1" aria-label="Need one fewer"'+(f.count<=1?" disabled":"")+'>'+ICON.minus+'</button><span class="stepv num">'+f.count+'</span><button type="button" class="sq" data-act="step" data-v="1" aria-label="Need one more"'+(f.count>=9?" disabled":"")+'>'+ICON.plus+'</button></div>';
+  return {title:"Need for…",lead:'<button type="button" class="navbtn" data-act="cancel">Cancel</button>',trail:'<button type="button" class="navbtn strong" data-act="savetag">Save</button>',
+    body:'<div class="dhead"><h4>'+esc(p.n)+'</h4><p class="num">'+k.ordered+' ordered from '+plural(k.sellers,"seller")+'</p></div>'+
+      '<p class="sect">Event</p><div class="group">'+evs+'</div>'+
+      L("new","need count",'<div class="group" style="margin:0">'+(f.scope==="one"?step:'<div class="field"><span class="lab" style="color:var(--ink2)">Each row needs what it ordered</span></div>')+'</div>')+
+      '<p class="foot num" style="margin-top:6px">'+(f.scope==="one"?(f.count>k.ordered?(f.count-k.ordered)+" more than ordered: shown as not ordered, never at risk.":"Starts at the quantity ordered."):"")+'</p>'+
+      '<p class="sect">Tag</p>'+L("new","bulk tag",'<div class="group" style="margin:0">'+scope+'</div>')};
+}
+function detailBody(pid){
+  var e=cur()||upcoming()[0],p=S.prods[pid],k=kc(pid),n=e?(S.needs[e.id]||{})[pid]:0,c=n?calc(pid,n):null;
+  var copies=p.c.map(function(x){var st=x[1],s,w=false;
+    if(st==="hand")s="Received";else if(st==="transit")s="In transit";
+    else if(st==="lost"){s="Lost-mail warning · "+LOST.days+" days since shipped";w=true}
+    else if(st==="claim"){s="Claim filed";w=true}else{s="Refunded · not coming";w=true}
+    return '<div class="copy'+(w?" w":"")+'"><div class="main"><div class="t">'+esc(SELLERS[x[0]])+'</div><div class="s num">'+OID[x[0]]+' · '+s+'</div></div><span class="q num">×'+x[2]+'</span></div>'}).join("");
+  var h='<div class="dhead"><p class="num">'+(c?c.h+" of "+c.need+" in hand for "+esc(e.name):k.ordered+" ordered")+(c&&c.no?" · "+c.no+" not ordered":"")+'</p></div>';
+  if(c)h+=L("new","need count",'<div class="group" style="margin:0"><div class="field"><span class="lab">Need for '+esc(e.name)+'</span><button type="button" class="sq" data-act="dstep" data-v="-1" data-p="'+pid+'" aria-label="Need one fewer"'+(n<=1?" disabled":"")+'>'+ICON.minus+'</button><span class="stepv num">'+n+'</span><button type="button" class="sq" data-act="dstep" data-v="1" data-p="'+pid+'" aria-label="Need one more"'+(n>=9?" disabled":"")+'>'+ICON.plus+'</button></div></div>')+'<div style="height:10px"></div>';
+  if(S.hint[pid])h+=L("new","hint only",'<div class="hintbox" style="margin:0">Hint: a padded mailer in Orphaned arrived Nov 26 with 3 cards and no seller. It may hold this card. No count changes until it is matched by hand.</div>')+'<div style="height:10px"></div>';
+  h+='<p class="sect">Copies</p>'+L("today","package rows",'<div class="group" style="margin:0">'+copies+'</div>');
+  if(k.lost||k.claim){
+    var fid=p.c.filter(function(x){return x[1]==="lost"||x[1]==="claim"})[0][0];
+    h+='<p class="sect">Act on risk</p>'+L("today","warning, claim clock, stamps",'<div class="group" style="margin:0">'+
+      '<button type="button" class="field"><span class="lab">Lost-mail warning</span><span class="val num">'+LOST.days+' days '+ICON.chev+'</span></button>'+
+      '<button type="button" class="field"><span class="lab">Claim clock</span><span class="val num">'+LOST.claimLeft+' days left '+ICON.chev+'</span></button>'+
+      (k.claim?'<div class="field"><span class="lab" style="color:var(--ink2)">Stamped: claim filed</span></div>':'<button type="button" class="field act" data-act="stamp" data-v="claim" data-p="'+pid+'" data-s="'+fid+'"><span class="lab">Stamp claim filed</span></button>')+
+      '<button type="button" class="field act" data-act="stamp" data-v="refunded" data-p="'+pid+'" data-s="'+fid+'"><span class="lab">Stamp refunded</span></button></div>')+
+      '<p class="foot" style="margin-top:6px">This slice adds no new action. These open what Packages already has.</p>';
+  }
+  return {title:esc(p.n),lead:"",trail:'<button type="button" class="navbtn strong" data-act="closedetail">Done</button>',body:h};
+}
+function unmatchedBody(){
+  var e=cur(),n=S.needs[e.id]||{},ids=Object.keys(n).filter(function(pid){return !S.prods[pid]});
+  var rows=ids.map(function(pid){return '<div class="copy"><div class="main"><div class="t">Stormglass Relic</div><div class="s">Need '+n[pid]+' for '+esc(e.name)+' · no Tally row has this name</div></div><button type="button" class="tagbtn" data-act="dropneed" data-v="'+pid+'">Remove</button></div>'}).join("");
+  return {title:"No matching card",lead:"",trail:'<button type="button" class="navbtn strong" data-act="closeun">Done</button>',
+    body:'<p class="foot" style="margin:0 4px 10px">The product may be renamed, or a re-import dropped it. The need is kept until you remove it.</p>'+L("new","unmatched need",'<div class="group" style="margin:0">'+rows+'</div>')};
+}
+function sheetFor(fold){
+  if(S.sheet==="create")return createBody();
+  if(S.sheet==="tag")return tagBody();
+  if(fold&&!S.open)return null;
+  if(S.rp==="unmatched"&&cur())return unmatchedBody();
+  if(S.detail&&S.prods[S.detail])return detailBody(S.detail);
+  return null;
+}
+function sheetHtml(b,size){
+  return '<div class="scrim" data-act="'+(S.sheet?"cancel":"closedetail")+'"></div><div class="sheet '+size+'" role="dialog" aria-label="'+b.title+'"><div class="grabber" aria-hidden="true"></div><div class="bar"><span class="lead">'+b.lead+'</span><h3>'+b.title+'</h3><span class="trail">'+b.trail+'</span></div><div class="body">'+b.body+'</div></div>';
+}
+function board(){
+  var h=statusbar()+'<div class="nav"><div class="nav-top"><button type="button" class="navbtn" data-act="create" aria-label="Need by a date?">'+ICON.plus+'</button></div><h2 class="largetitle">Need by</h2></div><div class="scroll">';
+  if(!S.events.length){
+    h+=L("new","empty board",'<div class="list"><p class="empty-note">No dates yet. Give an event a date, then tag the cards it needs. Tally then answers "will I have them by then?"</p><button type="button" class="field act" data-act="create"><span class="lab">Need by a date?</span></button></div>');
+  }else{
+    var up=upcoming();
+    if(up.length)h+='<p class="sect">Upcoming</p>'+L("new","event board",up.map(function(e){var r=sum(e),d=days(e),tot=Math.max(1,r.need+r.no);
+      var sh=shared(e).map(function(x){return '<div class="warnl">'+esc(S.prods[x.pid].n)+': shared with '+esc(x.o.name)+', same day</div>'}).join("");
+      return '<button type="button" class="ev" data-act="filter" data-v="'+e.id+'" aria-pressed="'+(cur()&&cur().id===e.id)+'"><div class="top"><span class="nm">'+esc(e.name)+'</span><span class="dd num'+(d===0?" today":"")+'">'+(d===0?"Today":fmt(e.date)+" · "+plural(d,"day"))+'</span></div>'+
+        '<div class="meter" aria-hidden="true"><i style="width:'+(r.h/tot*100)+'%;background:var(--ok)"></i><i style="width:'+(r.t/tot*100)+'%;background:var(--transit)"></i><i style="width:'+(r.rk/tot*100)+'%;background:var(--warn)"></i></div>'+
+        '<div class="cts num">'+r.h+' of '+r.need+' in hand · '+r.t+' in transit · '+r.rk+' at risk'+(r.no?" · "+r.no+" not ordered":"")+'</div>'+sh+'</button>'}).join(""));
+    var e=cur();
+    if(e){
+      var n=S.needs[e.id]||{},att=ORDER.filter(function(pid){var c=n[pid]&&calc(pid,n[pid]);return c&&(c.rk||c.no||S.hint[pid])});
+      h+='<p class="sect">Needs a look · '+esc(e.name)+'</p>'+L("new","short list",'<div class="list">'+(att.length?att.map(function(pid){var c=calc(pid,n[pid]);
+        return '<button type="button" class="row" data-act="detail" data-v="'+pid+'"><div class="main"><div class="t">'+esc(S.prods[pid].n)+'</div><div class="s num">'+rowSub(pid,c,e)+'</div></div><span class="tagbtn" aria-hidden="true">'+ICON.chev+'</span></button>'}).join("")
+        :'<p class="empty-note">Nothing at risk and nothing short. Every tagged card is in hand or in transit.</p>')+'</div>')+
+        '<p class="foot" style="margin:6px 4px 0">Press a row to see its copies and what to do.</p>';
+    }
+    var p=past();
+    if(p.length)h+='<p class="sect">Past events</p>'+pastRows().replace(/margin:0 16px 4px/g,"margin:0 0 8px");
+  }
+  return h+'</div><div class="homebar" aria-hidden="true"></div>';
+}
+function rightPane(){
+  var b=sheetFor();
+  if(!b)return board();
+  return statusbar()+'<div class="bar" style="margin-top:4px"><span class="lead">'+b.lead+'</span><h3>'+b.title+'</h3><span class="trail">'+b.trail+'</span></div><div class="body">'+b.body+'</div><div class="homebar" aria-hidden="true"></div>';
+}
+function toastHtml(){
+  if(!S.toast)return "";
+  return '<div class="toast" role="status"><span>'+esc(S.toast.msg)+'</span>'+(S.toast.undo?'<button type="button" data-act="undoremove">Undo</button>':"")+'</div>';
+}
+function mainScreen(withPast){return S.tab==="packages"?packagesScreen():S.tab==="orphaned"?orphanedScreen():tallyScreen(withPast)}
+
+function render(){
+  var r=document.documentElement;
+  if(S.t==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",S.t);
+  r.setAttribute("data-labels",S.labels?"on":"off");
+  if(S.filter!=="all"&&!cur()){var u=upcoming();S.filter=u.length?u[0].id:"all"}
+  var fs=mainScreen(true),b=sheetFor(true);
+  if(b&&S.tab==="tally")fs+=sheetHtml(b,S.sheet==="create"?"medium":"large");
+  document.getElementById("f").innerHTML=fs+(b&&S.tab==="tally"?"":toastHtml());
+  document.getElementById("ul").innerHTML=mainScreen(false)+toastHtml();
+  document.getElementById("ur").innerHTML=rightPane();
+  document.getElementById("states").innerHTML=STATES.map(function(x){return '<a href="'+link(x.k,S.t)+'" data-state="'+x.k+'" aria-current="'+(x.k===S.s)+'">'+x.n+'</a>'}).join("");
+  document.getElementById("themes").innerHTML=THEMES.map(function(x){return '<button type="button" data-theme-btn="'+x.k+'" aria-pressed="'+(x.k===S.t)+'">'+x.n+'</button>'}).join("");
+  document.getElementById("lblBtn").setAttribute("aria-pressed",String(S.labels));
+  document.getElementById("caption").innerHTML=(STATES.filter(function(x){return x.k===S.s})[0]||STATES[4]).cap;
+}
+function link(s,t){return "#s="+s+(t&&t!=="auto"?"&t="+t:"")}
+function readHash(){
+  var q={};location.hash.replace(/^#/,"").split("&").forEach(function(p){var a=p.split("=");if(a[0])q[a[0]]=decodeURIComponent(a[1]||"")});
+  var s=STATES.some(function(x){return x.k===q.s})?q.s:"normal",t=(q.t==="dark"||q.t==="light")?q.t:"auto",lab=S?S.labels:true;
+  preset(s);S.t=t;S.labels=lab;render();
+}
+function setHash(){history.replaceState(null,"",link(S.s,S.t))}
+
+function act(a,el){
+  var v=el.getAttribute("data-v");
+  S.toast=(a==="undoremove")?S.toast:null;
+  switch(a){
+    case "filter":S.filter=v;S.narrow=null;S.detail=null;S.rp=null;S.open=false;break;
+    case "narrow":S.narrow=S.narrow===v?null:v;break;
+    case "create":S.sheet="create";S.detail=null;S.rp=null;S.form={name:"",date:addDay(S.today,5)};break;
+    case "cancel":S.sheet=null;S.form=null;break;
+    case "date":S.form.date=addDay(S.form.date,+v);break;
+    case "savecreate":var id="e"+(S.events.length+Object.keys(S.needs).length+1);S.events.push({id:id,name:S.form.name.trim(),date:S.form.date});S.needs[id]={};S.filter="all";
+      S.toast={msg:S.form.name.trim()+" added. Tag cards with Need for…"};S.sheet=null;S.form=null;break;
+    case "tag":var e=cur()||upcoming()[0];S.sheet="tag";S.form={pid:v,ev:e?e.id:null,count:kc(v).ordered,scope:"one"};break;
+    case "tagev":S.form.ev=v;break;
+    case "scope":S.form.scope=v;break;
+    case "step":S.form.count=Math.max(1,Math.min(9,S.form.count+(+v)));break;
+    case "savetag":var f=S.form,ne=ev(f.ev);if(!ne)break;S.needs[f.ev]=S.needs[f.ev]||{};
+      if(f.scope==="all"){ORDER.forEach(function(pid){S.needs[f.ev][pid]=kc(pid).ordered});S.toast={msg:ORDER.length+" cards tagged for "+ne.name+"."}}
+      else{S.needs[f.ev][f.pid]=f.count;S.toast={msg:S.prods[f.pid].n+": need "+f.count+" for "+ne.name+"."}}
+      S.sheet=null;S.form=null;break;
+    case "detail":S.detail=v;S.rp="detail";S.open=true;break;
+    case "closedetail":S.detail=null;S.rp=null;S.open=false;break;
+    case "dstep":var ce=cur()||upcoming()[0],pid=el.getAttribute("data-p");S.needs[ce.id][pid]=Math.max(1,Math.min(9,S.needs[ce.id][pid]+(+v)));break;
+    case "stamp":setStatus(el.getAttribute("data-p"),el.getAttribute("data-s"),"lost",v);setStatus(el.getAttribute("data-p"),el.getAttribute("data-s"),"claim",v);break;
+    case "unmatched":S.rp="unmatched";S.detail=null;S.open=true;break;
+    case "closeun":S.rp=null;S.open=false;break;
+    case "dropneed":var ue=cur();S.stash={kind:"need",ev:ue.id,pid:v,n:S.needs[ue.id][v]};delete S.needs[ue.id][v];S.rp=null;S.open=false;S.toast={msg:"Need removed.",undo:true};break;
+    case "remove":var i=S.events.findIndex(function(x){return x.id===v});S.stash={kind:"event",i:i,e:S.events[i]};S.events.splice(i,1);S.toast={msg:"Removed "+S.stash.e.name+".",undo:true};break;
+    case "undoremove":if(S.stash&&S.stash.kind==="event")S.events.splice(S.stash.i,0,S.stash.e);
+      if(S.stash&&S.stash.kind==="need")S.needs[S.stash.ev][S.stash.pid]=S.stash.n;S.stash=null;S.toast=null;break;
+    case "tab":S.tab=v;S.sheet=null;S.detail=null;S.rp=null;S.open=false;break;
+    case "check":var x=S.prods[v].c[+el.getAttribute("data-i")];x[1]=x[1]==="hand"?"transit":"hand";break;
+    default:return;
+  }
+  render();
+}
+document.addEventListener("click",function(ev){
+  var st=ev.target.closest("[data-state]");if(st){ev.preventDefault();var t0=S.t,l0=S.labels;preset(st.getAttribute("data-state"));S.t=t0;S.labels=l0;render();setHash();return}
+  var th=ev.target.closest("[data-theme-btn]");if(th){S.t=th.getAttribute("data-theme-btn");render();setHash();return}
+  if(ev.target.closest("#lblBtn")){S.labels=!S.labels;render();return}
+  var a=ev.target.closest("[data-act]");if(a&&a.tagName!=="INPUT"&&!a.disabled)act(a.getAttribute("data-act"),a);
+});
+document.addEventListener("input",function(ev){
+  if(ev.target.getAttribute("data-act")!=="name"||!S.form)return;
+  S.form.name=ev.target.value;
+  var ok=pd(S.form.date)>=pd(S.today)&&S.form.name.trim().length>0;
+  document.querySelectorAll("input[data-act=name]").forEach(function(i){if(i!==ev.target)i.value=S.form.name});
+  document.querySelectorAll(".save").forEach(function(b){b.disabled=!ok});
+});
+window.addEventListener("hashchange",readHash);
+readHash();
+})();
+</script>
+</body>
+</html>

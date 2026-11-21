@@ -1,0 +1,618 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Starting Line</title>
+<style>
+/* Tokens: the neutral set of the round-1 idea mockups (docs/ideas/mockups on ideas/feature-directions).
+   iOS sizes: body 17 pt, 44x44 pt targets (HIG typography and accessibility, as quoted in skill ios-apps, read 2026-10-28). */
+:root{
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#6b685f;
+  --line:#dcd9d1; --fill:#e9e7e1; --accent:#a8402a; --accent-ink:#ffffff; --accent-faint:#f8ece7;
+  --ok:#256b41; --ok-bg:#e3f0e7; --ok-ink:#17462a; --warn:#8a5200; --warn-bg:#f8ecd6;
+  --bad:#a3271c; --bad-bg:#fbe5e1; --track:#d9d6ce; --knob:#ffffff;
+  --tag-new:#2c5aa8; --tag-today:#5c5a55; --chrome:#ffffff; --chrome-line:#d6d3cb; --hinge:#2a2926; --bezel:#151412;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+    --line:#35332e; --fill:#2b2a26; --accent:#e2795d; --accent-ink:#1d1c1a; --accent-faint:#2e211c;
+    --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5; --warn:#e6aa52; --warn-bg:#3b2c13;
+    --bad:#f08a7c; --bad-bg:#3a1a16; --track:#3b3a35; --knob:#f2f0ea;
+    --tag-new:#8fb2ef; --tag-today:#b5b1a8; --chrome:#1a1917; --chrome-line:#34322d; --hinge:#000; --bezel:#2b2a27;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+  --line:#35332e; --fill:#2b2a26; --accent:#e2795d; --accent-ink:#1d1c1a; --accent-faint:#2e211c;
+  --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5; --warn:#e6aa52; --warn-bg:#3b2c13;
+  --bad:#f08a7c; --bad-bg:#3a1a16; --track:#3b3a35; --knob:#f2f0ea;
+  --tag-new:#8fb2ef; --tag-today:#b5b1a8; --chrome:#1a1917; --chrome-line:#34322d; --hinge:#000; --bezel:#2b2a27;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button[disabled]{cursor:default}
+:focus-visible{outline:3px solid var(--tag-new);outline-offset:2px}
+.num,b.num{font-variant-numeric:tabular-nums}
+[hidden]{display:none!important}
+
+/* Page chrome */
+.sample{background:var(--warn-bg);color:var(--warn);font-size:13px;line-height:18px;padding:8px 12px;border-radius:10px;margin:0 0 12px;max-width:1100px}
+header.page{max-width:1100px}
+header.page h1{font-size:28px;line-height:34px;margin:0;font-weight:700;letter-spacing:-.01em}
+header.page .meta{font-size:15px;line-height:20px;color:var(--ink2);margin:4px 0 0;max-width:760px}
+header.page .meta b{color:var(--accent);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:12px 0 0;max-width:1100px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg a,.seg button{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);font-size:15px;text-decoration:none;color:var(--ink)}
+.seg a[aria-current="true"],.seg button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.ctl-label{font-size:13px;color:var(--ink3);min-width:52px}
+.caption{font-size:15px;line-height:20px;color:var(--ink2);max-width:760px;margin:14px 0 0;min-height:60px}
+.note{font-size:13px;line-height:18px;color:var(--ink3);max-width:1100px;margin:16px 0 0}
+.stage{overflow-x:auto;padding:8px 2px 12px;margin-top:4px}
+.stage > div{width:max-content}
+
+/* Phone frames. The device list writes no size; 390x844 per screen is the brief's size. */
+.phone{background:var(--bezel);border-radius:52px;padding:11px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.duo{display:flex}
+.screen{position:relative;width:390px;height:844px;border-radius:42px;overflow:hidden;background:var(--screen);display:flex;flex-direction:column;
+  --sat:calc(env(safe-area-inset-top,0px) + 54px); --sab:calc(env(safe-area-inset-bottom,0px) + 34px)}
+.duo .screen.left{border-top-right-radius:6px;border-bottom-right-radius:6px}
+.duo .screen.right{border-top-left-radius:6px;border-bottom-left-radius:6px}
+.hinge{width:14px;background:var(--hinge);margin:34px 0;border-radius:3px}
+.status{flex:none;height:var(--sat);padding:18px 32px 0;display:flex;justify-content:space-between;font-size:15px;font-weight:600}
+.status i{display:block;width:24px;height:12px;border-radius:3px;border:1.5px solid currentColor;opacity:.85;margin-top:4px}
+.island{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:17px;background:#000}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:140px;height:5px;border-radius:3px;background:var(--ink);opacity:.8;z-index:30}
+.nav{flex:none;padding:0 16px 4px}
+.nav-top{height:44px;display:flex;align-items:center;justify-content:flex-end}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;margin:0}
+.scroll{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;padding:4px 16px calc(var(--sab) + 80px);scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.tabbar{position:absolute;left:20px;right:20px;bottom:calc(var(--sab) - 8px);height:60px;border-radius:30px;background:var(--chrome);border:.5px solid var(--chrome-line);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);display:grid;grid-template-columns:repeat(3,1fr);align-items:center;z-index:5}
+.tab{min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:13px;color:var(--ink2);gap:2px}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent)}
+.pane-bar{flex:none;height:52px;display:flex;align-items:center;justify-content:center;padding:0 16px}
+.pane-bar h2{margin:0;font-size:17px;line-height:22px;font-weight:600}
+.pane-body{flex:1;min-height:0;display:flex;flex-direction:column;padding:0 16px calc(var(--sab) + 8px)}
+
+/* Sync status, today */
+.sync{display:inline-flex;align-items:center;gap:6px;min-height:44px;font-size:13px;line-height:18px;color:var(--ink2)}
+.sync i{width:8px;height:8px;border-radius:4px;background:var(--ok)}
+.sync.off i{background:var(--warn)}
+.sync.off{color:var(--warn)}
+
+/* Import receipt, round 1 */
+.receipt{display:flex;align-items:center;gap:10px;background:var(--surface);border-radius:14px;padding:8px 6px 8px 14px;margin:0 0 10px;min-height:60px}
+.receipt .main{flex:1;min-width:0}
+.receipt .t{font-size:15px;line-height:20px;font-weight:600}
+.receipt .s{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.textbtn{min-height:44px;min-width:44px;padding:0 10px;color:var(--accent);font-size:15px;line-height:20px;display:inline-flex;align-items:center;justify-content:center;border-radius:10px}
+.textbtn[disabled]{color:var(--ink3)}
+.offer{background:var(--accent-faint);border-radius:14px;padding:12px 14px;margin:0 0 10px}
+.offer p{margin:0 0 8px;font-size:15px;line-height:20px}
+.offer .row{display:flex;gap:8px;justify-content:flex-end}
+
+/* The starting-line panel: a fixed box. Only its contents swap. */
+.panel{background:var(--surface);border-radius:16px;padding:14px;display:flex;flex-direction:column;overflow:hidden;margin:0 0 14px}
+.panel.p-phone{height:536px}
+.panel.p-noprev{height:304px}
+.panel.p-desk{height:480px;display:grid;grid-template-columns:372px 1fr;gap:0 24px;padding:20px}
+.p-desk .col{display:flex;flex-direction:column;min-height:0}
+.q-title{font-size:17px;line-height:22px;font-weight:600;margin:0;height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-sub{font-size:13px;line-height:18px;color:var(--ink2);margin:2px 0 10px;height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.q-row{display:flex;gap:14px;align-items:flex-start;height:84px;flex:none}
+.stepper{flex:none;width:112px}
+.stepper .date{font-size:17px;line-height:22px;font-weight:600;font-variant-numeric:tabular-nums;margin:0 0 6px;white-space:nowrap}
+.stp{display:inline-flex;height:36px;border-radius:9px;background:var(--fill)}
+.stp button{position:relative;width:50px;height:36px;display:grid;place-items:center;color:var(--ink)}
+.stp button::before{content:"";position:absolute;left:0;right:0;top:-4px;bottom:-4px}
+.stp button + button{border-left:1px solid var(--line)}
+.stp button[disabled]{color:var(--ink3);opacity:.5}
+.count{flex:1;min-width:0;font-size:15px;line-height:20px;color:var(--ink2);height:80px;overflow:hidden;margin:0}
+.count b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
+.q-extra{height:20px;font-size:13px;line-height:18px;color:var(--warn);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 0 8px;flex:none}
+.spacer{flex:1}
+.how{margin:4px 0 0;padding:12px 0 0 18px;border-top:.5px solid var(--line);font-size:13px;line-height:18px;color:var(--ink2)}
+.how li{margin:0 0 6px}
+
+/* Preview */
+.pv-wrap{flex:1;min-height:0;display:flex;flex-direction:column;border-top:.5px solid var(--line);margin:0 -14px;}
+.p-desk .pv-wrap{margin:0;border:.5px solid var(--line);border-radius:12px;overflow:hidden}
+.pane-body .pv-wrap{margin:0;border:0;background:var(--surface);border-radius:14px;overflow:hidden}
+.pv-head{flex:none;display:flex;justify-content:space-between;align-items:center;height:32px;padding:0 14px;font-size:12px;line-height:16px;color:var(--ink3);text-transform:uppercase;letter-spacing:.04em}
+.pv{flex:1;min-height:0;overflow-y:auto;overflow-x:hidden;overscroll-behavior:contain}
+.grp{font-size:13px;line-height:18px;color:var(--ink2);padding:10px 14px 4px;text-transform:uppercase;letter-spacing:.04em;display:flex;justify-content:space-between;gap:8px}
+.grp span:last-child{text-transform:none;letter-spacing:0;font-variant-numeric:tabular-nums}
+.orow{display:flex;align-items:center;gap:2px;min-height:60px;padding:0 10px 0 2px;border-top:.5px solid var(--line)}
+.orow .main{flex:1;min-width:0;padding:6px 0}
+.orow .t{font-size:15px;line-height:20px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.orow .s{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.orow .s.warn{color:var(--warn)}
+.orow.ro{padding-left:14px;color:var(--ink2)}
+.orow.ro .t{color:var(--ink2)}
+.exp{width:44px;height:44px;display:grid;place-items:center;color:var(--ink3);flex:none}
+.exp svg{transition:transform .2s}
+.exp[aria-expanded="true"] svg{transform:rotate(90deg)}
+.slotr{width:64px;flex:none;display:flex;justify-content:flex-end;align-items:center}
+.lines{background:var(--screen)}
+.lrow{display:flex;align-items:center;min-height:52px;padding:0 10px 0 46px;border-top:.5px solid var(--line);font-size:15px;line-height:20px}
+.lrow .main{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pill{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:12px;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap}
+.pill.ok{background:var(--ok-bg);color:var(--ok-ink)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.mute{background:var(--fill);color:var(--ink2)}
+.pager{display:flex;justify-content:space-between;align-items:center;min-height:48px;padding:0 6px 0 14px;border-top:.5px solid var(--line);font-size:13px;color:var(--ink2)}
+.ghead{display:flex;width:100%;align-items:center;gap:6px;min-height:56px;padding:0 14px 0 2px;border-top:.5px solid var(--line)}
+.ghead .main{flex:1;min-width:0}
+.ghead .t{font-size:15px;line-height:20px;font-weight:600}
+.ghead .s{font-size:13px;line-height:18px;color:var(--ink2);font-variant-numeric:tabular-nums}
+.ghead .ic{width:44px;height:44px;display:grid;place-items:center;color:var(--ink3);flex:none}
+.ghead[aria-expanded="true"] .ic svg{transform:rotate(90deg)}
+.pv-empty{padding:28px 18px;font-size:15px;line-height:20px;color:var(--ink2);text-align:center}
+
+/* iOS toggle: 51x31 drawn, 44 pt hit area */
+.tog{position:relative;width:51px;height:31px;border-radius:16px;background:var(--track);flex:none;transition:background-color .2s}
+.tog::before{content:"";position:absolute;left:-4px;right:-4px;top:-7px;bottom:-7px}
+.tog .knob{position:absolute;top:2px;left:2px;width:27px;height:27px;border-radius:14px;background:var(--knob);box-shadow:0 2px 4px rgba(0,0,0,.25);transition:transform .2s}
+.tog[aria-checked="true"]{background:var(--accent)}
+.tog[aria-checked="true"] .knob{transform:translateX(20px)}
+.tog[disabled]{opacity:.45}
+@media (prefers-reduced-motion:reduce){.tog,.tog .knob,.exp svg{transition:none}}
+
+/* Action slot: two fixed rows. Row 1 keeps the primary act in one place. */
+.slot{flex:none;height:100px;display:grid;grid-template-rows:50px 44px;gap:6px;margin-top:10px}
+.cta{width:100%;height:50px;border-radius:12px;background:var(--accent);color:var(--accent-ink);font-size:17px;line-height:22px;font-weight:600;text-align:center;padding:0 12px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.cta[disabled]{background:var(--fill);color:var(--ink3)}
+.result{height:50px;border-radius:12px;display:flex;align-items:center;gap:10px;padding:0 4px 0 14px;font-size:15px;line-height:20px;font-weight:600}
+.result.ok{background:var(--ok-bg);color:var(--ok-ink)}
+.result.mute{background:var(--fill);color:var(--ink)}
+.result span{flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.result .textbtn{color:inherit;text-decoration:underline;text-underline-offset:3px}
+.row2{display:flex;align-items:center;justify-content:center;font-size:13px;line-height:18px;color:var(--ink2);text-align:center;padding:0 4px}
+.row2.bad{color:var(--bad);background:var(--bad-bg);border-radius:10px;justify-content:flex-start;text-align:left;gap:8px;padding:0 10px}
+.row2 .textbtn{font-size:15px}
+
+/* Packages list, today */
+.sect{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:6px 4px 6px;display:flex;justify-content:space-between}
+.list{background:var(--surface);border-radius:14px;margin:0 0 12px;overflow:hidden}
+.prow{display:flex;align-items:center;gap:10px;min-height:60px;padding:0 12px 0 14px;border-top:.5px solid var(--line)}
+.list > :first-child,.list > .lbl:first-child .prow{border-top:0}
+.prow .main{flex:1;min-width:0}
+.prow .t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.prow .s{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.circ{width:26px;height:26px;border-radius:13px;border:2px solid var(--ink3);flex:none}
+.more{min-height:48px;display:flex;align-items:center;padding:0 14px;font-size:15px;color:var(--ink2);border-top:.5px solid var(--line)}
+.emptyst{text-align:center;padding:72px 18px 20px}
+.emptyst h2{font-size:22px;line-height:28px;margin:0 0 6px}
+.emptyst p{font-size:15px;line-height:20px;color:var(--ink2);margin:0 0 16px}
+.emptyst .cta{width:auto;padding:0 22px;display:inline-block}
+.hint{font-size:15px;line-height:20px;color:var(--ink2);background:var(--surface);border-radius:14px;padding:12px 14px;margin:12px 0 0;text-align:left}
+.placeholder{flex:1;display:grid;place-items:center;text-align:center;color:var(--ink3);font-size:15px;line-height:20px;padding:24px}
+
+/* Desktop web frame */
+.browser{width:1200px;height:820px;border-radius:12px;overflow:hidden;background:var(--screen);box-shadow:0 18px 40px rgba(0,0,0,.18);display:flex;flex-direction:column;border:1px solid var(--chrome-line)}
+.bbar{flex:none;height:40px;background:var(--chrome);border-bottom:1px solid var(--chrome-line);display:flex;align-items:center;gap:8px;padding:0 14px}
+.bbar i{width:12px;height:12px;border-radius:6px;background:var(--line)}
+.bbar .url{margin-left:16px;flex:0 1 420px;height:26px;border-radius:13px;background:var(--fill);font-size:12px;line-height:26px;padding:0 12px;color:var(--ink3)}
+.appbar{flex:none;height:60px;display:flex;align-items:center;gap:28px;padding:0 28px;border-bottom:1px solid var(--line);background:var(--surface)}
+.mast{font-size:15px;font-weight:800;letter-spacing:.18em}
+.dtabs{display:flex;gap:6px;flex:1}
+.dtab{min-height:40px;padding:0 14px;border-radius:10px;font-size:15px;color:var(--ink2);display:inline-flex;align-items:center}
+.dtab[aria-current="page"]{background:var(--accent-faint);color:var(--accent);font-weight:600}
+.dmain{flex:1;min-height:0;overflow-y:auto;padding:20px 28px 28px}
+.dmain .inner{max-width:1080px;margin:0 auto}
+.dmain .prow:hover,.ghead:hover{background:var(--screen)}
+
+/* Dashed labels: Today = exists, New = this idea */
+.lbl{position:relative;outline:1.5px dashed var(--tag-new);outline-offset:3px}
+.lbl[data-k="today"]{outline-color:var(--tag-today)}
+.lbl::after{content:attr(data-lbl);position:absolute;top:-11px;right:10px;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;
+  background:var(--tag-new);color:var(--surface);white-space:nowrap;z-index:4;pointer-events:none}
+.lbl[data-k="today"]::after{background:var(--tag-today)}
+span.lbl{display:inline-flex}
+:root[data-labels="off"] .lbl{outline:none}
+:root[data-labels="off"] .lbl::after{display:none}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+</style>
+</head>
+<body>
+<p class="sample" role="note"><b>Sample.</b> Every seller, card, order id, date and price on this page is invented. No figure is real.</p>
+<header class="page">
+  <h1>The Starting Line</h1>
+  <p class="meta"><b>Mockup, not built.</b> On the first import, name the date you started watching your mail. Every order before it counts as arrived in one step, and you name only the few that never came.</p>
+  <nav class="controls" aria-label="Screen states">
+    <span class="ctl-label">State</span>
+    <div class="seg" id="states"></div>
+  </nav>
+  <div class="controls">
+    <span class="ctl-label">Device</span>
+    <div class="seg" id="devices"></div>
+    <span class="ctl-label">Theme</span>
+    <div class="seg" id="themes"></div>
+    <span class="ctl-label">Labels</span>
+    <div class="seg"><button type="button" id="lblBtn" aria-pressed="true">Today / New</button></div>
+  </div>
+</header>
+<p class="caption" id="caption" aria-live="polite"></p>
+<div class="stage"><div id="frame">
+  <div class="phone" data-device="iphone-duo-folded" id="dv-phone"></div>
+  <div class="phone duo" data-device="iphone-duo-unfolded" id="dv-duo" hidden></div>
+  <div class="browser" data-device="desktop-width" id="dv-desk" hidden></div>
+</div></div>
+<p class="sr" id="live" aria-live="polite"></p>
+<p class="note">Frames, in order: the iPhone Duo folded (one 390x844 screen), the Duo unfolded (two 390x844 screens, a list beside its preview), and a desktop browser at 1200 wide. The device list writes no size for any of them; 390x844 is the brief's size. Type is SF via <code>-apple-system</code>, body 17 pt, and every tap target is at least 44x44 pt (Apple HIG typography and accessibility, as quoted in skill ios-apps, read 2026-10-28). Not drawn: Tally, the mail forecast and the seller record card, which the plan says must count these marks as received and leave them out of transit times. Orphaned is not touched: the panel never mentions it.</p>
+
+<script>
+(function(){
+"use strict";
+var SELLERS=["Ironvale Cards","Copperleaf Games","Northgate Singles","Bramble & Quill","Harbor Lane TCG","Saltmarsh Cardhouse","Tallpine Collectibles","Red Kettle Games","Lumen Street Cards"];
+/* 74 orders of the first import: [order id, seller, order date, cards, cents]. 61 are on or before 2026-11-11: 338 cards, $87.40. */
+var RAW=[["3A71C0-1000",5,"2026-10-03",7,139],["3A90AF-1037",8,"2026-10-24",7,152],["3AAF9E-1074",7,"2026-11-07",3,59],["3ACE8D-1111",8,"2026-09-27",4,125],["3AED7C-1148",8,"2026-09-19",6,194],["3B0C6B-1185",0,"2026-11-11",8,225],["3B2B5A-1222",8,"2026-11-01",8,150],["3B4A49-1259",0,"2026-10-21",6,150],["3B6938-1296",1,"2026-11-05",3,97],["3B8827-1333",7,"2026-11-11",3,78],["3BA716-1370",6,"2026-10-28",9,197],["3BC605-1407",7,"2026-11-02",8,175],["3BE4F4-1444",0,"2026-10-05",3,63],["3C03E3-1481",5,"2026-10-07",4,117],["3C22D2-1518",7,"2026-10-03",8,225],["3C41C1-1555",5,"2026-09-27",5,120],["3C60B0-1592",5,"2026-10-09",4,121],["3C7F9F-1629",7,"2026-10-20",4,83],["3C9E8E-1666",6,"2026-10-19",5,167],["3CBD7D-1703",5,"2026-09-29",2,40],["3CDC6C-1740",5,"2026-10-15",5,177],["3CFB5B-1777",2,"2026-10-11",2,42],["3D1A4A-1814",6,"2026-09-27",2,46],["3D3939-1851",7,"2026-10-20",6,119],["3D5828-1888",8,"2026-09-30",5,151],["3D7717-1925",3,"2026-10-22",7,183],["3D9606-1962",2,"2026-09-26",6,181],["3DB4F5-1999",0,"2026-10-02",8,150],["3DD3E4-2036",6,"2026-10-10",4,79],["3DF2D3-2073",4,"2026-09-30",4,75],["3E11C2-2110",7,"2026-10-02",6,125],["3E30B1-2147",0,"2026-11-04",7,190],["3E4FA0-2184",4,"2026-09-25",8,159],["3E6E8F-2221",2,"2026-09-28",5,177],["3E8D7E-2258",6,"2026-10-06",2,48],["3EAC6D-2295",3,"2026-09-22",9,188],["3ECB5C-2332",2,"2026-10-18",6,131],["3EEA4B-2369",8,"2026-10-27",9,216],["3F093A-2406",2,"2026-09-28",5,130],["3F2829-2443",3,"2026-10-30",6,163],["3F4718-2480",8,"2026-10-30",6,213],["3F6607-2517",8,"2026-10-08",6,188],["3F84F6-2554",7,"2026-10-12",4,117],["3FA3E5-2591",6,"2026-11-06",8,167],["3FC2D4-2628",1,"2026-09-30",4,92],["3FE1C3-2665",0,"2026-09-23",7,226],["4000B2-2702",7,"2026-09-29",6,188],["401FA1-2739",2,"2026-09-26",6,163],["403E90-2776",5,"2026-11-07",9,178],["405D7F-2813",2,"2026-10-24",2,63],["407C6E-2850",7,"2026-10-05",4,125],["409B5D-2887",6,"2026-09-22",8,159],["40BA4C-2924",3,"2026-10-01",6,119],["40D93B-2961",4,"2026-10-17",9,216],["40F82A-2998",4,"2026-11-11",2,44],["411719-3035",5,"2026-10-23",3,69],["413608-3072",5,"2026-10-29",6,175],["4154F7-3109",0,"2026-11-06",5,141],["4173E6-3146",3,"2026-11-02",8,267],["4192D5-3183",1,"2026-11-06",4,113],["41B1C4-3220",0,"2026-10-02",6,310],["41D0B3-3257",7,"2026-11-16",3,72],["41EFA2-3294",5,"2026-11-16",6,186],["420E91-3331",6,"2026-11-20",6,162],["422D80-3368",6,"2026-11-19",4,104],["424C6F-3405",8,"2026-11-16",9,180],["426B5E-3442",8,"2026-11-20",8,216],["428A4D-3479",4,"2026-11-12",7,182],["42A93C-3516",0,"2026-11-17",2,38],["42C82B-3553",8,"2026-11-12",8,176],["42E71A-3590",7,"2026-11-12",5,90],["430609-3627",0,"2026-11-16",2,40],["4324F8-3664",3,"2026-11-13",5,115],["4343E7-3701",7,"2026-11-19",9,207]];
+var NAMES=["Lantern Wyrm","Tidecaller Apprentice","Ashgrove Sentry","Mirelight Totem","Quiet Harbor","Cinder Courier","Hollow Bell Ranger","Gravelwing Scout","Duskmeadow Seer","Briar Warden","Saltglass Oracle","Kettleback Ogre","Fernspire Archer","Rustvein Golem","Moonwell Acolyte","Stormquill Heron","Pale Orchard Shade","Ironroot Stag","Copperlight Wisp","Driftwood Totem","Emberstep Fox","Glasswater Djinn","Thornhollow Witch","Velvet Comet"];
+
+function rng(seed){var x=seed;return function(){x=(x*1103515245+12345)%2147483648;return x/2147483648}}
+function addDays(iso,n){var d=new Date(iso+"T00:00:00Z");d.setUTCDate(d.getUTCDate()+n);return d.toISOString().slice(0,10)}
+function gen(count,seed,from,days,prefix){
+  var r=rng(seed),out=[];
+  for(var i=0;i<count;i++){var n=1+Math.floor(r()*9);
+    out.push({id:prefix+(0x100000+Math.floor(r()*0xEFFFFF)).toString(16).toUpperCase().slice(0,5)+"-"+(1000+i),s:Math.floor(r()*9),d:addDays(from,Math.floor(r()*days)),n:n,c:n*(18+Math.floor(r()*17)),i:i})}
+  return out;
+}
+var DS={
+  first:{orders:RAW.map(function(a,i){return {id:a[0],s:a[1],d:a[2],n:a[3],c:a[4],i:i}}),today:"2026-11-21",line:"2026-11-11",file:"orderwand-2026-11-21.csv"},
+  large:{orders:gen(900,11,"2025-11-21",365,"5"),today:"2026-11-21",line:"2026-11-11",file:"orderwand-all-time.csv"},
+  offer:{orders:gen(12,23,"2026-10-21",32,"6").concat(gen(8,29,"2026-11-22",11,"7")),today:"2026-12-03",line:"2026-11-21",file:"orderwand-2026-12-03.csv"}
+};
+function lines(o){
+  if(o._l)return o._l;
+  var r=rng(o.i*31+o.n*7+o.s*13+5),rem=o.n,out=[],start=Math.floor(r()*NAMES.length),k=0;
+  while(rem>0){var q=Math.min(rem,1+Math.floor(r()*3));out.push({nm:NAMES[(start+k*5)%NAMES.length],q:q});rem-=q;k++}
+  return (o._l=out);
+}
+
+var STATES=[
+  {k:"empty",n:"Empty",cap:"No import yet, so there is no panel. The empty state adds one line that tells the user the offer is coming."},
+  {k:"normal",n:"Normal",cap:"The first import lands in an empty ledger. Below the import receipt the panel opens in a box of fixed height. The count updates as the date steps, and the stepper, count and button never move. Try the − and + buttons and the Never came switches."},
+  {k:"leftout",n:"Two left out",cap:"Two orders switched to Never came. The Ironvale order of 2026-10-02 is open to its per-card switches, for an envelope that came in part. The button names its act and its count."},
+  {k:"done",n:"Marked",cap:"The button became the result line in the same place, with Undo. The panel keeps its height until the user leaves the view. Below, Packages already shows only the 15 outstanding orders, and the 2 left out carry the existing lost-mail warning."},
+  {k:"after",n:"After: Packages",cap:"The user left the view and came back. The panel is gone. Packages lists the 2 orders that never came, with the lost-mail warning, and the 13 still expected. Tally (not drawn) counts the 330 marked cards as received."},
+  {k:"skip",n:"Skipped",cap:"\"Start with everything outstanding\" swaps the panel's contents for one line, in place. Undo brings the question back while the user stays in this view. After that, only a later import receipt offers it again."},
+  {k:"all",n:"Edge: all before",cap:"The line sits on the import day. Every order counts as arrived. The button stays, with no second prompt, because Undo covers it."},
+  {k:"none",n:"Edge: none before",cap:"The line sits before the oldest order. The stepper stays live; the button is disabled and row 2 says why."},
+  {k:"nodate",n:"Edge: no date",cap:"Three rows kept by the parser have a date that did not read. They are never marked. They sit read-only at the end of the preview, and a line under the count names them."},
+  {k:"held",n:"Edge: already checked",cap:"14 orders already have a check-in and 1 has a claim stamp. None of them is touched. The count says so, and they sit read-only at the end of the preview."},
+  {k:"large",n:"Edge: 900 orders",cap:"A large first import. The preview shows totals per seller; a seller opens to pages of 20 rows. The count stays exact."},
+  {k:"fail",n:"Error: write fails",cap:"The write failed (storage full or blocked). All or nothing: nothing was saved. The primary button stays in place as Try again; row 2 says the import is safe."},
+  {k:"sync",n:"Error: sync down",cap:"The marks saved on this device. The existing sync status shows Offline. The panel adds nothing of its own."},
+  {k:"offer",n:"Later import offer",cap:"A later import into a ledger that already has check-ins. The receipt offers the line again for the 12 orders older than the first import. Press Review to open the same panel, with its line on the first import day."}
+];
+var DEVICES=[["phone","Phone (Duo folded)"],["duo","Two-screen (Duo open)"],["desk","Desktop web"]];
+var S={s:"normal",t:"auto",d:"phone",labels:true};
+var P;
+
+function preset(k){
+  P={ds:"first",line:"2026-11-11",out:{},cout:{},open:{},phase:"ask",nodate:{},held:{},claim:{},gopen:{},page:{},offerOpen:false,sync:true,left:false,empty:false};
+  var F=DS.first.orders;
+  if(k==="empty")P.empty=true;
+  if(k==="leftout"||k==="done"||k==="after"||k==="sync"||k==="fail"){P.out["3D1A4A-1814"]=1;P.out["3ECB5C-2332"]=1}
+  if(k==="leftout"){P.open["41B1C4-3220"]=1;P.scrollTo="41B1C4-3220"}
+  if(k==="done"||k==="sync")P.phase="done";
+  if(k==="after"){P.phase="done";P.left=true}
+  if(k==="sync")P.sync=false;
+  if(k==="fail")P.phase="fail";
+  if(k==="skip")P.phase="skipped";
+  if(k==="all")P.line="2026-11-21";
+  if(k==="none")P.line="2026-09-15";
+  if(k==="nodate")[12,30,44].forEach(function(i){P.nodate[F[i].id]=1});
+  if(k==="held"){[0,3,4,7,13,15,19,22,26,29,32,35,38,45].forEach(function(i){P.held[F[i].id]=1});P.claim[F[47].id]=1}
+  if(k==="large"){P.ds="large";P.gopen[bySellerOldest(DS.large.orders.filter(function(o){return o.d<=P.line})).keys[0]]=1}
+  if(k==="offer"){P.ds="offer";P.line=DS.offer.line}
+}
+
+function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;")}
+function money(c){return "$"+(c/100).toLocaleString("en-US",{minimumFractionDigits:2,maximumFractionDigits:2})}
+function plural(n,w){return n+" "+w+(n===1?"":"s")}
+function fmtN(n){return n.toLocaleString("en-US")}
+function L(k,text,inner,cls,tag){tag=tag||"div";return "<"+tag+' class="lbl '+(cls||"")+'" data-k="'+k+'" data-lbl="'+(k==="today"?"Today: ":"New: ")+text+'">'+inner+"</"+tag+">"}
+var IC={
+  chev:'<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M5 3l4 4-4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  minus:'<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  plus:'<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8h10M8 3v10" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  check:'<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M4 9.5l3.2 3.2L14 5.8" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  alert:'<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true" style="flex:none"><circle cx="9" cy="9" r="7.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M9 5v5M9 12.6v.2" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  box:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  sum:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M5 12h14M5 19h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  q:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 10.5a2 2 0 1 1 2.5 1.9V14M12 16v.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
+};
+
+function ds(){return DS[P.ds]}
+function stat(o){
+  if(P.nodate[o.id])return "nodate";
+  if(P.held[o.id]||P.claim[o.id])return "held";
+  return o.d<=P.line?"before":"after";
+}
+function cardsOut(o){if(P.out[o.id])return o.n;var c=P.cout[o.id];if(!c)return 0;var n=0;lines(o).forEach(function(l,i){if(c[i])n+=l.q});return n}
+function calc(){
+  var r={T:0,TC:0,b:0,bc:0,bm:0,a:0,ac:0,nd:0,chk:0,clm:0,fo:0,pa:0,cardsOut:0};
+  ds().orders.forEach(function(o){
+    r.T++;r.TC+=o.n;var st=stat(o);
+    if(st==="before"){r.b++;r.bc+=o.n;r.bm+=o.c;if(P.out[o.id]){r.fo++;r.cardsOut+=o.n}else if(cardsOut(o)){r.pa++;r.cardsOut+=cardsOut(o)}}
+    else if(st==="after"){r.a++;r.ac+=o.n}
+    else if(st==="nodate")r.nd++;
+    else if(P.claim[o.id])r.clm++;else r.chk++;
+  });
+  r.m=r.b-r.fo;r.mc=r.bc-r.cardsOut;r.outst=r.a+r.fo+r.pa+r.nd;r.lost=r.fo+r.pa;
+  return r;
+}
+function countHTML(c){
+  if(!c.b)return "Nothing before <b>"+P.line+"</b>.";
+  if(c.b===c.T)return "All <b>"+fmtN(c.T)+"</b> orders will count as arrived. Nothing left to watch.";
+  return "<b>"+fmtN(c.b)+"</b> of "+fmtN(c.T)+" orders (<b>"+fmtN(c.bc)+"</b> of "+fmtN(c.TC)+" cards, <b>"+money(c.bm)+"</b>) will count as arrived.";
+}
+function extraText(c){
+  var p=[];
+  if(c.nd)p.push(plural(c.nd,"order")+" with no date: check these yourself.");
+  if(c.chk||c.clm)p.push(c.chk+" already checked"+(c.clm?", "+c.clm+" with a claim":"")+". Not touched.");
+  return p.join(" ");
+}
+function ctaText(c){
+  var t="Mark "+plural(c.m,"order")+" arrived",x=[];
+  if(c.fo)x.push(c.fo+" left out");if(c.pa)x.push(c.pa+" in part");
+  return t+(x.length?" ("+x.join(", ")+")":"");
+}
+
+/* Panel parts */
+function stepper(){
+  var live=P.phase==="ask"||P.phase==="fail";
+  return '<div class="stepper"><p class="date num" id="lineDate">'+P.line+'</p><div class="stp" role="group" aria-label="Move the line one day">'+
+    '<button type="button" data-act="step" data-n="-1" data-fk="step-" aria-label="One day earlier"'+(live?"":" disabled")+'>'+IC.minus+'</button>'+
+    '<button type="button" data-act="step" data-n="1" data-fk="step+" aria-label="One day later"'+(live&&P.line<ds().today?"":" disabled")+'>'+IC.plus+'</button></div></div>';
+}
+function head(){
+  var off=P.ds==="offer";
+  return '<h2 class="q-title">'+(off?"Treat these older orders as arrived?":"When did you start watching your mail?")+'</h2>'+
+    '<p class="q-sub">'+(off?"The line starts on your first import, 2026-11-21.":"Orders on or before this date count as arrived.")+'</p>';
+}
+function qrow(c){
+  return L("new","date stepper and live count",'<div class="q-row">'+stepper()+'<p class="count" aria-live="polite">'+countHTML(c)+'</p></div>')+
+    '<p class="q-extra">'+esc(extraText(c))+'</p>';
+}
+function slot(c){
+  var r1,r2;
+  if(P.phase==="done"){
+    r1='<div class="result ok" role="status">'+IC.check+'<span class="num">'+plural(c.m,"order")+' marked arrived.</span><button type="button" class="textbtn" data-act="undo" data-fk="undo">Undo</button></div>';
+    r2='<div class="row2 num">'+plural(c.outst,"order")+' still outstanding'+(c.lost?". "+c.lost+" flagged “May be lost”.":".")+'</div>';
+  }else if(P.phase==="skipped"){
+    r1='<div class="result mute" role="status"><span class="num">All '+fmtN(c.T)+' orders stay outstanding.</span><button type="button" class="textbtn" data-act="undo" data-fk="undo">Undo</button></div>';
+    r2='<div class="row2">Check cards by hand as the mail comes.</div>';
+  }else{
+    var fail=P.phase==="fail",dis=!c.m;
+    r1='<button type="button" class="cta num" id="choice-cta" data-act="confirm" data-fk="cta"'+(dis?" disabled":"")+'>'+(fail?"Try again: mark "+plural(c.m,"order"):ctaText(c))+'</button>';
+    if(fail)r2='<div class="row2 bad" role="alert">'+IC.alert+'<span>Nothing was marked. Your import is safe. Try again.</span></div>';
+    else if(dis)r2='<div class="row2">No order is on or before '+P.line+'. Move the date later.</div>';
+    else r2='<div class="row2"><button type="button" class="textbtn" data-act="skip" data-fk="skip">Start with everything outstanding</button></div>';
+  }
+  return L("new","button becomes the result line",'<div class="slot">'+r1+r2+'</div>');
+}
+function tog(on,act,id,li,label,dis){
+  return '<button type="button" class="tog" role="switch" aria-checked="'+on+'" aria-label="'+esc(label)+'" data-act="'+act+'" data-id="'+id+'"'+(li!=null?' data-li="'+li+'"':"")+' data-fk="'+act+id+(li!=null?"-"+li:"")+'"'+(dis?" disabled":"")+'><span class="knob"></span></button>';
+}
+function orderSub(o){
+  var n=cardsOut(o);
+  if(P.out[o.id])return '<div class="s warn">Never came · stays outstanding</div>';
+  if(n)return '<div class="s warn num">'+n+" of "+o.n+" cards never came</div>";
+  return '<div class="s num">'+money(o.c)+" · order "+o.id+"</div>";
+}
+function orderRow(o,first){
+  var ask=P.phase==="ask"||P.phase==="fail",open=!!P.open[o.id];
+  var right;
+  if(ask)right=tog(!!P.out[o.id],"out",o.id,null,"Never came: "+SELLERS[o.s]+", "+o.n+" cards, ordered "+o.d,false);
+  else if(P.phase==="done"){var n=cardsOut(o);right=P.out[o.id]?'<span class="pill warn">Never came</span>':n?'<span class="pill warn num">'+(o.n-n)+" of "+o.n+'</span>':'<span class="pill ok">Arrived</span>'}
+  else right='<span class="pill mute">Outstanding</span>';
+  if(first&&ask)right=L("new","never came switch",right,"","span");
+  var row='<div class="orow"><button type="button" class="exp" data-act="exp" data-id="'+o.id+'" data-fk="exp'+o.id+'" aria-expanded="'+open+'" aria-label="'+(open?"Hide":"Show")+' cards in this order">'+IC.chev+'</button>'+
+    '<div class="main"><div class="t num">'+plural(o.n,"card")+", ordered "+o.d+'</div>'+orderSub(o)+'</div><div class="slotr">'+right+'</div></div>';
+  if(open){
+    var c=P.cout[o.id]||{};
+    row+='<div class="lines">'+lines(o).map(function(l,i){
+      var on=!!P.out[o.id]||!!c[i];
+      var r=ask?tog(on,"cout",o.id,i,"Never came: "+l.nm+" times "+l.q,false):(on?'<span class="pill warn">Never came</span>':P.phase==="done"?'<span class="pill ok">Arrived</span>':"");
+      return '<div class="lrow"><span class="main">'+esc(l.nm)+' <span class="num">×'+l.q+'</span></span><div class="slotr">'+r+'</div></div>';
+    }).join("")+'</div>';
+    if(o.id==="41B1C4-3220")row=L("new","per-card switches",row);
+  }
+  return row;
+}
+function roRow(o,tag){
+  return '<div class="orow ro"><div class="main"><div class="t">'+esc(SELLERS[o.s])+'</div><div class="s num">'+plural(o.n,"card")+" · "+(o.d&&!P.nodate[o.id]?"ordered "+o.d:"no date")+'</div></div>'+(tag?'<div class="slotr">'+tag+'</div>':"")+'</div>';
+}
+function bySellerOldest(list){
+  var g={};list.forEach(function(o){(g[o.s]=g[o.s]||[]).push(o)});
+  var keys=Object.keys(g).map(Number);
+  keys.forEach(function(k){g[k].sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:a.i-b.i})});
+  keys.sort(function(a,b){return g[a][0].d<g[b][0].d?-1:g[a][0].d>g[b][0].d?1:a-b});
+  return {g:g,keys:keys};
+}
+function preview(){
+  if(P.phase==="skipped")return '<div class="pv-empty">Nothing marked. Leave this view and the panel closes.</div>';
+  var os=ds().orders,before=os.filter(function(o){return stat(o)==="before"}),after=os.filter(function(o){return stat(o)==="after"});
+  var nd=os.filter(function(o){return stat(o)==="nodate"}),held=os.filter(function(o){return stat(o)==="held"});
+  var h="",gs=bySellerOldest(before),firstRow=true;
+  if(!before.length)h+='<div class="pv-empty">No order is on or before '+P.line+'.</div>';
+  gs.keys.forEach(function(k){
+    var list=gs.g[k];
+    if(P.ds==="large"){
+      var open=!!P.gopen[k],cards=0,cents=0;list.forEach(function(o){cards+=o.n;cents+=o.c});
+      h+='<button type="button" class="ghead" data-act="gexp" data-s="'+k+'" data-fk="g'+k+'" aria-expanded="'+open+'"><span class="ic">'+IC.chev+'</span><span class="main"><span class="t" style="display:block">'+esc(SELLERS[k])+'</span><span class="s" style="display:block">'+plural(list.length,"order")+" · "+fmtN(cards)+" cards · "+money(cents)+'</span></span></button>';
+      if(open){
+        var pg=P.page[k]||0,per=20,pages=Math.ceil(list.length/per);if(pg>=pages)pg=pages-1;
+        list.slice(pg*per,pg*per+per).forEach(function(o){h+=orderRow(o,firstRow);firstRow=false});
+        h+='<div class="pager"><span class="num">Rows '+(pg*per+1)+"–"+Math.min(list.length,pg*per+per)+" of "+list.length+'</span><span><button type="button" class="textbtn" data-act="page" data-s="'+k+'" data-n="-1" data-fk="pg-'+k+'"'+(pg?"":" disabled")+'>Previous</button><button type="button" class="textbtn" data-act="page" data-s="'+k+'" data-n="1" data-fk="pg+'+k+'"'+(pg<pages-1?"":" disabled")+'>Next</button></span></div>';
+      }
+      return;
+    }
+    h+='<div class="grp"><span>'+esc(SELLERS[k])+'</span><span>'+plural(list.length,"order")+'</span></div>';
+    list.forEach(function(o){h+=orderRow(o,firstRow);firstRow=false});
+  });
+  var ac=0;after.forEach(function(o){ac+=o.n});
+  var exp='<div class="grp"><span>Still expected ('+after.length+')</span><span class="num">'+fmtN(ac)+' cards</span></div>';
+  if(P.ds==="large")exp+='<div class="pv-empty" style="padding:8px 14px 16px;text-align:left;font-size:13px">Ordered after the line. Read-only; they stay outstanding.</div>';
+  else exp+=after.slice().sort(function(a,b){return a.d<b.d?-1:1}).map(function(o){return roRow(o,"")}).join("")||'<div class="pv-empty" style="padding:8px 14px 16px;text-align:left;font-size:13px">None. Nothing left to watch.</div>';
+  h+=L("new","still expected, read-only",exp);
+  if(nd.length)h+='<div class="grp"><span>No date ('+nd.length+')</span><span>check these yourself</span></div>'+nd.map(function(o){return roRow(o,'<span class="pill mute">Not marked</span>')}).join("");
+  if(held.length)h+='<div class="grp"><span>Already checked ('+held.length+')</span><span>not touched</span></div>'+held.map(function(o){return roRow(o,P.claim[o.id]?'<span class="pill warn">Claim filed</span>':'<span class="pill ok">Checked</span>')}).join("");
+  return h;
+}
+function pvBlock(){
+  var head=P.phase==="done"?"<span>Before the line</span><span>Result</span>":"<span>Before the line, oldest first</span><span>Never came</span>";
+  return '<div class="pv-wrap"><div class="pv-head">'+head+'</div><div class="pv" data-sk="pv">'+preview()+'</div></div>';
+}
+function panel(kind){
+  var c=calc();
+  var how='<ul class="how"><li>Marked orders count as received, in Packages and in Tally.</li><li>An order you switch to Never came stays outstanding, with the lost-mail warning.</li><li>Undo stays here until you leave this view.</li></ul>';
+  if(kind==="desk")return L("new","starting line panel",'<section class="panel p-desk" aria-label="Starting line"><div class="col">'+head()+qrow(c)+how+'<div class="spacer"></div>'+slot(c)+'</div><div class="col">'+pvBlock()+'</div></section>');
+  if(kind==="noprev")return L("new","starting line panel",'<section class="panel p-noprev" aria-label="Starting line">'+head()+qrow(c)+'<div class="spacer"></div>'+slot(c)+'</section>');
+  return L("new","starting line panel",'<section class="panel p-phone" aria-label="Starting line">'+head()+qrow(c)+pvBlock()+slot(c)+'</section>');
+}
+
+/* Today's parts */
+function receipt(){
+  var d=ds(),cards=0,sel={};d.orders.forEach(function(o){cards+=o.n;sel[o.s]=1});
+  var r='<div class="receipt"><div class="main"><div class="t num">Imported '+fmtN(d.orders.length)+' orders</div><div class="s num">'+fmtN(cards)+" cards · "+plural(Object.keys(sel).length,"seller")+" · "+d.file+'</div></div><button type="button" class="textbtn" data-act="noop">Undo import</button></div>';
+  return L("new","import receipt (round 1)",r);
+}
+function offerBlock(){
+  var o='<div class="offer"><p>12 orders in this file are older than your first import. Treat them as arrived?</p><div class="row"><button type="button" class="textbtn" data-act="review" data-fk="review"'+(P.offerOpen?" disabled":"")+'>'+(P.offerOpen?"Reviewing below":"Review 12 orders")+'</button></div></div>';
+  return L("new","offer in the import receipt",o);
+}
+function pkgRows(max){
+  var os=ds().orders,c=calc(),rows=[],done=P.phase==="done";
+  var list=os.filter(function(o){var st=stat(o);if(st==="held")return false;if(!done)return true;return st!=="before"||P.out[o.id]||cardsOut(o)});
+  list.sort(function(a,b){var la=P.out[a.id]||cardsOut(a)?0:1,lb=P.out[b.id]||cardsOut(b)?0:1;if(done&&la!==lb)return la-lb;return (a.d||"")<(b.d||"")?-1:1});
+  var lostLabelled=false;
+  list.slice(0,max).forEach(function(o){
+    var lost=done&&(P.out[o.id]||cardsOut(o));
+    var badge=lost?'<span class="pill warn">May be lost</span>':"";
+    if(lost&&!lostLabelled){badge=L("today","lost-mail warning",badge,"","span");lostLabelled=true}
+    rows.push('<div class="prow"><div class="main"><div class="t">'+esc(SELLERS[o.s])+'</div><div class="s num">'+(lost&&!P.out[o.id]?cardsOut(o)+" of ":"")+plural(o.n,"card")+" · "+(P.nodate[o.id]?"no date":"ordered "+o.d)+'</div></div>'+badge+'<span class="circ" aria-hidden="true"></span></div>');
+  });
+  var more=list.length-max;
+  return {html:rows.join("")+(more>0?'<div class="more num">'+fmtN(more)+' more orders</div>':""),n:list.length};
+}
+function pkgList(max){
+  var p=pkgRows(max);
+  return L("today","Packages list",'<div><p class="sect"><span>Outstanding</span><span class="num">'+plural(p.n,"order")+'</span></p><div class="list">'+p.html+'</div></div>');
+}
+function syncStatus(){
+  return L("today","sync status",P.sync?'<span class="sync"><i></i>Synced</span>':'<span class="sync off"><i></i>Offline · saved on this device</span>',"","span");
+}
+function emptyState(){
+  return '<div class="emptyst">'+L("today","empty state",'<div><h2>No orders yet</h2><p>Import an OrderWand CSV export to start your checklist.</p><button type="button" class="cta" data-act="noop">Import CSV</button></div>')+
+    L("new","one hint line",'<p class="hint">Mail already in hand? After your first import you can mark it all at once.</p>')+'</div>';
+}
+function body(kind){
+  if(P.empty)return emptyState();
+  if(P.left)return pkgList(30);
+  var h=receipt();
+  if(P.ds==="offer"){h+=offerBlock();if(P.offerOpen)h+=panel(kind);return h+pkgList(kind==="desk"?8:6)}
+  return h+panel(kind)+pkgList(kind==="desk"?8:(P.phase==="done"?20:6));
+}
+function statusBar(){return '<div class="island" aria-hidden="true"></div><div class="status" aria-hidden="true"><span class="num">9:41</span><i></i></div>'}
+function tabbar(){
+  function t(n,ic){return '<div class="tab"'+(n==="Packages"?' aria-current="page"':'')+'>'+ic+n+'</div>'}
+  return L("today","tab bar",t("Packages",IC.box)+t("Tally",IC.sum)+t("Orphaned",IC.q),"tabbar","nav")+'<div class="homebar" aria-hidden="true"></div>';
+}
+function navBar(){return '<div class="nav"><div class="nav-top">'+syncStatus()+'</div><h1 class="largetitle">Packages</h1></div>'}
+
+function renderPhone(){
+  return '<div class="screen">'+statusBar()+navBar()+'<div class="scroll" data-sk="scr">'+body("phone")+'</div>'+tabbar()+'</div>';
+}
+function renderDuo(){
+  var right;
+  var showPv=!P.empty&&!P.left&&(P.ds!=="offer"||P.offerOpen);
+  if(showPv)right='<div class="pane-bar"><h2>Before the line</h2></div><div class="pane-body">'+L("new","preview on the second screen",pvBlock(),"","div").replace('class="lbl ','style="flex:1;min-height:0;display:flex;flex-direction:column" class="lbl ')+'</div>';
+  else right='<div class="pane-bar"><h2>Preview</h2></div><div class="placeholder">'+(P.empty?"The preview of your orders shows here after the first import.":P.left?"Pick an order to see its cards.":"Press Review to see the 12 older orders here.")+'</div>';
+  return '<div class="screen left">'+statusBar()+navBar()+'<div class="scroll" data-sk="scrL">'+body("noprev")+'</div>'+tabbar()+'</div>'+
+    '<div class="hinge" aria-hidden="true"></div><div class="screen right">'+statusBar()+right+'<div class="homebar" aria-hidden="true"></div></div>';
+}
+function renderDesk(){
+  return '<div class="bbar" aria-hidden="true"><i></i><i></i><i></i><span class="url">manifest.example/packages</span></div>'+
+    '<div class="appbar"><span class="mast">MANIFEST</span><nav class="dtabs"><span class="dtab" aria-current="page">Packages</span><span class="dtab">Tally</span><span class="dtab">Orphaned</span></nav>'+syncStatus()+'</div>'+
+    '<div class="dmain" data-sk="main"><div class="inner">'+body("desk")+'</div></div>';
+}
+
+var frame=document.getElementById("frame");
+function render(){
+  var sk={},fk=document.activeElement&&document.activeElement.getAttribute&&document.activeElement.getAttribute("data-fk");
+  frame.querySelectorAll("[data-sk]").forEach(function(el){sk[el.getAttribute("data-sk")]=el.scrollTop});
+  var r=document.documentElement;
+  if(S.t==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",S.t);
+  r.setAttribute("data-labels",S.labels?"on":"off");
+  ["phone","duo","desk"].forEach(function(d){var el=document.getElementById("dv-"+d);el.hidden=d!==S.d;if(d!==S.d)el.innerHTML=""});
+  document.getElementById("dv-"+S.d).innerHTML=S.d==="duo"?renderDuo():S.d==="desk"?renderDesk():renderPhone();
+  frame.querySelectorAll("[data-sk]").forEach(function(el){var v=sk[el.getAttribute("data-sk")];if(v)el.scrollTop=v});
+  if(fk){var f=frame.querySelector('[data-fk="'+fk+'"]');if(f&&!f.disabled)f.focus({preventScroll:true})}
+  if(P.scrollTo){var pv=frame.querySelector(".pv"),row=frame.querySelector('[data-fk="exp'+P.scrollTo+'"]');
+    if(pv&&row)pv.scrollTop=row.getBoundingClientRect().top-pv.getBoundingClientRect().top+pv.scrollTop-40;P.scrollTo=null}
+  document.getElementById("caption").textContent=STATES.filter(function(x){return x.k===S.s})[0].cap;
+  document.getElementById("states").innerHTML=STATES.map(function(x){return '<a href="'+link(x.k,S.t,S.d)+'" aria-current="'+(x.k===S.s)+'">'+x.n+'</a>'}).join("");
+  document.getElementById("devices").innerHTML=DEVICES.map(function(d){return '<a href="'+link(S.s,S.t,d[0])+'" aria-current="'+(d[0]===S.d)+'">'+d[1]+'</a>'}).join("");
+  document.getElementById("themes").innerHTML=["auto","light","dark"].map(function(t){return '<a href="'+link(S.s,t,S.d)+'" aria-current="'+(t===S.t)+'">'+t.charAt(0).toUpperCase()+t.slice(1)+'</a>'}).join("");
+  document.getElementById("lblBtn").setAttribute("aria-pressed",String(S.labels));
+}
+var timer=null;
+function soon(){clearTimeout(timer);timer=setTimeout(render,200)}
+function link(s,t,d){return "#s="+s+(t!=="auto"?"&t="+t:"")+(d!=="phone"?"&d="+d:"")}
+function readHash(){
+  var h={};location.hash.replace(/^#/,"").split("&").forEach(function(kv){var p=kv.split("=");if(p[0])h[p[0]]=decodeURIComponent(p[1]||"")});
+  var prev=S.s;
+  S.s=STATES.some(function(x){return x.k===h.s})?h.s:"normal";
+  S.t=/^(light|dark)$/.test(h.t||"")?h.t:"auto";
+  S.d=/^(duo|desk)$/.test(h.d||"")?h.d:"phone";
+  if(!P||S.s!==prev)preset(S.s);
+  render();
+}
+function say(t){document.getElementById("live").textContent=t}
+function byId(id){return ds().orders.filter(function(o){return o.id===id})[0]}
+
+frame.addEventListener("click",function(e){
+  var b=e.target.closest("[data-act]");if(!b||b.disabled)return;
+  var a=b.getAttribute("data-act"),id=b.getAttribute("data-id");
+  if(a==="step"){var n=+b.getAttribute("data-n"),nl=addDays(P.line,n);if(nl>ds().today||nl<"2025-01-01")return;P.line=nl;if(P.phase==="fail")P.phase="ask";render();return}
+  if(a==="out"){
+    if(P.out[id])delete P.out[id];else P.out[id]=1;delete P.cout[id];
+    b.setAttribute("aria-checked",String(!!P.out[id]));soon();return;
+  }
+  if(a==="cout"){
+    var o=byId(id),li=+b.getAttribute("data-li"),c=P.cout[id]||{};
+    if(P.out[id]){c={};lines(o).forEach(function(l,i){c[i]=1});delete P.out[id]}
+    if(c[li])delete c[li];else c[li]=1;
+    var all=lines(o).every(function(l,i){return c[i]}),none=!Object.keys(c).length;
+    if(all){P.out[id]=1;delete P.cout[id]}else if(none)delete P.cout[id];else P.cout[id]=c;
+    b.setAttribute("aria-checked",String(!!c[li]));soon();return;
+  }
+  if(a==="exp"){if(P.open[id])delete P.open[id];else P.open[id]=1;render();return}
+  if(a==="gexp"){var s=b.getAttribute("data-s");if(P.gopen[s])delete P.gopen[s];else P.gopen[s]=1;render();return}
+  if(a==="page"){var s2=b.getAttribute("data-s");P.page[s2]=(P.page[s2]||0)+(+b.getAttribute("data-n"));render();return}
+  if(a==="confirm"){P.phase="done";render();say(calc().m+" orders marked arrived.");var u=frame.querySelector('[data-fk="undo"]');if(u)u.focus({preventScroll:true});return}
+  if(a==="undo"){P.phase="ask";render();say("Undone. Nothing from the starting line is marked.");var cta=frame.querySelector('[data-fk="cta"]');if(cta)cta.focus({preventScroll:true});return}
+  if(a==="skip"){P.phase="skipped";render();say("All orders stay outstanding.");var u2=frame.querySelector('[data-fk="undo"]');if(u2)u2.focus({preventScroll:true});return}
+  if(a==="review"){P.offerOpen=true;render();return}
+});
+document.getElementById("lblBtn").addEventListener("click",function(){S.labels=!S.labels;render()});
+window.addEventListener("hashchange",readHash);
+readHash();
+})();
+</script>
+</body>
+</html>

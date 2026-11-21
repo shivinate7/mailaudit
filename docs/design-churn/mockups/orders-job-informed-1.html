@@ -37,12 +37,12 @@ main { max-width:1200px; margin:0 auto; padding:16px; display:flex; flex-directi
 .chip .x { min-width:28px; min-height:28px; display:inline-grid; place-items:center; border-radius:6px; color:var(--inkSoft); border:0; background:transparent; font:inherit; cursor:pointer; }
 .chip .x:hover { background:var(--paper); }
 .chip:focus-visible, .x:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
-.optgroup { display:inline-flex; gap:4px; align-items:center; padding:2px 4px 2px 10px; border:1px dashed var(--line); border-radius:8px; }
+.optgroup { display:inline-flex; flex-wrap:wrap; max-width:100%; gap:4px; align-items:center; padding:2px 4px 2px 10px; border:1px dashed var(--line); border-radius:8px; }
 .optgroup > span { font-size:13px; color:var(--inkSoft); }
 .optgroup[hidden] { display:none; }
 .kindline { font-size:13px; color:var(--inkSoft); }
 .frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
-figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; max-width:100%; min-width:0; }
 figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
 figcaption b { font-family:var(--cochin); font-size:17px; color:var(--ink); }
 .fit { max-width:100%; overflow:auto; }

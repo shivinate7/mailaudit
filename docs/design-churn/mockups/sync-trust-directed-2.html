@@ -294,6 +294,7 @@ figcaption small { color:var(--inkSoft); }
     <button type="button" data-hide="slip" aria-pressed="false">Hide Slip above the tab bar</button>
     <button type="button" data-hide="line" aria-pressed="false">Hide Line in the list</button>
     <button type="button" data-hide="badge" aria-pressed="false">Hide Badge on Ledger</button>
+    <button type="button" data-hide="local" aria-pressed="false">Hide This device's own record</button>
     <button type="button" data-hide="named" aria-pressed="false">Hide Named devices</button>
     <button type="button" id="tagsBtn" aria-pressed="true">Today and New tags</button>
     <button type="button" id="resetBtn">Reset every frame</button>
@@ -679,7 +680,7 @@ function slot(st) {
   if (st.s === "stale") return `<div class="slot stale tag-new" data-tag="New: agreement slot"><span class="long">Last agreed with the server Nov 16, 9:12 AM</span><span class="short">Last agreed Nov 16</span></div>`;
   if (st.arrived && !st.shown) return `<div class="slot fresh tag-new" data-tag="New: rows frozen, slot speaks"><span class="long">Another sync landed at 14:35</span><span class="short">New sync 14:35</span><button type="button" class="go" data-act="show-new">Show it</button></div>`;
   const at = st.shown ? "14:35" : "14:32";
-  return `<div class="slot ok tag-new" data-tag="New: agreement slot"><span class="long">Both devices agreed with the server at ${at}</span><span class="short">Agreed ${at}</span></div>`;
+  return `<div class="slot ok tag-new" data-tag="New: agreement slot"><span class="long">This phone agreed with the server at ${at}</span><span class="short">Agreed ${at}</span></div>`;
 }
 function rowDetail(st, r) {
   const undone = st.undone.has(r.id);
@@ -902,8 +903,12 @@ function render(el, st) {
   else if (st.screen === "history") h += historyScreen(st);
   else if (st.screen === "detail") h += receiptScreen(st);
   else h += st.c === "columns" ? columnsFeed(st) : receiptsFeed(st);
-  h += shareSheet(st);
   el.innerHTML = h;
+  /* the share sheet stays on the page that holds Share: on the open Duo nothing may cross the fold */
+  if (st.sheet) {
+    const host = st.dev === "open" ? el.querySelector(st.c === "columns" ? ".page.l" : ".page.r") : el;
+    (host || el).insertAdjacentHTML("beforeend", shareSheet(st));
+  }
   if (st.dev === "open" && st.screen === "feed" && st.c === "columns") linkScroll(el);
   if (st.scrollTo) {
     /* a link into Recent lands on its row: the feed opens scrolled there, it does not scroll under the finger later */

@@ -173,7 +173,10 @@ button { cursor: pointer; }
 .act-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 .act-row .meter { margin-inline-end: auto; }
 .confirm-row { background: var(--danger-soft); border-radius: var(--radius); margin-inline: calc(var(--space-2) * -1); padding-inline: var(--space-2); }
-.confirm-row p { color: var(--danger); font-weight: 600; }
+.confirm-row { flex-wrap: nowrap; }
+.confirm-row p { color: var(--danger); font-weight: 600; flex: 1 1 0; min-width: 0; }
+.ax5 .confirm-row { flex-wrap: wrap; }
+.ax5 .pick-row .mark { display: none; }
 /* Bars stop growing at xxxLarge, the largest size before the accessibility sizes, as iOS bars do;
    the list, the field and the lines below still grow to AX5. */
 .ax5 .env-head, .ax5 .tray, .ax5 .nav, .ax5 .env-top, .ax5 .envelope .act-stack {
@@ -251,6 +254,8 @@ button { cursor: pointer; }
 .chip.is-sel { outline: 3px solid var(--accent); outline-offset: 1px; }
 .chip .ck { width: 8px; height: 5px; border-left: 2px solid var(--ready); border-bottom: 2px solid var(--ready); transform: rotate(-45deg) translateY(-1px); }
 .ax5 .chip { min-height: 44px; }
+.envelope .chip, .ax5 .chip { max-width: 100%; text-align: start; }
+.ax5 .chips { flex-wrap: wrap; overflow: visible; }
 .status-line { padding: var(--space-2) var(--space-4); }
 
 /* The envelope (bold concept) */
