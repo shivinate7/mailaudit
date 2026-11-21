@@ -86,8 +86,8 @@
   "pick": "a",
   "rank": 25,
   "ref": "debt panel-paper-fill-unbuilt (overlay panels carry no paper fill); src/app.jsx panelWrap",
-  "replied": "2026-11-18T23:42:00-06:00",
-  "reply": "Filed. Your answer a, confirm the paper fill for the web's Sorted by and History panels (2026-11-18 21:56 CST), is recorded on main (pull request 351, merged 2026-11-18 23:01 CST). The fill is not built yet; its debt stays open. Closed.",
+  "replied": "2026-11-21T15:22:00-06:00",
+  "reply": "Built. Your answer a, the paper fill, is on main (pull request 369, merged 2026-11-21 15:20 CST). The panel edge question stays open and unbuilt (a debt). Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Panel paper fill",
   "shown": [

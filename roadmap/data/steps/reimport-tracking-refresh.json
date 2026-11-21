@@ -1,10 +1,10 @@
 {
   "title": "Refresh tracking on a re-import (page item 89 b)",
-  "status": "active",
+  "status": "done",
   "phase": "sync",
   "order": 9,
   "why": "Owner ruled option b in chat, 13:38 CST 2026-11-15 (page item 89 reimport-changed-lines): a re-import refreshes only the tracking field on a stored line, and never touches received marks or any other field. mergeItems keeps the base copy today (debt reimport-tracking-unrefreshed). Measured 13:29 CST (coordinator): 514 stored lines differ in tracking, 13 newly canceled.",
-  "note": "Lane session_01MVD32M3QsDvz5WDXx4B5Jz is on it (coordinator, 16:36 CST). Brief: refresh only tracking on a stored line in mergeItems, web plus Worker, native reported as a gap. It retires debt reimport-tracking-unrefreshed and re-points tests 57.14 and 57.15. PR 338 (the pin test and the invariant wording) and PR 339 (the debt) are merged.",
+  "note": "Built and merged (pull request 342). Coordinator, 15:21 CST 2026-11-21; merge checked in git.",
   "ask": "",
-  "updatedAt": "2026-11-15T22:35:00Z"
+  "updatedAt": "2026-11-21T21:25:00Z"
 }

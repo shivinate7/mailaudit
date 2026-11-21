@@ -1,10 +1,10 @@
 {
   "title": "Rename the 472 older product names to the new style so Tally pools them",
-  "status": "todo",
+  "status": "done",
   "phase": "sync",
   "order": 10,
   "why": "Measured 13:29 CST 2026-11-15 (coordinator): 472 stored lines use the older ' - ' name style and the file now uses ', '. 13 product names split in Tally because the 59 new lines use the new style.",
-  "note": "Waits only on the PR of step reimport-tracking-refresh (page item 89 b). Owner ruled yes in chat, 13:38 CST 2026-11-15 (page item 90 reimport-name-style): its own change after item 89's. Cosmetic and names only; check-ins stay untouched. No lane is started: the coordinator starts it.",
+  "note": "Built and merged (pull request 350). Coordinator, 15:21 CST 2026-11-21; merge checked in git.",
   "ask": "",
-  "updatedAt": "2026-11-15T22:35:00Z"
+  "updatedAt": "2026-11-21T21:25:00Z"
 }

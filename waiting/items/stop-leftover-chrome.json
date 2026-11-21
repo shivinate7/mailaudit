@@ -26,6 +26,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "guard machine-wide-kill; designer run design-churn",
+  "replied": "2026-11-21T15:22:00-06:00",
+  "reply": "The twelve processes were already gone at 14:09 CST (the coordinator's check), so no stop is needed. Closed.",
   "repo": "shivinate7/mailaudit",
   "short": "Stop 12 leftover Chrome processes",
   "shown": [
@@ -40,7 +42,7 @@
       "label": "No, leave them"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "May the coordinator stop twelve leftover headless Chrome processes from a finished designer?",
   "why": "You already said leftover Chrome can end; only your typed override lets the stop through."
 }
