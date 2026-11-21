@@ -730,7 +730,12 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
       var rh = dev.querySelector('[data-rh]');
       if (sc && rh) {
         var lh = sc.querySelector('.lh');
-        var pin = function () { rh.classList.toggle('on', lh && sc.scrollTop >= lh.offsetHeight); };
+        // Stacked letterhead at accessibility sizes pins once the missing row has scrolled away, not at the letterhead's end,
+        // so there is no stretch of scroll where neither the row nor the head shows the money.
+        var missCell = c === 'stacked' ? sc.querySelector('.cell .miss') : null;
+        var at = lh ? lh.offsetHeight : 0;
+        if (missCell) { var mc = missCell.closest('.cell'); at = mc.getBoundingClientRect().bottom - sc.getBoundingClientRect().top + sc.scrollTop - 47; }
+        var pin = function () { rh.classList.toggle('on', lh && sc.scrollTop >= at); };
         sc.addEventListener('scroll', pin, { passive:true });
         if (st.s === 'scrolled') sc.scrollTop = (lh ? lh.offsetHeight : 0) + 60; else if (keep[dev.getAttribute('data-pose') + c] != null) sc.scrollTop = keep[dev.getAttribute('data-pose') + c];
         pin();
@@ -742,7 +747,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
         dev.querySelectorAll('.go.armed, .disc.armed').forEach(function (el) {
           var box = el.closest('.scroll'); if (!box) return;
           box.scrollTop = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 64;
-          if (rh && box === sc) { var l4 = sc.querySelector('.lh'); rh.classList.toggle('on', l4 && sc.scrollTop >= l4.offsetHeight); }
+          box.dispatchEvent(new Event('scroll'));
         });
       }
       if (st.s === 'viewer') { var v = dev.querySelector('[data-lcv]'); if (v && (c === 'dock' || c === 'stacked')) { v.classList.add('on'); if (rh) { rh.classList.add('on'); if (sc && sc.scrollTop < 1) { var l3 = sc.querySelector('.lh'); sc.scrollTop = (l3 ? l3.offsetHeight : 0) + 60; } } } }

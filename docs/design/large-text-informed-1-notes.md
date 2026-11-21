@@ -47,7 +47,9 @@ Reset and Discard arm for 4 s with Cancel, a hold on the running head or the doc
 5. **Stacked letterhead: the running head keeps 46 pt.** Its text is capped at xxxLarge, as the Duo bar
    caps its titles (`DuoBar`, `accessibilityShowsLargeContentViewer`), and when the title word and the
    figure do not both fit, the title word goes and the seal stays (SwiftUI `ViewThatFits`). A hold shows
-   the full figure in the large content viewer. Gain: "1,204/1,530 · $1,284.60" is always whole, and
+   the full figure in the large content viewer. At accessibility sizes it pins once the missing row has
+   scrolled under it, not at the letterhead's end, so no stretch of scroll shows neither the row nor the
+   head (Departs from: `MastheadScreen.body`, `pinAt = headHeight`). Gain: "1,204/1,530 · $1,284.60" is always whole, and
    `masthead-running-head-sticky` (height never changes) holds. Loss: at AX sizes the pinned figure is
    smaller than the text the person chose; the hold is not discoverable. Pick: yes. Owner grant: yes (caps
    Dynamic Type on a content element, where `typography-cochin-and-mono` says Dynamic Type scales the text).
