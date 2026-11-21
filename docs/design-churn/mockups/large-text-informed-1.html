@@ -55,6 +55,8 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
 /* ---- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono). Sizes are set per Dynamic Type step by script. ---- */
 .app { font-family:var(--cochin); color:var(--ink); }
 .mono { font-family:var(--mono); }
+/* form controls do not inherit the font (design-form-controls-no-inherit), so the device frame sets it again on them */
+.dev button.app { font-family:var(--cochin); } .dev button.mono { font-family:var(--mono); }
 .lh { display:flex; flex-direction:column; align-items:center; padding:12px 24px 0; }
 .seal-row { display:flex; align-items:center; gap:12px; width:100%; max-width:270px; padding-bottom:12px; }
 .seal-row i { flex:1; height:1px; background:var(--gold); opacity:.75; }
@@ -194,10 +196,10 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
 .pinned { position:absolute; left:0; right:0; top:var(--sat); z-index:5; background:var(--paper); border-bottom:1px solid var(--line); padding:8px 16px; display:flex; justify-content:flex-end; }
 
 /* the large content viewer (system HUD) */
-.lcv { position:absolute; left:50%; top:45%; transform:translate(-50%,-50%); width:min(320px, 86%); background:var(--scrim); color:var(--card); border-radius:16px;
+.lcv { position:absolute; left:50%; top:45%; transform:translate(-50%,-50%); width:min(380px, 90%); background:var(--scrim); color:var(--card); border-radius:16px;
   padding:20px; z-index:10; display:none; flex-direction:column; align-items:center; gap:8px; text-align:center; font-family:-apple-system, system-ui, sans-serif; }
 .lcv.on { display:flex; }
-.lcv .big { font-family:var(--mono); font-weight:700; overflow-wrap:anywhere; }
+.lcv .big { font-family:var(--mono); font-weight:700; }
 .lcv small { font-size:13px; opacity:.85; }
 
 /* tags: dashed outline on what exists today, and on what an option adds */
@@ -292,13 +294,21 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
     { name:'Swords to Plowshares', got:7, qty:9, basis:'$12.60', each:140, sellers:5, orders:6, sets:'Commander Masters, Eternal Masters, Ice Age' },
     { name:'Phyrexian Arena', got:1, qty:2, basis:'$3.10', each:155, sellers:1, orders:2, sets:'Phyrexia: All Will Be One' },
     { name:'Thoughtseize', got:4, qty:4, basis:'$38.00', each:950, sellers:2, orders:2, sets:'Theros, Double Masters 2022' },
-    { name:'Counterspell', got:10, qty:12, basis:'$9.40', each:78, sellers:8, orders:9, sets:'Dominaria Remastered, Modern Horizons 2, Masters 25' }
+    { name:'Counterspell', got:10, qty:12, basis:'$9.40', each:78, sellers:8, orders:9, sets:'Dominaria Remastered, Modern Horizons 2, Masters 25' },
+    { name:'Ragavan, Nimble Pilferer', got:0, qty:1, basis:'$52.00', each:5200, sellers:1, orders:1, sets:'Modern Horizons 2' },
+    { name:'Fatal Push', got:5, qty:6, basis:'$6.30', each:105, sellers:4, orders:4, sets:'Aether Revolt, Double Masters 2022' },
+    { name:'Brainstorm', got:8, qty:8, basis:'$5.60', each:70, sellers:6, orders:7, sets:'Ice Age, Masters 25, Commander Legends' },
+    { name:'Lightning Bolt', got:11, qty:16, basis:'$7.20', each:45, sellers:9, orders:11, sets:'Magic 2010, Masters 25, Jumpstart, Fourth Edition' }
   ];
   var packages = [
     { name:'Cardboard Corner Games', got:3, qty:5, value:'$18.40' },
     { name:'Northfield Card Exchange', got:12, qty:12, value:'$44.10' },
     { name:'Blue Heron Collectibles', got:0, qty:7, value:'$9.85' },
-    { name:'The Tidewater Vault', got:2, qty:3, value:'$6.20' }
+    { name:'The Tidewater Vault', got:2, qty:3, value:'$6.20' },
+    { name:'Lantern Street Cards', got:4, qty:9, value:'$21.75' },
+    { name:'Old Mill Gaming', got:1, qty:1, value:'$0.85' },
+    { name:'Copperline Singles', got:0, qty:4, value:'$3.40' },
+    { name:'Harbor Light Hobbies', got:6, qty:8, value:'$12.10' }
   ];
   var envelopes = [
     { date:'2026-11-02', cards:['Ponder','Preordain','Brainstorm'] },
@@ -351,7 +361,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
   var SEAL = '<svg class="seal" viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="wx" cx=".37" cy=".3" r=".78"><stop offset="0" stop-color="#C86A5F"/><stop offset=".6" stop-color="#A8443C"/><stop offset="1" stop-color="#66231D"/></radialGradient></defs><path fill="url(#wx)" d="M50 2C69 2 80 9 88 20C96 31 99 45 96 59C92 75 81 90 65 95C50 100 34 98 22 89C9 78 2 62 3 47C5 30 15 15 31 7C37 4 43 2 50 2Z"/><circle cx="50" cy="50" r="39" fill="none" stroke="#5E1F1A" stroke-width="3.5"/><path d="M29 58L50 38L71 58M31 72H69" fill="none" stroke="#5E1F1A" stroke-width="8" stroke-linecap="round"/><path d="M29 54.5L50 34.5L71 54.5M31 68.5H69" fill="none" stroke="#E09A90" stroke-width="3.4" stroke-linecap="round"/></svg>';
 
   function countLines() {
-    return { ledger: n(468) + ' packages · autosaves', packages: n(468) + ' packages · autosaves', tally: n(1117) + ' unique items', orphaned: envelopes.length + ' envelopes waiting' };
+    return { ledger: n(1046) + ' packages · autosaves', packages: n(1046) + ' packages · autosaves', tally: n(1117) + ' unique items', orphaned: envelopes.length + ' envelopes waiting' };
   }
   function missingText() { return owed() === 0 ? 'ALL ACCOUNTED FOR ✓' : n(TOTAL - got()) + ' still missing · ' + money(owed()); }
   function saveLabel() { return { idle:' ', saving:'saving…', saved:'saved', bad:'couldn’t save' }[save]; }
@@ -366,7 +376,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
     h += '<div class="house" data-minscale="0.5" style="' + f(10, 'caption') + '">C.H Postal Company</div>';
     var cells = [
       { lab:'cards', lead:n(got()), rest:'/' + n(TOTAL) },
-      { lab:'packages', lead:n(st.s === 'done' ? 468 : 412), rest:'/' + n(468) },
+      { lab:'packages', lead:n(st.s === 'done' ? 1046 : 934), rest:'/' + n(1046) },
       { lab:'value', lead:'$3,104.20', rest:'/$4,388.80' }
     ];
     if (c === 'dock') cells = cells.slice(1);  // the cards figure lives in the dock (ux-label-once)
@@ -564,8 +574,11 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
 
   function viewer(c) {
     var fig = n(got()) + '/' + n(TOTAL) + (owed() === 0 ? '' : ' · ' + money(owed()));
-    var big = f(17, 'body').replace(/line-height:[^;]+;/, '');
-    return '<div class="lcv" data-lcv><div class="big" style="' + big + 'line-height:1.15">' + (c === 'dock' ? n(got()) + '/' + n(TOTAL) + ' in<br>' + (owed() === 0 ? 'All in' : money(owed()) + ' out') : fig) + '</div><small>Large content viewer: shown while held. Release to close.</small></div>';
+    // The system sets the viewer's text size; drawn at 40 pt. Each figure keeps together.
+    var u = function (s) { return '<span class="unit">' + s + '</span>'; };
+    var body = c === 'dock' ? u(n(got()) + '/' + n(TOTAL)) + ' ' + u('in') + '<br>' + (owed() === 0 ? u('All in') : u(money(owed())) + ' ' + u('out'))
+                            : u(n(got()) + '/' + n(TOTAL)) + (owed() === 0 ? '' : ' ' + u('·') + ' ' + u(money(owed())));
+    return '<div class="lcv" data-lcv><div class="big" style="font-size:40px;line-height:46px">' + body + '</div><small>Large content viewer: shown while held. Release to close.</small></div>';
   }
 
   // ---- one device frame for one concept ----
@@ -681,6 +694,10 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
         if (lh) el.style.lineHeight = lh + 'px';
       }
     });
+    // the Today count line is tagged only where it really clips
+    stage.querySelectorAll('.countline.clip').forEach(function (el) {
+      if (el.scrollWidth <= el.clientWidth + 1) { el.removeAttribute('data-tag'); el.classList.remove('tag-today'); }
+    });
     stage.querySelectorAll('[data-concept]').forEach(function (dev) {
       var c = dev.getAttribute('data-concept');
       var dk = dev.querySelector('[data-dock]');
@@ -708,7 +725,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
           if (rh && box === sc) { var l4 = sc.querySelector('.lh'); rh.classList.toggle('on', l4 && sc.scrollTop >= l4.offsetHeight); }
         });
       }
-      if (st.s === 'viewer') { var v = dev.querySelector('[data-lcv]'); if (v && (c === 'dock' || rh)) { v.classList.add('on'); if (rh) { rh.classList.add('on'); if (sc && sc.scrollTop < 1) { var l3 = sc.querySelector('.lh'); sc.scrollTop = (l3 ? l3.offsetHeight : 0) + 60; } } } }
+      if (st.s === 'viewer') { var v = dev.querySelector('[data-lcv]'); if (v && (c === 'dock' || c === 'stacked')) { v.classList.add('on'); if (rh) { rh.classList.add('on'); if (sc && sc.scrollTop < 1) { var l3 = sc.querySelector('.lh'); sc.scrollTop = (l3 ? l3.offsetHeight : 0) + 60; } } } }
     });
   }
   function hashWith(k, v) {

@@ -439,7 +439,7 @@ function loadScenario(name) {
   S = baseData();
   if (name === "sending") { addTick("c0_0", "sending"); }
   if (name === "failed") { addTick("c0_1", "saved"); addTick("c0_0", "failed", "you", WHY.failed); }
-  if (name === "many") { addTick("c0_0","failed","you",WHY.failed); addTick("c1_1","failed","you",WHY.failed); addTick("c2_1","failed","you",WHY.failed); addTick("c3_1","failed","you",WHY.failed); addTick("c5_1","failed","you",WHY.failed); }
+  if (name === "many") { addTick("c0_0","failed","you",WHY.failed); addTick("c1_1","failed","you",WHY.failed); addTick("c2_2","failed","you",WHY.failed); addTick("c3_1","failed","you",WHY.failed); addTick("c5_1","failed","you",WHY.failed); }
   if (name === "waiting") { addTick("c0_0","waiting","you",WHY.waiting); addTick("c0_2","waiting","you",WHY.waiting); addTick("c1_0","waiting","you",WHY.waiting); }
   if (name === "unknown") { addTick("c0_0","unknown","you",WHY.unknown); }
   if (name === "done") { for (const o of S.orders) for (const c of o.cards) while (c.copies.some(x => x.st === "empty")) addTick(c.id, "saved", "you"); }

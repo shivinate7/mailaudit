@@ -379,6 +379,7 @@ figcaption { color: var(--text-2); font-size: 13px; line-height: 18px; max-width
   font: 600 10px/14px -apple-system, system-ui, sans-serif; color: var(--new); background: var(--surface);
   padding: 0 4px; border-radius: 3px; pointer-events: none; white-space: nowrap;
 }
+.notice.np { position: absolute; }
 body.labels-off .np { outline: 0; }
 body.labels-off .np::after { display: none; }
 
@@ -402,7 +403,35 @@ body.labels-off .np::after { display: none; }
   <p class="notes-ref">Deep links: <code>#c=clock</code>, <code>#c=calendar</code>, <code>#c=track</code>, with <code>&amp;s=empty|loading|failed|unknown|notice</code> and <code>&amp;t=dark|light</code>. Press a package, a stepper or a button: each one works.</p>
 </section>
 
-<main id="stage"></main>
+<main id="stage">
+<section class="concept" id="concept-clock" data-concept="clock" aria-labelledby="h-clock">
+  <header><h2 id="h-clock">Claim clock</h2><p class="why"></p></header>
+  <div class="frames">
+    <figure><figcaption>Duo folded, 466 x 678 pt (brief size)</figcaption><div class="device folded" data-device="iphone-duo-folded" data-frame="folded" data-c="clock" id="clock-folded"></div></figure>
+    <figure><figcaption>Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief size)</figcaption><div class="device open" data-device="iphone-duo-unfolded" data-frame="open" data-c="clock" id="clock-open"></div></figure>
+    <figure><figcaption>Large phone. No size is written: drawn at the brief’s folded width, 466 x 678. Drag the corner to try others.</figcaption><div class="device phone" data-device="iphone-regular" data-frame="phone" data-c="clock" id="clock-phone"></div></figure>
+    <figure><figcaption>Duo folded at the largest accessibility text size (AX5)</figcaption><div class="device ax5" data-device="iphone-duo-folded" data-frame="ax5" data-c="clock" id="clock-ax5"></div></figure>
+  </div>
+</section>
+<section class="concept" id="concept-calendar" data-concept="calendar" aria-labelledby="h-calendar">
+  <header><h2 id="h-calendar">Claim calendar</h2><p class="why"></p></header>
+  <div class="frames">
+    <figure><figcaption>Duo folded, 466 x 678 pt (brief size)</figcaption><div class="device folded" data-device="iphone-duo-folded" data-frame="folded" data-c="calendar" id="calendar-folded"></div></figure>
+    <figure><figcaption>Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief size)</figcaption><div class="device open" data-device="iphone-duo-unfolded" data-frame="open" data-c="calendar" id="calendar-open"></div></figure>
+    <figure><figcaption>Large phone. No size is written: drawn at the brief’s folded width, 466 x 678. Drag the corner to try others.</figcaption><div class="device phone" data-device="iphone-regular" data-frame="phone" data-c="calendar" id="calendar-phone"></div></figure>
+    <figure><figcaption>Duo folded at the largest accessibility text size (AX5)</figcaption><div class="device ax5" data-device="iphone-duo-folded" data-frame="ax5" data-c="calendar" id="calendar-ax5"></div></figure>
+  </div>
+</section>
+<section class="concept" id="concept-track" data-concept="track" aria-labelledby="h-track">
+  <header><h2 id="h-track">Day-30 track</h2><p class="why"></p></header>
+  <div class="frames">
+    <figure><figcaption>Duo folded, 466 x 678 pt (brief size)</figcaption><div class="device folded" data-device="iphone-duo-folded" data-frame="folded" data-c="track" id="track-folded"></div></figure>
+    <figure><figcaption>Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief size)</figcaption><div class="device open" data-device="iphone-duo-unfolded" data-frame="open" data-c="track" id="track-open"></div></figure>
+    <figure><figcaption>Large phone. No size is written: drawn at the brief’s folded width, 466 x 678. Drag the corner to try others.</figcaption><div class="device phone" data-device="iphone-regular" data-frame="phone" data-c="track" id="track-phone"></div></figure>
+    <figure><figcaption>Duo folded at the largest accessibility text size (AX5)</figcaption><div class="device ax5" data-device="iphone-duo-folded" data-frame="ax5" data-c="track" id="track-ax5"></div></figure>
+  </div>
+</section>
+</main>
 
 <script>
 (() => {
@@ -442,13 +471,6 @@ const CONCEPTS = [
 ];
 const STATES = [['loaded', 'Loaded'], ['empty', 'All is well'], ['loading', 'Loading'], ['failed', 'Read failed'], ['unknown', 'Age unknown'], ['notice', 'Notification']];
 const THEMES = [['system', 'System'], ['light', 'Light'], ['dark', 'Dark']];
-const FRAMES = [
-  ['folded', 'iphone-duo-folded', 'Duo folded, 466 x 678 pt (brief size)'],
-  ['open', 'iphone-duo-unfolded', 'Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief size)'],
-  ['phone', 'iphone-regular', 'Large phone. No size is written: drawn at the brief’s folded width, 466 x 678. Drag the corner to try others.'],
-  ['ax5', 'iphone-duo-folded', 'Duo folded at the largest accessibility text size (AX5)'],
-];
-
 const R = { c: 'clock', s: 'loaded', t: 'system', labels: true, hidden: new Set() };
 let CS = {}, FN = {};
 function freshConcept() { return { filed: {}, got: {}, sel: null, seg: 'open', look: 0, list: false, closedOpen: false, pop: null, sheet: null, calDay: null }; }
@@ -496,7 +518,7 @@ function leftText(p) {
 function dl(p) {
   if (p.filed) return `<span class="dl filed" aria-hidden="true"><b>✓</b><span>filed</span></span>`;
   if (p.zone === 'unknown') return `<span class="dl unknown" aria-hidden="true"><b>?</b><span>days</span></span>`;
-  if (p.zone === 'closed') return `<span class="dl closed" aria-hidden="true"><b>${p.age}</b><span>day</span></span>`;
+  if (p.zone === 'closed') return `<span class="dl closed" aria-hidden="true"><span>day</span><b>${p.age}</b></span>`;
   return `<span class="dl ${p.zone}" aria-hidden="true"><b>${p.left}</b><span>${p.left === 1 ? 'day' : 'days'}</span></span>`;
 }
 function meta(p, kind) {
@@ -590,7 +612,7 @@ function stateBody(c, f) {
 }
 function noticeBanner(c, f) {
   if (R.s !== 'notice') return '';
-  return `<button class="notice" data-a="notice" data-f="${f}" aria-label="Notification. Tiny Dragon TCG closes tomorrow. Claim 6.12 dollars today.">
+  return `<button class="notice${np(R.labels, 'notification')}" data-a="notice" data-f="${f}" aria-label="Notification. Tiny Dragon TCG closes tomorrow. Claim 6.12 dollars today.">
     <span class="ico" aria-hidden="true">!</span>
     <span class="stack-1"><span class="top"><span>Overdue mail</span><span>now</span></span>
     <span class="ttl">Tiny Dragon TCG closes tomorrow</span>
@@ -820,12 +842,13 @@ function trackPop(c, f) {
   if (!st.pop || !nv.pop || f === 'open') return '';
   const p = find(c, st.pop);
   return `<div class="pop" role="dialog" aria-label="${p.seller}" data-anchor="${p.id}" data-f="${f}">
-    <div class="ph"><span class="stack-1"><span class="t-hl">${p.seller}</span><span class="t-fn muted">Day ${p.age ?? '?'}. ${p.got} of ${p.cards} cards. ${money(p.owedNow)} owed.</span></span>
+    <div class="ph"><span class="stack-1"><span class="t-hl">${p.seller}</span><span class="t-fn muted">${meta(p)}. ${money(p.owedNow)} owed.</span></span>
     <button class="x" data-a="popclose" data-f="${f}" aria-label="Close">✕</button></div>
     ${detail(c, p, false)}</div>`;
 }
 function trackList(c, f) {
-  const o = all(c).filter(p => !p.done && p.zone !== 'young').sort((a, b) => (b.age ?? -1) - (a.age ?? -1));
+  const rank = { urgent: 0, nudge: 1, unknown: 2, closed: 3 };
+  const o = all(c).filter(p => !p.done && p.zone !== 'young').sort((a, b) => rank[a.zone] - rank[b.zone] || (a.left ?? 0) - (b.left ?? 0));
   return `<div class="content">${f === 'ax5' ? '<p class="t-fn muted">At this text size the track shows as a list.</p>' : ''}
     ${o.length ? `<div class="group">${o.map(p => row(c, f, p)).join('')}</div>` : '<div class="state"><p class="t-t3">All is well.</p></div>'}</div>`;
 }
@@ -908,13 +931,8 @@ const RENDER = { clock: clockFrame, calendar: calFrame, track: trackFrame };
 
 /* ---- Page ---- */
 function build() {
-  const stage = document.getElementById('stage');
-  stage.innerHTML = CONCEPTS.map(k => `<section class="concept" id="concept-${k.key}" data-concept="${k.key}" aria-labelledby="h-${k.key}" hidden>
-    <header><h2 id="h-${k.key}">${k.name}</h2><p class="why">${k.why}</p></header>
-    <div class="frames">${FRAMES.map(([f, dev, cap]) => `<figure><figcaption>${cap}</figcaption>
-      <div class="device ${f === 'ax5' ? 'ax5' : f}" data-device="${dev}" data-frame="${f}" data-c="${k.key}" id="${k.key}-${f}"></div></figure>`).join('')}</div>
-  </section>`).join('');
-  stage.querySelectorAll('.device.phone').forEach(d => new ResizeObserver(() => layoutTracks(d)).observe(d));
+  CONCEPTS.forEach(k => { document.querySelector(`#concept-${k.key} .why`).textContent = k.why; });
+  document.querySelectorAll('.device.phone').forEach(d => new ResizeObserver(() => layoutTracks(d)).observe(d));
 }
 function renderControls() {
   const vis = CONCEPTS.filter(k => !R.hidden.has(k.key));

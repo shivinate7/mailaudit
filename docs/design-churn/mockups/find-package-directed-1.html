@@ -185,6 +185,7 @@ mark { background:none; color:inherit; font-weight:700; text-decoration:underlin
 .dev.ax5 .ln .n { flex-direction:row; gap:16px; width:100%; padding-left:52px; }
 .dev.ax5 .glyph { width:40px; height:40px; flex-basis:40px; }
 .dev.ax5 .strip { height:auto; min-height:56px; }
+.dev.ax5 .arrow { font-size:53px; min-width:56px; }
 .dev.ax5 .strip .pos em { font-size:40px; line-height:48px; }
 
 @media (prefers-reduced-motion: no-preference) { .deck { scroll-behavior:smooth; } }
@@ -460,11 +461,11 @@ class Frame {
     const d = document.createElement("div");
     d.className = "band t-new"; d.dataset.tag = "New: solid paper band, ruled (101 a; 95 open)";
     d.style.left = l + "px"; d.style.width = w + "px"; d.style.top = top + "px";
-    const ph = this.pose.ax ? "Find" : "Seller, card, order number or month";
+    const ph = this.pose.ax ? "Find" : "Seller, card, order or month";
     const n = this.ranked.list.length;
     d.innerHTML = `<label class="findbox"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="m13 13 5 5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>
       <input type="search" enterkeyhint="search" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Find an order" placeholder="${ph}" value="${esc(this.q)}" ${this.ledgerState === "loading" ? "disabled" : ""}>
-      <span class="count" aria-live="polite">${this.q.trim() && this.ledgerState === "ok" ? n : ""}</span>
+      <span class="count" aria-live="polite" ${this.q.trim() && this.ledgerState === "ok" ? `aria-label="${n} ${n === 1 ? "match" : "matches"}"` : ""}>${this.q.trim() && this.ledgerState === "ok" ? n : ""}</span>
       <button type="button" class="clear" aria-label="Clear search" ${this.q ? "" : 'aria-hidden="true" tabindex="-1"'}><i>&#x2715;</i></button></label>`;
     const input = d.querySelector("input");
     input.addEventListener("focus", () => { if (this.pose.keysTop && !this.keys) { this.keys = true; this.rerenderKeepFocus(); } });

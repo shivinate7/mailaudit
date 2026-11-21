@@ -261,7 +261,13 @@ button.pos { align-self: flex-start; min-height: 44px; padding: 0; background: n
 .prose { display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-4) var(--space-4); }
 .prose p { margin: 0; }
 .word { display: inline; min-height: 44px; padding: var(--space-2) 0; background: none; border: 0; color: var(--accent); text-decoration: underline; text-underline-offset: 3px; cursor: pointer; text-align: start; }
-.word.undo-w { font-size: var(--ft); line-height: var(--ft-l); }
+/* The new-mark chip is also the undo: "+1 ✕" takes one back. It keeps its box when empty. */
+.nchip {
+  display: inline-flex; align-items: center; gap: var(--space-1); vertical-align: baseline;
+  min-height: 44px; min-width: 44px; padding: 0 var(--space-2);
+  border: 1px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft);
+  color: var(--accent); font-weight: 700; cursor: pointer;
+}
 .s-row { padding-block: var(--space-2); border-bottom: 1px solid var(--rule); }
 .s-add { display: inline; padding: var(--space-2) 0; background: none; border: 0; text-align: start; cursor: pointer; }
 .s-add[aria-disabled="true"] { cursor: default; color: var(--text-muted); }
@@ -546,7 +552,7 @@ button.s-dock .owed { color: inherit; }
     var rows = show.map(function (i) {
       var c = S.cards[i], p = S.pend[i], h = c.a + p, full = h >= c.o;
       var label = c.n + ": " + h + " of " + c.o + " here" + (p ? ", " + p + " new" : "") + (full ? "." : ". Tap to add one.");
-      return '<p class="s-row"><button class="s-add" data-act="add" data-i="' + i + '" data-k="add' + i + '"' + (full ? ' aria-disabled="true"' : "") + ' aria-label="' + esc(label) + '"><span class="s-name">' + esc(c.n) + '</span>: <span class="nw">' + h + ' of ' + c.o + '</span> here.</button> <span class="newmark">' + (p ? "+" + p : "") + '</span> ' + undoBtn(i, "word undo-w", "Take one back.") + '</p>';
+      return '<p class="s-row"><button class="s-add" data-act="add" data-i="' + i + '" data-k="add' + i + '"' + (full ? ' aria-disabled="true"' : "") + ' aria-label="' + esc(label) + '"><span class="s-name">' + esc(c.n) + '</span>: <span class="nw">' + h + ' of ' + c.o + '</span> here.</button> ' + undoBtn(i, "nchip", "+" + (p || 1) + ' <span aria-hidden="true">✕</span>') + '</p>';
     }).join("");
     return '<div class="prose" data-new="sentences, words to move around">' + intro + rows + '</div>';
   }
@@ -575,10 +581,10 @@ button.s-dock .owed { color: inherit; }
         var left = c.o - c.a - S.pend[i];
         return left > 0 ? '<li><span class="s-name">' + esc(c.n) + '</span>: <span class="owed nw">' + money(left * c.p) + '</span> for ' + plural(left, "card") + '.</li>' : "";
       }).join("");
-      owed = '<div class="prose"><p>Where the money still owed sits:</p>' + (items ? '<ul class="owed-list">' + items + '</ul>' : '<p>Nowhere. All is well.</p>') + '</div>';
+      owed = '<div class="prose">' + (items ? '<ul class="owed-list">' + items + '</ul>' : '<p>All is well. Nothing is owed.</p>') + '</div>';
     }
     var right = '<div class="col"><div class="bar">' + cancelBtn() + '<span></span><span></span></div>' +
-      '<div class="scroll" data-scroll="sentence-right"><h1 class="large-title">Owed</h1>' + owed + '</div>' + sentenceDock() + '</div>';
+      '<div class="scroll" data-scroll="sentence-right"><h1 class="large-title">Still owed</h1>' + owed + '</div>' + sentenceDock() + '</div>';
     return [left, right];
   }
 

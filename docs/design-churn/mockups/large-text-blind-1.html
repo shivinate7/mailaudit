@@ -285,11 +285,18 @@ button { font: inherit; color: inherit; }
 }
 .grabber { flex: none; width: 36px; height: 5px; border-radius: 3px; background: var(--line-strong); margin: var(--space-2) auto 0; }
 
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.lblbar { display: flex; align-items: center; gap: var(--space-2); }
+.lblbar .bar { flex: 1 1 auto; }
+.ftab.compact .lbl, .ftab.compact .bar { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.textbtn.icon { display: flex; align-items: center; justify-content: center; }
+.textbtn.icon svg { width: 0.9em; height: 0.9em; min-width: 22px; min-height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+
 /* Dashed "New:" labels. They float, so they move nothing. */
 .anno { position: relative; outline: 2px dashed var(--anno); outline-offset: -2px; }
 .anno::after {
   content: "New: " attr(data-new);
-  position: absolute; top: 2px; right: 2px; z-index: 8;
+  position: absolute; top: 0; right: 4px; z-index: 8; transform: translateY(-50%);
   padding: 1px 6px; border-radius: 4px;
   background: var(--anno); color: var(--anno-on);
   font: 600 11px/1.35 -apple-system, system-ui, sans-serif;
@@ -431,6 +438,13 @@ function typeVars(z, ax) {
   return s;
 }
 function factsHTML(m, f, opts = {}) {
+  if (opts.bare && f.ax && !m.error) {
+    const t = totals(m);
+    const pct = t.ordered ? Math.round(t.arrived / t.ordered * 1000) / 10 : 0;
+    return `<div class="facts"><div class="fact"><div class="fact-line"><span class="fig">${NF.format(t.arrived)}/${NF.format(t.ordered)}</span><span class="sr"> arrived</span></div>` +
+      `<span class="bar" aria-hidden="true"><i style="width:${pct}%"></i></span></div>` +
+      `<div class="fact"><div class="fact-line"><span class="fig">${CF.format(t.owed)}</span><span class="sr"> still owed</span></div></div></div>`;
+  }
   if (m.error) {
     return `<div class="facts"><div class="fact"><div class="fact-line"><span class="fig unk">Unknown</span> <span class="lbl">arrived</span></div></div>` +
       `<div class="fact"><div class="fact-line"><span class="fig unk">Unknown</span> <span class="lbl">still owed</span></div></div></div>`;
@@ -441,8 +455,9 @@ function factsHTML(m, f, opts = {}) {
     ? `<span class="fig">${NF.format(t.arrived)}/${NF.format(t.ordered)}</span>`
     : `<span class="fig">${NF.format(t.arrived)}</span><span class="of">of ${NF.format(t.ordered)}</span>`;
   return `<div class="facts">` +
-    `<div class="fact" aria-label="${NF.format(t.arrived)} of ${NF.format(t.ordered)} cards arrived"><div class="fact-line">${count} <span class="lbl">arrived</span></div>` +
-    `<span class="bar" aria-hidden="true"><i style="width:${pct}%"></i></span></div>` +
+    (f.ax
+      ? `<div class="fact"><div class="fact-line">${count}</div><div class="lblbar"><span class="lbl">arrived</span><span class="bar" aria-hidden="true"><i style="width:${pct}%"></i></span></div></div>`
+      : `<div class="fact"><div class="fact-line">${count} <span class="lbl">arrived</span></div><span class="bar" aria-hidden="true"><i style="width:${pct}%"></i></span></div>`) +
     `<div class="fact"><div class="fact-line"><span class="fig">${CF.format(t.owed)}</span> <span class="lbl">still owed</span></div></div>` +
     `</div>`;
 }
@@ -470,10 +485,10 @@ function listPrimary(m) {
   if (isEmpty(m) || allIn(m)) return { label: "Import orders", act: "import" };
   const k = pickedCards(m);
   if (m.tab === "arrived") {
-    if (k) return { label: `Unmark ${k} received`, short: `Unmark ${k}`, act: "unmark" };
-    return { label: "Tap a card to unmark it", short: "Pick a card", disabled: true };
+    if (k) return { label: `Move ${k} back`, act: "unmark" };
+    return { label: "Tap a card to move it back", short: "Pick a card", disabled: true };
   }
-  if (k) return { label: `Mark ${k} received`, act: "mark" };
+  if (k) return { label: `Check in ${k}`, act: "mark" };
   return { label: "Tap the cards that came", short: "Pick the cards", disabled: true };
 }
 function slotBtn(m, ghost) {
@@ -536,7 +551,7 @@ function tabsTabs(m, f, vertical) {
     arrived = `<span class="fact-line">${f.ax ? `<span class="fig">${NF.format(t.arrived)}/${NF.format(t.ordered)}</span>` : `<span class="fig">${NF.format(t.arrived)}</span><span class="of">of ${NF.format(t.ordered)}</span>`} <span class="lbl">arrived</span></span>` +
       `<span class="bar" aria-hidden="true"><i style="width:${pct}%"></i></span>`;
   }
-  const tab = (k, inner) => `<button class="ftab" role="tab" aria-selected="${m.tab === k}" data-act="tab" data-arg="${k}">${inner}</button>`;
+  const tab = (k, inner) => `<button class="ftab${f.ax && m.tab !== k ? " compact" : ""}" role="tab" aria-selected="${m.tab === k}" data-act="tab" data-arg="${k}">${inner}</button>`;
   return `<div class="ftabs anno${vertical ? " vertical" : ""}" data-new="facts are the tabs" role="tablist" aria-label="Views">${tab("coming", coming)}${tab("arrived", arrived)}</div>`;
 }
 function tabsList(m, f) {
@@ -580,8 +595,13 @@ function askListHTML(m, f) {
   });
   return h;
 }
+function listBtn(f) {
+  return f.ax
+    ? `<button class="btn textbtn icon" data-act="sheet" aria-label="All cards"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2M10 6h10M4 12h2M10 12h10M4 18h2M10 18h10"/></svg></button>`
+    : `<button class="btn textbtn" data-act="sheet">All cards</button>`;
+}
 function askStart(m, f, showListBtn) {
-  const trail = showListBtn && !m.error && !isEmpty(m) ? `<button class="btn textbtn" data-act="sheet">All cards</button>` : "";
+  const trail = showListBtn && !m.error && !isEmpty(m) ? listBtn(f) : "";
   const nav = `<div class="nav"><div class="nav-lead"></div><div class="nav-ttl${f.ax ? "" : " collapses"}">Mail day</div><div class="nav-trail">${trail}</div></div>`;
   let body, p;
   if (m.error || isEmpty(m)) { body = stateBlock(m); p = listPrimary(m); }
@@ -590,14 +610,14 @@ function askStart(m, f, showListBtn) {
     const first = allCards(m).find(isOpen); const o = m.orders[first.oi];
     const left = o.cards.reduce((a, c) => a + c.qty - c.got, 0);
     body = `<div class="state"><p>${esc(o.seller)} has ${left} ${left === 1 ? "card" : "cards"} still coming.</p></div>`;
-    p = { label: `Start with ${o.seller}`, act: "start" };
+    p = { label: `Start with ${o.seller}`, short: "Start", act: "start" };
   }
   return `<div class="page">${nav}<div class="scroll main" data-k="start">${f.ax ? "" : `<h1 class="lt">Mail day</h1>`}` +
     `<div class="hero anno" data-new="facts fill the first screen">${factsHTML(m, f)}</div>${body}</div>` +
     `<div class="answers">${primaryBtn(p, f)}</div></div>`;
 }
 function askQuestion(m, f, showListBtn) {
-  const trail = showListBtn ? `<button class="btn textbtn" data-act="sheet">All cards</button>` : "";
+  const trail = showListBtn ? listBtn(f) : "";
   if (m.run.ended) {
     return `<div class="page"><div class="nav"><div class="nav-lead"></div><div class="nav-ttl">Mail day</div><div class="nav-trail">${trail}</div></div>` +
       `<div class="factband">${factsHTML(m, f)}</div>` +
@@ -609,22 +629,22 @@ function askQuestion(m, f, showListBtn) {
   const pos = o.cards.indexOf(c) + 1; const left = c.qty - c.got;
   const nav = `<div class="nav"><div class="nav-lead"><button class="btn textbtn" data-act="stop">Cancel</button></div>` +
     `<div class="nav-ttl">${esc(o.seller)}</div><div class="nav-trail">${trail}</div></div>`;
-  const sub = c.got === 0 ? `${c.qty} ordered, none arrived yet.` : `${c.qty} ordered, ${c.got} arrived.`;
+  const sub = (c.got === 0 ? `${c.qty} ordered, none arrived yet.` : `${c.qty} ordered, ${c.got} arrived.`) + (isOpen(c) ? " How many came?" : "");
   let answers;
   if (!isOpen(c)) {
     answers = primaryBtn({ label: "Keep and go on", act: "keep" }, f) +
       `<div class="alt"><button class="btn secondary" data-act="unmarkone">Unmark</button></div>`;
   } else if (m.run.some != null) {
-    answers = primaryBtn({ label: `Mark ${m.run.some} received`, act: "somemark" }, f) +
+    answers = primaryBtn({ label: `Check in ${m.run.some}`, act: "somemark" }, f) +
       `<div class="alt"><div class="stepper"><button class="btn secondary" data-act="dec" aria-label="One fewer"${m.run.some <= 1 ? ` aria-disabled="true"` : ""}>&minus;</button>` +
       `<output aria-live="polite">${m.run.some} of ${left}</output>` +
       `<button class="btn secondary" data-act="inc" aria-label="One more"${m.run.some >= left - 1 ? ` aria-disabled="true"` : ""}>+</button></div>` +
-      `<button class="btn secondary" data-act="notyet">Not yet</button></div>`;
+      `<button class="btn secondary" data-act="notyet">None</button></div>`;
   } else {
     answers = primaryBtn({ label: left === 1 ? "It came" : `All ${left} came`, act: "all" }, f) +
-      `<div class="alt">${left > 1 ? `<button class="btn secondary" data-act="some">Some came</button>` : ""}<button class="btn secondary" data-act="notyet">Not yet</button></div>`;
+      `<div class="alt">${left > 1 ? `<button class="btn secondary" data-act="some">Some</button>` : ""}<button class="btn secondary" data-act="notyet">None</button></div>`;
   }
-  return `<div class="page">${nav}<div class="factband">${factsHTML(m, f)}</div>` +
+  return `<div class="page">${nav}<div class="factband">${factsHTML(m, f, { bare: true })}</div>` +
     `<div class="scroll" data-k="q"><div class="q"><p class="q-name">${esc(c.name)}</p><p class="q-sub">${sub}</p>` +
     `<p class="q-pos">Card ${pos} of ${o.cards.length} from this seller</p></div></div>` +
     `<div class="answers anno" data-new="answers under the thumb">${answers}</div></div>`;

@@ -90,7 +90,7 @@ figcaption b { color: var(--text); }
 .device[data-device="iphone-regular"] {
   inline-size: 466px; block-size: 678px; resize: both; min-inline-size: 320px; min-block-size: 480px;
 }
-.hinge { background: repeating-linear-gradient(90deg, var(--frame-edge) 0 1px, transparent 1px 39px, var(--frame-edge) 39px 40px); opacity: .6; }
+.hinge { background: var(--chrome); border-inline: 1px solid var(--frame-edge); }
 .page { position: relative; overflow: hidden; min-inline-size: 0; }
 
 /* ---------- App type: iOS Dynamic Type text styles (typography page, Large default) ---------- */
@@ -657,7 +657,7 @@ function sieveFinder(f) {
   const head = `<div class="sv-head"><div class="sv-count" role="status" aria-live="polite"><span class="sv-big">${n}</span><span class="t-sub muted">${label}${G.state === "unknown" ? ", arrived or not" : ""}</span></div>${listToggle}</div>`;
   let area;
   if (n === 0) area = `<div class="msg"><p>No order fits all your clues.</p><button class="btn btn-tinted" data-act="unclue-last">Remove the last clue</button></div>`;
-  else if (showList) area = `<ul class="list">${hits.map(o => rowHtml(f, o)).join("")}</ul>`;
+  else if (showList) area = `<ul class="list">${hits.map(o => rowHtml(f, o)).join("")}</ul>${anyClue(st.clues) ? `<p class="pad t-ft muted" style="padding-block:var(--space-3)">Not in the list? A clue may be off. Tap it above to remove it.</p>` : ""}`;
   else if (ax) area = `<p class="pad t-sub muted" style="padding-block:var(--space-3)">Answer a clue to narrow these down. At 8 or fewer, they show here as a list.</p>`;
   else area = dotsHtml(f, base, set);
   const unknownNote = G.state === "unknown" ? `<div class="msg" role="alert" style="padding-block:var(--space-2)"><p class="t-ft">Your check-ins could not be read, so arrived orders are in here too.</p><button class="btn btn-tinted" data-act="recover">Try again</button></div>` : "";
@@ -688,7 +688,7 @@ function detail(f, withBack, backLabel) {
   }).join("");
   let bar;
   if (unk) bar = `<div class="d-bar"><p class="t-ft">Check-ins could not be read, so ticks are off.</p><button class="btn btn-tinted" data-act="recover">Try again</button></div>`;
-  else if (f.st.undo && f.st.undo.id === o.id) bar = `<div class="d-bar" role="status"><p class="t-sub">Marked all ${n} arrived.</p><button class="btn btn-tinted" data-act="undo">Undo</button></div>`;
+  else if (f.st.undo && f.st.undo.id === o.id) bar = `<div class="d-bar" role="status" data-new="next envelope"><p class="t-sub">Marked all ${n} arrived.</p><button class="btn btn-plain" data-act="undo">Undo</button><button class="btn btn-primary" data-act="next">Next envelope</button></div>`;
   else if (s === "all") bar = `<div class="d-bar"><p class="t-sub muted">Every card in this order is ticked.</p></div>`;
   else bar = `<div class="d-bar"><button class="btn btn-primary btn-wide" data-act="all" data-new="one press for the whole package">Mark all ${n - have} arrived</button></div>`;
   const sc = `detail-${o.id}`;
@@ -708,6 +708,9 @@ function onClick(f, e) {
   const st = f.st, act = b.dataset.act;
   if (act === "open") { st.orderId = b.dataset.id; st.view = "order"; st.undo = null; }
   else if (act === "back") { st.view = "find"; st.orderId = null; st.undo = null; }
+  else if (act === "next") { // back to a clean finder, ready for the next envelope
+    Object.assign(st, { view: "find", orderId: null, undo: null, q: "", scope: "any", when: null, clues: { thick: null, letter: null, when: null, word: "" }, ask: 0, listAll: false });
+  }
   else if (act === "recover") { st.loaded = "loaded"; if (G.state === "unknown") { G.state = "loaded"; syncControls(); writeHash(); renderAll(); return; } }
   else if (act === "scope") { const k = b.dataset.scope; st.scope = st.scope === k ? "any" : k; if (st.scope !== "when") st.when = null; }
   else if (act === "scope-cycle") { const order = ["any", "seller", "card", "order", "when"]; st.scope = order[(order.indexOf(st.scope) + 1) % order.length]; }

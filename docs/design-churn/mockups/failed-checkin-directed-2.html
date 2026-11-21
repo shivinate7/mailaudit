@@ -27,6 +27,7 @@ h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
 .kind b { color:var(--ink); }
 .sub { color:var(--inkSoft); margin:0; max-width:80ch; }
 nav { display:flex; flex-direction:column; gap:8px; }
+.devlist { margin:0; padding-left:20px; color:var(--inkSoft); font-size:13px; display:flex; flex-direction:column; gap:2px; }
 .cluster { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
 .cluster > span { color:var(--inkSoft); font-size:13px; min-width:72px; }
 nav a, nav button, .demo button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; gap:6px;
@@ -154,7 +155,7 @@ figcaption b { font-family:var(--cochin); font-size:18px; }
 .rh-slot { position:sticky; top:var(--sat); z-index:21; }
 .ribbon.head { position:relative; height:47px; border-radius:0 0 8px 8px; margin-inline:-24px; padding-left:24px; padding-right:20px; }
 .open .ribbon.head { width:455.5px; margin-inline:-24px 0; border-radius:0 0 8px 0; }
-.hand .ribbon.head { position:absolute; margin:0; left:0; width:455.5px; top:var(--sat); height:52px; border-radius:0 0 8px 0; padding-left:16px; padding-right:8px; }
+.hand .ribbon.head { position:absolute; margin:0; left:8px; width:439.5px; top:calc(var(--sat) + 8px); height:52px; border-radius:8px; padding-left:12px; padding-right:4px; }
 .ribbon.head .act { height:44px; }
 .ribbon .act.shut { width:auto; padding:0 14px; background:transparent; color:var(--card); border:1px solid color-mix(in srgb, var(--card) 60%, transparent); }
 .ax5 .panel.up { bottom:159px; }
@@ -190,7 +191,7 @@ figcaption b { font-family:var(--cochin); font-size:18px; }
 .folded .panel.down { max-height:400px; }
 .phone .panel.down { max-height:520px; }
 .open .panel.down { left:12px; width:431.5px; max-height:440px; }
-.hand .panel.down { left:12px; width:431.5px; top:calc(var(--sat) + 56px); max-height:320px; }
+.hand .panel.down { left:12px; width:431.5px; top:calc(var(--sat) + 64px); max-height:280px; }
 
 /* Card in Hand (open Duo, keys up) */
 .page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; font-family:var(--cochin); }
@@ -264,6 +265,12 @@ figcaption b { font-family:var(--cochin); font-size:18px; }
 <h1>The check-in ribbon</h1>
 <p class="kind">Designer kind: <b>directed</b>. Direction: <b>one ribbon: a single persistent strip with a count and retry all.</b></p>
 <p class="sub">Every check-in that does not save joins one red strip. It holds the count until each one saves. A later good tap, a tab change or the stamped toggle never clears it. Two homes for the strip are drawn: the Foot ribbon above the tab bar, and the Head ribbon in the running-head slot. iPhone Duo folded (466 x 678 pt) first, then open (951 x 669 pt, fold at x 455.5 to 495.5), then a large phone (402 x 874 pt, a size no record gives). Light theme only: the native app is held to light.</p>
+
+<ul class="devlist" aria-label="Devices, in drawing order">
+  <li data-device="iphone-duo-folded">Duo folded, 466 x 678 pt (duo-fold-and-keyboard). System tab bar from y 595, 83 pt.</li>
+  <li data-device="iphone-regular">Large phone, 402 x 874 pt. No record or brief gives this size; the tab bar is drawn at the Duo's 83 pt.</li>
+  <li data-device="iphone-duo-unfolded">Duo open, 951 x 669 pt, fold 455.5 to 495.5. Pill bar 64 pt, 24 pt in, 12 pt up, under the right page. Keys draw from y 405.</li>
+</ul>
 
 <nav aria-label="Mockup controls">
   <div class="cluster" id="state-links"><span>State</span></div>
@@ -388,7 +395,11 @@ const tabs = cls => `<div class="${cls}">` + [['Packages','box',1],['Tally','lis
 function mastHTML(inst) {
   // Today the slot reads the last write only. In both concepts it reads "couldn't save" while the ribbon holds any check-in.
   const s = inst.s, failed = inst.concept === 'today' ? s.lastFailed : s.held.size > 0;
-  const slot = s.phase === 'retrying' ? 'saving…' : (failed ? 'couldn’t save' : 'saved ✓');
+  // A status shows once (ux-label-once): where the ribbon says it, the slot stands idle (its non-breaking space).
+  const ribbonSays = inst.concept === 'foot' ? !hidden.has('rest') || s.held.size > 0 || ['saved','carry','retrying'].includes(s.phase)
+    : inst.concept === 'head' && (s.held.size > 0 || ['saved','carry','retrying'].includes(s.phase));
+  let slot = s.phase === 'retrying' ? 'saving…' : (failed ? 'couldn’t save' : 'saved ✓');
+  if (ribbonSays) slot = ' ';
   const cls = slot === 'couldn’t save' ? 'bad' : (slot === 'saved ✓' ? 'ok' : '');
   return `<div class="mast"><div class="lh"><span class="seal"></span><span class="mh">Manifest</span></div>
     <div class="cl"><span>212 packages · autosaves</span></div>
@@ -415,8 +426,9 @@ function keysHTML() {
 function handHTML(inst) {
   const c = inst.concept, s = inst.s, n = s.held.size;
   const headRibbon = c === 'head' && n > 0;
-  const left = `<div class="page l"><div class="hcol" ${headRibbon ? 'style="top:calc(var(--sat) + 60px)"' : ''}>
-      ${headRibbon ? '' : `<div class="rowx"><span class="ttl">Mail day</span><span class="count">41 in · 23 out</span><span class="pill">Close</span></div>`}
+  // The Head ribbon takes the header row's own box, so nothing under it moves when it lands.
+  const left = `<div class="page l"><div class="hcol">
+      ${headRibbon ? '<div class="rowx" aria-hidden="true"></div>' : `<div class="rowx"><span class="ttl">Mail day</span><span class="count">41 in · 23 out</span><span class="pill">Close</span></div>`}
       <div class="field">Light</div>
       <div class="rowx"><span class="soft">This envelope</span><span class="pill">New envelope</span></div>
       <span class="micro">Matches</span>

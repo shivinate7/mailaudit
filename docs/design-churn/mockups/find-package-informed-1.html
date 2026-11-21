@@ -469,7 +469,7 @@ function listHTML(st, tagFirst) {
   return `<div class="list"${st.focusId ? ` id="${st.focusId}"` : ''}>${rows.map((r, i) => card(st, r.p, r.lines, ws, i === 0 ? tagFirst : '')).join('')}</div>`;
 }
 function tileHTML(r, n, on, tag) {
-  const f = r.hit === n ? (n > 1 ? 'Fits every word' : 'Fits') : `Fits ${r.hit} of ${n} words`;
+  const f = n === 0 ? '' : r.hit === n ? (n > 1 ? 'Fits every word' : 'Fits') : `Fits ${r.hit} of ${n} words`;
   return `<button type="button" class="tile${on ? ' on' : ''}${r.hit === n ? ' all' : ''}" data-pick="${r.p.gk}" aria-pressed="${on}"${tag ? ` data-tag="${tag}"` : ''}>
     <span class="s">${esc(r.p.seller)}</span><span class="d">${fmtDate(r.p)} · ${ageSpan(r.p)}</span><span class="c">${left(r.p)} left · $${owed(r.p).toFixed(2)}</span><span class="f">${f}</span></button>`;
 }
@@ -508,7 +508,7 @@ function keysHTML(h, note) {
 }
 function pillHTML(st, ax) {
   const ph = ax ? 'Find' : st.concept === 'today' ? 'Find card, set, seller, order' : 'Seller, card, month or order no.';
-  return `<label class="pill" data-tag="${st.tagPill || ''}">${ICON}<input type="text" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Find" placeholder="${ph}" value="${esc(st.q)}"><button type="button" class="clr" data-clear aria-label="Clear search"${st.q ? '' : ' hidden'}><i>✕</i></button></label>`;
+  return `<label class="pill"${st.tagPill ? ` data-tag="${st.tagPill}"` : ''}>${ICON}<input type="text" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Find" placeholder="${ph}" value="${esc(st.q)}"><button type="button" class="clr" data-clear aria-label="Clear search"${st.q ? '' : ' hidden'}><i>✕</i></button></label>`;
 }
 
 function buildFrame(el, concept, init) {
@@ -571,11 +571,11 @@ function render(el) {
     let leftH = masthead(st.data, '') + cih('Today: Card in Hand control');
     if (!st.q) {
       const all = st.data.filter(isOpen).map((p) => ({ p, hit: 0, score: 0 }));
-      leftH += `<div class="lu-head"><h3>Open orders</h3></div><div class="rows" data-tag="New: line-up beside the order">${all.map((r) => tileHTML(r, 0, r.p.gk === shown, '').replace('Fits 0 of 0 words', '')).join('')}</div>`;
+      leftH += `<div class="lu-head" data-tag="New: open orders beside the picked one"><h3>Open orders</h3></div><div class="rows">${all.map((r) => tileHTML(r, 0, r.p.gk === shown, '')).join('')}</div>`;
     } else if (!lu.rows.length) {
       leftH += emptyBlock('No open order matches any word.');
     } else {
-      leftH += `<div class="lu-head"><h3>Which order?</h3></div><p class="lu-say">${say}</p><div class="rows"${st.focusId ? ` id="${st.focusId}"` : ''} data-tag="New: line-up beside the order">${lu.rows.slice(0, maxRows).map((r) => tileHTML(r, lu.n, r.p.gk === shown, '')).join('')}</div>`
+      leftH += `<div class="lu-head" data-tag="New: line-up beside the order"><h3>Which order?</h3></div><p class="lu-say">${say}</p><div class="rows"${st.focusId ? ` id="${st.focusId}"` : ''}>${lu.rows.slice(0, maxRows).map((r) => tileHTML(r, lu.n, r.p.gk === shown, '')).join('')}</div>`
         + (lu.rows.length > maxRows ? `<p class="more">${lu.rows.length - maxRows} more fit some words. Add a word to narrow.</p>` : '');
     }
     slot('left').innerHTML = leftH;
@@ -584,9 +584,9 @@ function render(el) {
   }
   if (!st.q) { slot('main').innerHTML = masthead(st.data, '') + listHTML(st, ''); return; }
   if (!lu.rows.length) { slot('main').innerHTML = `<div class="lu"><div class="lu-head"><h3>Which order?</h3><button type="button" class="closeb" data-clear>Close</button></div>${emptyBlock('No open order matches any word.')}</div>`; return; }
-  slot('main').innerHTML = `<div class="lu"><div class="lu-head"><h3>Which order?</h3><button type="button" class="closeb" data-clear>Close</button></div>
+  slot('main').innerHTML = `<div class="lu"><div class="lu-head"${st.devKey === 'fold' ? ' data-tag="New: the line-up takes the list\'s place while you type"' : ''}><h3>Which order?</h3><button type="button" class="closeb" data-clear>Close</button></div>
     <p class="lu-say">${say}</p>
-    <div class="rail"${st.focusId ? ` id="${st.focusId}"` : ''}${st.devKey === 'fold' ? ' data-tag="New: line-up rail"' : ''}>${lu.rows.slice(0, maxRows).map((r) => tileHTML(r, lu.n, r.p.gk === shown, '')).join('')}</div>
+    <div class="rail"${st.focusId ? ` id="${st.focusId}"` : ''}>${lu.rows.slice(0, maxRows).map((r) => tileHTML(r, lu.n, r.p.gk === shown, '')).join('')}</div>
     <div class="ans">${answerHTML(st, shown)}</div></div>`;
 }
 

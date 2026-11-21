@@ -39,7 +39,9 @@ No "Today:" label: a blind designer sees no current screen, so every marked part
    dot that cannot match goes hollow, and the dot keeps its place. At 8 or fewer, the dots turn into
    rows. Gain: a thumb answers without a keyboard, and the person sees how close they are. Loss:
    the thickness answer guesses a card count from feel. A toploader or a bubble mailer can mislead
-   it. Pick: yes, for the owner to judge.
+   it. A wrong clue hides the right order. The short list therefore ends with "Not in the list? A
+   clue may be off", and each clue pill removes its clue with one tap. Pick: yes, for the owner to
+   judge.
 
 6. **Sieve shows only orders with nothing arrived.** One order is one package, so an envelope
    in hand most likely belongs to an order where nothing has arrived. Gain: a smaller starting set.
@@ -52,7 +54,8 @@ No "Today:" label: a blind designer sees no current screen, so every marked part
 
 8. **Same order screen for both concepts.** Each card line has a tick. A line with a quantity
    above 1 has a stepper that reads "2 of 4". One primary button at the bottom reads "Mark all N
-   arrived". After a press, that bar reads "Marked all N arrived" and offers Undo (`ux-answer-at-press`).
+   arrived". After a press, that bar reads "Marked all N arrived" and offers Undo
+   (`ux-answer-at-press`). It also offers "Next envelope", which returns to a clean finder.
    When every card is ticked, the button is absent and a sentence says so. Gain: one press for
    the usual case, and exact counts for a short package. Loss: none found. Pick: yes.
 
@@ -85,6 +88,11 @@ No "Today:" label: a blind designer sees no current screen, so every marked part
     and danger roles each check against their surface. The font is the system font. Sizes come from
     the iOS Dynamic Type table, Large (default) and AX5. The Sieve count (56 pt) is the one display
     size, and it uses Large Title at AX5. Spacing is on the 4 px step, with an 8 px radius.
+
+15. **Default order of the waiting list: newest first.** This follows `ux-order-holds-still`. Gain:
+    the order is plain, and it matches the Sieve dot groups. Loss: orders bought today sit on top,
+    and they are the least likely to be in today's mail. The other choice is oldest first within the
+    last four weeks. **Owner grant: yes**, if the order should change.
 
 ## Devices and sizes
 

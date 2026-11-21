@@ -303,6 +303,8 @@ figcaption { color: var(--muted); font-size: 13px; line-height: 18px; max-inline
 .fitem { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-2); align-items: center; padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4); }
 .fitem .fi-t { display: flex; flex-direction: column; min-width: 0; }
 .fitem .fi-t span { font-size: var(--t-ft); line-height: var(--l-ft); color: var(--muted); }
+.fitem .fi-t .fail-text { color: var(--fail); }
+.fitem .fi-t .ok-text { color: var(--ok); }
 .ax5 .fitem { grid-template-columns: 1fr; }
 
 /* Data states */
@@ -340,7 +342,26 @@ details code { font-size: 13px; }
   </div>
 </header>
 
-<main id="concepts"></main>
+<main id="concepts">
+<section class="concept" id="concept-row"><div class="c-head"></div><div class="frames">
+  <figure data-dev="folded"><div class="device dev-folded" data-device="iphone-duo-folded" id="row-folded"></div><figcaption></figcaption></figure>
+  <figure data-dev="open"><div class="device dev-open" data-device="iphone-duo-unfolded" id="row-open"></div><figcaption></figcaption></figure>
+  <figure data-dev="phone"><div class="device dev-phone" data-device="iphone-regular" id="row-phone"></div><figcaption></figcaption></figure>
+  <figure data-dev="ax5"><div class="device dev-folded ax5" data-device="iphone-duo-folded-ax5" id="row-ax5"></div><figcaption></figcaption></figure>
+</div></section>
+<section class="concept" id="concept-tape"><div class="c-head"></div><div class="frames">
+  <figure data-dev="folded"><div class="device dev-folded" data-device="iphone-duo-folded" id="tape-folded"></div><figcaption></figcaption></figure>
+  <figure data-dev="open"><div class="device dev-open" data-device="iphone-duo-unfolded" id="tape-open"></div><figcaption></figcaption></figure>
+  <figure data-dev="phone"><div class="device dev-phone" data-device="iphone-regular" id="tape-phone"></div><figcaption></figcaption></figure>
+  <figure data-dev="ax5"><div class="device dev-folded ax5" data-device="iphone-duo-folded-ax5" id="tape-ax5"></div><figcaption></figcaption></figure>
+</div></section>
+<section class="concept" id="concept-envelope"><div class="c-head"></div><div class="frames">
+  <figure data-dev="folded"><div class="device dev-folded" data-device="iphone-duo-folded" id="envelope-folded"></div><figcaption></figcaption></figure>
+  <figure data-dev="open"><div class="device dev-open" data-device="iphone-duo-unfolded" id="envelope-open"></div><figcaption></figcaption></figure>
+  <figure data-dev="phone"><div class="device dev-phone" data-device="iphone-regular" id="envelope-phone"></div><figcaption></figcaption></figure>
+  <figure data-dev="ax5"><div class="device dev-folded ax5" data-device="iphone-duo-folded-ax5" id="envelope-ax5"></div><figcaption></figcaption></figure>
+</div></section>
+</main>
 
 <script>
 (function () {
@@ -793,24 +814,13 @@ details code { font-size: 13px; }
   function newUI() { return { list: 'packages', sel: {}, tf: 'all', rl: 'packages', sheet: null, pkg: 'p1', scroll: {} }; }
 
   function build() {
-    var main = document.getElementById('concepts');
-    main.innerHTML = '';
     frames = [];
     CONCEPTS.forEach(function (c) {
-      var sec = document.createElement('section');
-      sec.className = 'concept'; sec.id = 'concept-' + c.key;
-      sec.innerHTML = '<div class="c-head"><div class="c-title"><h2>' + c.name + '</h2><button class="pbtn" data-hide="' + c.key + '">Hide this concept</button></div><p>' + c.pitch + '</p><div class="tags">' + c.tags.map(function (t) { return '<span class="tag">' + t + '</span>'; }).join('') + '</div></div><div class="frames"></div>';
-      var wrap = sec.querySelector('.frames');
+      var sec = document.getElementById('concept-' + c.key);
+      sec.querySelector('.c-head').innerHTML = '<div class="c-title"><h2>' + c.name + '</h2><button class="pbtn" data-hide="' + c.key + '">Hide this concept</button></div><p>' + c.pitch + '</p><div class="tags">' + c.tags.map(function (t) { return '<span class="tag">' + t + '</span>'; }).join('') + '</div>';
       DEVICES.forEach(function (d) {
-        var fig = document.createElement('figure');
-        fig.setAttribute('data-dev', d.key);
-        var dv = document.createElement('div');
-        dv.className = 'device ' + d.cls;
-        dv.setAttribute('data-device', d.data);
-        dv.id = c.key + '-' + d.key;
-        fig.appendChild(dv);
-        var cap = document.createElement('figcaption'); cap.textContent = d.cap; fig.appendChild(cap);
-        wrap.appendChild(fig);
+        var dv = document.getElementById(c.key + '-' + d.key);
+        dv.closest('figure').querySelector('figcaption').textContent = d.cap;
         var f = { c: c.key, d: d, root: dv, ui: newUI() };
         frames.push(f);
         dv.addEventListener('click', function (ev) {
@@ -827,7 +837,6 @@ details code { font-size: 13px; }
         });
       });
       sec.querySelector('[data-hide]').addEventListener('click', function () { hiddenConcepts[c.key] = 1; applyView(); });
-      main.appendChild(sec);
     });
   }
 

@@ -91,7 +91,7 @@ figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
 .ruler { all:unset; box-sizing:border-box; width:100%; display:flex; flex-direction:column; gap:4px; padding:8px 0 4px; min-height:44px; cursor:pointer;
   border-top:1px solid var(--line); }
 .ruler svg { display:block; width:100%; height:30px; overflow:visible; }
-.ruler .rl { display:flex; justify-content:space-between; align-items:center; gap:8px; font:10.5px var(--mono); color:var(--ink); }
+.ruler .rl { min-height:32px; display:flex; justify-content:space-between; align-items:center; gap:8px; font:10.5px var(--mono); color:var(--ink); }
 .ruler .rl b { font-weight:700; }
 .ruler.quiet .rl { color:var(--inkSoft); }
 .mini { font:12px var(--mono); border:1px solid var(--line); background:var(--card); border-radius:8px; padding:6px 10px; color:var(--ink); white-space:nowrap; }
@@ -239,7 +239,7 @@ body[data-badge="off"] .badge.opt, body[data-owed="off"] .owe { display:none; }
 
 <section class="concept" id="concept-late-cell">
   <h2>Late cell</h2>
-  <p class="sub">The quiet concept. Late mail becomes a filter cell in the ruled row under the masthead, beside "N stamped", in the same vocabulary. One press lists the late packages, oldest last, with what they still owe and the stamp buttons the past-transit page already has. A red badge on the Packages tab carries the count to the thumb. The open Duo keeps today's route through Card in Hand.</p>
+  <p class="sub">The quiet concept. Late mail becomes a filter cell in the ruled row under the masthead, beside "N stamped", in the same vocabulary. One press lists the late packages, oldest last, with what they still owe and the stamp buttons the past-transit page already has. A red badge on the Packages tab carries the count to the thumb (an option in both concepts). The open Duo keeps today's route through Card in Hand.</p>
   <div class="frames">
     <figure><div class="dev folded" data-device="iphone-duo-folded" data-render="late-cell:folded"></div><figcaption><b>Duo folded.</b> Choosing element: <code>#focus-late-cell</code>. Press the cell, press Claim filed, press the cell again.</figcaption></figure>
     <figure><div class="dev phone" data-render="late-cell:phone"></div><figcaption><b>Phone, 375 pt wide.</b> The same layout as folded; the cell row fits at this width.</figcaption></figure>
@@ -271,6 +271,7 @@ const PKGS = [
   { gk:"d", seller:"Dogwood Collectibles",id:"SAMPLE-0D63", date:"2026-10-24", days:28, tracked:false, left:3, owed:"$2.10", by:"2026-11-23" },
   { gk:"h", seller:"Hazel Cards",         id:"SAMPLE-0H70", date:"2026-10-20", days:32, tracked:true,  left:2, owed:"$0.66" },
   { gk:"e", seller:"Elm Street Cards",    id:"SAMPLE-0E84", date:"2026-10-18", days:34, tracked:false, left:2, owed:"$1.15", by:"2026-11-17" },
+  { gk:"i", seller:"Ivy Lane Cards",      id:"SAMPLE-0I92", date:"2026-10-11", days:41, tracked:false, left:1, owed:"$0.90", by:"2026-11-10" },
 ];
 const tier = p => p.tracked ? null : p.days >= 30 ? "deadline" : p.days >= 14 ? "maybe" : null;
 const S = { state:"packages", stamped:new Set(), sel:"d", lit:null };
@@ -296,7 +297,7 @@ const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
 const status = () => `<div class="status"><span>9:41</span><span>●●● 100%</span></div>`;
 function tabs(concept, active) {
   const n = flagged().length;
-  const badge = concept === "late-cell" && n > 0 && S.state !== "today"
+  const badge = concept !== "today" && n > 0 && S.state !== "today"
     ? `<span class="badge opt tag-new">${n}</span>` : "";
   const t = (k, g, lbl, extra = "") => `<span class="tab ${active === k ? "on" : ""}" role="tab" aria-selected="${active === k}"><i aria-hidden="true">${g}</i>${lbl}${extra}</span>`;
   return `<nav class="tabs" role="tablist" aria-label="Views">${t("ledger", "⚙", "Ledger")}${t("orphaned", "✉", "Orphaned", `<span class="badge">2</span>`)}${t("tally", "#", "Tally")}${t("packages", "▣", "Packages", badge)}</nav>`;
@@ -319,8 +320,13 @@ function svgRuler(rows, w, big) {
   s += `<line x1="${pad}" y1="${base}" x2="${w - 2}" y2="${base}" stroke="var(--inkSoft)" stroke-width="1"/>`;
   for (const d of [14, 21, 28]) s += `<line x1="${x(d)}" y1="${base}" x2="${x(d)}" y2="${base + 4}" stroke="var(--inkSoft)"/><text x="${x(d)}" y="${h}" font-family="Menlo, monospace" font-size="10" fill="var(--inkSoft)" text-anchor="middle">${d}</text>`;
   s += `<line x1="${x30}" y1="2" x2="${x30}" y2="${base + 4}" stroke="var(--red)" stroke-width="2"/><text x="${x30 + bin / 2}" y="${h}" font-family="Menlo, monospace" font-size="10" fill="var(--red)" text-anchor="middle">30+</text>`;
-  rows.forEach(p => {
+  /* one mark per day (and one for 30 and over); a count above it when two or more share the spot */
+  const spots = new Map();
+  rows.forEach(p => { const k = Math.min(p.days, 30); spots.set(k, (spots.get(k) || []).concat([p])); });
+  [...spots.values()].map(g => g.find(p => p.gk === S.sel) || g[0]).forEach(p => {
+    const n = spots.get(Math.min(p.days, 30)).length;
     const t = tier(p), c = t === "deadline" ? "var(--red)" : "var(--amber)", cx = x(p.days), ew = big ? 16 : 12, eh = big ? 11 : 8, y = base - eh - 3;
+    if (n > 1) s += `<text x="${cx + ew / 2 + 2}" y="${y + 2}" font-family="Menlo, monospace" font-size="10" font-weight="700" fill="${c}">${n}</text>`;
     s += `<g><rect x="${cx - ew / 2}" y="${y}" width="${ew}" height="${eh}" rx="1.5" fill="${p.gk === S.sel && big ? c : "var(--card)"}" stroke="${c}" stroke-width="1.5"/>` +
          `<polyline points="${cx - ew / 2},${y} ${cx},${y + eh * .6} ${cx + ew / 2},${y}" fill="none" stroke="${p.gk === S.sel && big ? "var(--card)" : c}" stroke-width="1.2"/></g>`;
   });
@@ -474,11 +480,13 @@ function axCard(p) {
 }
 function axLate() {
   const n = flagged().length;
-  return `<div class="ax5"><div class="c tag-new" data-tag="New: cell, stacked">${n} past 14 days ○</div><div class="c" style="color:var(--inkSoft);font-weight:400">0 stamped ○</div>${axCard(PKGS.find(p => p.gk === "d"))}</div>`;
+  const cell = `<div class="c tag-new" data-tag="New: cell, stacked"${n ? "" : ` style="color:var(--inkSoft);font-weight:400"`}>${n} past 14 days ○</div>`;
+  return `<div class="ax5">${cell}<div class="c" style="color:var(--inkSoft);font-weight:400">0 stamped ○</div>${n ? axCard(PKGS.find(p => p.gk === "d")) : ""}</div>`;
 }
 function axRuler() {
   const tt = totals(flagged());
-  return `<div class="ax5"><div class="txt tag-new" data-tag="New: ruler as text"><span>Past 14 days: ${tt.n}</span><span class="r">${tt.closing} past 30 days</span><span>${unknown() ? "owed unknown" : `${tt.owed} owed`}</span></div>` +
+  if (!tt.n) return `<div class="ax5"><div class="txt tag-new" data-tag="New: ruler as text"><span>Nothing past 14 days.</span></div></div>`;
+  return `<div class="ax5"><div class="txt tag-new" data-tag="New: ruler as text"><span>Past 14 days: ${tt.n}</span>${tt.closing ? `<span class="r">${tt.closing} past 30 days</span>` : ""}<span>${unknown() ? "owed unknown" : `${tt.owed} owed`}</span></div>` +
     `<button class="mini hit" data-act="open-page">Open</button>${axCard(PKGS.find(p => p.gk === "d"))}</div>`;
 }
 

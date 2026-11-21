@@ -240,7 +240,7 @@ code { font:13px var(--mono); }
 .tabs button[disabled] { color:var(--inkSoft); background:transparent; cursor:default; }
 .fit { display:flex; justify-content:space-between; align-items:center; min-height:28px; }
 .fit b { font:700 calc(13px * var(--k)) var(--mono); }
-.fit button { min-height:44px; margin:-8px 0; border:0; background:none; color:var(--accent); font:600 calc(14px * var(--k)) var(--cochin); cursor:pointer; padding:0 4px; }
+.fit button { min-height:44px; min-width:44px; margin:-8px 0; border:0; background:none; color:var(--accent); font:600 calc(14px * var(--k)) var(--cochin); cursor:pointer; padding:0 4px; }
 .fit button[disabled] { color:var(--inkSoft); opacity:.6; cursor:default; }
 .keys { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:6px; }
 .keys button { min-height:52px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); font:700 18px var(--cochin); cursor:pointer;
@@ -273,7 +273,7 @@ code { font:13px var(--mono); }
   font:600 11px/1.3 var(--sys); padding:0 4px; border:1px dashed var(--tc); border-radius:4px; white-space:nowrap; pointer-events:none; letter-spacing:0; text-transform:none; }
 .notags .tag { outline:none; } .notags .tag::after { display:none; }
 .band.tag { position:absolute; }
-.band.tag::after { top:2px; transform:none; }
+.band.tag::after { top:2px; left:50%; transform:translateX(-50%); }
 .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 </style>
 </head>
@@ -318,6 +318,10 @@ code { font:13px var(--mono); }
   </section>
 </main>
 
+<!-- The device frames, folded Duo first. Each frame of each concept is cloned from one of these. -->
+<template id="dev-iphone-duo-folded"><div class="dev" data-device="iphone-duo-folded"></div></template>
+<template id="dev-iphone-duo-unfolded"><div class="dev" data-device="iphone-duo-unfolded"></div></template>
+<template id="dev-iphone-regular"><div class="dev" data-device="iphone-regular"></div></template>
 <template id="mag"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg></template>
 
 <script>
@@ -420,6 +424,8 @@ function Frame(concept, devKey) {
     if (concept === 'thumb-index') { this.ui.age = 'new'; this.ui.range = 2; this.ui.st = 'none'; }
     if (concept === 'week-ruler') { this.ui.week = weekStart(TODAY - 21 * DAY); this.pendingWeek = this.ui.week; }
   }
+  // The open Duo's desk narrows by one initial, not a range.
+  if (devKey === 'duo' && concept === 'thumb-index' && this.ui.range !== 'any') { this.ui.letter = s === 'empty' ? 'W' : 'G'; this.ui.range = 'any'; }
   if (s === 'picked' && concept === 'week-ruler') { this.ui.week = weekStart(TODAY - 9 * DAY); this.pendingWeek = this.ui.week; }
   if (s === 'empty') { this.ui.age = 'over'; this.ui.range = 5; this.ui.st = 'some'; if (concept !== 'thumb-index') this.ui.q = 'Mox Opal'; if (concept !== 'thumb-index') this.ui.find = true; }
   if (s === 'find') { this.ui.find = true; this.ui.q = 'Pond'; }
@@ -499,6 +505,17 @@ function segRow(name, opts, cur, act, f, counts) {
 }
 function menuPanel(f) {
   var m = f.ui.menu; if (!m) return '';
+  if (m === 'all') {
+    var grp = function (title, act, opts, cur) {
+      return '<button type="button" disabled style="color:var(--inkSoft);font-weight:700">' + title + '</button>' + opts.map(function (o) {
+        return '<button type="button" role="menuitemradio" data-act="' + act + '" data-v="' + o[0] + '" data-keep="1" aria-pressed="' + (String(cur) === String(o[0])) + '">' + esc(o[1]) + '</button>';
+      }).join('');
+    };
+    var froms = [['any', 'Any seller']].concat(RANGES.map(function (r, i) { return [i, r[0] + ' to ' + r[1]]; }));
+    return '<div class="menu" style="top:' + (f.d.top + 8) + 'px;bottom:' + (f.bandH + 8) + 'px;overflow-y:auto" role="menu">' +
+      grp('From', 'range', froms, f.ui.range) + grp('Ordered', 'age', AGES, f.ui.age) + grp('State', 'st', STATES, f.ui.st) +
+      '<button type="button" data-act="menu" data-menu="all" style="color:var(--accent);font-weight:700">Done</button></div>';
+  }
   var opts = m === 'age' ? AGES : m === 'st' ? STATES : [['any', 'Any seller']].concat(RANGES.map(function (r, i) { return [i, r[0] + ' to ' + r[1]]; }));
   var cur = m === 'age' ? f.ui.age : m === 'st' ? f.ui.st : f.ui.range;
   return '<div class="menu" style="bottom:' + (f.bandH + 8) + 'px" role="menu">' + opts.map(function (o) {
@@ -646,6 +663,13 @@ function tabsRow(f) {
 function anyFilter(f) { return f.ui.range !== 'any' || f.ui.age !== 'any' || f.ui.st !== 'any'; }
 function trayHTML(f, primary) {
   var n = f.visible().length, all = PKGS.filter(function (p) { return stateOf(p) !== 'all'; }).length;
+  if (f.d.ax) {
+    // AX: three rows of tabs would fill the screen, so the tray folds into one row that opens all three lists.
+    return '<div class="band tag new" data-tag="New: tray, one row at AX"' + (primary ? ' id="focus-thumb-index"' : '') + ' style="padding-bottom:' + f.d.bar + 'px">' +
+      (f.ui.find ? '<div class="row">' + findRow(f) + '</div>' : '') +
+      '<div class="row"><button type="button" class="menu-btn" data-act="menu" data-menu="all" aria-haspopup="true">Narrow <b>' + n + ' fit &#9662;</b></button>' +
+      (f.ui.find ? '' : findKey()) + '</div></div>';
+  }
   return '<div class="band tag new" data-tag="New: thumb index tray"' + (primary ? ' id="focus-thumb-index"' : '') + ' style="padding-bottom:' + (f.d.bar || 12) + 'px">' +
     (f.ui.find ? '<div class="row">' + findRow(f) + '</div>' : '') +
     '<div class="fit"><b>' + n + ' of ' + all + ' fit</b><button type="button" data-act="clearall"' + (anyFilter(f) ? '' : ' disabled') + '>Clear</button></div>' +
@@ -690,9 +714,8 @@ Frame.prototype.mount = function (fig) {
   var d = this.d;
   this.fig = fig;
   this.scaler = document.createElement('div'); this.scaler.className = 'scaler';
-  this.el = document.createElement('div');
-  this.el.className = 'dev' + (d.ax ? ' ax' : '');
-  this.el.setAttribute('data-device', d.kind);
+  this.el = document.getElementById('dev-' + d.kind).content.firstElementChild.cloneNode(true);
+  if (d.ax) this.el.classList.add('ax');
   this.el.style.width = d.w + 'px'; this.el.style.height = d.h + 'px';
   this.el.setAttribute('role', 'group'); this.el.setAttribute('aria-label', d.name);
   this.scaler.appendChild(this.el); fig.insertBefore(this.scaler, fig.firstChild);
@@ -733,11 +756,14 @@ Frame.prototype.jump = function (w) {
   // A pinned header reports where it is stuck, so measure from the slip under it.
   var nx = hd.nextElementSibling; if (!nx) return;
   sc.scrollTop = offTop(nx, sc) - hd.offsetHeight;
+  // Near the list's end the scroll stops short, so the tapped week keeps its mark until the person scrolls.
+  this.lockUntil = Date.now() + 400;
 };
 Frame.prototype.spy = function () {
   var self = this, sc = this.el.querySelector('[data-scroll="' + (this.d.two ? 'l' : 'm') + '"]');
   if (!sc) return;
   sc.addEventListener('scroll', function () {
+    if (self.lockUntil && Date.now() < self.lockUntil) return;
     var top = sc.scrollTop + 4, cur = null;
     sc.querySelectorAll('.wk').forEach(function (h) { var nx = h.nextElementSibling; if (nx && offTop(nx, sc) - h.offsetHeight <= top) cur = +h.dataset.week; });
     self.el.querySelectorAll('.ruler button').forEach(function (b) { b.setAttribute('aria-current', String(+b.dataset.w === cur)); });
@@ -760,9 +786,12 @@ Frame.prototype.onClick = function (e) {
   }
   if (a === 'hole') { ui.seller = t.dataset.s; this.sticky = {}; }
   else if (a === 'back') { ui.seller = null; }
-  else if (a === 'age') { ui.age = v; ui.menu = null; this.filterChanged(); }
-  else if (a === 'st') { ui.st = v; ui.menu = null; this.filterChanged(); }
-  else if (a === 'range') { ui.range = v === 'any' ? 'any' : (ui.range === +v ? 'any' : +v); ui.menu = null; this.filterChanged(); }
+  else if (a === 'age') { ui.age = v; if (!t.dataset.keep) ui.menu = null; this.filterChanged(); }
+  else if (a === 'st') { ui.st = v; if (!t.dataset.keep) ui.menu = null; this.filterChanged(); }
+  else if (a === 'range') {
+    ui.range = v === 'any' ? 'any' : (ui.range === +v && !t.dataset.keep ? 'any' : +v);   // a second tap on a tab lifts it
+    if (!t.dataset.keep) ui.menu = null; this.filterChanged();
+  }
   else if (a === 'letter') { ui.letter = ui.letter === v ? null : v; ui.range = 'any'; this.filterChanged(); }
   else if (a === 'menu') { ui.menu = ui.menu === t.dataset.menu ? null : t.dataset.menu; }
   else if (a === 'clearall') { ui.age = 'any'; ui.range = 'any'; ui.st = 'any'; ui.letter = null; ui.q = ''; ui.find = false; this.filterChanged(); }
