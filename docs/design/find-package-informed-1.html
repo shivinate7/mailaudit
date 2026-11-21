@@ -95,7 +95,7 @@ body.float .band .clue { background:color-mix(in srgb, var(--paper) 88%, transpa
 .pill { height:52px; display:flex; align-items:center; gap:8px; padding:4px 6px 4px 16px; border-radius:26px; border:1px solid var(--line); background:var(--paper); }
 .dev.ax .pill { height:auto; min-height:52px; }
 .pill:focus-within { border-color:var(--accent); }
-.pill svg { flex:none; width:20px; height:20px; fill:none; stroke:var(--inkSoft); stroke-width:1.8; stroke-linecap:round; }
+.pill > svg { flex:none; width:20px; height:20px; fill:none; stroke:var(--inkSoft); stroke-width:1.8; stroke-linecap:round; }
 .pill input { flex:1; min-width:0; border:0; background:transparent; font-family:var(--cochin); font-size:calc(16px * var(--ts)); color:var(--ink); padding:0; outline:none; }
 .pill input::placeholder { color:var(--inkSoft); }
 .pill .clr { flex:none; width:44px; height:44px; display:grid; place-items:center; border:0; background:none; padding:0; cursor:pointer; }
@@ -186,7 +186,8 @@ body.nomarks mark { text-decoration:none; }
 .tile .d .late { color:var(--amber); } .tile .d .lost { color:var(--red); }
 body.noage .tile .d .late, body.noage .tile .d .lost { color:inherit; }
 .tile .f { font:italic calc(12px * var(--ts)) var(--cochin); }
-.tile.all .f { color:var(--green); }
+.tile.part { border-style:dashed; }
+.tile.part.on { border-style:solid; }
 .ans { flex:1; min-height:0; overflow:auto; padding:0 16px 12px; }
 .dev.ax .ans { overflow:visible; }
 .ans .pick { padding:16px 8px; font:italic calc(14px * var(--ts)) var(--cochin); color:var(--inkSoft); border:1px dashed var(--line); border-radius:8px; }
@@ -402,13 +403,15 @@ function lineUp(q, data) {
   }).filter((r) => r.hit > 0);
   out.sort((a, b) => b.hit - a.hit || b.score - a.score || (b.p.date > a.p.date ? 1 : -1));
   const n = ws.length;
-  const top = out.filter((r) => r.hit === n && out[0] && r.score === out[0].score);
+  /* every order that fits every word is in the top group: the weights only order the rail, they never break a tie */
+  const top = out.filter((r) => r.hit === n);
   return { rows: out, top, n };
 }
-/* Today: one phrase against each line's joined fields (src/view-rules.mjs lineHit) */
+/* Today: one phrase against each line's joined fields (src/view-rules.mjs lineHit). Main's native Packages has no
+   hide-received (native-filters-tally-only), so a received order still shows, with RECEIVED. */
 function todayMatch(q, data) {
   const s = q.trim().toLowerCase();
-  return data.filter(isOpen).flatMap((p) => {
+  return data.flatMap((p) => {
     if (!s) return [{ p, lines: p.items }];
     const lines = p.items.filter((it) => [it.name, it.set, p.seller, p.orderId].join(' ').toLowerCase().includes(s));
     return lines.length ? [{ p, lines }] : [];
@@ -473,13 +476,14 @@ function listHTML(st, tagFirst) {
   if (!rows.length) {
     if (st.concept === 'today') return emptyBlock('No cards match that search.');
     const missed = readWords(st.q, st.data).some((r) => !r.kinds.length);
-    return emptyBlock(missed ? 'A word in red matches no open order. Remove it to widen the search.' : 'Each word matches some order, but no one order holds them all. Remove a word to widen the search.');
+    return emptyBlock(missed ? 'A word marked "no match" fits no open order. Remove it to widen the search.' : 'Each word matches some order, but no one order holds them all. Remove a word to widen the search.');
   }
   return `<div class="list"${st.focusId ? ` id="${st.focusId}"` : ''}>${rows.map((r, i) => card(st, r.p, r.lines, ws, i === 0 ? tagFirst : '')).join('')}</div>`;
 }
 function tileHTML(r, n, on, tag) {
-  const f = n < 2 ? '' : r.hit === n ? 'Fits every word' : `Fits ${r.hit} of ${n} words`;
-  return `<button type="button" class="tile${on ? ' on' : ''}${r.hit === n ? ' all' : ''}" data-pick="${r.p.gk}" aria-pressed="${on}"${tag ? ` data-tag="${tag}"` : ''}>
+  /* A full fit shows by shape (a solid edge); only a part fit carries words, which differ per tile (ux-label-once). */
+  const f = n < 2 || r.hit === n ? '' : `Fits ${r.hit} of ${n} words`;
+  return `<button type="button" class="tile${on ? ' on' : ''}${n && r.hit < n ? ' part' : ''}" data-pick="${r.p.gk}" aria-pressed="${on}"${tag ? ` data-tag="${tag}"` : ''}>
     <span class="s">${esc(r.p.seller)}</span><span class="d">${fmtDate(r.p)} · ${ageSpan(r.p)}</span><span class="c">${left(r.p)} left · $${owed(r.p).toFixed(2)}</span><span class="f">${f}</span></button>`;
 }
 /* the Line-up parts: what to say, which order shows */
@@ -490,15 +494,17 @@ function lineupState(st) {
   if (!lu.rows.length) say = '';
   else if (st.picked) say = 'Picked. The line-up holds still until you type again.';
   else if (lu.top.length === 1) say = 'One order fits every word. The others fit some.';
-  else if (lu.top.length > 1) say = `${lu.top.length} orders fit equally. Pick one by its date, or add a word.`;
+  else if (lu.top.length > 1) say = `The first ${lu.top.length} fit equally. Pick one by its date, or add a word.`;
   else say = 'No order fits every word. These fit some.';
+  if (lu.top.length === 1 && !st.picked) say = lu.rows.length > 1 ? 'The first one fits every word. The others, dashed, fit some.' : 'One order fits.';
   return { lu, shown, say };
 }
 function answerHTML(st, shown) {
   if (!shown) {
     /* a tie: what each tied order holds, so the person can hold it against what is in the envelope */
     const top = st.q ? lineUp(st.q, st.data).top : [];
-    if (top.length > 1) return `<div class="holds"><p>What each one holds</p>${top.map((r) => `<button type="button" class="hold" data-pick="${r.p.gk}"><b>${esc(r.p.seller)}, ${fmtDate(r.p)}</b><span>${r.p.items.map((it) => esc(it.name) + (it.qty > 1 ? ' ×' + it.qty : '')).join(', ')}</span></button>`).join('')}</div>`;
+    /* plain text, not controls: a tap here would swap the area for a card under the finger; picking stays on the tiles */
+    if (top.length > 1) return `<div class="holds"><p>What each one holds. Pick its tile above.</p>${top.map((r) => `<div class="hold"><b>${esc(r.p.seller)}, ${fmtDate(r.p)}</b><span>${r.p.items.map((it) => esc(it.name) + (it.qty > 1 ? ' ×' + it.qty : '')).join(', ')}</span></div>`).join('')}</div>`;
     return `<div class="pick">The order you pick shows here, with its cards to tick.</div>`;
   }
   const p = st.data.find((x) => x.gk === shown);
@@ -522,7 +528,7 @@ function keysHTML(h, note) {
 }
 function pillHTML(st, ax) {
   const ph = ax ? 'Find' : st.concept === 'today' ? 'Find card, set, seller, order' : 'Seller, card, month or order no.';
-  return `<label class="pill"${st.tagPill ? ` data-tag="${st.tagPill}"` : ''}>${ICON}<input type="text" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Find" placeholder="${ph}" value="${esc(st.q)}"><button type="button" class="clr" data-clear aria-label="Clear search"${st.q ? '' : ' hidden'}><i>✕</i></button></label>`;
+  return `<label class="pill"${st.tagPill ? ` data-tag="${st.tagPill}"` : ''}>${ICON}<input type="text" enterkeyhint="search" autocomplete="off" spellcheck="false" aria-label="Find" placeholder="${ph}" value="${esc(st.q)}"><button type="button" class="clr" data-clear aria-label="Clear search"${st.q ? '' : ' hidden'}><i><svg viewBox="0 0 10 10" width="8" height="8" aria-hidden="true" style="stroke:var(--paper);stroke-width:1.8;fill:none"><path d="M2 2l6 6M8 2l-6 6"/></svg></i></button></label>`;
 }
 
 function buildFrame(el, concept, init) {
