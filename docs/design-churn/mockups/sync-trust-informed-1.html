@@ -552,8 +552,8 @@ function historyList(st) {
   rows.push({ id: "h2", w: "Nov 20, 9:00 PM", lb: "daily", f: "8/9", m: false });
   return `<div style="border-top:1px solid var(--line)">` + rows.map((r) => {
     const open = st.row === r.id;
-    const ask = open ? `<div class="ask">${st.armed ? `<span>Tap again to restore. This puts back 8 lines and 11 cards checked in, on both devices.</span>` : ""}
-      <span class="btnrow"><button class="btn ${st.armed ? "armed" : ""}" data-act="restore" data-id="${r.id}">${st.armed ? "Restore" : "Restore this version"}</button>${st.armed ? `<button class="btn" data-act="cancel">Cancel</button>` : ""}</span></div>` : "";
+    const ask = open ? `<div class="ask">
+      <span class="btnrow"><button class="btn ${st.armed ? "armed" : ""}" data-act="restore" data-id="${r.id}">${st.armed ? "Tap again to replace 10 cards" : "Restore this version"}</button>${st.armed ? `<button class="btn" data-act="cancel">Cancel</button>` : ""}</span></div>` : "";
     return `<div class="ver ${open && r.id === "before" ? "hi" : ""}"><button data-act="ver" data-id="${r.id}" aria-expanded="${open}"><span class="w">${r.w}</span><span class="lb ${r.m ? "" : "soft"}">${r.lb}</span><span class="f">${r.f}</span></button>${ask}</div>`;
   }).join("") + `</div>`;
 }
@@ -571,8 +571,8 @@ function docket(st, ax) {
     if (open) {
       h += m.rows.map((r) => { const it = ITEMS.find((i) => i.k === r.k);
         return `<div class="crow"><span class="n">${esc(it.name)}</span><span class="${r.tag === "in" ? "tagin" : "tagout"}">${r.word}</span><span class="s">${esc(PKGS[it.pkg].seller)}</span>${r.why ? `<span class="why">${esc(r.why)}</span>` : ""}</div>`; }).join("");
-      if (m.removed) h += `<div class="before" style="padding-left:28px"><span>Your copy from just before this merge (8 lines, 11 checked in).</span>${st.armed ? `<span>Tap again to restore it on both devices.</span>` : ""}
-        <span class="btnrow"><button class="btn ${st.armed ? "armed" : ""}" data-act="restore" data-id="before">${st.armed ? "Restore" : "Restore this version"}</button>${st.armed ? `<button class="btn" data-act="cancel">Cancel</button>` : ""}</span></div>`;
+      if (m.removed) h += `<div class="before" style="padding-left:28px"><span>Your copy from just before this merge is saved in History as <i>before sync</i> (8 lines, 11 checked in).</span>
+        <span class="btnrow"><button class="btn ${st.armed ? "armed" : ""}" data-act="restore" data-id="before">${st.armed ? "Tap again to replace 10 cards" : "Restore this version"}</button>${st.armed ? `<button class="btn" data-act="cancel">Cancel</button>` : ""}</span></div>`;
     }
     h += `</div>`;
   }
@@ -637,6 +637,7 @@ function renderOpen(f) {
     right = st.restored && c !== "postmark" ? `<p class="done-msg" style="margin-top:16px">Restored the copy from before the merge. It goes to the other device on the next sync.</p>` : "";
     if (st.sync) right += `<div class="lrows" style="margin-top:16px"><div class="lgroup"><div class="lrow"><span class="t"><b>Sync</b></span></div>${syncParts(st)}</div></div>`;
     else if (st.history) right += `<div class="lrows" style="margin-top:16px"><div class="lgroup"><div class="lrow"><span class="t"><b>History</b></span></div>${historyList(st)}</div></div>`;
+    else right += `<p class="rhead">Sync and History open on this page.</p>`;
   }
   // the right page takes a panel the left page opens, so the list under the thumb holds still
   if (c === "slip" && st.changes && st.merge && st.tab !== "ledger") right = `<div style="padding-top:16px">${changesPanel(st, true)}</div>`;

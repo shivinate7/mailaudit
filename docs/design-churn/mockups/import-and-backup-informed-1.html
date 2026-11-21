@@ -37,7 +37,7 @@ h1 { font-family:var(--cochin); font-size:28px; margin:0; }
 .ctl button.hide { color:var(--red); border-color:var(--redSoft); }
 .ctl [hidden] { display:none !important; }
 .legend { display:flex; flex-wrap:wrap; gap:12px; font-size:13px; color:var(--inkSoft); }
-.legend span { border:1.5px dashed var(--inkSoft); border-radius:4px; padding:2px 8px; }
+.legend span { border:1.5px dashed var(--inkSoft); border-radius:4px; padding:2px 8px; background:var(--card); }
 .legend span.n { border-color:var(--green); color:var(--green); }
 .legend span.t { border-color:var(--red); color:var(--red); }
 .frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
@@ -90,11 +90,12 @@ figcaption b { font-family:var(--cochin); font-size:17px; color:var(--ink); }
 .btn { font:inherit; font-weight:700; font-size:var(--t-sub); min-height:44px; padding:8px 20px; border-radius:8px; border:1px solid var(--ink); background:var(--ink); color:var(--card); cursor:pointer; }
 .btn.quiet { background:var(--card); color:var(--ink); border-color:var(--line); font-weight:400; }
 .btn.wide { width:100%; }
-.promise { display:flex; flex-direction:column; gap:4px; text-align:left; width:100%; border-top:1px solid var(--line); padding-top:12px; }
+.promise { display:flex; flex-direction:column; gap:4px; text-align:left; width:100%; }
+.mk.wide { width:100%; }
 .promise p { margin:0; font-size:var(--t-foot); }
 .promise b { color:var(--green); }
 .err { color:var(--red); background:var(--redSoft); border-radius:8px; padding:8px 12px; font-size:var(--t-foot); text-align:left; width:100%; }
-.okline { color:var(--green); font-size:var(--t-foot); text-align:left; width:100%; }
+.okline { color:var(--green); background:var(--card); border-radius:8px; padding:8px 12px; font-size:var(--t-foot); text-align:left; width:100%; }
 
 /* the receipt (concept: Receipt at the row) */
 .rcpt { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 16px 16px; display:flex; flex-direction:column; gap:12px; }
@@ -108,7 +109,8 @@ dl.ruled > div { display:flex; align-items:baseline; gap:8px; min-height:36px; p
 dl.ruled dt { flex:1; font-size:var(--t-sub); }
 dl.ruled dd { margin:0; font:var(--t-sub) var(--mono); }
 dl.ruled button.dis { all:unset; flex:1; font-size:var(--t-sub); cursor:pointer; text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:4px; min-height:20px; }
-.keptbox { border:1px solid var(--green); border-radius:8px; padding:8px 12px; display:flex; flex-direction:column; gap:4px; background:color-mix(in srgb, var(--greenSoft) 60%, transparent); }
+/* card, not greenSoft: green text on greenSoft reads 4.1:1, on card 4.8:1 */
+.keptbox { border:1px solid var(--green); border-radius:8px; padding:8px 12px; display:flex; flex-direction:column; gap:4px; background:var(--card); }
 .keptbox table { border-collapse:collapse; width:100%; font-size:var(--t-sub); }
 .keptbox th { font:var(--t-cap) var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--inkSoft); text-align:right; font-weight:400; padding:4px 0; }
 .keptbox th:first-child { text-align:left; }
@@ -205,7 +207,7 @@ table.recon { width:100%; border-collapse:collapse; background:var(--card); bord
 /* Today / New marks */
 .mk { position:relative; outline:1.5px dashed var(--red); outline-offset:4px; border-radius:4px; }
 .mk.new { outline-color:var(--green); }
-.mk::before { content:attr(data-mk); position:absolute; top:-12px; right:4px; transform:translateY(-50%); font:10.5px var(--mono); padding:0 4px; background:var(--paper); color:var(--red); z-index:3; white-space:nowrap; }
+.mk::before { content:attr(data-mk); position:absolute; top:-12px; right:4px; transform:translateY(-50%); font:10.5px var(--mono); padding:0 4px; background:var(--card); color:var(--red); z-index:3; white-space:nowrap; }
 .mk.new::before { color:var(--green); }
 body.nomarks .mk { outline:0; }
 body.nomarks .mk::before { display:none; }
@@ -262,7 +264,13 @@ body.nomarks .mk::before { display:none; }
   </div>
 
   <div id="emptyall" hidden>Every option is hidden. <button class="linkish" id="showall">Show them all again.</button></div>
-  <div class="frames" id="frames"></div>
+  <p class="sub" id="blurb"></p>
+  <div class="frames" id="frames">
+    <figure data-dev="folded"><div class="fit"><div class="dev folded" data-device="iphone-duo-folded"></div></div><figcaption><b>Duo folded</b><br>466 × 678 pt, one screen. Size from the brief; matches duo-fold-and-keyboard (outer screen, 2026-11-08).</figcaption></figure>
+    <figure data-dev="open"><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded"></div></div><figcaption><b>Duo open</b><br>951 × 669 pt, two pages; the fold 455.5 to 495.5 holds nothing. The bar sits under the right page (duo-card-in-hand, item 23 a).</figcaption></figure>
+    <figure data-dev="ax5"><div class="fit"><div class="dev folded ax5" data-device="iphone-duo-folded-ax5"></div></div><figcaption><b>Duo folded, largest text (AX5)</b><br>The folded screen at the largest accessibility size. Words grow by the HIG table; the tab bar labels stay 10 pt (duo-card-in-hand, tab bar text).</figcaption></figure>
+    <figure data-dev="phone"><div class="fit"><div class="dev phone" data-device="iphone-large"></div></div><figcaption><b>Large phone</b><br>No written size: drawn as a stand-in at the slider's width, height 2.17 × width. Name the real size and it is redrawn.</figcaption></figure>
+  </div>
 </main>
 
 <script>
@@ -272,7 +280,7 @@ body.nomarks .mk::before { display:none; }
   const D = {
     file: "orderwand-2026-11-20.csv", at: "09:14",
     rows: "1,272", now: "1,201", after: "1,260", added: 59, refreshed: 41, renamed: 3, same: "1,157", skipped: 12,
-    checks: 806, stamps: 14, envs: 6, pkgs: 7, beforeKB: "238 kB", photosMB: "41 MB",
+    cards: "2,940", checks: 806, stamps: 14, envs: 6, pkgs: 7, beforeKB: "238 kB", photosMB: "41 MB",
     backupFile: "mailday-backup-2026-11-02.json", backupDay: "2 Nov", backupKB: "231 kB", backupLines: "1,188", backupChecks: 779
   };
   const PKGS = [
@@ -359,14 +367,13 @@ body.nomarks .mk::before { display:none; }
         <div class="zt">Drop your OrderWand CSV here</div>
         <div class="zs">${proof && on("jsonsplit") ? "In OrderWand: pick “OrderWand CSV” from the drop list, click File, then bring it here." : "CSV imports merge with what’s here; a .json backup restores everything."}</div>
         <button class="btn" data-go="${proof ? "proof" : "receipt"}">Choose file</button>
-        ${err ? `<div class="err" data-focus role="alert">No card rows found. This doesn’t look like an OrderWand CSV — expected columns like “Product Name” and “Order Id”.</div>` : ""}
+        ${err ? mk("new", "last line of the error", `<div class="err" data-focus role="alert">No card rows found. This doesn’t look like an OrderWand CSV — expected columns like “Product Name” and “Order Id”.<br><b>Nothing changed. Your ledger is as it was.</b></div>`, "wide") : ""}
       </div>`;
     const promise = `<div class="promise">
-        <p><b>An import only adds and updates lines.</b> Your ${D.checks} check-ins, ${D.stamps} stamps and ${D.envs} envelopes stay as they are.</p>
+        <p><b>A CSV import only adds and updates lines.</b> Your ${D.checks} check-ins, ${D.stamps} stamps and ${D.envs} envelopes stay as they are.</p>
         <p>${proof ? "You see what the file adds before anything changes." : "History keeps the ledger as it is now, before the file goes in."}</p>
       </div>`;
-    const nothing = err ? mk("new", "nothing-changed line", `<div class="okline" role="status">Nothing changed. Your ledger is as it was.</div>`) : "";
-    return mk("today", "upload zone (UploadZone)", today) + mk("new", "the promise, in the zone", `<div class="zone" style="border-style:solid;padding:12px 16px">${promise}</div>`) + nothing;
+    return mk("today", "upload zone (UploadZone)", today) + mk("new", "the promise, under the zone", `<div class="zone" style="border-style:solid;padding:12px 16px">${promise}</div>`);
   }
 
   /* ---------- Receipt at the row ---------- */
@@ -461,9 +468,9 @@ body.nomarks .mk::before { display:none; }
       <div class="spread" id="proof-sheet">
         <div class="sh cap">File · After</div>
         <div class="spread-row"><span class="k"><span class="delta">+${D.added}</span></span><span class="n">${D.after}</span></div>
-        <div class="spread-row kept"><span class="k"><span class="delta none">0</span></span><span class="n">${D.checks}</span></div>
-        <div class="spread-row kept"><span class="k"><span class="delta none">0</span></span><span class="n small">${D.stamps}</span></div>
-        <div class="spread-row kept"><span class="k"><span class="delta none">0</span></span><span class="n small">${D.envs}</span></div>
+        <div class="spread-row kept"><span class="k"><span class="delta none">no change</span></span><span class="n">${D.checks}</span></div>
+        <div class="spread-row kept"><span class="k"><span class="delta none">no change</span></span><span class="n small">${D.stamps}</span></div>
+        <div class="spread-row kept"><span class="k"><span class="delta none">no change</span></span><span class="n small">${D.envs}</span></div>
       </div>
       <div class="lcard">${row({ t: "Shipping status updated", v: String(D.refreshed), exp: false })}${row({ t: "Renamed to the new name", v: String(D.renamed), exp: false })}</div>
       <div class="lg">New lines, by package</div>
@@ -516,7 +523,7 @@ body.nomarks .mk::before { display:none; }
       <tr><td>Envelopes</td><td class="now">${D.envs}</td><td class="after">5</td><td class="plus" style="color:var(--red)">−1</td></tr>
     </tbody></table>`;
     const arm = armed
-      ? `<div class="armrow"><button class="act armed" data-go="backup">Tap again to replace ${D.after} lines</button><button class="act cancel" data-go="restore" autofocus>Cancel</button></div>`
+      ? `<div class="armrow"><button class="act armed" data-go="backup">Tap again to replace ${D.cards} cards</button><button class="act cancel" data-go="restore" autofocus>Cancel</button></div>`
       : `<div class="armrow"><button class="act danger" data-arm="1">Restore this copy</button></div>`;
     return mk("new", proof ? "restore shows the copy first" : "a .json waits for a second tap", `<section class="rcpt" data-focus aria-label="Restore a backup">
       <div class="cap">Backup file · ${D.backupDay} · ${D.backupKB}</div>
@@ -569,15 +576,10 @@ body.nomarks .mk::before { display:none; }
     return `<div class="pg">${one}</div>${pill}${bar(tabFor)}`;
   }
 
-  function frame(dev) {
-    const map = {
-      folded: ["iphone-duo-folded", "folded", "Duo folded", "466 × 678 pt, one screen. Size from the brief; matches duo-fold-and-keyboard (outer screen, 2026-11-08)."],
-      open: ["iphone-duo-unfolded", "open", "Duo open", "951 × 669 pt, two pages; the fold 455.5 to 495.5 holds nothing. The bar sits under the right page (duo-card-in-hand, item 23 a)."],
-      ax5: ["iphone-duo-folded", "folded ax5", "Duo folded, largest text (AX5)", "The same screen at the largest accessibility size. Words grow by the HIG table; the tab bar labels stay 10 pt (duo-card-in-hand, tab bar text)."],
-      phone: ["iphone-large", "phone", "Large phone", "No written size: drawn as a stand-in at the slider's width, height 2.17 × width. Say the real size and it is redrawn."]
-    }[dev];
-    return `<figure data-dev="${dev}"><div class="fit"><div class="dev ${map[1]}" data-device="${map[0]}"><div class="status"><span>9:41</span><span>●●●</span></div>${screen(dev === "ax5" ? "folded" : dev)}<div class="home"></div></div></div>
-      <figcaption><b>${map[2]}</b><br>${map[3]}</figcaption></figure>`;
+  /* The four frames are static markup; this fills the screen inside one. */
+  function fill(fig) {
+    const dev = fig.dataset.dev;
+    fig.querySelector(".dev").innerHTML = `<div class="status"><span>9:41</span><span>●●●</span></div>${screen(dev === "open" ? "open" : "folded")}<div class="home"></div>`;
   }
 
   /* ---------- controls ---------- */
@@ -596,9 +598,13 @@ body.nomarks .mk::before { display:none; }
     document.getElementById("hides").innerHTML = '<span class="lab">Hide</span>' + Object.entries(SUBOPTS).map(([k, v]) =>
       `<button class="${S.hide.has(k) ? "" : "hide"}" data-hide="${k}">${S.hide.has(k) ? "Show: " : "Hide: "}${v}</button>`).join("");
     const fr = document.getElementById("frames");
-    if (!vis.length) { fr.innerHTML = ""; return; }
-    const devs = S.d === "all" ? ["folded", "open", "ax5", "phone"] : [S.d];
-    fr.innerHTML = `<p class="sub" style="flex-basis:100%">${CONCEPTS[S.c].blurb}</p>` + devs.map(frame).join("");
+    fr.hidden = !vis.length;
+    document.getElementById("blurb").textContent = vis.length ? CONCEPTS[S.c].blurb : "";
+    if (!vis.length) return;
+    fr.querySelectorAll("figure").forEach((fig) => {
+      fig.hidden = !(S.d === "all" || S.d === fig.dataset.dev);
+      if (!fig.hidden) fill(fig);
+    });
     fr.querySelectorAll(".pg").forEach((pg) => { const t = pg.querySelector("[data-focus]"); if (t) pg.scrollTop = Math.max(0, t.getBoundingClientRect().top - pg.getBoundingClientRect().top - 48); });
     S.landing = false;
   }

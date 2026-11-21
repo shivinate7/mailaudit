@@ -1,0 +1,931 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Envelope photos, blind 2</title>
+<style>
+/* Tokens. Spacing on the 4 px step, radius 8 px, colours by role (house tokens). Hex values are
+   this designer's own choice: postal ink on cool paper. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --radius: 8px;
+  --target: 44px;
+
+  --surface: #EEF0F4;
+  --surface-raised: #FFFFFF;
+  --surface-sunk: #E2E5EC;
+  --text: #15171C;
+  --text-muted: #4F5666;
+  --line: #C9CED9;
+  --accent: #2C47C4;
+  --accent-soft: #DDE3FA;
+  --on-accent: #FFFFFF;
+  --danger: #A8241C;
+  --sheet-dim: rgba(10, 12, 20, 0.36);
+  --viewer: #050608;
+  --on-viewer: #F2F3F6;
+  --bar: rgba(238, 240, 244, 0.92);
+  --page: #D6DAE3;
+  --bezel: #2A2D34;
+  --hinge: #17191E;
+  --tag: #6A4BB0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #111318; --surface-raised: #1C1F26; --surface-sunk: #0A0B0E;
+    --text: #ECEEF3; --text-muted: #A6ADBC; --line: #343945;
+    --accent: #95A8FF; --accent-soft: #232B4D; --on-accent: #0B1030;
+    --danger: #FF8F86; --sheet-dim: rgba(0, 0, 0, 0.55);
+    --bar: rgba(17, 19, 24, 0.92); --page: #07080A; --bezel: #3A3E47; --hinge: #000000;
+    --tag: #B9A2F2;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #111318; --surface-raised: #1C1F26; --surface-sunk: #0A0B0E;
+  --text: #ECEEF3; --text-muted: #A6ADBC; --line: #343945;
+  --accent: #95A8FF; --accent-soft: #232B4D; --on-accent: #0B1030;
+  --danger: #FF8F86; --sheet-dim: rgba(0, 0, 0, 0.55);
+  --bar: rgba(17, 19, 24, 0.92); --page: #07080A; --bezel: #3A3E47; --hinge: #000000;
+  --tag: #B9A2F2;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--text);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px; line-height: 1.45;
+  overflow-x: hidden;
+}
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Page chrome (around the device frames). */
+.banner {
+  display: flex; gap: var(--space-2); justify-content: center; flex-wrap: wrap;
+  padding: var(--space-2) var(--space-4); background: var(--text); color: var(--surface);
+  font-weight: 600; text-align: center;
+}
+.center { max-inline-size: 104rem; margin-inline: auto; padding-inline: var(--space-4); }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.intro { padding-block: var(--space-6) var(--space-4); gap: var(--space-4); }
+.intro h1 { margin: 0; font-size: 28px; line-height: 1.15; letter-spacing: -0.01em; }
+.intro p { margin: 0; max-inline-size: 70ch; color: var(--text-muted); }
+.controls { gap: var(--space-4); }
+.control { display: flex; flex-direction: column; gap: var(--space-1); font-size: 13px; color: var(--text-muted); }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-raised); padding: 2px; gap: 2px; }
+.seg button { min-height: 36px; padding: 0 var(--space-3); border: 0; border-radius: 6px; background: none; color: var(--text); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.restore { gap: var(--space-2); }
+.restore[hidden] { display: none; }
+.pill-btn { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface-raised); }
+
+main.center { display: flex; flex-direction: column; gap: var(--space-12); padding-block: var(--space-4) var(--space-12); }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); scroll-margin-top: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: flex-start; justify-content: space-between; }
+.concept-head .stack { gap: var(--space-2); max-inline-size: 72ch; }
+.concept-head h2 { margin: 0; font-size: 22px; line-height: 1.2; }
+.concept-head p { margin: 0; color: var(--text-muted); }
+.tag-new { align-self: flex-start; border: 1.5px dashed var(--tag); color: var(--tag); border-radius: var(--radius); padding: 2px var(--space-2); font-size: 13px; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; max-width: 100%; }
+figcaption { font-size: 13px; color: var(--text-muted); max-width: 60ch; }
+.fwrap { position: relative; }
+.fwrap > .frame { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+
+/* Device frame. 1 CSS px = 1 pt. */
+.frame {
+  --sa-top: max(env(safe-area-inset-top), 32px);
+  --sa-bottom: max(env(safe-area-inset-bottom), 20px);
+  --t-lt: 34px; --l-lt: 41px; --t-t2: 22px; --l-t2: 28px; --t-t3: 20px; --l-t3: 25px;
+  --t-hl: 17px; --l-hl: 22px; --t-body: 17px; --l-body: 22px; --t-callout: 16px; --l-callout: 21px;
+  --t-sub: 15px; --l-sub: 20px; --t-foot: 13px; --l-foot: 18px; --t-c1: 12px; --l-c1: 16px;
+  --t-c2: 11px; --l-c2: 13px;
+  background: var(--bezel); border-radius: 28px; padding: 0; overflow: hidden;
+  font-size: var(--t-body); line-height: var(--l-body);
+  box-shadow: 0 0 0 6px var(--bezel);
+}
+/* Dynamic Type AX5 (largest accessibility size), from Apple's typography table. */
+.frame.ax5 {
+  --t-lt: 60px; --l-lt: 70px; --t-t2: 56px; --l-t2: 66px; --t-t3: 55px; --l-t3: 65px;
+  --t-hl: 53px; --l-hl: 62px; --t-body: 53px; --l-body: 62px; --t-callout: 51px; --l-callout: 60px;
+  --t-sub: 49px; --l-sub: 58px; --t-foot: 44px; --l-foot: 52px; --t-c1: 43px; --l-c1: 51px;
+  --t-c2: 40px; --l-c2: 48px;
+}
+.pg {
+  position: absolute; top: 0; bottom: 0; overflow: hidden;
+  background: var(--surface); color: var(--text);
+  container-type: inline-size;
+}
+.hinge { position: absolute; top: 0; bottom: 0; background: var(--hinge); }
+.statusbar {
+  position: absolute; top: 0; left: 0; right: 0; height: var(--sa-top);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--space-6); font-size: 13px; font-weight: 600; z-index: 30; pointer-events: none;
+}
+.homebar { position: absolute; bottom: 7px; left: 50%; width: 132px; height: 5px; margin-left: -66px; border-radius: 3px; background: var(--text); opacity: .8; z-index: 40; pointer-events: none; }
+.scr { position: absolute; inset: 0; display: flex; flex-direction: column; padding-top: var(--sa-top); }
+.scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; }
+.scroll-pad { display: flex; flex-direction: column; gap: var(--space-5); padding: 0 var(--space-4) var(--space-6); }
+
+/* Navigation bar */
+.navbar { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-2); }
+.navbar .ttl { flex: 1; text-align: center; font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navbar .side { min-width: 88px; display: flex; }
+.navbar .side.end { justify-content: flex-end; }
+.largetitle { margin: 0; padding: var(--space-1) var(--space-4) var(--space-2); font-size: var(--t-lt); line-height: var(--l-lt); font-weight: 700; letter-spacing: 0.01em; }
+.sub { margin: 0; padding: 0 var(--space-4); font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-muted); }
+
+.tbtn {
+  min-height: var(--target); min-width: var(--target); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1);
+  padding: 0 var(--space-2); background: none; border: 0; color: var(--accent); font-size: var(--t-body); border-radius: var(--radius);
+}
+.tbtn:disabled { color: var(--text-muted); opacity: .55; cursor: not-allowed; }
+.tbtn.danger { color: var(--danger); }
+.tbtn svg, .btn svg { width: 22px; height: 22px; flex: none; }
+.btn {
+  min-height: 50px; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-5); border-radius: var(--radius); border: 0;
+  background: var(--accent); color: var(--on-accent); font-size: var(--t-body); line-height: var(--l-body); font-weight: 600; text-align: center;
+}
+.btn.quiet { background: var(--accent-soft); color: var(--accent); }
+.btn:disabled { opacity: .5; cursor: not-allowed; }
+.btn.wide { width: 100%; }
+.toolbar {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  padding: var(--space-3) var(--space-4) calc(var(--sa-bottom) + var(--space-2));
+  background: var(--bar); border-top: 1px solid var(--line);
+  backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px);
+}
+.why { margin: 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); text-align: center; }
+
+/* Shoebox list rows */
+.group { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius); overflow: hidden; }
+.group > * + * { border-top: 1px solid var(--line); }
+.row {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 76px;
+  padding: var(--space-3) var(--space-3) var(--space-3) var(--space-3); background: none; border: 0; text-align: left;
+}
+.row[aria-current="true"] { background: var(--accent-soft); }
+.row .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row .d { font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; }
+.row .n { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text); overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+.row .c { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.chev { width: 14px; height: 14px; color: var(--text-muted); flex: none; }
+.thumb { position: relative; width: 64px; height: 64px; flex: none; border-radius: var(--radius); overflow: hidden; }
+.thumb svg.art { width: 100%; height: 100%; display: block; }
+.thumb .count { position: absolute; right: 4px; bottom: 4px; min-width: 20px; height: 20px; padding: 0 4px; border-radius: 10px; background: rgba(0,0,0,.7); color: #fff; font-size: 12px; line-height: 20px; text-align: center; font-weight: 600; }
+.hollow { display: flex; align-items: center; justify-content: center; border: 2px dashed var(--text-muted); color: var(--text-muted); background: transparent; }
+.hollow svg { width: 26px; height: 26px; }
+.frame.ax5 .row { flex-direction: column; align-items: stretch; }
+.frame.ax5 .row .thumb { width: 100%; height: auto; aspect-ratio: 4 / 3; }
+.frame.ax5 .row .chev { display: none; }
+.frame.ax5 .row .c { white-space: normal; }
+
+/* Detail */
+.strip { display: flex; gap: var(--space-2); overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: var(--space-1); }
+.shot { flex: none; width: 82%; aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden; scroll-snap-align: start; border: 0; padding: 0; background: var(--surface-sunk); }
+.shot svg.art { width: 100%; height: 100%; display: block; }
+.addshot { flex: none; width: 40%; aspect-ratio: 3 / 4; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-2); font-size: var(--t-sub); line-height: var(--l-sub); color: var(--accent); background: none; border: 2px dashed var(--accent); scroll-snap-align: start; }
+.addshot svg { width: 28px; height: 28px; }
+.bigadd { width: 100%; aspect-ratio: 4 / 3; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-2); padding: var(--space-4); border: 2px dashed var(--accent); background: none; color: var(--accent); font-size: var(--t-body); line-height: var(--l-body); font-weight: 600; text-align: center; }
+.bigadd svg { width: 40px; height: 40px; }
+.frame.ax5 .shot { width: 100%; }
+.frame.ax5 .addshot { width: 100%; aspect-ratio: auto; min-height: 120px; }
+.label { margin: 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); padding: 0 var(--space-1); }
+.fieldset { display: flex; flex-direction: column; gap: var(--space-2); }
+textarea.note {
+  width: 100%; min-height: 96px; resize: vertical; padding: var(--space-3); border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--surface-raised); font-size: var(--t-body); line-height: var(--l-body);
+}
+.cardrow { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3); min-height: 48px; }
+.cardrow span { flex: 1; min-width: 0; font-size: var(--t-body); line-height: var(--l-body); overflow-wrap: anywhere; }
+.addcard { display: flex; gap: var(--space-2); padding: var(--space-2); }
+.addcard input { flex: 1; min-width: 0; min-height: var(--target); padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); font-size: var(--t-body); }
+.frame.ax5 .addcard { flex-direction: column; }
+.frame.ax5 .addcard input { min-height: 72px; }
+.empty-line { margin: 0; padding: var(--space-3); font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-muted); }
+
+/* Inline answer (undo) at the place of the press */
+.undo {
+  display: flex; align-items: center; gap: var(--space-2); justify-content: space-between; flex-wrap: wrap;
+  padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-radius: var(--radius);
+  background: var(--text); color: var(--surface); font-size: var(--t-sub); line-height: var(--l-sub);
+}
+.undo .tbtn { color: var(--surface); font-weight: 600; text-decoration: underline; }
+
+/* States */
+.state { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-4); padding: var(--space-6); text-align: center; }
+.state p { margin: 0; font-size: var(--t-body); line-height: var(--l-body); max-width: 28ch; }
+.state details { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.skel { background: var(--surface-sunk); border-radius: var(--radius); }
+@media (prefers-reduced-motion: no-preference) {
+  .skel { animation: pulse 1.4s ease-in-out infinite; }
+}
+@keyframes pulse { 50% { opacity: .55; } }
+
+/* Viewer (full-screen photo) */
+.viewer { position: absolute; inset: 0; background: var(--viewer); color: var(--on-viewer); display: flex; flex-direction: column; padding-top: var(--sa-top); z-index: 20; }
+.viewer .navbar .ttl { color: var(--on-viewer); }
+.viewer .tbtn { color: var(--on-viewer); }
+.viewer .tbtn.danger { color: #FF8F86; }
+.vstage { flex: 1; position: relative; overflow: hidden; touch-action: none; cursor: zoom-in; }
+.vstage.zoomed { cursor: grab; }
+.vimg { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; transform-origin: 50% 50%; }
+.vimg svg.art { width: 100%; height: auto; max-height: 100%; }
+.vtools { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-3) calc(var(--sa-bottom) + var(--space-2)); }
+.vtools .zoomval { min-width: 56px; text-align: center; font-variant-numeric: tabular-nums; font-size: var(--t-sub); }
+.viewer .undo { position: absolute; left: var(--space-3); right: var(--space-3); top: var(--space-3); z-index: 3; background: var(--on-viewer); color: var(--viewer); }
+.viewer .undo .tbtn { color: var(--viewer); }
+.frame.ax5 .vtools { flex-wrap: wrap; }
+
+/* Sheets */
+.dim { position: absolute; inset: 0; background: var(--sheet-dim); z-index: 50; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: calc(var(--sa-top) + var(--space-3)); z-index: 51; background: var(--surface); border-radius: 12px 12px 0 0; display: flex; flex-direction: column; overflow: hidden; }
+.sheet .grab { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-2) auto 0; flex: none; }
+.order { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3); width: 100%; background: none; border: 0; text-align: left; }
+.order .radio { flex: none; width: 24px; height: 24px; border-radius: 12px; border: 2px solid var(--text-muted); display: flex; align-items: center; justify-content: center; margin-top: 2px; }
+.order[aria-checked="true"] .radio { border-color: var(--accent); background: var(--accent); color: var(--on-accent); }
+.order .radio svg { width: 14px; height: 14px; }
+.order .txt { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.order .s { font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; }
+.order .m { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.order .names { font-size: var(--t-sub); line-height: var(--l-sub); }
+.order .names b { font-weight: 700; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: 3px; }
+
+/* Camera */
+.camera { position: absolute; inset: 0; background: #000; color: #fff; display: flex; flex-direction: column; padding-top: var(--sa-top); z-index: 60; }
+.camera .tbtn { color: #fff; }
+.camera .tbtn:disabled { color: #9aa0ab; }
+.camera .navbar .ttl { color: #fff; }
+.finder { flex: 1; position: relative; overflow: hidden; margin: 0 var(--space-2); border-radius: var(--radius); }
+.finder svg.art { width: 100%; height: 100%; display: block; }
+.finder .guide { position: absolute; inset: 14%; border: 2px solid rgba(255,255,255,.85); border-radius: var(--radius); pointer-events: none; }
+.finder .flash { position: absolute; inset: 0; background: #fff; opacity: 0; pointer-events: none; }
+@media (prefers-reduced-motion: no-preference) { .finder .flash.go { animation: flash .25s ease-out; } }
+@keyframes flash { 0% { opacity: .85; } 100% { opacity: 0; } }
+.camfoot { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-4) calc(var(--sa-bottom) + var(--space-3)); }
+.shots { display: flex; gap: var(--space-1); align-items: center; min-height: 48px; }
+.shots .mini { width: 40px; height: 40px; border-radius: 6px; overflow: hidden; border: 2px solid #fff; }
+.shots .mini svg { width: 100%; height: 100%; display: block; }
+.shutter { width: 72px; height: 72px; border-radius: 36px; border: 4px solid #fff; background: #fff; box-shadow: inset 0 0 0 4px #000; }
+.shutter:disabled { opacity: .4; cursor: not-allowed; }
+.camnote { margin: 0; font-size: var(--t-foot); line-height: var(--l-foot); color: #d4d7de; text-align: center; padding: var(--space-2) var(--space-4) 0; }
+.camoff { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: var(--space-4); padding: var(--space-6); text-align: center; }
+.camoff p { margin: 0; max-width: 28ch; }
+.camoff .btn.quiet { background: #2a2e38; color: #fff; }
+.frame.ax5 .camfoot { grid-template-columns: 1fr; justify-items: center; }
+
+/* Open envelope concept */
+.seg-native { display: flex; margin: 0 var(--space-4); padding: 2px; gap: 2px; border-radius: var(--radius); background: var(--surface-sunk); }
+.seg-native button { flex: 1; min-height: 36px; border: 0; border-radius: 6px; background: none; font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600; color: var(--text); padding: var(--space-1) var(--space-2); }
+.seg-native button[aria-pressed="true"] { background: var(--surface-raised); box-shadow: 0 1px 3px rgba(0,0,0,.16); outline: 1px solid var(--line); }
+.flipper { flex: 1; position: relative; perspective: 1400px; min-height: 0; }
+.face { position: absolute; inset: 0; backface-visibility: hidden; -webkit-backface-visibility: hidden; overflow-y: auto; overscroll-behavior: contain; }
+.face.back { transform: rotateY(180deg); }
+.card3d { position: absolute; inset: 0; transform-style: preserve-3d; }
+.card3d.inside { transform: rotateY(180deg); }
+@media (prefers-reduced-motion: no-preference) { .card3d { transition: transform .45s cubic-bezier(.3,.7,.2,1); } }
+@media (prefers-reduced-motion: reduce) {
+  .face { backface-visibility: visible; transition: opacity .15s linear; }
+  .card3d, .card3d.inside, .face.back { transform: none; }
+  .card3d .face.back { opacity: 0; pointer-events: none; }
+  .card3d.inside .face.front { opacity: 0; pointer-events: none; }
+  .card3d.inside .face.back { opacity: 1; pointer-events: auto; }
+}
+.outside { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); }
+.hero { position: relative; border: 0; padding: 0; width: 100%; aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden; background: var(--surface-sunk); }
+.hero svg.art { width: 100%; height: 100%; display: block; }
+.pager { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.pager .pos { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.inside { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-3) var(--space-4) var(--space-6); }
+.inside-paper { background: var(--surface-raised); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); border-top: 6px solid var(--accent); }
+.rail-wrap { border-top: 1px solid var(--line); background: var(--bar); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); padding: var(--space-3) 0 calc(var(--sa-bottom) + var(--space-2)); display: flex; flex-direction: column; gap: var(--space-2); }
+.rail-sum { margin: 0; padding: 0 var(--space-4); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.rail { display: flex; gap: var(--space-3); overflow-x: auto; padding: var(--space-2) var(--space-4); align-items: flex-end; scroll-padding-inline: var(--space-4); }
+.stamp {
+  flex: none; position: relative; width: 56px; height: 68px; padding: 5px; border: 0; background: var(--surface-raised);
+  /* perforated edge */
+  -webkit-mask: radial-gradient(circle at 4px 4px, transparent 2.6px, #000 3px) -4px -4px / 8px 8px;
+          mask: radial-gradient(circle at 4px 4px, transparent 2.6px, #000 3px) -4px -4px / 8px 8px;
+}
+.stamp .in { width: 100%; height: 100%; overflow: hidden; border-radius: 2px; display: flex; align-items: center; justify-content: center; }
+.stamp .in svg.art { width: 100%; height: 100%; display: block; }
+.stamp.none { background: transparent; }
+.stamp.none .in { border: 2px dashed var(--text-muted); color: var(--text-muted); }
+.stamp.none .in svg { width: 22px; height: 22px; }
+.stamp-slot { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-bottom: 6px; position: relative; }
+.stamp-slot.cur::after { content: ""; position: absolute; bottom: 0; left: 8px; right: 8px; height: 3px; border-radius: 2px; background: var(--text); }
+.stamp-slot.cur .stamp { transform: translateY(-4px); }
+.stamp.add { background: var(--accent); color: var(--on-accent); }
+.stamp.add .in svg { width: 26px; height: 26px; }
+.stamp.add .in { color: var(--on-accent); }
+.pagehead { display: flex; flex-direction: column; gap: 0; }
+.pagehead .kicker { margin: 0; padding: var(--space-1) var(--space-4) 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.flap { height: 28px; flex: none; background:
+  linear-gradient(to bottom right, transparent 49.5%, var(--line) 50%, transparent 51.5%) left / 50% 100% no-repeat,
+  linear-gradient(to bottom left, transparent 49.5%, var(--line) 50%, transparent 51.5%) right / 50% 100% no-repeat; }
+.frame.ax5 .stamp { width: 84px; height: 100px; }
+
+@media (forced-colors: active) {
+  .stamp, .hollow, .shot, .hero, .row, .btn, .seg button, .seg-native button { border: 2px solid CanvasText; }
+  .stamp-slot.cur::after { background: Highlight; }
+  .seg button[aria-pressed="true"], .seg-native button[aria-pressed="true"] { outline: 3px solid Highlight; }
+}
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="banner" role="note"><span>Sample.</span><span>No figure, name, card or photo on this page is real.</span></div>
+
+<header class="center stack intro">
+  <h1>Envelope photos</h1>
+  <p>Designer kind: blind. Designer: envelope-photos-blind-2. Job: photograph an envelope that has no readable sender, add a note and the cards inside, and match it to an order later.</p>
+  <p>Each concept below runs live in four frames. Tap through it. Every frame keeps its own sample data, so a change in one frame stays in that frame.</p>
+  <div class="cluster controls">
+    <div class="control"><span id="lbl-theme">Theme</span>
+      <div class="seg" role="group" aria-labelledby="lbl-theme">
+        <button type="button" data-theme-set="system">System</button>
+        <button type="button" data-theme-set="light">Light</button>
+        <button type="button" data-theme-set="dark">Dark</button>
+      </div>
+    </div>
+    <div class="control"><span id="lbl-state">State</span>
+      <div class="seg" role="group" aria-labelledby="lbl-state">
+        <button type="button" data-state-set="loaded">Loaded</button>
+        <button type="button" data-state-set="loading">Loading</button>
+        <button type="button" data-state-set="empty">Empty</button>
+        <button type="button" data-state-set="error">Read failed</button>
+        <button type="button" data-state-set="camera-off">Camera off</button>
+      </div>
+    </div>
+    <div class="control"><span id="lbl-dev">Devices</span>
+      <div class="seg" role="group" aria-labelledby="lbl-dev">
+        <button type="button" data-dev-set="all">All</button>
+        <button type="button" data-dev-set="folded">Duo folded</button>
+        <button type="button" data-dev-set="open">Duo open</button>
+        <button type="button" data-dev-set="phone">Phone</button>
+        <button type="button" data-dev-set="ax5">Folded AX5</button>
+      </div>
+    </div>
+  </div>
+  <div class="cluster restore" id="restore" hidden><span>Hidden:</span></div>
+</header>
+
+<main class="center" id="concepts"></main>
+
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <symbol id="i-cam" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M3 8.5A1.5 1.5 0 0 1 4.5 7h3l1.6-2.2h5.8L16.5 7h3A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><circle cx="12" cy="12.8" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
+  <symbol id="i-chev" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7"/></symbol>
+  <symbol id="i-back" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" d="M15 5l-7 7 7 7"/></symbol>
+  <symbol id="i-trash" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" d="M4.5 7h15M9.5 7V4.8h5V7M6.5 7l1 12.5h9L17.5 7M10.3 10.5v6M13.7 10.5v6"/></symbol>
+  <symbol id="i-plus" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" d="M12 5v14M5 12h14"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" d="M7 7l10 10M17 7L7 17"/></symbol>
+  <symbol id="i-zin" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M15 15l5 5M10.5 8v5M8 10.5h5"/></symbol>
+  <symbol id="i-zout" viewBox="0 0 24 24"><circle cx="10.5" cy="10.5" r="6" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" d="M15 15l5 5M8 10.5h5"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" d="M5 12.5l4.5 4.5L19 7.5"/></symbol>
+  <symbol id="i-env" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M3.5 6.8L12 13l8.5-6.2"/></symbol>
+  <symbol id="i-photos" viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="14" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M4 17l5-5 4 4 2.5-2.5L20 18"/><circle cx="15.5" cy="9.5" r="1.6" fill="currentColor"/></symbol>
+</svg>
+
+<script>
+(() => {
+'use strict';
+
+// ---------- Sample data (every name invented) ----------
+const PHOTO_CAP = 4;
+const CONCEPTS = [
+  { key: 'shoebox', name: 'Shoebox list', id: 'concept-shoebox',
+    blurb: 'A plain list of every unmatched envelope, newest last. A photo thumbnail or a hollow envelope outline shows at a glance which ones have pictures. Tap one to see its photos, note and cards, then match it when you know the sender.' },
+  { key: 'envelope', name: 'Open envelope', id: 'concept-envelope',
+    blurb: 'One envelope at a time, treated as the object it is. Its outside is the photos; its inside is the note and the cards. Folded, a switch flips it over. Unfolded, the hinge is the envelope fold: outside on the left page, inside on the right. A row of stamps along the bottom is the whole pile: a photo stamp has a picture, a hollow stamp does not.' },
+];
+const DEVICES = [
+  { key: 'folded', label: 'Duo folded, 466 x 678 pt', dev: 'iphone-duo-folded', w: 466, h: 678 },
+  { key: 'open', label: 'Duo open, 951 x 669 pt, hinge x 455.5 to 495.5', dev: 'iphone-duo-unfolded', w: 951, h: 669, hinge: [455.5, 495.5] },
+  { key: 'phone', label: 'Large phone. Size not written: drawn at 440 x 956 pt, unmeasured.', dev: 'iphone-large', w: 440, h: 956 },
+  { key: 'ax5', label: 'Duo folded at the largest accessibility text size (AX5)', dev: 'iphone-duo-folded-ax5', w: 466, h: 678, ax: true },
+];
+
+function sample() {
+  return {
+    envelopes: [
+      { id: 'e1', arrived: 'Nov 18', photos: [{ id: 'p1', seed: 1, kind: 'front' }, { id: 'p2', seed: 1, kind: 'back' }],
+        note: 'Pink stamp, Ohio postmark? Smudged. Bubble mailer.', cards: ['Ember Wyrm', 'Glass Heron', 'Glass Heron', 'Quiet Orchard'] },
+      { id: 'e2', arrived: 'Nov 18', photos: [], note: '', cards: ["Tidecaller's Oath"] },
+      { id: 'e3', arrived: 'Nov 19', photos: [{ id: 'p3', seed: 3, kind: 'front' }, { id: 'p4', seed: 3, kind: 'stamp' }, { id: 'p5', seed: 3, kind: 'back' }],
+        note: 'Green ink, hand-written. One toploader inside.', cards: ['Ashen Pilgrim', 'Rust Familiar'] },
+      { id: 'e4', arrived: 'Nov 20', photos: [{ id: 'p6', seed: 4, kind: 'front' }], note: 'Plain white envelope, no return address.',
+        cards: ['Lantern Moth', 'Lantern Moth', 'Lantern Moth', 'Lantern Moth'] },
+      { id: 'e5', arrived: 'Nov 20', photos: [], note: '', cards: [] },
+    ],
+    orders: [
+      { id: 'o1', seller: 'Cardboard Cove', placed: 'Nov 9', cards: ['Ember Wyrm', 'Glass Heron', 'Glass Heron', 'Quiet Orchard', 'Salt Marsh'] },
+      { id: 'o2', seller: 'Third Shelf Games', placed: 'Nov 10', cards: ['Lantern Moth', 'Lantern Moth', 'Lantern Moth', 'Lantern Moth'] },
+      { id: 'o3', seller: 'Mossback Singles', placed: 'Nov 11', cards: ['Ashen Pilgrim', 'Rust Familiar'] },
+      { id: 'o4', seller: 'Pell Street Cards', placed: 'Nov 12', cards: ["Tidecaller's Oath", 'Copper Gate'] },
+    ],
+  };
+}
+
+// ---------- Envelope photo art (inline SVG, drawn, no network) ----------
+function rng(seed) { let s = seed * 9301 + 49297; return () => { s = (s * 9301 + 49297) % 233280; return s / 233280; }; }
+const PAPERS = ['#E6D5B2', '#F3F1EA', '#D8BF8C', '#E6EBF3', '#EFE0E5', '#E9E4D4'];
+const INKS = ['#2B3A67', '#1F5130', '#4A2A6B', '#333333'];
+const STAMPS = ['#C2436B', '#3E7CB1', '#4E9A5B', '#C98326'];
+const DESKS = [['#5E5A54', '#7A746B'], ['#46525A', '#65727B'], ['#6D604F', '#8D7D68']];
+function art(seed, kind, extra) {
+  const r = rng(seed * 7 + (kind === 'back' ? 3 : kind === 'stamp' ? 5 : 1));
+  const paper = PAPERS[seed % PAPERS.length], ink = INKS[seed % INKS.length], st = STAMPS[seed % STAMPS.length];
+  const desk = DESKS[seed % DESKS.length];
+  const rot = (r() * 6 - 3).toFixed(1);
+  let body = '';
+  const squiggle = (x, y, w) => {
+    let d = `M${x} ${y}`; let cx = x;
+    while (cx < x + w) { const s = 6 + r() * 10; d += ` q${(s / 2).toFixed(1)} ${(-6 - r() * 6).toFixed(1)} ${s.toFixed(1)} ${(r() * 2 - 1).toFixed(1)}`; cx += s; }
+    return `<path d="${d}" fill="none" stroke="${ink}" stroke-width="2.6" stroke-linecap="round" opacity=".55"/>`;
+  };
+  if (kind === 'stamp') {
+    body = `<rect x="-20" y="-20" width="440" height="340" fill="${paper}"/>
+      <g transform="translate(150 40) rotate(${rot})"><rect width="170" height="200" fill="#fff"/><rect x="12" y="12" width="146" height="176" fill="${st}"/>
+      <circle cx="85" cy="90" r="38" fill="#fff" opacity=".35"/><rect x="30" y="150" width="70" height="10" fill="#fff" opacity=".6"/></g>
+      <g fill="none" stroke="#222" stroke-width="3" opacity=".7"><circle cx="150" cy="150" r="78"/><circle cx="150" cy="150" r="62"/>
+      ${[0, 1, 2, 3, 4].map(i => `<path d="M230 ${110 + i * 18} q30 -12 60 0 t60 0 t60 0"/>`).join('')}</g>
+      <g fill="#222" opacity=".55"><rect x="110" y="140" width="22" height="9"/><rect x="138" y="140" width="34" height="9"/><rect x="118" y="158" width="44" height="7"/></g>`;
+  } else if (kind === 'back') {
+    body = `<g transform="translate(200 150) rotate(${rot}) translate(-170 -105)">
+      <rect width="340" height="210" rx="4" fill="${paper}"/>
+      <path d="M0 0 L170 120 L340 0" fill="none" stroke="rgba(0,0,0,.25)" stroke-width="2.5"/>
+      <path d="M0 210 L140 105 M340 210 L200 105" fill="none" stroke="rgba(0,0,0,.15)" stroke-width="2"/>
+      <rect x="128" y="96" width="84" height="30" fill="rgba(255,255,255,.55)" stroke="rgba(0,0,0,.12)" transform="rotate(-4 170 111)"/>
+      ${extra === 'tape' ? '' : squiggle(30, 180, 70)}</g>`;
+  } else {
+    body = `<g transform="translate(200 150) rotate(${rot}) translate(-170 -105)">
+      <rect width="340" height="210" rx="4" fill="${paper}"/>
+      <rect x="266" y="16" width="56" height="66" fill="#fff"/><rect x="271" y="21" width="46" height="56" fill="${st}"/>
+      <circle cx="294" cy="42" r="11" fill="#fff" opacity=".4"/>
+      <g fill="none" stroke="#222" stroke-width="2" opacity=".6"><circle cx="252" cy="52" r="26"/><path d="M276 40 q14 -6 28 0 t28 0 M276 52 q14 -6 28 0 t28 0 M276 64 q14 -6 28 0 t28 0"/></g>
+      ${squiggle(90, 108, 150)}${squiggle(90, 134, 120)}${squiggle(90, 160, 140)}</g>`;
+  }
+  return `<svg class="art" viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" aria-hidden="true" focusable="false">
+    <defs><linearGradient id="dg${seed}${kind}" x1="0" y1="0" x2="1" y2="1"><stop offset="0" stop-color="${desk[1]}"/><stop offset="1" stop-color="${desk[0]}"/></linearGradient></defs>
+    <rect width="400" height="300" fill="url(#dg${seed}${kind})"/>${body}</svg>`;
+}
+
+const icon = (id, label) => `<svg aria-hidden="true" focusable="false"><use href="#i-${id}"/></svg>${label ? `<span class="vh">${label}</span>` : ''}`;
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const plural = (n, one, many) => `${n} ${n === 1 ? one : many}`;
+function cardSummary(cards) {
+  if (!cards.length) return '';
+  const m = new Map(); cards.forEach(c => m.set(c, (m.get(c) || 0) + 1));
+  return [...m].map(([c, n]) => n > 1 ? `${c} x${n}` : c).join(', ');
+}
+
+// ---------- One live app in one frame ----------
+let shotSeed = 20;
+class App {
+  constructor(el, concept, device, mode) {
+    this.el = el; this.concept = concept; this.device = device; this.mode = mode;
+    this.data = sample();
+    if (mode === 'empty') this.data.envelopes = [];
+    this.nav = { screen: 'list', envId: null, photo: 0, side: 'outside', sheet: null, zoom: 1, px: 0, py: 0, pick: null, cardDraft: '', cam: [], undo: null };
+    if (device.key === 'open' || concept === 'envelope') this.nav.envId = this.data.envelopes[0] ? this.data.envelopes[0].id : null;
+    el.addEventListener('click', e => this.onClick(e));
+    el.addEventListener('input', e => this.onInput(e));
+    el.addEventListener('keydown', e => { if (e.key === 'Enter' && e.target.matches('[data-field="card"]')) { e.preventDefault(); this.act('add-card'); } });
+    el.addEventListener('dblclick', e => { if (e.target.closest('.vstage')) this.zoomTo(this.nav.zoom > 1 ? 1 : 2.5); });
+    this.bindPan();
+    this.render();
+  }
+  get env() { return this.data.envelopes.find(x => x.id === this.nav.envId) || null; }
+  get open() { return this.device.key === 'open'; }
+  set(p) { Object.assign(this.nav, p); this.render(); }
+
+  onInput(e) {
+    const f = e.target.dataset.field;
+    if (f === 'note' && this.env) this.env.note = e.target.value;
+    if (f === 'card') this.nav.cardDraft = e.target.value;
+  }
+  onClick(e) {
+    const t = e.target.closest('[data-act]'); if (!t || t.disabled) return;
+    this.act(t.dataset.act, t.dataset);
+  }
+  act(a, d = {}) {
+    const n = this.nav, env = this.env;
+    if (a !== 'undo') n.undo = null;
+    switch (a) {
+      case 'open-env': n.envId = d.id; n.photo = 0; n.screen = this.concept === 'shoebox' ? 'detail' : n.screen; n.cardDraft = ''; break;
+      case 'back': n.screen = 'list'; if (!this.open) n.envId = this.concept === 'envelope' ? n.envId : null; break;
+      case 'view': n.photo = +d.i; n.screen = 'viewer'; n.zoom = 1; n.px = n.py = 0; break;
+      case 'close-viewer': n.screen = this.concept === 'shoebox' ? 'detail' : 'list'; n.zoom = 1; break;
+      case 'prev': n.photo = Math.max(0, n.photo - 1); n.zoom = 1; n.px = n.py = 0; break;
+      case 'next': n.photo = Math.min(env.photos.length - 1, n.photo + 1); n.zoom = 1; n.px = n.py = 0; break;
+      case 'zin': return this.zoomTo(Math.min(4, n.zoom + 0.75));
+      case 'zout': return this.zoomTo(Math.max(1, n.zoom - 0.75));
+      case 'z1': return this.zoomTo(1);
+      case 'del-photo': {
+        const i = n.photo, p = env.photos.splice(i, 1)[0];
+        n.undo = { kind: 'photo', env: env.id, i, p };
+        if (!env.photos.length) { n.screen = this.concept === 'shoebox' ? 'detail' : 'list'; n.photo = 0; }
+        else n.photo = Math.min(i, env.photos.length - 1);
+        n.zoom = 1; n.px = n.py = 0; break;
+      }
+      case 'undo': {
+        const u = n.undo; n.undo = null; if (!u) break;
+        if (u.kind === 'photo') { const e2 = this.data.envelopes.find(x => x.id === u.env); e2.photos.splice(u.i, 0, u.p); n.photo = u.i; }
+        if (u.kind === 'match') { this.data.envelopes.splice(u.i, 0, u.env); this.data.orders.splice(u.oi, 0, u.order); n.envId = u.env.id; }
+        break;
+      }
+      case 'side': n.side = d.side; break;
+      case 'camera': n.sheet = 'camera'; n.cam = []; n.camFor = d.for || 'new'; break;
+      case 'cam-cancel': n.sheet = null; n.cam = []; break;
+      case 'shoot': {
+        const room = this.camRoom(); if (n.cam.length >= room) break;
+        n.cam.push({ id: 'n' + (++shotSeed), seed: shotSeed % 6 + 6, kind: n.cam.length === 0 ? 'front' : n.cam.length === 1 ? 'back' : 'stamp' });
+        n.flash = true; break;
+      }
+      case 'library': n.cam.push({ id: 'n' + (++shotSeed), seed: shotSeed % 6 + 6, kind: 'front' }); break;
+      case 'settings': n.camNote = 'Sample: this would open Settings for this app.'; break;
+      case 'cam-done': {
+        if (n.camFor === 'new') {
+          const e3 = { id: 'e' + (++shotSeed), arrived: 'Nov 21', photos: n.cam.slice(), note: '', cards: [] };
+          this.data.envelopes.push(e3); n.envId = e3.id; n.photo = 0; n.side = 'outside';
+          if (this.concept === 'shoebox') n.screen = 'detail';
+        } else if (env) { env.photos.push(...n.cam); n.photo = env.photos.length - n.cam.length; }
+        n.sheet = null; n.cam = []; break;
+      }
+      case 'rm-card': env.cards.splice(+d.i, 1); break;
+      case 'add-card': {
+        const v = (n.cardDraft || '').trim(); if (!v || !env) return;
+        env.cards.push(v); n.cardDraft = ''; this.render(); const f = this.el.querySelector('[data-field="card"]'); if (f) f.focus(); return;
+      }
+      case 'match': n.sheet = 'match'; n.pick = null; n.orderOrder = this.rankOrders(env).map(o => o.id); break;
+      case 'pick': n.pick = d.id; break;
+      case 'match-cancel': n.sheet = null; break;
+      case 'match-done': {
+        const i = this.data.envelopes.indexOf(env), oi = this.data.orders.findIndex(o => o.id === n.pick);
+        const order = this.data.orders[oi];
+        this.data.envelopes.splice(i, 1); this.data.orders.splice(oi, 1);
+        n.undo = { kind: 'match', env, i, order, oi, seller: order.seller };
+        n.sheet = null; n.photo = 0; n.side = 'outside';
+        const next = this.data.envelopes[i] || this.data.envelopes[i - 1] || null;
+        if (this.concept === 'shoebox' && !this.open) { n.screen = 'list'; n.envId = null; n.undoAt = next ? next.id : null; }
+        else { n.envId = next ? next.id : null; n.screen = 'list'; }
+        break;
+      }
+      case 'retry': this.mode = 'loaded'; break;
+    }
+    this.render();
+  }
+  camRoom() { const env = this.env; return this.nav.camFor === 'new' || !env ? PHOTO_CAP : PHOTO_CAP - env.photos.length; }
+  rankOrders(env) {
+    const score = o => o.cards.filter(c => env.cards.includes(c)).length;
+    return this.data.orders.slice().sort((a, b) => score(b) - score(a));
+  }
+  zoomTo(z) {
+    const n = this.nav; n.zoom = z; if (z === 1) { n.px = n.py = 0; }
+    this.render();
+  }
+  bindPan() {
+    let start = null;
+    this.el.addEventListener('pointerdown', e => {
+      const st = e.target.closest('.vstage'); if (!st || this.nav.zoom <= 1) return;
+      start = { x: e.clientX, y: e.clientY, px: this.nav.px, py: this.nav.py, st }; st.setPointerCapture(e.pointerId);
+    });
+    this.el.addEventListener('pointermove', e => {
+      if (!start) return; const sc = this.scale || 1;
+      this.nav.px = start.px + (e.clientX - start.x) / sc / this.nav.zoom; this.nav.py = start.py + (e.clientY - start.y) / sc / this.nav.zoom;
+      const im = start.st.querySelector('.vimg'); if (im) im.style.transform = `scale(${this.nav.zoom}) translate(${this.nav.px}px, ${this.nav.py}px)`;
+    });
+    const end = () => { start = null; };
+    this.el.addEventListener('pointerup', end); this.el.addEventListener('pointercancel', end);
+  }
+
+  // ----- render -----
+  render() {
+    const dv = this.device, scrollKeep = [...this.el.querySelectorAll('[data-keep]')].map(x => [x.dataset.keep, x.scrollTop, x.scrollLeft]);
+    let html;
+    if (this.open) {
+      const [a, b] = dv.hinge;
+      html = this.page(0, a, this.leftPage(), 'l') + `<div class="hinge" style="left:${a}px;width:${b - a}px" aria-hidden="true"></div>` + this.page(b, dv.w - b, this.rightPage(), 'r');
+    } else html = this.page(0, dv.w, this.singlePage(), 's');
+    this.el.innerHTML = html;
+    scrollKeep.forEach(([k, t, l]) => { const x = this.el.querySelector(`[data-keep="${k}"]`); if (x) { x.scrollTop = t; x.scrollLeft = l; } });
+    if (this.nav.flash) { this.nav.flash = false; const f = this.el.querySelector('.flash'); if (f) { f.classList.add('go'); } }
+  }
+  page(x, w, inner, k) {
+    return `<div class="pg" data-page="${k}" style="left:${x}px;width:${w}px">
+      <div class="statusbar" aria-hidden="true"><span>9:41</span><span>${k === 'r' ? '' : ''}</span></div>${inner}<div class="homebar" aria-hidden="true"></div></div>`;
+  }
+  // One screen (folded, phone, AX5)
+  singlePage() {
+    const n = this.nav;
+    if (n.sheet === 'camera') return this.camera();
+    if (n.screen === 'viewer' && this.env) return this.viewer();
+    let base;
+    if (this.concept === 'shoebox') base = n.screen === 'detail' && this.env ? this.detail(true) : this.list();
+    else base = this.envScreen(false);
+    if (n.sheet === 'match') base += this.matchSheet();
+    return base;
+  }
+  leftPage() {
+    const n = this.nav;
+    if (this.concept === 'shoebox') return this.list();
+    if (n.sheet === 'camera') return this.camera();
+    if (n.screen === 'viewer' && this.env) return this.viewer();
+    return this.envScreen('outside');
+  }
+  rightPage() {
+    const n = this.nav;
+    if (this.concept === 'shoebox') {
+      if (n.sheet === 'camera') return this.camera();
+      if (n.screen === 'viewer' && this.env) return this.viewer();
+      let s = this.env ? this.detail(false) : this.pickPrompt();
+      if (n.sheet === 'match') s += this.matchSheet();
+      return s;
+    }
+    let s = this.envScreen('inside');
+    if (n.sheet === 'match') s += this.matchSheet();
+    return s;
+  }
+
+  stateBlock() {
+    if (this.mode === 'loading') return 'loading';
+    if (this.mode === 'error') return `<div class="state"><p>Your saved envelopes could not be read.</p>
+      <button class="btn" data-act="retry">Try again</button>
+      <details><summary>What the device said</summary>Sample: storage read failed (code 7).</details></div>`;
+    if (!this.data.envelopes.length) return `<div class="state"><p>Photograph an envelope that has no readable sender, so you can match it later.</p>
+      <button class="btn" data-act="camera" data-for="new">${icon('cam')}Photograph an envelope</button></div>`;
+    return null;
+  }
+
+  // ----- Shoebox -----
+  list() {
+    const n = this.nav, envs = this.data.envelopes, sb = this.stateBlock();
+    const without = envs.filter(e => !e.photos.length).length;
+    let body;
+    if (sb === 'loading') body = `<div class="scroll"><div class="scroll-pad"><div class="group" aria-busy="true">${[0, 1, 2, 3].map(() => `<div class="row"><div class="thumb skel"></div><div class="txt"><div class="skel" style="height:18px;width:40%"></div><div class="skel" style="height:16px;width:80%"></div></div></div>`).join('')}</div></div></div><span class="vh" role="status">Loading saved envelopes</span>`;
+    else if (sb) body = sb;
+    else {
+      const rows = envs.map(e => {
+        const sel = this.open && e.id === n.envId;
+        const th = e.photos.length
+          ? `<span class="thumb">${art(e.photos[0].seed, e.photos[0].kind)}${e.photos.length > 1 ? `<span class="count" aria-hidden="true">${e.photos.length}</span>` : ''}</span>`
+          : `<span class="thumb hollow">${icon('env')}</span>`;
+        const a11y = e.photos.length ? plural(e.photos.length, 'photo', 'photos') : 'no photo yet';
+        const undo = n.undo && n.undo.kind === 'match' && n.undoAt === e.id ? this.undoBar() : '';
+        return `${undo}<button class="row" data-act="open-env" data-id="${e.id}" ${sel ? 'aria-current="true"' : ''} aria-label="${esc(e.arrived)}, ${a11y}${e.note ? ', ' + esc(e.note) : ''}, ${plural(e.cards.length, 'card', 'cards')}">
+          ${th}<span class="txt"><span class="d">${esc(e.arrived)}</span>${e.note ? `<span class="n">${esc(e.note)}</span>` : ''}<span class="c">${e.cards.length ? esc(cardSummary(e.cards)) : 'Cards not listed yet'}</span></span>
+          <svg class="chev" aria-hidden="true"><use href="#i-chev"/></svg></button>`;
+      }).join('');
+      const tailUndo = n.undo && n.undo.kind === 'match' && !envs.find(e => e.id === n.undoAt) ? this.undoBar() : '';
+      body = `<div class="scroll" data-keep="list"><div class="scroll-pad">
+        <p class="sub" style="padding:0">${plural(envs.length, 'envelope', 'envelopes')}${without ? `, ${without} without a photo` : ''}</p>
+        <div class="group" id="${this.uid('list')}">${rows}${tailUndo}</div></div></div>
+        <div class="toolbar"><button class="btn wide" data-act="camera" data-for="new">${icon('cam')}Photograph an envelope</button></div>`;
+    }
+    return `<div class="scr"><div class="navbar"></div><h2 class="largetitle">Unmatched mail</h2>${body}</div>`;
+  }
+  uid(s) { return `${this.concept}-${this.device.key}-${s}`; }
+  undoBar() {
+    const u = this.nav.undo;
+    const msg = u.kind === 'photo' ? 'Photo deleted.' : `Matched to ${esc(u.seller)}.`;
+    return `<div class="undo" role="status"><span>${msg}</span><button class="tbtn" data-act="undo">Undo</button></div>`;
+  }
+  pickPrompt() {
+    const sb = this.stateBlock();
+    if (sb === 'loading') return `<div class="scr"><div class="state"><div class="skel" style="width:80%;aspect-ratio:4/3"></div></div></div>`;
+    if (sb) return `<div class="scr"></div>`;
+    return `<div class="scr"><div class="state"><p>Pick an envelope on the left to see its photos and cards.</p></div></div>`;
+  }
+  photoStrip(env) {
+    const n = this.nav;
+    const undo = n.undo && n.undo.kind === 'photo' && n.undo.env === env.id ? this.undoBar() : '';
+    if (!env.photos.length) return `${undo}<button class="bigadd" data-act="camera" data-for="env">${icon('cam')}Photograph this envelope</button>`;
+    const full = env.photos.length >= PHOTO_CAP;
+    return `${undo}<div class="strip" data-keep="strip">${env.photos.map((p, i) => `<button class="shot" data-act="view" data-i="${i}" aria-label="Open photo ${i + 1} of ${env.photos.length}">${art(p.seed, p.kind)}</button>`).join('')}
+      ${full ? '' : `<button class="addshot" data-act="camera" data-for="env">${icon('cam')}Add a photo</button>`}</div>
+      ${full ? `<p class="label">Four photos is the most an envelope keeps. Delete one to add another.</p>` : ''}`;
+  }
+  noteAndCards(env) {
+    const n = this.nav;
+    return `<div class="fieldset"><label class="label" for="${this.uid('note')}">Note</label>
+      <textarea class="note" id="${this.uid('note')}" data-field="note" placeholder="What it looked like: stamp, postmark, ink, size">${esc(env.note)}</textarea></div>
+      <div class="fieldset"><p class="label" id="${this.uid('cl')}">Cards inside (${env.cards.length})</p>
+      <div class="group" aria-labelledby="${this.uid('cl')}">
+        ${env.cards.map((c, i) => `<div class="cardrow"><span>${esc(c)}</span><button class="tbtn danger" data-act="rm-card" data-i="${i}" aria-label="Remove ${esc(c)}">${icon('x')}</button></div>`).join('')}
+        <div class="addcard"><input data-field="card" aria-label="Card name" placeholder="Card name" value="${esc(n.cardDraft)}" autocomplete="off"><button class="btn quiet" data-act="add-card">Add</button></div>
+      </div></div>`;
+  }
+  detail(withBack) {
+    const env = this.env;
+    return `<div class="scr">
+      <div class="navbar"><div class="side">${withBack ? `<button class="tbtn" data-act="back">${icon('back')}Mail</button>` : ''}</div><div class="ttl">Arrived ${esc(env.arrived)}</div><div class="side end"></div></div>
+      <div class="scroll" data-keep="detail"><div class="scroll-pad" style="padding-top:var(--space-3)">
+        <div class="stack" style="gap:var(--space-2)">${this.photoStrip(env)}</div>
+        ${this.noteAndCards(env)}
+      </div></div>
+      <div class="toolbar"><button class="btn wide" data-act="match" ${this.data.orders.length ? '' : 'disabled'}>Match to an order</button></div>
+    </div>`;
+  }
+
+  // ----- Viewer -----
+  viewer() {
+    const n = this.nav, env = this.env, p = env.photos[n.photo];
+    return `<div class="viewer" role="dialog" aria-label="Photo ${n.photo + 1} of ${env.photos.length}">
+      <div class="navbar"><div class="side"><button class="tbtn" data-act="close-viewer">Done</button></div>
+        <div class="ttl">${n.photo + 1} of ${env.photos.length}</div>
+        <div class="side end"><button class="tbtn danger" data-act="del-photo">${icon('trash')}Delete</button></div></div>
+      <div class="vstage ${n.zoom > 1 ? 'zoomed' : ''}" aria-label="Photo. Double-tap to zoom, drag to move.">
+        ${n.undo && n.undo.kind === 'photo' ? this.undoBar() : ''}
+        <div class="vimg" style="transform:scale(${n.zoom}) translate(${n.px}px, ${n.py}px)">${art(p.seed, p.kind)}</div></div>
+      <div class="vtools">
+        <button class="tbtn" data-act="prev" ${n.photo === 0 ? 'disabled' : ''}>${icon('back', 'Previous photo')}</button>
+        <button class="tbtn" data-act="zout" ${n.zoom <= 1 ? 'disabled' : ''}>${icon('zout', 'Zoom out')}</button>
+        <button class="tbtn zoomval" data-act="z1" aria-label="Reset zoom">${n.zoom.toFixed(n.zoom % 1 ? 2 : 0).replace(/0$/, '')}x</button>
+        <button class="tbtn" data-act="zin" ${n.zoom >= 4 ? 'disabled' : ''}>${icon('zin', 'Zoom in')}</button>
+        <button class="tbtn" data-act="next" ${n.photo >= env.photos.length - 1 ? 'disabled' : ''}>${icon('chev', 'Next photo')}</button>
+      </div></div>`;
+  }
+
+  // ----- Camera (simulated) -----
+  camera() {
+    const n = this.nav, room = this.camRoom(), off = this.mode === 'camera-off';
+    const title = n.camFor === 'new' ? 'New envelope' : 'Add photos';
+    const done = `<button class="tbtn" data-act="cam-done" ${n.cam.length ? '' : 'disabled'} title="${n.cam.length ? '' : 'Take a photo first'}" style="font-weight:600">Done</button>`;
+    let mid;
+    if (off) mid = `<div class="camoff"><p>Camera access is off for this app, so it cannot take a photo.</p>
+        <button class="btn" data-act="settings">Turn on in Settings</button>
+        <button class="btn quiet" data-act="library">${icon('photos')}Choose from Photos</button>
+        ${n.camNote ? `<p class="camnote" role="status">${n.camNote}</p>` : ''}</div>`;
+    else mid = `<div class="finder">${art(n.cam.length + 6 + (shotSeed % 3), n.cam.length === 1 ? 'back' : 'front')}<div class="guide"></div><div class="flash"></div></div>
+      <p class="camnote">${n.cam.length >= room ? 'Four photos is the most an envelope keeps.' : 'Fill the frame with the envelope. Front, back and postmark all help.'}</p>
+      <div class="camfoot"><div class="shots" aria-label="${plural(n.cam.length, 'photo', 'photos')} taken">${n.cam.map(p => `<span class="mini">${art(p.seed, p.kind)}</span>`).join('')}</div>
+        <button class="shutter" data-act="shoot" aria-label="Take photo" ${n.cam.length >= room ? 'disabled' : ''}></button>
+        <div style="display:flex;justify-content:flex-end"><button class="tbtn" data-act="library" ${n.cam.length >= room ? 'disabled' : ''}>${icon('photos', 'Choose from Photos')}</button></div></div>`;
+    return `<div class="camera" role="dialog" aria-label="${title}"><div class="navbar"><div class="side"><button class="tbtn" data-act="cam-cancel">Cancel</button></div>
+      <div class="ttl">${title}</div><div class="side end">${done}</div></div>${mid}</div>`;
+  }
+
+  // ----- Match sheet -----
+  matchSheet() {
+    const n = this.nav, env = this.env;
+    const orders = (n.orderOrder || []).map(id => this.data.orders.find(o => o.id === id)).filter(Boolean);
+    return `<div class="dim" data-act="match-cancel"></div><div class="sheet" role="dialog" aria-label="Match to an order">
+      <div class="grab" aria-hidden="true"></div>
+      <div class="navbar"><div class="side"><button class="tbtn" data-act="match-cancel">Cancel</button></div><div class="ttl">Match to an order</div>
+      <div class="side end"><button class="tbtn" data-act="match-done" ${n.pick ? '' : 'disabled'} title="${n.pick ? '' : 'Pick an order first'}" style="font-weight:600">Done</button></div></div>
+      <div class="scroll"><div class="scroll-pad" style="padding-top:var(--space-3)">
+      <p class="label">Orders that list the same card names come first. Names on this envelope are underlined.</p>
+      <div class="group" role="radiogroup" aria-label="Orders">${orders.map(o => {
+        const hit = o.cards.filter(c => env.cards.includes(c)).length;
+        return `<button class="order" role="radio" aria-checked="${n.pick === o.id}" data-act="pick" data-id="${o.id}">
+          <span class="radio">${n.pick === o.id ? icon('check') : ''}</span>
+          <span class="txt"><span class="s">${esc(o.seller)}</span><span class="m">Placed ${esc(o.placed)}. ${hit} of ${o.cards.length} names on this envelope.</span>
+          <span class="names">${o.cards.map(c => env.cards.includes(c) ? `<b>${esc(c)}</b>` : esc(c)).join(', ')}</span></span></button>`;
+      }).join('')}</div></div></div></div>`;
+  }
+
+  // ----- Open envelope concept -----
+  rail() {
+    const n = this.nav, envs = this.data.envelopes;
+    const without = envs.filter(e => !e.photos.length).length;
+    return `<div class="rail-wrap"><p class="rail-sum">${plural(envs.length, 'envelope', 'envelopes')}${without ? `, ${without} without a photo` : ''}</p>
+      <div class="rail" data-keep="rail" role="list" id="${this.uid('rail')}">${envs.map((e, i) => {
+        const cur = e.id === n.envId;
+        const inner = e.photos.length ? `<span class="in">${art(e.photos[0].seed, e.photos[0].kind)}</span>` : `<span class="in">${icon('cam')}</span>`;
+        return `<span class="stamp-slot ${cur ? 'cur' : ''}" role="listitem"><button class="stamp ${e.photos.length ? '' : 'none'}" data-act="open-env" data-id="${e.id}" ${cur ? 'aria-current="true"' : ''}
+          aria-label="Envelope ${i + 1}, ${esc(e.arrived)}, ${e.photos.length ? plural(e.photos.length, 'photo', 'photos') : 'no photo yet'}">${inner}</button></span>`;
+      }).join('')}<span class="stamp-slot" role="listitem"><button class="stamp add" data-act="camera" data-for="new" aria-label="Photograph a new envelope"><span class="in">${icon('plus')}</span></button></span></div></div>`;
+  }
+  outsideFace(env) {
+    const n = this.nav;
+    const undo = n.undo && n.undo.kind === 'photo' && n.undo.env === env.id ? this.undoBar() : '';
+    if (!env.photos.length) return `<div class="outside">${undo}<button class="bigadd" data-act="camera" data-for="env">${icon('cam')}Photograph this envelope</button></div>`;
+    const i = Math.min(n.photo, env.photos.length - 1), p = env.photos[i], full = env.photos.length >= PHOTO_CAP;
+    return `<div class="outside">${undo}<button class="hero" data-act="view" data-i="${i}" aria-label="Open photo ${i + 1} of ${env.photos.length} full screen">${art(p.seed, p.kind)}</button>
+      <div class="pager"><button class="tbtn" data-act="prev" ${i === 0 ? 'disabled' : ''}>${icon('back', 'Previous photo')}</button>
+        <span class="pos">Photo ${i + 1} of ${env.photos.length}</span>
+        <button class="tbtn" data-act="next" ${i >= env.photos.length - 1 ? 'disabled' : ''}>${icon('chev', 'Next photo')}</button></div>
+      ${full ? `<p class="label">Four photos is the most an envelope keeps. Delete one to add another.</p>` : `<button class="btn quiet wide" data-act="camera" data-for="env">${icon('cam')}Add a photo</button>`}</div>`;
+  }
+  insideFace(env) {
+    return `<div class="inside"><div class="inside-paper">${this.noteAndCards(env)}</div>
+      <button class="btn wide" data-act="match" ${this.data.orders.length ? '' : 'disabled'}>Match to an order</button></div>`;
+  }
+  envScreen(part) {
+    const n = this.nav, sb = this.stateBlock(), env = this.env, envs = this.data.envelopes;
+    const idx = env ? envs.indexOf(env) + 1 : 0;
+    const matchUndo = n.undo && n.undo.kind === 'match' ? `<div style="padding:var(--space-2) var(--space-4) 0">${this.undoBar()}</div>` : '';
+    if (part === 'inside') {
+      if (sb === 'loading') return `<div class="scr"><div class="flap" aria-hidden="true"></div><div class="scroll-pad"><div class="skel" style="height:280px"></div></div></div>`;
+      if (sb || !env) return `<div class="scr"><div class="flap" aria-hidden="true"></div></div>`;
+      return `<div class="scr"><div class="flap" aria-hidden="true"></div><div class="pagehead"><p class="kicker">Inside</p><h2 class="largetitle" style="padding-top:0">Arrived ${esc(env.arrived)}</h2></div>
+        <div class="scroll" data-keep="inside">${this.insideFace(env)}</div></div>`;
+    }
+    let mid;
+    if (sb === 'loading') mid = `<div class="scroll-pad" style="flex:1;padding-top:var(--space-3)"><div class="skel" style="aspect-ratio:4/3"></div></div><span class="vh" role="status">Loading saved envelopes</span>`;
+    else if (sb) mid = sb;
+    else if (part === 'outside') {
+      mid = `<div class="scroll" data-keep="out">${matchUndo}${this.outsideFace(env)}</div>`;
+    } else {
+      const inside = n.side === 'inside';
+      mid = `${matchUndo}<div class="seg-native" role="group" aria-label="Side of the envelope" id="${this.uid('flip')}">
+          <button data-act="side" data-side="outside" aria-pressed="${!inside}">Outside: ${plural(env.photos.length, 'photo', 'photos')}</button>
+          <button data-act="side" data-side="inside" aria-pressed="${inside}">Inside: ${plural(env.cards.length, 'card', 'cards')}</button></div>
+        <div class="flipper"><div class="card3d ${inside ? 'inside' : ''}">
+          <div class="face front" data-keep="out" ${inside ? 'aria-hidden="true" inert' : ''}>${this.outsideFace(env)}</div>
+          <div class="face back" data-keep="inside" ${inside ? '' : 'aria-hidden="true" inert'}>${this.insideFace(env)}</div></div></div>`;
+    }
+    const head = env && !sb
+      ? `<div class="pagehead"><p class="kicker">${part === 'outside' ? 'Outside' : `Envelope ${idx} of ${envs.length}`}</p><h2 class="largetitle" style="padding-top:0">Arrived ${esc(env.arrived)}</h2></div>`
+      : `<h2 class="largetitle">Unmatched mail</h2>`;
+    const showRail = !sb && envs.length;
+    return `<div class="scr">${head}${mid}${showRail ? this.rail() : (sb === 'loading' ? `<div class="rail-wrap"><div class="rail">${[0, 1, 2, 3].map(() => '<span class="stamp-slot"><span class="stamp skel" style="mask:none;-webkit-mask:none"></span></span>').join('')}</div></div>` : '')}</div>`;
+  }
+}
+
+// ---------- Page shell: concepts, frames, deep links ----------
+const H = () => Object.fromEntries(location.hash.slice(1).split('&').filter(Boolean).map(kv => kv.split('=').map(decodeURIComponent)));
+function setHash(p) { const h = Object.assign(H(), p); Object.keys(h).forEach(k => (h[k] == null || h[k] === '') && delete h[k]); history.replaceState(null, '', '#' + Object.entries(h).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join('&')); build(); }
+const apps = [];
+function build() {
+  const h = H();
+  const theme = h.t || 'system';
+  if (theme === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', theme);
+  const mode = h.s || 'loaded', devSel = h.d || 'all';
+  const hidden = (h.hide || '').split(',').filter(Boolean);
+  const pw = +h.pw || 0, ph = +h.ph || 0;
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-pressed', b.dataset.themeSet === theme));
+  document.querySelectorAll('[data-state-set]').forEach(b => b.setAttribute('aria-pressed', b.dataset.stateSet === mode));
+  document.querySelectorAll('[data-dev-set]').forEach(b => b.setAttribute('aria-pressed', b.dataset.devSet === devSel));
+  const restore = document.getElementById('restore');
+  restore.hidden = !hidden.length;
+  restore.innerHTML = '<span>Hidden:</span>' + hidden.map(k => { const c = CONCEPTS.find(x => x.key === k); return c ? `<button class="pill-btn" data-show="${k}">Show ${c.name}</button>` : ''; }).join('');
+  const main = document.getElementById('concepts'); main.innerHTML = ''; apps.length = 0;
+  for (const c of CONCEPTS) {
+    if (hidden.includes(c.key)) continue;
+    if (h.c && h.c !== c.key) continue;
+    const sec = document.createElement('section'); sec.className = 'concept'; sec.id = c.id; sec.setAttribute('aria-labelledby', c.id + '-h');
+    sec.innerHTML = `<div class="concept-head"><div class="stack"><h2 id="${c.id}-h">${c.name}</h2><p>${c.blurb}</p><span class="tag-new">New: the whole screen (a blind designer cannot see today's)</span></div>
+      <button class="pill-btn" data-hide="${c.key}">Hide ${c.name}</button></div><div class="frames"></div>`;
+    const frames = sec.querySelector('.frames');
+    for (const d0 of DEVICES) {
+      if (devSel !== 'all' && devSel !== d0.key) continue;
+      const d = Object.assign({}, d0);
+      if (d.key === 'phone' && pw && ph) { d.w = pw; d.h = ph; d.label = `Large phone, drawn at ${pw} x ${ph} pt from the link.`; }
+      const fig = document.createElement('figure');
+      fig.innerHTML = `<div class="fwrap"><div class="frame ${d.ax ? 'ax5' : ''}" data-device="${d.dev}" style="width:${d.w}px;height:${d.h}px"></div></div><figcaption>${d.label}</figcaption>`;
+      frames.appendChild(fig);
+      const app = new App(fig.querySelector('.frame'), c.key, d, mode);
+      app.fig = fig; apps.push(app);
+      if (h.scr && (!h.c || h.c === c.key)) deepScreen(app, h.scr);
+    }
+    main.appendChild(sec);
+  }
+  fit();
+  if (h.focus) { const el = document.getElementById(h.focus); if (el) el.scrollIntoView(); }
+}
+function deepScreen(app, scr) {
+  const env = app.data.envelopes[0]; if (!env) return;
+  const n = app.nav; n.envId = env.id;
+  if (scr === 'detail') n.screen = 'detail';
+  if (scr === 'inside') n.side = 'inside';
+  if (scr === 'viewer') { n.screen = 'viewer'; n.photo = 0; }
+  if (scr === 'zoom') { n.screen = 'viewer'; n.photo = 0; n.zoom = 2.5; }
+  if (scr === 'camera') { n.sheet = 'camera'; n.camFor = 'new'; n.cam = []; }
+  if (scr === 'match') { n.screen = 'detail'; n.side = 'inside'; n.sheet = 'match'; n.orderOrder = app.rankOrders(env).map(o => o.id); }
+  app.render();
+}
+function fit() {
+  for (const a of apps) {
+    const fr = a.el, wrap = fr.parentElement, fig = a.fig;
+    const avail = Math.max(240, fig.parentElement.clientWidth);
+    const s = Math.min(1, (avail - 12) / a.device.w);
+    a.scale = s;
+    fr.style.transform = `scale(${s})`;
+    wrap.style.width = (a.device.w * s) + 'px'; wrap.style.height = (a.device.h * s) + 'px';
+    fig.style.width = Math.max(a.device.w * s, 200) + 'px';
+  }
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-theme-set],[data-state-set],[data-dev-set],[data-hide],[data-show]'); if (!t) return;
+  const h = H();
+  if (t.dataset.themeSet) setHash({ t: t.dataset.themeSet === 'system' ? null : t.dataset.themeSet });
+  if (t.dataset.stateSet) setHash({ s: t.dataset.stateSet === 'loaded' ? null : t.dataset.stateSet });
+  if (t.dataset.devSet) setHash({ d: t.dataset.devSet === 'all' ? null : t.dataset.devSet });
+  if (t.dataset.hide) setHash({ hide: [...new Set((h.hide || '').split(',').filter(Boolean).concat(t.dataset.hide))].join(',') });
+  if (t.dataset.show) setHash({ hide: (h.hide || '').split(',').filter(k => k && k !== t.dataset.show).join(',') });
+});
+window.addEventListener('hashchange', build);
+window.addEventListener('resize', fit);
+build();
+})();
+</script>
+</body>
+</html>

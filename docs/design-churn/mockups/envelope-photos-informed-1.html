@@ -37,6 +37,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .howto { font-size:13px; color:var(--inkSoft); max-width:110ch; margin:4px 0 0; }
 #stage { display:flex; flex-wrap:wrap; gap:24px 32px; align-items:flex-start; margin-top:16px; overflow-x:auto; padding:8px 4px 16px; }
 .devwrap { display:flex; flex-direction:column; gap:8px; }
+[hidden] { display:none !important; }
 .devcap { font-size:13px; max-width:466px; }
 .devcap b { font-family:var(--cochin); font-size:16px; }
 .devcap .size { color:var(--inkSoft); display:block; }
@@ -115,6 +116,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .addtile svg { width:26px; height:26px; }
 .advis { display:flex; gap:8px; align-items:center; background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:4px 4px 4px 12px; font-family:var(--cochin); margin:0 12px 12px; }
 .advis span { flex:1; }
+.stack > .advis { margin:0; }
 .advis .mini { min-height:36px; }
 .thumbmark { width:56px; height:56px; flex:none; position:relative; border-radius:8px; overflow:hidden; border:1px solid var(--line); }
 .thumbmark svg { width:100%; height:100%; display:block; }
@@ -200,6 +202,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 
 /* ---------- Envelope faces ---------- */
 .sheet { display:grid; grid-template-columns:1fr 1fr; gap:12px; }
+.sheet.one { grid-template-columns:1fr; }
 .print { all:unset; box-sizing:border-box; cursor:pointer; display:flex; flex-direction:column; gap:6px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:6px 6px 10px; box-shadow:0 1px 2px var(--shadow); min-width:0; }
 .print:focus-visible { outline:2px solid var(--accent); }
 .print .face { aspect-ratio:4/3; border-radius:4px; overflow:hidden; position:relative; background:var(--manila); }
@@ -222,7 +225,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .carousel .slide svg { width:100%; height:100%; display:block; }
 .carousel .cdots { position:absolute; left:0; right:0; bottom:0; display:flex; justify-content:center; }
 .carousel .cdots button i { background:#fff; }
-.carousel.empty { background:repeating-linear-gradient(180deg, var(--card) 0 23px, var(--line) 23px 24px); aspect-ratio:4/3; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1px solid var(--line); }
+.carousel.empty { background:repeating-linear-gradient(180deg, var(--card) 0 23px, var(--line) 23px 24px); min-height:120px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; border:1px solid var(--line); }
 .carousel.empty p { margin:0; font-family:var(--cochin); color:var(--inkSoft); font-size:15px; }
 .photobar { display:flex; gap:8px; align-items:center; }
 .photobar .addp { font-family:var(--cochin); font-weight:700; font-size:15px; min-height:44px; padding:0 14px; border-radius:8px; border:1px solid var(--ink); background:var(--card); color:var(--ink); cursor:pointer; display:flex; gap:6px; align-items:center; }
@@ -264,7 +267,14 @@ code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
 <nav class="bar" aria-label="Marks"><span class="lab">Marks</span><button type="button" id="marks" aria-pressed="true">Show Today, New and System marks</button></nav>
 <p class="howto">Deep link: <code>#c=strip|faces&amp;d=folded|open|regular|ax5|all&amp;s=&lt;state&gt;</code>. In the viewer, double-click (double-tap) to zoom, drag to pan, pinch on a trackpad, swipe or use the dots to move between photos, one click on the picture closes it.</p>
 
-<section id="stage" aria-live="polite"></section>
+<section id="stage" aria-live="polite">
+  <!-- Four fixed frames, folded first (skill ios-apps, Mockups). The script fills the ones the Device row shows. -->
+  <div class="devwrap" data-slot="folded"><div class="devcap"></div><div class="dev folded" data-device="iphone-duo-folded" data-frame="folded"></div></div>
+  <div class="devwrap" data-slot="open"><div class="devcap"></div><div class="dev open" data-device="iphone-duo-unfolded" data-frame="open"></div></div>
+  <div class="devwrap" data-slot="regular"><div class="devcap"></div><div class="dev regular" data-device="iphone-regular" data-frame="regular"></div></div>
+  <div class="devwrap" data-slot="ax5"><div class="devcap"></div><div class="dev folded" data-device="iphone-duo-folded" data-frame="ax5"></div></div>
+  <p class="hidden-concept" data-slot="hidden" hidden></p>
+</section>
 
 <section class="notes">
   <h2 style="font-family:var(--cochin);font-weight:400;">What the marks mean</h2>
@@ -454,6 +464,7 @@ function undoNotice() {
   return `<div class="notice"${mark("today","Today: Undo notice")} style="${fs(13,"foot")}"><span>Checked in ${cardsOf(S.undo.qty)} against ${esc(S.undo.label)}.</span><button class="mini" type="button" data-act="undo" style="${fs(11,"cap")}">Undo</button><button class="xbtn" type="button" data-act="undo-x" aria-label="Dismiss">✕</button></div>`;
 }
 function candidates(e) {
+  if (!e.entries.length) return `<div class="cands"><span class="why" style="${fs(13,"foot")}"${mark("new","New: no cards yet")}>No cards recorded yet. Add them with Edit, and the packages they could have come from show here.</span></div>`;
   if (!e.cands.length) return `<div class="cands"><span class="why" style="${fs(13,"foot")}">No outstanding package accounts for any of these.</span></div>`;
   const tie = e.tied > 1 ? `<div class="tie" style="${fs(12.5,"foot")}">${e.tied} packages fit these cards equally well — pick the right one yourself.</div>` : "";
   return `<div class="cands"><div class="micro" style="${fs(10.5,"cap")}">Could have come from</div>${tie}${e.cands.map(c=>{
@@ -479,7 +490,7 @@ function stripRow(e, isFocus) {
   const tiles = e.photos.map((p,i)=>tile(e.id,"env",p,i,lost.has(p))).join("");
   const add = on("addOnCard") ? addTile(e.id) : "";
   if (!tiles && !add) return "";
-  return `<div class="photorow"${isFocus?pid("focus-label-strip"):""}${mark("new","New: photo strip")}><div class="strip">${add}${tiles}</div>${!e.photos.length && add ? `<span class="cap" style="${fs(13,"foot")}">No photo yet</span>`:""}</div>`;
+  return `<div class="photorow" data-anchor="strip-${e.id}"${isFocus?pid("focus-label-strip"):""}${mark("new","New: photo strip")}><div class="strip">${add}${tiles}</div>${!e.photos.length && add ? `<span class="cap" style="${fs(13,"foot")}">No photo yet</span>`:""}</div>`;
 }
 function stripCard(e, mode, first) {
   if (S.comp && S.comp.target === e.id && mode !== "detail") return composer();
@@ -536,7 +547,7 @@ function printCell(e, i) {
   let face;
   if (live.length) face = `<div class="face">${photoSVG(live[0])}${e.photos.length>1?`<span class="n">${e.photos.length} photos</span>`:""}</div>`;
   else if (e.photos.length) face = `<div class="face lostface">Photo lost</div>`;
-  else face = `<div class="face none">${e.entries.slice(0,3).map(x=>`<i>${esc(x.name)}</i>`).join("")}<em>no photo</em></div>`;
+  else face = `<div class="face none" aria-hidden="true">${e.entries.slice(0,3).map(x=>`<i>${esc(x.name)}</i>`).join("")}<em>no photo</em></div>`;
   const picked = S.d === "open" && S.sel === e.id;
   return `<button class="print${picked?" picked":""}" type="button" data-act="${S.d==="open"?"pick":"detail"}" data-id="${e.id}" data-anchor="${e.id}"${i===0?pid("focus-envelope-faces"):""}>${face}<span class="names" style="${fs(14)}">${e.entries.map(x=>(x.qty>1?`×${x.qty} `:"")+esc(x.name)).join(", ")}</span><span class="pm" style="${fs(11,"cap")}">${e.date.slice(5)} · ${cardsOf(total)}</span></button>`;
 }
@@ -546,7 +557,7 @@ function facesPile() {
   if (S.comp && S.comp.target === "new") out += composer();
   else out += `<div style="display:flex;justify-content:space-between;align-items:center;gap:8px"><p class="pagesub" style="${fs(13,"foot")}">${envs.length} envelope${envs.length===1?"":"s"} waiting${envs.some(e=>!e.photos.length)?` · ${envs.filter(e=>!e.photos.length).length} with no photo`:""}</p><button class="typesub" type="button" data-act="record" style="${fs(15)}">Type cards only</button></div>`;
   if (S.undo) out += undoNotice();
-  if (envs.length) out += `<div class="sheet"${mark("new","New: contact sheet")}>${envs.map(printCell).join("")}</div>`;
+  if (envs.length) out += `<div class="sheet${K.body>1.5?" one":""}"${mark("new","New: contact sheet")}>${envs.map(printCell).join("")}</div>`;
   else if (!S.comp) out += `<div class="emptyline" style="${fs(14)}">Nothing waiting. Photograph an envelope when you can’t tell who sent it.</div>`;
   return `<div class="stack">${out}</div>`;
 }
@@ -562,7 +573,7 @@ function facesDetail(e, withBack) {
   } else {
     car = `<div class="carousel empty"${mark("new","New: no-photo face")}><p style="${fs(15)}">No photo of this envelope yet.</p></div>`;
   }
-  const bar = `<div class="photobar"><button class="addp" type="button" data-act="cam" data-target="${e.id}" style="${fs(15)}"${mark("new","New: add a photo")}>${CAM}${e.photos.length?"Add a photo":"Photograph it"}</button><span class="pc" style="${fs(11,"cap")}">${e.photos.length} photo${e.photos.length===1?"":"s"}</span></div>`;
+  const bar = `<div class="photobar"><button class="addp" type="button" data-act="cam" data-target="${e.id}" style="${fs(15)}"${mark("new","New: add a photo")}>${CAM}${e.photos.length?"Add a photo":"Photograph it"}</button>${e.photos.length?`<span class="pc" style="${fs(11,"cap")}">${e.photos.length} photo${e.photos.length===1?"":"s"}</span>`:""}</div>`;
   return `<div class="stack">${nav}${car}${bar}${errLine(e.id)}<div class="card">${head(e,"full")}${entries(e)}<div class="rule"></div>${candidates(e)}</div></div>`;
 }
 
@@ -618,7 +629,7 @@ function screenFolded(dev) {
   const keysUp = S.keys && S.comp && !S.camera && !S.view;
   const count = S.data.envs.length;
   let fab = "";
-  if (faces && on("fab") && !S.detail && !S.comp && !keysUp) fab = `<button class="fab" type="button" data-act="cam" data-target="fresh"${mark("new","New: Photograph button")}>${CAM}Photograph an envelope</button>`;
+  if (faces && on("fab") && !S.detail && !S.comp && !keysUp) fab = `<button class="fab" type="button" data-act="cam" data-target="fresh" style="font-size:${Math.min(16*K.body, 16*23/17).toFixed(1)}px"${mark("new","New: Photograph button")}>${CAM}Photograph an envelope</button>`;
   if (S.camera) overlays += cameraView();
   if (S.view) overlays += viewerMain(false);
   return `<div class="page">${pageScroll(content,{keys:keysUp, fab:!!fab})}${fab}${tabbar(count)}${keysUp?keys():""}${overlays}</div>`;
@@ -651,7 +662,7 @@ function frame(d) {
   else if (d === "ax5") { cls = "folded"; dataDev = "iphone-duo-folded"; cap = "iPhone Duo, folded, AX5 text"; size = "466 × 678 pt. Biggest accessibility size. Cochin and Menlo scaled by Apple's AX5 table."; }
   else { cls = "folded"; dataDev = "iphone-duo-folded"; cap = "iPhone Duo, folded"; size = "466 × 678 pt (duo-fold-and-keyboard). Tab bar from y 595, 83 pt."; }
   const inner = d === "open" ? screenOpen() : screenFolded(d);
-  return `<div class="devwrap"><div class="devcap"><b>${cap}</b> · ${CONCEPTS[S.c]} · ${STATE_NAMES[S.s]}<span class="size">${size}</span></div><div class="dev ${cls}" data-device="${dataDev}" data-frame="${d}">${inner}</div></div>`;
+  return { cap:`<b>${cap}</b> · ${CONCEPTS[S.c]} · ${STATE_NAMES[S.s]}<span class="size">${size}</span>`, inner };
 }
 
 /* ================= render ================= */
@@ -659,16 +670,22 @@ function render() {
   document.body.classList.toggle("nomarks", !S.marks);
   const stage = document.getElementById("stage");
   const keep = {}; stage.querySelectorAll("[data-frame]").forEach(f=>{ const sc=f.querySelector("[data-scroll]"); if (sc) keep[f.dataset.frame]=sc.scrollTop; });
-  if (S.hiddenConcepts.has(S.c)) { stage.innerHTML = `<p class="hidden-concept">${CONCEPTS[S.c]} is hidden. Show it again from the Concept row.</p>`; renderNav(); return; }
-  const list = S.d === "all" ? ["folded","open","regular","ax5"] : [S.d];
-  let html = ""; PRIMARY = true;
-  for (const d of list) { html += frame(d); PRIMARY = false; }
-  stage.innerHTML = html;
+  stage.querySelectorAll(".mtag").forEach(t=>t.remove());
+  const hid = S.hiddenConcepts.has(S.c);
+  const msg = stage.querySelector('[data-slot="hidden"]'); msg.hidden = !hid; msg.textContent = hid ? `${CONCEPTS[S.c]} is hidden. Show it again from the Concept row.` : "";
+  const list = hid ? [] : S.d === "all" ? ["folded","open","regular","ax5"] : [S.d];
+  PRIMARY = true;
+  for (const d of ["folded","open","regular","ax5"]) {
+    const slot = stage.querySelector(`[data-slot="${d}"]`), dev = slot.querySelector(".dev");
+    if (!list.includes(d)) { slot.hidden = true; dev.innerHTML = ""; continue; }
+    slot.hidden = false; const f = frame(d); slot.querySelector(".devcap").innerHTML = f.cap; dev.innerHTML = f.inner; PRIMARY = false;
+  }
   K = SCALES.L;
   stage.querySelectorAll("[data-frame]").forEach(f=>{
-    const d = f.dataset.frame;
+    const d = f.dataset.frame; if (f.closest("[hidden]")) return;
     f.querySelectorAll("[data-scroll]").forEach((sc, idx)=>{
-      if (S.scrollTo) { const a = sc.querySelector(`[data-anchor="${S.scrollTo}"]`); if (a) sc.scrollTop = a.offsetTop - 12; }
+      const want = S.scrollTo || (d === "ax5" && S.s === "pile" ? (S.c === "strip" ? "strip-e1" : null) : null);
+      if (want) { const a = sc.querySelector(`[data-anchor="${want}"]`); if (a) { sc.scrollTop = 0; sc.scrollTop = a.getBoundingClientRect().top - sc.getBoundingClientRect().top - 120; } }
       else if (S.keys && S.comp && !S.camera && !S.view) { const a = sc.querySelector('[data-anchor="saverow"]'); if (a) { const r = a.getBoundingClientRect(), s = sc.getBoundingClientRect(); const keysTop = s.top + sc.clientHeight - (d==="open"?264:289); sc.scrollTop += (r.bottom + 12) - keysTop; } }
       else if (keep[d] != null && idx === 0) sc.scrollTop = keep[d];
     });
@@ -680,10 +697,11 @@ function render() {
 function placeMarks() {
   document.querySelectorAll("[data-mark]").forEach(el=>{
     const k = el.dataset.mark; el.classList.add(k==="new"?"mk-new":k==="today"?"mk-today":"mk-sys");
+    if (el.closest("[hidden]")) return;
     const host = el.closest("[data-scroll]") || el.closest(".page") || el.closest(".dev"); if (!host) return;
     const t = document.createElement("span"); t.className = "mtag " + (k==="new"?"n":k==="today"?"t":"s"); t.textContent = el.dataset.mlabel;
     const hr = host.getBoundingClientRect(), r = el.getBoundingClientRect();
-    t.style.top = Math.max(2, r.top - hr.top + host.scrollTop - 14) + "px";
+    t.style.top = Math.max(2, r.top - hr.top + host.scrollTop + 3) + "px"; /* inside the outline, top right: over the empty end of the row, not the text above */
     host.appendChild(t);
     /* right-aligned on the marked part, where rows are mostly empty; kept inside the page */
     const w = t.offsetWidth; t.style.left = Math.max(2, Math.min(host.clientWidth - w - 2, r.right - hr.left - w - 4)) + "px";

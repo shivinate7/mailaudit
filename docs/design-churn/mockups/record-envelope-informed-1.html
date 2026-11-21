@@ -96,7 +96,7 @@ code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
 .mast b { font-family:var(--cochin); font-size:26px; letter-spacing:4px; }
 .mast span { font:11px var(--mono); color:var(--inkSoft); }
 .micro { font-family:var(--mono); font-size:calc(11px * var(--c)); letter-spacing:.12em; text-transform:uppercase; color:var(--inkSoft); line-height:1.25; }
-button.act { all:unset; box-sizing:border-box; cursor:pointer; }
+:where(button.act) { all:unset; box-sizing:border-box; cursor:pointer; }
 .mini { font-family:var(--mono); font-size:calc(12px * var(--c)); line-height:1.2; color:var(--ink); background:var(--card); border:1px solid var(--line);
   border-radius:5px; padding:4px 10px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; text-align:center; }
 .mini[aria-disabled="true"] { color:var(--inkSoft); cursor:default; }
@@ -168,9 +168,11 @@ button.act { all:unset; box-sizing:border-box; cursor:pointer; }
 .stool { flex:none; display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; padding:4px 12px 8px; border-bottom:1px solid var(--line); background:var(--paper); }
 .stool .ttl { text-align:center; display:flex; flex-direction:column; min-width:0; }
 .stool .ttl b { font-family:var(--cochin); font-size:calc(17px * var(--b)); line-height:1.25; }
-.stool .ttl span { font:calc(11px * var(--c)) var(--mono); color:var(--inkSoft); }
+.stool .ttl span { font:calc(11px * var(--c)) var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.stool .ttl b { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .slip { flex:1 1 0; min-height:0; overflow-y:auto; scrollbar-width:none; touch-action:none; padding:8px 16px 12px; display:flex; flex-direction:column; gap:8px; }
 .slip::-webkit-scrollbar { display:none; }
+.slip > *, .sugg > * { flex-shrink:0; }
 .slip .ledger { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
 .slip .ledger .erow:last-child { border-bottom:0; }
 .slip .ledger .elist { border-top:0; }
@@ -180,7 +182,9 @@ button.act { all:unset; box-sizing:border-box; cursor:pointer; }
 .drow.isarmed { background:var(--paper); }
 .dock { flex:none; border-top:1px solid var(--line); background:var(--paper); padding:8px 16px; display:flex; flex-direction:column; gap:8px; }
 .dock .sugg { max-height:var(--dock-max, 140px); overflow-y:auto; }
-.ax5 .dock .sugg { --dock-max:110px; }
+/* At AX5 the dock shows one match and scrolls the rest, so the two-line field (item 57 a) still clears the keys. */
+.ax5 .dock .sugg { --dock-max:84px; }
+.ax5 .dock { padding:4px 16px; gap:4px; }
 .dock .sugg.rise { flex-direction:column-reverse; }
 .dock .sugg.rise button { border-top:0; border-bottom:1px solid var(--line); }
 .dock .sugg.rise button:first-child { border-bottom:0; }
@@ -339,7 +343,8 @@ function act(c, a, arg) {
       m.notice = `Saved · ${cardsOf(total(d))}`;
       m.drafts.delete(t); m.composing = null; m.keys = false; m.armed = null; m.hold = null; break;
     }
-    case "armd": if (!dirty(m, t)) return; arm(c, "draft"); break;
+    // In the sheet, Discard draft sits in the slip: pressing it ends typing, so the keys go and the slip has room for the ask.
+    case "armd": if (!dirty(m, t)) return; if (c === "sheet") m.keys = false; arm(c, "draft"); break;
     case "confd": {
       const n = total(d);
       m.drafts.delete(t); m.composing = null; m.keys = false; m.armed = null; m.hold = null;
@@ -419,13 +424,19 @@ function recordCtl(m, c) {
   const kept = c !== "today" && m.drafts.has("new") && m.composing !== "new";
   return B("record", undefined, "rec" + (kept ? " tag-new" : ""), kept ? `+ Record an envelope<small>draft kept · ${cardsOf(total(m.drafts.get("new")))}</small>` : "+ Record an envelope", 'data-m="record"');
 }
-function envCard(m, c, e) {
+function envCard(m, c, e, cell) {
   const n = e.entries.reduce((s, x) => s + x.qty, 0);
-  const armed = m.armed === "card:" + e.id;
+  const armed = !cell && m.armed === "card:" + e.id;
   const keptEdit = c !== "today" && m.drafts.has(e.id) && m.composing !== e.id;
   const askTop = c === "today" ? "bottom:8px" : "top:calc(100% + 4px)";
+  if (cell) { // the open Duo's left page draws a cell: heading and entries, and a tap picks it (EnvelopeCard .cell)
+    return `<div class="card" data-act="pick" data-arg="${e.id}" role="button" tabindex="0" style="cursor:pointer;${m.picked === e.id ? "border-color:var(--accent)" : ""}">
+      <div class="ehead${c === "today" ? "" : " capped"}"><span class="micro">Envelope · ${e.date} · ${cardsOf(n)}</span></div>
+      <div class="entries">${e.entries.map(x => `<span>${x.qty > 1 ? "×" + x.qty + " " : ""}${esc(x.name)}</span>`).join("")}${
+      keptEdit ? `<span><span class="chip tag-new">edit draft kept</span></span>` : ""}</div></div>`;
+  }
   return `<div class="card" data-m="card-${e.id}">
-    <div class="ehead" data-m="ehead-${e.id}"><span class="micro">Envelope · ${e.date} · ${cardsOf(n)}</span>${
+    <div class="ehead${c === "today" ? "" : " capped"}" data-m="ehead-${e.id}"><span class="micro">Envelope · ${e.date} · ${cardsOf(n)}</span>${
       B("edit", e.id, "mini", "Edit")}${B("armc", e.id, "mini " + (armed ? "armed" : "red"), "Discard")}${
       armed ? `<span class="ask${c === "today" ? " tag-today" : " tag-new"}" data-m="ask" style="${askTop}">${B("disarm", undefined, "mini", "Cancel", "data-first")}${
         B("confc", e.id, "mini armed", `Tap again to discard ${cardsOf(n)}`)}</span>` : ""}</div>
@@ -460,11 +471,12 @@ function pinnedBar(m, c) {
     B("armd", undefined, "mini red", "Discard draft", can ? "" : 'aria-disabled="true" title="Nothing to discard yet"')}<span class="grow"></span>${
     B("save", undefined, "mini" + (n ? " ready" : ""), "Save envelope", n ? "" : 'aria-disabled="true" title="Add a card first"')}</div>`;
 }
-function listInner(m, c, focusId) {
+function listInner(m, c, focusId, cell) {
   const parts = [];
-  parts.push(m.composing === "new" ? composerCard(m, c, "new", focusId) : recordCtl(m, c));
+  const inList = c !== "sheet"; // the sheet draws the composer over the list, so the list behind keeps its own rows
+  parts.push(inList && m.composing === "new" ? composerCard(m, c, "new", focusId) : recordCtl(m, c));
   parts.push(noticeHTML(m));
-  for (const e of m.env) parts.push(m.composing === e.id ? composerCard(m, c, e.id, focusId) : envCard(m, c, e));
+  for (const e of m.env) parts.push(inList && m.composing === e.id ? composerCard(m, c, e.id, focusId) : envCard(m, c, e, cell));
   if (!m.env.length && m.composing !== "new") parts.push(`<div class="empty" style="text-align:center">No envelopes waiting. Record one when unlabelled mail comes.</div>`);
   return `${mast()}<div class="stack">${parts.join("")}</div>`;
 }
@@ -477,10 +489,10 @@ function sheetHTML(m, c, g, top, bottom, focusId, half) {
     ? `<div class="drow isarmed tag-new" data-m="ask">${B("disarm", undefined, "mini", "Cancel", "data-first")}${
         B("confd", undefined, "mini armed", t === "new" ? `Tap again to discard ${cardsOf(n)}` : "Tap again to discard changes")}</div>`
     : B("armd", undefined, "drow", "Discard draft", can ? "" : 'aria-disabled="true" title="Nothing to discard yet"');
-  const tool = (lead, trail) => `<div class="stool capped tag-new" data-m="head" ${focusId ? `id="${focusId}"` : ""}>${lead}<div class="ttl"><b>${esc(w.title)}</b><span>${n ? cardsOf(n) + " ready" : "no cards yet"}</span></div>${trail}</div>`;
+  const tool = (lead, trail) => `<div class="stool capped tag-new" data-m="head" ${focusId ? `id="${focusId}"` : ""}>${lead}<div class="ttl"><b>${esc(w.title)}</b><span>${n ? cardsOf(n) + " ready" : "no cards yet"}${w.note ? " · " + esc(w.note) : ""}</span></div>${trail}</div>`;
   const save = B("save", undefined, "mini" + (n ? " ready" : ""), "Save", n ? "" : 'aria-disabled="true" title="Add a card first"');
   const cancel = B("cancel", undefined, "mini", "Cancel");
-  const slip = `<div class="slip" data-drag>${w.note !== undefined && w.note ? `<span class="micro">${esc(w.note)}</span>` : ""}
+  const slip = `<div class="slip" data-drag>
       <div class="ledger">${entriesHTML(d)}</div>${fieldHTML(m, d, "note", "Note (optional) — tracking #, sender, mailer…")}${discard}</div>`;
   if (!half) {
     return `<div class="sheet" style="top:${top}px;bottom:${bottom}px"><span class="grab"></span>${tool(cancel, save)}${slip}
@@ -511,19 +523,19 @@ function frameHTML(c, fr, idx) {
     const rightDetail = pick && m.composing !== pick.id ? `<div class="stack" style="padding-top:16px">${envCard(m, c, pick)}</div>` : "";
     if (sheetOpen) {
       const s = sheetHTML(m, c, g, 28, keysUp ? g.h - g.keys : 16, focusId, true);
-      out.push(`<div class="page l"><div class="area" style="bottom:0"><div class="scroll">${listInner(m, c, null)}</div></div><div class="dim"></div>${s.left}</div>`);
+      out.push(`<div class="page l"><div class="area" style="bottom:0"><div class="scroll">${listInner(m, c, null, true)}</div></div><div class="dim"></div>${s.left}</div>`);
       out.push(`<div class="page r"><div class="area" style="bottom:0"><div class="scroll">${rightDetail}</div></div><div class="dim"></div>${s.right}</div>`);
     } else {
-      out.push(`<div class="page l"><div class="area" style="bottom:${keysUp ? g.h - g.keys : 16}px"><div class="scroll" data-drag>${listInner(m, c, focusId)}</div>${
+      out.push(`<div class="page l"><div class="area" style="bottom:${keysUp ? g.h - g.keys : 16}px"><div class="scroll" data-drag>${listInner(m, c, focusId, true)}</div>${
         c === "pinned" && m.composing ? pinnedBar(m, c) : ""}</div></div>`);
       out.push(`<div class="page r"><div class="area" style="bottom:${g.h - g.tab}px"><div class="scroll" data-drag>${rightDetail}</div></div></div>`);
     }
-    if (!sheetOpen || !keysUp) out.push(tabbar(m, 495.5 + 16, 423.5, g.tab));
+    if (!sheetOpen) out.push(tabbar(m, 495.5 + 16, 423.5, g.tab));
     out.push(`<div class="fold"><span>FOLD 455.5–495.5</span></div>`);
   } else {
     out.push(`<div class="area" style="bottom:${areaBottom}px"><div class="scroll" data-drag>${listInner(m, c, sheetOpen ? null : focusId)}</div>${
       c === "pinned" && m.composing ? pinnedBar(m, c) : ""}</div>`);
-    out.push(tabbar(m, 16, g.w - 32, g.tab));
+    if (!sheetOpen) out.push(tabbar(m, 16, g.w - 32, g.tab)); // the sheet covers the tab bar
     if (sheetOpen) { out.push(`<div class="dim"></div>`); out.push(sheetHTML(m, c, g, 28, keysUp ? g.h - g.keys : 16, focusId, false)); }
   }
   if (keysUp) out.push(keysHTML(g));
@@ -609,6 +621,7 @@ function setState(c, s) {
     default: typing();
   }
   if (c === "today" && s === "armed") { m.armed = null; m.pin = false; } // today's composer has no Discard draft
+  if (c === "sheet" && s === "armed") m.keys = false;
 }
 
 const hidden = new Set();

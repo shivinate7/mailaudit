@@ -106,6 +106,7 @@ figcaption b { font-size:15px; }
 
 /* ---------- the panel: paper fill, ruled top (head-panels-carry-paper-fill) ---------- */
 .panel { background:var(--paper); border-top:1px solid var(--line); padding:4px 8px 12px; display:flex; flex-direction:column; gap:8px; }
+.panel.flow { background:transparent; }  /* today: panelWrap and the native panels paint no fill */
 .panel.laid { position:absolute; z-index:6; border:1px solid var(--line); border-radius:0 0 8px 8px; overflow-y:auto; overscroll-behavior:contain;
   box-shadow:0 8px 16px var(--shadow), 0 2px 0 var(--shadow); }
 .panel.laid.up { border-radius:8px 8px 0 0; box-shadow:0 -8px 16px var(--shadow), 0 -2px 0 var(--shadow); }
@@ -178,7 +179,12 @@ figcaption b { font-size:15px; }
 /* biggest accessibility text size, AX5: each size times the AX5 / Large ratio of its text style (Apple typography page) */
 .ax5 { --f-row:55px; --f-sub:45.5px; --f-val:44.5px; --f-chev:60px; --f-glab:39.5px; --f-title:43px; --f-cell:43px; --f-when:39.5px; --f-vlab:43.5px;
   --f-fig:38px; --f-plab:36.5px; --f-pval:39.5px; --f-lh:56px; --f-tal:43px; --f-head:55px; --row-min:72px; }
-.ax5 .lrow { flex-wrap:wrap; }
+/* at accessibility sizes a row stacks its title over its value, as versionRow already does (LedgerTab.swift) */
+.ax5 .lrow { flex-wrap:wrap; align-items:flex-start; }
+.ax5 .lrow .tx { flex:1 1 100%; }
+.ax5 .lrow .v { text-align:left; flex:1; }
+.ax5 .ver > button { flex-direction:column; align-items:flex-start; gap:4px; }
+.ax5 .ask .restore { padding:8px 12px; }
 .ax5 .grid.c2, .ax5 .grid.c4 { grid-template-columns:1fr; }
 .ax5 .cell.span2, .ax5 .cell.spanall { grid-column:auto; }
 .ax5 .well { height:auto; } .ax5 .well button { width:72px; font-size:43px; } .ax5 .well output { font-size:43px; min-width:96px; }
@@ -189,12 +195,12 @@ figcaption b { font-size:15px; }
 .ax5 .dock { max-height:78%; }
 
 /* tags: dashed outline on what exists today and on what an option adds */
-[data-tag] { position:relative; }
+:where([data-tag]) { position:relative; }
 .tags [data-tag]::before { content:attr(data-tag); position:absolute; right:6px; top:-9px; font:600 10.5px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
   background:var(--paper); z-index:4; white-space:nowrap; pointer-events:none; }
 .tags .tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .tags .tag-new::before { color:var(--new); }
 .tags .tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .tags .tag-today::before { color:var(--today); }
-.tags .dock[data-tag]::before, .tags .facing[data-tag]::before { top:4px; }
+.tags .dock[data-tag]::before, .tags .facing[data-tag]::before, .tags .panel.laid[data-tag]::before { top:4px; }
 </style>
 </head>
 <body>
@@ -240,19 +246,40 @@ figcaption b { font-size:15px; }
 <section class="concept" data-concept="today" id="cx-today">
   <div class="chead"><div><h2>Today: the panel pushes the list</h2>
     <p>Native <code>LedgerTab.syncRow</code> and <code>history</code> mount the panel inside the Data card, in flow. The web's Sorted by and Orders from panels do the same (<code>panelWrap</code> in <code>src/app.jsx</code>). Not an option: drawn so the jump can be felt.</p></div></div>
-  <div class="frames" data-frames></div>
+  <div class="frames">
+    <figure data-dev="folded" id="focus-today"><div class="fitwrap"><div data-device="iphone-duo-folded"></div></div>
+      <figcaption><b>Folded.</b> Duo folded, 466 x 678 pt. Open Sorted by: Orders from, the Data card and Reset drop by the panel's height.</figcaption><div class="readout" aria-live="polite"></div></figure>
+  </div>
 </section>
 
 <section class="concept" data-concept="laid" id="cx-laid">
   <div class="chead"><div><h2>Laid sheet</h2>
     <p>The panel is a sheet of paper laid on the list, hanging from the row you tapped. The rows under it stay where they were. Near the bottom it hangs upward instead, so the row you tapped stays in sight. A tap anywhere outside closes it and presses nothing. On the open Duo the Ledger takes both pages, and a sheet stays on its own page.</p></div></div>
-  <div class="frames" data-frames></div>
+  <div class="frames">
+    <figure data-dev="folded" id="focus-laid"><div class="fitwrap"><div data-device="iphone-duo-folded"></div></div>
+      <figcaption><b>Folded.</b> Duo folded, 466 x 678 pt.</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="open"><div class="fitwrap"><div data-device="iphone-duo-unfolded"></div></div>
+      <figcaption><b>Open.</b> Duo open, 951 x 669 pt. The Ledger takes both pages; nothing crosses the fold.</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="phone"><div class="fitwrap"><div data-device="iphone-regular"></div></div>
+      <figcaption><b>Large phone.</b> Drawn at 375 x 812 pt, the one phone size this repo writes (see notes).</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="ax5"><div class="fitwrap"><div data-device="iphone-duo-folded" data-text-size="AX5"></div></div>
+      <figcaption><b>Folded, AX5.</b> The biggest accessibility text size. History hangs upward from its row.</figcaption><div class="readout" aria-live="polite"></div></figure>
+  </div>
 </section>
 
 <section class="concept" data-concept="dock" id="cx-dock">
   <div class="chead"><div><h2>Facing page (bold)</h2>
     <p>On one screen the panel rises from the bottom edge, above the tab bar, where the thumb already is. Swipe it down, tap Done, or tap outside. On the open Duo there is no overlay at all: the left page holds the rows and the right page becomes the open panel, like the facing page of a ledger. Nothing on the left page is ever covered.</p></div></div>
-  <div class="frames" data-frames></div>
+  <div class="frames">
+    <figure data-dev="folded" id="focus-dock"><div class="fitwrap"><div data-device="iphone-duo-folded"></div></div>
+      <figcaption><b>Folded.</b> Duo folded, 466 x 678 pt.</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="open"><div class="fitwrap"><div data-device="iphone-duo-unfolded"></div></div>
+      <figcaption><b>Open.</b> Duo open, 951 x 669 pt. The right page is the panel; the left page is never covered.</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="phone"><div class="fitwrap"><div data-device="iphone-regular"></div></div>
+      <figcaption><b>Large phone.</b> Drawn at 375 x 812 pt, the one phone size this repo writes (see notes).</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="ax5"><div class="fitwrap"><div data-device="iphone-duo-folded" data-text-size="AX5"></div></div>
+      <figcaption><b>Folded, AX5.</b> The biggest accessibility text size. The dock grows to 78% of the screen and scrolls inside.</figcaption><div class="readout" aria-live="polite"></div></figure>
+  </div>
 </section>
 </main>
 
@@ -274,13 +301,6 @@ figcaption b { font-size:15px; }
   const TITLES = { sort:"Sorted by", range:"Orders from", history:"History", sync:"Sync" };
   const DEV = { folded:{ cls:"folded", w:466, h:678, data:"iphone-duo-folded" }, ax5:{ cls:"folded", w:466, h:678, data:"iphone-duo-folded" },
                 open:{ cls:"open", w:951, h:669, data:"iphone-duo-unfolded" }, phone:{ cls:"phone", w:375, h:812, data:"iphone-regular" } };
-  const CAPS = {
-    today:{ folded:"Duo folded, 466 x 678 pt. Open Sorted by or Sync: the Data card and Reset drop by the panel's height." },
-    laid:{ folded:"Duo folded, 466 x 678 pt.", open:"Duo open, 951 x 669 pt. The Ledger takes both pages; nothing crosses the fold.",
-           phone:"Large phone, drawn at 375 x 812 pt (see notes: its size is not written).", ax5:"Duo folded at AX5, the biggest accessibility text size. History hangs upward from its row." },
-    dock:{ folded:"Duo folded, 466 x 678 pt.", open:"Duo open, 951 x 669 pt. The right page is the panel; the left page is never covered.",
-           phone:"Large phone, drawn at 375 x 812 pt (see notes: its size is not written).", ax5:"Duo folded at AX5, the biggest accessibility text size." },
-  };
   const LAYOUT = { today:["folded"], laid:["folded","open","phone","ax5"], dock:["folded","open","phone","ax5"] };
   const opts = { tags:true, veil:false, square:false };
   const frames = [];
@@ -352,7 +372,7 @@ figcaption b { font-size:15px; }
     return "";
   }
   const arrive = (f, dir) => f.st.just ? ` arr-${dir}` : "";
-  const panelFlow = (f, id) => `<div class="panel${arrive(f, "fade")}" data-panel${tag("today","Today: in the card, pushes the rows")}>${body(f, id)}</div>`;
+  const panelFlow = (f, id) => `<div class="panel flow${arrive(f, "fade")}" data-panel${tag("today","Today: in the card, pushes the rows")}>${body(f, id)}</div>`;
   const panelLaid = (f) => `<div class="panel laid${opts.square ? " square" : ""}" data-panel data-anchor="${f.st.open}" role="dialog" aria-label="${TITLES[f.st.open]}"${tag("new","New: laid over the rows")}>${body(f, f.st.open)}</div>`;
   const dock = (f) => `<div class="dock${arrive(f, "up")}" data-panel role="dialog" aria-label="${TITLES[f.st.open]}"${tag("new","New: docked at the thumb")}>`
     + `<div class="dhead" data-drag><span class="grab" aria-hidden="true"></span><div class="hrow"><span class="ht">${TITLES[f.st.open]}</span>`
@@ -394,8 +414,8 @@ figcaption b { font-size:15px; }
     });
     return out;
   }
-  function render(f, { keepScroll = true } = {}) {
-    const before = f.el.isConnected && f.el.firstChild ? measure(f) : null;
+  function render(f, { keepScroll = true, tap = false } = {}) {
+    const before = tap && f.el.firstChild ? measure(f) : null;
     const scrolls = keepScroll ? [...f.el.querySelectorAll(".scroll")].map((e) => e.scrollTop) : [];
     const pb = f.el.querySelector(".dbody, .panel.laid");
     const pScroll = pb ? pb.scrollTop : 0;
@@ -459,7 +479,7 @@ figcaption b { font-size:15px; }
       default: f.lastTap = "a row that opens nothing"; break;
     }
     st.just = !!st.open && st.open !== was;
-    render(f);
+    render(f, { tap:true });
     if (st.just !== undefined) {
       const target = st.open && st.open !== was ? f.el.querySelector("[data-panel] button") : !st.open && was ? f.el.querySelector(`[data-row="${was}"]`) : null;
       if (target) target.focus({ preventScroll:true });
@@ -497,18 +517,12 @@ figcaption b { font-size:15px; }
   function build(hash) {
     frames.length = 0;
     for (const c of Object.keys(LAYOUT)) {
-      const holder = document.querySelector(`#cx-${c} [data-frames]`); holder.innerHTML = "";
       for (const dev of LAYOUT[c]) {
-        const fig = document.createElement("figure");
-        fig.dataset.dev = dev;
-        if (dev === "folded") fig.id = `focus-${c}`;
-        const wrap = document.createElement("div"); wrap.className = "fitwrap";
-        const el = document.createElement("div"); el.setAttribute("data-device", DEV[dev].data);
-        if (dev === "ax5") el.setAttribute("data-text-size", "AX5");
-        wrap.appendChild(el);
-        const cap = document.createElement("figcaption"); cap.innerHTML = `<b>${({folded:"Folded",open:"Open",phone:"Large phone",ax5:"Folded, AX5"})[dev]}.</b> ${CAPS[c][dev]}`;
-        const read = document.createElement("div"); read.className = "readout"; read.setAttribute("aria-live", "polite"); read.textContent = "Tap a row to read what moved.";
-        fig.append(wrap, cap, read); holder.appendChild(fig);
+        // The frames are in the markup (so a static reader finds each device); a fresh copy drops old listeners.
+        const old = document.querySelector(`#cx-${c} figure[data-dev="${dev}"]`);
+        const fig = old.cloneNode(true); old.replaceWith(fig);
+        const wrap = fig.querySelector(".fitwrap"), el = fig.querySelector("[data-device]"), read = fig.querySelector(".readout");
+        read.className = "readout"; read.textContent = "Tap a row to read what moved.";
         const p = hash.p || (c === "today" ? "sort" : dev === "ax5" ? "history" : dev === "open" ? "range" : "sort");
         const f = { concept:c, dev, el, wrap, read, scale:1,
           st:{ open: hash.p === "" ? null : p, sort:"newest", showing:true, range:"90", days:21, month:"Oct 2026", exact:false, ver: (dev === "ax5" && p === "history") ? "v2" : null, armed:false, restored:null, just:false } };

@@ -118,8 +118,9 @@ ul.tags li + li { margin-top:4px; }
 .ifield.focus::after { content:""; flex:0 0 2px; height:1.1em; background:var(--accent); margin-left:1px; animation:blink 1s steps(1) infinite; }
 @keyframes blink { 50% { opacity:0; } }
 @media (prefers-reduced-motion: reduce) { .ifield.focus::after { animation:none; } }
+.lines > *, .sugg > *, .pscroll > *, .pile > * { flex-shrink:0; }
 .sugg { display:flex; flex-direction:column; background:var(--paper); border:1px solid var(--line); border-radius:8px; overflow:hidden; box-shadow:0 -4px 12px var(--shadow); }
-.sugg button { all:unset; box-sizing:border-box; cursor:pointer; display:flex; align-items:center; gap:8px; min-height:44px; padding:6px 12px 6px 16px;
+.sugg button { all:unset; flex-shrink:0; box-sizing:border-box; cursor:pointer; display:flex; align-items:center; gap:8px; min-height:44px; padding:6px 12px 6px 16px;
   border-top:1px solid var(--line); position:relative; background:var(--card); }
 .sugg button:first-child { border-top:0; }
 .sugg button .nm { flex:1; font:calc(14px * var(--m)) / 1.2 var(--cochin); color:var(--inkSoft); overflow-wrap:anywhere; }
@@ -197,9 +198,14 @@ ul.tags li + li { margin-top:4px; }
 .bar { display:grid; grid-template-columns:auto auto 1fr 1.3fr; gap:8px; padding:4px 16px 8px; align-items:center; }
 .bar .num { font-size:calc(12px * var(--mc)); white-space:nowrap; }
 .bar.armed .confirm { grid-column:1 / span 2; }
+/* At AX sizes the count leaves the bar for the running head, and Save takes a full row under the two small presses. */
+.rhead .axcount { display:none; font:calc(12px * var(--mc)) var(--mono); white-space:nowrap; }
+.dev.ax .rhead .axcount { display:inline; }
+.dev.ax .rhead .kick { display:none; }
 .dev.ax .bar { grid-template-columns:1fr 1fr; }
-.dev.ax .bar .num { grid-column:1 / -1; }
-.dev.ax .bar.armed .confirm { grid-column:1 / -1; }
+.dev.ax .bar .num { display:none; }
+.dev.ax .bar .save { grid-column:1 / -1; }
+.dev.ax .bar.armed .confirm { grid-column:1 / 2; }
 .pill { flex:0 0 auto; margin:8px 16px; }
 
 /* ---------------- today ---------------- */
@@ -208,7 +214,7 @@ ul.tags li + li { margin-top:4px; }
 .tfoot .num { flex:1; font-size:11px; color:var(--inkSoft); }
 
 /* ---------------- tags: dashed outline on what exists today, and on what a concept adds ---------------- */
-[data-tag] { position:relative; }
+:where([data-tag]) { position:relative; } /* zero weight, so a panel's own position:absolute wins */
 .tagged [data-tag]::after { content:attr(data-tag); position:absolute; right:6px; top:2px; font:600 10.5px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
   background:var(--paper); z-index:12; white-space:nowrap; pointer-events:none; }
 .tagged .tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .tagged .tag-new::after { color:var(--new); }
@@ -260,7 +266,12 @@ ul.tags li + li { margin-top:4px; }
     <button type="button" class="hidebtn" data-hide="dock">Hide Thumb dock</button>
   </div>
   <p>The composer becomes its own page. The envelope head is pinned at the top and never moves. The card-name field docks at the bottom like a message field, matches stack upward from it, and Save, Cancel and Throw away sit in one strip on the keys. The throw-away ask rises up from the strip, so it can never reach the head.</p>
-  <div class="frames" data-frames="dock"></div>
+  <div class="frames" data-frames="dock">
+    <div class="fcell" data-dev="folded"><div class="fit"><div class="dev" data-device="iphone-duo-folded" id="dock-choice"></div></div><div class="cap"></div></div>
+    <div class="fcell" data-dev="ax"><div class="fit"><div class="dev" data-device="iphone-duo-folded"></div></div><div class="cap"></div></div>
+    <div class="fcell" data-dev="open"><div class="fit"><div class="dev" data-device="iphone-duo-unfolded"></div></div><div class="cap"></div></div>
+    <div class="fcell" data-dev="phone"><div class="fit"><div class="dev" data-device="iphone-large"></div></div><div class="cap"></div></div>
+  </div>
   <ul class="tags">
     <li>New: pinned envelope head, with the card count in it (the count shows once, here).</li>
     <li>New: field and matches docked on the keys; matches overlay the list, so no line moves when they open.</li>
@@ -277,7 +288,12 @@ ul.tags li + li { margin-top:4px; }
     <button type="button" class="hidebtn" data-hide="pinned">Hide Pinned head and shelf</button>
   </div>
   <p>The composer stays in the Orphaned list, as today. When it opens, its head takes over the running head and stays pinned. Matches turn into a shelf of chips right above the keys, beside one glass bar with the count, Cancel, Throw away and Save. The throw-away ask arms inside the bar itself.</p>
-  <div class="frames" data-frames="pinned"></div>
+  <div class="frames" data-frames="pinned">
+    <div class="fcell" data-dev="folded"><div class="fit"><div class="dev" data-device="iphone-duo-folded" id="pinned-choice"></div></div><div class="cap"></div></div>
+    <div class="fcell" data-dev="ax"><div class="fit"><div class="dev" data-device="iphone-duo-folded"></div></div><div class="cap"></div></div>
+    <div class="fcell" data-dev="open"><div class="fit"><div class="dev" data-device="iphone-duo-unfolded"></div></div><div class="cap"></div></div>
+    <div class="fcell" data-dev="phone"><div class="fit"><div class="dev" data-device="iphone-large"></div></div><div class="cap"></div></div>
+  </div>
   <ul class="tags">
     <li>New: the running head names the envelope while the composer is open.</li>
     <li>New: matches as a sideways shelf of chips over the keys, in the spot the thumb already types from.</li>
@@ -293,7 +309,10 @@ ul.tags li + li { margin-top:4px; }
     <button type="button" class="hidebtn" data-hide="today">Hide Today</button>
   </div>
   <p>Today the composer sits in the list under the masthead. On focus the page scrolls to the Save row, so the head scrolls off the top; the keys cover the tab bar; and Cancel is the only way out of a new draft that is not Save.</p>
-  <div class="frames" data-frames="today"></div>
+  <div class="frames" data-frames="today">
+    <div class="fcell" data-dev="folded"><div class="fit"><div class="dev" data-device="iphone-duo-folded"></div></div><div class="cap"></div></div>
+    <div class="fcell" data-dev="open"><div class="fit"><div class="dev" data-device="iphone-duo-unfolded"></div></div><div class="cap"></div></div>
+  </div>
 </section>
 </main>
 
@@ -459,7 +478,7 @@ function dockInput(f, side) {
   const ask = st.armed ? `<div class="raise tag-new" data-tag="New: ask rises, never covers the head" role="alertdialog" aria-label="Throw away this draft?">
       <p>${isNew ? "Throw away this draft? It will not come back." : "Throw away these edits? The saved envelope stays."}</p>
       <button type="button" class="btn confirm" data-act="confirm">Throw away ${cardsOf(n)}</button></div>` : "";
-  const strip = `<div class="strip${HAND === "left" ? " left" : ""} tag-new" data-tag="New: thumb strip" id="${f.first ? "dock-strip" : ""}">
+  const strip = `<div class="strip${HAND === "left" ? " left" : ""} tag-new" data-tag="New: thumb strip" ${f.first ? 'id="dock-strip"' : ""}>
       <button type="button" class="btn ${st.armed ? "keep" : "throw"}" data-act="arm" data-focus="${st.armed ? "keep" : "arm"}">${st.armed ? "Keep" : "Throw away"}</button>
       <button type="button" class="btn" data-act="cancel" ${st.armed ? 'aria-disabled="true"' : ""}>Cancel</button>${save}${ask}</div>`;
   return { sugg, tail: `<div class="dock">${field}</div>${strip}` };
@@ -468,7 +487,7 @@ function dockHead(f) {
   const st = f.st; const n = cards(st.entries); const h = headTitle(st);
   return `<div class="dhead tag-new" data-tag="New: pinned head" ${f.first ? 'id="dock-head"' : ""}><span class="glyph" aria-hidden="true"></span>
     <div class="id"><span class="kick">${h.kick}</span><strong>${esc(h.title)}</strong></div>
-    <span class="cnt${n ? " ready" : ""}" id="${f.first ? "composer-count" : ""}" aria-label="${cardsOf(n)} in this envelope">${cardsOf(n)}</span></div>`;
+    <span class="cnt${n ? " ready" : ""}" ${f.first ? 'id="composer-count"' : ""} aria-label="${cardsOf(n)} in this envelope">${cardsOf(n)}</span></div>`;
 }
 function dockLines(f, withExtras) {
   const st = f.st;
@@ -478,7 +497,7 @@ function dockLines(f, withExtras) {
 function dockClosed(f) {
   const st = f.st;
   const sub = st.kept ? `<small>Draft kept · ${cardsOf(st.kept)}</small>` : "";
-  return `<div class="mast"><b>MANIFEST</b><span class="kick">Orphaned</span></div>
+  return `<div class="mast"><b>MANIFEST</b></div>
     <div class="pile">${envCards(st)}</div>${receiptLine(st)}
     <div class="fab tag-new" data-tag="New: record from the thumb"><button type="button" class="btn" data-act="record" data-focus="record">+ Record an envelope${sub}</button></div>`;
 }
@@ -487,7 +506,7 @@ function renderDock(f, g) {
   if (d.fold) {
     const L = { x: 0, w: d.fold[0] }, R = { x: d.fold[1], w: d.W - d.fold[1] };
     const [thumb, other] = HAND === "left" ? [L, R] : [R, L];
-    if (!st.open) return page(L, g.top, g.bottomTab, `<div class="mast"><b>MANIFEST</b><span class="kick">Orphaned</span></div><div class="pile">${envCards(st)}</div>`)
+    if (!st.open) return page(L, g.top, g.bottomTab, `<div class="mast"><b>MANIFEST</b></div><div class="pile">${envCards(st)}</div>`)
       + page(R, g.top, g.bottomTab, `<div class="pile"></div>${receiptLine(st)}<div class="fab tag-new" data-tag="New: record from the thumb"><button type="button" class="btn" data-act="record">+ Record an envelope${st.kept ? `<small>Draft kept · ${cardsOf(st.kept)}</small>` : ""}</button></div>`);
     const io = dockInput(f);
     const headPage = page(other, g.top, g.bottom, dockHead(f) + dockLines(f, true));
@@ -513,14 +532,15 @@ function pinnedBand(f) {
     ? `<div class="bar armed tag-new" data-tag="New: arms in the bar" role="group" aria-label="Throw away this draft?">
         <button type="button" class="btn confirm" data-act="confirm">Throw away ${cardsOf(n)}</button>
         <button type="button" class="btn keep" data-act="keep" data-focus="keep">Keep</button>${save}</div>`
-    : `<div class="bar" ${f.first ? 'id="pinned-bar"' : ""}><span class="num" id="${f.first ? "composer-count-p" : ""}">${cardsOf(n)}</span>
+    : `<div class="bar" ${f.first ? 'id="pinned-bar"' : ""}><span class="num" ${f.first ? 'id="composer-count-p"' : ""}>${cardsOf(n)}</span>
         <button type="button" class="btn" data-act="cancel">Cancel</button>
         <button type="button" class="btn throw" data-act="arm" data-focus="arm">Throw away</button>${save}</div>`;
   return `<div class="band tag-new" data-tag="New: shelf and bar"><div class="shelf" role="listbox" aria-label="Matches">${chips}</div>${bar}</div>`;
 }
 function pinnedHead(f) {
   const h = headTitle(f.st);
-  return `<div class="rhead tag-new" data-tag="New: head stays pinned" ${f.first ? 'id="pinned-head"' : ""}><strong>${esc(h.title)}</strong><span class="kick">${h.kick} · Orphaned</span></div>`;
+  const n = cards(f.st.entries);
+  return `<div class="rhead tag-new" data-tag="New: head stays pinned" ${f.first ? 'id="pinned-head"' : ""}><strong>${esc(h.title)}</strong><span class="kick">${h.kick}</span>${f.dev.ax ? `<span class="axcount">${cardsOf(n)}</span>` : ""}</div>`;
 }
 function pinnedComposer(f) {
   const st = f.st;
@@ -529,7 +549,7 @@ function pinnedComposer(f) {
 }
 function pinnedClosed(f) {
   const st = f.st;
-  return `<div class="mast"><b>MANIFEST</b><span class="kick">Orphaned</span></div><div class="pile">
+  return `<div class="mast"><b>MANIFEST</b></div><div class="pile">
     <button type="button" class="btn save tag-today" data-tag="Today: record at the top" data-act="record" data-focus="record" style="min-height:48px;font:700 15px var(--cochin)">+ Record an envelope${st.kept ? ` · draft kept, ${cardsOf(st.kept)}` : ""}</button>
     ${receiptLine(st)}${envCards(st)}</div>`;
 }
@@ -573,16 +593,12 @@ function render(f) {
   f.el.innerHTML = statusBar() + body + fold + tab + (keysUp ? keyboard(f, d.keysH) + guide : "");
   if (f.focusAfter) { const b = f.el.querySelector(`[data-focus="${f.focusAfter}"]`); if (b) b.focus({ preventScroll: true }); }
 }
-function makeFrame(host, concept, key, first) {
-  const d = DEV[key];
-  const cell = document.createElement("div"); cell.className = "fcell"; cell.dataset.dev = key;
-  const fit = document.createElement("div"); fit.className = "fit";
-  const el = document.createElement("div"); el.className = "dev"; el.dataset.device = d.id;
+function makeFrame(cell, concept, first) {
+  const key = cell.dataset.dev, d = DEV[key];
+  const fit = cell.querySelector(".fit"), el = cell.querySelector(".dev");
   el.style.width = d.W + "px"; el.style.height = d.H + "px"; el.setAttribute("role", "group");
   el.setAttribute("aria-label", `${concept} on ${key}`);
-  fit.appendChild(el); cell.appendChild(fit);
-  const cap = document.createElement("div"); cap.className = "cap"; cap.innerHTML = `<b>${{ folded: "Duo folded", ax: "Folded, AX5", open: "Duo open", phone: "Large phone (stand-in)" }[key]}.</b> ${d.label}`;
-  cell.appendChild(cap); host.appendChild(cell);
+  cell.querySelector(".cap").innerHTML = `<b>${{ folded: "Duo folded", ax: "Folded, AX5", open: "Duo open", phone: "Large phone (stand-in)" }[key]}.</b> ${d.label}`;
   const f = { el, fit, cell, dev: d, concept, key, first, st: preset(PRESET) };
   el.addEventListener("click", (e) => {
     const t = e.target.closest("[data-act]"); if (!t || !el.contains(t) || t.getAttribute("aria-disabled") === "true") return;
@@ -606,10 +622,8 @@ function fitAll() {
 }
 
 /* ---------- build ---------- */
-const ORDER = ["folded", "ax", "open", "phone"];
 for (const c of ["dock", "pinned", "today"]) {
-  const host = document.querySelector(`[data-frames="${c}"]`);
-  (c === "today" ? ["folded", "open"] : ORDER).forEach((k, i) => makeFrame(host, c, k, i === 0));
+  document.querySelectorAll(`[data-frames="${c}"] .fcell`).forEach((cell, i) => makeFrame(cell, c, i === 0));
 }
 const cnav = document.getElementById("nav-concepts");
 for (const s of document.querySelectorAll("section.concept")) {

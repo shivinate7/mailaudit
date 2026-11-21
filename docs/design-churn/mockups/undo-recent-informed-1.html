@@ -58,7 +58,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   --row-h: 72px; --head-h: 28px; --f-lab: 10px; --lh-lab: 14px; --f-name: 16px; --lh-name: 22px;
   --f-sell: 13.5px; --lh-sell: 18px; --f-undo: 11px; --cell-w: 72px; --fx-w: 76px; --f-fx: 16px;
   --f-lt: 20px; --f-lv: 14px; --f-ls: 13.5px; --lrow-min: 52px; --f-grp: 11px; --f-mh: 30px; }
-.frame.web { border-radius: 4px; }
+.frame.web { border-radius: 4px; --fx-w: 56px; }
 .status { position: absolute; left: 0; right: 0; top: 0; height: var(--sat); z-index: 9; display: flex; align-items: center;
   justify-content: space-between; padding: 0 20px; font-size: 12px; font-weight: 600; background: var(--paper); }
 .scroller { position: absolute; left: 0; right: 0; top: var(--sat); bottom: 0; overflow-y: auto; overscroll-behavior: auto; }
@@ -142,7 +142,7 @@ body.c-daybook .rr .fx { display: flex; flex: 0 0 var(--fx-w); flex-direction: c
 .fx .now { color: var(--ink); }
 .fx .of { font-size: var(--f-lab); letter-spacing: .12em; color: var(--inkSoft); }
 body.c-daybook .rr > .r { border-left: 3px double var(--line); }
-.slip { position: absolute; z-index: 6; left: 16px; right: 16px; display: flex; flex-direction: column; background: var(--paper);
+.slip { position: absolute; z-index: 8; left: 16px; right: 16px; display: flex; flex-direction: column; background: var(--paper);
   border: 1px solid var(--line); box-shadow: 0 10px 28px rgba(28,43,36,.12); padding: 0 8px; }
 .slip.down { border-top: 0; border-radius: 0 0 8px 8px; }
 .slip.up { border-bottom: 0; border-radius: 8px 8px 0 0; }
@@ -219,6 +219,7 @@ body.ann [data-ann]::after { content: attr(data-ann); position: absolute; z-inde
 body.ann [data-ann].new::after { color: var(--accent); }
 body.ann .rr[data-ann]::after { top: auto; bottom: 2px; right: auto; left: 4px; }
 body.ann .frame.ax-grow [data-ann]::after { font-size: 12px; }
+.lost { margin: 0; padding: 48px 24px; font-family: var(--cochin); font-size: 17px; color: var(--inkSoft); }
 .flash { position: absolute; z-index: 12; left: 50%; transform: translateX(-50%); bottom: 96px; padding: 6px 10px; border-radius: 6px;
   background: var(--ink); color: var(--card); font-family: var(--mono); font-size: 11px; pointer-events: none; opacity: 0; transition: opacity 160ms; }
 .flash.on { opacity: 1; }
@@ -273,10 +274,10 @@ body.ann .frame.ax-grow [data-ann]::after { font-size: 12px; }
 </div>
 
 <div class="stage" id="stage">
-  <section class="dev" data-d="folded" id="dev-folded"><div class="cap"><b>Duo, folded.</b> 466 x 678 pt, from the brief and measurements duo-fold-and-keyboard. Tab bar from y 595 (measured). Status bar 20 pt, drawn.</div><div class="fit"></div></section>
-  <section class="dev wide" data-d="open" id="dev-open"><div class="cap"><b>Duo, open.</b> 951 x 669 pt, fold 455.5 to 495.5 pt. Nothing sits across the fold. Custom bar under the right page: pill 64 pt, lifted 12 pt (DuoBarMetrics).</div><div class="fit"></div></section>
-  <section class="dev" data-d="ax5" id="dev-ax5"><div class="cap"><b>Duo, folded, largest text (AX5).</b> Page scrolled by the person so Recent sits near the top. Sizes from Apple's AX5 and xxxLarge tables.</div><div class="fit"></div></section>
-  <section class="dev" data-d="web" id="dev-web"><div class="cap"><b>Large phone, web client.</b> Drawn at 375 x 812, the screens-check viewport (test/screens.mjs): no size is written for this phone. Web bar from y 736 (debt recent-undo-under-bar).</div><div class="fit"></div></section>
+  <section class="dev" data-d="folded" id="dev-folded"><div class="cap"><b>Duo, folded.</b> 466 x 678 pt, from the brief and measurements duo-fold-and-keyboard. Tab bar from y 595 (measured). Status bar 20 pt, drawn.</div><div class="fit"><div class="frame" data-device="iphone-duo-folded" style="width:466px;height:678px"><p class="lost">This frame draws with script. Turn script on to see it.</p></div></div></section>
+  <section class="dev wide" data-d="open" id="dev-open"><div class="cap"><b>Duo, open.</b> 951 x 669 pt, fold 455.5 to 495.5 pt. Nothing sits across the fold. Custom bar under the right page: pill 64 pt, lifted 12 pt (DuoBarMetrics).</div><div class="fit"><div class="frame" data-device="iphone-duo-unfolded" style="width:951px;height:669px"><p class="lost">This frame draws with script. Turn script on to see it.</p></div></div></section>
+  <section class="dev" data-d="ax5" id="dev-ax5"><div class="cap"><b>Duo, folded, largest text (AX5).</b> Page scrolled by the person so Recent sits near the top. Sizes from Apple's AX5 and xxxLarge tables.</div><div class="fit"><div class="frame" data-device="iphone-duo-folded" style="width:466px;height:678px"><p class="lost">This frame draws with script. Turn script on to see it.</p></div></div></section>
+  <section class="dev" data-d="web" id="dev-web"><div class="cap"><b>Large phone, web client.</b> Drawn at 375 x 812, the screens-check viewport (test/screens.mjs): no size is written for this phone. Web bar from y 736 (debt recent-undo-under-bar).</div><div class="fit"><div class="frame web" data-device="iphone-regular" style="width:375px;height:812px"><p class="lost">This frame draws with script. Turn script on to see it.</p></div></div></section>
 </div>
 
 <script>
@@ -370,8 +371,7 @@ function rowHTML(r, fk) {
   const f = figure(r, st);
   const subj = r.pkg ? `${r.name}, ${r.ord} order` : r.name;
   const ord = r.pkg || r.env || !r.ord ? "" : `<span class="od">, order of ${esc(r.ord)}</span>`;
-  const isNew = fk !== "web";
-  const ann = r.id === "r1" ? ` data-ann="${isNew ? "New: Recent row (native)" : "Today: Recent row"}" class="rr${st === "undone" ? " undone" : ""}${isNew ? " new" : ""}"` : ` class="rr${st === "undone" ? " undone" : ""}"`;
+  const ann = ` class="rr${st === "undone" ? " undone" : ""}"`;
   const right = st === "live"
     ? `<button class="undo" data-undo="${r.id}" id="undo-${r.id}-${fk}" aria-label="Undo ${esc(r.label.toLowerCase())} ${esc(subj)}, ${esc(r.sell)}"><span>UNDO</span></button>`
     : endHTML(st, r);
@@ -409,7 +409,7 @@ function recentRow(fk, pickedRight) {
 }
 function bounded(fk) {
   if (!open || !entryLive) return "";
-  return `<div class="rp new" id="panel-${fk}" data-ann="New: list stops above the bar"><div class="rl" tabindex="0" aria-label="Recent actions" id="list-${fk}">${listHTML(fk)}</div></div>`;
+  return `<div class="rp new" id="panel-${fk}" data-ann="${fk === "web" ? "Today: panel. New: stops above the bar" : "New: list stops above the bar"}"><div class="rl" tabindex="0" aria-label="Recent actions" id="list-${fk}">${listHTML(fk)}</div></div>`;
 }
 function dataCard(fk, opts = {}) {
   const inflow = S.c === "bounded" && opts.panel !== false;
@@ -421,6 +421,11 @@ function dataCard(fk, opts = {}) {
     <button class="lrow" data-act="backup"><span class="t">Backup</span></button>
   </div>`;
 }
+/* The web Ledger tab's View group (src/app.jsx, "Ledger options"), so Recent sits where a seeded ledger puts it, near y 509. */
+const viewCard = () => `<div class="lg">VIEW</div><div class="card" data-ann="Today: View group, abridged">
+  <button class="lrow" data-act="showing" style="border-top:0"><span class="t">Showing</span><span class="v">● Unreceived</span></button>
+  <button class="lrow" data-act="sorted"><span class="t">Sorted by</span><span class="v">Order date</span><span class="cr" aria-hidden="true">›</span></button>
+  <button class="lrow" data-act="dates"><span class="t">Dates</span><span class="v">All</span><span class="cr" aria-hidden="true">›</span></button></div>`;
 const resetBox = () => `<div class="card reset"><button class="lrow" data-act="reset"><span class="t">Reset all check-ins</span></button></div>`;
 const status = () => `<div class="status" aria-hidden="true"><span>9:41</span><span>●●●</span></div>`;
 function tabBar(kind) {
@@ -440,7 +445,7 @@ function frameHTML(fk) {
   return `<div class="${cls}" style="width:${F.w}px;height:${F.h}px" data-device="${F.device}" data-fk="${fk}" id="frame-${fk}">
     ${status()}
     <div class="scroller${slip ? " locked" : ""}" id="scroller-${fk}"><div class="pg">
-      ${masthead()}<div class="lh">LEDGER</div>${dataCard(fk)}${resetBox()}
+      ${masthead()}<div class="lh">LEDGER</div>${fk === "web" ? viewCard() : ""}${dataCard(fk)}${resetBox()}
     </div></div>
     ${slip}${bar}
     ${F.kind === "web" ? "" : `<div class="home-ind" style="left:${(F.w - 134) / 2}px"></div>`}
@@ -497,7 +502,9 @@ function layout(fk) {
     if (!list) return;
     /* Read once, at open: the list stops GAP above the bar, never above the 360 cap. */
     const room = F.barTop - GAP - rel(list, frame).top - 8;
-    const h = Math.min(PANEL_MAX, room);
+    /* The 360 pt cap holds one heading and four rows at the default size. At AX5 one row alone is 340 pt,
+       so the cap never drops below one heading and one row. */
+    const h = Math.min(Math.max(PANEL_MAX, headPx(frame) + rowPx(frame)), room);
     const short = h < headPx(frame) + rowPx(frame);
     list.style.maxHeight = Math.max(h, 0) + "px";
     if (short) note(`Bounded panel, ${fk}: only ${Math.round(Math.max(h, 0))} pt fit above the bar, less than one heading and one row. Scroll the page first. See notes item 4.`);

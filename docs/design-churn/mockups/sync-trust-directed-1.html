@@ -64,7 +64,7 @@ h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
 
 /* ---------- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---------- */
 .app { font-family:var(--cochin); color:var(--ink); line-height:normal; }
-.app button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; text-align:inherit; }
+:where(.app) button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; text-align:inherit; }
 .mh { padding:12px 24px 0; display:flex; flex-direction:column; align-items:center; }
 .sealrow { width:100%; max-width:270px; display:flex; align-items:center; gap:12px; padding-bottom:12px; position:relative; }
 .sealrow .rule { flex:1; height:1px; background:var(--gold); opacity:.75; }
@@ -194,7 +194,8 @@ details.mach code { font-family:var(--mono); font-size:calc(11px * var(--rc)); w
 .toast { position:absolute; left:16px; right:16px; bottom:100px; background:var(--ink); color:var(--card); border-radius:10px; padding:10px 12px; font-size:13px; z-index:13; font-family:-apple-system, system-ui, sans-serif; }
 
 /* ---------- tags: dashed outline on what exists today, and on what an option adds ---------- */
-[data-tag] { position:relative; }
+:where([data-tag]) { position:relative; }
+.seal.tag-new::before, .seal.tag-today::before { right:auto; left:calc(100% + 8px); top:14px; }
 .tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-today { outline:2px dashed var(--today); outline-offset:2px; }
 .tag-new::before, .tag-today::before { content:attr(data-tag); position:absolute; right:2px; top:-15px; font:600 10.5px/13px -apple-system, system-ui, sans-serif;
   padding:0 4px; background:var(--paper); z-index:6; white-space:nowrap; letter-spacing:0; text-transform:none; pointer-events:none; }
@@ -213,8 +214,10 @@ body.notags [data-tag] { outline:none; } body.notags [data-tag]::before { displa
 .ax5 .house { font-size:min(calc(10px * var(--rc)), 18px); }
 .ax5 .ph { flex-wrap:wrap; } .ax5 .ln { flex-wrap:wrap; padding:6px 12px 6px 4px; }
 .ax5 .sec h3, .ax5 .cell .lb { letter-spacing:.04em; }
+.ax5 .verdict { flex-direction:column; } /* ViewThatFits: the seal goes above the words at accessibility sizes */
+.ax5 .part { flex-direction:column; gap:2px; }
 @media (prefers-reduced-motion: no-preference) {
-  .ribbon { transform-origin:50% 0; animation:hang 420ms ease-out both; }
+  .ribbon { transform-box:fill-box; transform-origin:50% 0; animation:hang 420ms ease-out both; }
   @keyframes hang { from { transform:scaleY(0); } to { transform:scaleY(1); } }
 }
 </style>
@@ -225,7 +228,7 @@ body.notags [data-tag] { outline:none; } body.notags [data-tag]::before { displa
 <h1>Sync trust: one mark, detail on demand</h1>
 <p class="kind">Designer kind: directed · Direction: quiet confidence: a single always-visible trust mark; detail only on demand · sync-trust-directed-1</p>
 <p class="sub">The job: "Did my phone and my laptop actually agree?" Every working screen carries one mark in the letterhead. It never speaks while all is well, it changes shape when something is not normal, and a tap opens the whole account: when this device last matched the sync server, what the last merge brought in, what it took away, and where the losing copy is kept. Two concepts carry the mark. Each frame below is live: tap the mark, the tabs, the rows in the detail, and the check boxes on Tally.</p>
-<p class="pick"><b>Pick: The Seal.</b> The letterhead already has a wax seal, and a seal is what people read as "this has been checked and closed". Making it the mark adds no new element to the working screens, and its broken shape for "not agreed" reads without words. The countersign is the fallback if the owner wants the time always in view.</p>
+<p class="pick"><b>Pick: The Seal.</b> The letterhead already has a wax seal, and a seal is what people read as "this has been checked and closed". Making it the mark adds no new element to the working screens, and its broken shape for "not synced" reads without words. The countersign is the fallback if the owner wants the time always in view.</p>
 
 <div class="bar-ctl" aria-label="Controls">
   <div class="ctl-row" id="ctl-c"><span>Concept</span></div>
@@ -304,7 +307,7 @@ function hashOf(over) {
   const p = new URLSearchParams();
   p.set("c", v.c); p.set("s", v.s);
   if (v.o) p.set("o", v.o);
-  if (v.tab && v.tab !== "packages") p.set("tab", v.tab);
+  if (v.tab && (v.tab !== "packages" || v.s === "behind")) p.set("tab", v.tab);
   if (v.s === "behind") { p.set("fix", v.fix); if (v.tc) p.set("tc", 1); }
   if (v.seen) p.set("seen", 1);
   if (v.h) p.set("h", v.h);
@@ -347,7 +350,7 @@ function sealSVG(kind) {
       + `</svg>`;
   }
   const rib = kind === "ribbon"
-    ? `<g class="ribbon"><path d="M38 84 L28 128 L37 121 L44 130 L48 88 Z" fill="var(--gold)"/><path d="M62 84 L72 128 L63 121 L56 130 L52 88 Z" fill="var(--gold)" opacity=".85"/></g>` : "";
+    ? `<g class="ribbon"><path d="M34 80 L20 132 L32 124 L41 135 L49 86 Z" fill="var(--gold)" stroke="var(--manilaInk)" stroke-width="1.5" stroke-opacity=".5"/><path d="M66 80 L80 132 L68 124 L59 135 L51 86 Z" fill="var(--gold)" stroke="var(--manilaInk)" stroke-width="1.5" stroke-opacity=".5"/></g>` : "";
   return `<svg viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="wx" cx="37%" cy="30%" r="78%"><stop offset="0" stop-color="var(--waxLit)"/><stop offset=".55" stop-color="var(--wax)"/><stop offset="1" stop-color="var(--waxDeep)"/></radialGradient></defs>`
     + rib + `<path d="${blob}" fill="url(#wx)"/><circle cx="50" cy="50" r="39" fill="none" stroke="var(--waxDeep)" stroke-width="3.5" opacity=".6"/>`
     + `<path d="${relief(0)}" fill="none" stroke="var(--waxCut)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".78"/>`
@@ -377,7 +380,8 @@ function masthead(fid) {
   }
   let cs = "";
   if (S.c === "countersign") {
-    const txt = { whole:`agreed ${AGREED.time}`, ribbon:`merged ${AGREED.time}`, broken: S.s === "stale" ? `agreed ${STALE.day}` : "not agreed", open: S.s === "fresh" ? "not yet agreed" : "re-reading" }[k];
+    /* the words of the Sync panel's Last sync row, so one thing keeps one name (ux-one-plain-name) */
+    const txt = { whole:`synced ${AGREED.time}`, ribbon:`merged ${AGREED.time}`, broken: S.s === "stale" ? `synced ${STALE.day}` : "not synced", open: S.s === "fresh" ? "not synced yet" : "re-reading" }[k];
     const cls = k === "ribbon" ? "merged" : k === "broken" ? "warn" : "";
     cs = `<span class="cs-cell"><button class="cs ${cls}" id="${fid === "folded" ? "mark" : "mark-" + fid}" data-act="mark" aria-label="${esc(markLabel())}"${tag("new","New: countersign")}>${pairGlyph(k)}<span>${txt}</span></button></span>`;
   }
@@ -400,7 +404,7 @@ function advisory() {
   return "";
 }
 
-function pkgList(fid) {
+function pkgList(fid, part) {
   const fixNow = !(S.s === "behind" && S.tc && (S.fix === "today" || !on("reread")));
   let notice = "";
   if (S.s === "kept") {
@@ -408,7 +412,8 @@ function pkgList(fid) {
       ? `<button class="notice route" data-act="kept"${tag("new","New: the notice opens the kept copy")}><span>1 entry could not be read; the original is kept on this device.</span><span class="go">Open</span></button>`
       : `<div class="notice"${tag("today","Today: no route")}>1 entry could not be read; the original is kept on this device.</div>`;
   }
-  const rows = PKGS.map((p) => {
+  const set = part === "l" ? PKGS.slice(0, 2) : part === "r" ? PKGS.slice(2) : PKGS;
+  const rows = set.map((p) => {
     const lines = p.lines.map((l) => {
       let got = l.got;
       if (S.s === "removed" && l.k === "cs-p") got = 0;
@@ -425,6 +430,7 @@ function pkgList(fid) {
   }).join("");
   const failNote = S.s === "behind" && S.tc && S.fix === "fail" && on("reread")
     ? `<div class="notice" style="color:var(--manilaInk)"${tag("new","New: a failed re-read opens the seal")}>These rows could not be read again. The seal holds the fix.</div>` : "";
+  if (part === "r") return `<div class="list" style="margin-top:20px"${tag("new","New: the list goes on here, clear of the fold")}>${rows}</div>`;
   return `<div class="ruled"><span>Stamped</span><span>0</span></div>${advisory()}${notice}${failNote}<div class="list">${rows}</div>`;
 }
 
@@ -445,6 +451,7 @@ function ledgerTab() {
   return `<div class="lgroup"><button class="lrow" aria-expanded="true"><span><span class="t">Sync</span><span class="s">${sub} — tap to close</span></span><span class="v${fixWord ? " fix" : ""}">${fixWord ? "Check" : "On"}</span></button>
     <div class="part"><b>Server</b><span>${S.s === "failed" ? "Could not be reached" : "Connected"}</span></div>
     <div class="part"><b>Last sync</b><span>${S.s === "stale" ? STALE.full : S.s === "fresh" ? "Not yet" : AGREED.full}</span></div>
+    <button class="part" data-act="mark" style="width:100%;min-height:44px;align-items:center"${tag("new","New: second way in to the same detail")}><b>Merges and kept copies</b><span style="color:var(--accent)">Show ›</span></button>
     <div class="lrow"><span><span class="t">History</span><span class="s">Saved versions on this device</span></span><span class="v">Show</span></div>
     <div class="lrow"><span><span class="t">Backup</span><span class="s">Share the ledger as a file</span></span><span class="v">Share</span></div></div>`;
 }
@@ -466,7 +473,7 @@ function verdict() {
   const k = markState();
   const big = k === "broken" || k === "open" ? sealSVG(k) : sealSVG("whole");
   const t = {
-    agreed:["All is well.", `This device matched the sync server at ${AGREED.time}. A device that synced after that shows the same counts.`],
+    agreed:["All is well.", `This device matched the sync server at ${AGREED.time}. Its counts are the ones your other device gets on its next sync.`],
     merged:[`Merged at ${AGREED.time}.`, "The other device's changes came in. Nothing of yours was lost."],
     removed:[`Merged at ${AGREED.time}. One of yours was undone.`, "The other device un-checked a card after you checked it in. Its later change won. Your copy from before the merge is kept."],
     kept:["All is well, with one note.", `This device matched the sync server at ${AGREED.time}. One entry in the ledger could not be read when it opened, and the original file is kept.`],
@@ -482,7 +489,7 @@ function parts() {
   const last = S.s === "stale" ? STALE.full : S.s === "fresh" ? "Not yet" : AGREED.full;
   const srv = S.s === "failed" ? "Could not be reached" : S.s === "fresh" ? "No sync key on this device" : "Connected";
   const other = on("other") && S.s !== "fresh" ? `<div class="part"${tag("new","New: needs the server to keep it")}><b>Other device last synced</b><span>${S.s === "stale" ? "Nov 20, 8:51 PM" : "Nov 20, 9:10 PM"}</span></div>` : "";
-  return `<div class="parts"><div class="part"${tag("today","Today: Last sync row")}><b>Matched the server</b><span>${last}</span></div><div class="part"><b>Server</b><span>${srv}</span></div>${other}</div>`;
+  return `<div class="parts"><div class="part"${tag("today","Today: Last sync row")}><b>Last sync</b><span>${last}</span></div><div class="part"><b>Server</b><span>${srv}</span></div>${other}</div>`;
 }
 function mergeSec() {
   const m = MERGE[S.s === "removed" ? "removed" : "merged"];
@@ -540,11 +547,15 @@ function detail(asPage) {
 }
 
 /* ============ one screen ============ */
-function screenContent(fid) {
+function screenContent(fid, part) {
+  if (part === "r") {
+    if (S.tab === "packages") return pkgList(fid, "r");
+    return `<div class="empty-r"><span class="big">${S.tab === "ledger" ? "Ledger" : S.tab === "tally" ? "Tally" : "Orphaned"}</span><span>This tab's right page is not part of this drawing.</span></div>`;
+  }
   if (S.tab === "tally") return masthead(fid) + tallyList();
   if (S.tab === "ledger") return masthead(fid) + ledgerTab();
   if (S.tab === "orphaned") return masthead(fid) + advisory() + `<div class="list"><div class="notice">2 envelopes waiting.</div></div>`;
-  return masthead(fid) + pkgList(fid);
+  return masthead(fid) + pkgList(fid, part);
 }
 const statusBar = `<div class="status"><span>${NOW.replace(" PM","")}</span><span>●●● ▮</span></div>`;
 
@@ -561,8 +572,8 @@ function draw() {
   const asPage = on("spread");
   let right;
   if (open && asPage) right = detail(true);
-  else right = `<div class="empty-r"${tag("today","Today: Packages spans the fold; not drawn across it")}><span class="big">The rest of the list</span><span>Packages keeps one page today, across the fold. This drawing keeps the fold clear, so the list sits on the left page and this page waits for the detail.</span></div>`;
-  el.innerHTML = `${statusBar}<div class="pg l"><div class="scroll">${screenContent("open")}</div></div><div class="fold"><span>FOLD 40 PT</span></div>`
+  else right = `<div class="scroll">${screenContent("open", "r")}</div>`;
+  el.innerHTML = `${statusBar}<div class="pg l"><div class="scroll">${screenContent("open", "l")}</div></div><div class="fold"><span>FOLD 40 PT</span></div>`
     + `<div class="pg r">${right}${tabbar()}</div>${open && !asPage ? `<div class="pg l" style="z-index:12">${detail(false)}</div>` : ""}`;
   document.querySelectorAll(".dev").forEach(fixTags);
   document.body.classList.toggle("notags", !S.tags);

@@ -37,8 +37,8 @@
 body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
 main { margin:0 auto; padding:16px; max-width:2400px; }
 .banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; max-width:100ch; }
-h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
-h2 { font-family:var(--cochin); font-size:22px; margin:0; }
+h1 { font-size:26px; margin:16px 0 4px; }
+h2 { font-size:22px; margin:0; }
 .sub { color:var(--inkSoft); margin:0 0 8px; max-width:90ch; }
 .kind { font-size:13px; color:var(--inkSoft); }
 nav.bar { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
@@ -62,7 +62,7 @@ section.concept { border-top:1px solid var(--line); padding-top:16px; margin-top
 .scroller { overflow-x:auto; padding:12px 4px 8px; }
 .frames { display:flex; gap:24px; align-items:flex-start; width:max-content; }
 .fcap { font-size:13px; color:var(--inkSoft); margin:0 0 6px; max-width:466px; }
-.fcap b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
+.fcap b { color:var(--ink); font-size:15px; }
 
 /* ---------- devices. 1 CSS px = 1 pt. ---------- */
 .dev { position:relative; overflow:hidden; background:var(--n-paper); color:var(--n-ink); border:1px solid var(--n-ink); line-height:normal;
@@ -76,7 +76,8 @@ section.concept { border-top:1px solid var(--line); padding-top:16px; margin-top
 .page { position:absolute; top:0; bottom:0; overflow:hidden; }
 .dev.open .page.l { left:0; width:455.5px; }
 .dev.open .page.r { left:495.5px; width:455.5px; }
-.dev.open .hinge { position:absolute; left:455.5px; width:40px; top:0; bottom:0; background:repeating-linear-gradient(90deg,#2a2730 0 2px,#3a3640 2px 4px); }
+.dev.open .hinge { position:absolute; left:455.5px; width:40px; top:0; bottom:0; background:#2a2730; }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
 .dev.folded .page, .dev.phone .page { left:0; right:0; }
 .scroll { position:absolute; left:0; right:0; top:0; bottom:83px; overflow-y:auto; padding:calc(env(safe-area-inset-top) + 8px) 16px 16px; display:flex; flex-direction:column; gap:12px; }
 .dev.open .page.l .scroll { bottom:0; }
@@ -156,6 +157,8 @@ section.concept { border-top:1px solid var(--line); padding-top:16px; margin-top
   min-height:44px; position:relative; font:inherit; color:var(--n-ink); flex:0 1 auto; max-width:100%; }
 .docket .g { font-family:var(--mono); font-size:calc(11px * var(--kb)); letter-spacing:0.04em; padding:4px 8px; display:flex; align-items:center; }
 .docket .g + .g { border-left:1px dashed var(--n-line); }
+.docket .g { padding-right:0; } .docket { padding-right:8px; }
+.docket .dash { color:var(--n-inkSoft); padding:0 4px 0 2px; }
 /* the stamp lands on the docket's trailing corner, so it never covers the digits that were just copied */
 .docket .stamp { position:absolute; right:-6px; top:-12px; pointer-events:none; }
 .docket .stamp b { display:inline-block; font:700 10.5px var(--mono); letter-spacing:0.1em; color:var(--n-green); border:2px solid var(--n-green); border-radius:4px; padding:2px 8px; background:var(--n-card);
@@ -291,7 +294,49 @@ section.concept { border-top:1px solid var(--line); padding-top:16px; margin-top
   </tbody>
 </table>
 
-<div id="concepts"></div>
+<div id="concepts">
+<section class="concept" data-concept="today">
+  <div class="chead"><div><h2>Today</h2><p data-say="today"></p></div><span class="tagname today">Today</span></div>
+  <div class="scroller"><div class="frames">
+    <div data-dkey="folded"><p class="fcap"><b>Duo folded</b>, 466 x 678 pt, default text size</p><div class="dev folded" data-device="iphone-duo-folded" data-fid="today-folded"></div></div>
+    <div data-dkey="ax5"><p class="fcap"><b>Duo folded</b>, AX5, the biggest accessibility text size</p><div class="dev folded ax5" data-device="iphone-duo-folded" data-fid="today-ax5"></div></div>
+    <div data-dkey="open"><p class="fcap"><b>Duo open</b>, 951 x 669 pt, fold strip at x 455.5 to 495.5</p><div class="dev open" data-device="iphone-duo-unfolded" data-fid="today-open"></div></div>
+    <div data-dkey="phone"><p class="fcap"><b>Large phone</b>: no size is written, so it is drawn at 466 x 678 pt. Drag the corner to change the width.</p><div class="dev phone" data-device="iphone-large" data-fid="today-phone"></div></div>
+    <div data-dkey="web"><p class="fcap"><b>Web row</b>, the Tally source row in the page theme</p><div class="web" data-c="today"></div></div>
+  </div></div>
+</section>
+<section class="concept" data-concept="whole">
+  <div class="chead"><div><h2>Whole line</h2><p data-say="whole"></p></div><span class="grant ok">Keeps the rulings</span></div>
+  <div class="scroller"><div class="frames">
+    <div data-dkey="folded"><p class="fcap"><b>Duo folded</b>, 466 x 678 pt, default text size</p><div class="dev folded" data-device="iphone-duo-folded" data-fid="whole-folded"></div></div>
+    <div data-dkey="ax5"><p class="fcap"><b>Duo folded</b>, AX5, the biggest accessibility text size</p><div class="dev folded ax5" data-device="iphone-duo-folded" data-fid="whole-ax5"></div></div>
+    <div data-dkey="open"><p class="fcap"><b>Duo open</b>, 951 x 669 pt, fold strip at x 455.5 to 495.5</p><div class="dev open" data-device="iphone-duo-unfolded" data-fid="whole-open"></div></div>
+    <div data-dkey="phone"><p class="fcap"><b>Large phone</b>: no size is written, so it is drawn at 466 x 678 pt. Drag the corner to change the width.</p><div class="dev phone" data-device="iphone-large" data-fid="whole-phone"></div></div>
+    <div data-dkey="web"><p class="fcap"><b>Web row</b>, the Tally source row in the page theme</p><div class="web" data-c="whole"></div></div>
+  </div></div>
+</section>
+<section class="concept" data-concept="copy">
+  <div class="chead"><div><h2>Copy beside</h2><p data-say="copy"></p></div><span class="grant">Owner grant: yes</span></div>
+  <div class="scroller"><div class="frames">
+    <div data-dkey="folded"><p class="fcap"><b>Duo folded</b>, 466 x 678 pt, default text size</p><div class="dev folded" data-device="iphone-duo-folded" data-fid="copy-folded"></div></div>
+    <div data-dkey="ax5"><p class="fcap"><b>Duo folded</b>, AX5, the biggest accessibility text size</p><div class="dev folded ax5" data-device="iphone-duo-folded" data-fid="copy-ax5"></div></div>
+    <div data-dkey="open"><p class="fcap"><b>Duo open</b>, 951 x 669 pt, fold strip at x 455.5 to 495.5</p><div class="dev open" data-device="iphone-duo-unfolded" data-fid="copy-open"></div></div>
+    <div data-dkey="phone"><p class="fcap"><b>Large phone</b>: no size is written, so it is drawn at 466 x 678 pt. Drag the corner to change the width.</p><div class="dev phone" data-device="iphone-large" data-fid="copy-phone"></div></div>
+    <div data-dkey="web"><p class="fcap"><b>Web row</b>, the Tally source row in the page theme</p><div class="web" data-c="copy"></div></div>
+  </div></div>
+</section>
+<section class="concept" data-concept="slip">
+  <div class="chead"><div><h2>Order slip</h2><p data-say="slip"></p></div><span class="grant">Owner grant: yes</span></div>
+  <div class="scroller"><div class="frames">
+    <div data-dkey="folded"><p class="fcap"><b>Duo folded</b>, 466 x 678 pt, default text size</p><div class="dev folded" data-device="iphone-duo-folded" data-fid="slip-folded"></div></div>
+    <div data-dkey="ax5"><p class="fcap"><b>Duo folded</b>, AX5, the biggest accessibility text size</p><div class="dev folded ax5" data-device="iphone-duo-folded" data-fid="slip-ax5"></div></div>
+    <div data-dkey="open"><p class="fcap"><b>Duo open</b>, 951 x 669 pt, fold strip at x 455.5 to 495.5</p><div class="dev open" data-device="iphone-duo-unfolded" data-fid="slip-open"></div></div>
+    <div data-dkey="phone"><p class="fcap"><b>Large phone</b>: no size is written, so it is drawn at 466 x 678 pt. Drag the corner to change the width.</p><div class="dev phone" data-device="iphone-large" data-fid="slip-phone"></div></div>
+    <div data-dkey="web"><p class="fcap"><b>Web row</b>, the Tally source row in the page theme</p><div class="web" data-c="slip"></div></div>
+  </div></div>
+</section>
+</div>
+<div id="live" class="sr" role="status" aria-live="polite"></div>
 </main>
 
 <script>
@@ -370,8 +415,8 @@ function idText(id) {
   // wraps only at the dashes: each group is unbreakable, a break may follow each dash
   return groups(id).map((g,i,a) => `<span class="g">${g}${i<a.length-1?"-":""}</span>${i<a.length-1?"<wbr>":""}`).join("");
 }
-function focusId(s, c, k) { return (k==="a1" && !FOCUSED[c] && (FOCUSED[c]=true)) ? `id="focus-${c}"` : ""; }
-let FOCUSED = {};
+// The waiting page's focus ids sit in the first shown frame of each concept only, so each id is unique.
+function focusId(s, c, k) { return (k==="a1" && s.focus) ? `id="focus-${c}"` : ""; }
 
 function orderLine(s, it, where) {
   // where: "tally" (a copy line) or "pkg" (the package header)
@@ -398,7 +443,8 @@ function orderLine(s, it, where) {
 }
 function docket(s, id, key) {
   const copied = s.copied === key;
-  return `<button class="docket" data-act="copy" data-v="${key}" data-id="${id}" aria-label="Copy order number ${id}">${groups(id).map(g=>`<span class="g">${g}</span>`).join("")}${copied?'<span class="stamp"><b>COPIED</b></span>':''}</button>`;
+  // the dashes stay visible between the groups: what you see is what you paste
+  return `<button class="docket" data-act="copy" data-v="${key}" data-id="${id}" aria-label="Copy order number ${id}">${groups(id).map((g,i,a)=>`<span class="g">${g}${i<a.length-1?'<span class="dash">-</span>':''}</span>`).join("")}${copied?'<span class="stamp"><b>COPIED</b></span>':''}</button>`;
 }
 
 function itemLine(s, it, title, detail, withId) {
@@ -468,7 +514,7 @@ function slipBody(s, ok, inPage) {
 }
 function browserSheet(s) {
   const id = s.browser, url = URLS[LINK](id);
-  const fid = (!FOCUSED["link-"+LINK] && (FOCUSED["link-"+LINK]=true)) ? `id="focus-link-${LINK}"` : "";
+  const fid = (s.focus && s.c === FIRST_C) ? `id="focus-link-${LINK}"` : "";
   return `<div class="scrim"><div class="sheet browser" role="dialog" aria-label="TCGplayer page">
     <div class="bar"><span style="width:44px"></span><h3>In-app browser</h3><button class="done" data-act="unbrowse">Done</button></div>
     <div class="url" ${fid}>${esc(url)}</div>
@@ -549,28 +595,28 @@ function renderWeb(el) {
 }
 
 /* ---------------- build the page ---------------- */
+let FIRST_C = null;
 function build() {
-  FOCUSED = {};
   const root = document.getElementById("concepts");
   const onlyC = H.c, onlyD = H.d;
-  root.innerHTML = CONCEPTS.filter(c => !onlyC || c.key===onlyC).map(c => `
-    <section class="concept" data-concept="${c.key}" ${HIDDEN.has(c.key)?"hidden":""}>
-      <div class="chead"><div><h2>${c.name}</h2><p>${c.say}</p></div>
-        ${c.grant===null?'<span class="tagname today">Today</span>':c.grant?'<span class="grant">Owner grant: yes</span>':'<span class="grant ok">Keeps the rulings</span>'}</div>
-      <div class="scroller"><div class="frames">
-        ${DEVICES.filter(d => !onlyD || d.key===onlyD).map(d => `<div><p class="fcap"><b>${d.cap.split(",")[0]}</b>${d.cap.slice(d.cap.split(",")[0].length)}</p>
-          <div class="dev ${d.cls}" data-device="${d.dev}" data-fid="${c.key}-${d.key}"></div></div>`).join("")}
-        ${(!onlyD || onlyD==="web") ? `<div><p class="fcap"><b>Web row</b>, the Tally source row in the page's theme</p><div class="web" data-c="${c.key}"></div></div>` : ""}
-      </div></div>
-    </section>`).join("");
-  root.querySelectorAll(".dev").forEach(el => {
+  // The frames are static markup; a deep link hides the concepts and devices it leaves out.
+  root.querySelectorAll("section.concept").forEach(sec => {
+    const k = sec.dataset.concept;
+    sec.hidden = (onlyC && k !== onlyC) || HIDDEN.has(k);
+    sec.querySelector("[data-say]").textContent = CONCEPTS.find(c => c.key===k).say;
+    sec.querySelectorAll("[data-dkey]").forEach(f => f.hidden = !!onlyD && f.dataset.dkey !== onlyD);
+  });
+  const seen = new Set(); FIRST_C = null;
+  root.querySelectorAll(".dev").forEach(el => { const s = FR[el.dataset.fid]; if (s) s.focus = false; el.innerHTML = ""; });
+  root.querySelectorAll("section.concept:not([hidden]) [data-dkey]:not([hidden]) .dev").forEach(el => {
     const [c,d] = el.dataset.fid.split("-");
     FR[el.dataset.fid] = FR[el.dataset.fid] || newState(c, d);
+    FR[el.dataset.fid].focus = !seen.has(c); seen.add(c); if (!FIRST_C) FIRST_C = c;
     renderFrame(el);
     // At AX5 the copy lines sit below the frame's first screen: start scrolled to the first one, as a reader would.
     if (d === "ax5") { const sc = el.querySelector(".scroll"), ln = el.querySelector(".line"); if (sc && ln) sc.scrollTop = ln.offsetTop - 8; }
   });
-  root.querySelectorAll(".web").forEach(renderWeb);
+  root.querySelectorAll("section.concept:not([hidden]) [data-dkey]:not([hidden]) .web").forEach(renderWeb);
   document.querySelectorAll("[data-c]").forEach(a => { if (a.classList.contains("chip")) a.setAttribute("aria-current", String((a.dataset.c==="all" && !onlyC) || a.dataset.c===onlyC)); });
   document.querySelectorAll("[data-d]").forEach(a => a.setAttribute("aria-current", String((a.dataset.d==="all" && !onlyD) || a.dataset.d===onlyD)));
   document.querySelectorAll("[data-link]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.link===LINK)));
@@ -603,6 +649,7 @@ function act(el, a, v, btn) {
   else if (a==="copy") {
     const id = btn.dataset.id;
     try { navigator.clipboard.writeText(id).catch(()=>{}); } catch(e){}
+    document.getElementById("live").textContent = "Copied order number " + id;  // as UIAccessibility would announce it
     s.copied = v; clearTimeout(timers[fid]); timers[fid] = setTimeout(()=>{ s.copied = null; rerender(fid); }, 1600);
   }
   rerender(fid);
@@ -616,8 +663,7 @@ document.addEventListener("click", e => {
     renderWeb(w.closest(".web")); setTimeout(()=>{ st.copied=false; const el = document.querySelector(`.web[data-c="${c}"]`); el && renderWeb(el); }, 1600); return; }
   const lk = e.target.closest("[data-link]"); if (lk) { LINK = lk.dataset.link; build(); return; }
   const th = e.target.closest("[data-t]"); if (th) { document.documentElement.dataset.theme = th.dataset.t; build(); return; }
-  const hd = e.target.closest("[data-hide]"); if (hd) { if (hd.dataset.hide) HIDDEN.add(hd.dataset.hide); else HIDDEN.clear();
-    document.querySelectorAll("section.concept").forEach(sec => sec.hidden = HIDDEN.has(sec.dataset.concept)); }
+  const hd = e.target.closest("[data-hide]"); if (hd) { if (hd.dataset.hide) HIDDEN.add(hd.dataset.hide); else HIDDEN.clear(); build(); }
 });
 /* a long press on the package order link: the system link menu (today's behaviour) */
 let holdT = null, suppressClick = false;

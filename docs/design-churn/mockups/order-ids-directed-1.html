@@ -1,0 +1,613 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Order Id Chips</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The app and the native client are held to light, so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Content fonts: Cochin sets words, Menlo sets numbers and ids (typography-cochin-and-mono). */
+  --cochin: Cochin, Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar: unmeasured on the Duo. Drawn at the UI tests' 20 pt floor, as duo-hand-tap-shift draws it. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+html, body { background:var(--paper); }
+body { margin:0; color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1100px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--sys); font-size:24px; line-height:1.2; margin:4px 0 0; }
+.kind { font-family:var(--sys); font-size:14px; color:var(--inkSoft); margin:0; }
+.kind b { color:var(--ink); }
+.sub { color:var(--inkSoft); margin:0; max-width:78ch; }
+.navs { display:flex; flex-direction:column; gap:8px; }
+nav { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+nav .lab { font-size:13px; color:var(--inkSoft); min-width:64px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"], nav button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible, .dev button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:16px; }
+section.concept[hidden] { display:none; }
+section.concept > header { display:flex; flex-direction:column; gap:4px; max-width:80ch; }
+section.concept h2 { font-family:var(--sys); font-size:20px; margin:0; display:flex; gap:12px; align-items:center; flex-wrap:wrap; }
+section.concept h2 button { font:inherit; font-size:13px; font-weight:400; min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer; }
+section.concept p { margin:0; }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+.frame { display:flex; flex-direction:column; gap:6px; max-width:100%; }
+.frame[hidden] { display:none; }
+.cap { font-size:14px; font-weight:600; margin:0; }
+.read { font:12px/1.4 var(--mono); color:var(--inkSoft); max-width:60ch; }
+.read .bad { color:var(--red); } .read .ok { color:var(--green); }
+.fit { max-width:100%; overflow:hidden; }
+
+/* ---------------- device frames: 1 CSS px = 1 pt ---------------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; font-family:var(--cochin);
+  --k:1; --ks:1; --kc:1; --kf:1; }
+.dev.folded, .dev.ax5 { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+/* The large phone has no written size (layout.py devices: size null; the brief names none). Start width and height are a sample; drag the corner. */
+.dev.phone { width:440px; height:900px; resize:horizontal; min-width:340px; max-width:520px; }
+/* Largest text, AX5 (HIG typography, read 2026-11-21): Body 17 to 53, Subhead 15 to 49, Footnote 13 to 44, Caption 1 12 to 43.
+   Theme.swift scales Cochin and Menlo relative to .body unless a view names a style. */
+.dev.ax5 { --k:3.1176; --ks:3.2667; --kc:3.5833; --kf:3.3846; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font:600 12px var(--sys); z-index:10; color:var(--ink); }
+.status .back { font:600 12px var(--sys); color:var(--accent); background:none; border:0; padding:0; min-height:20px; cursor:pointer; }
+.page { position:absolute; top:var(--sat); bottom:0; overflow:hidden; }
+.dev.folded .page, .dev.ax5 .page, .dev.phone .page { left:0; right:0; }
+.page.l { left:0; width:455.5px; } .page.r { left:495.5px; width:455.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:5; }
+.fold span { position:absolute; top:240px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+/* Tab bar: from y 595 pt, 83 pt tall with the bottom inset (measurement duo-fold-and-keyboard). Drawn as a band; its tabs are as built. */
+.tabbar { position:absolute; left:0; right:0; bottom:0; height:calc(83px + var(--sab)); padding-bottom:var(--sab);
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border-top:1px solid var(--line); display:flex; align-items:flex-start; justify-content:center; padding-top:12px; font:12px var(--sys); color:var(--inkSoft); z-index:4; }
+.dev.open .tabbar { right:auto; width:455.5px; }
+.scroll { position:absolute; inset:0; overflow:hidden; padding:12px 16px 100px; display:flex; flex-direction:column; gap:12px; }
+.ghost { border:1px dashed var(--line); border-radius:8px; height:56px; display:flex; align-items:center; padding:0 12px; font:12px var(--sys); color:var(--inkSoft); flex:none; }
+
+/* Tally row card (TallyRowView), the parts this lane does not change drawn plainly */
+.row { background:var(--card); border:1px solid var(--line); border-radius:8px; flex:none; overflow:visible; }
+.row .hd { display:flex; align-items:baseline; gap:8px; padding:12px; }
+.row .nm { font-size:calc(17px * var(--k)); font-weight:600; line-height:1.2; }
+.row .ratio { margin-left:auto; font:calc(13px * var(--k)) var(--mono); color:var(--inkSoft); }
+.row .mt { padding:0 12px 12px; margin-top:-8px; font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.row.closed .mt { margin-top:-8px; }
+
+/* ItemLine: a 45 pt check-in frame, then the text column (ItemLine.swift) */
+.line { display:flex; gap:8px; padding-left:4px; border-top:1px solid var(--line); align-items:flex-start; }
+.line.done { background:var(--greenSoft); }
+.box { flex:0 0 45px; height:45px; display:grid; place-items:center; background:none; border:0; padding:0; cursor:pointer; }
+.box i { width:30px; height:30px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; font-style:normal; color:var(--card); font:700 18px var(--sys); }
+.line.done .box i { background:var(--green); border-color:var(--green); }
+.col { flex:1; min-width:0; padding:12px 12px 12px 0; display:flex; flex-direction:column; gap:4px; }
+.t1 { display:flex; align-items:baseline; gap:8px; }
+.ttl { font-size:calc(14px * var(--k)); font-weight:600; line-height:1.25; }
+.price { margin-left:auto; font:calc(12px * var(--k)) var(--mono); color:var(--inkSoft); flex:none; }
+.det { font-size:calc(11.5px * var(--k)); color:var(--inkSoft); line-height:1.3; }
+/* Today: the native order id, Menlo 10.5 relative to body, fixedSize: it never wraps and never truncates */
+.today-id { font:calc(10.5px * var(--k)) var(--mono); color:var(--inkSoft); white-space:nowrap; line-height:1.3; }
+.today-link { font:calc(12px * var(--k)) var(--mono); color:var(--accent); text-decoration:underline; text-underline-offset:2px; background:none; border:0; padding:0;
+  min-height:44px; display:inline-flex; align-items:center; cursor:pointer; white-space:nowrap; }
+
+/* ---------------- New: the copy chip ---------------- */
+.idrow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; position:relative; padding-top:4px; }
+.chip { display:inline-flex; align-items:center; gap:8px; min-height:44px; padding:6px 12px; border:1px solid var(--line); border-radius:8px; background:var(--paper);
+  color:var(--ink); cursor:pointer; text-align:left; font:inherit; max-width:100%; -webkit-touch-callout:none; touch-action:manipulation; }
+.chip .gl { flex:none; width:calc(16px * var(--ks)); height:calc(16px * var(--ks)); color:var(--accent); }
+.chip .gl .ck { display:none; }
+/* The id: Menlo at the Subhead size, 15 pt relative to .subheadline. It breaks only after a dash, so at AX5 it reads in its three groups. */
+.chip .id { font:calc(15px * var(--ks))/1.25 var(--mono); color:var(--ink); min-width:0; }
+/* At AX5 the number keeps its row beside the glyph, at least one dash group wide, and the receipt word drops under it. */
+.dev.ax5 .chip { flex-wrap:wrap; }
+.dev.ax5 .chip .id { flex:1 1 0; min-width:9ch; }
+.dev.ax5 .chip .slot { flex-basis:100%; }
+.dev.ax5 .chip .slot > span { text-align:left; }
+.chip .id .d { color:var(--inkSoft); }
+/* The receipt slot keeps the box of its widest word ("Selected"), so Copy to Copied moves nothing (no-layout-shift-under-pointer). */
+.chip .slot { display:grid; flex:none; font-size:calc(13px * var(--kf)); color:var(--accent); font-weight:600; font-family:var(--cochin); }
+.chip .slot > span { grid-area:1/1; visibility:hidden; text-align:right; }
+.chip[data-st="idle"] .slot .s-idle, .chip[data-st="copied"] .slot .s-copied, .chip[data-st="refused"] .slot .s-refused { visibility:visible; }
+.chip[data-st="copied"] { background:var(--greenSoft); border-color:var(--green); }
+.chip[data-st="copied"] .gl, .chip[data-st="copied"] .slot { color:var(--green); }
+.chip[data-st="copied"] .gl .cp { display:none; } .chip[data-st="copied"] .gl .ck { display:inline; }
+.chip[data-st="refused"] { background:var(--redSoft); border-color:var(--red); cursor:text; user-select:text; -webkit-user-select:text; }
+.chip[data-st="refused"] .slot, .chip[data-st="refused"] .gl { color:var(--red); }
+.chip[data-st="refused"] .id { user-select:all; -webkit-user-select:all; }
+.chip.pressed { background:color-mix(in srgb, var(--line) 50%, var(--paper)); }
+@media (prefers-reduced-motion: no-preference) { .chip { transition:background-color .15s, border-color .15s; } }
+
+/* Concept: chip and links. Each link underlines its value (disclosure-cells-underline-value). */
+.acts { display:flex; flex-wrap:wrap; gap:4px 20px; width:100%; }
+.act { font:600 calc(15px * var(--ks)) var(--cochin); color:var(--accent); background:none; border:0; padding:0; min-height:44px; display:inline-flex; align-items:center; gap:6px;
+  text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+.act svg { width:calc(12px * var(--ks)); height:calc(12px * var(--ks)); flex:none; }
+
+/* Concept: copy-and-open. One capsule, two segments. It wraps to two rows when the column is too narrow. */
+.split { display:inline-flex; flex-wrap:wrap; border:1px solid var(--line); border-radius:8px; background:var(--paper); max-width:100%; overflow:hidden; }
+.split .chip { border:0; border-radius:0; background:transparent; }
+.split .chip[data-st="copied"] { background:var(--greenSoft); }
+.split .chip[data-st="refused"] { background:var(--redSoft); }
+.split .go { font:600 calc(15px * var(--ks)) var(--cochin); color:var(--accent); background:none; border:0; border-left:1px solid var(--line); padding:6px 10px; min-height:44px;
+  display:inline-flex; align-items:center; gap:6px; cursor:pointer; flex:1 0 auto; justify-content:center; }
+.split .go svg { width:calc(12px * var(--ks)); height:calc(12px * var(--ks)); }
+/* When the segment wraps under the chip, its rule moves to the top */
+.split.wrapped .go { border-left:0; border-top:1px solid var(--line); }
+/* The receipt bubble: out of flow, above the chip, so it moves nothing */
+/* Right-aligned over the detail line's free end, so it never covers the seller name, which is a control in this option */
+.bubble { position:absolute; right:0; bottom:calc(100% + 2px); background:var(--ink); color:var(--card); font:600 calc(13px * var(--kf))/1.3 var(--sys); padding:6px 10px; border-radius:8px; z-index:3;
+  pointer-events:none; max-width:min(320px, 100%); }
+.bubble.bad { background:var(--red); }
+/* The seller name that shows the whole order: a 44 pt tap area grows past the text, out of flow */
+.ttl-btn { font:inherit; font-weight:600; font-size:calc(14px * var(--k)); color:var(--ink); background:none; border:0; padding:0; cursor:pointer; text-align:left; position:relative;
+  text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px; line-height:1.25; }
+.ttl-btn::after { content:""; position:absolute; left:-4px; right:-8px; top:50%; height:44px; transform:translateY(-50%); }
+.ttl-btn .chev { color:var(--inkSoft); font-weight:400; }
+
+/* Concept: chip with a menu */
+.more { flex:none; width:44px; height:44px; display:grid; place-items:center; background:none; border:0; padding:0; color:var(--accent); cursor:pointer; }
+.more svg { width:calc(24px * var(--ks)); height:calc(24px * var(--ks)); max-width:44px; max-height:44px; }
+.dev.ax5 .more { width:auto; min-width:44px; height:auto; min-height:44px; }
+.dev.ax5 .more svg { max-width:none; max-height:none; }
+/* An iOS menu is system chrome. Drawn in the card token with the shadow token, so no colour sits outside shared/tokens.json. */
+.menu { position:absolute; z-index:8; width:260px; background:color-mix(in srgb, var(--card) 96%, transparent); border:1px solid var(--line); border-radius:12px;
+  box-shadow:0 8px 32px var(--shadow), 0 1px 4px var(--shadow); overflow:hidden; font-family:var(--sys); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); }
+.dev.ax5 .menu { width:auto; left:12px !important; right:12px; }
+.menu button { width:100%; min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:12px; padding:10px 16px; background:none; border:0;
+  border-top:1px solid var(--line); font:calc(17px * var(--k)) var(--sys); color:var(--ink); cursor:pointer; text-align:left; }
+.menu button:first-child { border-top:0; }
+.menu button svg { width:calc(18px * var(--k)); height:calc(18px * var(--k)); flex:none; color:var(--ink); }
+.menu .ttl-m { padding:8px 16px; font:calc(13px * var(--kf)) var(--mono); color:var(--inkSoft); border-bottom:1px solid var(--line); }
+.scrim { position:absolute; inset:0; z-index:7; background:transparent; border:0; padding:0; cursor:default; }
+
+/* Whole order: a page pushed onto Tally's stack */
+.navbar { display:flex; align-items:center; min-height:44px; flex:none; }
+.navbar button { font:17px var(--sys); color:var(--accent); background:none; border:0; padding:0 8px 0 0; min-height:44px; cursor:pointer; display:inline-flex; align-items:center; gap:4px; }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; flex:none; }
+.pkg .ph { padding:16px; display:flex; flex-direction:column; gap:4px; }
+.pkg .sel { font-size:calc(22px * var(--k)); font-weight:700; line-height:1.15; }
+.pkg .dl { font-size:calc(13px * var(--k)); color:var(--inkSoft); }
+
+/* TCGplayer: Safari, outside the app. Not drawn beyond its address and what is known about it. */
+.safari { position:absolute; inset:0; z-index:9; background:var(--card); font-family:var(--sys); display:flex; flex-direction:column; }
+.safari .addr { margin:calc(var(--sat) + 8px) 12px 0; min-height:44px; border-radius:12px; background:var(--paper); border:1px solid var(--line); display:flex; align-items:center; padding:0 12px;
+  font:12px var(--mono); color:var(--ink); overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.safari .body { padding:16px; display:flex; flex-direction:column; gap:12px; font-size:calc(15px * var(--ks)); color:var(--ink); }
+.safari .body .unk { border:1px dashed var(--red); border-radius:8px; padding:12px; color:var(--ink); }
+.safari .body .clip { border:1px solid var(--green); background:var(--greenSoft); border-radius:8px; padding:12px; }
+.safari .body .clip code { font:calc(14px * var(--ks)) var(--mono); overflow-wrap:anywhere; }
+.dev.open .safari { left:495.5px; }
+
+/* Open Duo: left page names, right page the picked name (TallyView, pose 9) */
+.cells { display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:8px; flex:none; }
+.cell { display:flex; align-items:baseline; gap:8px; min-height:52px; padding:14px 12px; border-top:1px solid var(--line); font-size:16px; }
+.cell:first-child { border-top:0; }
+.cell.on { box-shadow:inset 3px 0 0 var(--accent); font-weight:600; }
+.cell .r { margin-left:auto; font:13px var(--mono); color:var(--inkSoft); }
+.detail-h { display:flex; flex-direction:column; gap:4px; flex:none; }
+.detail-h .nm { font-size:22px; font-weight:700; }
+.detail-h .tot { font:12px var(--mono); color:var(--inkSoft); }
+
+/* Tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:2px; bottom:2px; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:2; white-space:nowrap;
+  letter-spacing:0; text-transform:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+body.no-tags [data-tag]::before { display:none; } body.no-tags .tag-new, body.no-tags .tag-today { outline:0; }
+/* Tap areas: each control's box, for a reviewer's check of the 44 pt floor */
+body.show-hits .dev button:not(.scrim) { outline:1px dotted var(--accent); outline-offset:-1px; }
+body.show-hits .ttl-btn::after { outline:1px dotted var(--accent); }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No card, seller, price, date or order number on this page is real. Row places come from the code and this drawing, not from a simulator.</div>
+<h1>Order numbers you can copy in one tap</h1>
+<p class="kind"><b>Designer kind: directed.</b> Direction: copy-first: the number is a one-tap copy chip. Designer order-ids-directed-1.</p>
+<p class="sub">The order number on each Tally copy, and on the package header it opens, becomes a chip: the whole number, set large in its three dash groups, that copies on one tap and says so where you tapped. Three ways to place the TCGplayer link and the whole order around it. Native iOS, light only (the app is held to light). Tap anything: every chip, link and menu works on this page, and a chip writes the sample number to your real clipboard.</p>
+
+<div class="navs">
+  <nav aria-label="Option">
+    <span class="lab">Option</span>
+    <a href="#c=today" data-k="c" data-v="today">Today</a>
+    <a href="#c=links" data-k="c" data-v="links">Chip and links</a>
+    <a href="#c=split" data-k="c" data-v="split">Copy-and-open chip (pick)</a>
+    <a href="#c=menu" data-k="c" data-v="menu">Chip with a menu</a>
+    <a href="#" data-k="c" data-v="">All</a>
+  </nav>
+  <nav aria-label="Device">
+    <span class="lab">Device</span>
+    <a href="#d=folded" data-k="d" data-v="folded">Duo folded</a>
+    <a href="#d=open" data-k="d" data-v="open">Duo open</a>
+    <a href="#d=phone" data-k="d" data-v="phone">Large phone</a>
+    <a href="#d=ax5" data-k="d" data-v="ax5">Folded, largest text</a>
+    <a href="#d=" data-k="d" data-v="">All devices</a>
+  </nav>
+  <nav aria-label="State">
+    <span class="lab">State</span>
+    <a href="#s=idle" data-k="s" data-v="idle">At rest</a>
+    <a href="#s=copied" data-k="s" data-v="copied">Copied</a>
+    <a href="#s=refused" data-k="s" data-v="refused">Copy refused (web)</a>
+    <a href="#s=menu" data-k="s" data-v="menu">Menu open</a>
+    <a href="#s=order" data-k="s" data-v="order">Whole order</a>
+    <a href="#s=tcg" data-k="s" data-v="tcg">TCGplayer opened</a>
+  </nav>
+  <nav aria-label="Page tools">
+    <span class="lab">Tools</span>
+    <button type="button" data-hide="links">Hide Chip and links</button>
+    <button type="button" data-hide="split">Hide Copy-and-open chip</button>
+    <button type="button" data-hide="menu">Hide Chip with a menu</button>
+    <button type="button" data-tool="tags" aria-pressed="false">Hide labels</button>
+    <button type="button" data-tool="hits" aria-pressed="false">Show tap areas</button>
+    <button type="button" data-tool="fail" aria-pressed="false">Make copy fail</button>
+  </nav>
+</div>
+
+<div id="sections"></div>
+</main>
+
+<script>
+// ---------- sample data: no figure is real ----------
+const ROW = { name: 'Lightning Bolt', ratio: '1/3', meta: '2 left · $0.88 · 3 sellers · 3 orders · Modern Horizons 3, Double Masters' };
+const COPIES = [
+  { seller: 'Beta Games', date: '2026-07-29', set: 'Modern Horizons 3', cond: 'Near Mint', price: 0.42, id: '7C41B09E-381604-A9D2C', got: 0 },
+  { seller: 'Alpha Cards', date: '2026-07-01', set: 'Double Masters', cond: 'Lightly Played', price: 0.38, id: '1F0A6D33-207915-4BE81', got: 1 },
+  { seller: 'Gamma Cards', date: '2026-06-12', set: 'Modern Horizons 3', cond: 'Near Mint', price: 0.46, id: 'B92E5C17-544082-0D6FA', got: 0 },
+];
+const OTHERS = [['Brainstorm', '2/2'], ['Counterspell', '0/2'], ['Ponder', '1/4'], ['Preordain', '0/1'], ['Swords to Plowshares', '0/1']];
+const ORDER_ITEMS = [['Counterspell', 'Modern Horizons 3 · Near Mint', 0.25, 0], ['Lightning Bolt', 'Modern Horizons 3 · Near Mint', 0.42, 0], ['Ponder', 'Double Masters · Near Mint', 0.31, 1]];
+const tcgUrl = id => 'https://store.tcgplayer.com/myaccount/orderhistory?SearchString=' + encodeURIComponent(id);
+
+const CONCEPTS = {
+  today: { title: 'Today', blurb: 'Native ItemLine sets the id as plain Menlo 10.5 with fixedSize: no tap, no link, no copy. The web Tally row underlines it as a button that opens the whole order in Packages, and ends a long id in an ellipsis. The package header id is a link to TCGplayer, and nothing copies (owner, 2026-10-21).' },
+  links: { title: 'Chip and links', blurb: 'The chip copies. Under it, two plain links: TCGplayer, and Whole order. Each act has its own word and its own place; nothing hides behind a gesture. The cost is height: each copy line grows by two 44 pt rows.' },
+  split: { title: 'Copy-and-open chip', blurb: 'One capsule. The number copies. Its TCGplayer end copies too, then opens TCGplayer, so if the link lands on the order list the number is already on the clipboard for its search field. The seller name shows the whole order. One 44 pt row.' },
+  menu: { title: 'Chip with a menu', blurb: 'The chip copies. A More button beside it, and a press and hold on the chip, open one native menu: Copy order number, Open on TCGplayer, Show whole order. The quietest row; the other two acts sit one tap deeper.' },
+};
+const DEVICES = {
+  folded: 'Duo folded, 466 x 678 pt',
+  open: 'Duo open, 951 x 669 pt, fold 455.5 to 495.5 pt',
+  phone: 'Large phone, size not written: 440 pt start is a sample, drag the corner',
+  ax5: 'Duo folded, largest accessibility text (AX5)',
+};
+
+// ---------- glyphs (drawn after SF Symbols doc.on.doc, checkmark, arrow.up.right, ellipsis.circle, shippingbox) ----------
+const G = {
+  copy: '<svg class="gl" viewBox="0 0 16 16" aria-hidden="true"><g class="cp" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="5" y="5" width="9" height="9" rx="2"/><path d="M11 3.5V3a1.5 1.5 0 0 0-1.5-1.5h-6A1.5 1.5 0 0 0 2 3v6a1.5 1.5 0 0 0 1.5 1.5H4"/></g><path class="ck" d="M3 8.5l3.2 3.2L13 4.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  out: '<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2h6v6M10 2L2.5 9.5" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  more: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10.5" fill="none" stroke="currentColor" stroke-width="1.5"/><circle cx="7.5" cy="12" r="1.5" fill="currentColor"/><circle cx="12" cy="12" r="1.5" fill="currentColor"/><circle cx="16.5" cy="12" r="1.5" fill="currentColor"/></svg>',
+  copyM: '<svg viewBox="0 0 16 16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.4"><rect x="5" y="5" width="9" height="9" rx="2"/><path d="M11 3.5V3a1.5 1.5 0 0 0-1.5-1.5h-6A1.5 1.5 0 0 0 2 3v6a1.5 1.5 0 0 0 1.5 1.5H4"/></g></svg>',
+  box: '<svg viewBox="0 0 16 16" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.4" stroke-linejoin="round"><path d="M2 5l6-3 6 3v6l-6 3-6-3z"/><path d="M2 5l6 3 6-3M8 8v6"/></g></svg>',
+};
+const idHTML = id => id.split('-').map(g => `<span>${g}</span>`).join('<span class="d">-</span><wbr>');
+
+// ---------- per-frame state ----------
+// st: { c, d, copied: index|null, refused: index|null, menu: index|null, view: 'tally'|'order', order: index, tcg: index|null, bubble }
+const FRAMES = new Map();
+let failCopy = false;
+
+function chip(st, i, id, where) {
+  const s = st.copied === i ? 'copied' : st.refused === i ? 'refused' : 'idle';
+  const label = s === 'copied' ? `Copied order ${id}` : `Copy order ${id}`;
+  const noSlot = st.c === 'split';
+  return `<button type="button" class="chip" data-act="copy" data-i="${i}" data-st="${s}" data-key="chip-${where}-${i}" aria-label="${label}">
+    ${G.copy}<span class="id">${idHTML(id)}</span>${noSlot ? '' : `<span class="slot" aria-hidden="true"><span class="s-idle">Copy</span><span class="s-copied">Copied</span><span class="s-refused">Selected</span></span>`}</button>`;
+}
+function bubble(st, i) {
+  if (st.c !== 'split' && st.refused !== i) return '';
+  if (st.copied === i && st.tcg == null) return `<span class="bubble" role="status">Copied</span>`;
+  if (st.refused === i) return `<span class="bubble bad" role="status">Could not copy. The number is selected: press and hold it, then Copy.</span>`;
+  return '';
+}
+// The id controls of one copy line, or of the package header (where = 'row' | 'hdr')
+function idControls(st, i, id, where, focusId) {
+  const fid = focusId ? ` id="${focusId}"` : '';
+  const tagNew = (t) => i === 0 && where === 'row' ? ` class="idrow tag-new" data-tag="${t}"` : ` class="idrow"`;
+  if (st.c === 'today') {
+    if (where === 'hdr') return `<div class="idrow${i === 0 ? ' tag-today' : ''}"${i === 0 ? ' data-tag="Today: a link to TCGplayer; nothing copies"' : ''}${fid}><button type="button" class="today-link" data-act="tcg" data-i="${i}" data-key="today-link-${i}" aria-label="Order ${id} on TCGplayer, opens Safari">${id}</button></div>`;
+    return `<div${i === 0 ? ' class="tag-today" data-tag="Today: plain text"' : ''}${fid}><span class="today-id" data-today-id aria-label="Order ${id}">${id}</span></div>`;
+  }
+  if (st.c === 'links') {
+    const acts = `<div class="acts"><button type="button" class="act" data-act="tcg" data-i="${i}" data-key="tcg-${where}-${i}" aria-label="Open order ${id} on TCGplayer, opens Safari">TCGplayer ${G.out}</button>`
+      + (where === 'row' ? `<button type="button" class="act" data-act="order" data-i="${i}" data-key="order-${i}">Whole order</button>` : '') + `</div>`;
+    return `<div${tagNew('New: copy chip and two links')}${fid}>${bubble(st, i)}${chip(st, i, id, where)}${acts}</div>`;
+  }
+  if (st.c === 'split') {
+    return `<div${tagNew('New: both ends copy; the seller name opens the order')}${fid}>${bubble(st, i)}<div class="split">${chip(st, i, id, where)}<button type="button" class="go" data-act="tcg-copy" data-i="${i}" data-key="go-${where}-${i}" aria-label="Copy order ${id} and open it on TCGplayer">TCGplayer ${G.out}</button></div></div>`;
+  }
+  // menu
+  return `<div${tagNew('New: copy chip and a More menu')}${fid}>${bubble(st, i)}${chip(st, i, id, where)}<button type="button" class="more" data-act="menu" data-i="${i}" data-key="more-${where}-${i}" aria-label="More for order ${id}" aria-haspopup="menu" aria-expanded="${st.menu === i}">${G.more}</button></div>`;
+}
+
+function itemLine(st, i, cp, focusId) {
+  const done = cp.got > 0;
+  const meta = [cp.date, cp.set, cp.cond].join(' · ');
+  const title = st.c === 'split'
+    ? `<button type="button" class="ttl-btn${i === 0 ? ' tag-new' : ''}" data-act="order" data-i="${i}" data-key="seller-${i}" aria-label="${cp.seller}: show the whole order">${cp.seller} <span class="chev">›</span></button>`
+    : `<span class="ttl">${cp.seller}</span>`;
+  return `<div class="line${done ? ' done' : ''}">
+    <button type="button" class="box" data-act="check" data-i="${i}" data-key="box-${i}" aria-label="${done ? 'Undo check in' : 'Check in'} ${ROW.name}"><i>${done ? '✓' : ''}</i></button>
+    <div class="col"><div class="t1">${title}<span class="price">$${cp.price.toFixed(2)}</span></div>
+      <div class="det">${meta}</div>${idControls(st, i, cp.id, 'row', focusId)}</div></div>`;
+}
+
+function tallyRow(st, focusId) {
+  return `<div class="row"><div class="hd"><span class="nm">${ROW.name}</span><span class="ratio">${ROW.ratio}</span></div><div class="mt">${ROW.meta}</div>
+    ${COPIES.map((cp, i) => itemLine(st, i, cp, i === 0 ? focusId : null)).join('')}</div>`;
+}
+const closedRow = ([n, r]) => `<div class="row closed"><div class="hd"><span class="nm">${n}</span><span class="ratio">${r}</span></div></div>`;
+
+function orderPage(st, backLabel) {
+  const cp = COPIES[st.order];
+  return `<div class="navbar"><button type="button" data-act="back" data-key="back"><span aria-hidden="true">‹</span> ${backLabel}</button></div>
+  <div class="pkg"><div class="ph"><span class="sel">${cp.seller}</span><span class="dl">Ordered ${cp.date} · Without tracking</span>${idControls(st, st.order, cp.id, 'hdr')}</div>
+    ${ORDER_ITEMS.map(([n, d, p, g]) => `<div class="line${g ? ' done' : ''}"><button type="button" class="box" data-act="noop" aria-label="Check in ${n}"><i>${g ? '✓' : ''}</i></button><div class="col"><div class="t1"><span class="ttl">${n}</span><span class="price">$${p.toFixed(2)}</span></div><div class="det">${d}</div></div></div>`).join('')}
+  </div>`;
+}
+
+function menuHTML(st) {
+  if (st.menu == null) return '';
+  const cp = COPIES[st.menu];
+  return `<button type="button" class="scrim" data-act="close" aria-label="Close menu" tabindex="-1"></button>
+  <div class="menu" role="menu" aria-label="Order ${cp.id}" data-menu-for="${st.menu}">
+    <div class="ttl-m">${cp.id}</div>
+    <button type="button" role="menuitem" data-act="copy" data-i="${st.menu}" data-from-menu="1" data-key="m-copy">Copy order number ${G.copyM}</button>
+    <button type="button" role="menuitem" data-act="tcg" data-i="${st.menu}" data-key="m-tcg">Open on TCGplayer ${G.out}</button>
+    ${st.view === 'order' ? '' : `<button type="button" role="menuitem" data-act="order" data-i="${st.menu}" data-key="m-order">Show whole order ${G.box}</button>`}
+  </div>`;
+}
+
+function safariHTML(st) {
+  if (st.tcg == null) return '';
+  const cp = COPIES[st.tcg];
+  const copied = st.c === 'split';
+  return `<div class="safari" role="dialog" aria-label="Safari">
+    <div class="addr">${tcgUrl(cp.id).replace('https://', '')}</div>
+    <div class="body">
+      <div class="unk"><b>TCGplayer's page, not drawn.</b> Whether it opens order ${cp.id} or the full order list is unmeasured (debt tcgplayer-link-opens-history-list).</div>
+      ${copied ? `<div class="clip">On the clipboard: <code>${cp.id}</code>. If the list opens, paste it in the search field.</div>` : ''}
+    </div></div>`;
+}
+
+function leftPageTally(st, focusId, open) {
+  if (open) {
+    return `<div class="ghost">Masthead, search and sort, as built: not drawn</div>
+      <div class="cells">${[[ROW.name, ROW.ratio], ...OTHERS].map(([n, r], k) => `<div class="cell${k === 0 ? ' on' : ''}"${k === 0 ? ' aria-selected="true"' : ''}><span>${n}</span><span class="r">${r}</span></div>`).join('')}</div>`;
+  }
+  return `<div class="ghost">Masthead, search and sort, as built: not drawn</div>${closedRow(OTHERS[0])}${tallyRow(st, focusId)}${OTHERS.slice(1, 3).map(closedRow).join('')}`;
+}
+
+function render(fr) {
+  const st = FRAMES.get(fr);
+  const focusId = st.d === 'folded' ? `focus-${st.c}` : null;
+  const status = st.tcg != null ? `<div class="status"><button type="button" class="back" data-act="leave" data-key="leave">◀ Manifest</button><span>100%</span></div>` : `<div class="status"><span>9:41</span><span>100%</span></div>`;
+  let inner;
+  if (st.d === 'open') {
+    const right = st.view === 'order' ? orderPage(st, ROW.name)
+      : `<div class="detail-h"><span class="nm">${ROW.name}</span><span class="tot">1 of 3 in · 2 left · $0.88</span><span class="tot">$1.26 across 3 copies · $0.42 avg</span></div>
+         <div class="row">${COPIES.map((cp, i) => itemLine(st, i, cp, null)).join('')}</div>`;
+    inner = `${status}<div class="page l"><div class="scroll">${leftPageTally(st, null, true)}</div><div class="tabbar">Tab bar, as built</div></div>
+      <div class="fold" aria-hidden="true"><span>FOLD 40 PT</span></div>
+      <div class="page r"><div class="scroll" data-right>${right}</div></div>${menuHTML(st)}${safariHTML(st)}`;
+  } else {
+    const body = st.view === 'order' ? orderPage(st, 'Tally') : leftPageTally(st, focusId, false);
+    inner = `${status}<div class="page"><div class="scroll">${body}</div><div class="tabbar">Tab bar, as built</div></div>${menuHTML(st)}${safariHTML(st)}`;
+  }
+  const active = document.activeElement && fr.contains(document.activeElement) ? document.activeElement.dataset.key : null;
+  fr.innerHTML = inner + `<div class="sr" aria-live="polite" data-live>${st.live || ''}</div>`;
+  if (st.d === 'ax5') scrollAx5(fr, st);
+  placeMenu(fr, st);
+  markWraps(fr);
+  if (active) { const el = fr.querySelector(`[data-key="${active}"]`); if (el) el.focus({ preventScroll: true }); }
+  readFrame(fr);
+}
+
+// At AX5 the list scrolls so the first copy's number is in view, as a person would scroll to it.
+function scrollAx5(fr, st) {
+  const sc = fr.querySelector('.page .scroll'); if (!sc) return;
+  const target = st.view === 'order' ? fr.querySelector('.pkg') : fr.querySelector('.line');
+  if (!target) return;
+  const off = target.getBoundingClientRect().top - sc.getBoundingClientRect().top;
+  const z = zoomOf(fr);
+  sc.style.top = (-(off / z) + 8) + 'px';
+}
+function zoomOf(fr) { return parseFloat(fr.closest('.fitbox')?.style.zoom || 1) || 1; }
+
+function placeMenu(fr, st) {
+  const m = fr.querySelector('.menu'); if (!m) return;
+  const z = zoomOf(fr);
+  const anchor = fr.querySelector(`[data-key="more-${st.view === 'order' ? 'hdr' : 'row'}-${st.menu}"]`) || fr.querySelector(`[data-key="chip-${st.view === 'order' ? 'hdr' : 'row'}-${st.menu}"]`);
+  if (!anchor) return;
+  const fb = fr.getBoundingClientRect(), ab = anchor.getBoundingClientRect();
+  const W = fb.width / z, H = fb.height / z;
+  const mw = m.offsetWidth, mh = m.offsetHeight;
+  let left = (ab.right - fb.left) / z - mw, top = (ab.bottom - fb.top) / z + 6;
+  if (st.d === 'open') left = Math.max(left, 495.5 + 8);
+  left = Math.max(8, Math.min(left, W - mw - 8));
+  if (top + mh > H - 90) top = (ab.top - fb.top) / z - mh - 6;
+  m.style.left = left + 'px'; m.style.top = Math.max(28, top) + 'px';
+}
+// A split capsule whose TCGplayer end wrapped under the number moves its rule to the top.
+function markWraps(fr) {
+  fr.querySelectorAll('.split').forEach(s => { const c = s.querySelector('.chip'), g = s.querySelector('.go'); s.classList.toggle('wrapped', g.offsetTop > c.offsetTop + 4); });
+}
+
+// ---------- read each frame's own geometry, in pt ----------
+function readFrame(fr) {
+  const out = fr.closest('.frame')?.querySelector('[data-read]'); if (!out) return;
+  const st = FRAMES.get(fr), z = zoomOf(fr);
+  const fb = fr.getBoundingClientRect(); if (!fb.width) return;
+  const parts = [];
+  const col = fr.querySelector('.col');
+  if (st.c === 'today') {
+    const t = fr.querySelector('[data-today-id]');
+    if (t && col) {
+      const over = Math.round((t.getBoundingClientRect().right - col.getBoundingClientRect().right) / z + 12);
+      parts.push(over > 0 ? `<span class="bad">the id runs ${over} pt past its column</span>` : `<span class="ok">the id fits its column</span>`);
+      parts.push(`id ${Math.round(t.getBoundingClientRect().width / z)} pt wide at ${Math.round(parseFloat(getComputedStyle(t).fontSize) * 10) / 10} pt`);
+    }
+  } else {
+    const id = fr.querySelector('.chip .id');
+    if (id) {
+      const lines = Math.round(id.getBoundingClientRect().height / z / (parseFloat(getComputedStyle(id).fontSize) * 1.25));
+      parts.push(`number ${Math.round(parseFloat(getComputedStyle(id).fontSize) * 10) / 10} pt, ${lines === 1 ? 'one line' : lines + ' lines, broken after its dashes'}`);
+      const cb = id.closest('.chip').getBoundingClientRect(), ib = id.getBoundingClientRect();
+      const cut = ib.right > cb.right + 1 || ib.left < cb.left - 1;
+      parts.push(cut ? '<span class="bad">number cut</span>' : '<span class="ok">whole number shows</span>');
+    }
+    const sp = fr.querySelector('.split'); if (sp) parts.push(sp.classList.contains('wrapped') ? 'capsule wraps to two rows' : 'capsule on one row');
+  }
+  // the smallest tap area among the visible controls of the first copy line (or the header)
+  const scope = fr.querySelector(st.view === 'order' ? '.ph' : '.line');
+  if (scope) {
+    const hits = [...scope.querySelectorAll('button:not(.ttl-btn)')].map(b => { const r = b.getBoundingClientRect(); return [r.width / z, r.height / z]; }).filter(([w, h]) => w && h);
+    const tb = scope.querySelector('.ttl-btn'); if (tb) { const a = getComputedStyle(tb, '::after'); hits.push([Math.max(tb.getBoundingClientRect().width / z, 0), parseFloat(a.height)]); }
+    if (hits.length) {
+      const minH = Math.min(...hits.map(h => h[1])), minW = Math.min(...hits.map(h => h[0]));
+      const ok = minH >= 43.5 && minW >= 43.5;
+      parts.push(`<span class="${ok ? 'ok' : 'bad'}">smallest tap area ${Math.round(minW)} x ${Math.round(minH)} pt</span>`);
+    } else parts.push('no control on the copy line');
+  }
+  const line = fr.querySelector('.line');
+  if (line && st.view !== 'order') parts.push(`copy line ${Math.round(line.getBoundingClientRect().height / z)} pt tall`);
+  out.innerHTML = 'In this drawing: ' + parts.join(' · ');
+}
+
+// ---------- acts ----------
+async function writeClip(text) {
+  if (failCopy) return false;
+  try { await navigator.clipboard.writeText(text); return true; } catch (e) { /* fall through */ }
+  try {
+    const ta = document.createElement('textarea'); ta.value = text; ta.setAttribute('readonly', ''); ta.style.cssText = 'position:fixed;opacity:0;left:-9999px';
+    document.body.appendChild(ta); ta.select(); const ok = document.execCommand('copy'); ta.remove(); return ok;
+  } catch (e) { return false; }
+}
+const timers = new Map();
+async function doCopy(fr, st, i, then) {
+  const id = COPIES[i].id;
+  const ok = await writeClip(id);
+  clearTimeout(timers.get(fr));
+  st.menu = null;
+  if (ok) { st.copied = i; st.refused = null; st.live = `Copied order ${id}`; }
+  else { st.copied = null; st.refused = i; st.live = 'Could not copy. The number is selected.'; }
+  if (then) then();
+  render(fr);
+  if (!ok) { const el = fr.querySelector(`.chip[data-i="${i}"] .id`); if (el) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } }
+  // The receipt holds 2.4 s, then the chip returns to Copy. A deep-linked state holds still.
+  if (ok && !st.pinned) timers.set(fr, setTimeout(() => { st.copied = null; st.live = ''; render(fr); }, 2400));
+}
+document.addEventListener('click', e => {
+  const b = e.target.closest('.dev [data-act]'); if (!b) return;
+  const fr = b.closest('.dev'), st = FRAMES.get(fr), i = +b.dataset.i, a = b.dataset.act;
+  st.pinned = false;
+  if (a === 'copy') { if (st.refused === i && !b.dataset.fromMenu) return; return doCopy(fr, st, i); }
+  if (a === 'tcg-copy') return doCopy(fr, st, i, () => { if (st.copied === i) st.tcg = i; });
+  if (a === 'tcg') { st.menu = null; st.tcg = i; }
+  if (a === 'leave') { st.tcg = null; st.copied = null; }
+  if (a === 'order') { st.menu = null; st.view = 'order'; st.order = i; st.copied = null; st.refused = null; }
+  if (a === 'back') { st.view = 'tally'; st.copied = null; st.refused = null; }
+  if (a === 'menu') { st.menu = st.menu === i ? null : i; }
+  if (a === 'close') { st.menu = null; }
+  if (a === 'check') { COPIES[i].got = COPIES[i].got ? 0 : 1; FRAMES.forEach((_, f) => render(f)); return; }
+  render(fr);
+});
+// Press and hold on a chip opens the menu (Chip with a menu only); the More button is the on-screen way to the same menu.
+let holdT = null;
+document.addEventListener('pointerdown', e => {
+  const c = e.target.closest('.dev .chip'); if (!c) return;
+  c.classList.add('pressed');
+  const fr = c.closest('.dev'), st = FRAMES.get(fr);
+  if (st.c !== 'menu') return;
+  holdT = setTimeout(() => { holdT = 'fired'; st.menu = +c.dataset.i; render(fr); }, 500);
+});
+['pointerup', 'pointercancel', 'pointerleave'].forEach(t => document.addEventListener(t, e => {
+  document.querySelectorAll('.chip.pressed').forEach(c => c.classList.remove('pressed'));
+  if (holdT && holdT !== 'fired') clearTimeout(holdT);
+}, true));
+// A hold that opened the menu does not also copy.
+document.addEventListener('click', e => { if (holdT === 'fired' && e.target.closest('.dev .chip')) { e.stopImmediatePropagation(); holdT = null; } }, true);
+document.addEventListener('keydown', e => { if (e.key === 'Escape') FRAMES.forEach((st, fr) => { if (st.menu != null || st.tcg != null) { st.menu = null; st.tcg = null; render(fr); } }); });
+
+// ---------- build the page ----------
+const sections = document.getElementById('sections');
+for (const [c, info] of Object.entries(CONCEPTS)) {
+  const sec = document.createElement('section'); sec.className = 'concept'; sec.dataset.c = c;
+  sec.innerHTML = `<header><h2>${info.title}${c === 'today' ? '' : ` <button type="button" data-hide="${c}">Hide this option</button>`}</h2><p>${info.blurb}</p></header><div class="frames"></div>`;
+  const box = sec.querySelector('.frames');
+  for (const [d, cap] of Object.entries(DEVICES)) {
+    const f = document.createElement('div'); f.className = 'frame'; f.dataset.d = d;
+    const devAttr = d === 'open' ? 'iphone-duo-unfolded' : d === 'phone' ? 'iphone-regular' : 'iphone-duo-folded';
+    f.innerHTML = `<p class="cap">${cap}</p><div class="fit"><div class="fitbox"><div class="dev ${d}" data-device="${devAttr}" role="group" aria-label="${info.title}, ${cap}"></div></div></div><div class="read" data-read></div>`;
+    box.appendChild(f);
+    FRAMES.set(f.querySelector('.dev'), { c, d, copied: null, refused: null, menu: null, view: 'tally', order: 0, tcg: null, live: '' });
+  }
+  sections.appendChild(sec);
+}
+
+// ---------- deep links: #c=<option>&d=<device>&s=<state>; no hash shows every option on every device at rest ----------
+const hidden = new Set();
+const param = k => { const m = location.hash.match(new RegExp('[#&]' + k + '=([\\w-]*)')); return m ? m[1] : null; };
+function applyState(st, s) {
+  Object.assign(st, { copied: null, refused: null, menu: null, view: 'tally', order: 0, tcg: null, live: '', pinned: true });
+  if (st.c === 'today') { if (s === 'order') st.view = 'order'; if (s === 'tcg') st.tcg = 0; return; }
+  if (s === 'copied') st.copied = 0;
+  if (s === 'refused') st.refused = 0;
+  if (s === 'menu') { if (st.c === 'menu') st.menu = 0; }
+  if (s === 'order') st.view = 'order';
+  if (s === 'tcg') { st.tcg = 0; if (st.c === 'split') st.copied = 0; }
+}
+function fit() {
+  document.querySelectorAll('.fitbox').forEach(w => {
+    const d = w.firstElementChild; w.style.zoom = 1;
+    const avail = w.parentElement.parentElement.parentElement.clientWidth; // the .frames row
+    const W = d.offsetWidth; w.style.zoom = Math.min(1, (avail - 2) / W);
+  });
+}
+function route() {
+  const c = param('c'), d = param('d'), s = param('s') || 'idle';
+  document.querySelectorAll('section.concept').forEach(sec => { sec.hidden = (c && sec.dataset.c !== c) || hidden.has(sec.dataset.c); });
+  document.querySelectorAll('.frame').forEach(f => { f.hidden = !!d && f.dataset.d !== d; });
+  document.querySelectorAll('nav a[data-k]').forEach(a => {
+    const k = a.dataset.k, v = a.dataset.v, cur = k === 'c' ? (c || '') : k === 'd' ? (d || '') : s;
+    a.setAttribute('aria-current', String(v === cur));
+  });
+  fit();
+  FRAMES.forEach((st, fr) => { applyState(st, s); render(fr); });
+}
+document.querySelectorAll('nav a[data-k]').forEach(a => a.addEventListener('click', e => {
+  e.preventDefault();
+  const cur = { c: param('c'), d: param('d'), s: param('s') }; cur[a.dataset.k] = a.dataset.v || null;
+  const h = ['c', 'd', 's'].filter(k => cur[k]).map(k => `${k}=${cur[k]}`).join('&');
+  if (h) location.hash = h; else { history.pushState(null, '', location.pathname + location.search); route(); }
+}));
+document.addEventListener('click', e => {
+  const b = e.target.closest('[data-hide]'); if (!b) return;
+  const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  document.querySelectorAll(`[data-hide="${o}"]`).forEach(x => { const sec = x.closest('section'); x.textContent = sec ? (hidden.has(o) ? 'Show this option' : 'Hide this option') : `${hidden.has(o) ? 'Show' : 'Hide'} ${CONCEPTS[o].title}`; });
+  route();
+});
+document.querySelectorAll('[data-tool]').forEach(b => b.addEventListener('click', () => {
+  const on = b.getAttribute('aria-pressed') !== 'true'; b.setAttribute('aria-pressed', String(on));
+  if (b.dataset.tool === 'tags') document.body.classList.toggle('no-tags', on);
+  if (b.dataset.tool === 'hits') document.body.classList.toggle('show-hits', on);
+  if (b.dataset.tool === 'fail') failCopy = on;
+}));
+// The phone frame resizes by its corner: re-read it after a drag.
+document.querySelectorAll('.dev.phone').forEach(p => { try { new ResizeObserver(() => { markWraps(p); readFrame(p); }).observe(p); } catch (e) {} });
+addEventListener('hashchange', route);
+let rt; addEventListener('resize', () => { clearTimeout(rt); rt = setTimeout(route, 120); });
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(route); route();
+</script>
+</body>
+</html>
