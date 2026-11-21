@@ -248,7 +248,8 @@ details.machine code { display: block; white-space: pre-wrap; font-family: ui-mo
 .ax5 .lrow, .ax5 .orow { grid-template-columns: 1fr; }
 .ax5 .tick { width: 28px; height: 28px; }
 .gaprow { background: transparent; border-top: 1px dashed var(--new); }
-.gaprow .what { color: var(--new); font-size: var(--t-sub); line-height: var(--l-sub); }
+.gaprow { background: color-mix(in srgb, var(--new) 6%, transparent); box-shadow: inset 0 -1px 0 0 transparent; outline: 1px dashed var(--new); outline-offset: -6px; }
+.gaprow.out { opacity: .35; }
 .stampmark { font-size: var(--t-cap); line-height: var(--l-cap); font-weight: 600; color: var(--new); }
 
 .paper-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
@@ -405,6 +406,7 @@ details.machine code { display: block; white-space: pre-wrap; font-family: ui-mo
   function range(c) { return MONTH_START[c.from] + " to " + MONTH_END[c.to]; }
   function inRange(c, r) { return r.m >= c.from && r.m <= c.to; }
   function kindOf(c, r) { return inRange(c, r) ? r.kind : "out"; }
+  function madeAt(c, m) { return "Nov 21, 00:" + (40 + (m || c.made || 1)); }
   function importLabel(c) { var k = counts(c); return k.n + k.ch === 0 ? "Nothing to import" : "Import: add " + nf(k.n) + ", update " + nf(k.ch); }
   function importedText(c) { var k = counts(c); return "Imported: " + nf(k.n) + " added, " + nf(k.ch) + " updated. All " + nf(CHECKINS) + " check-ins kept."; }
 
@@ -472,7 +474,7 @@ details.machine code { display: block; white-space: pre-wrap; font-family: ui-mo
   var CP = {};
   CP.entries = function (c) {
     var e = [];
-    if (c.s === "copied") e.push({ kind: "copy", cp: { when: "Nov 21, 00:41", why: "Made by you", size: "214 KB" }, fresh: "copied" });
+    if (c.s === "copied") for (var m = c.made || 1; m >= 1; m--) e.push({ kind: "copy", cp: { when: madeAt(c, m), why: "Made by you", size: "214 KB" }, fresh: m === (c.made || 1) ? "copied" : "" });
     if (c.s === "done") {
       var k = counts(c);
       e.push({ kind: "import", stamp: c.stamp, when: "Nov 21", n: [k.n, k.ch, k.sk], before: CHECKINS, after: CHECKINS, range: range(c), fresh: "done" });
@@ -502,7 +504,7 @@ details.machine code { display: block; white-space: pre-wrap; font-family: ui-mo
     return '<div class="answer warn" data-new="unknown is not empty"><p>The history could not be read, so this page cannot say which safety copies exist. Your orders and check-ins are not touched.</p><div class="cluster">' + btn("Try again", "retry", "plain") + '</div>' + machine("storage read failed: copies index (timeout after 5 s)", "storage") + '</div>';
   };
   CP.bottom = function (c) {
-    var ans = c.s === "copied" ? '<div class="answer ok"><p>Safety copy made: Nov 21, 00:41, 214 KB. It is at the top of the history.</p></div>' : "";
+    var ans = c.s === "copied" ? '<div class="answer ok"><p>Safety copy made: ' + madeAt(c) + ', 214 KB. It is at the top of the history.</p></div>' : "";
     return '<div class="bar-wrap">' + ans + '<div class="bar">' + btn("Make a safety copy", "copynow", "plain") + btn("Import a file", "import", "primary") + '</div></div>';
   };
   CP.main = function (c) {
@@ -579,7 +581,8 @@ details.machine code { display: block; white-space: pre-wrap; font-family: ui-mo
       if (mode === "restored" && r.added16) return;
       if (mode === "after" && isNew && !inRange(c, r)) return;
       if (r.m !== last) { h += '<div class="month">' + MONTHS[r.m] + ' 2026</div>'; last = r.m; }
-      if (mode === "slots" && isNew) { h += '<div class="lrow gaprow"><span class="what">' + (inRange(c, r) ? "Goes here" : "Outside your dates") + '</span><span></span></div>'; return; }
+      // A gap row is shape only (dashed edge); the left page's header says what it means once.
+      if (mode === "slots" && isNew) { h += '<div class="lrow gaprow' + (inRange(c, r) ? "" : " out") + '" role="img" aria-label="' + (inRange(c, r) ? "The file adds " : "Outside your dates: ") + esc(r.item) + ' here"></div>'; return; }
       var got = mode === "restored" && r.since ? r.got - r.since : r.got;
       var mark = mode === "after" && isNew ? '<span class="stampmark">' + esc(c.stamp) + '</span>' : "";
       h += '<div class="lrow"><div class="stack" style="gap:0"><span class="who2">' + esc(r.seller) + '</span><span class="what">' + esc(r.item) + '</span>' + mark + '</div><div class="right">' + ticks(got, r.of) + '<span class="who2">' + r.cost + '</span></div></div>';
@@ -632,7 +635,7 @@ details.machine code { display: block; white-space: pre-wrap; font-family: ui-mo
   };
   TP.stackList = function (c) {
     var list = COPIES.slice();
-    if (c.s === "copied") list.unshift({ when: "Nov 21, 00:41", why: "Made by you", size: "214 KB" });
+    if (c.s === "copied") for (var m = 1; m <= (c.made || 1); m++) list.unshift({ when: madeAt(c, m), why: "Made by you", size: "214 KB" });
     if (c.s === "done") list.unshift({ when: "Nov 21, 00:42", why: "Before the " + c.stamp, size: "214 KB" });
     if (c.s === "restored") list.unshift({ when: "Nov 21, 00:43", why: "Before the restore of Nov 14", size: "214 KB" });
     return list;
@@ -657,7 +660,7 @@ details.machine code { display: block; white-space: pre-wrap; font-family: ui-mo
     if (c.s === "review" || c.s === "edit") return '<div class="bar">' + (open ? "" : btn(c.peek ? "Lay it back" : "Peek under", "peek", "plain", ' aria-pressed="' + c.peek + '" data-new="peek under"')) + btn(importLabel(c), "commit", "primary", k.n + k.ch === 0 ? ' disabled title="No new or changed orders in these dates"' : "") + '</div>';
     if (c.s === "restore") return '<div class="bar">' + btn("Restore this copy", "dorestore", "primary") + '</div>';
     if (c.s === "home" || c.s === "unknown" || c.s === "done" || c.s === "restored" || c.s === "copied") {
-      var ans = c.s === "copied" ? '<div class="answer ok"><p>Safety copy made: Nov 21, 00:41, 214 KB. It is on top of the stack.</p></div>' : "";
+      var ans = c.s === "copied" ? '<div class="answer ok"><p>Safety copy made: ' + madeAt(c) + ', 214 KB. It is on top of the stack.</p></div>' : "";
       return '<div class="bar-wrap">' + ans + '<div class="bar">' + btn("Make a safety copy", "copynow", "plain") + btn("Import a file", "import", "primary") + '</div></div>';
     }
     return "";
@@ -718,7 +721,7 @@ details.machine code { display: block; white-space: pre-wrap; font-family: ui-mo
     if (p[0] !== "sel" && p[0] !== "open") c.push = false;
     switch (p[0]) {
       case "import": c.s = "reading"; c.peek = false; c.filter = "all"; clearTimeout(timers[key]);
-        timers[key] = setTimeout(function () { if (st[key].s === "reading") { st[key].s = "review"; writeHash(); renderConcept(key); } }, 1400); break;
+        timers[key] = setTimeout(function () { if (st[key].s === "reading") { st[key].s = "review"; writeHash(key); renderConcept(key); } }, 1400); break;
       case "cancel": case "undo": case "retry": c.s = "home"; c.peek = false; c.sel = 0; break;
       case "commit": c.s = "done"; c.sel = 0; break;
       case "edit": c.s = c.s === "edit" ? "review" : "edit"; break;
@@ -731,10 +734,10 @@ details.machine code { display: block; white-space: pre-wrap; font-family: ui-mo
       case "dorestore": c.s = "restored"; c.sel = 0; break;
       case "sel": c.sel = +p[1]; c.push = true; break;
       case "pop": c.push = false; break;
-      case "copynow": c.s = "copied"; c.sel = 0; break;
+      case "copynow": c.made = c.s === "copied" ? (c.made || 1) + 1 : 1; c.s = "copied"; c.sel = 0; break;
       default: return;
     }
-    writeHash(); renderConcept(key);
+    writeHash(key); renderConcept(key);
   }
 
   var root = document.getElementById("concepts");
@@ -751,7 +754,7 @@ details.machine code { display: block; white-space: pre-wrap; font-family: ui-mo
       root.querySelectorAll('[data-concept="' + key + '"] [data-in="stamp"]').forEach(function (o) { if (o !== el) o.value = el.value; });
       return;
     }
-    c[w] = +el.value; writeHash(); renderConcept(key);
+    c[w] = +el.value; writeHash(key); renderConcept(key);
   });
   root.addEventListener("change", function (ev) {
     var el = ev.target; if (el.getAttribute("data-in") === "stamp") renderConcept(el.closest("[data-concept]").getAttribute("data-concept"));
@@ -796,8 +799,9 @@ details.machine code { display: block; white-space: pre-wrap; font-family: ui-mo
     });
   }
   var focusKey = null, writing = false;
-  function writeHash() {
-    var s = st.checkpoints.s === st.tracing.s ? st.checkpoints.s : pick.value;
+  // The hash names the state of the concept last pressed, so a copied link opens that state in both.
+  function writeHash(key) {
+    var s = key ? st[key].s : st.checkpoints.s;
     var parts = ["s=" + s];
     if (theme) parts.push("t=" + theme);
     var h = Object.keys(hidden).filter(function (k) { return hidden[k]; });

@@ -1,0 +1,610 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Import Journal</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The web app and the native app ship light only,
+   so this page draws one theme and has no theme switch. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --amber:#846008; --shadow:rgba(28,43,36,0.06); --scrim:rgba(28,43,36,0.92);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar and home indicator: unmeasured on the Duo. Drawn at a 20 pt floor, as duo-hand-post-sender.html does. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  --today:#A8443C; --new:#2E7A5E;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+button { font:inherit; color:inherit; }
+.page { padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+.who { display:flex; flex-direction:column; gap:4px; }
+.who h1 { margin:0; font-size:22px; line-height:28px; }
+.who p { margin:0; color:var(--inkSoft); font-size:14px; max-width:72ch; }
+.bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.bar .lab { font-size:13px; color:var(--inkSoft); min-width:72px; }
+.chipb { min-height:44px; padding:0 12px; border:1px solid var(--line); background:var(--card); border-radius:8px; cursor:pointer; font-size:14px; display:inline-flex; align-items:center; gap:8px; }
+.chipb[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.chipb .x { font-size:12px; color:var(--inkSoft); border-left:1px solid var(--line); padding-left:8px; }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+figcaption b { color:var(--ink); }
+
+/* ---------- the device frame ---------- */
+.dev { position:relative; overflow:hidden; background:var(--paper); border:1px solid var(--line); border-radius:24px;
+  box-shadow:0 1px 0 var(--shadow); color:var(--ink); font-family:var(--cochin);
+  --fs-title:34px; --lh-title:41px; --fs-body:17px; --lh-body:22px; --fs-cap:12px; --lh-cap:16px; }
+/* Largest accessibility size, iOS Dynamic Type AX5 (HIG typography table, read 2026-11-21): Large Title 60/70, Body 53/62, Caption 1 43/51. */
+.dev.ax5 { --fs-title:60px; --lh-title:70px; --fs-body:53px; --lh-body:62px; --fs-cap:43px; --lh-cap:51px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font:600 12px/16px var(--sys); z-index:5; }
+.hinge { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:var(--ink); opacity:.88; z-index:20; }
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; }
+.pg.full { left:0; right:0; }
+.pg.l { left:0; width:455.5px; }
+.pg.r { left:495.5px; width:455.5px; }
+
+/* the web bar, variant D (phone-nav-is-bottom-bar): 64 px capsule, 12 px above the bottom plus the inset, 24 px side inset */
+.tabbar { position:absolute; left:24px; right:24px; bottom:calc(12px + var(--sab)); height:64px; border-radius:32px; z-index:8;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px) saturate(1.4); -webkit-backdrop-filter:blur(12px) saturate(1.4);
+  border:1px solid var(--line); box-shadow:0 4px 16px var(--shadow); display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px; }
+.tabbar span { display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border-radius:28px; font:10px/12px var(--cochin); color:var(--inkSoft); min-height:44px; }
+.tabbar span.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+.tabbar svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.5; }
+
+/* ---------- screen content ---------- */
+.scr { position:absolute; left:0; right:0; top:var(--sat); bottom:calc(var(--sab) + 88px); display:flex; flex-direction:column; gap:12px; padding:8px 16px 0; }
+.scr.nobar { bottom:calc(var(--sab) + 12px); }
+.ttl { font-size:var(--fs-title); line-height:var(--lh-title); font-weight:700; margin:0; }
+.sub { font-size:var(--fs-cap); line-height:var(--lh-cap); color:var(--inkSoft); margin:0; }
+.grow { flex:1 1 auto; min-height:0; overflow:hidden; display:flex; flex-direction:column; }
+.grow.end { justify-content:flex-end; }
+.fade { font:var(--fs-cap)/var(--lh-cap) var(--cochin); color:var(--inkSoft); text-align:center; padding:4px 0; border-bottom:1px solid var(--line); }
+.dock { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding-bottom:4px; }
+.ax5 .dock { grid-template-columns:1fr; }
+.btn { min-height:44px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); font:600 var(--fs-body)/var(--lh-body) var(--cochin);
+  padding:10px 12px; cursor:pointer; text-align:center; }
+.btn.ink { background:var(--ink); color:var(--card); border-color:var(--ink); }
+.btn.red { background:var(--red); color:var(--card); border-color:var(--red); }
+.btn.quiet { background:transparent; }
+.btn:focus-visible, .chipb:focus-visible, .row:focus-visible, .seg button:focus-visible, .kchip:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* the journal: oldest at the top, newest at the bottom, nearest the thumb */
+.jr { display:flex; flex-direction:column; }
+.ent { display:grid; grid-template-columns:56px 16px 1fr; column-gap:8px; position:relative; }
+.ent .when { font:var(--fs-cap)/var(--lh-cap) var(--mono); color:var(--inkSoft); padding-top:12px; text-align:right; }
+.ent .spine { position:relative; }
+.ent .spine::before { content:""; position:absolute; left:7px; top:0; bottom:0; width:2px; background:var(--line); }
+.ent .spine i { position:absolute; left:2px; top:16px; width:12px; height:12px; border-radius:6px; background:var(--ink); border:2px solid var(--paper); }
+.ent.ctx .spine i { background:var(--paper); border:2px solid var(--inkSoft); }
+.ent.rev .spine i { background:var(--red); }
+.ent .body { padding:8px 0; display:flex; flex-direction:column; gap:4px; border-bottom:1px solid var(--line); min-width:0; }
+.row { all:unset; display:flex; flex-direction:column; gap:4px; cursor:pointer; min-height:44px; justify-content:center; }
+.act { font-size:var(--fs-body); line-height:var(--lh-body); font-weight:600; overflow-wrap:anywhere; }
+.fig { font:var(--fs-cap)/var(--lh-cap) var(--mono); color:var(--inkSoft); overflow-wrap:anywhere; }
+.ent.struck .act, .ent.struck .fig { text-decoration:line-through; text-decoration-color:var(--red); text-decoration-thickness:1px; }
+.ent.struck .act { color:var(--inkSoft); }
+.mark { font:var(--fs-cap)/var(--lh-cap) var(--mono); color:var(--red); }
+.ent.rev .act { color:var(--red); }
+.ent.sel .body { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 12px; margin:4px 0; }
+.ax5 .sub, .ax5 .fade { display:none; }
+.ax5 .grow { flex:0 0 auto; }
+.ax5 .ent { grid-template-columns:1fr; }
+.ax5 .ent .spine { display:none; }
+.ax5 .ent .when { text-align:left; padding-top:8px; }
+
+/* before and after: the proof that the import kept every check-in */
+.ba { display:grid; grid-template-columns:1fr auto auto; column-gap:12px; row-gap:0; font:var(--fs-cap)/var(--lh-cap) var(--mono); }
+.ba > * { padding:4px 0; border-top:1px solid var(--line); }
+.ba .h { color:var(--inkSoft); border-top:0; }
+.ba .n { text-align:right; }
+.ba .k { font-family:var(--cochin); font-size:var(--fs-body); line-height:var(--lh-body); }
+.ba .same { color:var(--green); }
+.ba .up { color:var(--ink); font-weight:700; }
+.ba .down { color:var(--red); font-weight:700; }
+.ax5 .ba { grid-template-columns:auto 1fr; column-gap:16px; }
+.ax5 .ba .h { display:none; }
+.ax5 .ba .k { grid-column:1 / -1; }
+.ax5 .ba .n { text-align:left; border-top:0; }
+.ax5 .ba .k + .n + .n::before { content:"\2192  "; color:var(--inkSoft); }
+.acts { display:flex; flex-wrap:wrap; gap:8px; }
+.acts .btn { flex:1 1 140px; }
+.ax5 .acts .btn { flex-basis:100%; }
+.say { font-size:var(--fs-cap); line-height:var(--lh-cap); color:var(--inkSoft); margin:0; }
+.say.ok { color:var(--green); }
+.say.bad { color:var(--red); }
+
+/* the upload zone (Today: upload-zone-opens-when-empty) */
+.zone { border:2px dashed var(--inkSoft); border-radius:8px; background:var(--card); padding:16px; display:flex; flex-direction:column; gap:8px; align-items:stretch; text-align:center; }
+.zone.err { border-color:var(--red); background:var(--redSoft); }
+.zone b { font-size:var(--fs-body); line-height:var(--lh-body); }
+
+/* sheets: Cancel leading, the done act trailing (HIG sheets, read 2026-11-21) */
+.scrimx { position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 30%, transparent); z-index:9; }
+.sheet { position:absolute; left:0; right:0; bottom:0; top:calc(var(--sat) + 24px); background:var(--card); border-radius:16px 16px 0 0; z-index:10;
+  display:flex; flex-direction:column; border-top:1px solid var(--line); }
+.sheet.page { top:var(--sat); border-radius:0; border-top:0; z-index:4; background:var(--paper); }
+.grab { width:36px; height:4px; border-radius:2px; background:var(--line); margin:8px auto 0; }
+.sbar { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; padding:4px 8px; min-height:52px; border-bottom:1px solid var(--line); }
+.sbar .t { font-weight:700; font-size:var(--fs-body); line-height:var(--lh-body); text-align:center; }
+.sbar .lead { justify-self:start; } .sbar .trail { justify-self:end; }
+.lnk { all:unset; cursor:pointer; min-height:44px; min-width:44px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; color:var(--accent);
+  font:var(--fs-body)/var(--lh-body) var(--cochin); }
+.lnk.b { font-weight:700; }
+.lnk[disabled] { color:var(--inkSoft); cursor:default; }
+.ax5 .sbar { grid-template-columns:1fr 1fr; }
+.ax5 .sbar .t { grid-column:1 / -1; grid-row:1; text-align:left; }
+.ax5 .sbar .lead { grid-column:1; grid-row:2; } .ax5 .sbar .trail { grid-column:2; grid-row:2; }
+.foldline { position:absolute; left:0; right:0; border-top:2px dashed var(--accent); z-index:25; pointer-events:none; }
+.foldline span { position:absolute; right:8px; top:2px; font:600 10px/14px var(--sys); color:var(--card); background:var(--accent); padding:0 4px; border-radius:4px; }
+.sbody { flex:1 1 auto; min-height:0; overflow:hidden; padding:12px 16px calc(var(--sab) + 12px); display:flex; flex-direction:column; gap:12px; }
+.sheet.page .sbody { padding-bottom:calc(var(--sab) + 96px); }
+.seg { display:grid; grid-template-columns:repeat(3,1fr); gap:4px; padding:4px; border:1px solid var(--line); border-radius:8px; background:var(--paper); }
+.seg button { min-height:44px; border:0; border-radius:6px; background:transparent; cursor:pointer; font:var(--fs-cap)/var(--lh-cap) var(--cochin); color:var(--inkSoft); display:flex; flex-direction:column; align-items:center; justify-content:center; }
+.seg button b { font:700 var(--fs-body)/var(--lh-body) var(--mono); color:var(--ink); }
+.seg button[aria-pressed="true"] { background:var(--card); color:var(--accent); box-shadow:0 1px 2px var(--shadow); }
+.ax5 .seg { grid-template-columns:1fr; }
+.lst { display:flex; flex-direction:column; }
+.li { all:unset; display:flex; flex-direction:column; gap:2px; padding:8px 0; border-bottom:1px solid var(--line); min-height:44px; justify-content:center; cursor:pointer; }
+.li .a { font-size:var(--fs-body); line-height:var(--lh-body); display:flex; justify-content:space-between; gap:8px; }
+.li .a span { font:var(--fs-cap)/var(--lh-cap) var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.li .b { font:var(--fs-cap)/var(--lh-cap) var(--mono); color:var(--inkSoft); overflow-wrap:anywhere; }
+.li .b em { font-style:normal; color:var(--ink); }
+.ax5 .li .a { flex-direction:column; }
+.chiprow { display:flex; flex-wrap:wrap; row-gap:12px; column-gap:4px; }
+.kchip { min-height:34px; padding:6px 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); cursor:pointer; font:var(--fs-cap)/var(--lh-cap) var(--cochin); color:var(--ink); }
+.kchip[aria-pressed="true"] { background:var(--manila); border-color:var(--manilaInk); color:var(--manilaInk); font-weight:700; }
+.rgrid { display:grid; grid-template-columns:repeat(4,1fr); gap:4px; }
+.rgrid .kchip { min-height:44px; }
+.ax5 .rgrid { grid-template-columns:1fr; }
+.field { min-height:44px; border:1px solid var(--line); border-radius:8px; background:var(--card); padding:8px 12px; font:16px/22px var(--cochin); color:var(--inkSoft); }
+.pkg { display:flex; flex-direction:column; gap:2px; padding-bottom:8px; border-bottom:1px solid var(--line); }
+.pkg b { font-size:var(--fs-body); line-height:var(--lh-body); }
+.pkg span { font:var(--fs-cap)/var(--lh-cap) var(--mono); color:var(--inkSoft); }
+.cap { font:var(--fs-cap)/var(--lh-cap) var(--mono); color:var(--inkSoft); letter-spacing:.5px; }
+
+/* ribbon: the ledger as of a page, with a strip of pages under the thumb */
+.asof { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.asof h2 { margin:0; font-size:var(--fs-body); line-height:var(--lh-body); }
+.strip { display:flex; justify-content:flex-end; gap:4px; overflow:hidden; padding:12px 0 4px; border-top:1px solid var(--line); }
+.ptab { all:unset; cursor:pointer; flex:0 0 auto; min-width:76px; min-height:52px; padding:4px 8px; border:1px solid var(--line); border-radius:8px 8px 4px 4px; background:var(--card);
+  display:flex; flex-direction:column; justify-content:center; position:relative; }
+.ptab b { font:600 var(--fs-cap)/var(--lh-cap) var(--cochin); }
+.ptab span { font:11px/14px var(--mono); color:var(--inkSoft); }
+.ptab.on { border-color:var(--accent); }
+.ptab.on::before { content:""; position:absolute; top:-12px; left:12px; width:12px; height:22px; background:var(--accent);
+  clip-path:polygon(0 0, 100% 0, 100% 100%, 50% 75%, 0 100%); }
+.ptab.now b { color:var(--accent); }
+.ax5 .strip { flex-direction:column; }
+.ax5 .ptab { min-width:0; }
+.vstrip { display:flex; flex-direction:column; gap:4px; }
+.vstrip .ptab { min-width:0; border-radius:4px 8px 8px 4px; flex-direction:row; justify-content:space-between; align-items:center; gap:8px; }
+.vstrip .ptab.on::before { top:12px; left:-12px; width:22px; height:12px; clip-path:polygon(0 0, 100% 0, 100% 100%, 0 100%, 25% 50%); }
+.gone { background:var(--manila); border:1px solid var(--manilaInk); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; color:var(--manilaInk); }
+.gone b { font-size:var(--fs-body); line-height:var(--lh-body); color:var(--ink); }
+
+/* Today and New labels */
+.tg { outline:1.5px dashed var(--today); outline-offset:2px; }
+.tg:not(.tabbar):not(.sheet) { position:relative; }
+.tg[data-k="new"] { outline-color:var(--new); }
+.tg::after { content:attr(data-tag); position:absolute; right:4px; top:-10px; font:600 10px/14px var(--sys); padding:0 4px; border-radius:4px;
+  background:var(--today); color:var(--card); z-index:1; white-space:nowrap; pointer-events:none; }
+.tg[data-k="new"]::after { background:var(--new); }
+body.notags .tg { outline:0; }
+body.notags .tg::after { display:none; }
+[hidden] { display:none !important; }
+@media (prefers-reduced-motion: no-preference) { .ent.just .body { animation:post 420ms ease-out 1; } }
+@keyframes post { from { background:var(--greenSoft); } to { background:var(--card); } }
+</style>
+</head>
+<body>
+<div class="page">
+  <div class="banner" role="note">Sample. No figure, seller, order, file name or size on this page is real. Sizes follow the brief and the repo's checks, not a measured device.</div>
+  <div class="who">
+    <h1>Import and backup, as a journal</h1>
+    <p><b>Designer kind: directed.</b> Direction: undo-everything: every import is a reversible step in a visible timeline.</p>
+    <p>Two concepts. <b>Journal</b> takes one step out and keeps everything after it. <b>Ribbon</b> goes back to a page in time and keeps "now" as a page to return to. Notes: import-and-backup-directed-2-notes.md.</p>
+  </div>
+  <div class="bar" id="concepts"><span class="lab">Concept</span></div>
+  <div class="bar" id="undos"><span class="lab">Undo look</span></div>
+  <div class="bar" id="states"><span class="lab">State</span></div>
+  <div class="bar"><span class="lab">Labels</span>
+    <button class="chipb" id="tagbtn" aria-pressed="true">Today and New labels</button>
+    <button class="chipb" id="showall">Show hidden options</button>
+  </div>
+  <div class="frames" id="frames"></div>
+</div>
+
+<script>
+/* ---------- sample data (no figure is real) ---------- */
+const BEFORE = { lines:801, orders:176, checks:512, stamps:9, env:3 };
+const AFTER  = { lines:943, orders:214, checks:512, stamps:9, env:3 };
+const BACKUP = { file:"mailday-backup-2026-11-18.json", day:"18 Nov", at:"21:02", size:"231 KB", lines:801, orders:176, checks:512, stamps:8, env:2 };
+const IMP = { file:"orders-2026-11-20.csv", at:"00:49", newOrders:38, newLines:142, changed:18, ship:11, renamed:7, changedOrders:12, here:640, notCards:4 };
+
+const CONCEPTS = [["journal","Journal"],["ribbon","Ribbon"]];
+const UNDOS = [["reverse","Reversing entry"],["mark","Mark in place"]];
+const STATES = [
+  ["empty","First file"],["log","Resting"],["imported","Just imported"],["detail","What came in"],["armed","Undo armed"],["undone","Undone"],
+  ["stamp","Stamp editor"],["stamped","Stamp saved"],["range","Orders from"],["backup","Backup saved"],["restore","Restore preview"],["restored","Restored"],["error","Wrong file"]
+];
+const st = { c:"journal", s:"imported", u:"reverse", seg:"new", kind:"claim", rng:"custom", hidden:new Set(), tags:true };
+
+/* ---------- small helpers ---------- */
+const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+function T(cls, k, text) { return `class="${cls} tg" data-k="${k}" data-tag="${k === "new" ? "New" : "Today"}: ${esc(text)}"`; }
+const n = (x) => x.toLocaleString("en-US");
+function diffCell(a, b) {
+  if (a === b) return `<span class="n same">${n(b)} same</span>`;
+  const d = b - a;
+  return `<span class="n ${d > 0 ? "up" : "down"}">${n(b)} (${d > 0 ? "+" : "−"}${n(Math.abs(d))})</span>`;
+}
+function baTable(a, b, ha, hb, id) {
+  const rows = [["Lines","lines"],["Check-ins","checks"],["Stamps","stamps"],["Envelopes","env"]];
+  return `<div ${T("ba","new","before and after, check-ins first in the eye")} ${id ? `id="${id}"` : ""}>
+    <span class="h">&nbsp;</span><span class="h n">${ha}</span><span class="h n">${hb}</span>
+    ${rows.map(([k, f]) => `<span class="k">${k}</span><span class="n">${n(a[f])}</span>${diffCell(a[f], b[f])}`).join("")}
+  </div>`;
+}
+const ICON = {
+  ledger:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1 7 17M17 7l2.1-2.1"/></svg>',
+  orph:'<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="m3 7 9 6 9-6"/></svg>',
+  tally:'<svg viewBox="0 0 24 24"><path d="M9 3 7 21M17 3l-2 18M4 9h16M3 15h16"/></svg>',
+  pk:'<svg viewBox="0 0 24 24"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="m3 7.5 9 4.5 9-4.5M12 12v9"/></svg>'
+};
+function tabbar(cls = "") {
+  return `<nav ${T("tabbar " + cls,"today","bottom bar, Ledger tab")} aria-label="Views">
+    <span class="on">${ICON.ledger}Ledger</span><span>${ICON.orph}Orphaned</span><span>${ICON.tally}Tally</span><span>${ICON.pk}Packages</span></nav>`;
+}
+const statusBar = (w) => `<div class="status" style="width:${w}px"><span>00:49</span><span>sample status bar</span></div>`;
+
+/* ---------- the journal's entries ---------- */
+function entries() {
+  const s = st.s;
+  const e = [
+    { id:"e0", day:"9 Nov", at:"19:05", kind:"import", act:"Imported orders-2026-11-09.csv", fig:"+30 orders, 96 lines. Check-ins kept." },
+    { id:"e00", day:"11 Nov", at:"12:40", kind:"checkins", ctx:true, act:"Checked in 57 cards", fig:"413 to 470 check-ins" },
+    { id:"e1", day:"14 Nov", at:"18:30", kind:"import", act:"Imported orders-2026-11-14.csv", fig:"+21 orders, 64 lines. Check-ins kept." },
+    { id:"e2", day:"16 Nov", at:"09:12", kind:"checkins", ctx:true, act:"Checked in 42 cards", fig:"470 to 512 check-ins" },
+    { id:"e3", day:"18 Nov", at:"21:02", kind:"backup", ctx:true, act:"Backup downloaded", fig:`${BACKUP.file}, ${BACKUP.size}` },
+    { id:"e4", day:"20 Nov", at:"20:40", kind:"stamp", act:"Stamped Refunded", fig:"Lantern Row Games, order 4C1E77A0" },
+  ];
+  if (s === "empty" || s === "error") return [];
+  if (s !== "log") e.push({ id:"e5", day:"Today", at:IMP.at, kind:"import", act:`Imported ${IMP.file}`, fig:`+${IMP.newOrders} orders, ${IMP.newLines} lines. ${IMP.changed} lines changed. Check-ins kept.` });
+  if (s === "undone") {
+    const imp = e.find((x) => x.id === "e5");
+    if (st.u === "reverse") {
+      imp.struck = true; imp.mark = "Reversed at 00:52";
+      e.push({ id:"e6", day:"Today", at:"00:52", kind:"reversal", rev:true, act:"Took back the 00:49 import", fig:`−${IMP.newLines} lines, ${IMP.changed} changes put back as they were. 512 check-ins kept.` });
+    } else {
+      imp.struck = true; imp.mark = "Undone at 00:52";
+    }
+  }
+  if (s === "stamped") e.push({ id:"e7", day:"Today", at:"00:51", kind:"stamp", act:"Stamped Claim filed", fig:"Copper Kettle TCG, order 9A2D1B44" });
+  if (s === "backup") e.push({ id:"e8", day:"Today", at:"00:50", kind:"backup", ctx:true, act:"Backup downloaded", fig:"mailday-backup-2026-11-21.json, 248 KB" });
+  if (s === "restored") e.push({ id:"e9", day:"Today", at:"00:53", kind:"restored", act:"Restored the 18 Nov backup", fig:"−142 lines, −1 stamp, −1 envelope. 512 check-ins same." });
+  return e;
+}
+function selectedId() {
+  return { log:"e4", imported:"e5", detail:"e5", armed:"e5", undone: st.u === "reverse" ? "e6" : "e5", stamp:"e5", range:"e5", stamped:"e7", backup:"e8", restore:"e8", restored:"e9" }[st.s];
+}
+
+/* the open detail of one entry: before and after, and its one undo */
+function entryDetail(e, primary, wide) {
+  const pid = (x) => (primary ? `id="${x}"` : "");
+  if (!e) return "";
+  if (e.kind === "import" && e.id === "e5" && !e.struck) {
+    const armed = st.s === "armed";
+    return `${baTable(BEFORE, AFTER, "Before", "After")}
+      <p class="say ok">Every check-in you had is still here. This import only added lines and refreshed shipping status and names.</p>
+      <div class="acts">
+        ${armed ? "" : `<button class="btn" data-go="detail">See what came in</button>`}
+        ${armed
+          ? `<button class="btn" data-go="imported" ${pid("undo-cancel")}>Cancel</button>
+             <button ${T("btn red","new","undo takes only this import out")} data-go="undone" ${pid("choice-undo-armed")}>Tap again to take off ${IMP.newLines} lines</button>`
+          : `<button ${T("btn","new","undo this one import")} data-go="armed" ${pid("undo-import")}>Undo import</button>`}
+      </div>
+      ${armed ? `<p class="say">Your 512 check-ins stay. Lines you checked in since come back if you import this file again. This device sends the change to sync in a few seconds.</p>` : ""}`;
+  }
+  if (e.kind === "import" && e.struck) {
+    return `<p class="say">This import is out of the ledger. ${IMP.newLines} lines are off; the 18 changed lines are back as they were.</p>
+      <div class="acts"><button ${T("btn","new","put an undone step back")} data-go="imported" ${pid("choice-undo-mark")}>Put it back</button></div>`;
+  }
+  if (e.kind === "reversal") {
+    return `${baTable(AFTER, BEFORE, "Before", "After")}
+      <div class="acts"><button class="btn" data-go="imported" ${pid("put-back")}>Put the import back</button></div>`;
+  }
+  if (e.kind === "stamp") {
+    const isNew = e.id === "e7";
+    return `<div ${T("ba","new","a stamp's before and after")}><span class="h">&nbsp;</span><span class="h n">Before</span><span class="h n">After</span>
+      <span class="k">Stamp</span><span class="n">none</span><span class="n up">${isNew ? "Claim filed" : "Refunded"}</span></div>
+      <p class="say">${isNew ? "Saved from the stamp editor. Copper Kettle TCG leaves the lost-mail list." : "A refund takes the package out of every count."}</p>
+      <div class="acts"><button ${T("btn","new","undo a stamp")} data-go="${isNew ? "imported" : "log"}">Undo stamp</button></div>`;
+  }
+  if (e.kind === "backup") {
+    return `<div class="pkg"><b>${e.fig.split(",")[0]}</b><span>${e.fig.split(",")[1].trim()}. Holds ${n(AFTER.lines)} lines, 512 check-ins, 9 stamps, 3 envelopes.</span></div>
+      <p class="say">Your browser saved it with its other downloads. This page cannot see the file after that.</p>
+      <div class="acts"><button class="btn" data-go="restore">Restore from a backup file</button></div>`;
+  }
+  if (e.kind === "restored") {
+    return `${baTable(AFTER, BACKUP, "Before", "After")}
+      <p class="say">The ledger as it stood before this restore is kept on this device. Undo brings it back.</p>
+      <div class="acts"><button ${T("btn","new","undo a restore")} data-go="imported" ${pid("undo-restore")}>Undo restore</button></div>`;
+  }
+  if (e.kind === "checkins") return `<p class="say">Check-ins are taken back one card at a time, in Packages.</p>`;
+  return "";
+}
+
+function journalList(primary, inlineDetail, fromSel) {
+  const sel = selectedId();
+  let list = entries();
+  /* largest text: the frame starts at the step in view, as a scrolled list would */
+  if (fromSel) { const i = list.findIndex((e) => e.id === sel); list = list.slice(Math.max(0, i)); }
+  return list.map((e, i) => {
+    const isSel = e.id === sel;
+    const just = isSel && ["imported","stamped","backup","restored","undone"].includes(st.s);
+    const cls = ["ent", e.ctx ? "ctx" : "", e.rev ? "rev" : "", e.struck ? "struck" : "", isSel ? "sel" : "", just ? "just" : ""].join(" ");
+    let idAttr = "";
+    if (primary && st.s === "undone" && st.u === "reverse" && e.id === "e6") idAttr = `id="choice-undo-reverse"`;
+    if (primary && st.s === "undone" && st.u === "mark" && e.id === "e5") idAttr = `id="choice-undo-mark-entry"`;
+    if (primary && st.s === "imported" && e.id === "e5") idAttr = `id="choice-journal"`;
+    const tagged = e.rev ? T(cls, "new", "reversing entry") : (e.struck && st.u === "mark" ? T(cls, "new", "marked undone in place") : `class="${cls}"`);
+    return `<div ${tagged} ${idAttr}>
+      <div class="when">${e.day}<br>${e.at}</div><div class="spine"><i></i></div>
+      <div class="body">
+        <button class="row" data-pick="${e.id}" aria-expanded="${isSel}"><span class="act">${esc(e.act)}</span><span class="fig">${esc(e.fig)}</span>${e.mark ? `<span class="mark">${e.mark}</span>` : ""}</button>
+        ${isSel && inlineDetail ? entryDetail(e, primary) : ""}
+      </div></div>`;
+  }).join("");
+}
+
+/* ---------- sheets ---------- */
+function whatCameIn(primary) {
+  const seg = st.seg;
+  const segBtn = (k, b, l) => `<button data-set="seg=${k}" aria-pressed="${seg === k}"><b>${b}</b>${l}</button>`;
+  let rows = "";
+  if (seg === "new") rows = [
+    ["Copper Kettle TCG","9A2D1B44","6 lines","3 Nov","Tidecaller Adept, Ashen Lantern, and 4 more"],
+    ["Northgate Singles","51F0C3A2","4 lines","2 Nov","Ornn, Fire Below the Mountain (Overnumbered), and 3 more"],
+    ["Lantern Row Games","7B19E4D0","9 lines","31 Oct","Glimmer Moth, Saltmarsh Herald, and 7 more"],
+    ["Fenwick Card Co.","2E88A71F","2 lines","30 Oct","Quiet Orchard, Hollow Bell"],
+  ].map(([s, o, l, d, c]) => `<button class="li" data-go="stamp"><span class="a">${s}<span>${l}</span></span><span class="b">Order ${o}, ${d}. ${c}</span></button>`).join("")
+    + `<p class="say">34 more orders. Tap one to stamp it.</p>`;
+  if (seg === "chg") rows = [
+    ["Shipping status","11 lines","In transit → <em>Delivered</em> on 8 lines; No tracking → <em>In transit</em> on 3"],
+    ["Renamed","7 lines","Ornn - Fire Below the Mountain (Overnumbered) → <em>Ornn, Fire Below the Mountain (Overnumbered)</em>, and 6 more"],
+  ].map(([a, l, b]) => `<div class="li"><span class="a">${a}<span>${l}</span></span><span class="b">${b}</span></div>`).join("")
+    + `<p class="say">Only shipping status and names change on a line already here. Its check-ins and stamp stay.</p>`;
+  if (seg === "skip") rows = `<div class="li"><span class="a">Already here, nothing new<span>${IMP.here} lines</span></span><span class="b">Same order, card and status as the ledger holds.</span></div>
+    <div class="li"><span class="a">Not a card purchase<span>${IMP.notCards} rows</span></span><span class="b">A playmat, two sleeves and a refund row. The importer keeps only TCG purchases.</span></div>`;
+  return `<div ${T("seg","new","what came in, by kind")} role="group" aria-label="What came in" ${primary ? 'id="segs"' : ""}>
+      ${segBtn("new", IMP.newOrders, "new orders")}${segBtn("chg", IMP.changed, "lines changed")}${segBtn("skip", IMP.here + IMP.notCards, "skipped")}
+    </div>
+    <div class="lst">${rows}</div>
+    <button ${T("btn","new","show this file's orders")} data-go="range">Show these orders in Packages</button>`;
+}
+function stampSheet() {
+  const kinds = [["claim","Claim filed"],["refund","Refunded"],["contacted","Seller contacted"],["reship","Reshipped"],["partial","Partial refund"],["other","Other"]];
+  return `<div class="pkg"><b>Copper Kettle TCG</b><span>Order 9A2D1B44, 6 lines, ordered 3 Nov</span></div>
+    <div class="cap">Stamp</div>
+    <div ${T("chiprow","today","stamp editor's six kinds")}>${kinds.map(([k, l]) => `<button class="kchip" data-set="kind=${k}" aria-pressed="${st.kind === k}">${l}</button>`).join("")}</div>
+    <div class="field" aria-label="Stamp note">Anything else — what they said, when…</div>
+    <p ${T("say","new","a stamp posts an entry")}>Save posts it to the journal, where Undo stamp takes it back.</p>`;
+}
+function rangeSheet() {
+  const R = [["all","All time"],["30","30 days"],["45","45 days"],["60","60 days"],["90","90 days"],["days","Last…"],["custom","By month"]];
+  const months = [["Nov 2026",true,"12 orders"],["Oct 2026",true,"26 orders"],["Sep 2026",false,"41 orders"],["Aug 2026",false,"37 orders"]];
+  return `<div ${T("rgrid","today","Orders from, seven ranges")}>${R.map(([k, l]) => `<button class="kchip" data-set="rng=${k}" aria-pressed="${st.rng === k}">${l}</button>`).join("")}</div>
+    ${st.rng === "custom" ? `<div class="lst">${months.map(([m, on, c]) => `<div class="li"><span class="a">${on ? "● " : "○ "}${m}<span>${c}</span></span></div>`).join("")}
+    <div class="li"><span class="a">Exact dates<span>›</span></span></div></div>` : ""}
+    <p ${T("say","new","why a view change posts nothing")}>Oct and Nov 2026 hold every order in this file. A view setting changes no data, so the journal posts nothing.</p>`;
+}
+function restoreSheet(primary) {
+  const armed = st.restoreArmed;
+  return `<div class="pkg"><b>${BACKUP.file}</b><span>Backup of ${BACKUP.day} ${BACKUP.at}, ${BACKUP.size}</span></div>
+    ${baTable(AFTER, BACKUP, "Now", "Backup")}
+    <p class="say bad">Restoring replaces the ledger with the backup: 142 lines, 1 stamp and 1 hand-typed envelope go.</p>
+    <p ${T("say","new","a restore is a step you can undo")}>Now is kept first on this device, as a journal entry. Undo restore brings it back.</p>
+    <div class="acts">${armed
+      ? `<button class="btn" data-set="restoreArmed=0">Cancel</button><button class="btn red" data-go="restored" ${primary ? 'id="restore-armed"' : ""}>Tap again to replace 943 lines</button>`
+      : `<button ${T("btn","new","restore after a look")} data-set="restoreArmed=1">Restore this backup</button>`}</div>`;
+}
+function sheetFor(primary) {
+  const s = st.s;
+  if (s === "detail") return { t:"What came in", lead:["Close","imported"], trail:null, body:whatCameIn(primary), tagk:"new", tagt:"what came in, a sheet" };
+  if (s === "stamp") return { t:"Stamp", lead:["Cancel","detail"], trail:["Save","stamped"], body:stampSheet(), tagk:"today", tagt:"stamp editor, as a sheet" };
+  if (s === "range") return { t:"Orders from", lead:["Cancel","detail"], trail:["Done","imported"], body:rangeSheet(), tagk:"today", tagt:"Orders from picker" };
+  if (s === "restore") return { t:"Restore a backup", lead:["Cancel","backup"], trail:null, body:restoreSheet(primary), tagk:"new", tagt:"restore preview" };
+  return null;
+}
+function sheetHtml(sh, page) {
+  return `<section ${T("sheet" + (page ? " page" : ""), sh.tagk, sh.tagt)} aria-label="${sh.t}">
+    ${page ? "" : `<div class="grab"></div>`}
+    <div class="sbar"><button class="lnk lead" data-go="${sh.lead[1]}">${sh.lead[0]}</button><span class="t">${sh.t}</span>
+      ${sh.trail ? `<button class="lnk b trail" data-go="${sh.trail[1]}">${sh.trail[0]}</button>` : `<span></span>`}</div>
+    <div class="sbody">${sh.body}</div></section>`;
+}
+
+/* ---------- the upload zone and the dock ---------- */
+function zone(err) {
+  if (err) return `<div ${T("zone err","today","the import's error copy")} role="alert">
+    <b>No card rows found.</b>
+    <p class="say bad">This doesn’t look like an OrderWand CSV — expected columns like “Product Name” and “Order Id”. Nothing changed.</p>
+    <button class="btn ink" data-go="imported">Choose another file</button></div>`;
+  return `<div ${T("zone","today","upload zone, open on an empty ledger")}>
+    <b>Choose your OrderWand CSV</b>
+    <p class="say">In OrderWand: pick “OrderWand CSV” from the drop list, click File, then bring it here. A .json backup restores instead.</p>
+    <button class="btn ink" data-go="imported" ${""}>Choose a file</button></div>`;
+}
+function dock(primary) {
+  return `<div ${T("dock","today","Re-import CSV and Backup, moved under the thumb")}>
+    <button class="btn ink" data-go="imported" ${primary ? 'id="dock-import"' : ""}>Import a file</button>
+    <button class="btn" data-go="backup">Back up</button></div>`;
+}
+
+/* ---------- Journal ---------- */
+function journalSingle(primary, w, ax) {
+  const empty = st.s === "empty" || st.s === "error";
+  const sh = sheetFor(primary);
+  const body = empty
+    ? `<div class="grow"><p class="say">Nothing on this device’s journal yet. Your first file goes here.</p>${zone(st.s === "error")}</div>`
+    : `<div class="fade">Earlier entries above</div>
+       <div class="grow ${ax ? "" : "end"}"><div ${T("jr","new","journal, newest at the bottom")}>${journalList(primary, true, ax)}</div></div>
+       ${dock(primary)}`;
+  return `<div class="pg full">${statusBar(w)}
+    <div class="scr"><h2 class="ttl">Ledger</h2><p class="sub">Journal of this device. Each step can be undone.</p>${body}</div>
+    ${tabbar()}
+    ${sh ? `<div class="scrimx"></div>${sheetHtml(sh, false)}` : ""}</div>`;
+}
+function journalOpen(primary) {
+  const empty = st.s === "empty" || st.s === "error";
+  const sel = entries().find((e) => e.id === selectedId());
+  const sh = sheetFor(false);
+  const left = empty
+    ? `<div class="grow"><p class="say">Nothing on this device’s journal yet. Your first file goes here.</p></div>`
+    : `<div class="fade">Earlier entries above</div><div class="grow end"><div ${T("jr","new","journal, left page")}>${journalList(false, false)}</div></div>${dock(false)}`;
+  const right = empty
+    ? `<div class="grow">${zone(st.s === "error")}</div>`
+    : sel ? `<h3 class="act" style="margin:0">${esc(sel.act)}</h3><p class="fig" style="margin:0">${sel.day} ${sel.at}. ${esc(sel.fig)}</p>${entryDetail(sel, false, true)}
+      ${sel.kind === "import" && !sel.struck && st.s !== "armed" ? `<div class="grow">${whatCameIn(false).replace(/<button class="btn tg"[^]*$/, "")}</div>` : ""}` : "";
+  return `<div class="pg l">${statusBar(455.5)}<div class="scr nobar"><h2 class="ttl">Ledger</h2><p class="sub">Journal of this device. Each step can be undone.</p>${left}</div></div>
+    <div class="hinge" aria-hidden="true"></div>
+    <div class="pg r">${statusBar(455.5)}<div class="scr" style="gap:16px">${right}</div>
+      ${sh ? sheetHtml(sh, true) : ""}${tabbar()}</div>`;
+}
+
+/* ---------- Ribbon ---------- */
+function pages() {
+  const p = [
+    { id:"p1", b:"14 Nov", t:"before import" },
+    { id:"p2", b:"16 Nov", t:"09:12" },
+    { id:"p3", b:"18 Nov", t:"backup" },
+    { id:"p4", b:"20 Nov", t:"before stamp" },
+  ];
+  if (!["log","empty","error"].includes(st.s)) p.push({ id:"p5", b:"Today", t:"before import", isNew: st.s === "imported" });
+  if (st.s === "stamped") p.push({ id:"p6", b:"Today", t:"before stamp" });
+  p.push({ id:"now", b:"Now", t: st.s === "undone" || st.s === "restored" ? "kept, 00:52" : "00:49", now:true });
+  return p;
+}
+function ribbonSel() {
+  if (st.s === "armed" || st.s === "undone") return "p5";
+  if (st.s === "restored") return "p3";
+  return st.rsel || "now";
+}
+function ribbonCard(primary) {
+  const sel = ribbonSel();
+  const s = st.s;
+  if (s === "empty" || s === "error") return `<p class="say">No pages on this device yet. Your first file makes the first one.</p>${zone(s === "error")}`;
+  if (s === "undone" || s === "restored") {
+    const what = s === "undone" ? "before the 00:49 import" : "the 18 Nov backup";
+    return `<div ${T("gone","new","you went back; now is kept")} ${primary ? 'id="choice-ribbon"' : ""}>
+      <b>You went back to ${what}.</b>
+      <span class="say" style="color:inherit">The ledger as it stood at 00:52 is kept as the Now page. ${s === "undone" ? "142 lines and 18 changes are set aside. 512 check-ins are the same." : "142 lines, 1 stamp and 1 envelope are set aside."}</span>
+      <button class="btn ink" data-go="imported" ${primary ? 'id="return-now"' : ""}>Return to now</button></div>`;
+  }
+  if (sel === "now") {
+    return `<div ${T("asof","new","the ledger as of the page the ribbon marks")}><h2>Now</h2>
+      ${s === "imported" || s === "detail" || s === "stamp" || s === "range" ? `${baTable(BEFORE, AFTER, "Before import", "Now")}<p class="say ok">Every check-in you had is still here.</p><button class="btn" data-go="detail">See what came in</button>` :
+        s === "backup" ? `<div class="pkg"><b>mailday-backup-2026-11-21.json</b><span>248 KB, downloaded 00:50. Your browser saved it with its other downloads.</span></div><button class="btn" data-go="restore">Restore from a backup file</button>` :
+        `<p class="say">${n(AFTER.lines)} lines, 512 check-ins, 9 stamps, 3 envelopes.</p>`}
+      </div>${dock(primary)}`;
+  }
+  const armed = s === "armed";
+  const from = { p1:{ lines:737, checks:470, stamps:8, env:2 }, p2:{ lines:801, checks:512, stamps:8, env:2 }, p3:BACKUP, p4:{ lines:801, checks:512, stamps:8, env:3 }, p5:BEFORE }[sel] || BEFORE;
+  const lab = pages().find((p) => p.id === sel);
+  return `<div ${T("asof","new","the ledger as of an older page")}><h2>As of ${lab.b}, ${lab.t}</h2>
+    ${baTable(AFTER, from, "Now", "Then")}
+    <p class="say">${sel === "p5" ? "Going back sets aside the 00:49 import: 142 lines and 18 changes. Your 512 check-ins are the same on both pages." : "Going back sets aside everything after this page."} Now stays a page you can return to.</p>
+    <div class="acts">${armed
+      ? `<button class="btn" data-go="imported">Cancel</button><button class="btn red" data-go="undone" ${primary ? 'id="goback-armed"' : ""}>Tap again to go back</button>`
+      : `<button ${T("btn","new","go back to this page")} data-go="armed" ${primary ? 'id="goback"' : ""}>Go back to this page</button>`}</div></div>`;
+}
+function strip(primary, vertical) {
+  const sel = ribbonSel();
+  return `<div ${T(vertical ? "vstrip" : "strip", "new", "pages, ribbon on the one in view")} role="listbox" aria-label="Pages" ${primary ? 'id="ribbon-strip"' : ""}>
+    ${pages().map((p) => `<button class="ptab ${p.id === sel ? "on" : ""} ${p.now ? "now" : ""}" role="option" aria-selected="${p.id === sel}" data-set="rsel=${p.id}"><b>${p.b}</b><span>${p.t}</span></button>`).join("")}</div>`;
+}
+function ribbonSingle(primary, w) {
+  const sh = sheetFor(primary);
+  const s = st.s;
+  const showStrip = !["empty","error"].includes(s);
+  return `<div class="pg full">${statusBar(w)}
+    <div class="scr"><h2 class="ttl">Ledger</h2><p class="sub">Pages of this device. Go back to any one.</p>
+      <div class="grow">${ribbonCard(primary)}</div>${showStrip ? strip(primary, false) : ""}</div>
+    ${tabbar()}${sh ? `<div class="scrimx"></div>${sheetHtml(sh, false)}` : ""}</div>`;
+}
+function ribbonOpen() {
+  const sh = sheetFor(false);
+  const s = st.s;
+  return `<div class="pg l">${statusBar(455.5)}<div class="scr nobar"><h2 class="ttl">Ledger</h2><p class="sub">Pages of this device. Go back to any one.</p>
+      <div class="grow">${ribbonCard(false)}</div></div></div>
+    <div class="hinge" aria-hidden="true"></div>
+    <div class="pg r">${statusBar(455.5)}<div class="scr"><p class="cap">Pages, newest last</p>${["empty","error"].includes(s) ? "" : strip(false, true)}</div>
+      ${sh ? sheetHtml(sh, true) : ""}${tabbar()}</div>`;
+}
+
+/* ---------- frames ---------- */
+const FRAMES = [
+  { key:"folded", dev:"iphone-duo-folded", w:466, h:678, cap:"<b>Duo, folded</b>, 466 x 678 pt (the brief's size). One hand, touch." },
+  { key:"open", dev:"iphone-duo-unfolded", w:951, h:669, cap:"<b>Duo, open</b>, 951 x 669 pt, hinge x 455.5 to 495.5 (the brief's size). The journal on the left page, the step on the right. The bar sits under the right page." },
+  { key:"phone", dev:"iphone-regular", w:375, h:678, cap:"<b>Large phone</b>, drawn 375 pt wide: no size is written for it. 375 is the repo's own screens-check width; the height repeats the folded Duo's." },
+  { key:"ax5", dev:"iphone-duo-folded-ax5", w:466, h:2712, cap:"<b>Duo, folded, largest text</b> (AX5: body 53 pt), drawn four screens tall to show the scroll. Each dashed line is a screen's foot. Rows stack; the bar keeps its fixed labels." },
+];
+function render() {
+  const vis = CONCEPTS.filter(([k]) => !st.hidden.has(k));
+  if (!vis.find(([k]) => k === st.c) && vis.length) st.c = vis[0][0];
+  document.getElementById("concepts").innerHTML = `<span class="lab">Concept</span>` + CONCEPTS.map(([k, l]) =>
+    st.hidden.has(k) ? "" : `<span class="chipb" style="padding:0"><button class="chipb" style="border:0" data-set="c=${k}" aria-pressed="${st.c === k}">${l}</button><button class="chipb x" style="border:0;border-left:1px solid var(--line);border-radius:0 8px 8px 0" data-hide="${k}" aria-label="Hide ${l}">Hide</button></span>`).join("");
+  const uv = UNDOS.filter(([k]) => !st.hidden.has(k));
+  if (!uv.find(([k]) => k === st.u) && uv.length) st.u = uv[0][0];
+  document.getElementById("undos").hidden = st.c !== "journal";
+  document.getElementById("undos").innerHTML = `<span class="lab">Undo look</span>` + UNDOS.map(([k, l]) =>
+    st.hidden.has(k) ? "" : `<span class="chipb" style="padding:0"><button class="chipb" style="border:0" data-set="u=${k}" aria-pressed="${st.u === k}">${l}</button><button class="chipb x" style="border:0;border-left:1px solid var(--line);border-radius:0 8px 8px 0" data-hide="${k}" aria-label="Hide ${l}">Hide</button></span>`).join("")
+    + `<span class="lab" style="min-width:0">shows in the Undone state</span>`;
+  document.getElementById("states").innerHTML = `<span class="lab">State</span>` + STATES.map(([k, l]) => `<button class="chipb" data-set="s=${k}" aria-pressed="${st.s === k}">${l}</button>`).join("");
+  document.getElementById("frames").innerHTML = vis.length ? FRAMES.map((f, i) => {
+    const primary = i === 0;
+    const inner = st.c === "journal"
+      ? (f.key === "open" ? journalOpen(primary) : journalSingle(primary, f.w, f.key === "ax5"))
+      : (f.key === "open" ? ribbonOpen(primary) : ribbonSingle(primary, f.w));
+    return `<figure><div class="dev ${f.key === "ax5" ? "ax5" : ""}" data-device="${f.dev}" style="width:${f.w}px;height:${f.h}px">${inner}${f.key === "ax5" ? `<div class="foldline" style="top:678px"><span>foot of screen 1</span></div><div class="foldline" style="top:1356px"><span>foot of screen 2</span></div><div class="foldline" style="top:2034px"><span>foot of screen 3</span></div>` : ""}</div><figcaption>${f.cap}</figcaption></figure>`;
+  }).join("") : `<p>Every concept is hidden. Use Show hidden options.</p>`;
+  document.body.classList.toggle("notags", !st.tags);
+  document.getElementById("tagbtn").setAttribute("aria-pressed", String(st.tags));
+  const h = `#c=${st.c}&s=${st.s}${st.c === "journal" && st.s === "undone" ? `&u=${st.u}` : ""}${st.tags ? "" : "&tags=0"}`;
+  if (location.hash !== h) history.replaceState(null, "", h);
+}
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (p.get("c")) st.c = p.get("c");
+  if (p.get("s") && STATES.find(([k]) => k === p.get("s"))) st.s = p.get("s");
+  if (p.get("u")) st.u = p.get("u");
+  if (p.get("tags") === "0") st.tags = false;
+  st.restoreArmed = false; st.rsel = null;
+}
+document.addEventListener("click", (ev) => {
+  const go = ev.target.closest("[data-go]"), set = ev.target.closest("[data-set]"), hide = ev.target.closest("[data-hide]"), pick = ev.target.closest("[data-pick]");
+  if (go) { st.s = go.dataset.go; st.restoreArmed = false; st.rsel = null; if (st.s === "detail") st.seg = st.seg || "new"; }
+  else if (set) { const [k, v] = set.dataset.set.split("="); st[k] = k === "restoreArmed" ? v === "1" : v; if (k === "s" || k === "c") { st.restoreArmed = false; st.rsel = null; } }
+  else if (hide) st.hidden.add(hide.dataset.hide);
+  else if (pick) {
+    const id = pick.dataset.pick;
+    const to = { e0:"log", e00:"log", e1:"log", e2:"log", e3:"backup", e4:"log", e5:"imported", e6:"undone", e7:"stamped", e8:"backup", e9:"restored" }[id];
+    if (to && to !== st.s && !(st.s === "undone" && id === "e5")) st.s = to;
+  } else return;
+  render();
+});
+document.getElementById("tagbtn").addEventListener("click", (ev) => { ev.stopPropagation(); st.tags = !st.tags; render(); });
+document.getElementById("showall").addEventListener("click", (ev) => { ev.stopPropagation(); st.hidden.clear(); render(); });
+window.addEventListener("hashchange", () => { readHash(); render(); });
+readHash(); render();
+</script>
+</body>
+</html>

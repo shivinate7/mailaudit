@@ -181,6 +181,10 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
 /* Fix bench */
 .bench { flex: none; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-2) var(--space-3) calc(var(--tab-h) + var(--home-h) + var(--space-4)); background: var(--surface-2); border-top: 1px solid var(--line); }
 .page.full .bench { flex: 1 1 auto; min-height: 0; padding-bottom: calc(var(--home-h) + var(--space-3)); }
+/* A screen that holds undo or swap buttons ends at the tab bar's top edge, so no button scrolls under the bar */
+.screen.above-bar { bottom: calc(var(--tab-h) + var(--home-h) + var(--space-3)); }
+.screen.above-bar .pad-bottom { padding-bottom: var(--space-4); }
+.screen.above-bar .bench { padding-bottom: var(--space-3); }
 .spool { display: flex; flex-direction: column-reverse; gap: var(--space-1); overflow-y: auto; overscroll-behavior: contain; height: 96px; }
 .page.full .spool { flex: 1 1 auto; height: auto; min-height: 0; }
 .rec { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: center; background: var(--surface); border-radius: var(--radius); padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2); min-height: 60px; flex: none; border: 1px solid transparent; }
@@ -207,7 +211,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
 .f.ax5 .panel { height: auto; order: -1; }
 .f.ax5 .panel-h { grid-template-columns: 1fr; }
 .f.ax5 .panel-h > .foot { display: none; }
-.f.ax5 .bench { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; }
+.f.ax5 .bench { max-height: 320px; overflow-y: auto; overscroll-behavior: contain; }
 .f.ax5 .spool { height: auto; overflow: visible; flex-direction: column; }
 .f.ax5 .slot .legend svg { width: .8em; height: .8em; }
 .f.ax5 .slot .legend { flex-wrap: wrap; }
@@ -247,6 +251,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
   <div class="ctl-row" id="ctl-v-btn"><span>Undo button</span></div>
   <div class="ctl-row" id="ctl-v-hold"><span>New ticks while a list is open</span></div>
   <div class="ctl-row" id="ctl-v-edge"><span>Fix bench: undo edge</span></div>
+  <div class="ctl-row" id="ctl-v-win"><span>How far back</span></div>
+  <div class="ctl-row" id="ctl-v-xdev"><span>Who can undo a tick</span></div>
   <div class="ctl-row" id="ctl-sim"><span>Try</span>
     <button class="chip" id="sim-remote" type="button">Add a tick from Laptop</button>
     <button class="chip" id="sim-reset" type="button">Reset sample</button>
@@ -420,11 +426,11 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     ui(fid).sel = n.id;
     render();
   }
-  function remoteTick() {
+  function remoteTick(fixed) {
     if (V.state === 'empty') { V.state = 'loaded'; }
     var free = Object.keys(S.cards).filter(function (k) { return !S.cards[k].got; });
     if (!free.length) return;
-    var cid = free[(seq * 7) % free.length];
+    var cid = fixed && !S.cards[fixed].got ? fixed : free[(seq * 7) % free.length];
     S.cards[cid].got = true;
     var a = { id: 'r' + (seq++), card: cid, tick: true, ago: 0, dev: 'laptop', undone: false };
     if (V.hold === 'hold') S.pending.unshift(a); else S.log.unshift(a);
@@ -630,7 +636,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     var c = card(a.card);
     var cls = 'rec' + (V.edge === 'trail' ? ' trail' : '') + (a.undone ? ' undone' : '') + (sel ? ' sel' : '');
     return '<div class="' + cls + '">' + undoBtn(a, me) +
-      '<button type="button" class="tapbody" data-act="pick" data-id="' + a.id + '" aria-label="Open ' + c.name + ' on the bench"><span class="uname">' + c.name + '</span><span class="foot num">' + verb(a) + ' ' + when(a.ago) + ', ' + devName(a.dev, me) + '</span></button></div>';
+      '<button type="button" class="tapbody" data-act="pick" data-id="' + a.id + '" aria-label="Open ' + c.name + ' on the bench"><span class="uname">' + c.name + '</span><span class="foot num line">' + verb(a) + ' ' + when(a.ago) + ', ' + devName(a.dev, me) +
+      (!ownOk(a, me) ? '. Undo it on ' + DEVICES[a.dev] + '.' : laterChange(a) ? '. Changed again since, so undo is off.' : '') + '</span></button></div>';
   }
   function panel(fid, me, a, log) {
     var newer = S.pending.length;
@@ -735,6 +742,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     optGroup('ctl-v-btn', 'btn', OPTS.btn, function (v) { V.btn = v; render(); });
     optGroup('ctl-v-hold', 'hold', OPTS.hold, function (v) { V.hold = v; if (v === 'insert' && S.pending.length) showPending(); else render(); });
     optGroup('ctl-v-edge', 'edge', OPTS.edge, function (v) { V.edge = v; render(); });
+    optGroup('ctl-v-win', 'win', OPTS.win, function (v) { V.win = v; render(); });
+    optGroup('ctl-v-xdev', 'xdev', OPTS.xdev, function (v) { V.xdev = v; render(); });
     document.getElementById('ctl-v-edge').hidden = V.c !== 'bench';
     plainGroup('ctl-state', 'state', [['loaded', 'Loaded'], ['many', 'Two hours of ticks'], ['empty', 'Empty'], ['unknown', 'Other devices failed to load']]);
     plainGroup('ctl-device', 'd', [['all', 'All four'], ['folded', 'Duo folded'], ['open', 'Duo open'], ['phone', 'Large phone'], ['ax5', 'Largest text']]);
@@ -761,7 +770,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     else if (act === 'filter') { u.filter = t.getAttribute('data-v'); render(); }
     else if (act === 'pick') { u.sel = t.getAttribute('data-id'); render(); }
   });
-  document.getElementById('sim-remote').onclick = remoteTick;
+  document.getElementById('sim-remote').onclick = function () { remoteTick(); };
   document.getElementById('sim-reset').onclick = function () { S.ui = {}; reset(); render(); };
   document.getElementById('sim-marks').onclick = function () { V.marks = !V.marks; render(); };
   window.addEventListener('hashchange', function () { readHash(); reset(); render(); });
@@ -775,7 +784,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     if (V.o === 'detail') u.detail = 'a1';
     if (V.o === 'pick') u.sel = 'a2';
   });
-  render();
+  /* p=1 seeds one tick from Laptop, so the two "new ticks" options show their own pictures */
+  if (V.p && V.state !== 'empty') remoteTick('c7'); else render();
 })();
 </script>
 </body>

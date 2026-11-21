@@ -431,10 +431,14 @@ function field(chip) {
   return `<button class="field" data-act="field" aria-label="Card name">${q ? `<span class="q">${esc(q)}</span>` : `<span class="ph">Card in hand</span>`}${S.keys ? '<span class="caret"></span>' : ''}${
     chip && S.held.length ? `<span class="chip">${S.held.length} held</span>` : ''}</button>`;
 }
-function slot(tag) {
+// reserve: Facing leaves keeps the 53 pt slot on the desk page at all times, even empty. The matches sit right
+// above it, so a slot that came and went would land under the finger that tapped a match (no-layout-shift-under-pointer).
+function slot(tag, reserve) {
   const o = offer(), t = tag ? ` tag-new" data-tag="${tag}` : '';
   if (o) return `<div class="slot${t}"><button class="postbtn" data-act="post">Post ${o.n} cards here, ${o.held.length} held</button></div>`;
-  if (S.receipt) return `<div class="slot${t}"><span class="receipt">Posted. ${S.receipt.n} cards</span></div>`;
+  // At the largest sizes the receipt shows the count alone; "Posted." is spoken only (owner item 106 a).
+  if (S.receipt) return `<div class="slot${t}"><span class="receipt" aria-label="Posted. ${S.receipt.n} cards">${S.ax === '5' ? '' : 'Posted. '}${S.receipt.n} cards</span></div>`;
+  if (reserve) return `<div class="slot" style="background:transparent" aria-hidden="true"></div>`;
   return '';
 }
 // On one screen the two tab rows join: Held is the desk page's tab, so S.desk selects it and the answer tabs step back.
@@ -484,7 +488,7 @@ function stackedHand(c) {
       <div class="scroll" data-scroll="ans"><div class="pad">${answerBody(c)}</div></div></div>`;
     bottom = `<div class="leaf tag-new tag-low" data-tag="New: desk page, its own scroll" style="top:${STK.h1}px;height:${botH}px"><div class="fieldrow">${field(true)}<button class="mini" data-act="newenv">New envelope</button></div>
       <div class="scroll" data-scroll="desk"><div class="pad" style="padding-top:4px">${matchesHtml()}${suspenseHtml()}</div></div>
-      ${slot('Today: the 53 pt Post bar, on the keys')}</div>`;
+      ${slot('Today: the 53 pt Post bar, on the keys', true)}</div>`;
   } else {
     top = `${status()}<div class="leaf" style="top:${SAT}px;height:${STK.h0 - SAT}px">${runHead(true)}${senderHead()}
       <div class="scroll" data-scroll="ans-${S.top}"><div class="pad">${answerBody(c)}</div></div>${slot('New: Post at the answer page foot')}

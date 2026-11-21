@@ -1,0 +1,883 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Record an envelope</title>
+<style>
+/* House tokens: 4 px step, 8 px radius, colour by role, light and dark sets. Hues are this designer's own. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-11: 44px; --space-12: 48px; --space-16: 64px;
+  --radius: 8px;
+  --font: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+
+  --shell: #F4F5F8; --bg: #E8EBF0; --surface: #FFFFFF; --surface-2: #F2F4F7; --sunk: #E2E6EC;
+  --text: #14171D; --text-2: #4A5160; --line: #D3D8E0; --line-strong: #8C95A5;
+  --accent: #1F49C7; --on-accent: #FFFFFF; --accent-soft: #E2E9FB;
+  --ready: #17724A; --ready-soft: #DCF0E4;
+  --danger: #B42318; --danger-soft: #FBE4E1;
+  --envelope: #EAD8AC; --envelope-edge: #BFA46B; --envelope-ink: #2E2410; --envelope-ink-2: #5A4824;
+  --keyboard: #CDD2DA; --key: #FFFFFF; --key-2: #ADB4BF; --key-ink: #14171D;
+  --hinge: #2A2D33; --frame: #1B1D22;
+  --ann: #6B35C9;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --shell: #101216; --bg: #0C0E12; --surface: #171A20; --surface-2: #1F232B; --sunk: #272C35;
+    --text: #ECEFF4; --text-2: #A8B0BE; --line: #2F3541; --line-strong: #5E6878;
+    --accent: #8EA9FF; --on-accent: #0B1433; --accent-soft: #1E2A4F;
+    --ready: #5CCB91; --ready-soft: #15352A;
+    --danger: #FF7B6C; --danger-soft: #3E1B17;
+    --envelope: #3A3120; --envelope-edge: #6E5C35; --envelope-ink: #F2E4C0; --envelope-ink-2: #CDBA8C;
+    --keyboard: #23272E; --key: #4A505C; --key-2: #343943; --key-ink: #ECEFF4;
+    --hinge: #000000; --frame: #000000;
+    --ann: #C7A4FF;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --shell: #101216; --bg: #0C0E12; --surface: #171A20; --surface-2: #1F232B; --sunk: #272C35;
+  --text: #ECEFF4; --text-2: #A8B0BE; --line: #2F3541; --line-strong: #5E6878;
+  --accent: #8EA9FF; --on-accent: #0B1433; --accent-soft: #1E2A4F;
+  --ready: #5CCB91; --ready-soft: #15352A;
+  --danger: #FF7B6C; --danger-soft: #3E1B17;
+  --envelope: #3A3120; --envelope-edge: #6E5C35; --envelope-ink: #F2E4C0; --envelope-ink-2: #CDBA8C;
+  --keyboard: #23272E; --key: #4A505C; --key-2: #343943; --key-ink: #ECEFF4;
+  --hinge: #000000; --frame: #000000;
+  --ann: #C7A4FF;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--shell); color: var(--text); font: 15px/20px var(--font); }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Review page shell (not the device) ---------- */
+.banner { background: var(--danger-soft); color: var(--text); padding: var(--space-2) var(--space-4); font-weight: 600; text-align: center; }
+.shell { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); max-inline-size: 100%; }
+.shell-head { display: flex; flex-direction: column; gap: var(--space-1); }
+.shell-head h1 { margin: 0; font-size: 22px; line-height: 28px; }
+.shell-head p { margin: 0; color: var(--text-2); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); align-items: flex-start; }
+.ctl { display: flex; flex-direction: column; gap: var(--space-1); }
+.ctl > span { color: var(--text-2); font-size: 13px; line-height: 18px; }
+.seg { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.seg button { min-height: 36px; padding: 0 var(--space-3); border: 1px solid var(--line); background: var(--surface); border-radius: var(--radius); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.seg .opt { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface); }
+.seg .opt button { border: 0; border-radius: 0; }
+.seg .opt .x { border-inline-start: 1px solid var(--line); color: var(--text-2); padding: 0 var(--space-2); }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; overflow-x: auto; padding-block: var(--space-2) var(--space-6); }
+.fig { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+.fig figcaption { color: var(--text-2); font-size: 13px; line-height: 18px; max-inline-size: 466px; }
+.about { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(18rem, 100%), 1fr)); }
+.about article { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.about h2 { margin: 0; font-size: 17px; line-height: 22px; }
+.about p { margin: 0; color: var(--text-2); }
+.about article.is-current { border-color: var(--accent); }
+
+/* ---------- Device frames ---------- */
+.device {
+  /* Dynamic Type, Large (default), from the HIG typography page. */
+  --f-large: 700 34px/41px var(--font);
+  --f-t1: 700 28px/34px var(--font);
+  --f-t2: 700 22px/28px var(--font);
+  --f-t3: 600 20px/25px var(--font);
+  --f-head: 600 17px/22px var(--font);
+  --f-body: 400 17px/22px var(--font);
+  --f-callout: 400 16px/21px var(--font);
+  --f-sub: 400 15px/20px var(--font);
+  --f-foot: 400 13px/18px var(--font);
+  --f-cap: 400 12px/16px var(--font);
+  --pm: 44px;          /* postmark number, display size of the bold concept */
+  --rail: 56px;
+  --sb: 24px;          /* status bar height: not given by any page read, so a drawn guess */
+  --home: 16px;        /* home indicator area: a drawn guess */
+  position: relative; background: var(--frame); border-radius: 20px; padding: 0;
+  overflow: hidden; flex: none; font: var(--f-body); color: var(--text);
+}
+.device.ax5 {
+  /* Dynamic Type, AX5, the largest accessibility size, from the HIG typography page. */
+  --f-large: 700 60px/70px var(--font);
+  --f-t1: 700 58px/68px var(--font);
+  --f-t2: 700 56px/66px var(--font);
+  --f-t3: 600 55px/65px var(--font);
+  --f-head: 600 53px/62px var(--font);
+  --f-body: 400 53px/62px var(--font);
+  --f-callout: 400 51px/60px var(--font);
+  --f-sub: 400 49px/58px var(--font);
+  --f-foot: 400 44px/52px var(--font);
+  --f-cap: 400 43px/51px var(--font);
+  --pm: 60px;
+  --rail: 72px;
+}
+.device.folded, .device.phone { width: 466px; height: 678px; }
+.device.phone { resize: both; min-width: 320px; min-height: 480px; }
+.device.open { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.hinge { background: var(--hinge); }
+.screen {
+  background: var(--bg); height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
+  padding-top: max(env(safe-area-inset-top), var(--sb));
+  padding-bottom: max(env(safe-area-inset-bottom), 0px);
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+  position: relative;
+}
+.sbar { position: absolute; top: 0; left: 0; right: 0; height: var(--sb); display: flex; align-items: center; justify-content: center; font: 600 12px/16px var(--font); color: var(--text-2); pointer-events: none; }
+.scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.homepad { flex: none; height: var(--home); }
+.screen.has-kbd .homepad { display: none; }
+
+/* Type */
+.f-large { font: var(--f-large); } .f-t1 { font: var(--f-t1); } .f-t2 { font: var(--f-t2); } .f-t3 { font: var(--f-t3); }
+.f-head { font: var(--f-head); } .f-body { font: var(--f-body); } .f-callout { font: var(--f-callout); }
+.f-sub { font: var(--f-sub); } .f-foot { font: var(--f-foot); } .f-cap { font: var(--f-cap); }
+.muted { color: var(--text-2); }
+.device p { margin: 0; }
+.device h2, .device h3 { margin: 0; }
+
+/* Layout primitives */
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-1 { display: flex; flex-direction: column; gap: var(--space-1); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.pad { padding: var(--space-4); }
+
+/* Controls inside the device: native proportions, 44 pt targets */
+.btn { min-height: 44px; min-width: 44px; padding: 0 var(--space-4); border-radius: 999px; border: 0; background: var(--sunk); font: var(--f-head); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); }
+.btn-prom { background: var(--accent); color: var(--on-accent); }
+.btn-prom[aria-disabled="true"] { background: var(--sunk); color: var(--text-2); }
+.btn-plain { background: transparent; color: var(--accent); padding: 0 var(--space-2); }
+.btn-plain.danger, .btn-danger-text { color: var(--danger); }
+.btn-danger { background: var(--danger); color: #FFFFFF; }
+.btn-wide { width: 100%; }
+.icon-btn { min-width: 44px; min-height: 44px; border: 0; background: transparent; color: var(--text-2); display: inline-flex; align-items: center; justify-content: center; border-radius: 999px; font: var(--f-t3); }
+.link { border: 0; background: transparent; padding: 0; color: var(--accent); font: var(--f-sub); text-align: start; }
+
+/* Nav bar */
+.nav { flex: none; display: flex; align-items: center; min-height: 44px; padding: 0 var(--space-2); }
+.nav .back { border: 0; background: transparent; color: var(--accent); font: var(--f-body); min-height: 44px; padding: 0 var(--space-2); display: inline-flex; align-items: center; gap: var(--space-1); }
+.large-title { padding: 0 var(--space-4) var(--space-2); display: flex; flex-direction: column; gap: var(--space-1); flex: none; }
+
+/* The envelope header: identity, count, Save and Throw away. It sits outside every scroll area. */
+.env-head { flex: none; background: var(--surface); border-bottom: 1px solid var(--line); padding: var(--space-2) var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); position: relative; }
+.env-id { display: flex; flex-wrap: wrap; align-items: baseline; gap: 0 var(--space-3); }
+.env-id .num-tag { display: inline-flex; align-items: center; justify-content: center; min-width: 1.6em; padding: 0 var(--space-2); border-radius: var(--radius); background: var(--envelope); color: var(--envelope-ink); }
+.from { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-2); align-items: center; }
+.from.warn { color: var(--danger); }
+.act-stack { display: grid; }
+.act-stack > * { grid-area: 1 / 1; }
+.act-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.act-row .meter { margin-inline-end: auto; }
+.confirm-row { background: var(--danger-soft); border-radius: var(--radius); margin-inline: calc(var(--space-2) * -1); padding-inline: var(--space-2); }
+.confirm-row p { color: var(--danger); font-weight: 600; }
+/* Bars stop growing at xxxLarge, the largest size before the accessibility sizes, as iOS bars do;
+   the list, the field and the lines below still grow to AX5. */
+.ax5 .env-head, .ax5 .tray, .ax5 .nav, .ax5 .env-top, .ax5 .envelope .act-stack {
+  --f-large: 700 40px/48px var(--font); --f-t1: 700 34px/41px var(--font); --f-t2: 700 28px/34px var(--font);
+  --f-t3: 600 26px/32px var(--font); --f-head: 600 23px/29px var(--font); --f-body: 400 23px/29px var(--font);
+  --f-sub: 400 21px/28px var(--font); --f-foot: 400 19px/24px var(--font); --f-cap: 400 18px/23px var(--font);
+  --pm: 40px;
+}
+.ax5 .nav .back { font: 400 23px/29px var(--font); }
+.is-off { visibility: hidden; }
+.meter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font: var(--f-sub); }
+.dots { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.dot { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--ready); }
+.dot.on { background: var(--ready); }
+.ax5 .dots { display: none; }
+.why { font: var(--f-foot); color: var(--text-2); }
+.say { font: var(--f-foot); color: var(--text); background: var(--accent-soft); border-radius: var(--radius); padding: var(--space-1) var(--space-2); }
+
+/* Name rows */
+.rows { list-style: none; margin: 0; padding: 0 var(--space-4); display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; gap: var(--space-3); border-bottom: 1px solid var(--line); min-height: 56px; }
+.mark { flex: none; width: 22px; height: 22px; border-radius: 50%; border: 2px dashed var(--line-strong); display: inline-flex; align-items: center; justify-content: center; }
+.is-ready .mark { border: 0; background: var(--ready); }
+.is-ready .mark::after { content: ""; width: 10px; height: 6px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: translateY(-1px) rotate(-45deg); }
+.row-main { flex: 1 1 auto; min-width: 0; border: 0; background: transparent; text-align: start; padding: var(--space-2) 0; display: flex; flex-direction: column; gap: 2px; min-height: 44px; justify-content: center; }
+.row-main .pickhint { color: var(--accent); font: var(--f-sub); }
+.row.is-picking { border-bottom: 0; }
+.ax5 .row { align-items: flex-start; }
+
+/* Line picker */
+.picker { background: var(--surface); border-radius: var(--radius); border: 1px solid var(--line); margin: 0 0 var(--space-3); display: flex; flex-direction: column; overflow: hidden; }
+.picker-group { padding: var(--space-2) var(--space-3) var(--space-1); font: var(--f-foot); color: var(--text-2); background: var(--surface-2); }
+.pick-row { border: 0; border-top: 1px solid var(--line); background: transparent; text-align: start; padding: var(--space-2) var(--space-3); min-height: 56px; display: flex; align-items: center; gap: var(--space-3); }
+.pick-row .pr-main { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.pick-row .price { font: var(--f-sub); color: var(--text); }
+.pick-row.is-on { background: var(--ready-soft); }
+.ax5 .pick-row { flex-wrap: wrap; }
+.note-box { padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* Composer: the card name field */
+.composer { flex: none; display: flex; gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-4); background: var(--surface); border-top: 1px solid var(--line); position: relative; }
+.composer.top { border-top: 0; border-bottom: 1px solid var(--line); }
+.field { flex: 1 1 auto; min-width: 0; min-height: 44px; border-radius: var(--radius); border: 1px solid var(--line-strong); background: var(--surface-2); padding: 0 var(--space-3); font: var(--f-body); }
+.field::placeholder { color: var(--text-2); }
+.ax5 .composer { flex-wrap: wrap; }
+.ax5 .composer .is-off, .ax5 .env-write .is-off { display: none; }
+
+/* Simulated keys: drawn, not measured */
+.kbd { flex: 0 0 40%; background: var(--keyboard); display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-1) var(--space-4); }
+.kbd-row { display: flex; gap: var(--space-1); justify-content: center; flex: 1 1 0; }
+.kbd button { display: flex; align-items: center; justify-content: center; flex: 1 1 0; max-width: 44px; border: 0; border-radius: 6px; background: var(--key); color: var(--key-ink); font: 400 20px/24px var(--font); box-shadow: 0 1px 0 var(--key-2); }
+.kbd .wide { max-width: 64px; background: var(--key-2); font: 500 15px/20px var(--font); }
+.kbd .space { max-width: none; flex: 4 1 0; font: 400 15px/20px var(--font); }
+.kbd .ret { max-width: 96px; flex: 2 1 0; background: var(--accent); color: var(--on-accent); font: 600 15px/20px var(--font); }
+
+/* Lists of envelopes and lines */
+.list { list-style: none; margin: 0; padding: 0 var(--space-4); display: flex; flex-direction: column; }
+.list li { border-bottom: 1px solid var(--line); }
+.list-row { display: flex; align-items: center; gap: var(--space-3); min-height: 56px; padding: var(--space-2) 0; width: 100%; border: 0; background: transparent; text-align: start; }
+.list-row .lr-main { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.list-row.is-draft .lr-main > :first-child { color: var(--accent); }
+.list-row.is-here { background: var(--accent-soft); border-radius: var(--radius); padding-inline: var(--space-2); }
+.chev { color: var(--line-strong); font: var(--f-t3); }
+.bottom-bar { flex: none; padding: var(--space-2) var(--space-4); background: var(--bg); }
+.section-h { padding: var(--space-4) var(--space-4) var(--space-1); font: var(--f-foot); color: var(--text-2); }
+.empty { padding: var(--space-6) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+
+/* Lines first: the tray */
+.tray { flex: none; background: var(--surface); border-bottom: 1px solid var(--line); padding: var(--space-2) var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); position: relative; }
+.chips { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: 2px; scrollbar-width: none; }
+.chips.wrap { flex-wrap: wrap; overflow: visible; }
+.chip { flex: none; min-height: 36px; padding: 0 var(--space-3); border-radius: 999px; border: 2px dashed var(--line-strong); background: transparent; font: var(--f-sub); display: inline-flex; align-items: center; gap: var(--space-2); position: relative; }
+.chip::before { content: ""; position: absolute; inset: -4px 0; } /* 44 pt hit area */
+.chip.is-ready { border: 2px solid var(--ready); background: var(--ready-soft); }
+.chip.is-sel { outline: 3px solid var(--accent); outline-offset: 1px; }
+.chip .ck { width: 8px; height: 5px; border-left: 2px solid var(--ready); border-bottom: 2px solid var(--ready); transform: rotate(-45deg) translateY(-1px); }
+.ax5 .chip { min-height: 44px; }
+.status-line { padding: var(--space-2) var(--space-4); }
+
+/* The envelope (bold concept) */
+.c3 { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: var(--rail) 1fr; }
+.rail { background: var(--sunk); overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-1); }
+.rail button { flex: none; min-height: 44px; border: 0; border-radius: 6px; background: var(--surface); color: var(--text-2); font: var(--f-head); position: relative; }
+.rail button.is-saved::after { content: ""; position: absolute; right: 4px; top: 4px; width: 6px; height: 6px; border-radius: 50%; background: var(--ready); }
+.rail button.is-here { background: var(--envelope); color: var(--envelope-ink); box-shadow: inset 4px 0 0 var(--accent); }
+.rail .rail-new { background: transparent; border: 2px dashed var(--line-strong); color: var(--text-2); }
+.c3-main { min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+.envelope {
+  flex: none; margin: var(--space-2) var(--space-3) var(--space-2) var(--space-2); background: var(--envelope); color: var(--envelope-ink);
+  border-radius: var(--radius); border: 1px solid var(--envelope-edge); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); position: relative;
+  max-height: 100%; min-height: 0; overflow: hidden;
+}
+.envelope > * { flex: none; }
+.envelope > .env-scroll { flex: 0 1 auto; min-height: 0; overflow-y: auto; }
+.envelope .muted, .envelope .why { color: var(--envelope-ink-2); }
+.env-top { display: flex; align-items: flex-start; gap: var(--space-3); }
+.ret { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.postmark { flex: none; width: calc(var(--pm) * 1.9); height: calc(var(--pm) * 1.9); border-radius: 50%; border: 3px solid var(--envelope-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; transform: rotate(-8deg); }
+.postmark .pm-num { font: 800 var(--pm)/1 var(--font); }
+.postmark .pm-word { font: 600 11px/13px var(--font); }
+.ax5 .postmark .pm-word { display: none; }
+.envelope .chips { flex-wrap: wrap; overflow: visible; }
+.envelope .chip { border-color: var(--envelope-ink-2); color: var(--envelope-ink); }
+.envelope .chip.is-ready { border-color: var(--ready); background: var(--ready-soft); color: var(--text); }
+.envelope .field { background: color-mix(in srgb, var(--envelope) 60%, var(--surface)); border-color: var(--envelope-edge); color: var(--envelope-ink); }
+.envelope .field::placeholder { color: var(--envelope-ink-2); }
+.env-write { display: flex; gap: var(--space-2); align-items: center; position: relative; }
+.ax5 .env-write { flex-wrap: wrap; }
+.envelope .act-row .meter { color: var(--envelope-ink); }
+.hold { position: relative; overflow: hidden; background: transparent; color: var(--danger); border: 2px solid var(--danger); --p: 0; touch-action: none; user-select: none; -webkit-user-select: none; }
+.hold::before { content: ""; position: absolute; inset: 0; width: calc(var(--p) * 100%); background: var(--danger); opacity: .22; }
+.hold span { position: relative; }
+.envelope.is-gone { background: transparent; border: 2px dashed var(--line-strong); color: var(--text); }
+.drawer { flex: 1 1 auto; min-height: 0; overflow-y: auto; padding: 0 var(--space-3) var(--space-3) var(--space-2); display: flex; flex-direction: column; gap: var(--space-2); }
+.drawer-h { padding-top: var(--space-1); }
+
+/* Labels: dashed New: marks */
+.labels .ann { outline: 2px dashed var(--ann); outline-offset: -2px; }
+.labels .ann::after { content: attr(data-ann); position: absolute; top: 2px; right: 4px; font: 600 11px/14px var(--font); color: var(--ann); background: var(--surface); padding: 0 4px; border-radius: 4px; pointer-events: none; z-index: 2; }
+.labels .envelope.ann::after { top: auto; bottom: 2px; }
+
+/* Bare mode: the phone frame fills a real phone */
+body.bare .shell-head, body.bare .controls, body.bare .about, body.bare .fig figcaption { display: none; }
+body.bare .shell { padding: 0; }
+body.bare .frames { padding: 0; overflow: visible; }
+body.bare .fig, body.bare .device.phone { width: 100%; }
+body.bare .device.phone { height: 100vh; height: 100svh; border-radius: 0; resize: none; --sb: 0px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+@media (forced-colors: active) {
+  .btn, .chip, .rail button, .kbd button, .field { border: 1px solid ButtonText; }
+  .dot, .mark { border: 2px solid CanvasText; }
+  .dot.on, .is-ready .mark { background: Highlight; }
+}
+</style>
+</head>
+<body>
+<div class="banner" role="note">Sample. No figure, name, seller or price on this page is real.</div>
+<div class="shell">
+  <header class="shell-head">
+    <h1>Record an envelope</h1>
+    <p>Designer kind: blind. Mockup record-envelope-blind-2. Three concepts. Every frame below shares one draft, so a tap in one frame changes all of them.</p>
+  </header>
+
+  <div class="controls" id="controls">
+    <div class="ctl"><span>Concept</span><div class="seg" id="ctl-concept"></div></div>
+    <div class="ctl"><span>Device</span><div class="seg" id="ctl-device"></div></div>
+    <div class="ctl"><span>State</span><div class="seg" id="ctl-state"></div></div>
+    <div class="ctl"><span>Theme</span><div class="seg" id="ctl-theme"></div></div>
+    <div class="ctl"><span>Save with names that have no line</span><div class="seg" id="ctl-unmatched"></div></div>
+    <div class="ctl"><span>Marks</span><div class="seg" id="ctl-labels"></div></div>
+  </div>
+
+  <main class="frames" id="frames"></main>
+
+  <section class="about" id="about" aria-label="The concepts"></section>
+</div>
+
+<script>
+"use strict";
+/* ---------------- Sample data (shapes only; nothing is real) ---------------- */
+const LINES = [
+  { id: "L1",  name: "Ember Wyrmling",   set: "Cinder Vale", cond: "Near Mint",         price: 0.24, seller: "Harbor Cards",          ordered: "Oct 30" },
+  { id: "L2",  name: "Ember Wyrmling",   set: "Cinder Vale", cond: "Lightly Played",    price: 0.18, seller: "Two Owls TCG",          ordered: "Nov 2" },
+  { id: "L3",  name: "Tidecaller Adept", set: "Salt Reach",  cond: "Near Mint",         price: 0.41, seller: "Harbor Cards",          ordered: "Oct 30" },
+  { id: "L4",  name: "Glass Orchard",    set: "Salt Reach",  cond: "Near Mint",         price: 0.12, seller: "Harbor Cards",          ordered: "Oct 30" },
+  { id: "L5",  name: "Glass Orchard",    set: "Salt Reach",  cond: "Near Mint, foil",   price: 0.90, seller: "Two Owls TCG",          ordered: "Nov 2" },
+  { id: "L6",  name: "Quiet Sentinel",   set: "Cinder Vale", cond: "Near Mint",         price: 0.35, seller: "North Fork Games",      ordered: "Nov 4" },
+  { id: "L7",  name: "Quiet Sentinel",   set: "Cinder Vale", cond: "Near Mint",         price: 0.33, seller: "Harbor Cards",          ordered: "Oct 30" },
+  { id: "L8",  name: "Ashen Pathway",    set: "Salt Reach",  cond: "Moderately Played", price: 1.10, seller: "Larkspur Collectibles", ordered: "Oct 28" },
+  { id: "L9",  name: "Moth Lantern",     set: "Cinder Vale", cond: "Near Mint",         price: 0.15, seller: "Larkspur Collectibles", ordered: "Oct 28" },
+  { id: "L10", name: "Moth Lantern",     set: "Cinder Vale", cond: "Near Mint",         price: 0.16, seller: "Harbor Cards",          ordered: "Oct 30" },
+  { id: "L11", name: "Hollow Tithe",     set: "Salt Reach",  cond: "Near Mint",         price: 0.27, seller: "Harbor Cards",          ordered: "Oct 30" },
+];
+const SAVED0 = [
+  { num: 4, from: "North Fork Games",      names: ["Quiet Sentinel", "Ashen Pathway", "Moth Lantern"] },
+  { num: 3, from: "Two Owls TCG",          names: ["Glass Orchard"] },
+  { num: 2, from: "Larkspur Collectibles", names: ["Ashen Pathway", "Ember Wyrmling"] },
+  { num: 1, from: "Harbor Cards",          names: ["Tidecaller Adept", "Quiet Sentinel", "Glass Orchard", "Moth Lantern"] },
+];
+const DRAFT0 = () => [
+  { text: "Ember Wyrmling",   line: "L1" },
+  { text: "Tidecaller Adept", line: "L3" },
+  { text: "Glass Orchard",    line: null },
+  { text: "Quiet Sentinel",   line: null },
+];
+
+const CONCEPTS = [
+  { key: "stack",    name: "Mail stack",   focus: "stack-envelope-header",
+    what: "A list of today's envelopes, and one page per envelope. The envelope header is pinned at the top. The card name field sits at the bottom, just above the keys, in reach of the thumb. Throw away asks inside the header, in the same box as Save.",
+    move: "Today list, then an envelope page. Back returns to Today and keeps the draft." },
+  { key: "lines",    name: "Lines first",  focus: "lines-tray",
+    what: "The first screen is the open order lines. A slim envelope tray is pinned on top and fills as you pick. You type to filter the lines, then tap the line that matches the card. A name with no line can still go on the envelope.",
+    move: "One screen. The tray is where you are; the search field drives the list below it." },
+  { key: "envelope", name: "The envelope", focus: "envelope-front",
+    what: "Bold. The screen is drawn as the envelope itself: return address, a big postmark number, and the card names written on it. A rail of envelope numbers runs down the edge, so the one you are in is always lit. Throw away is a hold, not a dialog, so no confirmation can ever sit on top of the envelope.",
+    move: "The edge rail of envelope numbers. Tap a number to look at a saved one; tap the lit one to come back." },
+];
+const STATES = [
+  ["draft", "Draft"], ["empty", "New envelope"], ["keys", "Typing"], ["pick", "Picking a line"],
+  ["nomatch", "No line found"], ["unknown", "Lines did not load"], ["confirm", "Throw away asked"],
+  ["gone", "Thrown away"], ["saved", "Saved"], ["today", "Today list"],
+];
+const DEVICES = [["all", "All frames"], ["folded", "Duo folded"], ["open", "Duo open"], ["phone", "Large phone"], ["ax5", "Folded, largest text"]];
+const THEMES = [["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]];
+
+/* ---------------- View settings (hash) ---------------- */
+const S = { c: "stack", d: "all", s: "draft", t: "auto", unmatched: "keep", labels: true, hidden: [] };
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get("c") && CONCEPTS.some(c => c.key === h.get("c"))) S.c = h.get("c");
+  if (h.get("d") && DEVICES.some(d => d[0] === h.get("d"))) S.d = h.get("d");
+  if (h.get("s") && STATES.some(s => s[0] === h.get("s"))) S.s = h.get("s");
+  if (h.get("t") && THEMES.some(t => t[0] === h.get("t"))) S.t = h.get("t");
+  if (h.get("u") === "block") S.unmatched = "block";
+  if (h.get("m") === "off") S.labels = false;
+  S.hidden = (h.get("hide") || "").split(",").filter(k => CONCEPTS.some(c => c.key === k));
+}
+function writeHash() {
+  const h = new URLSearchParams();
+  h.set("c", S.c); h.set("s", S.s);
+  if (S.d !== "all") h.set("d", S.d);
+  if (S.t !== "auto") h.set("t", S.t);
+  if (S.unmatched === "block") h.set("u", "block");
+  if (!S.labels) h.set("m", "off");
+  if (S.hidden.length) h.set("hide", S.hidden.join(","));
+  history.replaceState(null, "", "#" + h.toString());
+}
+
+/* ---------------- The draft model ---------------- */
+let M;
+function preset(s) {
+  focusWant = null;
+  M = { num: 5, status: "draft", names: DRAFT0(), query: "", keys: false, pick: null, confirm: false,
+        lines: "ok", screen: "envelope", say: null, hold: 0, view: null, saved: SAVED0.map(x => ({ ...x })) };
+  if (s === "empty") M.names = [];
+  if (s === "keys") { M.keys = true; M.query = "Moth Lan"; focusWant = { role: "q" }; }
+  if (s === "pick") { M.pick = 2; if (S.c === "lines") M.query = M.names[2].text; }
+  if (s === "nomatch") { M.names.push({ text: "Glas Orchid", line: null, none: true }); M.pick = 4; }
+  if (s === "unknown") { M.lines = "unknown"; M.pick = 2; }
+  if (s === "confirm") { M.confirm = S.c !== "envelope"; M.hold = S.c === "envelope" ? 0.6 : 0; if (S.c === "envelope") M.say = { at: "hold", text: "Keep holding to throw away." }; }
+  if (s === "gone") M.status = "gone";
+  if (s === "saved") M.status = "saved";
+  if (s === "today") M.screen = "today";
+}
+const esc = v => String(v).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+const lineById = id => LINES.find(l => l.id === id);
+const money = n => "$" + n.toFixed(2);
+const ready = () => M.names.filter(n => n.line).length;
+const unmatchedCount = () => M.names.filter(n => !n.line).length;
+const usedIds = () => new Set(M.names.map(n => n.line).filter(Boolean));
+function senders() { return [...new Set(M.names.filter(n => n.line).map(n => lineById(n.line).seller))]; }
+function matchesFor(text, keepId) {
+  const q = text.trim().toLowerCase(); if (!q) return [];
+  const used = usedIds(); const snd = senders();
+  return LINES.filter(l => (!used.has(l.id) || l.id === keepId) && l.name.toLowerCase().includes(q))
+    .sort((a, b) => (snd.includes(b.seller) - snd.includes(a.seller)) || a.name.localeCompare(b.name) || a.price - b.price);
+}
+function openLinesFrom(seller) { const used = usedIds(); return LINES.filter(l => l.seller === seller && !used.has(l.id)); }
+const plural = (n, one, many) => n + " " + (n === 1 ? one : many);
+const saveBlocked = () => S.unmatched === "block" && unmatchedCount() > 0 && M.names.length > 0;
+
+/* ---------------- Shared pieces ---------------- */
+let focusWant = null; // { frame, role }
+const idIf = (f, id) => (f === "folded" ? ` id="${id}"` : "");
+
+function fromLine() {
+  const ss = senders();
+  if (ss.length === 0) return `<div class="from f-sub muted">Sender not known yet</div>`;
+  if (ss.length === 1) return `<div class="from f-sub muted">From ${esc(ss[0])}</div>`;
+  return `<div class="from warn f-sub" title="${esc(ss.join(", "))}">Lines from ${ss.length} sellers. Check each card.</div>`;
+}
+function meter() {
+  const n = M.names.length;
+  if (!n) return `<div class="meter muted">No names yet</div>`;
+  const dots = n <= 12 ? `<span class="dots" aria-hidden="true">${M.names.map(x => `<span class="dot${x.line ? " on" : ""}"></span>`).join("")}</span>` : "";
+  return `<div class="meter">${dots}<span>${ready()} of ${n} ready</span></div>`;
+}
+function saveBtn() {
+  if (!M.names.length) return `<button class="btn btn-prom" aria-disabled="true" data-act="save" title="Add a card name first">Save</button>`;
+  if (saveBlocked()) {
+    const k = unmatchedCount();
+    return `<button class="btn btn-prom" aria-disabled="true" data-act="save" title="${plural(k, "name needs", "names need")} a line first">Save</button>`;
+  }
+  return `<button class="btn btn-prom" data-act="save">Save</button>`;
+}
+function sayAt(at) { return M.say && M.say.at === at ? `<p class="say" role="status">${esc(M.say.text)}</p>` : ""; }
+function actionStack(holdStyle) {
+  const n = M.names.length;
+  const thrower = holdStyle
+    ? `<button class="btn hold" data-hold data-act="hold-key" style="--p:${M.hold}" aria-describedby="holdtip"><span>Hold to throw away</span></button>`
+    : `<button class="btn btn-plain danger" data-act="discard">Throw away</button>`;
+  const ask = n ? `${plural(n, "name", "names")} gone for good.` : "Nothing to keep.";
+  // Same box, same height: Keep lands where Throw away was, so a double tap keeps the draft.
+  return `<div class="act-stack">
+    <div class="act-row${M.confirm ? " is-off" : ""}">${holdStyle ? "" : meter()}${thrower}${holdStyle ? `<span style="margin-inline-start:auto"></span>` : ""}${saveBtn()}</div>
+    <div class="act-row confirm-row ann${M.confirm ? "" : " is-off"}" data-ann="New: asks in place" role="group" aria-label="Throw away envelope ${M.num}?">
+      <p class="meter">${ask}</p>
+      <button class="btn" data-act="discard-keep">Keep</button>
+      <button class="btn btn-danger" data-act="discard-yes">Throw away</button>
+    </div>
+  </div>${sayAt("save")}${sayAt("hold")}`;
+}
+function composer(f, place, cls) {
+  const has = M.query.trim().length > 0;
+  return `<div class="composer ${cls || ""} ann" data-ann="New: card name field">
+    <input class="field" data-role="q" data-frame="${f}" value="${esc(M.query)}" placeholder="${esc(place)}" aria-label="${esc(place)}" autocomplete="off" autocapitalize="words" enterkeyhint="done">
+    <button class="btn btn-prom${has ? "" : " is-off"}" data-act="add">Add</button>
+  </div>`;
+}
+function keyboard() {
+  if (!M.keys || M.status !== "draft") return "";
+  const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+  const k = ch => `<button data-act="key" data-v="${ch}" aria-label="${ch}">${ch}</button>`;
+  return `<div class="kbd" aria-label="On-screen keys, drawn">
+    <div class="kbd-row">${[...rows[0]].map(k).join("")}</div>
+    <div class="kbd-row">${[...rows[1]].map(k).join("")}</div>
+    <div class="kbd-row">${[...rows[2]].map(k).join("")}<button class="wide" data-act="key-back" aria-label="Delete">del</button></div>
+    <div class="kbd-row"><button class="wide" data-act="key-hide" aria-label="Hide keys">hide</button><button class="space" data-act="key-space" aria-label="Space">space</button><button class="ret" data-act="add">Add</button></div>
+  </div>`;
+}
+function lineDetail(l) { return `${esc(l.seller)}, ${esc(l.set)}, ${esc(l.cond)}, ${money(l.price)}`; }
+function pickRows(list, onId, act) {
+  return list.map(l => `<button class="pick-row${l.id === onId ? " is-on" : ""}" data-act="${act}" data-id="${l.id}">
+      <span class="mark${l.id === onId ? "" : ""}" aria-hidden="true" style="${l.id === onId ? "border:0;background:var(--ready)" : ""}"></span>
+      <span class="pr-main"><span class="f-body">${esc(l.name)}</span><span class="f-foot muted">${esc(l.seller)}, ordered ${esc(l.ordered)}. ${esc(l.set)}, ${esc(l.cond)}</span></span>
+      <span class="price">${money(l.price)}</span></button>`).join("");
+}
+function groupedPick(list, onId, act) {
+  const snd = senders();
+  const mine = list.filter(l => snd.includes(l.seller)), rest = list.filter(l => !snd.includes(l.seller));
+  if (!snd.length || !mine.length) return pickRows(list, onId, act);
+  return `<div class="picker-group">Same sender as this envelope</div>${pickRows(mine, onId, act)}`
+       + (rest.length ? `<div class="picker-group">Other sellers</div>${pickRows(rest, onId, act)}` : "");
+}
+function unknownBox() {
+  return `<div class="note-box"><p class="f-sub">Order lines did not load, so no match can show. Your names are kept.</p>
+    <div class="cluster"><button class="btn btn-prom" data-act="retry">Try again</button></div>
+    <details class="f-foot muted"><summary>What the app saw</summary>Sample: the read of order lines timed out.</details></div>`;
+}
+function picker(i) {
+  const n = M.names[i]; if (!n) return "";
+  if (M.lines === "unknown") return `<div class="picker" data-scroll-me>${unknownBox()}</div>`;
+  const list = matchesFor(n.text, n.line);
+  if (!list.length) return `<div class="picker" data-scroll-me><div class="note-box">
+      <p class="f-sub">No open line is named “${esc(n.text)}”.</p>
+      <div class="cluster"><button class="btn" data-act="fix" data-i="${i}">Fix spelling</button><button class="btn" data-act="keep" data-i="${i}">Keep with no line</button></div></div></div>`;
+  return `<div class="picker" data-scroll-me>${groupedPick(list, n.line, "pick")}</div>`;
+}
+function savedBody() {
+  const r = ready(), u = unmatchedCount();
+  return `<div class="empty">
+    <p class="f-head">Envelope ${M.num} saved.</p>
+    <p class="f-sub">${plural(r, "card", "cards")} marked received.${u ? " " + plural(u, "name has", "names have") + " no line; " + (u === 1 ? "it stays" : "they stay") + " on envelope " + M.num + " as mail with no order." : ""}</p>
+    <button class="btn btn-prom" data-act="new">Next envelope</button></div>`;
+}
+function goneBody() {
+  return `<div class="empty">
+    <p class="f-head">Envelope ${M.num} thrown away.</p>
+    <p class="f-sub">Its names are gone. Nothing was marked received.</p>
+    <button class="btn btn-prom" data-act="new">New envelope</button></div>`;
+}
+function identity(cls) {
+  if (M.status === "gone") return `<div class="env-id"><span class="${cls}">No envelope open</span></div>`;
+  return `<div class="env-id"><span class="${cls}">Envelope <span class="num-tag">${M.num}</span></span>${M.status === "saved" ? `<span class="f-sub" style="color:var(--ready)">Saved</span>` : ""}</div>`;
+}
+
+/* ---------------- Mail stack ---------------- */
+function stackHeader(f) {
+  return `<header class="env-head ann"${idIf(f, "stack-envelope-header")} data-ann="New: pinned envelope header">
+    ${identity("f-t1")}
+    ${M.status === "draft" ? fromLine() + actionStack(false) : ""}
+  </header>`;
+}
+function stackRows(f) {
+  if (M.status === "saved") return savedBody();
+  if (M.status === "gone") return goneBody();
+  if (!M.names.length) return `<div class="empty"><p class="f-sub">Type the first card name from envelope ${M.num} in the field below.</p></div>`;
+  return `<ul class="rows">${M.names.map((n, i) => {
+    const l = n.line && lineById(n.line);
+    const sub = l ? `<span class="f-foot muted">${lineDetail(l)}</span>` : `<span class="pickhint">${n.none ? "No line found" : "Pick a line"}</span>`;
+    return `<li class="row${l ? " is-ready" : ""}${M.pick === i ? " is-picking" : ""}">
+      <span class="mark" aria-hidden="true"></span>
+      <button class="row-main" data-act="pick-open" data-i="${i}" aria-expanded="${M.pick === i}"><span class="f-body">${esc(n.text)}</span>${sub}</button>
+      <button class="icon-btn" data-act="remove" data-i="${i}" aria-label="Remove ${esc(n.text)}">&times;</button>
+    </li>${M.pick === i ? `<li style="border:0">${picker(i)}</li>` : ""}`;
+  }).join("")}</ul>`;
+}
+function todayList(f, here) {
+  const draftRow = M.status === "draft"
+    ? `<li><button class="list-row is-draft${here ? " is-here" : ""}" data-act="open-env"><span class="lr-main"><span class="f-head">Envelope ${M.num}</span><span class="f-foot muted">Draft. ${M.names.length ? ready() + " of " + M.names.length + " ready" : "No names yet"}</span></span><span class="chev" aria-hidden="true">›</span></button></li>` : "";
+  const saved = M.saved.map(e => `<li><div class="list-row"><span class="lr-main"><span class="f-body">Envelope ${e.num}</span><span class="f-foot muted">${esc(e.from)}, ${plural(e.names.length, "card", "cards")}</span></span></div></li>`).join("");
+  return `<ul class="list">${draftRow}${saved}</ul>`;
+}
+function stackToday(f, withButton) {
+  return `<div class="large-title"><h2 class="f-large">Today</h2><p class="f-sub muted">${plural(M.saved.length, "envelope", "envelopes")} saved</p></div>
+    <div class="scroll" data-sk="${f}:today">${todayList(f, !withButton)}</div>
+    ${withButton ? `<div class="bottom-bar"><button class="btn btn-prom btn-wide" data-act="${M.status === "draft" ? "open-env" : "new"}">${M.status === "draft" ? "Open envelope " + M.num : "New envelope"}</button></div>` : `<div class="bottom-bar"><button class="btn btn-wide" data-act="new"${M.status === "draft" ? ` aria-disabled="true" title="Save or throw away envelope ${M.num} first"` : ""}>New envelope</button>${M.status === "draft" ? `<p class="why" style="padding-top:var(--space-1)">Save or throw away envelope ${M.num} first.</p>` : ""}</div>`}`;
+}
+function stackEnvelope(f, back) {
+  return `${back ? `<div class="nav"><button class="back" data-act="today"><span aria-hidden="true">‹</span> Today</button></div>` : ""}
+    ${stackHeader(f)}
+    <div class="scroll" data-sk="${f}:rows">${stackRows(f)}</div>
+    ${M.say && M.say.at === "list" ? `<div class="status-line">${sayAt("list")}</div>` : ""}
+    ${M.status === "draft" ? composer(f, "Card name on the envelope") : ""}
+    ${keyboard()}`;
+}
+function stackCompact(f) {
+  if (M.screen === "today") return screen(stackToday(f, true));
+  return screen(stackEnvelope(f, true), M.keys && M.status === "draft");
+}
+function stackOpen() {
+  return screen(stackToday("open", false)) + `<div class="hinge" aria-hidden="true"></div>` + screen(stackEnvelope("open", false), M.keys && M.status === "draft");
+}
+
+/* ---------------- Lines first ---------------- */
+function linesTray(f, wide) {
+  const chips = M.names.map((n, i) => `<button class="chip${n.line ? " is-ready" : ""}${M.pick === i ? " is-sel" : ""}" data-act="chip" data-i="${i}" aria-pressed="${M.pick === i}">${n.line ? `<span class="ck" aria-hidden="true"></span>` : ""}${esc(n.text)}</button>`).join("");
+  return `<header class="tray ann"${idIf(f, "lines-tray")} data-ann="New: envelope tray">
+    ${identity("f-t2")}
+    ${M.status === "draft" ? fromLine() + actionStack(false) + (M.names.length && !wide ? `<div class="chips" aria-label="Names on this envelope">${chips}</div>` : "") : ""}
+  </header>`;
+}
+function linesNamesPage(f) {
+  if (M.status !== "draft") return `<div class="scroll">${M.status === "saved" ? savedBody() : goneBody()}</div>`;
+  if (!M.names.length) return `<div class="scroll"><div class="empty"><p class="f-sub">Names you add show here.</p></div></div>`;
+  return `<div class="section-h">Names on envelope ${M.num}</div><div class="scroll" data-sk="${f}:names"><ul class="rows">${M.names.map((n, i) => {
+    const l = n.line && lineById(n.line);
+    return `<li class="row${l ? " is-ready" : ""}"${M.pick === i ? ` style="background:var(--accent-soft)"` : ""}><span class="mark" aria-hidden="true"></span>
+      <button class="row-main" data-act="chip" data-i="${i}" aria-pressed="${M.pick === i}"><span class="f-body">${esc(n.text)}</span>${l ? `<span class="f-foot muted">${lineDetail(l)}</span>` : `<span class="pickhint">Find its line</span>`}</button>
+      <button class="icon-btn" data-act="remove" data-i="${i}" aria-label="Remove ${esc(n.text)}">&times;</button></li>`;
+  }).join("")}</ul></div>`;
+}
+function linesList(f) {
+  if (M.status === "saved") return savedBody();
+  if (M.status === "gone") return goneBody();
+  const sel = M.pick != null ? M.names[M.pick] : null;
+  const top = sel ? `<div class="status-line cluster"><span class="f-sub">${sel.line ? "Change the line for" : "Pick the line for"} “${esc(sel.text)}”</span><button class="btn btn-plain danger" data-act="remove" data-i="${M.pick}">Remove</button><button class="btn btn-plain" data-act="unpick">Done</button></div>` : sayAt("list");
+  if (M.lines === "unknown") return top + unknownBox();
+  const q = M.query.trim();
+  if (!q) {
+    const ss = senders();
+    if (ss.length === 1) { const ls = openLinesFrom(ss[0]); if (ls.length) return top + `<div class="section-h">Open lines from ${esc(ss[0])}</div><div class="picker" style="margin:0 var(--space-4)">${pickRows(ls, null, "line-add")}</div>`; }
+    return top + `<div class="empty"><p class="f-sub">Type a card name from the envelope to find its order line.</p></div>`;
+  }
+  const list = matchesFor(q, sel && sel.line);
+  if (!list.length) return top + `<div class="empty"><p class="f-sub">No open line is named “${esc(q)}”.</p><div class="cluster"><button class="btn" data-act="add-nomatch">Add with no line</button><button class="btn" data-act="clear">Clear</button></div></div>`;
+  return top + `<div class="picker" style="margin:var(--space-2) var(--space-4)">${groupedPick(list, sel && sel.line, "line-add")}</div>
+    <div class="empty" style="padding-top:0"><button class="btn" data-act="add-nomatch">Add “${esc(q)}” with no line</button></div>`;
+}
+function linesSearch(f) { return M.status === "draft" ? composer(f, "Find a card name", "top").replace(`data-act="add"`, `data-act="add-nomatch"`).replace(">Add<", ">Add<") : ""; }
+function linesCompact(f) {
+  return screen(`${linesTray(f, false)}${linesSearch(f)}<div class="scroll" data-sk="${f}:lines">${linesList(f)}</div>${keyboard()}`, M.keys && M.status === "draft");
+}
+function linesOpen() {
+  return screen(`${linesTray("open", true)}${linesNamesPage("open")}`)
+    + `<div class="hinge" aria-hidden="true"></div>`
+    + screen(`${linesSearch("open")}<div class="scroll" data-sk="open:lines">${M.status === "draft" ? linesList("open") : `<div class="empty"><p class="f-sub muted">Open lines show here while an envelope is open.</p></div>`}</div>${keyboard()}`, M.keys && M.status === "draft");
+}
+
+/* ---------------- The envelope ---------------- */
+function rail(f) {
+  const savedNums = M.saved.map(e => e.num).sort((a, b) => a - b);
+  const cur = M.status !== "gone" ? `<button class="${M.view == null ? "is-here" : ""}" data-act="rail-current" aria-current="${M.view == null}" aria-label="Envelope ${M.num}, open">${M.num}</button>` : "";
+  return `<nav class="rail" aria-label="Envelopes today">
+    ${savedNums.map(n => `<button class="is-saved${M.view === n ? " is-here" : ""}" data-act="rail" data-n="${n}" aria-label="Envelope ${n}, saved">${n}</button>`).join("")}
+    ${cur}
+    <button class="rail-new" data-act="new" aria-label="New envelope"${M.status === "draft" ? ` aria-disabled="true" title="Save or throw away envelope ${M.num} first"` : ""}>+</button>
+  </nav>`;
+}
+function envelopeCard(f, tall) {
+  if (M.view != null) {
+    const e = M.saved.find(x => x.num === M.view);
+    return `<section class="envelope"${idIf(f, "envelope-front")}>
+      <div class="env-top"><div class="ret"><span class="f-cap muted">From</span><span class="f-head">${esc(e.from)}</span><span class="f-sub" style="color:var(--ready)">Saved</span></div>
+      <div class="postmark" aria-label="Envelope ${e.num}"><span class="pm-word">Envelope</span><span class="pm-num">${e.num}</span></div></div>
+      <div class="chips">${e.names.map(n => `<span class="chip is-ready"><span class="ck" aria-hidden="true"></span>${esc(n)}</span>`).join("")}</div>
+      <button class="btn btn-prom" data-act="${M.status === "gone" ? "new" : "rail-current"}">${M.status === "gone" ? "New envelope" : "Back to envelope " + M.num}</button>
+    </section>`;
+  }
+  if (M.status === "gone") return `<section class="envelope is-gone"${idIf(f, "envelope-front")}>${goneBody()}</section>`;
+  const ss = senders();
+  const from = ss.length === 0 ? `<span class="f-head muted">Sender not known yet</span>` : ss.length === 1 ? `<span class="f-head">${esc(ss[0])}</span>` : `<span class="f-head" style="color:var(--danger)">${ss.length} sellers. Check each card.</span>`;
+  const chips = M.names.length
+    ? `<div class="chips" aria-label="Names on this envelope">${M.names.map((n, i) => `<button class="chip${n.line ? " is-ready" : ""}${active() === i ? " is-sel" : ""}" data-act="chip" data-i="${i}" aria-pressed="${active() === i}">${n.line ? `<span class="ck" aria-hidden="true"></span>` : ""}${esc(n.text)}</button>`).join("")}</div>`
+    : `<p class="f-sub muted">Write the first card name below.</p>`;
+  const write = M.status === "draft" ? `<div class="env-write">
+      <input class="field" data-role="q" data-frame="${f}" value="${esc(M.query)}" placeholder="Write a card name" aria-label="Write a card name" autocomplete="off" autocapitalize="words" enterkeyhint="done">
+      <button class="btn btn-prom${M.query.trim() ? "" : " is-off"}" data-act="add">Add</button></div>` : "";
+  const showChips = tall || !M.keys;
+  return `<section class="envelope ann"${idIf(f, "envelope-front")} data-ann="New: the envelope is the draft" style="${tall ? "flex:1 1 auto" : ""}">
+    <div class="env-top"><div class="ret"><span class="f-cap muted">From</span>${from}${M.status === "draft" ? meter() : ""}</div>
+      <div class="postmark" aria-label="Envelope ${M.num}"><span class="pm-word">Envelope</span><span class="pm-num">${M.num}</span></div></div>
+    ${M.status === "saved" ? `<div class="env-scroll">${savedBody()}</div>` : (showChips ? `<div class="env-scroll" data-sk="${f}:chips">${chips}</div>` : "") + write + (showChips || M.confirm ? actionStack(true) : "")}
+    <p id="holdtip" class="why" hidden>Press and hold for one second. With a keyboard or a screen reader, press it once and answer the question.</p>
+  </section>`;
+}
+function active() {
+  if (M.pick != null) return M.pick;
+  const i = M.names.findIndex(n => !n.line);
+  return i < 0 ? null : i;
+}
+function drawer(f) {
+  if (M.view != null) return `<div class="drawer"><p class="f-sub muted drawer-h">Saved envelopes are read only.</p></div>`;
+  if (M.status !== "draft") return `<div class="drawer">${sayAt("list")}</div>`;
+  const q = M.query.trim();
+  if (q) {
+    // While typing, the drawer shows live matches: one tap writes the name and its line together.
+    if (M.lines === "unknown") return `<div class="drawer" data-sk="${f}:drawer">${unknownBox()}</div>`;
+    const list = matchesFor(q);
+    return `<div class="drawer" data-sk="${f}:drawer"><h3 class="f-head drawer-h">Open lines for “${esc(q)}”</h3>${list.length
+      ? `<div class="picker" style="margin:0">${groupedPick(list, null, "line-add")}</div>`
+      : `<p class="f-sub">No open line is named “${esc(q)}”. Add keeps it with no line.</p>`}</div>`;
+  }
+  const i = active();
+  if (i == null) return `<div class="drawer" data-sk="${f}:drawer">${sayAt("list")}<p class="f-sub muted drawer-h">${M.names.length ? "Every name has a line. Save when the envelope is empty." : "Lines for each name show here."}</p></div>`;
+  const n = M.names[i];
+  return `<div class="drawer" data-sk="${f}:drawer">${sayAt("list")}<div class="cluster drawer-h"><h3 class="f-head" style="flex:1 1 auto">Lines named “${esc(n.text)}”</h3><button class="btn btn-plain danger" data-act="remove" data-i="${i}">Remove</button></div>${picker(i).replace('class="picker"', 'class="picker" style="margin:0"')}</div>`;
+}
+function envCompact(f) {
+  return screen(`<div class="c3">${rail(f)}<div class="c3-main">${envelopeCard(f, false)}${drawer(f)}</div></div>${keyboard()}`, M.keys && M.status === "draft");
+}
+function envOpen() {
+  return screen(`<div class="c3">${rail("open")}<div class="c3-main">${envelopeCard("open", true)}</div></div>${keyboard()}`, M.keys && M.status === "draft")
+    + `<div class="hinge" aria-hidden="true"></div>`
+    + screen(`${drawer("open")}`);
+}
+
+/* ---------------- Frames ---------------- */
+function screen(inner, kbd) { return `<div class="screen${kbd ? " has-kbd" : ""}"><div class="sbar" aria-hidden="true">9:41</div>${inner}<div class="homepad"></div></div>`; }
+function frameHTML(kind) {
+  const c = S.c;
+  if (kind === "open") return c === "stack" ? stackOpen() : c === "lines" ? linesOpen() : envOpen();
+  const f = kind;
+  return c === "stack" ? stackCompact(f) : c === "lines" ? linesCompact(f) : envCompact(f);
+}
+const FRAME_META = {
+  folded: { cls: "folded", dev: "iphone-duo-folded", cap: "Duo folded, 466 x 678 pt, one screen. Size from the brief." },
+  open:   { cls: "open",   dev: "iphone-duo-unfolded", cap: "Duo open, 951 x 669 pt. Hinge gap from x 455.5 to 495.5; nothing crosses it." },
+  phone:  { cls: "phone",  dev: "iphone-large", cap: "Large phone. No size is written for it, so it is drawn at the folded size; drag the corner to resize. Open #d=phone on the phone itself to see its real size." },
+  ax5:    { cls: "folded ax5", dev: "iphone-duo-folded", cap: "Duo folded at the largest accessibility text size (AX5: body 53 pt)." },
+};
+
+/* ---------------- Render ---------------- */
+function segHTML(list, cur, act) { return list.map(([k, label]) => `<button data-act="${act}" data-v="${k}" aria-pressed="${cur === k}">${esc(label)}</button>`).join(""); }
+function render() {
+  const root = document.documentElement;
+  if (S.t === "auto") root.removeAttribute("data-theme"); else root.dataset.theme = S.t;
+  document.body.classList.toggle("labels", S.labels);
+  document.body.classList.toggle("bare", S.d === "phone" && innerWidth < 600);
+
+  const shown = CONCEPTS.filter(c => !S.hidden.includes(c.key));
+  document.getElementById("ctl-concept").innerHTML = shown.map(c => `<span class="opt"><button data-act="concept" data-v="${c.key}" aria-pressed="${S.c === c.key}">${esc(c.name)}</button><button class="x" data-act="hide" data-v="${c.key}" aria-label="Hide ${esc(c.name)}" title="Hide ${esc(c.name)}">&times;</button></span>`).join("")
+    + (S.hidden.length ? `<button data-act="unhide">Show hidden (${S.hidden.length})</button>` : "");
+  document.getElementById("ctl-device").innerHTML = segHTML(DEVICES, S.d, "device");
+  document.getElementById("ctl-state").innerHTML = segHTML(STATES.filter(s => s[0] !== "today" || S.c === "stack"), S.s, "state");
+  document.getElementById("ctl-theme").innerHTML = segHTML(THEMES, S.t, "theme");
+  document.getElementById("ctl-unmatched").innerHTML = segHTML([["keep", "Allowed, they stay unmatched"], ["block", "Blocked until each has a line"]], S.unmatched, "unmatched");
+  document.getElementById("ctl-labels").innerHTML = `<button data-act="labels" aria-pressed="${S.labels}">Show New: marks</button>`;
+
+  // keep scroll positions across a render
+  const sc = {}; document.querySelectorAll("[data-sk]").forEach(el => sc[el.dataset.sk] = el.scrollTop);
+  const kinds = S.d === "all" ? ["folded", "open", "phone", "ax5"] : [S.d];
+  const fr = document.getElementById("frames");
+  if (!shown.length) { fr.innerHTML = `<div class="empty"><p>Every concept is hidden.</p><button class="btn" data-act="unhide">Show hidden</button></div>`; }
+  else fr.innerHTML = kinds.map(k => `<figure class="fig"><div class="device ${FRAME_META[k].cls}" data-device="${FRAME_META[k].dev}" data-frame="${k}" data-concept="${S.c}">${frameHTML(k)}</div><figcaption>${FRAME_META[k].cap}</figcaption></figure>`).join("");
+  document.querySelectorAll("[data-sk]").forEach(el => { if (sc[el.dataset.sk] != null) el.scrollTop = sc[el.dataset.sk]; });
+  document.querySelectorAll("[data-scroll-me]").forEach(el => {
+    const box = el.closest(".scroll, .drawer"); if (!box) return;
+    const a = el.getBoundingClientRect(), b = box.getBoundingClientRect();
+    if (a.bottom > b.bottom) box.scrollTop += Math.min(a.bottom - b.bottom, a.top - b.top - 8);
+  });
+  document.querySelectorAll(".chips .chip.is-sel").forEach(el => {
+    const box = el.parentElement; if (box.scrollWidth <= box.clientWidth) return;
+    box.scrollLeft = el.offsetLeft - box.offsetLeft - 16;
+  });
+  document.getElementById("about").innerHTML = shown.map(c => `<article class="${S.c === c.key ? "is-current" : ""}"><h2>${esc(c.name)}</h2><p>${esc(c.what)}</p><p><strong>Moving around:</strong> ${esc(c.move)}</p><p><button class="btn" data-act="concept" data-v="${c.key}">Look at ${esc(c.name)}</button></p></article>`).join("");
+
+  if (focusWant) {
+    const sel = `.device[data-frame="${focusWant.frame || kinds[0]}"] [data-role="${focusWant.role}"]`;
+    const el = document.querySelector(sel) || document.querySelector(`[data-role="${focusWant.role}"]`);
+    if (el) { el.focus({ preventScroll: true }); const v = el.value; el.setSelectionRange(v.length, v.length); }
+  }
+}
+
+/* ---------------- Acts ---------------- */
+function addName() {
+  const t = M.query.trim(); if (!t) { M.say = { at: "list", text: "Type a card name first." }; return; }
+  if (S.c === "lines") { addNoMatch(); return; }
+  const none = matchesFor(t).length === 0 && M.lines === "ok";
+  M.names.push({ text: t, line: null, none });
+  M.query = ""; M.pick = M.names.length - 1;
+}
+function addNoMatch() {
+  const t = M.query.trim(); if (!t) return;
+  M.names.push({ text: t, line: null }); M.query = ""; M.pick = null;
+  M.say = { at: "list", text: `Added “${t}” to envelope ${M.num} with no line.` };
+}
+function lineAdd(id) {
+  const l = lineById(id);
+  if (M.pick != null) { M.names[M.pick].line = id; M.names[M.pick].none = false; }
+  else {
+    const j = M.names.findIndex(n => !n.line && n.text.toLowerCase() === l.name.toLowerCase());
+    if (j >= 0) M.names[j].line = id; else M.names.push({ text: l.name, line: id });
+  }
+  M.say = { at: "list", text: `${l.name} from ${l.seller} is on envelope ${M.num}.` };
+  M.query = ""; M.pick = null;
+}
+function newEnvelope() {
+  if (M.status === "draft") { M.say = { at: "list", text: `Save or throw away envelope ${M.num} first.` }; return; }
+  if (M.status === "saved") { M.saved.unshift({ num: M.num, from: senders()[0] || "Sender not known", names: M.names.map(n => n.text) }); M.num += 1; }
+  M.status = "draft"; M.names = []; M.query = ""; M.pick = null; M.confirm = false; M.hold = 0; M.view = null; M.screen = "envelope";
+}
+function act(a, el) {
+  const i = el.dataset.i != null ? +el.dataset.i : null, v = el.dataset.v;
+  const prevSay = M.say; M.say = null;
+  switch (a) {
+    case "concept": S.c = v; preset(S.s); break;
+    case "hide": S.hidden.push(v); if (S.c === v) { const nx = CONCEPTS.find(c => !S.hidden.includes(c.key)); if (nx) { S.c = nx.key; preset(S.s); } } break;
+    case "unhide": S.hidden = []; break;
+    case "device": S.d = v; break;
+    case "state": S.s = v; preset(v); break;
+    case "theme": S.t = v; break;
+    case "unmatched": S.unmatched = v; break;
+    case "labels": S.labels = !S.labels; break;
+    case "key": { const up = !M.query || M.query.endsWith(" "); M.query += up ? v.toUpperCase() : v; M.keys = true; break; }
+    case "key-back": M.query = M.query.slice(0, -1); break;
+    case "key-space": M.query += " "; break;
+    case "key-hide": M.keys = false; focusWant = null; if (document.activeElement) document.activeElement.blur(); break;
+    case "add": addName(); break;
+    case "add-nomatch": addNoMatch(); break;
+    case "clear": M.query = ""; break;
+    case "pick-open": M.pick = M.pick === i ? null : i; break;
+    case "pick": M.names[M.pick].line = el.dataset.id; M.names[M.pick].none = false; M.pick = null; break;
+    case "line-add": lineAdd(el.dataset.id); break;
+    case "chip":
+      if (S.c === "lines") { if (M.pick === i) { M.pick = null; M.query = ""; } else { M.pick = i; M.query = M.names[i].text; } }
+      else M.pick = i;
+      break;
+    case "unpick": M.pick = null; M.query = ""; break;
+    case "remove": M.names.splice(i, 1); M.pick = null; if (S.c === "lines") M.query = ""; break;
+    case "fix": M.query = M.names[i].text; M.names.splice(i, 1); M.pick = null; M.keys = true; focusWant = { role: "q" }; break;
+    case "keep": M.names[i].none = false; M.pick = null; break;
+    case "retry": M.lines = "ok"; break;
+    case "save":
+      if (el.getAttribute("aria-disabled") === "true") { M.say = { at: "save", text: M.names.length ? `Pick a line for ${plural(unmatchedCount(), "name", "names")} first.` : "Add a card name first." }; break; }
+      M.status = "saved"; M.keys = false; M.pick = null; M.confirm = false; focusWant = null; break;
+    case "discard": M.confirm = true; M.keys = false; focusWant = null; break;
+    case "discard-keep": M.confirm = false; break;
+    case "discard-yes": M.status = "gone"; M.confirm = false; M.keys = false; M.pick = null; break;
+    case "hold-key": if (holdDone) { holdDone = false; break; } if (el.dataset.fromPointer !== "1") { M.confirm = true; M.keys = false; } else M.say = prevSay; break;
+    case "new": if (el.getAttribute("aria-disabled") === "true") { M.say = { at: S.c === "stack" ? "today" : "list", text: el.title }; break; } newEnvelope(); break;
+    case "today": M.screen = "today"; M.keys = false; focusWant = null; break;
+    case "open-env": M.screen = "envelope"; if (M.status !== "draft") newEnvelope(); break;
+    case "rail": M.view = +el.dataset.n; M.keys = false; focusWant = null; break;
+    case "rail-current": M.view = null; break;
+  }
+  if (["concept", "hide", "device", "state", "theme", "unmatched", "labels", "unhide"].includes(a)) writeHash();
+  render();
+}
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  if (el.dataset.act === "hold-key") el.dataset.fromPointer = e.detail > 0 ? "1" : "0";
+  act(el.dataset.act, el);
+});
+document.addEventListener("input", e => {
+  if (e.target.dataset.role !== "q") return;
+  M.query = e.target.value; focusWant = { frame: e.target.dataset.frame, role: "q" };
+  if (S.c === "lines" && M.pick != null && M.query !== (M.names[M.pick] || {}).text) M.pick = null;
+  render();
+});
+document.addEventListener("focusin", e => {
+  if (e.target.dataset.role !== "q") return;
+  focusWant = { frame: e.target.dataset.frame, role: "q" };
+  if (!M.keys) { M.keys = true; render(); }
+});
+document.addEventListener("keydown", e => {
+  if (e.target.dataset.role === "q" && e.key === "Enter") { e.preventDefault(); act(S.c === "lines" ? "add-nomatch" : "add", e.target); }
+});
+
+/* Hold to throw away: one second of pressure, no dialog. Release early and nothing happens. */
+let holdTimer = null, holdStart = 0, holdDone = false;
+document.addEventListener("pointerdown", e => {
+  const b = e.target.closest("[data-hold]"); if (!b) return;
+  holdStart = performance.now(); holdDone = false;
+  const tick = () => {
+    const p = Math.min(1, (performance.now() - holdStart) / 1000);
+    document.querySelectorAll("[data-hold]").forEach(x => x.style.setProperty("--p", p));
+    if (p >= 1) { holdTimer = null; holdDone = true; M.status = "gone"; M.keys = false; M.pick = null; M.hold = 0; render(); return; }
+    holdTimer = requestAnimationFrame(tick);
+  };
+  holdTimer = requestAnimationFrame(tick);
+});
+function holdCancel() {
+  if (!holdTimer) return;
+  cancelAnimationFrame(holdTimer); holdTimer = null;
+  M.hold = 0; M.say = { at: "hold", text: "Hold for one second to throw it away. Nothing was lost." }; render();
+}
+document.addEventListener("pointerup", holdCancel);
+document.addEventListener("pointercancel", holdCancel);
+
+addEventListener("hashchange", () => { readHash(); preset(S.s); render(); });
+addEventListener("resize", () => document.body.classList.toggle("bare", S.d === "phone" && innerWidth < 600));
+readHash(); preset(S.s); render();
+</script>
+</body>
+</html>

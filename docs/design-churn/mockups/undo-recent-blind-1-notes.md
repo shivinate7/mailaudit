@@ -12,11 +12,20 @@ I saw no current screen. The checklist and the tab bar in each frame are stand-i
 
 Deep links: `#c=sheet|tab|bench`, `s=loaded|many|empty|unknown`, `t=light|dark|system`,
 `d=all|folded|open|phone|ax5`, `o=sheet|detail|pick` (opens the sheet, a tick's order, or an older
-tick on the bench), `btn=word`, `hold=insert`, `edge=trail`. For example
+tick on the bench), `btn=word`, `hold=insert`, `edge=trail`, `win=30`, `xdev=own`, and `p=1`
+(seeds one tick from Laptop on load, so the two "new ticks" options look different). For example
 `undo-recent-blind-1.html#c=bench&s=loaded&t=dark&d=open`.
 
-Focus ids, one per concept, in the folded frame: `choice-sheet` (first Undo button in the sheet,
-with `o=sheet`), `choice-tab` (the Recent list), `choice-bench` (the bench panel).
+Focus ids, each once, in the folded frame: `choice-sheet` (first undo button in the sheet, link
+`#c=sheet&o=sheet`), `choice-tab` (the Recent list, `#c=tab`), `choice-bench` (the bench panel,
+`#c=bench`; also the focus for item 12's undo edge), and `choice-list` (the sheet's list, for items
+3, 5, 7 and 9: `#c=sheet&o=sheet&p=1` against `…&p=1&hold=insert`, `#c=sheet&o=sheet` against
+`…&btn=word`, `…&win=30` and `…&xdev=own`). A Playwright pass found each id once at its link, and
+each option's picture differs from its pair.
+
+Sample data: card, order, time and device come from the brief. The seller name on each order and
+the price on each card are assumed fields, drawn so the order reads as real; drop them if the data
+has none.
 
 ## Rules every concept keeps
 
@@ -32,6 +41,10 @@ These hold in all three concepts. Each is a design choice, so each is an item.
    event, and a sighted person reads the undone state from shape, not a word. Pick: edit in place.
 2. **Undo and Redo share one fixed box.** The glyph button is 56 x 56 pt (64 on the bench panel).
    The word button is 96 x 48 pt. Gain: a press changes no size. Loss: none found. Pick: fixed box.
+   Every screen that holds an undo or swap button ends at the tab bar's top edge, so no button
+   scrolls under the bar. A Playwright pass scrolled each list to top, middle and end in every
+   frame: no visible undo or swap button met the tab bar or the Recent button. Loss: the list does
+   not run under the floating bar, so the bar's see-through look shows only the page behind it.
 3. **A tick from another device waits behind a pill while a list is open.** A reserved 44 pt slot
    above each list holds the legend. When a tick arrives from another device, the slot shows
    "1 new tick from Laptop. Show" in the same space. Nothing below it moves until the person taps
@@ -48,23 +61,31 @@ These hold in all three concepts. Each is a design choice, so each is an item.
    to fix it, the person undoes the newer row first. Pick: off with a reason.
 5. **The undo glyph labels itself once.** Options in the mockup: "Arrow, label once" (an undo
    arrow on each row, and one legend above the list: "undoes that tick", "puts it back") or "Word
-   on each row" ("Undo" or "Redo" in each button). Gain of the arrow: the house rule on a label
-   shown once holds, and rows stay calm. Gain of the word: no legend to learn. Loss of the word:
-   "Undo" shows once per row, which the label-once check flags. Pick: arrow, label once. Each
+   on each row" ("Undo" or "Redo" in each button). Gain of the arrow: the word shows once, as the
+   label-once house rule asks, and rows stay calm. Gain of the word: no legend to learn. Loss of
+   the word: "Undo" repeats on every row. `label_once.py` on the rendered folded frame of each
+   concept, both options, flagged only card names, which are data; it does not flag the button
+   word, so the repeat is a reading, not a check result. Pick: arrow, label once. Each
    button has an accessible name such as "Undo: ticked Verdant Wyrm".
 6. **Rows say each fact in a sentence.** "Ticked 1 min ago on this Duo", "Order 7C19-A2, Harbor
    Cards". Gain: no status word repeats as a bare label; time and device read as one fact. Loss:
    longer lines. Pick: sentences.
-7. **The window is two hours.** The empty state says "No ticks in the last two hours." Gain: covers
-   "a few minutes later" with room to spare, and keeps the list short. Loss: an older mis-tap is
-   not here. Pick: two hours. Owner grant: yes (it sets how far back undo reaches).
+7. **How far back the list reaches.** Options in the mockup, each with a hide control: "Two hours"
+   and "Thirty minutes". A third, not drawn: since the app was last opened. Two hours: covers "a
+   few minutes later" with room to spare; loss, a longer list on a busy mail day. Thirty minutes:
+   the shortest list, so the fewest rows to miss-tap; loss, a mis-tap found after lunch is gone.
+   Since last opened: matches a mail session; loss, a phone that sleeps and wakes drops the list
+   mid-session. The empty state names the window. Pick: two hours. Owner grant: yes (it sets how
+   far back undo reaches).
 8. **A failed read of other devices is not empty.** State "Other devices failed to load": a note
    says ticks from the other devices did not load and only this device's ticks show, with "Try
    again". Gain: no false "nothing to undo". Pick: note plus retry.
-9. **Undo on another device's tick is allowed.** A tick made on Laptop can be undone from the Duo.
-   Gain: the mis-tap is fixed where the person is now. Loss: two people on two devices could undo
-   each other; item 4 limits the harm. Pick: allowed. Owner grant: yes (cross-device undo is a
-   product rule).
+9. **Who can undo a tick.** Options in the mockup, each with a hide control: "Any device" and "Only
+   the device that ticked". Any device: the mis-tap is fixed where the person is now; loss, two
+   people on two devices could undo each other, and item 4 limits that. Only the device that
+   ticked: the row still shows, its undo is drawn off, and a line says "Ticked on Laptop, so only
+   Laptop can undo it."; loss, the person must walk to the other device. Pick: any device. Owner
+   grant: yes (cross-device undo is a product rule).
 
 ## Concepts
 
@@ -105,8 +126,9 @@ structure either way).
 ## Sizes and type
 
 13. **Large phone size is not written.** `layout.py devices` prints `unknown` for this repo, and the
-    brief gives no size. The frame is a stand-in, 430 x 932, chosen by this designer and labelled
-    so on the page. It is not a device figure. Owner grant: yes (name the size).
+    brief gives no size. The frame is a stand-in, 430 x 932, labelled so on the page. The figure
+    is recalled from memory as a large phone's size and is not checked against any page I read.
+    Owner grant: yes (name the size).
 14. **Chrome heights are this designer's own.** Status bar 44 pt, floating tab bar 64 pt, home
     indicator area 20 pt. No Apple page I read gives these. Each sits on the 4 px step.
 15. **Largest accessibility text.** Sizes from Apple's largest Dynamic Type table: Body and

@@ -40,6 +40,7 @@ h2 { font-family:var(--cochin); font-size:22px; margin:0; }
 .tag { display:inline-block; border:1.5px dashed; border-radius:6px; padding:0 6px; font:11px var(--mono); }
 .tag.today { color:var(--red); } .tag.new { color:var(--green); }
 .frames { display:flex; flex-direction:column; gap:24px; }
+.frames figure { margin:0; }
 .frame-cap { font-family:var(--cochin); font-size:16px; font-weight:700; margin:0 0 6px; }
 .frame-note { font:12px var(--mono); color:var(--inkSoft); margin:6px 0 0; max-width:90ch; }
 .fit { width:100%; overflow-x:auto; padding-bottom:4px; }
@@ -59,7 +60,7 @@ h2 { font-family:var(--cochin); font-size:22px; margin:0; }
 .status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
   padding:0 16px; font:600 12px -apple-system, system-ui, sans-serif; z-index:5; background:var(--paper); }
 .scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; }
-.pad { padding:12px 16px calc(var(--bar) + var(--lift) + 24px + var(--sab)); display:flex; flex-direction:column; gap:16px; }
+.pad { padding:24px 16px calc(var(--bar) + var(--lift) + 24px + var(--sab)); display:flex; flex-direction:column; gap:16px; }
 .page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
 .page.l { left:0; } .page.r { left:495.5px; }
 .fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:4; }
@@ -146,7 +147,9 @@ h2 { font-family:var(--cochin); font-size:22px; margin:0; }
 .line .qty { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); flex:none; }
 .pkg.collapsed .line { display:none; }
 .pkg .sel { box-shadow:inset 3px 0 0 var(--accent); }
-.stamp { position:absolute; right:12px; top:44px; border:2px solid var(--green); color:var(--green); font:700 calc(13px * var(--rc)) var(--mono); letter-spacing:2px;
+/* The stamp lands in the pill's reserved slot, so the head keeps its size (card-the-action-row-is-reserved). */
+.pkg .pill.stamped { border-color:transparent; }
+.stamp { border:2px solid var(--green); color:var(--green); font:700 calc(13px * var(--rc)) var(--mono); letter-spacing:2px;
   padding:4px 10px; border-radius:4px; transform:rotate(-6deg); background:color-mix(in srgb, var(--card) 70%, transparent); pointer-events:none; }
 .stamp.lands { animation:land 320ms cubic-bezier(.2,.9,.3,1.2) both; }
 @keyframes land { from { transform:rotate(-6deg) scale(1.5); opacity:0; } to { transform:rotate(-6deg) scale(1); opacity:1; } }
@@ -175,10 +178,16 @@ details pre { margin:0; font:calc(11px * var(--rc)) var(--mono); white-space:pre
   font-size:16px; font-family:var(--cochin); color:var(--ink); width:100%; }
 .field.big { font-size:calc(16px * var(--rb)); }
 .field .caret { width:2px; height:1.1em; background:var(--accent); }
-/* The bring-in dock sticks above the tab bar, in reach of the thumb (ux-thumb-zone). At AX5 it joins the flow, or it would cover the page. */
-.dock { position:sticky; bottom:calc(var(--bar) + var(--lift) + var(--sab) + 8px); margin:0 -16px; padding:12px 16px; z-index:5;
-  background:linear-gradient(to bottom, transparent, var(--paper) 16px); display:flex; flex-direction:column; gap:8px; }
-.dock.inpage, .dev.ax5 .dock { position:static; margin:0; padding:0; background:none; }
+/* The bring-in block sits in the flow under the practice slot. A sticky dock covered the slot, which is the teaching text. */
+.dock { display:flex; flex-direction:column; gap:8px; }
+/* At AX5 a row and a package head wrap, so the value and the pill go under the title rather than over it. */
+.dev.ax5 .row { flex-wrap:wrap; }
+.dev.ax5 .row .txt { flex-basis:calc(100% - 40px); }
+.dev.ax5 .row .val { margin-left:calc(22px * var(--rc) + 12px); }
+.dev.ax5 .pkg .hd { flex-wrap:wrap; }
+.dev.ax5 .pkg .who { flex-basis:100%; }
+.dev.ax5 .listrow { flex-wrap:wrap; }
+.dev.ax5 .listrow .w { flex-basis:100%; }
 
 /* system sheet (HIG Sheets: Cancel on the leading edge of the top toolbar) */
 .sheet { position:absolute; left:0; right:0; bottom:0; top:calc(var(--sat) + 28px); background:var(--card); border-radius:14px 14px 0 0; z-index:8;
@@ -194,11 +203,11 @@ details pre { margin:0; font:calc(11px * var(--rc)) var(--mono); white-space:pre
 .files button:disabled { color:var(--inkSoft); cursor:default; }
 .files .ic { width:28px; height:34px; border:1.5px solid currentColor; border-radius:3px; flex:none; position:relative; }
 .files small { display:block; color:var(--inkSoft); font-size:13px; }
-ol.how { margin:0; padding-left:22px; display:flex; flex-direction:column; gap:8px; font-size:calc(15px * var(--rb)); }
+ol.how { margin:0; padding-left:calc(24px * var(--rb)); display:flex; flex-direction:column; gap:8px; font-size:calc(15px * var(--rb)); }
 .listrow { display:flex; gap:8px; align-items:center; min-height:56px; border-bottom:1px solid var(--line); padding:6px 4px; cursor:pointer; background:none; border-top:0; border-left:0; border-right:0; width:100%; text-align:left; font:inherit; color:inherit; }
 .listrow .w { flex:1; min-width:0; display:flex; flex-direction:column; }
 .listrow b { font-size:calc(15px * var(--rb)); }
-.listrow span { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); }
+.listrow .w > span { font:calc(11px * var(--rc)) var(--mono); color:var(--inkSoft); }
 .listrow .p { font:calc(11.5px * var(--rc)) var(--mono); border:1px solid var(--line); border-radius:5px; padding:4px 8px; flex:none; }
 .listrow.sel { box-shadow:inset 3px 0 0 var(--accent); padding-left:10px; }
 .offer { background:color-mix(in srgb, var(--manila) 50%, transparent); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
@@ -227,14 +236,27 @@ ol.how { margin:0; padding-left:22px; display:flex; flex-direction:column; gap:8
     <h2>Ruled steps</h2>
     <p class="sub">The quiet one. Keeps every ruling but one new web control. The app still opens on the Ledger tab. Three ruled rows sit at its top, in the masthead's own vocabulary, with the three words under them. Orders arrive by the sync link the app already reads: the Camera scans a code the computer shows.</p>
     <nav class="toolbar" aria-label="Ruled steps states" data-states="steps"></nav>
-    <div class="frames" data-frames="steps"></div>
+    <div class="frames" data-frames="steps">
+      <figure><p class="frame-cap">iPhone Duo, folded: 466 × 678 pt</p><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-pose="folded" id="choice-steps"></div></div></figure>
+      <figure><p class="frame-cap">iPhone Duo, open: 951 × 669 pt, fold 455.5 to 495.5</p><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-pose="open"></div></div></figure>
+      <figure><p class="frame-cap">Large phone: no size written, drawn at 466 × 678 pt; drag the corner to resize</p><div class="fit"><div class="dev phone" data-device="iphone-large" data-pose="phone"></div></div></figure>
+      <figure><p class="frame-cap">iPhone Duo, folded, AX5 (the largest accessibility text)</p><div class="fit"><div class="dev folded ax5" data-device="iphone-duo-folded-ax5" data-pose="folded"></div></div></figure>
+      <p class="frame-note">The folded frame carries the focus id choice-steps.</p>
+    </div>
   </section>
 
   <section class="concept" id="concept-practice" data-concept="practice">
     <h2>Practice package</h2>
     <p class="sub">The bold one. The app opens on Packages with a practice package that is never saved. The person ticks three sample cards in the first ten seconds, and each tick names a word. Then the phone opens the CSV itself, through the same parser the web runs, and goes straight to the mail in hand. Departs from two rulings: see the notes.</p>
     <nav class="toolbar" aria-label="Practice package states" data-states="practice"></nav>
-    <div class="frames" data-frames="practice"></div>
+    <div class="frames" data-frames="practice">
+      <figure><p class="frame-cap">iPhone Duo, folded: 466 × 678 pt</p><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-pose="folded" id="choice-practice"></div></div></figure>
+      <figure><p class="frame-cap">iPhone Duo, open: 951 × 669 pt, fold 455.5 to 495.5</p><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-pose="open"></div></div></figure>
+      <figure><p class="frame-cap">Large phone: no size written, drawn at 466 × 678 pt; drag the corner to resize</p><div class="fit"><div class="dev phone" data-device="iphone-large" data-pose="phone"></div></div></figure>
+      <figure><p class="frame-cap">iPhone Duo, folded, AX5 (the largest accessibility text)</p><div class="fit"><div class="dev folded ax5" data-device="iphone-duo-folded-ax5" data-pose="folded"></div></div></figure>
+      <p class="frame-note">The folded frame carries the focus id choice-practice.</p>
+    </div>
+    <p class="frame-note">Tab bar: the open Duo draws the app's own bar under the right page (DuoSpine.swift DuoBar). Folded and phone draw the system bar at the same pill size, which is not measured. Status bar: drawn at the 20 pt floor, not measured.</p>
   </section>
 </main>
 
@@ -309,16 +331,18 @@ ol.how { margin:0; padding-left:22px; display:flex; flex-direction:column; gap:8
     const left = leftOf(pkg, got), done = left === 0;
     const pill = done ? 'RECEIVED' : `${left} left · ${money(valOf(pkg, got))}`;
     const widest = `${pkg.cards.reduce((n, x) => n + x.q, 0)} left · ${money(valOf(pkg, {}))}`;
-    const lines = pkg.cards.map(x => `<button class="line ${got[x.k] ? 'got' : ''} ${opts.just === x.k ? 'just' : ''}" data-c="${c}" data-line="${x.k}"
+    const shown = opts.only ? pkg.cards.filter(x => opts.only.includes(x.k)) : pkg.cards;
+    const hiddenN = pkg.cards.length - shown.length;
+    const lines = shown.map(x => `<button class="line ${got[x.k] ? 'got' : ''} ${opts.just === x.k ? 'just' : ''}" data-c="${c}" data-line="${x.k}"
         aria-pressed="${!!got[x.k]}" aria-label="${x.n}, ${got[x.k] ? 'checked in' : 'not checked in'}">
         <span class="box"><i>${got[x.k] ? TICK : ''}</i></span>
         <span class="nm"><b>${x.n}</b><span>${x.d}</span></span>
-        <span class="qty">${x.q > 1 ? (got[x.k] ? `${x.q}/${x.q}` : `0/${x.q}`) : ''}</span></button>`).join('');
+        <span class="qty">${x.q > 1 ? (got[x.k] ? `${x.q}/${x.q}` : `0/${x.q}`) : ''}</span></button>`).join('')
+      + (hiddenN ? `<p class="meta" style="margin:0;padding:8px 12px;border-top:1px solid var(--line);font:calc(11px * var(--rc)) var(--mono);color:var(--inkSoft)">${hiddenN} more cards in this package, hidden by the search</p>` : '');
     return `<article class="pkg ${opts.collapsed ? 'collapsed' : ''}" ${opts.id ? `id="${opts.id}"` : ''}>
       ${opts.band ? `<div class="band">${opts.band}</div>` : ''}
       <div class="hd"><div class="who"><b>${pkg.seller}</b><span class="meta">${pkg.order} · ordered ${pkg.date}</span></div>
-        <span class="pill ${done ? 'got' : ''}"><span class="ghost">${widest}</span><span class="face">${opts.stamp && done ? '&nbsp;' : pill}</span></span></div>
-      ${opts.stamp && done ? `<span class="stamp ${opts.landed ? 'lands' : ''}">RECEIVED</span>` : ''}
+        <span class="pill ${done ? 'got' : ''} ${opts.stamp && done ? 'stamped' : ''}"><span class="ghost">${widest}</span><span class="face">${opts.stamp && done ? `<span class="stamp ${opts.landed ? 'lands' : ''}">RECEIVED</span>` : pill}</span></span></div>
       ${lines}</article>`;
   }
   const summaryRow = (p, sel, c = 'steps') => `<button class="listrow ${sel ? 'sel' : ''}" ${c === 'steps' ? 'data-c="steps" data-go="pkgs"' : ''}><span class="w"><b>${p.seller}</b><span>${p.order} · ordered ${p.date}</span></span><span class="p">${p.left != null ? `${p.left} left · ${money(p.val)}` : `${leftOf(p, {})} left · ${money(valOf(p, {}))}`}</span></button>`;
@@ -501,7 +525,7 @@ ol.how { margin:0; padding-left:22px; display:flex; flex-direction:column; gap:8
     return `${letter(LOADED_TALLY)}
       ${mark('today', 'Find pill as a field', `<div class="field big" id="hand-field">Lightning Bo<span class="caret"></span></div>`)}
       ${mark('new', 'first-day hint, reserved slot', `<div class="slot ${ticked ? 'good' : ''}" id="hand-slot">${ticked ? 'First card in. Tap it again to take the tick back.' : 'One package holds Lightning Bolt. Tick it when it is out of the envelope.'}</div>`)}
-      ${pkgCard('practice', REAL[0], got, { just:o.just, id:'hand-package' })}`;
+      ${pkgCard('practice', REAL[0], got, { just:o.just, id:'hand-package', only:['a1'] })}`;
   }
   function handOpen(o) {
     const ticked = o.s === 'ticked';
@@ -539,23 +563,21 @@ ol.how { margin:0; padding-left:22px; display:flex; flex-direction:column; gap:8
   }
 
   /* ---------- frames ---------- */
-  const FRAMES = [
-    ['folded', 'iPhone Duo, folded: 466 × 678 pt', 'iphone-duo-folded', ''],
-    ['open', 'iPhone Duo, open: 951 × 669 pt, fold 455.5 to 495.5', 'iphone-duo-unfolded', ''],
-    ['phone', 'Large phone: no size written, drawn at 466 × 678 pt; drag the corner to resize', 'iphone-large', ''],
-    ['folded', 'iPhone Duo, folded, AX5 (largest accessibility text)', 'iphone-duo-folded-ax5', 'ax5'],
-  ];
   function render(c) {
     const o = st[c];
     const host = document.querySelector(`[data-frames="${c}"]`);
-    host.innerHTML = FRAMES.map(([pose, cap, dev, extra], i) => {
+    host.querySelectorAll('.dev').forEach(dev => {
+      const pose = dev.dataset.pose;
       let inner;
       if (c === 'steps') inner = pose === 'open' ? stepsOpen(o) : stepsCompact(o);
       else inner = pose === 'open' ? practiceOpen(o) : practiceCompact(o);
       if (c === 'practice' && pose === 'open' && o.s === 'picking') inner += `<div style="position:absolute;top:0;bottom:0;left:495.5px;right:0;overflow:hidden">${picker()}</div>`;
-      return `<figure style="margin:0"><p class="frame-cap">${cap}</p><div class="fit">
-        <div class="dev ${pose === 'phone' ? 'phone' : pose} ${extra}" data-device="${dev}" ${i === 0 ? `id="choice-${c}"` : ''}>${inner}</div></div></figure>`;
-    }).join('') + `<p class="frame-note">The folded frame carries the focus id choice-${c}. Tab bar: the open Duo draws the app's own bar under the right page (DuoSpine.swift DuoBar). Folded and phone draw the system bar at the same pill size, which is not measured. Status bar: drawn at the 20 pt floor, not measured.</p>`;
+      dev.innerHTML = inner;
+    });
+    // The answer shows where the press was (ux-answer-at-press): a compact frame keeps the bring-in block in view.
+    if (c === 'practice' && ['picking','reading','badfile','summary'].includes(o.s)) {
+      host.querySelectorAll('.dev:not(.open) .dock').forEach(d => { const sc = d.closest('.scroll'); sc.scrollTop = Math.max(0, d.offsetTop - 120); });
+    }
     document.querySelectorAll(`[data-states="${c}"] a`).forEach(a => a.setAttribute('aria-current', a.dataset.s === o.s));
   }
   function buildStateNav(c) {

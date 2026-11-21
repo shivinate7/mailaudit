@@ -1,0 +1,702 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tracking Checker</title>
+<style>
+/* Tokens: shared/tokens.json, light set (design-parchment-ledger). The app and the native client stay light,
+   so this page draws one theme. The dark keys in that file belong to the orders extension only. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA;
+  --manilaInk:#695832; --amber:#846008;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the UI tests' 20 pt floor, as the other Duo mockups draw it. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  /* Text sizes at the default Dynamic Type size (Large). The .ax5 frame swaps them for the AX5 sizes. */
+  --t-title:22px; --t-head:17px; --t-body:15px; --t-foot:12.5px; --t-cap:11px; --t-pill:12px; --lh:1.3;
+  --tag-new:#2E7A5E; --tag-today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:26px; line-height:1.2; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:75ch; }
+.kind { font:600 13px var(--sys); color:var(--accent); }
+nav.ctl { display:flex; flex-direction:column; gap:8px; }
+nav.ctl .cluster { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+nav.ctl .cluster > span { font-size:13px; color:var(--inkSoft); min-width:84px; }
+nav.ctl a, nav.ctl button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav.ctl a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav.ctl button.hide { color:var(--red); }
+section.concept { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:16px; }
+section.concept[hidden] { display:none; }
+section.concept > h2 { font-family:var(--cochin); font-size:22px; margin:0; }
+section.concept > p { margin:0; max-width:75ch; }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; max-width:100%; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+figcaption b { font-family:var(--cochin); font-size:16px; color:var(--ink); }
+.fit { max-width:100%; overflow-x:auto; }
+
+/* ---------- device frames: 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; color:var(--ink); flex:none; }
+.dev.folded, .dev.ax5 { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+/* Large phone: no size is written for it (layout.json devices, the brief). Drawn at the folded width with a taller page;
+   drag the corner to try other widths. */
+.dev.phone { width:466px; height:900px; resize:horizontal; min-width:320px; max-width:520px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 20px; font:600 12px var(--sys); z-index:8; background:var(--paper); }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; padding:12px 16px calc(var(--sab) + 96px); }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.page .scroll { padding-bottom:16px; }
+.page.r .scroll { padding-bottom:calc(var(--sab) + 96px); }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, transparent); z-index:9; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1px; white-space:nowrap; }
+
+/* the system tab bar: floats above content at the bottom (HIG tab bars). Labels stop at the default size (duo-card-in-hand, tab bar text). */
+.tabbar { position:absolute; bottom:calc(var(--sab) - 8px); left:16px; right:16px; height:62px; border-radius:31px; z-index:7;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px) saturate(1.4); -webkit-backdrop-filter:blur(12px) saturate(1.4);
+  border:1px solid var(--line); display:flex; padding:4px; gap:2px; font-family:var(--sys); }
+.open .tabbar { left:calc(495.5px + 16px); right:16px; }
+.tabbar .tab { flex:1; min-width:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:10px; color:var(--ink);
+  border-radius:27px; position:relative; }
+.tabbar .tab svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.6; }
+.tabbar .tab.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); font-weight:600; }
+.tabbar .badge { position:absolute; top:4px; left:calc(50% + 6px); min-width:18px; height:18px; border-radius:9px; background:var(--red); color:var(--card);
+  font:600 11px/18px var(--sys); text-align:center; padding:0 4px; }
+
+/* ---------- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---------- */
+.stack { display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); line-height:var(--lh); }
+.stack.tight { gap:8px; }
+.rowx { display:flex; align-items:center; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.mono { font-family:var(--mono); }
+.meta { font:var(--t-cap)/1.3 var(--mono); color:var(--inkSoft); }
+.micro { font:10.5px/13px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.lt { font:700 var(--t-title)/1.15 var(--cochin); margin:0; }
+h3.sec { font:700 var(--t-head)/1.2 var(--cochin); margin:0; display:flex; gap:8px; align-items:baseline; }
+h3.sec .n { font:var(--t-cap) var(--mono); color:var(--inkSoft); font-weight:400; }
+.lede { margin:0; font-size:var(--t-foot); color:var(--inkSoft); }
+button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; text-align:left; }
+.hit { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
+.pill { font:var(--t-pill)/1.2 var(--mono); border:1px solid var(--line); background:var(--card); border-radius:8px; padding:6px 10px; color:var(--ink); white-space:nowrap; }
+.pill.primary { background:var(--accent); border-color:var(--accent); color:var(--card); font-weight:700; }
+.pill.warn { border-color:var(--red); color:var(--red); }
+button:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* masthead and ruled head, drawn short */
+.mast { display:flex; flex-direction:column; gap:4px; padding:8px 0 12px; border-bottom:2px solid var(--ink); }
+.mast .mh { font:700 26px/1 var(--cochin); letter-spacing:4px; }
+.mast .tl { font:var(--t-cap) var(--mono); color:var(--inkSoft); }
+.ruled { display:flex; flex-direction:column; }
+.cell { display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:44px; border-bottom:1px solid var(--line); font-size:var(--t-body); flex-wrap:wrap; }
+.cell .lab { color:var(--inkSoft); font-size:var(--t-foot); }
+.cell .val { text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:4px; }
+.cell .val.plain { text-decoration:none; color:var(--inkSoft); }
+.cell .val.warn { color:var(--red); text-decoration-color:var(--red); font-weight:700; }
+
+/* package card (src/app.jsx PackageCard; PackageCard.swift tokens) */
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; flex-direction:column; }
+.card.done { border-color:var(--green); }
+.card.sel { box-shadow:0 0 0 2px var(--accent); }
+.card .ch { display:flex; gap:8px; padding:12px; align-items:flex-start; }
+.card .ch .txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.card .who { font:700 var(--t-body)/1.25 var(--cochin); }
+.card .slot { flex:none; }
+.pillr { font:600 var(--t-cap) var(--mono); color:var(--red); background:var(--redSoft); border-radius:8px; padding:4px 8px; white-space:nowrap; }
+.stampd { font:700 var(--t-cap) var(--mono); color:var(--green); letter-spacing:1px; }
+.lost-m { color:var(--amber); font-weight:700; } .lost-d { color:var(--red); font-weight:700; }
+.carrier { display:flex; align-items:center; gap:6px; min-height:44px; margin:0 -12px -12px; padding:0 12px; border-top:1px dashed var(--line);
+  font:var(--t-foot)/1.25 var(--cochin); width:calc(100% + 24px); flex-wrap:wrap; }
+.carrier .dot { width:9px; height:9px; border-radius:50%; flex:none; }
+.carrier .w { font-weight:700; }
+.carrier .t { color:var(--inkSoft); font:var(--t-cap) var(--mono); }
+.carrier .chev { margin-left:auto; color:var(--inkSoft); font-family:var(--sys); }
+.band { border-top:1px solid var(--line); padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:44px; font-size:var(--t-foot); color:var(--inkSoft); background:color-mix(in srgb, var(--manila) 45%, transparent); border-radius:0 0 8px 8px; flex-wrap:wrap; }
+.tone-red { color:var(--red); } .tone-amber { color:var(--amber); } .tone-green { color:var(--green); } .tone-soft { color:var(--inkSoft); } .tone-manila { color:var(--manilaInk); } .tone-accent { color:var(--accent); }
+.bg-red { background:var(--red); } .bg-amber { background:var(--amber); } .bg-green { background:var(--green); } .bg-soft { background:var(--inkSoft); } .bg-manila { background:var(--manilaInk); } .bg-accent { background:var(--accent); }
+
+/* notice (global run states) */
+.notice { border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; font-size:var(--t-foot); background:color-mix(in srgb, var(--manila) 60%, transparent); color:var(--manilaInk); }
+.notice b { font-size:var(--t-body); color:var(--ink); }
+.notice.ok { background:var(--greenSoft); color:var(--green); }
+.notice.plain { background:var(--card); border:1px solid var(--line); color:var(--inkSoft); }
+
+/* Doorstep slips: a carrier's "we left it" slip, with a perforated stub edge (border kept for forced colours) */
+.slip { position:relative; background:var(--manila); border:1px solid color-mix(in srgb, var(--manilaInk) 35%, transparent); border-radius:8px;
+  padding:12px 12px 12px 24px; display:flex; flex-direction:column; gap:6px; color:var(--ink); }
+.slip::before { content:""; position:absolute; left:8px; top:10px; bottom:10px; width:4px;
+  background:radial-gradient(circle, var(--paper) 1.6px, transparent 2px) 0 0/4px 9px repeat-y; }
+.slip.late { background:var(--redSoft); border-color:color-mix(in srgb, var(--red) 45%, transparent); }
+.slip.sel { box-shadow:0 0 0 2px var(--accent); }
+.slip .sw { font:700 var(--t-head)/1.2 var(--cochin); }
+.slip .says { font:var(--t-foot)/1.3 var(--cochin); }
+.slip .says .w { font-weight:700; }
+.slip .acts { display:flex; gap:8px; align-items:center; min-height:48px; flex-wrap:wrap; }
+.slip .acts .big { flex:1; min-height:44px; border-radius:8px; font:700 var(--t-body)/1.2 var(--cochin); text-align:center; padding:8px; border:1px solid var(--manilaInk); background:var(--card); }
+.slip .acts .big.yes { background:var(--green); border-color:var(--green); color:var(--card); }
+.slip .acts .q { font-size:var(--t-foot); color:var(--ink); }
+
+/* list rows (Tracking board) */
+.rows { background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; flex-direction:column; }
+.trow { display:flex; gap:8px; align-items:center; min-height:56px; padding:8px 12px; border-top:1px solid var(--line); width:100%; flex-wrap:wrap; }
+.trow:first-child { border-top:0; }
+.trow.sel { background:color-mix(in srgb, var(--accent) 10%, transparent); }
+.trow .txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.trow .who { font:700 var(--t-body)/1.25 var(--cochin); }
+.trow .st { font:var(--t-foot)/1.3 var(--cochin); color:var(--inkSoft); }
+.trow .ago { font:600 var(--t-cap) var(--mono); }
+.disc { display:flex; justify-content:space-between; align-items:center; min-height:44px; width:100%; font:700 var(--t-head) var(--cochin); flex-wrap:wrap; gap:8px; }
+.disc .n { font:var(--t-cap) var(--mono); color:var(--inkSoft); font-weight:400; }
+
+/* detail page and sheet */
+.dnav { display:flex; justify-content:space-between; align-items:center; min-height:44px; font-family:var(--sys); font-size:17px; color:var(--accent); }
+.verdict { display:flex; flex-direction:column; gap:4px; }
+.verdict .vw { font:700 var(--t-title)/1.15 var(--cochin); }
+.verdict p { margin:0; font-size:var(--t-body); }
+.kv { background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; flex-direction:column; }
+.kv .r { display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:44px; padding:6px 12px; border-top:1px solid var(--line); flex-wrap:wrap; }
+.kv .r:first-child { border-top:0; }
+.kv .k { color:var(--inkSoft); font-size:var(--t-foot); }
+.kv .v { font-size:var(--t-body); text-align:right; display:flex; align-items:center; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
+.kv .v.mono { font:var(--t-cap) var(--mono); }
+.acts-row { display:flex; flex-wrap:wrap; gap:8px; }
+.toast { font:var(--t-cap) var(--mono); color:var(--green); min-height:16px; }
+.lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.ln { display:flex; gap:8px; align-items:center; min-height:56px; padding:4px 12px 4px 4px; border-top:1px solid var(--line); width:100%; }
+.ln:first-child { border-top:0; }
+.ln .box { flex:0 0 44px; height:44px; display:grid; place-items:center; }
+.ln .box i { width:28px; height:28px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; position:relative; background:var(--card); }
+.ln.done { background:var(--greenSoft); }
+.ln.done .box i { background:var(--green); border-color:var(--green); }
+.ln.done .box i::after { content:""; position:absolute; left:8px; top:3px; width:8px; height:14px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.ln .nm { flex:1; font:600 var(--t-body)/1.25 var(--cochin); }
+.ln.done .nm { color:var(--inkSoft); }
+.ln .pr { font:var(--t-cap) var(--mono); color:var(--inkSoft); }
+.field { min-height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font:16px var(--mono); width:100%; color:var(--ink); }
+.scrim { position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 28%, transparent); z-index:10; }
+.sheet { position:absolute; left:0; right:0; bottom:0; top:64px; background:var(--paper); border-radius:16px 16px 0 0; z-index:11; display:flex; flex-direction:column; }
+.sheet .grab { width:36px; height:5px; border-radius:3px; background:var(--silver); margin:6px auto 0; flex:none; }
+.sheet .tb { display:flex; justify-content:space-between; align-items:center; padding:0 8px; min-height:44px; font:17px var(--sys); flex:none; }
+.sheet .tb .ttl { font-weight:600; color:var(--ink); }
+.sheet .tb button { color:var(--accent); min-height:44px; min-width:44px; padding:0 8px; }
+.sheet .tb button.strong { font-weight:600; }
+.sheet .tb button[disabled] { color:var(--silver); }
+.sheet .body { flex:1; overflow-y:auto; padding:8px 16px calc(var(--sab) + 16px); }
+.notif { position:absolute; left:8px; right:8px; top:calc(var(--sat) + 4px); z-index:12; background:color-mix(in srgb, var(--card) 92%, transparent);
+  backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px); border:1px solid var(--line); border-radius:20px; padding:12px; display:flex; gap:12px; font-family:var(--sys); width:calc(100% - 16px); }
+.notif .ic { width:38px; height:38px; border-radius:9px; background:var(--accent); color:var(--card); display:grid; place-items:center; font:700 16px var(--cochin); flex:none; }
+.notif .tx { flex:1; font-size:14px; line-height:1.3; }
+.notif .tx b { display:flex; justify-content:space-between; font-size:13px; color:var(--inkSoft); font-weight:600; }
+.placeholder { font-size:var(--t-body); color:var(--inkSoft); padding:24px 8px; }
+
+/* AX5: Dynamic Type at its largest (HIG typography, iOS table): Title 2 56, Headline 53, Body 53, Footnote 44, Caption 1 43.
+   Each app size scales by its text style's ratio. Tab bar labels stay at the default size (ruled). */
+.ax5 { --t-title:56px; --t-head:53px; --t-body:47px; --t-foot:42px; --t-cap:39px; --t-pill:39px; --lh:1.15; }
+.ax5 .slip .acts { flex-direction:column; align-items:stretch; }
+.ax5 .card .ch { flex-direction:column; }
+.ax5 .tabbar .tab span { display:none; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+[data-tag]::after { content:attr(data-tag); position:absolute; right:6px; top:-8px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:6; white-space:nowrap; pointer-events:none; }
+.tag-new { outline:2px dashed var(--tag-new); outline-offset:2px; } .tag-new::after { color:var(--tag-new); }
+.tag-today { outline:2px dashed var(--tag-today); outline-offset:2px; } .tag-today::after { color:var(--tag-today); }
+.notags [data-tag] { outline:none; } .notags [data-tag]::after { display:none; }
+@media (prefers-reduced-motion: no-preference) { .slip, .card, .trow { transition:none; } }
+@media (forced-colors: active) { .slip, .card, .rows, .kv { border:1px solid CanvasText; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner" role="note">Sample. No seller, order, card, price, tracking number, carrier scan or date on this page is real.</div>
+<div class="stack tight" style="font-family:var(--sys)">
+  <span class="kind">Designer kind: informed · tracking-checker-informed-1</span>
+  <h1>Tracking checker</h1>
+  <p class="sub">The carrier's latest word on each tracked order, a plain verdict (on its way, delivered, stuck, returned), and an early warning, so a "delivered" package that is not here gets noticed the same day. Two concepts. Each draws the iPhone Duo folded (466 x 678 pt), the Duo open (951 x 669 pt, hinge 455.5 to 495.5), a large phone (size not written, see the notes), and the folded pose at AX5. Light theme only: the app is held to light. Tap anything: the frames of one concept share one state.</p>
+</div>
+
+<nav class="ctl" aria-label="States and options">
+  <div class="cluster"><span>Carrier line</span>
+    <a href="#c=line&s=loaded&t=light">Loaded</a>
+    <a href="#c=line&s=today&t=light">Today</a>
+    <a href="#c=line&s=needs&t=light">Needs a look</a>
+    <a href="#c=line&s=sheet&t=light">Detail</a>
+    <a href="#c=line&s=nonumber&t=light">Add number</a>
+    <a href="#c=line&s=checking&t=light">Checking</a>
+    <a href="#c=line&s=failed&t=light">Check failed</a>
+    <a href="#c=line&s=first&t=light">Not checked yet</a>
+    <a href="#c=line&s=allwell&t=light">All is well</a>
+    <a href="#c=line&s=empty&t=light">No tracked orders</a>
+    <button type="button" class="hide" data-hide="line">Hide Carrier line</button>
+  </div>
+  <div class="cluster"><span>Doorstep</span>
+    <a href="#c=door&s=loaded&t=light">Loaded</a>
+    <a href="#c=door&s=nothere&t=light">Not here</a>
+    <a href="#c=door&s=stamped&t=light">Stamped</a>
+    <a href="#c=door&s=here&t=light">It's here</a>
+    <a href="#c=door&s=sheet&t=light">Detail</a>
+    <a href="#c=door&s=nonumber&t=light">Add number</a>
+    <a href="#c=door&s=checking&t=light">Checking</a>
+    <a href="#c=door&s=failed&t=light">Check failed</a>
+    <a href="#c=door&s=first&t=light">Not checked yet</a>
+    <a href="#c=door&s=allwell&t=light">All is well</a>
+    <a href="#c=door&s=empty&t=light">No tracked orders</a>
+    <a href="#c=door&s=notify&t=light" data-opt="notify">Notification</a>
+    <button type="button" class="hide" data-hide="door">Hide Doorstep</button>
+    <button type="button" class="hide" data-hide="notify" data-opt="notify">Hide Notification</button>
+  </div>
+  <div class="cluster"><span>Page</span>
+    <a href="#">Reset all</a>
+    <button type="button" id="tags-toggle">Hide tags</button>
+  </div>
+</nav>
+
+<section class="concept" id="concept-line" data-c="line">
+  <h2>Carrier line</h2>
+  <p>Keeps today's four tabs. Each tracked package card gains one carrier line under its date line. A new <i>Tracking</i> cell in the ruled head names only what needs a look, and a tap shows just those cards. The carrier line opens the detail: a sheet on one screen, the right page on the open Duo.</p>
+  <div class="frames">
+    <figure><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-v="folded"></div></div>
+      <figcaption><b>Duo folded.</b> 466 x 678 pt, one screen, one hand.</figcaption></figure>
+    <figure><div class="fit"><div class="dev phone" data-device="iphone-regular" data-v="phone"></div></div>
+      <figcaption><b>Large phone.</b> Size not written: drawn 466 pt wide and taller. Drag the corner to resize.</figcaption></figure>
+  </div>
+  <figure><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-v="open"></div></div>
+    <figcaption><b>Duo open.</b> Packages on the left page, the selected package's carrier detail on the right. Tab bar under the right page (item 23 a).</figcaption></figure>
+  <figure><div class="fit"><div class="dev ax5" data-device="iphone-duo-folded" data-v="ax5"></div></div>
+    <figcaption><b>Duo folded at AX5.</b> The card head stacks; the carrier line wraps; tab labels hide behind the large content viewer.</figcaption></figure>
+</section>
+
+<section class="concept" id="concept-door" data-c="door">
+  <h2>Doorstep</h2>
+  <p>The bold one. A fifth tab, <i>Tracking</i>, sorted by what needs you. On top sit the slips: packages the carrier says it left. Each asks one question, "It's here" or "Not here". "It's here" opens the package's cards to check in. "Not here" offers the two stamps a claim starts with. Below: stuck, returned, can't check, no number, and the ones on their way.</p>
+  <div class="frames">
+    <figure><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-v="folded"></div></div>
+      <figcaption><b>Duo folded.</b> 466 x 678 pt, one screen, one hand.</figcaption></figure>
+    <figure><div class="fit"><div class="dev phone" data-device="iphone-regular" data-v="phone"></div></div>
+      <figcaption><b>Large phone.</b> Size not written: drawn 466 pt wide and taller. Drag the corner to resize.</figcaption></figure>
+  </div>
+  <figure><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-v="open"></div></div>
+    <figcaption><b>Duo open.</b> The board on the left page; on the right, the door: the cards the selected package should hold, ready to check in.</figcaption></figure>
+  <figure><div class="fit"><div class="dev ax5" data-device="iphone-duo-folded" data-v="ax5"></div></div>
+    <figcaption><b>Duo folded at AX5.</b> The two slip buttons stack full width; every row wraps.</figcaption></figure>
+</section>
+</main>
+
+<script>
+/* ---------- sample data (shapes: OrderWand item fields + the new tracking record { carrier, number, status, at }) ---------- */
+const NOW = "Sat Nov 21, 9:41 AM";
+const BASE = [
+  { id:"p1", seller:"Sample Seller One", order:"S-1001", date:"2026-11-08", claim:"Dec 8", out:"$3.20", carrier:"USPS", number:"9400 0000 0000 0000 0001 11",
+    v:"delivered", hrs:19, status:"Delivered, in or at mailbox", at:"Yesterday, 2:14 PM", ago:"19 h",
+    lines:[["Lightning Bolt","$0.42"],["Path to Exile","$0.31"],["Ponder","$0.18"],["Brainstorm","$2.29"]] },
+  { id:"p9", seller:"Sample Card Shop", order:"S-0993", date:"2026-11-05", claim:"Dec 5", out:"$1.85", carrier:"USPS", number:"9400 0000 0000 0000 0009 99",
+    v:"delivered", hrs:72, status:"Delivered, front door", at:"Wed Nov 18, 11:03 AM", ago:"3 d",
+    lines:[["Counterspell","$0.95"],["Dark Ritual","$0.90"]] },
+  { id:"p2", seller:"Sample Games Two", order:"S-0987", date:"2026-11-06", claim:"Dec 6", out:"$4.10", carrier:"UPS", number:"1Z00 0000 0000 0000 22",
+    v:"stuck", status:"Arrived at facility", at:"Sun Nov 15, 6:02 AM", ago:"6 d",
+    lines:[["Swords to Plowshares","$1.60"],["Sol Ring","$2.50"]] },
+  { id:"p3", seller:"Sample Hobby Three", order:"S-0951", date:"2026-10-30", claim:"Nov 29", out:"$2.75", carrier:"USPS", number:"9400 0000 0000 0000 0003 33",
+    v:"returned", status:"Return to sender: insufficient address", at:"Thu Nov 19, 4:40 PM", ago:"2 d",
+    lines:[["Llanowar Elves","$0.85"],["Giant Growth","$1.90"]] },
+  { id:"p6", seller:"Sample Seller Six", order:"S-1004", date:"2026-11-10", claim:"Dec 10", out:"$0.95", carrier:"USPS", number:"9400 0000 0000 0000 0006 66",
+    v:"unknown", status:"In transit", at:"Wed Nov 18, 9:12 PM", ago:"3 d",
+    lines:[["Opt","$0.95"]] },
+  { id:"p7", seller:"Sample Seller Seven", order:"S-1011", date:"2026-11-13", claim:"Dec 13", out:"$1.40", carrier:null, number:null,
+    v:"nonumber", status:null, at:null, ago:null, lines:[["Duress","$1.40"]] },
+  { id:"p4", seller:"Sample Seller Four", order:"S-1015", date:"2026-11-12", claim:"Dec 12", out:"$2.05", carrier:"USPS", number:"9400 0000 0000 0000 0004 44",
+    v:"moving", status:"Out for delivery", at:"Today, 7:40 AM", ago:"2 h", lines:[["Thoughtseize","$2.05"]] },
+  { id:"p5", seller:"Sample Seller Five", order:"S-1019", date:"2026-11-14", claim:"Dec 14", out:"$0.60", carrier:"USPS", number:"9400 0000 0000 0000 0005 55",
+    v:"moving", status:"In transit to next facility", at:"Today, 1:12 AM", ago:"8 h", lines:[["Spell Pierce","$0.60"]] },
+  { id:"p8", seller:"Sample Seller Eight", order:"S-0960", date:"2026-11-07", claim:"Dec 7", out:"$0.00", carrier:"USPS", number:"9400 0000 0000 0000 0008 88",
+    v:"delivered", hrs:96, status:"Delivered, in or at mailbox", at:"Tue Nov 17, 1:30 PM", ago:"4 d", received:true, lines:[["Fatal Push","$1.10"]] },
+];
+// Untracked packages: today's lost-mail flag (lostMail, 14 and 30 days from the order date) is unchanged.
+const UNTRACKED = [
+  { id:"u1", seller:"Sample Seller Ten", order:"S-0940", date:"2026-11-02", out:"$1.20", lost:"maybe", days:19 },
+  { id:"u2", seller:"Sample Seller Eleven", order:"S-1020", date:"2026-11-15", out:"$0.75", lost:null },
+];
+const STAMPS = [["contacted","Seller contacted"],["claim","Claim filed"],["reshipped","Reshipped"],["refunded","Refunded"],["partial","Partial refund"],["other","Other"]];
+const stampLabel = k => (STAMPS.find(s => s[0] === k) || [k, k])[1];
+
+function fresh() { return { g:"loaded", filter:"all", sel:null, mode:"detail", sheet:null, ask:{}, stamp:{}, got:{}, draft:"", notify:false,
+  checkN:0, checked:"12 min ago", copied:null, opened:null, rechecked:{}, added:{}, showMoving:false }; }
+const S = { line: fresh(), door: fresh() };
+let timer = null;
+
+/* the packages a state shows */
+function pkgs(st) {
+  if (st.g === "empty") return [];
+  let list = BASE.map(p => Object.assign({}, p, st.added[p.id] || {}));
+  if (st.g === "allwell") list = list.filter(p => p.v === "moving" || p.received);
+  return list;
+}
+function gotOf(st, p) { return st.got[p.id] || (p.received ? p.lines.map(() => true) : p.lines.map(() => false)); }
+function isIn(st, p) { return gotOf(st, p).every(Boolean); }
+
+/* one verdict per package: word, tone, sentence. "Delivered" stays a verdict; "not checked in" is the ledger's half. */
+function verdict(st, p) {
+  if (st.g === "first" && p.v !== "nonumber") return { key:"unchecked", word:"Not checked yet", tone:"soft", say:"Its first check runs with the next one." };
+  const stale = st.g === "failed" ? " (as of " + p.ago + " ago; the last check failed)" : "";
+  switch (p.v) {
+    case "delivered":
+      if (isIn(st, p)) return { key:"in", word:"Delivered", tone:"green", say:p.carrier + " says it was left " + p.at.toLowerCase() + ". It is checked in." };
+      return { key:"door", word:"Delivered", tone: p.hrs >= 24 ? "red" : "manila", late: p.hrs >= 24,
+        say:p.carrier + " says it was left " + lc(p.at) + ". It is not checked in." + stale };
+    case "stuck": return { key:"stuck", word:"Stuck", tone:"amber", say:"No new scan from " + p.carrier + " for " + p.ago + ". Its last scan: " + p.status.toLowerCase() + "." + stale };
+    case "returned": return { key:"returned", word:"Returned", tone:"red", say:p.carrier + " is sending it back to the seller." + stale };
+    case "moving": return { key:"moving", word:"On its way", tone:"accent", say:p.carrier + ": " + p.status.toLowerCase() + ", " + lc(p.at) + "." + stale };
+    case "unknown": return { key:"unknown", word:"Can't check", tone:"soft", say:p.carrier + " did not answer the last two checks. The last word it gave, " + p.ago + " ago: " + p.status.toLowerCase() + "." };
+    case "nonumber": return { key:"nonumber", word:"No number yet", tone:"manila", say:"The order says it ships with tracking, but no number is in." };
+  }
+}
+const lc = s => s.charAt(0).toLowerCase() + s.slice(1);
+const NEEDS = ["door","stuck","returned"];
+function needs(st, p) { const v = verdict(st, p); return NEEDS.includes(v.key) && !st.stamp[p.id]; }
+
+/* ---------- small parts ---------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+const ICON = {
+  ledger:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.4 5.4l2.1 2.1M16.5 16.5l2.1 2.1M5.4 18.6l2.1-2.1M16.5 7.5l2.1-2.1"/></svg>',
+  orphaned:'<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>',
+  tally:'<svg viewBox="0 0 24 24"><path d="M9 4l-2 16M17 4l-2 16M4 9h16M3 15h16"/></svg>',
+  packages:'<svg viewBox="0 0 24 24"><path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/></svg>',
+  tracking:'<svg viewBox="0 0 24 24"><path d="M12 21s-6.5-6.1-6.5-11a6.5 6.5 0 0113 0c0 4.9-6.5 11-6.5 11z"/><circle cx="12" cy="10" r="2.4"/></svg>',
+};
+function tabbar(c, st) {
+  const tabs = [["ledger","Ledger"],["orphaned","Orphaned"],["tally","Tally"],["packages","Packages"]];
+  if (c === "door") tabs.push(["tracking","Tracking"]);
+  const on = c === "door" ? "tracking" : "packages";
+  const doorN = c === "door" ? pkgs(st).filter(p => verdict(st, p).key === "door" && !st.stamp[p.id]).length : 0;
+  const t = tabs.map(([k, l]) => `<div class="tab${k === on ? " on" : ""}" role="tab" aria-selected="${k === on}" aria-label="${l}">${ICON[k]}<span>${l}</span>${k === "orphaned" ? '<b class="badge">2</b>' : ""}${k === "tracking" && doorN ? `<b class="badge">${doorN}</b>` : ""}</div>`).join("");
+  const tag = c === "door" ? ' class="tabbar tag-new" data-tag="New: a fifth tab"' : ' class="tabbar tag-today" data-tag="Today: four tabs"';
+  return `<div${tag} role="tablist">${t}</div>`;
+}
+function stampBtns(p, short) {
+  const two = STAMPS.slice(0, 2).map(([k, l]) => `<button class="hit" data-act="stamp" data-p="${p.id}" data-k="${k}"><span class="pill">${l}</span></button>`).join("");
+  return two + (short ? "" : `<button class="hit" data-act="more" data-p="${p.id}"><span class="pill">More</span></button>`);
+}
+
+/* the global run line: checked, checking, failed, first */
+function runLine(st, compact) {
+  if (st.g === "checking") return `<span class="meta">Checking ${st.checkN} of 8…</span><button class="hit" data-act="stop"><span class="pill warn">Stop</span></button>`;
+  if (st.g === "failed") return `<span class="meta tone-red">Couldn't reach the carriers at 9:29 AM. Last good check 6 h ago.</span><button class="hit" data-act="check"><span class="pill">Try again</span></button>`;
+  if (st.g === "first") return `<span class="meta">Not checked yet</span><button class="hit" data-act="check"><span class="pill primary">Check now</span></button>`;
+  if (st.g === "stopped") return `<span class="meta">Stopped at ${st.checkN} of 8. The rest show their last check.</span><button class="hit" data-act="check"><span class="pill">Check now</span></button>`;
+  return `<span class="meta">Checked ${st.checked}</span><button class="hit" data-act="check"><span class="pill">Check now</span></button>`;
+}
+
+/* ---------- detail (shared by both concepts) ---------- */
+function detail(c, st, p, inSheet) {
+  if (!p) return `<p class="placeholder">Tap a package to see its carrier's latest word here.</p>`;
+  if (p.v === "nonumber" && !st.added[p.id]) return addNumber(c, st, p, inSheet);
+  const v = verdict(st, p);
+  const stamped = st.stamp[p.id];
+  const rc = st.rechecked[p.id];
+  const back = inSheet ? "" : (c === "door" ? `<div class="dnav"><button class="hit" data-act="back" style="justify-content:flex-start">‹ Tracking</button></div>` : "");
+  const claim = (v.key === "door" || v.key === "stuck" || v.key === "returned") ? `<div class="r"><span class="k">Claim by</span><span class="v">${p.claim} <span class="meta">(order date + 30 days)</span></span></div>` : "";
+  return `<div class="stack" id="${c}-detail">
+    ${back}
+    <div class="stack tight"><div class="lt" style="font-size:var(--t-head)">${esc(p.seller)}</div><span class="meta">${p.date} · ${p.order} · ${p.lines.length} card${p.lines.length === 1 ? "" : "s"} · ${p.out} out</span></div>
+    <div class="verdict tag-new" data-tag="New: the verdict"><span class="vw tone-${v.tone}">${v.word}${v.key === "door" ? `<span style="font-weight:400;color:var(--ink)">, not checked in</span>` : ""}</span><p>${esc(v.say)}</p></div>
+    ${stamped ? `<div class="band" style="border-radius:8px;border:1px solid var(--line)"><span>Stamped <b>${stampLabel(stamped)}</b>, Nov 21. The warning is off.</span><button class="hit" data-act="unstamp" data-p="${p.id}"><span class="pill">Undo</span></button></div>` : ""}
+    <div class="kv">
+      <div class="r"><span class="k">Carrier</span><span class="v">${p.carrier}</span></div>
+      <div class="r"><span class="k">Number</span><span class="v mono">${p.number}<button class="hit" data-act="copy" data-p="${p.id}"><span class="pill" style="min-width:76px;text-align:center">${st.copied === p.id ? "Copied" : "Copy"}</span></button></span></div>
+      <div class="r"><span class="k">Latest</span><span class="v">${esc(p.status)}</span></div>
+      <div class="r"><span class="k">When</span><span class="v">${p.at}</span></div>
+      <div class="r"><span class="k">Checked</span><span class="v"><span class="meta">${rc ? rc : (st.g === "failed" ? "6 h ago" : st.checked)}</span><button class="hit" data-act="recheck" data-p="${p.id}"><span class="pill">Check again</span></button></span></div>
+      ${claim}
+    </div>
+    <div class="acts-row">
+      <button class="hit" data-act="carrier" data-p="${p.id}"><span class="pill">Open at ${p.carrier}</span></button>
+      ${(!stamped && v.key !== "in" && v.key !== "moving") ? stampBtns(p) : ""}
+    </div>
+    <div class="toast" aria-live="polite">${st.opened === p.id ? "Opens the " + p.carrier + " page in Safari." : ""}</div>
+  </div>`;
+}
+function addNumber(c, st, p, inSheet) {
+  const guess = /^\s*1Z/i.test(st.draft) ? "UPS" : st.draft.replace(/\s/g, "").length >= 20 ? "USPS" : null;
+  const ok = !!guess;
+  const head = inSheet ? "" : `<div class="dnav"><button class="hit" data-act="back" style="justify-content:flex-start">‹ ${c === "door" ? "Tracking" : "Back"}</button><button class="hit" data-act="save" data-p="${p.id}" ${ok ? "" : "disabled"} style="font-weight:600;${ok ? "" : "color:var(--silver)"}">Save</button></div>`;
+  return `<div class="stack" id="${c}-add">
+    ${head}
+    <div class="stack tight"><div class="lt" style="font-size:var(--t-head)">${esc(p.seller)}</div><span class="meta">${p.date} · ${p.order} · ships with tracking</span></div>
+    <p style="margin:0;font-size:var(--t-body)">No tracking number is in for this order yet. Paste it from the order page or the seller's message.</p>
+    <label class="stack tight tag-new" data-tag="New: number field"><span class="lede">Tracking number</span>
+      <input class="field" data-act="draft" data-p="${p.id}" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Paste the number" value="${esc(st.draft)}"></label>
+    <div class="rowx"><span class="meta">${guess ? "Looks like " + guess : st.draft ? "Not a number this app knows yet" : " "}</span>
+      <button class="hit" data-act="paste" data-p="${p.id}"><span class="pill">Paste</span></button></div>
+    <p class="lede">What you type stays here if you leave and come back.</p>
+  </div>`;
+}
+
+/* ---------- check-in view (Doorstep, "It's here") ---------- */
+function checkin(c, st, p, push) {
+  const got = gotOf(st, p);
+  const all = got.every(Boolean);
+  const n = got.filter(Boolean).length;
+  return `<div class="stack" id="door-checkin">
+    ${push ? `<div class="dnav"><button class="hit" data-act="back" style="justify-content:flex-start">‹ Tracking</button></div>` : ""}
+    <div class="stack tight"><span class="micro">It's here</span><div class="lt">${esc(p.seller)}</div><span class="meta">${p.date} · ${p.order} · ${p.carrier} left it ${lc(p.at)}</span></div>
+    <p style="margin:0;font-size:var(--t-body)">Open it and tick each card you find.</p>
+    <div class="lines tag-today" data-tag="Today: the card's lines">${p.lines.map((l, i) => `<button class="ln${got[i] ? " done" : ""}" data-act="tick" data-p="${p.id}" data-i="${i}" aria-pressed="${got[i]}"><span class="box"><i></i></span><span class="nm">${l[0]}</span><span class="pr">${l[1]}</span></button>`).join("")}</div>
+    <div class="rowx" style="min-height:48px">
+      ${all ? `<span class="tone-green" style="font-size:var(--t-body)">All ${p.lines.length} in. It leaves the slips.</span>` : `<span class="meta">${n} of ${p.lines.length} in</span>`}
+      ${all ? `<button class="hit" data-act="untickall" data-p="${p.id}"><span class="pill">Undo</span></button>` : `<button class="hit" data-act="tickall" data-p="${p.id}"><span class="pill primary">Mark all received</span></button>`}
+    </div>
+    <p class="lede">Something missing? Leave it unticked; the package stays open in Packages.</p>
+  </div>`;
+}
+
+/* ---------- Concept: Carrier line ---------- */
+function lineCard(st, p, first, selId) {
+  const v = verdict(st, p);
+  const stamped = st.stamp[p.id];
+  const inAll = isIn(st, p);
+  const slot = inAll ? `<span class="stampd">RECEIVED</span>` : `<span class="pillr">${p.out}</span>`;
+  const today = st.g === "today";
+  const dot = v.tone === "manila" ? "manila" : v.tone;
+  const tail = v.key === "door" ? `<span class="w tone-${v.tone}">${v.word}</span><span>, not checked in</span>` : `<span class="w tone-${v.tone}">${v.word}</span>`;
+  const when = p.v === "nonumber" ? "Add it" : (p.ago ? p.ago + " ago" : "");
+  const carrier = today ? "" : `<button class="carrier${first ? " tag-new" : ""}" ${first ? 'data-tag="New: carrier line" id="line-carrier"' : ""} data-act="open" data-p="${p.id}" aria-label="${p.carrier || "Tracking"}: ${v.word}">
+      <span class="dot bg-${dot}"></span>${tail}<span class="t">${p.carrier ? p.carrier + " · " : ""}${when}</span><span class="chev">›</span></button>`;
+  return `<article class="card${inAll ? " done" : ""}${selId === p.id ? " sel" : ""}">
+    <div class="ch"><div class="txt"><div class="who">${esc(p.seller)}</div>
+      <div class="meta">${p.date} · <span class="tone-green">●</span> tracked</div>
+      ${carrier}</div><div class="slot">${slot}</div></div>
+    ${stamped ? `<div class="band"><span>Stamped ${stampLabel(stamped)}, Nov 21</span><button class="hit" data-act="unstamp" data-p="${p.id}"><span class="pill">Undo</span></button></div>` : ""}
+  </article>`;
+}
+function untrackedCard(u, tagged) {
+  const flag = u.lost === "maybe" ? `<span class="lost-m">⚠ ${u.days}d — may be lost · </span>` : "";
+  return `<article class="card${tagged ? " tag-today" : ""}" ${tagged ? 'data-tag="Today: untracked card, its flag unchanged"' : ""}>
+    <div class="ch"><div class="txt"><div class="who">${esc(u.seller)}</div><div class="meta">${flag}${u.date} · <span class="tone-manila">○</span> untracked</div></div><div class="slot"><span class="pillr">${u.out}</span></div></div></article>`;
+}
+function trackingCell(st, list) {
+  if (st.g === "today") return "";
+  const n = list.filter(p => needs(st, p)).length;
+  let val;
+  if (st.g === "empty") val = `<span class="val plain">No tracked orders</span>`;
+  else if (st.g === "checking") val = `<span class="val plain">Checking ${st.checkN} of 8…</span><button class="hit" data-act="stop"><span class="pill warn">Stop</span></button>`;
+  else if (st.g === "failed") val = `<button class="hit" data-act="check"><span class="val warn">Couldn't check · try again</span></button>`;
+  else if (st.g === "first") val = `<button class="hit" data-act="check"><span class="val">Not checked yet · check now</span></button>`;
+  else if (st.filter === "needs") val = `<button class="hit" data-act="filter"><span class="val">Show all</span></button>`;
+  else if (n === 0) val = `<span class="val plain">All is well.</span>`;
+  else val = `<button class="hit" data-act="filter"><span class="val warn">${n} need${n === 1 ? "s" : ""} a look</span></button>`;
+  return `<div class="cell tag-new" data-tag="New: Tracking cell" id="line-cell"><span class="lab">Tracking</span><span class="rowx">${val}</span></div>`;
+}
+function lineList(st, selId) {
+  const list = pkgs(st);
+  let shown = list;
+  if (st.filter === "needs") shown = list.filter(p => needs(st, p) || st.ask[p.id] === "kept");
+  const head = `<div class="mast tag-today" data-tag="Today: masthead, drawn short"><span class="mh">MANIFEST</span><span class="tl">23 out · $18.40 · 41 in</span></div>
+    <div class="ruled"><div class="cell"><span class="lab">Showing</span><span class="val">Unreceived</span></div>${trackingCell(st, list)}</div>`;
+  let body;
+  if (st.filter === "needs") body = `<p class="lede">${shown.length} package${shown.length === 1 ? "" : "s"} the carrier flags: delivered and not checked in, stuck, or returned.</p>` + shown.map((p, i) => lineCard(st, p, i === 0, selId)).join("");
+  else {
+    const tracked = list.filter(p => !p.received || st.g === "allwell");
+    body = untrackedCard(UNTRACKED[0], true) + tracked.map((p, i) => lineCard(st, p, i === 0, selId)).join("") + untrackedCard(UNTRACKED[1], false);
+    if (st.g === "empty") body = untrackedCard(UNTRACKED[0], true) + untrackedCard(UNTRACKED[1], false) + `<div class="notice plain"><span>No order in the ledger ships with tracking yet. A tracked order gets its carrier line once its number is in.</span></div>`;
+  }
+  return `<div class="stack">${head}${body}</div>`;
+}
+function renderLine(dev, v, st) {
+  const list = pkgs(st);
+  const firstNeed = list.find(p => needs(st, p));
+  if (v === "open") {
+    const selId = st.sel || (firstNeed && firstNeed.id);
+    const p = list.find(x => x.id === selId);
+    return `<div class="status"><span>9:41</span><span>●●● 100%</span></div>
+      <div class="page l"><div class="scroll" data-k="l">${lineList(st, selId)}</div></div>
+      <div class="fold"><span>hinge · nothing crosses</span></div>
+      <div class="page r"><div class="scroll" data-k="r">${detail("line", st, p, false)}</div></div>
+      ${tabbar("line", st)}`;
+  }
+  const p = st.sel && list.find(x => x.id === st.sel);
+  const sheet = p ? `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="${esc(p.seller)}"><div class="grab"></div>
+      <div class="tb">${p.v === "nonumber" && !st.added[p.id] ? `<button data-act="close">Cancel</button><span class="ttl">Tracking number</span><button class="strong" data-act="save" data-p="${p.id}" ${verdictDraftOk(st) ? "" : "disabled"}>Save</button>` : `<span style="min-width:60px"></span><span class="ttl">Tracking</span><button class="strong" data-act="close">Done</button>`}</div>
+      <div class="body" data-k="sheet">${detail("line", st, p, true)}</div></div>` : "";
+  return `<div class="status"><span>9:41</span><span>●●● 100%</span></div><div class="scroll" data-k="m">${lineList(st, null)}</div>${tabbar("line", st)}${sheet}`;
+}
+const verdictDraftOk = st => /^\s*1Z/i.test(st.draft) || st.draft.replace(/\s/g, "").length >= 20;
+
+/* ---------- Concept: Doorstep ---------- */
+function slip(st, p, selId) {
+  const v = verdict(st, p);
+  const a = st.ask[p.id];
+  const stamped = st.stamp[p.id];
+  let acts;
+  if (stamped) acts = `<span class="q">Stamped <b>${stampLabel(stamped)}</b>, Nov 21. Claim by ${p.claim}.</span><button class="hit" data-act="unstamp" data-p="${p.id}" style="margin-left:auto"><span class="pill">Undo</span></button>`;
+  else if (a === "nothere") acts = `<span class="q" style="flex-basis:100%">Not here. Start a claim by ${p.claim}:</span>${stampBtns(p, true)}<button class="hit" data-act="unask" data-p="${p.id}" style="margin-left:auto"><span class="pill">Back</span></button>`;
+  else acts = `<button class="big yes" data-act="here" data-p="${p.id}">It's here</button><button class="big" data-act="nothere" data-p="${p.id}">Not here</button>`;
+  return `<div class="slip${v.late && !stamped ? " late" : ""}${selId === p.id ? " sel" : ""}">
+    <div class="rowx"><span class="sw">${esc(p.seller)}</span><span class="meta">${p.lines.length} card${p.lines.length === 1 ? "" : "s"} · ${p.out}</span></div>
+    <div class="says"><span class="w">${p.carrier} left it ${lc(p.at)}</span>${v.late && !stamped ? `<span class="tone-red">, ${p.ago} ago and not checked in</span>` : ""}. <button data-act="open" data-p="${p.id}" style="text-decoration:underline;text-underline-offset:3px;min-height:24px">Details</button></div>
+    <div class="acts">${acts}</div>
+  </div>`;
+}
+function trow(st, p, selId) {
+  const v = verdict(st, p);
+  const right = p.v === "nonumber" ? `<span class="pill">Add</span>` : `<span class="ago tone-${v.tone}">${p.ago}</span>`;
+  const line = p.v === "nonumber" ? "Ships with tracking; no number in" : esc(p.status) + (p.carrier ? " · " + p.carrier : "");
+  return `<button class="trow${selId === p.id ? " sel" : ""}" data-act="open" data-p="${p.id}"><span class="txt"><span class="who">${esc(p.seller)}</span><span class="st">${line}</span></span>${right}</button>`;
+}
+function doorBoard(st, selId) {
+  const list = pkgs(st);
+  const head = `<div class="stack tight"><h2 class="lt" style="font-size:calc(var(--t-title) + 6px)">Tracking</h2><div class="rowx">${runLine(st)}</div></div>`;
+  if (st.g === "empty") return `<div class="stack">${head}<div class="notice plain"><b>No tracked orders yet.</b><span>An order that ships with tracking shows here once its number is in. Import your newest orders to fill it.</span><button class="hit" style="justify-content:flex-start" data-act="ledger"><span class="pill">Import orders in Ledger</span></button></div><div class="toast">${st.opened === "ledger" ? "Opens the Ledger tab's import." : ""}</div></div>`;
+  const by = k => list.filter(p => verdict(st, p).key === k);
+  // a slip keeps its slot while its package is stamped or asked, so no other slip moves under the finger
+  const door = list.filter(p => verdict(st, p).key === "door" || (st.stamp[p.id] && p.v === "delivered" && !isIn(st, p)) || st.ask[p.id] === "nothere");
+  const sec = (title, rows, id) => rows.length ? `<section class="stack tight" ${id ? `id="${id}"` : ""}><h3 class="sec">${title}<span class="n">${rows.length}</span></h3><div class="rows">${rows.map(p => trow(st, p, selId)).join("")}</div></section>` : "";
+  let first = "";
+  if (st.g === "first") first = `<div class="notice"><b>Your tracked orders are in.</b><span>Nothing is checked yet, so no verdict shows. A check reads each carrier's latest word.</span></div>`;
+  const slips = door.length ? `<section class="stack tight tag-new" data-tag="New: doorstep slips" id="door-slips"><h3 class="sec">At the door?<span class="n">${door.length}</span></h3><p class="lede">The carrier says these were left. Did they come?</p>${door.map(p => slip(st, p, selId)).join("")}</section>` : "";
+  const nothingWrong = !door.length && !by("stuck").length && !by("returned").length && st.g !== "first";
+  const moving = by("moving").concat(by("unchecked"));
+  const mv = moving.length ? `<section class="stack tight"><button class="disc" data-act="moving" aria-expanded="${st.showMoving || st.g === "allwell"}"><span>${st.g === "first" ? "Not checked yet" : "On its way"} <span class="n">${moving.length}</span></span><span class="tone-soft" style="font-family:var(--sys)">${st.showMoving || st.g === "allwell" ? "Hide" : "Show"}</span></button>${st.showMoving || st.g === "allwell" ? `<div class="rows">${moving.map(p => trow(st, p, selId)).join("")}</div>` : ""}</section>` : "";
+  const delivered = list.filter(p => verdict(st, p).key === "in");
+  return `<div class="stack">${head}${first}
+    ${nothingWrong ? `<div class="notice ok"><b>All is well.</b></div>` : ""}
+    ${slips}${sec("Stuck", by("stuck"))}${sec("Returned", by("returned"))}${sec("Can't check", by("unknown"))}${sec("No number yet", by("nonumber"))}
+    ${mv}
+    ${delivered.length && st.g !== "allwell" ? `<p class="lede">${delivered.length} delivered and checked in this week.</p>` : ""}
+  </div>`;
+}
+function renderDoor(dev, v, st) {
+  const list = pkgs(st);
+  const notif = st.notify && v !== "open" ? `<button class="notif" data-act="notifopen" aria-label="Notification"><span class="ic">M</span><span class="tx"><b><span>MANIFEST</span><span>now</span></b><span style="font-weight:600">Delivered, not checked in</span><br>Sample Card Shop: USPS left it Wed at 11:03 AM. Is it here?</span></button>` : "";
+  if (v === "open") {
+    const door = list.find(p => verdict(st, p).key === "door" && !st.stamp[p.id]);
+    const selId = st.sel || (door && door.id) || (list.find(p => needs(st, p)) || {}).id;
+    const p = list.find(x => x.id === selId);
+    const mode = st.sel ? st.mode : (door ? "checkin" : "detail");
+    let right;
+    if (st.g === "empty" || !p) right = `<p class="placeholder">${st.g === "allwell" ? "Nothing needs you. Tap a package to see its carrier's latest word here." : "Tracked packages show here."}</p>`;
+    else right = mode === "checkin" ? checkin("door", st, p, false) : detail("door", st, p, true);
+    return `<div class="status"><span>9:41</span><span>●●● 100%</span></div>
+      <div class="page l"><div class="scroll" data-k="l">${doorBoard(st, selId)}</div></div>
+      <div class="fold"><span>hinge · nothing crosses</span></div>
+      <div class="page r"><div class="scroll" data-k="r">${right}</div></div>
+      ${tabbar("door", st)}`;
+  }
+  const p = st.sel && list.find(x => x.id === st.sel);
+  let body;
+  if (p) body = st.mode === "checkin" ? checkin("door", st, p, true) : detail("door", st, p, false);
+  else body = doorBoard(st, null);
+  return `<div class="status"><span>9:41</span><span>●●● 100%</span></div><div class="scroll" data-k="m${p ? "-" + st.mode + p.id : ""}">${body}</div>${tabbar("door", st)}${notif}`;
+}
+
+/* ---------- render loop: one state per concept, every frame of the concept redrawn ---------- */
+function render(c) {
+  const st = S[c];
+  document.querySelectorAll(`#concept-${c} .dev`).forEach(dev => {
+    const keep = {};
+    dev.querySelectorAll("[data-k]").forEach(el => keep[el.dataset.k] = el.scrollTop);
+    const focusAct = document.activeElement && dev.contains(document.activeElement) ? document.activeElement.dataset.act : null;
+    dev.innerHTML = c === "line" ? renderLine(dev, dev.dataset.v, st) : renderDoor(dev, dev.dataset.v, st);
+    dev.querySelectorAll("[data-k]").forEach(el => { if (keep[el.dataset.k] != null) el.scrollTop = keep[el.dataset.k]; });
+    if (focusAct === "draft") { const f = dev.querySelector('[data-act="draft"]'); if (f) { f.focus(); f.setSelectionRange(f.value.length, f.value.length); } }
+  });
+}
+function renderAll() { render("line"); render("door"); }
+
+function startCheck(c) {
+  const st = S[c]; st.g = "checking"; st.checkN = 0; render(c);
+  clearInterval(timer);
+  timer = setInterval(() => { st.checkN++; if (st.checkN >= 8) { clearInterval(timer); st.g = "loaded"; st.checked = "just now"; st.rechecked = {}; } render(c); }, 450);
+}
+
+document.addEventListener("click", e => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const sec = el.closest("section.concept"); if (!sec) return;
+  const c = sec.dataset.c, st = S[c], id = el.dataset.p, a = el.dataset.act;
+  e.stopPropagation();
+  const dev = el.closest(".dev"); const open = dev && dev.dataset.v === "open";
+  switch (a) {
+    case "open": st.sel = id; st.mode = "detail"; st.copied = null; st.opened = null; break;
+    case "close": case "back": st.sel = null; st.draft = st.draft; break;
+    case "filter": st.filter = st.filter === "needs" ? "all" : "needs"; break;
+    case "stamp": st.stamp[id] = el.dataset.k; delete st.ask[id]; break;
+    case "more": st.stamp[id] = "other"; break; // drawn as the system menu in the build; here it takes Other
+    case "unstamp": delete st.stamp[id]; break;
+    case "copy": st.copied = id; break;
+    case "carrier": st.opened = id; break;
+    case "ledger": st.opened = "ledger"; break;
+    case "recheck": st.rechecked[id] = "just now"; break;
+    case "check": startCheck(c); return;
+    case "stop": clearInterval(timer); st.g = "stopped"; break;
+    case "here": st.sel = id; st.mode = "checkin"; break;
+    case "nothere": st.ask[id] = "nothere"; if (open) { st.sel = id; st.mode = "detail"; } break;
+    case "unask": delete st.ask[id]; break;
+    case "tick": { const g = gotOf(st, BASE.find(p => p.id === id)).slice(); g[+el.dataset.i] = !g[+el.dataset.i]; st.got[id] = g; break; }
+    case "tickall": st.got[id] = BASE.find(p => p.id === id).lines.map(() => true); break;
+    case "untickall": st.got[id] = BASE.find(p => p.id === id).lines.map(() => false); break;
+    case "moving": st.showMoving = !st.showMoving; break;
+    case "paste": st.draft = "9400 0000 0000 0000 0007 77"; break;
+    case "save": if (!verdictDraftOk(st)) return;
+      st.added[id] = { v:"moving", carrier:/^\s*1Z/i.test(st.draft) ? "UPS" : "USPS", number:st.draft, status:"Label created, not yet in the mail", at:"Today, 9:41 AM", ago:"now" };
+      st.draft = ""; st.sel = id; st.mode = "detail"; break;
+    case "notifopen": st.notify = false; st.sel = null; break;
+    default: return;
+  }
+  render(c);
+});
+document.addEventListener("input", e => {
+  if (e.target.dataset.act !== "draft") return;
+  const c = e.target.closest("section.concept").dataset.c; S[c].draft = e.target.value; render(c);
+});
+
+/* ---------- deep links: #c=<concept>&s=<state>&t=light ---------- */
+function applyHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  S.line = fresh(); S.door = fresh(); clearInterval(timer);
+  const c = h.get("c"), s = h.get("s");
+  if (c && S[c] && s) {
+    const st = S[c];
+    ({
+      today: () => st.g = "today",
+      needs: () => st.filter = "needs",
+      sheet: () => { st.sel = "p9"; st.mode = "detail"; },
+      nonumber: () => { st.sel = "p7"; },
+      checking: () => { st.g = "checking"; st.checkN = 3; },
+      failed: () => st.g = "failed",
+      first: () => st.g = "first",
+      allwell: () => st.g = "allwell",
+      empty: () => st.g = "empty",
+      nothere: () => { st.ask.p9 = "nothere"; },
+      stamped: () => { st.stamp.p9 = "contacted"; },
+      here: () => { st.sel = "p1"; st.mode = "checkin"; st.got.p1 = [true, true, false, false]; },
+      notify: () => { st.notify = true; },
+    }[s] || (() => {}))();
+  }
+  document.querySelectorAll("nav.ctl a").forEach(a => a.setAttribute("aria-current", String(a.getAttribute("href") === location.hash)));
+  renderAll();
+  if (c) { const el = document.getElementById("concept-" + c); if (el && !el.hidden) el.scrollIntoView({ block:"start" }); }
+}
+window.addEventListener("hashchange", applyHash);
+
+/* hide controls: one press removes one option */
+document.querySelectorAll("[data-hide]").forEach(b => b.addEventListener("click", () => {
+  const k = b.dataset.hide;
+  if (k === "notify") { document.querySelectorAll('[data-opt="notify"]').forEach(x => x.hidden = true); S.door.notify = false; render("door"); return; }
+  const sec = document.getElementById("concept-" + k); sec.hidden = true;
+  b.closest(".cluster").querySelectorAll("a").forEach(x => x.hidden = true);
+  b.textContent = "Hidden"; b.disabled = true;
+}));
+document.getElementById("tags-toggle").addEventListener("click", e => {
+  const on = document.body.classList.toggle("notags"); e.target.textContent = on ? "Show tags" : "Hide tags";
+});
+applyHash();
+</script>
+</body>
+</html>

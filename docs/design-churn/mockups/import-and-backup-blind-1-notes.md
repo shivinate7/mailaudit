@@ -81,11 +81,15 @@ hides a concept. `&c=checkpoints` or `&c=tracing` focuses a concept (ids `choice
 20. **AX5.** Drawn on the folded Duo. Text uses the AX5 sizes; the content scrolls. Bar titles and the
     bottom bar buttons stop at AX1 Body (28 pt) so both actions stay on screen. That cap is my choice;
     it needs a check on the device. The sheet turns solid at AX5 so no row shows through.
-21. No tab bar is drawn: I do not know the app's other sections. The screen sits under a "Back" in
-    Checkpoints; in Tracing paper it is the ledger. Status bar and home indicator heights are drawn
-    placeholders, not Apple figures.
+21. No tab bar and no Back to a parent are drawn: I do not know the app's other sections. In
+    Checkpoints, tapping an import in the folded pose pushes its detail with a Back; open, the detail
+    shows on the right page. In Tracing paper the screen is the ledger. Status bar and home indicator
+    heights are drawn placeholders, not Apple figures.
 22. Apple pages fetched 2026-11-21, each answered 200: layout, typography, accessibility, buttons,
     sheets, lists-and-tables, tab-bars, toolbars (developer.apple.com/design/human-interface-guidelines/).
     Used: Dynamic Type sizes at Large (default) and AX5 from typography; 44 x 44 pt targets and 200
-    percent text from accessibility; Cancel at the leading edge of a sheet from sheets; a tab bar is for
-    navigation, not actions, from tab-bars. The layout page gave no device sizes.
+    percent text from accessibility; "the Cancel button belongs on the leading edge of the top toolbar"
+    from sheets; "use a tab bar to support navigation, not to provide actions" from tab-bars. The layout
+    page gave no device sizes.
+23. **Open-pose gap rows** on the ledger page are shape only (a dashed slot). The page header says once
+    what a dashed slot means (house rule ux-label-once).

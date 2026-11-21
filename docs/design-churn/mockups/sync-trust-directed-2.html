@@ -303,7 +303,7 @@ figcaption small { color:var(--inkSoft); }
 <!-- Each figure holds static device shells, folded first; the script draws each shell's screen and keeps its own state. -->
 
 <figure data-s="feed" data-c="columns" data-opt="columns">
-  <figcaption><b>Facing columns: the feed.</b> Ledger tab, Recent. This phone writes in the left column, the other device in the right, time runs down. Each thick rule is a sync the server agreed to, labelled with what went out and what came in. Tap a row for its detail and Undo; tap a rule for the merge sentence.</figcaption>
+  <figcaption><b>Facing columns: the feed.</b> Ledger tab, Recent. This phone writes in the left column, the other device in the right, time runs down. Each thick rule is a sync the server agreed to, labelled with its time, what went out and what came in. Tap a row for its detail and Undo; tap a rule for the merge sentence.</figcaption>
   <div class="frames">
     <div class="shell"><i>Duo folded, default text</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" id="focus-columns"></div></div></div>
     <div class="shell"><i>Duo folded, AX5: columns give way to one list</i><div class="fit"><div class="dev folded ax5" data-device="iphone-duo-folded" data-z="ax5" id="focus-columns-ax5"></div></div></div>
@@ -732,7 +732,7 @@ function columnsRule(st, r, single) {
   const pre = (side) => single ? `${who(st, side)}: ` : "";
   const outTxt = pre("me") + (r.out ? `${r.out} sent` : "nothing sent");
   const lostCls = r.lost ? " lost" : "";
-  const head = r.last ? "Last agreed" : "Agreed";
+  const head = r.last ? "Last agreed" : "Sync";
   return `<div class="rule${lostCls}" data-id="${r.id}"><button type="button" data-act="rule" data-id="${r.id}" aria-expanded="${st.open.has(r.id)}">
       <span><span class="when">${head} ${r.when}</span><span class="what">${outTxt}</span></span>
       <span><span class="when">${r.lost ? "1 of yours removed" : r.sentence ? "Came in" : " "}</span><span class="what">${pre("them")}${r.inn}</span></span></button>
@@ -774,7 +774,7 @@ function columnsList(st, rows, mode) {
 /* on the open Duo each page holds one side of the rule, at the same height */
 function pageRule(st, r, mode) {
   const me = mode === "me";
-  const head = r.last ? "Last agreed" : "Agreed";
+  const head = r.last ? "Last agreed" : "Sync";
   const top = me ? `<span class="when">${head} ${r.when}</span><span class="what">${r.out ? `${r.out} sent` : "nothing sent"}</span>`
     : `<span class="when">${r.lost ? "1 of yours removed" : r.sentence ? "Came in " + r.at : " "}</span><span class="what">${r.inn}</span>`;
   /* the merge reads on the right page; the left page holds a hidden copy of it, under a short pointer, so both stay level */
