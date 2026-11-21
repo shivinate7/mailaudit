@@ -190,6 +190,11 @@ body.noage .tile .d .late, body.noage .tile .d .lost { color:inherit; }
 .ans { flex:1; min-height:0; overflow:auto; padding:0 16px 12px; }
 .dev.ax .ans { overflow:visible; }
 .ans .pick { padding:16px 8px; font:italic calc(14px * var(--ts)) var(--cochin); color:var(--inkSoft); border:1px dashed var(--line); border-radius:8px; }
+.holds { display:flex; flex-direction:column; border:1px dashed var(--line); border-radius:8px; }
+.holds p { margin:0; padding:8px 12px 4px; font:italic calc(12px * var(--ts)) var(--cochin); color:var(--inkSoft); }
+.hold { min-height:44px; display:flex; flex-direction:column; gap:2px; text-align:left; padding:8px 12px; border:0; border-top:1px solid var(--line); background:none; cursor:pointer; color:var(--ink); }
+.hold b { font:700 calc(14px * var(--ts)) var(--cochin); }
+.hold span { font:calc(13px * var(--ts)) var(--cochin); color:var(--inkSoft); }
 .rows { display:flex; flex-direction:column; padding:0 16px 12px; }
 .rows .tile { flex:none; min-height:64px; border-radius:0; border-width:0 0 1px; background:transparent; display:grid; grid-template-columns:1fr auto; column-gap:8px; }
 .rows .tile:first-child { border-top-width:1px; }
@@ -457,7 +462,7 @@ function clueLine(st) {
   if (!read.length) return `<span class="hint">Words can name a seller, a card, a set${flags.has('nomonth') ? '' : ', a month'} or an order no.</span>`;
   let n = '';
   if (st.concept === 'words') { const c = clueWords(st.q, st.data).length; n = `${c} ${c === 1 ? 'order' : 'orders'}`; }
-  else { const lu = lineUp(st.q, st.data); n = `${lu.top.length} fit every word`; }
+  /* Line-up says its count once, in the sentence under "Which order?" (ux-label-once) */
   return read.map((r) => r.kinds.length ? `<span class="w">${esc(r.w)} <em>${r.kinds.join(' or ')}</em></span>` : `<span class="w miss">${esc(r.w)} <em>no match</em></span>`).join('') + `<span class="n">${n}</span>`;
 }
 function emptyBlock(text) { return `<div class="empty">${text}<span class="hit"><button type="button" class="mini" data-clear>Clear Search</button></span></div>`; }
@@ -465,11 +470,15 @@ function emptyBlock(text) { return `<div class="empty">${text}<span class="hit">
 function listHTML(st, tagFirst) {
   const ws = st.concept === 'today' ? [] : wordsOf(st.q);
   const rows = st.concept === 'today' ? todayMatch(st.q, st.data) : st.q ? clueWords(st.q, st.data) : st.data.filter(isOpen).map((p) => ({ p, lines: p.items }));
-  if (!rows.length) return emptyBlock(st.concept === 'today' ? 'No cards match that search.' : 'No open order matches every word.');
+  if (!rows.length) {
+    if (st.concept === 'today') return emptyBlock('No cards match that search.');
+    const missed = readWords(st.q, st.data).some((r) => !r.kinds.length);
+    return emptyBlock(missed ? 'A word in red matches no open order. Remove it to widen the search.' : 'Each word matches some order, but no one order holds them all. Remove a word to widen the search.');
+  }
   return `<div class="list"${st.focusId ? ` id="${st.focusId}"` : ''}>${rows.map((r, i) => card(st, r.p, r.lines, ws, i === 0 ? tagFirst : '')).join('')}</div>`;
 }
 function tileHTML(r, n, on, tag) {
-  const f = n === 0 ? '' : r.hit === n ? (n > 1 ? 'Fits every word' : 'Fits') : `Fits ${r.hit} of ${n} words`;
+  const f = n < 2 ? '' : r.hit === n ? 'Fits every word' : `Fits ${r.hit} of ${n} words`;
   return `<button type="button" class="tile${on ? ' on' : ''}${r.hit === n ? ' all' : ''}" data-pick="${r.p.gk}" aria-pressed="${on}"${tag ? ` data-tag="${tag}"` : ''}>
     <span class="s">${esc(r.p.seller)}</span><span class="d">${fmtDate(r.p)} · ${ageSpan(r.p)}</span><span class="c">${left(r.p)} left · $${owed(r.p).toFixed(2)}</span><span class="f">${f}</span></button>`;
 }
@@ -486,7 +495,12 @@ function lineupState(st) {
   return { lu, shown, say };
 }
 function answerHTML(st, shown) {
-  if (!shown) return `<div class="pick">The order you pick shows here, with its cards to tick.</div>`;
+  if (!shown) {
+    /* a tie: what each tied order holds, so the person can hold it against what is in the envelope */
+    const top = st.q ? lineUp(st.q, st.data).top : [];
+    if (top.length > 1) return `<div class="holds"><p>What each one holds</p>${top.map((r) => `<button type="button" class="hold" data-pick="${r.p.gk}"><b>${esc(r.p.seller)}, ${fmtDate(r.p)}</b><span>${r.p.items.map((it) => esc(it.name) + (it.qty > 1 ? ' ×' + it.qty : '')).join(', ')}</span></button>`).join('')}</div>`;
+    return `<div class="pick">The order you pick shows here, with its cards to tick.</div>`;
+  }
   const p = st.data.find((x) => x.gk === shown);
   const ws = wordsOf(st.q);
   return card(st, p, p.items, ws, '');
@@ -630,7 +644,7 @@ const STATES = [
   { id: 'words-three', opt: 'words', title: 'Clue Words: "gamma ponder oct"', concept: 'words', q: 'gamma ponder oct', devs: ['fold', 'duo', 'pro'], focus: 'focus-words',
     cap: 'The month from the postmark settles it: one order. Tick the box on the card.' },
   { id: 'words-none', opt: 'words', title: 'Clue Words: no match', concept: 'words', q: 'gamma bolt oct', devs: ['fold', 'pro'],
-    cap: 'No open order fits all three words. One sentence and Clear Search (ux-unknown-is-not-empty). The clue line still says each word matched something, so the person drops one word.' },
+    cap: 'No open order fits all three words. One sentence and Clear Search (ux-unknown-is-not-empty). The sentence says whether a word missed outright (shown in red in the clue line) or only the mix missed, so the person knows which word to drop.' },
   { id: 'words-keys', opt: 'words', title: 'Clue Words, keys up', concept: 'words', q: 'gamma pon', keys: true, devs: ['fold', 'duo'],
     cap: 'While typing, the band rides on the keys and the list shrinks from its foot. The clue line sits above the keys, so the count shows as each letter lands.' },
   { id: 'words-ax', opt: 'words', title: 'Clue Words at AX5', concept: 'words', q: 'gamma ponder oct', devs: ['ax'],
