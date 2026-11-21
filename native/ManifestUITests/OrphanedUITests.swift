@@ -20,8 +20,9 @@
 //   discard:<id>           the Discard button of an envelope card
 //   orphaned-empty         the empty-state text of an empty pile; its label is the line
 // Behaviour: assign is one tap (no "Tap again" ask anywhere). The composer is autofocused. A view
-// change keeps the draft, and returns to the composer that was open. The Undo notice survives a
-// trip to Packages (web group 14). Every control has a hit region of at least 44pt.
+// change keeps the draft, and returns to the composer that was open. A drag on the list hides the
+// composer's keys. The Undo notice survives a trip to Packages (web group 14). Every control has a hit
+// region of at least 44pt.
 //
 // Launch argument -ManifestUITestSeed gives the app the shared fixture ledger: no envelopes.
 // A and B (A1, B1) hold the same cards, so they tie. D1 holds Urza's Saga alone.
@@ -184,16 +185,26 @@ final class OrphanedUITests: XCTestCase {
 
     // MARK: drafts
 
-    /// The draft survives a change of view, and the composer that was open comes back on it.
+    /// A drag on the list hides the composer's keys, and the draft stays in the input.
+    func testDraggingTheListHidesTheComposerKeysAndKeepsTheDraft() throws {
+        let app = launch()
+        openOrphaned(app)
+        app.typeInComposer("Light")
+
+        app.dragToHideKeys()
+        XCTAssertTrue(app.keyboards.element.waitForNonExistence(timeout: 5), "the list drag did not hide the keys")
+        XCTAssertEqual(el(app, "orphaned-input").value as? String, "Light", "the drag cleared the draft")
+    }
+
+    /// The draft survives a change of view, and the composer that was open comes back on it. The keys hide first, on a
+    /// drag of the list, so the tab bar under them can be tapped.
     func testComposerDraftSurvivesAViewChange() throws {
         let app = launch()
         openOrphaned(app)
-        el(app, "orphaned-record").tap()
-        let input = el(app, "orphaned-input")
-        XCTAssertTrue(input.waitForExistence(timeout: 5), "the composer has no input")
-        if !app.keyboards.element.exists { input.tap() }
-        input.typeText("Light")
+        app.typeInComposer("Light")
 
+        app.dragToHideKeys()
+        XCTAssertTrue(app.keyboards.element.waitForNonExistence(timeout: 5), "the list drag did not hide the keys")
         tab(app, "Packages").tap()
         // stamped-cell sits at the top of Packages at every count, so it shows the tab opened without a scroll.
         XCTAssertTrue(el(app, "stamped-cell").waitForExistence(timeout: 5), "anchor: the Packages view opened")
