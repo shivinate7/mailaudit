@@ -5741,7 +5741,7 @@ export default function MailDayLedger() {
            and scrolling inside (mockup docs/design/recent-log). */
         .rp-list { max-height: 360px; overflow-y: auto; }
         .rp-dh { position: sticky; top: 0; z-index: 2; box-sizing: border-box; height: 28px; display: flex;
-                 align-items: flex-end; padding: 0 0 6px; background: ${C.card};
+                 align-items: flex-end; padding: 0 0 6px; background: ${C.paper};
                  border-bottom: 1px solid ${C.line}; font-family: ${mono}; font-size: 10px;
                  letter-spacing: .16em; text-transform: uppercase; color: ${C.inkSoft}; }
         .rp-rr { display: flex; align-items: stretch; gap: 12px; width: 100%; height: 72px;

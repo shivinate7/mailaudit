@@ -44,7 +44,7 @@ Departs from: `panelWrap` in `src/app.jsx` (no background), which items 1 and 3 
 
 ## Notes for the builder
 
-- The overlay and the fill belong in one lane: in flow, the fill hides nothing and only darkens the panel; as an overlay with no fill, the rows show through.
+- The repo keeps the fill alone and leaves the overlay to debt `panels-overlay-unbuilt`: in flow, the fill hides nothing and only darkens the panel; as an overlay with no fill, the rows show through.
 - An overlay inside `.mdl-lcard` needs `overflow: visible` on that card, or the card clips any panel that runs past the card's foot. Sorted by at 375 runs 68 px past it.
 - With `overflow: visible`, the card's children are no longer clipped to its 8px corners. In these shots nothing showed it (`.mdl-lrow` paints `transparent`). Unmeasured for the Reset card's armed state.
 - A check at 375 and 760 should read each row's top with a panel open and closed, and find them equal (`motion-disclosure-panels-arrive`, Web plan).
