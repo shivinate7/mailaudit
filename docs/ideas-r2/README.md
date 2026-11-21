@@ -175,5 +175,7 @@ Not shortlisted. Each links to its planner's first pass. Several overlap a short
 - Then one designer per shortlisted direction drew its mockup from the Phase 2 section.
 - Planners ran as the read-only Plan role. The guard on agent models refused the Opus model for a planner that writes files, and the Plan role runs Opus, so each planner returned its text and the orchestrator committed it word for word.
 - All names, prices and order ids are invented.
+- Designers may write only in `docs/design/` (guard designer-scope). The orchestrator moved each mockup into `mockups/` when merging it.
+- Designers flagged plan gaps they had to settle to draw: trip mode's return-day counts did not add up (the mockup uses 25 counted, 31 expected, 22 checked, 3 to Orphaned, 9 not here); need-by dates says both "refunded counts as not coming" and "at risk"; the ask box resolves "last Tuesday" to two different dates. A choice a mockup made that the plan did not is labelled "Needs an owner grant" on the page.
 - Each mockup is one self-contained HTML page: the phone, then the two-screen folding pose, with a state picker, in light and dark (`#t=dark`). Frame sizes and colours are the designers' own picks, not the app's tokens.
 - The waves stopped when new lenses kept returning ideas already proposed (see "Where blind planners agreed"). The session could not read its own usage, so usage did not set the stop.
