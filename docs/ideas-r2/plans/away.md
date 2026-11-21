@@ -38,3 +38,99 @@ Not covered: the brief gives no claim-window lengths, hold-mail limits or lost-f
 **Owner decides:** Whether to show dates in home time or local time while away. Whether an order may be logged by hand before its CSV import exists.
 
 Strongest: Trip mode — it is the one piece that protects money, because claim deadlines pass silently during a trip, and every other direction assumes the app knows the collector is away.
+
+## Phase 2: Trip mode (fleshed out)
+
+**Point:** The collector tells the app "I'm away from Nov 3 to Nov 17". While they are away, late orders get a quiet "held" label instead of the lost-mail warning, because held post is not lost post. Claim deadlines stay live throughout. On return, one catch-up flow clears the pile. It starts with an envelope count.
+
+### Flow
+1. **Set the trip.** In the Packages menu, the collector picks "Going away". An in-app sheet opens with two date fields (no native picker dialog) and a "Leave" button. Both dates are calendar days in the home time zone, so a phone abroad cannot shift them.
+2. **Departure sheet.** It opens in the same sheet after "Leave":
+   - "31 orders ($48.20) may arrive while you're away." This uses the mail forecast if it is built. Otherwise it uses each order's existing expected-by date.
+   - "4 orders lose their claim window on Nov 6–14." This reads the claim clock and does not compute deadlines itself.
+   - Each of those 4 rows offers "File now", which sets the existing dated "claim filed" stamp, or "Leave it", which does nothing.
+   - "Done" closes the sheet.
+3. **Away.**
+   - Packages shows a strip at the top: "Away until Nov 17 · 31 due in the pile". It appears only when the view loads, never mid-session.
+   - A late order shows a grey "held" label in place of the red lost-mail warning.
+   - The claim clock stays red where it is red, since a claim can be filed from abroad.
+   - If the mailbox deputy is built, the strip adds "12 envelopes so far". That count is never matched to an order.
+4. **On the plane or abroad.**
+   - Check-ins and imports work offline as they do now.
+   - A CSV import of orders bought on the road merges as usual. Any new order whose expected-by date falls inside the trip gets "due in the pile".
+   - The trip ends on its own on the end date, by the device's calendar, even with no network.
+5. **Return.** The end date passes, or the collector taps "I'm home" in the strip. The strip changes to "Welcome back · start catch-up".
+6. **Catch-up, step 1: count.** "How many envelopes are in the pile?" The answer gives "58 in the pile, 31 expected → up to 27 not here yet". The step can be skipped.
+7. **Catch-up, step 2: match.**
+   - Packages filters to orders due during the trip and the ones still open.
+   - A find field narrows by seller, city or card name. For example, "moth" leaves "Gilded Moth · order 4471-B".
+   - Each tap is an ordinary check-in. It goes into the recent-checks log, and its undo works there.
+8. **Catch-up, step 3: leftovers.**
+   - "In the pile, no match: 3". Each gets one "Send to Orphaned" tap. There is no bulk action, because the count may be wrong.
+   - "Expected, not in the pile: 9". These stay outstanding with the held label until the grace period ends.
+   - "Close catch-up" ends the flow.
+9. **After.** Lost-mail warnings come back when the grace period ends. The trip remains as one line in the history: "Away Nov 3–17 · 49 checked on return".
+
+### Screen states
+- **Trip sheet.**
+  - Empty: no trip yet. Shows the two date fields and a disabled "Leave".
+  - Normal: dates valid.
+  - Edge: an end date before the start keeps "Leave" disabled and shows inline text. A start date in the past is allowed (for someone who forgot to set it).
+  - Error: none at the local level. If sync is down, a "not synced yet" note shows; nothing blocks.
+- **Departure sheet.**
+  - Empty: "Nothing due while you're away", and Done.
+  - Normal: the totals plus the claim rows.
+  - Edge: the claim clock is not built yet, so the claim block is hidden and nothing replaces it.
+  - Error: an order with no expected-by date counts as "date unknown". It is listed, never dropped.
+- **Away strip.**
+  - Normal: as in step 3.
+  - Edge: a trip of 0 days, or a trip set on another device, shows the same strip after sync.
+  - Edge: two devices disagree on the end date. The existing merge order picks one, and the strip shows the result.
+  - Error: the strip never appears under the pointer. It takes a fixed slot reserved at load, so it causes no layout shift.
+- **Catch-up.**
+  - Empty: nothing was due, so the flow ends with "Nothing to catch up".
+  - Normal: steps 6 to 8.
+  - Edge: pile count below matched count (58 counted, 61 checked) shows "count looks low", with no block.
+  - Edge: leaving mid-flow keeps the place. "Resume catch-up" shows in the strip.
+  - Error: an undo after Close still works through the recent-checks log.
+
+### Data (each new field needs an owner ruling under saved-state-shape)
+- `trips: [{id, start, end, endedAt?, pileCount?, catchUpClosedAt?}]`.
+  - One new optional field, inside the existing saved state. **Storage keys:** untouched, since no new key is added.
+  - It syncs through the existing Worker. **Device key:** not touched.
+- **Per check-in:** no new field in the first slices. "Checked during catch-up" is derived: the check-in time falls between `endedAt` and `catchUpClosedAt`.
+- **"Held" and "due in the pile":** derived from the trip dates and each order's expected-by date. Nothing new is stored.
+- **Imports merge, never replace:** trip mode reads orders only. A merge during the trip is unchanged.
+- **Parser filter:** untouched.
+- **Orphaned mail never decides:** the pile count and deputy counts never mark an order received or lost. Only a one-tap "Send to Orphaned" creates an orphan, as it does today.
+- **No native dialogs:** every prompt here is an in-app sheet.
+
+### Smallest first slice (ships alone)
+- What it includes:
+  - the `trips` field (start, end and `endedAt` only);
+  - the trip sheet without the departure list;
+  - the away strip;
+  - "held" in place of the lost-mail warning during the trip, plus a grace period;
+  - the trip ending on its end date;
+  - "I'm home".
+- What it fixes: the wave of false lost warnings, the main harm.
+- Slice 2: the departure sheet, using the claim clock once it ships.
+- Slice 3: catch-up with the envelope count, adding `pileCount` and `catchUpClosedAt`.
+- Slice 4 (only if the owner wants transit statistics): an arrival range per check-in.
+
+### Risks
+- "Held" could hide an order that really is lost. Mitigations: the claim clock stays live, and the grace period has a fixed end.
+- A trip nobody ends would keep warnings held forever. The trip ends on its own date.
+- Check-ins made on return day could skew any later per-seller transit figures. Slice 4 fixes this, or those figures skip catch-up check-ins.
+- Two devices could set different trips. The existing merge order settles it, with no new conflict logic.
+- An early return home with the post office still holding mail would end the held period too soon. "I'm home" offers "Mail still held? Keep held until [date]".
+
+### Owner decisions, each with a recommendation
+1. **Pause the lost-mail warning, or stretch its threshold?** Recommended: hold it, and show it grey as "held". Stretching makes each order's deadline harder to explain.
+2. **Add `trips` to the saved state?** Recommended: yes, as one optional array. Older copies ignore it.
+3. **Grace period after return?** Recommended: until the catch-up closes, plus 3 days (invented). With no catch-up, 5 days after the trip ends.
+4. **Keep past trips?** Recommended: keep them all. They are a few bytes each and give the history line.
+5. **Is the pile count required?** Recommended: optional, with one tap to skip.
+6. **Leftover envelopes to Orphaned: bulk or one at a time?** Recommended: one tap per envelope, because the count may be wrong.
+7. **Does the trip pause the claim clock too?** Recommended: no. A claim can be filed from anywhere, and the money is the point.
+8. **May any device set or end a trip?** Recommended: yes, synced. The phone is the device on the trip.
