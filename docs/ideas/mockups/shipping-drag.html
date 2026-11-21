@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Shipping Drag Mockup</title>
+<style>
+:root{
+  --page:#ecebe6; --page-ink:#1d1d1f; --page-ink2:#5a5a60; --panel:#fbfaf7; --line:#d5d2cb;
+  --bg:#f2f2f7; --card:#ffffff; --fill:rgba(120,120,128,.12); --ink:#000000; --ink2:rgba(60,60,67,.68);
+  --ink3:rgba(60,60,67,.32); --sep:rgba(60,60,67,.2); --accent:#0b6f67; --accent-tint:rgba(11,111,103,.11);
+  --ok:#1e7f37; --warn:#a84400; --warn-tint:rgba(168,68,0,.11); --new:#6a3dd0; --today:#55555b;
+  --bezel:#161618; --glass:rgba(250,250,252,.86); --scrim:rgba(0,0,0,.22); --banner:#fff2c4; --banner-ink:#4a3a00;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#141414; --page-ink:#f2f2f2; --page-ink2:#a8a8ad; --panel:#1d1d1f; --line:#38383c;
+    --bg:#000000; --card:#1c1c1e; --fill:rgba(120,120,128,.28); --ink:#ffffff; --ink2:rgba(235,235,245,.66);
+    --ink3:rgba(235,235,245,.3); --sep:rgba(84,84,88,.62); --accent:#4fd1c2; --accent-tint:rgba(79,209,194,.16);
+    --ok:#3ad16a; --warn:#ffa046; --warn-tint:rgba(255,160,70,.16); --new:#b79bff; --today:#b0b0b6;
+    --bezel:#2a2a2d; --glass:rgba(44,44,48,.9); --scrim:rgba(0,0,0,.5); --banner:#3a3110; --banner-ink:#ffe7a0;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#141414; --page-ink:#f2f2f2; --page-ink2:#a8a8ad; --panel:#1d1d1f; --line:#38383c;
+  --bg:#000000; --card:#1c1c1e; --fill:rgba(120,120,128,.28); --ink:#ffffff; --ink2:rgba(235,235,245,.66);
+  --ink3:rgba(235,235,245,.3); --sep:rgba(84,84,88,.62); --accent:#4fd1c2; --accent-tint:rgba(79,209,194,.16);
+  --ok:#3ad16a; --warn:#ffa046; --warn-tint:rgba(255,160,70,.16); --new:#b79bff; --today:#b0b0b6;
+  --bezel:#2a2a2d; --glass:rgba(44,44,48,.9); --scrim:rgba(0,0,0,.5); --banner:#3a3110; --banner-ink:#ffe7a0;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--page-ink);font-family:-apple-system,system-ui,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:1.4;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+code{font-size:12px;background:var(--panel);border:1px solid var(--line);border-radius:4px;padding:0 4px}
+.wrap{max-width:1360px;margin:0 auto;padding:16px}
+.sample{background:var(--banner);color:var(--banner-ink);font-weight:600;font-size:13px;padding:8px 16px;text-align:center}
+.head h1{font-size:22px;line-height:28px;margin:4px 0 2px;display:flex;flex-wrap:wrap;gap:8px;align-items:baseline}
+.badge{font-size:12px;font-weight:600;border:1px dashed var(--page-ink2);color:var(--page-ink2);border-radius:6px;padding:1px 7px}
+.head p{margin:0 0 12px;color:var(--page-ink2);max-width:72ch}
+.bar{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:0 0 16px}
+.bar .lbl{font-size:12px;font-weight:600;color:var(--page-ink2);margin-right:2px}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:9px;padding:2px;gap:2px}
+.seg button{border:0;background:transparent;border-radius:7px;padding:6px 10px;min-height:32px;cursor:pointer;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--page-ink);color:var(--page)}
+.seg button[aria-pressed="true"] .rec{color:inherit}
+.seg button:focus-visible,.decide button:focus-visible,.screen button:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.layout{display:grid;grid-template-columns:minmax(0,1fr) 340px;gap:20px;align-items:start}
+@media (max-width:1000px){.layout{grid-template-columns:minmax(0,1fr)}}
+.stage{display:flex;flex-wrap:wrap;gap:24px;align-items:flex-start;min-width:0}
+figure{margin:0;min-width:0;max-width:100%}
+figcaption{font-size:13px;font-weight:600;color:var(--page-ink2);margin:0 0 8px}
+figcaption span{font-weight:400}
+.device{background:var(--bezel);border-radius:62px;padding:12px;width:414px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.device.wide{width:804px;border-radius:48px}
+.device.ring{box-shadow:0 0 0 4px var(--accent),0 18px 40px rgba(0,0,0,.18)}
+.decide{background:var(--panel);border:1px solid var(--line);border-radius:14px;padding:14px 16px}
+.decide h2{font-size:17px;margin:0 0 4px}
+.decide>p{margin:0 0 10px;color:var(--page-ink2);font-size:13px}
+.q{border-top:1px solid var(--line);padding:10px 0}
+.q h3{font-size:14px;margin:0 0 6px}
+.q p{font-size:12.5px;color:var(--page-ink2);margin:6px 0 0}
+.q .seg button{font-size:12.5px}
+.rec{font-size:11px;font-weight:700;color:var(--accent)}
+
+/* ---------- phone ---------- */
+.screen{position:relative;width:390px;height:844px;border-radius:50px;overflow:hidden;background:var(--bg);color:var(--ink);
+  font-family:-apple-system,system-ui,"Helvetica Neue",Arial,sans-serif;font-size:17px;line-height:22px;font-variant-numeric:tabular-nums}
+.wide .screen{width:780px;border-radius:36px;display:grid;grid-template-columns:390px 390px}
+.pane{position:relative;height:844px;overflow:hidden;background:var(--bg)}
+.pane+.pane{border-left:1px solid var(--sep)}
+.status{position:absolute;top:0;left:0;right:0;height:54px;padding-top:env(safe-area-inset-top);display:flex;align-items:center;justify-content:space-between;padding-left:36px;padding-right:30px;font-size:17px;font-weight:600;z-index:6;pointer-events:none}
+.island{position:absolute;top:11px;left:50%;width:124px;height:36px;margin-left:-62px;background:#000;border-radius:20px;z-index:7}
+.cam{position:absolute;top:18px;left:50%;margin-left:-6px;width:12px;height:12px;border-radius:50%;background:#000;z-index:7}
+.glyphs{display:flex;gap:3px;align-items:flex-end}
+.glyphs i{display:block;background:var(--ink);border-radius:1px}
+.batt{width:25px;height:12px;border:1.5px solid var(--ink3);border-radius:4px;padding:1.5px;margin-left:4px;align-self:center}
+.batt b{display:block;height:100%;width:80%;background:var(--ink);border-radius:1.5px}
+.scroll{position:absolute;top:0;left:0;right:0;bottom:0;overflow-y:auto;padding-top:max(54px,env(safe-area-inset-top));padding-bottom:max(130px,calc(96px + env(safe-area-inset-bottom)));scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.toolbar{height:44px;display:flex;align-items:center;justify-content:space-between;padding:0 16px;gap:8px}
+.tbtn{min-width:44px;min-height:44px;border:0;background:var(--glass);border-radius:22px;display:inline-flex;align-items:center;justify-content:center;gap:4px;padding:0 14px;font-size:17px;color:var(--ink);cursor:pointer;box-shadow:0 0 0 .5px var(--sep)}
+.tbtn svg{width:18px;height:18px}
+.tbtn.icon{padding:0}
+.large{font-size:34px;line-height:41px;font-weight:700;margin:0;padding:2px 20px 8px}
+.inline-title{font-size:17px;font-weight:600;text-align:center;flex:1}
+.sec-h{font-size:13px;line-height:18px;color:var(--ink2);padding:18px 36px 6px;display:flex;justify-content:space-between;gap:8px;align-items:center}
+.sec-h b{color:var(--ink);font-weight:600;font-size:15px;line-height:20px}
+.sec-f{font-size:13px;line-height:18px;color:var(--ink2);padding:6px 36px 0;margin:0}
+.group{background:var(--card);margin:0 16px;border-radius:14px}
+.row{display:flex;align-items:center;gap:12px;min-height:44px;padding:11px 16px;position:relative;width:100%;border:0;background:transparent;text-align:left;color:var(--ink);font-size:17px;line-height:22px}
+.row+.row::before{content:"";position:absolute;top:0;left:16px;right:0;border-top:.5px solid var(--sep)}
+.row.ind+.row.ind::before{left:52px}
+button.row{cursor:pointer}
+button.row:active{background:var(--fill)}
+.row.sel{background:var(--accent-tint)}
+.row.dim .grow>span:first-child{color:var(--ink2)}
+.grow{flex:1;min-width:0}
+.sub{font-size:15px;line-height:20px;color:var(--ink2)}
+.foot{font-size:13px;line-height:18px;color:var(--ink2)}
+.cap{font-size:12px;line-height:16px;color:var(--ink2)}
+.num{text-align:right;white-space:nowrap}
+.num .big{font-size:17px;font-weight:600}
+.num .big.hot{color:var(--warn)}
+.chev{width:8px;height:14px;flex:none;color:var(--ink3)}
+.check{width:24px;height:24px;border-radius:50%;border:1.5px solid var(--ink3);flex:none;display:flex;align-items:center;justify-content:center}
+.check.on{background:var(--ok);border-color:var(--ok)}
+.check.on::after{content:"";width:6px;height:11px;border:solid #fff;border-width:0 2.2px 2.2px 0;transform:rotate(45deg) translate(-1px,-1px)}
+.pill{font-size:12px;line-height:16px;font-weight:600;border-radius:9px;padding:1px 7px;white-space:nowrap;display:inline-block}
+.pill.muted{color:var(--ink2);background:var(--fill)}
+.pill.ok{color:var(--ok);background:var(--fill)}
+.summary{padding:14px 16px;font-size:17px;line-height:22px}
+.summary strong{font-weight:600}
+.summary .cap{margin-top:4px}
+.segctl{display:flex;margin:12px 16px 0;background:var(--fill);border-radius:10px;padding:2px}
+.segctl button{flex:1;border:0;background:transparent;border-radius:8px;min-height:32px;font-size:15px;font-weight:500;cursor:pointer;color:var(--ink)}
+.segctl button[aria-pressed="true"]{background:var(--card);box-shadow:0 1px 3px rgba(0,0,0,.12);font-weight:600}
+.dragline{display:flex;align-items:center;gap:8px;font-size:12px;line-height:16px;font-weight:600;color:var(--warn);padding:8px 16px;border-top:1px dashed var(--warn);border-bottom:.5px solid var(--sep);background:var(--warn-tint)}
+.hint{display:flex;gap:6px;align-items:flex-start;font-size:13px;line-height:18px;color:var(--ink2);margin-top:4px}
+.hint svg{width:14px;height:14px;flex:none;margin-top:2px;color:var(--accent)}
+.hint b{color:var(--accent);font-weight:600}
+.tabbar{position:absolute;left:24px;right:24px;bottom:max(30px,calc(env(safe-area-inset-bottom) - 4px));height:62px;border-radius:31px;background:var(--glass);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 0 0 .5px var(--sep),0 6px 20px rgba(0,0,0,.12);display:flex;padding:4px;z-index:5}
+.tab{flex:1;border:0;background:transparent;border-radius:27px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-height:44px;font-size:11px;line-height:13px;font-weight:600;color:var(--ink);cursor:pointer}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent);background:var(--fill)}
+.home{position:absolute;bottom:8px;left:50%;width:140px;margin-left:-70px;height:5px;border-radius:3px;background:var(--ink);z-index:10;pointer-events:none}
+.veil{position:absolute;inset:0;z-index:8;background:transparent;border:0;cursor:default}
+.menu{position:absolute;top:100px;right:16px;width:250px;background:var(--glass);backdrop-filter:blur(24px);-webkit-backdrop-filter:blur(24px);border-radius:18px;box-shadow:0 0 0 .5px var(--sep),0 12px 40px rgba(0,0,0,.25);z-index:9;padding:6px 0;animation:pop .18s ease-out;transform-origin:top right}
+.menu.left{right:auto;left:16px;top:146px;transform-origin:top left}
+@keyframes pop{from{opacity:0;transform:scale(.9)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion: reduce){.menu{animation:none}}
+.menu .row{min-height:44px;padding:11px 18px}
+.menu svg{width:20px;height:20px;flex:none}
+.tick{width:16px;flex:none;color:var(--accent);font-weight:700}
+.empty{display:flex;flex-direction:column;align-items:center;text-align:center;padding:96px 40px 0;gap:8px}
+.empty svg{width:56px;height:56px;color:var(--ink3)}
+.empty h2{font-size:22px;line-height:28px;margin:8px 0 0;font-weight:700}
+.empty p{margin:0;font-size:17px;line-height:22px;color:var(--ink2)}
+.btn{min-height:44px;border:0;border-radius:22px;padding:0 22px;background:var(--accent);color:var(--card);font-size:17px;font-weight:600;cursor:pointer;margin-top:12px}
+.flash{box-shadow:0 0 0 2px var(--accent)}
+.eq{font-size:13px;line-height:18px;color:var(--ink2);padding:10px 16px;border-bottom:.5px solid var(--sep)}
+.eq strong{color:var(--ink);font-weight:600}
+.blank{display:flex;align-items:center;justify-content:center;height:100%;color:var(--ink2);font-size:17px;padding:40px;text-align:center}
+
+/* Today / New labels */
+.labels [data-new],.labels [data-today]{outline:1.5px dashed var(--new);outline-offset:2px}
+.labels [data-today]{outline-color:var(--today)}
+.labels [data-new]::before,.labels [data-today]::before{display:block;width:max-content;max-width:100%;margin:0 0 3px auto;font-size:11px;line-height:14px;font-weight:600;padding:0 5px;border-radius:4px;border:1px dashed var(--new);color:var(--new);white-space:nowrap;text-align:right;font-variant-numeric:normal}
+.labels [data-new]::before{content:"New: " attr(data-new)}
+.labels [data-today]::before{content:"Today: " attr(data-today);border-color:var(--today);color:var(--today)}
+.labels .group[data-new]::before,.labels .group[data-today]::before{margin:6px 10px 0 auto}
+.labels .tab[data-new]::before{position:absolute;top:-18px}
+.labels .tab[data-new]{position:relative}
+.note{font-size:12.5px;color:var(--page-ink2);margin:12px 0 0;max-width:80ch}
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample. Every order, seller and figure on this page is invented. No figure is real.</div>
+<div class="wrap">
+  <header class="head">
+    <h1>Shipping drag <span class="badge">idea mockup, not built</span></h1>
+    <p>Ranks your orders by how much the postage cost against the cards, so you can see which buying habit costs you postage. It changes nothing in your data.</p>
+  </header>
+
+  <div class="bar" role="group" aria-label="Mockup controls">
+    <span><span class="lbl">State</span>
+      <span class="seg">
+        <button data-state="menu">Menu entry</button>
+        <button data-state="ranked">Summary and ranked list</button>
+        <button data-state="grouped">Grouped by seller</button>
+        <button data-state="seller">One seller</button>
+        <button data-state="order">Opened in Packages</button>
+        <button data-state="empty">Empty</button>
+        <button data-state="fold">Two screens</button>
+      </span></span>
+    <span><span class="lbl">Theme</span>
+      <span class="seg">
+        <button data-theme-set="auto">Auto</button><button data-theme-set="light">Light</button><button data-theme-set="dark">Dark</button>
+      </span></span>
+    <span><span class="lbl">Labels</span>
+      <span class="seg"><button data-set="lab:1">Today / New</button><button data-set="lab:0">Off</button></span></span>
+  </div>
+
+  <div class="layout">
+    <div class="stage" id="stage">
+      <figure>
+        <figcaption>iPhone Duo, folded <span>· one screen · every row and button is live</span></figcaption>
+        <div class="fit" data-fit="414"><div class="device" data-device="iphone-duo-folded"><div class="screen" id="folded"></div></div></div>
+      </figure>
+      <figure>
+        <figcaption>iPhone Duo, unfolded <span>· two screens · seller list left, that seller's orders right</span></figcaption>
+        <div class="fit" data-fit="804"><div class="device wide" id="wideDevice" data-device="iphone-duo-unfolded"><div class="screen" id="unfolded"></div></div></div>
+      </figure>
+    </div>
+
+    <aside class="decide" aria-label="Owner decisions">
+      <h2>Owner decisions</h2>
+      <p>Each control redraws both screens. The recommended pick is marked "rec" and is the default.</p>
+      <div class="q" id="opt-basis">
+        <h3>What does the ratio compare?</h3>
+        <p>Card subtotal against shipping, both straight from the order <span class="rec">rec</span>. The other option is landed cost, which needs the landed-cost idea built first, so it is not drawn.</p>
+      </div>
+      <div class="q" id="opt-line">
+        <h3>When does an order count as drag?</h3>
+        <p>When shipping is above the card subtotal, so above 100%, fixed <span class="rec">rec</span>. The list draws this as a line.</p>
+      </div>
+      <div class="q" id="opt-hints">
+        <h3>Free-shipping hints</h3>
+        <span class="seg"><button data-set="h:0">Off <span class="rec">rec</span></button><button data-set="h:1">On</button></span>
+        <p>They are guesses from your own past orders, and they can nudge spending. Nothing is fetched from sellers.</p>
+      </div>
+      <div class="q" id="opt-place">
+        <h3>Where does it live?</h3>
+        <span class="seg"><button data-set="pl:menu">A screen from the menu <span class="rec">rec</span></button><button data-set="pl:tab">A fourth tab</button></span>
+      </div>
+      <div class="q" id="opt-arrived">
+        <h3>Count orders not yet arrived?</h3>
+        <span class="seg"><button data-set="na:1">Yes <span class="rec">rec</span></button><button data-set="na:0">No</button></span>
+        <p>The postage is spent at checkout.</p>
+      </div>
+      <div class="q" id="opt-slice">
+        <h3>Scope</h3>
+        <span class="seg"><button data-set="slice:0">Full</button><button data-set="slice:1">First slice</button></span>
+        <p>The first slice shows the summary line and the ranked list only. No grouping by seller and no hints.</p>
+      </div>
+    </aside>
+  </div>
+  <p class="note">Sizes are assumed: no Duo size is written, so the folded screen is drawn at 390 × 844 pt and the unfolded one at 780 × 844 pt. Type sizes are the Dynamic Type defaults on Apple's typography page (read 2026-11-21). "Today" in this sample is Nov 21, 2026. Avg is total shipping ÷ total cards, so the figures add up. Deep links: <code>#s=menu</code>, <code>#s=ranked</code>, <code>#s=grouped</code>, <code>#s=seller</code>, <code>#s=order</code>, <code>#s=empty</code>, <code>#s=fold</code>, each with <code>&amp;t=dark</code> or <code>&amp;t=light</code>.</p>
+</div>
+
+<script>
+(function(){
+"use strict";
+// Invented orders: [id, seller, date, cards, card subtotal (cents), shipping (cents), arrived]
+var RAW = [["G","H","2026-10-02",1,30,127,1],["8X2","K","2026-01-14",1,23,97,1],["4X8","K","2026-02-09",1,23,97,1],["2V2","K","2026-03-22",1,23,97,1],["2F2","K","2026-04-30",1,23,97,1],["4W9","K","2026-06-11",1,23,97,1],["3Y0","K","2026-07-19",1,23,97,1],["7X8","K","2026-08-28",1,24,97,1],["9E8","K","2026-09-30",1,24,97,1],["2K3","K","2026-11-06",1,24,97,0],["6C1","N","2026-01-18",2,54,104,1],["9Y0","N","2026-10-10",1,38,94,1],["3V5","M","2026-06-04",3,52,114,0],["5M7","S","2026-08-22",2,32,74,1],["9X3","P","2026-06-10",1,50,84,1],["6Y3","Q","2026-02-19",3,34,74,1],["9F6","M","2026-08-10",1,42,84,1],["3R7","T","2026-06-05",2,47,104,0],["7D3","R","2026-09-19",2,32,94,1],["8D3","T","2026-08-19",1,57,74,1],["6E2","M","2026-08-23",1,36,74,1],["7F4","Q","2026-11-15",2,62,94,1],["4V3","R","2026-01-15",1,41,74,1],["4K2","Q","2026-01-07",1,52,84,1],["8X6","T","2026-07-28",1,78,114,1],["7T3","N","2026-09-09",2,80,115,1],["7P1","S","2026-07-12",1,38,85,1],["7B5","P","2026-03-08",1,46,95,1],["9V0","Q","2026-03-09",1,58,85,1],["8P8","R","2026-06-20",1,53,75,1],["6X1","L","2026-10-21",2,94,115,1],["3K1","S","2026-11-18",2,68,75,1],["3M4","S","2026-08-21",1,37,95,1],["2H4","M","2026-08-06",2,34,85,1],["4T4","N","2026-01-19",3,37,95,1],["8F8","M","2026-10-01",1,70,95,1],["9P1","R","2026-11-12",2,28,75,1],["6C2","T","2026-08-16",2,86,95,0],["8D4","Q","2026-06-24",2,37,95,1],["2D4","P","2026-09-01",3,49,115,1],["6E7","Q","2026-09-01",1,63,75,1],["2P8","K","2026-03-03",9,612,0,1],["8M9","K","2026-06-25",7,545,0,1],["4C8","K","2026-09-12",12,830,0,1],["5E2","R","2026-06-06",8,650,99,1],["5N4","R","2026-09-17",7,665,79,1],["5N7","S","2026-04-08",7,747,79,1],["4M5","R","2026-09-16",7,324,79,1],["2M0","Q","2026-05-16",3,148,0,1],["2B8","M","2026-06-12",3,577,99,1],["5X7","R","2026-08-07",3,352,0,1],["5V1","T","2026-10-01",7,766,127,1],["8W8","S","2026-02-04",8,778,99,1],["8X4","R","2025-03-14",1,151,99,1],["5K5","M","2025-07-24",2,153,119,1],["5F6","H","2025-01-05",4,61,99,1],["7C2","N","2025-11-12",2,150,99,1],["8H0","M","2025-12-21",2,24,79,1],["3R8","Q","2025-04-01",2,84,119,1],["6K4","H","2025-04-25",3,157,99,1],["4M7","R","2025-03-02",4,136,99,1]];
+var ORDERS = RAW.map(function(r){ return {id:r[0], s:r[1], d:r[2], n:r[3], c:r[4], sh:r[5], arr:!!r[6]}; });
+var NAMES = ["Lunar Moth","Brass Beetle","Fen Lantern","Quill Hare","Cinder Imp","Salt Wraith","Thorn Elk","Glass Heron","Rook Sentinel","Pale Comet","Iron Finch","Dune Viper"];
+var RANGES = {year:["This year","This year","2026-01-01"], "90":["Last 90 days","In the last 90 days","2026-08-23"], all:["All time","Across all your orders","0000"]};
+var MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+var DEF = {s:"ranked", t:"auto", lab:"1", h:"0", pl:"menu", na:"1", slice:"0", r:"year", k:"K", o:"G", u:""};
+var S = Object.assign({}, DEF);
+var dateMenu = false;
+var MEMO = {};
+
+function money(c){ return "$" + (c/100).toFixed(2); }
+function sum(a, f){ return a.reduce(function(t, x){ return t + f(x); }, 0); }
+function day(iso){ var p = iso.split("-"); return MONTHS[+p[1]-1] + " " + (+p[2]) + (p[0] !== "2026" ? ", " + p[0] : ""); }
+function pct(sh, c){ return Math.round(sh * 100 / c) + "%"; }
+function isDrag(o){ return o.sh > o.c; }
+function plural(n, w){ return n + " " + w + (n === 1 ? "" : "s"); }
+function byId(id){ return ORDERS.filter(function(o){ return o.id === id; })[0]; }
+
+function pool(){
+  if (S.s === "empty") return [];
+  var from = RANGES[S.r][2];
+  return ORDERS.filter(function(o){ return o.d >= from && (S.na === "1" || o.arr); });
+}
+function rank(list){
+  return list.slice().sort(function(a, b){ return (b.sh / b.c) - (a.sh / a.c) || (a.d < b.d ? 1 : -1); });
+}
+function groups(){
+  var map = {};
+  pool().filter(isDrag).forEach(function(o){ (map[o.s] = map[o.s] || []).push(o); });
+  return Object.keys(map).map(function(k){
+    var os = map[k];
+    return {s:k, orders:os, c:sum(os, function(o){ return o.c; }), sh:sum(os, function(o){ return o.sh; })};
+  }).sort(function(a, b){ return b.sh - a.sh || (a.s < b.s ? -1 : 1); });
+}
+// A hint is drawn from the buyer's own whole history, never fetched.
+function hintFor(seller){
+  var free = ORDERS.filter(function(o){ return o.s === seller && o.c >= 500 && o.sh === 0; });
+  return free.length >= 2 ? "Your " + free.length + " orders over $5 from Seller " + seller + " shipped free." : "";
+}
+function cardsOf(o){
+  var start = o.id.charCodeAt(0) + o.id.charCodeAt(o.id.length - 1), each = Math.floor(o.c / o.n), out = [];
+  for (var i = 0; i < o.n; i++) out.push([NAMES[(start + i) % NAMES.length], each + (i === 0 ? o.c - each * o.n : 0)]);
+  return out;
+}
+
+/* ---------- pieces ---------- */
+var CHEV = '<svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var BACK = '<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+var BULB = '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5a4.5 4.5 0 0 0-2.6 8.2V12h5.2V9.7A4.5 4.5 0 0 0 8 1.5zM6 14h4" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>';
+var ICONS = {
+  packages:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z M3 7.5 12 12l9-4.5 M12 12v9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  tally:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>',
+  orphaned:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M3.5 7l8.5 6 8.5-6" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>',
+  spending:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 19V5M4 19h16M8 15l3-4 3 2 5-6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  more:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="5" cy="12" r="1.8" fill="currentColor"/><circle cx="12" cy="12" r="1.8" fill="currentColor"/><circle cx="19" cy="12" r="1.8" fill="currentColor"/></svg>',
+  import:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v11m-4-4 4 4 4-4M5 19h14" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  gear:'<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3.2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  box:'<svg viewBox="0 0 56 56" aria-hidden="true"><path d="M8 18 28 8l20 10v20L28 48 8 38z M8 18l20 10 20-10 M28 28v20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>'
+};
+function status(cam){
+  return (cam ? '<div class="cam"></div>' : '<div class="island"></div>') +
+    '<div class="status"><span>9:41</span><span class="glyphs"><i style="width:3px;height:4px"></i><i style="width:3px;height:6px"></i><i style="width:3px;height:8px"></i><i style="width:3px;height:10px"></i><span class="batt"><b></b></span></span></div>';
+}
+function tabbar(active){
+  var tabs = ["packages","tally","orphaned"].concat(S.pl === "tab" ? ["spending"] : []);
+  return '<nav class="tabbar" aria-label="Sections">' + tabs.map(function(t){
+    var go = t === "spending" ? "ranked" : t === "packages" ? "home" : t;
+    return '<button class="tab" data-go="' + go + '"' + (active === t ? ' aria-current="page"' : '') + (t === "spending" ? ' data-new="tab"' : '') + '>' + ICONS[t] + t.charAt(0).toUpperCase() + t.slice(1) + '</button>';
+  }).join("") + '</nav>';
+}
+function backBtn(go, label){
+  return '<button class="tbtn" data-go="' + go + '" aria-label="Back to ' + label + '">' + BACK + label + '</button>';
+}
+
+/* ---------- screens ---------- */
+function packageSection(o, flash){
+  var h = '<div class="sec-h"><span><b>Order ' + o.id + '</b> · Seller ' + o.s + ' · ' + day(o.d) + '</span>' + (o.arr ? '<span class="pill ok">Received</span>' : '<span class="pill muted">Not arrived</span>') + '</div>';
+  h += '<div class="group' + (flash ? ' flash' : '') + '"' + (flash ? ' id="opened-order"' : '') + '>' +
+       '<div class="eq">' + plural(o.n, "card") + ' · ' + money(o.c) + ' cards · ' + money(o.sh) + ' ship</div>';
+  cardsOf(o).forEach(function(c){
+    h += '<div class="row ind"><span class="check' + (o.arr ? ' on' : '') + '" role="img" aria-label="' + (o.arr ? 'received' : 'not received') + '"></span><span class="grow">' + c[0] + '</span><span class="sub">' + money(c[1]) + '</span></div>';
+  });
+  return h + '</div>';
+}
+function homeView(withMenu){
+  var recent = ORDERS.slice().sort(function(a, b){ return a.d < b.d ? 1 : -1; }).slice(0, 3);
+  var h = '<div class="scroll" data-key="f-home"><div class="toolbar"><span></span><button class="tbtn icon" data-go="' + (withMenu ? 'home' : 'menu') + '" aria-label="More" aria-expanded="' + withMenu + '">' + ICONS.more + '</button></div>' +
+          '<h1 class="large">Packages</h1><div data-today="Packages, unchanged">' + recent.map(function(o){ return packageSection(o, false); }).join("") + '</div></div>';
+  if (withMenu) {
+    h += '<button class="veil" data-go="home" aria-label="Close menu"></button><div class="menu" role="menu">' +
+         '<div class="row" role="menuitem">' + ICONS.import + '<span class="grow">Import CSV…</span></div>' +
+         (S.pl === "menu" ? '<button class="row" role="menuitem" data-go="ranked" id="menu-spending" data-new="Spending entry">' + ICONS.spending + '<span class="grow">Spending</span></button>' : '') +
+         '<div class="row" role="menuitem">' + ICONS.gear + '<span class="grow">Settings</span></div></div>';
+  }
+  return h;
+}
+function placeholder(name){
+  return '<div class="scroll"><div class="toolbar"></div><h1 class="large">' + name + '</h1><p class="sec-f">Unchanged by this idea. Not drawn here.</p></div>';
+}
+function orderRow(o, opts){
+  var drag = isDrag(o), sel = opts.sel === o.id;
+  return '<button class="row' + (drag ? '' : ' dim') + (sel ? ' sel' : '') + '" data-order="' + o.id + '"' + (o.id === "G" ? ' id="order-g"' : '') + '>' +
+    '<span class="grow"><span>Order ' + o.id + (opts.noSeller ? '' : ' · Seller ' + o.s) + '</span>' +
+    '<div class="foot">' + day(o.d) + ' · ' + money(o.c) + ' cards · ' + money(o.sh) + ' ship' + (o.arr ? '' : ' · <span class="pill muted">not arrived</span>') + '</div></span>' +
+    '<span class="num"><span class="big' + (drag ? ' hot' : '') + '">' + pct(o.sh, o.c) + '</span></span>' + CHEV + '</button>';
+}
+function rankedList(list, opts){
+  var r = rank(list), over = r.filter(isDrag), under = r.filter(function(o){ return !isDrag(o); });
+  var h = '<div class="group"' + (opts.label ? ' data-new="' + opts.label + '"' : '') + '>';
+  h += over.map(function(o){ return orderRow(o, opts); }).join("");
+  if (under.length) {
+    h += '<div class="dragline">Drag line, 100%: below it, shipping cost no more than the cards</div>';
+    h += under.map(function(o){ return orderRow(o, opts); }).join("");
+  }
+  return h + '</div>';
+}
+function summaryBlock(){
+  var p = pool(), d = p.filter(isDrag), post = sum(d, function(o){ return o.sh; });
+  var lead = RANGES[S.r][1];
+  return '<div class="group summary" id="summary" data-new="summary line">' + lead + ' <strong>' + plural(d.length, "order") + '</strong> paid more to ship than to buy: <strong>' + money(post) + '</strong> in postage.' +
+         '<div class="cap">' + plural(p.length, "order") + ' in range' + (S.na === "1" ? ', not-arrived orders included' : ', not-arrived orders left out') + '. Orphaned mail is left out.</div></div>';
+}
+function rangeButton(){
+  return '<button class="tbtn" data-range-menu aria-haspopup="menu" aria-expanded="' + dateMenu + '">' + RANGES[S.r][0] + ' <svg viewBox="0 0 12 8" aria-hidden="true" style="width:11px;height:8px"><path d="M1 1.5 6 6.5l5-5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg></button>';
+}
+function rangeMenu(){
+  if (!dateMenu) return "";
+  return '<button class="veil" data-range-menu aria-label="Close menu"></button><div class="menu left" role="menu">' +
+    Object.keys(RANGES).map(function(k){ return '<button class="row" role="menuitemradio" aria-checked="' + (S.r === k) + '" data-range="' + k + '"><span class="tick">' + (S.r === k ? '✓' : '') + '</span><span class="grow">' + RANGES[k][0] + '</span></button>'; }).join("") + '</div>';
+}
+function spendingView(mode, key, selSeller){
+  var top = S.pl === "menu" ? backBtn("home", "Packages") : '<span></span>';
+  var h = '<div class="scroll" data-key="' + key + '"><div class="toolbar">' + top + rangeButton() + '</div><h1 class="large">Spending</h1>';
+  if (!pool().length) {
+    return h + '<div class="empty" id="empty-state" data-new="empty state">' + ICONS.box + '<h2>No orders yet</h2><p>Import an order history to see where postage goes.</p><button class="btn">Import CSV</button></div></div>';
+  }
+  h += summaryBlock();
+  if (S.slice !== "1") {
+    h += '<div data-new="seller switch" style="margin:12px 16px 0"><div class="segctl" style="margin:0" role="group" aria-label="Group by"><button data-go="ranked" aria-pressed="' + (mode === "ranked") + '">Orders</button><button data-go="grouped" aria-pressed="' + (mode === "grouped") + '">Sellers</button></div></div>';
+  }
+  if (mode === "grouped") {
+    var gs = groups();
+    h += '<div class="sec-h"><span>Drag orders by seller</span><span>by postage</span></div><div class="group" data-new="by seller">';
+    h += gs.map(function(g){
+      var hint = S.h === "1" ? hintFor(g.s) : "";
+      return '<button class="row' + (selSeller === g.s ? ' sel' : '') + '" data-seller="' + g.s + '"' + (g.s === "K" ? ' id="seller-k"' : '') + '><span class="grow"><span>Seller ' + g.s + '</span>' +
+        '<div class="foot">' + plural(g.orders.length, "order") + ' · ' + money(g.c) + ' cards · ' + money(g.sh) + ' ship</div>' +
+        (hint ? '<div data-new="hint"><div class="hint">' + BULB + '<span><b>Hint</b> ' + hint + '</span></div></div>' : '') +
+        '</span><span class="num"><div class="cap">avg</div><span class="big hot">' + pct(g.sh, g.c) + '</span></span>' + CHEV + '</button>';
+    }).join("");
+    h += '</div><p class="sec-f">Avg is total shipping ÷ total cards. Each seller\'s orders add up to the summary line.</p>';
+  } else {
+    h += '<div class="sec-h"><span>Orders by postage ratio</span><span>shipping ÷ cards</span></div>' + rankedList(pool(), {label:"ranked list", sel:S.slice === "1" && key.charAt(0) === "u" ? S.o : ""});
+    h += '<p class="sec-f">Tap an order to open it in Packages. Nothing here changes a check-in.</p>';
+  }
+  return h + '</div>';
+}
+function sellerView(k, key, backTo){
+  var all = pool().filter(function(o){ return o.s === k; }), d = all.filter(isDrag);
+  var c = sum(d, function(o){ return o.c; }), sh = sum(d, function(o){ return o.sh; });
+  var hint = S.h === "1" ? hintFor(k) : "";
+  var h = '<div class="scroll" data-key="' + key + '"><div class="toolbar">' + (backTo ? backBtn(backTo, "Spending") : '<span></span>') + '<span class="inline-title">Seller ' + k + '</span><span style="width:44px"></span></div>';
+  h += '<div class="group summary" data-new="seller detail"><strong>' + plural(d.length, "order") + '</strong> over the line · ' + money(c) + ' cards · ' + money(sh) + ' ship · <strong>avg ' + (c ? pct(sh, c) : '–') + '</strong>' +
+       (hint ? '<div class="hint">' + BULB + '<span><b>Hint</b> ' + hint + '</span></div>' : '') + '</div>';
+  h += '<div class="sec-h"><span>' + RANGES[S.r][0] + ' · ' + plural(all.length, "order") + '</span></div>' + rankedList(all, {noSeller:true, sel:""});
+  return h + '</div>';
+}
+function orderView(id, key, backTo, backLabel){
+  var o = byId(id);
+  return '<div class="scroll" data-key="' + key + '"><div class="toolbar">' + backBtn(backTo, backLabel) + '<span class="inline-title">Packages</span><span style="width:44px"></span></div>' +
+    '<p class="sec-f" style="padding-top:8px" data-new="opened from Spending">The Packages view you use today, scrolled to this order. Back returns to the same spot.</p>' +
+    packageSection(o, true) + '</div>';
+}
+
+function foldedHTML(){
+  var s = S.s, tabActive = S.pl === "tab" && ["ranked","grouped","seller","order","empty","fold"].indexOf(s) >= 0 ? "spending" : (s === "tally" || s === "orphaned") ? s : "packages";
+  var mode = (s === "grouped" || s === "fold") && S.slice !== "1" ? "grouped" : "ranked";
+  var body;
+  if (s === "menu" || s === "home") body = homeView(s === "menu");
+  else if (s === "tally") body = placeholder("Tally");
+  else if (s === "orphaned") body = placeholder("Orphaned");
+  else if (s === "seller") body = sellerView(S.k, "f-seller", "grouped");
+  else if (s === "order") body = orderView(S.o, "f-order", S.u === "seller" ? "seller" : (S.slice !== "1" && S.u === "grouped" ? "grouped" : "ranked"), S.u === "seller" ? "Seller " + S.k : "Spending");
+  else body = spendingView(mode, "f-spend-" + mode, null) + rangeMenu();
+  return status(false) + body + tabbar(tabActive) + '<div class="home"></div>';
+}
+function unfoldedHTML(){
+  var left, right;
+  if (S.s === "empty") {
+    left = spendingView("grouped", "u-left", null);
+    right = '<div class="blank">Import an order history, then pick a seller here.</div>';
+  } else if (S.slice === "1") {
+    left = spendingView("ranked", "u-left", null);
+    right = orderView(S.o, "u-right", "noop", "Spending");
+  } else {
+    left = spendingView("grouped", "u-left", S.k);
+    right = S.u === "uorder" ? orderView(S.o, "u-right", "useller", "Seller " + S.k) : sellerView(S.k, "u-right", null);
+  }
+  return '<div class="pane" id="fold-list">' + status(false) + left + tabbar(S.pl === "tab" ? "spending" : "packages") + '</div>' +
+         '<div class="pane" id="fold-detail">' + status(true) + right + '<div class="home"></div></div>';
+}
+
+/* ---------- state ---------- */
+function readHash(){
+  var h = new URLSearchParams(location.hash.slice(1));
+  Object.keys(DEF).forEach(function(k){ if (h.has(k)) S[k] = h.get(k); });
+}
+function writeHash(){
+  var h = new URLSearchParams();
+  Object.keys(DEF).forEach(function(k){ if (S[k] !== DEF[k] || k === "s") h.set(k, S[k]); });
+  history.replaceState(null, "", "#" + h.toString());
+}
+function applyTheme(){
+  if (S.t === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", S.t);
+}
+function render(){
+  applyTheme();
+  document.querySelectorAll("[data-key]").forEach(function(el){ MEMO[el.getAttribute("data-key")] = el.scrollTop; });
+  document.getElementById("folded").innerHTML = foldedHTML();
+  document.getElementById("unfolded").innerHTML = unfoldedHTML();
+  document.querySelectorAll("[data-key]").forEach(function(el){ var k = el.getAttribute("data-key"); if (MEMO[k]) el.scrollTop = MEMO[k]; });
+  document.getElementById("stage").classList.toggle("labels", S.lab === "1");
+  document.getElementById("wideDevice").classList.toggle("ring", S.s === "fold");
+  var pickState = S.s === "home" ? "menu" : S.s;
+  document.querySelectorAll("[data-state]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-state") === pickState)); });
+  document.querySelectorAll("[data-theme-set]").forEach(function(b){ b.setAttribute("aria-pressed", String(b.getAttribute("data-theme-set") === S.t)); });
+  document.querySelectorAll(".decide [data-set], .bar [data-set]").forEach(function(b){
+    var kv = b.getAttribute("data-set").split(":"); b.setAttribute("aria-pressed", String(S[kv[0]] === kv[1]));
+  });
+  writeHash();
+}
+document.addEventListener("click", function(e){
+  var t = e.target.closest("[data-state],[data-theme-set],[data-set],[data-go],[data-order],[data-seller],[data-range-menu],[data-range]");
+  if (!t) return;
+  var inWide = !!t.closest("#unfolded");
+  dateMenu = false;
+  if (t.hasAttribute("data-range-menu")) { dateMenu = !t.classList.contains("veil") && t.getAttribute("aria-expanded") !== "true"; render(); return; }
+  if (t.hasAttribute("data-range")) { S.r = t.getAttribute("data-range"); render(); return; }
+  if (t.hasAttribute("data-state")) {
+    S.s = t.getAttribute("data-state");
+    if (S.s === "order") { S.o = "G"; S.u = "ranked"; }
+    if (S.s === "seller") S.k = "K";
+    if ((S.s === "grouped" || S.s === "seller") && S.slice === "1") S.slice = "0";
+    render();
+    if (S.s === "fold") document.getElementById("wideDevice").scrollIntoView({behavior:"smooth", block:"center"});
+    return;
+  }
+  if (t.hasAttribute("data-theme-set")) { S.t = t.getAttribute("data-theme-set"); render(); return; }
+  if (t.hasAttribute("data-set")) { var kv = t.getAttribute("data-set").split(":"); S[kv[0]] = kv[1]; render(); return; }
+  if (t.hasAttribute("data-seller")) {
+    S.k = t.getAttribute("data-seller");
+    if (inWide) S.u = ""; else S.s = "seller";
+    render(); return;
+  }
+  if (t.hasAttribute("data-order")) {
+    S.o = t.getAttribute("data-order");
+    if (inWide) { if (S.slice !== "1" && t.closest("#fold-detail")) S.u = "uorder"; }
+    else { S.u = S.s === "seller" ? "seller" : S.s === "grouped" ? "grouped" : "ranked"; S.s = "order"; }
+    render(); return;
+  }
+  if (t.hasAttribute("data-go")) {
+    var go = t.getAttribute("data-go");
+    if (go === "noop") return;
+    if (go === "useller") { S.u = ""; render(); return; }
+    S.s = go; render();
+  }
+});
+function fit(){
+  document.querySelectorAll(".fit").forEach(function(el){
+    var w = +el.getAttribute("data-fit"), avail = el.parentElement.parentElement.clientWidth;
+    var z = Math.min(1, avail / w);
+    el.style.zoom = z < 1 ? String(z) : "";
+  });
+}
+window.addEventListener("resize", fit);
+window.addEventListener("hashchange", function(){ readHash(); render(); });
+readHash(); render(); fit();
+})();
+</script>
+</body>
+</html>
