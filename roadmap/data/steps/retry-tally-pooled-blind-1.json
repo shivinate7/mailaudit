@@ -1,0 +1,10 @@
+{
+  "title": "Retry: tally-pooled, blind run 1",
+  "status": "todo",
+  "phase": "design-retry",
+  "order": 7,
+  "why": "A cut design run kept as a retry for later, filed on the owner's approval (owner, 2026-11-21 13:38 CST, passed by the coordinator at 13:40 CST).",
+  "note": "Job: tally-pooled. Sketched concepts: \"Name list\": card names list with a detail per name; open Duo: list beside detail. \"Copy strip\": each card name is a row of squares, one per copy, grouped by seller; tap a square to mark it arrived; open adds a by-seller page. \"Count-off\", the bold one: one card name per screen like a deck, a find field at the thumb; open adds a page of what is still out, by seller. Retry from scratch, nothing saved; the brief must name the large phone size (item 109 is open) and a push branch. Nothing here is to be built.",
+  "ask": "",
+  "updatedAt": "2026-11-21T19:42:00Z"
+}

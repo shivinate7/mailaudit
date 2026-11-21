@@ -1,0 +1,10 @@
+{
+  "title": "Parked: search-everything, third concept",
+  "status": "todo",
+  "phase": "design-retry",
+  "order": 9,
+  "why": "A cut design run kept as a retry for later, filed on the owner's approval (owner, 2026-11-21 13:38 CST, passed by the coordinator at 13:40 CST).",
+  "note": "Job: search-everything, blind run 2. Third concept \"Clue board\": plan only, never coded. Its designer is writing a short Parked note in docs/design/search-everything-blind-2-notes.md on the review branch design-churn. Nothing to retry now; keep for later. Nothing here is to be built.",
+  "ask": "",
+  "updatedAt": "2026-11-21T19:42:00Z"
+}

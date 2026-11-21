@@ -1,0 +1,10 @@
+{
+  "title": "Retry: desk-review, blind run 2",
+  "status": "todo",
+  "phase": "design-retry",
+  "order": 6,
+  "why": "A cut design run kept as a retry for later, filed on the owner's approval (owner, 2026-11-21 13:38 CST, passed by the coordinator at 13:40 CST).",
+  "note": "Job: desk-review. Sketched concepts: \"Task tabs\": tab bar Outstanding, Bring in, Fix, Backups; open Duo: sellers on the left, packages on the right. \"Balance\", the bold one: the first screen is a sum, Ordered = Received + Lost + Outstanding + To fix; tap a number for its list; a second sum shows what the last backup covers; no tab bar, which departs from the house default and needs the owner's grant. Open question: the job describes a desk with a large monitor but the device list is touch only; should a desk width be added? Retry from scratch, nothing saved; the brief must name the large phone size (item 109 is open) and a push branch. Nothing here is to be built.",
+  "ask": "",
+  "updatedAt": "2026-11-21T19:42:00Z"
+}

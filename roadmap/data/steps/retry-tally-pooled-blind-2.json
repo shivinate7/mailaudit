@@ -1,0 +1,10 @@
+{
+  "title": "Retry: tally-pooled, blind run 2",
+  "status": "todo",
+  "phase": "design-retry",
+  "order": 8,
+  "why": "A cut design run kept as a retry for later, filed on the owner's approval (owner, 2026-11-21 13:38 CST, passed by the coordinator at 13:40 CST).",
+  "note": "Job: tally-pooled. Sketched concepts: \"Slot board\", the bold one: tap a copy's square to mark it arrived. \"Ask\": answers \"Did all my X arrive?\" in sentences, with a bar of questions at the bottom. \"Ledger\": a list opening into each card. Each with deep links by state, theme and device. Retry from scratch, nothing saved; the brief must name the large phone size (item 109 is open) and a push branch. Nothing here is to be built.",
+  "ask": "",
+  "updatedAt": "2026-11-21T19:42:00Z"
+}

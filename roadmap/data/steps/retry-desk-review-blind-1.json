@@ -1,0 +1,10 @@
+{
+  "title": "Retry: desk-review, blind run 1",
+  "status": "todo",
+  "phase": "design-retry",
+  "order": 5,
+  "why": "A cut design run kept as a retry for later, filed on the owner's approval (owner, 2026-11-21 13:38 CST, passed by the coordinator at 13:40 CST).",
+  "note": "Job: desk-review. Sketched concepts: \"Session run\": a numbered desk run (back up, bring in the file, late mail, fix entries, back up again); \"Seller ledger\": packages list with a detail page, a lateness bar per row, bulk Mark received; \"Exceptions only\", the bold one: one decision at a time; open pose: the decision on one page, details on the other. Open question: the job describes a desk with a large monitor but the device list is touch only; should a desk width be added? Retry from scratch, nothing saved; the brief must name the large phone size (item 109 is open) and a push branch. Nothing here is to be built.",
+  "ask": "",
+  "updatedAt": "2026-11-21T19:42:00Z"
+}

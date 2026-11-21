@@ -1,0 +1,10 @@
+{
+  "title": "Retry: find-package, blind run 3",
+  "status": "todo",
+  "phase": "design-retry",
+  "order": 1,
+  "why": "A cut design run kept as a retry for later, filed on the owner's approval (owner, 2026-11-21 13:38 CST, passed by the coordinator at 13:40 CST).",
+  "note": "Job: find-package. Sketched concepts: \"Clue box\": one search field at the bottom matches seller, card name and order number together, over waiting orders; open Duo: list on the left page, order on the right page. \"Envelope key\", the bold one: the app asks one question at a time, chosen to best split the orders left (how many cards, first letter of the sender, when bought, or which card is inside); at 4 or fewer orders left you pick from them. Retry from scratch, nothing saved; the brief must name the large phone size (item 109 is open) and a push branch. Nothing here is to be built.",
+  "ask": "",
+  "updatedAt": "2026-11-21T19:42:00Z"
+}
