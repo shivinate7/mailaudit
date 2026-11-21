@@ -1,0 +1,472 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Failed Check-in</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle), so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --gold:#C9A961;
+  --wax:#A8443C; --waxDeep:#66231D;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on both Duo screens. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor), as the earlier Duo mockups do. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --keys-top: 405px; /* open Duo: the keys panel draws from about y 405 pt (debt duo-keyboard-gap-unmeasured) */
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:28px; margin:16px 0 4px; }
+h2 { font-family:var(--cochin); font-size:22px; margin:32px 0 4px; border-top:1px solid var(--line); padding-top:16px; }
+.sub, .lede { color:var(--inkSoft); margin:0 0 12px; max-width:76ch; }
+.kind { font:12px var(--mono); color:var(--inkSoft); }
+nav, .demo { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
+nav a, nav button, .demo button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.demo button[aria-pressed="true"] { border-color:var(--red); color:var(--red); font-weight:600; }
+.demo .hint { font-size:13px; color:var(--inkSoft); }
+section[hidden], figure[hidden] { display:none; }
+figure { margin:24px 0; }
+figcaption { margin-top:8px; max-width:80ch; }
+figcaption b { font-family:var(--cochin); font-size:18px; }
+ul.tags { margin:8px 0 0; padding-left:20px; color:var(--inkSoft); font-size:14px; max-width:80ch; }
+.fit { width:100%; overflow:hidden; }
+.feel { display:inline-block; margin-left:8px; font:12px var(--mono); color:var(--red); opacity:0; transition:opacity .2s; }
+.feel.on { opacity:1; }
+
+/* ---- device frames, 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; font-family:var(--sys);
+  padding-top:env(safe-area-inset-top); padding-bottom:var(--sab); }
+.dev.folded, .dev.phone { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:8; background:var(--paper); }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.open .page.l { left:0; width:455.5px; } .open .page.r { left:495.5px; width:455.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:1; }
+.fold span { position:absolute; top:200px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+
+/* the running head: pinned over a scrolled list (MastheadScreen.RunningHead, 46 pt) */
+.rhead { position:absolute; left:0; right:0; top:var(--sat); height:46px; padding:0 16px; display:flex; align-items:center; gap:8px; background:var(--paper);
+  border-bottom:1px solid var(--line); z-index:6; }
+.seal { width:22px; height:22px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #C86A5F, var(--wax) 60%, var(--waxDeep)); flex:0 0 22px; }
+.rhead .title { font:600 16px var(--cochin); }
+.rhead .fig { margin-left:auto; font:11px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.miss { font:12px var(--mono); color:var(--red); border:1px solid var(--red); border-radius:8px; padding:4px 8px; background:var(--redSoft); white-space:nowrap; cursor:pointer; }
+.hit { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
+.miss-slot { width:118px; display:flex; justify-content:flex-end; } /* reserved: "9 not saved" fits, so the count never moves the figure */
+
+/* the list */
+.scroll { position:absolute; left:0; right:0; top:calc(var(--sat) + 46px); bottom:0; overflow:hidden; padding:8px 16px 0; }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; font-family:var(--cochin); margin-bottom:8px; }
+.pkg .hd { padding:12px; display:flex; justify-content:space-between; align-items:center; gap:8px; }
+.pkg .hd b { font-size:15px; } .pkg .hd small { display:block; font:11px var(--mono); color:var(--inkSoft); }
+.pkg .pill { font:12px var(--mono); border:1px solid var(--line); border-radius:8px; padding:4px 8px; color:var(--inkSoft); white-space:nowrap; }
+.pkg .band { height:44px; border-top:1px solid var(--line); display:flex; align-items:center; padding:0 12px; font:11px var(--mono); color:var(--inkSoft); gap:12px; }
+.pkg .band span { text-decoration:underline; text-underline-offset:3px; }
+.line { position:relative; display:flex; gap:8px; min-height:64px; padding-left:4px; border-top:1px solid var(--line); background:var(--card); font-family:var(--cochin); }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; cursor:pointer; border:0; background:none; padding:0; }
+.line .box i { width:30px; height:30px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; position:relative; background:var(--card); }
+.line .box svg { position:absolute; inset:0; width:27px; height:27px; }
+.line .box path { fill:none; stroke:var(--card); stroke-width:3; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:30; stroke-dashoffset:30; }
+.line .t { flex:1; padding:12px 12px 12px 0; min-width:0; }
+.line .t b { font-size:14px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
+.line .t b span { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.line .t small { font-size:11.5px; color:var(--inkSoft); display:block; margin-top:4px; }
+.line.done { background:var(--greenSoft); }
+.line.done .box i { background:var(--green); border-color:var(--green); }
+.line.done .box path { stroke-dashoffset:0; transition:stroke-dashoffset .3s ease-out; } /* motion-the-check-tick-is-written: one 300 ms stroke */
+/* The failed line, both concepts: a red fill, a red box and a 3 pt red bar in ItemLine's 4 pt leading pad. No text moves, no frame grows. */
+.line.miss-line { background:var(--redSoft); }
+.line.miss-line::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--red); }
+.line.miss-line .box i { border-color:var(--red); border-width:2px; }
+.line.miss-line .box i::after { content:"!"; position:absolute; inset:0; display:grid; place-items:center; font:700 15px var(--mono); color:var(--red); }
+/* Returned slip only: the tick is written in red, then drains, so the eye sees a tick that did not take. */
+.line.miss-line.drain .box i { animation:drain .9s ease-out both; }
+@keyframes drain { 0% { background:var(--red); } 35% { background:var(--red); } 100% { background:var(--card); } }
+
+/* the tab bar: the system bar on one screen, drawn at the open Duo's 64 pt pill (DuoBarMetrics), unmeasured here */
+.bar { position:absolute; left:24px; right:24px; bottom:calc(12px + var(--sab)); height:64px; border:1px solid var(--line); border-radius:32px; z-index:7;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px); display:flex; justify-content:space-around; align-items:center; font-size:10px; }
+.bar span { display:flex; flex-direction:column; align-items:center; gap:4px; color:var(--inkSoft); min-width:64px; }
+.bar span::before { content:""; width:20px; height:20px; border:1.5px solid currentColor; border-radius:5px; }
+.bar span.on { color:var(--accent); font-weight:600; }
+.open .bar { left:519.5px; width:407.5px; right:auto; }
+
+/* today: the bottom error bar, system footnote on material (debt checkin-error-bar-is-sans) */
+.today-bar { position:absolute; left:0; right:0; bottom:88px; padding:12px; text-align:center; font:13px var(--sys); z-index:6;
+  background:color-mix(in srgb, #FFFFFF 70%, transparent); backdrop-filter:blur(20px); }
+/* today: Card in Hand's top error banner, Cochin red on paper over the pinned head (hand-checkin-error) */
+.today-top { position:absolute; left:0; right:0; top:var(--sat); padding:12px; font:13px var(--cochin); color:var(--red); background:var(--paper); border-bottom:1px solid var(--line); z-index:6; }
+
+/* the unsaved list: an overlay panel on the paper fill (head-panels-carry-paper-fill) */
+.panel { position:absolute; left:0; right:0; z-index:9; background:var(--paper); border-bottom:1px solid var(--line); border-top:1px solid var(--line);
+  padding:12px 16px; display:flex; flex-direction:column; gap:8px; font-family:var(--cochin); box-shadow:0 8px 16px rgba(28,43,36,0.06); }
+.panel .ph { display:flex; justify-content:space-between; align-items:center; }
+.panel .ph b { font-size:17px; }
+.panel .row { display:flex; align-items:center; gap:12px; min-height:52px; border-top:1px solid var(--line); }
+.panel .row div { flex:1; min-width:0; } .panel .row div b { font-size:15px; display:block; } .panel .row small { font-size:13px; color:var(--inkSoft); }
+.panel details { font-size:13px; color:var(--inkSoft); } .panel summary { min-height:44px; display:flex; align-items:center; cursor:pointer; }
+.panel details p { font:12px var(--mono); margin:0 0 8px; }
+.btn { font:600 14px var(--cochin); min-height:44px; padding:0 16px; border-radius:8px; border:1px solid var(--accent); background:var(--accent); color:var(--card); cursor:pointer; white-space:nowrap; }
+.btn.quiet { background:var(--card); color:var(--ink); border-color:var(--line); }
+
+/* Returned slip: pinned above the bar while any tick is not saved */
+.slip { position:absolute; left:16px; right:16px; z-index:8; background:var(--paper); border:1px solid var(--line); border-top:2px solid var(--red); border-radius:8px;
+  padding:10px 12px; display:flex; align-items:center; gap:12px; font-family:var(--cochin); box-shadow:0 2px 8px rgba(28,43,36,0.06); overflow:hidden; }
+.slip .w { flex:1; min-width:0; cursor:pointer; }
+.slip .w b { display:block; font-size:17px; line-height:22px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.slip .w small { display:block; font-size:13px; line-height:18px; color:var(--inkSoft); }
+.slip .stamp { position:absolute; right:132px; top:6px; font:700 11px var(--mono); letter-spacing:1px; color:var(--red); border:1.5px solid var(--red); border-radius:4px;
+  padding:2px 6px; transform:rotate(-7deg); opacity:.85; pointer-events:none; }
+.slip.landed .stamp { animation:land .32s cubic-bezier(.2,.9,.3,1.2) both; }
+@keyframes land { 0% { transform:rotate(-7deg) scale(1.6); opacity:0; } 100% { transform:rotate(-7deg) scale(1); opacity:.85; } }
+@media (prefers-reduced-motion: reduce) { .slip.landed .stamp, .line.miss-line.drain .box i { animation:none; } .line.done .box path { transition:none; } }
+
+/* Card in Hand, open pose */
+.content { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 16px); display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.rowx { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.rowx .soft { color:var(--inkSoft); font-size:14px; }
+.count { font:12px var(--mono); color:var(--inkSoft); }
+.mpill { font:12px var(--mono); border:1px solid var(--line); background:var(--card); border-radius:8px; padding:6px 10px; color:var(--ink); white-space:nowrap; }
+.field { height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:16px; }
+.field::after { content:""; width:2px; height:20px; background:var(--accent); margin-left:1px; }
+.micro { font:10.5px/13px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.match { min-height:44px; display:flex; align-items:center; font-size:14px; }
+.head { position:absolute; left:0; right:0; top:var(--sat); padding:16px 16px 8px; display:flex; flex-direction:column; gap:8px; font-family:var(--cochin);
+  border-bottom:1px solid var(--line); background:var(--paper); z-index:4; }
+.head .who { font-size:22px; line-height:27px; font-weight:700; }
+.head .meta { font:11px/14px var(--mono); color:var(--inkSoft); }
+.head .corner { position:absolute; right:16px; top:4px; }
+.mid { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 94px); bottom:calc(669px - var(--keys-top)); overflow:hidden; padding-top:8px; }
+.mid .lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.mid .line:first-child { border-top:0; }
+.keys { position:absolute; left:0; right:0; top:var(--keys-top); bottom:0; background:#D2D0D6; z-index:6; padding:8px 6px; } /* iOS keyboard chrome, not an app colour */
+.keys .krow { display:flex; gap:6px; margin-bottom:8px; justify-content:center; }
+.keys .k { height:42px; flex:0 0 42px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font-size:18px; color:#111; }
+.keys .k.w { flex-basis:300px; font-size:14px; }
+
+/* the large phone has no written size: drawn at the folded screen's size from the brief, as a stand-in */
+.ax .line .t b { font-size:44px; line-height:52px; flex-direction:column; }
+.ax .line .t b span { font-size:37px; }
+.ax .line .t small { font-size:36px; line-height:42px; }
+.ax .rhead .title { font-size:23px; } .ax .rhead .fig { font-size:18px; } /* running head capped at xxxLarge (caption 1 is 18 pt there) */
+.ax .scroll { padding-top:0; } .ax .pkg { border-top:0; border-radius:0 0 8px 8px; } .ax .pkg .line:first-child { border-top:0; }
+.ax .rhead { height:64px; } .ax .scroll { top:calc(var(--sat) + 64px); }
+.ax .miss { font-size:18px; } .ax .miss-slot { width:auto; }
+.ax .slip .w b { font-size:23px; line-height:29px; } .ax .slip .w small { font-size:19px; line-height:24px; } .ax .slip .btn { font-size:19px; min-height:52px; }
+.ax .slip .stamp { display:none; }
+
+/* tags: dashed outline on what exists today, and on what a concept adds */
+[data-tag]:not(.today-bar, .today-top, .slip, .panel) { position:relative; }
+[data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:12; white-space:nowrap; pointer-events:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new[data-tag]::after { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today[data-tag]::after { color:var(--today); }
+.notags [data-tag] { outline:none; } .notags [data-tag]::after { display:none; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No figure, seller, card or price on this page is real. Row heights are estimates from the code, not measurements.</div>
+<h1>Failed check-in: a tick that did not save</h1>
+<p class="kind">Designer kind: informed · failed-checkin-informed-1</p>
+<p class="sub">Packages and Card in Hand, where most ticks happen. iPhone Duo folded (466 x 678 pt) first, then open (951 x 669 pt, fold 455.5 to 495.5 pt), then the large phone. Light theme only: the native app is held to light. Each live frame takes taps: press <b>Make the next tick fail</b>, then tick a box.</p>
+
+<nav aria-label="States">
+  <a href="#">All</a>
+  <a href="#s=today">Today</a>
+  <a href="#s=marked">Marked line</a>
+  <a href="#s=marked-list">Marked line, list open</a>
+  <a href="#s=marked-open">Marked line, open</a>
+  <a href="#s=marked-ax">Marked line, AX5</a>
+  <a href="#s=slip">Returned slip</a>
+  <a href="#s=slip-many">Returned slip, three missed</a>
+  <a href="#s=slip-open">Returned slip, open</a>
+  <a href="#s=slip-ax">Returned slip, AX5</a>
+  <a href="#s=phone">Large phone</a>
+  <a href="#s=retried">After Tick again</a>
+</nav>
+<div class="demo" aria-label="Demo controls">
+  <button type="button" id="failNext" aria-pressed="false">Make the next tick fail</button>
+  <button type="button" id="failAll" aria-pressed="false">Every tick fails</button>
+  <button type="button" data-hide="marked">Hide Marked line</button>
+  <button type="button" data-hide="slip">Hide Returned slip</button>
+  <button type="button" id="tagsBtn">Hide tags</button>
+  <span class="hint">Demo only: a failed save is forced. The app's save is local; see the notes, item 9.</span>
+</div>
+
+<!-- ================= TODAY ================= -->
+<section data-opt="today">
+<h2>Today</h2>
+<p class="lede">On Packages, a failed save shows a footnote bar in the system font on material at the bottom (<code>PackagesView.swift</code>, overlay <code>checkin-error</code>). It names no card. The masthead slot says "couldn’t save", but the masthead has scrolled away. The next good tick on any card clears the bar (<code>PackagesModel.checkIn</code>, <code>checkInError = nil</code>), so in a fast run the only sign lasts one tap. Try it: fail one tick, then tick another card.</p>
+<figure data-state="today">
+  <div class="fit"><div class="dev folded live" data-device="iphone-duo-folded" data-concept="today" data-tab="Packages" data-preset="k2"></div></div>
+  <figcaption><b>Today, folded.</b> Packages, scrolled. "Path to Exile" did not save; the line looks untouched. Tick another card and the bar goes. <span class="feel" data-feel>no haptic today</span></figcaption>
+  <ul class="tags"><li>The line that failed looks like a line not yet ticked.</li><li>The bar's text is the system's <code>localizedDescription</code> (debt note of 2026-10-29), shown here as a sample.</li><li>A tap on the stamped toggle clears it too (debt <code>stamped-toggle-clears-error</code>).</li></ul>
+</figure>
+<figure data-state="today">
+  <div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-hand="today"></div></div>
+  <figcaption><b>Today, open: Card in Hand.</b> <code>hand-checkin-error</code> lies over the top of the envelope page, on the pinned sender head, until a good line tick (<code>HandScreen.swift</code>, overlay at top). It names no card, and it covers the first lines on a scrolled page (debt note of 2026-10-29).</figcaption>
+</figure>
+</section>
+
+<!-- ================= MARKED LINE ================= -->
+<section data-opt="marked">
+<h2>Marked line</h2>
+<p class="lede">The quiet concept. The line that failed stays marked until that same line saves: red fill, a red box with "!", and a red bar in the line's leading pad. A good tick on another card does not clear it. The running head, which stays pinned while the list scrolls, holds a count, "1 not saved". A tap on the count opens the list of missed cards, each with Tick again. To redo in place, tap the red box again: it is the same tap that failed. An error haptic marks each miss, so a person who is not looking still feels it.</p>
+<figure data-state="marked">
+  <div class="fit"><div class="dev folded live" id="focus-marked" data-device="iphone-duo-folded" data-concept="marked" data-tab="Packages" data-preset="k2"></div></div>
+  <figcaption><b>Marked line, folded.</b> "Path to Exile" did not save. Tick other cards: the mark stays. Tap its box again to redo it. <span class="feel" data-feel>haptic: error</span></figcaption>
+  <ul class="tags"><li>No text moves and no frame grows: the mark is fill, box stroke and a 3 pt bar in today's 4 pt pad (the pattern of the accent bar in <code>duo-hand-gaps.html</code>).</li><li>The count sits in a reserved slot in the running head, so the figure beside it never moves.</li></ul>
+</figure>
+<figure data-state="marked-list">
+  <div class="fit"><div class="dev folded live" data-device="iphone-duo-folded" data-concept="marked" data-tab="Packages" data-preset="k2,k5" data-panel="1"></div></div>
+  <figcaption><b>Marked line, list open.</b> The count opens a paper panel under the running head. Each missed card has Tick again, with no scroll. The system's own reason is in a closed "What the phone said" disclosure, not on the bar.</figcaption>
+</figure>
+<figure data-state="marked-open">
+  <div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-hand="marked"></div></div>
+  <figcaption><b>Marked line, open: Card in Hand.</b> The marked line on the envelope page, and the count at the top right of the pinned head. The top banner goes, so no line is covered. Keys up, panel from y 405.</figcaption>
+</figure>
+<figure data-state="marked-ax">
+  <div class="fit"><div class="dev folded ax live" data-device="iphone-duo-folded" data-concept="marked" data-tab="Packages" data-preset="k2" data-ax="1"></div></div>
+  <figcaption><b>Marked line, folded, largest accessibility text (AX5).</b> Line text at full size (body 53 pt, so Cochin 14 grows to about 44). The count is capped at xxxLarge, as the Post bar is (item 104 a), and the mark still needs no words to read.</figcaption>
+</figure>
+</section>
+
+<!-- ================= RETURNED SLIP ================= -->
+<section data-opt="slip">
+<h2>Returned slip</h2>
+<p class="lede">The bold concept. A miss is returned mail. The failed tick is written in red and drains from the box, and a slip lands above the tab bar, in the thumb's reach. The slip names the card and its seller, and holds Tick again. It stays while any tick is not saved; a good tick on another card leaves it. Tick again redoes the named card where it is, so the list and its scroll do not move. With more than one miss, the slip names the newest and counts the rest; a tap on its words opens the list. The line keeps the same mark as in Marked line.</p>
+<figure data-state="slip">
+  <div class="fit"><div class="dev folded live" id="focus-slip" data-device="iphone-duo-folded" data-concept="slip" data-tab="Packages" data-preset="k2"></div></div>
+  <figcaption><b>Returned slip, folded.</b> Press Tick again: the line saves, the slip goes. <span class="feel" data-feel>haptic: error</span></figcaption>
+  <ul class="tags"><li>The slip lies over the list, and the list gets the slip's height as a bottom scroll margin, so the last line can still scroll clear.</li><li>For 400 ms after it lands, the slip takes no tap, so a finger already on its way to the line under it is not caught (unmeasured).</li></ul>
+</figure>
+<figure data-state="slip-many">
+  <div class="fit"><div class="dev folded live" data-device="iphone-duo-folded" data-concept="slip" data-tab="Packages" data-preset="k1,k3,k5"></div></div>
+  <figcaption><b>Returned slip, three missed.</b> The newest miss is named. "and 2 more" opens the same list as Marked line.</figcaption>
+</figure>
+<figure data-state="slip-open">
+  <div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-hand="slip"></div></div>
+  <figcaption><b>Returned slip, open: Card in Hand.</b> The slip sits on the envelope page, just above the keys, where the Post bar sits when it shows. With a Post offer up, the slip stacks above the 53 pt bar. Nothing crosses the fold.</figcaption>
+  <ul class="tags"><li>With keys up, the lines get y 114 to 341 instead of 114 to 405: about 3.5 lines, not 4.5.</li></ul>
+</figure>
+<figure data-state="slip-ax">
+  <div class="fit"><div class="dev folded ax live" data-device="iphone-duo-folded" data-concept="slip" data-tab="Packages" data-preset="k2" data-ax="1"></div></div>
+  <figcaption><b>Returned slip, folded, AX5.</b> The slip text is capped at xxxLarge (body 23, footnote 19) and Tick again offers the large content viewer, as the Post bar does (item 104 a). The stamp drops out at accessibility sizes.</figcaption>
+</figure>
+</section>
+
+<!-- ================= PHONE ================= -->
+<section data-opt="phone">
+<h2>Large phone</h2>
+<p class="lede">No size is written for the large phone (<code>layout.py devices</code> gives none; Apple's layout page of 2026-11-21 holds no device table). Each frame is drawn at the brief's folded size, 466 x 678 pt, as a stand-in. A taller screen shows more lines; the parts do not change.</p>
+<figure data-state="phone" data-opt="marked">
+  <div class="fit"><div class="dev phone live" data-device="iphone-regular" data-concept="marked" data-tab="Packages" data-preset="k4"></div></div>
+  <figcaption><b>Marked line, large phone.</b></figcaption>
+</figure>
+<figure data-state="phone" data-opt="slip">
+  <div class="fit"><div class="dev phone live" data-device="iphone-regular" data-concept="slip" data-tab="Packages" data-preset="k4"></div></div>
+  <figcaption><b>Returned slip, large phone.</b></figcaption>
+</figure>
+</section>
+
+<section data-opt="retried">
+<h2>After Tick again</h2>
+<figure data-state="retried">
+  <div class="fit"><div class="dev folded live" data-device="iphone-duo-folded" data-concept="slip" data-tab="Packages" data-preset="" data-done="k0,k1,k2"></div></div>
+  <figcaption><b>Saved.</b> The line is green with its tick, the slip and the count are gone, and the list did not move. Both concepts end in this same state.</figcaption>
+</figure>
+</section>
+</main>
+
+<script>
+// Sample lines. One package; the second card's header shows below.
+const LINES = [
+  { k:'k0', n:'Lightning Bolt', p:'$0.42', d:'Sample Set · NM' },
+  { k:'k1', n:'Brainstorm', p:'$0.25', d:'Sample Set · NM' },
+  { k:'k2', n:'Path to Exile', p:'$0.31', d:'Sample Set · NM' },
+  { k:'k3', n:'Swords to Plowshares', p:'$0.55', d:'Sample Set · LP' },
+  { k:'k4', n:'Ponder', p:'$0.18', d:'Sample Set · NM' },
+  { k:'k5', n:'Preordain', p:'$0.20', d:'Sample Set · NM' },
+  { k:'k6', n:'Counterspell', p:'$0.35', d:'Sample Set · NM' },
+];
+const SELLER = 'Gamma Cards';
+const SAMPLE_REASON = 'Sample: the file couldn’t be saved because there isn’t enough space.';
+const byKey = k => LINES.find(l => l.k === k);
+const tick = '<svg viewBox="0 0 27 27" aria-hidden="true"><path d="M7 14 l4 4 l9 -10"/></svg>';
+const demo = { next:false, all:false };
+
+function lineHTML(l, st) {
+  const cls = st.done.has(l.k) ? 'done' : st.miss.includes(l.k) ? 'miss-line' + (st.justMissed === l.k && st.concept === 'slip' ? ' drain' : '') : '';
+  const label = (st.done.has(l.k) ? 'Undo check in ' : 'Check in ') + l.n;
+  const val = st.miss.includes(l.k) ? 'not saved' : '';
+  return `<div class="line ${cls}"><button class="box" data-k="${l.k}" aria-label="${label}"${val ? ` aria-description="${val}"` : ''}><i>${tick}</i></button>
+    <span class="t"><b>${l.n}<span>${l.p}</span></b><small>${l.d}</small></span></div>`;
+}
+
+function panelHTML(st, top) {
+  const rows = st.miss.slice().reverse().map(k => `<div class="row"><div><b>${byKey(k).n}</b><small>From ${SELLER}</small></div><button class="btn" data-retry="${k}">Tick again</button></div>`).join('');
+  return `<div class="panel" style="${top}" role="dialog" aria-label="Not saved"><div class="ph"><b>Not saved</b><button class="btn quiet" data-close>Close</button></div>${rows}
+    <details><summary>▸ What the phone said</summary><p>${SAMPLE_REASON}</p></details></div>`;
+}
+
+function slipHTML(st, style) {
+  if (!st.miss.length) return '';
+  const k = st.miss[st.miss.length - 1], more = st.miss.length - 1;
+  return `<div class="slip ${st.landed ? 'landed' : ''} tag-new" data-tag="New: Returned slip" style="${style}" role="status">
+    <span class="stamp" aria-hidden="true">RETURNED</span>
+    <div class="w" data-open tabindex="0"><b>${byKey(k).n}</b><small>${more ? `Not saved. ${more} more in the list.` : `From ${SELLER}. Not saved.`}</small></div>
+    <button class="btn" data-retry="${k}">Tick again</button></div>`;
+}
+
+function renderPackages(el) {
+  const st = el._st;
+  const fig = '23 left · $14.20';
+  let headRight = `<span class="fig">${fig}</span>`;
+  if (st.concept === 'marked') {
+    const n = st.miss.length;
+    headRight += `<span class="miss-slot">${n ? `<span class="hit"><span class="miss tag-new" data-tag="New: count" data-open role="button" tabindex="0">${n} not saved</span></span>` : ''}</span>`;
+  }
+  // At AX5 the list is drawn scrolled so the missed line sits under the running head.
+  const ax = el.classList.contains('ax');
+  const lines = LINES.slice(ax ? 2 : 0).map(l => lineHTML(l, st)).join('');
+  const slipBottom = 'bottom:calc(12px + 64px + 8px + var(--sab))';
+  el.innerHTML = `
+    <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+    <div class="rhead"><span class="seal"></span><span class="title">Manifest</span>${headRight}</div>
+    <div class="scroll">
+      <div class="pkg">${ax ? '' : `<div class="hd"><span><b>${SELLER}</b><small>ordered 2026-07-01</small></span><span class="pill">7 left · $2.26</span></div>
+        <div class="band"><span>No stamp</span><span>Mark all received</span></div>`}${lines}</div>
+      <div class="pkg"><div class="hd"><span><b>Delta Games</b><small>ordered 2026-07-03</small></span><span class="pill">3 left · $0.94</span></div></div>
+    </div>
+    ${st.concept === 'today' && st.err ? `<div class="today-bar tag-today" data-tag="Today: checkin-error">Could not save the check-in. ${SAMPLE_REASON}</div>` : ''}
+    ${st.concept === 'slip' ? slipHTML(st, slipBottom) : ''}
+    ${st.panel && st.miss.length ? panelHTML(st, `top:calc(var(--sat) + ${el.classList.contains('ax') ? 64 : 46}px)`) : ''}
+    <div class="bar" aria-label="Tabs"><span>Ledger</span><span>Orphaned</span><span>Tally</span><span class="on">Packages</span></div>`;
+}
+
+function press(el, k) {
+  const st = el._st;
+  if (st.blockUntil && Date.now() < st.blockUntil) return; // slip guard: a tap in its first 400 ms is ignored
+  const fails = demo.all || demo.next;
+  if (demo.next) { demo.next = false; syncDemo(); }
+  st.landed = false; st.justMissed = null;
+  if (fails) {
+    st.err = true;
+    if (!st.miss.includes(k)) st.miss.push(k);
+    st.justMissed = k; st.landed = true;
+    if (st.concept === 'slip') st.blockUntil = Date.now() + 400;
+    feel(el);
+  } else {
+    st.done.has(k) ? st.done.delete(k) : st.done.add(k);
+    st.miss = st.miss.filter(x => x !== k);
+    if (st.concept === 'today') st.err = false; // today: any good save clears the one error line, whichever card failed
+    if (!st.miss.length) st.panel = false;
+  }
+  render(el);
+}
+
+function feel(el) {
+  const f = el.closest('figure')?.querySelector('[data-feel]');
+  if (!f || el._st.concept === 'today') return;
+  f.classList.add('on'); setTimeout(() => f.classList.remove('on'), 1200);
+}
+
+// Card in Hand, open pose. Static frames: one failed line on the envelope page.
+function renderHand(el) {
+  const kind = el.dataset.hand;
+  const miss = 'k2';
+  const st = { done:new Set(['k0']), miss: kind === 'today' ? [] : [miss], concept: kind };
+  const lines = LINES.slice(0, 5).map(l => lineHTML(l, st)).join('');
+  const corner = kind === 'marked' ? `<span class="corner hit"><span class="miss tag-new" data-tag="New: count">1 not saved</span></span>` : '';
+  const slip = kind === 'slip' ? slipHTML({ ...st, landed:false }, 'top:auto; bottom:calc(669px - var(--keys-top) + 8px)') : '';
+  el.innerHTML = `
+    <div class="fold"><span>FOLD</span></div>
+    <div class="status"><span>9:41</span><span>●●● 100%</span></div>
+    <div class="page l"><div class="content">
+      <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">41 in · 23 out</span><span class="hit"><span class="mpill">Close</span></span></div>
+      <div class="field">Path to</div>
+      <div class="rowx"><span class="soft">This envelope</span><span class="hit"><span class="mpill">New envelope</span></span></div>
+      <span class="micro">Matches</span>
+      <div class="match" style="font-weight:700;border-left:3px solid var(--accent);padding-left:7px">Path to Exile</div>
+    </div></div>
+    <div class="page r">
+      <div class="head"><span class="micro">It came from</span><span class="who">${SELLER}</span><span class="meta">ordered 2026-07-01</span>${corner}</div>
+      <div class="mid"><div class="lines">${lines}</div></div>
+      ${kind === 'today' ? `<div class="today-top tag-today" data-tag="Today: hand-checkin-error">Could not save the check-in. ${SAMPLE_REASON}</div>` : ''}
+      ${slip}
+    </div>
+    <div class="keys">
+      <div class="krow">${'qwertyuiop'.split('').map(c => `<span class="k">${c}</span>`).join('')}</div>
+      <div class="krow">${'asdfghjkl'.split('').map(c => `<span class="k">${c}</span>`).join('')}</div>
+      <div class="krow">${'zxcvbnm'.split('').map(c => `<span class="k">${c}</span>`).join('')}</div>
+      <div class="krow"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+    </div>`;
+  if (kind === 'today') {
+    // today's failed line is the plain open box: draw it unmarked
+    el.querySelectorAll('.miss-line').forEach(n => n.classList.remove('miss-line'));
+  }
+}
+
+function render(el) { renderPackages(el); }
+
+document.querySelectorAll('.live').forEach(el => {
+  const preset = (el.dataset.preset || '').split(',').filter(Boolean);
+  const done = new Set((el.dataset.done || 'k0').split(',').filter(Boolean));
+  el._st = { concept: el.dataset.concept, done, miss: preset, panel: el.dataset.panel === '1', err: preset.length > 0, landed:false, justMissed:null };
+  if (el._st.concept === 'today') el._st.miss = [];
+  render(el);
+  el.addEventListener('click', e => {
+    const b = e.target.closest('[data-k]'), r = e.target.closest('[data-retry]'), o = e.target.closest('[data-open]'), c = e.target.closest('[data-close]');
+    if (r) { const st = el._st; if (st.blockUntil && Date.now() < st.blockUntil) return; st.blockUntil = 0; press(el, r.dataset.retry); }
+    else if (b) press(el, b.dataset.k);
+    else if (o) { if (el._st.blockUntil && Date.now() < el._st.blockUntil) return; el._st.panel = true; render(el); }
+    else if (c) { el._st.panel = false; render(el); }
+  });
+});
+document.querySelectorAll('[data-hand]').forEach(renderHand);
+
+function syncDemo() {
+  document.getElementById('failNext').setAttribute('aria-pressed', String(demo.next));
+  document.getElementById('failAll').setAttribute('aria-pressed', String(demo.all));
+}
+document.getElementById('failNext').addEventListener('click', () => { demo.next = !demo.next; syncDemo(); });
+document.getElementById('failAll').addEventListener('click', () => { demo.all = !demo.all; syncDemo(); });
+document.getElementById('tagsBtn').addEventListener('click', e => {
+  const off = document.body.classList.toggle('notags'); e.target.textContent = off ? 'Show tags' : 'Hide tags';
+});
+
+// Scale each frame to the page width; the page never scrolls sideways.
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; const s = Math.min(1, w.clientWidth / d.offsetWidth); d.style.zoom = s; });
+}
+// Deep link: #s=<state> shows one state; no hash shows all. A hide button removes one concept.
+const hidden = new Set();
+function route() {
+  const m = location.hash.match(/s=([\w-]+)/), s = m && m[1];
+  document.querySelectorAll('figure').forEach(f => {
+    const opt = f.dataset.opt || f.closest('section').dataset.opt;
+    f.hidden = (s && f.dataset.state !== s) || hidden.has(opt);
+  });
+  document.querySelectorAll('section').forEach(sec => { sec.hidden = hidden.has(sec.dataset.opt) || ![...sec.querySelectorAll('figure')].some(f => !f.hidden); });
+  document.querySelectorAll('nav a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === (location.hash || '#'))));
+  fit();
+}
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide, name = o === 'marked' ? 'Marked line' : 'Returned slip';
+  hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + name; route();
+}));
+addEventListener('hashchange', route); addEventListener('resize', fit); route();
+</script>
+</body>
+</html>
