@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Held card words</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light, so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --manila:#EADBBA; --manilaInk:#695832; --red:#A8443C;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot: unmeasured on the Duo inner screen. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --keys-top: 405px;  /* measurements duo-fold-and-keyboard: the panel draws from about y 405 pt; its frame starts at 449 */
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px 16px calc(env(safe-area-inset-bottom) + 16px); }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0 0 4px; }
+.sub, .lede { margin:0 0 12px; max-width:80ch; }
+.sub { color:var(--inkSoft); }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+nav a, button.hide { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+a:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.part { margin:32px 0; }
+section.part[hidden], section.part.gone { display:none; }
+figure { margin:12px 0 0; }
+figcaption { margin-top:8px; max-width:80ch; }
+figcaption b { font-family:var(--cochin); font-size:18px; }
+.fit { width:100%; overflow:hidden; }
+.words { margin:8px 0 0; padding-left:20px; font-size:14px; max-width:80ch; }
+.words li { margin:2px 0; }
+.words q { font-family:var(--cochin); font-weight:700; }
+
+/* ---- device: iPhone Duo inner screen, open, 951 x 669 pt, 1 CSS px = 1 pt ---- */
+.duo { position:relative; width:951px; height:669px; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden;
+  font-family:-apple-system, system-ui, sans-serif; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:5; }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); }
+.fold span { position:absolute; top:200px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+/* The system keyboard: iOS chrome, not an app colour, so these greys sit outside the tokens. */
+.keys { position:absolute; left:0; right:0; top:var(--keys-top); bottom:0; background:#D2D0D6; z-index:6; padding:8px 6px; }
+.keys .row { display:flex; gap:6px; margin-bottom:8px; justify-content:center; }
+.keys .k { height:42px; flex:0 0 42px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font-size:18px; color:#111; }
+.keys .k.w { flex-basis:300px; font-size:14px; }
+/* The right page's keys: the same panel, clipped to the page, so a focus on the page shows the keys it sits under. */
+.page .keys { z-index:6; }
+
+/* ---- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---- */
+.content { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 16px); display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.r .content { gap:8px; }
+.micro { font:10.5px/13px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); min-height:13px; }
+.who { font-size:22px; line-height:27px; font-weight:700; }
+.meta { font:11px/14px var(--mono); color:var(--inkSoft); min-height:14px; }
+.pill { font:11.5px var(--mono); border:1px solid var(--line); background:var(--card); border-radius:5px; padding:8px 12px; color:var(--ink); white-space:nowrap; }
+.pill.post { font-weight:700; background:var(--accent); border-color:var(--accent); color:var(--card); }
+.hit { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
+.rowx { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; }
+.rowx .soft { color:var(--inkSoft); font-size:14px; }
+.count { font:12px var(--mono); color:var(--inkSoft); }
+.field { height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; gap:8px; font-size:16px; flex:none; }
+.field .typed::after { content:""; display:inline-block; vertical-align:middle; width:2px; height:20px; background:var(--accent); margin-left:1px; }
+.field .typed { flex:1; }
+/* hand-held-chip: manilaInk on manila, mono 12, not a control */
+.chip { font:12px var(--mono); color:var(--manilaInk); background:var(--manila); border-radius:5px; padding:4px 8px; white-space:nowrap; }
+.match { min-height:44px; display:flex; align-items:center; font-size:14px; padding-left:10px; position:relative; }
+.match.on { font-weight:700; } .match.on::after { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
+.notice { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:2px; }
+.notice .micro { color:var(--manilaInk); }
+.notice b { font-size:15px; } .notice small { font-size:12.5px; }
+.offer { min-height:110px; background:color-mix(in srgb, var(--manila) 50%, transparent); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.offer p { margin:0; font-size:13px; line-height:17px; min-height:34px; }
+.lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.line { position:relative; display:flex; gap:8px; min-height:64px; padding-left:4px; border-top:1px solid var(--line); background:var(--card); }
+.line:first-child { border-top:0; }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; }
+.line .box i { width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; display:block; }
+.line .t { flex:1; padding:12px 12px 12px 0; }
+.line .t b { font-size:14px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
+.line .t b span { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.line .t small { font-size:11.5px; color:var(--inkSoft); display:block; margin-top:4px; }
+.line .t small .hold { color:var(--manilaInk); font-weight:700; }
+/* Part 5 of duo-hand-gaps: a line whose card waits on the Suspense line, manila 55% over card */
+.line.held { background:color-mix(in srgb, var(--manila) 55%, var(--card)); }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 11px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:4; white-space:nowrap; letter-spacing:0; text-transform:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+.line[data-tag]::before { top:auto; bottom:2px; }
+.line.tag-new, .line.tag-today { outline-offset:-2px; }
+.tag-left[data-tag]::before { right:auto; left:4px; }
+.tag-below[data-tag]::before { top:auto; bottom:-17px; }
+
+/* folded frame: the outer screen, 466 x 678 pt (duo-fold-and-keyboard, re-measured 2026-11-08), drawn at half size */
+.folded { position:relative; width:233px; height:339px; border:1px solid var(--ink); border-radius:12px; background:var(--paper);
+  padding:calc(env(safe-area-inset-top) + 12px) 12px calc(env(safe-area-inset-bottom) + 12px); font-size:12px; color:var(--inkSoft); }
+.folded b { font-family:var(--cochin); color:var(--ink); font-size:14px; display:block; margin-bottom:4px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No seller, card, date, count or price on this page is real.</div>
+<h1>Held card words</h1>
+<p class="sub">Waiting page item 80, <code>hand-held-words</code>. Card in Hand on the iPhone Duo, open pose, 951 x 669 pt, fold 40 pt at 455.5 pt, keys panel from y 405 pt. Light theme only. Beast Within is held: it was typed, two envelopes share its name, and Mind Stone, typed next, names this envelope. Each option is drawn in its own frame. Decision <code>duo-card-in-hand</code>; the held line is part 5 of <code>docs/design/duo-hand-gaps.html</code>.</p>
+
+<nav aria-label="Options">
+  <a href="#s=keep-both">Keep both words</a>
+  <a href="#s=one-word">One word only: line without words</a>
+  <a href="#s=one-word-no-title">One word only: box without a name</a>
+  <a href="#s=folded">Folded</a>
+  <a href="#">All</a>
+</nav>
+<nav aria-label="Hide options">
+  <button class="hide" type="button" data-hide="keep-both">Hide Keep both words</button>
+  <button class="hide" type="button" data-hide="one-word">Hide One word only: line without words</button>
+  <button class="hide" type="button" data-hide="one-word-no-title">Hide One word only: box without a name</button>
+  <button class="hide" type="button" id="restore">Show hidden options</button>
+</nav>
+
+<section class="part" data-state="folded" data-opt="folded">
+<h2>Folded</h2>
+<figure>
+  <div class="folded" data-device="iphone-duo-folded"><b>Folded: unchanged</b>Card in Hand opens only on two pages side by side.</div>
+  <figcaption><b>Folded.</b> No change. Outer screen 466 x 678 pt, drawn at half size. Card in Hand opens only on two pages (<code>PackagesTab.twoPages</code>), so neither option draws here.</figcaption>
+</figure>
+</section>
+
+<!-- Left page and chrome, drawn once and cloned into each frame. No id lives in a template. -->
+<template id="chrome-keys">
+  <div class="fold"><span>FOLD</span></div>
+  <div class="status"><span>9:41</span><span>100%</span></div>
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div>
+</template>
+<template id="left-top">
+  <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">31 in · 27 out</span><span class="hit"><span class="pill">Close</span></span></div>
+  <div class="field"><span class="typed">Mind St</span><span class="chip tag-today tag-below" data-tag="Today: chip">1 held</span></div>
+  <div class="rowx"><span class="soft">This envelope</span><span class="hit"><span class="pill">New envelope</span></span></div>
+  <span class="micro">Matches</span>
+  <div class="match on">Mind Stone</div>
+</template>
+<template id="right-head">
+  <span class="micro">It came from</span>
+  <span class="who">Brass Lantern TCG</span>
+  <span class="meta">ordered 2026-10-16</span>
+  <div class="offer tag-today" data-tag="Today: offer and Post">
+    <p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+    <span class="hit" style="align-self:flex-start"><span class="pill post">Post 2 cards here, 1 held</span></span>
+  </div>
+</template>
+<template id="other-lines">
+  <div class="line"><span class="box"><i></i></span><span class="t"><b>Chaos Warp<span>$0.42</span></b><small>Commander 2011 · NM</small></span></div>
+  <div class="line"><span class="box"><i></i></span><span class="t"><b>Mind Stone<span>$0.29</span></b><small>Commander Masters · NM</small></span></div>
+</template>
+
+<!-- ================= Keep both words ================= -->
+<section class="part" data-state="keep-both" data-opt="keep-both">
+<h2>Keep both words, fix their roles in the glossary</h2>
+<p class="lede">"Held" names the card's state. "Suspense line" names the place it waits. Both stay on screen. The line says where the card waits, so the tint is never the only sign, and the line still says it when the box sits under the keys.</p>
+<figure>
+  <div class="fit"><div class="duo" id="duo-keep-both" data-device="iphone-duo-unfolded">
+    <div class="page l"><div class="content" data-fill="left-top">
+      <div class="notice tag-today" data-tag="Today: box named Suspense"><span class="micro">Suspense</span><b>Beast Within</b><small>Not checked in.</small></div>
+    </div></div>
+    <div class="page r" id="focus-keep-both"><div class="content" data-fill="right-head">
+      <div class="lines">
+        <div class="line held tag-new" data-tag="New: tint and place words"><span class="box"><i></i></span><span class="t"><b>Beast Within<span>$0.35</span></b><small>Commander Masters · NM · <span class="hold">on the Suspense line</span></small></span></div>
+        <div data-fill="other-lines"></div>
+      </div>
+    </div></div>
+    <div data-fill="chrome-keys"></div>
+  </div></div>
+  <figcaption><b>Keep both words.</b> Words on screen for one held card:
+    <ul class="words">
+      <li>State, "held": the chip <q>1 held</q>, the offer <q>Your held card</q>, the button <q>Post 2 cards here, 1 held</q>. All built today.</li>
+      <li>Place, "Suspense": the box <q>Suspense</q> (built) and the line <q>on the Suspense line</q> (part 5 of the gaps mockup, not built).</li>
+    </ul>
+    The box keeps its built title. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+</section>
+
+<!-- ================= One word only: the line loses its words ================= -->
+<section class="part" data-state="one-word" data-opt="one-word">
+<h2>One word only: the line loses its words</h2>
+<p class="lede">The place word leaves the line. The held line keeps its manila tint and nothing else. The box keeps its name, so "Suspense" shows once, in the box, and "held" stays on the chip, the offer and Post.</p>
+<figure>
+  <div class="fit"><div class="duo" id="duo-one-word" data-device="iphone-duo-unfolded">
+    <div class="page l"><div class="content" data-fill="left-top">
+      <div class="notice tag-today" data-tag="Today: box named Suspense"><span class="micro">Suspense</span><b>Beast Within</b><small>Not checked in.</small></div>
+    </div></div>
+    <div class="page r" id="focus-one-word"><div class="content" data-fill="right-head">
+      <div class="lines">
+        <div class="line held tag-new" data-tag="New: tint only, no words"><span class="box"><i></i></span><span class="t"><b>Beast Within<span>$0.35</span></b><small>Commander Masters · NM</small></span></div>
+        <div data-fill="other-lines"></div>
+      </div>
+    </div></div>
+    <div data-fill="chrome-keys"></div>
+  </div></div>
+  <figcaption><b>Line without words.</b> The tint alone marks the held line. With the box under the keys (large text, two or more matches), the right page says nothing about Beast Within but the offer above it. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+</section>
+
+<!-- ================= One word only: the box loses its name ================= -->
+<section class="part" data-state="one-word-no-title" data-opt="one-word-no-title">
+<h2>One word only: the box loses its name</h2>
+<p class="lede">The other reading of the same option. The line keeps "on the Suspense line". The box drops its "Suspense" title and shows the card and its foot only.</p>
+<figure>
+  <div class="fit"><div class="duo" id="duo-one-word-no-title" data-device="iphone-duo-unfolded">
+    <div class="page l"><div class="content" data-fill="left-top">
+      <div class="notice tag-new" id="focus-one-word-no-title" data-tag="New: no title"><b>Beast Within</b><small>Not checked in.</small></div>
+    </div></div>
+    <div class="page r"><div class="content" data-fill="right-head">
+      <div class="lines">
+        <div class="line held tag-new" data-tag="New: tint and place words"><span class="box"><i></i></span><span class="t"><b>Beast Within<span>$0.35</span></b><small>Commander Masters · NM · <span class="hold">on the Suspense line</span></small></span></div>
+        <div data-fill="other-lines"></div>
+      </div>
+    </div></div>
+    <div data-fill="chrome-keys"></div>
+  </div></div>
+  <figcaption><b>Box without a name.</b> The manila box keeps the held card's name and "Not checked in." with no title above them. Keys panel from y 405, frame from y 449.</figcaption>
+</figure>
+</section>
+</main>
+
+<script>
+// Fill each frame from its templates, so the shared parts are drawn once.
+document.querySelectorAll('[data-fill]').forEach(el => {
+  const t = document.getElementById(el.getAttribute('data-fill')).content.cloneNode(true);
+  el.removeAttribute('data-fill');
+  // A bare wrapper only carried the fill: lift its children into the parent. A content column keeps them at its top.
+  if (el.tagName === 'DIV' && el.attributes.length === 0) el.replaceWith(...t.childNodes); else el.prepend(t);
+});
+// Scale each 951 pt frame to the page width; the page never scrolls sideways.
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; d.style.zoom = Math.min(1, w.clientWidth / 951); });
+}
+// Deep link: #s=<state> shows one state; no hash shows all. A Hide button removes one option.
+const hidden = new Set();
+function route() {
+  const m = location.hash.match(/s=([\w-]+)/), s = m && m[1];
+  document.querySelectorAll('section.part').forEach(p => {
+    p.hidden = !!s && p.dataset.state !== s;
+    p.classList.toggle('gone', hidden.has(p.dataset.opt));
+  });
+  document.querySelectorAll('nav a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === (location.hash || '#'))));
+  fit();
+}
+document.querySelectorAll('[data-hide]').forEach(b => {
+  const name = b.textContent.replace(/^Hide /, '');
+  b.addEventListener('click', () => {
+    const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+    b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + name; route();
+  });
+});
+document.getElementById('restore').addEventListener('click', () => {
+  hidden.clear(); document.querySelectorAll('[data-hide]').forEach(b => { b.textContent = 'Hide ' + b.textContent.replace(/^(Hide|Show) /, ''); }); route();
+});
+addEventListener('hashchange', route); addEventListener('resize', fit); route();
+</script>
+</body>
+</html>
