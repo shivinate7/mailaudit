@@ -272,7 +272,12 @@ body.notags [data-tag] { outline:0; } body.notags [data-tag]::before { display:n
   <p class="sub">What main draws now. A merge lands with no word (debt <code>native-merge-notice-unbuilt</code>). The damaged-load line names a kept copy that nothing opens (<code>native-kept-copy-has-no-route</code>). A Tally check-in leaves Packages on old rows until a Packages check-in or a restart (<code>native-masthead-stale-after-tabs</code>). Native has no 24-hour stale line (<code>SyncPanel.row</code>).</p>
   <div class="bar" data-states="today"></div>
   <div class="bar" data-sims="today"></div>
-  <div class="frames" data-frames="today"></div>
+  <div class="frames" data-frames="today">
+    <figure data-view="folded"><div class="fitbox"><div class="dev folded" data-device="iphone-duo-folded" role="group" aria-label="Today, Duo folded"></div></div><figcaption class="cap-folded"></figcaption></figure>
+    <figure data-view="open"><div class="fitbox"><div class="dev open" data-device="iphone-duo-unfolded" role="group" aria-label="Today, Duo open"></div></div><figcaption class="cap-open"></figcaption></figure>
+    <figure data-view="phone"><div class="fitbox"><div class="dev phone" data-device="iphone-regular" role="group" aria-label="Today, large phone"></div></div><figcaption class="cap-phone"></figcaption></figure>
+    <figure data-view="ax5"><div class="fitbox"><div class="dev folded ax" data-device="iphone-duo-folded-ax5" role="group" aria-label="Today, Duo folded at AX5"></div></div><figcaption class="cap-ax5"></figcaption></figure>
+  </div>
 </section>
 
 <section class="option" data-option="slip" id="opt-slip">
@@ -281,7 +286,12 @@ body.notags [data-tag] { outline:0; } body.notags [data-tag]::before { display:n
   <p class="sub">After a merge that changed something, a green slip under the letterhead says what came in and what was lost, in the bundle's <code>mergeSummary</code> words. <b>Changes</b> lays the changed cards over the list (on the open Duo, on the right page). When the other device's later change won, the panel leads to History, where the copy from before the merge waits with Restore. The kept copy gets a Share control. Packages reads every write. The web's 24-hour stale line comes to native.</p>
   <div class="bar" data-states="slip"></div>
   <div class="bar" data-sims="slip"></div>
-  <div class="frames" data-frames="slip"></div>
+  <div class="frames" data-frames="slip">
+    <figure data-view="folded"><div class="fitbox"><div class="dev folded" data-device="iphone-duo-folded" role="group" aria-label="Slip, Duo folded"></div></div><figcaption class="cap-folded"></figcaption></figure>
+    <figure data-view="open"><div class="fitbox"><div class="dev open" data-device="iphone-duo-unfolded" role="group" aria-label="Slip, Duo open"></div></div><figcaption class="cap-open"></figcaption></figure>
+    <figure data-view="phone"><div class="fitbox"><div class="dev phone" data-device="iphone-regular" role="group" aria-label="Slip, large phone"></div></div><figcaption class="cap-phone"></figcaption></figure>
+    <figure data-view="ax5"><div class="fitbox"><div class="dev folded ax" data-device="iphone-duo-folded-ax5" role="group" aria-label="Slip, Duo folded at AX5"></div></div><figcaption class="cap-ax5"></figcaption></figure>
+  </div>
 </section>
 
 <section class="option" data-option="postmark" id="opt-postmark">
@@ -290,7 +300,12 @@ body.notags [data-tag] { outline:0; } body.notags [data-tag]::before { display:n
   <p class="sub">A postmark beside the seal reads <i>Agreed 2:02 PM</i>. It stays on every working view, so the answer to the question is always one glance away. When a merge changed something, the postmark lands again with a count. A tap opens the Docket: each merge, the cards it changed, who won each clash, and Restore for the copy from before. After 24 hours with no agreement the postmark turns manila. Kept copies sit at the foot of the Docket.</p>
   <div class="bar" data-states="postmark"></div>
   <div class="bar" data-sims="postmark"></div>
-  <div class="frames" data-frames="postmark"></div>
+  <div class="frames" data-frames="postmark">
+    <figure data-view="folded"><div class="fitbox"><div class="dev folded" data-device="iphone-duo-folded" role="group" aria-label="Postmark, Duo folded"></div></div><figcaption class="cap-folded"></figcaption></figure>
+    <figure data-view="open"><div class="fitbox"><div class="dev open" data-device="iphone-duo-unfolded" role="group" aria-label="Postmark, Duo open"></div></div><figcaption class="cap-open"></figcaption></figure>
+    <figure data-view="phone"><div class="fitbox"><div class="dev phone" data-device="iphone-regular" role="group" aria-label="Postmark, large phone"></div></div><figcaption class="cap-phone"></figcaption></figure>
+    <figure data-view="ax5"><div class="fitbox"><div class="dev folded ax" data-device="iphone-duo-folded-ax5" role="group" aria-label="Postmark, Duo folded at AX5"></div></div><figcaption class="cap-ax5"></figcaption></figure>
+  </div>
 </section>
 </main>
 
@@ -374,7 +389,7 @@ function preset(c, s) {
     case "share": st.kept = true; st.share = true; if (c === "postmark") st.docket = true; break;
     case "stale": st.stale = true; break;
     case "sync": st.stale = true; st.tab = "ledger"; st.sync = true; break;
-    case "tally": st.tab = "packages"; st.rec.lbB = 1; st.flash = "lbB"; if (c === "today") st.pkgRec = { ...START }; else st.pkgRec = { ...st.rec }; break;
+    case "tally": st.tab = "packages"; st.rec.lbB = 1; st.flash = "lbB"; st.scrollTo = true; if (c === "today") st.pkgRec = { ...START }; else st.pkgRec = { ...st.rec }; break;
   }
   st.lands = false;
   return st;
@@ -487,7 +502,7 @@ function pkgCards(st, c, from, to) {
     const h = its.reduce((a, t) => a + Math.min(rec[t.k] || 0, t.qty), 0), n = its.reduce((a, t) => a + t.qty, 0);
     const lines = its.map((t) => {
       const r = rec[t.k] || 0, cls = r >= t.qty ? "full" : r > 0 ? "part" : "";
-      return `<button class="it ${cls} ${st.flash === t.k ? "flash" : ""}" data-act="pkg-check" data-k="${t.k}" aria-label="${esc(t.name)}, ${r} of ${t.qty} received">
+      return `<button class="it ${cls} ${st.flash === t.k && c !== "today" ? "flash" : ""}" data-act="pkg-check" data-k="${t.k}" aria-label="${esc(t.name)}, ${r} of ${t.qty} received">
         <span class="box"><i></i></span><span class="t"><b>${esc(t.name)}<span>${r}/${t.qty} · ${money(t.price)}</span></b><small>${esc(t.set)}</small></span></button>`;
     }).join("");
     const stale = c === "today" && st.tab === "packages" && JSON.stringify(st.pkgRec) !== JSON.stringify(st.rec) && i === 2;
@@ -665,21 +680,22 @@ function render(f) {
   f.el.innerHTML = f.d === "open" ? renderOpen(f) : f.d === "ax5" ? renderAx(f) : renderSingle(f);
   const top = f.el.querySelector(".slip");
   if (top) f.el.style.setProperty("--panel-top", top.offsetTop + top.offsetHeight + 28 + "px");
+  // A deep link opens with the changed card in view. A tap never scrolls: the list holds still under the thumb.
+  if (f.st.scrollTo) {
+    const tgt = f.el.querySelector(".pkg.tag-today, .it.flash");
+    const sc = tgt && tgt.closest(".scroll");
+    if (sc) sc.scrollTop = tgt.closest(".pkg").offsetTop - 96;
+    f.st.scrollTo = false;
+  }
   f.st.lands = false; f.st.flash = null;
 }
 function build() {
   ["today", "slip", "postmark"].forEach((c) => {
     const host = document.querySelector(`[data-frames="${c}"]`);
     DEVICES.forEach((dv) => {
-      const fig = document.createElement("figure");
-      fig.dataset.device = dv.d;
-      const box = document.createElement("div"); box.className = "fitbox";
-      const el = document.createElement("div");
-      el.className = "dev " + dv.cls; el.dataset.device = dv.data; el.setAttribute("role", "group");
-      el.setAttribute("aria-label", `${c} — ${dv.d}`);
-      box.appendChild(el); fig.appendChild(box);
-      const cap = document.createElement("figcaption"); cap.innerHTML = dv.cap; fig.appendChild(cap);
-      host.appendChild(fig);
+      const fig = host.querySelector(`figure[data-view="${dv.d}"]`);
+      const box = fig.querySelector(".fitbox"), el = fig.querySelector(".dev");
+      fig.querySelector("figcaption").innerHTML = dv.cap;
       const f = { c, d: dv.d, el, box, w: dv.w, h: dv.h, st: fresh(), focusId: dv.d === "folded" ? (c === "slip" ? "slip-notice" : c === "postmark" ? "postmark" : "") : "" };
       el.dataset.idx = frames.length; frames.push(f);
     });
@@ -783,7 +799,7 @@ function apply() {
     const k = sec.dataset.option;
     sec.hidden = hidden.has(k) || (q.c !== "all" && q.c !== k);
   });
-  document.querySelectorAll(".frames figure").forEach((fig) => { fig.hidden = q.d !== "all" && fig.dataset.device !== q.d; });
+  document.querySelectorAll(".frames figure").forEach((fig) => { fig.hidden = q.d !== "all" && fig.dataset.view !== q.d; });
   document.querySelectorAll("[data-c]").forEach((a) => a.tagName === "A" && a.setAttribute("aria-current", String(a.dataset.c === q.c)));
   document.querySelectorAll("[data-d]").forEach((a) => a.setAttribute("aria-current", String(a.dataset.d === q.d)));
   document.querySelectorAll("[data-s]").forEach((a) => a.setAttribute("aria-current", String(a.dataset.s === `${q.c}:${q.s}`)));

@@ -1,0 +1,664 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Record Envelope Thumb</title>
+<style>
+/* Tokens: shared/tokens.json (decision design-parchment-ledger). Light is the native app's only theme;
+   the dark set is the web's. 1 CSS px = 1 pt inside each device frame. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --shadow:rgba(28,43,36,0.06);
+  /* The system keyboard is iOS chrome, not an app colour, so its greys sit outside the tokens. */
+  --kb:#D2D0D6; --kbKey:#FFFFFF; --kbInk:#111111; --kbMod:#ADB0B8;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sat: max(env(safe-area-inset-top), 20px); /* status bar foot: unmeasured; the 20 pt UI-test floor */
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+    --green:#6DBB98; --red:#E3857B; --redSoft:#3A2426; --manila:#3A3122; --manilaInk:#E2CB96;
+    --kb:#2B2B2E; --kbKey:#5A5A5E; --kbInk:#F2F2F2; --kbMod:#3E3E42; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+  --green:#6DBB98; --red:#E3857B; --redSoft:#3A2426; --manila:#3A3122; --manilaInk:#E2CB96;
+  --kb:#2B2B2E; --kbKey:#5A5A5E; --kbInk:#F2F2F2; --kbMod:#3E3E42; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+}
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { background:var(--paper); color:var(--ink); font:15px/1.45 -apple-system, system-ui, sans-serif; overflow-x:hidden; }
+main { max-width:1080px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
+.kind { margin:0; color:var(--inkSoft); }
+.kind b { color:var(--ink); }
+.lede { margin:0; max-width:68ch; }
+.ctl { display:flex; flex-direction:column; gap:8px; }
+.ctl .grp { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ctl .grp > span { font-size:13px; color:var(--inkSoft); min-width:64px; }
+.ctl a, .ctl button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl a[aria-current="true"], .ctl button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl a:focus-visible, .ctl button:focus-visible, .dev [data-act]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { border-top:1px solid var(--line); padding-top:16px; display:flex; flex-direction:column; gap:12px; }
+section.concept[hidden] { display:none; }
+.chead { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:baseline; justify-content:space-between; }
+.chead h2 { font-family:var(--cochin); font-size:24px; margin:0; }
+.chead p { margin:0; max-width:70ch; }
+.frames { display:flex; flex-wrap:wrap; gap:24px 16px; align-items:flex-start; }
+.fcell { display:flex; flex-direction:column; gap:8px; max-width:100%; }
+.fcell[hidden] { display:none; }
+.fcell .cap { font-size:13px; color:var(--inkSoft); max-width:60ch; }
+.fcell .cap b { color:var(--ink); font-weight:600; }
+.fit { position:relative; overflow:hidden; }
+.fit > .dev { transform-origin:0 0; position:absolute; left:0; top:0; }
+.hidebtn { font:inherit; font-size:14px; min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer; }
+ul.tags { margin:0; padding-left:20px; font-size:14px; color:var(--inkSoft); max-width:80ch; }
+ul.tags li + li { margin-top:4px; }
+
+/* ---------------- device frame ---------------- */
+.dev { background:var(--paper); border:1px solid var(--ink); border-radius:14px; overflow:hidden; font-family:-apple-system, system-ui, sans-serif;
+  --m:1; --mc:1; color:var(--ink); }
+.dev.ax { --m:3.1176; --mc:1.3529; } /* AX5 body 53 / 17; capped at xxxLarge body 23 / 17 (HIG typography, read 2026-11-21) */
+.sb { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center; padding:0 16px;
+  font-size:12px; font-weight:600; z-index:9; }
+.page { position:absolute; display:flex; flex-direction:column; overflow:hidden; }
+.fold { position:absolute; top:0; bottom:0; background:color-mix(in srgb, var(--line) 50%, transparent); z-index:10; }
+.fold span { position:absolute; top:180px; left:50%; transform:translateX(-50%) rotate(-90deg); white-space:nowrap; font:10.5px var(--mono); color:var(--inkSoft); }
+.tabbar { position:absolute; display:flex; align-items:center; justify-content:center; z-index:3; padding:0 24px; }
+.tabbar .cap { display:flex; width:100%; max-width:480px; height:64px; padding:4px; border:1px solid var(--line); border-radius:999px;
+  background:color-mix(in srgb, var(--paper) 70%, transparent); backdrop-filter:blur(18px) saturate(1.8); -webkit-backdrop-filter:blur(18px) saturate(1.8);
+  box-shadow:0 8px 24px var(--shadow); }
+.tabbar .t { flex:1; min-width:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border-radius:999px;
+  font:10px var(--mono); letter-spacing:.09em; text-transform:uppercase; }
+.tabbar .t i { width:20px; height:16px; border:1.6px solid currentColor; border-radius:4px; display:block; }
+.tabbar .t.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); box-shadow:inset 0 0 0 1px var(--line); }
+.keys { position:absolute; left:0; right:0; bottom:0; background:var(--kb); z-index:8; padding:8px 4px 0; display:flex; flex-direction:column; gap:10px; }
+.keys .kr { display:flex; gap:6px; justify-content:center; }
+.keys button { all:unset; box-sizing:border-box; height:42px; flex:0 1 38px; background:var(--kbKey); color:var(--kbInk); border-radius:8px; display:grid; place-items:center;
+  font:18px -apple-system, system-ui, sans-serif; cursor:pointer; box-shadow:0 1px 0 rgba(0,0,0,.25); }
+.keys button.mod { background:var(--kbMod); font-size:14px; flex-basis:52px; }
+.keys button.sp { flex:1 1 auto; max-width:220px; font-size:14px; }
+.keys .knote { position:absolute; right:8px; bottom:6px; font:10px var(--mono); color:var(--kbInk); opacity:.7; }
+
+/* ---------------- app content (Cochin sets words, Menlo sets numbers) ---------------- */
+.w { font-family:var(--cochin); }
+.num { font-family:var(--mono); }
+.kick { font:calc(11px * var(--mc)) / 1.2 var(--mono); letter-spacing:.14em; text-transform:uppercase; color:var(--inkSoft); }
+.btn { all:unset; box-sizing:border-box; cursor:pointer; min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center;
+  padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink);
+  font:calc(12px * var(--mc)) / 1.15 var(--mono); text-align:center; }
+.btn.save { background:var(--ink); color:var(--card); border-color:var(--ink); font-weight:700; }
+.btn.save[aria-disabled="true"] { background:var(--card); color:var(--inkSoft); border-color:var(--line); font-weight:400; cursor:default; }
+.btn.throw { color:var(--red); border-color:var(--redSoft); }
+.btn.lit { background:var(--red); color:var(--card); border-color:var(--red); font-weight:700; }
+.btn.keep { font-weight:700; }
+.btn.confirm { background:var(--red); color:var(--card); border-color:var(--red); font-weight:700; }
+.lines { flex:1 1 auto; overflow:auto; overscroll-behavior:contain; touch-action:pan-y; display:flex; flex-direction:column; }
+.line { display:flex; align-items:center; gap:8px; padding:4px 0 4px 16px; border-bottom:1px solid var(--line); min-height:52px; flex-wrap:wrap; }
+.line .nm { flex:1 1 140px; font:calc(14px * var(--m)) / 1.2 var(--cochin); overflow-wrap:anywhere; }
+.line .st { display:flex; align-items:center; }
+.line .st button { all:unset; cursor:pointer; width:44px; height:44px; display:grid; place-items:center; font:calc(15px * var(--mc)) var(--mono); color:var(--ink); }
+.line .st b { font:calc(13px * var(--m)) var(--mono); min-width:20px; text-align:center; font-weight:400; }
+.line.fresh { background:color-mix(in srgb, var(--accent) 7%, var(--card)); }
+.empty { padding:16px; font:calc(14px * var(--m)) / 1.35 var(--cochin); color:var(--inkSoft); }
+.extra { padding:12px 16px; display:flex; flex-direction:column; gap:8px; }
+.ifield { min-height:44px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:8px 12px; display:flex; align-items:center;
+  font:calc(16px * var(--m)) / 1.2 var(--cochin); color:var(--ink); cursor:text; overflow-wrap:anywhere; }
+.ifield .ph { color:var(--inkSoft); }
+.ifield.focus { border-color:var(--accent); }
+.ifield.focus::after { content:""; flex:0 0 2px; height:1.1em; background:var(--accent); margin-left:1px; animation:blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity:0; } }
+@media (prefers-reduced-motion: reduce) { .ifield.focus::after { animation:none; } }
+.sugg { display:flex; flex-direction:column; background:var(--paper); border:1px solid var(--line); border-radius:8px; overflow:hidden; box-shadow:0 -4px 12px var(--shadow); }
+.sugg button { all:unset; box-sizing:border-box; cursor:pointer; display:flex; align-items:center; gap:8px; min-height:44px; padding:6px 12px 6px 16px;
+  border-top:1px solid var(--line); position:relative; background:var(--card); }
+.sugg button:first-child { border-top:0; }
+.sugg button .nm { flex:1; font:calc(14px * var(--m)) / 1.2 var(--cochin); color:var(--inkSoft); overflow-wrap:anywhere; }
+.sugg button .ct { font:calc(10.5px * var(--mc)) var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.sugg.live button .nm { color:var(--ink); }
+.sugg button.tapped .nm { color:var(--ink); font-weight:700; }
+.sugg button.tapped::before { content:""; position:absolute; left:4px; top:8px; bottom:8px; width:4px; border-radius:2px; background:var(--accent); }
+.sugg button.typed { background:var(--manila); }
+.sugg button.typed .nm { color:var(--manilaInk); font-size:calc(13px * var(--m)); }
+.receipt { display:flex; align-items:center; gap:8px; min-height:44px; padding:0 16px; font:calc(12px * var(--mc)) var(--mono); }
+.receipt.gone { color:var(--red); }
+.receipt.ok { color:var(--green); }
+
+/* masthead (closed state) */
+.mast { padding:12px 16px 8px; border-bottom:1px solid var(--line); display:flex; align-items:baseline; justify-content:space-between; gap:8px; }
+.mast b { font:700 calc(18px * var(--mc)) var(--cochin); letter-spacing:.18em; }
+.pile { flex:1; overflow:auto; padding:12px 16px; display:flex; flex-direction:column; gap:12px; }
+.env { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); position:relative; }
+.env .eh { display:flex; align-items:center; gap:8px; padding:8px 8px 8px 12px; flex-wrap:wrap; }
+.env .eh .kick { flex:1 1 160px; }
+.env .eh .btn { min-height:44px; font-size:calc(11px * var(--mc)); padding:0 8px; }
+.env .eb { padding:0 12px 12px; font:calc(13.5px * var(--m)) / 1.3 var(--cochin); }
+.env .eb small { display:block; font:calc(11px * var(--m)) var(--mono); color:var(--inkSoft); margin-top:4px; }
+.env .ask { position:absolute; right:8px; top:calc(100% - 8px); z-index:4; display:flex; gap:4px; padding:4px; background:var(--paper); border:1px solid var(--redSoft);
+  border-radius:8px; box-shadow:0 2px 6px var(--shadow); flex-wrap:wrap; justify-content:flex-end; }
+
+/* ---------------- concept: Thumb dock ---------------- */
+.dhead { flex:0 0 auto; display:flex; align-items:center; gap:12px; padding:8px 16px; min-height:56px; border-bottom:1px solid var(--ink);
+  background:var(--paper); }
+.dhead .glyph { flex:0 0 auto; width:28px; height:20px; border:1.5px solid var(--ink); border-radius:3px; position:relative; overflow:hidden; }
+.dhead .glyph::before { content:""; position:absolute; left:-2px; right:-2px; top:-12px; height:22px; border:1.5px solid var(--ink); transform:rotate(0deg);
+  clip-path:polygon(0 0, 100% 0, 50% 100%); background:var(--paper); }
+.dhead .id { flex:1; min-width:0; display:flex; flex-direction:column; }
+.dhead .id strong { font:700 calc(19px * var(--mc)) / 1.15 var(--cochin); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dhead .cnt { font:calc(13px * var(--mc)) var(--mono); white-space:nowrap; padding:4px 8px; border-radius:8px; background:var(--card); border:1px solid var(--line); }
+.dhead .cnt.ready { border-color:var(--green); color:var(--green); }
+.dock { flex:0 0 auto; position:relative; display:flex; flex-direction:column; gap:8px; padding:8px 16px 0; background:var(--paper); }
+/* The matches overlay the lines inside the middle band only, so at any text size they stop under the head. */
+.mid { flex:1 1 auto; min-height:0; position:relative; display:flex; flex-direction:column; }
+.mid .sugg { position:absolute; left:16px; right:16px; bottom:0; max-height:calc(100% - 8px); overflow:auto; z-index:5; }
+.strip { flex:0 0 53px; display:flex; align-items:center; gap:8px; padding:4px 16px; border-top:1px solid var(--line); background:var(--paper); position:relative; }
+.dev.ax .strip { flex-basis:auto; }
+.strip .btn.save { flex:1 1 auto; }
+.strip.left { flex-direction:row-reverse; }
+.raise { position:absolute; left:16px; right:16px; bottom:calc(100% + 4px); z-index:6; display:flex; flex-direction:column; gap:8px; padding:8px;
+  background:var(--paper); border:1px solid var(--redSoft); border-radius:8px; box-shadow:0 -4px 12px var(--shadow); }
+.raise p { margin:0; font:calc(13px * var(--mc)) / 1.3 var(--cochin); }
+.raise .btn { width:100%; }
+.fab { flex:0 0 auto; padding:8px 16px; display:flex; flex-direction:column; gap:4px; }
+.fab .btn { width:100%; min-height:52px; font:700 calc(15px * var(--mc)) var(--cochin); background:var(--ink); color:var(--card); border-color:var(--ink); flex-direction:column; gap:2px; }
+.fab .btn small { font:400 calc(10.5px * var(--mc)) var(--mono); opacity:.85; }
+
+/* ---------------- concept: Pinned head ---------------- */
+.rhead { flex:0 0 auto; display:flex; align-items:baseline; gap:8px; padding:10px 16px 8px; border-bottom:1px solid var(--line);
+  background:color-mix(in srgb, var(--paper) 92%, transparent); }
+.rhead strong { font:700 calc(17px * var(--mc)) / 1.2 var(--cochin); flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.rhead .kick { white-space:nowrap; }
+.pscroll { flex:1 1 auto; overflow:auto; overscroll-behavior:contain; padding:12px 16px; display:flex; flex-direction:column; gap:8px; touch-action:pan-y; }
+.pcard { background:var(--card); border:1px solid var(--ink); border-radius:8px; overflow:clip; display:flex; flex-direction:column; }
+.pcard .ifield { margin:12px; }
+.pcard .line { padding-left:12px; }
+.band { flex:0 0 auto; display:flex; flex-direction:column; border-top:1px solid var(--line);
+  background:color-mix(in srgb, var(--paper) 78%, transparent); backdrop-filter:blur(18px) saturate(1.6); -webkit-backdrop-filter:blur(18px) saturate(1.6); }
+.shelf { display:flex; gap:8px; overflow-x:auto; padding:8px 16px 4px; scrollbar-width:none; min-height:56px; align-items:center; }
+.shelf::-webkit-scrollbar { display:none; }
+.chip { all:unset; box-sizing:border-box; cursor:pointer; flex:0 0 auto; min-height:44px; padding:4px 12px; border:1px solid var(--line); border-radius:999px;
+  background:var(--card); display:flex; flex-direction:column; justify-content:center; position:relative; max-width:220px; }
+.chip .nm { font:calc(14px * var(--mc)) / 1.15 var(--cochin); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.chip .ct { font:calc(10px * var(--mc)) var(--mono); color:var(--inkSoft); }
+.chip.tapped { border-color:var(--accent); box-shadow:inset 0 0 0 1px var(--accent); }
+.chip.tapped .nm { font-weight:700; }
+.chip.typed { background:var(--manila); border-color:var(--manila); color:var(--manilaInk); }
+.chip.typed .ct { color:var(--manilaInk); }
+.shelf .hint { font:calc(12px * var(--mc)) / 1.3 var(--cochin); color:var(--inkSoft); }
+.bar { display:grid; grid-template-columns:auto auto 1fr 1.3fr; gap:8px; padding:4px 16px 8px; align-items:center; }
+.bar .num { font-size:calc(12px * var(--mc)); white-space:nowrap; }
+.bar.armed .confirm { grid-column:1 / span 2; }
+.dev.ax .bar { grid-template-columns:1fr 1fr; }
+.dev.ax .bar .num { grid-column:1 / -1; }
+.dev.ax .bar.armed .confirm { grid-column:1 / -1; }
+.pill { flex:0 0 auto; margin:8px 16px; }
+
+/* ---------------- today ---------------- */
+.tcard { margin:0 16px; background:var(--card); border:1px solid var(--ink); border-radius:8px; display:flex; flex-direction:column; }
+.tfoot { display:flex; align-items:center; gap:8px; padding:12px; flex-wrap:wrap; }
+.tfoot .num { flex:1; font-size:11px; color:var(--inkSoft); }
+
+/* ---------------- tags: dashed outline on what exists today, and on what a concept adds ---------------- */
+[data-tag] { position:relative; }
+.tagged [data-tag]::after { content:attr(data-tag); position:absolute; right:6px; top:2px; font:600 10.5px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:12; white-space:nowrap; pointer-events:none; }
+.tagged .tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .tagged .tag-new::after { color:var(--new); }
+.tagged .tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .tagged .tag-today::after { color:var(--today); }
+.guide { position:absolute; left:0; right:0; height:0; border-top:1px dashed var(--accent); z-index:11; pointer-events:none; }
+.guide span { position:absolute; right:8px; top:-15px; font:10.5px var(--mono); color:var(--accent); background:var(--paper); padding:0 3px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner" role="note">Sample. No card, count, date, seller or note on this page is real. Heights marked unmeasured are drawn, not read from a device.</div>
+<h1>Record an envelope with one thumb</h1>
+<p class="kind">Designer kind: <b>directed</b>. Direction: <b>one-handed thumb zone: every action sits in thumb reach, header always visible</b>.</p>
+<p class="lede">"I keep losing the envelope I'm in." Each concept below keeps the envelope's head on screen in every state, and moves every press (match, Save, throw away, Cancel) to the bottom band above the keys. Every frame is live: type on the drawn keys, tap a match, step a count, drag the list to hide the keys, arm and confirm a throw-away, then record again to see that nothing came back.</p>
+
+<div class="ctl" aria-label="Page controls">
+  <div class="grp" id="nav-state"><span>State</span>
+    <a href="#s=empty" data-s="empty">Empty</a>
+    <a href="#s=typing" data-s="typing">Typing</a>
+    <a href="#s=ready" data-s="ready">Ready</a>
+    <a href="#s=armed" data-s="armed">Throw-away armed</a>
+    <a href="#s=thrown" data-s="thrown">Thrown away</a>
+    <a href="#s=keysdown" data-s="keysdown">Keys hidden</a>
+    <a href="#s=edit" data-s="edit">Editing a saved one</a>
+    <a href="#s=saved" data-s="saved">Saved</a>
+    <a href="#s=discard" data-s="discard">Discard a saved one</a>
+  </div>
+  <div class="grp" id="nav-dev"><span>Device</span>
+    <button type="button" data-d="all">All</button>
+    <button type="button" data-d="folded">Duo folded</button>
+    <button type="button" data-d="ax">Folded, largest text</button>
+    <button type="button" data-d="open">Duo open</button>
+    <button type="button" data-d="phone">Large phone</button>
+  </div>
+  <div class="grp"><span>Hand</span>
+    <button type="button" data-h="right">Right thumb</button>
+    <button type="button" data-h="left">Left thumb</button>
+    <span>Theme</span>
+    <button type="button" data-t="light">Light</button>
+    <button type="button" data-t="dark">Dark (web)</button>
+    <button type="button" id="tagsbtn" aria-pressed="true">Today/New tags</button>
+  </div>
+  <div class="grp" id="nav-concepts"><span>Concepts</span></div>
+</div>
+
+<section class="concept" id="concept-dock" data-c="dock">
+  <div class="chead">
+    <h2>Thumb dock</h2>
+    <button type="button" class="hidebtn" data-hide="dock">Hide Thumb dock</button>
+  </div>
+  <p>The composer becomes its own page. The envelope head is pinned at the top and never moves. The card-name field docks at the bottom like a message field, matches stack upward from it, and Save, Cancel and Throw away sit in one strip on the keys. The throw-away ask rises up from the strip, so it can never reach the head.</p>
+  <div class="frames" data-frames="dock"></div>
+  <ul class="tags">
+    <li>New: pinned envelope head, with the card count in it (the count shows once, here).</li>
+    <li>New: field and matches docked on the keys; matches overlay the list, so no line moves when they open.</li>
+    <li>New: after a tap, the matches hold until the next key, as Card in Hand holds them.</li>
+    <li>New: thumb strip (Throw away, Cancel, Save) on the keys; the ask rises from it. A second tap on Throw away keeps the draft.</li>
+    <li>New: "+ Record an envelope" sits at the bottom of the Orphaned list, above the tab bar.</li>
+    <li>Today: Cancel keeps the draft; Note, Photo of the label and Add as typed stay.</li>
+  </ul>
+</section>
+
+<section class="concept" id="concept-pinned" data-c="pinned">
+  <div class="chead">
+    <h2>Pinned head and shelf</h2>
+    <button type="button" class="hidebtn" data-hide="pinned">Hide Pinned head and shelf</button>
+  </div>
+  <p>The composer stays in the Orphaned list, as today. When it opens, its head takes over the running head and stays pinned. Matches turn into a shelf of chips right above the keys, beside one glass bar with the count, Cancel, Throw away and Save. The throw-away ask arms inside the bar itself.</p>
+  <div class="frames" data-frames="pinned"></div>
+  <ul class="tags">
+    <li>New: the running head names the envelope while the composer is open.</li>
+    <li>New: matches as a sideways shelf of chips over the keys, in the spot the thumb already types from.</li>
+    <li>New: one glass bar on the keys; with the keys hidden it rests above the tab bar.</li>
+    <li>New: Throw away arms in the bar: the pressed spot turns to Keep, the confirm takes the count's place, Save waits.</li>
+    <li>Today: the composer card, its field at the top, and "+ Record an envelope" at the top of the list.</li>
+  </ul>
+</section>
+
+<section class="concept" id="concept-today" data-c="today">
+  <div class="chead">
+    <h2>Today, for reference</h2>
+    <button type="button" class="hidebtn" data-hide="today">Hide Today</button>
+  </div>
+  <p>Today the composer sits in the list under the masthead. On focus the page scrolls to the Save row, so the head scrolls off the top; the keys cover the tab bar; and Cancel is the only way out of a new draft that is not Save.</p>
+  <div class="frames" data-frames="today"></div>
+</section>
+</main>
+
+<script>
+(() => {
+"use strict";
+/* ---------- sample data: no figure here is real ---------- */
+const OUT = [
+  { name: "Lightning Bolt", qty: 4, sellers: 3 }, { name: "Llanowar Elves", qty: 2, sellers: 2 },
+  { name: "Lightning Greaves", qty: 1, sellers: 1 }, { name: "Llanowar Wastes", qty: 1, sellers: 1 },
+  { name: "Lingering Souls", qty: 1, sellers: 1 }, { name: "Counterspell", qty: 3, sellers: 2 },
+  { name: "Sol Ring", qty: 2, sellers: 2 }, { name: "Swords to Plowshares", qty: 1, sellers: 1 },
+  { name: "Brainstorm", qty: 2, sellers: 1 }, { name: "Dark Ritual", qty: 1, sellers: 1 },
+];
+const SAVED = () => [{ id: "e1", date: "2026-11-18", entries: [{ name: "Counterspell", qty: 1 }, { name: "Sol Ring", qty: 2 }], note: "plain white, no return address" }];
+const norm = (s) => s.toLowerCase().replace(/\s+/g, " ").trim();
+function matches(q) {
+  const n = norm(q); if (!n) return [];
+  const toks = n.split(" ");
+  return OUT.filter((s) => toks.every((t) => norm(s.name).includes(t)))
+    .map((s) => ({ s, r: norm(s.name).startsWith(n) ? 0 : norm(s.name).includes(" " + n) ? 1 : 2 }))
+    .sort((a, b) => a.r - b.r || b.s.qty - a.s.qty || a.s.name.localeCompare(b.s.name)).slice(0, 6).map((m) => m.s);
+}
+const cards = (es) => es.reduce((a, e) => a + e.qty, 0);
+const cardsOf = (n) => `${n} card${n === 1 ? "" : "s"}`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------- devices: only written figures (measurement duo-fold-and-keyboard) ---------- */
+const DEV = {
+  folded: { id: "iphone-duo-folded", W: 466, H: 678, keysH: 289, tabH: 83, label: "Duo folded, 466 × 678 pt. Keys drawn 289 pt tall (the taller of the two readings). Tab bar from y 595." },
+  ax:     { id: "iphone-duo-folded", W: 466, H: 678, keysH: 289, tabH: 83, ax: true, label: "Duo folded at the largest text size (AX5). Lines and matches grow to AX5; the head, strip and bar stop at xxxLarge, as the Post bar does (item 104 a)." },
+  open:   { id: "iphone-duo-unfolded", W: 951, H: 669, keysH: 264, tabH: 83, fold: [455.5, 495.5], label: "Duo open, 951 × 669 pt, fold strip x 455.5 to 495.5. Keys drawn from y 405. Tab bar under the right page (height drawn from the folded reading)." },
+  phone:  { id: "iphone-large", W: 440, H: 900, keysH: 289, tabH: 83, stand: true, label: "Large phone: no size is written for it. This frame is a stand-in shape, not a size claim; its keys reuse the folded Duo's 289 pt, unmeasured here." },
+};
+
+/* ---------- presets (deep links) ---------- */
+function preset(s) {
+  const st = { open: true, target: "new", entries: [], input: "", held: null, tapped: null, armed: false, keys: true, receipt: null,
+    pile: SAVED(), drafts: {}, fresh: null, envArmed: null, kept: null };
+  const ready = [{ name: "Llanowar Elves", qty: 1 }, { name: "Lightning Bolt", qty: 2 }];
+  switch (s) {
+    case "typing": st.input = "li"; break;
+    case "ready": st.entries = ready; st.held = matches("ll"); st.tapped = "Llanowar Elves"; st.fresh = "Llanowar Elves"; break;
+    case "armed": st.entries = ready; st.held = matches("ll"); st.tapped = "Llanowar Elves"; st.armed = true; break;
+    case "thrown": st.open = false; st.receipt = { kind: "gone", n: 3 }; st.keys = false; break;
+    case "keysdown": st.entries = ready; st.keys = false; break;
+    case "edit": st.target = "e1"; st.entries = SAVED()[0].entries.map((e) => ({ ...e })); st.entries[1].qty = 1; break;
+    case "saved": st.open = false; st.keys = false; st.pile.unshift({ id: "e2", date: "2026-11-21", entries: ready, note: "" }); st.receipt = { kind: "ok", n: 3 }; break;
+    case "discard": st.open = false; st.keys = false; st.envArmed = "e1"; break;
+  }
+  return st;
+}
+
+/* ---------- state per frame ---------- */
+const FR = []; let PRESET = "ready", HAND = "right", TAGS = true;
+const timers = new Map();
+function act(f, a, arg) {
+  const st = f.st; f.focusAfter = null;
+  const draftKey = st.target;
+  const addName = (name) => {
+    const t = name.trim(); if (!t) return;
+    const i = st.entries.findIndex((e) => norm(e.name) === norm(t));
+    if (i === -1) st.entries = [{ name: t, qty: 1 }, ...st.entries];
+    else { const b = { ...st.entries[i], qty: st.entries[i].qty + 1 }; st.entries = [b, ...st.entries.slice(0, i), ...st.entries.slice(i + 1)]; }
+    st.fresh = t;
+  };
+  switch (a) {
+    case "key": st.input += arg; st.held = null; st.tapped = null; st.keys = true; break;
+    case "back": st.input = st.input.slice(0, -1); st.held = null; st.tapped = null; break;
+    case "ret": if (st.input.trim()) { const m = matches(st.input); st.held = m.length ? m : null; addName(st.input); st.tapped = st.input.trim(); st.input = ""; } break;
+    case "pick": { const m = st.held || matches(st.input); st.held = m; addName(arg); st.tapped = arg; st.input = ""; break; }
+    case "typed": { const m = matches(st.input); st.held = m; addName(st.input); st.tapped = null; st.input = ""; break; }
+    case "step": { const [i, d] = arg; const e = st.entries[i]; const q = e.qty + d;
+      st.entries = q <= 0 ? st.entries.filter((_, j) => j !== i) : st.entries.map((x, j) => (j === i ? { ...x, qty: q } : x)); break; }
+    case "focus": st.keys = true; break;
+    case "hidekeys": st.keys = false; break;
+    case "cancel": st.drafts[draftKey] = { entries: st.entries, input: st.input };
+      st.kept = draftKey === "new" && st.entries.length ? cards(st.entries) : null; st.open = false; st.armed = false; st.keys = false; st.receipt = null; break;
+    case "arm": if (st.armed) { st.armed = false; clearTimeout(timers.get(f)); f.focusAfter = "arm"; break; }
+      st.armed = true; clearTimeout(timers.get(f));
+      timers.set(f, setTimeout(() => { st.armed = false; render(f); }, 4000)); f.focusAfter = "keep"; break;
+    case "keep": st.armed = false; clearTimeout(timers.get(f)); f.focusAfter = "arm"; break;
+    case "confirm": { const n = cards(st.entries); clearTimeout(timers.get(f));
+      delete st.drafts[draftKey]; st.entries = []; st.input = ""; st.held = null; st.armed = false; st.open = false; st.keys = false;
+      st.kept = draftKey === "new" ? null : st.kept; st.receipt = { kind: "gone", n, edit: draftKey !== "new" }; break; }
+    case "save": { if (!st.entries.length) break; const n = cards(st.entries);
+      if (draftKey === "new") st.pile.unshift({ id: "e" + (st.pile.length + 2), date: "2026-11-21", entries: st.entries, note: "" });
+      else st.pile = st.pile.map((e) => (e.id === draftKey ? { ...e, entries: st.entries } : e));
+      delete st.drafts[draftKey]; if (draftKey === "new") st.kept = null; st.open = false; st.keys = false; st.armed = false; st.receipt = { kind: "ok", n, edit: draftKey !== "new" }; break; }
+    case "record": case "edit": { const key = a === "record" ? "new" : arg; const d = st.drafts[key];
+      const env = st.pile.find((e) => e.id === key);
+      st.target = key; st.entries = d ? d.entries : env ? env.entries.map((e) => ({ ...e })) : []; st.input = d ? d.input : "";
+      st.held = null; st.tapped = null; st.fresh = null; st.open = true; st.keys = true; st.receipt = null; st.envArmed = null; break; }
+    case "envarm": st.envArmed = st.envArmed === arg ? null : arg; clearTimeout(timers.get(f));
+      if (st.envArmed) timers.set(f, setTimeout(() => { st.envArmed = null; render(f); }, 4000)); break;
+    case "envkeep": st.envArmed = null; break;
+    case "envdiscard": { const env = st.pile.find((e) => e.id === arg); st.pile = st.pile.filter((e) => e.id !== arg);
+      delete st.drafts[arg]; st.envArmed = null; st.receipt = { kind: "gone", n: cards(env.entries), env: true }; break; }
+  }
+  render(f);
+}
+
+/* ---------- shared pieces ---------- */
+const statusBar = () => `<div class="sb" aria-hidden="true"><span>9:41</span><span>●●●</span></div>`;
+function tabBar(x, w, top, h) {
+  const t = (n, on) => `<div class="t${on ? " on" : ""}"><i></i>${n}</div>`;
+  return `<div class="tabbar" style="left:${x}px;width:${w}px;top:${top}px;height:${h}px"><div class="cap" aria-label="Tab bar">${t("Packages")}${t("Tally")}${t("Orphaned", true)}${t("Ledger")}</div></div>`;
+}
+function keyboard(f, h) {
+  const row = (s) => `<div class="kr">${[...s].map((c) => `<button type="button" data-act="key" data-arg="${c}" aria-label="${c}">${c}</button>`).join("")}</div>`;
+  return `<div class="keys" style="height:${h}px" aria-label="System keyboard (drawn)">${row("qwertyuiop")}${row("asdfghjkl")}
+    <div class="kr"><button type="button" class="mod" aria-label="Shift" tabindex="-1">⇧</button>${[..."zxcvbnm"].map((c) => `<button type="button" data-act="key" data-arg="${c}" aria-label="${c}">${c}</button>`).join("")}<button type="button" class="mod" data-act="back" aria-label="Delete">⌫</button></div>
+    <div class="kr"><button type="button" class="mod" tabindex="-1" aria-label="Numbers">123</button><button type="button" class="sp" data-act="key" data-arg=" ">space</button><button type="button" class="mod" data-act="ret">done</button></div>
+    <span class="knote">system keys${f.dev.stand ? ", height unmeasured" : ""}</span></div>`;
+}
+function lineRows(st) {
+  return st.entries.map((e, i) => `<div class="line${st.fresh === e.name ? " fresh" : ""}"><span class="nm">${esc(e.name)}</span><span class="st">
+    <button type="button" data-act="step" data-arg="${i},-1" aria-label="${e.qty > 1 ? "One fewer" : "Remove"} ${esc(e.name)}">–</button><b>${e.qty}</b>
+    <button type="button" data-act="step" data-arg="${i},1" aria-label="One more ${esc(e.name)}">+</button></span></div>`).join("");
+}
+function extras(st, compact) {
+  return `<div class="extra"><div class="ifield" role="textbox" aria-label="Envelope note"><span class="ph">Note (optional) — tracking #, sender, mailer…</span></div>
+    ${compact ? "" : `<button type="button" class="btn" style="align-self:flex-start">Photo of the label</button>`}</div>`;
+}
+function suggList(st, live) {
+  const list = st.held || matches(st.input);
+  const typed = st.input.trim() && !list.some((s) => norm(s.name) === norm(st.input));
+  if (!list.length && !typed) return "";
+  const rows = list.map((s) => `<button type="button" data-act="pick" data-arg="${esc(s.name)}" class="${st.tapped === s.name ? "tapped" : ""}">
+      <span class="nm">${esc(s.name)}</span><span class="ct">${s.qty} out · ${s.sellers} seller${s.sellers === 1 ? "" : "s"}</span></button>`);
+  if (typed) rows.push(`<button type="button" class="typed" data-act="typed"><span class="nm">Add “${esc(st.input.trim())}” as typed</span></button>`);
+  return rows;
+}
+function envCards(st) {
+  return st.pile.map((e) => {
+    const n = cards(e.entries); const armed = st.envArmed === e.id;
+    return `<div class="env"><div class="eh"><span class="kick">Envelope · ${e.date} · ${cardsOf(n)}</span>
+      <button type="button" class="btn" data-act="edit" data-arg="${e.id}">Edit</button>
+      <button type="button" class="btn ${armed ? "lit" : "throw"}" data-act="envarm" data-arg="${e.id}" data-focus="envarm">Discard</button></div>
+      ${armed ? `<div class="ask tag-today" data-tag="Today: ask hangs below the row"><button type="button" class="btn keep" data-act="envkeep" data-focus="keep">Cancel</button>
+        <button type="button" class="btn confirm" data-act="envdiscard" data-arg="${e.id}">Tap again to discard ${cardsOf(n)}</button></div>` : ""}
+      <div class="eb">${e.entries.map((x) => (x.qty > 1 ? `×${x.qty} ` : "") + esc(x.name)).join("<br>")}${e.note ? `<small>${esc(e.note)}</small>` : ""}</div></div>`;
+  }).join("") || `<div class="empty">No orphaned envelopes. Record one when a package comes with no way to tell who sent it.</div>`;
+}
+function receiptLine(st) {
+  const r = st.receipt; if (!r) return "";
+  if (r.kind === "ok") return `<div class="receipt ok" role="status">${r.edit ? "Changes saved" : "Envelope saved"}: ${cardsOf(r.n)}.</div>`;
+  if (r.env) return `<div class="receipt gone" role="status">Envelope discarded: ${cardsOf(r.n)}. Its draft went with it.</div>`;
+  return `<div class="receipt gone tag-new" data-tag="New: gone for good" role="status">${r.edit ? "Edits thrown away" : "Draft thrown away"}: ${cardsOf(r.n)}. Nothing kept.</div>`;
+}
+function headTitle(st) {
+  if (st.target === "new") return { kick: "Recording", title: "New envelope" };
+  const e = st.pile.find((x) => x.id === st.target); return { kick: "Editing", title: `Envelope of ${e ? e.date : ""}` };
+}
+
+/* ---------- concept: Thumb dock ---------- */
+function dockInput(f, side) {
+  const st = f.st; const n = cards(st.entries); const isNew = st.target === "new";
+  const rows = suggList(st);
+  const sugg = rows.length ? `<div class="sugg${st.held ? "" : " live"} tag-new" data-tag="New: matches rise from the field" role="listbox" aria-label="Matches">${rows.slice().reverse().join("")}</div>` : "";
+  const field = `<div class="ifield${st.keys ? " focus" : ""}" role="textbox" aria-label="Card name" data-act="focus">${st.input ? esc(st.input) : `<span class="ph">Type a card name…</span>`}</div>`;
+  const save = `<button type="button" class="btn save" data-act="save" ${n ? "" : 'aria-disabled="true"'} aria-describedby="why">${isNew ? "Save envelope" : "Save changes"}</button>`;
+  const ask = st.armed ? `<div class="raise tag-new" data-tag="New: ask rises, never covers the head" role="alertdialog" aria-label="Throw away this draft?">
+      <p>${isNew ? "Throw away this draft? It will not come back." : "Throw away these edits? The saved envelope stays."}</p>
+      <button type="button" class="btn confirm" data-act="confirm">Throw away ${cardsOf(n)}</button></div>` : "";
+  const strip = `<div class="strip${HAND === "left" ? " left" : ""} tag-new" data-tag="New: thumb strip" id="${f.first ? "dock-strip" : ""}">
+      <button type="button" class="btn ${st.armed ? "keep" : "throw"}" data-act="arm" data-focus="${st.armed ? "keep" : "arm"}">${st.armed ? "Keep" : "Throw away"}</button>
+      <button type="button" class="btn" data-act="cancel" ${st.armed ? 'aria-disabled="true"' : ""}>Cancel</button>${save}${ask}</div>`;
+  return { sugg, tail: `<div class="dock">${field}</div>${strip}` };
+}
+function dockHead(f) {
+  const st = f.st; const n = cards(st.entries); const h = headTitle(st);
+  return `<div class="dhead tag-new" data-tag="New: pinned head" ${f.first ? 'id="dock-head"' : ""}><span class="glyph" aria-hidden="true"></span>
+    <div class="id"><span class="kick">${h.kick}</span><strong>${esc(h.title)}</strong></div>
+    <span class="cnt${n ? " ready" : ""}" id="${f.first ? "composer-count" : ""}" aria-label="${cardsOf(n)} in this envelope">${cardsOf(n)}</span></div>`;
+}
+function dockLines(f, withExtras) {
+  const st = f.st;
+  const body = st.entries.length ? lineRows(st) : `<div class="empty">Type a card name from the envelope. Matches come from cards still out.</div>`;
+  return `<div class="lines" data-drag="1" aria-label="Cards in this envelope">${body}${withExtras ? extras(st) : ""}</div>`;
+}
+function dockClosed(f) {
+  const st = f.st;
+  const sub = st.kept ? `<small>Draft kept · ${cardsOf(st.kept)}</small>` : "";
+  return `<div class="mast"><b>MANIFEST</b><span class="kick">Orphaned</span></div>
+    <div class="pile">${envCards(st)}</div>${receiptLine(st)}
+    <div class="fab tag-new" data-tag="New: record from the thumb"><button type="button" class="btn" data-act="record" data-focus="record">+ Record an envelope${sub}</button></div>`;
+}
+function renderDock(f, g) {
+  const st = f.st; const d = f.dev;
+  if (d.fold) {
+    const L = { x: 0, w: d.fold[0] }, R = { x: d.fold[1], w: d.W - d.fold[1] };
+    const [thumb, other] = HAND === "left" ? [L, R] : [R, L];
+    if (!st.open) return page(L, g.top, g.bottomTab, `<div class="mast"><b>MANIFEST</b><span class="kick">Orphaned</span></div><div class="pile">${envCards(st)}</div>`)
+      + page(R, g.top, g.bottomTab, `<div class="pile"></div>${receiptLine(st)}<div class="fab tag-new" data-tag="New: record from the thumb"><button type="button" class="btn" data-act="record">+ Record an envelope${st.kept ? `<small>Draft kept · ${cardsOf(st.kept)}</small>` : ""}</button></div>`);
+    const io = dockInput(f);
+    const headPage = page(other, g.top, g.bottom, dockHead(f) + dockLines(f, true));
+    const inPage = page(thumb, g.top, g.bottom, `<div class="mid"><div class="lines" data-drag="1" style="justify-content:flex-end"><div class="empty">Matches show here, nearest your thumb.</div></div>${io.sugg}</div>` + io.tail);
+    return headPage + inPage;
+  }
+  if (!st.open) return page({ x: 0, w: d.W }, g.top, g.bottomTab, dockClosed(f));
+  const io = dockInput(f);
+  return page({ x: 0, w: d.W }, g.top, g.bottom, dockHead(f) + `<div class="mid">${dockLines(f, !st.keys)}${io.sugg}</div>` + io.tail);
+}
+
+/* ---------- concept: Pinned head and shelf ---------- */
+function pinnedBand(f) {
+  const st = f.st; const n = cards(st.entries); const isNew = st.target === "new";
+  const list = st.held || matches(st.input);
+  const typed = st.input.trim() && !list.some((s) => norm(s.name) === norm(st.input));
+  let chips = list.map((s) => `<button type="button" class="chip${st.tapped === s.name ? " tapped" : ""}" data-act="pick" data-arg="${esc(s.name)}">
+      <span class="nm">${esc(s.name)}</span><span class="ct">${s.qty} out · ${s.sellers} seller${s.sellers === 1 ? "" : "s"}</span></button>`).join("");
+  if (typed) chips += `<button type="button" class="chip typed" data-act="typed"><span class="nm">Add “${esc(st.input.trim())}”</span><span class="ct">as typed</span></button>`;
+  if (!chips) chips = `<span class="hint">Matches from cards still out show here as you type.</span>`;
+  const save = `<button type="button" class="btn save" data-act="save" ${n && !st.armed ? "" : 'aria-disabled="true"'}>${isNew ? "Save envelope" : "Save changes"}</button>`;
+  const bar = st.armed
+    ? `<div class="bar armed tag-new" data-tag="New: arms in the bar" role="group" aria-label="Throw away this draft?">
+        <button type="button" class="btn confirm" data-act="confirm">Throw away ${cardsOf(n)}</button>
+        <button type="button" class="btn keep" data-act="keep" data-focus="keep">Keep</button>${save}</div>`
+    : `<div class="bar" ${f.first ? 'id="pinned-bar"' : ""}><span class="num" id="${f.first ? "composer-count-p" : ""}">${cardsOf(n)}</span>
+        <button type="button" class="btn" data-act="cancel">Cancel</button>
+        <button type="button" class="btn throw" data-act="arm" data-focus="arm">Throw away</button>${save}</div>`;
+  return `<div class="band tag-new" data-tag="New: shelf and bar"><div class="shelf" role="listbox" aria-label="Matches">${chips}</div>${bar}</div>`;
+}
+function pinnedHead(f) {
+  const h = headTitle(f.st);
+  return `<div class="rhead tag-new" data-tag="New: head stays pinned" ${f.first ? 'id="pinned-head"' : ""}><strong>${esc(h.title)}</strong><span class="kick">${h.kick} · Orphaned</span></div>`;
+}
+function pinnedComposer(f) {
+  const st = f.st;
+  const field = `<div class="ifield${st.keys ? " focus" : ""}" role="textbox" aria-label="Card name" data-act="focus">${st.input ? esc(st.input) : `<span class="ph">Type a card name…</span>`}</div>`;
+  return `<div class="pscroll" data-drag="1"><div class="pcard tag-today" data-tag="Today: composer card">${field}${st.entries.length ? `<div>${lineRows(st)}</div>` : ""}${extras(st)}</div></div>`;
+}
+function pinnedClosed(f) {
+  const st = f.st;
+  return `<div class="mast"><b>MANIFEST</b><span class="kick">Orphaned</span></div><div class="pile">
+    <button type="button" class="btn save tag-today" data-tag="Today: record at the top" data-act="record" data-focus="record" style="min-height:48px;font:700 15px var(--cochin)">+ Record an envelope${st.kept ? ` · draft kept, ${cardsOf(st.kept)}` : ""}</button>
+    ${receiptLine(st)}${envCards(st)}</div>`;
+}
+function renderPinned(f, g) {
+  const st = f.st; const d = f.dev;
+  if (d.fold) {
+    const L = { x: 0, w: d.fold[0] }, R = { x: d.fold[1], w: d.W - d.fold[1] };
+    if (!st.open) return page(L, g.top, g.bottomTab, pinnedClosed(f)) + page(R, g.top, g.bottomTab, `<div class="pile">${envCards({ ...st, pile: st.pile.slice(0, 1), envArmed: null })}</div>`);
+    const [thumb, other] = HAND === "left" ? [L, R] : [R, L];
+    return page(other, g.top, g.bottom, pinnedHead(f) + pinnedComposer(f))
+      + page(thumb, g.top, g.bottom, `<div class="rhead"><strong>Pile</strong><span class="kick">${st.pile.length} saved</span></div><div class="pile">${envCards({ ...st, envArmed: null })}</div>` + pinnedBand(f));
+  }
+  if (!st.open) return page({ x: 0, w: d.W }, g.top, g.bottomTab, pinnedClosed(f));
+  return page({ x: 0, w: d.W }, g.top, g.bottom, pinnedHead(f) + pinnedComposer(f) + pinnedBand(f));
+}
+
+/* ---------- today (reference) ---------- */
+function renderToday(f, g) {
+  const st = f.st; const d = f.dev; const w = d.fold ? d.fold[0] : d.W; const n = cards(st.entries);
+  if (!st.open) return page({ x: 0, w }, g.top, g.bottomTab, pinnedClosed(f).replace(/tag-today|data-tag="[^"]*"/g, ""));
+  const body = `<div style="flex:1;display:flex;flex-direction:column;justify-content:flex-end;overflow:hidden" data-drag="0">
+    <div class="tcard"><div class="tag-today" data-tag="Today: head scrolled off the top" style="height:0"></div>
+      <div class="ifield${st.keys ? " focus" : ""}" style="margin:12px" data-act="focus">${st.input ? esc(st.input) : `<span class="ph">Type a card name…</span>`}</div>
+      ${lineRows(st)}${extras(st)}
+      <div class="tfoot"><span class="num">${cardsOf(n)}</span><button type="button" class="btn" data-act="cancel">Cancel</button>
+      <button type="button" class="btn save" data-act="save" ${n ? "" : 'aria-disabled="true"'}>Save envelope</button></div></div></div>`;
+  return page({ x: 0, w }, g.top, g.bottom, body);
+}
+
+/* ---------- frame ---------- */
+function page(p, top, bottom, html) { return `<div class="page" style="left:${p.x}px;width:${p.w}px;top:${top}px;bottom:${bottom}px">${html}</div>`; }
+function render(f) {
+  const d = f.dev, st = f.st;
+  const keysUp = st.open && st.keys;
+  const g = { top: 20, bottom: keysUp ? d.keysH : d.tabH, bottomTab: d.tabH };
+  const body = f.concept === "dock" ? renderDock(f, g) : f.concept === "pinned" ? renderPinned(f, g) : renderToday(f, g);
+  const tab = d.fold ? tabBar(d.fold[1], d.W - d.fold[1], d.H - d.tabH, d.tabH) : tabBar(0, d.W, d.H - d.tabH, d.tabH);
+  const fold = d.fold ? `<div class="fold" style="left:${d.fold[0]}px;width:${d.fold[1] - d.fold[0]}px"><span>fold, nothing crosses</span></div>` : "";
+  const guide = keysUp ? `<div class="guide" style="top:${d.H - d.keysH}px"><span>keys top, y ${d.H - d.keysH}</span></div>` : "";
+  f.el.className = "dev" + (d.ax ? " ax" : "") + (TAGS ? " tagged" : "");
+  f.el.innerHTML = statusBar() + body + fold + tab + (keysUp ? keyboard(f, d.keysH) + guide : "");
+  if (f.focusAfter) { const b = f.el.querySelector(`[data-focus="${f.focusAfter}"]`); if (b) b.focus({ preventScroll: true }); }
+}
+function makeFrame(host, concept, key, first) {
+  const d = DEV[key];
+  const cell = document.createElement("div"); cell.className = "fcell"; cell.dataset.dev = key;
+  const fit = document.createElement("div"); fit.className = "fit";
+  const el = document.createElement("div"); el.className = "dev"; el.dataset.device = d.id;
+  el.style.width = d.W + "px"; el.style.height = d.H + "px"; el.setAttribute("role", "group");
+  el.setAttribute("aria-label", `${concept} on ${key}`);
+  fit.appendChild(el); cell.appendChild(fit);
+  const cap = document.createElement("div"); cap.className = "cap"; cap.innerHTML = `<b>${{ folded: "Duo folded", ax: "Folded, AX5", open: "Duo open", phone: "Large phone (stand-in)" }[key]}.</b> ${d.label}`;
+  cell.appendChild(cap); host.appendChild(cell);
+  const f = { el, fit, cell, dev: d, concept, key, first, st: preset(PRESET) };
+  el.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-act]"); if (!t || !el.contains(t) || t.getAttribute("aria-disabled") === "true") return;
+    let arg = t.dataset.arg; if (t.dataset.act === "step") arg = arg.split(",").map(Number);
+    act(f, t.dataset.act, arg);
+  });
+  /* a drag on the list hides the keys (owner, page item 86 a) */
+  let y0 = null;
+  el.addEventListener("pointerdown", (e) => { y0 = e.target.closest('[data-drag="1"]') ? e.clientY : null; });
+  el.addEventListener("pointermove", (e) => { if (y0 !== null && Math.abs(e.clientY - y0) > 8 && f.st.keys && f.st.open) { y0 = null; act(f, "hidekeys"); } });
+  el.addEventListener("pointerup", () => { y0 = null; });
+  FR.push(f); render(f); return f;
+}
+function fitAll() {
+  for (const f of FR) {
+    if (f.cell.hidden || f.cell.closest("[hidden]")) continue;
+    const avail = Math.min(f.cell.parentElement.clientWidth, document.documentElement.clientWidth - 32);
+    const s = Math.min(1, avail / (f.dev.W + 2));
+    f.el.style.transform = `scale(${s})`; f.fit.style.width = (f.dev.W + 2) * s + "px"; f.fit.style.height = (f.dev.H + 2) * s + "px";
+  }
+}
+
+/* ---------- build ---------- */
+const ORDER = ["folded", "ax", "open", "phone"];
+for (const c of ["dock", "pinned", "today"]) {
+  const host = document.querySelector(`[data-frames="${c}"]`);
+  (c === "today" ? ["folded", "open"] : ORDER).forEach((k, i) => makeFrame(host, c, k, i === 0));
+}
+const cnav = document.getElementById("nav-concepts");
+for (const s of document.querySelectorAll("section.concept")) {
+  const b = document.createElement("button"); b.type = "button"; b.dataset.toggle = s.dataset.c; b.textContent = s.querySelector("h2").textContent; cnav.appendChild(b);
+}
+
+/* ---------- hash router: s state, d device, h hand, t theme, c concepts shown, tags ---------- */
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  return { s: p.get("s") || "ready", d: p.get("d") || "all", h: p.get("h") || "right", t: p.get("t") || "", c: p.get("c"), tags: p.get("tags") !== "0" };
+}
+function writeHash(ch) {
+  const cur = readHash(); const n = { ...cur, ...ch }; const p = new URLSearchParams();
+  p.set("s", n.s); if (n.d !== "all") p.set("d", n.d); if (n.h !== "right") p.set("h", n.h); if (n.t) p.set("t", n.t);
+  if (n.c) p.set("c", n.c); if (!n.tags) p.set("tags", "0");
+  location.hash = p.toString();
+}
+function apply() {
+  const h = readHash();
+  PRESET = h.s; HAND = h.h === "left" ? "left" : "right"; TAGS = h.tags;
+  if (h.t === "dark" || h.t === "light") document.documentElement.dataset.theme = h.t; else delete document.documentElement.dataset.theme;
+  const shown = h.c ? h.c.split(".") : ["dock", "pinned", "today"];
+  for (const s of document.querySelectorAll("section.concept")) s.hidden = !shown.includes(s.dataset.c);
+  for (const f of FR) { clearTimeout(timers.get(f)); f.st = preset(PRESET); f.cell.hidden = !(h.d === "all" || h.d === f.key); render(f); }
+  for (const a of document.querySelectorAll("#nav-state a")) a.setAttribute("aria-current", String(a.dataset.s === PRESET));
+  for (const b of document.querySelectorAll("[data-d]")) b.setAttribute("aria-pressed", String(b.dataset.d === h.d));
+  for (const b of document.querySelectorAll("[data-h]")) b.setAttribute("aria-pressed", String(b.dataset.h === HAND));
+  const dark = h.t ? h.t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  for (const b of document.querySelectorAll("[data-t]")) b.setAttribute("aria-pressed", String((b.dataset.t === "dark") === dark));
+  for (const b of document.querySelectorAll("[data-toggle]")) b.setAttribute("aria-pressed", String(shown.includes(b.dataset.toggle)));
+  document.getElementById("tagsbtn").setAttribute("aria-pressed", String(TAGS));
+  fitAll();
+}
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-d],[data-h],[data-t],[data-toggle],[data-hide],#tagsbtn"); if (!t) return;
+  const h = readHash(); const shown = h.c ? h.c.split(".") : ["dock", "pinned", "today"];
+  if (t.dataset.d) writeHash({ d: t.dataset.d });
+  else if (t.dataset.h) writeHash({ h: t.dataset.h });
+  else if (t.dataset.t) writeHash({ t: t.dataset.t });
+  else if (t.id === "tagsbtn") writeHash({ tags: !h.tags });
+  else {
+    const c = t.dataset.toggle || t.dataset.hide; const next = shown.includes(c) ? shown.filter((x) => x !== c) : [...shown, c];
+    writeHash({ c: next.join(".") || "none" });
+  }
+});
+addEventListener("hashchange", apply);
+addEventListener("resize", fitAll);
+apply();
+})();
+</script>
+</body>
+</html>

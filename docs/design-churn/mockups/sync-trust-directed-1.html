@@ -1,0 +1,641 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sync Trust Mark</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle),
+   so the app frames draw one theme. data-theme stays on the root for the page chrome only. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --wax:#A8443C; --waxLit:#C86A5F; --waxDeep:#66231D; --waxCut:#5E1F1A; --waxRaised:#E09A90; --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --new:#2E7A5E; --today:#A8443C;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor), as duo-hand-held-box does. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  /* Dynamic Type ratios. 1 at the default size (Large). */
+  --rb:1; --rf:1; --rc:1; --rt3:1; --rlt:1; --rcap:1;
+}
+:root[data-theme="dark"] { color-scheme: light; } /* the app ships light only; nothing changes */
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { margin:0 auto; padding:16px; max-width:2000px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
+.kind { font-family:var(--mono); font-size:13px; color:var(--inkSoft); margin:0 0 8px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:86ch; }
+.pick { border-left:3px solid var(--accent); padding:4px 12px; margin:12px 0; max-width:86ch; }
+.bar-ctl { display:flex; flex-direction:column; gap:8px; margin:12px 0 4px; }
+.ctl-row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ctl-row > span { font-size:13px; color:var(--inkSoft); min-width:96px; }
+.ctl-row a, .ctl-row button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; gap:6px;
+  border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl-row [aria-current="true"], .ctl-row [aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl-row button.off { text-decoration:line-through; color:var(--inkSoft); }
+.ctl-row a:focus-visible, .ctl-row button:focus-visible, .app button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.say { max-width:90ch; margin:8px 0 0; font-size:14px; min-height:3em; }
+.frames { display:flex; flex-wrap:wrap; gap:32px; align-items:flex-start; margin-top:16px; }
+.frames figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+.frames figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+.frames figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
+
+/* ---------- device frames, 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:14px; overflow:hidden; flex:none; }
+.dev[data-device="iphone-duo-folded"] { width:466px; height:678px; }
+.dev[data-device="iphone-duo-unfolded"] { width:951px; height:669px; }
+.dev[data-device="phone"] { width:402px; height:874px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); padding:0 16px; display:flex; justify-content:space-between; align-items:center;
+  font-size:12px; font-weight:600; z-index:9; background:var(--paper); }
+.dev[data-device="phone"] { --sat: max(env(safe-area-inset-top), 54px); } /* stand-in, unmeasured: see notes item 14 */
+.dev[data-device="phone"] .status { align-items:flex-end; padding-bottom:8px; }
+.dev[data-device="phone"] .island { position:absolute; top:11px; left:50%; transform:translateX(-50%); width:124px; height:36px; border-radius:18px; background:#000; z-index:10; }
+/* one page: the screen box, from the status bar to the bottom edge */
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; }
+.dev[data-device="iphone-duo-folded"] .pg, .dev[data-device="phone"] .pg { left:0; right:0; }
+.pg.l { left:0; width:455.5px; } .pg.r { left:495.5px; width:455.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, transparent); z-index:8; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; padding-bottom:96px; }
+.scroll::-webkit-scrollbar { width:0; }
+
+/* ---------- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---------- */
+.app { font-family:var(--cochin); color:var(--ink); line-height:normal; }
+.app button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; text-align:inherit; }
+.mh { padding:12px 24px 0; display:flex; flex-direction:column; align-items:center; }
+.sealrow { width:100%; max-width:270px; display:flex; align-items:center; gap:12px; padding-bottom:12px; position:relative; }
+.sealrow .rule { flex:1; height:1px; background:var(--gold); opacity:.75; }
+.seal { width:44px; height:44px; margin:-4px; display:grid; place-items:center; position:relative; flex:none; }
+.seal svg { width:36px; height:36px; overflow:visible; }
+.title { font-size:calc(31px * var(--rlt)); letter-spacing:.18em; padding-left:.18em; text-transform:uppercase; white-space:nowrap; }
+.house { font-family:var(--mono); font-size:calc(10px * var(--rc)); letter-spacing:.22em; text-transform:uppercase; color:var(--inkSoft); padding-top:8px; white-space:nowrap; }
+.tallies { width:100%; display:flex; flex-direction:column; }
+.tdiv { height:1px; background:var(--line); margin-top:12px; }
+.cells { display:grid; grid-template-columns:1fr 1fr 1.7fr; padding-top:12px; }
+.cell { display:flex; flex-direction:column; align-items:center; gap:4px; padding:0 4px; }
+.cell + .cell { border-left:1px solid var(--line); }
+.cell .lb { font-family:var(--mono); font-size:calc(10px * var(--rc)); letter-spacing:.12em; text-transform:uppercase; color:var(--inkSoft); }
+.cell .fg { font-family:var(--mono); font-size:calc(13px * var(--rf)); white-space:nowrap; }
+.cell .fg b { color:var(--accent); } .cell .fg span { color:var(--inkSoft); }
+.mbar { height:8px; border-radius:4px; background:var(--line); margin-top:8px; overflow:hidden; }
+.mbar i { display:block; height:100%; background:var(--accent); border-radius:4px; }
+.foot { display:grid; grid-template-columns:minmax(0,1fr) auto; column-gap:8px; row-gap:4px; padding-top:8px; align-items:baseline; }
+.foot .count, .foot .miss, .foot .slot { font-family:var(--mono); font-size:calc(10.5px * var(--rc)); white-space:nowrap; overflow:hidden; }
+.foot .count { color:var(--inkSoft); } .foot .miss { color:var(--red); }
+.foot .slot { min-width:13ch; text-align:right; color:var(--green); }
+.foot .cs-cell { min-width:15ch; }
+/* the countersign: a reserved slot at the end of row 1, as the save slot is on row 2 (masthead-save-slot-reserved) */
+.cs { font-family:var(--mono); font-size:calc(10.5px * var(--rcap)); white-space:nowrap; display:inline-flex; justify-content:flex-end; align-items:center; gap:4px;
+  min-width:15ch; position:relative; color:var(--inkSoft); }
+.cs::after { content:""; position:absolute; left:-6px; right:-6px; top:50%; height:44px; transform:translateY(-50%); } /* 44 pt hit region over the line */
+.cs svg { width:calc(13px * var(--rcap)); height:calc(9px * var(--rcap)); flex:none; }
+.cs.merged { color:var(--accent); font-weight:700; }
+.cs.warn { color:var(--manilaInk); }
+.ruled { margin:12px 16px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); min-height:44px; display:flex; align-items:center; justify-content:space-between;
+  font-family:var(--mono); font-size:calc(11px * var(--rc)); color:var(--inkSoft); letter-spacing:.06em; text-transform:uppercase; }
+.advis { margin:12px 16px 0; background:var(--manila); color:var(--manilaInk); border-top:1px solid color-mix(in srgb, var(--manilaInk) 35%, transparent);
+  border-bottom:1px solid color-mix(in srgb, var(--manilaInk) 35%, transparent); padding:8px; min-height:44px; display:flex; align-items:center;
+  font-size:calc(13.5px * var(--rf)); width:calc(100% - 32px); }
+.notice { margin:8px 16px 0; font-size:calc(13px * var(--rf)); color:var(--ink); padding:8px; min-height:44px; display:flex; align-items:center; gap:8px; width:calc(100% - 32px); }
+.notice.route { border:1px solid var(--line); border-radius:8px; background:var(--card); justify-content:space-between; }
+.notice.route .go { color:var(--accent); font-weight:700; white-space:nowrap; }
+.list { display:flex; flex-direction:column; gap:8px; padding:12px 16px 8px; }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 1px var(--shadow); overflow:hidden; position:relative; }
+.pkg.done { background:var(--greenSoft); }
+.pkg .pbar { position:absolute; left:0; right:0; top:0; height:3px; background:var(--line); }
+.pkg .pbar i { display:block; height:100%; background:var(--accent); }
+.pkg.done .pbar i { background:var(--green); }
+.ph { display:flex; align-items:center; gap:8px; padding:12px 12px 8px; }
+.ph .who { flex:1; min-width:0; }
+.ph .seller { font-size:calc(15px * var(--rb)); font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ph .date { font-family:var(--mono); font-size:calc(10.5px * var(--rc)); color:var(--inkSoft); }
+.ph .st { font-family:var(--mono); font-size:calc(11px * var(--rc)); color:var(--inkSoft); min-width:6ch; text-align:right; }
+.ln { display:flex; align-items:center; gap:8px; min-height:45px; border-top:1px solid var(--line); padding:0 12px 0 4px; }
+.ln .bx { flex:0 0 44px; height:44px; display:grid; place-items:center; }
+.ln .bx i { width:28px; height:28px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; font-style:normal; color:var(--card); font-size:16px; }
+.ln.got .bx i { background:var(--green); border-color:var(--green); }
+.ln .nm { flex:1; min-width:0; font-size:calc(14px * var(--rb)); }
+.ln .q { font-family:var(--mono); font-size:calc(11px * var(--rc)); color:var(--inkSoft); white-space:nowrap; }
+.ln.got .nm { color:var(--green); }
+/* Tally rows */
+.trow { background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; align-items:center; gap:8px; min-height:56px; padding:4px 12px 4px 4px; }
+.trow .nm { flex:1; font-size:calc(15px * var(--rb)); font-weight:700; }
+.trow .cp { font-family:var(--mono); font-size:calc(10.5px * var(--rc)); color:var(--inkSoft); display:block; font-weight:400; }
+.trow .q { font-family:var(--mono); font-size:calc(12px * var(--rc)); }
+/* Ledger tab */
+.lgroup { margin:12px 16px; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.lrow { display:flex; align-items:center; gap:8px; min-height:52px; padding:6px 12px; border-top:1px solid var(--line); width:100%; }
+.lrow:first-child { border-top:0; }
+.lrow .t { font-size:calc(16px * var(--rb)); font-weight:700; } .lrow .s { font-size:calc(12.5px * var(--rf)); color:var(--inkSoft); display:block; font-weight:400; }
+.lrow .v { margin-left:auto; font-family:var(--mono); font-size:calc(12px * var(--rc)); color:var(--accent); text-decoration:underline; text-underline-offset:3px; }
+.lrow .v.fix { color:var(--manilaInk); }
+.part { display:flex; justify-content:space-between; gap:8px; padding:10px 12px; border-top:1px dashed var(--line); font-size:calc(13px * var(--rf)); }
+.part b { font-family:var(--cochin); font-weight:400; color:var(--inkSoft); } .part span { font-family:var(--mono); font-size:calc(12px * var(--rc)); }
+
+/* ---------- tab bars ---------- */
+.tabbar { position:absolute; left:0; right:0; bottom:0; z-index:7; pointer-events:none; }
+.dev[data-device="iphone-duo-folded"] .tabbar { top:595px; } /* duo-fold-and-keyboard: bar from y 595, 83 pt tall */
+.dev[data-device="phone"] .tabbar { height:96px; }
+.pg.r .tabbar { height:76px; } /* DuoBarMetrics: 64 pt pill, 12 pt lift */
+.pill { pointer-events:auto; position:absolute; left:24px; right:24px; top:4px; height:64px; border-radius:32px; display:grid; grid-template-columns:repeat(4,1fr);
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px);
+  border:1px solid color-mix(in srgb, var(--line) 80%, transparent); box-shadow:0 4px 16px var(--shadow); font-family:-apple-system, system-ui, sans-serif; }
+.pg.r .pill { top:0; }
+.pill button { font:inherit; border:0; background:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:10px;
+  color:var(--inkSoft); border-radius:28px; margin:4px; cursor:pointer; }
+.pill button[aria-current="true"] { color:var(--accent); background:color-mix(in srgb, var(--card) 90%, transparent); font-weight:600; }
+.pill svg { width:22px; height:22px; }
+
+/* ---------- the detail: a sheet on one page, the right page on two ---------- */
+.scrim { position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 22%, transparent); z-index:11; }
+.sheet { position:absolute; left:0; right:0; bottom:0; top:calc(var(--sat) + 10px); background:var(--card); border-radius:14px 14px 0 0; z-index:12;
+  display:flex; flex-direction:column; box-shadow:0 -2px 16px var(--shadow); }
+.sheet .grab { width:36px; height:5px; border-radius:3px; background:var(--line); margin:6px auto 0; flex:none; }
+.navbar { display:grid; grid-template-columns:minmax(64px,1fr) auto minmax(64px,1fr); align-items:center; min-height:52px; padding:0 8px; flex:none;
+  font-family:-apple-system, system-ui, sans-serif; }
+.navbar .nt { font-size:17px; font-weight:600; text-align:center; } /* Headline 17 pt (HIG Typography, Large) */
+.navbar button { min-height:44px; min-width:44px; padding:0 8px; font-size:17px; color:var(--accent); }
+.navbar .done { justify-self:end; font-weight:600; } .navbar .back { justify-self:start; }
+.dbody { flex:1; overflow-y:auto; overscroll-behavior:contain; padding:4px 16px 120px; display:flex; flex-direction:column; gap:20px; }
+.rpage { position:absolute; inset:0; background:var(--card); display:flex; flex-direction:column; padding-top:var(--sat); border-left:1px solid var(--line); }
+.verdict { display:flex; gap:12px; align-items:flex-start; }
+.verdict svg { width:44px; height:44px; flex:none; }
+.verdict h2 { margin:0; font-size:calc(22px * var(--rt3)); font-weight:700; line-height:1.15; }
+.verdict p { margin:4px 0 0; font-size:calc(15px * var(--rb)); color:var(--inkSoft); line-height:1.35; }
+.parts { border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.parts .part:first-child { border-top:0; }
+.sec { display:flex; flex-direction:column; gap:8px; }
+.sec h3 { margin:0; font-family:var(--mono); font-size:calc(11px * var(--rc)); letter-spacing:.12em; text-transform:uppercase; color:var(--inkSoft); font-weight:400; }
+.sec p { margin:0; font-size:calc(15px * var(--rb)); line-height:1.4; }
+.disc { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:8px; color:var(--accent); font-weight:700; font-size:calc(15px * var(--rb));
+  border-top:1px solid var(--line); width:100%; }
+.disc .chev { font-family:-apple-system, system-ui, sans-serif; color:var(--inkSoft); font-weight:400; }
+.chg { display:flex; flex-direction:column; }
+.chg li { list-style:none; display:grid; grid-template-columns:24px 1fr; gap:4px 8px; padding:8px 0; border-top:1px dashed var(--line); font-size:calc(14px * var(--rb)); }
+.chg li i { font-style:normal; font-family:var(--mono); color:var(--green); text-align:center; }
+.chg li.rm i { color:var(--manilaInk); }
+.chg li small { grid-column:2; font-family:var(--mono); font-size:calc(10.5px * var(--rc)); color:var(--inkSoft); }
+.chg ul { margin:0; padding:0; }
+.btn { min-height:44px; border-radius:8px; border:1px solid var(--line); background:var(--paper); padding:0 14px; font-size:calc(15px * var(--rb)); display:inline-flex;
+  align-items:center; justify-content:center; font-weight:700; color:var(--ink); }
+.btn.pri { background:var(--accent); border-color:var(--accent); color:var(--card); }
+.btn.arm { background:var(--manila); border-color:var(--manilaInk); color:var(--manilaInk); }
+.btnrow { display:flex; gap:8px; flex-wrap:wrap; }
+.hrow { display:flex; align-items:center; gap:8px; padding:10px 0; border-top:1px solid var(--line); }
+.hrow .w { flex:1; min-width:0; font-size:calc(15px * var(--rb)); } .hrow .w small { display:block; font-family:var(--mono); font-size:calc(10.5px * var(--rc)); color:var(--inkSoft); }
+.hrow.hi { background:color-mix(in srgb, var(--manila) 45%, transparent); margin:0 -16px; padding:10px 16px; }
+details.mach summary { min-height:44px; display:flex; align-items:center; color:var(--inkSoft); font-size:calc(13px * var(--rf)); cursor:pointer; }
+details.mach code { font-family:var(--mono); font-size:calc(11px * var(--rc)); word-break:break-all; }
+.empty-r { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:8px; padding:var(--sat) 32px 96px; text-align:center; color:var(--inkSoft); }
+.empty-r .big { font-size:20px; color:var(--ink); }
+.toast { position:absolute; left:16px; right:16px; bottom:100px; background:var(--ink); color:var(--card); border-radius:10px; padding:10px 12px; font-size:13px; z-index:13; font-family:-apple-system, system-ui, sans-serif; }
+
+/* ---------- tags: dashed outline on what exists today, and on what an option adds ---------- */
+[data-tag] { position:relative; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-today { outline:2px dashed var(--today); outline-offset:2px; }
+.tag-new::before, .tag-today::before { content:attr(data-tag); position:absolute; right:2px; top:-15px; font:600 10.5px/13px -apple-system, system-ui, sans-serif;
+  padding:0 4px; background:var(--paper); z-index:6; white-space:nowrap; letter-spacing:0; text-transform:none; pointer-events:none; }
+.tag-new::before { color:var(--new); } .tag-today::before { color:var(--today); }
+body.notags [data-tag] { outline:none; } body.notags [data-tag]::before { display:none; }
+
+/* ---------- AX5: each text style scales by its own ratio, HIG Typography read 2026-11-21:
+   Body and Headline 17 -> 53, Footnote 13 -> 44, Caption 1 12 -> 43, Title 3 20 -> 55, Large Title 34 -> 60.
+   The countersign is capped at xxxLarge (Caption 1 12 -> 18), as the post bar is (duo-card-in-hand, item 104 a). ---------- */
+.ax5 { --rb:calc(53 / 17); --rf:calc(44 / 13); --rc:calc(43 / 12); --rt3:calc(55 / 20); --rlt:calc(60 / 34); --rcap:calc(18 / 12); }
+.ax5 .title { font-size:min(calc(31px * var(--rlt)), 54px); }
+.ax5 .cells { grid-template-columns:1fr; row-gap:8px; }
+.ax5 .cell { align-items:flex-start; } .ax5 .cell + .cell { border-left:0; }
+.ax5 .foot { grid-template-columns:1fr; } .ax5 .foot .count, .ax5 .foot .miss { white-space:normal; }
+.ax5 .foot .cs-cell, .ax5 .foot .slot { justify-self:start; text-align:left; }
+.ax5 .house { font-size:min(calc(10px * var(--rc)), 18px); }
+.ax5 .ph { flex-wrap:wrap; } .ax5 .ln { flex-wrap:wrap; padding:6px 12px 6px 4px; }
+.ax5 .sec h3, .ax5 .cell .lb { letter-spacing:.04em; }
+@media (prefers-reduced-motion: no-preference) {
+  .ribbon { transform-origin:50% 0; animation:hang 420ms ease-out both; }
+  @keyframes hang { from { transform:scaleY(0); } to { transform:scaleY(1); } }
+}
+</style>
+</head>
+<body>
+<main>
+<div class="banner" role="note">Sample. No card, seller, count, price, date or time on this page is real. Places come from the code and this drawing, not from a simulator.</div>
+<h1>Sync trust: one mark, detail on demand</h1>
+<p class="kind">Designer kind: directed · Direction: quiet confidence: a single always-visible trust mark; detail only on demand · sync-trust-directed-1</p>
+<p class="sub">The job: "Did my phone and my laptop actually agree?" Every working screen carries one mark in the letterhead. It never speaks while all is well, it changes shape when something is not normal, and a tap opens the whole account: when this device last matched the sync server, what the last merge brought in, what it took away, and where the losing copy is kept. Two concepts carry the mark. Each frame below is live: tap the mark, the tabs, the rows in the detail, and the check boxes on Tally.</p>
+<p class="pick"><b>Pick: The Seal.</b> The letterhead already has a wax seal, and a seal is what people read as "this has been checked and closed". Making it the mark adds no new element to the working screens, and its broken shape for "not agreed" reads without words. The countersign is the fallback if the owner wants the time always in view.</p>
+
+<div class="bar-ctl" aria-label="Controls">
+  <div class="ctl-row" id="ctl-c"><span>Concept</span></div>
+  <div class="ctl-row" id="ctl-s"><span>State</span></div>
+  <div class="ctl-row" id="ctl-x"><span>Packages after Tally</span></div>
+  <div class="ctl-row" id="ctl-h"><span>Hide an option</span></div>
+  <div class="ctl-row" id="ctl-v"><span>View</span></div>
+</div>
+<p class="say" id="say" aria-live="polite"></p>
+
+<div class="frames" id="frames">
+  <figure>
+    <div class="dev app" data-device="iphone-duo-folded" id="f-folded"></div>
+    <figcaption><b>iPhone Duo, folded.</b> 466 x 678 pt, one screen, portrait. System tab bar from y 595 pt (duo-fold-and-keyboard). Default text size.</figcaption>
+  </figure>
+  <figure>
+    <div class="dev app" data-device="iphone-duo-unfolded" id="f-open"></div>
+    <figcaption><b>iPhone Duo, open.</b> 951 x 669 pt. Fold 455.5 to 495.5 pt; nothing crosses it. The list stays on the left page and the detail takes the right page, so the account sits beside the screen it vouches for. Tab bar under the right page (duo-card-in-hand, item 23 a).</figcaption>
+  </figure>
+  <figure>
+    <div class="dev app" data-device="phone" id="f-phone"></div>
+    <figcaption><b>Large phone, portrait.</b> No size is written for it (layout.py devices: unknown). Drawn at 402 x 874 pt with a 54 pt top inset as stand-ins, unmeasured. Default text size.</figcaption>
+  </figure>
+  <figure>
+    <div class="dev app ax5" data-device="iphone-duo-folded" id="f-ax5"></div>
+    <figcaption><b>iPhone Duo, folded, AX5</b> (the biggest accessibility text size). Text scales by its own style. The seal stays 36 pt and offers the large content viewer on a long press; the countersign is capped at xxxLarge.</figcaption>
+  </figure>
+</div>
+</main>
+
+<script>
+/* ============ the sample, the same in every option ============ */
+const NOW = "9:16 PM";
+const AGREED = { time:"9:14 PM", full:"Nov 20, 9:14 PM" };
+const STALE = { day:"Nov 19", full:"Nov 19, 7:02 PM" };
+const PKGS = [
+  { id:"p1", seller:"Pinewood Cards", date:"ordered Nov 3", lines:[ { k:"bolt-p", name:"Lightning Bolt", q:2, got:1 }, { k:"cs-p", name:"Counterspell", q:1, got:1 } ] },
+  { id:"p2", seller:"Harbor Hobby", date:"ordered Nov 5", lines:[ { k:"elf-h", name:"Llanowar Elves", q:1, got:1 }, { k:"stp-h", name:"Swords to Plowshares", q:1, got:1 } ] },
+  { id:"p3", seller:"Lantern Games", date:"ordered Nov 9", lines:[ { k:"bolt-l", name:"Lightning Bolt", q:1, got:0 }, { k:"brain-l", name:"Brainstorm", q:4, got:2 } ] },
+  { id:"p4", seller:"Quarry Street Singles", date:"ordered Nov 11", lines:[ { k:"dark-q", name:"Dark Ritual", q:3, got:0 } ] },
+];
+/* The bundle's mergeSummary wording (src/merge-rules.mjs), for two sample stats. */
+const MERGE = {
+  merged: { sentence:"Merged — 3 check-ins and 1 stamp from the other device. Nothing of yours was lost.",
+    items:[ ["+","Llanowar Elves","Harbor Hobby · checked in"], ["+","Swords to Plowshares","Harbor Hobby · checked in"],
+            ["+","Brainstorm, 1 copy","Lantern Games · checked in"], ["+","Harbor Hobby package","stamp added"] ] },
+  removed: { sentence:"Merged — 2 check-ins from the other device. Removed by the other device's later changes: un-checked 1 card.",
+    items:[ ["+","Llanowar Elves","Harbor Hobby · checked in"], ["+","Brainstorm, 1 copy","Lantern Games · checked in"],
+            ["−","Counterspell","Pinewood Cards · un-checked by the other device"] ] },
+};
+const KEPT_FILE = "ledger.kept-2026-11-20T210212481Z.json";
+
+/* ============ options and states ============ */
+const CONCEPTS = [ ["seal","The Seal (pick)"], ["countersign","The Countersign"], ["today","Today (no mark)"] ];
+const STATES = [
+  ["agreed","All is well"], ["merged","A merge came in"], ["removed","A merge removed one of yours"], ["kept","A kept copy"],
+  ["behind","Tally check-in, then Packages"], ["stale","No agreement for a day"], ["failed","Server not reached"], ["fresh","Not synced yet"] ];
+const OPTIONS = [
+  ["list","Change list in the merge detail"], ["other","Other device's last sync"], ["removal","Removal line on working screens"],
+  ["spread","Detail on the right page (open Duo)"], ["keptroute","Kept copy route"], ["reread","Packages reads again"] ];
+const VIEWS = [ ["","Sheet closed"], ["sheet","Detail open"], ["list","Change list open"], ["history","Copy before the merge"], ["keptpage","Kept copy page"] ];
+
+const S = { c:"seal", s:"agreed", o:"", tab:"packages", fix:"new", seen:0, tc:0, hide:new Set(), arm:0, share:0, tags:1 };
+const on = (k) => !S.hide.has(k);
+
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  S.c = p.get("c") || "seal"; S.s = p.get("s") || "agreed"; S.o = p.get("o") || ""; S.tab = p.get("tab") || (S.s === "behind" ? "tally" : "packages");
+  S.fix = p.get("fix") || "new"; S.seen = +(p.get("seen") || 0); S.tc = +(p.get("tc") || 0);
+  S.hide = new Set((p.get("h") || "").split(",").filter(Boolean)); S.arm = 0; S.share = 0;
+  S.tags = p.get("tags") === "0" ? 0 : 1;
+  if (p.get("t")) document.documentElement.setAttribute("data-theme", p.get("t"));
+}
+function hashOf(over) {
+  const v = Object.assign({ c:S.c, s:S.s, o:S.o, tab:S.tab, fix:S.fix, seen:S.seen, tc:S.tc, h:[...S.hide].join(","), tags:S.tags }, over || {});
+  const p = new URLSearchParams();
+  p.set("c", v.c); p.set("s", v.s);
+  if (v.o) p.set("o", v.o);
+  if (v.tab && v.tab !== "packages") p.set("tab", v.tab);
+  if (v.s === "behind") { p.set("fix", v.fix); if (v.tc) p.set("tc", 1); }
+  if (v.seen) p.set("seen", 1);
+  if (v.h) p.set("h", v.h);
+  if (!v.tags) p.set("tags", "0");
+  return "#" + p.toString();
+}
+function go(over) { location.hash = hashOf(over); }
+
+/* ============ what the mark says ============ */
+function markState() {
+  if (S.c === "today") return "none";
+  if (S.s === "stale" || S.s === "failed") return "broken";
+  if (S.s === "fresh") return "open";
+  if (S.s === "behind" && S.fix === "fail" && S.tab === "packages" && S.tc) return "open";
+  if ((S.s === "merged" || S.s === "removed") && !S.seen) return "ribbon";
+  return "whole";
+}
+function markLabel() {
+  return { whole:`Sync: matches the server as of ${AGREED.time}`, ribbon:`Sync: merged at ${AGREED.time}, not yet read`,
+    broken: S.s === "stale" ? `Sync: not backed up since ${STALE.day}` : "Sync: the server could not be reached",
+    open: S.s === "fresh" ? "Sync: not synced yet" : "Sync: this screen could not read the latest counts", none:"" }[markState()];
+}
+
+/* ============ drawing helpers ============ */
+const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
+function tag(kind, text) { return S.tags ? ` class-tag="${kind}" data-tag="${esc(text)}"` : ""; }
+/* class-tag is folded into class by fixTags() after render, so a caller can write tag() beside its own class */
+function fixTags(root) {
+  root.querySelectorAll("[class-tag]").forEach((el) => { el.classList.add("tag-" + el.getAttribute("class-tag")); el.removeAttribute("class-tag"); });
+}
+
+function sealSVG(kind) {
+  const blob = "M50 2 C69 2 80 9 88 20 C96 31 99 45 96 59 C92 75 81 90 65 95 C50 100 34 98 22 89 C9 78 2 62 3 47 C5 30 15 15 31 7 C37 4 43 2 50 2 Z";
+  const relief = (dy) => `M29 ${58+dy} L50 ${38+dy} L71 ${58+dy} M31 ${72+dy} L69 ${72+dy}`;
+  if (kind === "broken" || kind === "open") {
+    /* unpressed: the wax is not there. A dashed outline of the seal's edge, no relief. Broken adds a split line. */
+    const col = kind === "broken" ? "var(--manilaInk)" : "var(--inkSoft)";
+    return `<svg viewBox="0 0 100 100" aria-hidden="true"><path d="${blob}" fill="var(--paper)" stroke="${col}" stroke-width="5" stroke-dasharray="10 8"/>`
+      + (kind === "broken" ? `<path d="M36 18 L52 46 L42 58 L60 86" fill="none" stroke="${col}" stroke-width="5" stroke-linecap="round" stroke-linejoin="round"/>` : "")
+      + `</svg>`;
+  }
+  const rib = kind === "ribbon"
+    ? `<g class="ribbon"><path d="M38 84 L28 128 L37 121 L44 130 L48 88 Z" fill="var(--gold)"/><path d="M62 84 L72 128 L63 121 L56 130 L52 88 Z" fill="var(--gold)" opacity=".85"/></g>` : "";
+  return `<svg viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="wx" cx="37%" cy="30%" r="78%"><stop offset="0" stop-color="var(--waxLit)"/><stop offset=".55" stop-color="var(--wax)"/><stop offset="1" stop-color="var(--waxDeep)"/></radialGradient></defs>`
+    + rib + `<path d="${blob}" fill="url(#wx)"/><circle cx="50" cy="50" r="39" fill="none" stroke="var(--waxDeep)" stroke-width="3.5" opacity=".6"/>`
+    + `<path d="${relief(0)}" fill="none" stroke="var(--waxCut)" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".78"/>`
+    + `<path d="${relief(-3.5)}" fill="none" stroke="var(--waxRaised)" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" opacity=".5"/>`
+    + `<ellipse cx="34" cy="28" rx="15" ry="9" transform="rotate(-35 34 28)" fill="var(--card)" opacity=".22"/></svg>`;
+}
+function pairGlyph(kind) {
+  /* two rings that overlap: two copies that agree. Apart when they do not. */
+  if (kind === "broken" || kind === "open") return `<svg viewBox="0 0 26 18" aria-hidden="true"><circle cx="7" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="19" cy="9" r="6" fill="none" stroke="currentColor" stroke-width="1.6" stroke-dasharray="3 2"/></svg>`;
+  return `<svg viewBox="0 0 26 18" aria-hidden="true"><circle cx="9" cy="9" r="6.5" fill="none" stroke="currentColor" stroke-width="1.6"/><circle cx="17" cy="9" r="6.5" fill="${kind === "ribbon" ? "currentColor" : "none"}" fill-opacity=".25" stroke="currentColor" stroke-width="1.6"/></svg>`;
+}
+
+function counts() {
+  /* figures move with the sample: a Tally check-in of Lightning Bolt at Lantern Games adds one card */
+  const extra = S.s === "behind" && S.tc ? 1 : 0;
+  return { cards:`${31+extra}`, cardsAll:"63", pk:"9", pkAll:"48", val:`$${84+extra*2}`, valAll:"$212", pct:Math.round((31+extra)/63*100), missing:`${32-extra} still missing · $${(128.4-extra*2).toFixed(2)}` };
+}
+
+function masthead(fid) {
+  const k = markState(), c = counts();
+  const isNewMark = S.c !== "today";
+  let seal;
+  if (S.c === "seal") {
+    seal = `<button class="seal" id="${fid === "folded" ? "mark" : "mark-" + fid}" data-act="mark" aria-label="${esc(markLabel())}"${tag("new","New: the seal is the mark")}>${sealSVG(k)}</button>`;
+  } else {
+    seal = `<span class="seal" aria-label="MANIFEST seal"${S.c === "today" ? tag("today","Today: ornament") : ""}>${sealSVG("whole")}</span>`;
+  }
+  let cs = "";
+  if (S.c === "countersign") {
+    const txt = { whole:`agreed ${AGREED.time}`, ribbon:`merged ${AGREED.time}`, broken: S.s === "stale" ? `agreed ${STALE.day}` : "not agreed", open: S.s === "fresh" ? "not yet agreed" : "re-reading" }[k];
+    const cls = k === "ribbon" ? "merged" : k === "broken" ? "warn" : "";
+    cs = `<span class="cs-cell"><button class="cs ${cls}" id="${fid === "folded" ? "mark" : "mark-" + fid}" data-act="mark" aria-label="${esc(markLabel())}"${tag("new","New: countersign")}>${pairGlyph(k)}<span>${txt}</span></button></span>`;
+  }
+  const countLine = S.tab === "tally" ? "27 unique items" : "48 packages · autosaves";
+  return `<div class="mh"><div class="sealrow"><i class="rule"></i>${seal}<i class="rule"></i></div>
+    <div class="title">Manifest</div><div class="house">C.H Postal Company</div>
+    <div class="tallies"><div class="tdiv"></div>
+      <div class="cells"><div class="cell"><span class="lb">cards</span><span class="fg"><b>${c.cards}</b><span>/${c.cardsAll}</span></span></div>
+        <div class="cell"><span class="lb">packages</span><span class="fg"><b>${c.pk}</b><span>/${c.pkAll}</span></span></div>
+        <div class="cell"><span class="lb">value</span><span class="fg"><b>${c.val}</b><span>/${c.valAll}</span></span></div></div>
+      <div class="mbar" role="img" aria-label="Cards received ${c.pct} percent"><i style="width:${c.pct}%"></i></div>
+      <div class="foot"><span class="count">${countLine}</span>${cs || '<span></span>'}<span class="miss">${c.missing}</span><span class="slot"> </span></div>
+    </div></div>`;
+}
+
+function advisory() {
+  if (S.s === "stale") return `<button class="advis" data-act="tosync"${tag("new","New on native: the stale case (web has it)")}>Not backed up since ${STALE.day} — tap to fix</button>`;
+  if (S.s === "failed") return `<button class="advis" data-act="tosync"${tag("today","Today: the advisory line")}>The sync server could not be reached — tap to fix</button>`;
+  if (S.s === "removed" && on("removal") && !S.seen) return `<button class="advis" data-act="mark"${tag("new","New: removal line (option)")}>The other device un-checked 1 card — tap to see</button>`;
+  return "";
+}
+
+function pkgList(fid) {
+  const fixNow = !(S.s === "behind" && S.tc && (S.fix === "today" || !on("reread")));
+  let notice = "";
+  if (S.s === "kept") {
+    notice = on("keptroute")
+      ? `<button class="notice route" data-act="kept"${tag("new","New: the notice opens the kept copy")}><span>1 entry could not be read; the original is kept on this device.</span><span class="go">Open</span></button>`
+      : `<div class="notice"${tag("today","Today: no route")}>1 entry could not be read; the original is kept on this device.</div>`;
+  }
+  const rows = PKGS.map((p) => {
+    const lines = p.lines.map((l) => {
+      let got = l.got;
+      if (S.s === "removed" && l.k === "cs-p") got = 0;
+      if (l.k === "bolt-l" && S.s === "behind" && S.tc && fixNow) got = 1;
+      const full = got >= l.q;
+      const staleTag = l.k === "bolt-l" && S.s === "behind" && S.tc
+        ? (fixNow ? (S.fix === "fail" ? "" : tag("new","New: read again on tab show")) : tag("today","Today: old row, Tally checked it in")) : "";
+      return `<div class="ln${full ? " got" : ""}"${staleTag}><span class="bx"><i>${full ? "✓" : ""}</i></span><span class="nm">${l.name}</span><span class="q">${got}/${l.q}</span></div>`;
+    }).join("");
+    const g = p.lines.reduce((a, l) => a + Math.min(l.q, (S.s === "removed" && l.k === "cs-p") ? 0 : (l.k === "bolt-l" && S.s === "behind" && S.tc && fixNow) ? 1 : l.got), 0);
+    const t = p.lines.reduce((a, l) => a + l.q, 0);
+    return `<div class="pkg${g === t ? " done" : ""}"><div class="pbar"><i style="width:${Math.round(g/t*100)}%"></i></div>
+      <div class="ph"><div class="who"><div class="seller">${p.seller}</div><div class="date">${p.date}</div></div><span class="st">${g}/${t}</span></div>${lines}</div>`;
+  }).join("");
+  const failNote = S.s === "behind" && S.tc && S.fix === "fail" && on("reread")
+    ? `<div class="notice" style="color:var(--manilaInk)"${tag("new","New: a failed re-read opens the seal")}>These rows could not be read again. The seal holds the fix.</div>` : "";
+  return `<div class="ruled"><span>Stamped</span><span>0</span></div>${advisory()}${notice}${failNote}<div class="list">${rows}</div>`;
+}
+
+function tallyList() {
+  const rows = [ ["Lightning Bolt","Pinewood Cards, Lantern Games", S.tc ? 2 : 1, 3, "bolt"], ["Brainstorm","Lantern Games", 2, 4, ""], ["Counterspell","Pinewood Cards", S.s === "removed" ? 0 : 1, 1, ""],
+    ["Llanowar Elves","Harbor Hobby", 1, 1, ""], ["Dark Ritual","Quarry Street Singles", 0, 3, ""] ];
+  return `${advisory()}<div class="list">` + rows.map(([n, cp, g, q, k]) => {
+    const can = k === "bolt" && !S.tc && S.s === "behind";
+    return `<div class="trow"><button class="bx" style="flex:0 0 44px;height:44px;display:grid;place-items:center" ${can ? 'data-act="tallycheck" aria-label="Check in one Lightning Bolt"' : 'aria-label="Check in"'}${can ? tag("today","Today: tap to check one in") : ""}>
+      <i style="width:28px;height:28px;border:1.5px solid ${g>=q?"var(--green)":"var(--inkSoft)"};background:${g>=q?"var(--green)":"transparent"};border-radius:6px;display:grid;place-items:center;font-style:normal;color:var(--card)">${g>=q?"✓":(g>0?"–":"")}</i></button>
+      <span class="nm">${n}<span class="cp">${cp}</span></span><span class="q">${g}/${q}</span></div>`;
+  }).join("") + `</div>`;
+}
+
+function ledgerTab() {
+  const fixWord = S.s === "stale" || S.s === "failed";
+  const sub = S.s === "stale" ? `Not backed up since ${STALE.day}` : S.s === "failed" ? "The sync server could not be reached" : S.s === "fresh" ? "Not synced yet" : "Backed up 2026-11-20";
+  return `<div class="lgroup"><button class="lrow" aria-expanded="true"><span><span class="t">Sync</span><span class="s">${sub} — tap to close</span></span><span class="v${fixWord ? " fix" : ""}">${fixWord ? "Check" : "On"}</span></button>
+    <div class="part"><b>Server</b><span>${S.s === "failed" ? "Could not be reached" : "Connected"}</span></div>
+    <div class="part"><b>Last sync</b><span>${S.s === "stale" ? STALE.full : S.s === "fresh" ? "Not yet" : AGREED.full}</span></div>
+    <div class="lrow"><span><span class="t">History</span><span class="s">Saved versions on this device</span></span><span class="v">Show</span></div>
+    <div class="lrow"><span><span class="t">Backup</span><span class="s">Share the ledger as a file</span></span><span class="v">Share</span></div></div>`;
+}
+
+const ICON = {
+  ledger:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>`,
+  orphaned:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>`,
+  tally:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 4L7 20M17 4l-2 16M4 9h16M3 15h16"/></svg>`,
+  packages:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>`,
+};
+function tabbar() {
+  const t = [["ledger","Ledger"],["orphaned","Orphaned"],["tally","Tally"],["packages","Packages"]];
+  return `<div class="tabbar"><div class="pill" role="tablist">` + t.map(([k, n]) =>
+    `<button role="tab" data-act="tab" data-tab="${k}" aria-current="${S.tab === k}">${ICON[k]}<span>${n}</span></button>`).join("") + `</div></div>`;
+}
+
+/* ============ the detail ============ */
+function verdict() {
+  const k = markState();
+  const big = k === "broken" || k === "open" ? sealSVG(k) : sealSVG("whole");
+  const t = {
+    agreed:["All is well.", `This device matched the sync server at ${AGREED.time}. A device that synced after that shows the same counts.`],
+    merged:[`Merged at ${AGREED.time}.`, "The other device's changes came in. Nothing of yours was lost."],
+    removed:[`Merged at ${AGREED.time}. One of yours was undone.`, "The other device un-checked a card after you checked it in. Its later change won. Your copy from before the merge is kept."],
+    kept:["All is well, with one note.", `This device matched the sync server at ${AGREED.time}. One entry in the ledger could not be read when it opened, and the original file is kept.`],
+    behind: S.fix === "fail" && S.tc ? ["Packages shows old counts.", "Your Tally check-in is saved and synced, but Packages could not read it in. Read again to bring the rows up to date."]
+      : ["All is well.", `This device matched the sync server at ${AGREED.time}. Every tab reads the same check-ins.`],
+    stale:[`Not backed up since ${STALE.day}.`, `This device last matched the sync server on ${STALE.full}. Changes made here since then are on this device only.`],
+    failed:["The sync server could not be reached.", `Changes are saved on this device. The last match with the server was ${AGREED.full}.`],
+    fresh:["Not synced yet.", "This device has not matched the sync server yet. The first sync runs once the key is in."],
+  }[S.s];
+  return `<div class="verdict">${big}<div><h2>${t[0]}</h2><p>${t[1]}</p></div></div>`;
+}
+function parts() {
+  const last = S.s === "stale" ? STALE.full : S.s === "fresh" ? "Not yet" : AGREED.full;
+  const srv = S.s === "failed" ? "Could not be reached" : S.s === "fresh" ? "No sync key on this device" : "Connected";
+  const other = on("other") && S.s !== "fresh" ? `<div class="part"${tag("new","New: needs the server to keep it")}><b>Other device last synced</b><span>${S.s === "stale" ? "Nov 20, 8:51 PM" : "Nov 20, 9:10 PM"}</span></div>` : "";
+  return `<div class="parts"><div class="part"${tag("today","Today: Last sync row")}><b>Matched the server</b><span>${last}</span></div><div class="part"><b>Server</b><span>${srv}</span></div>${other}</div>`;
+}
+function mergeSec() {
+  const m = MERGE[S.s === "removed" ? "removed" : "merged"];
+  if (!(S.s === "merged" || S.s === "removed")) {
+    return `<div class="sec"><h3>Last merge</h3><p style="color:var(--inkSoft)">No merge has changed anything since the app opened.</p></div>`;
+  }
+  const n = m.items.length;
+  const open = S.o === "list";
+  const list = on("list")
+    ? `<button class="disc" data-act="${open ? "sheet" : "list"}" aria-expanded="${open}"${tag("new","New: the list, from a diff on this device")}><span>${open ? "Hide" : "Show"} what changed (${n})</span><span class="chev">${open ? "⌃" : "⌄"}</span></button>`
+      + (open ? `<ul class="chg">` + m.items.map(([g, a, b]) => `<li class="${g === "−" ? "rm" : ""}"><i>${g}</i><span>${a}</span><small>${b}</small></li>`).join("") + `</ul>` : "")
+    : "";
+  const lost = S.s === "removed"
+    ? `<button class="disc" data-act="history"${tag("new","New: route to the before-sync version")}><span>Your copy before this merge</span><span class="chev">›</span></button>` : "";
+  return `<div class="sec"><h3>Last merge, ${AGREED.time}</h3><p${tag("today","Today: SyncClient.mergeNotice, unshown")}>${m.sentence}</p>${list}${lost}</div>`;
+}
+function keptSec() {
+  if (S.s !== "kept") return "";
+  return `<div class="sec"><h3>Kept copy</h3><p>1 entry could not be read; the original is kept on this device.</p>
+    ${on("keptroute") ? `<button class="disc" data-act="kept"${tag("new","New: route to the kept copy")}><span>Open the kept copy</span><span class="chev">›</span></button>` : ""}</div>`;
+}
+function behindSec() {
+  if (!(S.s === "behind" && S.fix === "fail" && S.tc)) return "";
+  return `<div class="sec"><div class="btnrow"><button class="btn pri" data-act="reread"${tag("new","New: Read again")}>Read again</button></div></div>`;
+}
+function fixSec() {
+  if (!(S.s === "stale" || S.s === "failed" || S.s === "fresh")) return "";
+  return `<div class="sec"><div class="btnrow"><button class="btn pri" data-act="tosync">${S.s === "fresh" ? "Set up sync" : "Open Sync settings"}</button></div></div>`;
+}
+
+function detailBody() {
+  if (S.o === "history") {
+    return { title:"History", back:"Sync", body:`<div class="sec"><p>Versions saved on this device. The version marked "before sync" is your ledger as it stood just before the merge at ${AGREED.time}.</p></div>
+      <div class="sec"><div class="hrow hi"${tag("today","Today: LedgerStore saves it as a milestone")}><span class="w">Before sync<small>Nov 20, ${AGREED.time} · 63 lines · 31 checked</small></span>
+        <button class="btn ${S.arm ? "arm" : ""}" data-act="arm">${S.arm ? "Restore?" : "Restore"}</button><span style="min-width:72px;display:inline-flex">${S.arm ? `<button class="btn" data-act="disarm">Cancel</button>` : ""}</span></div>
+      <div class="hrow"><span class="w">Opened<small>Nov 20, 8:40 PM · 63 lines · 29 checked</small></span><button class="btn">Restore</button><span style="min-width:72px"></span></div>
+      <div class="hrow"><span class="w">Imported CSV<small>Nov 18, 6:12 PM · 63 lines · 22 checked</small></span><button class="btn">Restore</button><span style="min-width:72px"></span></div></div>
+      ${S.arm ? `<p style="margin:0;font-size:calc(13px * var(--rf));color:var(--manilaInk)">A restore replaces the ledger on every device. It arms in place; press Restore? again to go on.</p>` : ""}` };
+  }
+  if (S.o === "keptpage") {
+    return { title:"Kept copy", back:"Sync", body:`<div class="sec"><p>When this device opened the ledger on Nov 20 at 9:02 PM, 1 entry could not be read. Before it went on, the app kept the whole original file here. Everything it could read is in your ledger.</p></div>
+      <div class="parts"><div class="part"><b>Kept</b><span>Nov 20, 9:02 PM</span></div><div class="part"><b>Entries it could not read</b><span>1</span></div><div class="part"><b>Size</b><span>48 KB</span></div></div>
+      <div class="sec"><div class="btnrow"><button class="btn pri" data-act="share"${tag("new","New: share, as Backup does")}>Share the kept copy</button></div>
+        <p style="font-size:calc(13px * var(--rf));color:var(--inkSoft)">Send it to a computer to look inside. The app does not restore from it.</p></div>
+      <details class="mach"><summary>File name</summary><code>${KEPT_FILE}</code></details>` };
+  }
+  return { title:"Sync", back:"", body: verdict() + parts() + behindSec() + fixSec() + mergeSec() + keptSec() };
+}
+function detail(asPage) {
+  const d = detailBody();
+  const nav = `<div class="navbar">${d.back ? `<button class="back" data-act="sheet">‹ ${d.back}</button>` : "<span></span>"}<span class="nt">${d.title}</span><button class="done" data-act="close">Done</button></div>`;
+  const toast = S.share ? `<div class="toast">The share sheet opens here, as Backup's does.</div>` : "";
+  if (asPage) return `<div class="rpage"${tag("new","New: detail on the right page")}>${nav}<div class="dbody">${d.body}</div>${toast}</div>`;
+  return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="${d.title}"><div class="grab"></div>${nav}<div class="dbody">${d.body}</div>${toast}</div>`;
+}
+
+/* ============ one screen ============ */
+function screenContent(fid) {
+  if (S.tab === "tally") return masthead(fid) + tallyList();
+  if (S.tab === "ledger") return masthead(fid) + ledgerTab();
+  if (S.tab === "orphaned") return masthead(fid) + advisory() + `<div class="list"><div class="notice">2 envelopes waiting.</div></div>`;
+  return masthead(fid) + pkgList(fid);
+}
+const statusBar = `<div class="status"><span>${NOW.replace(" PM","")}</span><span>●●● ▮</span></div>`;
+
+function draw() {
+  const open = S.o !== "";
+  /* one page: folded, phone, AX5 */
+  for (const [id, fid] of [["f-folded","folded"],["f-phone","phone"],["f-ax5","ax5"]]) {
+    const el = document.getElementById(id);
+    const isPhone = fid === "phone";
+    el.innerHTML = `${isPhone ? '<div class="island"></div>' : ""}${statusBar}<div class="pg"><div class="scroll">${screenContent(fid)}</div>${tabbar()}${open ? detail(false) : ""}</div>`;
+  }
+  /* two pages: list on the left, detail on the right on demand */
+  const el = document.getElementById("f-open");
+  const asPage = on("spread");
+  let right;
+  if (open && asPage) right = detail(true);
+  else right = `<div class="empty-r"${tag("today","Today: Packages spans the fold; not drawn across it")}><span class="big">The rest of the list</span><span>Packages keeps one page today, across the fold. This drawing keeps the fold clear, so the list sits on the left page and this page waits for the detail.</span></div>`;
+  el.innerHTML = `${statusBar}<div class="pg l"><div class="scroll">${screenContent("open")}</div></div><div class="fold"><span>FOLD 40 PT</span></div>`
+    + `<div class="pg r">${right}${tabbar()}</div>${open && !asPage ? `<div class="pg l" style="z-index:12">${detail(false)}</div>` : ""}`;
+  document.querySelectorAll(".dev").forEach(fixTags);
+  document.body.classList.toggle("notags", !S.tags);
+  controls();
+  say();
+}
+
+function say() {
+  const k = markState();
+  const map = {
+    none:"Today: no mark. The letterhead's seal is ornament, and a merge or a stale screen shows nothing.",
+    whole:"The mark is whole and silent. Tap it for the account.",
+    ribbon:"A merge came in: the mark carries a gold ribbon until the account is opened once. Nothing else on the screen changes.",
+    broken:"The mark is broken and the advisory line speaks. Both lead to Sync.",
+    open:"The mark is unpressed: no agreement to vouch for yet, or this screen could not read the latest counts.",
+  };
+  document.getElementById("say").textContent = map[k] + (S.s === "behind" ? (S.tc ? (S.fix === "today" ? " Today: Packages still shows the Lightning Bolt row unchecked, while the letterhead counts it (debt native-masthead-stale-after-tabs)." : S.fix === "fail" ? " The re-read failed, so the seal opens and its account offers Read again." : " New: Packages reads the ledger again when its tab shows, so the row matches.") : " Step 1: on Tally, tap the Lightning Bolt box. Then tap Packages.") : "");
+}
+
+function controls() {
+  const mk = (id, list, key, cur) => {
+    const row = document.getElementById(id);
+    row.querySelectorAll("a,button").forEach((n) => n.remove());
+    for (const [v, label] of list) {
+      const a = document.createElement("a");
+      a.textContent = label; a.setAttribute("aria-current", String(cur === v));
+      const over = { [key]: v };
+      if (key === "s") Object.assign(over, { o:"", seen:0, tc:0, tab: v === "behind" ? "tally" : "packages" });
+      a.href = hashOf(over); row.appendChild(a);
+    }
+  };
+  mk("ctl-c", CONCEPTS, "c", S.c);
+  mk("ctl-s", STATES, "s", S.s);
+  mk("ctl-v", VIEWS, "o", S.o);
+  const x = document.getElementById("ctl-x");
+  x.querySelectorAll("a,button").forEach((n) => n.remove());
+  for (const [v, label] of [["today","Today: old rows"],["new","New: reads again"],["fail","New: the re-read fails"]]) {
+    const a = document.createElement("a"); a.textContent = label; a.setAttribute("aria-current", String(S.s === "behind" && S.fix === v));
+    a.href = hashOf({ s:"behind", fix:v, tc:1, tab:"packages", o:"" }); x.appendChild(a);
+  }
+  const h = document.getElementById("ctl-h");
+  h.querySelectorAll("a,button").forEach((n) => n.remove());
+  for (const [k, label] of OPTIONS) {
+    const b = document.createElement("button");
+    b.textContent = label; b.className = S.hide.has(k) ? "off" : ""; b.setAttribute("aria-pressed", String(!S.hide.has(k)));
+    b.onclick = () => { const s = new Set(S.hide); s.has(k) ? s.delete(k) : s.add(k); go({ h:[...s].join(",") }); };
+    h.appendChild(b);
+  }
+  const t = document.createElement("button");
+  t.textContent = S.tags ? "Hide Today/New tags" : "Show Today/New tags"; t.onclick = () => go({ tags: S.tags ? 0 : 1 });
+  h.appendChild(t);
+}
+
+/* ============ taps ============ */
+document.getElementById("frames").addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const a = b.getAttribute("data-act");
+  if (a === "mark") return go({ o:"sheet", seen:1 });
+  if (a === "close") return go({ o:"" });
+  if (a === "sheet") return go({ o:"sheet" });
+  if (a === "list") return go({ o:"list" });
+  if (a === "history") return go({ o:"history" });
+  if (a === "kept") return go({ o:"keptpage" });
+  if (a === "tab") return go({ tab:b.getAttribute("data-tab"), o:"" });
+  if (a === "tosync") return go({ tab:"ledger", o:"" });
+  if (a === "tallycheck") return go({ tc:1 });
+  if (a === "reread") return go({ fix:"new", o:"" });
+  if (a === "arm") { if (S.arm) { S.arm = 0; } else S.arm = 1; return draw(); }
+  if (a === "disarm") { S.arm = 0; return draw(); }
+  if (a === "share") { S.share = 1; draw(); setTimeout(() => { S.share = 0; draw(); }, 1800); }
+});
+window.addEventListener("hashchange", () => { readHash(); draw(); });
+readHash(); draw();
+</script>
+</body>
+</html>

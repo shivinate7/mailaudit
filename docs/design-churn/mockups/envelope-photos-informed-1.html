@@ -55,8 +55,9 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .scroll { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain;
   padding:calc(env(safe-area-inset-top) + 16px) calc(env(safe-area-inset-right) + 16px) calc(env(safe-area-inset-bottom) + 99px) calc(env(safe-area-inset-left) + 16px); scrollbar-width:none; }
 .scroll::-webkit-scrollbar { display:none; }
-.scroll.keys { padding-bottom:calc(289px + 12px); }
-.dev.open .scroll.keys { padding-bottom:calc(264px + 12px); }
+.scroll.kup { padding-bottom:calc(289px + 12px); }
+.scroll.fabpad { padding-bottom:calc(env(safe-area-inset-bottom) + 83px + 12px + 52px + 16px); }
+.dev.open .scroll.kup { padding-bottom:calc(264px + 12px); }
 .stack { display:flex; flex-direction:column; gap:12px; }
 
 /* the masthead is today's and is not redrawn here */
@@ -308,7 +309,7 @@ function scribble(r, x, y, w, amp, stroke, sw){
   return `<path d="${d}" fill="none" stroke="${stroke}" stroke-width="${sw}" stroke-linecap="round" stroke-linejoin="round"/>`;
 }
 const KINDS = { p1:"mailer", p2:"back", p3:"white", p4:"white", p5:"padded", p6:"padbak", p7:"mailer", p8:"white", p9:"padded" };
-function photoSVG(id) {
+function photoSVG(id, slice) {
   const kind = KINDS[id] || "white"; const r = rng(id);
   const bg = "#3b3530";
   let body = "", ink = "#2b3a67";
@@ -342,7 +343,7 @@ function photoSVG(id) {
     for (let i=0;i<3;i++) body += scribble(r, 150, 150+i*22, 140-i*10, 5, "#1d1d1d", 2.2);
     body += `<g opacity="0.5">${[0,1,2,3,4].map(i=>`<path d="M220 ${88+i*7} q14 -5 28 0 t28 0 t28 0" fill="none" stroke="#333" stroke-width="1.3"/>`).join("")}</g>`;
   }
-  return `<svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Sample envelope photo">
+  return `<svg viewBox="0 0 400 300" xmlns="http://www.w3.org/2000/svg"${slice?' preserveAspectRatio="xMidYMid slice"':""} role="img" aria-label="Sample envelope photo">
     <defs><pattern id="crinkle" width="12" height="12" patternUnits="userSpaceOnUse"><path d="M0 6 Q3 2 6 6 T12 6" fill="none" stroke="#8a6a3a" stroke-width="1"/></pattern></defs>
     <rect width="400" height="300" fill="${bg}"/>${body}</svg>`;
 }
@@ -429,7 +430,7 @@ function tile(eid, src, id, i, lost) {
   if (lost) return `<div class="tile lost" role="img" aria-label="Photo lost: neither this device nor the backup has it.">Lost</div>`;
   const saving = S.comp && S.comp.saving === id;
   if (saving) return `<div class="tile saving" role="img" aria-label="Saving photo"></div>`;
-  return `<button class="tile" type="button" data-act="open" data-src="${src}" data-id="${eid}" data-i="${i}" aria-label="View photo ${i+1}">${photoSVG(id)}</button>`;
+  return `<button class="tile" type="button" data-act="open" data-src="${src}" data-id="${eid}" data-i="${i}" aria-label="View photo ${i+1}">${photoSVG(id, true)}</button>`;
 }
 function addTile(target, label="Add a photo of the label") {
   return `<button class="addtile" type="button" data-act="cam" data-target="${target}" aria-label="${label}">${CAM}</button>`;
@@ -485,7 +486,7 @@ function stripCard(e, mode, first) {
   if (mode === "cell") {
     const picked = S.sel === e.id;
     const p = e.photos.find(x=>!(e.lost||[]).includes(x));
-    const thumb = on("cellThumb") && p ? `<span class="thumbmark"${mark("new","New: photo mark")}>${photoSVG(p)}${e.photos.length>1?`<span class="more">${e.photos.length}</span>`:""}</span>` : "";
+    const thumb = on("cellThumb") && p ? `<span class="thumbmark"${mark("new","New: photo mark")}>${photoSVG(p, true)}${e.photos.length>1?`<span class="more">${e.photos.length}</span>`:""}</span>` : "";
     return `<button class="cellbtn" type="button" data-act="pick" data-id="${e.id}" aria-pressed="${picked}" data-anchor="${e.id}"><div class="card${picked?" picked":""}">${head(e,"cell")}<div class="cellrow">${entries(e)}${thumb}</div></div></button>`;
   }
   return `<div class="card" data-anchor="${e.id}">${head(e,mode)}${entries(e)}${stripRow(e, first)}<div class="rule"></div>${candidates(e)}</div>`;
@@ -607,7 +608,7 @@ function viewerLeft() {
 
 /* ================= frames ================= */
 function pageScroll(inner, opts={}) {
-  return `<div class="scroll${opts.keys?" keys":""}" data-scroll>${inner}</div>`;
+  return `<div class="scroll${opts.keys?" kup":opts.fab?" fabpad":""}" data-scroll>${inner}</div>`;
 }
 function screenFolded(dev) {
   const faces = S.c === "faces";
@@ -620,7 +621,7 @@ function screenFolded(dev) {
   if (faces && on("fab") && !S.detail && !S.comp && !keysUp) fab = `<button class="fab" type="button" data-act="cam" data-target="fresh"${mark("new","New: Photograph button")}>${CAM}Photograph an envelope</button>`;
   if (S.camera) overlays += cameraView();
   if (S.view) overlays += viewerMain(false);
-  return `<div class="page">${pageScroll(content,{keys:keysUp})}${fab}${tabbar(count)}${keysUp?keys():""}${overlays}</div>`;
+  return `<div class="page">${pageScroll(content,{keys:keysUp, fab:!!fab})}${fab}${tabbar(count)}${keysUp?keys():""}${overlays}</div>`;
 }
 function screenOpen() {
   const faces = S.c === "faces";
@@ -664,7 +665,6 @@ function render() {
   for (const d of list) { html += frame(d); PRIMARY = false; }
   stage.innerHTML = html;
   K = SCALES.L;
-  placeMarks();
   stage.querySelectorAll("[data-frame]").forEach(f=>{
     const d = f.dataset.frame;
     f.querySelectorAll("[data-scroll]").forEach((sc, idx)=>{
@@ -673,17 +673,20 @@ function render() {
       else if (keep[d] != null && idx === 0) sc.scrollTop = keep[d];
     });
   });
+  placeMarks();
   renderNav();
   writeHash();
 }
 function placeMarks() {
   document.querySelectorAll("[data-mark]").forEach(el=>{
     const k = el.dataset.mark; el.classList.add(k==="new"?"mk-new":k==="today"?"mk-today":"mk-sys");
-    const host = el.closest(".page") || el.closest(".dev"); if (!host) return;
+    const host = el.closest("[data-scroll]") || el.closest(".page") || el.closest(".dev"); if (!host) return;
     const t = document.createElement("span"); t.className = "mtag " + (k==="new"?"n":k==="today"?"t":"s"); t.textContent = el.dataset.mlabel;
     const hr = host.getBoundingClientRect(), r = el.getBoundingClientRect();
-    t.style.left = Math.max(2, r.left - hr.left) + "px"; t.style.top = Math.max(2, r.top - hr.top - 14) + "px";
+    t.style.top = Math.max(2, r.top - hr.top + host.scrollTop - 14) + "px";
     host.appendChild(t);
+    /* right-aligned on the marked part, where rows are mostly empty; kept inside the page */
+    const w = t.offsetWidth; t.style.left = Math.max(2, Math.min(host.clientWidth - w - 2, r.right - hr.left - w - 4)) + "px";
   });
 }
 function renderNav() {

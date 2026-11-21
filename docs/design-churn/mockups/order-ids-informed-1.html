@@ -1,0 +1,632 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Order Id Lines</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native frames are held to light (UIUserInterfaceStyle),
+   so they keep the light set in both themes. The page chrome and the web strip follow the theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06); --scrim:rgba(28,43,36,0.92);
+  /* the native frames: always the light set */
+  --n-paper:#F2E9DA; --n-card:#FCF6EA; --n-ink:#332E3F; --n-inkSoft:#6E6379; --n-line:#DCCDB6; --n-accent:#6F5CA6;
+  --n-green:#2E7A5E; --n-greenSoft:#E6E7D7; --n-red:#A8443C; --n-redSoft:#F4E4D9; --n-manila:#EADBBA; --n-manilaInk:#695832;
+  /* Cochin and Menlo are Apple fonts. Off a Mac, Menlo falls back to DejaVu Sans Mono (the same 0.602 em advance). */
+  --cochin: Cochin, "Liberation Serif", Georgia, serif;
+  --mono: Menlo, "DejaVu Sans Mono", ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  --new:#2E7A5E; --today:#A8443C;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+    --green:#6DBB98; --greenSoft:#26332D; --red:#E3857B; --redSoft:#3A2426; --manila:#3A3122; --manilaInk:#E2CB96;
+    --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+  --green:#6DBB98; --greenSoft:#26332D; --red:#E3857B; --redSoft:#3A2426; --manila:#3A3122; --manilaInk:#E2CB96;
+  --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { margin:0 auto; padding:16px; max-width:2400px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; max-width:100ch; }
+h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0; }
+.sub { color:var(--inkSoft); margin:0 0 8px; max-width:90ch; }
+.kind { font-size:13px; color:var(--inkSoft); }
+nav.bar { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
+nav.bar .lab { font-size:13px; color:var(--inkSoft); min-width:6em; }
+nav.bar .sep { flex-basis:100%; height:0; }
+.chip { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.chip[aria-pressed="true"], .chip[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.chip:focus-visible, button:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+[hidden] { display:none !important; }
+
+table.score { border-collapse:collapse; margin:8px 0 16px; font-size:14px; }
+.score th, .score td { border-bottom:1px solid var(--line); padding:6px 12px 6px 0; text-align:left; vertical-align:top; }
+.score td.y { color:var(--green); font-weight:600; } .score td.n { color:var(--red); font-weight:600; } .score td.p { color:var(--manilaInk); font-weight:600; }
+
+section.concept { border-top:1px solid var(--line); padding-top:16px; margin-top:24px; }
+.chead { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; max-width:1200px; }
+.chead p { margin:4px 0 0; color:var(--inkSoft); max-width:90ch; }
+.grant { display:inline-block; font-size:12.5px; font-weight:600; padding:2px 8px; border-radius:6px; border:1px solid currentColor; color:var(--manilaInk); }
+.grant.ok { color:var(--green); }
+.scroller { overflow-x:auto; padding:12px 4px 8px; }
+.frames { display:flex; gap:24px; align-items:flex-start; width:max-content; }
+.fcap { font-size:13px; color:var(--inkSoft); margin:0 0 6px; max-width:466px; }
+.fcap b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
+
+/* ---------- devices. 1 CSS px = 1 pt. ---------- */
+.dev { position:relative; overflow:hidden; background:var(--n-paper); color:var(--n-ink); border:1px solid var(--n-ink); line-height:normal;
+  --kb:1; --kc:1; --kh:1; --kt:1; }
+/* folded Duo outer screen: 466 x 678 pt; tab bar from y 595, 83 pt tall (duo-fold-and-keyboard, 2026-11-08) */
+.dev.folded { width:466px; height:678px; border-radius:16px; }
+/* the large phone: no size is written; drawn at the folded Duo's 466 x 678. Drag the corner to try other widths. */
+.dev.phone { width:466px; height:678px; border-radius:24px; resize:horizontal; min-width:320px; max-width:520px; }
+/* open Duo inner screen: 951 x 669, fold strip at x 455.5 to 495.5 (duo-fold-and-keyboard) */
+.dev.open { width:951px; height:669px; border-radius:8px; }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.dev.open .page.l { left:0; width:455.5px; }
+.dev.open .page.r { left:495.5px; width:455.5px; }
+.dev.open .hinge { position:absolute; left:455.5px; width:40px; top:0; bottom:0; background:repeating-linear-gradient(90deg,#2a2730 0 2px,#3a3640 2px 4px); }
+.dev.folded .page, .dev.phone .page { left:0; right:0; }
+.scroll { position:absolute; left:0; right:0; top:0; bottom:83px; overflow-y:auto; padding:calc(env(safe-area-inset-top) + 8px) 16px 16px; display:flex; flex-direction:column; gap:12px; }
+.dev.open .page.l .scroll { bottom:0; }
+/* AX5: each font scales by its own text style (Apple Dynamic Type tables, AX5 over Large). Font.mono and Font.cochin default to Body. */
+.dev.ax5 { --kb:3.118; --kc:3.583; --kh:3.118; --kt:2.545; }
+
+/* system tab bar: a floating pill. Labels fixed at the default size (the open Duo's bar is ruled so, duo-card-in-hand). */
+.tabbar { position:absolute; left:0; right:0; bottom:0; height:83px; display:flex; justify-content:center; align-items:flex-start; padding-top:8px;
+  padding-bottom:env(safe-area-inset-bottom); }
+.dev.open .tabbar { left:495.5px; right:0; }
+.tabbar .pill { display:flex; gap:0; background:rgba(252,246,234,0.92); border:1px solid var(--n-line); border-radius:999px; padding:4px; box-shadow:0 2px 8px rgba(28,43,36,0.12); }
+.tabbar button { font:600 10px var(--sys); color:var(--n-inkSoft); background:none; border:0; border-radius:999px; min-width:72px; min-height:48px;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; cursor:pointer; }
+.tabbar button[aria-current="page"] { color:var(--n-accent); background:var(--n-greenSoft); }
+.tabbar svg { width:20px; height:20px; }
+
+/* masthead and search, as the native Tally screen draws them, simplified */
+.mast { text-align:center; border-bottom:1px solid var(--n-line); padding-bottom:8px; }
+.mast .lh { font-family:var(--cochin); font-weight:700; letter-spacing:0.18em; font-size:20px; }
+.mast .cl { font-family:var(--mono); font-size:11px; color:var(--n-inkSoft); }
+.search { font-family:var(--cochin); font-size:calc(16px * var(--kb)); color:var(--n-inkSoft); background:var(--n-card); border:1px solid var(--n-line); border-radius:8px; padding:10px 12px; min-height:44px; }
+
+/* the Tally row card */
+.trow { background:var(--n-card); border:1px solid var(--n-line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); }
+.trow.picked { outline:2px solid var(--n-accent); outline-offset:-1px; }
+.thead { display:flex; gap:8px; align-items:center; padding:12px; min-height:44px; cursor:pointer; background:none; border:0; width:100%; text-align:left; color:inherit; font:inherit; }
+.thead .tri { font-family:var(--mono); font-size:calc(10px * var(--kc)); color:var(--n-inkSoft); transition:transform 120ms; }
+.thead.on .tri { transform:rotate(90deg); }
+.thead .nm { flex:1; min-width:0; }
+.thead .nm b { display:block; font-family:var(--cochin); font-size:calc(15px * var(--kh)); }
+.thead .nm span { display:block; font-family:var(--mono); font-size:calc(11px * var(--kc)); color:var(--n-inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.thead .fig { text-align:right; flex:none; }
+.thead .fig b { display:block; font-family:var(--mono); font-size:calc(15px * var(--kh)); }
+.thead .fig span { display:block; font-family:var(--mono); font-size:calc(11.5px * var(--kc)); color:var(--n-inkSoft); }
+.thead .fig i { display:block; font-style:normal; font-family:var(--cochin); font-weight:700; font-size:calc(12px * var(--kc)); color:var(--n-red); }
+.detail .dt { font-family:var(--cochin); font-weight:700; font-size:calc(20px * var(--kt)); padding:0 12px 4px; }
+.detail .ac { font-family:var(--mono); font-size:calc(10.5px * var(--kc)); color:var(--n-inkSoft); padding:0 12px 4px; }
+.bulk { display:flex; gap:8px; padding:4px 12px 8px; flex-wrap:wrap; }
+.bulk span { font-family:var(--mono); font-size:calc(11.5px * var(--kc)); border:1px solid var(--n-line); border-radius:6px; padding:0 10px; min-height:44px; display:inline-flex; align-items:center; color:var(--n-ink); }
+
+/* ItemLine: a 45 pt check frame with a 30 pt box, spacing 8, the column, trailing 12, 12 above and below */
+.line { display:flex; gap:8px; align-items:flex-start; padding-left:4px; border-top:1px solid var(--n-line); position:relative; }
+.line.done { background:var(--n-greenSoft); }
+.chk { width:45px; height:45px; flex:none; background:none; border:0; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.chk i { width:30px; height:30px; border-radius:8px; border:2px solid var(--n-inkSoft); background:var(--n-card); display:flex; align-items:center; justify-content:center; color:var(--n-card); font:16px var(--sys); transition:background 200ms, border-color 200ms; }
+.line.done .chk i { background:var(--n-green); border-color:var(--n-green); }
+.line.part .chk i { background:var(--n-manila); border-color:var(--n-manilaInk); color:var(--n-manilaInk); }
+.col { flex:1; min-width:0; padding:12px 12px 12px 0; display:flex; flex-direction:column; gap:4px; }
+.l1 { display:flex; gap:8px; align-items:baseline; }
+.l1 b { flex:1; min-width:0; font-family:var(--cochin); font-weight:600; font-size:calc(14px * var(--kb)); }
+.l1 span { font-family:var(--mono); font-size:calc(12px * var(--kb)); color:var(--n-inkSoft); flex:none; }
+.line.done .l1 b { color:var(--n-inkSoft); }
+.l2 { font-family:var(--cochin); font-size:calc(11.5px * var(--kb)); color:var(--n-inkSoft); }
+.step { display:flex; align-items:center; gap:4px; font-family:var(--mono); font-size:calc(13px * var(--kb)); }
+.step button { width:44px; height:44px; background:none; border:0; padding:0; display:flex; align-items:center; justify-content:center; cursor:pointer; }
+.step button i { width:34px; height:34px; border:1px solid var(--n-line); border-radius:8px; background:var(--n-card); display:flex; align-items:center; justify-content:center; font-style:normal; color:var(--n-ink); }
+.step output { min-width:44px; text-align:center; }
+
+/* ---------- the order id line, by concept ---------- */
+.oid { font-family:var(--mono); font-size:calc(10.5px * var(--kb)); color:var(--n-inkSoft); }
+/* Today, native: plain Text with fixedSize: no link, never cut, never wrapped (ItemLine.lines) */
+.oid.plain { white-space:nowrap; }
+/* Whole line: the id is the jump to Packages, and wraps only at its dashes */
+.jump { display:flex; align-items:center; gap:4px; min-height:44px; padding:0; border:0; background:none; text-align:left; cursor:pointer; color:var(--n-inkSoft);
+  font-family:var(--mono); font-size:calc(10.5px * var(--kb)); line-height:1.3; }
+.jump .t { text-decoration:underline; text-underline-offset:2px; overflow-wrap:normal; word-break:normal; }
+.jump .t .g { white-space:nowrap; }
+.jump .chev { flex:none; }
+/* Copy beside: the id, then a Copy control in a slot reserved at the width of "Copied" */
+.idrow { display:flex; align-items:center; gap:16px; }
+.idrow .jump { flex:1; min-width:0; }
+.copy { flex:none; min-width:76px; min-height:44px; display:flex; align-items:center; justify-content:center; gap:4px; border:0; background:none; cursor:pointer; padding:0; }
+.copy i { font:normal 600 calc(11.5px * var(--kc)) var(--sys); color:var(--n-accent); border:1px solid var(--n-line); border-radius:6px; padding:4px 8px; background:var(--n-card); min-width:64px; text-align:center; white-space:nowrap; }
+.copy.did i { color:var(--n-green); border-color:var(--n-green); }
+/* Order slip: the number as a three-part docket. A tap on it copies; "Order" opens the slip. */
+.docket { display:flex; flex-wrap:wrap; align-items:stretch; gap:0; border:1px solid var(--n-line); border-radius:6px; background:var(--n-paper); padding:0; cursor:pointer;
+  min-height:44px; position:relative; font:inherit; color:var(--n-ink); flex:0 1 auto; max-width:100%; }
+.docket .g { font-family:var(--mono); font-size:calc(11px * var(--kb)); letter-spacing:0.04em; padding:4px 8px; display:flex; align-items:center; }
+.docket .g + .g { border-left:1px dashed var(--n-line); }
+/* the stamp lands on the docket's trailing corner, so it never covers the digits that were just copied */
+.docket .stamp { position:absolute; right:-6px; top:-12px; pointer-events:none; }
+.docket .stamp b { display:inline-block; font:700 10.5px var(--mono); letter-spacing:0.1em; color:var(--n-green); border:2px solid var(--n-green); border-radius:4px; padding:2px 8px; background:var(--n-card);
+  transform:rotate(-4deg); animation:land 220ms cubic-bezier(.2,.9,.3,1.2); }
+@keyframes land { from { transform:rotate(-10deg) scale(1.35); opacity:0; } to { transform:rotate(-4deg) scale(1); opacity:1; } }
+@media (prefers-reduced-motion: reduce) { .docket .stamp b { animation:none; } }
+.slipbtn { flex:none; min-width:44px; min-height:44px; border:0; background:none; cursor:pointer; font:600 calc(12px * var(--kc)) var(--sys); color:var(--n-accent); display:flex; align-items:center; gap:2px; padding:0 4px; }
+.idrow.slip { gap:12px; flex-wrap:wrap; }
+/* At accessibility sizes the control drops under the number (ViewThatFits picks the stacked layout), so the number keeps the full width */
+.dev.ax5 .idrow { flex-direction:column; align-items:flex-start; gap:4px; }
+.dev.ax5 .idrow .jump { width:100%; }
+
+/* package card (Packages screen, the target of the jump) */
+.pcard { background:var(--n-card); border:1px solid var(--n-line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); }
+.pcard.revealed { outline:2px solid var(--n-accent); outline-offset:-1px; }
+.phead { padding:12px 12px 0 12px; display:flex; flex-direction:column; }
+.phead .top { display:flex; align-items:center; gap:8px; }
+.phead .chev { width:28px; height:28px; display:flex; align-items:center; justify-content:center; color:var(--n-inkSoft); font-family:var(--mono); }
+.phead .who { flex:1; min-width:0; }
+.phead .who b { display:block; font-family:var(--cochin); font-size:calc(15px * var(--kb)); }
+.phead .who span { display:block; font-family:var(--mono); font-size:calc(11px * var(--kb)); color:var(--n-inkSoft); }
+.pill { font-family:var(--cochin); font-weight:700; font-size:calc(12.5px * var(--kb)); color:var(--n-red); background:var(--n-redSoft); border-radius:999px; padding:4px 8px; flex:none; }
+.pill.ok { font:700 10.5px var(--mono); letter-spacing:0.1em; color:var(--n-green); background:var(--n-card); border:2px solid var(--n-green); border-radius:4px; transform:rotate(-4deg); }
+.phead .idl { min-height:45px; display:flex; align-items:center; }
+.tlink { font-family:var(--mono); font-size:calc(11px * var(--kb)); color:var(--n-inkSoft); text-decoration:underline; text-underline-offset:2px; min-height:45px; min-width:45px; display:flex; align-items:center; background:none; border:0; padding:0; cursor:pointer; text-align:left; }
+
+/* system menus and sheets, drawn */
+.scrim { position:absolute; inset:0; background:rgba(28,43,36,0.28); display:flex; align-items:flex-end; z-index:5; }
+.sheet { background:var(--n-card); width:100%; border-radius:16px 16px 0 0; padding:8px 16px calc(env(safe-area-inset-bottom) + 16px); max-height:88%; overflow-y:auto; display:flex; flex-direction:column; gap:12px; box-shadow:0 -4px 16px rgba(28,43,36,0.18); }
+.sheet .grab { width:36px; height:5px; border-radius:3px; background:var(--n-line); align-self:center; }
+.sheet .bar { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.sheet .bar h3 { margin:0; font:600 17px var(--sys); flex:1; text-align:center; }
+.sheet .bar button { font:400 17px var(--sys); color:var(--n-accent); background:none; border:0; min-height:44px; min-width:44px; cursor:pointer; padding:0 4px; }
+.sheet .bar .done { font-weight:600; }
+.menu { position:absolute; z-index:6; background:rgba(252,246,234,0.98); border:1px solid var(--n-line); border-radius:14px; box-shadow:0 8px 24px rgba(28,43,36,0.25); width:250px; overflow:hidden; font:17px var(--sys); }
+.menu .pv { padding:8px 12px; font:12px var(--mono); color:var(--n-inkSoft); border-bottom:1px solid var(--n-line); word-break:break-all; }
+.menu button { display:flex; justify-content:space-between; width:100%; min-height:44px; padding:0 16px; align-items:center; background:none; border:0; border-top:1px solid var(--n-line); font:inherit; color:var(--n-ink); cursor:pointer; }
+.menu .note { padding:8px 12px; font:12px var(--sys); color:var(--n-red); border-top:1px solid var(--n-line); }
+.toast { position:absolute; left:16px; right:16px; bottom:96px; z-index:7; background:var(--n-ink); color:var(--n-card); border-radius:10px; padding:10px 12px; font:14px var(--sys); }
+.browser .url { font:12px var(--mono); background:var(--n-paper); border:1px solid var(--n-line); border-radius:8px; padding:8px 10px; word-break:break-all; }
+.browser .land { border:1px dashed var(--n-inkSoft); border-radius:8px; padding:12px; font:14px var(--sys); color:var(--n-ink); }
+.browser .land small { display:block; color:var(--n-inkSoft); margin-top:6px; }
+/* the slip */
+.slipnum { display:flex; flex-direction:column; gap:4px; align-items:stretch; border:1px solid var(--n-line); border-radius:8px; background:var(--n-paper); padding:12px; cursor:pointer; position:relative; min-height:44px; font:inherit; color:var(--n-ink); }
+.slipnum .digits { display:flex; flex-wrap:wrap; gap:4px 0; font-family:var(--mono); font-size:calc(22px * var(--kb)); letter-spacing:0.04em; }
+.slipnum .digits span { white-space:nowrap; }
+.slipnum small { font:13px var(--sys); color:var(--n-inkSoft); }
+.slipnum .stamp { position:absolute; right:12px; top:8px; pointer-events:none; }
+.slipnum .stamp b { display:inline-block; font:700 12px var(--mono); letter-spacing:0.1em; color:var(--n-green); border:2px solid var(--n-green); border-radius:4px; padding:2px 8px; background:var(--n-card); transform:rotate(-4deg); animation:land 220ms cubic-bezier(.2,.9,.3,1.2); }
+.acts { display:flex; flex-direction:column; border:1px solid var(--n-line); border-radius:10px; overflow:hidden; }
+.acts button { min-height:44px; display:flex; align-items:center; justify-content:space-between; padding:0 14px; background:var(--n-card); border:0; font:17px var(--sys); color:var(--n-accent); cursor:pointer; text-align:left; }
+.acts button + button { border-top:1px solid var(--n-line); }
+.inorder h4 { margin:0 0 4px; font:600 13px var(--sys); color:var(--n-inkSoft); }
+.inorder div { display:flex; justify-content:space-between; gap:8px; padding:8px 0; border-top:1px solid var(--n-line); font-family:var(--cochin); font-size:calc(14px * var(--kb)); }
+.inorder div span { font-family:var(--mono); font-size:calc(11.5px * var(--kc)); color:var(--n-inkSoft); flex:none; }
+.inorder div.here { font-weight:700; }
+.rp-empty { font-family:var(--cochin); color:var(--n-inkSoft); text-align:center; padding:48px 16px; font-size:15px; }
+.back { align-self:flex-start; font:17px var(--sys); color:var(--n-accent); background:none; border:0; min-height:44px; padding:0; cursor:pointer; }
+
+/* tags */
+.tag-today { outline:2px dashed var(--today); outline-offset:0; }
+.tag-new { outline:2px dashed var(--new); outline-offset:0; }
+.tagname { font:600 11px var(--sys); display:inline-block; padding:0 4px; border-radius:4px; }
+.tagname.today { color:var(--today); border:1px dashed var(--today); } .tagname.new { color:var(--new); border:1px dashed var(--new); }
+.dev .tagname { position:absolute; z-index:3; right:20px; background:var(--n-card); }
+
+/* the web strip: the web Tally source row, at 320 px, in the page's theme */
+.web { width:320px; background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:16px 12px; color:var(--ink); }
+.web .wrow { background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; gap:12px; padding:12px; align-items:flex-start; }
+.web .wbox { width:30px; height:30px; border-radius:8px; border:2px solid var(--inkSoft); flex:none; }
+.web .wc { flex:1; min-width:0; }
+.web .wt { display:flex; gap:8px; align-items:baseline; }
+.web .wt b { flex:1; font-family:var(--cochin); font-size:14px; }
+.web .wt span { font:12px var(--mono); color:var(--inkSoft); }
+.web .wm { font-size:11.5px; color:var(--inkSoft); margin-top:4px; line-height:13px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; font-family:var(--cochin); }
+.web .wid { font:10.5px var(--mono); color:var(--inkSoft); min-height:30px; display:flex; align-items:center; gap:4px; }
+.web .wid u { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; text-underline-offset:2px; }
+.web .wid.wrap u { white-space:normal; }
+.web .wid.tall { min-height:44px; }
+.web .wcopy { margin-left:auto; flex:none; font:600 11.5px var(--sys); color:var(--accent); border:1px solid var(--line); border-radius:6px; padding:4px 8px; min-width:64px; text-align:center; background:var(--card); }
+.web .wcopy.did { color:var(--green); border-color:var(--green); }
+.web .sel { background:rgba(111,92,166,0.28); color:var(--ink); }
+.web .callout { display:inline-block; margin-top:6px; font:13px var(--sys); background:#332E3F; color:#FCF6EA; border-radius:8px; padding:6px 12px; }
+.web .wnote { font-size:12px; color:var(--inkSoft); margin-top:8px; }
+</style>
+</head>
+<body>
+<main>
+<p class="banner">Sample: every seller, card, price, date and order number on this page is invented. None is real.</p>
+<h1>Order numbers you can read, copy and follow</h1>
+<p class="kind">Designer kind: informed. Designer: order-ids-informed-1. Screen: Tally copy lines and the package header's order line, native app.</p>
+<p class="sub">The job: read the whole order number, paste it into a message to a seller, and open that one order on TCGplayer. Each concept below works: tap the check box, the order number, Copy, Order, the tab bar. Hold the order line in Packages for a second to see what a long press gives today.</p>
+
+<nav class="bar" aria-label="View">
+  <span class="lab">Concept</span>
+  <a class="chip" data-c="all" href="#">All</a>
+  <a class="chip" data-c="today" href="#c=today">Today</a>
+  <a class="chip" data-c="whole" href="#c=whole">Whole line</a>
+  <a class="chip" data-c="copy" href="#c=copy">Copy beside</a>
+  <a class="chip" data-c="slip" href="#c=slip">Order slip</a>
+  <span class="sep"></span>
+  <span class="lab">Device</span>
+  <a class="chip" data-d="all" href="#">All</a>
+  <a class="chip" data-d="folded" href="#d=folded">Duo folded</a>
+  <a class="chip" data-d="ax5" href="#d=ax5">Folded, AX5 text</a>
+  <a class="chip" data-d="open" href="#d=open">Duo open</a>
+  <a class="chip" data-d="phone" href="#d=phone">Large phone</a>
+  <a class="chip" data-d="web" href="#d=web">Web row</a>
+  <span class="sep"></span>
+  <span class="lab">Link goes to</span>
+  <button class="chip" data-link="search" type="button">Order search (ruled)</button>
+  <button class="chip" data-link="page" type="button">Order page (from a test fixture)</button>
+  <span class="sep"></span>
+  <span class="lab">Theme</span>
+  <button class="chip" data-t="light" type="button">Light</button>
+  <button class="chip" data-t="dark" type="button">Dark</button>
+  <span class="kind">The native app is held to light, so only the web row and this page change.</span>
+  <span class="sep"></span>
+  <span class="lab">Hide</span>
+  <button class="chip" data-hide="whole" type="button">Hide Whole line</button>
+  <button class="chip" data-hide="copy" type="button">Hide Copy beside</button>
+  <button class="chip" data-hide="slip" type="button">Hide Order slip</button>
+  <button class="chip" data-hide="" type="button">Show all</button>
+</nav>
+
+<table class="score" aria-label="How each concept meets the job">
+  <thead><tr><th>Concept</th><th>Whole number readable</th><th>Copy in one tap</th><th>Link lands on that order</th><th>Needs an owner ruling</th></tr></thead>
+  <tbody>
+    <tr><td>Today</td><td class="n">Native: runs off the row at AX5. Web: cuts a long id.</td><td class="n">No. Long press copies the web address.</td><td class="p">Unmeasured: may open the whole list</td><td>-</td></tr>
+    <tr><td>Whole line</td><td class="y">Yes, wraps at its dashes</td><td class="n">No. Within the rulings it cannot.</td><td class="p">Same link, or the order page</td><td>Only the link target</td></tr>
+    <tr><td>Copy beside</td><td class="y">Yes</td><td class="y">Yes: Copy</td><td class="p">Same link, or the order page</td><td>Yes: a copy control</td></tr>
+    <tr><td>Order slip</td><td class="y">Yes, and big in the slip</td><td class="y">Yes: tap the number</td><td class="p">Same link, or the order page</td><td>Yes: tap copies, the id is no longer the link</td></tr>
+  </tbody>
+</table>
+
+<div id="concepts"></div>
+</main>
+
+<script>
+/* ---------------- sample data (invented) ---------------- */
+const ORDERS = {
+  A: { id:"7C41B09E-3A5F12-D80C4", seller:"Alpha Cards", date:"2026-07-01", tracking:"untracked",
+       items:[{k:"a1",name:"Lightning Bolt",qty:2,set:"Magic 2010",finish:"",cond:"Near Mint",price:1.12},
+              {k:"a2",name:"Counterspell",qty:1,set:"Ice Age",finish:"",cond:"Lightly Played",price:0.74},
+              {k:"a3",name:"Ponder",qty:1,set:"Lorwyn",finish:"",cond:"Near Mint",price:0.31}] },
+  B: { id:"E93A6D21-0B7C48-15FAE", seller:"Beta Games", date:"2026-07-29", tracking:"tracked",
+       items:[{k:"b1",name:"Lightning Bolt",qty:1,set:"Masters 25",finish:"Foil",cond:"Near Mint",price:0.89},
+              {k:"b2",name:"Brainstorm",qty:1,set:"Ice Age",finish:"",cond:"Near Mint",price:0.58}] },
+  G: { id:"3B90D1C4-77A2E0-4C19B", seller:"Gamma Hobby", date:"2026-08-04", tracking:"tracked",
+       items:[{k:"g1",name:"Lightning Bolt",qty:1,set:"Magic 2010",finish:"",cond:"Lightly Played",price:0.95},
+              {k:"g2",name:"Brainstorm",qty:1,set:"Mercadian Masques",finish:"",cond:"Near Mint",price:0.44},
+              {k:"g3",name:"Counterspell",qty:1,set:"7th Edition",finish:"",cond:"Near Mint",price:0.69}] },
+};
+const ITEMS = [];
+for (const [ok,o] of Object.entries(ORDERS)) for (const it of o.items) ITEMS.push({...it, ok, orderId:o.id, seller:o.seller, date:o.date});
+const PRODUCTS = ["Lightning Bolt","Counterspell","Brainstorm","Ponder"];
+const URLS = {
+  search: id => "https://store.tcgplayer.com/myaccount/orderhistory?SearchString=" + encodeURIComponent(id),
+  page:   id => "https://store.tcgplayer.com/myaccount/orderhistory/order/" + encodeURIComponent(id) + "?x=1",
+};
+const CONCEPTS = [
+  { key:"today", name:"Today", grant:null,
+    say:"What ships now. Native: the Tally id is plain text, not a link, and never wraps (ItemLine.lines, fixedSize). Web: the id is the jump to Packages and ends in an ellipsis when narrow (ItemRow). The package id is a link to the order search; nothing copies (order-id-button-stops-propagate)." },
+  { key:"whole", name:"Whole line", grant:false,
+    say:"Keeps every ruling. The Tally id gets its own line that wraps only at its dashes, so it never loses its tail. On native it becomes the jump to Packages, as on the web. Copy stays as today: within the rulings there is no way to copy the bare number in one tap." },
+  { key:"copy", name:"Copy beside", grant:true,
+    say:"Whole line, plus a Copy control at the trailing end of each order line, in Tally and in the package header. One tap copies the bare number; the control reads Copied for a moment, in a slot already as wide as that word, so nothing moves." },
+  { key:"slip", name:"Order slip", grant:true,
+    say:"The bold one. The number is set as a three-part docket, like the counterfoil of a receipt. A tap on the docket copies it, and a Copied stamp lands on it. Order opens the order slip: the number large, Open on TCGplayer, Show in Packages, and the other cards in that envelope. On the open Duo the slip takes the right page." },
+];
+const DEVICES = [
+  { key:"folded", cls:"folded", dev:"iphone-duo-folded", cap:"Duo folded, 466 x 678 pt, default text size" },
+  { key:"ax5", cls:"folded ax5", dev:"iphone-duo-folded", cap:"Duo folded, AX5, the biggest accessibility text size" },
+  { key:"open", cls:"open", dev:"iphone-duo-unfolded", cap:"Duo open, 951 x 669 pt, fold strip at x 455.5 to 495.5" },
+  { key:"phone", cls:"phone", dev:"iphone-large", cap:"Large phone. No size is written: drawn at 466 x 678 pt. Drag the corner to change the width." },
+];
+
+/* ---------------- page state from the hash ---------------- */
+const H = Object.fromEntries(location.hash.replace(/^#/,"").split("&").filter(Boolean).map(p => p.split("=")));
+let LINK = H.link === "page" ? "page" : "search";
+let HIDDEN = new Set((H.hide||"").split(",").filter(Boolean));
+const FR = {};  // per frame state
+
+const money = n => "$" + n.toFixed(2);
+const groups = id => id.split("-");
+const esc = s => String(s).replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+
+function newState(c, d) {
+  const s = { c, d, screen:"tally", open:"Lightning Bolt", got:{a1:0,b1:1,g1:0,a2:0,g3:1,b2:0,g2:0,a3:0},
+              copied:null, menu:null, slip:null, browser:null, revealed:null, refused:false, toast:null };
+  const st = H.s;
+  const first = ITEMS.find(i => i.k==="a1");
+  if (st === "copied") s.copied = "a1";
+  if (st === "menu") { s.screen = "packages"; s.revealed = "A"; s.menu = "A"; }
+  if (st === "jumped") { s.screen = "packages"; s.revealed = "A"; }
+  if (st === "slip" && c === "slip") s.slip = "A";
+  if (st === "browser") s.browser = first.orderId;
+  return s;
+}
+
+/* ---------------- rendering ---------------- */
+function tabbar(s) {
+  const tabs = [["packages","Packages","M4 7l8-4 8 4v10l-8 4-8-4z M4 7l8 4 8-4 M12 11v10"],["tally","Tally","M5 4v16 M10 4v16 M15 4v16 M3 14l16-6"],
+                ["orphaned","Orphaned","M3 6h18v12H3z M3 6l9 7 9-7"],["ledger","Ledger","M5 3h11l3 3v15H5z M8 9h8 M8 13h8 M8 17h5"]];
+  return `<div class="tabbar"><div class="pill" role="tablist">${tabs.map(([k,l,p]) =>
+    `<button role="tab" data-act="tab" data-v="${k}" ${s.screen===k?'aria-current="page"':''}><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="${p}"/></svg>${l}</button>`).join("")}</div></div>`;
+}
+function masthead(sub) {
+  return `<div class="mast"><div class="lh">MANIFEST</div><div class="cl">${sub}</div></div>`;
+}
+function idText(id) {
+  // wraps only at the dashes: each group is unbreakable, a break may follow each dash
+  return groups(id).map((g,i,a) => `<span class="g">${g}${i<a.length-1?"-":""}</span>${i<a.length-1?"<wbr>":""}`).join("");
+}
+function focusId(s, c, k) { return (k==="a1" && !FOCUSED[c] && (FOCUSED[c]=true)) ? `id="focus-${c}"` : ""; }
+let FOCUSED = {};
+
+function orderLine(s, it, where) {
+  // where: "tally" (a copy line) or "pkg" (the package header)
+  const c = s.c, ok = it.ok, id = it.orderId, key = where==="tally" ? it.k : "h"+ok;
+  const copied = s.copied === key;
+  const fid = where==="tally" ? focusId(s, c, it.k) : "";
+  if (where === "pkg") {
+    if (c === "today" || c === "whole") {
+      return `<div class="idl ${c==='whole'?'':'tag-today'}"><button class="tlink" data-act="link" data-v="${ok}" data-hold="${ok}" aria-label="Order ${id} on TCGplayer">${idText(id)}</button></div>`;
+    }
+    if (c === "copy") {
+      return `<div class="idl idrow"><button class="tlink" data-act="link" data-v="${ok}" data-hold="${ok}" aria-label="Order ${id} on TCGplayer">${idText(id)}</button>
+        <button class="copy tag-new ${copied?'did':''}" data-act="copy" data-v="${key}" data-id="${id}" aria-label="Copy order number ${id}"><i>${copied?"Copied":"Copy"}</i></button></div>`;
+    }
+    return `<div class="idl idrow slip">${docket(s, id, key)}<button class="slipbtn" data-act="slip" data-v="${ok}" aria-label="Order slip for ${id}">Order&nbsp;›</button></div>`;
+  }
+  if (c === "today") {
+    return `<div class="oid plain tag-today" ${fid}>${id}</div>`;
+  }
+  const jump = `<button class="jump oid" data-act="jump" data-v="${ok}" aria-label="Show the whole order ${id}"><span class="t">${idText(id)}</span><span class="chev">›</span></button>`;
+  if (c === "whole") return `<div class="tag-new" ${fid}>${jump}</div>`;
+  if (c === "copy") return `<div class="idrow oid tag-new" ${fid}>${jump}<button class="copy ${copied?'did':''}" data-act="copy" data-v="${key}" data-id="${id}" aria-label="Copy order number ${id}"><i>${copied?"Copied":"Copy"}</i></button></div>`;
+  return `<div class="idrow slip tag-new" ${fid}>${docket(s, id, key)}<button class="slipbtn" data-act="slip" data-v="${ok}" aria-label="Order slip for ${id}">Order&nbsp;›</button></div>`;
+}
+function docket(s, id, key) {
+  const copied = s.copied === key;
+  return `<button class="docket" data-act="copy" data-v="${key}" data-id="${id}" aria-label="Copy order number ${id}">${groups(id).map(g=>`<span class="g">${g}</span>`).join("")}${copied?'<span class="stamp"><b>COPIED</b></span>':''}</button>`;
+}
+
+function itemLine(s, it, title, detail, withId) {
+  const got = s.got[it.k]||0, done = got>=it.qty, part = got>0 && !done;
+  return `<div class="line ${done?'done':''} ${part?'part':''}">
+    <button class="chk" data-act="check" data-v="${it.k}" aria-label="${done?'Undo check in':'Check in'} ${esc(it.name)}"><i>${done?'✓':part?'–':''}</i></button>
+    <div class="col">
+      <div class="l1"><b>${esc(title)}</b><span>${money(it.price)}</span></div>
+      <div class="l2">${esc(detail)}</div>
+      ${withId ? orderLine(s, it, "tally") : ""}
+      ${it.qty>1 ? `<div class="step"><button data-act="step" data-v="${it.k}" data-n="-1" aria-label="One fewer received"><i>–</i></button><output>${got}/${it.qty}</output><button data-act="step" data-v="${it.k}" data-n="1" aria-label="One more received"><i>+</i></button></div>` : ""}
+    </div></div>`;
+}
+function product(name) {
+  const its = ITEMS.filter(i => i.name===name);
+  const qty = its.reduce((n,i)=>n+i.qty,0), basis = its.reduce((n,i)=>n+i.qty*i.price,0);
+  const sellers = new Set(its.map(i=>i.seller)).size, orders = new Set(its.map(i=>i.orderId)).size;
+  const sets = [...new Set(its.map(i=>i.set))];
+  return { its, qty, basis, sellers, orders, sets };
+}
+function tallyRow(s, name, opts={}) {
+  const p = product(name);
+  const got = p.its.reduce((n,i)=>n+Math.min(i.qty, s.got[i.k]||0),0);
+  const left = p.its.reduce((n,i)=>n+(i.qty-Math.min(i.qty,s.got[i.k]||0))*i.price,0);
+  const isOpen = s.open===name;
+  const head = `<button class="thead ${isOpen?'on':''}" data-act="row" data-v="${esc(name)}" aria-expanded="${isOpen}">
+      <span class="tri">▶</span>
+      <span class="nm"><b>${esc(name)}</b><span>${p.qty} cop${p.qty===1?"y":"ies"} ·${p.sets.join(", ")}</span></span>
+      <span class="fig"><b>${got}/${p.qty}</b><span>${money(p.basis/p.qty)} ea</span><i style="opacity:${got>=p.qty?0:1}">${p.qty-got} left · ${money(left)}</i></span></button>`;
+  const det = (isOpen && opts.inline!==false) ? copiesBlock(s, name) : "";
+  return `<div class="trow ${opts.picked?'picked':''}">${head}${det}</div>`;
+}
+function copiesBlock(s, name, big) {
+  const p = product(name);
+  return `<div class="detail">${big?`<div class="dt">${esc(name)}</div>`:""}
+    <div class="ac">${p.qty} copies · ${p.sellers} sellers · ${p.orders} orders</div>
+    <div class="bulk"><span>Mark all received</span><span>Clear check-ins</span></div>
+    ${p.its.map(it => itemLine(s, it, it.seller, [it.qty>1?"×"+it.qty:"", it.date, it.set, it.finish, it.cond].filter(Boolean).join(" · "), true)).join("")}</div>`;
+}
+function packageCard(s, ok) {
+  const o = ORDERS[ok];
+  const its = ITEMS.filter(i=>i.ok===ok);
+  const left = its.reduce((n,i)=>n+(i.qty-Math.min(i.qty,s.got[i.k]||0)),0);
+  const val = its.reduce((n,i)=>n+(i.qty-Math.min(i.qty,s.got[i.k]||0))*i.price,0);
+  return `<div class="pcard ${s.revealed===ok?'revealed':''}"><div class="phead">
+      <div class="top"><span class="chev">⌄</span><span class="who"><b>${o.seller}</b><span>${o.date} · ${o.tracking==='tracked'?'● tracked':'○ untracked'}</span></span>
+      ${left? `<span class="pill">${left} left · ${money(val)}</span>` : `<span class="pill ok">RECEIVED</span>`}</div>
+      ${orderLine(s, {ok, orderId:o.id}, "pkg")}</div>
+      ${its.map(it => itemLine(s, it, it.name, [it.qty>1?"×"+it.qty:"", it.set, it.finish, it.cond].filter(Boolean).join(" · "), false)).join("")}</div>`;
+}
+
+function slipBody(s, ok, inPage) {
+  const o = ORDERS[ok], its = ITEMS.filter(i=>i.ok===ok), key = "s"+ok, copied = s.copied===key;
+  const url = URLS[LINK](o.id);
+  return `<div class="bar">${inPage?`<button class="back" data-act="unslip">‹ ${esc(s.open)}</button>`:`<span style="width:44px"></span>`}<h3>Order from ${o.seller}</h3>${inPage?'<span style="width:44px"></span>':'<button class="done" data-act="unslip">Done</button>'}</div>
+    <button class="slipnum" data-act="copy" data-v="${key}" data-id="${o.id}" aria-label="Copy order number ${o.id}">
+      <span class="digits">${groups(o.id).map((g,i,a)=>`<span>${g}${i<a.length-1?"-":""}</span>`).join("")}</span>
+      <small>${o.date} · ${o.tracking}. Tap the number to copy it.</small>
+      ${copied?'<span class="stamp"><b>COPIED</b></span>':''}</button>
+    <div class="acts">
+      <button data-act="copy" data-v="${key}" data-id="${o.id}">${copied?"Copied":"Copy order number"}<span>⧉</span></button>
+      <button data-act="link" data-v="${ok}">Open on TCGplayer<span>↗</span></button>
+      <button data-act="jump" data-v="${ok}">Show in Packages<span>›</span></button>
+    </div>
+    <div class="inorder"><h4>In this envelope</h4>${its.map(i=>`<div class="${i.name===s.open?'here':''}">${esc(i.name)}${i.qty>1?" ×"+i.qty:""}<span>${Math.min(i.qty,s.got[i.k]||0)}/${i.qty} in</span></div>`).join("")}</div>
+    <div style="font:12px var(--mono);color:var(--n-inkSoft);word-break:break-all">${LINK==='page'?'Opens the order page (fixture): ':'Opens the order search (ruled): '}${esc(url)}</div>`;
+}
+function browserSheet(s) {
+  const id = s.browser, url = URLS[LINK](id);
+  const fid = (!FOCUSED["link-"+LINK] && (FOCUSED["link-"+LINK]=true)) ? `id="focus-link-${LINK}"` : "";
+  return `<div class="scrim"><div class="sheet browser" role="dialog" aria-label="TCGplayer page">
+    <div class="bar"><span style="width:44px"></span><h3>In-app browser</h3><button class="done" data-act="unbrowse">Done</button></div>
+    <div class="url" ${fid}>${esc(url)}</div>
+    <div class="land">${LINK==='page'
+      ? `<b>Order page.</b> The repo's test copy of the order history page has a View Order button that goes to this address, for one order.<small>Unmeasured: whether the real page matches the test copy. The owner's signed-in check settles it.</small>`
+      : `<b>Order search.</b> The address the owner gave on 2026-10-21. If TCGplayer applies SearchString, this order alone shows. If not, every order shows.<small>Unmeasured: debt tcgplayer-link-opens-history-list. The owner's signed-in check settles it.</small>`}</div>
+    <div class="kind" style="color:var(--n-inkSoft)">Sample: a stand-in for the web page. Nothing here is TCGplayer's own page.</div>
+  </div></div>`;
+}
+function holdMenu(s) {
+  const o = ORDERS[s.menu];
+  return `<div class="menu" style="left:24px;top:200px" role="menu">
+    <div class="pv">${esc(URLS[LINK](o.id))}</div>
+    <button data-act="link" data-v="${s.menu}">Open Link<span>↗</span></button>
+    <button data-act="copylink" data-v="${s.menu}">Copy Link<span>⧉</span></button>
+    <button data-act="unmenu">Share…<span>⇪</span></button>
+    <div class="note">Today a long press on the order link gives the system link menu. Copy Link copies the web address, not the order number.</div>
+  </div><div class="scrim" style="background:rgba(28,43,36,0.18);z-index:4" data-act="unmenu"></div>`;
+}
+
+function screenTally(s, open) {
+  const counts = `${PRODUCTS.length} unique items · autosaves`;
+  if (!open) {
+    return `<div class="page"><div class="scroll">${masthead(counts)}<div class="search">Find card, set, seller, order</div>
+      ${PRODUCTS.map(n=>tallyRow(s,n)).join("")}</div></div>`;
+  }
+  // open Duo: Tally spreads over both pages. Left: the rows. Right: the picked row's copies, or the slip.
+  const right = s.slip ? `<div class="scroll">${slipBody(s, s.slip, true)}</div>`
+    : `<div class="scroll">${s.open ? `<div class="trow">${copiesBlock(s, s.open, true)}</div>` : `<div class="rp-empty">Pick a card on the left.</div>`}</div>`;
+  return `<div class="page l"><div class="scroll">${masthead(counts)}<div class="search">Find card, set, seller, order</div>
+      ${PRODUCTS.map(n=>tallyRow(s,n,{inline:false,picked:s.open===n})).join("")}</div></div>
+      <div class="hinge" aria-hidden="true"></div><div class="page r">${right}</div>`;
+}
+function screenPackages(s, open) {
+  const list = ["A","B","G"].map(ok=>packageCard(s, ok)).join("");
+  if (!open) return `<div class="page"><div class="scroll">${masthead("3 packages · autosaves")}<div class="search">Find card, set, seller, order</div>${list}</div></div>`;
+  return `<div class="page l"><div class="scroll">${masthead("3 packages · autosaves")}<div class="search">Find card, set, seller, order</div>${list}</div></div>
+    <div class="hinge" aria-hidden="true"></div><div class="page r"><div class="scroll"><div class="rp-empty">The right page of Packages (Card in Hand) is not drawn here.</div></div></div>`;
+}
+function screenOther(s, open) {
+  const msg = `<div class="rp-empty">${s.screen==="orphaned"?"Orphaned":"Ledger"} is not part of this mockup. Tap Tally or Packages.</div>`;
+  return open ? `<div class="page l"><div class="scroll">${msg}</div></div><div class="hinge"></div><div class="page r"><div class="scroll"></div></div>` : `<div class="page"><div class="scroll">${msg}</div></div>`;
+}
+
+function renderFrame(el) {
+  const s = FR[el.dataset.fid], open = s.d === "open";
+  let html = s.screen==="tally" ? screenTally(s, open) : s.screen==="packages" ? screenPackages(s, open) : screenOther(s, open);
+  html += tabbar(s);
+  if (s.slip && !open) html += `<div class="scrim"><div class="sheet" role="dialog" aria-label="Order slip">${'<div class="grab"></div>'}${slipBody(s, s.slip, false)}</div></div>`;
+  if (s.menu) html += holdMenu(s);
+  if (s.browser) html += browserSheet(s);
+  if (s.toast) html += `<div class="toast" role="status">${s.toast}</div>`;
+  const keepScroll = [...el.querySelectorAll(".scroll")].map(x=>x.scrollTop);
+  el.innerHTML = html;
+  [...el.querySelectorAll(".scroll")].forEach((x,i)=>{ if (keepScroll[i]!=null) x.scrollTop = keepScroll[i]; });
+}
+
+/* ---------------- the web row ---------------- */
+function webRow(c, st) {
+  const it = ITEMS.find(i=>i.k==="a1"), id = it.orderId;
+  const meta = `×2 · ${it.date} · ${it.set} · ${it.cond}`;
+  let idl;
+  if (c==="today") idl = `<div class="wid tag-today"><u>${id}</u>›</div>`;
+  else if (c==="whole") idl = `<div class="wid wrap tall tag-new"><u>${idText(id)}</u>›</div>`;
+  else if (c==="copy") {
+    const refused = st.refused, did = st.copied;
+    idl = `<div class="wid wrap tall"><u class="${refused?'sel':''}">${idText(id)}</u>›<button class="wcopy tag-new ${did?'did':''}" data-wact="copy" data-c="copy">${did?"Copied":refused?"Selected":"Copy"}</button></div>
+      ${refused?`<div><span class="callout">Copy</span></div><div class="wnote">Refused by the browser: the number selects itself, so the system's own Copy is one tap away.</div>`:""}`;
+  } else {
+    idl = `<div class="wid tall" style="gap:12px"><span class="tag-new" style="display:inline-flex;border:1px solid var(--line);border-radius:6px;background:var(--paper)">${groups(id).map((g,i)=>`<span style="padding:4px 6px;${i?'border-left:1px dashed var(--line)':''}">${g}</span>`).join("")}</span><span style="color:var(--accent);font:600 12px var(--sys)">Order ›</span></div>`;
+  }
+  return `<div class="wrow"><span class="wbox"></span><div class="wc"><div class="wt"><b>${it.seller}</b><span>$1.12</span></div><div class="wm">${meta}</div>${idl}</div></div>`;
+}
+const WEB = {};
+function renderWeb(el) {
+  const c = el.dataset.c; const st = WEB[c] || (WEB[c] = { copied: H.s==="copied", refused: H.s==="refused" });
+  el.innerHTML = `${webRow(c, st)}<div class="wnote">Web, 320 px, ${document.documentElement.dataset.theme==="dark" || (!document.documentElement.dataset.theme && matchMedia("(prefers-color-scheme: dark)").matches) ? "dark" : "light"} theme.${c==="copy"?' Tap Copy. <a href="#c=copy&d=web&s=refused">Show a refused copy</a>.':""}${c==="today"?" The 21-character sample fits at 320 px; a longer id, or larger text, ends in an ellipsis.":""}</div>`;
+}
+
+/* ---------------- build the page ---------------- */
+function build() {
+  FOCUSED = {};
+  const root = document.getElementById("concepts");
+  const onlyC = H.c, onlyD = H.d;
+  root.innerHTML = CONCEPTS.filter(c => !onlyC || c.key===onlyC).map(c => `
+    <section class="concept" data-concept="${c.key}" ${HIDDEN.has(c.key)?"hidden":""}>
+      <div class="chead"><div><h2>${c.name}</h2><p>${c.say}</p></div>
+        ${c.grant===null?'<span class="tagname today">Today</span>':c.grant?'<span class="grant">Owner grant: yes</span>':'<span class="grant ok">Keeps the rulings</span>'}</div>
+      <div class="scroller"><div class="frames">
+        ${DEVICES.filter(d => !onlyD || d.key===onlyD).map(d => `<div><p class="fcap"><b>${d.cap.split(",")[0]}</b>${d.cap.slice(d.cap.split(",")[0].length)}</p>
+          <div class="dev ${d.cls}" data-device="${d.dev}" data-fid="${c.key}-${d.key}"></div></div>`).join("")}
+        ${(!onlyD || onlyD==="web") ? `<div><p class="fcap"><b>Web row</b>, the Tally source row in the page's theme</p><div class="web" data-c="${c.key}"></div></div>` : ""}
+      </div></div>
+    </section>`).join("");
+  root.querySelectorAll(".dev").forEach(el => {
+    const [c,d] = el.dataset.fid.split("-");
+    FR[el.dataset.fid] = FR[el.dataset.fid] || newState(c, d);
+    renderFrame(el);
+    // At AX5 the copy lines sit below the frame's first screen: start scrolled to the first one, as a reader would.
+    if (d === "ax5") { const sc = el.querySelector(".scroll"), ln = el.querySelector(".line"); if (sc && ln) sc.scrollTop = ln.offsetTop - 8; }
+  });
+  root.querySelectorAll(".web").forEach(renderWeb);
+  document.querySelectorAll("[data-c]").forEach(a => { if (a.classList.contains("chip")) a.setAttribute("aria-current", String((a.dataset.c==="all" && !onlyC) || a.dataset.c===onlyC)); });
+  document.querySelectorAll("[data-d]").forEach(a => a.setAttribute("aria-current", String((a.dataset.d==="all" && !onlyD) || a.dataset.d===onlyD)));
+  document.querySelectorAll("[data-link]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.link===LINK)));
+  const th = document.documentElement.dataset.theme || "";
+  document.querySelectorAll("[data-t]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.t===th)));
+}
+
+/* deep links: c=, d=, s=copied|menu|jumped|slip|browser|refused, link=search|page, t=light|dark, hide=a,b */
+if (H.t === "dark" || H.t === "light") document.documentElement.dataset.theme = H.t;
+window.addEventListener("hashchange", () => location.reload());
+build();
+
+/* ---------------- interaction ---------------- */
+const timers = {};
+function rerender(fid) { renderFrame(document.querySelector(`[data-fid="${fid}"]`)); }
+function act(el, a, v, btn) {
+  const fid = el.dataset.fid, s = FR[fid];
+  if (a==="check") { const it = ITEMS.find(i=>i.k===v); s.got[v] = (s.got[v]||0) >= it.qty ? 0 : it.qty; }
+  else if (a==="step") { const it = ITEMS.find(i=>i.k===v); s.got[v] = Math.max(0, Math.min(it.qty, (s.got[v]||0) + Number(btn.dataset.n))); }
+  else if (a==="row") { s.open = s.open===v && s.d!=="open" ? null : v; s.slip = null; }
+  else if (a==="tab") { s.screen = v; s.menu = null; s.slip = null; }
+  else if (a==="jump") { s.screen = "packages"; s.revealed = v; s.slip = null; }
+  else if (a==="link") { s.browser = ORDERS[v].id; s.menu = null; }
+  else if (a==="unbrowse") s.browser = null;
+  else if (a==="unmenu") s.menu = null;
+  else if (a==="copylink") { const u = URLS[LINK](ORDERS[v].id); try { navigator.clipboard.writeText(u).catch(()=>{}); } catch(e){}
+    s.menu = null; s.toast = "Copied the web address: " + esc(u); clearTimeout(timers[fid+"t"]); timers[fid+"t"] = setTimeout(()=>{ s.toast=null; rerender(fid); }, 2600); }
+  else if (a==="slip") { s.slip = v; }
+  else if (a==="unslip") s.slip = null;
+  else if (a==="copy") {
+    const id = btn.dataset.id;
+    try { navigator.clipboard.writeText(id).catch(()=>{}); } catch(e){}
+    s.copied = v; clearTimeout(timers[fid]); timers[fid] = setTimeout(()=>{ s.copied = null; rerender(fid); }, 1600);
+  }
+  rerender(fid);
+}
+document.addEventListener("click", e => {
+  const btn = e.target.closest("[data-act]"); const dev = e.target.closest(".dev");
+  if (btn && dev) { e.stopPropagation(); if (suppressClick) { suppressClick = false; return; } act(dev, btn.dataset.act, btn.dataset.v, btn); return; }
+  const w = e.target.closest("[data-wact]");
+  if (w) { const c = w.dataset.c, st = WEB[c]; if (st.refused) { st.refused = false; }
+    st.copied = true; try { navigator.clipboard.writeText(ORDERS.A.id).catch(()=>{}); } catch(e){}
+    renderWeb(w.closest(".web")); setTimeout(()=>{ st.copied=false; const el = document.querySelector(`.web[data-c="${c}"]`); el && renderWeb(el); }, 1600); return; }
+  const lk = e.target.closest("[data-link]"); if (lk) { LINK = lk.dataset.link; build(); return; }
+  const th = e.target.closest("[data-t]"); if (th) { document.documentElement.dataset.theme = th.dataset.t; build(); return; }
+  const hd = e.target.closest("[data-hide]"); if (hd) { if (hd.dataset.hide) HIDDEN.add(hd.dataset.hide); else HIDDEN.clear();
+    document.querySelectorAll("section.concept").forEach(sec => sec.hidden = HIDDEN.has(sec.dataset.concept)); }
+});
+/* a long press on the package order link: the system link menu (today's behaviour) */
+let holdT = null, suppressClick = false;
+document.addEventListener("pointerdown", e => {
+  const h = e.target.closest("[data-hold]"), dev = e.target.closest(".dev"); if (!h || !dev) return;
+  holdT = setTimeout(() => { suppressClick = true; FR[dev.dataset.fid].menu = h.dataset.hold; rerender(dev.dataset.fid); }, 500);
+});
+["pointerup","pointercancel","pointerleave"].forEach(t => document.addEventListener(t, () => clearTimeout(holdT)));
+document.addEventListener("contextmenu", e => { if (e.target.closest("[data-hold]")) e.preventDefault(); });
+</script>
+</body>
+</html>

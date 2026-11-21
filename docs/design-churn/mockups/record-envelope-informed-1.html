@@ -1,0 +1,675 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Record Envelope Composer</title>
+<style>
+/* Tokens: shared/tokens.json (decision design-parchment-ledger). The app and the native client are held to light
+   (UIUserInterfaceStyle; the dark keys serve the orders extension only), so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Liberation Serif", Georgia, serif;
+  --mono: Menlo, "DejaVu Sans Mono", ui-monospace, monospace;
+  --new:#2E7A5E; --today:#A8443C;
+  /* The system keyboard is iOS chrome, not an app colour: these greys sit outside the tokens. */
+  --kbd:#D2D0D6; --key:#FFFFFF; --keyInk:#111111; --keyMod:#ABAAB2;
+}
+* { box-sizing:border-box; }
+html { color-scheme:light; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { margin:0 auto; padding:16px; max-width:2400px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; max-width:110ch; }
+.kind { display:inline-block; margin-top:8px; font-size:13px; color:var(--inkSoft); }
+h1 { font-family:var(--cochin); font-size:26px; margin:12px 0 4px; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:110ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; align-items:center; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible, .dev [data-act]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+nav .lab { font-size:13px; color:var(--inkSoft); min-width:5.5em; }
+nav .sep { flex-basis:100%; height:0; }
+section.concept { margin:28px 0 40px; padding-top:16px; border-top:1px solid var(--line); }
+section.concept[hidden], [hidden] { display:none !important; }
+.tagname { display:inline-block; font-size:12.5px; font-weight:600; padding:1px 6px; border:2px dashed currentColor; border-radius:4px; margin:4px 4px 0 0; }
+.tagname.today { color:var(--today); } .tagname.new { color:var(--new); }
+.scroller { overflow-x:auto; padding:12px 4px 8px; }
+.row { display:flex; gap:24px; align-items:flex-start; width:max-content; }
+.cell { display:flex; flex-direction:column; gap:6px; }
+.cell .cap { font-size:13px; max-width:466px; }
+.cell .cap b { font-family:var(--cochin); font-size:16px; }
+.read { font:12px/1.5 var(--mono); color:var(--inkSoft); max-width:520px; min-height:3em; }
+.read .bad { color:var(--red); font-weight:700; } .read .ok { color:var(--green); font-weight:700; }
+.how { max-width:110ch; font-size:14px; }
+.how li { margin:2px 0; }
+code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
+
+/* ===================== device frames: 1 CSS px = 1 pt ===================== */
+.dev { position:relative; overflow:hidden; background:var(--paper); border:1px solid var(--ink); border-radius:16px; flex:none;
+  font-family:-apple-system, system-ui, sans-serif; color:var(--ink); user-select:none; -webkit-user-select:none;
+  --b:1; --c:1; --f:1; --cb:1; --cc:1;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+.dev.folded, .dev.phone { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; border-radius:12px; }
+/* AX5, from the Apple typography page (read 2026-11-21): Body 17 to 53, Caption 1 12 to 43, Footnote 13 to 44.
+   Capped parts stop at xxxLarge: Body 23, Caption 1 18, Footnote 19. */
+.dev.ax5 { --b:3.118; --c:3.583; --f:3.385; --cb:1.353; --cc:1.5; }
+.capped { --b:var(--cb); --c:var(--cc); }
+.status { position:absolute; left:0; right:0; top:0; height:20px; display:flex; justify-content:space-between; align-items:center;
+  padding:0 20px; font-size:12px; font-weight:600; z-index:40; background:var(--paper); }
+.phone .status::after { content:""; position:absolute; left:50%; top:4px; width:96px; height:12px; margin-left:-48px; border-radius:6px; background:var(--ink); }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; z-index:45; pointer-events:none;
+  background:repeating-linear-gradient(90deg, color-mix(in srgb, var(--line) 70%, transparent) 0 2px, transparent 2px 6px); }
+.fold span { position:absolute; top:220px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.page.l { left:0; width:455.5px; } .page.r { left:495.5px; width:455.5px; }
+.area { position:absolute; left:0; right:0; top:20px; display:flex; flex-direction:column; }
+.scroll { flex:1 1 0; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; touch-action:none; position:relative; }
+.scroll::-webkit-scrollbar { display:none; }
+.stack { display:flex; flex-direction:column; gap:12px; padding:0 16px 16px; }
+
+/* system keyboard */
+.keys { position:absolute; left:0; right:0; bottom:0; background:var(--kbd); z-index:50; padding:8px 4px; display:flex; flex-direction:column; gap:10px; }
+.keys .kr { display:flex; gap:6px; justify-content:center; }
+.keys button { all:unset; height:42px; flex:0 0 38px; background:var(--key); color:var(--keyInk); border-radius:6px; display:grid; place-items:center;
+  font:18px -apple-system, system-ui, sans-serif; cursor:pointer; box-shadow:0 1px 0 var(--keyMod); }
+.open .keys button { flex-basis:72px; }
+.keys button.mod { background:var(--keyMod); font-size:14px; flex-basis:52px; }
+.keys button.sp { flex-basis:200px; font-size:14px; } .open .keys button.sp { flex-basis:420px; }
+.keys button.ret { flex-basis:88px; font-size:14px; background:var(--keyMod); }
+.keys .kn { position:absolute; left:8px; top:-1px; transform:translateY(-100%); font:10.5px var(--mono); color:var(--inkSoft); background:var(--paper); padding:1px 4px; }
+
+/* floating tab bar (system chrome; labels a fixed size, decision duo-card-in-hand, tab bar text) */
+.tabbar { position:absolute; height:62px; border-radius:31px; z-index:35; display:flex; padding:4px; gap:4px;
+  background:color-mix(in srgb, var(--card) 88%, transparent); border:1px solid var(--line); box-shadow:0 2px 8px var(--shadow); }
+.tabbar button { all:unset; flex:1; border-radius:27px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:3px;
+  font:600 10px -apple-system, system-ui, sans-serif; color:var(--inkSoft); cursor:pointer; min-height:44px; }
+.tabbar button i { width:18px; height:14px; border:1.5px solid currentColor; border-radius:4px; display:block; }
+.tabbar button[aria-current="page"] { color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, transparent); }
+
+/* ===================== app content (Cochin sets words, Menlo sets numbers) ===================== */
+.mast { padding:12px 24px 12px; display:flex; flex-direction:column; gap:4px; border-bottom:1px solid var(--line); margin-bottom:12px; }
+.mast b { font-family:var(--cochin); font-size:26px; letter-spacing:4px; }
+.mast span { font:11px var(--mono); color:var(--inkSoft); }
+.micro { font-family:var(--mono); font-size:calc(11px * var(--c)); letter-spacing:.12em; text-transform:uppercase; color:var(--inkSoft); line-height:1.25; }
+button.act { all:unset; box-sizing:border-box; cursor:pointer; }
+.mini { font-family:var(--mono); font-size:calc(12px * var(--c)); line-height:1.2; color:var(--ink); background:var(--card); border:1px solid var(--line);
+  border-radius:5px; padding:4px 10px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; text-align:center; }
+.mini[aria-disabled="true"] { color:var(--inkSoft); cursor:default; }
+.mini.ready { background:var(--ink); border-color:var(--ink); color:var(--card); font-weight:700; }
+.mini.red { color:var(--red); border-color:var(--redSoft); }
+.mini.armed { background:var(--red); border-color:var(--red); color:var(--card); font-weight:700; }
+.rec { width:100%; min-height:44px; padding:6px 12px; border-radius:8px; background:var(--ink); color:var(--card); display:flex; flex-direction:column;
+  align-items:center; justify-content:center; font-family:var(--cochin); font-size:calc(15px * var(--b)); font-weight:700; line-height:1.2; }
+.rec small { font:400 calc(11px * var(--c)) var(--mono); color:var(--manila); }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); position:relative; }
+.card.composer { border-color:var(--ink); }
+.ehead { display:flex; align-items:center; gap:8px; padding:12px 12px 8px; position:relative; flex-wrap:wrap; }
+.ehead .micro { flex:1 1 0; min-width:6em; }
+.ehead .mini { min-height:32px; font-size:calc(11px * var(--c)); padding:4px 8px; }
+.entries { display:flex; flex-direction:column; gap:4px; padding:0 12px 8px; font-family:var(--cochin); font-size:calc(13.5px * var(--b)); }
+.envnote { font:calc(11px * var(--c)) var(--mono); color:var(--inkSoft); padding-top:4px; }
+.cands { padding:8px 12px 12px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:6px; }
+.cands p { margin:0; font-family:var(--cochin); font-size:calc(13px * var(--f)); color:var(--inkSoft); }
+.chip { display:inline-block; font:calc(10px * var(--c)) var(--mono); color:var(--manilaInk); background:var(--manila); border-radius:999px; padding:1px 8px; }
+/* the armed ask: a panel on the paper fill (head-panels-carry-paper-fill, the default for overlay panels) */
+.ask { position:absolute; right:12px; z-index:6; display:flex; flex-wrap:wrap; justify-content:flex-end; gap:4px; padding:4px; background:var(--paper);
+  border:1px solid var(--redSoft); border-radius:8px; box-shadow:0 2px 6px var(--shadow); max-width:calc(100% - 24px); }
+.ask .mini { min-height:36px; font-size:calc(11px * var(--c)); }
+
+.cbody { display:flex; flex-direction:column; gap:8px; padding:0 12px 12px; }
+.field { font-family:var(--cochin); font-size:calc(16px * var(--b)); line-height:1.25; min-height:calc(2.5em + 16px); padding:8px 12px;
+  border:1px solid var(--line); border-radius:8px; background:var(--card); cursor:text; overflow-wrap:anywhere; }
+.field .ph { color:var(--inkSoft); }
+.field.on { border-color:var(--accent); }
+.field.on .caret { display:inline-block; width:2px; height:1.1em; background:var(--accent); vertical-align:-0.15em; margin-left:1px; animation:blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity:0; } }
+@media (prefers-reduced-motion: reduce) { .field.on .caret { animation:none; } }
+.sugg { border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--card); display:flex; flex-direction:column; }
+.sugg button { display:flex; flex-wrap:wrap; align-items:center; gap:4px 8px; min-height:44px; padding:8px 12px 8px 12px; border-top:1px solid var(--line); text-align:left; position:relative; }
+.sugg button:first-child { border-top:0; }
+.sugg .nm { flex:1 1 8em; font-family:var(--cochin); font-size:calc(14px * var(--b)); }
+.sugg .mt { font:calc(10.5px * var(--c)) var(--mono); color:var(--inkSoft); }
+.sugg button.tapped .nm { font-weight:700; }
+.sugg button.tapped::before { content:""; position:absolute; left:3px; top:8px; bottom:8px; width:3px; border-radius:2px; background:var(--accent); }
+.sugg button.typed { background:var(--manila); }
+.sugg button.typed .nm { color:var(--manilaInk); font-size:calc(13px * var(--f)); }
+.elist { display:flex; flex-direction:column; border-top:1px solid var(--line); }
+.erow { display:flex; align-items:center; flex-wrap:wrap; border-bottom:1px solid var(--line); padding-left:12px; }
+.erow .nm { flex:1 1 7em; font-family:var(--cochin); font-size:calc(14px * var(--b)); padding:6px 0; }
+.erow .st { width:44px; min-height:44px; display:grid; place-items:center; font:calc(15px * var(--b)) var(--mono); }
+.erow .q { min-width:20px; text-align:center; font:calc(13px * var(--c)) var(--mono); }
+.empty { font-family:var(--cochin); font-size:calc(13px * var(--f)); color:var(--inkSoft); padding:8px 12px; }
+.foot { display:flex; gap:8px; align-items:center; flex-wrap:wrap; padding-top:4px; }
+.foot .cnt { flex:1 1 auto; font:calc(11px * var(--c)) var(--mono); color:var(--inkSoft); }
+.notice { display:flex; align-items:center; gap:8px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 0 4px 12px;
+  font-family:var(--cochin); font-size:calc(13px * var(--f)); color:var(--inkSoft); }
+.notice span { flex:1; }
+.notice button { width:44px; min-height:44px; display:grid; place-items:center; font-size:16px; color:var(--inkSoft); }
+
+/* Pinned head: the composer's head pins under the status bar; its bar pins above the keys */
+.phead { position:sticky; top:0; z-index:5; background:var(--card); border-bottom:1px solid var(--line); padding:8px 12px; border-radius:8px 8px 0 0;
+  display:flex; flex-direction:column; gap:2px; }
+.phead .who { font-family:var(--cochin); font-size:calc(17px * var(--b)); font-weight:700; line-height:1.25; display:flex; gap:8px; align-items:baseline; }
+.phead .who .nt { font:400 calc(11px * var(--c)) var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; text-align:right; }
+.pbar { flex:none; border-top:1px solid var(--line); background:var(--paper); padding:4px 16px; display:flex; gap:8px; align-items:center; min-height:53px; }
+.pbar .mini { min-height:44px; }
+.pbar .grow { flex:1 1 auto; }
+
+/* Envelope sheet: the composer is a sheet; the head is its toolbar; the input sits above the keys */
+.dim { position:absolute; inset:0; background:rgba(51,46,63,0.28); z-index:20; }
+.sheet { position:absolute; left:0; right:0; z-index:30; background:var(--paper); border-radius:12px 12px 0 0; display:flex; flex-direction:column;
+  box-shadow:0 -2px 12px var(--shadow); overflow:hidden; }
+.sheet .grab { width:36px; height:5px; border-radius:3px; background:var(--line); margin:6px auto 0; flex:none; }
+.stool { flex:none; display:grid; grid-template-columns:auto 1fr auto; gap:8px; align-items:center; padding:4px 12px 8px; border-bottom:1px solid var(--line); background:var(--paper); }
+.stool .ttl { text-align:center; display:flex; flex-direction:column; min-width:0; }
+.stool .ttl b { font-family:var(--cochin); font-size:calc(17px * var(--b)); line-height:1.25; }
+.stool .ttl span { font:calc(11px * var(--c)) var(--mono); color:var(--inkSoft); }
+.slip { flex:1 1 0; min-height:0; overflow-y:auto; scrollbar-width:none; touch-action:none; padding:8px 16px 12px; display:flex; flex-direction:column; gap:8px; }
+.slip::-webkit-scrollbar { display:none; }
+.slip .ledger { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.slip .ledger .erow:last-child { border-bottom:0; }
+.slip .ledger .elist { border-top:0; }
+.drow { min-height:44px; border:1px solid var(--redSoft); border-radius:8px; display:flex; align-items:center; justify-content:center; gap:4px; padding:4px;
+  font:calc(12px * var(--c)) var(--mono); color:var(--red); background:var(--card); flex-wrap:wrap; }
+.drow[aria-disabled="true"] { color:var(--inkSoft); border-color:var(--line); cursor:default; }
+.drow.isarmed { background:var(--paper); }
+.dock { flex:none; border-top:1px solid var(--line); background:var(--paper); padding:8px 16px; display:flex; flex-direction:column; gap:8px; }
+.dock .sugg { max-height:var(--dock-max, 140px); overflow-y:auto; }
+.ax5 .dock .sugg { --dock-max:110px; }
+.dock .sugg.rise { flex-direction:column-reverse; }
+.dock .sugg.rise button { border-top:0; border-bottom:1px solid var(--line); }
+.dock .sugg.rise button:first-child { border-bottom:0; }
+
+/* Today and New tags */
+.tag-new { outline:2px dashed var(--new); outline-offset:1px; }
+.tag-today { outline:2px dashed var(--today); outline-offset:1px; }
+.other { position:absolute; inset:20px 0 0 0; display:grid; place-items:center; text-align:center; padding:24px; font-family:var(--cochin); color:var(--inkSoft); }
+.other b { display:block; color:var(--ink); font-size:20px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No card, count, date or note on this page is real. Heights are drawn from the code and the repo's measurements, not shot on a device.</div>
+<span class="kind">Designer kind: informed &middot; record-envelope-informed-1</span>
+<h1>Recording an envelope without losing which one you are in</h1>
+<p class="sub">Orphaned's envelope composer: type card names, choose the matching lines, then save or throw the draft away. Two options, each live in four frames that share one draft: iPhone Duo folded, the Duo open, a large phone, and the folded Duo at AX5. Tap the drawn keys or type on your keyboard. Drag the list to hide the keys. Light theme only (<code>design-parchment-ledger</code>). Debts: <code>composer-keys-cover-tab-bar</code>, <code>native-discard-panel-covers-head</code>, <code>discard-keeps-draft</code>.</p>
+
+<nav aria-label="Options">
+  <span class="lab">Option</span>
+  <a href="#c=today">Today</a>
+  <a href="#c=pinned">Pinned head</a>
+  <a href="#c=sheet">Envelope sheet</a>
+  <a href="#">All</a>
+  <span class="sep"></span>
+  <span class="lab">State</span>
+  <a href="#s=typing" data-s>Typing</a>
+  <a href="#s=held" data-s>After a tap</a>
+  <a href="#s=keysdown" data-s>Keys hidden</a>
+  <a href="#s=armed" data-s>Discard draft armed</a>
+  <a href="#s=gone" data-s>Draft discarded</a>
+  <a href="#s=kept" data-s>Cancelled, draft kept</a>
+  <a href="#s=edit" data-s>Editing an envelope</a>
+  <a href="#s=card-armed" data-s>Envelope Discard armed</a>
+  <a href="#s=away" data-s>On Packages</a>
+  <span class="sep"></span>
+  <span class="lab">Hide</span>
+  <button type="button" data-hide="pinned">Hide Pinned head</button>
+  <button type="button" data-hide="sheet">Hide Envelope sheet</button>
+</nav>
+
+<section class="concept" id="sec-today" data-c="today">
+  <h2>Today</h2>
+  <span class="tagname today">Today: the composer as OrphanedView.swift ComposerView draws it</span>
+  <p class="sub">On focus the page scrolls the Save row up (<code>scrollTo(saveRow)</code>), so the composer's head leaves the top. Nothing hides the keys, and they cover the tab bar. The armed Discard panel lines up with the envelope header and covers it. On the web, Discard leaves the envelope's draft behind.</p>
+  <div class="scroller"><div class="row" data-frames="today"></div></div>
+</section>
+
+<section class="concept" id="sec-pinned" data-c="pinned">
+  <h2>Pinned head</h2>
+  <span class="tagname new">New: the head pins at the top</span><span class="tagname new">New: the action bar pins above the keys</span><span class="tagname new">New: Discard draft, armed in place</span><span class="tagname new">New: drag the list to hide the keys</span>
+  <p class="sub">The composer stays in the list, as today. Its head names the envelope and the cards ready, and pins under the status bar. Cancel, Discard draft and Save move to a 53 pt bar on the keys (the Card in Hand Post bar's shape, item 103 b). Discard draft arms in the bar's own row, so its ask can never reach the head. The bar is the composer's foot, not a second toolbar.</p>
+  <div class="scroller"><div class="row" data-frames="pinned"></div></div>
+</section>
+
+<section class="concept" id="sec-sheet" data-c="sheet">
+  <h2>Envelope sheet <small style="font:400 14px -apple-system, system-ui, sans-serif;color:var(--inkSoft)">(the bold one)</small></h2>
+  <span class="tagname new">New: the composer opens as a sheet</span><span class="tagname new">New: the sheet's toolbar is the head</span><span class="tagname new">New: the card field sits on the keys, matches rise from it</span><span class="tagname new">New: open Duo, envelope left, matches right</span>
+  <p class="sub">Recording becomes its own place. The sheet's toolbar says which envelope this is, with Cancel leading and Save trailing, as iOS sheets do. The envelope's cards fill the middle like a slip. The card field sits directly on the keys, under the thumb, and the matches rise out of it, best match nearest the field. Discard draft sits at the end of the slip, far from the head, and arms in place. On the open Duo the envelope takes the left page and the matches the right.</p>
+  <div class="scroller"><div class="row" data-frames="sheet"></div></div>
+</section>
+
+<section class="how">
+  <h2>What works on this page</h2>
+  <ul>
+    <li>+ Record an envelope, Edit, the card field, the note field, every match row, "Add … as typed", the steppers, Cancel, Save envelope, Discard draft and its ask, the envelope's Discard and its ask, the tab bar.</li>
+    <li>The drawn keys type, and so does your own keyboard (into the option you touched last). Return adds the typed name. A drag on the list, or a wheel turn, hides the keys in both options; Today has no way to hide them.</li>
+    <li>After a tap on a match, the list holds still until the next key, with the tapped row bold; tap it again to add one more.</li>
+    <li>An ask lapses after 4 s, as built. An ask opened from a link (<code>#s=armed</code>, <code>#s=card-armed</code>) holds until you press, so the state can be judged.</li>
+    <li>Under each frame, the page reads its own drawing: where the head, the asks and the keys sit, and whether anything covers the head.</li>
+  </ul>
+</section>
+</main>
+
+<script>
+"use strict";
+/* ---------- geometry, in pt. Sources: measurements duo-fold-and-keyboard (outer screen, tab bar, keys), the brief (open pose, fold) ---------- */
+const GEO = {
+  folded: { w:466, h:678, keys:389, tab:595, label:"iPhone Duo folded, 466 × 678 pt" },
+  open:   { w:951, h:669, keys:405, tab:586, label:"iPhone Duo open, 951 × 669 pt, fold 455.5 to 495.5" },
+  phone:  { w:466, h:678, keys:389, tab:595, label:"Large phone: no size is written; drawn at the brief's 466 × 678 pt" },
+};
+const FRAMES = [
+  { dev:"folded", size:"default", note:"Folded, default text" },
+  { dev:"open",   size:"default", note:"Open, default text" },
+  { dev:"phone",  size:"default", note:"Large phone, default text" },
+  { dev:"folded", size:"ax5",     note:"Folded, AX5 (largest accessibility size)" },
+];
+const SUGG = [
+  ["Lightning Bolt",4,3],["Llanowar Elves",2,2],["Lotus Petal",1,1],["Path to Exile",3,2],["Ponder",5,4],["Preordain",2,1],
+  ["Counterspell",3,3],["Brainstorm",2,2],["Swords to Plowshares",1,1],["Dark Ritual",2,2],["Opt",2,2],["Pongify",1,1],
+].map(([name,qty,sellers]) => ({ name, qty, sellers, nk:name.toLowerCase() }));
+
+const norm = s => s.toLowerCase().replace(/\s+/g," ").trim();
+const cardsOf = n => `${n} card${n === 1 ? "" : "s"}`;
+const total = d => d.entries.reduce((s, e) => s + e.qty, 0);
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[ch]));
+
+function freshModel() {
+  return {
+    tab:"orphaned", composing:null, drafts:new Map(), keys:false, focus:"name", armed:null, hold:null, notice:null, pin:false, picked:"e1", seq:3,
+    env:[
+      { id:"e1", date:"2026-11-03", entries:[{ name:"Ponder", qty:2 }, { name:"Preordain", qty:1 }], note:"plain white, no return address" },
+      { id:"e2", date:"2026-11-01", entries:[{ name:"Counterspell", qty:1 }], note:"" },
+    ],
+  };
+}
+const M = { today:freshModel(), pinned:freshModel(), sheet:freshModel() };
+let active = "pinned";
+const timers = {};
+
+function base(m, t) {
+  if (t === "new") return { input:"", entries:[], note:"" };
+  const e = m.env.find(x => x.id === t);
+  return { input:"", entries:e.entries.map(x => ({ ...x })), note:e.note };
+}
+function draft(m, t) { if (!m.drafts.has(t)) m.drafts.set(t, base(m, t)); return m.drafts.get(t); }
+function dirty(m, t) {
+  const d = m.drafts.get(t); if (!d) return false;
+  const b = base(m, t);
+  return d.input !== "" || d.note !== b.note || JSON.stringify(d.entries) !== JSON.stringify(b.entries);
+}
+function matches(d) {
+  const q = norm(d.input); if (!q) return [];
+  const toks = q.split(" ");
+  return SUGG.filter(s => toks.every(t => s.nk.includes(t)))
+    .map(s => ({ s, r: s.nk.startsWith(q) ? 0 : s.nk.includes(" " + q) ? 1 : 2 }))
+    .sort((a, b) => a.r - b.r || b.s.qty - a.s.qty || a.s.name.localeCompare(b.s.name)).slice(0, 6).map(x => x.s);
+}
+function addName(d, name) {
+  const nk = norm(name); if (!nk) return;
+  const i = d.entries.findIndex(e => norm(e.name) === nk);
+  if (i === -1) d.entries.unshift({ name:name.trim(), qty:1 });
+  else { const b = { ...d.entries[i], qty:d.entries[i].qty + 1 }; d.entries.splice(i, 1); d.entries.unshift(b); }
+  d.input = "";
+}
+function arm(c, what) {
+  const m = M[c]; m.armed = what; clearTimeout(timers[c]);
+  if (!m.pin) timers[c] = setTimeout(() => { m.armed = null; render(c); }, 4000);
+}
+
+/* ---------- actions ---------- */
+function act(c, a, arg) {
+  const m = M[c]; active = c;
+  const t = m.composing;
+  const d = t ? draft(m, t) : null;
+  if (a !== "armd" && a !== "armc") m.pin = false;
+  switch (a) {
+    case "record": m.composing = "new"; draft(m, "new"); m.keys = true; m.focus = "name"; m.armed = null; m.notice = null; m.scrollTop = true; break;
+    case "edit": m.composing = arg; draft(m, arg); m.keys = true; m.focus = "name"; m.armed = null; m.notice = null; m.scrollTop = true; break;
+    case "cancel": if (!dirty(m, t)) m.drafts.delete(t); m.composing = null; m.keys = false; m.armed = null; m.hold = null; break;
+    case "save": {
+      if (!d.entries.length) return;
+      if (t === "new") { const id = "e" + (m.seq++); m.env.unshift({ id, date:"2026-11-21", entries:d.entries.map(x => ({ ...x })), note:d.note }); }
+      else { const e = m.env.find(x => x.id === t); e.entries = d.entries.map(x => ({ ...x })); e.note = d.note; }
+      m.notice = `Saved · ${cardsOf(total(d))}`;
+      m.drafts.delete(t); m.composing = null; m.keys = false; m.armed = null; m.hold = null; break;
+    }
+    case "armd": if (!dirty(m, t)) return; arm(c, "draft"); break;
+    case "confd": {
+      const n = total(d);
+      m.drafts.delete(t); m.composing = null; m.keys = false; m.armed = null; m.hold = null;
+      m.notice = t === "new" ? `Draft discarded · ${cardsOf(n)}. Nothing was saved.` : `Changes discarded. The envelope keeps its saved cards.`;
+      break;
+    }
+    case "disarm": m.armed = null; clearTimeout(timers[c]); break;
+    case "sugg": { const list = m.hold ? m.hold.list : matches(d); addName(d, arg); m.hold = { list, tapped:arg }; m.focus = "name"; break; }
+    case "typed": addName(d, d.input); m.hold = null; break;
+    case "inc": d.entries[arg].qty++; break;
+    case "dec": if (d.entries[arg].qty > 1) d.entries[arg].qty--; else d.entries.splice(arg, 1); break;
+    case "field": m.focus = arg; m.keys = true; break;
+    case "key": if (m.focus === "name") { d.input += arg; m.hold = null; } else d.note += arg; break;
+    case "back": if (m.focus === "name") { d.input = d.input.slice(0, -1); m.hold = null; } else d.note = d.note.slice(0, -1); break;
+    case "ret": if (m.focus === "name") { addName(d, d.input); m.hold = null; } else m.keys = false; break;
+    case "armc": arm(c, "card:" + arg); break;
+    case "confc": {
+      const e = m.env.find(x => x.id === arg); const n = e.entries.reduce((s, x) => s + x.qty, 0);
+      m.env = m.env.filter(x => x.id !== arg);
+      if (c !== "today") m.drafts.delete(arg); // the fix: Discard ends the envelope's kept draft too (debt discard-keeps-draft)
+      if (m.composing === arg) m.composing = null;
+      m.armed = null; m.notice = `Envelope discarded · ${cardsOf(n)}`; if (m.picked === arg) m.picked = m.env[0]?.id; break;
+    }
+    case "pick": m.picked = arg; break;
+    case "tab": m.tab = arg; m.keys = false; m.armed = null; break;
+    case "dismiss": m.notice = null; break;
+    case "hidekeys": m.keys = false; break;
+  }
+  render(c);
+}
+
+/* ---------- pieces ---------- */
+const B = (a, arg, cls, inner, extra = "") => `<button type="button" class="act ${cls}" data-act="${a}"${arg !== undefined ? ` data-arg="${esc(arg)}"` : ""} ${extra}>${inner}</button>`;
+const statusBar = () => `<div class="status"><span>9:41</span><span>●●● 100%</span></div>`;
+function keysHTML(g) {
+  const row = s => `<div class="kr">${[...s].map(k => B("key", k, "", k)).join("")}</div>`;
+  return `<div class="keys" data-m="keys" style="top:${g.keys}px"><span class="kn">system keys, frame from y ${g.keys}</span>
+    ${row("qwertyuiop")}${row("asdfghjkl")}
+    <div class="kr">${B("hidekeys", undefined, "mod", "⌄", 'aria-label="Hide keys"')}${[..."zxcvbnm"].map(k => B("key", k, "", k)).join("")}${B("back", undefined, "mod", "⌫", 'aria-label="Delete"')}</div>
+    <div class="kr">${B("key", " ", "sp", "space")}${B("ret", undefined, "ret", "done")}</div></div>`;
+}
+function tabbar(m, x, w, y) {
+  const tabs = ["Ledger","Orphaned","Tally","Packages"];
+  return `<div class="tabbar" data-m="tabbar" style="left:${x}px;width:${w}px;top:${y}px">${tabs.map(t =>
+    B("tab", t.toLowerCase(), "", `<i></i>${t}`, m.tab === t.toLowerCase() ? 'aria-current="page"' : "")).join("")}</div>`;
+}
+const mast = () => `<div class="mast"><b>MANIFEST</b><span>41 in · 23 out · $18.40 still out</span></div>`;
+
+function fieldHTML(m, d, which, ph, isFocus) {
+  const v = which === "name" ? d.input : d.note;
+  const on = m.keys && m.focus === which;
+  return `<div class="field${on ? " on" : ""}" data-act="field" data-arg="${which}" role="textbox" tabindex="0" aria-label="${which === "name" ? "Card name" : "Note"}" ${isFocus || ""}>${
+    v ? esc(v) : `<span class="ph">${ph}</span>`}${on ? '<span class="caret"></span>' : ""}</div>`;
+}
+function suggHTML(m, d, rise) {
+  const list = m.hold ? m.hold.list : matches(d);
+  const typed = d.input.trim();
+  const asTyped = typed && !list.some(s => s.nk === norm(typed));
+  if (!list.length && !asTyped) return "";
+  const rows = list.map(s => B("sugg", s.name, m.hold && m.hold.tapped === s.name ? "tapped" : "",
+    `<span class="nm">${esc(s.name)}</span><span class="mt">${s.qty} out · ${s.sellers} seller${s.sellers === 1 ? "" : "s"}</span>`));
+  if (asTyped) rows.push(B("typed", undefined, "typed", `<span class="nm">Add “${esc(typed)}” as typed</span>`));
+  return `<div class="sugg${rise ? " rise" : ""}">${rows.join("")}</div>`;
+}
+function entriesHTML(d) {
+  if (!d.entries.length) return `<div class="empty">No cards yet. Type a name from the envelope.</div>`;
+  return `<div class="elist">${d.entries.map((e, i) => `<div class="erow"><span class="nm">${esc(e.name)}</span>${
+    B("dec", i, "st", "–", `aria-label="${e.qty > 1 ? "One fewer" : "Remove"} ${esc(e.name)}"`)}<span class="q">${e.qty}</span>${
+    B("inc", i, "st", "+", `aria-label="One more ${esc(e.name)}"`)}</div>`).join("")}</div>`;
+}
+function whoLine(m, t) {
+  if (t === "new") return { micro:"New envelope", title:"New envelope" };
+  const e = m.env.find(x => x.id === t);
+  return { micro:`Editing envelope · ${e.date}`, title:`Envelope of ${e.date}`, note:e.note };
+}
+function recordCtl(m, c) {
+  const kept = c !== "today" && m.drafts.has("new") && m.composing !== "new";
+  return B("record", undefined, "rec" + (kept ? " tag-new" : ""), kept ? `+ Record an envelope<small>draft kept · ${cardsOf(total(m.drafts.get("new")))}</small>` : "+ Record an envelope", 'data-m="record"');
+}
+function envCard(m, c, e) {
+  const n = e.entries.reduce((s, x) => s + x.qty, 0);
+  const armed = m.armed === "card:" + e.id;
+  const keptEdit = c !== "today" && m.drafts.has(e.id) && m.composing !== e.id;
+  const askTop = c === "today" ? "bottom:8px" : "top:calc(100% + 4px)";
+  return `<div class="card" data-m="card-${e.id}">
+    <div class="ehead" data-m="ehead-${e.id}"><span class="micro">Envelope · ${e.date} · ${cardsOf(n)}</span>${
+      B("edit", e.id, "mini", "Edit")}${B("armc", e.id, "mini " + (armed ? "armed" : "red"), "Discard")}${
+      armed ? `<span class="ask${c === "today" ? " tag-today" : " tag-new"}" data-m="ask" style="${askTop}">${B("disarm", undefined, "mini", "Cancel", "data-first")}${
+        B("confc", e.id, "mini armed", `Tap again to discard ${cardsOf(n)}`)}</span>` : ""}</div>
+    <div class="entries">${e.entries.map(x => `<span>${x.qty > 1 ? "×" + x.qty + " " : ""}${esc(x.name)}</span>`).join("")}${
+      e.note ? `<span class="envnote">${esc(e.note)}</span>` : ""}${keptEdit ? `<span><span class="chip tag-new">edit draft kept</span></span>` : ""}</div>
+    <div class="cands"><span class="micro" style="font-size:calc(10.5px * var(--c))">Could have come from</span><p>2 packages fit equally. Not drawn: unchanged.</p></div></div>`;
+}
+function noticeHTML(m) { return m.notice ? `<div class="notice" data-m="notice"><span>${esc(m.notice)}</span>${B("dismiss", undefined, "", "×", 'aria-label="Dismiss"')}</div>` : ""; }
+
+/* the composer card, in the list (Today and Pinned head) */
+function composerCard(m, c, t, focusId) {
+  const d = draft(m, t); const n = total(d); const w = whoLine(m, t);
+  const pinned = c === "pinned";
+  const head = pinned
+    ? `<div class="phead capped tag-new" data-m="head" ${focusId ? `id="${focusId}"` : ""}><span class="micro">${esc(w.micro)}</span>
+        <span class="who">${n ? cardsOf(n) + " ready" : "No cards yet"}${w.note ? `<span class="nt">${esc(w.note)}</span>` : ""}</span></div>`
+    : `<div style="padding:12px 12px 8px" data-m="head"><span class="micro">${t === "new" ? "New envelope" : "Edit envelope"}</span></div>`;
+  const foot = pinned ? "" : `<div class="foot" data-m="saverow"><span class="cnt">${cardsOf(n)}</span>${B("cancel", undefined, "mini", "Cancel")}${
+    B("save", undefined, "mini" + (n ? " ready" : ""), "Save envelope", n ? "" : 'aria-disabled="true" title="Add a card first"')}</div>`;
+  return `<div class="card composer" data-m="composer">${head}<div class="cbody"${pinned ? ' style="padding-top:8px"' : ""}>
+    ${fieldHTML(m, d, "name", "Type a card name…")}${suggHTML(m, d, false)}${entriesHTML(d)}
+    ${fieldHTML(m, d, "note", "Note (optional) — tracking #, sender, mailer…")}${foot}</div></div>`;
+}
+function pinnedBar(m, c) {
+  const t = m.composing; const d = draft(m, t); const n = total(d);
+  if (m.armed === "draft") {
+    return `<div class="pbar capped tag-new" data-m="bar"><span data-m="ask" style="display:contents">${B("disarm", undefined, "mini", "Cancel", "data-first")}${
+      B("confd", undefined, "mini armed grow", t === "new" ? `Tap again to discard ${cardsOf(n)}` : "Tap again to discard changes")}</span></div>`;
+  }
+  const can = dirty(m, t);
+  return `<div class="pbar capped tag-new" data-m="bar">${B("cancel", undefined, "mini", "Cancel")}${
+    B("armd", undefined, "mini red", "Discard draft", can ? "" : 'aria-disabled="true" title="Nothing to discard yet"')}<span class="grow"></span>${
+    B("save", undefined, "mini" + (n ? " ready" : ""), "Save envelope", n ? "" : 'aria-disabled="true" title="Add a card first"')}</div>`;
+}
+function listInner(m, c, focusId) {
+  const parts = [];
+  parts.push(m.composing === "new" ? composerCard(m, c, "new", focusId) : recordCtl(m, c));
+  parts.push(noticeHTML(m));
+  for (const e of m.env) parts.push(m.composing === e.id ? composerCard(m, c, e.id, focusId) : envCard(m, c, e));
+  if (!m.env.length && m.composing !== "new") parts.push(`<div class="empty" style="text-align:center">No envelopes waiting. Record one when unlabelled mail comes.</div>`);
+  return `${mast()}<div class="stack">${parts.join("")}</div>`;
+}
+
+/* the Envelope sheet */
+function sheetHTML(m, c, g, top, bottom, focusId, half) {
+  const t = m.composing; const d = draft(m, t); const n = total(d); const w = whoLine(m, t);
+  const can = dirty(m, t);
+  const discard = m.armed === "draft"
+    ? `<div class="drow isarmed tag-new" data-m="ask">${B("disarm", undefined, "mini", "Cancel", "data-first")}${
+        B("confd", undefined, "mini armed", t === "new" ? `Tap again to discard ${cardsOf(n)}` : "Tap again to discard changes")}</div>`
+    : B("armd", undefined, "drow", "Discard draft", can ? "" : 'aria-disabled="true" title="Nothing to discard yet"');
+  const tool = (lead, trail) => `<div class="stool capped tag-new" data-m="head" ${focusId ? `id="${focusId}"` : ""}>${lead}<div class="ttl"><b>${esc(w.title)}</b><span>${n ? cardsOf(n) + " ready" : "no cards yet"}</span></div>${trail}</div>`;
+  const save = B("save", undefined, "mini" + (n ? " ready" : ""), "Save", n ? "" : 'aria-disabled="true" title="Add a card first"');
+  const cancel = B("cancel", undefined, "mini", "Cancel");
+  const slip = `<div class="slip" data-drag>${w.note !== undefined && w.note ? `<span class="micro">${esc(w.note)}</span>` : ""}
+      <div class="ledger">${entriesHTML(d)}</div>${fieldHTML(m, d, "note", "Note (optional) — tracking #, sender, mailer…")}${discard}</div>`;
+  if (!half) {
+    return `<div class="sheet" style="top:${top}px;bottom:${bottom}px"><span class="grab"></span>${tool(cancel, save)}${slip}
+      <div class="dock tag-new" data-m="dock">${suggHTML(m, d, true)}${fieldHTML(m, d, "name", "Type a card name…")}</div></div>`;
+  }
+  // open Duo: envelope on the left page, matches and the card field on the right page
+  return { left:`<div class="sheet" style="top:${top}px;bottom:${bottom}px;border-radius:12px 0 0 0">${tool(cancel, "<span></span>")}${slip}</div>`,
+    right:`<div class="sheet" style="top:${top}px;bottom:${bottom}px;border-radius:0 12px 0 0"><div class="stool capped"><span class="micro">${d.input ? "Matches" : "Type a name"}</span><span></span>${save}</div>
+      <div class="slip" data-drag style="justify-content:flex-start">${suggHTML(m, d, false) || `<div class="empty">The cards still out that match what you type show here.</div>`}</div>
+      <div class="dock tag-new" data-m="dock">${fieldHTML(m, d, "name", "Type a card name…")}</div></div>` };
+}
+
+/* ---------- a whole frame ---------- */
+function frameHTML(c, fr, idx) {
+  const m = M[c]; const g = GEO[fr.dev];
+  const focusId = idx === 0 ? (c === "pinned" ? "pinned-head" : c === "sheet" ? "sheet-head" : null) : null;
+  const keysUp = m.keys && m.tab === "orphaned";
+  const out = [statusBar()];
+  if (m.tab !== "orphaned") {
+    out.push(`<div class="other"><div><b>${m.tab[0].toUpperCase() + m.tab.slice(1)}</b>Not drawn. Tap Orphaned to come back: the draft is where you left it.</div></div>`);
+    out.push(fr.dev === "open" ? tabbar(m, 495.5 + 16, 423.5, g.tab) : tabbar(m, 16, g.w - 32, g.tab));
+    return out.join("");
+  }
+  const sheetOpen = c === "sheet" && m.composing;
+  const areaBottom = (c === "pinned" && m.composing) || c === "today" || c === "sheet" ? (keysUp ? g.h - g.keys : g.h - g.tab) : g.h - g.tab;
+  if (fr.dev === "open") {
+    const pick = m.env.find(e => e.id === m.picked) || m.env[0];
+    const rightDetail = pick && m.composing !== pick.id ? `<div class="stack" style="padding-top:16px">${envCard(m, c, pick)}</div>` : "";
+    if (sheetOpen) {
+      const s = sheetHTML(m, c, g, 28, keysUp ? g.h - g.keys : 16, focusId, true);
+      out.push(`<div class="page l"><div class="area" style="bottom:0"><div class="scroll">${listInner(m, c, null)}</div></div><div class="dim"></div>${s.left}</div>`);
+      out.push(`<div class="page r"><div class="area" style="bottom:0"><div class="scroll">${rightDetail}</div></div><div class="dim"></div>${s.right}</div>`);
+    } else {
+      out.push(`<div class="page l"><div class="area" style="bottom:${keysUp ? g.h - g.keys : 16}px"><div class="scroll" data-drag>${listInner(m, c, focusId)}</div>${
+        c === "pinned" && m.composing ? pinnedBar(m, c) : ""}</div></div>`);
+      out.push(`<div class="page r"><div class="area" style="bottom:${g.h - g.tab}px"><div class="scroll" data-drag>${rightDetail}</div></div></div>`);
+    }
+    if (!sheetOpen || !keysUp) out.push(tabbar(m, 495.5 + 16, 423.5, g.tab));
+    out.push(`<div class="fold"><span>FOLD 455.5–495.5</span></div>`);
+  } else {
+    out.push(`<div class="area" style="bottom:${areaBottom}px"><div class="scroll" data-drag>${listInner(m, c, sheetOpen ? null : focusId)}</div>${
+      c === "pinned" && m.composing ? pinnedBar(m, c) : ""}</div>`);
+    out.push(tabbar(m, 16, g.w - 32, g.tab));
+    if (sheetOpen) { out.push(`<div class="dim"></div>`); out.push(sheetHTML(m, c, g, 28, keysUp ? g.h - g.keys : 16, focusId, false)); }
+  }
+  if (keysUp) out.push(keysHTML(g));
+  return out.join("");
+}
+
+function render(c) {
+  const host = document.querySelector(`[data-frames="${c}"]`); if (!host) return;
+  const m = M[c];
+  const frames = c === "today" ? FRAMES.slice(0, 2) : FRAMES;
+  if (!host.children.length) {
+    host.innerHTML = frames.map((fr, i) => `<div class="cell"><div class="cap"><b>${fr.note}.</b> ${GEO[fr.dev].label}.</div>
+      <div class="dev ${fr.dev} ${fr.size}" data-c="${c}" data-i="${i}" data-device="${fr.dev === "open" ? "iphone-duo-unfolded" : fr.dev === "folded" ? "iphone-duo-folded" : "large-phone"}"></div>
+      <div class="read"></div></div>`).join("");
+  }
+  host.querySelectorAll(".dev").forEach((dev, i) => {
+    const keep = [...dev.querySelectorAll("[data-drag]")].map(s => s.scrollTop);
+    dev.innerHTML = frameHTML(c, frames[i], i);
+    const sc = [...dev.querySelectorAll("[data-drag]")];
+    sc.forEach((s, k) => { s.scrollTop = keep[k] || 0; });
+    if (m.composing && m.keys) {
+      const list = dev.querySelector(".area .scroll");
+      const comp = dev.querySelector('[data-m="composer"]');
+      if (list && comp && c === "today") {
+        // today: bring the Save row above the keys (ComposerView scrollTo(saveRow)), which pushes the head off the top
+        const row = dev.querySelector('[data-m="saverow"]');
+        list.scrollTop += row.getBoundingClientRect().bottom - list.getBoundingClientRect().bottom + 8;
+      } else if (list && comp && m.scrollTop) list.scrollTop = comp.offsetTop - 0;
+    }
+    if (m.armed === "draft" && c === "sheet") { const a = dev.querySelector('[data-m="ask"]'); const s = dev.querySelector(".sheet .slip"); if (a && s) s.scrollTop = s.scrollHeight; }
+    read(dev, dev.parentElement.querySelector(".read"), c);
+  });
+  m.scrollTop = false;
+}
+
+/* each frame reads its own drawing: y of the head, the ask and the keys, and whether anything covers the head */
+function read(dev, out, c) {
+  const top = dev.getBoundingClientRect().top + 1;
+  const r = el => { if (!el) return null; const b = el.getBoundingClientRect(); return { t:Math.round(b.top - top), b:Math.round(b.bottom - top), l:b.left, rr:b.right }; };
+  const m = M[c];
+  if (m.tab !== "orphaned") { out.innerHTML = `Tab: ${m.tab}. Draft kept: ${m.drafts.size ? "<span class=ok>yes</span>" : "none"}.`; return; }
+  const lines = [];
+  const keys = r(dev.querySelector('[data-m="keys"]'));
+  const head = r(dev.querySelector('[data-m="head"]'));
+  const tab = r(dev.querySelector('[data-m="tabbar"]'));
+  if (m.composing) {
+    if (!head) lines.push(`head: <span class=bad>not drawn</span>`);
+    else if (head.b <= 20 || head.t < 20 - 1) lines.push(`head: y ${head.t}–${head.b}, <span class=bad>off the top, behind the status bar</span>`);
+    else lines.push(`head: y ${head.t}–${head.b}, <span class=ok>in view</span>`);
+    const bar = r(dev.querySelector('[data-m="bar"]') || dev.querySelector('[data-m="dock"]') || dev.querySelector('[data-m="saverow"]'));
+    if (bar) lines.push(`${c === "sheet" ? "card field dock" : c === "pinned" ? "action bar" : "Save row"}: y ${bar.t}–${bar.b}${keys ? (bar.b <= keys.t + 1 ? ", <span class=ok>clear of the keys</span>" : ", <span class=bad>under the keys</span>") : ""}`);
+  }
+  if (keys) lines.push(`keys from y ${keys.t}${tab ? `; tab bar y ${tab.t}–${tab.b} ${tab.t >= keys.t ? "<span class=bad>covered</span>" : ""}` : ""}`);
+  else if (tab) lines.push(`keys hidden; tab bar y ${tab.t}–${tab.b}, <span class=ok>reachable</span>`);
+  if (m.armed) {
+    const h = m.armed.startsWith("card:") ? r(dev.querySelector(`[data-m="ehead-${m.armed.slice(5)}"]`)) : head;
+    // Pinned head's ask takes the bar's own row (display: contents), so the bar is its box.
+    const a = r(c === "pinned" && m.armed === "draft" ? dev.querySelector('[data-m="bar"]') : dev.querySelector('[data-m="ask"]'));
+    if (a && h) {
+      const over = a.t < h.b - 1 && a.b > h.t + 1;
+      lines.push(`ask y ${a.t}–${a.b} vs head y ${h.t}–${h.b}: ${over ? "<span class=bad>covers the head</span>" : "<span class=ok>head clear</span>"}`);
+    }
+  }
+  if (!m.composing && !m.armed) {
+    lines.push(`kept drafts: ${m.drafts.size ? [...m.drafts.keys()].map(k => k === "new" ? "new envelope" : "edit of " + (m.env.find(e => e.id === k)?.date || "a discarded envelope")).join(", ") : "none"}`);
+  }
+  out.innerHTML = lines.join("<br>");
+}
+
+/* ---------- states from the hash ---------- */
+function setState(c, s) {
+  const m = M[c] = freshModel(); clearTimeout(timers[c]);
+  const typing = () => { m.composing = "new"; const d = draft(m, "new"); d.entries = [{ name:"Lightning Bolt", qty:2 }, { name:"Path to Exile", qty:1 }]; d.input = "Pon"; m.keys = true; m.scrollTop = true; };
+  switch (s) {
+    case "held": typing(); { const d = draft(m, "new"); const list = matches(d); addName(d, "Ponder"); m.hold = { list, tapped:"Ponder" }; } break;
+    case "keysdown": typing(); m.keys = false; break;
+    case "armed": typing(); draft(m, "new").input = ""; m.armed = "draft"; m.pin = true; break;
+    case "gone": m.notice = "Draft discarded · 3 cards. Nothing was saved."; break;
+    case "kept": { const d = draft(m, "new"); d.entries = [{ name:"Lightning Bolt", qty:2 }, { name:"Path to Exile", qty:1 }]; } break;
+    case "edit": m.composing = "e1"; { const d = draft(m, "e1"); d.entries.unshift({ name:"Opt", qty:1 }); d.input = "pre"; } m.keys = true; m.scrollTop = true; break;
+    case "card-armed": { const d = draft(m, "e1"); d.entries.unshift({ name:"Opt", qty:1 }); } m.armed = "card:e1"; m.pin = true; break;
+    case "away": typing(); m.tab = "packages"; m.keys = false; break;
+    default: typing();
+  }
+  if (c === "today" && s === "armed") { m.armed = null; m.pin = false; } // today's composer has no Discard draft
+}
+
+const hidden = new Set();
+function route() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const c = h.get("c"), s = h.get("s") || "typing";
+  document.querySelectorAll("section.concept").forEach(sec => { sec.hidden = (c && sec.dataset.c !== c) || hidden.has(sec.dataset.c); });
+  for (const k of Object.keys(M)) { setState(k, s); render(k); }
+  document.querySelectorAll("nav a").forEach(a => {
+    const ah = new URLSearchParams(a.getAttribute("href").slice(1));
+    const cur = a.hasAttribute("data-s") ? ah.get("s") === s : (ah.get("c") || null) === (c || null);
+    a.setAttribute("aria-current", String(cur));
+    if (a.hasAttribute("data-s")) a.setAttribute("href", "#" + (c ? `c=${c}&` : "") + `s=${ah.get("s")}`);
+    else if (ah.get("c") || a.getAttribute("href") === "#") a.setAttribute("href", "#" + (ah.get("c") ? `c=${ah.get("c")}&` : "") + `s=${s}`);
+  });
+  const first = document.querySelector("[data-first]"); // the ask's Cancel takes first focus
+  if (first && (s === "armed" || s === "card-armed")) first.focus({ preventScroll:true });
+}
+
+/* ---------- input: taps, drags, keys ---------- */
+let drag = null;
+document.addEventListener("pointerdown", e => {
+  const sc = e.target.closest("[data-drag]"); const dev = e.target.closest(".dev");
+  if (sc && dev) drag = { dev, sel: sc.classList.contains("slip") ? ".slip" : ".scroll", y:e.clientY, moved:false, idx:[...dev.querySelectorAll("[data-drag]")].indexOf(sc) };
+});
+document.addEventListener("pointermove", e => {
+  if (!drag) return;
+  const dy = e.clientY - drag.y;
+  if (!drag.moved && Math.abs(dy) < 6) return;
+  const c = drag.dev.dataset.c;
+  if (!drag.moved) { drag.moved = true; if (c !== "today" && M[c].keys) { M[c].keys = false; active = c; render(c); } }
+  const sc = drag.dev.querySelectorAll("[data-drag]")[drag.idx]; if (sc) sc.scrollTop -= dy;
+  drag.y = e.clientY;
+});
+document.addEventListener("pointerup", () => { setTimeout(() => { drag = null; }, 0); });
+document.addEventListener("wheel", e => {
+  const sc = e.target.closest("[data-drag]"); const dev = e.target.closest(".dev"); if (!sc || !dev) return;
+  const c = dev.dataset.c; if (c !== "today" && M[c].keys) { M[c].keys = false; render(c); }
+}, { passive:true });
+document.addEventListener("click", e => {
+  if (drag && drag.moved) return;
+  const b = e.target.closest("[data-act]"); const dev = e.target.closest(".dev"); if (!b || !dev) return;
+  if (b.getAttribute("aria-disabled") === "true") return;
+  const c = dev.dataset.c; let arg = b.dataset.arg;
+  if (["inc","dec"].includes(b.dataset.act)) arg = +arg;
+  act(c, b.dataset.act, arg);
+});
+document.addEventListener("keydown", e => {
+  if (e.target.closest && e.target.closest("nav")) return;
+  const m = M[active]; if (!m.composing || !m.keys || m.tab !== "orphaned") return;
+  if (e.key === "Backspace") { e.preventDefault(); act(active, "back"); }
+  else if (e.key === "Enter") { e.preventDefault(); act(active, "ret"); }
+  else if (e.key === "Escape") act(active, "hidekeys");
+  else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); act(active, "key", e.key); }
+});
+document.querySelectorAll("[data-hide]").forEach(b => b.addEventListener("click", () => {
+  const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  b.textContent = (hidden.has(o) ? "Show " : "Hide ") + (o === "pinned" ? "Pinned head" : "Envelope sheet"); route();
+}));
+addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>

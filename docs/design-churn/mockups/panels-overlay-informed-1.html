@@ -191,7 +191,7 @@ figcaption b { font-size:15px; }
 /* tags: dashed outline on what exists today and on what an option adds */
 [data-tag] { position:relative; }
 .tags [data-tag]::before { content:attr(data-tag); position:absolute; right:6px; top:-9px; font:600 10.5px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
-  background:var(--paper); z-index:10; white-space:nowrap; pointer-events:none; }
+  background:var(--paper); z-index:4; white-space:nowrap; pointer-events:none; }
 .tags .tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .tags .tag-new::before { color:var(--new); }
 .tags .tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .tags .tag-today::before { color:var(--today); }
 .tags .dock[data-tag]::before, .tags .facing[data-tag]::before { top:4px; }
@@ -488,7 +488,7 @@ figcaption b { font-size:15px; }
   }
 
   function fit(f) {
-    const avail = f.wrap.parentElement.clientWidth || DEV[f.dev].w;
+    const avail = f.wrap.closest(".frames").clientWidth || DEV[f.dev].w;
     f.scale = Math.min(1, avail / DEV[f.dev].w);
     f.el.style.transform = f.scale < 1 ? `scale(${f.scale})` : "";
     f.wrap.style.width = DEV[f.dev].w * f.scale + "px"; f.wrap.style.height = DEV[f.dev].h * f.scale + "px";

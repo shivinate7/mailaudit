@@ -1,0 +1,630 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Import and Backup</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The web app and the native client are held to light,
+   so this page draws one theme. data-theme stays "light" on the root for the deep link t=light. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar: unmeasured on the Duo screens; drawn at the 20 pt floor the Duo UI tests use (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  /* Home indicator: unmeasured on the Duo; drawn at the same 20 pt floor. The web bar adds its own 12 px (phone-nav-is-bottom-bar). */
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  /* Text roles, at the default size. Mapped to iOS text styles (HIG Typography, read 2026-11-21): Title 3 20, Body 17, Subhead 15, Footnote 13, Caption 2 11, Title 1 28. */
+  --t-title:20px; --t-body:17px; --t-sub:15px; --t-foot:13px; --t-cap:11px; --t-big:28px;
+}
+:root[data-theme="dark"] { /* not shipped: the app is light only (design-parchment-ledger) */ }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1100px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:28px; margin:0; }
+.sub { color:var(--inkSoft); margin:0; }
+.kind { font:13px var(--mono); color:var(--inkSoft); }
+.ctl { display:flex; flex-direction:column; gap:8px; }
+.ctl .grp { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ctl .lab { font:12px var(--mono); color:var(--inkSoft); min-width:72px; }
+.ctl a, .ctl button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl button.hide { color:var(--red); border-color:var(--redSoft); }
+.ctl [hidden] { display:none !important; }
+.legend { display:flex; flex-wrap:wrap; gap:12px; font-size:13px; color:var(--inkSoft); }
+.legend span { border:1.5px dashed var(--inkSoft); border-radius:4px; padding:2px 8px; }
+.legend span.n { border-color:var(--green); color:var(--green); }
+.legend span.t { border-color:var(--red); color:var(--red); }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure[hidden] { display:none; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+figcaption b { font-family:var(--cochin); font-size:17px; color:var(--ink); }
+.fit { max-width:100%; overflow-x:auto; }
+#emptyall { padding:16px; border:1px dashed var(--line); border-radius:8px; }
+
+/* ---- devices. 1 CSS px = 1 pt. ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; font-family:-apple-system, system-ui, sans-serif; flex:none; }
+.dev.folded { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+.dev.phone { width:var(--phone-w, 430px); height:calc(var(--phone-w, 430px) * 2.17); }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center; padding:0 16px;
+  font-size:12px; font-weight:600; z-index:5; background:var(--paper); }
+.pg { position:absolute; top:var(--sat); bottom:0; overflow-y:auto; }
+.folded .pg, .phone .pg { left:0; right:0; }
+.open .pg.l { left:0; width:455.5px; } .open .pg.r { left:495.5px; width:455.5px; }
+.hinge { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:6; }
+.hinge span { position:absolute; top:240px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.home { position:absolute; left:50%; bottom:8px; width:120px; height:4px; margin-left:-60px; border-radius:4px; background:var(--ink); opacity:.5; z-index:9; }
+
+/* ---- the app (src/app.jsx). Cochin sets words, Menlo sets numbers (typography-cochin-and-mono). ---- */
+.app { font-family:var(--cochin); color:var(--ink); padding:16px 16px calc(148px + var(--sab)); display:flex; flex-direction:column; gap:12px; }
+.lh { text-align:center; font:var(--t-cap) var(--mono); letter-spacing:.3em; text-transform:uppercase; color:var(--inkSoft); padding-top:4px; }
+.lg { font:var(--t-cap) var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--inkSoft); padding:4px 4px 0; }
+.lcard { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.lrow { display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:8px 16px; border:0; border-top:1px solid var(--line);
+  background:transparent; text-align:left; color:var(--ink); font:inherit; cursor:pointer; }
+.lcard > :first-child { border-top:0; }
+.lrow > .l { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.lrow .t { font-size:var(--t-title); line-height:1.15; }
+.lrow .s { font-size:var(--t-foot); line-height:1.3; color:var(--inkSoft); }
+.lrow .v { font-family:var(--mono); font-size:calc(var(--t-sub) - 1px); color:var(--accent); text-align:right; }
+.lrow[aria-expanded]::after { content:"\203A"; font-size:22px; line-height:1; color:var(--inkSoft); flex-shrink:0; }
+.lrow[aria-expanded="true"]::after { transform:rotate(90deg); }
+.reset { display:flex; }
+.act { flex:1; min-width:0; min-height:52px; padding:8px 16px; border:0; background:transparent; text-align:left; font:inherit; font-size:var(--t-title); color:var(--ink); cursor:pointer; }
+.act.danger { color:var(--red); }
+.act.armed { background:var(--red); color:var(--card); font-weight:700; font-size:var(--t-sub); }
+.act.cancel { flex:0 0 auto; border-left:1px solid var(--line); }
+.armrow { display:flex; border:1px solid var(--line); border-radius:8px; overflow:hidden; background:var(--card); }
+
+/* upload zone, as UploadZone draws it today */
+.zone { border:2px dashed var(--inkSoft); border-radius:12px; background:var(--card); padding:24px; text-align:center; display:flex; flex-direction:column; gap:8px; align-items:center; }
+.zone .zt { font-weight:700; font-size:var(--t-sub); }
+.zone .zs { font-size:var(--t-foot); color:var(--inkSoft); }
+.btn { font:inherit; font-weight:700; font-size:var(--t-sub); min-height:44px; padding:8px 20px; border-radius:8px; border:1px solid var(--ink); background:var(--ink); color:var(--card); cursor:pointer; }
+.btn.quiet { background:var(--card); color:var(--ink); border-color:var(--line); font-weight:400; }
+.btn.wide { width:100%; }
+.promise { display:flex; flex-direction:column; gap:4px; text-align:left; width:100%; border-top:1px solid var(--line); padding-top:12px; }
+.promise p { margin:0; font-size:var(--t-foot); }
+.promise b { color:var(--green); }
+.err { color:var(--red); background:var(--redSoft); border-radius:8px; padding:8px 12px; font-size:var(--t-foot); text-align:left; width:100%; }
+.okline { color:var(--green); font-size:var(--t-foot); text-align:left; width:100%; }
+
+/* the receipt (concept: Receipt at the row) */
+.rcpt { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 16px 16px; display:flex; flex-direction:column; gap:12px; }
+.cap { font:var(--t-cap) var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--inkSoft); }
+.fn { font:var(--t-foot) var(--mono); color:var(--ink); overflow-wrap:anywhere; }
+.big { font-size:var(--t-title); line-height:1.2; }
+.big .num { font:700 var(--t-big) var(--mono); color:var(--accent); }
+.big .s { display:block; font-size:var(--t-foot); color:var(--inkSoft); }
+dl.ruled { margin:0; display:flex; flex-direction:column; }
+dl.ruled > div { display:flex; align-items:baseline; gap:8px; min-height:36px; padding:8px 0; border-top:1px solid var(--line); }
+dl.ruled dt { flex:1; font-size:var(--t-sub); }
+dl.ruled dd { margin:0; font:var(--t-sub) var(--mono); }
+dl.ruled button.dis { all:unset; flex:1; font-size:var(--t-sub); cursor:pointer; text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:4px; min-height:20px; }
+.keptbox { border:1px solid var(--green); border-radius:8px; padding:8px 12px; display:flex; flex-direction:column; gap:4px; background:color-mix(in srgb, var(--greenSoft) 60%, transparent); }
+.keptbox table { border-collapse:collapse; width:100%; font-size:var(--t-sub); }
+.keptbox th { font:var(--t-cap) var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--inkSoft); text-align:right; font-weight:400; padding:4px 0; }
+.keptbox th:first-child { text-align:left; }
+.keptbox td { padding:4px 0; }
+.keptbox td.n { font-family:var(--mono); text-align:right; width:64px; }
+.keptbox .say { font-size:var(--t-foot); color:var(--green); font-weight:700; }
+.foot { margin:0; font-size:var(--t-foot); color:var(--inkSoft); }
+.foot a, .linkish { color:var(--accent); text-decoration:underline; text-underline-offset:3px; cursor:pointer; background:none; border:0; font:inherit; padding:0; }
+
+/* the reconcile (concept: Proof before posting) */
+.proof { display:flex; flex-direction:column; gap:12px; }
+.proof h2 { margin:0; font-size:var(--t-title); font-weight:700; line-height:1.2; }
+table.recon { width:100%; border-collapse:collapse; background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.recon th { font:var(--t-cap) var(--mono); letter-spacing:.12em; text-transform:uppercase; color:var(--inkSoft); font-weight:400; text-align:right; padding:8px 12px; border-bottom:1px solid var(--ink); }
+.recon th:first-child, .recon td:first-child { text-align:left; }
+.recon td { padding:8px 12px; font:var(--t-sub) var(--mono); text-align:right; border-top:1px solid var(--line); height:44px; }
+.recon td:first-child { font-family:var(--cochin); font-size:var(--t-sub); }
+.recon td.plus { color:var(--accent); font-weight:700; }
+.recon tr.kept td { color:var(--green); }
+.recon tr.kept td.after { border-bottom:3px double var(--green); }
+.recon tr.kept td:first-child::after { content:" kept"; font:var(--t-cap) var(--mono); letter-spacing:.12em; text-transform:uppercase; }
+.spread-row { display:grid; grid-template-columns:1fr auto; align-items:baseline; gap:8px; height:52px; border-top:1px solid var(--line); padding:0 16px; }
+.spread-row .k { font-size:var(--t-sub); }
+.spread-row .n { font:var(--t-big) var(--mono); }
+.spread-row .n.small { font-size:var(--t-sub); }
+.spread-row.kept .n { color:var(--green); text-decoration:underline double; text-underline-offset:6px; }
+.spread-row .delta { font:var(--t-sub) var(--mono); color:var(--accent); font-weight:700; margin-right:8px; }
+.spread-row .delta.none { color:var(--inkSoft); font-weight:400; }
+.spread { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.spread .sh { height:44px; display:flex; align-items:center; padding:0 16px; }
+.poststrip { position:sticky; bottom:calc(88px + var(--sab)); display:flex; gap:8px; padding:8px; border:1px solid var(--line); border-radius:12px; background:color-mix(in srgb, var(--paper) 92%, transparent); }
+.open .poststrip { bottom:calc(88px + var(--sab)); }
+.poststrip .btn { flex:1; }
+.poststrip .btn.quiet { flex:0 0 auto; }
+
+/* packages, as the card draws today (collapsed) */
+.filt { display:flex; align-items:center; gap:8px; min-height:44px; padding:0 4px 0 12px; background:var(--card); border:1px solid var(--accent); border-radius:8px; font:var(--t-foot) var(--mono); color:var(--accent); }
+.filt span { flex:1; }
+.filt button { all:unset; width:44px; height:44px; display:grid; place-items:center; cursor:pointer; font-size:18px; }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 16px; display:flex; flex-direction:column; gap:4px; cursor:pointer; position:relative; }
+.pkg .who { font-size:var(--t-body); font-weight:700; }
+.pkg .meta { font:var(--t-cap) var(--mono); color:var(--inkSoft); letter-spacing:.04em; }
+.pkg .fig { position:absolute; right:16px; top:12px; font:var(--t-foot) var(--mono); color:var(--accent); }
+.pkg .newtag { font:var(--t-cap) var(--mono); color:var(--accent); }
+.item { display:flex; gap:8px; align-items:center; min-height:44px; border-top:1px solid var(--line); font-size:var(--t-sub); }
+.item .box { width:22px; height:22px; border:1.5px solid var(--inkSoft); border-radius:4px; flex:none; }
+.item .q { font:var(--t-foot) var(--mono); color:var(--inkSoft); margin-left:auto; }
+.band { align-self:flex-start; transform:rotate(-1.5deg); background:var(--manila); color:var(--manilaInk); border-radius:4px; padding:4px 8px; font:var(--t-cap) var(--mono); letter-spacing:.12em; text-transform:uppercase; }
+.editor { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:8px; }
+.chips { display:flex; flex-wrap:wrap; row-gap:12px; column-gap:4px; }
+.chip { font:inherit; font-size:var(--t-foot); min-height:34px; padding:4px 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+.chip[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:700; background:color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.field { font:16px var(--cochin); width:100%; padding:8px 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); }
+.edact { display:flex; gap:8px; align-items:center; }
+.mini { font:inherit; font-size:var(--t-foot); min-height:44px; padding:4px 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+.mini.red { color:var(--red); border-color:var(--redSoft); }
+.mini.solid { background:var(--ink); color:var(--card); border-color:var(--ink); font-weight:700; }
+
+/* date range panel */
+.rpanel { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px 16px; display:flex; flex-direction:column; gap:12px; }
+.rgrid { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
+.rgrid .chip { min-height:44px; padding:4px; }
+.months { display:flex; flex-direction:column; }
+.mo { display:flex; align-items:center; gap:8px; min-height:44px; border-top:1px solid var(--line); font-size:var(--t-sub); cursor:pointer; }
+.mo .c { font:var(--t-foot) var(--mono); color:var(--inkSoft); margin-left:auto; }
+.mo .nw { font:var(--t-cap) var(--mono); color:var(--accent); }
+.mo.on { color:var(--accent); font-weight:700; }
+
+/* history */
+.ver { display:grid; grid-template-columns:auto 1fr auto; gap:4px 12px; align-items:baseline; min-height:52px; padding:8px 16px; border-top:1px solid var(--line); }
+.ver .w { font:var(--t-foot) var(--mono); }
+.ver .lb { font-size:var(--t-sub); }
+.ver .lb.ms { font-weight:700; }
+.ver .f { font:var(--t-foot) var(--mono); color:var(--inkSoft); text-align:right; }
+.ver .sz { grid-column:3; font:var(--t-cap) var(--mono); color:var(--inkSoft); text-align:right; }
+.grid2 { display:grid; grid-template-columns:1fr 1fr; border-top:1px solid var(--line); }
+.grid2 .lrow + .lrow { border-left:1px solid var(--line); }
+.grid2 .lrow { border-top:0; }
+
+/* the tab bar (phone-nav-is-bottom-bar), out of flow */
+.bar { position:absolute; z-index:8; left:24px; right:24px; bottom:calc(12px + var(--sab)); height:64px; display:flex; padding:4px; border:1px solid var(--line);
+  border-radius:999px; background:color-mix(in srgb, var(--paper) 62%, transparent); -webkit-backdrop-filter:blur(18px) saturate(1.8); backdrop-filter:blur(18px) saturate(1.8);
+  box-shadow:0 8px 24px var(--shadow), 0 1px 3px var(--shadow); max-width:480px; margin:0 auto; }
+.open .bar { left:calc(495.5px + 24px); right:24px; }
+.bar button { position:relative; flex:1; min-width:44px; min-height:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  border:0; border-radius:999px; background:transparent; color:var(--ink); font:10px var(--mono); letter-spacing:.09em; text-transform:uppercase; cursor:pointer; }
+.bar button.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); box-shadow:inset 0 0 0 1px var(--line); }
+.bar svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.8; stroke-linecap:round; stroke-linejoin:round; }
+.bar b { position:absolute; top:4px; left:50%; margin-left:12px; font-size:10px; color:var(--red); }
+.findpill { position:absolute; z-index:8; left:24px; right:24px; bottom:calc(12px + 64px + 8px + var(--sab)); height:48px; display:flex; align-items:center; gap:8px; padding:0 16px;
+  border:1px solid var(--line); border-radius:999px; background:color-mix(in srgb, var(--paper) 62%, transparent); font:16px var(--cochin); color:var(--inkSoft); max-width:480px; margin:0 auto; }
+.open .findpill { left:calc(495.5px + 24px); }
+
+/* Today / New marks */
+.mk { position:relative; outline:1.5px dashed var(--red); outline-offset:4px; border-radius:4px; }
+.mk.new { outline-color:var(--green); }
+.mk::before { content:attr(data-mk); position:absolute; top:-12px; right:4px; transform:translateY(-50%); font:10.5px var(--mono); padding:0 4px; background:var(--paper); color:var(--red); z-index:3; white-space:nowrap; }
+.mk.new::before { color:var(--green); }
+body.nomarks .mk { outline:0; }
+body.nomarks .mk::before { display:none; }
+
+/* Largest accessibility size (AX5). HIG Typography table, read 2026-11-21: Title 3 55, Body 53, Subhead 49, Footnote 44, Caption 2 40, Title 1 58. */
+.ax5 { --t-title:55px; --t-body:53px; --t-sub:49px; --t-foot:44px; --t-cap:40px; --t-big:58px; }
+.ax5 .lrow { flex-wrap:wrap; }
+.ax5 .lrow .v { flex-basis:100%; text-align:left; }
+.ax5 dl.ruled > div { flex-wrap:wrap; }
+.ax5 table.recon thead { display:none; }
+.ax5 table.recon, .ax5 .recon tbody, .ax5 .recon tr, .ax5 .recon td { display:block; height:auto; }
+.ax5 .recon tr { border-top:1px solid var(--line); padding:8px 12px; }
+.ax5 .recon td { border:0; padding:0; text-align:left; }
+.ax5 .recon td.now::before { content:"Now "; font-family:var(--cochin); color:var(--inkSoft); }
+.ax5 .recon td.plus::before { content:"File "; font-family:var(--cochin); color:var(--inkSoft); font-weight:400; }
+.ax5 .recon td.after::before { content:"After "; font-family:var(--cochin); color:var(--inkSoft); }
+.ax5 .recon tr.kept td:first-child::after { display:block; }
+.ax5 .keptbox td.n { width:auto; padding-left:12px; }
+.ax5 .rgrid { grid-template-columns:1fr 1fr; }
+.ax5 .poststrip { flex-direction:column; position:static; }
+.ax5 .edact { flex-wrap:wrap; }
+.ax5 .ver { grid-template-columns:1fr; }
+.ax5 .ver .f, .ax5 .ver .sz { text-align:left; grid-column:1; }
+.ax5 .grid2 { grid-template-columns:1fr; }
+.ax5 .grid2 .lrow + .lrow { border-left:0; border-top:1px solid var(--line); }
+.ax5 .pkg .fig { position:static; }
+.ax5 .mk::before { font-size:10.5px; }
+.ax5 .cap, .ax5 .lg, .ax5 .lh { letter-spacing:.04em; }
+.mk.pagemk { outline-offset:-4px; }
+.mk.pagemk::before { top:12px; transform:none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .rcpt.landing, .proof.landing { animation:arrive 220ms ease-out both; }
+  @keyframes arrive { from { opacity:0; } to { opacity:1; } }
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" role="note">Sample. No figure, seller, card or file name on this page is real.</div>
+  <div>
+    <h1>Import and Backup</h1>
+    <p class="kind">Designer kind: informed · import-and-backup-informed-1</p>
+  </div>
+  <p class="sub">The pain: "I'm scared to import in case it erases my check-ins." Two concepts. Each keeps every ruled decision; each departure is named in the notes file. Tap inside any screen: every button there moves the mockup to its next state.</p>
+  <div class="legend"><span class="t">Today: a part that exists in <code>src/app.jsx</code></span><span class="n">New: a part this concept adds</span><label><input type="checkbox" id="marks" checked> show the marks</label></div>
+
+  <div class="ctl" id="ctl">
+    <div class="grp" id="concepts"><span class="lab">Concept</span></div>
+    <div class="grp" id="states"><span class="lab">State</span></div>
+    <div class="grp" id="devices"><span class="lab">Device</span></div>
+    <div class="grp" id="phonew"><span class="lab">Phone</span><label class="kind">Large phone: no written size. Width <input type="range" id="pw" min="360" max="480" step="4" value="430"> <output id="pwo">430</output> pt (stand-in)</label></div>
+    <div class="grp" id="hides"><span class="lab">Hide</span></div>
+  </div>
+
+  <div id="emptyall" hidden>Every option is hidden. <button class="linkish" id="showall">Show them all again.</button></div>
+  <div class="frames" id="frames"></div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  /* ---------- sample data (all invented) ---------- */
+  const D = {
+    file: "orderwand-2026-11-20.csv", at: "09:14",
+    rows: "1,272", now: "1,201", after: "1,260", added: 59, refreshed: 41, renamed: 3, same: "1,157", skipped: 12,
+    checks: 806, stamps: 14, envs: 6, pkgs: 7, beforeKB: "238 kB", photosMB: "41 MB",
+    backupFile: "mailday-backup-2026-11-02.json", backupDay: "2 Nov", backupKB: "231 kB", backupLines: "1,188", backupChecks: 779
+  };
+  const PKGS = [
+    { who: "Twin Rivers Cards", date: "11/18/26", n: 9, cost: "$4.85", items: [["Lantern Warden", 2], ["Copper Tide Sentry", 4], ["Glass Hound", 3]] },
+    { who: "Moonlit Collectibles", date: "11/18/26", n: 12, cost: "$7.20" },
+    { who: "Gravel Road Games", date: "11/17/26", n: 6, cost: "$2.10" },
+    { who: "Paperback Dragons", date: "11/16/26", n: 11, cost: "$9.65" },
+    { who: "North Fork TCG", date: "11/15/26", n: 8, cost: "$3.40" }
+  ];
+  const CONCEPTS = {
+    receipt: { name: "Receipt at the row", focus: "receipt-card",
+      blurb: "Keeps today's flow: the file goes in at once. The answer lands where you pressed, as a ruled receipt with every count, the check-ins before and after, and an undo." ,
+      states: ["zone", "receipt", "newlines", "stamp", "range", "backup", "restore", "error"] },
+    proof: { name: "Proof before posting", focus: "proof-sheet",
+      blurb: "Bold: nothing changes until you post. The file is read and set beside your ledger as a spread. On the open Duo the two pages are Now and After, row for row across the fold.",
+      states: ["zone", "proof", "posted", "newlines", "stamp", "range", "backup", "restore", "error"] }
+  };
+  const STATE_NAMES = { zone: "Upload zone", receipt: "Import summary", proof: "Check before posting", posted: "Posted", newlines: "New lines",
+    stamp: "Stamp editor", range: "Date range", backup: "Backup and History", restore: "Restore a backup", error: "Wrong file" };
+  const DEVICES = { all: "All", folded: "Duo folded", open: "Duo open", ax5: "Duo folded, AX5 text", phone: "Large phone" };
+  const SUBOPTS = { sizes: "Sizes on Backup and History", months: "New-line counts in the month list", jsonsplit: "Restore apart from import (Proof)" };
+
+  /* ---------- state ---------- */
+  const S = { c: "receipt", s: "zone", a: 0, d: "all", hide: new Set() };
+  function readHash() {
+    const h = new URLSearchParams(location.hash.slice(1));
+    if (h.get("c") && CONCEPTS[h.get("c")]) S.c = h.get("c");
+    const st = h.get("s");
+    S.s = st && CONCEPTS[S.c].states.includes(st) ? st : (st === "undo" && S.c === "receipt" ? "receipt" : "zone");
+    S.a = h.get("a") === "1" || st === "undo" ? 1 : 0;
+    S.d = DEVICES[h.get("d")] ? h.get("d") : "all";
+    S.hide = new Set((h.get("hide") || "").split(",").filter(Boolean));
+  }
+  function writeHash() {
+    const p = new URLSearchParams({ c: S.c, s: S.s, d: S.d, t: "light" });
+    if (S.a) p.set("a", "1");
+    if (S.hide.size) p.set("hide", [...S.hide].join(","));
+    history.replaceState(null, "", "#" + p.toString());
+    render();
+  }
+  function go(st, arm) { S.s = st; S.a = arm ? 1 : 0; writeHash(); }
+
+  /* ---------- small builders ---------- */
+  const mk = (kind, label, html, extra) => `<div class="mk ${kind === "new" ? "new" : ""} ${extra || ""}" data-mk="${kind === "new" ? "New" : "Today"}: ${label}">${html}</div>`;
+  const on = (k) => !S.hide.has(k);
+  function row(o) {
+    const exp = o.exp === undefined ? "" : ` aria-expanded="${o.exp}"`;
+    const g = o.go ? ` data-go="${o.go}"` : "";
+    return `<button class="lrow"${exp}${g}><span class="l"><span class="t">${o.t}</span>${o.s ? `<span class="s">${o.s}</span>` : ""}</span>${o.v ? `<span class="v">${o.v}</span>` : ""}</button>`;
+  }
+  const ICON = {
+    ledger: '<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.2 5.2l2.1 2.1M16.7 16.7l2.1 2.1M5.2 18.8l2.1-2.1M16.7 7.3l2.1-2.1"/></svg>',
+    orphaned: '<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+    tally: '<svg viewBox="0 0 24 24"><path d="M5 4v16M10 4v16M15 4v16M3 15l18-6"/></svg>',
+    packages: '<svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4-9 4-9-4z"/><path d="M3 7v10l9 4 9-4V7M12 11v10"/></svg>'
+  };
+  function bar(active) {
+    return `<nav class="bar" aria-label="Views">${["ledger", "orphaned", "tally", "packages"].map((k) =>
+      `<button class="${k === active ? "on" : ""}" ${k === "ledger" ? 'data-go="zone"' : k === "packages" ? 'data-go="newlines"' : ""}>${ICON[k]}${k}${k === "orphaned" ? "<b>2</b>" : ""}</button>`).join("")}</nav>`;
+  }
+  const find = () => `<div class="findpill" aria-hidden="true"><svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="11" cy="11" r="6"/><path d="M20 20l-4.5-4.5"/></svg>Find a card, seller or order</div>`;
+  const resetBox = () => `<div class="lcard reset"><button class="act danger">Reset</button></div>`;
+
+  function viewGroup(rangeOpen) {
+    return `<div class="lg">View</div><div class="lcard">${row({ t: "Showing", v: "● Unreceived" })}${row({ t: "Sorted by", v: "Order date", exp: false })}${row({ t: "Orders from", v: rangeOpen ? "By month" : "All time", exp: !!rangeOpen, go: "range" })}</div>`;
+  }
+  function dataGroup(opts) {
+    const o = opts || {};
+    const sz = on("sizes");
+    const reimport = row({ t: "Re-import CSV", s: o.reSub || "", v: o.reVal || "Merges", exp: !!o.reOpen, go: o.reGo || "zone" });
+    const restoreRow = S.c === "proof" && on("jsonsplit")
+      ? mk("new", "restore has its own row", row({ t: "Restore a backup file", s: "Shows the copy beside your ledger first", exp: S.s === "restore", go: "restore" }))
+      : "";
+    const backups = sz
+      ? mk("new", "the size each file will be", row({ t: "Backup", s: "Downloads one file", v: D.beforeKB }) + row({ t: "Backup + photos", v: D.photosMB }))
+      : row({ t: "Backup" }) + row({ t: "Backup + photos" });
+    return `<div class="lg">Data</div><div class="lcard">${row({ t: "Sync", v: "Up to date", exp: false })}${row({ t: "History", v: "12 saved", exp: !!o.histOpen, go: "backup" })}${o.histBody || ""}${reimport}${o.afterRe || ""}${backups}${restoreRow}</div>`;
+  }
+
+  /* ---------- the upload zone ---------- */
+  function zone(err) {
+    const proof = S.c === "proof";
+    const today = `<div class="zone">
+        <div class="zt">Drop your OrderWand CSV here</div>
+        <div class="zs">${proof && on("jsonsplit") ? "In OrderWand: pick “OrderWand CSV” from the drop list, click File, then bring it here." : "CSV imports merge with what’s here; a .json backup restores everything."}</div>
+        <button class="btn" data-go="${proof ? "proof" : "receipt"}">Choose file</button>
+        ${err ? `<div class="err" data-focus role="alert">No card rows found. This doesn’t look like an OrderWand CSV — expected columns like “Product Name” and “Order Id”.</div>` : ""}
+      </div>`;
+    const promise = `<div class="promise">
+        <p><b>An import only adds and updates lines.</b> Your ${D.checks} check-ins, ${D.stamps} stamps and ${D.envs} envelopes stay as they are.</p>
+        <p>${proof ? "You see what the file adds before anything changes." : "History keeps the ledger as it is now, before the file goes in."}</p>
+      </div>`;
+    const nothing = err ? mk("new", "nothing-changed line", `<div class="okline" role="status">Nothing changed. Your ledger is as it was.</div>`) : "";
+    return mk("today", "upload zone (UploadZone)", today) + mk("new", "the promise, in the zone", `<div class="zone" style="border-style:solid;padding:12px 16px">${promise}</div>`) + nothing;
+  }
+
+  /* ---------- Receipt at the row ---------- */
+  function receiptCard() {
+    const undo = S.a
+      ? `<div class="armrow"><button class="act armed" data-go="zone">Tap again to go back to ${D.now} lines</button><button class="act cancel" data-go="receipt" autofocus>Cancel</button></div>
+         <p class="foot">Check-ins made since ${D.at} go back too. None so far.</p>`
+      : `<div class="armrow"><button class="act danger" data-arm="1">Undo this import</button></div>`;
+    return `<section class="rcpt ${S.landing ? "landing" : ""}" id="receipt-card" data-focus aria-label="Import summary">
+      <div class="cap">Imported at ${D.at}</div>
+      <div class="fn">${D.file}</div>
+      <div class="big"><span class="num">${D.added}</span> new lines<span class="s">in ${D.pkgs} packages, from ${D.rows} rows read</span></div>
+      <div class="keptbox"><table><thead><tr><th></th><th>Before</th><th>After</th></tr></thead><tbody>
+        <tr><td>Check-ins</td><td class="n">${D.checks}</td><td class="n">${D.checks}</td></tr>
+        <tr><td>Stamps</td><td class="n">${D.stamps}</td><td class="n">${D.stamps}</td></tr>
+        <tr><td>Envelopes</td><td class="n">${D.envs}</td><td class="n">${D.envs}</td></tr>
+      </tbody></table><span class="say">Kept as they were.</span></div>
+      <dl class="ruled">
+        <div><dt><button class="dis" data-go="newlines">Shipping status updated</button></dt><dd>${D.refreshed}</dd></div>
+        <div><dt><button class="dis">Renamed to the new name</button></dt><dd>${D.renamed}</dd></div>
+        <div><dt>Already here, no change</dt><dd>${D.same}</dd></div>
+        <div><dt><button class="dis">Skipped: not card purchases</button></dt><dd>${D.skipped}</dd></div>
+      </dl>
+      <button class="btn wide" data-go="newlines">Show the ${D.added} new lines</button>
+      ${undo}
+      <p class="foot">History holds the ledger from before: today ${D.at}, ${D.beforeKB}. <button class="linkish" data-go="backup">Open History</button></p>
+    </section>`;
+  }
+
+  /* ---------- Proof before posting ---------- */
+  function reconTable(posted) {
+    return `<table class="recon"><thead><tr><th></th><th>Now</th><th>File</th><th>After</th></tr></thead><tbody>
+      <tr><td>Lines</td><td class="now">${posted ? D.after : D.now}</td><td class="plus">+${D.added}</td><td class="after">${D.after}</td></tr>
+      <tr class="kept"><td>Check-ins</td><td class="now">${D.checks}</td><td class="plus" style="color:var(--inkSoft);font-weight:400">0</td><td class="after">${D.checks}</td></tr>
+      <tr class="kept"><td>Stamps</td><td class="now">${D.stamps}</td><td class="plus" style="color:var(--inkSoft);font-weight:400">0</td><td class="after">${D.stamps}</td></tr>
+      <tr class="kept"><td>Envelopes</td><td class="now">${D.envs}</td><td class="plus" style="color:var(--inkSoft);font-weight:400">0</td><td class="after">${D.envs}</td></tr>
+    </tbody></table>`;
+  }
+  function inFile() {
+    return `<div class="lcard">
+      ${row({ t: "New lines", s: `In ${D.pkgs} packages`, v: String(D.added), exp: false, go: S.s === "posted" ? "newlines" : "" })}
+      ${row({ t: "Shipping status updated", v: String(D.refreshed), exp: false })}
+      ${row({ t: "Renamed to the new name", v: String(D.renamed), exp: false })}
+      ${row({ t: "Already here, no change", v: D.same })}
+      ${row({ t: "Skipped: not card purchases", v: String(D.skipped), exp: false })}
+    </div>`;
+  }
+  function postStrip() {
+    if (S.s === "posted")
+      return `<div class="poststrip"><button class="btn wide" data-go="newlines">Show the ${D.added} new lines</button></div>`;
+    return `<div class="poststrip"><button class="btn quiet" data-go="zone">Cancel</button><button class="btn" data-go="posted">Post ${D.added} new lines</button></div>`;
+  }
+  function proofSheet() {
+    const posted = S.s === "posted";
+    return `<section class="proof ${S.landing ? "landing" : ""}" id="proof-sheet" aria-label="${posted ? "Posted" : "Check before posting"}">
+      <div class="cap">${posted ? `Posted at ${D.at}` : "Check before posting"}</div>
+      <h2>${posted ? `${D.added} new lines are in your ledger.` : "Nothing has changed yet."}</h2>
+      <div class="fn">${D.file} · ${D.rows} rows read</div>
+      ${reconTable(posted)}
+      <div class="lg">In the file</div>
+      ${inFile()}
+      ${posted ? `<p class="foot">History holds the ledger from before: today ${D.at}, ${D.beforeKB}. <button class="linkish" data-go="backup">Open History</button></p>` : ""}
+      ${postStrip()}
+    </section>`;
+  }
+  /* the open Duo spread: rows at the same height on both pages */
+  function spreadLeft() {
+    const posted = S.s === "posted";
+    return `<div class="app">
+      <div class="cap">${posted ? `Before ${D.at}` : "Your ledger now"}</div>
+      <h2 style="margin:0;font-size:var(--t-title)">${posted ? "As it stood before the file" : "Nothing has changed yet."}</h2>
+      <div class="fn">&nbsp;</div>
+      <div class="spread">
+        <div class="sh cap">Now</div>
+        <div class="spread-row"><span class="k">Lines</span><span class="n">${D.now}</span></div>
+        <div class="spread-row kept"><span class="k">Check-ins</span><span class="n">${D.checks}</span></div>
+        <div class="spread-row kept"><span class="k">Stamps</span><span class="n small">${D.stamps}</span></div>
+        <div class="spread-row kept"><span class="k">Envelopes</span><span class="n small">${D.envs}</span></div>
+      </div>
+      <div class="keptbox"><span class="say">Check-ins, stamps and envelopes cross the fold unchanged.</span><span class="foot">An import only adds lines, and updates the shipping status and name of a line it already holds.</span></div>
+      <div class="lg">Skipped</div>
+      <div class="lcard">${row({ t: "Not card purchases", s: "Shipping lines and non-TCG rows", v: String(D.skipped), exp: false })}</div>
+    </div>`;
+  }
+  function spreadRight() {
+    const posted = S.s === "posted";
+    const pk = PKGS.slice(0, 4).map((p) => `<div class="pkg"><span class="who">${p.who}</span><span class="meta">${p.date} · ${p.n} cards · ${p.cost}</span><span class="newtag">new package</span></div>`).join("");
+    return `<div class="app">
+      <div class="cap">${posted ? `Posted at ${D.at}` : "After this file"}</div>
+      <h2 style="margin:0;font-size:var(--t-title)">${posted ? `${D.added} new lines are in.` : `${D.file}`}</h2>
+      <div class="fn">${D.rows} rows read</div>
+      <div class="spread" id="proof-sheet">
+        <div class="sh cap">File · After</div>
+        <div class="spread-row"><span class="k"><span class="delta">+${D.added}</span></span><span class="n">${D.after}</span></div>
+        <div class="spread-row kept"><span class="k"><span class="delta none">0</span></span><span class="n">${D.checks}</span></div>
+        <div class="spread-row kept"><span class="k"><span class="delta none">0</span></span><span class="n small">${D.stamps}</span></div>
+        <div class="spread-row kept"><span class="k"><span class="delta none">0</span></span><span class="n small">${D.envs}</span></div>
+      </div>
+      <div class="lcard">${row({ t: "Shipping status updated", v: String(D.refreshed), exp: false })}${row({ t: "Renamed to the new name", v: String(D.renamed), exp: false })}</div>
+      <div class="lg">New lines, by package</div>
+      ${pk}
+      ${postStrip()}
+    </div>`;
+  }
+
+  /* ---------- shared later states ---------- */
+  function packages(expandFirst) {
+    const filt = mk("new", "the import's filter row", `<div class="filt"><span>${D.added} new from the ${D.at} import</span><button aria-label="Clear the import filter" data-go="${S.c === "proof" ? "posted" : "receipt"}">×</button></div>`);
+    const cards = PKGS.map((p, i) => {
+      if (i === 0 && expandFirst) {
+        return mk("today", "stamp editor (PackageCard)", `<div class="pkg" style="cursor:default"><span class="who">${p.who}</span><span class="meta">${p.date} · ${p.n} cards · ${p.cost}</span><span class="fig">0/${p.n}</span>
+          ${p.items.map(([n, q]) => `<div class="item"><span class="box"></span>${n}<span class="q">0/${q}</span></div>`).join("")}
+          <div class="editor" data-focus>
+            <div class="cap">Stamp</div>
+            <div class="chips">${["Claim filed", "Refunded", "Seller contacted", "Reshipped", "Partial refund", "Other"].map((k) => `<button class="chip" aria-pressed="${k === "Seller contacted"}">${k}</button>`).join("")}</div>
+            <input class="field" aria-label="Stamp note" value="Asked where the Glass Hounds are">
+            <div class="edact"><span style="flex:1"></span><button class="mini" data-go="newlines" autofocus>Cancel</button><button class="mini solid" data-go="newlines">Save</button></div>
+          </div></div>`);
+      }
+      return `<div class="pkg" data-go="stamp"><span class="who">${p.who}</span><span class="meta">${p.date} · ${p.n} cards · ${p.cost}</span><span class="fig">0/${p.n}</span>${i === 0 ? `<button class="mini" data-go="stamp" style="align-self:flex-start">Stamp</button>` : ""}</div>`;
+    }).join("");
+    return `<div class="app">${filt}${cards}</div>`;
+  }
+  function rangePanel() {
+    const months = [["November 2026", 412, 41], ["October 2026", 388, 18], ["September 2026", 251, 0], ["August 2026", 150, 0]];
+    const ml = months.map(([m, c, n], i) => `<div class="mo ${i === 0 ? "on" : ""}">${m}${n && on("months") ? `<span class="nw">${n} new</span>` : ""}<span class="c">${c}</span></div>`).join("");
+    const inner = `<div class="rpanel" data-focus>
+      <div class="rgrid">${["All time", "30 days", "45 days", "60 days", "90 days", "Last…", "By month"].map((r) => `<button class="chip" aria-pressed="${r === "By month"}">${r}</button>`).join("")}</div>
+      <div class="months">${ml}</div>
+      <button class="linkish" style="align-self:flex-start;min-height:44px">Exact dates</button>
+    </div>`;
+    return on("months") ? mk("today", "range panel; New: the n new tag", inner) : mk("today", "range panel (RANGES)", inner);
+  }
+  function historyBody() {
+    const sz = on("sizes");
+    const v = [["Today 09:14", "before import", "1,201/806", D.beforeKB, 1], ["Today 08:02", "recent", "1,201/806", "238 kB", 0], ["19 Nov 21:40", "before sync", "1,201/798", "237 kB", 1], ["19 Nov 12:05", "recent", "1,198/771", "236 kB", 0]];
+    const rows = v.map(([w, l, f, k, ms]) => `<div class="ver"><span class="w">${w}</span><span class="lb ${ms ? "ms" : ""}">${l}</span><span class="f">${f}</span>${sz ? `<span class="sz">${k}</span>` : ""}</div>`).join("");
+    const list = sz ? mk("new", "each version's size", rows) : rows;
+    return `<div style="border-top:1px solid var(--line)" data-focus>${list}<div class="ver"><span class="w" style="color:var(--inkSoft)">Stored</span><span class="lb" style="color:var(--inkSoft)">12 versions · 1.9 MB on this device</span></div></div>`;
+  }
+  function restoreCompare() {
+    const armed = S.a;
+    const proof = S.c === "proof";
+    const tbl = `<table class="recon"><thead><tr><th></th><th>Now</th><th>Copy</th><th>Change</th></tr></thead><tbody>
+      <tr><td>Lines</td><td class="now">${D.after}</td><td class="after">${D.backupLines}</td><td class="plus" style="color:var(--red)">−72</td></tr>
+      <tr><td>Check-ins</td><td class="now">${D.checks}</td><td class="after">${D.backupChecks}</td><td class="plus" style="color:var(--red)">−27</td></tr>
+      <tr><td>Envelopes</td><td class="now">${D.envs}</td><td class="after">5</td><td class="plus" style="color:var(--red)">−1</td></tr>
+    </tbody></table>`;
+    const arm = armed
+      ? `<div class="armrow"><button class="act armed" data-go="backup">Tap again to replace ${D.after} lines</button><button class="act cancel" data-go="restore" autofocus>Cancel</button></div>`
+      : `<div class="armrow"><button class="act danger" data-arm="1">Restore this copy</button></div>`;
+    return mk("new", proof ? "restore shows the copy first" : "a .json waits for a second tap", `<section class="rcpt" data-focus aria-label="Restore a backup">
+      <div class="cap">Backup file · ${D.backupDay} · ${D.backupKB}</div>
+      <div class="fn">${D.backupFile}</div>
+      <div class="big">This copy is from ${D.backupDay}.<span class="s">A restore replaces everything on this device and on the server. History keeps the ledger as it is now, first.</span></div>
+      ${tbl}
+      ${arm}
+      <button class="btn quiet" data-go="zone">Choose another file</button>
+    </section>`);
+  }
+
+  /* ---------- screens per state ---------- */
+  function screen(dev) {
+    const c = S.c, s = S.s;
+    const tabFor = { newlines: "packages", stamp: "packages" }[s] || "ledger";
+    const L = (inner) => `<div class="app"><div class="lh">Ledger</div>${inner}</div>`;
+    let one, left, right;
+    if (s === "zone" || s === "error") {
+      one = L(dataGroup({ reOpen: true }) + zone(s === "error") + resetBox());
+      left = L(viewGroup(false) + dataGroup({ reOpen: true }) + resetBox());
+      right = `<div class="app"><div class="lh">Re-import CSV</div>${zone(s === "error")}</div>`;
+    } else if (s === "receipt") {
+      one = L(dataGroup({ reOpen: true, reVal: "Merged", afterRe: "" }) + mk("new", "receipt at the row", receiptCard()) + resetBox());
+      left = L(viewGroup(false) + dataGroup({ reOpen: true, reVal: "Merged" }) + resetBox());
+      right = `<div class="app"><div class="lh">Re-import CSV</div>${mk("new", "receipt at the row", receiptCard())}</div>`;
+    } else if (s === "proof" || s === "posted") {
+      one = `<div class="app">${mk("new", "proof before posting", proofSheet())}</div>`;
+      left = mk("new", "the Now page", spreadLeft(), "pagemk");
+      right = mk("new", "the After page", spreadRight(), "pagemk");
+    } else if (s === "newlines" || s === "stamp") {
+      one = packages(s === "stamp");
+      left = c === "receipt" ? `<div class="app"><div class="lh">Last import</div>${mk("new", "receipt stays on the left page", receiptCard())}</div>` : mk("new", "the spread stays on the left page", spreadLeft(), "pagemk");
+      right = packages(s === "stamp");
+    } else if (s === "range") {
+      one = L(viewGroup(true) + rangePanel() + dataGroup({}) + resetBox());
+      left = L(viewGroup(true) + dataGroup({}) + resetBox());
+      right = `<div class="app"><div class="lh">Orders from</div>${rangePanel()}</div>`;
+    } else if (s === "backup") {
+      one = L(dataGroup({ histOpen: true, histBody: historyBody() }) + resetBox());
+      left = L(viewGroup(false) + dataGroup({ histOpen: true }) + resetBox());
+      right = `<div class="app"><div class="lh">History</div><div class="lcard">${historyBody()}</div></div>`;
+    } else if (s === "restore") {
+      const viaZone = c === "receipt" || !on("jsonsplit");
+      one = L(dataGroup({ reOpen: viaZone }) + restoreCompare() + resetBox());
+      left = L(viewGroup(false) + dataGroup({ reOpen: viaZone }) + resetBox());
+      right = `<div class="app"><div class="lh">${viaZone ? "Re-import CSV" : "Restore a backup file"}</div>${restoreCompare()}</div>`;
+    }
+    const pill = tabFor === "packages" ? find() : "";
+    if (dev === "open") return `<div class="pg l">${left}</div><div class="hinge" aria-hidden="true"><span>fold · 455.5 to 495.5</span></div><div class="pg r">${right}</div>${pill}${bar(tabFor)}`;
+    return `<div class="pg">${one}</div>${pill}${bar(tabFor)}`;
+  }
+
+  function frame(dev) {
+    const map = {
+      folded: ["iphone-duo-folded", "folded", "Duo folded", "466 × 678 pt, one screen. Size from the brief; matches duo-fold-and-keyboard (outer screen, 2026-11-08)."],
+      open: ["iphone-duo-unfolded", "open", "Duo open", "951 × 669 pt, two pages; the fold 455.5 to 495.5 holds nothing. The bar sits under the right page (duo-card-in-hand, item 23 a)."],
+      ax5: ["iphone-duo-folded", "folded ax5", "Duo folded, largest text (AX5)", "The same screen at the largest accessibility size. Words grow by the HIG table; the tab bar labels stay 10 pt (duo-card-in-hand, tab bar text)."],
+      phone: ["iphone-large", "phone", "Large phone", "No written size: drawn as a stand-in at the slider's width, height 2.17 × width. Say the real size and it is redrawn."]
+    }[dev];
+    return `<figure data-dev="${dev}"><div class="fit"><div class="dev ${map[1]}" data-device="${map[0]}"><div class="status"><span>9:41</span><span>●●●</span></div>${screen(dev === "ax5" ? "folded" : dev)}<div class="home"></div></div></div>
+      <figcaption><b>${map[2]}</b><br>${map[3]}</figcaption></figure>`;
+  }
+
+  /* ---------- controls ---------- */
+  function render() {
+    document.documentElement.setAttribute("data-theme", "light");
+    const vis = Object.keys(CONCEPTS).filter((k) => !S.hide.has(k));
+    if (!vis.includes(S.c) && vis.length) S.c = vis[0];
+    document.getElementById("emptyall").hidden = vis.length > 0;
+    const cEl = document.getElementById("concepts");
+    cEl.innerHTML = '<span class="lab">Concept</span>' + Object.entries(CONCEPTS).map(([k, v]) =>
+      S.hide.has(k) ? "" : `<a href="#c=${k}&s=zone" data-c="${k}" aria-current="${k === S.c}">${v.name}</a><button class="hide" data-hide="${k}">Hide this option</button>`).join("");
+    const st = document.getElementById("states");
+    st.innerHTML = '<span class="lab">State</span>' + CONCEPTS[S.c].states.map((k) => `<a href="#c=${S.c}&s=${k}" data-s="${k}" aria-current="${k === S.s}">${STATE_NAMES[k]}</a>`).join("") +
+      (S.s === "receipt" || S.s === "restore" ? `<a href="#c=${S.c}&s=${S.s}&a=1" data-s="${S.s}" data-a="1" aria-current="${!!S.a}">Armed</a>` : "");
+    document.getElementById("devices").innerHTML = '<span class="lab">Device</span>' + Object.entries(DEVICES).map(([k, v]) => `<a href="#d=${k}" data-d="${k}" aria-current="${k === S.d}">${v}</a>`).join("");
+    document.getElementById("hides").innerHTML = '<span class="lab">Hide</span>' + Object.entries(SUBOPTS).map(([k, v]) =>
+      `<button class="${S.hide.has(k) ? "" : "hide"}" data-hide="${k}">${S.hide.has(k) ? "Show: " : "Hide: "}${v}</button>`).join("");
+    const fr = document.getElementById("frames");
+    if (!vis.length) { fr.innerHTML = ""; return; }
+    const devs = S.d === "all" ? ["folded", "open", "ax5", "phone"] : [S.d];
+    fr.innerHTML = `<p class="sub" style="flex-basis:100%">${CONCEPTS[S.c].blurb}</p>` + devs.map(frame).join("");
+    fr.querySelectorAll(".pg").forEach((pg) => { const t = pg.querySelector("[data-focus]"); if (t) pg.scrollTop = Math.max(0, t.getBoundingClientRect().top - pg.getBoundingClientRect().top - 48); });
+    S.landing = false;
+  }
+
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-go],[data-arm],[data-c],[data-s],[data-d],[data-hide]");
+    if (!t) return;
+    if (t.matches("a")) e.preventDefault();
+    if (t.dataset.hide) { S.hide.has(t.dataset.hide) ? S.hide.delete(t.dataset.hide) : S.hide.add(t.dataset.hide); return writeHash(); }
+    if (t.dataset.c) { S.c = t.dataset.c; S.s = "zone"; S.a = 0; return writeHash(); }
+    if (t.dataset.s) { S.s = t.dataset.s; S.a = t.dataset.a ? 1 : 0; return writeHash(); }
+    if (t.dataset.d) { S.d = t.dataset.d; return writeHash(); }
+    if (t.dataset.arm) { S.a = 1; return writeHash(); }
+    if (t.dataset.go !== undefined && t.dataset.go !== "") {
+      if (t.dataset.go === "receipt" || t.dataset.go === "proof" || t.dataset.go === "posted") S.landing = true;
+      go(t.dataset.go, 0);
+    }
+  });
+  document.getElementById("marks").addEventListener("change", (e) => document.body.classList.toggle("nomarks", !e.target.checked));
+  document.getElementById("showall").addEventListener("click", () => { S.hide.clear(); writeHash(); });
+  const pw = document.getElementById("pw");
+  pw.addEventListener("input", () => { document.documentElement.style.setProperty("--phone-w", pw.value + "px"); document.getElementById("pwo").textContent = pw.value; });
+  window.addEventListener("hashchange", () => { readHash(); render(); });
+  readHash();
+  render();
+})();
+</script>
+</body>
+</html>
