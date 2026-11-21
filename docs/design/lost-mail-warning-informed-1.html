@@ -309,7 +309,13 @@ function flagHTML(p) {
   const web = t === "deadline" ? `⚠ ${p.days}d — refund window closing, contact seller · ` : `⚠ ${p.days}d — may be lost · `;
   return `<span class="flag ${t}"><span class="w-web">${web}</span><span class="w-short">⚠ ${p.days} d · </span></span>`;
 }
-const glyph = p => p.tracked ? `<span class="g-t">●</span> tracked` : `<span class="g-u">○</span> untracked`;
+/* the date line's VoiceOver label: the tier words live here in every option, so figure-only drops nothing for VoiceOver */
+function voiceDate(p) {
+  const t = flagHTML(p) ? tier(p) : null;
+  const lead = t === "deadline" ? `${p.days} days, refund window closing, contact seller. ` : t === "maybe" ? `${p.days} days, may be lost. ` : "";
+  return `${lead}Ordered ${p.date}.${S.state === "today" ? "" : p.tracked ? " Tracked." : " Untracked."}`;
+}
+const glyph = p =>p.tracked ? `<span class="g-t">●</span> tracked` : `<span class="g-u">○</span> untracked`;
 
 function svgRuler(rows, w, big) {
   /* 14 at the left, 30 near the right, then one bin for 30 and over */
@@ -370,7 +376,7 @@ function card(p, { actions = false } = {}) {
     ? `<div class="acts"><span class="soft">Stamped Claim filed. It leaves this list when you turn the filter off.</span><button class="mini hit" data-act="undo" data-gk="${p.gk}">Undo</button></div>`
     : `<div class="acts tag-new" data-tag="New: past-transit stamp buttons"><button class="mini hit" data-act="stamp" data-gk="${p.gk}">Claim filed</button><button class="mini hit">Refunded</button><button class="mini hit">More</button></div>`;
   return `<div class="card ${S.lit === p.gk ? "lit" : ""}" data-gk="${p.gk}"><div class="hd"><div class="col"><div class="seller">${p.seller}</div>` +
-    `<div class="date${dateCls}" aria-label="Ordered ${p.date}">${flag}${p.date}${S.state === "today" ? "" : " · " + glyph(p)}</div></div>` +
+    `<div class="date${dateCls}" aria-label="${voiceDate(p)}">${flag}${p.date}${S.state === "today" ? "" : " · " + glyph(p)}</div></div>` +
     `<span class="pill">${p.left} left · ${p.owed}</span></div><div class="oid">${p.id}</div>${band}${acts}</div>`;
 }
 
@@ -394,7 +400,7 @@ function tRow(p, big, desk) {
   const t = tier(p), st = isStamped(p), c = t === "deadline" ? "var(--red)" : "var(--amber)";
   const pct = Math.min(p.days / 30, 1) * 100;
   const when = t === "deadline" ? `<span class="closing">refund window closing</span>` : `<span>claim by ${p.by}</span>`;
-  const owe = unknown() ? "" : `<span class="owe tag-new" data-tag="New: owed">${plural(p.left, "card")} · ${p.owed}</span>`;
+  const owe = unknown() ? "" : `<span class="owe tag-new" data-tag="New: owed">${p.left} left · ${p.owed}</span>`;
   const acts = st
     ? `<div class="acts"><span class="soft">Stamped Claim filed</span><button class="mini hit" data-act="undo" data-gk="${p.gk}">Undo</button></div>`
     : `<div class="acts"><button class="mini hit" data-act="stamp" data-gk="${p.gk}">Claim filed</button><button class="mini hit">Refunded</button><button class="mini hit">More</button></div>`;
@@ -412,7 +418,7 @@ function pastPage(concept, { back = true, big = false } = {}) {
     ? rows.map(p => tRow(p, big, !back)).join("")
     : `<p style="margin:0">Nothing untracked has waited 14 days.</p>`;
   return `<div class="ptp"><div class="nav">${back ? `<button class="back" data-act="close-page">‹ Back</button>` : `<span></span>`}</div>` +
-    `<h3>Past 14 days</h3><div class="sum">${parts.join(" · ")}</div>${unk}${big && rows.length ? svgRuler(rows.filter(p => !isStamped(p)), 423, true) : ""}${body}` +
+    `<h3${back ? "" : ` class="tag-new" data-tag="New: Packages spreads, claim desk"`}>Past 14 days</h3><div class="sum">${parts.join(" · ")}</div>${unk}${big && rows.length ? svgRuler(rows.filter(p => !isStamped(p)), 423, true) : ""}${body}` +
     `<div class="refunded tag-today" data-tag="Today: ruled, not built"><span>Refunded</span><span style="font-family:var(--mono);font-size:11px">2 packages</span></div>` +
     `<div class="foot">Days count from the order date. TCGplayer counts 30 days from the delivery estimate, so its window can close later.</div></div>`;
 }
