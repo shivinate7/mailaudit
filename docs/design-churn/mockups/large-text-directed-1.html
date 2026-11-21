@@ -54,7 +54,9 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
 .dev[data-device="iphone-duo-unfolded"] { width:951px; height:669px; }
 .dev[data-device="iphone-regular"] { width:320px; height:678px; resize:horizontal; min-width:320px; max-width:520px; }
 .status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
-  padding:0 16px; font-size:12px; font-weight:600; z-index:9; pointer-events:none; }
+  padding:0 16px; font-size:12px; font-weight:600; z-index:9; pointer-events:none;
+  /* the scroll edge under the status bar: content fades out instead of colliding with the time */
+  background:linear-gradient(var(--paper) 70%, color-mix(in srgb, var(--paper) 0%, transparent)); }
 .pw { position:absolute; top:0; bottom:0; left:0; right:0; overflow:hidden; }
 .pw.l { right:auto; width:455.5px; } .pw.r { left:495.5px; right:auto; width:455.5px; }
 .fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, var(--paper)); z-index:8; }
@@ -107,6 +109,7 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
 .fig { display:inline-grid; text-align:inherit; }
 .fig > * { grid-area:1/1; }
 .fig > .rsv { visibility:hidden; }
+.fig > .live { align-self:end; }  /* any spare reserved line sits above the figure, next to the line before it */
 .stack { display:grid; } .stack > * { grid-area:1/1; } .stack > .rsv { visibility:hidden; }
 /* a part wraps as one unit at its separator first; only a part wider than the line wraps inside, at its own spaces */
 .part { display:inline-block; max-width:100%; white-space:normal; }
@@ -135,7 +138,7 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
   padding:6px 10px; min-height:44px; min-width:44px; cursor:pointer; text-align:center; }
 .mini.accent { border-color:var(--accent); color:var(--accent); }
 .handrow { display:flex; justify-content:flex-end; padding:8px 16px; }
-.handhead { position:sticky; top:0; z-index:5; background:var(--paper); border-bottom:1px solid var(--line); margin-top:calc(-1 * var(--sat));
+.handhead { position:sticky; top:calc(-1 * var(--sat)); z-index:5; background:var(--paper); border-bottom:1px solid var(--line); margin-top:calc(-1 * var(--sat));
   padding:calc(var(--sat) + 8px) 16px 8px; display:flex; justify-content:flex-end; }
 
 /* Packages card */
@@ -198,7 +201,7 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
 
 /* tags: dashed outline on what exists today, and on what a concept adds */
 :where([data-tag]) { position:relative; }
-.show-tags [data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 10.5px/14px var(--sys); padding:0 4px;
+.show-tags [data-tag]:not([data-tag=""])::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 10.5px/14px var(--sys); padding:0 4px;
   background:var(--paper); z-index:4; white-space:nowrap; pointer-events:none; }
 .show-tags .tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .show-tags .tag-new::before { color:var(--new); }
 .show-tags .tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .show-tags .tag-today::before { color:var(--today); }
@@ -243,7 +246,8 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
 .ax.m-flow .sep, .ax.m-dock .sep { display:none; }
 .nobr { white-space:nowrap; }
 /* last resort: a single word wider than the whole line takes a hyphen at a syllable, as print does */
-.ax.m-flow :is(.nm, .cand b, .pkg-h .who b), .ax.m-dock :is(.nm, .cand b, .pkg-h .who b) { hyphens:auto; -webkit-hyphens:auto; overflow-wrap:break-word; }
+.ax.m-flow :is(.nm, .cand b, .pkg-h .who b, .ln .t small, .trow .meta), .ax.m-dock :is(.nm, .cand b, .pkg-h .who b, .ln .t small, .trow .meta) {
+  hyphens:auto; -webkit-hyphens:auto; overflow-wrap:anywhere; min-width:0; }
 .ax.m-flow .house, .ax.m-flow .cell .lab, .ax.m-flow .env-h .micro, .ax.m-flow .lcell .k,
 .ax.m-dock .house, .ax.m-dock .cell .lab, .ax.m-dock .env-h .micro, .ax.m-dock .lcell .k { letter-spacing:0; }
 </style>
@@ -266,7 +270,14 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
     <div class="ctl" id="ctl-hide"><span>Cull</span></div>
   </div>
 
-  <div id="sections"></div>
+  <div id="sections">
+    <!-- Shown until the script draws the frames: the same three frames, folded first, empty. -->
+    <div class="frames">
+      <figure><div class="dev" data-device="iphone-duo-folded"><div class="status"><span>9:41</span><span>100%</span></div><p style="padding:48px 16px;margin:0">The frames draw with JavaScript. Open this page in a browser with scripts on.</p></div><figcaption><b>iPhone Duo, folded</b></figcaption></figure>
+      <figure><div class="dev" data-device="iphone-duo-unfolded"><div class="status"><span>9:41</span><span>100%</span></div></div><figcaption><b>iPhone Duo, open</b></figcaption></figure>
+      <figure><div class="dev" data-device="iphone-regular"><div class="status"><span>9:41</span><span>100%</span></div></div><figcaption><b>Large phone</b></figcaption></figure>
+    </div>
+  </div>
 
   <details class="audit" id="audit">
     <summary>Truncation check</summary>
@@ -373,7 +384,7 @@ function letterhead(m, ax, today, tag) {
     ['value', fig('<b>$1,204</b>/$1,890', '$0,000/$0,000', today)],
   ];
   const miss = today ? `${fmt(f.left)} still missing · ${money(f.owed)}`
-    : parts([`${fig(fmt(f.left), '0,000')} still missing`, fig(money(f.owed), '$0,000.00')]);
+    : parts([fig(`${fmt(f.left)} still missing`, '0,000 still missing'), fig(money(f.owed), '$0,000.00')]);
   return `<header class="lh">
     <div class="sealrow"><i></i>${SEAL}<i></i></div>
     <div class="ttl" data-fit>Manifest</div>
@@ -394,8 +405,8 @@ function runningFigure(today) {
 function runningHead(m, ax, id) {
   const today = m === 'today';
   // at accessibility sizes the word mark leaves the slim head: the seal stands for it, the figure gets the width
-  const title = today || !ax ? `<span class="rt" ${today ? '' : 'data-fit'}>Manifest</span>` : '';
-  return `<div class="rh ${today ? 'tag-today' : 'tag-new'}" ${id ? `id="${id}"` : ''} data-tag="${today ? 'Today: running head' : 'New: running head grows by lines'}" aria-label="Running head">${SEAL}${title}<span class="rf">${runningFigure(today)}</span></div>`;
+  const brand = today || !ax ? `${SEAL}<span class="rt" ${today ? '' : 'data-fit'}>Manifest</span>` : '';
+  return `<div class="rh ${today ? 'tag-today' : 'tag-new'}" ${id ? `id="${id}"` : ''} data-tag="${today ? 'Today: running head' : 'New: running head grows by lines'}" aria-label="Running head">${brand}<span class="rf">${runningFigure(today)}</span></div>`;
 }
 function dock(id) {
   return `<div class="dock tag-new" ${id ? `id="${id}"` : ''} data-tag="New: facts at the thumb" aria-label="Pinned facts"><span class="rf">${runningFigure(false)}</span></div>`;
@@ -547,6 +558,9 @@ function after() {
       if (always) { always.style.bottom = (barH + 8) + 'px'; bottom += always.offsetHeight + 8; }
       scroll.style.setProperty('--pad-b', bottom + 'px');
       if (S.scroll === 'mid') scroll.scrollTop = (scroll.scrollHeight - scroll.clientHeight) / 2;
+      // a deep link to an armed ask opens with the ask in view, where the thumb that armed it is
+      const ask = S.s === 'armed' && scroll.querySelector('.reset, .env');
+      if (ask) scroll.scrollTop = ask.offsetTop - scroll.clientHeight / 3;
       const sentinel = scroll.querySelector('.sentinel');
       const pin = rh || dk;
       if (sentinel && pin) {
@@ -649,7 +663,12 @@ function auditFrame(dev) {
       const r = document.createRange(); r.setStart(n, mt.index); r.setEnd(n, mt.index + mt[0].length);
       const rects = [...r.getClientRects()].filter(x => x.width > 0);
       const tops = new Set(rects.map(x => Math.round(x.top)));
-      if (tops.size > 1) out.push(`${getComputedStyle(el).hyphens === 'auto' ? 'hyphenated' : 'word split'} "${mt[0]}"`);
+      // a word wider than its whole line may break in the hyphen-allowed boxes; that is reported apart, never as clean
+      if (tops.size > 1) {
+        const lineW = el.closest('.part, .nm, .t, .cand, .who, .meta, .rf, .lh') || el;
+        const wider = r.getBoundingClientRect().width === 0 ? false : [...rects].reduce((a, x) => a + x.width, 0) > lineW.getBoundingClientRect().width - 1;
+        out.push(`${getComputedStyle(el).hyphens === 'auto' && wider ? 'last-resort hyphen' : 'word split'} "${mt[0]}"`);
+      }
       const box = r.getBoundingClientRect(); if (!box.width) continue;
       const pw = el.closest('.pw'); const pr = pw ? pw.getBoundingClientRect() : frame;
       if (box.bottom < pr.top || box.top > pr.bottom) continue;  // scrolled out of its page

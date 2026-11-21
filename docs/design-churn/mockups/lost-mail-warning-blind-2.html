@@ -322,7 +322,7 @@ html.no-labels .nl::before { display: none; }
 </style>
 </head>
 <body>
-<div class="banner" role="note">Sample. No figure, seller, date or count on this page is real.</div>
+<div class="banner" role="note">Sample data: every figure, seller, date and count on this page is made up.</div>
 
 <div class="wrap">
   <header class="intro">
@@ -335,6 +335,7 @@ html.no-labels .nl::before { display: none; }
     <div class="ctl-row" role="group" aria-label="State">
       <span class="ctl-name">State</span>
       <button class="seg" data-ctl="s" data-v="loaded">Loaded</button>
+      <button class="seg" data-ctl="s" data-v="many">Many late</button>
       <button class="seg" data-ctl="s" data-v="allwell">Nothing late</button>
       <button class="seg" data-ctl="s" data-v="unknown">Missing dates</button>
       <button class="seg" data-ctl="s" data-v="empty">No orders yet</button>
@@ -360,7 +361,25 @@ html.no-labels .nl::before { display: none; }
     </div>
   </section>
 
-  <div id="concepts"></div>
+  <noscript><p class="note-line">The frames draw with JavaScript. Turn it on to see and press the screens.</p></noscript>
+  <div id="concepts">
+<section class="concept" id="concept-list" aria-labelledby="h-list"><div class="concept-head"><h2 id="h-list">Deadline list</h2><button class="seg hide" data-hide="list">Hide Deadline list</button></div><p>A new Overdue tab with a count. One list, most urgent first, in groups by how soon the window closes. A row opens the package; the open pose shows the list beside it. You go and look when the badge says so.</p><div class="frames">
+  <figure class="dev" id="list-folded"><figcaption>Duo folded, 466 x 678 pt. Default text size.</figcaption><div class="dev-scroll"><div class="frame" data-device="iphone-duo-folded" data-frame="list-folded" style="width:466px;height:678px"><div class="screen" data-fid="list-folded"></div></div></div></figure>
+  <figure class="dev" id="list-open"><figcaption>Duo open, 951 x 669 pt. Hinge gap from x 455.5 to x 495.5; nothing crosses it.</figcaption><div class="dev-scroll"><div class="frame open" data-device="iphone-duo-unfolded" data-frame="list-open" style="width:951px;height:669px"><div class="screen left" data-fid="list-open" data-side="l"></div><div class="screen right" data-fid="list-open" data-side="r"></div></div></div></figure>
+  <figure class="dev" id="list-ax5"><figcaption>Duo folded at the largest accessibility text size (AX5).</figcaption><div class="dev-scroll"><div class="frame ax5" data-device="iphone-duo-folded" data-frame="list-ax5" style="width:466px;height:678px"><div class="screen" data-fid="list-ax5"></div></div></div></figure>
+  <figure class="dev" id="list-phone"><figcaption>Large phone, drawn at the folded size because its own size is not written. Drag its corner to resize it.</figcaption><div class="dev-scroll"><div class="frame resizable" data-device="iphone-large" data-frame="list-phone" style="width:466px;height:678px"><div class="screen" data-fid="list-phone"></div></div></div></figure></div></section>
+<section class="concept" id="concept-runway" aria-labelledby="h-runway"><div class="concept-head"><h2 id="h-runway">Runway</h2><span class="bold-tag">The bold one</span><button class="seg hide" data-hide="runway">Hide Runway</button></div><p>The screen is a 30-day runway. Each late package sits where its age puts it, between day 14 at the top and the wall at day 30 at the bottom, by your thumb. Every morning each package slides one day down. What leaves the runway lands in a bin below the wall.</p><div class="frames">
+  <figure class="dev" id="runway-folded"><figcaption>Duo folded, 466 x 678 pt. Default text size.</figcaption><div class="dev-scroll"><div class="frame" data-device="iphone-duo-folded" data-frame="runway-folded" style="width:466px;height:678px"><div class="screen" data-fid="runway-folded"></div></div></div></figure>
+  <figure class="dev" id="runway-open"><figcaption>Duo open, 951 x 669 pt. Hinge gap from x 455.5 to x 495.5; nothing crosses it.</figcaption><div class="dev-scroll"><div class="frame open" data-device="iphone-duo-unfolded" data-frame="runway-open" style="width:951px;height:669px"><div class="screen left" data-fid="runway-open" data-side="l"></div><div class="screen right" data-fid="runway-open" data-side="r"></div></div></div></figure>
+  <figure class="dev" id="runway-ax5"><figcaption>Duo folded at the largest accessibility text size (AX5).</figcaption><div class="dev-scroll"><div class="frame ax5" data-device="iphone-duo-folded" data-frame="runway-ax5" style="width:466px;height:678px"><div class="screen" data-fid="runway-ax5"></div></div></div></figure>
+  <figure class="dev" id="runway-phone"><figcaption>Large phone, drawn at the folded size because its own size is not written. Drag its corner to resize it.</figcaption><div class="dev-scroll"><div class="frame resizable" data-device="iphone-large" data-frame="runway-phone" style="width:466px;height:678px"><div class="screen" data-fid="runway-phone"></div></div></div></figure></div></section>
+<section class="concept" id="concept-deck" aria-labelledby="h-deck"><div class="concept-head"><h2 id="h-deck">One by one</h2><button class="seg hide" data-hide="deck">Hide One by one</button></div><p>The app asks you. When a package turns late, a prompt sits above the tab bar of the screen you already use. It walks you through each late package, most urgent first, with one question: did it arrive? You never open a screen to look for late mail.</p><div class="frames">
+  <figure class="dev" id="deck-folded"><figcaption>Duo folded, 466 x 678 pt. Default text size.</figcaption><div class="dev-scroll"><div class="frame" data-device="iphone-duo-folded" data-frame="deck-folded" style="width:466px;height:678px"><div class="screen" data-fid="deck-folded"></div></div></div></figure>
+  <figure class="dev" id="deck-open"><figcaption>Duo open, 951 x 669 pt. Hinge gap from x 455.5 to x 495.5; nothing crosses it.</figcaption><div class="dev-scroll"><div class="frame open" data-device="iphone-duo-unfolded" data-frame="deck-open" style="width:951px;height:669px"><div class="screen left" data-fid="deck-open" data-side="l"></div><div class="screen right" data-fid="deck-open" data-side="r"></div></div></div></figure>
+  <figure class="dev" id="deck-ax5"><figcaption>Duo folded at the largest accessibility text size (AX5).</figcaption><div class="dev-scroll"><div class="frame ax5" data-device="iphone-duo-folded" data-frame="deck-ax5" style="width:466px;height:678px"><div class="screen" data-fid="deck-ax5"></div></div></div></figure>
+  <figure class="dev" id="deck-phone"><figcaption>Large phone, drawn at the folded size because its own size is not written. Drag its corner to resize it.</figcaption><div class="dev-scroll"><div class="frame resizable" data-device="iphone-large" data-frame="deck-phone" style="width:466px;height:678px"><div class="screen" data-fid="deck-phone"></div></div></div></figure></div></section>
+<div class="concept" id="hidden-note" hidden></div>
+  </div>
 </div>
 
 <script>
@@ -386,6 +405,20 @@ html.no-labels .nl::before { display: none; }
     { id: 'mill', seller: 'Old Mill Cards', date: [2026, 9, 17], got: 0, of: 2, owed: 2.60 },
     { id: 'lantern', seller: 'Lantern Row Cards', date: [2026, 10, 15], got: 0, of: 3, owed: 3.30 }
   ];
+  // A busy month: 30 untracked packages between day 12 and day 32, several on the same day.
+  const MANY = (function () {
+    const a = ['Pine', 'North', 'Heron', 'Copper', 'Marlow', 'Sable', 'Kestrel', 'Lantern', 'Wren', 'Tall', 'Ash', 'Brook', 'Cedar', 'Dune', 'Elm', 'Fern', 'Glen', 'Hollow', 'Iron', 'Juniper'];
+    const b = ['Cards', 'Singles', 'Games', 'Card Co.', 'Collectibles', 'Card House'];
+    let seed = 7;
+    const rnd = () => (seed = (seed * 9301 + 49297) % 233280) / 233280;
+    const out = [];
+    for (let k = 0; k < 30; k++) {
+      const age = 12 + Math.floor(rnd() * 21);
+      const d = new Date(TODAY.getFullYear(), TODAY.getMonth(), TODAY.getDate() - age);
+      out.push({ id: 'm' + k, seller: a[k % 20] + ' ' + (k >= 20 ? 'Lane ' : '') + b[k % 6], date: [d.getFullYear(), d.getMonth(), d.getDate()], got: 0, of: 1 + Math.floor(rnd() * 8), owed: Math.round((0.5 + rnd() * 9) * 100) / 100 });
+    }
+    return out;
+  })();
   const NODATE = [
     { id: 'wren', seller: 'Wrenfield Cards', date: null, got: 0, of: 3, owed: 2.20 },
     { id: 'tall', seller: 'Tallgrass Cards', date: null, got: 0, of: 1, owed: 0.95 }
@@ -395,20 +428,20 @@ html.no-labels .nl::before { display: none; }
     { key: 'list', name: 'Deadline list', bold: false,
       text: 'A new Overdue tab with a count. One list, most urgent first, in groups by how soon the window closes. A row opens the package; the open pose shows the list beside it. You go and look when the badge says so.' },
     { key: 'runway', name: 'Runway', bold: true,
-      text: 'The screen is a 30-day runway, not a list. Each late package sits where its age puts it, between day 14 at the top and the wall at day 30 at the bottom, by your thumb. Every morning each package slides one day down. What leaves the runway lands in a bin below the wall.' },
+      text: 'The screen is a 30-day runway. Each late package sits where its age puts it, between day 14 at the top and the wall at day 30 at the bottom, by your thumb. Every morning each package slides one day down. What leaves the runway lands in a bin below the wall.' },
     { key: 'deck', name: 'One by one', bold: false,
-      text: 'The app asks you. When a package turns late, a prompt sits above the tab bar of the screen you already use. It walks you through each late package, most urgent first, with one question: did it arrive? There is no Overdue screen to visit.' }
+      text: 'The app asks you. When a package turns late, a prompt sits above the tab bar of the screen you already use. It walks you through each late package, most urgent first, with one question: did it arrive? You never open a screen to look for late mail.' }
   ];
   const POSES = [
     { k: 'folded', dev: 'iphone-duo-folded', w: 466, h: 678, cap: 'Duo folded, 466 x 678 pt. Default text size.' },
     { k: 'open', dev: 'iphone-duo-unfolded', w: 951, h: 669, open: true, cap: 'Duo open, 951 x 669 pt. Hinge gap from x 455.5 to x 495.5; nothing crosses it.' },
     { k: 'ax5', dev: 'iphone-duo-folded', w: 466, h: 678, ax: true, cap: 'Duo folded at the largest accessibility text size (AX5).' },
-    { k: 'phone', dev: 'iphone-large', w: 466, h: 678, resizable: true, cap: 'Large phone. No size is written for it: the frame starts at the folded size. Drag its corner to the real size.' }
+    { k: 'phone', dev: 'iphone-large', w: 466, h: 678, resizable: true, cap: 'Large phone, drawn at the folded size because its own size is not written. Drag its corner to resize it.' }
   ];
 
   // ---------- Page state (deep links) ----------
   const Q = { s: 'loaded', t: '', c: '', off: new Set() };
-  const STATES = ['loaded', 'allwell', 'unknown', 'empty', 'loading', 'failed'];
+  const STATES = ['loaded', 'many', 'allwell', 'unknown', 'empty', 'loading', 'failed'];
   function readHash() {
     const p = new URLSearchParams(location.hash.slice(1));
     Q.s = STATES.includes(p.get('s')) ? p.get('s') : 'loaded';
@@ -453,6 +486,7 @@ html.no-labels .nl::before { display: none; }
     if (Q.s === 'empty' || Q.s === 'loading' || Q.s === 'failed') return [];
     if (Q.s === 'allwell') return BASE.filter(o => o.id === 'lantern');
     if (Q.s === 'unknown') return BASE.concat(NODATE);
+    if (Q.s === 'many') return MANY;
     return BASE;
   }
   function status(o) {
@@ -469,7 +503,7 @@ html.no-labels .nl::before { display: none; }
     g.stuck = g.late.reduce((s, x) => s + x.o.owed, 0);
     return g;
   }
-  function find(id) { return BASE.concat(NODATE).find(o => o.id === id); }
+  function find(id) { return BASE.concat(NODATE, MANY).find(o => o.id === id); }
 
   // ---------- Words ----------
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -619,7 +653,7 @@ html.no-labels .nl::before { display: none; }
       (opts.after || '') + '</span></div>';
 
     return '<div class="detail">' +
-      (opts.noTitle ? '' : '<div><h2 class="t1" style="margin:0">' + o.seller + '</h2><span class="sub muted">' + (i.d ? 'Ordered ' + dLong(i.d) + '. No tracking.' : 'No order date. No tracking.') + '</span></div>') +
+      (opts.noTitle ? '' : '<div><h2 class="t1" style="margin:0">' + o.seller + '</h2><span class="sub muted">' + (i.d ? 'Ordered ' + dLong(i.d) + ', with no tracking' : 'No order date and no tracking') + '</span></div>') +
       '<div class="clock ' + (band || '') + '"><span class="' + colour + '"><span class="big num">' + big + '</span> <span class="t3">' + words + '</span></span>' +
       (sub ? '<span class="sub muted">' + sub + '</span>' : '') + meter + '</div>' +
       '<ul class="facts"><li><span>Cards arrived</span><span class="b num">' + o.got + ' of ' + o.of + '</span></li>' +
@@ -647,7 +681,7 @@ html.no-labels .nl::before { display: none; }
       (on('closed') ? group(fid, 'closed', 'Claim window closed', g.closed, { collapsible: true, sel }) : '') +
       trackedLine;
   }
-  function badgeCount() { return ['loaded', 'unknown'].includes(Q.s) ? groups().late.length : 0; }
+  function badgeCount() { return ['loaded', 'unknown', 'many'].includes(Q.s) ? groups().late.length : 0; }
 
   function renderList(fid, pose) {
     const u = ui(fid);
@@ -680,7 +714,26 @@ html.no-labels .nl::before { display: none; }
         '<div class="wall-row hl">Day ' + WINDOW + ': the window closes</div></div>';
     }
     const zoneTop = (WINDOW - URGENT_LEFT - NUDGE) / span * 100;
-    const min = Math.max(items.length * 48 + 24, 200);
+    // Packages of the same day share one chip, so the runway stays one screen tall on a busy month.
+    const days = [];
+    items.forEach(x => {
+      const last = days[days.length - 1];
+      if (last && last.age === x.i.age) last.items.push(x); else days.push({ age: x.i.age, st: x.st, items: [x], i: x.i });
+    });
+    const min = Math.max(days.length * 48 + 24, 200);
+    const u = ui(fid);
+    const chip = dy => {
+      const x = dy.items[0];
+      const sum = dy.items.reduce((s, y) => s + y.o.owed, 0);
+      if (dy.items.length === 1) {
+        return '<button class="chip ' + x.st + '" data-act="open" data-fid="' + fid + '" data-id="' + x.o.id + '" data-p="' + pos(x) + '"' + (sel === x.o.id ? ' aria-current="true"' : '') +
+          ' aria-label="' + x.o.seller + ', ' + money(x.o.owed) + ', day ' + x.i.age + ', ' + leftWords(x.i) + '">' +
+          '<span class="hl num">' + money(x.o.owed) + '</span><span class="sub who">' + x.o.seller + '</span></button>';
+      }
+      return '<button class="chip ' + dy.st + '" data-act="day" data-fid="' + fid + '" data-age="' + dy.age + '" data-p="' + pos(x) + '"' + (u.day === dy.age ?' aria-current="true"' : '') +
+        ' aria-label="Day ' + dy.age + ', ' + dy.items.length + ' packages, ' + money(sum) + '">' +
+        '<span class="hl num">' + money(sum) + '</span><span class="sub who">' + dy.items.length + ' packages, day ' + dy.age + '</span></button>';
+    };
     const urgentTotal = g.urgent.reduce((s, x) => s + x.o.owed, 0);
     return '<div class="legend"><span class="swatch" aria-hidden="true"></span><span class="sub u b">Closing within ' + URGENT_LEFT + ' days</span><span class="sub num muted">' + money(urgentTotal) + '</span></div>' +
       '<div class="track nl" data-nl="New: runway" data-track="' + fid + '" style="min-height:' + min + 'px">' +
@@ -690,10 +743,8 @@ html.no-labels .nl::before { display: none; }
       '<span class="mark fn" style="top:' + ((21 - NUDGE) / span * 100) + '%">Day 21</span>' +
       '<span class="mark fn u b" style="top:100%">Day ' + WINDOW + '</span>' +
       '<div class="wall"></div>' +
-      items.map(x => '<i class="tick ' + x.st + '" style="top:' + (pos(x) * 100) + '%"></i>').join('') +
-      items.map(x => '<button class="chip ' + x.st + '" data-act="open" data-fid="' + fid + '" data-id="' + x.o.id + '" data-p="' + pos(x) + '"' + (sel === x.o.id ? ' aria-current="true"' : '') +
-        ' aria-label="' + x.o.seller + ', ' + money(x.o.owed) + ', day ' + x.i.age + ', ' + leftWords(x.i) + '">' +
-        '<span class="hl num">' + money(x.o.owed) + '</span><span class="sub who">' + x.o.seller + '</span></button>').join('') +
+      days.map(dy => '<i class="tick ' + dy.st + '" style="top:' + (pos(dy.items[0]) * 100) + '%"></i>').join('') +
+      days.map(chip).join('') +
       '<svg class="leaders" aria-hidden="true"></svg></div>';
   }
   function runwayBins(fid, g, sel) {
@@ -728,20 +779,35 @@ html.no-labels .nl::before { display: none; }
     const u = ui(fid);
     if (pose === 'open') {
       const g = groups();
-      if (!u.sel && g.late.length) u.sel = g.late[0].o.id;
+      if (!u.sel && u.day == null && g.late.length) u.sel = g.late[0].o.id;
       const left = statusBar() + '<div class="main" data-scroll="' + fid + '-l">' + (u.tab === 'packages' ? packagesPlaceholder() : runwayMain(fid, false, u.sel)) + '</div>' + tabBar(fid, 'runway', badgeCount()) + homeInd;
-      const show = u.tab === 'overdue' && u.sel && !stateMain(fid) && find(u.sel);
-      const right = statusBar(false) + '<div class="main no-tabs" data-scroll="' + fid + '-r">' + (show ? detail(fid, u.sel) : '') + '</div>' + homeInd;
+      const ok = u.tab === 'overdue' && !stateMain(fid);
+      const body = !ok ? '' : u.sel && find(u.sel) ? (u.day != null ? dayBack(fid) : '') + detail(fid, u.sel) : u.day != null ? dayList(fid) : '';
+      const right = statusBar(false) + '<div class="main no-tabs" data-scroll="' + fid + '-r">' + body + '</div>' + homeInd;
       return [left, right];
     }
     let html = statusBar() + '<div class="main" data-scroll="' + fid + '-m">' + (u.tab === 'packages' ? packagesPlaceholder() : runwayMain(fid, ax, u.sheet ? u.sel : null)) + '</div>' + tabBar(fid, 'runway', badgeCount()) + homeInd;
-    if (u.tab === 'overdue' && u.sheet && u.sel && find(u.sel)) {
-      const o = find(u.sel);
-      html += '<div class="scrim" data-act="close" data-fid="' + fid + '"></div><div class="sheet' + enterCls(u) + '" role="dialog" aria-label="' + o.seller + '">' +
-        '<div class="sheet-bar"><button class="tbtn body" data-act="close" data-fid="' + fid + '">Close</button><span class="hl">' + o.seller + '</span><span></span></div>' +
-        '<div class="main no-tabs" data-scroll="' + fid + '-s">' + detail(fid, u.sel, { noTitle: true, after: '<button class="btn plain inline" data-act="close" data-fid="' + fid + '">Back to the runway</button>' }) + '</div></div>';
+    if (u.tab === 'overdue' && u.sheet && ((u.sel && find(u.sel)) || u.day != null)) {
+      const o = u.sel && find(u.sel);
+      const title = o ? o.seller : 'Day ' + u.day;
+      const back = '<button class="btn plain inline" data-act="close" data-fid="' + fid + '">Back to the runway</button>';
+      html += '<div class="scrim" data-act="close" data-fid="' + fid + '"></div><div class="sheet' + enterCls(u) + '" role="dialog" aria-label="' + title + '">' +
+        '<div class="sheet-bar"><button class="tbtn body" data-act="close" data-fid="' + fid + '">Close</button><span class="hl">' + title + '</span><span></span></div>' +
+        '<div class="main no-tabs" data-scroll="' + fid + '-s">' +
+        (o ? (u.day != null ? dayBack(fid) : '') + detail(fid, u.sel, { noTitle: true, after: back }) : dayList(fid)) + '</div></div>';
     }
     return html;
+  }
+  function dayItems(age) { return groups().late.filter(x => x.i.age === age); }
+  function dayList(fid) {
+    const u = ui(fid);
+    const items = dayItems(u.day);
+    if (!items.length) return '<p class="call muted" style="margin:0">Nothing is left on day ' + u.day + '.</p>';
+    return '<div class="group" data-daylist><div class="group-head"><span class="hl">' + plural(items.length, 'package', 'packages') + '</span><span class="sub num muted">' + money(items.reduce((s, x) => s + x.o.owed, 0)) + '</span></div>' +
+      '<div class="rows">' + items.map(x => row(fid, x, { current: u.sel === x.o.id })).join('') + '</div></div>';
+  }
+  function dayBack(fid) {
+    return '<button class="back" data-act="dayback" data-fid="' + fid + '">' + ICON.back + '<span class="body">Day ' + ui(fid).day + '</span></button>';
   }
 
   // ---------- Concept: One by one ----------
@@ -828,8 +894,9 @@ html.no-labels .nl::before { display: none; }
       : '<div class="screen" data-fid="' + fid + '"></div>';
     return '<figure class="dev" id="' + fid + '"><figcaption>' + p.cap + '</figcaption><div class="dev-scroll"><div class="' + cls + '" data-device="' + p.dev + '" data-frame="' + fid + '" style="width:' + p.w + 'px;height:' + p.h + 'px">' + inner + '</div></div></figure>';
   }
+  // The frame shells are static in the page (the mockup check reads them); build() only redraws them when absent.
   function build() {
-    document.getElementById('concepts').innerHTML = CONCEPTS.map(c =>
+    if (!document.querySelector('[data-frame]')) document.getElementById('concepts').innerHTML = CONCEPTS.map(c =>
       '<section class="concept" id="concept-' + c.key + '" aria-labelledby="h-' + c.key + '">' +
       '<div class="concept-head"><h2 id="h-' + c.key + '">' + c.name + '</h2>' + (c.bold ? '<span class="bold-tag">The bold one</span>' : '') +
       '<button class="seg hide" data-hide="' + c.key + '">Hide ' + c.name + '</button></div>' +
@@ -921,10 +988,13 @@ html.no-labels .nl::before { display: none; }
       case 'open':
         u.sel = id;
         if (fid.endsWith('-open')) break;
-        if (fid.startsWith('runway')) { u.sheet = true; u.enter = true; } else u.view = 'detail';
+        if (!el.closest('[data-daylist]')) u.day = null;
+        if (fid.startsWith('runway')) { if (!u.sheet) u.enter = true; u.sheet = true; } else u.view = 'detail';
         break;
       case 'back': u.view = 'main'; break;
-      case 'close': u.sheet = false; break;
+      case 'close': u.sheet = false; u.day = null; u.sel = null; break;
+      case 'day': u.day = parseInt(el.dataset.age, 10); u.sel = null; if (!fid.endsWith('-open')) { u.sheet = true; u.enter = true; } break;
+      case 'dayback': u.sel = null; break;
       case 'exp': u.exp[el.dataset.key] = !u.exp[el.dataset.key]; break;
       case 'bin': u.exp.bin = u.exp.bin === el.dataset.key ? null : el.dataset.key; break;
       case 'arrived': A.arrived.add(id); break;

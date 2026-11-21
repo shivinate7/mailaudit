@@ -13,6 +13,8 @@
   --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
   --radius: 8px;
   --hit: 44px;
+  /* Mockup chrome only, the same in both themes: the Sample banner. */
+  --banner: #A3201A; --on-banner: #FFFFFF;
   /* Safe-area fallbacks: designer's pick, not an Apple figure (no Apple page read gives one). */
   --inset-top: max(env(safe-area-inset-top), 48px);
   --inset-bottom: max(env(safe-area-inset-bottom), 20px);
@@ -90,7 +92,7 @@ button { cursor: pointer; }
 /* ---------- Mockup chrome (outside the device frames) ---------- */
 .sample {
   position: sticky; top: 0; z-index: 20;
-  background: #A3201A; color: #FFFFFF;
+  background: var(--banner); color: var(--on-banner);
   padding: var(--space-2) var(--space-4);
   font-size: var(--t-subhead); line-height: var(--l-subhead); font-weight: 600;
 }
@@ -259,6 +261,11 @@ details.why code { font-family: ui-monospace, monospace; overflow-wrap: anywhere
 .field-val { font-size: var(--t-headline); line-height: var(--l-headline); font-weight: 600; overflow-wrap: anywhere; }
 .field-val.empty-val { color: var(--accent); font-weight: 500; }
 .field-kind { font-size: var(--t-caption); line-height: var(--l-caption); color: var(--text-2); }
+.clue-line { display: flex; align-items: center; gap: var(--space-3); min-height: var(--hit); padding: var(--space-2) var(--space-3); border: 1px solid var(--accent); border-radius: var(--radius); background: var(--surface); text-align: start; }
+.clue-text { flex: 1 1 auto; min-width: 0; font-size: var(--t-subhead); line-height: var(--l-subhead); font-weight: 600; overflow-wrap: anywhere; }
+.clue-change { flex: none; color: var(--accent); font-size: var(--t-subhead); line-height: var(--l-subhead); }
+.docked { display: flex; flex-direction: column; gap: var(--space-2); }
+.docked .answer:empty { display: none; }
 .pile-head { display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) var(--space-4) var(--space-3); }
 .pile-count { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 700; }
 .pile-sub { font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--text-2); }
@@ -386,7 +393,14 @@ body.show-new [data-new]::after {
     <span><svg width="20" height="20" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="var(--ok)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="var(--surface)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>All arrived</span>
   </div>
 
-  <section id="stage" aria-live="polite"></section>
+  <section id="stage" aria-live="polite">
+    <!-- Static shells, folded first; the script fills and redraws them. -->
+    <div class="devices">
+      <div class="frame" data-device="iphone-duo-folded" data-frame="iphone-duo-folded"></div>
+      <div class="frame" data-device="iphone-duo-unfolded" data-frame="iphone-duo-unfolded"></div>
+      <div class="frame" data-device="iphone-regular" data-frame="iphone-regular"></div>
+    </div>
+  </section>
   <p class="checks" id="checks"></p>
 </main>
 
@@ -858,17 +872,21 @@ body.show-new [data-new]::after {
     if (E.inside) v.push('“' + E.inside + '” inside');
     return v.join(', ');
   }
-  function envTray(ax, focusId) {
-    // When one order fits, the tray folds to one line so the order's cards have the room.
-    if (envResults().count === 1 && !S.env.trayOpen) {
-      return '<div class="tray"' + (focusId ? ' id="' + focusId + '"' : '') + '><button type="button" class="field set" data-act="tray-open" data-new="clues fold away when one fits" aria-label="Your clues: ' + esc(clueSummary()) + '. Change the clues">' +
-        '<span class="field-name">' + I.from + 'Your clues</span><span class="field-val">' + esc(clueSummary()) + '</span><span class="field-kind" style="color:var(--accent)">Change the clues</span></button></div>';
+  function envTray(ax, focusId, docked) {
+    // When one order fits, the tray folds to one line so the order's cards have the room,
+    // and on a phone layout the order's main action docks here, in thumb reach.
+    var R1 = envResults();
+    if (R1.count === 1 && !S.env.trayOpen) {
+      var one = (R1.likely[0] || R1.less[0]).o;
+      return '<div class="tray"' + (focusId ? ' id="' + focusId + '"' : '') + '><button type="button" class="clue-line" data-act="tray-open" data-new="clues fold away when one fits" aria-label="Your clues: ' + esc(clueSummary()) + '. Change the clues">' +
+        '<span class="clue-text">' + esc(clueSummary()) + '</span><span class="clue-change">Change</span></button>' +
+        (docked ? '<div class="docked" data-new="action docks in thumb reach">' + actions(one, S.env.answer, 'next-env') + '</div>' : '') + '</div>';
     }
     return '<div class="tray"><div class="tray-head"><span>Fill in what the envelope shows</span>' +
       (cluesSet() ? '<button type="button" class="navbtn" data-act="clear-clues">Clear clues</button>' : '<span class="navbtn ghost" aria-hidden="true"></span>') + '</div>' +
       envelopeFace(false, ax, focusId) + '</div>';
   }
-  function envPile(ax) {
+  function envPile(ax, docked) {
     var ds = dataState(ax); if (ds) return ds;
     var R = envResults(), E = S.env;
     if (R.count === 0 && !R.hiddenArrived) {
@@ -884,7 +902,7 @@ body.show-new [data-new]::after {
     function cand(x, faded) {
       var ex = x.o.id === openId;
       var h = '<div class="cand">' + orderRow(x.o, E.inside, null, { act: 'expand', expandable: true, expanded: ex, faded: faded && !ex, why: faded ? x.why.join(', ') : '' });
-      if (ex) h += '<div class="cand-body" data-new="tick in place, no new screen">' + facts(x.o) + progress(x.o) + linesList(x.o, ax) + '<div class="actionrow" style="flex-direction:column">' + actions(x.o, E.answer, 'next-env') + '</div></div>';
+      if (ex) h += '<div class="cand-body" data-new="tick in place, no new screen">' + facts(x.o) + progress(x.o) + linesList(x.o, ax) + (docked && only && !E.trayOpen ? '' : '<div class="actionrow" style="flex-direction:column">' + actions(x.o, E.answer, 'next-env') + '</div>') + '</div>';
       return h + '</div>';
     }
     var shown = R.likely.slice(0, limit), rest = R.likely.length - shown.length;
@@ -969,7 +987,7 @@ body.show-new [data-new]::after {
         '<div class="scroll">' + (ds ? '' : envTray(ax, focusId)) + envPile(ax) + '</div><div class="bottombar">' + tabbar() + homeind() + '</div>' + envSheet(ax) + asideSheet() + toast() + '</div>';
     }
     return '<div class="screen' + cls + '">' + statusbar() + '<div class="navbar"><span class="navbtn ghost" aria-hidden="true"></span><span class="nav-title">Read the envelope</span>' + setAsideBtn() + '</div>' +
-      '<div class="scroll">' + envPile(ax) + '</div>' + (ds ? '' : envTray(ax, focusId)) + '<div class="bottombar" style="border-top:0;padding-top:0">' + tabbar() + homeind() + '</div>' + envSheet(ax) + asideSheet() + toast() + '</div>';
+      '<div class="scroll">' + envPile(ax, true) + '</div>' + (ds ? '' : envTray(ax, focusId, true)) + '<div class="bottombar" style="border-top:0;padding-top:0">' + tabbar() + homeind() + '</div>' + envSheet(ax) + asideSheet() + toast() + '</div>';
   }
 
   /* ---------------- Frames and chrome ---------------- */

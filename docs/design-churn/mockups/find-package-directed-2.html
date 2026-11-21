@@ -483,7 +483,7 @@ function slip(p, f, on) {
   return '<button type="button" class="slip ' + st + (on ? ' on' : '') + '" data-act="slip" data-gk="' + esc(p.gk) + '" aria-expanded="' + !!f.ui.open[p.gk] + '"' +
     ' aria-label="' + esc(p.seller + ', ' + pl(p.lines.length, 'card line') + ', ' + (st === 'all' ? 'received' : left + ' left') + ', ordered ' + p.age + ' days ago') + '">' +
     '<span class="st" aria-hidden="true"></span><span class="tx"><b>' + esc(p.seller) + '</b><span>' + esc(names) + '</span></span>' +
-    '<span class="rt">' + (st === 'all' ? '<span class="rcv">RECEIVED</span>' : '<span class="pill">' + left + ' left</span>') + '<small>' + p.age + ' d</small></span></button>';
+    '<span class="rt">' + (st === 'all' ? '<span class="rcv">RECEIVED</span>' : '<span class="pill">' + left + ' left</span>') + '<small>' + (p.age === 0 ? 'today' : p.age + ' d') + '</small></span></button>';
 }
 function findRow(f) {
   var m = document.getElementById('mag').innerHTML;
@@ -609,7 +609,7 @@ function weekList(f) {
     var age = Math.round((TODAY - W.w) / DAY), tr = tier(age - 6);
     var lab = tr === 'over' ? 'over 30 d' : tr === 'late' ? 'over 2 wk' : '';
     return '<div class="wk ' + tr + (f.ui.week === W.w ? ' hit' : '') + '" data-week="' + W.w + '"><b>Week of ' + wkLabel(W.w) + '</b><span>' +
-      (lab ? '<span class="wk-tier">' + lab + '</span> &middot; ' : '') + W.ps.length + '</span></div>' +
+      (lab ? '<span class="wk-tier">' + lab + '</span> &middot; ' : '') + W.ps.length + '<span class="sr"> packages owed</span></span></div>' +
       W.ps.map(function (p) { return (!f.d.two && f.ui.open[p.gk]) ? card(p, f, true) : slip(p, f, f.d.two && f.ui.sel === p.gk); }).join('');
   }).join('');
 }

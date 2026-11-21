@@ -26,7 +26,7 @@ body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sy
 main { max-width:1040px; margin:0 auto; padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-4); }
 .banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:var(--space-2) var(--space-3); font-weight:600; }
 header.page { display:flex; flex-direction:column; gap:var(--space-1); }
-header.page h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
+header.page h1 { font-family:var(--system); font-weight:700; font-size:28px; line-height:1.15; margin:0; }
 .kind { font-size:14px; color:var(--inkSoft); margin:0; max-width:70ch; }
 .kind b { color:var(--ink); }
 .controls { display:flex; flex-direction:column; gap:var(--space-2); border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:var(--space-3) 0; }
@@ -38,13 +38,14 @@ header.page h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; ma
 .ctl button:focus-visible, .ctl a:focus-visible, .dev button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 section.concept { display:flex; flex-direction:column; gap:var(--space-3); }
 section.concept[hidden], figure[hidden] { display:none; }
-section.concept > h2 { font-family:var(--cochin); font-size:24px; margin:var(--space-4) 0 0; }
+section.concept > h2 { font-family:var(--system); font-size:22px; margin:var(--space-4) 0 0; }
 section.concept > p { margin:0; max-width:72ch; }
 .row { display:flex; flex-wrap:wrap; gap:var(--space-6); align-items:flex-start; }
 figure { margin:0; display:flex; flex-direction:column; gap:var(--space-2); max-width:100%; }
 figcaption { font-size:14px; max-width:60ch; }
-figcaption b { font-family:var(--cochin); font-size:17px; }
-.proof { font:12px/1.4 var(--mono); color:var(--inkSoft); }
+figcaption b { font-size:15px; }
+.proof { font:12px/1.4 var(--mono); color:var(--inkSoft); max-width:466px; }
+figcaption { max-width:466px; }
 .proof.bad { color:var(--red); font-weight:700; }
 .fit { max-width:100%; overflow:hidden; }
 
@@ -96,6 +97,7 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
 .thead .ct b { color:var(--accent); }
 .trow.done .thead .ct b { color:var(--green); }
 .thead .meta { flex:1 0 100%; font:var(--f-meta)/1.35 var(--mono); color:var(--inkSoft); overflow-wrap:normal; }
+.across { font:var(--f-meta)/1.35 var(--mono); color:var(--inkSoft); overflow-wrap:normal; }
 .detail-title { font:700 var(--f-h)/var(--l-h) var(--cochin); margin:0; overflow-wrap:normal; }
 .copies { display:flex; flex-direction:column; border-top:1px solid var(--line); }
 .copy { display:flex; align-items:center; gap:var(--space-2); min-height:56px; padding:var(--space-2) var(--space-3) var(--space-2) var(--space-1);
@@ -164,6 +166,11 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
 .band--page .core-name { font:600 var(--b-body)/var(--b-body-l) var(--cochin); overflow-wrap:normal; }
 .band--page .core-name small { display:block; font:var(--b-lab)/var(--b-lab-l) var(--mono); color:var(--inkSoft); font-weight:400; }
 
+.band.waiting .facts, .band.waiting .facts *, .band.waiting .act, .band.waiting .act .face { visibility:hidden; }
+.band.waiting .wait { position:absolute; inset:var(--space-3) var(--space-4); margin:0; display:flex; flex-direction:column; align-items:flex-start; gap:var(--space-2);
+  font:var(--b-body)/var(--b-body-l) var(--cochin); color:var(--inkSoft); z-index:1; }
+.band.waiting .wait .face { visibility:visible; }
+.band--page.waiting .wait { top:40%; bottom:auto; }
 /* the large content viewer (Holds at AX3): press and hold the band */
 .lcv { position:absolute; inset:0; z-index:20; display:grid; place-items:center; background:color-mix(in srgb, var(--ink) 25%, transparent); }
 .lcv div { background:color-mix(in srgb, var(--card) 96%, transparent); border-radius:16px; padding:var(--space-4) var(--space-6); text-align:center; max-width:90%;
@@ -188,7 +195,7 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
 .strip { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(466px, 100%), 1fr)); gap:var(--space-4); }
 .pair { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:var(--space-3); display:flex; flex-direction:column; gap:var(--space-3);
   width:min(466px, 100%); }
-.pair h3 { font:700 17px/1.2 var(--cochin); margin:0; }
+.pair h3 { font:700 15px/1.2 var(--system); margin:0; }
 .cell { position:relative; border:1px solid var(--line); border-radius:8px; background:var(--paper); padding:var(--space-3); font-family:var(--cochin); }
 .ax5 { --a-body:53px; --a-lab:37.6px; --a-ct:47.7px; }
 </style>
@@ -216,6 +223,10 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
     <a href="#">All</a><a href="#s=today">Today</a><a href="#s=foot-folded-ax5">Foot band, AX5</a><a href="#s=core-open-ax5">Core page, AX5</a>
     <a href="#s=size-half">Holds at half</a><a href="#s=size-grows">Grows with the text</a><a href="#s=rows-ax5">Rows that scroll</a>
   </div>
+  <div class="ctl" role="group" aria-label="States"><span>State</span>
+    <a href="#s=foot-folded-ax5&amp;k=armed">Clear asks</a><a href="#s=foot-folded-ax5&amp;k=undo">Undo held</a>
+    <a href="#s=foot-folded-ax5&amp;k=end">Scrolled to the end</a><a href="#s=foot-folded-ax5&amp;k=loading">Opening</a><a href="#s=foot-folded-ax5&amp;k=failed">Did not open</a>
+  </div>
   <div class="ctl" role="group" aria-label="Hide an option"><span>Hide</span>
     <button type="button" data-hide="foot">Hide Foot band</button><button type="button" data-hide="core">Hide Core page</button>
     <button type="button" data-hide="half">Hide Holds at half</button><button type="button" data-hide="grows">Hide Grows with the text</button>
@@ -233,13 +244,13 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
         <div class="rh tag-today" data-tag="Today: RunningHead, title and figure clip">
           <svg class="seal" viewBox="0 0 36 36" aria-hidden="true"><circle cx="18" cy="18" r="17" fill="#A8443C"/><circle cx="18" cy="18" r="11" fill="none" stroke="#66231D" stroke-width="2"/></svg>
           <span style="font:700 36px var(--cochin);letter-spacing:.06em">MANIF…</span>
-          <span style="margin-left:auto;font:24px var(--mono)">1204/1350 · $…</span>
+          <span style="margin-left:auto;font:24px var(--mono)">1205/1350 · $…</span>
         </div>
         <div style="position:absolute;left:16px;right:16px;top:calc(var(--sat) + 60px);display:flex;flex-direction:column;gap:8px">
           <div style="height:8px;border-radius:4px;background:#DCCDB6"><i style="display:block;width:89%;height:100%;border-radius:4px;background:#6F5CA6"></i></div>
-          <div class="tag-today" data-tag="Today: count line, one line, no ellipsis" style="font:30px/1.2 var(--mono)"><span class="clip">1350 unique items in range</span></div>
+          <div class="tag-today" data-tag="Today: count line, one line, no ellipsis" style="font:30px/1.2 var(--mono)"><span class="clip">1094 unique items in range</span></div>
           <div class="tag-today" data-tag="Today: SaveSlot takes half the row" style="display:flex;gap:8px;align-items:flex-start">
-            <span style="flex:1;font:30px/1.2 var(--mono);color:#A8443C">146 still missing · $412.80</span>
+            <span style="flex:1;font:30px/1.2 var(--mono);color:#A8443C">145 still missing · $410.52</span>
             <span style="flex:0 0 49%;height:36px;border:1px dashed #A8443C"></span>
           </div>
           <div class="trow tag-today" data-tag="Today: set name squeezed to 100 pt" style="padding:12px;display:flex;gap:8px">
@@ -249,7 +260,7 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
         </div>
         <div class="bar" aria-hidden="true"><span>Ledger</span><span>Orphaned</span><span class="on">Tally</span><span>Packages</span></div>
       </div>
-      <figcaption><b>Today, folded, AX5.</b> The pinned running head reads "MANIF… 1204/1350 · $…": the missing money is lost. The foot row wraps beside an empty 13-character slot. The Tally name breaks mid-word.</figcaption>
+      <figcaption><b>Today, folded, AX5.</b> The pinned running head reads "MANIF… 1205/1350 · $…": the missing money is lost. The foot row wraps beside an empty 13-character slot. The Tally name breaks mid-word.</figcaption>
     </figure>
     <figure data-state="today" id="today-open">
       <div class="fit"><div class="dev td" data-device="iphone-duo-unfolded">
@@ -257,7 +268,7 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
         <div class="fold"><span>FOLD</span></div>
         <div class="pg l"><div style="position:absolute;left:24px;right:24px;top:40px;display:flex;flex-direction:column;gap:12px;align-items:center">
           <span style="font:47px var(--cochin);letter-spacing:.06em">MANIFEST</span>
-          <span style="font:26px var(--mono);color:#6E6379;text-align:center">cards<br>1204/1350<br>packages<br>146/180<br>value<br>$3,118/$3,531</span>
+          <span style="font:26px var(--mono);color:#6E6379;text-align:center">cards<br>1205/1350<br>packages<br>146/180<br>value<br>$3,118/$3,531</span>
         </div></div>
         <div class="pg r"><div style="position:absolute;left:16px;right:16px;top:560px">
           <span class="tag-today" data-tag="Today: hand-open at y 616 to 660, under the bar" style="display:inline-flex;min-height:44px;align-items:center;padding:0 12px;border:1px solid #DCCDB6;border-radius:8px;background:#FCF6EA;font:26px var(--mono);margin-top:56px">Card in Hand</span>
@@ -275,11 +286,11 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
   <p>The core sits in one band, docked on the tab bar, where the thumb is. The letterhead and the list scroll above it, and the list ends clear of the band. The band tries four shapes in order and takes the first that fits: one row, a pair, ledger lines, then a stack. A figure may break only after its slash.</p>
   <div class="row">
     <figure data-state="foot-folded-ax5" data-opt="foot"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="ax5" data-id="foot-folded-ax5" data-focus="1"></div>
-      <figcaption><b>Folded, AX5.</b> Facts as ledger lines, the button full width. Tap a copy, Mark all received, then Undo. A complete name offers Clear check‑ins, which asks: Cancel hangs above the band.</figcaption></figure>
+      <figcaption><b>Folded, AX5.</b> The band steps down until it fits in half the screen; the list keeps AX5. The line under the frame names the size and shape it took. Tap a copy, then Mark all received, then Undo. Tick every copy and the button becomes Clear check‑ins, which asks: Cancel hangs above the band.</figcaption></figure>
     <figure data-state="foot-folded-l" data-opt="foot"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="L" data-id="foot-folded-l"></div>
-      <figcaption><b>Folded, Large (default).</b> One row: both facts and the button.</figcaption></figure>
+      <figcaption><b>Folded, Large (default).</b> Both facts on one line, the button under them.</figcaption></figure>
     <figure data-state="foot-phone-ax5" data-opt="foot"><div class="mount" data-concept="foot" data-device="iphone-regular" data-ts="ax5" data-id="foot-phone-ax5"></div>
-      <figcaption><b>Phone at 320 pt, AX5.</b> The stack: "1204/" breaks before "1350", never inside a number.</figcaption></figure>
+      <figcaption><b>Phone at 320 pt, AX5.</b> Narrower, so the band steps down further than on the Duo. Grows with the text, below, shows a figure that breaks after its slash, never inside a number.</figcaption></figure>
   </div>
   <figure data-state="foot-open-ax5" data-opt="foot"><div class="fit"><div class="mount" data-concept="foot" data-device="iphone-duo-unfolded" data-ts="ax5" data-id="foot-open-ax5"></div></div>
     <figcaption><b>Open, AX5.</b> Names on the left page, the open name on the right. The band sits at the foot of the right page, on the bar, and the right page ends clear of both.</figcaption></figure>
@@ -294,6 +305,8 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
       <figcaption><b>Holds at half (pick).</b> Folded, reader at AX5. The band settles at the largest size that fits in half; the list keeps the rest.</figcaption></figure>
     <figure data-state="size-grows" data-opt="grows"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="ax5" data-grow="1" data-id="size-grows" data-focus="1"></div>
       <figcaption><b>Grows with the text.</b> Folded, reader at AX5. Nothing clips, but the list keeps a strip about one row tall.</figcaption></figure>
+    <figure data-state="size-grows-phone" data-opt="grows"><div class="mount" data-concept="foot" data-device="iphone-regular" data-ts="ax5" data-grow="1" data-id="size-grows-phone"></div>
+      <figcaption><b>Grows with the text, phone at 320 pt.</b> "1205/" breaks before "1350". The band takes most of the screen.</figcaption></figure>
   </div>
 </section>
 
@@ -453,15 +466,21 @@ class Frame {
     const t = totals(this.st), f = this.faces(), full = t.got >= t.total, pct = t.total ? (100 * t.got / t.total) : 0;
     const w = String(t.total).length;
     const facts = `<div class="facts">
-      <div class="fact" role="group" aria-label="Cards in ${t.got} of ${t.total}"><span class="lab">cards in</span>
+      <div class="fact" role="group" aria-label="Cards in ${t.got} of ${t.total}"><span class="lab">cards</span>
         <span class="fig${full ? ' full' : ''}"><span class="seg"><span class="got" style="min-width:${w}ch">${t.got}</span>/</span><wbr><span class="seg tot">${t.total}</span></span></div>
-      <div class="fact" role="group" aria-label="Still missing ${money(t.owed)}"><span class="lab">still missing</span><span class="fig owed">${money(t.owed)}</span></div>
+      <div class="fact" role="group" aria-label="Still missing ${money(t.owed)}"><span class="lab">missing</span><span class="fig owed">${money(t.owed)}</span></div>
     </div>`;
     const cur = this.k === 'armed' && f.armed ? 'armed' : this.k === 'undo' && f.undo ? 'undo' : 'rest';
     const act = `<div class="act">${Object.entries(f).map(([k, x]) => `<button type="button" class="face ${x.cls}${k === cur ? ' on' : ''}" ${x.act ? `data-act="${x.act}"` : 'disabled'} ${k === cur ? '' : 'tabindex="-1" aria-hidden="true"'}><span class="tx">${esc(x.text)}</span></button>`).join('')}</div>`;
     const cancel = cur === 'armed' ? `<button type="button" class="cancel" data-act="cancel">Cancel</button>` : '';
     const id = this.focus ? ` id="band-${this.id}"` : '';
     const tag = place === 'foot' ? 'New: Foot band' : place === 'head' ? 'New: head band, pins' : 'New: Core page';
+    // Not read yet, or failed: a sentence in the figures' place, never a zero (ux-unknown-is-not-empty). The band keeps its size.
+    if (this.k === 'loading' || this.k === 'failed') {
+      const say = this.k === 'loading' ? '<p class="wait">Opening the ledger</p>'
+        : '<p class="wait">The ledger did not open. <button type="button" class="face on clear" data-act="ledger"><span class="tx">Open Ledger</span></button></p>';
+      return `<section class="band band--${place} tag-new waiting" data-tag="${tag}"${id} aria-label="Core" data-tier="${place === 'page' ? 'page' : 'row'}">${say}${facts}${act}</section>`;
+    }
     if (place === 'page') {
       const r = this.openRow();
       return `<section class="band band--page tag-new" data-tag="${tag}"${id} aria-label="Core" data-tier="page">
@@ -488,7 +507,7 @@ class Frame {
   letterhead() { return `<div class="lh"><div class="rules"><i></i>${SEAL}<i></i></div><div class="title">Manifest</div><div class="house">C.H Postal Company</div></div>`; }
   html() {
     const dev = this.device, open = dev === 'iphone-duo-unfolded', foot = this.concept === 'foot';
-    const list = mode => `<div class="sect">Tally</div><div class="list">${this.st.names.map(r => this.rowHTML(r, mode)).join('')}</div>`;
+    const list = mode => this.k === 'loading' || this.k === 'failed' ? '' : `<div class="list" aria-label="Tally">${this.st.names.map(r => this.rowHTML(r, mode)).join('')}</div>`;
     let body;
     if (!open && foot) {
       body = `<div class="pg"><div class="scroll"><div class="scroll-in">${this.letterhead()}${list('inline')}</div></div>${this.bandHTML('foot')}</div>${bar('Tally')}`;
@@ -498,7 +517,7 @@ class Frame {
       const r = this.openRow();
       body = `<div class="pg l"><div class="scroll"><div class="scroll-in">${this.letterhead()}${list('cell')}</div></div></div>
         <div class="fold"><span>FOLD</span></div>
-        <div class="pg r"><div class="scroll"><div class="scroll-in">${r ? `<h2 class="detail-title">${esc(r.name)}</h2><div class="sect">${new Set(r.copies.map(c => c.seller)).size} sellers · ${r.copies.length} orders · ${esc(r.set)}</div><div class="trow">${this.copiesHTML(r)}</div>` : ''}</div></div>${this.bandHTML('foot')}</div>${bar('Tally')}`;
+        <div class="pg r"><div class="scroll"><div class="scroll-in">${r && this.k !== 'loading' && this.k !== 'failed' ? `<h2 class="detail-title">${esc(r.name)}</h2><div class="across">${new Set(r.copies.map(c => c.seller)).size} sellers · ${r.copies.length} orders · ${esc(r.set)}</div><div class="trow">${this.copiesHTML(r)}</div>` : ''}</div></div>${this.bandHTML('foot')}</div>${bar('Tally')}`;
     } else {
       body = `<div class="pg l">${this.bandHTML('page')}</div><div class="fold"><span>FOLD</span></div>
         <div class="pg r"><div class="scroll"><div class="scroll-in">${list('inline')}</div></div></div>${bar('Tally')}`;
@@ -520,7 +539,8 @@ class Frame {
   // a strip band in half the space between the status bar and the tab bar, the core page in its page.
   fit() {
     const band = this.m.querySelector('.band');
-    const open = this.device === 'iphone-duo-unfolded', barTop = open ? 593 : 595, barH = (open ? 669 : 678) - barTop;
+    if (!band) return;
+    const open =this.device === 'iphone-duo-unfolded', barTop = open ? 593 : 595, barH = (open ? 669 : 678) - barTop;
     this.limit = Math.floor((barTop - 20) / 2);
     const page = band.classList.contains('band--page');
     const sizes = ORDER.slice(0, ORDER.indexOf(this.ts) + 1).reverse();
@@ -559,13 +579,14 @@ class Frame {
   }
   overflow(band, tier) {
     const over = el => el.scrollWidth > el.clientWidth + 0.5;
-    if (over(band)) return true;
+    const why = (r, el) => { if (params().debug) console.log('over', tier, r, el.className, el.scrollWidth, el.clientWidth); return true; };
+    if (over(band)) return why('band', band);
     const facts = band.querySelector('.facts');
-    if (over(facts)) return true;
-    for (const el of band.querySelectorAll('.fact, .lab, .fig, .face.on')) if (over(el)) return true;
+    if (over(facts)) return why('facts', facts);
+    for (const el of band.querySelectorAll('.fact, .lab, .fig, .face.on')) if (over(el)) return why('el', el);
     // one line per figure until the stack
-    for (const fig of band.querySelectorAll('.fig')) if (fig.getBoundingClientRect().height > parseFloat(getComputedStyle(fig).lineHeight) * 1.4) return true;
-    if (tier === 'row') { const a = band.querySelector('.act'); if (a.getBoundingClientRect().width < 120) return true; }
+    for (const fig of band.querySelectorAll('.fig')) if (fig.offsetHeight > parseFloat(getComputedStyle(fig).lineHeight) * 1.4) return why('lines', fig);
+    if (tier === 'row') { const a = band.querySelector('.act'); if (a.offsetWidth < 120) return why('act', a); }
     return false;
   }
   // The proof under each frame: what clipped, and the band's height in each state of its action.
@@ -581,10 +602,10 @@ class Frame {
     const tier = band.dataset.tier, bad = clipped.length || outside || tall;
     const held = this.bandTs !== this.ts;
     out.classList.toggle('bad', !!bad);
-    out.textContent = `Reader at ${TSNAME[this.ts]}; band at ${TSNAME[this.bandTs]}${held ? ' (press and hold it for ' + TSNAME[this.ts] + ')' : ''}. `
-      + `Shape: ${tier === 'page' ? 'whole page' : tier}, ${h} pt tall${tier === 'page' ? '' : ', limit ' + this.limit + ' pt' + (this.grow ? ' (off)' : '')}. `
-      + (bad ? `CLIPS: ${clipped.length} element(s)${outside ? ', leaves its page' : ''}${tall ? ', taller than its page' : ''}. ` : 'Nothing clipped. ')
-      + (steady ? 'The action slot holds its tallest face, so Undo and the ask keep the height.' : 'HEIGHT CHANGES between faces.');
+    out.textContent = `Band at ${TSNAME[this.bandTs]} for a reader at ${TSNAME[this.ts]}${held ? ' (hold for full size)' : ''}; `
+      + `${tier === 'page' ? 'whole page' : tier}, ${h}${tier === 'page' ? '' : ' of ' + this.limit + (this.grow ? ' (no limit)' : '')} pt. `
+      + (bad ? `CLIPS ${clipped.length}${outside ? ', leaves its page' : ''}${tall ? ', taller than its page' : ''}. ` : 'Nothing clipped. ')
+      + (steady ? 'Same height in every state.' : 'HEIGHT CHANGES between states.');
   }
   click(e) {
     const b = e.target.closest('[data-act]'); if (!b) return;
@@ -596,6 +617,7 @@ class Frame {
     if (a === 'arm') { this.k = 'armed'; this.lapse(); }
     if (a === 'clear' && r) { r.copies.forEach(c => { c.got = false; }); this.k = 'rest'; clearTimeout(this.armTimer); }
     if (a === 'cancel') { this.k = 'rest'; clearTimeout(this.armTimer); }
+    if (a === 'ledger') this.k = 'loading';  // the Ledger tab holds recovery; here the press only shows the next read
     this.render();
     // Cancel takes first focus when the ask opens (armed-reset-takes-the-row); otherwise focus stays on the pressed control's place.
     const focusSel = a === 'arm' ? '.cancel' : a === 'mark' ? '.face.undo' : a === 'undo' || a === 'cancel' ? '.face.on' : null;
@@ -606,13 +628,14 @@ class Frame {
     const dev = this.m.querySelector('.dev'); const old = dev.querySelector('.lcv'); if (old) old.remove();
     if (!on) return;
     const t = totals(this.st);
-    dev.insertAdjacentHTML('beforeend', `<div class="lcv" role="dialog" aria-label="Large content viewer"><div>${t.got}/${t.total}<small>cards in</small>${money(t.owed)}<small>still missing</small></div></div>`);
+    dev.insertAdjacentHTML('beforeend', `<div class="lcv" role="dialog" aria-label="Large content viewer"><div>${t.got}/${t.total}<small>cards</small>${money(t.owed)}<small>missing</small></div></div>`);
   }
   // Deep link state: k=armed|undo|end
   applyK(k) {
     const r = this.openRow();
     if (k === 'armed' && r) { r.copies.forEach(c => { c.got = true; }); this.k = 'armed'; }
     if (k === 'undo' && r) { this.undo = r.copies.filter(c => !c.got); this.undo.forEach(c => { c.got = true; }); this.k = 'undo'; }
+    if (k === 'loading' || k === 'failed') this.k = k;
     this.render(false);
     if (k === 'end') this.m.querySelectorAll('.scroll').forEach(s => { s.scrollTop = s.scrollHeight; });
   }
@@ -630,7 +653,7 @@ function route() {
   document.querySelectorAll('section.concept').forEach(c => { c.hidden = hidden.has(c.dataset.opt) || [...c.querySelectorAll('figure')].every(f => f.hidden); });
   document.querySelectorAll('[data-ts]').forEach(b => { if (b.tagName === 'BUTTON') b.setAttribute('aria-pressed', String((p.ts || '') === b.dataset.ts)); });
   document.querySelectorAll('[data-n]').forEach(b => b.setAttribute('aria-pressed', String((p.n || '4') === b.dataset.n)));
-  document.querySelectorAll('.controls a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href').slice(1).split('&')[0] === (s ? 's=' + s : ''))));
+  document.querySelectorAll('.controls a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === (location.hash || '#'))));
   fitZoom();
   insts.forEach(i => { i.k = 'rest'; i.undo = null; i.st = sample(+(p.n || 4)); i.n = +(p.n || 4); i.open = 'Brainstorm';
     if (!i.m.closest('figure').hidden) i.applyK(p.k); });

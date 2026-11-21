@@ -100,6 +100,36 @@ control. `&hide=search,envelope,dates,postmark,thickness` hides a concept or an 
     Spacing is on the 4 px step and the radius is 8 px (house tokens).
     Pick: keep. A builder should map these roles to the repo's own tokens.
 
+13. **When one order fits, the clues fold away (Envelope).** The clue tray folds to one line
+    ("Pike Street Cards, “lantern” inside", Change). On the folded Duo and the phone, the order's
+    main button ("Mark all 7 arrived", then Undo and Next envelope) docks there, in thumb reach.
+    At AX5 the button stays in the order, because the page scrolls as one column.
+    Gain: the cards and the main action fit without a scroll on the folded Duo.
+    Loss: the clues take one more tap to change.
+    Pick: keep.
+
+14. **An order you are ticking stays in place.** An order that becomes all arrived stays in the
+    list or pile, with its answer and Undo, until "Next envelope", "Clear the search" or "Clear
+    clues". Without this, the order would drop out of the open-orders list at the last tick.
+    Pick: keep.
+
+## Self-critique (impeccable critique, 2026-11-21)
+
+Run in one context, with no agent tool (degraded). There was no browser overlay. The detector ran
+on the file. Score: 30 of 40 (visibility 3, real world 4, control 3, consistency 3, error
+prevention 3, recognition 3, flexibility 3, minimal design 3, recovery 3, help 2).
+
+- Fixed: folded Envelope hid the cards and the main button under the full clue tray (items 13, 14).
+- Fixed: marking all cards arrived made the order vanish, with its answer and Undo (item 14).
+- Fixed: at AX5, Undo and Next envelope overflowed sideways. They now stack.
+- Fixed: the search box showed during loading, read failed and no orders. It is now hidden there.
+- Fixed: the status bar and the nav bar buttons grew at AX5. They stay at default size, as iOS bars do.
+- Fixed: the "What the app said" disclosure had no marker. It now has a turning arrow.
+- Kept: the detector's one finding, repeating-gradient stripes, is the airmail border, which is the
+  one deliberate subject motif. It is advisory.
+- Open: help is thin (score 2). Neither concept explains its date words or what Thickness means
+  before the first use. The sheet text covers Thickness. Date words have no hint.
+
 ## Sizes
 
 - Duo folded 466 x 678 and Duo open 951 x 669, hinge 455.5 to 495.5, from the brief.

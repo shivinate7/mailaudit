@@ -171,6 +171,7 @@ button { font: inherit; color: inherit; }
 .screen[data-ax] .nav { grid-template-columns: auto 1fr auto; padding-block: var(--space-1); }
 .screen[data-ax] .nav-ttl { text-align: start; }
 .nav-ttl.collapses { opacity: 0; }
+.nav-ttl.collapses::before { content: attr(data-title); }
 .page.scrolled .nav-ttl.collapses { opacity: 1; }
 .lt { margin: 0; padding: 0 var(--space-4) var(--space-2); font-size: var(--lt); line-height: var(--lt-lh); font-weight: 700; }
 
@@ -259,6 +260,9 @@ button { font: inherit; color: inherit; }
 }
 .ftab[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
 .ftab .bar { align-self: stretch; }
+.ftabs.vertical { gap: var(--space-3); }
+.ftabs.vertical .ftab { padding: var(--space-4); gap: var(--space-2); }
+.ftabs.vertical .fig, .ftabs.vertical .of { font-size: var(--hfig); line-height: var(--hfig-lh); }
 .tbar { flex: none; display: grid; grid-template-columns: auto 1fr; gap: var(--space-2); align-items: center; padding: var(--space-3) var(--space-4) var(--space-2); background: var(--raised); border-top: 1px solid var(--line); }
 .screen[data-ax] .tbar { grid-template-columns: 1fr; }
 
@@ -476,8 +480,7 @@ function factsHTML(m, f, opts = {}) {
       `<div class="fact"><div class="fact-line"><span class="fig">${CF.format(t.owed)}</span><span class="sr"> still owed</span></div></div></div>`;
   }
   if (m.error) {
-    return `<div class="facts"><div class="fact"><div class="fact-line"><span class="fig unk">Unknown</span> <span class="lbl">arrived</span></div></div>` +
-      `<div class="fact"><div class="fact-line"><span class="fig unk">Unknown</span> <span class="lbl">still owed</span></div></div></div>`;
+    return `<div class="facts"><div class="fact"><div class="fact-line"><span class="fig unk">Unknown</span> <span class="lbl">arrived and still owed</span></div></div></div>`;
   }
   const t = totals(m);
   const pct = t.ordered ? Math.round(t.arrived / t.ordered * 1000) / 10 : 0;
@@ -540,7 +543,7 @@ function dockList(m, f, onlyOrder) {
 }
 function dockNav(m, f, title, collapses) {
   return `<div class="nav"><div class="nav-lead">${slotBtn(m)}</div>` +
-    `<div class="nav-ttl${collapses ? " collapses" : ""}">${esc(title)}</div><div class="nav-trail"></div></div>`;
+    (collapses ? `<div class="nav-ttl collapses" data-title="${esc(title)}" aria-hidden="true"></div>` : `<div class="nav-ttl">${esc(title)}</div>`) + `<div class="nav-trail"></div></div>`;
 }
 function renderDock(m, f) {
   const p = listPrimary(m);
@@ -553,7 +556,7 @@ function renderDock(m, f) {
         `<span class="name">${esc(ord.seller)}</span><span class="cnt"><span class="count">${g} of ${q}</span></span></button>`;
     }).join("") + `</div>`;
     return `<div class="page">` +
-        `<div class="nav"><div class="nav-lead"></div><div class="nav-ttl${f.ax ? "" : " collapses"}">Mail day</div><div class="nav-trail"></div></div>` +
+        `<div class="nav"><div class="nav-lead"></div>${f.ax ? `<div class="nav-ttl">Mail day</div>` : `<div class="nav-ttl collapses" data-title="Mail day" aria-hidden="true"></div>`}<div class="nav-trail"></div></div>` +
         `<div class="scroll main" data-k="idx">${f.ax ? "" : `<h1 class="lt">Mail day</h1>`}${idx}</div>` +
         `<div class="dock anno" data-new="facts stay on the first screen">${factsHTML(m, f)}</div></div>` +
       `<div class="hinge" aria-hidden="true"></div>` +
@@ -569,10 +572,9 @@ function renderDock(m, f) {
 /* ---------- Concept: Fact tabs ---------- */
 function tabsTabs(m, f, vertical) {
   let coming, arrived;
-  if (m.error) {
-    coming = `<span class="fact-line"><span class="fig unk">Unknown</span> <span class="lbl">still owed</span></span>`;
-    arrived = `<span class="fact-line"><span class="fig unk">Unknown</span> <span class="lbl">arrived</span></span>`;
-  } else {
+  /* With no read there is nothing to switch between, so the tabs give way to one unknown line. */
+  if (m.error) return `<div class="ftabs">${factsHTML(m, f)}</div>`;
+  {
     const t = totals(m);
     const toCome = t.ordered - t.arrived;
     const pct = t.ordered ? Math.round(t.arrived / t.ordered * 1000) / 10 : 0;
@@ -632,7 +634,7 @@ function listBtn(f) {
 }
 function askStart(m, f, showListBtn) {
   const trail = showListBtn && !m.error && !isEmpty(m) ? listBtn(f) : "";
-  const nav = `<div class="nav"><div class="nav-lead"></div><div class="nav-ttl${f.ax ? "" : " collapses"}">Mail day</div><div class="nav-trail">${trail}</div></div>`;
+  const nav = `<div class="nav"><div class="nav-lead"></div>${f.ax ? `<div class="nav-ttl">Mail day</div>` : `<div class="nav-ttl collapses" data-title="Mail day" aria-hidden="true"></div>`}<div class="nav-trail">${trail}</div></div>`;
   let body, p;
   if (m.error || isEmpty(m)) { body = stateBlock(m); p = listPrimary(m); }
   else if (allIn(m)) { body = `<div class="state"><p>Everything has arrived.</p></div>`; p = { label: "Import orders", act: "import" }; }
@@ -651,7 +653,7 @@ function askQuestion(m, f, showListBtn) {
   if (m.run.ended) {
     return `<div class="page"><div class="nav"><div class="nav-lead"></div><div class="nav-ttl">Mail day</div><div class="nav-trail">${trail}</div></div>` +
       `<div class="factband">${factsHTML(m, f)}</div>` +
-      `<div class="scroll" data-k="q"><div class="q"><p class="q-name">That was the last card still coming.</p>` +
+      `<div class="scroll" data-k="q"><div class="q"><p class="q-name">${allIn(m) ? "Every card has arrived." : "That was the end of the list."}</p>` +
       `<p class="q-sub">${m.run.marked} marked received this run.</p></div></div>` +
       `<div class="answers">${primaryBtn({ label: "Back to start", act: "end" }, f)}</div></div>`;
   }
