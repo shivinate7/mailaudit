@@ -69,3 +69,83 @@ control iOS does not ship, or that sets a rule no record holds yet.
     state. If the data gains an "unknown arrival" value, it needs its own shape.
 14. **"Add order history" in the no-data state** is an assumption: I do not know how history gets
     in. In the mockup it loads the sample. Owner grant: yes (names a capability).
+
+## Fill-in sentence
+
+15. **The search is one sentence with five blanks**: "Find [any card] from [any seller], ordered
+    [any day], at [any price], [arrived or not]." It sits at the bottom of the screen (thumb), and
+    the answers scroll above it. Tap a blank to fill it; the card blank becomes a text field, the
+    others open a picker just above the sentence (a list of sellers, chips of order days, price
+    bands, arrival). Each picker shows only values that still give answers, with counts.
+    Gain: the person sees every way to narrow at once, in plain words, and never meets an empty
+    picker. Loss: more taps than one field for a person who only knows the name. Pick: keep as an
+    option.
+16. **Answers are sentences.** A summary ("126 copies of 15 cards. 107 arrived, 19 not yet in.")
+    then one group per card, one sentence per copy: "From Gull Street Cards, ordered Thu 19 Nov,
+    $1.68." Tap a copy for its order sheet.
+    Gain: reads like an answer to the person's question. Loss: longer rows than Pocket field.
+    Pick: keep.
+17. **The order sheet leads back into the sentence**: "Find more from <seller>" and "Find more from
+    <day>" fill that blank and clear the card. Sheet: Close on the leading edge (HIG sheets).
+18. **Price bands, not exact prices** (under 25¢, 25¢ to 50¢, 50¢ to $1, $1 to $3, $3 or more).
+    The band edges are my guess for low-cost cards. Gain: one tap. Loss: an exact price is not
+    searchable here; Pocket field and Sieve do take one. Owner grant: yes (band edges).
+19. **Open pose**: left page holds the title, the picker and the sentence; right page holds the
+    answers and the order sheet, inside that page. AX5: the sentence panel takes at most 58 percent
+    of the screen and scrolls, so answers stay in view.
+
+## Sieve (the bold concept)
+
+20. **Every card line is a dot** on a canvas under the count: about 3,000 dots, green for arrived,
+    amber for not yet, in order-day order. Typing fades the dots that do not match.
+    Folded: a dense field. Open pose: the left page turns the dots into a day chart (one column per
+    order day, 1 Oct to 19 Nov), so the person sees which order day a match sits in.
+    Gain: the whole collection and "what is still out" are visible at a glance, and a match shows
+    where it sits in time. Loss: a canvas is not native UI; the design reviewer may grade it
+    web-like. The canvas has a name and a text equivalent (the count and the list), and each act on
+    it also works from the list. Tap a dot to open its order. Owner grant: yes.
+21. **A letter pad that knows the data replaces the keyboard.** A to Z in order, space, delete,
+    123 for prices and days, Clear. Each key shows how many lines are left if it is pressed. A key
+    that leads to no line goes dark and does nothing; its spoken label says why. The pad keeps its
+    size at AX5, as the system keyboard does.
+    Gain: a half-remembered name can be found by letters that are known to lead somewhere; a typo is
+    impossible. Loss: not the system keyboard (no dictation, no QWERTY, no autocorrect); iOS ships
+    no such control. Owner grant: yes.
+22. **Matches any part** of the card name, the seller, the price (`$0.4`) or the day (`11/4`),
+    from any letter in the middle, not only the start. Results list the newest first, capped at 40
+    with "n more. Press another letter to narrow."
+23. **Order**: folded, a sheet with Close leading; open pose, the right page above the pad.
+24. **Physical keys** type into the pad when focus is in a Sieve frame (a hardware keyboard on the
+    Duo). Dead letters are ignored.
+
+## Search placement
+
+25. **Where search sits in the app.** HIG search-fields gives three places: a search tab (standard,
+    or the button appearance that opens the keyboard at once), a bottom toolbar, or inline. I do not
+    know the app's other screens, so each concept is drawn as a whole screen with no tab bar.
+    Pocket field fits the search tab with the button appearance; Fill-in sentence and Sieve fit a
+    standard search tab with their own landing page. Owner grant: yes (where search lives).
+
+## Critique (impeccable, run on this mockup)
+
+Method: design review only, the native-platform path, run in this designer's own context. No
+detector, no snapshot. Score: 27 of 40.
+
+26. **Fixed:** one act, three names. "Clear search", "Clear the blanks" and "Clear" now all read
+    "Clear search" (house rule ux-one-plain-name).
+27. **Fixed:** in the open pose, Fill-in sentence said "the sentence below" on the right page while
+    the sentence sits on the left page. It now says "on the left page", and the duplicate hint on
+    the left page is gone.
+28. **Fixed:** list rows shrank to slivers in long scroll areas, and AX5 answer text stayed at body
+    size. Both are fixed.
+29. **Open, AX5:** in Sieve the fixed-size pad and the dot field leave about one row for results,
+    and in Fill-in sentence the sentence panel takes 58 percent of the screen. Both scroll, so
+    nothing is lost, but the answer is small. Choosing between hiding the dot field at AX5 and
+    collapsing the sentence to the blank being edited is an owner choice.
+30. **Open:** the large phone is still a stand-in drawn at the folded size.
+
+Input needed (the critique's closing questions):
+- Is Sieve's dot field worth its height on the folded pose, or should it shrink to a strip once
+  results show?
+- Should Fill-in sentence also take an exact price, as the other two concepts do?
+- Which one concept, or which part of each, goes forward?

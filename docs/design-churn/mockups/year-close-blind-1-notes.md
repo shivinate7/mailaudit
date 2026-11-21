@@ -1,7 +1,10 @@
 # Year close, blind designer 1: notes
 
-Designer kind: blind. Drawn from the brief's job, facts and house rules only. Mockup:
-`year-close-blind-1.html`. Every figure, name and order on it is sample data.
+Designer kind: blind. Drawn from the brief's job, facts and house rules. No current screen, spec,
+tokens or mockups were read. The repo's own instruction file was loaded into context when the
+session started, so the run is not fully blind. Mockup: `year-close-blind-1.html`. Every figure,
+name and order on it is sample data. Each order carries a seller name. The brief does not name
+sellers, so that field is my assumption.
 
 The job, in the person's words: "Put the done stuff away, but never lose it." Facts used: an
 order is fully received or still open, it has a year, and each year has a total spent.
@@ -18,7 +21,15 @@ state (`default`, `confirm`, `closed`, `unknown`, `error`, `empty`), `t` theme (
 - `#c=sinks&s=default`, `#c=sinks&s=unknown`, `#c=sinks&s=closed`
 - Any of them with `&t=dark` or `&d=ax5`.
 
-Focus for a pick on the waiting page: `#concept-shelf`, `#concept-roll`, `#concept-sinks`.
+For a pick on the waiting page, each option has its own URL and focus. A concept shows only when
+its `c=` is in the hash, so each focus needs its own URL:
+
+- Year shelf: `year-close-blind-1.html#c=shelf`, focus `concept-shelf`
+- Receipt roll: `year-close-blind-1.html#c=roll`, focus `concept-roll`
+- Self-sorting: `year-close-blind-1.html#c=sinks`, focus `concept-sinks`
+
+"Today:" marks show parts I inferred from the brief's facts (orders, received or still open). I
+did not see them on a screen.
 
 ## Choices
 
@@ -70,17 +81,21 @@ Focus for a pick on the waiting page: `#concept-shelf`, `#concept-roll`, `#conce
    ux-unknown-is-not-empty, unknown is not empty). Total unknown: "Spent: unknown, 3 have no
    price" with a control that shows only those orders. Failed load of past years: a red-edged
    block with "Try again", and the text says the orders are not changed. No orders yet: one
-   sentence and one control. Pick: as drawn.
+   sentence and one control. Gain: a gap or a failure never reads as zero spent or no years.
+   Loss: three more states to build and test. Pick: as drawn.
 
 9. **Main act in thumb reach** (house rule ux-thumb-zone). "Put away 2026" sits in a bar at the
    bottom of Orders, above the tab bar. "Tear off 2026" sits at the dashed cut line, which the
    roll opens on. The result of the press shows in the same place (house rule
-   ux-answer-at-press). Pick: as drawn.
+   ux-answer-at-press). Gain: one hand reaches the close and sees its result. Loss: the bar
+   takes about a fifth of the folded screen from the list. Pick: as drawn.
 
 10. **Open pose: two pages, two jobs.** Year shelf: Orders left, Years right, and no tab bar,
     because both sections show. Receipt roll: past rolls left, this year's roll right. The past
     sits left of the present. Self-sorting: orders and years left, the picked year right.
-    Nothing sits on the hinge, and the close sheet stays on the left page. Pick: as drawn.
+    Nothing sits on the hinge, and the close sheet stays on the left page. Gain: daily work and
+    the record show side by side, with no tab switch. Loss: the open pose is a second layout to
+    build, not the folded one made wider. Pick: as drawn.
 
 11. **Receipt roll has no tab bar.** The house tokens say phone navigation uses a bottom tab bar.
     The roll moves by scrolling through time instead: the past above, this year, the cut line,
@@ -95,14 +110,14 @@ Focus for a pick on the waiting page: `#concept-shelf`, `#concept-roll`, `#conce
 
 13. **Self-sorting marks an order arrived with one tap** on its row, so the reviewer can watch it
     sink into its year: the next row takes its slot and the year row flashes (house guidance
-    ux-order-holds-still). The brief did not ask for a check-in act. It is there only to show the
+    ux-order-holds-still). The brief did not ask for a way to mark an order received. It is there only to show the
     concept. Pick: keep it for the demo only. Owner grant: yes (adds an act the brief did not
     name).
 
 14. **Self-sorting locks a year by rule:** the year has ended and nothing from it is still
     coming. A year with a late order stays open into the next year. Gain: no ceremony. Loss: no
-    clear moment to file taxes, and a year with one lost package never locks. Pick: as drawn,
-    and a lost package needs its own way out (not drawn).
+    clear moment to file taxes, and a year with one order that never arrives never locks. Pick:
+    as drawn, and an order that never arrives needs its own way out (not drawn).
 
 15. **Biggest text size (AX5).** Rows stack: name, then details, then the amount. The Year shelf
     bar drops its summary line at AX5 and keeps the button; the summary still shows in the list
@@ -110,7 +125,9 @@ Focus for a pick on the waiting page: `#concept-shelf`, `#concept-roll`, `#conce
     Pick: as drawn, and the build should give the tabs the system's large content viewer.
 
 16. **Haptics** (house rule ux-haptics-feel-substantial). The Put away and Tear off confirms
-    should play a success haptic. Not drawable in HTML. Pick: success haptic on the confirm only.
+    should play a success haptic. Not drawable in HTML. Gain: the close feels final in the hand.
+    Loss: none seen, beyond one more thing to test on the device. Pick: success haptic on the
+    confirm only.
 
 17. **Year shelf keeps arrived orders in Orders all year.** The clutter the job names grows from
     January to December and clears only at the close. Option: fold the arrived list to one row

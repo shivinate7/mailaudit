@@ -147,6 +147,7 @@ button { cursor: pointer; }
 .row .b { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--ink-2); }
 .row .f { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-2); }
 .row[aria-current="true"] { background: var(--accent-wash); }
+.row .fitline { color: var(--accent); font-weight: 600; }
 .chev { flex: none; width: 10px; height: 16px; color: var(--line-strong); }
 .thumb { flex: none; width: 64px; height: 46px; border-radius: 4px; overflow: hidden; }
 .thumb svg, .photo svg { display: block; width: 100%; height: 100%; }
@@ -348,7 +349,7 @@ var FRAMES = [
   { id: 'folded', dev: 'iphone-duo-folded', w: 466, h: 678, mode: 'compact', cap: 'Duo folded, 466 × 678 pt, one hand. Drawn first.' },
   { id: 'open', dev: 'iphone-duo-unfolded', w: 951, h: 669, mode: 'regular', cap: 'Duo open, 951 × 669 pt, two pages. Hinge gap x 455.5 to 495.5 carries nothing.' },
   { id: 'ax', dev: 'iphone-duo-folded-ax5', w: 466, h: 678, mode: 'compact', ax: true, cap: 'Duo folded at the largest accessibility text size (AX5). Scroll inside the frame.' },
-  { id: 'phone', dev: 'iphone-large-phone', w: 466, h: 678, mode: 'compact', phone: true, cap: 'Large phone, portrait. No size is written for it, so it is drawn at the brief’s folded size, 466 × 678 pt. Status bar height is a placeholder.' }
+  { id: 'phone', dev: 'iphone-large-phone', w: 466, h: 678, mode: 'compact', phone: true, cap: 'Large phone, portrait, at a stand-in size. No size is written for it, so it is drawn at the brief’s folded size, 466 × 678 pt. Its status bar and island are placeholders.' }
 ];
 
 /* ---------- Review state ---------- */
@@ -588,7 +589,7 @@ function shelfList(f, u, regular) {
   var rows = w.map(function (e) {
     var cur = regular && u.env === e.id;
     return '<li><button class="row" data-act="open-env" data-env="' + e.id + '" aria-current="' + cur + '"><span class="thumb">' + envSvg(e) + '</span>' +
-      '<span class="main"><span class="h">Came ' + esc(fmt(e.came)) + '</span><span class="b">' + esc(clueSummary(e)) + '</span><span class="f">' + esc(fitsSummary(e)) + '</span></span>' + chev() + '</button></li>';
+      '<span class="main"><span class="h">Came ' + esc(fmt(e.came)) + '</span><span class="b">' + esc(clueSummary(e)) + '</span><span class="f fitline">' + esc(fitsSummary(e)) + '</span></span>' + chev() + '</button></li>';
   }).join('');
   var doneRows = done.map(function (e) {
     var o = order(e.matched);
@@ -675,7 +676,7 @@ function pile(u) {
 function clueChips(e) {
   var chips = clueList(e).map(function (c) {
     var on = !e.off[c.k];
-    var x = c.type === 'card' || c.type === 'name' ? '<button class="chipx" data-act="' + (c.type === 'card' ? 'remove-card' : 'remove-name') + '" data-v="' + esc(c.v || '') + '" aria-label="Remove ' + esc(c.label) + '">' + ic('x', 12) + '</button>' : '';
+    var x = c.type === 'card' || c.type === 'name' ? '<button class="chipx" data-act="' + (c.type === 'card' ? 'remove-card' : 'remove-name') + '" data-v="' + esc(c.v || '') + '" aria-label="Remove ' + esc(c.label) + '">' + ic('x', 14) + '</button>' : '';
     return '<span class="chipgrp"><button class="chip hitpad" aria-pressed="' + on + '" data-act="toggle" data-k="' + esc(c.k) + '">' + (on ? '' : '<span class="sr">Off: </span>') + esc(c.label) + '</button>' + x + '</span>';
   }).join('');
   if (e.city) chips += '<span class="chip notec">' + ic('pin', 12) + esc(e.city) + ', a note only</span>';
@@ -691,9 +692,13 @@ function countLine(e, u) {
       (drop ? '<button class="btn quiet" data-act="toggle" data-k="' + esc(drop.k) + '">Turn off “' + esc(drop.label) + '”</button>' : '') + '</div>';
   }
   var outN = ORDERS.length - n;
-  return '<div class="boardhead"><div class="count" role="status"><span class="n"><b>' + n + '</b> of ' + ORDERS.length + ' open orders fit</span>' +
-    (n === 1 ? '<span class="sub">Tap it to check its cards, then match it.</span>' : '<span class="sub">Add a clue to rule more out. Tap any order to look closer.</span>') + '</div>' +
-    (outN ? '<button class="tbtn" data-act="hide-out" aria-pressed="' + !!u.hideOut + '">' + (u.hideOut ? 'Show ruled out (' + outN + ')' : 'Hide ruled out') + '</button>' : '') + '</div>';
+  // With three or fewer left, the ones still in are named here, so the answer is in view
+  // even when their tiles sit further down the board.
+  var left = n <= 3 ? '<div class="cluster">' + fits(e).map(function (o) {
+    return '<button class="btn quiet" data-act="open-order" data-order="' + o.id + '">Check ' + esc(o.sender) + '</button>';
+  }).join('') + '</div>' : '<span class="sub">Add a clue to rule more out. Tap any order to look closer.</span>';
+  return '<div class="stack"><div class="boardhead"><div class="count" role="status"><span class="n"><b>' + n + '</b> of ' + ORDERS.length + ' open orders fit</span></div>' +
+    (outN ? '<button class="tbtn" data-act="hide-out" aria-pressed="' + !!u.hideOut + '">' + (u.hideOut ? 'Show ruled out (' + outN + ')' : 'Hide ruled out') + '</button>' : '') + '</div>' + left + '</div>';
 }
 function sentence(list) {
   return list.map(function (g, i) { return i ? g.charAt(0).toLowerCase() + g.slice(1) : g; }).join(', ');

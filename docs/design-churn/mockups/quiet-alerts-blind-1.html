@@ -742,6 +742,17 @@ svg.g { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor;
     items.sort(function (x, y) { return x.h - y.h; });
     var prev = -99;
     items.forEach(function (it) { it.x = Math.max(it.h, prev + MARK_GAP_H, 1.5); prev = it.x; });
+    // Centre each run of pushed marks on its true times, so no mark drifts far from its hour.
+    var run = [];
+    items.concat([null]).forEach(function (it, i) {
+      if (it && run.length && it.x - run[run.length - 1].x <= MARK_GAP_H + 0.001) { run.push(it); return; }
+      if (run.length > 1) {
+        var shift = run.reduce(function (s, r) { return s + r.h - r.x; }, 0) / run.length;
+        var lo = 1.5 - run[0].x;
+        run.forEach(function (r) { r.x += Math.max(shift, lo); });
+      }
+      run = it ? [it] : [];
+    });
     var over = items.length ? items[items.length - 1].x - 22.5 : 0;
     if (over > 0) items.forEach(function (it) { it.x -= over; });
     return items.map(function (it) { return it.html.replace("left:@", "left:" + (it.x / 24 * 100).toFixed(2) + "%"); }).join("");
@@ -883,7 +894,7 @@ svg.g { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor;
     axBtn.disabled = S.d !== "folded";
     axBtn.title = S.d !== "folded" ? "The largest text is drawn on the folded pose only." : "";
     var map = { folded: "iphone-duo-folded", open: "iphone-duo-unfolded", phone: "iphone-large" };
-    var caps = { folded: "Duo folded, 466 x 678 pt", open: "Duo open, 951 x 669 pt, hinge from x 455.5 to 495.5", phone: "Large phone: no size written; drawn at 466 x 678 pt, drag the corner to resize" };
+    var caps = { folded: "Duo folded, 466 x 678 pt", open: "Duo open, 951 x 669 pt, hinge from x 455.5 to 495.5", phone: "Large phone: stand-in size 466 x 678 pt (no size written); drag the corner to resize" };
     ["quiet-line", "rehearsal"].forEach(function (c) {
       var sec = document.getElementById("concept-" + c);
       sec.hidden = S.hide.indexOf(c) >= 0;

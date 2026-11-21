@@ -80,7 +80,7 @@ button { font: inherit; color: inherit; }
   --hl: 53px; --hl-l: 62px; --bd: 53px; --bd-l: 62px; --co: 51px; --co-l: 60px; --sh: 49px; --sh-l: 58px;
   --fn: 44px; --fn-l: 52px; --c1: 43px; --c1-l: 51px; --c2: 40px; --c2-l: 48px;
 }
-.page-l, .page-r { position: absolute; top: 0; bottom: 0; width: 455.5px; }
+.page-l, .page-r { position: absolute; top: 0; bottom: 0; width: 455.5px; --tile-w: 28px; --tile-h: 40px; }
 .page-l { left: 0; } .page-r { left: 495.5px; }
 .hinge { position: absolute; top: 0; bottom: 0; left: 455.5px; width: 40px; background: var(--hinge); }
 .screen {
@@ -246,7 +246,7 @@ body.labels .device.ax5 [data-new]::after { display: none; }
     <div class="ctl"><span class="ctl-label" id="ls">State</span><div class="seg" id="stateCtl" role="group" aria-labelledby="ls"></div></div>
     <div class="ctl"><span class="ctl-label" id="lt">Theme</span><div class="seg" id="themeCtl" role="group" aria-labelledby="lt"></div></div>
     <div class="ctl"><span class="ctl-label" id="ld">Devices</span><div class="seg" id="devCtl" role="group" aria-labelledby="ld"></div></div>
-    <div class="ctl"><span class="ctl-label">Phone size (pt), not written in the brief</span>
+    <div class="ctl"><span class="ctl-label">Phone size (pt), a stand-in</span>
       <div class="seg"><input class="num" id="pw" type="number" min="320" max="520" step="1" aria-label="Phone width in points"><input class="num" id="ph" type="number" min="560" max="1000" step="1" aria-label="Phone height in points"></div></div>
     <div class="ctl"><span class="ctl-label" id="ll">Labels</span><div class="seg" id="labelCtl" role="group" aria-labelledby="ll"></div></div>
   </div>
@@ -346,7 +346,7 @@ function frames() {
   const all = [
     { id: 'folded', pose: 'one', w: 466, h: 678, cap: 'Duo, folded: 466 x 678 pt, one screen (brief size).', dev: 'iphone-duo-folded' },
     { id: 'open', pose: 'open', w: 951, h: 669, cap: 'Duo, open: 951 x 669 pt, two pages, hinge x 455.5 to 495.5 (brief size). Nothing crosses the hinge.', dev: 'iphone-duo-unfolded' },
-    { id: 'phone', pose: 'one', w: S.pw, h: S.ph, cap: 'Large phone: ' + S.pw + ' x ' + S.ph + ' pt. The brief writes no size; this is a placeholder you can change above.', dev: 'phone' },
+    { id: 'phone', pose: 'one', w: S.pw, h: S.ph, cap: 'Large phone: ' + S.pw + ' x ' + S.ph + ' pt, a stand-in: the brief writes no size. Change it above.', dev: 'phone' },
     { id: 'ax5', pose: 'one', w: 466, h: 678, ax5: true, cap: 'Duo, folded, at AX5, the largest accessibility text size. The screen scrolls.', dev: 'iphone-duo-folded-ax5' }
   ];
   return S.d === 'all' ? all : all.filter(f => f.id === S.d);
@@ -513,7 +513,10 @@ function exceptions(fr) {
     return wrap('<div class="scroll">' + inlineNav(DTITLE[u.push], '<button class="navbtn" data-act="back"><span class="chev" style="transform:rotate(225deg);border-color:var(--ink)"></span>' + title + '</button>') +
       '<div class="sec">' + detail(u.push, d) + '</div></div>');
   }
-  return wrap('<div class="scroll">' + largeNav(title, d.range) + verdict(d, f, null, fr.id) + xTiles(d, f, null) + '</div>' + weekSwitch(u));
+  /* At AX5 a pinned switch would take a fifth of the screen, so it scrolls with the content. */
+  return fr.ax5
+    ? wrap('<div class="scroll">' + largeNav(title, d.range) + verdict(d, f, null, fr.id) + xTiles(d, f, null) + weekSwitch(u) + '</div>')
+    : wrap('<div class="scroll">' + largeNav(title, d.range) + verdict(d, f, null, fr.id) + xTiles(d, f, null) + '</div>' + weekSwitch(u));
 }
 
 /* Concept: Mail slot */
@@ -542,29 +545,31 @@ function pileCame(d, f, state, width) {
     const list = d.came.slice().sort((a, b) => b.day - a.day);
     return '<div class="pile pile-came open"><div class="pile-h"><h3>Came</h3><button class="navbtn" data-act="pile" data-k="">Done</button></div>' + dayStrip(d, f) + '<div class="list">' + list.map(p => pkRow(p, 'came')).join('') + '</div></div>';
   }
-  /* Tiles fill from the bottom, 24 pt a column and 32 pt a row; the dashed line sits where last week's count, same days, reached. */
-  const per = Math.max(1, Math.floor((width - 32 + 4) / 24));
+  /* Tiles fill from the bottom, one tile plus a 4 pt gap a step; the dashed line sits where last week's count, same days, reached. */
+  const onPage = width === 455.5; /* a page of the open Duo draws larger tiles (.page-l, .page-r) */
+  const tw = onPage ? 28 : 20, th = onPage ? 40 : 28;
+  const per = Math.max(1, Math.floor((width - 32 + 4) / (tw + 4)));
   const ghostRows = Math.ceil(d.prev / per);
-  const ghost = '<div class="ghost" style="bottom:' + (ghostRows * 32 - 2) + 'px" data-new="last week, same days"><span>By now last week: ' + d.prev + '</span></div>';
+  const ghost = '<div class="ghost" style="bottom:' + (ghostRows * (th + 4) - 2) + 'px" data-new="last week, same days"><span>By now last week: ' + d.prev + '</span></div>';
   return '<button class="pile pile-came" data-act="pile" data-k="came" aria-label="Came: ' + f.cameCards + ' cards, ' + diffText(f, d) + '. Show the list." data-new="cards that came">' + head +
     '<p class="pile-note">' + diffText(f, d).replace(/^./, c => c.toUpperCase()) + '</p><div class="tiles" aria-hidden="true">' + tilesHtml(d.came, 'came') + ghost + '</div></button>';
 }
 function slot(fr) {
   const u = ui(fr.id), st = statusOf(fr.id), d = dataFor(st, 'this');
   if (d.status !== 'ok') {
-    const body = wrap(inlineNav(d.short) + '<div class="scroll">' + special(d.status, 'slot', fr.id) + '</div>');
+    const body = wrap(inlineNav(d.label) + '<div class="scroll">' + special(d.status, 'slot', fr.id) + '</div>');
     return fr.pose === 'open' ? [body, wrap(inlineNav('') + '<div class="scroll"></div>')] : body;
   }
   const f = facts(d);
   if (fr.pose === 'open') {
     const left = pileOut(d, f, u.open === 'out' ? 'open' : 'pile', fr.id);
     const right = pileCame(d, f, u.open === 'came' ? 'open' : 'pile', 455.5);
-    return [wrap(inlineNav(d.short) + '<div class="piles">' + left + '</div>'), wrap(inlineNav('So far this week') + '<div class="piles">' + right + '</div>')];
+    return [wrap(inlineNav(d.label) + '<div class="piles">' + left + '</div>'), wrap(inlineNav(d.short) + '<div class="piles">' + right + '</div>')];
   }
   const o = u.open === 'out' ? 'open' : u.open === 'came' ? 'strip' : 'pile';
   const c = u.open === 'came' ? 'open' : u.open === 'out' ? 'strip' : 'pile';
   const inner = '<div class="piles">' + pileOut(d, f, o, fr.id) + '<div class="slotbar" aria-hidden="true"' + (u.open ? '' : ' data-new="the slot"') + '></div>' + pileCame(d, f, c, fr.w) + '</div>';
-  return wrap(inlineNav(d.short) + (fr.ax5 ? '<div class="scroll">' + inner + '</div>' : inner));
+  return wrap(inlineNav(d.label) + (fr.ax5 ? '<div class="scroll">' + inner + '</div>' : inner));
 }
 
 /* Render */

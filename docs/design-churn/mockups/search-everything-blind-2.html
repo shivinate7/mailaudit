@@ -171,7 +171,8 @@ mark { background: var(--hit); color: var(--hit-text); border-radius: 2px; paddi
 .band.on { border-color: var(--accent); background: var(--surface-2); }
 .band canvas { display: block; width: 100%; }
 .bm { display: flex; flex-direction: column; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); padding-inline-start: var(--space-1); }
-.bm .bc { color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.bm .bc { display: inline-flex; align-items: center; gap: 3px; color: var(--accent); font-weight: 600; font-variant-numeric: tabular-nums; }
+.mk.lit { width: 7px; height: 7px; background: var(--accent); }
 .screen[data-ax="5"] .band { grid-template-columns: 1fr; }
 .screen[data-ax="5"] .bm { flex-direction: row; gap: var(--space-3); }
 .loupe { position: absolute; bottom: calc(100% + 4px); left: 0; z-index: 3; padding: var(--space-1) var(--space-2); border-radius: var(--radius); background: var(--text); color: var(--surface); font-size: var(--t-foot); line-height: var(--l-foot); white-space: nowrap; pointer-events: none; }
@@ -237,7 +238,7 @@ mark { background: var(--hit); color: var(--hit-text); border-radius: 2px; paddi
     </div></div>
   </figure>
   <figure class="device">
-    <figcaption><b>Large phone.</b> Size not written. Drawn at the folded size, 466 × 678 pt. Drag the corner to try other widths.</figcaption>
+    <figcaption><b>Large phone, stand-in size.</b> No size is written for it. Drawn at the folded size, 466 × 678 pt, until the owner names one. Drag the corner to try other widths.</figcaption>
     <div class="scroller"><div class="screen pose-phone" data-device="iphone-large" data-mode="phone"></div></div>
   </figure>
   <figure class="device">
@@ -503,7 +504,7 @@ CONCEPTS.map = {
         const ls = monthLines(m); const lit = hits ? ls.filter(l => hits.has(l.id)).length : null; const wait = ls.filter(l => !l.arr).length;
         const label = MONTHS[m] + ': ' + fmtInt(ls.length) + ' cards, ' + (lit !== null ? fmtInt(lit) + ' match, ' : '') + fmtInt(wait) + ' not arrived. ' + (state.month === m ? 'Listed below. Tap to list all months.' : 'Tap to list this month.');
         return '<button type="button" class="band' + (state.month === m ? ' on' : '') + '" data-month="' + m + '" aria-pressed="' + (state.month === m) + '" aria-label="' + label + '">' +
-          '<span class="bm"><span>' + MONTHS[m] + '</span><span class="bc">' + (lit !== null ? fmtInt(lit) : '') + '</span></span><canvas aria-hidden="true"></canvas><span class="loupe" hidden></span></button>';
+          '<span class="bm"><span>' + MONTHS[m] + '</span><span class="bc">' + (lit !== null ? '<span class="mk lit" aria-hidden="true"></span>' + fmtInt(lit) : '') + '</span></span><canvas aria-hidden="true"></canvas><span class="loupe" hidden></span></button>';
       }).join('') + '</div>';
   },
   readout(app) {

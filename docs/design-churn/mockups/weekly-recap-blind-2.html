@@ -367,6 +367,9 @@ details.machine summary { min-height: 44px; display: flex; align-items: center; 
   display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4); min-height: 44px;
 }
 button.tile { cursor: pointer; }
+.tile-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+.tile-head .chev { font-size: var(--t-foot); }
+.cmp + .t-foot, .row-text > .t-foot { display: block; }
 button.tile:active, .week-row:active { background: var(--surface-sunk); }
 
 @media (prefers-reduced-motion: no-preference) {
@@ -425,7 +428,7 @@ button.tile:active, .week-row:active { background: var(--surface-sunk); }
       <div class="frame" id="f-open" data-device="iphone-duo-unfolded" data-pose="open" role="region" aria-label="Duo, open"></div></div>
     <div class="frame-wrap" id="w-f-ax5"><p class="frame-cap">Duo, folded, largest accessibility text (AX5). The page scrolls.</p>
       <div class="frame" id="f-ax5" data-device="iphone-duo-folded-ax5" data-pose="folded" role="region" aria-label="Duo, folded, largest text"></div></div>
-    <div class="frame-wrap" id="w-f-phone"><p class="frame-cap">Large phone, portrait. No size is written for this device, so the frame starts at the folded Duo size. Drag its corner to resize it.</p>
+    <div class="frame-wrap" id="w-f-phone"><p class="frame-cap">Large phone, portrait. Stand-in size: no size is written for this device, so the frame starts at the folded Duo size (466 x 678). Drag its corner to resize it.</p>
       <div class="frame" id="f-phone" data-device="iphone-large-portrait" data-pose="phone" role="region" aria-label="Large phone"></div></div>
   </div>
 </div>
@@ -599,7 +602,7 @@ button.tile:active, .week-row:active { background: var(--surface-sunk); }
     var older = r.wi < WEEKS.length - 1, newer = r.wi > 0;
     return '<div class="toolbar" role="toolbar" aria-label="Week">' +
       '<button type="button" class="plain-btn" data-act="week" data-dir="1"' + (older ? "" : ' disabled title="No earlier week has data" aria-label="Earlier week. None: no earlier week has data"') + '>‹ Earlier</button>' +
-      '<p class="mid t-head num" aria-live="polite">' + esc(label) + '</p>' +
+      (label ? '<p class="mid t-head num" aria-live="polite">' + esc(label) + '</p>' : '<span class="mid"></span>') +
       '<button type="button" class="plain-btn end" data-act="week" data-dir="-1"' + (newer ? "" : ' disabled title="This is the newest week" aria-label="Later week. None: this is the newest week"') + '>Later ›</button>' +
       '</div>';
   }
@@ -654,10 +657,14 @@ button.tile:active, .week-row:active { background: var(--surface-sunk); }
       var extra = "";
       if (row.extra) {
         extra = r.cardsPrev === null
-          ? '<p class="t-foot muted">No earlier week to compare</p>'
+          ? '<span class="t-foot muted">No earlier week to compare</span>'
           : '<span class="cmp" aria-hidden="true"><span class="bar now" style="width:' + (100 * r.cardsIn / max) + '%"></span>' +
             '<span class="bar prev" style="width:' + (100 * r.cardsPrev / max) + '%"></span></span>' +
-            '<p class="t-foot muted num">' + r.cardsPrev + ' the week before</p>';
+            '<span class="t-foot muted num">' + r.cardsPrev + ' the week before</span>';
+      }
+      if (row.k === "late" && !r.late.length) {
+        return '<li><div class="row static">' + glyph(row.g) + '<span class="row-body"><span class="row-text"><span class="t-head">' + row.label + '</span>' +
+          '<span class="t-sub muted">' + row.main + '</span></span></span></div></li>';
       }
       return '<li><button type="button" class="row" data-act="open" data-k="' + row.k + '"' + (cur ? ' aria-current="true"' : "") + '>' + glyph(row.g) +
         '<span class="row-body"><span class="row-text"><span class="t-head' + (row.k === "late" && r.late.length ? " c-late" : "") + '">' + row.label + '</span>' +
@@ -683,7 +690,7 @@ button.tile:active, .week-row:active { background: var(--surface-sunk); }
       '<div class="stack-lg" data-pick="summary">' +
       '<p class="verdict t-title2">' + verdict(r) + '</p>' +
       '<div class="inset">' + summaryRows(r, u, open) + '</div></div></div>' +
-      weekToolbar(r, null, range(r.start));
+      weekToolbar(r, null, "");
   }
 
   function renderSummary(fr, data) {
@@ -860,7 +867,8 @@ button.tile:active, .week-row:active { background: var(--surface-sunk); }
   }
   function excNumbers(r, interactive) {
     function tile(k, label, main, sub, cls) {
-      var inner = '<span class="t-foot muted">' + label + '</span><span class="t-title3 num' + (cls ? " " + cls : "") + '">' + main + '</span>' + (sub ? '<span class="t-sub muted num">' + sub + '</span>' : "");
+      var tap = k && interactive;
+      var inner = '<span class="tile-head"><span class="t-foot muted">' + label + '</span>' + (tap ? '<span class="chev" aria-hidden="true">›</span>' : "") + '</span><span class="t-title3 num' + (cls ? " " + cls : "") + '">' + main + '</span>' + (sub ? '<span class="t-sub muted num">' + sub + '</span>' : "");
       return k && interactive ? '<button type="button" class="tile" data-act="open" data-k="' + k + '">' + inner + '</button>' : '<div class="tile">' + inner + '</div>';
     }
     return '<div class="tiles">' +

@@ -112,12 +112,13 @@ button { font: inherit; color: inherit; }
 .concept-tab { display: inline-flex; align-items: center; border-radius: 999px; border: 1px solid color-mix(in srgb, var(--page-ink) 30%, transparent); }
 .concept-tab .chip { border: 0; }
 .concept-tab .hide { border: 0; background: transparent; min-width: 36px; min-height: 36px; border-radius: 999px; cursor: pointer; color: var(--page-ink-2); }
-.press-note { color: var(--page-ink-2); min-height: 20px; }
+.press-note { color: var(--page-ink-2); min-height: 20px; margin: 0; }
 .stage {
   display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start;
   padding: var(--space-4); max-width: 100%; overflow-x: auto;
 }
 figure.device { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+figure.device[hidden] { display: none; }
 figure.device figcaption { color: var(--page-ink-2); }
 .frame {
   position: relative; overflow: hidden; border-radius: 20px;
@@ -206,6 +207,15 @@ ul.rows { list-style: none; margin: 0; padding: 0 var(--space-4) var(--space-4);
   width: var(--hit); height: var(--hit); border-radius: 999px; border: 0; background: transparent;
   display: grid; place-items: center; cursor: pointer; padding: 0;
 }
+/* AX5: the whole screen scrolls as one column, so no fixed header can fill it. */
+.frame.ax5 { contain: paint; }
+.ax5 .screen { overflow-y: auto; overscroll-behavior: contain; }
+.ax5 .screen > .scroll, .ax5 .screen > .tape-wrap { flex: none; overflow: visible; }
+.ax5 .tape, .ax5 .tray-list { flex: none; overflow: visible; }
+.ax5 .tray.folded { height: auto; }
+.ax5 .tabbar { position: sticky; bottom: var(--space-2); left: auto; right: auto; margin: 0 var(--space-4); flex: none; }
+.ax5 .pad-tab { display: none; }
+.ax5 .scrim, .ax5 .sheet, .ax5 .home-ind { position: fixed; }
 .ax5 .row { grid-template-columns: 1fr; }
 .ax5 .strip { grid-template-columns: 1fr; justify-items: start; }
 .ax5 .row .mark { justify-self: start; }
@@ -284,7 +294,7 @@ ul.rows { list-style: none; margin: 0; padding: 0 var(--space-4) var(--space-4);
 .line .why { display: block; font-size: var(--t-footnote); line-height: var(--l-footnote); color: var(--ink-2); }
 .line.from-other { background: var(--other-bg); margin-left: var(--space-8); width: calc(100% - var(--space-8)); }
 .line.is-alert { background: var(--alert-bg); }
-.line-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: 0 var(--space-3) var(--space-2) calc(4.6em + var(--glyph) + var(--space-6)); }
+.line-acts { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-3) var(--space-2) var(--space-8); }
 .ax5 .line { grid-template-columns: var(--glyph) 1fr; }
 .ax5 .line .time { grid-column: 2; grid-row: 2; }
 .ax5 .line-acts { padding-left: var(--space-3); }
@@ -323,12 +333,15 @@ ul.rows { list-style: none; margin: 0; padding: 0 var(--space-4) var(--space-4);
 .tray-search { padding: var(--space-2) var(--space-4) var(--space-3); }
 
 /* "New:" labels: dashed, on the folded frame only; one press hides them all. */
-[data-new] { outline: 1.5px dashed var(--label); outline-offset: 2px; position: relative; }
+[data-new] { outline: 1.5px dashed var(--label); outline-offset: 2px; }
+.strip[data-new], .mark[data-new], .tray[data-new] { position: relative; }
 [data-new]::after {
   content: "New: " attr(data-new); position: absolute; top: -10px; right: 6px; z-index: 9;
   font: 600 10px/14px -apple-system, system-ui, sans-serif; color: var(--label);
   background: var(--bg); padding: 0 4px; border: 1px dashed var(--label); border-radius: 4px; pointer-events: none;
+  white-space: nowrap;
 }
+.perf[data-new]::after { top: 4px; }
 body.no-labels [data-new] { outline: none; }
 body.no-labels [data-new]::after { display: none; }
 
@@ -372,7 +385,12 @@ body.no-labels [data-new]::after { display: none; }
   </div>
 </header>
 
-<main class="stage" id="stage"></main>
+<main class="stage" id="stage">
+  <figure class="device" data-device="iphone-duo-folded"><figcaption>Duo, folded, 466 x 678 pt</figcaption><div class="frame" style="width:466px;height:678px"></div></figure>
+  <figure class="device" data-device="iphone-duo-unfolded"><figcaption>Duo, open, 951 x 669 pt, hinge x 455.5 to 495.5</figcaption><div class="frame open" style="width:951px;height:669px"></div></figure>
+  <figure class="device" data-device="iphone-large"><figcaption>Large phone, 430 x 932 pt, a stand-in size (none written)</figcaption><div class="frame" style="width:430px;height:932px"></div></figure>
+  <figure class="device" data-device="iphone-duo-folded-ax5"><figcaption>Duo, folded, text size AX5</figcaption><div class="frame ax5" style="width:466px;height:678px"></div></figure>
+</main>
 
 <script>
 (function () {
@@ -637,7 +655,7 @@ function pocketMail(f) {
 function pocketRow(p, f, first) {
   const st = stateOf(p.id); const r = S.rec[p.id];
   let when = 'Due ' + p.due;
-  if (st === 'conflict') when = 'Your phones disagree';
+  if (st === 'conflict') { const c = S.conflicts.find(x => x.pid === p.id); when = `You ${c.mine}, other phone ${c.theirs}`; }
   else if (r) when = 'Today ' + r.t + (r.by === 'other' ? ', other phone' : '');
   const label = r ? `Take back ${p.sender}` : `Mark ${p.sender} received`;
   const act = st === 'conflict' ? 'review' : 'toggle';
@@ -743,7 +761,8 @@ function renderTape(f) {
   if (f.layout === 'open') {
     return `<div class="page">${statusBar()}${tapeHead()}<div class="tape-wrap">${tapeList(f)}</div><div class="home-ind"></div></div><div class="hinge" aria-hidden="true"></div><div class="page">${statusBar()}<div class="tape-wrap">${tray(f, true) || '<div class="empty"><p>Expected mail shows here once the list loads.</p></div>'}</div><div class="home-ind"></div></div>`;
   }
-  return `<div class="screen">${statusBar()}${tapeHead()}<div class="tape-wrap">${tapeList(f)}</div>${tray(f, false)}<div class="home-ind"></div></div>`;
+  const ax = f.ax5 ? ` data-scroll="ts-${f.idx}" data-bottom="1"` : '';
+  return `<div class="screen"${ax}>${statusBar()}${tapeHead()}<div class="tape-wrap">${tapeList(f)}</div>${tray(f, false)}<div class="home-ind"></div></div>`;
 }
 
 /* ---------- Page ---------- */
@@ -771,13 +790,15 @@ function render() {
   if (S.theme === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', S.theme);
   renderControls();
   const vc = visibleConcepts();
-  if (!vc.length) { stage.innerHTML = '<p class="hidden-note">Every concept is hidden. Press Show hidden to bring them back.</p>'; return; }
+  const allHidden = document.getElementById('all-hidden');
+  if (allHidden) allHidden.remove();
+  stage.querySelectorAll('figure.device').forEach(fig => { fig.hidden = !vc.length; });
+  if (!vc.length) { stage.insertAdjacentHTML('beforeend', '<p class="hidden-note" id="all-hidden">Every concept is hidden. Press Show hidden to bring them back.</p>'); return; }
   if (S.hidden.has(S.concept)) S.concept = vc[0].key;
   const fn = S.concept === 'pocket' ? renderPocket : renderTape;
-  stage.innerHTML = FRAMES.map((f, idx) => {
-    const ff = { ...f, idx };
-    return `<figure class="device" data-device="${f.dev}"><figcaption>${f.cap}</figcaption><div class="frame ${f.layout === 'open' ? 'open' : ''} ${f.ax5 ? 'ax5' : ''}" style="width:${f.w}px;height:${f.h}px">${fn(ff)}</div></figure>`;
-  }).join('');
+  stage.querySelectorAll('figure.device').forEach((fig, idx) => {
+    fig.querySelector('.frame').innerHTML = fn({ ...FRAMES[idx], idx });
+  });
   stage.querySelectorAll('[data-scroll]').forEach(el => {
     if (el.dataset.bottom) el.scrollTop = el.scrollHeight; else if (keep[el.dataset.scroll] != null) el.scrollTop = keep[el.dataset.scroll];
   });

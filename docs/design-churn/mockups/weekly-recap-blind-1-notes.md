@@ -91,12 +91,22 @@ Focus ids, for an owner pick: `letter-sentence`, `exceptions-verdict`, `slot-pil
 15. **No tab bar drawn.** tokens.md says a phone uses a bottom tab bar, but I do not know the app's
     other sections. Pick: draw the recap as one screen. Owner grant: yes, on where the recap lives.
 
+## Critique pass (impeccable critique, design review only, native platform)
+
+- Fixed: Mail slot nav title wrapped to three lines at AX5. It now reads "This week".
+- Fixed: Exceptions at AX5 pinned a stacked week switch that took about a fifth of the screen.
+  It now scrolls with the content.
+- Fixed: Mail slot on the open Duo left most of each page empty. Tiles there are now larger.
+- Open: Letter on the folded pose puts its figures in the top half, away from the thumb.
+- Open: Letter's figures show they can be tapped only by an underline and one hint line.
+- Open: a week with hundreds of cards needs a denser tile in Mail slot. Not drawn.
+
 ## Sizes and sources
 
 - Duo folded 466 x 678 pt and open 951 x 669 pt, hinge x 455.5 to 495.5: from the brief.
   `layout.py devices` printed "unknown" for this repo.
-- Large phone: the brief writes no size. The frame is 420 x 900 pt, a placeholder of mine, with
-  width and height inputs on the page. Not a device spec.
+- Large phone: the brief writes no size. The frame is 420 x 900 pt, a stand-in, with width and
+  height inputs on the page. Not a device spec.
 - Status bar inset 28 pt and home bar inset 20 pt: my placeholders. No page I read gives a Duo
   inset.
 - Apple pages read 2026-11-21, each answered 200 (JSON under `tutorials/data`):

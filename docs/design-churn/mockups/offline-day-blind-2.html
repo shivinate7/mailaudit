@@ -106,6 +106,7 @@ button { font: inherit; color: inherit; }
 .home-ind { position: absolute; left: 0; right: 0; bottom: 0; height: max(20px, env(safe-area-inset-bottom, 0px)); display: flex; align-items: center; justify-content: center; pointer-events: none; }
 .home-ind::after { content: ""; width: 128px; height: 4px; border-radius: 4px; background: var(--ink); opacity: .8; }
 .scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: 0 var(--space-4) calc(var(--bottom-room, 96px)); display: flex; flex-direction: column; gap: var(--space-4); }
+.scroll > * { flex-shrink: 0; }
 .ax .scroll { --bottom-room: 112px; }
 .large { font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; margin: 0; padding-top: var(--space-2); }
 .headline { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
@@ -161,6 +162,8 @@ details.server code { font-family: ui-monospace, Menlo, monospace; }
 .legend span { display: inline-flex; gap: var(--space-2); align-items: center; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--ink-2); }
 .legend .st { width: 20px; height: 20px; }
 .ax .legend .st { width: 40px; height: 40px; }
+/* At AX5 the legend would fill the first screen, so the marks come first. */
+.ax .legend { order: 99; }
 .empty { background: var(--raised); border-radius: var(--radius); padding: var(--space-6) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
 .skel { height: 72px; border-bottom: 1px solid var(--line); display: flex; flex-direction: column; justify-content: center; gap: var(--space-2); padding: 0 var(--space-4); }
 .skel i { display: block; height: 12px; border-radius: 4px; background: var(--line); }
@@ -182,7 +185,7 @@ details.server code { font-family: ui-monospace, Menlo, monospace; }
 .colhead { position: sticky; top: 0; z-index: 2; background: var(--surface); display: grid; grid-template-columns: 1fr var(--cell) var(--cell); gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); align-items: end; }
 .colhead .h { font-size: var(--t-cap); line-height: var(--l-cap); color: var(--ink-2); text-align: center; font-weight: 600; }
 .colhead .h small { display: block; font-weight: 400; }
-.ax .colhead { grid-template-columns: 1fr 1fr; padding-left: var(--space-4); }
+.ax .colhead { grid-template-columns: 1fr 1fr; padding-left: var(--space-4); position: static; }
 .ax .colhead .first { display: none; }
 .row2 { display: grid; grid-template-columns: 1fr var(--cell) var(--cell); gap: var(--space-2); align-items: center; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); min-height: 72px; background: var(--raised); }
 .row2.diff { background: var(--held-bg); box-shadow: inset 4px 0 0 var(--held); border-left: 4px solid transparent; }
@@ -198,13 +201,15 @@ details.server code { font-family: ui-monospace, Menlo, monospace; }
 .cellro .st { opacity: .85; }
 .diffbar { position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(max(20px, env(safe-area-inset-bottom, 0px)) + var(--space-1)); background: var(--raised); border: 1px solid var(--line); border-radius: 20px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); display: flex; align-items: center; gap: var(--space-3); min-height: 64px; }
 .diffbar .msg { flex: 1; min-width: 0; }
-.ax .diffbar { flex-direction: column; align-items: stretch; border-radius: 16px; padding: var(--space-3); }
+.ax .diffbar { flex-direction: column; align-items: stretch; border-radius: 16px; padding: var(--space-2); }
+.ax .diffbar .msg { display: none; }
 .ax .scroll.c2 { --bottom-room: 360px; }
 .toggle { min-height: 44px; border-radius: 22px; border: 1px solid var(--line); background: var(--surface); padding: 0 var(--space-4); display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600; cursor: pointer; color: var(--ink); white-space: nowrap; }
 .toggle[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
 .ax .toggle { min-height: 64px; white-space: normal; justify-content: center; }
 .list2 { display: flex; flex-direction: column; border-radius: var(--radius); overflow: hidden; }
-.pagehead { min-height: 132px; display: flex; flex-direction: column; justify-content: flex-end; gap: var(--space-1); }
+/* Both open pages share one header height, so their rows line up across the hinge. */
+.pagehead { height: 140px; overflow: hidden; display: flex; flex-direction: column; justify-content: flex-start; gap: var(--space-1); }
 .rowR { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: center; padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); min-height: 72px; height: 72px; background: var(--raised); }
 .rowR.diff { background: var(--surface); border-left: 4px dashed var(--held); }
 .rowR.clash { background: var(--clash-bg); border-left: 4px solid var(--clash); }
@@ -213,6 +218,7 @@ details.server code { font-family: ui-monospace, Menlo, monospace; }
 /* Sheet */
 .scrimwrap { position: absolute; inset: 0; background: var(--scrim); display: flex; align-items: flex-end; z-index: 5; }
 .sheet { background: var(--raised); width: 100%; border-radius: 16px 16px 0 0; padding: var(--space-2) var(--space-4) calc(max(20px, env(safe-area-inset-bottom, 0px)) + var(--space-4)); display: flex; flex-direction: column; gap: var(--space-4); max-height: 92%; overflow-y: auto; }
+.sheet > * { flex-shrink: 0; }
 .sheet .bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: 44px; }
 .sheet .bar .t { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; text-align: center; }
 .ax .sheet .bar { grid-template-columns: 1fr; }
@@ -223,7 +229,7 @@ details.server code { font-family: ui-monospace, Menlo, monospace; }
 
 /* "New:" labels (designer marks, toggled from the page chrome) */
 body.labels [data-new] { outline: 2px dashed var(--act); outline-offset: 2px; position: relative; }
-body.labels [data-new]::before { content: attr(data-new); position: absolute; top: -10px; right: 8px; z-index: 4; background: var(--chrome); color: var(--act); border: 1px dashed var(--act); border-radius: 4px; padding: 0 6px; font-size: 11px; line-height: 16px; font-weight: 600; font-family: -apple-system, system-ui, sans-serif; letter-spacing: 0; }
+body.labels [data-new]::before { content: attr(data-new); position: absolute; top: -10px; left: 8px; z-index: 4; background: var(--chrome); color: var(--act); border: 1px dashed var(--act); border-radius: 4px; padding: 0 6px; font-size: 11px; line-height: 16px; font-weight: 600; font-family: -apple-system, system-ui, sans-serif; letter-spacing: 0; }
 
 @media (forced-colors: active) {
   .row2.diff, .row2.clash, .rowR.diff, .rowR.clash, .truth { border-left-color: CanvasText; }
@@ -241,7 +247,11 @@ body.labels [data-new]::before { content: attr(data-new); position: absolute; to
   <div class="ctl-row" id="sims"><span class="lbl">Sample events</span></div>
   <div class="ctl-row" id="looks"><span class="lbl">Look</span></div>
 </header>
-<div class="frames-wrap"><div class="frames" id="frames"></div></div>
+<div class="frames-wrap"><div class="frames" id="frames">
+  <!-- Static shells, replaced by the script. Without script they say what is missing. -->
+  <div class="device folded" data-device="iphone-duo-folded"><div class="app"><div class="sb"></div><div class="scroll"><p class="body">This mockup draws its frames with script. Turn script on to see them.</p></div></div></div>
+  <div class="device open" data-device="iphone-duo-unfolded"><div class="spread"><div class="pagebox"><div class="app"></div></div><div class="hinge"></div><div class="pagebox"><div class="app"></div></div></div></div>
+</div></div>
 
 <script>
 (function () {
@@ -552,7 +562,8 @@ body.labels [data-new]::before { content: attr(data-new); position: absolute; to
     var msg = '<div class="msg stack-1"><div class="headline" style="font-size:var(--t-sub);line-height:var(--l-sub)">' + t.head + '</div>' + (t.act === 'retry' || t.act === 'check' ? '' : '') + '</div>';
     var right = '';
     if (side !== 'right') {
-      right = n ? '<button class="toggle" data-act="onlydiff" aria-pressed="' + (S.onlyDiff ? 'true' : 'false') + '">' + stamp('held') + plural(n, 'differs', 'differ') + '</button>' : '<span class="sub">Both copies match.</span>';
+      right = n ? '<button class="toggle" data-act="onlydiff" aria-pressed="' + (S.onlyDiff ? 'true' : 'false') + '">' + stamp(clashIds().length ? 'clash' : 'held') + plural(n, 'differs', 'differ') + '</button>' : '<span class="sub">Both copies match.</span>';
+      if (t.act === 'review') right = '<button class="btn" data-act="sheet" data-id="' + clashIds()[0] + '">Choose</button>' + right;
     }
     if (side === 'right' || dev !== 'open') {
       if (t.act === 'retry') right = '<button class="btn quiet" data-act="retry">Try again</button>' + (side === 'right' ? '' : right);
@@ -566,7 +577,7 @@ body.labels [data-new]::before { content: attr(data-new); position: absolute; to
     if (sb) return appShell(dev, '<div class="scroll c2">' + h + sb + '</div>' + (S.loading ? '' : c2Bar(dev)));
     var head = '<div class="colhead" role="row"' + (dev === 'folded' ? ' data-new="New: two copies side by side"' : '') + '><span class="first"></span><span class="h" role="columnheader">This phone</span><span class="h" role="columnheader">Shared copy<small>' + S.copyAt + '</small></span></div>';
     var t = status();
-    var extra = (t.server ? serverDisclosure() : '') + (t.tone === 'need' || t.tone === 'off' || t.tone === 'ok' ? '<div class="sub">' + t.body + '</div>' : '');
+    var extra = (t.server ? serverDisclosure() : '') + (t.tone === 'need' || t.tone === 'off' || t.tone === 'ok' ? '<div class="sub">' + (dev === 'ax5' ? t.head + ' ' : '') + t.body + '</div>' : '');
     return appShell(dev, '<div class="scroll c2">' + h + '<div class="stack-1">' + extra + '</div><div>' + head + c2Rows(dev) + '</div></div>' + c2Bar(dev));
   }
   function c2Open() {
@@ -640,7 +651,7 @@ body.labels [data-new]::before { content: attr(data-new); position: absolute; to
     f += '<figure class="frame-fig"><div class="device folded" data-device="iphone-duo-folded" data-frame id="opt-' + S.c + '">' + single('folded') + '</div><figcaption><b>' + name + ', Duo folded.</b> 466 x 678 pt, from the brief.</figcaption></figure>';
     f += '<figure class="frame-fig"><div class="device open" data-device="iphone-duo-unfolded" data-frame>' + openPose() + '</div><figcaption><b>' + name + ', Duo open.</b> 951 x 669 pt with the hinge gap from x 455.5 to 495.5, from the brief. Nothing crosses the gap.</figcaption></figure>';
     f += '<figure class="frame-fig"><div class="device phone" data-device="iphone-regular" data-frame' + (phoneSize ? ' style="width:' + phoneSize[0] + ';height:' + phoneSize[1] + '"' : '') + '>' + single('phone') + '</div><figcaption><b>' + name + ', large phone.</b> Size not written in the brief or the device list. Drawn at the folded size; drag the corner to try another.</figcaption></figure>';
-    f += '<figure class="frame-fig"><div class="device folded" data-device="iphone-duo-folded-ax5" data-frame>' + single('ax5') + '</div><figcaption><b>' + name + ', Duo folded at AX5,</b> the biggest accessibility text size. The tab bar keeps its size, as iOS does.</figcaption></figure>';
+    f += '<figure class="frame-fig"><div class="device folded" data-device="iphone-duo-folded-ax5" data-frame>' + single('ax5') + '</div><figcaption><b>' + name + ', Duo folded at AX5,</b> the biggest accessibility text size. ' + (S.c === 'copies' ? 'The status sentence moves into the page; the bar keeps only the differences control.' : 'The tab bar keeps its size, as iOS does.') + '</figcaption></figure>';
     document.getElementById('frames').innerHTML = f;
     document.querySelectorAll('[data-frame] .scroll').forEach(function (el, i) { if (keep[i]) el.scrollTop = keep[i]; });
     wireSync();

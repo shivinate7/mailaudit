@@ -315,6 +315,8 @@ details pre { margin: 0; padding: var(--space-2); background: var(--surface-2); 
   pointer-events: none; font-weight: 600;
 }
 .labels-on .app .tabbar[data-new] { position: absolute; }
+/* A control near the top of the screen carries its tag below, so the tag is not clipped. */
+.labels-on .app .btn[data-new]::after { top: auto; bottom: -14px; }
 
 /* Largest accessibility size (AX5), Apple HIG typography, read 2026-11-21 */
 .ax5 {
@@ -342,7 +344,8 @@ details pre { margin: 0; padding: var(--space-2); background: var(--surface-2); 
 
 @media (prefers-reduced-motion: no-preference) {
   .sheet { animation: rise 220ms ease-out; }
-  @keyframes rise { from { transform: translateY(24px); opacity: 0.6; } to { transform: none; opacity: 1; } }
+  /* Transform only: a fading sheet would let the list show through while it rises. */
+  @keyframes rise { from { transform: translateY(24px); } to { transform: none; } }
 }
 @media (forced-colors: active) {
   .tok, .chip, .btn, .seg button[aria-pressed="true"], .tabbar button[aria-selected="true"] { border: 2px solid ButtonText; }
@@ -387,7 +390,7 @@ details pre { margin: 0; padding: var(--space-2); background: var(--surface-2); 
         <div class="device folded" data-device="iphone-duo-folded" id="focus-line"><div class="app" data-concept="line" data-pose="folded"></div></div></figure>
       <figure data-frame="open"><figcaption>Duo open, 951 by 669 pt, hinge x 455.5 to 495.5</figcaption>
         <div class="device open" data-device="iphone-duo-unfolded"><div class="app" data-concept="line" data-pose="open"></div></div></figure>
-      <figure data-frame="phone"><figcaption>Large phone. Size not written: drawn at a 430 by 932 pt placeholder</figcaption>
+      <figure data-frame="phone"><figcaption>Large phone. Size not written: 430 by 932 pt is a stand-in</figcaption>
         <div class="device phone" data-device="iphone-large"><div class="app" data-concept="line" data-pose="phone"></div></div></figure>
       <figure data-frame="ax5"><figcaption>Duo folded, largest accessibility text (AX5)</figcaption>
         <div class="device folded ax5" data-device="iphone-duo-folded-ax5"><div class="app" data-concept="line" data-pose="folded"></div></div></figure>
@@ -405,7 +408,7 @@ details pre { margin: 0; padding: var(--space-2); background: var(--surface-2); 
         <div class="device folded" data-device="iphone-duo-folded" id="focus-sentences"><div class="app" data-concept="sentences" data-pose="folded"></div></div></figure>
       <figure data-frame="open"><figcaption>Duo open, 951 by 669 pt, hinge x 455.5 to 495.5</figcaption>
         <div class="device open" data-device="iphone-duo-unfolded"><div class="app" data-concept="sentences" data-pose="open"></div></div></figure>
-      <figure data-frame="phone"><figcaption>Large phone. Size not written: drawn at a 430 by 932 pt placeholder</figcaption>
+      <figure data-frame="phone"><figcaption>Large phone. Size not written: 430 by 932 pt is a stand-in</figcaption>
         <div class="device phone" data-device="iphone-large"><div class="app" data-concept="sentences" data-pose="phone"></div></div></figure>
       <figure data-frame="ax5"><figcaption>Duo folded, largest accessibility text (AX5)</figcaption>
         <div class="device folded ax5" data-device="iphone-duo-folded-ax5"><div class="app" data-concept="sentences" data-pose="folded"></div></div></figure>
@@ -423,7 +426,7 @@ details pre { margin: 0; padding: var(--space-2); background: var(--surface-2); 
         <div class="device folded" data-device="iphone-duo-folded" id="focus-letter"><div class="app" data-concept="letter" data-pose="folded"></div></div></figure>
       <figure data-frame="open"><figcaption>Duo open, 951 by 669 pt, hinge x 455.5 to 495.5</figcaption>
         <div class="device open" data-device="iphone-duo-unfolded"><div class="app" data-concept="letter" data-pose="open"></div></div></figure>
-      <figure data-frame="phone"><figcaption>Large phone. Size not written: drawn at a 430 by 932 pt placeholder</figcaption>
+      <figure data-frame="phone"><figcaption>Large phone. Size not written: 430 by 932 pt is a stand-in</figcaption>
         <div class="device phone" data-device="iphone-large"><div class="app" data-concept="letter" data-pose="phone"></div></div></figure>
       <figure data-frame="ax5"><figcaption>Duo folded, largest accessibility text (AX5)</figcaption>
         <div class="device folded ax5" data-device="iphone-duo-folded-ax5"><div class="app" data-concept="letter" data-pose="folded"></div></div></figure>
@@ -734,7 +737,7 @@ details pre { margin: 0; padding: var(--space-2); background: var(--surface-2); 
   function ruleSentence(a, k) {
     var r = a.st.rules[k], st = a.st;
     if (k === 'lost') return 'Tell me ' + tok(a, 'when', k, whenWord(st, r.when)) + ' when an order has gone ' + tok(a, 'thr', k, r.thr + ' days') + ' with no check-in.';
-    if (k === 'sync') return 'Tell me ' + tok(a, 'when', k, whenWord(st, r.when)) + ' when my devices stay split for ' + tok(a, 'thr', k, r.thr + ' minutes') + '.';
+    if (k === 'sync') return 'Tell me ' + tok(a, 'when', k, whenWord(st, r.when)) + ' when my devices stay split for ' + tok(a, 'thr', k, r.thr + ' minutes') + ' or more.';
     return 'Tell me ' + tok(a, 'when', k, whenWord(st, r.when)) + ' when an order is ' + tok(a, 'thr', k, r.thr + (r.thr === 1 ? ' day' : ' days')) + ' past due.';
   }
   function ruleCard(a, k) {

@@ -96,14 +96,23 @@ Hide control beside each concept tab removes it with one press.
 17. **Tab bar.** Drawn floating, with this screen's tab and a dashed "Other tabs" slot. A blind
     designer does not know the app's other tabs. The tab icon is a neutral sorted-list mark, so no
     order mark gets a second meaning.
-18. **Colours and type.** Colours are my own, by role, light and dark (house tokens give no values).
+18. **Docket verdict labels.** The three verdict buttons read Keep buying, Watch and Avoid this
+    seller, the same names as everywhere else, so "Avoid" is never a second name for one act (house
+    rule ux-one-plain-name). Until a ruling, the reply line above them says what Keep and Watch mean;
+    after a ruling it names the ruling and offers Undo. Loss: the buttons wrap to two lines on the
+    folded Duo. Pick: keep.
+19. **Tab bar at AX5.** Tab labels keep their size at AX5, as iOS tab bars do; a press and hold on a
+    tab shows its icon and label large (the Large Content Viewer, which Apple's typography page names
+    for navigation controls). Gain: two tabs still fit 466 pt. Loss: the label is small until held.
+    Pick: keep.
+20. **Colours and type.** Colours are my own, by role, light and dark (house tokens give no values).
     Type is the system font at Apple's Dynamic Type sizes. Space is on the 4 px step; radius 8 px.
 
 ## Sizes, reads and limits
 
 - Duo folded 466 x 678 pt and open 951 x 669 pt come from the brief; `layout.py devices` printed
   "unknown" for this repo.
-- The large phone has no written size. It is drawn at an assumed 440 x 956 pt, and its frame says
+- The large phone has no written size. 440 x 956 pt is a stand-in until the owner names one, and its frame says
   so. Owner grant: yes (name the size).
 - The safe-area fallbacks (48 pt top, 20 pt bottom) and the tab bar height (60 pt) are my own; no page
   I read gives them. Unmeasured.

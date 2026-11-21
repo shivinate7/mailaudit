@@ -89,8 +89,9 @@ Deep links: `#d=folded|open|phone`, `t=auto|light|dark`, `s=loaded|calm|unknown|
     corner 18 pt, sheet corner 16 pt, a 3-hour gap between marks on the clock (a 44 pt target is
     about 3 hours of a 370 pt band).
 15. **Large phone size.** No size is written for it in the device list or the pages read. It is
-    drawn at the brief's only portrait size, 466 x 678 pt, and its frame resizes by dragging the
-    corner. The layout is the folded one. Owner input needed: the phone's size.
+    drawn at a stand-in size, the brief's only portrait size, 466 x 678 pt, and its frame resizes
+    by dragging the corner. The caption on the page says "stand-in". The layout is the folded one.
+    Owner input needed: the phone's size.
 16. **Badge on the Alerts tab.** Only for likely lost mail heard right away (the tab-bars page
     keeps badges for critical news). Gain: the badge keeps its meaning. Pick: keep.
 17. **Colour.** Roles only: surface, raised, text, text-2, line, accent, and one colour per kind

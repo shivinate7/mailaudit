@@ -169,6 +169,9 @@ select.ctl{padding-inline:var(--space-2)}
 .tabbar .t.on{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);font-weight:600}
 .tabbar .t.other{border:1.5px dashed var(--line);color:var(--muted)}
 .ax .tabbar{height:auto;min-height:60px}
+/* AX5: tab labels keep their size, as iOS tab bars do; a press and hold shows the Large Content Viewer bubble. */
+.lcv{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,20px) + 88px);transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:var(--space-2);padding:var(--space-4) var(--space-6);border-radius:var(--radius);background:color-mix(in srgb,var(--raised) 94%,transparent);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.2);font-size:var(--c2);line-height:var(--c2-l);font-weight:600;color:var(--accent);white-space:nowrap;pointer-events:none}
+.lcv svg{width:72px;height:72px}
 
 /* Sheets */
 .scrim{position:absolute;inset:0;background:var(--scrim);display:flex;align-items:flex-end;z-index:5}
@@ -264,13 +267,13 @@ details.machine code{font-size:var(--foot);color:var(--muted)}
         </div>
       </figure>
       <figure class="fig">
-        <figcaption><b>Large phone.</b> No size is written for it; drawn at an assumed 440 x 956 pt. Compact width.</figcaption>
+        <figcaption><b>Large phone, stand-in size.</b> No size is written for it; 440 x 956 pt is a stand-in until the owner names one. Compact width.</figcaption>
         <div class="box" style="width:440px;height:956px" data-w="440" data-h="956">
           <div class="dev" data-device="iphone-large" style="width:440px;height:956px"><div class="screen" id="f-phone"></div></div>
         </div>
       </figure>
       <figure class="fig">
-        <figcaption><b>Duo, folded, largest text (AX5).</b> Body 53 pt. Same screen, reflowed.</figcaption>
+        <figcaption><b>Duo, folded, largest text (AX5).</b> Body 53 pt. Same screen, reflowed. Tab labels keep their size; press and hold a tab for its large label.</figcaption>
         <div class="box" style="width:466px;height:678px" data-w="466" data-h="678">
           <div class="dev" data-device="iphone-duo-folded" data-text-size="AX5" style="width:466px;height:678px"><div class="screen ax" id="f-ax"></div></div>
         </div>
@@ -809,6 +812,15 @@ FRAMES.forEach(f=>{
     root.addEventListener("click", e=>{ const el = e.target.closest("[data-act]"); if (el && root.contains(el)) act(f, el); });
     root.addEventListener("keydown", e=>{ if ((e.key==="Enter"||e.key===" ") && e.target.matches("g[data-act]")){ e.preventDefault(); act(f, e.target); }});
     root.addEventListener("input", e=>{ if (e.target.dataset.draft) store.draft[e.target.dataset.draft] = e.target.value; });
+    if (f.ax){
+      // Large Content Viewer: hold a tab for half a second to see its icon and label at the AX5 size.
+      let timer = null;
+      const hide = ()=>{ clearTimeout(timer); const b = root.querySelector(".lcv"); if (b) b.remove(); };
+      root.addEventListener("pointerdown", e=>{ const t = e.target.closest(".tabbar .t"); if (!t) return;
+        timer = setTimeout(()=>{ hide(); const b = document.createElement("div"); b.className = "lcv"; b.setAttribute("role","status");
+          b.innerHTML = t.classList.contains("on") ? TAB_ICON + "Seller trouble" : "Other tabs"; root.appendChild(b); }, 500); });
+      ["pointerup","pointerleave","pointercancel"].forEach(ev=>root.addEventListener(ev, hide));
+    }
   });
 });
 document.addEventListener("click", e=>{

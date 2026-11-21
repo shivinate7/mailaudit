@@ -102,7 +102,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; text-align: i
 .device.phone { resize: both; overflow: hidden; min-inline-size: 320px; min-block-size: 480px; max-inline-size: 700px; max-block-size: 1000px; }
 
 /* One screen (or one page of the open pose) */
-.screen { position: relative; display: flex; flex-direction: column; block-size: 100%; min-block-size: 0; background: var(--surface); overflow: hidden; container-type: inline-size;
+.screen { font-size: var(--fs-body); line-height: var(--lh-body); position: relative; display: flex; flex-direction: column; block-size: 100%; min-block-size: 0; background: var(--surface); overflow: hidden; container-type: inline-size;
   padding-top: max(env(safe-area-inset-top), var(--inset-top)); padding-bottom: max(env(safe-area-inset-bottom), var(--inset-bottom)); }
 .sbar { position: absolute; inset: 0 0 auto 0; block-size: var(--inset-top); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-6); font-size: 15px; font-weight: 600; pointer-events: none; }
 .homebar { position: absolute; inset: auto 0 var(--space-2) 0; margin-inline: auto; inline-size: 120px; block-size: 4px; border-radius: 2px; background: var(--text); opacity: 0.5; pointer-events: none; }
@@ -115,6 +115,7 @@ button { background: none; border: 0; padding: 0; cursor: pointer; text-align: i
 .navbar .mid { flex: 1; text-align: center; font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; }
 .navbtn { min-block-size: var(--tap); min-inline-size: var(--tap); padding: 0 var(--space-2); color: var(--accent); display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-body); }
 .scroll { flex: 1; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-2) var(--space-4) var(--space-4); }
+.scroll > * { flex-shrink: 0; }
 .sec { display: flex; flex-direction: column; gap: var(--space-2); }
 .sech { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-muted); padding-inline: var(--space-4); }
 .list { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius); overflow: hidden; }
@@ -203,7 +204,7 @@ mark { background: var(--accent-soft); color: inherit; border-radius: 3px; }
 .chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
 .summary { margin: 0; font-size: var(--fs-title3); line-height: var(--lh-title3); font-weight: 600; }
 .ssent { font-size: var(--fs-body); line-height: var(--lh-body); }
-.ax5 .sbottom { max-block-size: 82%; }
+.ax5 .sbottom { max-block-size: 58%; }
 .ax5 .pickb { max-block-size: none; }
 
 /* Sieve concept */
@@ -399,7 +400,7 @@ C.field = {
     const m = this.fresh();
     if (s === 'results') m.q = 'dra';
     if (s === 'detail') { m.q = 'dra'; m.sel = this.compute(m).firstLine; }
-    if (s === 'nomatch') { m.tokens = [{ k: 'seller', v: sellerWithout('lynx') }]; m.q = 'lynx'; }
+    if (s === 'nomatch') { m.tokens = [{ k: 'seller', v: NO_MATCH.seller }]; m.q = NO_MATCH.name; }
     return m;
   },
   compute(m) {
@@ -488,7 +489,8 @@ C.field = {
   }
 };
 
-function sellerWithout(word) { return SELLERS.find(s => !LINES.some(l => l.seller === s && l.lname.includes(word))) || SELLERS[0]; }
+/* A real card name and a seller who never sold it: the no-match state's sample. */
+const NO_MATCH = (() => { for (const n of NAMES) { const s = SELLERS.find(x => !LINES.some(l => l.seller === x && l.name === n)); if (s && LINES.some(l => l.name === n)) return { name: n.toLowerCase(), seller: s }; } return { name: 'lynx', seller: SELLERS[0] }; })();
 function frameOf(el) { const f = el && el.closest('[data-fid]'); return f ? f.dataset.fid : null; }
 
 /* ===== Fill-in sentence ===== */
@@ -500,7 +502,7 @@ C.sentence = {
     const m = this.fresh();
     if (s === 'results') m.name = 'drake';
     if (s === 'detail') { m.name = 'drake'; m.sel = this.compute(m).cards[0][1][0].id; }
-    if (s === 'nomatch') { m.name = 'lynx'; m.seller = sellerWithout('lynx'); }
+    if (s === 'nomatch') { m.name = NO_MATCH.name; m.seller = NO_MATCH.seller; }
     return m;
   },
   filt(m, skip) {
@@ -574,11 +576,11 @@ C.sentence = {
     }
     return `<div class="picker" role="group" aria-label="${title}"><div class="pickh"><b>${title}</b><button class="tbtn" data-act="done">Done</button></div><div class="pickb">${body}</div></div>`;
   },
-  answersHTML(m, r) {
+  answersHTML(m, r, pose) {
     const st = STATUS.sentence;
     if (st !== 'ok') return stateHTML(st);
-    if (!this.filled(m)) return `<div class="state"><p>${nf.format(LINES.length)} card lines in ${nf.format(ORDERS.length)} orders.</p><p class="muted">Tap a blank in the sentence below. Fill one or all of them.</p></div>`;
-    if (!r.hits.length) return `<div class="state"><p>No card line fits this sentence.</p><button class="pbtn" data-act="clearall">Clear the blanks</button></div>`;
+    if (!this.filled(m)) return `<div class="state"><p>${nf.format(LINES.length)} card lines in ${nf.format(ORDERS.length)} orders.</p><p class="muted">${pose === "open" ? "Tap a blank in the sentence on the left page." : "Tap a blank in the sentence below."} Fill one or all of them.</p></div>`;
+    if (!r.hits.length) return `<div class="state"><p>No card line fits this sentence.</p><button class="pbtn" data-act="clearall">Clear search</button></div>`;
     const q = m.name.trim().toLowerCase();
     const lim = m.more ? r.cards.length : 8;
     const waiting = r.hits.length - r.got;
@@ -598,12 +600,12 @@ C.sentence = {
     const ok = STATUS.sentence === 'ok';
     const bottom = ok ? `<div class="sbottom">${this.pickerHTML(m)}${this.sentenceHTML(m)}</div>` : '';
     if (pose === 'open') {
-      const leftHint = ok && !m.open ? `<div class="state"><p class="muted">Tap a blank to fill it. The answers show on the right page.</p></div>` : '';
+      const leftHint = "";
       const left = `<div class="nav"><h1>Find</h1></div><div style="flex:1"></div>${leftHint}${bottom}`;
-      const right = `<div class="navbar"><span class="mid">Answers</span></div><div class="scroll" data-scroll="ans">${this.answersHTML(m, r)}</div>${this.sheetHTML(m)}`;
+      const right = `<div class="navbar"><span class="mid">Answers</span></div><div class="scroll" data-scroll="ans">${this.answersHTML(m, r, pose)}</div>${this.sheetHTML(m)}`;
       return [frameScreen(left), frameScreen(right)];
     }
-    return [frameScreen(`<div class="navbar"><span class="mid">Find</span></div><div class="scroll" data-scroll="ans">${this.answersHTML(m, r)}</div>${bottom}${this.sheetHTML(m)}`)];
+    return [frameScreen(`<div class="navbar"><span class="mid">Find</span></div><div class="scroll" data-scroll="ans">${this.answersHTML(m, r, pose)}</div>${bottom}${this.sheetHTML(m)}`)];
   },
   after(m, glass) {
     if (m.focusFid && glass.parentElement.dataset.fid === m.focusFid) {
@@ -680,7 +682,7 @@ C.sieve = {
     const st = STATUS.sieve;
     if (st !== 'ok') return stateHTML(st);
     if (!m.frag) return `<div class="state"><p class="muted">Each dot is one card line: green came, amber has not. Press letters from any part of a card, seller, price or day. Keys that lead nowhere go dark.</p></div>`;
-    if (!r.hits.length) return `<div class="state"><p>No card line holds “${esc(m.frag)}”.</p><button class="pbtn" data-act="clearall">Clear</button></div>`;
+    if (!r.hits.length) return `<div class="state"><p>No card line holds “${esc(m.frag)}”.</p><button class="pbtn" data-act="clearall">Clear search</button></div>`;
     const lim = 40;
     const rows = r.hits.slice(0, lim).map(l => `<button class="row${m.sel === l.id ? ' sel' : ''}" data-act="pick" data-arg="${l.id}">${glyph(l.arrived)}<span class="main"><span class="t">${hi(l.name, m.frag)}</span><span class="s">${hi(l.seller, m.frag)}, ${l.dstr}</span></span><span class="num">${hi(l.pstr, m.frag)}</span></button>`).join('');
     return `<div class="list">${rows}</div>${r.hits.length > lim ? `<p class="hint">${nf.format(r.hits.length - lim)} more. Press another letter to narrow.</p>` : ''}`;
@@ -698,7 +700,7 @@ C.sieve = {
     const pad = ok ? this.padHTML(m, r) : '';
     if (pose === 'open') {
       const right = m.sel != null ? `<div class="navbar"><button class="navbtn" data-act="close">Close</button><span class="mid">Order</span><span style="inline-size:60px"></span></div><div class="scroll" data-scroll="order">${answerHTML(LINES[m.sel])}</div>`
-        : `<div class="navbar"><span class="mid">Order</span></div><div class="state" style="flex:1"><p class="muted">Tap a line or a dot to see its order here.</p></div>`;
+        : `<div class="navbar"><span class="mid">Order</span></div><div class="state" style="flex:1">${ok ? '<p class="muted">Tap a line or a dot to see its order here.</p>' : ''}</div>`;
       return [frameScreen(top + grains + list), frameScreen(right + pad)];
     }
     return [frameScreen(top + grains + list + pad + this.sheetHTML(m))];
