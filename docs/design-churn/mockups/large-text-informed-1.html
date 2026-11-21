@@ -598,7 +598,7 @@ figcaption b { color:var(--ink); font-size:16px; display:block; }
       var todayPkgRight = c === 'today' && (st.tab === 'packages' || st.tab === 'ledger');
       if (todayPkgRight) {
         // Today, Packages and Ledger are one page; debt hand-open-under-bar-at-l puts the masthead and the control on the right page.
-        h += '<div class="scroll"><div class="col"><div class="sec app" style="color:var(--inkSoft);' + f(13, 'footnote') + '">Today Packages and Ledger are one page, not split at the fold. Drawn here from debt hand-open-under-bar-at-l, which names only the right page.</div></div></div>';
+        h += '<div class="scroll"><div class="col"><div class="sec" style="color:var(--inkSoft);font-size:13px;line-height:18px">Mockup note: today Packages and Ledger are one page, not split at the fold. Drawn here from debt hand-open-under-bar-at-l, which names only the right page.</div></div></div>';
       } else {
         h += '<div class="scroll" data-scroll="left"><div class="col">' + letterhead(c) + (c === 'dock' ? '' : '<div class="headslot" aria-hidden="true"></div>') + listFor(c, 'left') +
              '<div style="height:calc(' + (c === 'dock' ? 'var(--dock-h, 0px) + 24px' : '16px') + ')"></div></div></div>';

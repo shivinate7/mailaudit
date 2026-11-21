@@ -521,7 +521,7 @@ body.show-new [data-new]::after {
       tab: 'find',
       search: { q: '', open: null, includeArrived: false, answer: null },
       env: { from: null, postmark: null, thick: null, inside: '', open: null, more: false, includeArrived: false, sheet: null, answer: null },
-      setAside: null, toast: null
+      setAside: null, toast: null, keep: {}
     };
   }
 
@@ -584,7 +584,7 @@ body.show-new [data-new]::after {
       }
       if (g === null && dr) { var a = ago(o.bought); if (a >= dr.from && a <= dr.to) g = 3; }
       if (g === null) return;
-      if (!isOpen(o) && !S.search.includeArrived) { hiddenArrived++; return; }
+      if (!isOpen(o) && !S.keep[o.id] && !S.search.includeArrived) { hiddenArrived++; return; }
       groups[g].items.push({ o: o, card: card });
     });
     groups.forEach(function (gr) { gr.items.sort(function (a, b) { return b.o.bought - a.o.bought; }); });
@@ -612,7 +612,7 @@ body.show-new [data-new]::after {
         var hit = norm(o.id).indexOf(ni) >= 0 || o.lines.some(function (l) { return norm(l.name).indexOf(ni) >= 0; });
         if (!hit) return false;
       }
-      if (!isOpen(o) && !E.includeArrived) { hiddenArrived++; return false; }
+      if (!isOpen(o) && !S.keep[o.id] && !E.includeArrived) { hiddenArrived++; return false; }
       return true;
     });
     var scored = hard.map(function (o) {
@@ -1101,16 +1101,16 @@ body.show-new [data-new]::after {
       case 'tab': S.tab = b.dataset.tab; break;
       case 'open': S.search.open = b.dataset.id; S.search.answer = null; break;
       case 'back': S.search.open = null; S.search.answer = null; break;
-      case 'clear-q': S.search.q = ''; S.search.open = null; break;
+      case 'clear-q': S.search.q = ''; S.search.open = null; S.keep = {}; break;
       case 'arrived-search': S.search.includeArrived = !S.search.includeArrived; break;
       case 'arrived-env': E.includeArrived = !E.includeArrived; break;
-      case 'tick': { var l = o.lines[i]; l.got = l.got === l.qty ? 0 : l.qty; S.search.answer = null; E.answer = null; break; }
-      case 'inc': o.lines[i].got = Math.min(o.lines[i].qty, o.lines[i].got + 1); S.search.answer = null; E.answer = null; break;
-      case 'dec': o.lines[i].got = Math.max(0, o.lines[i].got - 1); S.search.answer = null; E.answer = null; break;
-      case 'all': o.lines.forEach(function (l) { l.got = l.qty; }); S.search.answer = 'all'; E.answer = 'all'; E.open = o.id; break;
+      case 'tick': { S.keep[o.id] = 1; var l = o.lines[i]; l.got = l.got === l.qty ? 0 : l.qty; S.search.answer = null; E.answer = null; break; }
+      case 'inc': S.keep[o.id] = 1; o.lines[i].got = Math.min(o.lines[i].qty, o.lines[i].got + 1); S.search.answer = null; E.answer = null; break;
+      case 'dec': S.keep[o.id] = 1; o.lines[i].got = Math.max(0, o.lines[i].got - 1); S.search.answer = null; E.answer = null; break;
+      case 'all': S.keep[o.id] = 1; o.lines.forEach(function (l) { l.got = l.qty; }); S.search.answer = 'all'; E.answer = 'all'; E.open = o.id; break;
       case 'undo-all': o.lines.forEach(function (l) { l.got = 0; }); S.search.answer = null; E.answer = null; break;
-      case 'next-search': S.search = { q: '', open: null, includeArrived: false, answer: null }; break;
-      case 'next-env': S.env = { from: null, postmark: null, thick: null, inside: '', open: null, more: false, includeArrived: false, sheet: null, answer: null }; break;
+      case 'next-search': S.search = { q: '', open: null, includeArrived: false, answer: null }; S.keep = {}; break;
+      case 'next-env': S.env = { from: null, postmark: null, thick: null, inside: '', open: null, more: false, includeArrived: false, sheet: null, answer: null }; S.keep = {}; break;
       case 'retry': S.data = 'ready'; break;
       case 'import': S.data = 'ready'; break;
       case 'expand': E.open = E.open === b.dataset.id ? null : b.dataset.id; E.answer = null; break;
@@ -1128,7 +1128,7 @@ body.show-new [data-new]::after {
       case 'pick-thick': E.sheet.draft = b.dataset.v; break;
       case 'pick-inside': E.sheet.draft = b.dataset.v; break;
       case 'drop': { var fk = b.dataset.field; E[fk] = fk === 'inside' ? '' : null; E.open = null; E.sheet = null; E.answer = null; break; }
-      case 'clear-clues': E.from = null; E.postmark = null; E.thick = null; E.inside = ''; E.open = null; E.more = false; E.answer = null; break;
+      case 'clear-clues': E.from = null; E.postmark = null; E.thick = null; E.inside = ''; E.open = null; E.more = false; E.answer = null; S.keep = {}; break;
       case 'aside-open': S.asideSheet = true; break;
       case 'aside-cancel': S.asideSheet = false; break;
       case 'aside-done': S.setAside = S.asideNote || 'No note'; S.asideNote = ''; S.asideSheet = false; S.toast = 'Envelope set aside under Unmatched.'; setTimeout(function () { S.toast = null; renderFrames(); }, 3200); break;

@@ -353,6 +353,7 @@ figcaption { color: var(--text-2); font-size: 13px; line-height: 18px; max-width
 .chip.gone { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); opacity: .7; }
 .chip.on { outline: 3px solid var(--tint); outline-offset: 1px; }
 .chip.entering { box-shadow: inset 4px 0 0 var(--nudge), 0 0 0 2px var(--tint); }
+.track .overflow { position: absolute; right: var(--space-2); top: var(--space-6); min-height: 44px; padding: 0 var(--space-3); border: 0; border-radius: 22px; background: var(--text); color: var(--surface); font-size: 13px; font-weight: 600; cursor: pointer; }
 .tray { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-4) 0; }
 .tray .chips { display: flex; gap: var(--space-2); overflow-x: auto; min-height: 44px; align-items: center; }
 .tray .chip { position: relative; flex: 0 0 128px; }
@@ -599,7 +600,7 @@ function stateBody(c, f) {
   }
   if (R.s === 'failed') {
     return `<div class="state"><p class="t-t3">Your orders could not be read.</p>
-      <p class="t-sh muted">Overdue mail is unknown until they load. Nothing here means zero.</p>
+      <p class="t-sh muted">Until they load, the app cannot say which packages are overdue.</p>
       <button class="btn primary" data-a="retry">Try again</button>
       <details><summary>What the app said</summary><code>sample: order file unreadable at line 1</code></details></div>`;
   }
@@ -908,14 +909,19 @@ function layoutTracks(root) {
     const lanes = Math.max(1, Math.floor((W - x0 + gap) / (laneW + gap)));
     const bottoms = new Array(lanes).fill(-1e9);
     const chips = [...tr.querySelectorAll('.chip')].sort((a, b) => +a.dataset.age - +b.dataset.age);
+    // A chip never leaves its day: when no lane is free at that day, it hides and the track
+    // offers the list, so a crowded day never misplaces money on the clock.
+    let over = 0;
     chips.forEach(ch => {
-      let top = Math.max(0, Math.min(H - 40, y(+ch.dataset.age) + per / 2 - 20));
-      let lane = bottoms.findIndex(bt => bt + 4 <= top);
-      if (lane < 0) { lane = bottoms.indexOf(Math.min(...bottoms)); top = bottoms[lane] + 4; }
+      const top = Math.max(0, Math.min(H - 40, y(+ch.dataset.age) + per / 2 - 20));
+      const lane = bottoms.findIndex(bt => bt + 4 <= top);
+      if (lane < 0) { ch.hidden = true; over++; return; }
       bottoms[lane] = top + 40;
       ch.style.top = top + 'px';
       ch.style.left = (x0 + lane * (laneW + gap)) + 'px';
     });
+    tr.querySelector('.overflow')?.remove();
+    if (over) tr.insertAdjacentHTML('beforeend', `<button class="overflow" data-a="listmode">${over} more: show the list</button>`);
   });
   root.querySelectorAll('.pop').forEach(pop => {
     const scr = pop.parentElement;
