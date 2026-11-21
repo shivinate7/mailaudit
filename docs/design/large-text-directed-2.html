@@ -44,7 +44,8 @@ section.concept > p { margin:0; max-width:72ch; }
 figure { margin:0; display:flex; flex-direction:column; gap:var(--space-2); max-width:100%; }
 figcaption { font-size:14px; max-width:60ch; }
 figcaption b { font-family:var(--cochin); font-size:17px; }
-.proof { font:12px/1.4 var(--mono); color:var(--inkSoft); }
+.proof { font:12px/1.4 var(--mono); color:var(--inkSoft); max-width:466px; }
+figcaption { max-width:466px; }
 .proof.bad { color:var(--red); font-weight:700; }
 .fit { max-width:100%; overflow:hidden; }
 
@@ -96,6 +97,7 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
 .thead .ct b { color:var(--accent); }
 .trow.done .thead .ct b { color:var(--green); }
 .thead .meta { flex:1 0 100%; font:var(--f-meta)/1.35 var(--mono); color:var(--inkSoft); overflow-wrap:normal; }
+.across { font:var(--f-meta)/1.35 var(--mono); color:var(--inkSoft); overflow-wrap:normal; }
 .detail-title { font:700 var(--f-h)/var(--l-h) var(--cochin); margin:0; overflow-wrap:normal; }
 .copies { display:flex; flex-direction:column; border-top:1px solid var(--line); }
 .copy { display:flex; align-items:center; gap:var(--space-2); min-height:56px; padding:var(--space-2) var(--space-3) var(--space-2) var(--space-1);
@@ -153,7 +155,7 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
 .band[data-tier="lines"] .facts, .band[data-tier="stack"] .facts { flex-direction:column; gap:var(--space-1); }
 .band[data-tier="lines"] .fact { flex-direction:row; align-items:baseline; justify-content:space-between; gap:var(--space-3); }
 .band[data-tier="lines"] .fact .lab { flex:0 0 auto; }
-.band[data-tier="stack"] .fig { white-space:normal; }
+.band[data-tier="stack"] .fig, .band[data-tier="stack"] .lab { white-space:normal; }
 .band[data-tier="stack"] .fig .seg { white-space:nowrap; }
 .band--page .facts { flex-direction:column; gap:var(--space-4); }
 .band--page .fact { flex-direction:column; align-items:flex-start; }
@@ -172,6 +174,7 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
 
 /* tags: dashed outline on what exists today, and on what an option adds */
 [data-tag]:not(.band):not(.rh) { position:relative; }
+.clip { display:block; overflow:hidden; white-space:nowrap; min-width:0; }
 [data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-10px; font:600 10.5px/14px var(--system); padding:0 4px;
   background:var(--paper); z-index:12; white-space:nowrap; letter-spacing:0; text-transform:none; }
 .tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .tag-new::before { color:var(--new); }
@@ -182,13 +185,13 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
 /* today and the rows strip: static drawings */
 .td { font-family:var(--cochin); }
 .td .rh { position:absolute; left:0; right:0; top:var(--sat); height:46px; display:flex; align-items:center; gap:8px; padding:0 16px; background:var(--paper);
-  border-bottom:1px solid var(--line); overflow:hidden; white-space:nowrap; z-index:5; }
+  border-bottom:1px solid var(--line); white-space:nowrap; z-index:5; }
 .td .rh .seal { width:22px; height:22px; }
 .strip { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(466px, 100%), 1fr)); gap:var(--space-4); }
 .pair { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:var(--space-3); display:flex; flex-direction:column; gap:var(--space-3);
   width:min(466px, 100%); }
 .pair h3 { font:700 17px/1.2 var(--cochin); margin:0; }
-.cell { position:relative; border:1px solid var(--line); border-radius:8px; background:var(--paper); padding:var(--space-3); overflow:hidden; font-family:var(--cochin); }
+.cell { position:relative; border:1px solid var(--line); border-radius:8px; background:var(--paper); padding:var(--space-3); font-family:var(--cochin); }
 .ax5 { --a-body:53px; --a-lab:37.6px; --a-ct:47.7px; }
 </style>
 </head>
@@ -213,11 +216,11 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
   </div>
   <div class="ctl" role="group" aria-label="Show"><span>Show</span>
     <a href="#">All</a><a href="#s=today">Today</a><a href="#s=foot-folded-ax5">Foot band, AX5</a><a href="#s=core-open-ax5">Core page, AX5</a>
-    <a href="#s=foot-folded-ax5-held">Holds at AX3</a><a href="#s=rows-ax5">Rows that scroll</a>
+    <a href="#s=size-half">Holds at half</a><a href="#s=size-grows">Grows with the text</a><a href="#s=rows-ax5">Rows that scroll</a>
   </div>
   <div class="ctl" role="group" aria-label="Hide an option"><span>Hide</span>
     <button type="button" data-hide="foot">Hide Foot band</button><button type="button" data-hide="core">Hide Core page</button>
-    <button type="button" data-hide="held">Hide Holds at AX3</button>
+    <button type="button" data-hide="half">Hide Holds at half</button><button type="button" data-hide="grows">Hide Grows with the text</button>
   </div>
 </div>
 
@@ -236,7 +239,7 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
         </div>
         <div style="position:absolute;left:16px;right:16px;top:calc(var(--sat) + 60px);display:flex;flex-direction:column;gap:8px">
           <div style="height:8px;border-radius:4px;background:#DCCDB6"><i style="display:block;width:89%;height:100%;border-radius:4px;background:#6F5CA6"></i></div>
-          <div class="tag-today" data-tag="Today: count line, one line, no ellipsis" style="font:30px/1.2 var(--mono);white-space:nowrap;overflow:hidden">1350 unique items in ra</div>
+          <div class="tag-today" data-tag="Today: count line, one line, no ellipsis" style="font:30px/1.2 var(--mono)"><span class="clip">1350 unique items in range</span></div>
           <div class="tag-today" data-tag="Today: SaveSlot takes half the row" style="display:flex;gap:8px;align-items:flex-start">
             <span style="flex:1;font:30px/1.2 var(--mono);color:#A8443C">146 still missing · $412.80</span>
             <span style="flex:0 0 49%;height:36px;border:1px dashed #A8443C"></span>
@@ -274,16 +277,28 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
   <p>The core sits in one band, docked on the tab bar, where the thumb is. The letterhead and the list scroll above it, and the list ends clear of the band. The band tries four shapes in order and takes the first that fits: one row, a pair, ledger lines, then a stack. A figure may break only after its slash.</p>
   <div class="row">
     <figure data-state="foot-folded-ax5" data-opt="foot"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="ax5" data-id="foot-folded-ax5" data-focus="1"></div>
-      <figcaption><b>Folded, AX5.</b> Facts as ledger lines, the button full width. Tap a copy, Mark all received, then Undo. A complete name offers Clear check‑ins, which asks: Cancel hangs above the band.</figcaption></figure>
+      <figcaption><b>Folded, AX5.</b> The band steps down until it fits in half the screen; the list keeps AX5. The line under the frame names the size and shape it took. Tap a copy, then Mark all received, then Undo. Tick every copy and the button becomes Clear check‑ins, which asks: Cancel hangs above the band.</figcaption></figure>
     <figure data-state="foot-folded-l" data-opt="foot"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="L" data-id="foot-folded-l"></div>
-      <figcaption><b>Folded, Large (default).</b> One row: both facts and the button.</figcaption></figure>
+      <figcaption><b>Folded, Large (default).</b> Both facts on one line, the button under them.</figcaption></figure>
     <figure data-state="foot-phone-ax5" data-opt="foot"><div class="mount" data-concept="foot" data-device="iphone-regular" data-ts="ax5" data-id="foot-phone-ax5"></div>
-      <figcaption><b>Phone at 320 pt, AX5.</b> The stack: "1204/" breaks before "1350", never inside a number.</figcaption></figure>
+      <figcaption><b>Phone at 320 pt, AX5.</b> Narrower, so the band steps down further than on the Duo. Grows with the text, below, shows a figure that breaks after its slash, never inside a number.</figcaption></figure>
   </div>
   <figure data-state="foot-open-ax5" data-opt="foot"><div class="fit"><div class="mount" data-concept="foot" data-device="iphone-duo-unfolded" data-ts="ax5" data-id="foot-open-ax5"></div></div>
     <figcaption><b>Open, AX5.</b> Names on the left page, the open name on the right. The band sits at the foot of the right page, on the bar, and the right page ends clear of both.</figcaption></figure>
-  <figure data-state="foot-folded-ax5-held" data-opt="held"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="ax5" data-held="1" data-id="foot-folded-ax5-held" data-focus="1"></div>
-    <figcaption><b>Holds at AX3, folded, AX5.</b> The band's type stops at AX3 while the list grows to AX5. Press and hold the band to see its figures in the large content viewer. This option fits either concept.</figcaption></figure>
+</section>
+
+<!-- ===== Band size ===== -->
+<section class="concept" data-opt="size" id="sec-size">
+  <h2>Band size at the largest text</h2>
+  <p>Either concept. The band takes the reader's size, then steps down one size at a time until it fits in half the space between the status bar and the tab bar. The list keeps the reader's size. Press and hold the band to read its figures in the large content viewer at the reader's size. The other choice lets the band grow with the text, whatever it costs the list.</p>
+  <div class="row">
+    <figure data-state="size-half" data-opt="half"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="ax5" data-id="size-half" data-focus="1"></div>
+      <figcaption><b>Holds at half (pick).</b> Folded, reader at AX5. The band settles at the largest size that fits in half; the list keeps the rest.</figcaption></figure>
+    <figure data-state="size-grows" data-opt="grows"><div class="mount" data-concept="foot" data-device="iphone-duo-folded" data-ts="ax5" data-grow="1" data-id="size-grows" data-focus="1"></div>
+      <figcaption><b>Grows with the text.</b> Folded, reader at AX5. Nothing clips, but the list keeps a strip about one row tall.</figcaption></figure>
+    <figure data-state="size-grows-phone" data-opt="grows"><div class="mount" data-concept="foot" data-device="iphone-regular" data-ts="ax5" data-grow="1" data-id="size-grows-phone"></div>
+      <figcaption><b>Grows with the text, phone at 320 pt.</b> "1205/" breaks before "1350". The band takes most of the screen.</figcaption></figure>
+  </div>
 </section>
 
 <!-- ===== Core page ===== -->
@@ -330,7 +345,7 @@ figcaption b { font-family:var(--cochin); font-size:17px; }
         </div>
       </div>
       <div class="pair"><h3>Armed Reset</h3>
-        <div class="cell tag-today" data-tag="Today: lineLimit 1, Cancel fixed 80 pt" style="display:flex;padding:0;white-space:nowrap;overflow:hidden">
+        <div class="cell tag-today" data-tag="Today: lineLimit 1, Cancel fixed 80 pt" style="display:flex;padding:0;white-space:nowrap">
           <span style="flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;padding:12px 16px;background:#A8443C;color:#FCF6EA;font:700 37px var(--cochin)">Tap again to clear 1350 cards</span>
           <span style="flex:0 0 80px;overflow:hidden;text-overflow:ellipsis;padding:12px 4px;font:53px var(--cochin);border-left:1px solid #DCCDB6">Cancel</span>
         </div>
@@ -397,15 +412,23 @@ const params = () => Object.fromEntries(location.hash.replace(/^#/, '').split('&
 class Frame {
   constructor(mount) {
     this.m = mount; this.id = mount.dataset.id; this.concept = mount.dataset.concept; this.device = mount.dataset.device;
-    this.baseTs = mount.dataset.ts; this.held = mount.dataset.held === '1'; this.focus = mount.dataset.focus === '1';
+    this.baseTs = mount.dataset.ts; this.grow = mount.dataset.grow === '1'; this.focus = mount.dataset.focus === '1';
     this.k = 'rest'; this.undo = null; this.armTimer = null; this.n = 4; this.st = sample(4); this.open = 'Brainstorm';
+    this.bandTs = this.baseTs;
     mount.addEventListener('click', e => this.click(e));
     let t = null;
-    mount.addEventListener('pointerdown', e => { if (this.held && e.target.closest('.band') && !e.target.closest('button')) t = setTimeout(() => this.lcv(true), 500); });
+    // The large content viewer: press and hold the band when it holds below the reader's size.
+    mount.addEventListener('pointerdown', e => { if (this.bandTs !== this.ts && e.target.closest('.band') && !e.target.closest('button')) t = setTimeout(() => this.lcv(true), 500); });
     ['pointerup','pointerleave','pointercancel'].forEach(ev => mount.addEventListener(ev, () => { clearTimeout(t); this.lcv(false); }));
   }
   get ts() { return params().ts && TS[params().ts] ? params().ts : this.baseTs; }
-  get bandTs() { return this.held && ORDER.indexOf(this.ts) > ORDER.indexOf('ax3') ? 'ax3' : this.ts; }
+  get big() { return this.concept === 'core' && this.device === 'iphone-duo-unfolded'; }
+  bandVars(b) {
+    const big = this.big;
+    return { '--b-lab': sz(b,'c1',10.5)+'px', '--b-lab-l': ld(b,'c1',10.5)+'px',
+      '--b-fig': sz(b, big ? 'lt' : 't2', big ? 31 : 22)+'px', '--b-fig-l': ld(b, big ? 'lt' : 't2', big ? 31 : 22)+'px',
+      '--b-body': sz(b,'body',17)+'px', '--b-body-l': ld(b,'body',17)+'px' };
+  }
   openRow() { return this.st.names.find(r => r.name === this.open); }
   // The band's action: Mark all while a copy is owed; Clear check-ins once every copy is in; Undo after a Mark all.
   faces() {
@@ -420,15 +443,13 @@ class Frame {
     };
   }
   vars() {
-    const ts = this.ts, b = this.bandTs, big = this.concept === 'core' && this.device === 'iphone-duo-unfolded';
+    const ts = this.ts;
     const v = {
       '--f-title': sz(ts,'lt',31)+'px', '--l-title': ld(ts,'lt',31)+'px', '--f-house': sz(ts,'c1',10)+'px',
       '--f-name': sz(ts,'body',17)+'px', '--l-name': ld(ts,'body',17)+'px', '--f-ct': sz(ts,'fn',13)+'px', '--l-ct': ld(ts,'fn',13)+'px',
       '--f-meta': sz(ts,'c1',10.5)+'px', '--f-lab': sz(ts,'c1',10.5)+'px', '--f-seller': sz(ts,'fn',14)+'px',
       '--f-h': sz(ts,'t2',20)+'px', '--l-h': ld(ts,'t2',20)+'px',
-      '--b-lab': sz(b,'c1',10.5)+'px', '--b-lab-l': ld(b,'c1',10.5)+'px',
-      '--b-fig': sz(b, big ? 'lt' : 't2', big ? 31 : 22)+'px', '--b-fig-l': ld(b, big ? 'lt' : 't2', big ? 31 : 22)+'px',
-      '--b-body': sz(b,'body',17)+'px', '--b-body-l': ld(b,'body',17)+'px', '--lcv-f': sz('ax5','t2',22)+'px',
+      '--lcv-f': sz(ts,'t2',22)+'px',
     };
     return Object.entries(v).map(([k, x]) => `${k}:${x}`).join(';');
   }
@@ -436,12 +457,12 @@ class Frame {
     const t = totals(this.st), f = this.faces(), full = t.got >= t.total, pct = t.total ? (100 * t.got / t.total) : 0;
     const w = String(t.total).length;
     const facts = `<div class="facts">
-      <div class="fact" role="group" aria-label="Cards in ${t.got} of ${t.total}"><span class="lab">cards in</span>
+      <div class="fact" role="group" aria-label="Cards in ${t.got} of ${t.total}"><span class="lab">cards</span>
         <span class="fig${full ? ' full' : ''}"><span class="seg"><span class="got" style="min-width:${w}ch">${t.got}</span>/</span><wbr><span class="seg tot">${t.total}</span></span></div>
-      <div class="fact" role="group" aria-label="Still missing ${money(t.owed)}"><span class="lab">still missing</span><span class="fig owed">${money(t.owed)}</span></div>
+      <div class="fact" role="group" aria-label="Still missing ${money(t.owed)}"><span class="lab">missing</span><span class="fig owed">${money(t.owed)}</span></div>
     </div>`;
     const cur = this.k === 'armed' && f.armed ? 'armed' : this.k === 'undo' && f.undo ? 'undo' : 'rest';
-    const act = `<div class="act">${Object.entries(f).map(([k, x]) => `<button type="button" class="face ${x.cls}${k === cur ? ' on' : ''}" ${x.act ? `data-act="${x.act}"` : 'disabled'} ${k === cur ? '' : 'tabindex="-1" aria-hidden="true"'}>${esc(x.text)}</button>`).join('')}</div>`;
+    const act = `<div class="act">${Object.entries(f).map(([k, x]) => `<button type="button" class="face ${x.cls}${k === cur ? ' on' : ''}" ${x.act ? `data-act="${x.act}"` : 'disabled'} ${k === cur ? '' : 'tabindex="-1" aria-hidden="true"'}><span class="tx">${esc(x.text)}</span></button>`).join('')}</div>`;
     const cancel = cur === 'armed' ? `<button type="button" class="cancel" data-act="cancel">Cancel</button>` : '';
     const id = this.focus ? ` id="band-${this.id}"` : '';
     const tag = place === 'foot' ? 'New: Foot band' : place === 'head' ? 'New: head band, pins' : 'New: Core page';
@@ -481,12 +502,12 @@ class Frame {
       const r = this.openRow();
       body = `<div class="pg l"><div class="scroll"><div class="scroll-in">${this.letterhead()}${list('cell')}</div></div></div>
         <div class="fold"><span>FOLD</span></div>
-        <div class="pg r"><div class="scroll"><div class="scroll-in">${r ? `<h2 class="detail-title">${esc(r.name)}</h2><div class="sect">${new Set(r.copies.map(c => c.seller)).size} sellers · ${r.copies.length} orders · ${esc(r.set)}</div><div class="trow">${this.copiesHTML(r)}</div>` : ''}</div></div>${this.bandHTML('foot')}</div>${bar('Tally')}`;
+        <div class="pg r"><div class="scroll"><div class="scroll-in">${r ? `<h2 class="detail-title">${esc(r.name)}</h2><div class="across">${new Set(r.copies.map(c => c.seller)).size} sellers · ${r.copies.length} orders · ${esc(r.set)}</div><div class="trow">${this.copiesHTML(r)}</div>` : ''}</div></div>${this.bandHTML('foot')}</div>${bar('Tally')}`;
     } else {
       body = `<div class="pg l">${this.bandHTML('page')}</div><div class="fold"><span>FOLD</span></div>
         <div class="pg r"><div class="scroll"><div class="scroll-in">${list('inline')}</div></div></div>${bar('Tally')}`;
     }
-    const label = `${this.concept === 'foot' ? 'Foot band' : 'Core page'}, ${TSNAME[this.ts]}${this.held ? ', band holds at AX3' : ''}`;
+    const label = `${this.concept === 'foot' ? 'Foot band' : 'Core page'}, ${TSNAME[this.ts]}${this.grow ? ', band grows with the text' : ''}`;
     return `<div class="dev" data-device="${dev}" style="${this.vars()}" aria-label="${label}"><div class="status"><span>9:41</span><span>100%</span></div>${body}</div>
       <div class="proof" aria-live="polite"></div>`;
   }
@@ -499,55 +520,77 @@ class Frame {
     if (keepScroll) this.m.querySelectorAll('.scroll').forEach((s, i) => { s.scrollTop = sc[i] || 0; });
   }
   // ViewThatFits, by measuring: the first tier where nothing overflows its box.
+  // The band takes the reader's size, then steps down one size at a time until it fits:
+  // a strip band in half the space between the status bar and the tab bar, the core page in its page.
   fit() {
-    const band = this.m.querySelector('.band:not(.band--page)');
-    if (band) {
-      const tiers = ['row','pair','lines','stack'];
-      for (const t of tiers) {
-        band.dataset.tier = t;
-        if (t === 'stack' || !this.overflow(band, t)) break;
-      }
-      const dev = this.m.querySelector('.dev'), pg = band.closest('.pg');
-      if (band.classList.contains('band--foot')) {
-        const barH = this.device === 'iphone-duo-unfolded' ? 669 - 593 : 678 - 595;
-        band.style.bottom = barH + 'px';
-        pg.querySelector('.scroll-in').style.setProperty('--pad-end', (band.offsetHeight + barH + 16) + 'px');
-      } else {
-        const barH = this.device === 'iphone-duo-unfolded' ? 669 - 593 : 678 - 595;
-        pg.querySelector('.scroll-in').style.setProperty('--pad-end', (barH + 16) + 'px');
-      }
-    } else {
-      const r = this.m.querySelector('.pg.r .scroll-in'); if (r) r.style.setProperty('--pad-end', (669 - 593 + 16) + 'px');
+    const band = this.m.querySelector('.band');
+    if (!band) return;
+    const open =this.device === 'iphone-duo-unfolded', barTop = open ? 593 : 595, barH = (open ? 669 : 678) - barTop;
+    this.limit = Math.floor((barTop - 20) / 2);
+    const page = band.classList.contains('band--page');
+    const sizes = ORDER.slice(0, ORDER.indexOf(this.ts) + 1).reverse();
+    for (const b of sizes) {
+      Object.entries(this.bandVars(b)).forEach(([k, v]) => band.style.setProperty(k, v));
+      if (!page) this.tier(band);
+      this.shrinkFaces(band);
+      this.bandTs = b;
+      if (this.grow) break;
+      if (page ? band.scrollHeight <= band.clientHeight + 1 : band.offsetHeight <= this.limit) break;
     }
+    if (band.classList.contains('band--foot')) {
+      band.style.bottom = barH + 'px';
+      band.closest('.pg').querySelector('.scroll-in').style.setProperty('--pad-end', (band.offsetHeight + barH + 16) + 'px');
+    }
+    this.m.querySelectorAll('.pg .scroll-in').forEach(s => { if (!s.style.getPropertyValue('--pad-end')) s.style.setProperty('--pad-end', (barH + 16) + 'px'); });
     this.proof();
+  }
+  // ViewThatFits, by measuring: the first tier where nothing overflows its box.
+  tier(band) {
+    for (const t of ['row','pair','lines','stack']) {
+      band.dataset.tier = t;
+      if (t === 'stack' || !this.overflow(band, t)) break;
+    }
+  }
+  // minimumScaleFactor(0.75): a face shrinks before it takes a second line.
+  shrinkFaces(band) {
+    band.querySelectorAll('.face').forEach(f => {
+      f.style.fontSize = ''; f.style.lineHeight = '';
+      const cs = getComputedStyle(f), fs = parseFloat(cs.fontSize), lh = parseFloat(cs.lineHeight), tx = f.querySelector('.tx');
+      for (const s of [1, 0.9, 0.8, 0.75]) {
+        f.style.fontSize = (fs * s) + 'px'; f.style.lineHeight = (lh * s) + 'px';
+        if (tx.getClientRects().length <= 1) break;
+      }
+    });
   }
   overflow(band, tier) {
     const over = el => el.scrollWidth > el.clientWidth + 0.5;
-    if (over(band)) return true;
+    const why = (r, el) => { if (params().debug) console.log('over', tier, r, el.className, el.scrollWidth, el.clientWidth); return true; };
+    if (over(band)) return why('band', band);
     const facts = band.querySelector('.facts');
-    if (over(facts)) return true;
-    for (const el of band.querySelectorAll('.fact, .lab, .fig, .face.on')) if (over(el)) return true;
+    if (over(facts)) return why('facts', facts);
+    for (const el of band.querySelectorAll('.fact, .lab, .fig, .face.on')) if (over(el)) return why('el', el);
     // one line per figure until the stack
-    for (const fig of band.querySelectorAll('.fig')) if (fig.getBoundingClientRect().height > parseFloat(getComputedStyle(fig).lineHeight) * 1.4) return true;
-    if (tier === 'row') { const a = band.querySelector('.act'); if (a.getBoundingClientRect().width < 120) return true; }
+    for (const fig of band.querySelectorAll('.fig')) if (fig.offsetHeight > parseFloat(getComputedStyle(fig).lineHeight) * 1.4) return why('lines', fig);
+    if (tier === 'row') { const a = band.querySelector('.act'); if (a.offsetWidth < 120) return why('act', a); }
     return false;
   }
   // The proof under each frame: what clipped, and the band's height in each state of its action.
   proof() {
     const out = this.m.querySelector('.proof'), band = this.m.querySelector('.band');
     if (!band) return;
-    const clipped = [...band.querySelectorAll('.lab, .fig, .face.on, .cancel')].filter(el => el.scrollWidth > el.clientWidth + 0.5);
+    const clipped = [...band.querySelectorAll('.lab, .fig, .face, .cancel, .title, .core-name')].filter(el => el.scrollWidth > el.clientWidth + 0.5);
     const page = band.closest('.pg').getBoundingClientRect(), b = band.getBoundingClientRect();
-    const z = parseFloat(getComputedStyle(this.m.closest('.fit') ? this.m.closest('.fit').querySelector('.dev') || this.m : this.m).zoom) || 1;
     const outside = b.right > page.right + 1 || b.left < page.left - 1;
+    const tall = band.classList.contains('band--page') && band.scrollHeight > band.clientHeight + 1;
     const h = Math.round(band.offsetHeight);
-    const faces = [...band.querySelectorAll('.face')].map(f => Math.round(f.offsetHeight));
-    const steady = faces.every(x => x <= band.querySelector('.act').offsetHeight);
-    const tier = band.dataset.tier, bad = clipped.length || outside;
+    const act = band.querySelector('.act'), steady = [...band.querySelectorAll('.face')].every(f => f.offsetHeight <= act.offsetHeight);
+    const tier = band.dataset.tier, bad = clipped.length || outside || tall;
+    const held = this.bandTs !== this.ts;
     out.classList.toggle('bad', !!bad);
-    out.textContent = `${TSNAME[this.ts]}${this.held ? ' (band at ' + TSNAME[this.bandTs] + ')' : ''}. Band: ${tier === 'page' ? 'whole page' : tier}, ${h} pt tall. `
-      + (bad ? `CLIPS: ${clipped.length} element(s)${outside ? ', band leaves its page' : ''}. ` : 'Nothing clipped. ')
-      + (steady ? 'Its action slot holds its tallest face, so Undo and the ask keep the height.' : 'HEIGHT CHANGES between faces.');
+    out.textContent = `Reader at ${TSNAME[this.ts]}; band at ${TSNAME[this.bandTs]}${held ? ' (press and hold it for ' + TSNAME[this.ts] + ')' : ''}. `
+      + `Shape: ${tier === 'page' ? 'whole page' : tier}, ${h} pt tall${tier === 'page' ? '' : ', limit ' + this.limit + ' pt' + (this.grow ? ' (off)' : '')}. `
+      + (bad ? `CLIPS: ${clipped.length} element(s)${outside ? ', leaves its page' : ''}${tall ? ', taller than its page' : ''}. ` : 'Nothing clipped. ')
+      + (steady ? 'The action slot holds its tallest face, so Undo and the ask keep the height.' : 'HEIGHT CHANGES between faces.');
   }
   click(e) {
     const b = e.target.closest('[data-act]'); if (!b) return;
@@ -569,7 +612,7 @@ class Frame {
     const dev = this.m.querySelector('.dev'); const old = dev.querySelector('.lcv'); if (old) old.remove();
     if (!on) return;
     const t = totals(this.st);
-    dev.insertAdjacentHTML('beforeend', `<div class="lcv" role="dialog" aria-label="Large content viewer"><div>${t.got}/${t.total}<small>cards in</small>${money(t.owed)}<small>still missing</small></div></div>`);
+    dev.insertAdjacentHTML('beforeend', `<div class="lcv" role="dialog" aria-label="Large content viewer"><div>${t.got}/${t.total}<small>cards</small>${money(t.owed)}<small>missing</small></div></div>`);
   }
   // Deep link state: k=armed|undo|end
   applyK(k) {
@@ -604,7 +647,7 @@ function setParam(k, v) {
 }
 document.querySelectorAll('button[data-ts]').forEach(b => b.addEventListener('click', () => setParam('ts', b.dataset.ts)));
 document.querySelectorAll('button[data-n]').forEach(b => b.addEventListener('click', () => setParam('n', b.dataset.n === '4' ? '' : b.dataset.n)));
-const OPTNAME = { foot:'Foot band', core:'Core page', held:'Holds at AX3' };
+const OPTNAME = { foot:'Foot band', core:'Core page', half:'Holds at half', grows:'Grows with the text' };
 document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
   const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
   b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + OPTNAME[o]; b.setAttribute('aria-pressed', String(hidden.has(o))); route();
