@@ -47,3 +47,91 @@ Glossary: not checked. The feature names below are product names, not workflow t
 - **Owner decides:** phone only or web too, and whether a spoken check-in is allowed on a device with no network.
 
 Strongest: A model translates, the ledger answers. It reaches free wording while rows, prices and answers stay on the device, and the collector can check every answer against chips they see.
+
+## Phase 2: Ask box (fleshed out)
+
+**Premises.** All are marked unknown: the brief bars reading the repo, so none was checked against the code.
+- The three views (Packages, Tally, Orphaned), the lost-mail warning, the claim-filed and refunded stamps, and the recent-checks log already exist (source: coordinator brief). Unknown.
+- Tally's cost basis has one fixed definition that an answer can reuse (inferred). Unknown. Decision 4 depends on it.
+- The CSV holds no set field (inferred from phase 1). Unknown.
+
+**What it is.** A question box that reads the ledger and never writes to it. It shows how it read the question before it answers, says what each answer rests on, and refuses by name when the records cannot settle a question. Slice 1 runs on the device only. Slice 2 adds an optional model that turns free wording into the same reading.
+
+### Flow
+1. **Open.** An "Ask" button in the header opens a sheet over the current view. The view underneath does not move (`no-layout-shift-under-pointer`). The input is focused, with four example chips the collector can tap to fill it.
+2. **Ask.** The collector types or dictates through the phone keyboard; this feature builds no speech input of its own (spoken check-ins belong to "say it back"). Pressing Enter parses. Nothing answers while the collector is still typing, so no panel jumps.
+3. **Reading.** The parse shows as chips, for example `Card: Ember Drake` · `Ordered: Tue 10 Nov 2026` · `Asking: arrived?`. A tap on a chip opens an in-app picker of ledger values, never a native dialog (`no-native-dialogs`).
+4. **Answer.** A headline, then up to 8 matching rows, then a receipt line. A tap on a row closes the sheet and scrolls to that row in Packages or Tally.
+5. **Done.** The sheet closes. The question and answer are not kept anywhere.
+
+### Question types, slice 1
+| Type | Example input | Example answer |
+|---|---|---|
+| Arrived? | "did the ember drake from last tuesday come" | "Ember Drake ×1, Hollow Oak Cards, ordered Tue 10 Nov. Not marked received. 11 days out; no lost-mail warning yet." |
+| All of N? | "did all four forest sprites arrive" | "3 of 4. Open: 1 from Pebble Post Games, ordered 2 Nov, claim filed 18 Nov." |
+| Still out from seller | "what's still out from grimfang" | "2 orders, 5 cards, $3.85. Oldest: 29 Oct (lost-mail warning)." |
+| Spend in a range | "what did I spend in october" | "$84.12, 63 cards, 19 orders, using Tally's cost basis. Less $3.40 refunded (1 order)." |
+| What's late | "what's late" / "which claims are open" | The same list the lost-mail warning shows, plus claims filed without a refund. |
+| Already coming? | "is a moss golem coming" | "Yes: 1 from Lantern Row, ordered 15 Nov, open." Pasting a whole cart is the "already coming" feature. |
+
+Dates resolve on the device in the device's own time zone. "Last Tuesday" asked on a Tuesday means 7 days ago, and the chip shows the date it resolved to.
+
+### Screen states
+- **Empty.** With no import yet, the sheet says "Import an order CSV first" and links to import. The example chips stay greyed out.
+- **Normal.** Chips, headline, rows and receipt. Every number on the screen can be traced to rows the collector can open.
+- **Edge, many matches.** Over 8 matching rows: the first 8 plus "Show all 23 in Packages", which applies a filter. The rows never stream into the sheet.
+- **Edge, stale.** The receipt reads "Synced 2 h ago; another device may have checked in since." The answer still shows.
+- **Error.** If the ledger cannot be read, the sheet says "Couldn't read your ledger" and offers Retry. It does not fall back to cached answers.
+- **Refusal.** Same layout, with the headline in a muted tone, the reason, and at most one next step. The reasons:
+  - **R1, two rows fit.** Both rows are listed and the collector picks one. The app never picks.
+  - **R2, no such name.** "No 'Ember Drak' in your ledger. Closest: Ember Drake, Ember Dragoon." The suggestions come from ledger names only.
+  - **R3, unmarked is not missing.** The answer always says "not marked received" and never "didn't arrive".
+  - **R4, after the newest import.** "Your newest import ends 14 Nov. Orders after that aren't here." The next step offered is import.
+  - **R5, field not held.** "Your records don't hold set or rarity."
+  - **R6, unknown sender.** "Who sent the 14 Nov envelope?" gets "Orphaned mail isn't matched to orders" and a link to Orphaned (`orphaned-mail-never-decides`).
+  - **R7, unknown question type.** The sheet lists the six question types it can answer.
+  - **R8, seller ranking.** "Which seller loses the most?" links to the seller record card and does not rank sellers itself.
+  - **R9, vague time.** "In the fall" asks for a date range.
+
+### Receipt (on every answer)
+`Counted 4 rows · newest import ends 14 Nov · synced 3 min ago · 412 of 450 cards checked in`. On a spend answer it adds: "cost basis as Tally".
+
+### Data
+- **Slice 1 adds no saved field and no storage key.** It reads the existing check-in state, the stamps and the import dates. `saved-state-shape` and `storage-keys-are-frozen` stay untouched.
+- **Kept in memory only:** the parse, the matches, and the open sheet.
+- **Deferred, each needs an owner ruling under `saved-state-shape`:**
+  - nickname aliases ("drake" means Ember Drake);
+  - a local name-to-set table for spend per set;
+  - a list of recent questions, which would also need a new storage key (`storage-keys-are-frozen`).
+- **Parser:** unchanged (`parser-filters`). The ask box never imports anything.
+- **Imports:** untouched (`imports-merge-never-replace`).
+
+### Slice 2: exactly what leaves the device
+- **Sent from the phone to the private Worker.** The question text with every ledger card and seller name swapped for a placeholder, for example "did CARD_1 from SELLER_1 come on DATE_1". Dates are resolved on the device first. The device key goes along, but only to authenticate to the Worker.
+- **Sent from the Worker to the model provider.** That placeholder text plus the fixed schema: the six question types and their slot names, which are public in the source anyway. The provider key lives only as a Worker secret, never on the device and never in the public repo (`the-token-is-a-credential`).
+- **Never sent:** rows, prices, the list of sellers or cards, check-in state, stamps, the answer, or the device key.
+- **What comes back.** One question type with slots, validated against the schema. Anything outside the schema is refused under R5 or R7. The model cannot add a question type and never produces an answer.
+- **Leak guard.** A misspelled name slips past the placeholder swap and would be sent as typed. So the sheet shows the exact outgoing text with a Send button before every call. The Worker logs no question text.
+
+### Smallest first slice that ships alone
+- The three most-asked types: arrived?, all of N?, and still out from seller.
+- Chips, receipt, and refusals R1 to R4, R6 and R7.
+- The same component on web and phone. No new data, no model, read-only.
+- Spend, late and already-coming follow as small additions to the grammar.
+
+### Risks
+- **Fuzzy match picks the wrong card.** Every match shows as a chip, and two candidates always trigger R1.
+- **Stale answers across devices.** The receipt shows the sync age; the app does not block on sync.
+- **Spend that disagrees with Tally.** Spend reuses Tally's cost basis; it is not computed a second time.
+- **Scope creep toward write actions.** The sheet has no write path and its tests assert that.
+- **Test fixtures in a public repo.** Fixtures use invented names only, never a real export.
+- **Dictation garbles made-up card names.** R2's "closest" suggestions catch most of it.
+
+### Owner decisions (recommended answer first)
+1. **Where it lives.** A sheet over any view (recommended), or a bar above Packages that moves the list.
+2. **Can it check cards in?** No, read-only (recommended). Check-ins stay in the views and in "say it back".
+3. **Keep recent questions?** No for now (recommended), so there is no new key. Revisit if the owner repeats questions often.
+4. **Spend basis.** Tally's existing cost basis exactly (recommended). Refunds show as a separate "less" line.
+5. **Does a claim-filed order count as outstanding?** Yes, until it is stamped refunded (recommended). This follows the lost-mail warning's current rule.
+6. **Build slice 2?** Not yet (recommended). Build it only if the owner finds slice 1 refusing questions they really ask. If built: opt-in, routed through the Worker, with the outgoing-text preview on every send.
+7. **Match strictness.** Never auto-pick between two candidates (recommended); one close match still shows as an editable chip.
