@@ -2,9 +2,9 @@
 
 **What.** `OrphanedUITests.testComposerDraftSurvivesAViewChange` stays red on the iPhone 18 Pro. With the composer open, its input focused and the keys up, the keys cover the tab bar. The "Packages" tab tap then misses (hit point -1,-1 in CI run 42700362453, job pro-ui-a). The test was also red in CI runs 41379087325 (2026-11-02) and 42692198265.
 
-Main has no way to hide the keys from the Orphaned composer. `ComposerView` in `native/Manifest/OrphanedView.swift` sets its focus on appear and never clears it. That path has no `scrollDismissesKeyboard`, no tap-to-dismiss and no keyboard toolbar. The only `scrollDismissesKeyboard` is in `HandScreen.swift`. So the draft survives a view change, the behaviour the test expects, has no route a person can reach on the iPhone while typing. Save and Cancel end the composer.
+The Orphaned list hides the composer's keys on a drag: `scrollDismissesKeyboard(.interactively)` on the list in `native/Manifest/OrphanedView.swift`, set there so the other tabs keep their keys. `ComposerView` still sets its focus on appear and never clears it, and the composer has no tap-to-dismiss and no keyboard toolbar. The other `scrollDismissesKeyboard` is in `HandScreen.swift`. `OrphanedUITests` pins the drag (`testDraggingTheListHidesTheComposerKeysAndKeepsTheDraft`) and the draft that survives a view change (`testComposerDraftSurvivesAViewChange`). Save and Cancel end the composer.
 
-The decision `duo-card-in-hand` keeps the tab bar under the keys while they are open. So the test's tap cannot land under the keys. Which side is stale, the test or the decision, is the open question. Page item 86 a, 2026-11-18 23:22 CST, rules a drag on the list that hides the keys (see `ux-house-rules-govern`).
+The decision `duo-card-in-hand` keeps the tab bar under the keys while they are open. A person drags the list to drop the keys and reach the tab bar, which is what the owner ruled, page item 86 a, 2026-11-18 23:22 CST (see `ux-house-rules-govern`).
 
 The gap closes when the test is green on the iPhone 18 Pro.
 

@@ -97,7 +97,7 @@ struct OrphanedView: View {
             .padding(.bottom, 16)
         }
         // A drag on the list hides the composer's keys, so the tab bar under them can be reached. Set here, not in MastheadScreen,
-        // so the other tabs keep their keys. Hiding the keys never clears focus state or the draft (owner, item 86 a).
+        // so the other tabs keep their keys. Owner ruling: docs/decisions/ux-house-rules-govern.md, Orphaned composer keys.
         .scrollDismissesKeyboard(.interactively)
     }
 }
