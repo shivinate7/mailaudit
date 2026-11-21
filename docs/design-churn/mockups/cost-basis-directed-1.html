@@ -30,6 +30,9 @@ body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sy
 button, input, select, textarea { font-family:inherit; font-size:inherit; color:inherit; }
 button { background:none; border:0; padding:0; cursor:pointer; text-align:inherit; }
 button:focus-visible, input:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+::selection { background:color-mix(in srgb, var(--accent) 22%, transparent); color:var(--ink); }
+input { caret-color:var(--accent); }
+.fig, .ct, .paid, .thirds b, dd, .pr, .step span { font-variant-numeric:tabular-nums; }
 main { max-width:1100px; margin:0 auto; padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-4); }
 .banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:var(--space-2) var(--space-3); font-weight:600; }
 .intro { display:flex; flex-direction:column; gap:var(--space-2); }
@@ -52,7 +55,9 @@ section.concept[hidden] { display:none; }
 .chead p { margin:0; max-width:72ch; color:var(--inkSoft); flex-basis:100%; }
 .frames { display:flex; flex-wrap:wrap; gap:var(--space-6); align-items:flex-start; }
 .wide { width:100%; overflow-x:auto; padding-bottom:var(--space-2); }
-figure { margin:0; display:flex; flex-direction:column; gap:var(--space-2); }
+figure { margin:0; display:flex; flex-direction:column; gap:var(--space-2); max-width:100%; }
+/* A frame wider than the viewer's screen scrolls inside its own box; the page never scrolls sideways. */
+.frames > figure { overflow-x:auto; }
 figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
 figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
 
@@ -94,7 +99,8 @@ figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
 /* ---- the one number ---- */
 .head { position:relative; display:flex; flex-direction:column; gap:var(--space-1); padding:var(--space-3) 0 var(--space-2); background:var(--paper); }
 .head.pin { position:sticky; top:0; z-index:12; border-bottom:1px solid var(--line); }
-.head .lab { font-size:15px; color:var(--inkSoft); display:flex; justify-content:space-between; align-items:center; min-height:20px; gap:var(--space-2); }
+.head .after { font-size:17px; color:var(--ink); }
+.head .lab { font-size:17px; color:var(--ink); display:flex; justify-content:space-between; align-items:center; min-height:20px; gap:var(--space-2); }
 .head.pin .lab { min-height:44px; }
 .head .lab .scopeName { font-size:17px; color:var(--ink); font-weight:700; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
 /* Reserved: the figure box keeps one height and the width of the widest figure the ledger can show,
@@ -150,12 +156,15 @@ figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
 .mini { display:grid; grid-template-columns:1fr auto auto; column-gap:var(--space-3); row-gap:2px; font-size:14px; }
 .mini span:nth-child(3n+2), .mini span:nth-child(3n) { font:13px var(--mono); text-align:right; white-space:nowrap; }
 .mini .rd-red { color:var(--red); }
-.copies { display:flex; flex-direction:column; border:1px solid var(--line); border-radius:8px; background:var(--card); overflow:hidden; }
+/* The copy lines sit in the row itself, ruled apart, never a card inside a card. */
+.copies { display:flex; flex-direction:column; border-top:1px solid var(--line); margin:0 calc(-1 * var(--space-3)); }
+.inline-panel .copies { margin:0; }
 .cp { display:flex; align-items:center; gap:var(--space-2); min-height:52px; padding-right:var(--space-2); border-top:1px solid var(--line); }
 .cp:first-child { border-top:0; }
 .cp.got { background:var(--greenSoft); }
 .box { flex:0 0 44px; height:44px; display:grid; place-items:center; }
-.box i { width:30px; height:30px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; font-style:normal; color:var(--card); font:700 18px var(--sys); }
+.box i { width:30px; height:30px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; color:var(--card); }
+.box svg { width:18px; height:18px; }
 .cp.got .box i { background:var(--green); border-color:var(--green); }
 .cp .who { flex:1; min-width:0; display:flex; flex-direction:column; }
 .cp .who b { font-size:15px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
@@ -190,17 +199,20 @@ figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
 .tbar button.strong { font-weight:600; }
 .tbar h3 { margin:0; font:600 17px var(--sys); }
 .sbody { flex:1; overflow-y:auto; padding:0 var(--space-4) calc(var(--sab) + var(--space-4)); display:flex; flex-direction:column; gap:var(--space-3); }
+.sbody > * { flex:none; }
 .covers { display:flex; justify-content:space-between; align-items:center; min-height:44px; border-bottom:1px solid var(--line); font-size:15px; }
 .covers button { color:var(--accent); font:15px var(--cochin); min-height:44px; display:inline-flex; align-items:center; }
 .csv { font:11px/15px var(--mono); background:var(--paper); border:1px solid var(--line); border-radius:8px; padding:var(--space-2); white-space:pre; overflow-x:auto; color:var(--ink); margin:0; }
 .said { font-size:13px; min-height:18px; color:var(--green); }
 .said.bad { color:var(--red); }
 .acts { display:flex; gap:var(--space-2); flex-wrap:wrap; }
+.opt { display:flex; flex-direction:column; gap:var(--space-1); padding-top:var(--space-2); }
 .dev.open .scrim, .dev.open .sheet { left:495.5px; }
 
 /* ---- accessibility size AX5 on the folded pose: HIG typography AX5 table ---- */
 .ax .fig { font-size:60px; line-height:70px; height:auto; white-space:normal; overflow-wrap:anywhere; }  /* Large Title AX5 60/70 */
-.ax .head .lab, .ax .dc, .ax .back { font-size:49px; line-height:58px; }       /* Subhead AX5 49/58 */
+.ax .dc, .ax .back { font-size:49px; line-height:58px; }                        /* Subhead AX5 49/58 */
+.ax .head .lab, .ax .head .after { font-size:53px; line-height:62px; }          /* Body AX5 53/62 */
 .ax .head .lab { flex-direction:column; align-items:flex-start; }
 /* At AX5 the scale would fill the screen, so it stops pinning and scrolls with the list. */
 .ax .head.pin { position:relative; top:auto; }
@@ -210,7 +222,12 @@ figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
 .ax .nm { font-size:53px; line-height:62px; white-space:normal; }                /* Body AX5 53/62 */
 .ax .meta { font-size:43px; line-height:51px; white-space:normal; }
 .ax .rh { flex-direction:column; align-items:stretch; }
-.ax .rh .r { flex-direction:row; justify-content:space-between; align-items:baseline; }
+.ax .rh .r { flex-direction:row; flex-wrap:wrap; justify-content:space-between; align-items:baseline; column-gap:var(--space-3); }
+.ax .paid { min-width:0; }
+/* The sheet at AX5: its body text grows; the toolbar stays at the default size (whether the system grows it is unread). */
+.ax .covers { font-size:53px; line-height:62px; flex-wrap:wrap; } .ax .covers button { font-size:49px; }
+.ax .btn { font-size:49px; min-height:72px; } .ax .said, .ax .ph, .ax .soft, .ax .out dt small, .ax .sum dt small { font-size:43px; line-height:51px; }
+.ax .acts { flex-direction:column; align-items:stretch; }
 .ax .ct, .ax .paid { font-size:53px; line-height:62px; }
 .ax .find { font-size:53px; min-height:72px; }
 .ax .found, .ax .note { font-size:43px; line-height:51px; }
@@ -236,7 +253,6 @@ body.tags [data-tag]::after { content:attr(data-tag); position:absolute; right:4
 [data-tag^="New"] { --t:var(--new); } [data-tag^="Today"] { --t:var(--today); }
 @media (prefers-reduced-motion: no-preference) { .panel:not(.inline-panel) { animation:arrive 160ms ease-out; } }
 @keyframes arrive { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
-@media (max-width: 520px) { .dev.fold { transform-origin:top left; } }
 </style>
 </head>
 <body class="tags">
@@ -340,6 +356,7 @@ for (const it of ITEMS) {
   BASE_GOT.set(it.key, r < p ? it.qty : (it.qty > 1 && r < p + 0.12 ? 1 : 0));
 }
 const LIVE = ITEMS.filter(it => !CANCELED.has(it.orderId) && !STAMP[it.orderId]);
+const SHIP = new Map(ORDERS.map(o => [o.id, [0.99, 1.31, 1.99, 2.99, 3.99, 4.99][Math.floor(R() * 6)]]));
 let ORDER = null;
 
 /* ---------------- figures ---------------- */
@@ -395,6 +412,8 @@ function initUI(c) {
            phase: ["empty","loading","failed"].includes(pageState) ? pageState : "ready", wantRow: pageState === "row" };
 }
 let tagsOn = H.g !== "0";
+/* The shipping-and-tax option (notes item 9): shown until hidden, here or with o=0 in the hash. */
+let shipOn = H.o !== "0";
 const hidden = new Set((H.h || "").split(",").filter(Boolean));
 
 /* ---------------- pieces ---------------- */
@@ -420,7 +439,7 @@ function masthead(f, T, pk) {
   return `<div class="mh"><div class="lh"><b>MANIFEST</b></div>
     <div class="thirds" ${f.c === "scale" ? 'data-tag="New: counts only"' : ""}><div><span class="micro">Cards</span><b>${T.got}<span>/${T.qty}</span></b></div>
     <div><span class="micro">Packages</span><b>${pk.done}<span>/${pk.total}</span></b></div>${moneyCell}</div>
-    <div class="mfoot"><span>${f.ui.groups.length} card names</span>${foot}</div></div>`;
+    <div class="mfoot"><span>${f.ui.groups.length} unique items · autosaves</span>${foot}</div></div>`;
 }
 
 function figureBlock(f, T, scopeG) {
@@ -434,11 +453,14 @@ function figureBlock(f, T, scopeG) {
     const v = scopeG ? scopeG.paid : T.paid;
     fig = money(v);
     const done = scopeG ? scopeG.got === scopeG.qty : T.left === 0;
-    scope = done ? "Everything you paid for has arrived." : scopeG ? `Paid for the ${scopeG.got} of ${copies(scopeG.qty)} that arrived` : "Card prices, before shipping and tax. All time.";
+    scope = done ? "Everything you paid for has arrived." : "Card prices, before shipping and tax. All time.";
   }
+  /* The figure sits inside a sentence: "You paid / $X / for the N of M copies that arrived." */
+  const g = scopeG || T;
+  const after = ui.phase === "ready" ? `<div class="after">for the ${g.got.toLocaleString("en-US")} of ${copies(g.qty).replace(/^\d+/, (d) => (+d).toLocaleString("en-US"))} that arrived.</div>` : "";
   const label = scopeG
-    ? `<span class="scopeName">${esc(scopeG.name)}</span>`
-    : `<span>Paid for what arrived${isScale ? ", all cards" : ""}</span>`;
+    ? `<span class="scopeName">${esc(scopeG.name)}: you paid</span>`
+    : `<span>${ui.phase === "ready" ? "You paid" : "Paid for what arrived"}</span>`;
   const back = isScale ? `<button class="back" data-act="all" ${scopeG ? "" : 'aria-hidden="true" tabindex="-1"'}>All cards</button>` : "";
   const ready = ui.phase === "ready";
   const done = ready && (scopeG ? scopeG.got === scopeG.qty : T.left === 0);
@@ -450,9 +472,9 @@ function figureBlock(f, T, scopeG) {
   const panel = ui.panel && ready && !(f.dev === "open") ? `<div class="panel" role="region" aria-label="How it adds up">${breakdown(f, T, scopeG, true)}</div>` : "";
   return `<section class="head${isScale ? " pin" : ""}"${idAttr} data-tag="New: the one number">
     <div class="lab">${label}${back}</div>
-    <button class="${figCls}" data-act="panel" ${ready ? "" : "disabled"} aria-label="${ready ? "Paid for what arrived, " + fig + ". Show how it adds up." : fig}">${fig}</button>
+    ${ready ? `<button class="${figCls}" data-act="panel" aria-label="You paid ${fig} for what arrived. Show how it adds up.">${fig}</button>` : `<div class="${figCls}">${fig}</div>`}
     <div class="rule2" aria-hidden="true"></div>
-    <div class="scope${done ? " good" : ""}">${scope}</div>
+    ${after}<div class="scope${done ? " good" : ""}">${scope}</div>
     ${cells}${panel}</section>`;
 }
 
@@ -479,13 +501,14 @@ function breakdown(f, T, g, closable) {
     <div class="note">Search and Showing never change these figures. The date range does.</div>${copyList}`;
 }
 
+const TICK = '<svg viewBox="0 0 18 18" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 9.5l3.5 3.5 7.5-8"/></svg>';
 function copyLines(f, g, withPrice) {
   const got = LEDGER[f.c];
   return `<div class="copies">` + g.items.map(it => {
     const k = Math.min(it.qty, got.get(it.key) || 0), full = k >= it.qty;
     const ctl = it.qty === 1
-      ? `<button class="box" data-act="check" data-k="${esc(it.key)}" aria-pressed="${full}" aria-label="${full ? "Arrived" : "Not arrived"}: ${esc(it.seller)}"><i>${full ? "✓" : ""}</i></button>`
-      : `<span class="box" aria-hidden="true"><i>${full ? "✓" : ""}</i></span>`;
+      ? `<button class="box" data-act="check" data-k="${esc(it.key)}" aria-pressed="${full}" aria-label="${full ? "Arrived" : "Not arrived"}: ${esc(it.seller)}"><i>${full ? TICK : ""}</i></button>`
+      : `<span class="box" aria-hidden="true"><i>${full ? TICK : ""}</i></span>`;
     const step = it.qty > 1 ? `<span class="step"><button data-act="dec" data-k="${esc(it.key)}" aria-label="One fewer">−</button><span>${k}/${it.qty}</span><button data-act="inc" data-k="${esc(it.key)}" aria-label="One more">+</button></span>` : "";
     return `<div class="cp${full ? " got" : ""}">${ctl}<span class="who"><b>${esc(it.seller)}</b><small>${it.date} · ${esc(it.set)} · ${it.orderId}</small></span>${withPrice ? `<span class="pr">${money(it.price)}</span>` : ""}${step}</div>`;
   }).join("") + `</div>`;
@@ -531,6 +554,12 @@ function sheetHtml(f, T) {
   const gs = groupsOf(LIVE.filter(yr), LEDGER[f.c]);
   const t = totalsOf(gs), lo = leftOutOf(null, yr);
   const csv = csvOf(gs, t, lo).split("\n");
+  /* Sample per-order Shipping Amount and Tax Amount, as the CSV would carry them; the parser reads neither today. */
+  const st = { ship: 0, tax: 0, orders: 0 };
+  for (const o of ORDERS) if (o.date.startsWith("2026") && !CANCELED.has(o.id) && !STAMP[o.id]) {
+    const sub = LIVE.filter(it => it.orderId === o.id).reduce((s, it) => s + it.price * it.qty, 0);
+    st.orders++; st.ship += SHIP.get(o.id); st.tax += Math.round(sub * 0.0725 * 100) / 100;
+  }
   return `<div class="scrim" data-act="sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Year-end summary" data-tag="New: Year-end summary">
     <div class="grab" aria-hidden="true"></div>
     <div class="tbar"><button data-act="sheet">Cancel</button><h3>Year-end summary</h3><button class="strong" data-act="csv">Save CSV</button></div>
@@ -543,6 +572,11 @@ function sheetHtml(f, T) {
         <dt>Left out: refunds and cancels</dt><dd>${money(lo.refunded.v + lo.partial.v + lo.canceled.v)}</dd>
         <span class="soft">${gs.length} card names, ${copies(t.qty)}, card prices only. Shipping and tax are not in the file's line prices.</span>
       </dl>
+      ${shipOn ? `<div class="opt" data-option="ship-tax" data-tag="New: option, shipping and tax totals">
+        <dl class="sum"><dt>Shipping, per order<small class="note" style="display:block">${plural(st.orders, "order")} in 2026, never split onto cards</small></dt><dd>${money(st.ship)}</dd>
+        <dt>Tax, per order</dt><dd>${money(st.tax)}</dd>
+        <dt class="tot">Spent in all</dt><dd class="tot">${money(t.spent + st.ship + st.tax)}</dd></dl>
+        <button class="dc" data-act="hideship">Hide this option</button></div>` : ""}
       <div class="ph">The file, first lines</div>
       <pre class="csv">${esc(csv.slice(0, 6).join("\n"))}\n…</pre>
       <div class="acts"><button class="btn" data-act="csv">Save CSV</button><button class="btn ghost" data-act="copy">Copy summary</button></div>
@@ -607,6 +641,7 @@ function onAct(f, b, ev) {
   if (a === "sync") { b.textContent = "Opens Ledger, Sync (not drawn)"; return; }
   if (a === "range") { ui.said = "Opens the date range, By month, set to January to December 2026 (not drawn)."; ui.saidBad = false; render(f); return; }
   if (a === "tab") return;
+  if (a === "hideship") { shipOn = false; for (const x of FRAMES) render(x); return; }
   const it = ITEMS.find(x => x.key === b.dataset.k);
   if (a === "check") { got.set(it.key, (got.get(it.key) || 0) >= it.qty ? 0 : it.qty); renderConcept(f.c); return; }
   if (a === "inc") { got.set(it.key, Math.min(it.qty, (got.get(it.key) || 0) + 1)); renderConcept(f.c); return; }

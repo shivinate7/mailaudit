@@ -112,6 +112,7 @@ figure.f figcaption b { font-family:var(--cochin); font-size:19px; color:var(--i
 .iconbtn svg { width:22px; height:22px; }
 .receipt { min-height:16px; font:12px/16px var(--mono); color:var(--inkSoft); }
 .receipt.ok { color:var(--green); }
+.receipt .net { color:var(--ink); font-weight:700; font-size:13px; }
 .chips { display:flex; gap:8px; flex-wrap:wrap; }
 .chip { font:13px var(--mono); min-height:32px; padding:0 12px; border:1px solid var(--line); border-radius:16px; background:var(--card); color:var(--ink); cursor:pointer; position:relative; }
 .chip::after { content:""; position:absolute; left:0; right:0; top:-6px; bottom:-6px; }
@@ -123,11 +124,27 @@ figure.f figcaption b { font-family:var(--cochin); font-size:19px; color:var(--i
 .colhead .cols span { font:11px/14px var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--inkSoft); }
 .lines { display:flex; flex-direction:column; }
 .sline { border-bottom:1px solid var(--line); }
-.sline > button { width:100%; background:transparent; border:0; padding:8px 0; text-align:left; cursor:pointer; color:inherit; font:inherit;
+.sline > button, .sline > .ro { width:100%; background:transparent; border:0; padding:8px 0; text-align:left; cursor:pointer; color:inherit; font:inherit;
   display:grid; grid-template-columns:1fr auto; gap:4px 8px; align-items:baseline; min-height:52px; }
 .sline .nm { font:700 15px/1.3 var(--cochin); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
-.sline .meta { font:11px/14px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; grid-column:1; }
-.sline .figs { font-size:12px; line-height:20px; grid-row:1 / span 2; grid-column:2; align-self:center; }
+/* the meta line takes the full width under the figures, so its counts never truncate (card-tally-row-counts-first) */
+.sline .meta { font:11px/14px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; grid-column:1 / -1; }
+.sline .figs { font-size:12px; line-height:20px; grid-row:1; grid-column:2; align-self:start; }
+.sline > .ro { cursor:default; }
+/* today's row figures (ItemTotalRow): count, rate, and the red outstanding line */
+.tfigs { grid-row:1 / span 2; grid-column:2; display:flex; flex-direction:column; align-items:flex-end; text-align:right; white-space:nowrap; }
+.tfigs b { font:700 15px var(--mono); color:var(--ink); } .tfigs b.done { color:var(--green); }
+.tfigs span { font:11.5px var(--mono); color:var(--inkSoft); }
+.tfigs em { font:700 12px var(--cochin); font-style:normal; color:var(--red); }
+.lines.today .sline .meta { grid-column:1; }
+.narrow .lines.today .sline > button { grid-template-columns:1fr auto; }
+/* the entry to the Statement screen: a ruled row in the masthead's vocabulary */
+.entry { min-height:44px; display:grid; grid-template-columns:1fr auto; align-items:center; gap:8px; width:100%; border:0; border-top:1px solid var(--line); border-bottom:1px solid var(--line);
+  background:transparent; padding:0; text-align:left; cursor:pointer; font:15px var(--cochin); color:var(--ink); }
+.entry small { font:12px var(--mono); color:var(--inkSoft); }
+.entry .go { color:var(--accent); font:600 17px var(--sys); }
+.ax .tfigs { grid-row:auto; grid-column:1; align-items:flex-start; text-align:left; white-space:normal; }
+.ax .tfigs b { font-size:calc(15px * 43 / 12); } .ax .tfigs span, .ax .tfigs em { font-size:calc(12px * 43 / 12); }
 .figs .q { color:var(--ink); }
 .figs .q.done { color:var(--green); font-weight:700; }
 .figs .rc { color:var(--ink); }
@@ -227,15 +244,17 @@ figure.f figcaption b { font-family:var(--cochin); font-size:19px; color:var(--i
 .seg button { min-height:40px; min-width:72px; border:0; background:transparent; border-radius:7px; font:600 13px var(--sys); color:var(--ink); cursor:pointer; }
 .seg button[aria-pressed="true"] { background:var(--card); box-shadow:0 1px 3px color-mix(in srgb, var(--ink) 15%, transparent); }
 .docarea { position:absolute; left:0; right:0; top:calc(var(--sat) + 44px); bottom:83px; overflow:auto; overscroll-behavior:contain; background:color-mix(in srgb, var(--line) 40%, var(--paper)); }
-.docarea .fit { padding:16px; display:flex; justify-content:center; }
-.sheetwrap { position:relative; flex:0 0 auto; box-shadow:0 2px 12px color-mix(in srgb, var(--ink) 18%, transparent); cursor:zoom-in; }
+.docarea .fit { padding:16px; display:flex; width:max-content; min-width:100%; }
+.sheetwrap { position:relative; flex:0 0 auto; margin:0 auto; box-shadow:0 2px 12px color-mix(in srgb, var(--ink) 18%, transparent); cursor:zoom-in; }
 .sheetwrap.zoomed { cursor:zoom-out; }
 .zoomhint { position:sticky; top:8px; margin:0 auto; width:max-content; font:12px var(--sys); background:var(--card); border:1px solid var(--line); border-radius:12px; padding:4px 10px; color:var(--inkSoft); z-index:3; }
 
 /* The printed page: US Letter, 612 x 792 pt, drawn at full size and scaled into the frame. */
 .ppage { width:612px; height:792px; background:transparent; color:var(--ink); padding:48px 48px 40px; display:flex; flex-direction:column; font-family:var(--cochin); position:relative; transform-origin:0 0; }
-.ppage.tint { background:var(--card); }
-.ppage.plain { background:var(--card); }  /* on screen the sheet must read as paper; in print it paints nothing (see @media print) */
+/* Plain paper: card, the theme's white, stands for the printer's own sheet; in print it paints nothing (see @media print).
+   Parchment tint: the page token, on screen and in print. */
+.ppage.plain { background:var(--card); }
+.ppage.tint { background:var(--paper); }
 .ppage .lh { display:grid; grid-template-columns:1fr auto; align-items:end; gap:16px; padding-bottom:8px; border-bottom:1px solid var(--ink); }
 .ppage .lh .brand { display:flex; flex-direction:column; gap:2px; }
 .ppage .lh .brand b { font:400 22px/1 var(--cochin); letter-spacing:.2em; text-transform:uppercase; }
@@ -295,9 +314,11 @@ figure.f figcaption b { font-family:var(--cochin); font-size:19px; color:var(--i
 .ax .thirds .fig { font-size:calc(15px * 53 / 17); white-space:normal; }
 .ax .micro, .ax .colhead .cols span { font-size:calc(11px * 43 / 12); line-height:1.2; }
 .ax .mfoot { flex-direction:column; font-size:calc(12px * 43 / 12); }
+.ax .mfoot > * { white-space:normal; }
 .ax .shead h3 { font-size:calc(21px * 53 / 17); }
 .ax .shead .period { font-size:calc(14px * 53 / 17); }
 .ax .receipt { font-size:calc(12px * 43 / 12); line-height:1.2; }
+.ax .receipt .net { font-size:inherit; }
 .ax .colhead { display:none; }
 .ax .sline > button { grid-template-columns:1fr; }
 .ax .sline .nm { font-size:calc(15px * 53 / 17); -webkit-line-clamp:unset; }
@@ -343,7 +364,7 @@ figure.f figcaption b { font-family:var(--cochin); font-size:19px; color:var(--i
 </head>
 <body>
 <main>
-<div class="banner" role="note">Sample. No figure on this page is real. The ledger is made up on load from a fixed seed: 820 orders, about 3,600 card lines, about 330 card names and 64 sellers, so the totals add up, but they are not the owner's data. Names of cards, sets and shops are stand-ins.</div>
+<div class="banner" role="note">Sample. No figure on this page is real. The ledger is made up on load from a fixed seed: 820 orders over 2025 and 2026, about 330 card names and 64 sellers, so the totals add up, but they are not the owner's data. Names of cards, sets and shops are stand-ins.</div>
 <h1>Cost basis statement</h1>
 <p class="kind"><b>Designer kind:</b> directed &nbsp; <b>Direction:</b> statement: a ledger-style statement you can export and print</p>
 <p class="sub">What did I actually pay for what I actually got? Two concepts answer it as a statement of account. In <b>Statement in Tally</b>, the Tally view itself is set as the statement: one line per card name with what arrived, what is still missing and the basis, and a sum at the foot. In <b>Statement document</b>, Tally keeps today's rows, and a new screen shows the printed statement page by page, with totals carried forward from page to page. Both share one way out: a Share button that hands a PDF or a CSV to the iOS share sheet. Every tap on the frames works. A check-in in any frame changes every figure in every frame.</p>
@@ -365,6 +386,18 @@ figure.f figcaption b { font-family:var(--cochin); font-size:19px; color:var(--i
     <a href="#m=value" data-k="m" data-v="value">Named value, as today</a>
     <a href="#m=basis" data-k="m" data-v="basis">Named basis</a>
   </nav>
+  <nav aria-label="Line figures"><span class="lab">Line figures</span>
+    <a href="#rw=money" data-k="rw" data-v="money">Money columns</a>
+    <a href="#rw=rate" data-k="rw" data-v="rate">Unit rate, as today</a>
+  </nav>
+  <nav aria-label="Not-counted memo"><span class="lab">Memo</span>
+    <a href="#mm=on" data-k="mm" data-v="on">Not-counted memo</a>
+    <a href="#mm=off" data-k="mm" data-v="off">No memo, as today</a>
+  </nav>
+  <nav aria-label="Period control"><span class="lab">Period</span>
+    <a href="#pm=menu" data-k="pm" data-v="menu">Menu in the statement head</a>
+    <a href="#pm=text" data-k="pm" data-v="text">Text only, changed on the Ledger tab</a>
+  </nav>
   <nav aria-label="Printed page"><span class="lab">Printed page</span>
     <a href="#pp=plain" data-k="pp" data-v="plain">Plain paper</a>
     <a href="#pp=tint" data-k="pp" data-v="tint">Parchment tint</a>
@@ -377,6 +410,12 @@ figure.f figcaption b { font-family:var(--cochin); font-size:19px; color:var(--i
     <button type="button" data-hide="c:document" aria-pressed="false">Statement document</button>
     <button type="button" data-hide="m:value" aria-pressed="false">Named value</button>
     <button type="button" data-hide="m:basis" aria-pressed="false">Named basis</button>
+    <button type="button" data-hide="rw:money" aria-pressed="false">Money columns</button>
+    <button type="button" data-hide="rw:rate" aria-pressed="false">Unit rate</button>
+    <button type="button" data-hide="mm:on" aria-pressed="false">Not-counted memo</button>
+    <button type="button" data-hide="mm:off" aria-pressed="false">No memo</button>
+    <button type="button" data-hide="pm:menu" aria-pressed="false">Period menu</button>
+    <button type="button" data-hide="pm:text" aria-pressed="false">Period as text</button>
     <button type="button" data-hide="pp:plain" aria-pressed="false">Plain paper</button>
     <button type="button" data-hide="pp:tint" aria-pressed="false">Parchment tint</button>
   </nav>
@@ -385,7 +424,13 @@ figure.f figcaption b { font-family:var(--cochin); font-size:19px; color:var(--i
   </nav>
 </div>
 
-<div class="frames" id="frames"></div>
+<div class="frames" id="frames">
+  <figure class="f" data-f="folded"><figcaption><b>Duo, folded</b></figcaption><div class="dev" data-device="iphone-duo-folded" data-f="folded"></div></figure>
+  <figure class="f" data-f="open"><figcaption><b>Duo, open</b></figcaption><div class="dev" data-device="iphone-duo-unfolded" data-f="open"></div></figure>
+  <figure class="f" data-f="phone"><figcaption><b>Large phone</b></figcaption><div class="dev" data-device="iphone-regular" data-f="phone"></div></figure>
+  <figure class="f" data-f="ax5"><figcaption><b>Duo, folded, largest text (AX5)</b></figcaption><div class="dev ax" data-device="iphone-duo-folded" data-f="ax5"></div></figure>
+</div>
+<noscript><p class="sub">The frames are drawn by the page's script. Turn JavaScript on to see them.</p></noscript>
 
 <section class="legend">
   <h2>How to read the frames</h2>
@@ -475,9 +520,9 @@ const ORDER = Object.fromEntries(ORDERS.map((o) => [o.id, o]));
 /* ---------- the view state ---------- */
 const STATES = {
   intally: [["lines", "Lines"], ["open", "A line open"], ["period", "Period menu"], ["share", "Share menu"], ["sheet", "Share sheet"], ["empty", "No orders in range"]],
-  document: [["page", "First page"], ["last", "Last page"], ["lines", "Lines view"], ["period", "Period menu"], ["share", "Share menu"], ["sheet", "Share sheet"], ["empty", "No orders in range"]],
+  document: [["page", "First page"], ["tally", "Tally, the way in"], ["last", "Last page"], ["lines", "Lines view"], ["period", "Period menu"], ["share", "Share menu"], ["sheet", "Share sheet"], ["empty", "No orders in range"]],
 };
-const S = { c: "intally", s: "lines", d: "all", m: "value", pp: "plain", p: "2026", open: null, page: 1, zoom: false, view: "page", menu: null, file: null, receipt: null, labels: true, hidden: new Set() };
+const S = { c: "intally", s: "lines", d: "all", m: "value", pp: "plain", rw: "money", mm: "on", pm: "menu", doc: "statement", p: "2026", open: null, page: 1, zoom: false, view: "page", menu: null, file: null, receipt: null, labels: true, hidden: new Set() };
 const DEFAULT_OPEN = "Lightning Bolt";
 
 /* ---------- the rules, as today: liveItems drops refunded and canceled; Tally pools on the exact name ---------- */
@@ -559,11 +604,18 @@ function figs(g) {
   return `<span class="figs"><span class="q${g.got >= g.qty ? " done" : ""}" data-k="Copies">${g.got}/${g.qty}</span><span class="rc" data-k="Received">${money(g.received)}</span>${
     g.missing < 0.005 ? '<span class="ms zero" data-k="Missing">—</span>' : `<span class="ms" data-k="Missing">${money(g.missing)}</span>`}<span class="bs" data-k="Basis">${money(g.basis)}</span></span>`;
 }
+/* today's collapsed Tally row figures, as ItemTotalRow in src/app.jsx draws them: got/qty, the unit rate, and N left · $Y kept mounted */
+function todayFigs(g) {
+  const done = g.got >= g.qty;
+  return `<span class="tfigs"><b class="${done ? "done" : ""}">${g.got}/${g.qty}${done ? " ✓" : ""}</b><span>${money(g.avg)} / copy</span><em${done ? ' aria-hidden="true" style="visibility:hidden"' : ""}>${g.qty - g.got} left · ${money(g.missing)}</em></span>`;
+}
+const useToday = (mode) => mode === "today" || (S.c === "intally" && S.rw === "rate");
 function metaLine(g) {
   const setLabel = g.sets.length === 1 ? g.sets[0] : `${g.sets[0]} +${g.sets.length - 1} more`;
   return [plural(g.sellerCount, "seller"), plural(g.orderCount, "order"), setLabel].join(" · ");
 }
 function colhead() {
+  if (useToday()) return "";
   return `<div class="colhead"${tag("New: column head")}><span class="micro lab1">Item</span><div class="cols"><span>Copies</span><span>Received</span><span>Missing</span><span>Basis</span></div></div>`;
 }
 function copiesBlock(g) {
@@ -589,8 +641,8 @@ function totalsBlock(M) {
 }
 function memoLines(M) {
   const out = [];
-  if (M.ref) out.push(`<p>Not counted: <b>${plural(M.ref, "refunded package")}</b>${M.refPartial ? `, ${M.refPartial} of them partial` : ""}, ${money(M.refVal)} of cards.</p>`);
-  if (M.can) out.push(`<p>Not counted: <b>${plural(M.can, "canceled order")}</b>, ${plural(M.canLines, "line")}.</p>`);
+  if (M.ref && S.mm === "on") out.push(`<p>Not counted: <b>${plural(M.ref, "refunded package")}</b>${M.refPartial ? `, ${M.refPartial} of them partial` : ""}, ${money(M.refVal)} of cards.</p>`);
+  if (M.can && S.mm === "on") out.push(`<p>Not counted: <b>${plural(M.can, "canceled order")}</b>, ${plural(M.canLines, "line")}.</p>`);
   out.push("<p>Basis is price × quantity of each copy. Shipping and tax are not in it.</p>");
   return out.join("");
 }
@@ -599,22 +651,29 @@ function emptyBlock() {
 }
 function receiptLine(M) {
   if (S.receipt) return `<div class="receipt ok" role="status">${esc(S.receipt)}</div>`;
-  return `<div class="receipt" role="status">From ${plural(M.lines, "line")} in ${plural(M.orders, "order")}, sorted by name</div>`;
+  /* the exact answer, up top: the masthead's value cell rounds it, and the sum at the foot is hundreds of lines down */
+  return `<div class="receipt" role="status">Received <b class="net">${money(M.T.received)}</b> of ${money(M.T.basis)} basis</div>`;
 }
 function shead(M, first) {
   const id = first ? ' id="focus-intally"' : "";
   const share = M.groups.length ? `<button class="iconbtn" data-act="menu" data-v="share" data-anchor="share" aria-label="Share statement" aria-haspopup="menu" aria-expanded="${S.menu === "share"}">${ICON.share}</button>` : "";
   return `<div class="shead"${id}${tag("New: statement head")}>
-    <div class="top"><h3>Statement</h3><button class="period" data-act="menu" data-v="period" data-anchor="period" aria-haspopup="menu" aria-expanded="${S.menu === "period"}">Orders from <u>${periodLabel()}</u> ${ICON.chev}</button>${share}</div>
+    <div class="top"><h3>Statement</h3>${S.pm === "text"
+      ? `<span class="period" style="cursor:default">Orders from ${periodLabel()}</span>`
+      : `<button class="period" data-act="menu" data-v="period" data-anchor="period" aria-haspopup="menu" aria-expanded="${S.menu === "period"}"${tag("New: period menu")}>Orders from <u>${periodLabel()}</u> ${ICON.chev}</button>`}${share}</div>
     ${receiptLine(M)}
   </div>`;
 }
 function linesList(M, mode) {
   /* mode: inline (folded and phone: a line opens in place), select (open Duo: the right page shows it), read (the document's Lines view) */
-  return `<div class="lines">${M.groups.map((g) => {
-    const open = mode === "inline" && S.open === g.name, sel = mode === "select" && S.open === g.name;
+  /* mode today: today's Tally rows, which open in place */
+  const today = useToday(mode);
+  return `<div class="lines${today ? " today" : ""}"${today ? tag("Today: Tally rows") : ""}>${M.groups.map((g) => {
+    const open = (mode === "inline" || mode === "today") && S.open === g.name, sel = mode === "select" && S.open === g.name;
     const act = mode === "read" ? "" : ` data-act="toggle" data-name="${esc(g.name)}" aria-expanded="${open || sel}"`;
-    return `<div class="sline${open ? " open" : ""}${sel ? " sel" : ""}"><button${act}${mode === "read" ? ' tabindex="-1"' : ""}><span class="nm">${esc(g.name)}</span>${figs(g)}<span class="meta">${esc(metaLine(g))}</span></button>${open ? copiesBlock(g) : ""}</div>`;
+    /* the document's Lines view is read-only, so its lines are not buttons */
+    const el = mode === "read" ? "div" : "button";
+    return `<div class="sline${open ? " open" : ""}${sel ? " sel" : ""}"><${el}${act}${mode === "read" ? ' class="ro"' : ""}><span class="nm">${esc(g.name)}</span>${today ? todayFigs(g) : figs(g)}<span class="meta">${esc(metaLine(g))}</span></${el}>${open ? copiesBlock(g) : ""}</div>`;
   }).join("")}</div>`;
 }
 
@@ -640,7 +699,7 @@ function sheetHTML(M) {
   const pdf = S.file === "pdf";
   const name = pdf ? `Cost basis ${fileBase()}.pdf` : `cost-basis-${fileBase().replace(" ", "-")}.csv`;
   const sub = pdf ? `PDF document · ${plural(paginate(M).length, "page")}` : `CSV · ${plural(M.groups.length + 1, "row")} with the header`;
-  return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="Share ${esc(name)}"${tag("Today: iOS share sheet")}>
+  return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="Share ${esc(name)}"${tag("New: share sheet, drawn by the system")}>
     <div class="file"><span class="ic">${pdf ? "PDF" : "CSV"}</span><span><b>${esc(name)}</b><small>${sub}</small></span><button class="x" data-act="close" aria-label="Close">✕</button></div>
     <div class="apps" aria-hidden="true"><span><i></i>Messages</span><span><i></i>Mail</span><span><i></i>Notes</span><span><i></i>Files</span><span><i></i>Numbers</span></div>
     <div class="acts">
@@ -734,22 +793,39 @@ function readView(M) {
   /* the same lines, reflowed: no check-in here; the statement is read-only */
   return `<div class="reflow"${tag("New: Lines view")}>${colhead()}${linesList(M, "read")}${totalsBlock(M)}</div>`;
 }
-function docNavbar(withBack, withSeg, withShare) {
+function docNavbar(withBack, withSeg, withShare, view = S.view) {
   return `<div class="navbar"${tag("New: Statement screen")}>
-    ${withBack ? `<button class="back" data-act="noop" aria-label="Back to Tally">${ICON.back} Tally</button>` : "<span></span>"}
-    ${withSeg ? `<div class="seg" role="group" aria-label="Show"><button aria-pressed="${S.view === "page"}" data-act="view" data-v="page">Page</button><button aria-pressed="${S.view === "lines"}" data-act="view" data-v="lines">Lines</button></div>` : '<span class="ttl">Statement</span>'}
+    ${withBack ? `<button class="back" data-act="back" aria-label="Back to Tally">${ICON.back} Tally</button>` : "<span></span>"}
+    ${withSeg ? `<div class="seg" role="group" aria-label="Show"><button aria-pressed="${view === "page"}" data-act="view" data-v="page">Page</button><button aria-pressed="${view === "lines"}" data-act="view" data-v="lines">Lines</button></div>` : '<span class="ttl">Statement</span>'}
     <span class="tr">${withShare ? `<button class="iconbtn" data-act="menu" data-v="share" data-anchor="share" aria-label="Share statement" aria-haspopup="menu" aria-expanded="${S.menu === "share"}">${ICON.share}</button>` : ""}</span></div>`;
 }
 function pager(M) {
   const N = paginate(M).length, n = Math.min(S.page, N);
   return `<span class="pager"><button class="tb" data-act="page" data-v="-1" aria-label="Previous page"${n <= 1 ? " disabled" : ""}>‹</button><span>${n} of ${N}</span><button class="tb" data-act="page" data-v="1" aria-label="Next page"${n >= N ? " disabled" : ""}>›</button></span>`;
 }
+/* Tally as it is today, with one ruled row that pushes the Statement screen */
+function entryRow(M) {
+  if (!M.groups.length) return "";
+  return `<button class="entry" data-act="statement"${tag("New: Statement entry")}><span>Statement<br><small>Received ${money(M.T.received)} of ${money(M.T.basis)} · ${plural(paginate(M).length, "page")}</small></span><span class="go" aria-hidden="true">›</span></button>`;
+}
+function docTallySingle(M, dev) {
+  const narrow = dev === "iphone-regular" ? " narrow" : "";
+  const body = M.groups.length ? linesList(M, "today") : emptyBlock();
+  return `${status()}<div class="pg"><div class="scroll withbar" data-key="main"><div class="app${narrow}">${masthead(M, false)}${entryRow(M)}${body}</div></div></div>${tabbar()}`;
+}
+function docTallyOpen(M) {
+  const body = M.groups.length ? linesList(M, "today") : emptyBlock();
+  return `${status()}<div class="pg l"><div class="scroll" data-key="left" style="padding-bottom:24px"><div class="app">${masthead(M, false)}${entryRow(M)}</div></div></div>
+    <div class="pg r"><div class="scroll withbar" data-key="right"><div class="app">${body}</div></div></div>
+    <div class="fold" aria-hidden="true"><span>hinge 455.5 to 495.5 pt</span></div>${tabbar()}`;
+}
 function documentSingle(M, dev, first, ax) {
   const W = dev === "iphone-regular" ? 375 : 466;
   const has = M.groups.length > 0;
-  const lines = S.view === "lines" || ax;
+  /* at an accessibility size the Statement opens on Lines; a press on Page still shows the page */
+  const lines = S.view === "lines" || (ax && !S.axPage);
   const area = !has ? `<div class="app">${emptyBlock()}</div>` : lines ? readView(M) : pageView(M, W - 32, 0, first);
-  return `${status()}<div class="pg">${docNavbar(true, has, has)}
+  return `${status()}<div class="pg">${docNavbar(true, has, has, lines ? "lines" : "page")}
     <div class="docarea" data-key="doc"${lines || !has ? ' style="background:var(--paper)"' : ""}>${area}</div>
     <div class="toolbar"${tag("New: period and pages")}><button class="tb" data-act="menu" data-v="period" data-anchor="period" aria-haspopup="menu">${periodLabel()} ${ICON.chev}</button>${has && !lines ? pager(M) : "<span></span>"}<span></span></div>
     ${overlays(M)}</div>`;
@@ -761,7 +837,6 @@ function documentOpen(M) {
   const per = (v, l) => { const keep = S.p; S.p = v; const m = model(); S.p = keep;
     return `<button class="rrow" data-act="period-set" data-v="${v}" aria-current="${S.p === v}"><span>${l}</span><small>${m.groups.length ? `${money(m.T.basis)} · ${plural(paginate(m).length, "page")}` : "no orders"}</small></button>`; };
   const left = `<div class="lp"${tag("New: statement settings")}>
-    <h3>Statement</h3>
     <div class="group"><div class="gl">Orders from</div>${per("2026", "2026")}${per("2025", "2025")}${per("all", "All time")}<button class="rrow" data-act="ledger"><span>By month…</span><small>Ledger tab</small></button></div>
     ${has ? `<div class="group"><div class="gl">Totals</div>${sumRows(M.T, M)}<div class="memo">${memoLines(M)}</div></div>
     <div class="group"><div class="gl">Pages</div>${prow}</div>` : ""}
@@ -785,28 +860,32 @@ function frame(d, M, first) {
   const ax = !!d.ax;
   const inner = S.c === "intally"
     ? d.k === "open" ? intallyOpen(M) : intallySingle(M, d.dev, first, ax)
+    : S.doc === "tally" ? (d.k === "open" ? docTallyOpen(M) : docTallySingle(M, d.dev))
     : d.k === "open" ? documentOpen(M) : documentSingle(M, d.dev, first, ax);
-  const note = S.c === "document" && ax ? " At an accessibility size the Statement opens on Lines: the page itself cannot grow its text." : "";
-  return `<figure class="f" data-f="${d.k}"><figcaption><b>${d.cap}</b><br>${d.size}.${note}</figcaption>
-    <div class="dev${ax ? " ax" : ""}${S.labels ? " lbl" : ""}" data-device="${d.dev}" data-f="${d.k}">${inner}</div></figure>`;
+  const note = S.c === "document" && S.doc === "statement" && ax ? " At an accessibility size the Statement opens on Lines: the page itself cannot grow its text." : "";
+  /* the four frames are static in the page, folded first; each render fills them */
+  const fig = document.querySelector(`#frames figure[data-f="${d.k}"]`), dv = fig.querySelector(".dev");
+  fig.querySelector("figcaption").innerHTML = `<b>${d.cap}</b><br>${d.size}.${note}`;
+  dv.className = `dev${ax ? " ax" : ""}${S.labels ? " lbl" : ""}`;
+  dv.innerHTML = inner;
 }
 
 /* ---------- hash and controls ---------- */
-const KEYS = ["c", "s", "d", "m", "pp", "t"];
+/* each key's values, default first: a deep link that leaves a key out gets its default */
+const OPTS = { d: ["all", "folded", "open", "phone", "ax5"], m: ["value", "basis"], pp: ["plain", "tint"], rw: ["money", "rate"], mm: ["on", "off"], pm: ["menu", "text"] };
 function readHash() {
   const h = new URLSearchParams(location.hash.slice(1));
-  if (h.get("c") && STATES[h.get("c")]) S.c = h.get("c");
+  S.c = STATES[h.get("c")] ? h.get("c") : "intally";
   const s = h.get("s"); S.s = s && STATES[S.c].some(([v]) => v === s) ? s : STATES[S.c][0][0];
-  if (h.get("d")) S.d = h.get("d");
-  if (h.get("m") === "basis" || h.get("m") === "value") S.m = h.get("m");
-  if (h.get("pp") === "tint" || h.get("pp") === "plain") S.pp = h.get("pp");
+  for (const [k, vals] of Object.entries(OPTS)) S[k] = vals.includes(h.get(k)) ? h.get(k) : vals[0];
   applyState();
 }
 function applyState() {
   /* a state is a starting picture; taps then move on from it */
   S.menu = null; S.file = null; S.zoom = false; S.receipt = null;
-  S.p = "2026"; S.open = null; S.page = 1; S.view = "page";
+  S.p = "2026"; S.open = null; S.page = 1; S.view = "page"; S.axPage = false;
   const st = S.s;
+  S.doc = st === "tally" ? "tally" : "statement";
   if (st === "empty") S.p = "2024";
   if (st === "open") S.open = DEFAULT_OPEN;
   if (st === "period") S.menu = "period";
@@ -817,7 +896,7 @@ function applyState() {
 }
 function writeHash() {
   const h = new URLSearchParams();
-  h.set("c", S.c); h.set("s", S.s); h.set("d", S.d); h.set("m", S.m); h.set("pp", S.pp); h.set("t", "light");
+  h.set("c", S.c); h.set("s", S.s); h.set("d", S.d); h.set("m", S.m); h.set("pp", S.pp); h.set("rw", S.rw); h.set("mm", S.mm); h.set("pm", S.pm); h.set("t", "light");
   history.replaceState(null, "", "#" + h.toString());
 }
 function syncNav() {
@@ -843,13 +922,29 @@ function render(keepScroll) {
   const sc = keepScroll ? saveScroll() : {};
   const M = model();
   const N = paginate(M).length; if (S.page > N) S.page = N;
-  const list = DEVICES.filter((d) => S.d === "all" || S.d === d.k);
-  document.getElementById("frames").innerHTML = list.map((d, i) => frame(d, M, i === 0)).join("");
-  document.querySelectorAll("#frames .dev").forEach((dv) => {
+  let first = true;
+  for (const d of DEVICES) {
+    const show = S.d === "all" || S.d === d.k;
+    const fig = document.querySelector(`#frames figure[data-f="${d.k}"]`);
+    fig.hidden = !show;
+    if (show) { frame(d, M, first); first = false; } else fig.querySelector(".dev").innerHTML = "";
+  }
+  document.querySelectorAll("#frames figure:not([hidden]) .dev").forEach((dv) => {
     dv.querySelectorAll("[data-key]").forEach((el) => { const v = sc[dv.dataset.f + ":" + el.dataset.key]; if (v) { el.scrollTop = v[0]; el.scrollLeft = v[1]; } });
+    if (!keepScroll) startScroll(dv);
     placeMenus(dv);
   });
   syncNav(); writeHash();
+}
+/* a state's first picture: bring its subject into view (the open line, or at AX5 the statement under the letterhead) */
+function startScroll(dv) {
+  const ax = dv.classList.contains("ax");
+  const target = dv.querySelector(".sline.open, .sline.sel") || (ax ? dv.querySelector(".shead, .reflow, .entry") : null);
+  if (!target) return;
+  const sc = target.closest(".scroll, .docarea"); if (!sc) return;
+  const head = sc.querySelector(".colhead");
+  const off = target.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
+  sc.scrollTop = Math.max(0, off - (target.matches(".sline") && head ? head.offsetHeight : 0) - 4);
 }
 function placeMenus(dv) {
   dv.querySelectorAll(".menu").forEach((m) => {
@@ -905,10 +1000,12 @@ document.getElementById("frames").addEventListener("click", (e) => {
     else if (v === "copy") { try { navigator.clipboard && navigator.clipboard.writeText(pdf ? "" : csvText(M)); } catch (_) {} S.receipt = `Copied ${name}`; }
     else { S.receipt = v === "print" ? `Sent ${name} to Print` : `Saved ${name} to Files`; render(true); printAll(M); return; }
   }
-  else if (act === "view") { S.view = v; }
+  else if (act === "view") { S.view = v; S.axPage = v === "page"; }
   else if (act === "page") { S.page = Math.max(1, S.page + Number(v)); }
   else if (act === "goto") { S.page = Number(v); S.view = "page"; }
   else if (act === "zoom") { S.zoom = !S.zoom; }
+  else if (act === "back") { S.doc = "tally"; S.menu = null; S.file = null; S.zoom = false; }
+  else if (act === "statement") { S.doc = "statement"; S.page = 1; S.open = null; }
   else return;
   render(true);
 });

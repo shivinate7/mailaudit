@@ -273,14 +273,14 @@ details.machine pre { margin:0; font:var(--fs-c1)/1.4 var(--mono); white-space:p
 
 <section class="panel" aria-label="Mockup controls">
   <div class="ctlrow" id="concepts"><span>Concept</span>
-    <a href="#c=margin&s=empty" data-c="margin">Margin note</a>
-    <a href="#c=hand&s=empty" data-c="hand">Envelope in hand</a>
+    <a href="#c=margin&s=m1" data-c="margin">Margin note</a>
+    <a href="#c=hand&s=h1" data-c="hand">Envelope in hand</a>
     <button type="button" class="hide" data-hide="margin">Hide Margin note</button>
     <button type="button" class="hide" data-hide="hand">Hide Envelope in hand</button>
   </div>
   <div class="ctlrow" id="routes"><span>Orders reach the phone</span>
-    <a href="#r=code&s=bring" data-r="code">Code from the computer</a>
-    <a href="#r=file&s=bring" data-r="file">Open the file here</a>
+    <a href="#r=code&s=route" data-r="code">Code from the computer</a>
+    <a href="#r=file&s=route" data-r="file">Open the file here</a>
     <button type="button" class="hide" data-hide="code">Hide Code from the computer</button>
     <button type="button" class="hide" data-hide="file">Hide Open the file here</button>
   </div>
@@ -459,9 +459,9 @@ function summaryBody() {
 }
 function bringSheet() {
   const rows = [];
-  if (!S.hidden.has("code")) rows.push(`<button type="button" class="row" data-act="route" data-r="code" id="opt-route-code" ${tag("new","Code from the computer")}>
+  if (!S.hidden.has("code")) rows.push(`<button type="button" class="row" data-act="route" data-r="code" id="row-route-code" ${tag("new","Code from the computer")}>
       <span class="rt"><b>From my computer</b><small>Open MANIFEST there, drop the file in, then scan the code it shows.</small></span><span class="chev">›</span></button>`);
-  if (!S.hidden.has("file")) rows.push(`<button type="button" class="row" data-act="route" data-r="file" id="opt-route-file" ${tag("new","Open the file here")}>
+  if (!S.hidden.has("file")) rows.push(`<button type="button" class="row" data-act="route" data-r="file" id="row-route-file" ${tag("new","Open the file here")}>
       <span class="rt"><b>From a file on this phone</b><small>Send the file to this phone first, by AirDrop or Files.</small></span><span class="chev">›</span></button>`);
   return `<div class="scrim" data-act="go" data-s="empty"></div><section class="sheet" role="dialog" aria-modal="true" aria-label="Bring in orders">
     <div class="bar"><button type="button" data-act="go" data-s="empty">Cancel</button><b>Bring in orders</b><span></span></div>
@@ -470,13 +470,13 @@ function bringSheet() {
     <p class="lead" style="font-size:var(--fs-foot);color:var(--inkSoft)">Already use MANIFEST on a computer? The same code brings that ledger here.</p></div></section>`;
 }
 function routeSheet() {
-  if (S.r === "file" && !S.hidden.has("file")) return `<div class="scrim"></div><section class="sheet" role="dialog" aria-modal="true" aria-label="Pick the order file">
+  if (S.r === "file" && !S.hidden.has("file")) return `<div class="scrim"></div><section class="sheet" role="dialog" aria-modal="true" aria-label="Pick the order file" id="opt-route-file">
     <div class="bar"><button type="button" data-act="go" data-s="bring">Cancel</button><b>Recents</b><span></span></div>
     <div class="sbody" style="font-family:var(--sys)"><div class="group">
       <button type="button" class="row" data-act="go" data-s="arriving"><span class="file"><span class="ic">CSV</span><span class="rt"><b style="font-family:var(--sys)">OrderWand export.csv</b><small style="font-family:var(--sys)">Today, 48 KB</small></span></span></button>
       <button type="button" class="row" data-act="go" data-s="failed"><span class="file"><span class="ic">CSV</span><span class="rt"><b style="font-family:var(--sys)">bank statement.csv</b><small style="font-family:var(--sys)">Yesterday, 12 KB</small></span></span></button>
     </div><p style="margin:0;font-size:var(--fs-foot);color:var(--inkSoft)">The system file picker (Today: iOS). MANIFEST reads the file and keeps no copy of it.</p></div></section>`;
-  return `<div class="scrim"></div><section class="sheet" role="dialog" aria-modal="true" aria-label="Scan the code">
+  return `<div class="scrim"></div><section class="sheet" role="dialog" aria-modal="true" aria-label="Scan the code" id="opt-route-code">
     <div class="bar"><button type="button" data-act="go" data-s="bring">Cancel</button><b>From my computer</b><span></span></div>
     <div class="sbody"><ol class="steps"><li>On the computer, open the MANIFEST page and drop the file onto it.</li><li>It shows a code. Point this camera at it.</li></ol>
     <button type="button" class="cam" data-act="go" data-s="arriving" aria-label="Camera view. In this mockup, a tap finds the code."><span class="frame"><span class="qr"><span>sample</span></span></span><p>Hold the code inside the square</p></button></div></section>`;
@@ -589,7 +589,7 @@ function onePage(kind) {
   else if (s === "summary") body = summaryBody();
   else if (["m1","m2","m3"].includes(s)) { body = masthead("first") + marginList(s); over = slip(s, kind); withSlip = true; }
   else if (["h1","h2","tie","none","h3"].includes(s)) { return status() + `<div class="page">${handScreen(s, kind)}</div>`; }
-  else if (s === "away") { body = workingList("first"); dot = true; }
+  else if (s === "away") { body = workingList("first"); }
   else if (s === "day") body = workingList("day");
   return status() + `<div class="page"><div class="body${bar ? "" : " nobar"}${withSlip ? " underslip" : ""}">${body}</div>${over}${bar ? tabbar({ dot }) : ""}</div>`;
 }
@@ -610,7 +610,10 @@ function twoPages() {
     L = `<div class="hand" style="position:relative;inset:auto;height:405px"><div class="top" style="padding-top:var(--sat)"><b>Your first card</b><button type="button" data-act="skip">Skip</button></div>${handSlot(s)}
       <div style="flex:1"></div>${field()}</div>`;
     R = `<div class="hand" style="position:relative;inset:auto;height:405px"><div class="ans" style="padding-top:calc(var(--sat) + 12px)">${handAnswer(s)}</div></div>`; }
-  else if (s === "away" || s === "day") { L = masthead(s === "day" ? "day" : "first"); R = workingList(s === "day" ? "day" : "first").replace(masthead(s === "day" ? "day" : "first"), ""); dot = s === "away"; }
+  else if (s === "away" || s === "day") { L = masthead(s === "day" ? "day" : "first");
+    // Today PackagesView puts a Card in Hand control above the list on two pages (openHand, "hand-open").
+    R = `<div style="display:flex;justify-content:flex-end"><span ${tag("today","Card in Hand control")}><button type="button" class="btn quiet" style="min-height:44px;padding:8px 14px;font-size:var(--fs-sub)" aria-disabled="true">Card in Hand</button></span></div>`
+      + workingList(s === "day" ? "day" : "first").replace(masthead(s === "day" ? "day" : "first"), ""); }
   const hand = keysUp;
   const lpage = hand ? `<div class="page l">${L}</div>` : `<div class="page l"><div class="${lb}">${L}</div></div>`;
   const rpage = hand ? `<div class="page r">${R}</div>` : `<div class="page r"><div class="body">${R}</div>${rOver}${tabbar({ dot })}</div>`;
@@ -632,6 +635,8 @@ function render(focus) {
     el.innerHTML = kind === "open" ? twoPages() : onePage(kind);
     if (sameStep || ["m2","m3","h3","away"].includes(S.s)) el.querySelectorAll(".body, .ans, .sbody").forEach((x, i) => { if (kept[i] != null) x.scrollTop = kept[i]; });
     el.dataset.step = S.s + S.tab;
+    // Every frame draws the same parts; only the folded frame keeps the bare ids, so each id is unique and a focus finds one element.
+    if (kind !== "folded") el.querySelectorAll("[id]").forEach(x => { x.id += "-" + kind; });
   }
   // the control rows
   document.querySelectorAll("#concepts a").forEach(a => { a.setAttribute("aria-current", a.dataset.c === S.c ? "true" : "false"); a.hidden = S.hidden.has(a.dataset.c); });

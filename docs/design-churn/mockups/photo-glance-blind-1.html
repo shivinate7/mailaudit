@@ -1,0 +1,733 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Photo glance mockup</title>
+<style>
+/* Tokens. Spacing and radius from the house tokens; colour roles are this designer's own choice. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-16: 64px;
+  --radius: 8px;
+  --tap: 44px;
+  /* Placeholders: no Apple page read gives these heights. */
+  --status-h: 32px;
+  --home-h: 20px;
+  --sa-top: max(var(--status-h), env(safe-area-inset-top));
+  --sa-bottom: max(var(--home-h), env(safe-area-inset-bottom));
+  --sa-left: env(safe-area-inset-left);
+  --sa-right: env(safe-area-inset-right);
+
+  /* Dynamic Type, Large (default) row of the iOS table. */
+  --t-large: 34px; --l-large: 41px;
+  --t-title1: 28px; --l-title1: 34px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap: 12px; --l-cap: 16px;
+
+  --bg: #E9EDEB;
+  --surface: #FFFFFF;
+  --surface-2: #F3F6F4;
+  --text: #16201B;
+  --text-2: #4A5751;
+  --line: #CDD5D0;
+  --accent: #2443A3;
+  --on-accent: #FFFFFF;
+  --warn: #7E4C00;
+  --warn-bg: #FCEFD9;
+  --danger: #A3241C;
+  --photo-bg: #D6DCD8;
+  --manila: #E4D0A2;
+  --manila-2: #CFB57A;
+  --manila-text: #3A2D10;
+  --hinge: #0C0F0E;
+  --frame: #1B211E;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0E1311; --surface: #161C19; --surface-2: #1D2521; --text: #E5ECE8; --text-2: #A3B0A9;
+    --line: #2C3732; --accent: #9DB1FF; --on-accent: #0C1636; --warn: #F2B860; --warn-bg: #36280F;
+    --danger: #FF928A; --photo-bg: #242D29; --manila: #5B4B27; --manila-2: #6E5B31; --manila-text: #F6E8C6;
+    --hinge: #000000; --frame: #2A322E; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0E1311; --surface: #161C19; --surface-2: #1D2521; --text: #E5ECE8; --text-2: #A3B0A9;
+  --line: #2C3732; --accent: #9DB1FF; --on-accent: #0C1636; --warn: #F2B860; --warn-bg: #36280F;
+  --danger: #FF928A; --photo-bg: #242D29; --manila: #5B4B27; --manila-2: #6E5B31; --manila-text: #F6E8C6;
+  --hinge: #000000; --frame: #2A322E; color-scheme: dark;
+}
+/* Largest accessibility size, AX5 row of the iOS table. */
+.ax5 {
+  --t-large: 60px; --l-large: 70px;
+  --t-title1: 58px; --l-title1: 68px;
+  --t-title2: 56px; --l-title2: 66px;
+  --t-title3: 55px; --l-title3: 65px;
+  --t-head: 53px; --l-head: 62px;
+  --t-body: 53px; --l-body: 62px;
+  --t-callout: 51px; --l-callout: 60px;
+  --t-sub: 49px; --l-sub: 58px;
+  --t-foot: 44px; --l-foot: 52px;
+  --t-cap: 43px; --l-cap: 51px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: -apple-system, system-ui, "SF Pro Text", "Helvetica Neue", sans-serif;
+  background: var(--bg); color: var(--text);
+  font-size: var(--t-body); line-height: var(--l-body);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Reviewer chrome, outside the device frames. */
+.banner {
+  display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: baseline;
+  padding: var(--space-3) var(--space-4); background: var(--warn-bg); color: var(--text);
+  border-bottom: 1px solid var(--line); font-size: var(--t-sub); line-height: var(--l-sub);
+}
+.banner strong { font-size: var(--t-head); }
+.review {
+  display: flex; flex-direction: column; gap: var(--space-3);
+  padding: var(--space-4); border-bottom: 1px solid var(--line); background: var(--surface);
+  font-size: var(--t-sub); line-height: var(--l-sub);
+}
+.review .row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.review .row > span:first-child { min-width: 88px; color: var(--text-2); }
+.seg { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1); background: var(--surface-2); border-radius: var(--radius); }
+.seg button { min-height: 36px; padding: 0 var(--space-3); border-radius: 6px; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.hide-btn { min-height: 36px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); color: var(--text-2); }
+.concept { padding: var(--space-6) var(--space-4) var(--space-12); display: flex; flex-direction: column; gap: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-direction: column; gap: var(--space-1); max-width: 72ch; }
+.concept-head h2 { margin: 0; font-size: var(--t-title1); line-height: var(--l-title1); }
+.concept-head p { margin: 0; color: var(--text-2); }
+.all-hidden { padding: var(--space-8) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+.device { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); max-width: 100%; }
+.device[hidden] { display: none; }
+.device figcaption { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.device .clip { max-width: 100%; overflow-x: auto; }
+.screen {
+  position: relative; overflow: hidden; background: var(--surface);
+  border-radius: 20px; box-shadow: 0 0 0 8px var(--frame); margin: 8px;
+  color: var(--text);
+}
+
+/* "New:" labels. Drawn inside each part, so none crosses the hinge. */
+.nl { position: relative; }
+.labels-on .nl { outline: 2px dashed var(--accent); outline-offset: -2px; }
+.labels-on .nl::after {
+  content: attr(data-new); position: absolute; top: 4px; right: 4px; z-index: 5; pointer-events: none;
+  font: 600 11px/14px -apple-system, system-ui, sans-serif; padding: 2px 6px;
+  background: var(--surface); color: var(--accent); border: 1px dashed var(--accent); border-radius: 6px;
+}
+
+/* A label on a part that holds other labelled parts sits at its foot, so two tags never stack. */
+.labels-on .box.nl::after, .labels-on .tabs.nl::after, .labels-on .menu.nl::after { top: auto; bottom: 4px; }
+
+/* Screen parts shared by both options. */
+.scr, .open { font-size: var(--t-body); line-height: var(--l-body); }
+.scr { position: absolute; inset: 0; display: flex; flex-direction: column; padding-top: var(--sa-top); padding-bottom: var(--sa-bottom); padding-left: var(--sa-left); padding-right: var(--sa-right); background: var(--surface); }
+.status { position: absolute; top: 0; left: 0; right: 0; height: var(--status-h); display: flex; align-items: center; padding: 0 var(--space-5); font: 600 13px/18px -apple-system, system-ui, sans-serif; color: var(--text); }
+.homeind { position: absolute; bottom: 6px; left: 50%; width: 120px; height: 5px; margin-left: -60px; border-radius: 3px; background: var(--text); opacity: .35; }
+.topbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-4); min-height: 52px; }
+.btn-plain { display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--tap); min-width: var(--tap); padding: 0 var(--space-2); margin-inline-start: calc(-1 * var(--space-2)); color: var(--accent); font-size: var(--t-body); line-height: var(--l-body); font-weight: 600; border-radius: var(--radius); }
+.btn-plain:active { opacity: .5; }
+.count { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.photo { position: relative; background: var(--photo-bg); overflow: hidden; }
+.photo-hit { display: block; width: 100%; height: 100%; }
+.photo-hit svg, .thumb svg { display: block; width: 100%; height: 100%; }
+.zoom-hint { position: absolute; right: var(--space-3); bottom: var(--space-3); display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-radius: var(--radius); background: rgba(0,0,0,.55); color: #fff; font-size: var(--t-cap); line-height: var(--l-cap); pointer-events: none; }
+.sender { margin: 0; font-size: var(--t-title1); line-height: var(--l-title1); font-weight: 700; overflow-wrap: anywhere; }
+.sender.unknown { color: var(--warn); display: flex; align-items: center; gap: var(--space-2); }
+.qmark { flex: none; display: inline-grid; place-items: center; width: 1em; height: 1em; border-radius: 50%; border: .09em solid currentColor; font-size: .8em; line-height: 1; }
+.sub { margin: 0; color: var(--text-2); font-size: var(--t-sub); line-height: var(--l-sub); }
+.cards { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.cards li { display: flex; justify-content: space-between; gap: var(--space-3); min-height: var(--tap); align-items: center; border-bottom: 1px solid var(--line); font-size: var(--t-body); line-height: var(--l-body); }
+.cards li:last-child { border-bottom: 0; }
+.cards .qty { color: var(--text-2); font-variant-numeric: tabular-nums; }
+.stepbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-4); min-height: 64px; }
+.stepbtn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 48px; min-width: 120px; padding: 0 var(--space-4); border-radius: var(--radius); background: var(--surface-2); color: var(--accent); font-weight: 600; font-size: var(--t-body); line-height: var(--l-body); }
+.stepbtn.primary { background: var(--accent); color: var(--on-accent); }
+.stepbtn:active { opacity: .6; }
+.stepbtn[aria-disabled="true"] { opacity: .4; }
+.ax5 .stepbtn { min-width: 96px; min-height: 96px; padding: 0; }
+.ax5 .stepbtn .lbl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.ax5 .stepbtn svg { width: 48px; height: 48px; }
+.chev { width: 20px; height: 20px; flex: none; }
+.dots { display: inline-flex; gap: var(--space-1); align-items: center; }
+.dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.dots i.on { background: var(--text); }
+
+/* States that are not loaded. */
+.msg { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) var(--space-4); }
+/* Failed and empty sit low on the screen, so their one control is in thumb reach. */
+.msg.low { flex: 1; justify-content: flex-end; padding-bottom: var(--space-8); }
+.msg p { margin: 0; }
+.msg .lead { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 600; }
+.msg button.act { min-height: var(--tap); padding: 0 var(--space-4); border-radius: var(--radius); background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.msg details { color: var(--text-2); font-size: var(--t-foot); line-height: var(--l-foot); }
+.msg summary { min-height: var(--tap); display: flex; align-items: center; cursor: pointer; }
+.toast { padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--surface-2); color: var(--text); font-size: var(--t-foot); line-height: var(--l-foot); }
+.skel { background: linear-gradient(90deg, var(--surface-2), var(--photo-bg), var(--surface-2)); background-size: 200% 100%; animation: shimmer 1.4s linear infinite; border-radius: var(--radius); }
+@keyframes shimmer { to { background-position: -200% 0; } }
+@media (prefers-reduced-motion: reduce) { .skel { animation: none; } }
+.photo-msg { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: var(--space-3); padding: var(--space-4); color: var(--text); }
+.photo-msg button { min-height: var(--tap); padding: 0 var(--space-4); border-radius: var(--radius); background: var(--accent); color: var(--on-accent); font-weight: 600; }
+
+/* Overlays: zoom viewer and sheets. Each one is placed inside one page. */
+.overlay { position: absolute; inset: 0; z-index: 10; display: flex; flex-direction: column; }
+.zoom { background: #000; color: #fff; padding-top: var(--sa-top); padding-bottom: var(--sa-bottom); }
+.zoom .zbar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-4); min-height: 52px; }
+.zoom .zname { font-weight: 700; font-size: var(--t-head); line-height: var(--l-head); overflow-wrap: anywhere; }
+.zoom .zname.unknown { color: #F2B860; }
+.zoom .zbtn { min-height: var(--tap); min-width: var(--tap); padding: 0 var(--space-2); color: #9DB1FF; font-weight: 600; }
+.zoom .zarea { flex: 1; overflow: auto; overscroll-behavior: contain; touch-action: pan-x pan-y; }
+.zoom .zarea svg { display: block; }
+.zoom .zfoot { padding: var(--space-2) var(--space-4); font-size: var(--t-foot); line-height: var(--l-foot); color: #C9D2CD; }
+.scrim { background: rgba(0,0,0,.35); justify-content: flex-end; }
+.sheet { background: var(--surface); border-radius: 12px 12px 0 0; max-height: 78%; display: flex; flex-direction: column; padding-bottom: var(--sa-bottom); }
+.sheet .sbar { display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) var(--space-4); min-height: 52px; border-bottom: 1px solid var(--line); }
+.sheet .stitle { font-weight: 600; font-size: var(--t-head); line-height: var(--l-head); }
+.sheet .sbody { overflow: auto; padding: 0 var(--space-4); }
+.daylist { list-style: none; margin: 0; padding: 0; }
+.daylist button { width: 100%; display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); min-height: var(--tap); padding: var(--space-2) 0; border-bottom: 1px solid var(--line); text-align: left; }
+.daylist button[aria-current="true"] .dname { color: var(--accent); font-weight: 600; }
+.daylist .dmeta { color: var(--text-2); font-size: var(--t-sub); line-height: var(--l-sub); }
+
+/* Strip option. */
+.strip .scroll { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; }
+.strip .photo { flex: none; aspect-ratio: 4 / 3; touch-action: pan-y; }
+.strip.phone .photo { aspect-ratio: 3 / 4; max-height: 520px; }
+/* Largest text: the name must still show with the photo, so the photo gets shorter and the day strip goes. */
+.strip.ax5 .photo { aspect-ratio: 16 / 9; }
+.strip.ax5 .film { display: none; }
+.ax5 .zoom-hint .zh-t { display: none; }
+.ax5 .zoom-hint svg { width: 24px; height: 24px; }
+.strip .slip { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); }
+.strip .slip .cards { margin-top: var(--space-1); }
+.film { display: flex; gap: var(--space-1); padding: var(--space-2) var(--space-4); overflow-x: auto; border-top: 1px solid var(--line); scrollbar-width: none; }
+.film .grp { display: flex; gap: 2px; padding-inline-end: var(--space-2); }
+.thumb { flex: none; width: var(--tap); height: var(--tap); border-radius: 6px; overflow: hidden; background: var(--photo-bg); position: relative; }
+.thumb[aria-current="true"] { box-shadow: 0 0 0 3px var(--accent); }
+.thumb .bad { position: absolute; inset: 0; display: grid; place-items: center; color: var(--danger); font-weight: 700; }
+.strip .stepbar .count { min-width: 76px; text-align: center; }
+/* Strip, open pose. */
+.open { position: absolute; inset: 0; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.open .page { position: relative; overflow: hidden; background: var(--surface); }
+.open .hinge { background: var(--hinge); }
+.open .pg { position: absolute; inset: 0; display: flex; flex-direction: column; padding-top: var(--sa-top); padding-bottom: var(--sa-bottom); }
+.strip .open .bigphoto { flex: 1; min-height: 0; margin: 0 var(--space-4); border-radius: var(--radius); touch-action: pan-y; }
+.strip .open .rside { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--space-4); padding: 0 var(--space-4) var(--space-4); }
+.strip .open .sender { font-size: var(--t-large); line-height: var(--l-large); }
+.daygrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(56px, 1fr)); gap: var(--space-2); }
+.daygrid .thumb { width: 100%; height: auto; aspect-ratio: 1; }
+.sect-h { margin: 0; font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
+
+/* Card file option. */
+.file .box { flex: 1; min-height: 0; display: flex; flex-direction: column; padding: 0 var(--space-3); }
+.ax5 .file .box, .file.ax5 .box { overflow: auto; }
+.depth { flex: none; display: flex; flex-direction: column; gap: 2px; padding: 0 var(--space-2); }
+.depth i { height: 2px; background: var(--manila-2); border-radius: 1px; opacity: .8; }
+.tab { flex: none; display: block; width: auto; min-height: var(--tap); text-align: left; position: relative; }
+.tab .ear { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); width: fit-content; min-width: 56%; max-width: 100%; min-height: var(--tap); padding: var(--space-1) var(--space-3); background: var(--manila); color: var(--manila-text); border-radius: var(--radius) var(--radius) 0 0; border-bottom: 2px solid var(--manila-2); font-weight: 600; font-size: var(--t-callout); line-height: var(--l-callout); }
+.tab .ear .nm { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax5 .tab .ear .nm { white-space: normal; overflow-wrap: anywhere; }
+.tab .ear .pc { flex: none; font-weight: 400; font-size: var(--t-foot); line-height: var(--l-foot); opacity: .8; }
+.tab.unknown .ear { font-style: italic; }
+.tab:active .ear { filter: brightness(.94); }
+.off0 { margin-inline-start: 0; } .off1 { margin-inline-start: 18%; } .off2 { margin-inline-start: 36%; }
+.ax5 .tab .ear { width: 100%; }
+.ax5 .off1, .ax5 .off2 { margin-inline-start: 0; }
+.divider { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--manila); border-radius: 0 var(--radius) var(--radius) var(--radius); padding: var(--space-1) var(--space-2) var(--space-2); gap: var(--space-2); }
+.divider-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.ax5 .divider-wrap { flex: none; }
+.divider-ear { align-self: flex-start; display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); padding: var(--space-1) var(--space-3); background: var(--manila); color: var(--manila-text); border-radius: var(--radius) var(--radius) 0 0; max-width: 100%; }
+.divider-ear .sender { font-size: var(--t-title2); line-height: var(--l-title2); color: var(--manila-text); }
+.divider-ear .sender.unknown { color: var(--manila-text); font-style: italic; }
+.divider .photo { flex: 1; min-height: 160px; border-radius: 6px; }
+.ax5 .divider .photo { flex: none; height: 300px; }
+.pager { display: flex; align-items: center; justify-content: center; gap: var(--space-2); color: var(--manila-text); font-size: var(--t-foot); line-height: var(--l-foot); }
+.pager button { min-width: var(--tap); min-height: var(--tap); display: inline-grid; place-items: center; border-radius: var(--radius); }
+.pager button[aria-disabled="true"] { opacity: .35; }
+.cardline { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--tap); padding: var(--space-1) var(--space-2); border-radius: 6px; background: var(--surface); color: var(--text); text-align: left; font-size: var(--t-sub); line-height: var(--l-sub); }
+.cardline .cl { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax5 .cardline .cl { white-space: normal; }
+.cardline .more { flex: none; color: var(--accent); font-weight: 600; }
+.file .stepbar .count { min-width: 0; }
+.menu { position: absolute; z-index: 10; top: calc(var(--sa-top) + 52px); left: var(--space-3); min-width: 240px; max-width: calc(100% - 24px); background: var(--surface); border: 1px solid var(--line); border-radius: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.22); padding: var(--space-1) var(--space-3); }
+.menu-scrim { position: absolute; inset: 0; z-index: 9; }
+/* Card file, open pose. */
+.file .open .tabs { flex: 1; min-height: 0; overflow: auto; display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) 0 var(--space-4) var(--space-3); }
+.file .open .tabs .tab { padding-inline-end: var(--space-6); }
+.file .open .tabs .tab .ear { width: 70%; border-radius: var(--radius); border-bottom: 0; min-height: 56px; flex-wrap: wrap; }
+.file .open .tabs .tab .ear .pc { display: block; }
+.file .open .tabs .tab[aria-current="true"] { padding-inline-end: 0; }
+.file .open .tabs .tab[aria-current="true"] .ear { width: 100%; border-radius: var(--radius) 0 0 var(--radius); background: var(--manila); box-shadow: inset 4px 0 0 var(--accent); }
+.file .open .tabs .tab[aria-current="true"].off1 .ear, .file .open .tabs .tab[aria-current="true"].off2 .ear { width: auto; }
+.file .open .tabs .nextday { margin-top: var(--space-2); }
+.file .open .tabs .nextday .ear { background: var(--surface-2); color: var(--text); border: 1px dashed var(--line); }
+.file .open .right { flex: 1; min-height: 0; display: flex; flex-direction: column; background: var(--manila); margin: 0 var(--space-3) 0 0; border-radius: 0 var(--radius) var(--radius) 0; padding: var(--space-3); gap: var(--space-3); }
+.file .open .right .sender { font-size: var(--t-title1); line-height: var(--l-title1); color: var(--manila-text); }
+.file .open .right .sender.unknown { font-style: italic; }
+.file .open .right .photo { flex: 1; min-height: 0; border-radius: 6px; }
+.file .open .right .cards { background: var(--surface); border-radius: 6px; padding: 0 var(--space-3); max-height: 180px; overflow: auto; }
+.file .open .right .sub { color: var(--manila-text); opacity: .85; }
+</style>
+</head>
+<body>
+<div class="banner" role="note">
+  <strong>Sample</strong>
+  <span>No figure on this page is real. Every seller, card, day and photo is made up.</span>
+  <span>Designer kind: blind. Designer: photo-glance-blind-1.</span>
+</div>
+
+<header class="review" aria-label="Mockup controls">
+  <div class="row"><span>Option</span><div class="seg" id="c-seg"></div><span id="hide-wrap" class="row"></span></div>
+  <div class="row"><span>State</span><div class="seg" id="s-seg"></div></div>
+  <div class="row"><span>Theme</span><div class="seg" id="t-seg"></div></div>
+  <div class="row"><span>Frames</span><div class="seg" id="d-seg"></div></div>
+  <div class="row"><span>Labels</span><div class="seg" id="l-seg"></div></div>
+</header>
+
+<main id="main">
+  <section class="concept" id="concept-strip" data-concept="strip">
+    <div class="concept-head">
+      <h2>Strip</h2>
+      <p>The photo is the screen. One photo at a time, newest first, with the sender's name right under it. Swipe or press Next to step through every photo, day after day.</p>
+    </div>
+    <div class="frames">
+      <figure class="device" data-device="iphone-duo-folded" data-frame="folded"><figcaption>Duo folded, 466 x 678 pt (brief size)</figcaption><div class="clip"><div class="screen strip" id="scr-strip-folded" style="width:466px;height:678px"></div></div></figure>
+      <figure class="device" data-device="iphone-duo-unfolded" data-frame="open"><figcaption>Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief size)</figcaption><div class="clip"><div class="screen strip" id="scr-strip-open" style="width:951px;height:669px"></div></div></figure>
+      <figure class="device" data-device="iphone-regular" data-frame="phone"><figcaption>Large phone, 402 x 874 pt: placeholder, the brief gives no size</figcaption><div class="clip"><div class="screen strip phone" id="scr-strip-phone" style="width:402px;height:874px"></div></div></figure>
+      <figure class="device" data-device="iphone-duo-folded-ax5" data-frame="ax5"><figcaption>Duo folded at the largest text size (AX5), 466 x 678 pt</figcaption><div class="clip"><div class="screen strip ax5" id="scr-strip-ax5" style="width:466px;height:678px"></div></div></figure>
+    </div>
+  </section>
+  <section class="concept" id="concept-file" data-concept="file">
+    <div class="concept-head">
+      <h2>Card file</h2>
+      <p>Each day is a box of tabbed dividers, one per envelope, with the sender's name on the tab. One divider stands open with its photo; the tabs before and after it stay in sight. Tap a tab to open that envelope.</p>
+    </div>
+    <div class="frames">
+      <figure class="device" data-device="iphone-duo-folded" data-frame="folded"><figcaption>Duo folded, 466 x 678 pt (brief size)</figcaption><div class="clip"><div class="screen file" id="scr-file-folded" style="width:466px;height:678px"></div></div></figure>
+      <figure class="device" data-device="iphone-duo-unfolded" data-frame="open"><figcaption>Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief size)</figcaption><div class="clip"><div class="screen file" id="scr-file-open" style="width:951px;height:669px"></div></div></figure>
+      <figure class="device" data-device="iphone-regular" data-frame="phone"><figcaption>Large phone, 402 x 874 pt: placeholder, the brief gives no size</figcaption><div class="clip"><div class="screen file phone" id="scr-file-phone" style="width:402px;height:874px"></div></div></figure>
+      <figure class="device" data-device="iphone-duo-folded-ax5" data-frame="ax5"><figcaption>Duo folded at the largest text size (AX5), 466 x 678 pt</figcaption><div class="clip"><div class="screen file ax5" id="scr-file-ax5" style="width:466px;height:678px"></div></div></figure>
+    </div>
+  </section>
+  <div class="all-hidden" id="all-hidden" hidden>
+    <p>Both options are hidden.</p>
+    <button class="hide-btn" id="show-all" type="button">Show both options</button>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Sample data. Shapes: day -> envelopes -> {sender|null, cards[], photos[]} ---------- */
+  var DAYS = [
+    { id: "d19", label: "Thu 19 Nov", envs: [
+      { sender: "Harbor Lane Cards", cards: [["Ember Drake (foil)", 1], ["Tidecaller Adept", 2], ["Moss Golem", 1]], photos: [{ k: "front", r: -2, bg: 0 }, { k: "back", r: 3, bg: 0 }] },
+      { sender: null, cards: [["Glass Heron", 1], ["Vault Key", 4]], photos: [{ k: "front", r: 1.5, bg: 1 }] },
+      { sender: "Pine Hollow TCG", cards: [["Thornback Boar", 1], ["Lantern Imp", 3], ["Quiet Archive", 1], ["Saltmarsh Witch", 1], ["Ironbark Sentry", 2], ["Copper Familiar", 1], ["Night Courier", 1], ["Hollow Bell", 1], ["River Sprite", 2]], photos: [{ k: "kraft", r: -1, bg: 0 }] },
+      { sender: "kd_collectibles", cards: [["Ashen Warden", 1], ["Lantern Imp", 1]], photos: [{ k: "front", r: 2, bg: 1, fail: true }] },
+      { sender: "Mapleleaf Singles", cards: [["Starfall Oracle", 1]], photos: [{ k: "front", r: -3, bg: 0 }, { k: "back", r: 1, bg: 0 }] }
+    ]},
+    { id: "d18", label: "Wed 18 Nov", envs: [
+      { sender: "Copperline Games", cards: [["Gale Rider", 1], ["Tin Soldier", 2], ["Mirror Pond", 1]], photos: [{ k: "front", r: 1, bg: 1 }] },
+      { sender: "Riverbend Cardhouse", cards: [["Ember Drake", 1], ["Dune Hare", 1]], photos: [{ k: "kraft", r: -2, bg: 0 }] },
+      { sender: "Northgate Card Co.", cards: [["Crown of Ash", 1]], photos: [{ k: "front", r: 2.5, bg: 0 }] }
+    ]},
+    { id: "d16", label: "Mon 16 Nov", envs: [
+      { sender: "Bluefin Breaks", cards: [["Deepwater Lure", 2], ["Coral Shrine", 1], ["Pearl Diver", 1], ["Kelp Lurker", 1]], photos: [{ k: "front", r: -1.5, bg: 1 }, { k: "back", r: 2, bg: 1 }] },
+      { sender: "Harbor Lane Cards", cards: [["Moss Golem", 2], ["Ash Sparrow", 1]], photos: [{ k: "front", r: 1, bg: 0 }] }
+    ]}
+  ];
+  var STATES = [["loaded", "Loaded"], ["unknown", "Unknown sender"], ["photofail", "One photo failed"], ["loading", "Loading"], ["failed", "Read failed"], ["empty", "No photos"]];
+  var CONCEPTS = [["strip", "Strip"], ["file", "Card file"]];
+  var FRAMES = [
+    { key: "folded", dev: "iphone-duo-folded", w: 466, h: 678, cap: "Duo folded, 466 x 678 pt (brief size)" },
+    { key: "open", dev: "iphone-duo-unfolded", w: 951, h: 669, cap: "Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief size)" },
+    { key: "phone", dev: "iphone-regular", w: 402, h: 874, cap: "Large phone, 402 x 874 pt: placeholder, the brief gives no size" },
+    { key: "ax5", dev: "iphone-duo-folded-ax5", w: 466, h: 678, cap: "Duo folded at the largest text size (AX5), 466 x 678 pt", ax: true }
+  ];
+
+  // Flat photo list for the Strip: newest day first, envelope order, photo order.
+  var FLAT = [];
+  DAYS.forEach(function (d, di) { d.envs.forEach(function (e, ei) { e.photos.forEach(function (p, pi) { FLAT.push({ di: di, ei: ei, pi: pi }); }); }); });
+  function env(di, ei) { return DAYS[di].envs[ei]; }
+  function dayFlat(di) { return FLAT.filter(function (f) { return f.di === di; }); }
+  function flatIndex(di, ei, pi) { for (var i = 0; i < FLAT.length; i++) { var f = FLAT[i]; if (f.di === di && f.ei === ei && f.pi === pi) return i; } return 0; }
+
+  /* ---------- Photo art: drawn envelopes with a hand-written sender line. No street address. ---------- */
+  var DESK = ["#7d8580", "#9a7550"];
+  var svgCache = {};
+  function esc(s) { return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;"); }
+  function scribble(x, y, w, seed) {
+    var d = "M" + x + " " + y, n = Math.max(4, Math.round(w / 14));
+    for (var i = 1; i <= n; i++) { var xx = x + (w * i) / n, yy = y + ((i + seed) % 2 ? -4 : 3); d += " Q" + (xx - w / n / 2) + " " + (yy - 6) + " " + xx + " " + yy; }
+    return '<path d="' + d + '" fill="none" stroke="#2b3550" stroke-width="2.4" stroke-linecap="round" opacity=".75"/>';
+  }
+  function photoSvg(di, ei, pi, sizeAttr) {
+    var key = di + "-" + ei + "-" + pi + (sizeAttr || "");
+    if (svgCache[key]) return svgCache[key];
+    var e = env(di, ei), p = e.photos[pi], name = e.sender, hand = "'Bradley Hand','Segoe Print','Comic Sans MS',cursive";
+    var s = '<svg viewBox="0 0 400 300" ' + (sizeAttr || 'preserveAspectRatio="xMidYMid meet"') + ' role="img" aria-label="Photo ' + (pi + 1) + ' of the envelope from ' + esc(name || "an unknown sender") + '">';
+    s += '<rect width="400" height="300" fill="' + DESK[p.bg] + '"/>';
+    s += '<g transform="rotate(' + p.r + ' 200 150)">';
+    if (p.k === "front") {
+      s += '<rect x="34" y="46" width="332" height="208" rx="3" fill="#fbfaf5" stroke="#d8d4c8"/>';
+      s += '<rect x="304" y="60" width="46" height="54" fill="#c9dbe8" stroke="#8aa3b8" stroke-dasharray="3 2"/><rect x="311" y="68" width="32" height="38" fill="#7d9ab3"/>';
+      s += '<circle cx="292" cy="98" r="22" fill="none" stroke="#56627f" stroke-width="1.6" opacity=".7"/><path d="M250 92 h90 M252 100 h88 M254 108 h84" stroke="#56627f" stroke-width="1.4" opacity=".55"/>';
+      if (name) s += '<text x="50" y="80" font-family="' + hand + '" font-size="21" fill="#1f2a48">' + esc(name) + '</text>' + scribble(50, 96, 120, 1);
+      else s += scribble(50, 78, 90, 0) + '<ellipse cx="96" cy="84" rx="58" ry="16" fill="#9aa39c" opacity=".35"/>';
+      s += scribble(150, 168, 150, 2) + scribble(150, 194, 120, 1) + scribble(150, 220, 90, 0);
+    } else if (p.k === "back") {
+      s += '<rect x="34" y="46" width="332" height="208" rx="3" fill="#f4f1e8" stroke="#d6d1c2"/>';
+      s += '<path d="M34 46 L200 160 L366 46" fill="#ebe6d8" stroke="#d6d1c2"/>';
+      s += '<rect x="150" y="128" width="100" height="34" fill="#e8eef0" opacity=".75" transform="rotate(-4 200 145)"/>';
+      if (name) s += '<circle cx="200" cy="208" r="30" fill="#2f5d50"/><text x="200" y="204" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="9" fill="#fff">thank you</text><text x="200" y="217" text-anchor="middle" font-family="Helvetica,Arial,sans-serif" font-size="8" fill="#d5e6df">' + esc(name.slice(0, 18)) + '</text>';
+      else s += '<circle cx="200" cy="208" r="30" fill="#8a8f8a" opacity=".5"/>';
+    } else {
+      s += '<rect x="30" y="40" width="340" height="220" rx="10" fill="#c99d68" stroke="#a87e4c"/>';
+      s += '<rect x="86" y="96" width="228" height="108" fill="#fdfcf8" stroke="#ddd8cc"/>';
+      if (name) s += '<text x="98" y="122" font-family="Helvetica,Arial,sans-serif" font-size="15" fill="#222">From ' + esc(name) + '</text>';
+      else s += '<rect x="98" y="110" width="120" height="14" fill="#ccc"/>';
+      s += scribble(98, 150, 150, 1) + scribble(98, 176, 110, 0);
+    }
+    s += '</g></svg>';
+    svgCache[key] = s;
+    return s;
+  }
+
+  /* ---------- Icons ---------- */
+  var ICON = {
+    left: '<svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M12.5 4 6.5 10l6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    right: '<svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M7.5 4l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    down: '<svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><path d="M5 7.5l5 5 5-5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    cal: '<svg class="chev" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="4.5" width="14" height="12.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 8.5h14M7 2.5v4M13 2.5v4" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    zoom: '<svg width="14" height="14" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l4 4M8.5 6v5M6 8.5h5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+  };
+
+  /* ---------- Shared bits ---------- */
+  function senderHtml(e, cls) {
+    if (e.sender) return '<h1 class="sender ' + (cls || "") + '">' + esc(e.sender) + '</h1>';
+    return '<h1 class="sender unknown ' + (cls || "") + '"><span class="qmark" aria-hidden="true">?</span>Unknown sender</h1>';
+  }
+  function unknownLine(e) { return e.sender ? "" : '<p class="sub">No sender name is recorded for this envelope.</p>'; }
+  function cardsHtml(e) {
+    return '<ul class="cards" aria-label="Cards in this envelope">' + e.cards.map(function (c) {
+      return '<li><span>' + esc(c[0]) + '</span><span class="qty">' + (c[1] > 1 ? "x" + c[1] : "") + '</span></li>';
+    }).join("") + '</ul>';
+  }
+  function cardCount(e) { var n = 0; e.cards.forEach(function (c) { n += c[1]; }); return n; }
+  function photoInner(fs, di, ei, pi, label) {
+    var p = env(di, ei).photos[pi];
+    if (p.fail && !fs.retried[di + "-" + ei + "-" + pi]) {
+      return '<div class="photo-msg" role="group" aria-label="Photo failed"><p><strong>This photo could not load.</strong></p><p class="sub">The sender and cards still show.</p><button type="button" data-act="retryphoto" data-k="' + di + "-" + ei + "-" + pi + '">Try again</button></div>';
+    }
+    return '<button type="button" class="photo-hit" data-act="zoom" aria-label="' + esc(label) + '">' + photoSvg(di, ei, pi) + '</button><span class="zoom-hint" aria-hidden="true">' + ICON.zoom + '<span class="zh-t">Tap to zoom</span></span>';
+  }
+  function thumbHtml(fs, i, f, current) {
+    var p = env(f.di, f.ei).photos[f.pi], bad = p.fail && !fs.retried[f.di + "-" + f.ei + "-" + f.pi];
+    var e = env(f.di, f.ei);
+    return '<button type="button" class="thumb" data-act="goto" data-i="' + i + '" aria-label="Photo from ' + esc(e.sender || "unknown sender") + '"' + (current ? ' aria-current="true"' : "") + '>' +
+      (bad ? '<span class="bad" aria-hidden="true">!</span>' : photoSvg(f.di, f.ei, f.pi, 'preserveAspectRatio="xMidYMid slice"')) + '</button>';
+  }
+  function chrome() { return '<div class="status" aria-hidden="true">9:41</div><div class="homeind" aria-hidden="true"></div>'; }
+  function stepBtns(prevLbl, nextLbl, atStart, atEnd, countHtml) {
+    return '<div class="stepbar nl" data-new="New: step controls">' +
+      '<button type="button" class="stepbtn" data-act="prev" aria-label="' + prevLbl + '"' + (atStart ? ' aria-disabled="true" title="This is the newest one"' : "") + '>' + ICON.left + '<span class="lbl">' + prevLbl.split(" ")[0] + '</span></button>' +
+      (countHtml || "") +
+      '<button type="button" class="stepbtn primary" data-act="next" aria-label="' + nextLbl + '"' + (atEnd ? ' aria-disabled="true" title="This is the oldest one"' : "") + '><span class="lbl">' + nextLbl.split(" ")[0] + '</span>' + ICON.right + '</button></div>';
+  }
+  function stateMsg(fs) {
+    if (fs.state === "loading") return '<div class="msg" role="status"><div class="skel" style="width:100%;height:200px"></div><p>Loading photos.</p><div class="skel" style="width:60%;height:28px"></div><div class="skel" style="width:80%;height:20px"></div></div>';
+    if (fs.state === "failed") return '<div class="msg low" role="alert"><p class="lead">The photos could not load.</p><button type="button" class="act" data-act="retry">Try again</button><details><summary>What the server said</summary><p>Sample: 503 from the photo store.</p></details></div>';
+    if (fs.state === "empty") return '<div class="msg low"><p class="lead">Envelope photos you add show here, newest first.</p><button type="button" class="act" data-act="add">Add a photo</button>' + (fs.toast ? '<p class="toast" role="status">Sample: this would open the camera.</p>' : "") + '</div>';
+    return "";
+  }
+  function daySheet(fs, curDi) {
+    return '<div class="overlay scrim" data-act="closeov"><div class="sheet nl" data-new="New: day picker" role="dialog" aria-label="Pick a day" data-stop="1">' +
+      '<div class="sbar"><button type="button" class="btn-plain" data-act="closeov">Cancel</button><span class="stitle">Days</span><span style="width:60px"></span></div>' +
+      '<div class="sbody"><ul class="daylist">' + DAYS.map(function (d, di) {
+        var n = 0; d.envs.forEach(function (e) { n += e.photos.length; });
+        return '<li><button type="button" data-act="pickday" data-di="' + di + '"' + (di === curDi ? ' aria-current="true"' : "") + '><span class="dname">' + d.label + '</span><span class="dmeta">' + d.envs.length + " envelopes, " + n + ' photos</span></button></li>';
+      }).join("") + '</ul></div></div></div>';
+  }
+  function zoomView(fs, di, ei, pi) {
+    var e = env(di, ei);
+    var z = fs.zoomed ? 2.6 : 1;
+    return '<div class="overlay zoom nl" data-new="New: zoom" role="dialog" aria-label="Zoomed photo">' +
+      '<div class="zbar"><span class="zname' + (e.sender ? "" : " unknown") + '">' + esc(e.sender || "Unknown sender") + '</span><span class="row" style="display:flex;gap:4px"><button type="button" class="zbtn" data-act="zoomtoggle">' + (fs.zoomed ? "Fit" : "Zoom in") + '</button><button type="button" class="zbtn" data-act="closeov">Done</button></span></div>' +
+      '<div class="zarea" data-zarea="1"><div style="width:' + (z * 100) + '%">' + photoSvg(di, ei, pi, 'width="100%"') + '</div></div>' +
+      '<div class="zfoot">' + DAYS[di].label + ". Drag to move around. Pinch or press " + (fs.zoomed ? "Fit" : "Zoom in") + " to change the size.</div></div>";
+  }
+
+  /* ---------- Strip ---------- */
+  function renderStrip(fs, fr) {
+    var compact = fr.key !== "open";
+    var f = FLAT[fs.i], e = env(f.di, f.ei), dl = dayFlat(f.di), pos = dl.indexOf(f) + 1;
+    var countTxt = '<span class="count" aria-live="polite">' + pos + " of " + dl.length + '</span>';
+    var label = "Zoom photo from " + (e.sender || "unknown sender");
+    var loaded = fs.state === "loaded";
+    // With no photos to show, the day picker changes nothing, so it is absent.
+    var top = '<div class="topbar">' + (loaded ? '<button type="button" class="btn-plain" data-act="days" aria-haspopup="dialog">' + ICON.cal + DAYS[f.di].label + '</button>' : "") + '</div>';
+    // The card count shows beside the name, so the folded screen answers "whose, and what" before any scroll.
+    var nCards = cardCount(e), cardsTxt = nCards === 1 ? "1 card" : nCards + " cards";
+    var envDots = '<p class="sub">' + (e.photos.length > 1 ? '<span class="dots" aria-hidden="true">' + e.photos.map(function (_, k) { return '<i class="' + (k === f.pi ? "on" : "") + '"></i>'; }).join("") + '</span> Photo ' + (f.pi + 1) + " of " + e.photos.length + ", " : "") + cardsTxt + "</p>";
+    var film = '<div class="film nl" data-new="New: day strip" aria-label="Photos from ' + DAYS[f.di].label + '">' + groupByEnv(dl).map(function (g) {
+      return '<div class="grp">' + g.map(function (ff) { var idx = FLAT.indexOf(ff); return thumbHtml(fs, idx, ff, idx === fs.i); }).join("") + '</div>';
+    }).join("") + '</div>';
+    var atStart = fs.i === 0, atEnd = fs.i === FLAT.length - 1;
+    if (compact) {
+      var body;
+      if (!loaded) body = '<div class="scroll">' + stateMsg(fs) + '</div>';
+      else body = '<div class="scroll">' +
+        '<div class="photo nl" data-new="New: photo" data-swipe="h">' + photoInner(fs, f.di, f.ei, f.pi, label) + '</div>' +
+        '<div class="slip nl" data-new="New: envelope slip">' + senderHtml(e) + unknownLine(e) + envDots + cardsHtml(e) + '</div></div>' +
+        film + stepBtns("Previous photo", "Next photo", atStart, atEnd, countTxt);
+      var ov = fs.ov === "zoom" ? zoomView(fs, f.di, f.ei, f.pi) : fs.ov === "days" ? daySheet(fs, f.di) : "";
+      return '<div class="scr">' + chrome() + top + body + ov + '</div>';
+    }
+    // Open pose: photo page on the left, slip and the day's photos on the right.
+    var left, right;
+    if (!loaded) {
+      left = '<div class="pg">' + stateMsg(fs) + '</div>';
+      right = '<div class="pg">' + top + '</div>';
+    } else {
+      left = '<div class="pg"><div class="photo bigphoto nl" data-new="New: photo" data-swipe="h">' + photoInner(fs, f.di, f.ei, f.pi, label) + '</div>' +
+        stepBtns("Previous photo", "Next photo", atStart, atEnd, countTxt) + '</div>';
+      var grid = '<div class="daygrid nl" data-new="New: day grid">' + dl.map(function (ff) { var idx = FLAT.indexOf(ff); return thumbHtml(fs, idx, ff, idx === fs.i); }).join("") + '</div>';
+      right = '<div class="pg">' + top + '<div class="rside"><div class="nl" data-new="New: envelope slip" style="display:flex;flex-direction:column;gap:8px">' + senderHtml(e) + unknownLine(e) + envDots + cardsHtml(e) + '</div>' +
+        '<h2 class="sect-h">All photos, ' + DAYS[f.di].label + '</h2>' + grid + '</div></div>';
+    }
+    if (fs.ov === "zoom") left += zoomView(fs, f.di, f.ei, f.pi);
+    if (fs.ov === "days") right += daySheet(fs, f.di);
+    return '<div class="open">' + '<div class="page">' + chrome() + left + '</div><div class="hinge" aria-hidden="true"></div><div class="page">' + chrome() + right + '</div></div>';
+  }
+  function groupByEnv(list) {
+    var out = [], last = null;
+    list.forEach(function (f) { var k = f.di + "-" + f.ei; if (k !== last) { out.push([]); last = k; } out[out.length - 1].push(f); });
+    return out;
+  }
+
+  /* ---------- Card file ---------- */
+  function tabHtml(fs, di, ei, extra) {
+    var e = env(di, ei);
+    return '<button type="button" class="tab off' + (ei % 3) + (e.sender ? "" : " unknown") + '" data-act="openenv" data-ei="' + ei + '"' + (extra || "") + ' aria-label="Open the envelope from ' + esc(e.sender || "unknown sender") + '"><span class="ear"><span class="nm">' + esc(e.sender || "Unknown sender") + '</span><span class="pc">' + e.photos.length + (e.photos.length > 1 ? " photos" : " photo") + '</span></span></button>';
+  }
+  function dividerPhoto(fs, di, ei) {
+    var e = env(di, ei), pi = Math.min(fs.pi, e.photos.length - 1);
+    var pager = e.photos.length > 1 ? '<div class="pager"><button type="button" data-act="pprev" aria-label="Previous photo of this envelope"' + (pi === 0 ? ' aria-disabled="true"' : "") + '>' + ICON.left + '</button><span>Photo ' + (pi + 1) + " of " + e.photos.length + '</span><button type="button" data-act="pnext" aria-label="Next photo of this envelope"' + (pi === e.photos.length - 1 ? ' aria-disabled="true"' : "") + '>' + ICON.right + '</button></div>' : "";
+    return '<div class="photo nl" data-new="New: photo" data-swipe="p">' + photoInner(fs, di, ei, pi, "Zoom photo from " + (e.sender || "unknown sender")) + '</div>' + pager;
+  }
+  function cardsSheet(fs, e) {
+    return '<div class="overlay scrim" data-act="closeov"><div class="sheet" role="dialog" aria-label="Cards in this envelope" data-stop="1"><div class="sbar"><span style="width:60px"></span><span class="stitle">' + cardCount(e) + ' cards</span><button type="button" class="btn-plain" data-act="closeov">Done</button></div><div class="sbody">' + cardsHtml(e) + '</div></div></div>';
+  }
+  function dayMenu(fs) {
+    return '<div class="menu-scrim" data-act="closeov"></div><div class="menu nl" data-new="New: day menu" role="menu"><ul class="daylist">' + DAYS.map(function (d, di) {
+      return '<li><button type="button" role="menuitemradio" aria-checked="' + (di === fs.di) + '" data-act="pickday" data-di="' + di + '"' + (di === fs.di ? ' aria-current="true"' : "") + '><span class="dname">' + d.label + '</span><span class="dmeta">' + d.envs.length + ' envelopes</span></button></li>';
+    }).join("") + '</ul></div>';
+  }
+  function renderFile(fs, fr) {
+    var compact = fr.key !== "open", ax = !!fr.ax;
+    var d = DAYS[fs.di], e = env(fs.di, fs.ei), n = d.envs.length, loaded = fs.state === "loaded";
+    var top = '<div class="topbar">' + (loaded ? '<button type="button" class="btn-plain" data-act="daymenu" aria-haspopup="menu">' + d.label + ICON.down + '</button>' : "") + (loaded ? '<span class="count" aria-live="polite">Envelope ' + (fs.ei + 1) + " of " + n + '</span>' : "") + '</div>';
+    var atStart = fs.ei === 0 && fs.di === 0, atEnd = fs.ei === n - 1 && fs.di === DAYS.length - 1;
+    var pi = Math.min(fs.pi, e.photos.length - 1);
+    var ov = "";
+    if (fs.ov === "zoom") ov = zoomView(fs, fs.di, fs.ei, pi);
+    else if (fs.ov === "cards") ov = cardsSheet(fs, e);
+    else if (fs.ov === "days") ov = dayMenu(fs);
+    var cardLine = '<button type="button" class="cardline" data-act="cards"><span class="cl">' + esc(e.cards.slice(0, 3).map(function (c) { return c[0] + (c[1] > 1 ? " x" + c[1] : ""); }).join(", ")) + (e.cards.length > 3 ? "," : "") + '</span><span class="more">' + (e.cards.length > 3 ? "All " + cardCount(e) : cardCount(e) === 1 ? "1 card" : cardCount(e) + " cards") + '</span></button>';
+    if (compact) {
+      if (!loaded) return '<div class="scr">' + chrome() + top + '<div class="box">' + stateMsg(fs) + '</div>' + ov + '</div>';
+      // At the largest text size a tab is three lines tall, so only the next tab stays in sight.
+      var lo = Math.max(0, fs.ei - (ax ? 0 : 2)), hi = Math.min(n - 1, fs.ei + (ax ? 1 : 2)), above = "", below = "";
+      for (var a = lo; a < fs.ei; a++) above += tabHtml(fs, fs.di, a);
+      for (var b = fs.ei + 1; b <= hi; b++) below += tabHtml(fs, fs.di, b);
+      var depthTop = lo > 0 ? '<div class="depth" aria-hidden="true">' + new Array(Math.min(lo, 3) + 1).join("<i></i>") + '</div>' : "";
+      var depthBot = hi < n - 1 ? '<div class="depth" aria-hidden="true">' + new Array(Math.min(n - 1 - hi, 3) + 1).join("<i></i>") + '</div>' : "";
+      var nextDay = hi === n - 1 && fs.di < DAYS.length - 1 ? '<button type="button" class="tab off0" data-act="pickday" data-di="' + (fs.di + 1) + '"><span class="ear" style="background:var(--surface-2);color:var(--text);border:1px dashed var(--line)"><span class="nm">' + DAYS[fs.di + 1].label + '</span><span class="pc">' + DAYS[fs.di + 1].envs.length + ' envelopes</span></span></button>' : "";
+      var open = '<div class="divider-wrap nl" data-new="New: open divider"><div class="divider-ear off' + (fs.ei % 3) + '">' + senderHtml(e) + '</div><div class="divider">' + unknownLine(e) + dividerPhoto(fs, fs.di, fs.ei) + cardLine + '</div></div>';
+      return '<div class="scr">' + chrome() + top + '<div class="box nl" data-new="New: card file">' + depthTop + above + open + below + depthBot + nextDay + '</div>' +
+        stepBtns("Previous envelope", "Next envelope", atStart, atEnd, "") + ov + '</div>';
+    }
+    // Open pose: the whole day's file of tabs on the left, the pulled divider on the right.
+    var left, right;
+    if (!loaded) {
+      left = '<div class="pg">' + top + '</div>';
+      right = '<div class="pg">' + stateMsg(fs) + '</div>';
+    } else {
+      var tabs = d.envs.map(function (_, k) { return tabHtml(fs, fs.di, k, k === fs.ei ? ' aria-current="true"' : ""); }).join("");
+      var nd = fs.di < DAYS.length - 1 ? '<button type="button" class="tab nextday off0" data-act="pickday" data-di="' + (fs.di + 1) + '"><span class="ear"><span class="nm">' + DAYS[fs.di + 1].label + '</span><span class="pc">' + DAYS[fs.di + 1].envs.length + ' envelopes</span></span></button>' : "";
+      left = '<div class="pg">' + top + '<div class="tabs nl" data-new="New: card file">' + tabs + nd + '</div></div>';
+      right = '<div class="pg"><div class="right nl" data-new="New: open divider">' + senderHtml(e) + unknownLine(e) + dividerPhoto(fs, fs.di, fs.ei) + cardsHtml(e) + '</div>' +
+        stepBtns("Previous envelope", "Next envelope", atStart, atEnd, "") + '</div>';
+    }
+    if (fs.ov === "days") left += dayMenu(fs);
+    else if (fs.ov === "zoom" || fs.ov === "cards") right += ov;
+    return '<div class="open"><div class="page">' + chrome() + left + '</div><div class="hinge" aria-hidden="true"></div><div class="page">' + chrome() + right + '</div></div>';
+  }
+
+  /* ---------- Page state and hash ---------- */
+  var G = { c: "strip", s: "loaded", t: "auto", d: "all", l: "1", h: [] };
+  var frameStates = {};
+  function readHash() {
+    var h = (location.hash || "").replace(/^#/, "");
+    h.split("&").forEach(function (kv) { var p = kv.split("="); if (!p[0]) return; var v = decodeURIComponent(p[1] || ""); if (p[0] === "h") G.h = v ? v.split(",") : []; else if (p[0] in G) G[p[0]] = v; });
+  }
+  function writeHash() {
+    var parts = ["c=" + G.c, "s=" + G.s];
+    if (G.t !== "auto") parts.push("t=" + G.t);
+    if (G.d !== "all") parts.push("d=" + G.d);
+    if (G.l !== "1") parts.push("l=" + G.l);
+    if (G.h.length) parts.push("h=" + G.h.join(","));
+    var nh = "#" + parts.join("&");
+    if (location.hash !== nh) history.replaceState(null, "", nh);
+  }
+  function startFor(state) {
+    // The deep link opens each state on the envelope that shows it.
+    if (state === "unknown") return { di: 0, ei: 1 };
+    if (state === "photofail") return { di: 0, ei: 3 };
+    return { di: 0, ei: 0 };
+  }
+  function freshState(concept, fr) {
+    var st = startFor(G.s);
+    return { concept: concept, state: (G.s === "unknown" || G.s === "photofail") ? "loaded" : G.s, i: flatIndex(st.di, st.ei, 0), di: st.di, ei: st.ei, pi: 0, ov: null, zoomed: false, retried: {}, toast: false };
+  }
+  function seg(el, items, cur, key) {
+    el.innerHTML = items.map(function (it) { return '<button type="button" data-g="' + key + '" data-v="' + it[0] + '" aria-pressed="' + (it[0] === cur) + '">' + it[1] + '</button>'; }).join("");
+  }
+  function renderControls() {
+    var vis = CONCEPTS.filter(function (c) { return G.h.indexOf(c[0]) < 0; });
+    seg(document.getElementById("c-seg"), vis, G.c, "c");
+    document.getElementById("hide-wrap").innerHTML = vis.map(function (c) { return '<button type="button" class="hide-btn" data-hide="' + c[0] + '">Hide ' + c[1] + '</button>'; }).join("");
+    seg(document.getElementById("s-seg"), STATES, G.s, "s");
+    seg(document.getElementById("t-seg"), [["auto", "System"], ["light", "Light"], ["dark", "Dark"]], G.t, "t");
+    seg(document.getElementById("d-seg"), [["all", "All"], ["folded", "Duo folded"], ["open", "Duo open"], ["phone", "Phone"], ["ax5", "Largest text"]], G.d, "d");
+    seg(document.getElementById("l-seg"), [["1", "Show New labels"], ["0", "Hide"]], G.l, "l");
+  }
+  function buildFrames() {
+    // The frames are static markup in the page; this only resets each frame's own state.
+    document.querySelectorAll(".concept").forEach(function (sec) {
+      var c = sec.getAttribute("data-concept");
+      FRAMES.forEach(function (fr) { frameStates[c + "-" + fr.key] = freshState(c, fr); });
+    });
+  }
+  function renderFrame(c, fr, keepFocus) {
+    var el = document.getElementById("scr-" + c + "-" + fr.key), fs = frameStates[c + "-" + fr.key];
+    var focusKey = null;
+    if (keepFocus && el.contains(document.activeElement)) { var a = document.activeElement; focusKey = [a.getAttribute("data-act"), a.getAttribute("data-i"), a.getAttribute("data-ei")].join("|"); }
+    el.innerHTML = c === "strip" ? renderStrip(fs, fr) : renderFile(fs, fr);
+    // Zoom opens on the sender's corner of the envelope, where the hand-written name sits.
+    var za = el.querySelector("[data-zarea]");
+    if (za && fs.zoomed) { za.scrollLeft = za.scrollWidth * 0.08; za.scrollTop = za.scrollHeight * 0.1; }
+    if (focusKey) {
+      var found = Array.prototype.find.call(el.querySelectorAll("[data-act]"), function (b) { return [b.getAttribute("data-act"), b.getAttribute("data-i"), b.getAttribute("data-ei")].join("|") === focusKey; });
+      if (found) found.focus();
+    }
+  }
+  function renderAll() {
+    var root = document.documentElement;
+    if (G.t === "auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", G.t);
+    document.body.classList.toggle("labels-on", G.l === "1");
+    var vis = CONCEPTS.filter(function (c) { return G.h.indexOf(c[0]) < 0; }).map(function (c) { return c[0]; });
+    if (vis.length && vis.indexOf(G.c) < 0) G.c = vis[0];
+    document.querySelectorAll(".concept").forEach(function (sec) { sec.hidden = sec.getAttribute("data-concept") !== G.c || !vis.length; });
+    document.getElementById("all-hidden").hidden = vis.length > 0;
+    document.querySelectorAll(".device").forEach(function (f) { f.hidden = G.d !== "all" && f.getAttribute("data-frame") !== G.d; });
+    renderControls();
+    CONCEPTS.forEach(function (c) { FRAMES.forEach(function (fr) { renderFrame(c[0], fr); }); });
+    writeHash();
+  }
+
+  /* ---------- Acts ---------- */
+  function frameOf(el) { var s = el.closest(".screen"); if (!s) return null; var p = s.id.split("-"); return { c: p[1], fr: FRAMES.filter(function (f) { return f.key === p[2]; })[0] }; }
+  function step(fsKey, c, dir) {
+    var fs = frameStates[fsKey];
+    if (c === "strip") { fs.i = Math.max(0, Math.min(FLAT.length - 1, fs.i + dir)); }
+    else {
+      var n = DAYS[fs.di].envs.length, ne = fs.ei + dir;
+      if (ne < 0 && fs.di > 0) { fs.di--; fs.ei = DAYS[fs.di].envs.length - 1; }
+      else if (ne >= n && fs.di < DAYS.length - 1) { fs.di++; fs.ei = 0; }
+      else fs.ei = Math.max(0, Math.min(n - 1, ne));
+      fs.pi = 0;
+    }
+  }
+  var lastFrame = null;
+  document.addEventListener("click", function (ev) {
+    var g = ev.target.closest("[data-g]");
+    if (g) {
+      G[g.getAttribute("data-g")] = g.getAttribute("data-v");
+      if (g.getAttribute("data-g") === "s") buildFrames();
+      renderAll(); return;
+    }
+    var hb = ev.target.closest("[data-hide]");
+    if (hb) { G.h.push(hb.getAttribute("data-hide")); renderAll(); return; }
+    if (ev.target.closest("#show-all")) { G.h = []; renderAll(); return; }
+    var b = ev.target.closest("[data-act]");
+    if (!b) return;
+    if (b.getAttribute("data-act") === "closeov" && ev.target.closest("[data-stop]") && !ev.target.closest('button[data-act="closeov"]')) return;
+    var fo = frameOf(b); if (!fo) return;
+    var key = fo.c + "-" + fo.fr.key, fs = frameStates[key], act = b.getAttribute("data-act");
+    lastFrame = key;
+    if (b.getAttribute("aria-disabled") === "true") return;
+    if (act === "prev") step(key, fo.c, -1);
+    else if (act === "next") step(key, fo.c, 1);
+    else if (act === "goto") fs.i = +b.getAttribute("data-i");
+    else if (act === "zoom") { fs.ov = "zoom"; fs.zoomed = true; }
+    else if (act === "zoomtoggle") fs.zoomed = !fs.zoomed;
+    else if (act === "closeov") fs.ov = null;
+    else if (act === "days" || act === "daymenu") fs.ov = "days";
+    else if (act === "cards") fs.ov = "cards";
+    else if (act === "pickday") { var di = +b.getAttribute("data-di"); fs.ov = null; if (fo.c === "strip") fs.i = flatIndex(di, 0, 0); else { fs.di = di; fs.ei = 0; fs.pi = 0; } }
+    else if (act === "openenv") { fs.ei = +b.getAttribute("data-ei"); fs.pi = 0; }
+    else if (act === "pprev") fs.pi = Math.max(0, fs.pi - 1);
+    else if (act === "pnext") fs.pi = Math.min(env(fs.di, fs.ei).photos.length - 1, fs.pi + 1);
+    else if (act === "retryphoto") fs.retried[b.getAttribute("data-k")] = true;
+    else if (act === "retry") { fs.state = "loading"; setTimeout(function () { fs.state = "loaded"; renderFrame(fo.c, fo.fr); }, 900); }
+    else if (act === "add") fs.toast = true;
+    renderFrame(fo.c, fo.fr, true);
+  });
+  // Swipe: horizontal on the Strip photo steps photos; on a Card file photo it steps that envelope's photos.
+  var sw = null;
+  document.addEventListener("pointerdown", function (ev) { var p = ev.target.closest("[data-swipe]"); if (p) sw = { x: ev.clientX, y: ev.clientY, el: p }; });
+  document.addEventListener("pointerup", function (ev) {
+    if (!sw) return; var dx = ev.clientX - sw.x, dy = ev.clientY - sw.y, el = sw.el; sw = null;
+    if (Math.abs(dx) < 50 || Math.abs(dx) < Math.abs(dy)) return;
+    var fo = frameOf(el); if (!fo) return; var key = fo.c + "-" + fo.fr.key, fs = frameStates[key];
+    if (el.getAttribute("data-swipe") === "h") step(key, fo.c, dx < 0 ? 1 : -1);
+    else { var e = env(fs.di, fs.ei); fs.pi = Math.max(0, Math.min(e.photos.length - 1, fs.pi + (dx < 0 ? 1 : -1))); }
+    ev.preventDefault();
+    renderFrame(fo.c, fo.fr);
+  });
+  document.addEventListener("keydown", function (ev) {
+    if (!lastFrame || (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight" && ev.key !== "Escape")) return;
+    var p = lastFrame.split("-"), fr = FRAMES.filter(function (f) { return f.key === p[1]; })[0], fs = frameStates[lastFrame];
+    if (ev.key === "Escape") fs.ov = null; else if (!fs.ov) step(lastFrame, p[0], ev.key === "ArrowRight" ? 1 : -1);
+    renderFrame(p[0], fr, true);
+  });
+  window.addEventListener("hashchange", function () { var prevS = G.s; readHash(); if (G.s !== prevS) buildFrames(); renderAll(); });
+
+  readHash();
+  buildFrames();
+  renderAll();
+})();
+</script>
+</body>
+</html>

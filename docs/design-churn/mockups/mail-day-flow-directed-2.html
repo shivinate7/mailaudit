@@ -1,0 +1,754 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mail day workbench</title>
+<style>
+/* Tokens: shared/tokens.json (decision design-parchment-ledger). The native app is held to light
+   (UIUserInterfaceStyle: Light), so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;   /* typography-cochin-and-mono: words */
+  --mono: Menlo, ui-monospace, monospace;        /* numbers, ids, labels */
+  --sys: -apple-system, system-ui, sans-serif;   /* page chrome and iOS system parts */
+  /* Status bar foot: unmeasured on both Duo screens. Drawn at the 20 pt floor the Duo UI tests use. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --ts: 1;  /* text scale: 1 at the default size, 53/17 at AX5 (HIG typography, Body 17 pt to 53 pt) */
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1560px; margin:0 auto; padding:16px; padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right)); }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:28px; margin:16px 0 4px; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0; }
+.kind { font-size:14px; color:var(--inkSoft); margin:0 0 8px; }
+.kind b { color:var(--ink); }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:80ch; }
+.toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:12px 0; }
+.toolbar a, .ctl { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl.on, .toolbar a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl.chip { font-family:var(--cochin); font-size:15px; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.opt { margin:32px 0 48px; padding-top:16px; border-top:1px solid var(--line); }
+section.opt[hidden] { display:none; }
+.opthead { display:flex; flex-wrap:wrap; gap:12px; align-items:center; justify-content:space-between; }
+.lede { max-width:80ch; margin:4px 0 8px; }
+.demo { display:flex; flex-wrap:wrap; gap:8px; align-items:center; margin:8px 0 16px; }
+.demo .lbl { font-size:13px; color:var(--inkSoft); min-width:112px; }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; }
+figcaption { font-size:13px; color:var(--inkSoft); margin-top:6px; max-width:466px; }
+figcaption b { color:var(--ink); }
+.fit { max-width:100%; overflow-x:auto; }
+.sizer { display:flex; gap:8px; align-items:center; font-size:13px; color:var(--inkSoft); margin:4px 0; }
+.sizer input { width:72px; font:13px var(--mono); min-height:44px; padding:0 8px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); }
+
+/* ---- device frames: 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:14px; overflow:hidden; font-family:var(--sys); color:var(--ink); }
+.dev.folded, .dev.ax5 { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font:600 12px var(--sys); z-index:7; }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.page.l { left:0; width:455.5px; } .page.r { left:495.5px; width:455.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:3; }
+.fold span { position:absolute; top:220px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); overflow-y:auto; overflow-x:hidden; }
+.pad { padding:8px 16px 16px; display:flex; flex-direction:column; gap:12px; }
+/* The system keyboard is iOS chrome, not an app colour, so its greys sit outside the tokens. */
+.keys { position:absolute; left:0; right:0; bottom:0; background:#D2D0D6; z-index:8; padding:8px 6px; display:flex; flex-direction:column; gap:8px; }
+.keys .row { display:flex; gap:6px; justify-content:center; }
+.keys .k { height:42px; flex:0 0 36px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font:18px var(--sys); color:#111; }
+.keys .k.w { flex:1 1 auto; max-width:300px; font-size:14px; }
+.keys button.k { border:0; cursor:pointer; min-width:44px; }
+.tabbar { position:absolute; z-index:6; border:1px solid var(--line); border-radius:32px; background:color-mix(in srgb, var(--paper) 62%, transparent);
+  box-shadow:0 4px 16px var(--shadow); display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px; backdrop-filter:blur(8px); }
+.tabbar span { display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:28px; font:11px var(--sys); color:var(--inkSoft); position:relative; }
+.tabbar span::before { content:""; width:20px; height:20px; border:1.5px solid currentColor; border-radius:5px; margin-bottom:3px; }
+.tabbar span.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+.tabbar .badge { position:absolute; top:2px; left:calc(50% + 6px); min-width:18px; height:18px; border-radius:9px; background:var(--red); color:var(--card);
+  font:600 11px/18px var(--sys); text-align:center; padding:0 4px; }
+.home { position:absolute; inset:0; display:grid; place-items:center; background:color-mix(in srgb, var(--ink) 82%, transparent); z-index:9;
+  color:var(--card); font:15px var(--sys); text-align:center; padding:24px; }
+
+/* ---- app content. Sizes scale with --ts, so the AX5 frame reuses every rule. ---- */
+.app { font-family:var(--cochin); }
+.micro { font:calc(11px * var(--ts))/1.25 var(--mono); color:var(--inkSoft); }
+.num { font-family:var(--mono); }
+.pill { font:calc(11.5px * var(--ts)) var(--mono); border:1px solid var(--line); background:var(--card); border-radius:5px; padding:8px 12px; color:var(--ink);
+  white-space:nowrap; min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; cursor:pointer; }
+.pill.fill { font-weight:700; background:var(--accent); border-color:var(--accent); color:var(--card); }
+.pill.quiet { background:transparent; }
+.pill[disabled] { opacity:.5; cursor:default; }
+
+/* The pile rail: the one always-visible part. A fixed-height slot, so a check-in changes text and pip fills only. */
+.rail { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 8px 8px 12px; display:flex; flex-direction:column; gap:6px; }
+.rail .top { display:flex; align-items:center; gap:8px; min-height:44px; }
+.rail .title { font:700 calc(17px * var(--ts))/1.2 var(--cochin); }
+.rail .left { font:700 calc(13px * var(--ts))/1.2 var(--mono); color:var(--ink); margin-left:auto; text-align:right; }
+.rail .left small { display:block; font-weight:400; color:var(--inkSoft); font-size:calc(11px * var(--ts)); }
+.pips { display:flex; flex-wrap:wrap; gap:10px; min-height:14px; align-items:center; }
+.pile { display:flex; gap:3px; }
+/* Pips grow with the text (HIG typography: grow meaningful icons as text grows), to 2x at AX5. */
+.pip { width:calc(10px * min(var(--ts), 2)); height:calc(14px * min(var(--ts), 2)); border-radius:2px; border:1.5px solid var(--inkSoft); background:transparent; }
+.pip.ok { background:var(--green); border-color:var(--green); }
+.pip.short { background:var(--red); border-color:var(--red); }
+.pip.aside { background:var(--manila); border-color:var(--manilaInk); }
+.pip.bench { background:var(--accent); border-color:var(--accent); }
+.rail.done { border-color:var(--gold); }
+.rail .goldrule { height:2px; background:var(--gold); transform-origin:left; animation:draw 600ms ease-out both; }
+@keyframes draw { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+/* The rule draws once, on the press that ends the day; later renders leave it drawn (motion-use-just-became). */
+.rail .goldrule.still { animation:none; }
+@media (prefers-reduced-motion: reduce) { .rail .goldrule { animation:none; } }
+
+/* The card field (today's hand-query box) */
+.field { display:flex; align-items:center; gap:8px; min-height:48px; padding:0 8px 0 12px; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.field input { flex:1; min-width:0; border:0; background:transparent; font:calc(16px * var(--ts)) var(--cochin); color:var(--ink); min-height:46px; outline:none; }
+.field input::placeholder { color:var(--inkSoft); }
+.field .chip { font:calc(11px * var(--ts)) var(--mono); background:var(--manila); color:var(--manilaInk); border-radius:5px; padding:4px 8px; white-space:nowrap; }
+.matches { display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.match { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 12px; font-size:calc(15px * var(--ts));
+  border-top:1px solid var(--line); background:transparent; border-left:0; border-right:0; border-bottom:0; font-family:var(--cochin); color:var(--ink); text-align:left; cursor:pointer; }
+.match:first-child { border-top:0; }
+.match .num { font-size:calc(11px * var(--ts)); color:var(--inkSoft); }
+
+/* The envelope on the bench */
+.bench { background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; flex-direction:column; overflow:hidden; }
+.bench .head { padding:12px 12px 8px; display:flex; flex-direction:column; gap:2px; }
+.bench .who { font:700 calc(17px * var(--ts))/1.25 var(--cochin); }
+.bench .meta { font:calc(11px * var(--ts))/1.3 var(--mono); color:var(--inkSoft); display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 8px; }
+.bench .meta .owe { color:var(--red); font-weight:700; }
+.bench .meta .whole { color:var(--green); font-weight:700; }
+.offer { margin:0 12px 8px; background:color-mix(in srgb, var(--manila) 50%, transparent); border-radius:8px; padding:8px 12px; display:flex; flex-direction:column; gap:8px; }
+.offer p { margin:0; font-size:calc(13px * var(--ts)); }
+.offer .btns { display:flex; flex-wrap:wrap; gap:8px; }
+.receipt { margin:0 12px 8px; min-height:44px; display:flex; align-items:center; font:calc(12px * var(--ts)) var(--mono); color:var(--manilaInk); }
+.lines { border-top:1px solid var(--line); }
+.ln { display:flex; align-items:center; gap:8px; min-height:64px; padding:0 8px 0 4px; border-top:1px solid var(--line); position:relative; }
+.ln:first-child { border-top:0; }
+.ln button.box { flex:0 0 44px; height:44px; border:0; background:transparent; display:grid; place-items:center; cursor:pointer; padding:0; }
+.ln button.box i { width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; display:block; position:relative; }
+.ln.done { background:var(--greenSoft); }
+.ln.done button.box i { background:var(--green); border-color:var(--green); }
+.ln.done button.box i::after { content:""; position:absolute; left:8px; top:3px; width:8px; height:14px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.ln.part button.box i { background:var(--manila); border-color:var(--manilaInk); }
+.ln.now::after { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
+.ln.held { background:color-mix(in srgb, var(--manila) 55%, var(--card)); }
+.ln .t { flex:1; min-width:0; padding:8px 0; }
+.ln .t b { display:flex; justify-content:space-between; gap:8px; font-size:calc(15px * var(--ts)); font-weight:600; }
+.ln .t b .num { font-size:calc(12px * var(--ts)); color:var(--inkSoft); font-weight:400; white-space:nowrap; }
+.ln .t small { display:block; font-size:calc(12px * var(--ts)); color:var(--inkSoft); }
+.ln .t small .h { color:var(--manilaInk); font-weight:700; }
+.step { display:flex; align-items:center; }
+.step button { width:44px; height:44px; border:0; background:transparent; display:grid; place-items:center; cursor:pointer; padding:0; font:16px var(--mono); color:var(--ink); }
+.step button i { width:32px; height:32px; border:1px solid var(--line); border-radius:8px; background:var(--card); display:grid; place-items:center; font-style:normal; }
+.acts { display:flex; flex-wrap:wrap; gap:8px; padding:8px 12px 12px; border-top:1px solid var(--line); justify-content:flex-end; }
+.note { margin:0; font-size:calc(14px * var(--ts)); color:var(--inkSoft); padding:12px; }
+.err { color:var(--red); }
+.tie { display:grid; grid-template-columns:1fr 1fr; gap:8px; padding:0 12px 12px; }
+.tie div { border:1px solid var(--line); border-radius:8px; padding:8px; font-size:calc(14px * var(--ts)); }
+.tie small { display:block; font:calc(11px * var(--ts)) var(--mono); color:var(--inkSoft); }
+
+/* Trays: what is finished, what is set aside, what is not normal */
+.trays { display:grid; grid-template-columns:repeat(3, 1fr); gap:8px; }
+.tray { background:var(--card); border:1px solid var(--line); border-radius:8px; min-height:56px; padding:8px; display:flex; flex-direction:column; gap:2px;
+  text-align:left; font-family:var(--cochin); color:var(--ink); cursor:pointer; }
+.tray b { font-size:calc(14px * var(--ts)); display:flex; justify-content:space-between; gap:4px; }
+.tray b .num { font-size:calc(13px * var(--ts)); }
+.tray small { font-size:calc(12px * var(--ts)); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.tray.aside { background:color-mix(in srgb, var(--manila) 45%, var(--card)); }
+.list { background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.list h3 { margin:0; padding:8px 12px 4px; font:700 calc(14px * var(--ts)) var(--cochin); display:flex; justify-content:space-between; }
+.list h3 .num { font-size:calc(12px * var(--ts)); color:var(--inkSoft); font-weight:400; }
+.row { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 12px; border-top:1px solid var(--line); font-size:calc(14px * var(--ts)); }
+.row .num { font-size:calc(12px * var(--ts)); white-space:nowrap; }
+.row .ok { color:var(--green); } .row .short { color:var(--red); font-weight:700; } .row .late { color:var(--amber); font-weight:700; }
+.row small { display:block; font-size:calc(12px * var(--ts)); color:var(--inkSoft); }
+.well { padding:8px 12px 12px; font-size:calc(15px * var(--ts)); color:var(--green); font-weight:700; }
+.panel { background:var(--paper); border:1px solid var(--line); border-radius:8px; box-shadow:0 4px 16px var(--shadow); }
+.panel .ph { display:flex; align-items:center; justify-content:space-between; padding:4px 4px 4px 12px; font:700 calc(15px * var(--ts)) var(--cochin); }
+
+/* The end of the day */
+.dayend { background:var(--card); border:1px solid var(--gold); border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:8px; }
+.dayend .big { font:700 calc(24px * var(--ts))/1.2 var(--cochin); }
+.dayend p { margin:0; font-size:calc(15px * var(--ts)); }
+.dayend .fig { font:calc(13px * var(--ts)) var(--mono); color:var(--inkSoft); }
+
+/* Composer for a pile */
+.compose { display:flex; flex-direction:column; gap:8px; padding:12px; }
+.compose p { margin:0; font-size:calc(15px * var(--ts)); }
+.counter { display:flex; align-items:center; gap:4px; }
+.counter .n { font:700 calc(20px * var(--ts)) var(--mono); min-width:48px; text-align:center; }
+
+/* The wall: every open package, oldest order first, in a fixed place */
+.wall { display:grid; gap:6px; grid-template-columns:repeat(var(--cols, 4), minmax(0, 1fr)); }
+.tile { min-height:52px; border:1px solid var(--line); border-radius:6px; background:var(--card); padding:6px 6px 4px; text-align:left; font-family:var(--cochin);
+  color:var(--ink); cursor:pointer; display:flex; flex-direction:column; justify-content:space-between; position:relative; transition:opacity 120ms; }
+.tile b { font-size:calc(13px * var(--ts)); font-weight:600; line-height:1.15; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; }
+.tile small { font:calc(11px * var(--ts)) var(--mono); color:var(--inkSoft); }
+.tile.ok { background:var(--greenSoft); border-color:var(--green); }
+.tile.ok small { color:var(--green); font-weight:700; }
+.tile.short { background:var(--redSoft); border-color:var(--red); }
+.tile.short small { color:var(--red); font-weight:700; }
+.tile.late::after { content:""; position:absolute; top:4px; right:4px; width:8px; height:8px; border-radius:4px; background:var(--amber); }
+.tile.lit { outline:2.5px solid var(--accent); outline-offset:-1px; }
+.tile.dim { opacity:.4; }
+.tile.on { background:var(--accent); border-color:var(--accent); }
+.tile.on b, .tile.on small { color:var(--card); }
+.aside-strip { display:flex; gap:8px; align-items:center; min-height:44px; padding:4px 8px 4px 12px; border-radius:8px; background:color-mix(in srgb, var(--manila) 55%, var(--card));
+  font-size:calc(14px * var(--ts)); color:var(--manilaInk); }
+.aside-strip .names { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.sect { display:flex; align-items:baseline; justify-content:space-between; font:700 calc(14px * var(--ts)) var(--cochin); }
+.sect .num { font-weight:400; font-size:calc(11px * var(--ts)); color:var(--inkSoft); }
+
+/* AX5: words go big, the bench keeps one column, pips stay pips */
+.dev.ax5 { --ts: 3.1176; }
+.dev.ax5 .trays { grid-template-columns:1fr; }
+.dev.ax5 .wall { --cols:1; }
+.dev.ax5 .rail .top { flex-wrap:wrap; }
+.dev.ax5 .ln { flex-wrap:wrap; }
+.dev.ax5 .bench .meta { flex-direction:column; }
+
+/* Today / New tags: a dashed outline on what exists, and on what this option adds */
+[data-tag] { position:relative; }
+.tags [data-tag]::before { content:attr(data-tag); position:absolute; right:6px; top:-8px; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:4; white-space:nowrap; }
+.tags .tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tags .tag-new::before { color:var(--new); }
+.tags .tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tags .tag-today::before { color:var(--today); }
+.dev.ax5 [data-tag]::before { display:none; }
+.compare { display:flex; flex-wrap:wrap; gap:24px; }
+.compare figure { width:466px; max-width:100%; }
+</style>
+</head>
+<body class="tags">
+<main>
+  <div class="banner" role="note">Sample. No figure, seller, order id, card or price on this page is real.</div>
+  <h1>Mail day workbench</h1>
+  <p class="kind">Designer kind: <b>directed</b>. Direction: <b>workbench: everything visible at once, no steps</b>. Designer: mail-day-flow-directed-2.</p>
+  <p class="sub">The whole mail day on one surface. The pile rail at the top always says how much is left. The card field, the envelope on the bench, and the trays for what is done, set aside or not normal all show at the same time. Nothing opens a step. Leave the app and come back: the bench is as you left it. Every control on the drawn screens works.</p>
+
+  <div class="toolbar" aria-label="States">
+    <span class="micro" style="font-size:13px">State</span>
+    <a href="#s=start">Start of day</a><a href="#s=working">Mid pile</a><a href="#s=typing">Typing</a><a href="#s=held">Shared name held</a>
+    <a href="#s=post">Held card decided</a><a href="#s=nomatch">No match</a><a href="#s=done">Day done</a><a href="#s=away">Left the app</a>
+  </div>
+  <div class="toolbar">
+    <button class="ctl" type="button" data-page="tags">Tags on or off</button>
+    <button class="ctl" type="button" data-page="unhide">Show hidden options</button>
+    <span class="micro" style="font-size:13px">Concept deep links: <a href="#c=bench&s=working">#c=bench</a> <a href="#c=wall&s=working">#c=wall</a>. Device: <a href="#d=folded">#d=folded</a> <a href="#d=open">#d=open</a> <a href="#d=phone">#d=phone</a> <a href="#d=ax5">#d=ax5</a>.</span>
+  </div>
+
+  <section class="opt" id="opt-bench" data-opt="bench">
+    <div class="opthead">
+      <h2>The bench</h2>
+      <button class="ctl" type="button" data-hide="bench">Hide the bench</button>
+    </div>
+    <p class="lede">One envelope sits on the bench. Around it, at all times: the pile rail, the card field, and three trays (Done today, Set aside, Not normal). On the open Duo the left page is your hands (field, held cards, trays of what you finished), the right page is the envelope and what needs a second look.</p>
+    <div class="demo" data-concept="bench"></div>
+    <div class="frames" data-frames="bench">
+      <figure data-slot="folded" data-device="iphone-duo-folded"></figure>
+      <figure data-slot="open" data-device="iphone-duo-unfolded"></figure>
+      <figure data-slot="phone" data-device="iphone-regular"></figure>
+      <figure data-slot="ax5" data-device="iphone-duo-folded-ax5"></figure>
+    </div>
+  </section>
+
+  <section class="opt" id="opt-wall" data-opt="wall">
+    <div class="opthead">
+      <h2>The wall</h2>
+      <button class="ctl" type="button" data-hide="wall">Hide the wall</button>
+    </div>
+    <p class="lede">Every envelope you are still owed is a tile on one wall, oldest order first, and no tile ever moves. Typing a card lights the tiles that hold it and dims the rest. Tap a lit tile to put it on the bench. Finished tiles turn green in place, so the wall itself shows how far the day has gone.</p>
+    <div class="demo" data-concept="wall"></div>
+    <div class="frames" data-frames="wall">
+      <figure data-slot="folded" data-device="iphone-duo-folded"></figure>
+      <figure data-slot="open" data-device="iphone-duo-unfolded"></figure>
+      <figure data-slot="phone" data-device="iphone-regular"></figure>
+      <figure data-slot="ax5" data-device="iphone-duo-folded-ax5"></figure>
+    </div>
+  </section>
+
+  <section class="opt" id="opt-tray" data-opt="tray">
+    <div class="opthead">
+      <h2>How the day's post is counted</h2>
+    </div>
+    <p class="lede">Both concepts need to know how many envelopes came today, so the rail can say how many are left. Two ways to enter it. Each has its own hide button.</p>
+    <div class="compare">
+      <figure id="opt-piles" data-opt="piles"><div class="frames" data-frames="piles"></div>
+        <figcaption><b>Piles.</b> Add each pile as you sort it: one tap per pile, with its count. The rail groups the pips by pile, so finishing a pile is a small done of its own. <button class="ctl" type="button" data-hide="piles">Hide piles</button></figcaption></figure>
+      <figure id="opt-count" data-opt="count"><div class="frames" data-frames="count"></div>
+        <figcaption><b>One count.</b> One stepper for the whole day. Less to enter, no pile grouping. <button class="ctl" type="button" data-hide="count">Hide one count</button></figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ---------- sample data: invented sellers, orders and cards ---------- */
+const PKGS = [
+  ["NP","North Pier Cards","1A05-3321",18,[["Brainstorm",1,0.60]]],
+  ["EL","Ember Lane","9F33-0021",21,[["Rampant Growth",1,0.25]]],
+  ["GG","Gaslamp Games","5C11-4410",12,[["Thought Vessel",1,0.99]]],
+  ["CC","Copperfield Collectibles","3D88-9001",11,[["Llanowar Elves",1,0.30],["Counterspell",1,0.85]]],
+  ["QC","Quillon Cards","4A77-1209",9,[["Cultivate",1,0.30]]],
+  ["TP","Tinpot Cards","9C10-0442",8,[["Arcane Signet",1,0.79],["Command Tower",2,0.25]]],
+  ["BC","Bramble Card Co.","2B90-7781",7,[["Dark Ritual",1,0.40],["Ponder",1,0.35]]],
+  ["LT","Low Tide Games","4F2A-1187",6,[["Arcane Signet",1,0.89],["Sol Ring",1,1.25],["Swords to Plowshares",1,1.10]]],
+  ["IG","Ivy Gate Games","7C45-8820",6,[["Sol Ring",1,1.40]]],
+  ["HL","Harbor Light TCG","77B3-2210",5,[["Lightning Bolt",4,0.95]]],
+  ["WR","Wren & Rook","6E71-0099",4,[["Path to Exile",2,1.75]]],
+  ["MG","Mossgrove Games","3E19-5530",4,[["Negate",1,0.20]]],
+  ["SM","Saltmarsh TCG","8D02-6612",3,[["Fellwar Stone",1,0.45],["Mind Stone",1,0.55]]],
+  ["TW","Tidewater Cards","2F64-1180",3,[["Opt",1,0.15]]],
+  ["KH","Kettle Hill","6A20-7743",2,[["Duress",1,0.25]]],
+  ["PP","Pebble Post TCG","1C88-3056",2,[["Elvish Mystic",1,0.35]]],
+].map(([gk,seller,order,days,lines]) => ({ gk, seller, order, days, date: dayLabel(days),
+  lines: lines.map(([name,qty,price],i) => ({ key: gk+"|"+i, name, qty, price })) }));
+const BY = Object.fromEntries(PKGS.map(p => [p.gk, p]));
+const TRANSIT = 14;  // decision duo-card-in-hand: usual transit, the amber flag (lost-mail-flags-use-order-date)
+function dayLabel(d) { const t = new Date(2026, 10, 21 - d); return t.getDate() + " " + ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"][t.getMonth()]; }
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;", "'":"&#39;" })[c]);
+const money = n => "$" + n.toFixed(2);
+
+/* ---------- state, one per concept ---------- */
+function blank() { return { piles: [], draft: 5, q: "", keys: false, bench: null, tie: null, held: [], loose: [], got: {}, done: [], aside: [],
+  touched: {}, receipt: null, composing: false, tray: null, away: false, count: 0, lastName: null }; }
+const KEY = "mail-day-flow-directed-2";
+let ST = { bench: blank(), wall: blank(), piles: blank(), count: blank() };
+let PAGE = { hidden: [], tags: true, only: null, dev: null };
+function save() { try { localStorage.setItem(KEY, JSON.stringify({ ST, PAGE })); } catch (e) {} }
+function restore() { try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (v && v.ST) { ST = Object.assign(ST, v.ST); PAGE = Object.assign(PAGE, v.PAGE); return true; } } catch (e) {} return false; }
+
+const got = (s, l) => s.got[l.key] || 0;
+const openPkg = (s, p) => p.lines.some(l => got(s, l) < l.qty);
+const total = s => s.piles.reduce((a, b) => a + b, 0);
+const opened = s => s.done.length + s.aside.length;
+const onBench = s => !!(s.bench || s.held.length || s.loose.length || s.tie);
+const ended = s => total(s) > 0 && opened(s) >= total(s) && !onBench(s);
+const pkgOwed = (s, p) => p.lines.reduce((a, l) => a + Math.max(0, l.qty - got(s, l)), 0);
+const pkgOwedCost = (s, p) => p.lines.reduce((a, l) => a + Math.max(0, l.qty - got(s, l)) * l.price, 0);
+
+/* The one matcher: a part of the card name, case-insensitive, over lines still owed (default, not owner, duo-card-in-hand). */
+function hits(s, q) {
+  q = q.trim().toLowerCase(); if (q.length < 2) return [];
+  const m = new Map();
+  for (const p of PKGS) for (const l of p.lines) if (got(s, l) < l.qty && l.name.toLowerCase().includes(q)) {
+    if (!m.has(l.name)) m.set(l.name, new Set()); m.get(l.name).add(p.gk); }
+  return [...m].map(([name, set]) => ({ name, gks: [...set] }));
+}
+function exact(s) { const q = s.q.trim().toLowerCase(); return hits(s, q).find(h => h.name.toLowerCase() === q) || null; }
+
+/* ---------- acts ---------- */
+const A = {
+  type(s, q) {
+    s.q = q; s.receipt = null; s.undo = null; const h = exact(s);
+    if (h && h.gks.length === 1) { s.bench = h.gks[0]; s.tie = null; s.lastName = h.name; }
+    else if (h) { s.tie = h.name; s.bench = null; if (!s.held.includes(h.name)) s.held.push(h.name); s.lastName = h.name; }
+    else if (s.bench && !s.touched[s.bench]) { s.bench = null; }
+  },
+  pick(s, name) { A.type(s, name); },
+  tapLine(s, key) {
+    const p = BY[key.split("|")[0]], l = p.lines.find(x => x.key === key);
+    s.got[key] = got(s, l) >= l.qty ? 0 : l.qty; s.touched[p.gk] = true; s.keys = false; s.undo = null;
+  },
+  stepLine(s, key, d) {
+    const p = BY[key.split("|")[0]], l = p.lines.find(x => x.key === key);
+    s.got[key] = Math.max(0, Math.min(l.qty, got(s, l) + d)); s.touched[p.gk] = true;
+  },
+  post(s) {
+    const p = BY[s.bench]; const names = s.held.filter(n => p.lines.some(l => l.name === n && got(s, l) < l.qty));
+    for (const n of names) { const l = p.lines.find(x => x.name === n); s.got[l.key] = got(s, l) + 1; }
+    s.held = s.held.filter(n => !names.includes(n)); s.touched[p.gk] = true; s.receipt = "Posted " + names.join(", ") + " here.";
+  },
+  keepHeld(s) { s.receipt = "Kept on the Suspense line. Nothing is checked in."; s.keptFor = s.bench; },
+  addLoose(s) { const n = s.q.trim(); if (n) s.loose.push(n); s.q = ""; s.receipt = null; },
+  newEnvelope(s) {
+    for (const gk of Object.keys(s.touched)) { const p = BY[gk];
+      const g = p.lines.reduce((a, l) => a + got(s, l), 0), q = p.lines.reduce((a, l) => a + l.qty, 0);
+      const cost = p.lines.reduce((a, l) => a + got(s, l) * l.price, 0);
+      s.done.push({ gk, seller: p.seller, got: g, qty: q, cost, seq: opened(s) + 1 }); }
+    const released = [...s.held, ...s.loose];
+    s.q = ""; s.bench = null; s.tie = null; s.held = []; s.loose = []; s.touched = {}; s.keptFor = null; s.wallNote = null;
+    s.receipt = released.length ? "Released " + released.join(", ") + ". Not checked in." : null;
+  },
+  setAside(s) {
+    const names = [...s.held, ...s.loose]; const q = s.q.trim(); if (q && !exact(s)) names.push(q);
+    if (!names.length) return;
+    s.aside.push({ id: "e" + (s.aside.length + 1), names, seq: opened(s) + 1 });
+    s.q = ""; s.bench = null; s.tie = null; s.held = []; s.loose = []; s.touched = {}; s.receipt = null; s.keptFor = null;
+  },
+  // A tile tap is the person's own pick. An envelope with check-ins stays on the bench until New Envelope ends it.
+  openTile(s, gk) {
+    if (s.bench && s.touched[s.bench] && s.bench !== gk) { s.wallNote = "Finish " + BY[s.bench].seller + " first: New Envelope."; return; }
+    const h = hits(s, s.q).filter(x => x.gks.includes(gk)); s.lastName = h.length === 1 ? h[0].name : null;
+    s.bench = gk; s.tie = null; s.keys = false; s.wallNote = null;
+  },
+  addPile(s) { s.piles.push(s.draft); s.composing = false; },
+  setCount(s, d) { const t = Math.max(0, total(s) + d); s.piles = t ? [t] : []; },
+};
+
+/* ---------- presets: built by running the acts, so every state is one the flow reaches ---------- */
+function preset(name) {
+  const s = blank();
+  if (name === "start") return s;
+  s.piles = [5, 4];
+  const env = (q, taps) => { A.type(s, q); for (const k of taps) A.tapLine(s, k); A.newEnvelope(s); };
+  env("Lightning Bolt", ["HL|0"]);
+  env("Dark Ritual", ["BC|0", "BC|1"]);
+  env("Fellwar Stone", ["SM|0"]);
+  A.type(s, "Gilded Lotus"); A.setAside(s);
+  A.type(s, "Llanowar Elves"); A.tapLine(s, "CC|0");
+  if (name === "working" || name === "away") { s.away = name === "away"; return s; }
+  A.newEnvelope(s);
+  if (name === "typing") { s.q = "arc"; s.keys = true; return s; }
+  A.type(s, "Arcane Signet"); s.keys = true;
+  if (name === "held") return s;
+  A.type(s, "Swords to Plowshares"); s.keys = false;
+  if (name === "post") return s;
+  if (name === "nomatch") { A.newEnvelope(s); s.receipt = null; A.type(s, "Jeweled Lotus"); s.keys = true; return s; }
+  if (name === "done") {
+    A.post(s); A.tapLine(s, "LT|2"); A.newEnvelope(s);
+    env("Path to Exile", ["WR|0"]); env("Opt", ["TW|0"]);
+    A.type(s, "Mox Amber"); A.setAside(s); s.receipt = null; return s;
+  }
+  return s;
+}
+
+/* ---------- pieces ---------- */
+function pips(s, grouped) {
+  // Pips fill in the order the envelopes were opened.
+  const marks = [...s.done.map(d => [d.seq || 0, d.got < d.qty ? "short" : "ok"]), ...s.aside.map(a => [a.seq || 0, "aside"])].sort((x, y) => x[0] - y[0]).map(x => x[1]);
+  if (onBench(s)) marks.push("bench");
+  const piles = grouped ? s.piles : (total(s) ? [total(s)] : []);
+  let i = 0, out = "";
+  for (const n of piles) { let g = ""; for (let k = 0; k < n; k++, i++) g += `<span class="pip ${marks[i] || ""}"></span>`; out += `<span class="pile">${g}</span>`; }
+  if (i < marks.length) { let g = ""; for (; i < marks.length; i++) g += `<span class="pip ${marks[i]}"></span>`; out += `<span class="pile" title="Opened past the count">${g}</span>`; }
+  return out;
+}
+function rail(s, c, opts = {}) {
+  const t = total(s), o = opened(s), left = Math.max(0, t - o), end = ended(s);
+  const count = opts.count;
+  let fig;
+  if (!t) fig = `<span class="left">No count yet<small>add a pile to count</small></span>`;
+  else if (end) fig = `<span class="left">All ${t} opened<small>${o > t ? o - t + " more than counted" : s.done.reduce((a, d) => a + d.got, 0) + " cards in"}</small></span>`;
+  else fig = `<span class="left">${left} to go<small>${o} of ${t} opened</small></span>`;
+  const ctl = count
+    ? `<span class="counter"><button class="pill quiet" data-act="count" data-arg="-1" aria-label="One envelope fewer">−</button><button class="pill quiet" data-act="count" data-arg="1" aria-label="One envelope more">+</button></span>`
+    : t ? `<button class="pill" data-act="compose" aria-label="Add a pile">+ Pile</button>` : "";  // with no count, the bench itself holds the pile entry
+  return `<div class="rail ${end ? "done" : ""} tag-new" data-tag="New: pile rail">
+    <div class="top"><span class="title">Mail day</span>${fig}${ctl}</div>
+    <div class="pips" aria-label="${o} of ${t} envelopes opened">${pips(s, !count)}</div>
+    ${end ? `<div class="goldrule ${s.celebrated ? "still" : ""}" aria-hidden="true"></div>` : ""}
+  </div>`;
+}
+function field(s, c, fid) {
+  const chip = s.held.length || s.loose.length ? `<span class="chip">${s.held.length ? s.held.length + " held" : ""}${s.held.length && s.loose.length ? " · " : ""}${s.loose.length ? s.loose.length + " loose" : ""}</span>` : "";
+  return `<label class="field tag-today" data-tag="Today: card field"><input data-q="${c}" data-fid="${fid}" value="${esc(s.q)}" placeholder="Type the card in hand" autocomplete="off" autocapitalize="off" spellcheck="false" aria-label="Card in hand">${chip}</label>`;
+}
+function matchList(s, c) {
+  const h = hits(s, s.q); const ex = exact(s);
+  if (!h.length || ex) return "";
+  return `<div class="matches" role="list" aria-label="Matches">${h.slice(0, 5).map(m => `<button class="match" role="listitem" data-act="pick" data-arg="${esc(m.name)}">${esc(m.name)}<span class="num">${m.gks.length === 1 ? BY[m.gks[0]].seller : m.gks.length + " envelopes"}</span></button>`).join("")}</div>`;
+}
+function line(s, l, p) {
+  const g = got(s, l), st = g >= l.qty ? "done" : g > 0 ? "part" : "";
+  const now = s.lastName === l.name && s.bench === p.gk ? "now" : "";
+  const held = s.held.includes(l.name) && g < l.qty ? "held" : "";
+  const step = l.qty > 1 ? `<span class="step"><button data-act="step" data-arg="${l.key}" data-d="-1" aria-label="One fewer ${esc(l.name)}"><i>−</i></button><span class="num">${g}/${l.qty}</span><button data-act="step" data-arg="${l.key}" data-d="1" aria-label="One more ${esc(l.name)}"><i>+</i></button></span>` : "";
+  return `<div class="ln ${st} ${now} ${held}">
+    <button class="box" data-act="tap" data-arg="${l.key}" aria-label="${esc(l.name)}, ${g} of ${l.qty} in"><i></i></button>
+    <span class="t"><b>${esc(l.name)}<span class="num">${money(l.price)}${l.qty > 1 ? " ×" + l.qty : ""}</span></b><small>${s.err && s.err.key === l.key ? `<span class="err" role="alert">Not saved. Tap again.</span>` : (g >= l.qty ? "in" : g ? g + " of " + l.qty + " in" : "not in") + (held ? ` <span class="h">· on the Suspense line</span>` : "")}</small></span>${step}
+  </div>`;
+}
+function acts(s, c) {
+  const touched = s.bench && s.touched[s.bench];
+  // With an envelope on the bench, its own lines and Post decide it, so Set Aside shows only when none is there.
+  const canAside = !s.bench && (s.held.length || s.loose.length || (s.q.trim().length > 2 && !exact(s) && !hits(s, s.q).length));
+  // Set Aside leads only when nothing else can decide the envelope: loose cards and no shared name waiting on a next card.
+  const asideBtn = canAside && !touched ? `<button class="pill ${s.loose.length && !s.tie ? "fill" : ""} tag-new" data-tag="New: Set Aside" data-act="aside">Set Aside</button>` : "";
+  return `<div class="acts">${asideBtn}<button class="pill ${touched && !canAside ? "fill" : ""} tag-today" data-tag="Today: New Envelope" data-act="newenv">New Envelope</button>${saveErr(s)}</div>`;
+}
+/* A failed save answers under the buttons, so no button moves under the finger, and the envelope stays on the bench. */
+function saveErr(s) {
+  return s.err && (s.err.at === "newenv" || s.err.at === "aside")
+    ? `<span class="err" role="alert" style="flex:1 1 100%;text-align:right;font-size:calc(13px * var(--ts))">Not saved, so the envelope stays on the bench. Press again.</span>` : "";
+}
+function benchCard(s, c, d) {
+  if (s.composing) return composer(s, c);
+  if (ended(s)) return dayEnd(s, c);
+  const recp = s.receipt ? `<div class="receipt" role="status"><span style="flex:1">${esc(s.receipt)}</span>${s.undo ? `<button class="pill quiet" data-act="undo">Undo</button>` : ""}</div>` : "";
+  if (s.bench) {
+    const p = BY[s.bench]; const owed = pkgOwed(s, p);
+    const heldHere = s.held.filter(n => p.lines.some(l => l.name === n && got(s, l) < l.qty));
+    const offer = heldHere.length && s.keptFor !== p.gk ? `<div class="offer tag-today" data-tag="Today: Post offer"><p>${s.err && s.err.at === "post" ? `<span class="err" role="alert">Not saved. Your held card is still held. Post again.</span>` : `Your held ${esc(heldHere.join(", "))} came with this envelope. Nothing is checked in until you post.`}</p><div class="btns"><button class="pill fill" data-act="post">Post ${heldHere.length === 1 ? "1 Card" : heldHere.length + " Cards"} Here</button><button class="pill" data-act="keep">Keep Held</button></div></div>` : recp;
+    return `<div class="bench" aria-label="The envelope on the bench">
+      <div class="head"><span class="who">${esc(p.seller)}</span>
+      <span class="meta"><span>ordered ${p.date} · ${p.days} d${p.days > TRANSIT ? " · past usual transit" : ""}</span>${owed ? `<span class="owe">${owed} left · ${money(pkgOwedCost(s, p))}</span>` : `<span class="whole">complete</span>`}</span></div>
+      ${offer}
+      <div class="lines tag-today" data-tag="Today: envelope lines">${p.lines.map(l => line(s, l, p)).join("")}</div>
+      ${acts(s, c)}</div>`;
+  }
+  if (s.tie) {
+    const h = hits(s, s.tie).find(x => x.name === s.tie);
+    return `<div class="bench"><div class="head"><span class="who">${esc(s.tie)} is in ${h ? h.gks.length : 2} envelopes</span></div>
+      <p class="note" style="padding-top:0">Held on the Suspense line. Type another card from this envelope and it decides.</p>
+      <div class="tie">${(h ? h.gks : []).map(g => `<div>${esc(BY[g].seller)}<small>${pkgOwed(s, BY[g])} left · ${BY[g].date}</small></div>`).join("")}</div>${acts(s, c)}</div>`;
+  }
+  const q = s.q.trim();
+  if (q.length > 2 && !hits(s, q).length) {
+    return `<div class="bench"><div class="head"><span class="who">No open envelope holds “${esc(q)}”.</span></div>
+      <p class="note" style="padding-top:0">Check the spelling. If it is right, set the envelope aside to sort out later on Orphaned. Nothing is checked in.</p>
+      <div class="acts"><button class="pill" data-act="loose">Add Another Card</button><button class="pill fill tag-new" data-tag="New: Set Aside" data-act="aside">Set Aside</button>${saveErr(s)}</div></div>`;
+  }
+  if (s.loose.length || s.held.length) {
+    return `<div class="bench"><div class="head"><span class="who">This envelope so far</span></div>
+      <p class="note" style="padding-top:0">${esc([...s.held, ...s.loose].join(", "))}. Type the next card, or set it aside.</p>${acts(s, c)}</div>`;
+  }
+  if (!total(s)) {
+    return `<div class="bench"><div class="compose"><p>Count today's post into piles, then add each pile here.</p>
+      ${counterRow(s)}<div><button class="pill fill" data-act="addpile">Add Pile of ${s.draft}</button></div></div></div>`;
+  }
+  return `<div class="bench">${recp}<p class="note">Take the next envelope, and type the first card in it.</p></div>`;
+}
+function counterRow(s) { return `<div class="counter"><button class="pill quiet" data-act="draft" data-arg="-1" aria-label="One envelope fewer">−</button><span class="n" aria-live="polite">${s.draft}</span><button class="pill quiet" data-act="draft" data-arg="1" aria-label="One envelope more">+</button><span class="micro">envelopes</span></div>`; }
+function composer(s, c) {
+  return `<div class="bench panel"><div class="ph">Add a pile<button class="pill quiet" data-act="uncompose">Cancel</button></div>
+    <div class="compose"><p>How many envelopes in this pile?</p>${counterRow(s)}<div><button class="pill fill" data-act="addpile">Add Pile of ${s.draft}</button></div></div></div>`;
+}
+function oddRows(s) {
+  const rows = [];
+  for (const d of s.done) if (d.got < d.qty) rows.push(`<div class="row"><span>${esc(d.seller)}<small>${BY[d.gk].lines.filter(l => got(s, l) < l.qty).map(l => esc(l.name)).join(", ")} not in</small></span><span class="num short">${d.qty - d.got} left · ${money(pkgOwedCost(s, BY[d.gk]))}</span></div>`);
+  for (const p of PKGS) if (p.days > TRANSIT && openPkg(s, p)) rows.push(`<div class="row"><span>${esc(p.seller)}<small>ordered ${p.date}, nothing came</small></span><span class="num late">${p.days} d</span></div>`);
+  return rows;
+}
+function dayEnd(s, c) {
+  const cards = s.done.reduce((a, d) => a + d.got, 0), cost = s.done.reduce((a, d) => a + d.cost, 0);
+  const odd = oddRows(s);
+  return `<div class="dayend tag-new" data-tag="New: day done" role="status">
+    <span class="big">That's the pile. You're done.</span>
+    <p>${s.done.length} envelopes matched, ${s.aside.length} set aside for later.</p>
+    <span class="fig">${cards} cards in · ${money(cost)} cost basis</span>
+    <p>${odd.length ? odd.length + " need a second look, in Not normal." : "All is well."}</p>
+    <div class="btns" style="display:flex;gap:8px;flex-wrap:wrap"><button class="pill" data-act="compose">More Post Came</button>${s.undo ? `<button class="pill quiet" data-act="undo">Undo Last Envelope</button>` : ""}</div></div>`;
+}
+function trayChips(s, c) {
+  const odd = oddRows(s).length; const lastD = s.done[s.done.length - 1], lastA = s.aside[s.aside.length - 1];
+  return `<div class="trays tag-new" data-tag="New: trays">
+    <button class="tray" data-act="tray" data-arg="done"><b>Done<span class="num">${s.done.length}</span></b><small>${lastD ? esc(lastD.seller) : "Nothing yet"}</small></button>
+    <button class="tray aside" data-act="tray" data-arg="aside"><b>Set aside<span class="num">${s.aside.length}</span></b><small>${lastA ? esc(lastA.names.join(", ")) : "Nothing"}</small></button>
+    <button class="tray" data-act="tray" data-arg="odd"><b>Not normal<span class="num">${odd}</span></b><small>${odd ? "Short or late" : "All is well."}</small></button></div>`;
+}
+function doneList(s) {
+  return `<div class="list"><h3>Done today<span class="num">${s.done.length}</span></h3>${s.done.length ? s.done.slice().reverse().map(d => `<div class="row"><span>${esc(d.seller)}</span><span class="num ${d.got < d.qty ? "short" : "ok"}">${d.got}/${d.qty}</span></div>`).join("") : `<p class="note">Each envelope you finish lands here.</p>`}</div>`;
+}
+function asideList(s) {
+  return `<div class="list" style="background:color-mix(in srgb, var(--manila) 40%, var(--card))"><h3>Set aside<span class="num">${s.aside.length}</span></h3>${s.aside.length ? s.aside.map(a => `<div class="row"><span>${esc(a.names.join(", "))}<small>On Orphaned. Nothing checked in.</small></span><span class="num">${a.names.length} card${a.names.length > 1 ? "s" : ""}</span></div>`).join("") : `<p class="note">An envelope no card decides goes here.</p>`}</div>`;
+}
+function oddList(s) {
+  const r = oddRows(s);
+  return `<div class="list"><h3>Not normal<span class="num">${r.length}</span></h3>${r.length ? r.join("") : `<div class="well">All is well.</div>`}</div>`;
+}
+function trayPanel(s, c) {
+  const body = s.tray === "done" ? doneList(s) : s.tray === "aside" ? asideList(s) : oddList(s);
+  return `<div class="panel" style="padding:4px"><div class="ph">${s.tray === "done" ? "Done today" : s.tray === "aside" ? "Set aside" : "Not normal"}<button class="pill quiet" data-act="tray" data-arg="">Close</button></div>${body}</div>`;
+}
+
+/* ---------- the wall ---------- */
+function wall(s, c, cols) {
+  const h = s.q.trim().length >= 2 ? hits(s, s.q) : null; const lit = new Set(h ? h.flatMap(x => x.gks) : []);
+  const doneG = Object.fromEntries(s.done.map(d => [d.gk, d]));
+  const tiles = PKGS.map(p => {
+    const d = doneG[p.gk]; const isOpen = openPkg(s, p);
+    let cls = d ? (d.got < d.qty ? "short" : "ok") : "";
+    if (!d && !isOpen) cls = "ok";
+    if (p.days > TRANSIT && isOpen) cls += " late";
+    if (s.bench === p.gk) cls += " on"; else if (h && lit.has(p.gk)) cls += " lit"; else if (h && h.length) cls += " dim";
+    const owed = pkgOwed(s, p);
+    const sub = d ? (d.got < d.qty ? owed + " short" : "in ✓") : !isOpen ? "in ✓" : owed + " owed" + (p.days > TRANSIT ? " · " + p.days + "d" : "");
+    return `<button class="tile ${cls}" data-act="tile" data-arg="${p.gk}" aria-label="${esc(p.seller)}, ${sub}"><b>${esc(p.seller)}</b><small>${sub}</small></button>`;
+  }).join("");
+  const open = PKGS.filter(p => openPkg(s, p)).length;
+  const note = s.wallNote && s.bench && s.touched[s.bench] ? `<span class="num err" role="status">${esc(s.wallNote)}</span>` : `<span class="num">${open} still owed · oldest first</span>`;
+  return `<div class="sect"><span>Envelopes</span>${note}</div>
+    <div class="wall tag-new" data-tag="New: wall" style="--cols:${cols}">${tiles}</div>`;
+}
+function asideStrip(s) {
+  if (!s.aside.length) return "";
+  return `<div class="aside-strip"><b class="num">${s.aside.length}</b><span class="names">Set aside: ${esc(s.aside.map(a => a.names.join(", ")).join(" · "))}</span></div>`;
+}
+
+/* ---------- frames ---------- */
+const KEYROWS = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+function keys(top, c) {
+  return `<div class="keys" style="top:${top}px" aria-hidden="false">${KEYROWS.map(r => `<div class="row">${[...r].map(k => `<span class="k">${k}</span>`).join("")}</div>`).join("")}
+    <div class="row"><span class="k">123</span><span class="k w">space</span><button class="k" data-act="hidekeys" aria-label="Hide the keys">⌄</button></div></div>`;
+}
+function tabbar(style, badge) {
+  return `<div class="tabbar" style="${style}"><span>Ledger</span><span>Orphaned${badge ? `<i class="badge">${badge}</i>` : ""}</span><span>Tally</span><span class="on">Packages</span></div>`;
+}
+function status() { return `<div class="status"><span class="num">9:41</span><span>●●●</span></div>`; }
+
+/* One page (folded, phone, AX5): one column, every zone in view. */
+function onePage(c, s, dev, H, W) {
+  const keysTop = H - 289;  // duo-fold-and-keyboard: outer keys 250 to 289 pt tall; the taller reading is drawn
+  const barTop = H - 83;    // duo-fold-and-keyboard: the system tab bar starts at y 595 pt and is 83 pt tall
+  const bottom = s.keys ? keysTop : barTop;
+  let body;
+  if (c === "wall") {
+    const cols = dev === "ax5" ? 1 : 4;
+    // The wall sits right under the field, so the tiles a typed card lights stay above the keys. The lit tiles are the
+    // match list, so the wall draws no list of names.
+    body = `${rail(s, c)}${field(s, c, c + dev)}${wall(s, c, cols)}${benchCard(s, c, dev)}${asideStrip(s)}`;
+  } else {
+    const trays = dev === "phone" ? `${oddList(s)}${doneList(s)}${asideList(s)}` : s.tray ? trayPanel(s, c) : trayChips(s, c);
+    body = `${rail(s, c)}${field(s, c, c + dev)}${matchList(s, c)}${benchCard(s, c, dev)}${trays}`;
+  }
+  body += `<div class="list tag-today" data-tag="Today: package list"><h3>All packages<span class="num">${PKGS.filter(p => openPkg(s, p)).length} open</span></h3><p class="note">Today's Packages list goes on below, as it is now.</p></div>`;
+  return `<div class="dev ${dev === "phone" ? "" : dev}" style="width:${W}px;height:${H}px" data-frame="${c}-${dev}">
+    ${status()}<div class="scroll app" style="bottom:${H - bottom}px"><div class="pad">${body}</div></div>
+    ${s.keys ? keys(keysTop, c) : tabbar(`left:16px;right:16px;top:${barTop + 8}px;height:64px`, s.aside.length)}
+    ${s.away ? `<div class="home">MANIFEST is in the background.<br>Press Open Again above to come back.</div>` : ""}</div>`;
+}
+/* Two pages: hands on the left, the envelope on the right. Nothing sits across the fold. */
+function twoPages(c, s) {
+  const H = 669, keysTop = 405;  // duo-fold-and-keyboard: the panel draws from about y 405 pt
+  const leftBottom = s.keys ? keysTop : H, rightBottom = s.keys ? keysTop : 593;
+  let L, R;
+  if (c === "wall") {
+    L = `${rail(s, c)}${field(s, c, c + "open")}${wall(s, c, 4)}`;
+    R = `${benchCard(s, c, "open")}${asideStrip(s)}${oddList(s)}`;
+  } else {
+    L = `${rail(s, c)}${field(s, c, c + "open")}${matchList(s, c)}${doneList(s)}${asideList(s)}`;
+    R = `${benchCard(s, c, "open")}${oddList(s)}`;
+  }
+  return `<div class="dev open" data-frame="${c}-open">${status()}
+    <div class="page l"><div class="scroll app" style="bottom:${H - leftBottom}px"><div class="pad">${L}</div></div></div>
+    <div class="fold"><span>fold 455.5 to 495.5</span></div>
+    <div class="page r"><div class="scroll app" style="bottom:${H - rightBottom}px"><div class="pad">${R}</div></div></div>
+    ${s.keys ? keys(keysTop, c) : tabbar("left:519.5px;width:407.5px;top:593px;height:64px", s.aside.length)}
+    ${s.away ? `<div class="home">MANIFEST is in the background.<br>Press Open Again above to come back.</div>` : ""}</div>`;
+}
+
+/* The large phone: no size is written for it (layout.py devices: unknown; no HIG page read gives one). */
+let PHONE = { w: 430, h: 932 };
+
+function renderConcept(c) {
+  const host = document.querySelector(`[data-frames="${c}"]`); if (!host) return;
+  const s = ST[c]; const only = PAGE.dev;
+  // The figures are static in the page, one per device, so each pose has its frame before any script runs.
+  const fig = (dev, html, cap) => { const slot = host.querySelector(`[data-slot="${dev}"]`); slot.hidden = !!only && only !== dev;
+    slot.innerHTML = slot.hidden ? "" : `<div class="fit">${html}</div><figcaption>${cap}</figcaption>`; };
+  fig("folded", onePage(c, s, "folded", 678, 466), "<b>Duo folded</b>, 466 x 678 pt. Keys 289 pt, tab bar from y 595 pt (duo-fold-and-keyboard).");
+  fig("open", twoPages(c, s), "<b>Duo open</b>, 951 x 669 pt, fold at 455.5 to 495.5 pt. Keys from y 405 pt. Tab bar under the right page.");
+  fig("phone", onePage(c, s, "phone", PHONE.h, PHONE.w), `<b>Large phone</b>, drawn at ${PHONE.w} x ${PHONE.h} pt. That size is a placeholder: no record gives one. Set it here.
+      <span class="sizer">w <input type="number" data-phone="w" value="${PHONE.w}" aria-label="Phone width in points"> h <input type="number" data-phone="h" value="${PHONE.h}" aria-label="Phone height in points"></span>`);
+  fig("ax5", onePage(c, s, "ax5", 678, 466), "<b>Duo folded at AX5</b>, the biggest accessibility size (Body 53 pt). One column; it scrolls. The rail stays first.");
+}
+function renderDemo(c) {
+  const host = document.querySelector(`.demo[data-concept="${c}"]`); if (!host) return;
+  const s = ST[c];
+  const cards = ["Lightning Bolt", "Arcane Signet", "Swords to Plowshares", "Path to Exile", "Brainstorm", "Jeweled Lotus"];
+  host.innerHTML = `<span class="lbl">Card in hand</span>${cards.map(n => `<button class="ctl chip" type="button" data-act="type" data-arg="${esc(n)}" data-c="${c}">${n}</button>`).join("")}
+    <span class="lbl">Leave and return</span><button class="ctl ${s.away ? "on" : ""}" type="button" data-act="away" data-c="${c}">${s.away ? "Open Again" : "Leave the App"}</button>
+    <button class="ctl" type="button" data-act="reset" data-c="${c}">Start the Day Over</button>`;
+}
+function renderTray() {
+  for (const c of ["piles", "count"]) {
+    const host = document.querySelector(`[data-frames="${c}"]`); if (!host) continue;
+    const s = ST[c];
+    host.innerHTML = `<div class="dev" style="width:466px;height:200px" data-frame="${c}-folded"><div class="scroll app" style="bottom:0"><div class="pad">${rail(s, c, { count: c === "count" })}${c === "piles" && s.composing ? composer(s, c) : ""}</div></div></div>`;
+  }
+}
+
+let focusMemo = null;
+function render() {
+  const a = document.activeElement;
+  focusMemo = a && a.dataset && a.dataset.fid ? { fid: a.dataset.fid, pos: a.selectionStart } : null;
+  for (const c of ["bench", "wall"]) { renderConcept(c); renderDemo(c); }
+  renderTray();
+  document.body.classList.toggle("tags", PAGE.tags);
+  for (const sec of document.querySelectorAll("[data-opt]")) {
+    const k = sec.dataset.opt; sec.hidden = PAGE.hidden.includes(k) || (PAGE.only && ["bench", "wall"].includes(k) && PAGE.only !== k);
+  }
+  if (focusMemo) { const el = document.querySelector(`[data-fid="${focusMemo.fid}"]`); if (el) { el.focus(); try { el.setSelectionRange(focusMemo.pos, focusMemo.pos); } catch (e) {} } }
+  save();
+}
+
+/* ---------- events ---------- */
+function conceptOf(el) { const f = el.closest("[data-frame]"); if (f) return f.dataset.frame.split("-")[0]; return el.dataset.c; }
+document.addEventListener("click", e => {
+  const pg = e.target.closest("[data-page]");
+  if (pg) { if (pg.dataset.page === "tags") PAGE.tags = !PAGE.tags; else PAGE.hidden = []; render(); return; }
+  const hd = e.target.closest("[data-hide]");
+  if (hd) { PAGE.hidden.push(hd.dataset.hide); render(); return; }
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const c = conceptOf(b); const s = ST[c]; if (!s) return; const arg = b.dataset.arg;
+  // "Saves Fail" makes every write refuse, so each failed state can be pressed: nothing changes but the answer at the press.
+  const writes = ["tap", "step", "post", "newenv", "aside"];
+  if (s.failSaves && writes.includes(b.dataset.act)) { s.err = { at: b.dataset.act, key: arg }; render(); return; }
+  if (b.dataset.act !== "failsaves") s.err = null;
+  switch (b.dataset.act) {
+    case "type": A.type(s, arg); s.keys = true; break;
+    case "pick": A.pick(s, arg); break;
+    case "tap": A.tapLine(s, arg); break;
+    case "step": A.stepLine(s, arg, +b.dataset.d); break;
+    case "post": A.post(s); break;
+    case "keep": A.keepHeld(s); break;
+    case "loose": A.addLoose(s); break;
+    // New Envelope and Set Aside end an envelope, so each leaves an Undo in the receipt slot where the press was.
+    // The mockup keeps a copy of the bench to undo; a build undoes only the act's own delta (undo-removes-only-its-delta).
+    case "newenv": case "aside": {
+      const before = JSON.stringify(Object.assign({}, s, { undo: null })); const n = opened(s);
+      if (b.dataset.act === "newenv") A.newEnvelope(s); else A.setAside(s);
+      s.keys = false;
+      if (opened(s) > n) { const last = b.dataset.act === "aside" ? "Set aside" : s.done[s.done.length - 1].seller + " is in Done today";
+        s.receipt = (s.receipt ? s.receipt + " " : "") + last + "."; s.undo = before; }
+      break; }
+    case "undo": if (s.undo) { ST[c] = Object.assign(blank(), JSON.parse(s.undo)); } break;
+    case "tile": A.openTile(s, arg); break;
+    case "compose": s.composing = true; s.keys = false; break;
+    case "uncompose": s.composing = false; break;
+    case "draft": s.draft = Math.max(1, Math.min(60, s.draft + +arg)); break;
+    case "addpile": A.addPile(s); break;
+    case "count": A.setCount(s, +arg); break;
+    case "tray": s.tray = arg || null; break;
+    case "hidekeys": s.keys = false; if (document.activeElement) document.activeElement.blur(); break;
+    case "away": s.away = !s.away; s.keys = false; break;
+    case "reset": ST[c] = blank(); break;
+    case "failsaves": s.failSaves = !s.failSaves; s.err = null; break;
+    case "dock": s.dock = arg === "low"; break;
+  }
+  render();
+});
+document.addEventListener("focusin", e => {
+  const q = e.target.dataset && e.target.dataset.q; if (!q) return;
+  if (!ST[q].keys) { ST[q].keys = true; render(); }
+});
+document.addEventListener("input", e => {
+  const t = e.target;
+  if (t.dataset.q) { A.type(ST[t.dataset.q], t.value); render(); return; }
+  if (t.dataset.phone) { const v = Math.max(320, Math.min(1400, +t.value || 0)); PHONE[t.dataset.phone] = v; render(); }
+});
+
+/* ---------- deep links: #s=<state>&c=<bench|wall>&d=<folded|open|phone|ax5>&t=light ---------- */
+function fromHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const sname = h.get("s");
+  if (sname) { ST.bench = preset(sname); ST.wall = preset(sname); ST.piles = preset(sname === "start" ? "start" : "working"); ST.count = preset(sname === "start" ? "start" : "working"); }
+  PAGE.only = h.get("c"); PAGE.dev = h.get("d");
+  if (h.get("hide")) PAGE.hidden = h.get("hide").split(",");
+  render();
+  const focus = PAGE.only ? document.getElementById("opt-" + PAGE.only) : null;
+  if (focus) focus.scrollIntoView();
+}
+window.addEventListener("hashchange", fromHash);
+if (!location.hash && !restore()) { ST.bench = preset("working"); ST.wall = preset("working"); ST.piles = preset("working"); ST.count = preset("working"); }
+fromHash();
+</script>
+</body>
+</html>

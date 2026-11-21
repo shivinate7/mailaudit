@@ -90,6 +90,7 @@ body.badge-on .tabbar .badge.new { display:block; }
 .seller { font:700 15px/19px var(--cochin); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .dateln { font:11px/14px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .dateln[data-tag]::after { top:auto; bottom:-14px; }
+.detail[data-tag] { position:absolute; }
 .detail[data-tag]::after { right:auto; left:0; }
 .dateln .warn-a { color:var(--amber); font-weight:700; } .dateln .warn-r { color:var(--red); font-weight:700; }
 /* the status slot: a fixed box sized by an invisible widest pill, the live pill drawn over it (PackagesView.statusSlot) */
@@ -133,8 +134,26 @@ body.badge-on .tabbar .badge.new { display:block; }
 .flipcell { flex:1; min-width:0; min-height:45px; display:grid; align-items:center; }
 .flipcell > * { grid-area:1/1; }
 .flipcell .vface { justify-self:end; }
+/* the reading keeps its verdict's dot, so a flipped chip still says how worried to be */
 .rface { justify-self:stretch; min-height:44px; display:flex; flex-direction:column; justify-content:center; gap:2px; padding:4px 10px; border-radius:8px;
   background:var(--paper); border:1px solid var(--line); text-align:left; min-width:0; }
+.rface .s { display:flex; align-items:center; gap:6px; }
+.rface .s i { width:8px; height:8px; border-radius:4px; flex:none; background:var(--dot, var(--inkSoft)); }
+.v-way { --dot:var(--accent); } .v-dtoday, .v-stuck { --dot:var(--amber); } .v-dlate, .v-ret { --dot:var(--red); }
+.v-unread { --dot:var(--manilaInk); } .v-got { --dot:var(--green); } .v-check, .v-muted { --dot:var(--inkSoft); }
+/* the flip mark: an authored two-arrow glyph that says the chip turns over */
+.vface svg.f { width:12px; height:12px; stroke:currentColor; fill:none; stroke-width:1.6; opacity:.75; flex:none; }
+.ax .vface svg.f { width:32px; height:32px; }
+.ax .rface .s i { width:20px; height:20px; border-radius:10px; }
+/* the Slot verdict chip is a control: its hit area is 44 pt tall around a 28 pt drawn chip (HIG buttons; L6 in ux-house-rules-govern) */
+.slotchip { position:relative; }
+.slotchip::before { content:""; position:absolute; left:0; right:0; top:50%; height:44px; transform:translateY(-50%); }
+body.dtoday-red .v-dtoday .vface { color:var(--red); background:var(--redSoft); border-color:var(--red); }
+body.dtoday-red .v-dtoday { --dot:var(--red); }
+.stamps { display:flex; flex-wrap:wrap; gap:8px; }
+.stamps[hidden] { display:none; }
+.stamps button { font:13px var(--cochin); min-height:44px; padding:0 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+.reading .acts button.copy { min-width:132px; }
 .rface .s { font:13px/17px var(--cochin); color:var(--ink); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .rface .m { font:11px/14px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .flipcell[data-face="v"] .rface, .flipcell[data-face="r"] .vface { visibility:hidden; }
@@ -223,6 +242,7 @@ body.tags-off [data-tag] { outline:none; } body.tags-off [data-tag]::after { dis
     <button type="button" data-hide="flip" aria-pressed="false">Hide Flip chip</button>
     <button type="button" data-hide="slot" aria-pressed="false">Hide Slot verdict</button>
     <button type="button" id="badge-toggle" aria-pressed="false">Show tab badge option</button>
+    <button type="button" id="dtoday-toggle" aria-pressed="false">Delivered today: red</button>
     <button type="button" id="tags-toggle" aria-pressed="false">Hide tags</button>
   </div>
 </div>
@@ -324,9 +344,9 @@ function verdict(o, withCount) {
   }
 }
 function said(o) { return o.v === "unread" || o.v === "check" ? null : o.scan; }
-function vface(o, withCount) {
+function vface(o, withCount, flip) {
   const v = verdict(o, withCount);
-  return `<span class="vface"><i aria-hidden="true"></i><span class="w">${v.w}</span>${v.n ? `<span class="n">${v.n}</span>` : ""}</span>`;
+  return `<span class="vface"><i aria-hidden="true"></i><span class="w">${v.w}</span>${v.n ? `<span class="n">${v.n}</span>` : ""}${flip ? `<svg class="f" viewBox="0 0 12 12" aria-hidden="true"><path d="M1 4h9M7.5 1.5 10 4 7.5 6.5M11 8H2M4.5 5.5 2 8l2.5 2.5"/></svg>` : ""}</span>`;
 }
 function vclass(o) { return o.stamp ? "v-muted" : verdict(o).cls; }
 function chipLabel(o) {
@@ -336,9 +356,10 @@ function chipLabel(o) {
 
 /* The reading face of Flip chip: two lines, the scan and its time. */
 function rface(o) {
-  if (o.v === "check") return `<span class="rface"><span class="s">No scan read yet</span><span class="m">${o.carrier} · ${NUM}${o.id.slice(-2)}</span></span>`;
-  if (o.v === "unread") return `<span class="rface"><span class="s">Last scan: ${o.lastScan}</span><span class="m">${o.lastAt} · ${o.carrier} gave no answer</span></span>`;
-  return `<span class="rface"><span class="s">${o.scan}</span><span class="m">${o.at} · ${o.carrier}</span></span>`;
+  const dot = `<i aria-hidden="true"></i>`;
+  if (o.v === "check") return `<span class="rface"><span class="s">${dot}No scan read yet</span><span class="m">${o.carrier} · ${NUM}${o.id.slice(-2)}</span></span>`;
+  if (o.v === "unread") return `<span class="rface"><span class="s">${dot}Last scan: ${o.lastScan}</span><span class="m">${o.lastAt} · ${o.carrier} gave no answer</span></span>`;
+  return `<span class="rface"><span class="s">${dot}${o.scan}</span><span class="m">${o.at} · ${o.carrier}</span></span>`;
 }
 
 function dateLine(o, concept) {
@@ -365,7 +386,7 @@ function card(o, concept, opts) {
   let idrow = `<a class="oid" href="#" onclick="return false" aria-label="Order ${o.id} on TCGplayer">${o.id}</a>`;
   if (concept === "flip" && o.track) {
     const tag = opts.focusId ? ' data-tag="New: verdict chip, tap to flip"' : "";
-    idrow += `<button type="button" class="chip flipcell ${vclass(o)}${opts.focusId ? " tag-new" : ""}"${tag}${opts.focusId ? ` id="${opts.focusId}"` : ""} data-face="${flipFace}" aria-label="${chipLabel(o)}" aria-pressed="${flipFace === "r"}">${vface(o, false)}${rface(o)}</button>`;
+    idrow += `<button type="button" class="chip flipcell ${vclass(o)}${opts.focusId ? " tag-new" : ""}"${tag}${opts.focusId ? ` id="${opts.focusId}"` : ""} data-face="${flipFace}" aria-label="${chipLabel(o)}" aria-pressed="${flipFace === "r"}">${vface(o, false, true)}${rface(o)}</button>`;
   }
   const band = o.stamp ? `<div class="band tag-today" data-tag="Today: stamp band"><b>${o.stamp}</b><span>${o.stampDate}</span></div>` : `<div class="foot"></div>`;
   const lines = opts.lines ? `<div class="line"><span class="box"><i></i></span><span class="t">Sample Card One<span>$0.42</span></span></div>` : "";
@@ -408,10 +429,11 @@ function readingHTML(o) {
   }[o.v];
   const scan = o.v === "unread" ? `${o.lastScan}, ${o.lastAt}` : (o.scan ? `${o.scan}, ${o.at}` : "None yet");
   return `<div class="reading">
-    <h3 class="${v.cls}" style="color:${o.v==='dlate'||o.v==='ret'?'var(--red)':o.v==='stuck'||o.v==='dtoday'?'var(--amber)':'var(--ink)'}">${o.seller}: ${v.w}${v.n}</h3>
+    <h3>${o.seller}</h3>
     <div class="s">${lines}</div>
-    <dl><dt>Latest scan</dt><dd>${scan}</dd><dt>Carrier</dt><dd>${o.carrier}</dd><dt>Number</dt><dd>${NUM}${o.id.slice(-2)}</dd>${o.claim ? `<dt>Claim by</dt><dd>${o.claim}${o.v === "ret" ? " · refund window closing" : ""}</dd>` : ""}</dl>
-    <div class="acts"><button type="button">Copy number</button><button type="button">Stamp…</button></div>
+    <dl><dt>Latest scan</dt><dd>${scan}</dd><dt>Carrier</dt><dd>${o.carrier}</dd><dt>Number</dt><dd>${NUM}${o.id.slice(-2)}</dd>${o.claim ? (o.v === "ret" ? `<dt>Claim</dt><dd style="color:var(--red)">refund window closing</dd>` : `<dt>Claim by</dt><dd>${o.claim}</dd>`) : ""}</dl>
+    <div class="acts"><button type="button" class="copy" data-copy>Copy number</button><button type="button" data-stamp-open aria-expanded="false">Stamp…</button></div>
+    <div class="stamps" role="group" aria-label="Stamp this order" hidden>${["Claim filed","Refunded","Seller contacted","Reshipped","Partial refund","Other"].map(k => `<button type="button" data-stamp="${k}" data-i="${ORDERS.findIndex(x => x.id === o.id)}">${k}</button>`).join("")}</div>
   </div>`;
 }
 
@@ -439,7 +461,7 @@ function render(frame, state) {
   } else if (pose === "open" && concept === "slot") {
     const p = frame._picked;
     html = `${chrome}<div class="fold"><span>FOLD</span></div>
-      <div class="page l"><div class="scroll">${mast}<div class="handopen tag-today" data-tag="Today: hand-open"><span>Card in Hand</span><span class="mini">Open</span></div>${cards(list.slice(0, 6))}</div></div>
+      <div class="page l"><div class="scroll">${mast}<div class="handopen tag-today" data-tag="Today: hand-open"><span>Card in Hand</span><span class="mini">Open</span></div>${cards(list.filter((o, k) => [0, 6, 7, 8, 9].includes(SETS.open[k])))}</div></div>
       <div class="page r"><div class="detail tag-new" data-tag="New: reading beside the list">${p == null
         ? `<div class="card"><div class="empty">Tap a chip on the left page to read its latest scan.<button type="button" class="mini" data-pick="0" style="min-height:44px;cursor:pointer">Read Gamma Cards</button></div></div>`
         : `<div class="card">${readingHTML(offline && ORDERS[p].track && ORDERS[p].v !== "got" ? Object.assign({}, ORDERS[p], { v:"unread", lastScan:ORDERS[p].scan, lastAt:ORDERS[p].at }) : ORDERS[p])}</div>`}</div></div>
@@ -506,6 +528,18 @@ document.addEventListener("click", e => {
     if (pop && !pop.hidden && pop.dataset.for === sc.dataset.i) { pop.hidden = true; return; }
     closePops(); openPop(fr, sc); return;
   }
+  const copy = e.target.closest("[data-copy]");
+  if (copy) { copy.textContent = "Copied"; return; }  // fixed min-width, so the swap moves nothing
+  const so = e.target.closest("[data-stamp-open]");
+  if (so) { const g = so.closest(".reading").querySelector(".stamps"); g.hidden = !g.hidden; so.setAttribute("aria-expanded", String(!g.hidden)); return; }
+  const st = e.target.closest("[data-stamp]");
+  if (st) {
+    const o = ORDERS[+st.dataset.i];
+    o.stamp = st.dataset.stamp; o.stampDate = "Nov 21";
+    const keep = stateFromHash();
+    document.querySelectorAll(".frame[data-concept]").forEach(fr => render(fr, keep));
+    return;
+  }
   const pick = e.target.closest("[data-pick]");
   if (pick) { const fr = pick.closest(".frame"); fr._picked = +pick.dataset.pick; render(fr, stateFromHash()); return; }
   if (!e.target.closest(".pop")) closePops();
@@ -518,6 +552,10 @@ document.addEventListener("click", e => {
   if (e.target.id === "badge-toggle") {
     const on = document.body.classList.toggle("badge-on");
     e.target.setAttribute("aria-pressed", String(on)); e.target.textContent = on ? "Hide tab badge option" : "Show tab badge option";
+  }
+  if (e.target.id === "dtoday-toggle") {
+    const on = document.body.classList.toggle("dtoday-red");
+    e.target.setAttribute("aria-pressed", String(on)); e.target.textContent = on ? "Delivered today: amber" : "Delivered today: red";
   }
   if (e.target.id === "tags-toggle") {
     const off = document.body.classList.toggle("tags-off");

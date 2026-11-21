@@ -762,7 +762,7 @@ const SLIP = {
     const stamp = q.stamp !== p.stamp ? `<span class="was">${STAMPS[p.stamp].label}</span> <mark>${STAMPS[q.stamp].label}</mark>` : STAMPS[p.stamp].label;
     const a = transit(p, p.received), b = transit(q, q.received);
     return `<div class="carbon" aria-label="The record after filing"><div class="headline">${esc(p.from)}</div>
-      <dl><dt>Ordered</dt><dd>${long(p.ordered)}</dd><dt>Received</dt><dd>${rec}</dd><dt>Stamp</dt><dd>${stamp}</dd>
+      <dl><dt>Ordered</dt><dd>${long(p.ordered)}</dd><dt>Received dates</dt><dd>${rec}</dd><dt>Stamp</dt><dd>${stamp}</dd>
       <dt>Days in the mail</dt><dd>${a !== b ? `${a == null ? "" : `<span class="was">${a}</span> `}<mark>${b == null ? "Not known" : b}</mark>` : a == null ? "Not known" : a}</dd></dl></div>`;
   },
   rangeList(f) {
@@ -861,7 +861,7 @@ const BOARD = {
   name: "Day board",
   states: {
     start: "Calendar", day: "A day picked", multi: "A day with a second arrival", move: "Moving a package", moved: "Moved, with undo",
-    failed: "Move failed", stamp: "Stamp on a day", ordered: "Order dates range", "ordered-empty": "No package in the range", changes: "Changes"
+    failed: "Move failed", stamp: "Stamp on a day", ordered: "Order dates range", "ordered-stamp": "Stamp with no received date", "ordered-empty": "No package in the range", changes: "Changes"
   },
   init(f, s) {
     const u = f.ui = { tab: "board", mode: "received", day: null, move: null, stamp: null, sel: null, why: null, result: null, last: null, blocked: null, calMonth: null, failNext: false };
@@ -872,6 +872,7 @@ const BOARD = {
     if (s === "moved") { u.day = "2026-11-03"; u.move = { pkg: "p1", from: "2026-11-03", to: "2026-11-02" }; BOARD.acts.apply(f); }
     if (s === "stamp") Object.assign(u, { day: "2026-11-05", stamp: { pkg: "p4", to: "received" } });
     if (s === "ordered") Object.assign(u, { mode: "ordered", sel: { start: "2026-10-27", end: "2026-11-05" } });
+    if (s === "ordered-stamp") Object.assign(u, { mode: "ordered", sel: { start: "2026-11-03", end: "2026-11-03" }, stamp: { pkg: "p7", to: "received" } });
     if (s === "ordered-empty") Object.assign(u, { mode: "ordered", sel: { start: "2026-11-12", end: "2026-11-18" } });
     if (s === "changes") { applyChange(f, "p1", [{ f: "received", from: "2026-11-03", to: "2026-11-02" }]); u.tab = "changes"; }
   },
@@ -883,7 +884,12 @@ const BOARD = {
   edits(f) {
     const u = f.ui;
     if (u.move && u.move.to && u.move.to !== u.move.from) return [{ f: "received", from: u.move.from, to: u.move.to }];
-    if (u.stamp && u.stamp.to) { const p = pkgOf(f, u.stamp.pkg); if (u.stamp.to !== p.stamp) return [{ f: "stamp", from: p.stamp, to: u.stamp.to }]; }
+    if (u.stamp && u.stamp.to) {
+      const p = pkgOf(f, u.stamp.pkg); if (u.stamp.to === p.stamp) return [];
+      const e = [{ f: "stamp", from: p.stamp, to: u.stamp.to }];
+      if ((u.stamp.to === "received" || u.stamp.to === "part") && !p.received.length) e.push({ f: "received", from: null, to: TODAY });
+      return e;
+    }
     return [];
   },
   acts: {
@@ -953,7 +959,11 @@ const BOARD = {
       const r = { start: u.sel.start, end: u.sel.end || u.sel.start }, rows = f.data.filter((p) => inRange(p, r));
       const head = `<div class="cluster" style="justify-content:space-between"><span class="headline" role="status">${short(r.start)} to ${short(r.end)}: ${rows.length} ${rows.length === 1 ? "package" : "packages"}</span><button class="small-btn" data-act="clearSel">Clear</button></div>`;
       if (!rows.length) return head + `<div class="empty" style="padding-inline:0"><p class="body" style="margin:0">No package was ordered in these days.</p><button class="small-btn" data-act="clearSel">Clear the range</button></div>`;
-      return head + `<div class="group">${rows.map((p) => `<div class="row">${stampIcon(p.stamp, true)}<span class="grow"><span class="headline">${esc(p.from)}</span><span class="sub muted cluster" style="gap:var(--space-1)">${I.order("Ordered")}${short(p.ordered)} ${I.arrive("Received")}${p.received.length ? p.received.map(short).join(", ") : "None yet"}</span></span></div>`).join("")}</div>`;
+      const ch = u.last && f.history.find((h) => h.id === u.last);
+      return head + `<div class="group">${rows.map((p) => `<div class="stack" style="padding:var(--space-3) var(--space-4);gap:var(--space-2)">
+        <div class="cluster" style="flex-wrap:nowrap">${stampIcon(p.stamp, true)}<span class="grow" style="flex:1;min-width:0"><span class="headline">${esc(p.from)}</span><span class="sub muted cluster" style="gap:var(--space-1)">${I.order("Ordered")}${short(p.ordered)} ${I.arrive("Received")}${p.received.length ? p.received.map(short).join(", ") : "None yet"}</span></span></div>
+        ${ch && ch.pkg === p.id && u.result === "done" ? `<div class="answer" role="status" style="border-radius:var(--radius)"><span class="grow">${ch.undone ? "Undone." : historyLine(f, ch)}</span><button class="small-btn" data-act="undo" data-arg="${ch.id}">${ch.undone ? "Redo" : "Undo"}</button></div>` : ""}
+        ${BOARD.stampControl(f, p)}</div>`).join("")}</div>`;
     }
     if (!u.day) return `<p class="note" style="margin:0">Tap a day to see the packages that came that day. A dot is one package.</p>`;
     const rows = f.data.filter((p) => p.received.includes(u.day));
@@ -967,9 +977,13 @@ const BOARD = {
         <div class="cluster" style="flex-wrap:nowrap">${stampIcon(p.stamp, true)}<span class="grow" style="flex:1;min-width:0"><span class="headline">${esc(p.from)}</span>
         <span class="sub muted" style="display:block">Ordered ${short(p.ordered)}${n > 1 ? `. Arrival ${i} of ${n}; the other came ${p.received.filter((d) => d !== u.day).map(short).join(", ")}` : ""}</span></span></div>
         ${ch && ch.pkg === p.id && u.result === "done" ? `<div class="answer" role="status" style="border-radius:var(--radius)"><span class="grow">${ch.undone ? "Undone." : historyLine(f, ch)}</span><button class="small-btn" data-act="undo" data-arg="${ch.id}">${ch.undone ? "Redo" : "Undo"}</button></div>` : ""}
-        ${moving || stamping ? "" : `<div class="cluster"><button class="small-btn" data-act="move" data-arg="${p.id}|${u.day}">Move to another day</button><button class="small-btn" data-act="stamp" data-arg="${p.id}">Stamp: ${STAMPS[p.stamp].label}</button></div>`}
-        ${stamping ? `<div class="group" role="radiogroup" aria-label="Stamp">${STAMP_ORDER.map((k) => `<button class="row" role="radio" aria-checked="${u.stamp.to === k}" data-act="pickStamp" data-arg="${k}">${stampIcon(k)}<span class="grow"><span>${STAMPS[k].label}</span><span class="foot muted">${k === p.stamp ? "The stamp now" : STAMPS[k].say}</span></span></button>`).join("")}</div>` : ""}
+        ${moving ? "" : BOARD.stampControl(f, p, stamping ? "" : `<button class="small-btn" data-act="move" data-arg="${p.id}|${u.day}">Move to another day</button>`)}
       </div>`; }).join("")}</div>${newTag(f, "move a package to the day it came")}`;
+  },
+  stampControl(f, p, extra = "") {
+    const u = f.ui, stamping = u.stamp && u.stamp.pkg === p.id;
+    if (!stamping) return `<div class="cluster">${extra}<button class="small-btn" data-act="stamp" data-arg="${p.id}">Stamp: ${STAMPS[p.stamp].label}</button></div>`;
+    return `<div class="group" role="radiogroup" aria-label="Stamp">${STAMP_ORDER.map((k) => `<button class="row" role="radio" aria-checked="${u.stamp.to === k}" data-act="pickStamp" data-arg="${k}">${stampIcon(k)}<span class="grow"><span>${STAMPS[k].label}</span><span class="foot muted">${k === p.stamp ? "The stamp now" : STAMPS[k].say}</span></span></button>`).join("")}</div>`;
   },
   bar(f) {
     const u = f.ui; if (!u.move && !u.stamp) return "";

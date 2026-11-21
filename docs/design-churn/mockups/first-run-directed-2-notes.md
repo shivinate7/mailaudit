@@ -96,7 +96,9 @@ and Duo folded at AX5. A tap in any frame moves all four.
    holds the first name as a chip. No match draws the envelope branch: nothing is ticked or filed.
    Gain: it starts from the mail in hand, which is the real job. Loss: it needs mail on day one, and on
    the folded Duo the keys leave room for only one answer line. Departs from: Card in Hand opens only on
-   two pages (`PackagesTab.twoPages`). Not blocking.
+   two pages (`PackagesTab.twoPages`). Not blocking. Build note: on the open Duo this concept is
+   `HandScreen` itself, with the guide line added. On one page it extends `HandScreen`, and it is never
+   a copy (`building-one-home-per-capability`).
 
 8. **Fixed slot, no reflow.** The slip (188 pt) and the guide line (128 pt) keep one height across
    their steps. The ring is an inset outline, so it takes no space. A tick redraws nothing else and keeps
@@ -115,11 +117,13 @@ and Duo folded at AX5. A tap in any frame moves all four.
     on a tab that holds the options (`ledger-tab-holds-options`). Owner grant: yes (a new Ledger row).
     Not blocking.
 
-11. **The open Duo title page.** Before the guide, the left page shows the masthead and the three
-    words, dimmed. The right page holds the empty state and the sheets, under the tab bar
-    (`duo-card-in-hand`, tab bar under the right page). Gain: the left page is not blank. Loss: after the
-    guide steps away, the left page shows only the masthead. I did not read how today's Packages fills
-    the left page on the open Duo, so that layout is unknown here.
+11. **The open Duo pages.** Before the guide, the left page shows the masthead and the three words.
+    The right page holds the empty state and the sheets, above the tab bar (`duo-card-in-hand`, tab bar
+    under the right page). After the guide steps away, the left page keeps the masthead, and the right
+    page keeps today's Card in Hand control (`PackagesView.openHand`, `hand-open`) above the list.
+    Gain: no content crosses the hinge, as the brief requires. Loss: today's Packages spans the whole
+    window on the open Duo (`RootView` takes `width: Self.forcedWidth`, which is nil outside tests), so
+    the list crosses the hinge today. Departs from: the full-width Packages on the open Duo. Not blocking.
 
 12. **AX5.** The bar labels stop growing at the default size, as ruled (`duo-card-in-hand`, Tab bar
     text). The sheet and guide titles are capped at 22 pt so Cancel and the title never overlap. That
@@ -130,6 +134,46 @@ and Duo folded at AX5. A tap in any frame moves all four.
 
 13. **Masthead tallies.** They are today's cells, as `Masthead.swift` builds them: cards have/total,
     packages done/n, value in/all. A tick moves them.
+
+14. **Structure self-check** (my own read with the `design-review` Mockup set questions, not the
+    reviewer the orchestrator spawns). Margin note: `new`. It adds a first screen with one control, an
+    import sheet and a guide layer, and on the open Duo the left page becomes the guide. It keeps
+    today's four tabs and the Packages list. `native`: it uses a sheet with Cancel on the leading edge,
+    the system tab bar and the Camera, and it has no hover or web footer. Envelope in hand: `new`. It
+    adds a one-page Card in Hand with the keys up as the first screen after the import. `native`: it has
+    the system keyboard, a navigation title with Skip, and a list answer.
+
+## Options for the owner's page
+
+| Option | Deep link | Focus id |
+| --- | --- | --- |
+| Margin note | `#c=margin&r=code&s=m1` | `opt-margin` |
+| Envelope in hand | `#c=hand&r=code&s=h1` | `opt-hand` |
+| Code from the computer | `#c=margin&r=code&s=route` | `opt-route-code` |
+| Open the file here | `#c=margin&r=file&s=route` | `opt-route-file` |
+
+Each focus id appears exactly once at its own link: only the folded frame carries the bare id, and the
+other frames add a suffix. This was checked with a headless DOM dump.
+
+## Critique (impeccable, on this mockup)
+
+DEGRADED: single-context (no sub-agent tool exposed). Context loading did not run. The repo has no
+PRODUCT.md or DESIGN.md. No snapshot was written.
+
+- Detector: two hits, both false positives. `cream-palette` is the ruled parchment palette
+  (`design-parchment-ledger`). `repeating-stripes-gradient` is the placeholder code, which is drawn on
+  purpose so that it decodes to nothing.
+- Fixed: the bar and slip were placed in the wrong spot; the left page on the open Duo was blank before
+  the guide; the AX5 titles overlapped Cancel; at AX5 the answer area was squeezed and the ring was
+  hidden; mockup aids sat inside the device frames; the masthead cells were made up (they are today's
+  cells now); the tie copy was clipped; a tick reset the scroll; the ids were duplicated across frames;
+  a gold dot on the Ledger tab had no reason.
+- Accepted as losses: the slip covers about 40 percent of the folded list for three taps (item 6), and
+  with the keys up only one answer line fits on the folded Duo (item 7).
+- `check_ios_mockup.py` exits 1 with `system-font` because the content uses Cochin. It fires the same
+  way on all five `duo-hand-*` mockups. It conflicts with `typography-cochin-and-mono` and with the house
+  rule "Brand fonts appear only in content". This may be a false alarm. The chrome is set in the system
+  font.
 
 ## Input needed
 

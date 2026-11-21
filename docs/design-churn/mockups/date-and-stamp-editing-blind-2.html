@@ -350,6 +350,8 @@ body.no-anno .anno, body.no-anno .anno-wrap { display: none; }
 @keyframes flash { from { background: var(--draft-wash); } to { background: transparent; } }
 @media (prefers-reduced-motion: reduce) { .flash { animation: none; } }
 @media (forced-colors: active) { .row.draft, .ent.ghost, .tray, .review-card { border: 2px dashed CanvasText; } }
+.why { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.secondary[disabled] { color: var(--text-2); opacity: 0.6; cursor: default; }
 .vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
@@ -455,6 +457,7 @@ const M = {
   rangeText(r) { return r ? `${fmt(r.start)} to ${fmt(r.end)}` : "All dates"; },
 };
 
+const same = (a, b) => JSON.stringify(a) === JSON.stringify(b);
 /* ---------- small parts (one home each) ---------- */
 const ICON = {
   received: '<svg class="ic received" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="currentColor"/><path d="M5.5 10.5l3 3 6-7" fill="none" stroke="var(--raised)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
@@ -530,7 +533,7 @@ const LAYOUTS = [
 const Tray = {
   id: "tray", name: "Change tray",
   idea: "A package list with a range at the top. Every edit waits in a tray as a draft. Review shows each change, old struck and new underlined, before Apply. Every applied set sits in History with Undo.",
-  states: [["list", "Package list"], ["range", "Pick the order dates"], ["detail", "One package"], ["picker", "Pick a received date"], ["draft", "Edits in the tray"], ["review", "Review before apply"], ["failed", "Apply failed"], ["applied", "Applied, with Undo"], ["history", "History"], ["empty", "Range has no orders"], ["loading", "Still reading"]],
+  states: [["list", "Package list"], ["range", "Pick the order dates"], ["detail", "One package"], ["picker", "Pick a received date"], ["draft", "Edits in the tray"], ["review", "Review before apply"], ["failed", "Apply failed"], ["applied", "Applied, with Undo"], ["history", "History"], ["empty", "Range has no orders"], ["loading", "Still reading"], ["readfail", "Could not read"]],
   init(preset) {
     const s = { pk: clone(SEED), draft: {}, tab: "packages", screen: "list", sel: null, sheet: null, picker: null, range: { ...DEFAULT_RANGE }, prevRange: undefined, re: null, bar: null, history: [], failNext: false, failed: false, loading: false };
     const draftP4 = () => { s.sel = "p4"; s.screen = "detail"; this.edit(s, "p4", p => M.moveRec(p, "r4", "2026-11-17")); this.edit(s, "p6", p => M.setStamp(p, "waiting"), true); };
@@ -545,6 +548,7 @@ const Tray = {
       case "history": draftP4(); this.apply(s); s.tab = "history"; break;
       case "empty": s.range = { start: "2026-10-19", end: "2026-10-24" }; s.prevRange = { ...DEFAULT_RANGE }; break;
       case "loading": s.loading = true; break;
+      case "readfail": s.readFail = true; break;
     }
     return s;
   },
@@ -557,6 +561,19 @@ const Tray = {
     const lines = M.diff(this.base(s, pid), cur.p, cur.userStamp);
     if (lines.length) s.draft[pid] = cur; else delete s.draft[pid];
     s.bar = null; s.failed = false;
+  },
+  /* Undo or redo only when the packages still hold exactly what that set wrote (or undid), and no edit waits on them. */
+  undoBlock(s, h) {
+    const want = h.undone ? h.before : h.after;
+    for (const pid of Object.keys(want)) {
+      if (s.draft[pid]) return `Apply or throw away the waiting edits to ${want[pid].from} first.`;
+      if (!same(this.base(s, pid), want[pid])) return `A later change to ${want[pid].from} sits on top of this one. ${h.undone ? "Redo" : "Undo"} that one first.`;
+    }
+    return "";
+  },
+  undoBtn(s, h, where) {
+    const why = this.undoBlock(s, h), label = h.undone ? "Redo" : "Undo", id = `why-${where}-${h.id}`;
+    return `<button type="button" class="secondary" ${A(h.undone ? "redo" : "undo", h.id)} ${why ? `disabled aria-describedby="${id}"` : ""}>${label}</button>${why ? `<span class="why" id="${id}">${why}</span>` : ""}`;
   },
   count(s) { return Object.keys(s.draft).reduce((n, pid) => n + M.diff(this.base(s, pid), s.draft[pid].p, s.draft[pid].userStamp).length, 0); },
   apply(s) {
@@ -578,7 +595,12 @@ const Tray = {
       case "back": s.screen = "list"; break;
       case "stamp": { const [pid, st] = arg.split("|"); this.edit(s, pid, p => M.setStamp(p, st), true); break; }
       case "recRemove": { const [pid, rid] = arg.split("|"); this.edit(s, pid, p => M.removeRec(p, rid)); break; }
-      case "recRestore": { delete s.draft[arg]; break; }
+      case "recRestore": {
+        const [pid, rid] = arg.split("|"), b = this.base(s, pid), r = b.rec.find(x => x.id === rid);
+        const userStamp = s.draft[pid] && s.draft[pid].userStamp;
+        this.edit(s, pid, p => { p.rec.push(clone(r)); p.rec.sort(byDate); if (!userStamp && b.stamp === "received") p.stamp = "received"; });
+        break;
+      }
       case "recEdit": { const [pid, rid] = arg.split("|"); const p = this.view(s, pid); const r = p.rec.find(x => x.id === rid); s.sheet = "picker"; s.picker = { pid, rid, date: r.date, month: monthOf(r.date) }; break; }
       case "recAdd": { s.sheet = "picker"; s.picker = { pid: arg, rid: null, date: null, month: monthOf(TODAY) }; break; }
       case "pickDay": s.picker.date = arg; break;
@@ -596,6 +618,7 @@ const Tray = {
       case "apply": if (s.failNext) { s.failed = true; s.failNext = false; } else this.apply(s); break;
       case "undo": case "redo": {
         const h = s.history.find(x => x.id === arg);
+        if (this.undoBlock(s, h)) break;
         const src = act === "undo" ? h.before : h.after;
         s.pk = s.pk.map(p => src[p.id] ? clone(src[p.id]) : p);
         h.undone = act === "undo";
@@ -622,6 +645,7 @@ const Tray = {
       case "retry": this.apply(s); break;
       case "failNext": s.failNext = !s.failNext; break;
       case "loadDone": s.loading = false; break;
+      case "readRetry": s.readFail = false; break;
     }
   },
 
@@ -649,7 +673,8 @@ const Tray = {
   },
   listScreen(s, L, withNav) {
     let body;
-    if (s.loading) body = `<p class="loading-msg">Reading your packages. Nothing is shown as empty until this ends.</p>${'<div class="skel"></div>'.repeat(4)}<button type="button" class="secondary" ${A("loadDone")}>Finish reading (mockup only)</button>`;
+    if (s.readFail) body = `<div class="notice" role="alert"><span>Your packages could not be read just now. Nothing is lost; no date or stamp was changed.</span><button type="button" class="secondary" ${A("readRetry")}>Try again</button></div>`;
+    else if (s.loading) body = `<p class="loading-msg">Reading your packages. Nothing is shown as empty until this ends.</p>${'<div class="skel"></div>'.repeat(4)}<button type="button" class="secondary" ${A("loadDone")}>Finish reading (mockup only)</button>`;
     else {
       const rows = this.rows(s);
       body = `${this.rangeBlock(s)}${rows.length ? `${legend()}<div class="card">${rows.map(p => this.listRow(s, p)).join("")}</div>`
@@ -664,7 +689,7 @@ const Tray = {
     const ids = new Map(p.rec.map(r => [r.id, r.date]));
     const rows = [];
     for (const r of base.rec) {
-      if (!ids.has(r.id)) rows.push(`<div class="daterow removed draft"><div class="row" style="cursor:default"><span class="main"><span class="t">${fmt(r.date)}</span><span class="was">Will be removed</span></span></div><button type="button" class="linkbtn" ${A("recRestore", p.id)}>Put back</button></div>`);
+      if (!ids.has(r.id)) rows.push(`<div class="daterow removed draft"><div class="row" style="cursor:default"><span class="main"><span class="t">${fmt(r.date)}</span><span class="was">Will be removed</span></span></div><button type="button" class="linkbtn" ${A("recRestore", p.id + "|" + r.id)}>Put back</button></div>`);
       else {
         const moved = ids.get(r.id) !== r.date;
         rows.push(this.dateRow(p, { id: r.id, date: ids.get(r.id) }, moved ? r.date : null));
@@ -695,7 +720,7 @@ const Tray = {
   historyScreen(s) {
     const body = s.history.length ? s.history.map(h => `<div class="hist ${h.undone ? "undone" : ""}"><span class="when">${h.when}${h.undone ? ", undone" : ""}</span>
         ${h.lines.map(x => `<div><b>${esc(x.from)}</b><ul class="lines">${x.lines.map(l => `<li class="${l.also ? "also" : ""}">${M.sentence(l)}</li>`).join("")}</ul></div>`).join("")}
-        <button type="button" class="secondary" ${A(h.undone ? "redo" : "undo", h.id)}>${h.undone ? "Redo" : "Undo"}</button></div>`).join("")
+        ${this.undoBtn(s, h, "hist")}</div>`).join("")
       : `<div class="empty"><span>Each set of changes you apply shows here, with Undo.</span><button type="button" class="secondary" ${A("tab", "packages")}>Go to packages</button></div>`;
     return `<div class="nav"></div><h1 class="large">History</h1><div class="scroll" data-scroll="hist">${body}<div class="anno-wrap">${anno("history of applied sets")}</div></div>`;
   },
@@ -708,8 +733,8 @@ const Tray = {
     const n = this.count(s);
     if (n) return `<div class="tray ${extraCls || ""}" role="status"><span class="msg">${n} change${n > 1 ? "s" : ""} waiting. Nothing is changed until you apply.</span><button type="button" class="primary" ${A("review")}>Review</button></div>`;
     if (!s.bar) return "";
-    if (s.bar.kind === "applied") return `<div class="tray done ${extraCls || ""}" role="status"><span class="msg">${s.bar.n} change${s.bar.n > 1 ? "s" : ""} applied.</span><button type="button" class="secondary" ${A("undo", s.bar.hid)}>Undo</button></div>`;
-    if (s.bar.kind === "undone") return `<div class="tray done ${extraCls || ""}" role="status"><span class="msg">Undone. The dates and stamps are back as they were.</span><button type="button" class="secondary" ${A("redo", s.bar.hid)}>Redo</button></div>`;
+    if (s.bar.kind === "applied") return `<div class="tray done ${extraCls || ""}" role="status"><span class="msg">${s.bar.n} change${s.bar.n > 1 ? "s" : ""} applied.</span>${this.undoBtn(s, s.history.find(h => h.id === s.bar.hid), "bar")}</div>`;
+    if (s.bar.kind === "undone") return `<div class="tray done ${extraCls || ""}" role="status"><span class="msg">Undone. The dates and stamps are back as they were.</span>${this.undoBtn(s, s.history.find(h => h.id === s.bar.hid), "bar")}</div>`;
     if (s.bar.kind === "discarded") return `<div class="tray done ${extraCls || ""}" role="status"><span class="msg">Edits thrown away.</span><button type="button" class="secondary" ${A("restore")}>Bring back</button></div>`;
     return "";
   },
@@ -788,7 +813,7 @@ const Tray = {
 const Book = {
   id: "book", name: "Day book",
   idea: "No package list and no edit form. The first screen is a book of days, newest first: what was ordered and what came in, on the day it happened. You fix a wrong day by lifting the line and laying it on the right day. The old line stays struck in red pen, the correction is written in the book, and Undo sits on that written line.",
-  states: [["book", "The book"], ["range", "Set the order dates"], ["lifted", "A line lifted"], ["preview", "Move shown before it is written"], ["restamp", "Stamp fix with its knock-on"], ["add", "Mark an outstanding package"], ["written", "Correction written, with Undo"], ["failed", "Write failed"], ["empty", "Range has no orders"], ["loading", "Still reading"]],
+  states: [["book", "The book"], ["range", "Set the order dates"], ["lifted", "A line lifted"], ["preview", "Move shown before it is written"], ["restamp", "Stamp fix with its knock-on"], ["add", "Mark an outstanding package"], ["written", "Correction written, with Undo"], ["failed", "Write failed"], ["empty", "Range has no orders"], ["loading", "Still reading"], ["readfail", "Could not read"]],
   init(preset) {
     const s = { pk: clone(SEED), range: { ...DEFAULT_RANGE }, prevRange: undefined, handle: null, lift: null, pend: null, written: [], failNext: false, failed: false, loading: false, month: "2026-11", flash: null };
     switch (preset) {
@@ -801,6 +826,7 @@ const Book = {
       case "failed": s.lift = { pid: "p4", rid: "r4", tool: "move" }; this.act(s, "day", "2026-11-17"); s.failed = true; break;
       case "empty": s.range = { start: "2026-10-19", end: "2026-10-24" }; s.prevRange = { ...DEFAULT_RANGE }; break;
       case "loading": s.loading = true; break;
+      case "readfail": s.readFail = true; break;
     }
     return s;
   },
@@ -814,10 +840,11 @@ const Book = {
   },
   act(s, act, arg) {
     switch (act) {
-      case "lift": { const [pid, rid] = arg.split("|"); const p = this.pkg(s, pid); s.handle = null; s.pend = null; s.failed = false; s.flash = null;
+      case "lift": { if (s.pend) { s.nudge = true; break; }
+        const [pid, rid] = arg.split("|"); const p = this.pkg(s, pid); s.handle = null; s.pend = null; s.failed = false; s.flash = null; s.done = null;
         s.lift = { pid, rid: rid || null, tool: rid ? "move" : "add" }; s.month = monthOf(rid ? p.rec.find(r => r.id === rid).date : TODAY); break; }
-      case "putdown": s.lift = null; s.pend = null; s.failed = false; break;
-      case "putback": s.pend = null; s.failed = false; break;
+      case "putdown": s.lift = null; s.pend = null; s.failed = false; s.nudge = false; break;
+      case "putback": s.pend = null; s.failed = false; s.nudge = false; break;
       case "tool": s.lift.tool = arg; s.pend = null; break;
       case "day":
         if (s.handle) { this.setRangeEnd(s, arg); break; }
@@ -832,20 +859,34 @@ const Book = {
         { const before = clone(this.pkg(s, s.pend.pid)), id = "w" + (s.written.length + 1);
           s.written.unshift({ id, pid: before.id, from: before.from, before, after: clone(s.pend.after), lines: s.pend.lines, undone: false });
           s.pk = s.pk.map(p => p.id === before.id ? clone(s.pend.after) : p);
-          s.lift = null; s.pend = null; s.failed = false; s.flash = id; }
+          s.lift = null; s.pend = null; s.failed = false; s.flash = id; s.done = id; s.nudge = false; }
         break;
       case "retry": s.failed = false; this.act(s, "write"); break;
       case "undo": case "redo": {
         const w = s.written.find(x => x.id === arg), src = act === "undo" ? w.before : w.after;
+        if (this.undoBlock(s, w)) { if (s.pend) s.nudge = true; break; }
+        s.done = w.id;
         s.pk = s.pk.map(p => p.id === w.pid ? clone(src) : p); w.undone = act === "undo"; s.flash = w.id; s.lift = null; s.pend = null; break;
       }
-      case "handle": s.handle = s.handle === arg ? null : arg; s.lift = null; s.pend = null; if (s.handle) s.month = monthOf(s.range ? s.range[arg] : TODAY); break;
+      case "handle": s.done = null; s.handle = s.handle === arg ? null : arg; s.lift = null; s.pend = null; if (s.handle) s.month = monthOf(s.range ? s.range[arg] : TODAY); break;
       case "rangeAll": s.prevRange = s.range; s.range = null; s.handle = null; break;
       case "rangeBack": { const t = s.range; s.range = s.prevRange; s.prevRange = t; break; }
       case "month": s.month = shiftMonth(s.month, +arg); break;
       case "failNext": s.failNext = !s.failNext; break;
       case "loadDone": s.loading = false; break;
+      case "readRetry": s.readFail = false; break;
+      case "closeDone": s.done = null; break;
     }
+  },
+  undoBlock(s, w) {
+    if (s.pend) return "Write or put back the fix on the desk first.";
+    const want = w.undone ? w.before : w.after;
+    if (!same(this.pkg(s, w.pid), want)) return `A later correction to ${w.from} sits on top of this one. ${w.undone ? "Redo" : "Undo"} that one first.`;
+    return "";
+  },
+  undoBtn(s, w, where) {
+    const why = this.undoBlock(s, w), id = `why-${where}-${w.id}`;
+    return `<button type="button" class="secondary" ${A(w.undone ? "redo" : "undo", w.id)} ${why ? `disabled aria-describedby="${id}"` : ""}>${w.undone ? "Redo" : "Undo"}</button>${why ? `<span class="why" id="${id}">${why}</span>` : ""}`;
   },
   setRangeEnd(s, k) {
     const r = s.range ? { ...s.range } : { start: "2026-10-01", end: TODAY };
@@ -907,11 +948,12 @@ const Book = {
   correction(s, w) {
     return `<div class="corr ${w.undone ? "undone" : ""} ${s.flash === w.id ? "flash" : ""}" role="status"><span class="who">Correction to ${esc(w.from)}</span>
       <ul class="lines">${w.lines.map(l => `<li>${M.sentence(l)}</li>`).join("")}</ul>
-      <span class="rowacts"><button type="button" class="secondary" ${A(w.undone ? "redo" : "undo", w.id)}>${w.undone ? "Redo" : "Undo"}</button><span class="note">${w.undone ? "Undone; the line is back where it was." : "Written in red pen. The old line stays struck."}</span></span></div>`;
+      <span class="rowacts">${this.undoBtn(s, w, "book")}<span class="note">${w.undone ? "Undone; the line is back where it was." : "Written in red pen. The old line stays struck."}</span></span></div>`;
   },
   bookPane(s, L) {
     let body;
-    if (s.loading) body = `<div style="padding:16px;display:flex;flex-direction:column;gap:8px"><p class="loading-msg" style="padding:0">Reading the book. Nothing is shown as empty until this ends.</p>${'<div class="skel"></div>'.repeat(4)}<button type="button" class="secondary" ${A("loadDone")}>Finish reading (mockup only)</button></div>`;
+    if (s.readFail) body = `<div style="padding:16px"><div class="notice" role="alert"><span>The book could not be read just now. Nothing is lost; no line was changed.</span><button type="button" class="secondary" ${A("readRetry")}>Try again</button></div></div>`;
+    else if (s.loading) body = `<div style="padding:16px;display:flex;flex-direction:column;gap:8px"><p class="loading-msg" style="padding:0">Reading the book. Nothing is shown as empty until this ends.</p>${'<div class="skel"></div>'.repeat(4)}<button type="button" class="secondary" ${A("loadDone")}>Finish reading (mockup only)</button></div>`;
     else {
       const days = this.entries(s);
       const any = s.pk.some(p => M.inRange(p, s.range));
@@ -945,11 +987,18 @@ const Book = {
     const ax = L === "ax";
     let say = "", body = "", acts = "", full = false;
     const legendBox = `<div style="display:flex;flex-wrap:wrap;gap:4px 16px" class="legend">${["received", "waiting", "missing"].map(st => `<span>${ICON[st]}${STAMP[st]}</span>`).join("")}<span>${ICON.order}Ordered</span></div>`;
-    if (s.loading) { say = "The desk opens when the book is read."; }
+    if (s.loading || s.readFail) { say = "The desk opens when the book is read."; }
+    else if (s.done && !s.lift) {
+      full = true;
+      const w = s.written.find(x => x.id === s.done);
+      say = w.undone ? `<b>Undone.</b> ${esc(w.from)} is back as it was.` : `<b>Correction written</b> to ${esc(w.from)}.`;
+      body = `<ul class="lines">${w.lines.map(l => `<li>${M.sentence(l)}</li>`).join("")}</ul><div class="tools">${this.undoBtn(s, w, "desk")}</div>`;
+      acts = `<button type="button" class="secondary" ${A("closeDone")}>Back to the dates</button>`;
+    }
     else if (s.pend) {
       full = true;
       const p = this.pkg(s, s.pend.pid);
-      say = `<b>${esc(p.from)}</b>: this is exactly what will be written.`;
+      say = `<b>${esc(p.from)}</b>: this is exactly what will be written.${s.nudge ? ` <span class="why" role="alert">Write this fix or put it back before you lift another line.</span>` : ""}`;
       body = `<ul class="lines">${s.pend.lines.map(l => `<li class="${l.also ? "also" : ""}">${M.sentence(l)}</li>`).join("")}</ul>
         ${s.failed ? `<div class="notice" role="alert"><span>Not written. The book is unchanged and your fix is still here.</span><button type="button" class="secondary" ${A("retry")}>Try again</button></div>` : ""}
         ${s.pend.viaDay ? `<p class="foot" style="padding:0">Wrong day? Tap another.</p>${this.dayPicker(s, L, big)}` : ""}

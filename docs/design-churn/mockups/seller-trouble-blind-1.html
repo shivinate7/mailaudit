@@ -1,0 +1,870 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Seller Trouble Mockup</title>
+<style>
+/* Tokens. House step: 4 px. Radius: 8 px. Colour by role, light and dark sets.
+   Every hex below is this designer's own pick (house tokens give roles, not values). */
+:root{
+  color-scheme: light dark;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:20px;
+  --space-6:24px; --space-8:32px; --space-10:40px; --space-12:48px;
+  --radius:8px;
+  --bg:#E8ECEA; --surface:#FFFFFF; --surface-2:#F3F6F4; --surface-3:#E3E9E6;
+  --ink:#131B18; --ink-2:#4F5E58; --rule:#D2D9D5;
+  --tint:#2343C4; --on-tint:#FFFFFF; --scrim:rgba(19,27,24,.34);
+  --fine:#2E8761; --slow:#A26B00; --short:#C9521A; --lost:#BC2235; --wrong:#6A3DB8; --pending:#76827D;
+  --zone:#F5E3E3; --safe:#DAEEE3; --glass:rgba(255,255,255,.82); --hinge:#030504;
+  --new:#08707D; --on-new:#FFFFFF; --bezel:#C4CCC8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --bg:#0B100E; --surface:#151C19; --surface-2:#1A2320; --surface-3:#24302B;
+    --ink:#E5EDE9; --ink-2:#9DABA5; --rule:#2C3833;
+    --tint:#93A8FF; --on-tint:#0B1442; --scrim:rgba(0,0,0,.52);
+    --fine:#50BE8C; --slow:#E0AC38; --short:#EF844F; --lost:#FF6A7B; --wrong:#B18BF1; --pending:#8A9792;
+    --zone:#2F1D21; --safe:#15301F; --glass:rgba(28,37,34,.86); --hinge:#000000;
+    --new:#4CCFDC; --on-new:#06272B; --bezel:#2E3935;
+  }
+}
+:root[data-theme="dark"]{
+  --bg:#0B100E; --surface:#151C19; --surface-2:#1A2320; --surface-3:#24302B;
+  --ink:#E5EDE9; --ink-2:#9DABA5; --rule:#2C3833;
+  --tint:#93A8FF; --on-tint:#0B1442; --scrim:rgba(0,0,0,.52);
+  --fine:#50BE8C; --slow:#E0AC38; --short:#EF844F; --lost:#FF6A7B; --wrong:#B18BF1; --pending:#8A9792;
+  --zone:#2F1D21; --safe:#15301F; --glass:rgba(28,37,34,.86); --hinge:#000000;
+  --new:#4CCFDC; --on-new:#06272B; --bezel:#2E3935;
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:-apple-system,system-ui,"Helvetica Neue",Arial,sans-serif;font-size:15px;line-height:20px;overflow-x:hidden}
+button{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--tint);outline-offset:2px}
+
+/* ---------- Viewer chrome (outside the devices) ---------- */
+.banner{background:var(--ink);color:var(--surface);padding:var(--space-3) var(--space-4);font-weight:600;text-align:center}
+.viewer{display:flex;flex-direction:column;gap:var(--space-6);padding:var(--space-6) var(--space-4) var(--space-12);max-inline-size:2000px;margin-inline:auto}
+.vhead{display:flex;flex-direction:column;gap:var(--space-2);max-inline-size:72ch}
+.vhead h1{margin:0;font-size:28px;line-height:34px}
+.vhead p{margin:0;color:var(--ink-2)}
+.kind{font-weight:600;color:var(--ink)}
+.controls{display:flex;flex-wrap:wrap;gap:var(--space-4) var(--space-6);align-items:center}
+.cgroup{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.cgroup>span{color:var(--ink-2);font-size:13px}
+.seg{display:inline-flex;background:var(--surface-3);border-radius:var(--radius);padding:2px;gap:2px}
+.seg button{border:0;background:transparent;min-height:36px;padding:0 var(--space-3);border-radius:6px;cursor:pointer;font-size:14px}
+.seg button[aria-pressed="true"]{background:var(--surface);font-weight:600;box-shadow:0 0 0 1px var(--rule)}
+.chk{display:inline-flex;gap:var(--space-2);align-items:center;font-size:14px;min-height:36px}
+.option{display:flex;flex-direction:column;gap:var(--space-4);border-top:1px solid var(--rule);padding-top:var(--space-6)}
+.option[hidden]{display:none}
+.ohead{display:flex;flex-wrap:wrap;gap:var(--space-3);align-items:baseline}
+.ohead h2{margin:0;font-size:24px;line-height:30px}
+.ohead p{margin:0;color:var(--ink-2);flex:1 1 30ch;max-inline-size:80ch}
+.hide-btn{border:1px solid var(--rule);background:var(--surface);border-radius:var(--radius);min-height:36px;padding:0 var(--space-3);cursor:pointer;font-size:14px}
+.restore{display:flex;gap:var(--space-2);flex-wrap:wrap;align-items:center;color:var(--ink-2);font-size:14px}
+.restore[hidden]{display:none}
+.frames{display:flex;flex-wrap:wrap;gap:var(--space-8);align-items:flex-start;overflow-x:auto;padding-bottom:var(--space-2)}
+.fwrap{display:flex;flex-direction:column;gap:var(--space-2);flex:none}
+.fwrap[hidden]{display:none}
+.fcap{font-size:13px;color:var(--ink-2);max-inline-size:466px}
+
+/* ---------- Device frames ---------- */
+.device{position:relative;overflow:hidden;background:var(--surface-2);border-radius:20px;box-shadow:0 0 0 6px var(--bezel);flex:none}
+.device[data-device="iphone-duo-folded"]{width:466px;height:678px}
+.device[data-device="iphone-duo-unfolded"]{width:951px;height:669px;display:grid;grid-template-columns:455.5px 40px 455.5px}
+.device[data-device="iphone-regular"]{width:466px;height:678px;resize:both;min-width:320px;min-height:520px;max-width:600px;max-height:1000px}
+.hinge{background:var(--hinge);height:100%}
+.page{position:relative;overflow:hidden;height:100%;min-width:0;background:var(--surface-2)}
+
+/* Simulated insets: browsers on a desk return 0 for env(), so each frame names its stand-in.
+   Values are unmeasured; see notes item on insets. */
+.device{--sim-top:32px;--sim-bottom:20px}
+.device[data-device="iphone-regular"]{--sim-top:54px;--sim-bottom:24px}
+
+/* ---------- Screen type: Dynamic Type text styles (Apple typography page, Large default and AX5) ---------- */
+.scr{--lt:34px;--lt-l:41px;--t2:22px;--t2-l:28px;--t3:20px;--t3-l:25px;--hl:17px;--hl-l:22px;--bd:17px;--bd-l:22px;
+  --co:16px;--co-l:21px;--sb:15px;--sb-l:20px;--ft:13px;--ft-l:18px;--c1:12px;--c1-l:16px;--c2:11px;--c2-l:13px;
+  --tile-w:12px;--tile-h:20px;--tile-gap:4px}
+[data-ax="5"] .scr{--lt:60px;--lt-l:70px;--t2:56px;--t2-l:66px;--t3:55px;--t3-l:65px;--hl:53px;--hl-l:62px;--bd:53px;--bd-l:62px;
+  --co:51px;--co-l:60px;--sb:49px;--sb-l:58px;--ft:44px;--ft-l:52px;--c1:43px;--c1-l:51px;--c2:40px;--c2-l:48px;
+  --tile-w:24px;--tile-h:40px;--tile-gap:8px}
+.lt{font-size:var(--lt);line-height:var(--lt-l);font-weight:700;margin:0;letter-spacing:.2px}
+.t2{font-size:var(--t2);line-height:var(--t2-l);font-weight:700;margin:0}
+.t3{font-size:var(--t3);line-height:var(--t3-l);font-weight:600;margin:0}
+.hl{font-size:var(--hl);line-height:var(--hl-l);font-weight:600}
+.bd{font-size:var(--bd);line-height:var(--bd-l)}
+.co{font-size:var(--co);line-height:var(--co-l)}
+.sb{font-size:var(--sb);line-height:var(--sb-l)}
+.ft{font-size:var(--ft);line-height:var(--ft-l)}
+.c1{font-size:var(--c1);line-height:var(--c1-l)}
+.c2{font-size:var(--c2);line-height:var(--c2-l)}
+.ink2{color:var(--ink-2)}
+.num{font-variant-numeric:tabular-nums}
+p{margin:0}
+
+.scr{position:absolute;inset:0;display:flex;flex-direction:column;color:var(--ink);background:var(--surface-2);
+  font-family:-apple-system,system-ui,"Helvetica Neue",Arial,sans-serif;overflow-wrap:anywhere}
+.status{flex:none;height:max(env(safe-area-inset-top),var(--sim-top));display:flex;align-items:center;justify-content:space-between;padding:0 var(--space-6);font-size:15px;font-weight:600}
+.status .bat{display:inline-block;width:24px;height:12px;border:1.5px solid currentColor;border-radius:3px;position:relative}
+.status .bat::after{content:"";position:absolute;inset:1.5px;right:6px;background:currentColor;border-radius:1px}
+.body{flex:1;overflow-y:auto;overflow-x:hidden;min-height:0;display:flex;flex-direction:column}
+.body>*,.sbody>*{flex:none}
+.body.tabbed{padding-bottom:calc(var(--sim-bottom) + 76px)}
+.body.plain{padding-bottom:calc(var(--sim-bottom) + var(--space-4))}
+.pad{padding:0 var(--space-4)}
+.stack{display:flex;flex-direction:column;gap:var(--space-3)}
+.stack-lg{display:flex;flex-direction:column;gap:var(--space-6)}
+.cluster{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center}
+
+/* nav bar */
+.nav{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 var(--space-2);gap:var(--space-2)}
+.nav .title{flex:1;text-align:center;font-size:17px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.tb{min-height:44px;min-width:44px;border:0;background:transparent;color:var(--tint);font-size:17px;padding:0 var(--space-2);display:inline-flex;align-items:center;gap:var(--space-1);cursor:pointer;border-radius:22px}
+.tb-prom{background:var(--tint);color:var(--on-tint);font-weight:600;padding:0 var(--space-4)}
+.tb svg{width:12px;height:20px}
+.large-title{padding:var(--space-1) var(--space-4) var(--space-2);display:flex;flex-direction:column;gap:var(--space-1)}
+.tbar-row{display:flex;justify-content:flex-end;min-height:44px;padding:0 var(--space-2)}
+
+/* tiles: one per order. Shape carries the kind, colour repeats it. */
+.tile{width:var(--tile-w);height:var(--tile-h);border-radius:3px;display:inline-block;position:relative;flex:none}
+.k-fine{background:var(--fine);opacity:.55}
+.k-slow{border:1.5px solid var(--slow);background:repeating-linear-gradient(135deg,var(--slow) 0 2px,transparent 2px 5px)}
+.k-short{border:1.5px solid var(--short);background:linear-gradient(to top,var(--short) 50%,transparent 50%)}
+.k-lost{border:1.5px solid var(--lost)}
+.k-lost::before,.k-lost::after{content:"";position:absolute;left:50%;top:50%;width:140%;height:1.5px;background:var(--lost);transform:translate(-50%,-50%) rotate(58deg)}
+.k-lost::after{transform:translate(-50%,-50%) rotate(-58deg)}
+.k-wrong{background:var(--wrong)}
+.k-wrong::after{content:"";position:absolute;left:50%;top:50%;width:46%;aspect-ratio:1;border:1.5px solid var(--surface);border-radius:50%;transform:translate(-50%,-50%)}
+.k-pending{border:1.5px dashed var(--pending)}
+.strip{display:flex;flex-wrap:wrap;gap:var(--tile-gap)}
+.strip.big{--tile-w:20px;--tile-h:32px;gap:var(--space-1)}
+[data-ax="5"] .strip.big{--tile-w:32px;--tile-h:52px;gap:var(--space-2)}
+
+/* chips (filters that are also the legend) */
+.chips{display:flex;flex-wrap:wrap;gap:var(--space-2);padding:var(--space-1) var(--space-4)}
+.chip{flex:none;max-width:100%;flex-wrap:wrap;text-align:left;min-height:44px;display:inline-flex;align-items:center;gap:var(--space-2);padding:0 var(--space-3);border-radius:22px;border:1px solid var(--rule);background:var(--surface);cursor:pointer;font-size:var(--sb);line-height:var(--sb-l)}
+.chip .tile{--tile-w:10px;--tile-h:16px}
+[data-ax="5"] .chip .tile{--tile-w:20px;--tile-h:32px}
+.chip[aria-pressed="true"]{background:var(--ink);color:var(--surface);border-color:var(--ink)}
+.chip[aria-pressed="true"] .k-wrong::after{border-color:var(--ink)}
+
+/* list */
+.group{background:var(--surface);border-radius:var(--radius);margin:0 var(--space-4);overflow:hidden}
+.ghead{display:flex;flex-wrap:wrap;justify-content:space-between;gap:var(--space-1) var(--space-4);padding:var(--space-3) var(--space-4) var(--space-1);color:var(--ink-2)}
+.row{display:flex;align-items:center;gap:var(--space-3);width:100%;min-height:44px;padding:var(--space-3) var(--space-4);border:0;background:transparent;text-align:left;cursor:pointer;border-top:1px solid var(--rule)}
+.row:first-child{border-top:0}
+.row[aria-current="true"]{background:var(--surface-3)}
+.row .grow{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--space-1)}
+.row .fig{flex:none;text-align:right;display:flex;flex-direction:column;align-items:flex-end}
+.chev{flex:none;width:8px;height:14px;color:var(--ink-2)}
+[data-ax="5"] .row{flex-wrap:wrap}
+[data-ax="5"] .row .grow{flex:1 1 100%}
+[data-ax="5"] .row .fig{align-items:flex-start;text-align:left}
+[data-ax="5"] .chev{display:none}
+.stopped-mark{display:inline-flex;align-items:center;gap:var(--space-1);color:var(--ink-2)}
+.stopped-mark svg{width:14px;height:14px}
+details.fine{margin:0 var(--space-4);background:var(--surface);border-radius:var(--radius)}
+details.fine>summary{min-height:44px;display:flex;align-items:center;padding:0 var(--space-4);cursor:pointer;list-style:none;color:var(--tint)}
+details.fine>summary::-webkit-details-marker{display:none}
+details.fine .row{border-top:1px solid var(--rule)}
+
+/* detail */
+.verdict{padding:0 var(--space-4)}
+.figs{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(132px,100%),1fr));gap:1px;background:var(--rule);border-radius:var(--radius);overflow:hidden;margin:0 var(--space-4)}
+.figs>div{background:var(--surface);padding:var(--space-3);display:flex;flex-direction:column;gap:var(--space-1)}
+.figs .v{font-size:var(--t2);line-height:var(--t2-l);font-weight:700}
+.orders{list-style:none;margin:0 var(--space-4);padding:0;background:var(--surface);border-radius:var(--radius);overflow:hidden}
+.orders li{display:grid;grid-template-columns:auto 1fr auto;gap:var(--space-1) var(--space-3);align-items:center;padding:var(--space-3) var(--space-4);border-top:1px solid var(--rule)}
+.orders li:first-child{border-top:0}
+.orders .bar{grid-column:2 / 4;height:6px;border-radius:3px;background:var(--surface-3);position:relative}
+.orders .bar i{position:absolute;left:0;top:0;bottom:0;border-radius:3px;background:var(--ink-2)}
+.orders .bar i.over{background:var(--slow)}
+.orders .bar i.never{background:transparent;border:1.5px dashed var(--lost);right:0}
+.orders .bar b{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--ink)}
+[data-ax="5"] .orders li{grid-template-columns:auto 1fr}
+[data-ax="5"] .orders li>.right{grid-column:1 / 3}
+[data-ax="5"] .orders .bar{grid-column:1 / 3;height:12px}
+.actions{display:flex;gap:var(--space-2);padding:0 var(--space-4)}
+[data-ax="5"] .actions{flex-direction:column}
+.actbar{position:absolute;left:0;right:0;bottom:0;z-index:4;display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3) 0 calc(var(--sim-bottom) + var(--space-2));background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 -1px 0 var(--rule)}
+.actbar.over-tabs{bottom:0;padding-bottom:calc(var(--sim-bottom) + 76px);box-shadow:none;background:linear-gradient(to top,var(--surface-2) 72%,transparent);backdrop-filter:none;-webkit-backdrop-filter:none}
+.actbar .answer{background:var(--surface);margin:0 var(--space-4);padding:var(--space-2) var(--space-3);border-radius:var(--radius)}
+.body.has-bar{padding-bottom:calc(var(--sim-bottom) + 150px)}
+.body.tabbed.has-bar{padding-bottom:calc(var(--sim-bottom) + 220px)}
+.btn{flex:1;min-height:50px;border-radius:25px;border:0;background:var(--surface-3);color:var(--ink);font-size:var(--hl);line-height:var(--hl-l);font-weight:600;padding:var(--space-2) var(--space-4);cursor:pointer}
+.btn-fill{background:var(--tint);color:var(--on-tint)}
+.btn-stop{color:var(--lost)}
+.answer{padding:0 var(--space-4);display:flex;gap:var(--space-2);align-items:flex-start}
+.answer svg{flex:none;width:16px;height:16px;margin-top:2px}
+
+/* tab bar: floats above content (Apple tab bars page) */
+.tabbar{position:absolute;left:var(--space-4);right:var(--space-4);bottom:calc(var(--sim-bottom) + var(--space-1));height:64px;border-radius:32px;background:var(--glass);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);box-shadow:0 0 0 1px var(--rule);display:flex;padding:var(--space-1);gap:var(--space-1);z-index:3}
+.tabbar button{flex:1;border:0;background:transparent;border-radius:28px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:11px;line-height:13px;font-weight:600;color:var(--ink-2);cursor:pointer;min-height:44px}
+.tabbar button svg{width:22px;height:22px}
+.tabbar button[aria-current="page"]{color:var(--tint);background:var(--surface-3)}
+
+/* segmented control */
+.segc{display:flex;background:var(--surface-3);border-radius:22px;padding:2px;gap:2px;margin:0 var(--space-4)}
+.segc button{flex:1;min-height:40px;border:0;border-radius:20px;background:transparent;font-size:var(--sb);line-height:var(--sb-l);font-weight:600;cursor:pointer;color:var(--ink)}
+.segc button[aria-pressed="true"]{background:var(--surface);box-shadow:0 1px 0 var(--rule)}
+
+/* plot */
+.plotwrap{margin:0 var(--space-4);display:flex;flex-direction:column;gap:var(--space-1)}
+.plot{position:relative;background:var(--surface);border-radius:var(--radius)}
+.plot svg{display:block}
+.plot .dot{position:absolute;width:44px;height:44px;margin:-22px 0 0 -22px;border:0;background:transparent;border-radius:22px;cursor:pointer;padding:0}
+.plot .dot[aria-pressed="true"]{box-shadow:0 0 0 2px var(--tint) inset}
+.axis{display:flex;justify-content:space-between;gap:var(--space-2);color:var(--ink-2)}
+[data-ax="5"] .axis{flex-direction:column}
+.slider{margin:0 var(--space-4);background:var(--surface);border-radius:var(--radius);padding:var(--space-3) var(--space-4);display:flex;flex-direction:column;gap:var(--space-2)}
+.slider label{display:flex;justify-content:space-between;gap:var(--space-2);flex-wrap:wrap}
+.slider input{width:100%;min-height:44px;accent-color:var(--tint);margin:0}
+
+/* sheet */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:5;border:0;padding:0;width:100%;cursor:pointer}
+.sheet{position:absolute;left:0;right:0;bottom:0;height:62%;background:var(--surface);border-radius:20px 20px 0 0;z-index:6;display:flex;flex-direction:column;box-shadow:0 -1px 0 var(--rule)}
+.sheet.large{height:calc(100% - var(--sim-top) - var(--space-2))}
+.grab{flex:none;height:20px;width:100%;border:0;background:transparent;display:flex;align-items:center;justify-content:center;cursor:pointer;padding:0;min-height:20px}
+.grab-hit{position:absolute;left:50%;top:0;width:88px;height:44px;margin-left:-44px;border:0;background:transparent;cursor:pointer;z-index:1}
+.grab i{width:36px;height:5px;border-radius:3px;background:var(--rule)}
+.sheet .sbody{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:var(--space-4);padding-bottom:calc(var(--sim-bottom) + var(--space-4))}
+.sheet .nav{position:relative;z-index:2}
+@media (prefers-reduced-motion: no-preference){
+  .sheet{animation:rise .22s ease-out}
+  @keyframes rise{from{transform:translateY(24px);opacity:.6}to{transform:none;opacity:1}}
+}
+.checks{margin:0 var(--space-4);background:var(--surface-2);border-radius:var(--radius);overflow:hidden;border:0;padding:0}
+.checks legend{padding:var(--space-3) var(--space-4) var(--space-1);color:var(--ink-2)}
+.checks label{display:flex;gap:var(--space-3);align-items:center;min-height:44px;padding:var(--space-2) var(--space-4);border-top:1px solid var(--rule);cursor:pointer}
+.checks input{width:22px;height:22px;accent-color:var(--tint);flex:none}
+textarea{margin:0 var(--space-4);min-height:150px;border:1px solid var(--rule);border-radius:var(--radius);background:var(--surface-2);color:var(--ink);font:inherit;font-size:var(--bd);line-height:var(--bd-l);padding:var(--space-3);resize:vertical}
+
+/* states */
+.state{padding:var(--space-6) var(--space-4);display:flex;flex-direction:column;gap:var(--space-4);align-items:flex-start}
+.state .btn{flex:none;min-width:200px}
+.state details summary{min-height:44px;display:flex;align-items:center;color:var(--tint);cursor:pointer}
+.state code{font-family:ui-monospace,Menlo,monospace;font-size:13px;color:var(--ink-2)}
+.progress{width:100%;height:6px;border-radius:3px;background:var(--surface-3);overflow:hidden}
+.progress i{display:block;height:100%;width:33%;background:var(--tint)}
+.skel{height:76px;border-top:1px solid var(--rule);background:var(--surface)}
+.skel:first-child{border-top:0}
+.well{display:flex;gap:var(--space-2);align-items:center}
+.well svg{width:20px;height:20px;color:var(--fine);flex:none}
+.rpage-empty{padding:var(--space-10) var(--space-6);color:var(--ink-2)}
+
+/* "New:" labels (dashed). A blind designer cannot know what exists today, so no "Today:" label is drawn. */
+body.show-new .new{outline:1.5px dashed var(--new);outline-offset:-1px;position:relative}
+body.show-new .new::after{content:attr(data-new);position:absolute;top:0;right:0;font:600 10px/14px -apple-system,system-ui,sans-serif;background:var(--new);color:var(--on-new);padding:0 4px;border-radius:0 0 0 4px;pointer-events:none;z-index:2;white-space:nowrap}
+@media (forced-colors: active){
+  .k-fine,.k-wrong{background:CanvasText}
+  .tile{border:1.5px solid CanvasText}
+}
+</style>
+</head>
+<body class="show-new">
+<div class="banner" role="note">Sample: no seller, order or figure on this page is real.</div>
+<main class="viewer">
+  <header class="vhead">
+    <h1>Seller trouble</h1>
+    <p><span class="kind">Designer kind: blind.</span> Designer seller-trouble-blind-1. The job: "Who keeps burning me?" Two ways to answer it. Each draws the folded Duo, the folded Duo at the largest text size, the open Duo and a large phone.</p>
+  </header>
+
+  <div class="controls" aria-label="Mockup controls">
+    <div class="cgroup"><span>State</span><div class="seg" id="ctl-s">
+      <button data-s="loaded">Loaded</button><button data-s="calm">All is well</button><button data-s="early">Still in the mail</button><button data-s="empty">Empty</button><button data-s="loading">Loading</button><button data-s="failed">Failed</button>
+    </div></div>
+    <div class="cgroup"><span>Theme</span><div class="seg" id="ctl-t">
+      <button data-t="system">System</button><button data-t="light">Light</button><button data-t="dark">Dark</button>
+    </div></div>
+    <div class="cgroup"><span>Device</span><div class="seg" id="ctl-d">
+      <button data-d="all">All</button><button data-d="folded">Duo folded</button><button data-d="ax5">Folded, largest text</button><button data-d="open">Duo open</button><button data-d="phone">Large phone</button>
+    </div></div>
+    <label class="chk"><input type="checkbox" id="ctl-new" checked> Show "New:" labels</label>
+    <button class="hide-btn" id="ctl-reset">Reset screens</button>
+  </div>
+  <div class="restore" id="restore" hidden><span id="restore-text"></span><button class="hide-btn" id="restore-btn">Show all options</button></div>
+
+  <section class="option" id="opt-strike" aria-labelledby="h-strike">
+    <div class="ohead">
+      <h2 id="h-strike">Strike strip</h2>
+      <p>A ranked list of sellers. Each row shows one tile per order, and the tile's shape says what went wrong. Tabs hold the sellers you stopped and the complaints you drafted.</p>
+      <button class="hide-btn" data-hide="strike">Hide Strike strip</button>
+    </div>
+    <div class="frames" data-concept="strike"></div>
+  </section>
+
+  <section class="option" id="opt-map" aria-labelledby="h-map">
+    <div class="ohead">
+      <h2 id="h-map">Burn map</h2>
+      <p>One field, no tabs. Each seller is a dot: how long their mail takes, against how many cards never came right. You drag your own line for "slow", and the dots past it are the ones burning you.</p>
+      <button class="hide-btn" data-hide="map">Hide Burn map</button>
+    </div>
+    <div class="frames" data-concept="map"></div>
+  </section>
+</main>
+
+<script>
+(function(){
+"use strict";
+/* ---------------- Sample data (made up) ---------------- */
+const TODAY = new Date("2026-11-21T12:00:00");
+const LOST_AFTER = 30;       // days with no arrival before an order counts as lost (notes item 6)
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const D = s => new Date(s + "T12:00:00");
+const fd = s => { const d = D(s); return d.getDate() + " " + MON[d.getMonth()]; };
+const ageOf = o => Math.round((TODAY - D(o.d)) / 864e5);
+const O = (d, n, got, days, wrong) => ({ d, n, got, days, wrong: wrong || 0 });
+const fineRun = (start, list) => list.map((x, i) => O(x[0], x[1], x[1], x[2]));
+
+const ALL = [
+  { id: "riverbend", name: "Riverbend Collectibles", orders: [O("2026-08-14",9,9,6),O("2026-08-30",8,8,9),O("2026-09-11",10,0,null),O("2026-09-25",7,7,21),O("2026-10-06",9,6,8),O("2026-10-19",7,0,null),O("2026-11-08",8,8,7)] },
+  { id: "northgate", name: "Northgate Card Co.", orders: [O("2026-08-20",6,6,18),O("2026-09-05",7,7,22),O("2026-09-28",5,5,16),O("2026-10-15",8,8,19),O("2026-10-29",7,7,15)] },
+  { id: "copperfox", name: "Copper Fox Games", orders: [O("2026-08-22",7,7,5),O("2026-09-18",6,4,6),O("2026-10-10",8,8,5),O("2026-11-02",5,4,7)] },
+  { id: "lantern", name: "Lantern Hobby", orders: [O("2026-09-02",4,4,8,1),O("2026-10-01",5,5,9,1),O("2026-10-27",3,3,7,1)] },
+  { id: "ember", name: "Ember & Oak", orders: [O("2026-09-09",5,5,10),O("2026-10-04",4,4,12),O("2026-10-30",5,4,11)] },
+  { id: "meadowlark", name: "Meadowlark Singles", orders: fineRun(0, [["2026-08-12",6,5],["2026-08-26",4,4],["2026-09-04",5,6],["2026-09-16",7,5],["2026-09-29",3,7],["2026-10-08",6,5],["2026-10-21",5,4],["2026-11-01",4,6],["2026-11-11",6,5]]) },
+  { id: "tidewater", name: "Tidewater Cards", orders: fineRun(0, [["2026-08-18",5,6],["2026-09-08",6,7],["2026-09-24",4,6],["2026-10-12",5,5],["2026-10-26",6,8],["2026-11-07",4,6]]) },
+  { id: "bluefin", name: "Bluefin Games", orders: fineRun(0, [["2026-09-01",3,5],["2026-09-30",5,4],["2026-10-18",4,6],["2026-11-05",3,5]]) },
+  { id: "saltmarsh", name: "Saltmarsh TCG", orders: [O("2026-11-09",6,0,null),O("2026-11-15",4,0,null)] },
+  { id: "quarry", name: "Quarry Street Cards", orders: [O("2026-11-12",5,0,null)] }
+];
+const EARLY = [
+  ALL[8], ALL[9],
+  { id: "harbor", name: "Harbor Light Cards", orders: [O("2026-11-03",7,0,null),O("2026-11-14",3,0,null)] }
+];
+
+/* ---------------- Rules ---------------- */
+function kindOf(o, T) {
+  if (o.days == null) return ageOf(o) > LOST_AFTER ? "lost" : "pending";
+  if (o.wrong > 0) return "wrong";
+  if (o.got < o.n) return "short";
+  if (o.days > T) return "slow";
+  return "fine";
+}
+function kindsOf(o, T) {
+  if (o.days == null) return [ageOf(o) > LOST_AFTER ? "lost" : "pending"];
+  const k = [];
+  if (o.wrong > 0) k.push("wrong");
+  if (o.got < o.n) k.push("short");
+  if (o.days > T) k.push("slow");
+  return k.length ? k : ["fine"];
+}
+function sum(s, T) {
+  let cards = 0, got = 0, late = 0, trouble = 0, never = 0, settledCards = 0, wrong = 0, pend = 0;
+  const kc = { lost: 0, wrong: 0, short: 0, slow: 0 };
+  const arrived = [];
+  const rows = s.orders.map(o => {
+    const ks = kindsOf(o, T), k = kindOf(o, T);
+    cards += o.n; got += o.got; wrong += o.wrong;
+    if (k === "pending") { pend++; return { o, k, ks }; }
+    settledCards += o.n;
+    if (o.days != null) arrived.push(o.days);
+    ks.forEach(x => { if (kc[x] != null) kc[x]++; });
+    const nr = k === "lost" ? o.n : (o.n - o.got) + o.wrong;
+    never += nr;
+    if (k === "lost" || ks.includes("slow")) { late += o.n; trouble += o.n; } else trouble += nr;
+    return { o, k, ks };
+  });
+  arrived.sort((a, b) => a - b);
+  const typical = arrived.length ? (arrived.length % 2 ? arrived[(arrived.length - 1) / 2] : (arrived[arrived.length / 2 - 1] + arrived[arrived.length / 2]) / 2) : null;
+  const settled = s.orders.length - pend;
+  const hurt = rows.filter(r => r.k !== "fine" && r.k !== "pending").length;
+  const worst = ["lost", "wrong", "short", "slow"].find(x => kc[x] > 0) || (settled ? "fine" : "pending");
+  return { s, rows, cards, got, late, trouble, never, settledCards, wrong, pend, settled, typical, kc, hurt, worst,
+    neverPct: settledCards ? never / settledCards : 0, burned: trouble > 0, onlyPending: settled === 0 };
+}
+function datasetFor(state) {
+  if (state === "loaded") return ALL;
+  if (state === "calm") return ALL.filter(s => !sum(s, 10).burned);
+  if (state === "early") return EARLY;
+  return [];
+}
+function rank(list) {
+  return list.slice().sort((a, b) => b.trouble - a.trouble || b.never - a.never || (b.typical || 0) - (a.typical || 0));
+}
+const KWORD = { lost: "lost", wrong: "with a wrong card", short: "short", slow: "slow" };
+function phrase(kc) {
+  const parts = [];
+  ["lost", "short", "wrong", "slow"].forEach(k => {
+    if (!kc[k]) return;
+    parts.push(kc[k] + " " + (kc[k] === 1 ? "order" : "orders") + " " + KWORD[k]);
+  });
+  if (parts.length > 1) return parts[0] + ", " + parts.slice(1).map(p => p.replace(/ orders? /, " ")).join(", ");
+  return parts[0] || "";
+}
+const plural = (n, a, b) => n + " " + (n === 1 ? a : b);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const fmtDays = d => (d == null ? "none yet" : (Number.isInteger(d) ? d : d.toFixed(1)));
+
+/* ---------------- Icons ---------------- */
+const IC = {
+  back: '<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  sellers: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="4" width="18" height="4" rx="1.5" fill="currentColor"/><rect x="3" y="10" width="13" height="4" rx="1.5" fill="currentColor"/><rect x="3" y="16" width="8" height="4" rx="1.5" fill="currentColor"/></svg>',
+  stop: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M6 18 18 6" stroke="currentColor" stroke-width="2.2"/></svg>',
+  letter: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="m4 7 8 6 8-6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linejoin="round"/></svg>',
+  check: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="currentColor"/><path d="m5.5 10.5 3 3 6-6.5" fill="none" stroke="var(--surface)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  done: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="7.5" fill="var(--ink-2)"/><path d="m4.5 8.3 2.4 2.4 4.6-5" fill="none" stroke="var(--surface)" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+};
+const tile = k => '<span class="tile k-' + k + '" aria-hidden="true"></span>';
+const KLABEL = { lost: "Lost", wrong: "Wrong", short: "Short", slow: "Slow", fine: "Fine", pending: "In the mail" };
+
+/* ---------------- Hash ---------------- */
+const DEF = { c: "all", d: "all", t: "system", s: "loaded", v: "", ax: "" };
+function readHash() {
+  const h = Object.assign({}, DEF);
+  location.hash.replace(/^#/, "").split("&").forEach(p => { const [k, v] = p.split("="); if (k && v != null) h[k] = decodeURIComponent(v); });
+  if (h.ax === "5") h.d = "ax5";
+  return h;
+}
+function writeHash(h) {
+  const out = [];
+  Object.keys(DEF).forEach(k => { if (h[k] && h[k] !== DEF[k]) out.push(k + "=" + encodeURIComponent(h[k])); });
+  const str = out.length ? "#" + out.join("&") : " ";
+  history.replaceState(null, "", str === " " ? location.pathname + location.search : str);
+}
+
+/* ---------------- App: one per device frame ---------------- */
+class App {
+  constructor(host, concept, pose, ax, primary, H) {
+    this.host = host; this.concept = concept; this.pose = pose; this.ax = ax; this.primary = primary;
+    this.st = { data: H.s, tab: "sellers", view: "list", sel: null, sheet: null, sheetFrom: null, large: false,
+      stopped: {}, drafts: {}, filter: "all", T: 10, mode: "map", copied: false };
+    const v = H.v;
+    if (v === "detail" || v === "sheet" || v === "complaint") {
+      this.st.sel = "riverbend"; this.st.view = "detail";
+      if (concept === "map" && pose !== "open") this.st.sheet = "seller";
+      if (v === "complaint") { this.st.drafts.riverbend = this.newDraft("riverbend"); this.st.large = true; this.st.sheet = "complaint"; this.st.sheetFrom = concept === "map" && pose !== "open" ? "seller" : null; }
+    }
+    if (v === "stopped" || v === "complaints") { this.st.stopped.riverbend = "2026-11-21"; this.st.drafts.riverbend = this.newDraft("riverbend"); this.st.drafts.riverbend.saved = "2026-11-21"; }
+    if (concept === "strike" && (v === "stopped" || v === "complaints")) this.st.tab = v;
+    if (concept === "map" && v === "stopped") this.st.sheet = "stopped";
+    if (concept === "map" && v === "list") this.st.mode = "list";
+    if (H.s !== "loaded" && (v === "detail" || v === "sheet" || v === "complaint")) { this.st.sel = null; this.st.view = "list"; this.st.sheet = null; }
+    host.addEventListener("click", e => this.onClick(e));
+    host.addEventListener("input", e => this.onInput(e));
+    host.addEventListener("change", e => this.onChange(e));
+    this.render();
+  }
+  get list() { return datasetFor(this.st.data).map(s => sum(s, this.st.T)); }
+  find(id) { return this.list.find(x => x.s.id === id); }
+  newDraft(id) {
+    const x = sum(ALL.find(s => s.id === id), this.st.T);
+    const picked = x.rows.map((r, i) => (r.k !== "fine" && r.k !== "pending") ? i : -1).filter(i => i >= 0);
+    return { picked, text: null, saved: null };
+  }
+  draftText(id) {
+    const x = sum(ALL.find(s => s.id === id), this.st.T), dr = this.st.drafts[id];
+    if (dr.text != null) return dr.text;
+    const lines = dr.picked.map(i => {
+      const r = x.rows[i], o = r.o;
+      if (r.k === "lost") return "- Order of " + fd(o.d) + ": " + o.n + " cards. None arrived in " + ageOf(o) + " days.";
+      const bits = [];
+      if (o.got < o.n) bits.push(o.got + " of " + o.n + " cards arrived");
+      if (o.wrong) bits.push(plural(o.wrong, "card was", "cards were") + " the wrong card");
+      if (o.days > this.st.T) bits.push("it took " + o.days + " days to arrive");
+      return "- Order of " + fd(o.d) + ": " + (bits.join(", ") || "no trouble") + ".";
+    });
+    return "Hello,\n\nThese orders from your shop had trouble:\n" + lines.join("\n") + "\n\nPlease send the missing or correct cards, or refund them.\n\nThank you.";
+  }
+
+  /* ----- events ----- */
+  onClick(e) {
+    const b = e.target.closest("[data-act]"); if (!b || !this.host.contains(b)) return;
+    const [a, arg] = b.getAttribute("data-act").split(":");
+    const st = this.st;
+    switch (a) {
+      case "open": st.sel = arg; st.view = "detail"; if (this.concept === "map" && this.pose !== "open") { st.sheet = "seller"; st.large = false; } break;
+      case "back": st.view = "list"; if (this.concept === "map") st.sel = null; break;
+      case "tab": st.tab = arg; st.view = "list"; break;
+      case "filter": st.filter = st.filter === arg ? "all" : arg; break;
+      case "clearfilter": st.filter = "all"; break;
+      case "stop": st.stopped[arg] = "2026-11-21"; break;
+      case "unstop": delete st.stopped[arg]; break;
+      case "complaint": if (!st.drafts[arg]) st.drafts[arg] = this.newDraft(arg); st.sel = arg; st.sheetFrom = st.sheet === "seller" ? "seller" : null; st.sheet = "complaint"; st.large = true; st.copied = false; break;
+      case "sheet-close": if (st.sheet === "complaint" && st.sheetFrom) { st.sheet = st.sheetFrom; st.sheetFrom = null; st.large = false; } else { st.sheet = null; if (this.concept === "map" && this.pose !== "open") st.view = "list"; } break;
+      case "sheet-done": { const dr = st.drafts[st.sel]; dr.saved = "2026-11-21"; if (dr.text == null) dr.text = this.draftText(st.sel); if (st.sheetFrom) { st.sheet = st.sheetFrom; st.sheetFrom = null; st.large = false; } else st.sheet = null; break; }
+      case "grow": st.large = !st.large; break;
+      case "copy": { const t = this.draftText(st.sel); try { navigator.clipboard && navigator.clipboard.writeText(t).catch(() => {}); } catch (err) {} st.copied = true; break; }
+      case "import": case "retry": st.data = "loaded"; break;
+      case "cancelload": st.data = "empty"; break;
+      case "mode": st.mode = arg; break;
+      case "stoppedsheet": st.sheet = "stopped"; st.large = false; break;
+      case "noop": return;
+    }
+    this.render();
+    const again = this.host.querySelector('[data-act="' + b.getAttribute("data-act") + '"]');
+    if (again && a !== "open" && a !== "tab") again.focus({ preventScroll: true });
+  }
+  onInput(e) {
+    const t = e.target;
+    if (t.matches("[data-tol]")) { this.st.T = +t.value; this.renderParts(); }
+    if (t.matches("[data-text]")) { this.st.drafts[this.st.sel].text = t.value; }
+  }
+  onChange(e) {
+    const t = e.target;
+    if (t.matches("[data-pick]")) {
+      const dr = this.st.drafts[this.st.sel], i = +t.getAttribute("data-pick");
+      dr.picked = t.checked ? dr.picked.concat(i).sort((a, b) => a - b) : dr.picked.filter(x => x !== i);
+      dr.text = null; this.render();
+    }
+  }
+
+  /* ----- shared pieces ----- */
+  status(side) {
+    const l = '<span>9:41</span>', r = '<span class="bat" aria-hidden="true"></span>';
+    if (side === "L") return '<div class="status" aria-hidden="true">' + l + '<span></span></div>';
+    if (side === "R") return '<div class="status" aria-hidden="true"><span></span>' + r + '</div>';
+    return '<div class="status" aria-hidden="true">' + l + r + '</div>';
+  }
+  summaryLine(list) {
+    const burned = list.filter(x => x.burned), pend = list.filter(x => x.onlyPending);
+    if (!burned.length) return "";
+    return '<p class="sb ink2">' + plural(burned.length, "seller", "sellers") + " burned you since 12 Aug." + (pend.length ? " " + plural(pend.length, "seller has", "sellers have") + " orders still in the mail." : "") + "</p>";
+  }
+  stateBody(kind) {
+    const st = this.st;
+    if (kind === "empty") return '<div class="state"><p class="bd">Import your order history to see which sellers burn you.</p><button class="btn btn-fill" data-act="import">Import orders</button></div>';
+    if (kind === "loading") return '<div class="state" aria-busy="true"><p class="bd">Reading your orders. File 4 of 12.</p><div class="progress" role="progressbar" aria-valuenow="33" aria-valuemin="0" aria-valuemax="100" aria-label="Reading orders"><i></i></div><button class="btn" data-act="cancelload">Stop</button></div><div class="group" aria-hidden="true"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>';
+    if (kind === "failed") return '<div class="state"><p class="bd">The order history could not be read, so no seller is judged yet.</p><button class="btn btn-fill" data-act="retry">Try again</button><details><summary class="sb">What the app said</summary><code>orders-2026-11.csv, row 214: 11 columns, expected 14.</code></details></div>';
+    return "";
+  }
+  detail(x, opts) {
+    opts = opts || {};
+    const st = this.st, id = x.s.id, stopped = st.stopped[id], dr = st.drafts[id];
+    let verdict;
+    if (x.onlyPending) verdict = "Too early to tell. " + plural(x.pend, "order is", "orders are") + " still in the mail.";
+    else if (x.burned) verdict = "Burned you on " + x.hurt + " of " + x.settled + " orders.";
+    else verdict = "No trouble on " + plural(x.settled, "order", "orders") + ".";
+    const figs = [
+      ["Orders", x.s.orders.length], ["Cards ordered", x.cards], ["Received", x.got],
+      ["Late or lost", x.late], ["Never came right", x.never, "New: lost, short or wrong"], ["Typical days", fmtDays(x.typical)]
+    ];
+    const T = st.T, MAXD = 30;
+    const orders = x.rows.slice().reverse().map(r => {
+      const o = r.o; let right, bar;
+      if (r.k === "pending") { right = "In the mail, day " + ageOf(o); bar = '<i style="width:' + Math.min(100, ageOf(o) / MAXD * 100) + '%;opacity:.4"></i>'; }
+      else if (r.k === "lost") { right = "Never came"; bar = '<i class="never"></i>'; }
+      else { right = o.days + " days"; bar = '<i class="' + (o.days > T ? "over" : "") + '" style="width:' + Math.min(100, o.days / MAXD * 100) + '%"></i>'; }
+      let mid = o.got + " of " + o.n + " cards";
+      if (r.k === "pending" || r.k === "lost") mid = o.n + " cards";
+      if (o.wrong) mid += ", " + plural(o.wrong, "wrong card", "wrong cards");
+      return '<li>' + tile(r.k) + '<span class="grow"><span class="sb">' + fd(o.d) + '</span> <span class="ft ink2 num">' + mid + '</span></span><span class="right sb num">' + right + '</span><span class="bar" aria-hidden="true">' + bar + '<b style="left:' + (T / MAXD * 100) + '%"></b></span></li>';
+    }).join("");
+    // Actions: in a bar pinned above the tab bar (thumb zone), or inline when the detail is already a bottom sheet.
+    let acts = "";
+    this._bar = "";
+    if (x.burned) {
+      const ans = [];
+      if (stopped) ans.push("You stopped buying from them on " + fd(stopped) + ".");
+      if (dr && dr.saved) ans.push("Complaint saved " + fd(dr.saved) + ". Send it to them yourself.");
+      acts = (ans.length ? '<p class="answer ft ink2" role="status">' + IC.done + '<span>' + ans.join(" ") + '</span></p>' : "") +
+        '<div class="actions">' +
+        (stopped ? '<button class="btn" data-act="unstop:' + id + '">Start buying again</button>'
+                 : '<button class="btn btn-stop new" data-new="New: stop list" data-act="stop:' + id + '">Stop buying</button>') +
+        '<button class="btn btn-fill new" data-new="New: complaint" data-act="complaint:' + id + '">' + (dr && dr.saved ? "Edit complaint" : "Draft complaint") + '</button></div>';
+      if (opts.bar) { this._bar = '<div class="actbar' + (opts.tabbed ? " over-tabs" : "") + '">' + acts + '</div>'; acts = ""; }
+    }
+    return '<div class="stack-lg" style="padding-top:var(--space-2)">' +
+      '<div class="verdict stack"><p class="t3">' + verdict + '</p>' +
+      '<div class="strip big new" data-new="New: strike strip" aria-hidden="true">' + x.rows.map(r => tile(r.k)).join("") + '</div></div>' +
+      (acts ? '<div class="stack">' + acts + '</div>' : "") +
+      '<div class="figs num">' + figs.map(f => '<div' + (f[2] ? ' class="new" data-new="' + f[2] + '"' : "") + '><span class="ft ink2">' + f[0] + '</span><span class="v">' + f[1] + '</span></div>').join("") + '</div>' +
+      '<div class="stack"><div class="ghead ft"><span>Each order, newest first</span><span>Days to arrive</span></div><ul class="orders">' + orders + '</ul>' +
+      '<p class="ft ink2 pad">The dark tick on each bar marks ' + T + ' days, where an order turns slow.</p></div>' +
+      '</div>';
+  }
+  chips(list) {
+    const st = this.st, kc = { lost: 0, short: 0, wrong: 0, slow: 0 };
+    list.forEach(x => ["lost", "short", "wrong", "slow"].forEach(k => { if (x.kc[k]) kc[k]++; }));
+    const cs = ["lost", "short", "wrong", "slow"].filter(k => kc[k] || st.filter === k);
+    if (!cs.length) return "";
+    return '<div class="chips new" data-new="New: filters are the key" role="group" aria-label="Show sellers by kind of trouble">' +
+      cs.map(k => '<button class="chip" aria-pressed="' + (st.filter === k) + '" data-act="filter:' + k + '">' + tile(k) + '<span>' + KLABEL[k] + (k === "slow" ? ", over " + st.T + " days" : "") + '</span><span class="ink2 num">' + kc[k] + '</span></button>').join("") + '</div>';
+  }
+  sellerRow(x, current) {
+    const id = x.s.id, stopped = this.st.stopped[id];
+    return '<button class="row" data-act="open:' + id + '"' + (current ? ' aria-current="true"' : "") + '>' +
+      '<span class="grow"><span class="hl">' + esc(x.s.name) + '</span>' +
+      '<span class="strip" aria-hidden="true">' + x.rows.map(r => tile(r.k)).join("") + '</span>' +
+      '<span class="ft ink2">' + (x.burned ? phrase(x.kc) : x.onlyPending ? plural(x.pend, "order", "orders") + " in the mail" : plural(x.settled, "order", "orders") + ", no trouble") +
+      (stopped ? ' <span class="stopped-mark">' + IC.stop + ' stopped</span>' : "") + '</span></span>' +
+      (x.burned ? '<span class="fig"><span class="hl num">' + x.trouble + '</span><span class="c1 ink2 num">of ' + x.cards + '</span></span>' : "") +
+      IC.chev + '</button>';
+  }
+
+  /* ----- Strike strip ----- */
+  strikeList(selId) {
+    const st = this.st;
+    let h = '<div class="large-title"><h1 class="lt">Sellers</h1>';
+    if (["empty", "loading", "failed"].includes(st.data)) return h + '</div>' + this.stateBody(st.data);
+    const list = this.list, burned = rank(list.filter(x => x.burned)), pend = list.filter(x => x.onlyPending), fine = list.filter(x => !x.burned && !x.onlyPending);
+    if (st.data === "early") {
+      h += '</div><div class="state"><p class="bd">Too early to tell. All ' + pend.reduce((a, x) => a + x.pend, 0) + ' orders are still in the mail.</p><p class="sb ink2">A seller shows here once an order arrives, or once one has waited ' + LOST_AFTER + ' days.</p></div>';
+      return h + '<div class="stack"><div class="ghead ft"><span>Still in the mail</span></div><div class="group">' + pend.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</div></div>';
+    }
+    if (!burned.length) {
+      h += '</div><div class="state"><p class="well t3">' + IC.check + 'All is well.</p></div>';
+    } else h += this.summaryLine(list) + '</div>';
+    let shown = burned;
+    if (st.filter !== "all") shown = burned.filter(x => x.kc[st.filter] > 0);
+    h += this.chips(burned);
+    if (burned.length) {
+      h += '<div class="stack"' + (this.primary ? ' id="strike-choice"' : "") + '><div class="ghead ft"><span>Burned you</span><span>Cards with trouble</span></div>';
+      if (!shown.length) h += '<div class="state"><p class="bd">No seller has this kind of trouble.</p><button class="btn" data-act="clearfilter">Show all sellers</button></div>';
+      else h += '<div class="group new" data-new="New: strike strip">' + shown.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</div>';
+      h += '</div>';
+    }
+    if (pend.length) h += '<div class="stack"><div class="ghead ft"><span>Too early to tell</span></div><div class="group">' + pend.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</div></div>';
+    if (fine.length) h += '<details class="fine"' + (burned.length ? "" : " open") + '><summary class="bd">' + plural(fine.length, "seller", "sellers") + ' with no trouble</summary>' + fine.map(x => this.sellerRow(x, x.s.id === selId)).join("") + '</details>';
+    return h;
+  }
+  strikeStopped() {
+    const ids = Object.keys(this.st.stopped);
+    let h = '<div class="large-title"><h1 class="lt">Stopped</h1></div>';
+    if (!ids.length) return h + '<div class="state"><p class="bd">Sellers you stop buying from show here.</p><button class="btn" data-act="tab:sellers">Go to Sellers</button></div>';
+    return h + '<div class="group new" data-new="New: stop list">' + ids.map(id => { const x = sum(ALL.find(s => s.id === id), this.st.T);
+      return '<div class="row" style="cursor:default"><span class="grow"><span class="hl">' + esc(x.s.name) + '</span><span class="ft ink2">Since ' + fd(this.st.stopped[id]) + ". " + phrase(x.kc) + '</span></span></div>' +
+        '<div class="actions"><button class="btn" data-act="unstop:' + id + '">Start buying again</button></div>'; }).join("") + '</div>';
+  }
+  strikeComplaints() {
+    const ids = Object.keys(this.st.drafts).filter(id => this.st.drafts[id].saved);
+    let h = '<div class="large-title"><h1 class="lt">Complaints</h1></div>';
+    if (!ids.length) return h + '<div class="state"><p class="bd">Complaints you draft show here.</p><button class="btn" data-act="tab:sellers">Go to Sellers</button></div>';
+    return h + '<div class="group new" data-new="New: complaint">' + ids.map(id => { const x = ALL.find(s => s.id === id), dr = this.st.drafts[id];
+      return '<button class="row" data-act="complaint:' + id + '"><span class="grow"><span class="hl">' + esc(x.name) + '</span><span class="ft ink2">Saved ' + fd(dr.saved) + ", " + plural(dr.picked.length, "order", "orders") + '</span></span>' + IC.chev + '</button>'; }).join("") + '</div>';
+  }
+  tabbar() {
+    const t = this.st.tab, b = (id, label, ic) => '<button data-act="tab:' + id + '"' + (t === id ? ' aria-current="page"' : "") + '>' + ic + '<span>' + label + '</span></button>';
+    return '<nav class="tabbar" aria-label="Sections">' + b("sellers", "Sellers", IC.sellers) + b("stopped", "Stopped", IC.stop) + b("complaints", "Complaints", IC.letter) + '</nav>';
+  }
+  complaintSheet() {
+    const st = this.st, id = st.sel, x = sum(ALL.find(s => s.id === id), st.T), dr = st.drafts[id];
+    const troubled = x.rows.map((r, i) => ({ r, i })).filter(z => z.r.k !== "fine" && z.r.k !== "pending");
+    return '<button class="scrim" aria-label="Close sheet" data-act="sheet-close"></button>' +
+      '<div class="sheet' + (st.large ? " large" : "") + '" role="dialog" aria-modal="true" aria-label="Complaint to ' + esc(x.s.name) + '">' +
+      '<button class="grab-hit" data-act="grow" aria-label="' + (st.large ? "Shrink sheet" : "Expand sheet") + '"></button><div class="grab" aria-hidden="true"><i></i></div>' +
+      '<div class="nav"><button class="tb" data-act="sheet-close">Close</button><span class="title">Complaint</span><button class="tb tb-prom" data-act="sheet-done">Done</button></div>' +
+      '<div class="sbody"><p class="sb ink2 pad">To ' + esc(x.s.name) + '. Close keeps what you typed. Done saves it to Complaints.</p>' +
+      '<fieldset class="checks"><legend class="ft">Orders to include</legend>' + troubled.map(z => '<label class="sb">' +
+        '<input type="checkbox" data-pick="' + z.i + '"' + (dr.picked.includes(z.i) ? " checked" : "") + '>' + tile(z.r.k) + '<span>' + fd(z.r.o.d) + ', ' + z.r.o.n + ' cards</span></label>').join("") + '</fieldset>' +
+      '<label class="ft ink2 pad" for="ta-' + this.uid + '">Message</label><textarea id="ta-' + this.uid + '" data-text>' + esc(this.draftText(id)) + '</textarea>' +
+      '<div class="pad"><button class="btn" style="width:100%" data-act="copy">' + (st.copied ? "Copied" : "Copy message") + '</button></div>' +
+      '<p class="ft ink2 pad">This app does not send it. Paste it into the seller\'s message page.</p></div></div>';
+  }
+  renderStrike() {
+    const st = this.st, P = this.pose;
+    if (P === "open") {
+      const list = this.list, burned = rank(list.filter(x => x.burned));
+      let selId = st.sel || (burned[0] && burned[0].s.id) || null;
+      const left = st.tab === "sellers" ? this.strikeList(selId) : st.tab === "stopped" ? this.strikeStopped() : this.strikeComplaints();
+      const x = selId ? this.find(selId) : null;
+      this._bar = "";
+      const right = x ? '<div class="nav"><span class="title">' + esc(x.s.name) + '</span></div>' + this.detail(x, { bar: this.ax !== "5" })
+        : '<p class="rpage-empty bd">' + (["empty", "loading", "failed"].includes(st.data) ? "Each seller's orders show on this page." : "Pick a seller to see each order.") + '</p>';
+      const bar = this._bar;
+      if (!st.sel && selId) st.sel = selId;
+      return '<div class="page" data-page="left"><div class="scr">' + this.status("L") + '<div class="body tabbed">' + left + '</div>' + this.tabbar() + '</div></div>' +
+        '<div class="hinge" aria-hidden="true"></div>' +
+        '<div class="page" data-page="right"><div class="scr">' + this.status("R") + '<div class="body plain' + (bar ? " has-bar" : "") + '">' + right + '</div>' + bar + (st.sheet === "complaint" ? this.complaintSheet() : "") + '</div></div>';
+    }
+    let main, bar = "";
+    if (st.tab === "sellers" && st.view === "detail" && st.sel) {
+      const x = this.find(st.sel);
+      main = '<div class="nav"><button class="tb" data-act="back">' + IC.back + 'Sellers</button><span class="title">' + esc(x.s.name) + '</span><span style="width:44px"></span></div>' + this.detail(x, { bar: this.ax !== "5", tabbed: true });
+      bar = this._bar;
+    } else main = st.tab === "sellers" ? this.strikeList(null) : st.tab === "stopped" ? this.strikeStopped() : this.strikeComplaints();
+    return '<div class="scr">' + this.status() + '<div class="body tabbed' + (bar ? " has-bar" : "") + '">' + main + '</div>' + bar + this.tabbar() + (st.sheet === "complaint" ? this.complaintSheet() : "") + '</div>';
+  }
+
+  /* ----- Burn map ----- */
+  plot(list, w, h) {
+    const st = this.st, T = st.T, ax5 = this.ax === "5";
+    const L = 34, R = 12, TP = 14, B = 26, XM = 30, YM = 40;
+    const X = d => L + Math.min(d, XM) / XM * (w - L - R), Y = p => TP + (1 - Math.min(p, YM) / YM) * (h - TP - B);
+    const bandTop = Y(3);
+    let s = '<svg width="' + w + '" height="' + h + '" viewBox="0 0 ' + w + ' ' + h + '" role="img" aria-label="Sellers by days to arrive and share of cards that never came right">';
+    s += '<rect x="' + L + '" y="' + TP + '" width="' + (w - L - R) + '" height="' + (h - TP - B) + '" fill="var(--zone)"/>';
+    s += '<rect x="' + L + '" y="' + bandTop + '" width="' + (X(T) - L) + '" height="' + (Y(0) - bandTop) + '" fill="var(--safe)"/>';
+    [0, 10, 20, 30].forEach(d => { s += '<line x1="' + X(d) + '" x2="' + X(d) + '" y1="' + TP + '" y2="' + Y(0) + '" stroke="var(--rule)" stroke-width="1"/>'; if (!ax5) s += '<text x="' + X(d) + '" y="' + (h - 8) + '" font-size="11" text-anchor="middle" fill="var(--ink-2)">' + d + '</text>'; });
+    [10, 20, 30, 40].forEach(p => { s += '<line x1="' + L + '" x2="' + (w - R) + '" y1="' + Y(p) + '" y2="' + Y(p) + '" stroke="var(--rule)" stroke-width="1"/>'; if (!ax5) s += '<text x="' + (L - 6) + '" y="' + (Y(p) + 4) + '" font-size="11" text-anchor="end" fill="var(--ink-2)">' + p + '%</text>'; });
+    s += '<line x1="' + X(T) + '" x2="' + X(T) + '" y1="' + (TP - 4) + '" y2="' + Y(0) + '" stroke="var(--ink)" stroke-width="2" stroke-dasharray="4 3"/>';
+    if (!ax5) {
+      s += '<text x="' + (X(T) + 4) + '" y="' + (TP + 10) + '" font-size="12" font-weight="600" fill="var(--ink)">' + T + ' days</text>';
+      s += '<text x="' + (L + 6) + '" y="' + (bandTop - 5) + '" font-size="12" fill="var(--ink-2)">Fine</text>';
+      s += '<text x="' + (w - R - 6) + '" y="' + (TP + 26) + '" font-size="12" font-weight="600" text-anchor="end" fill="var(--lost)">Burning you</text>';
+    }
+    const plotted = list.filter(x => !x.onlyPending);
+    const btns = [];
+    plotted.forEach(x => {
+      const cx = X(x.typical || 0), cy = x.never ? Y(x.neverPct * 100) : (Y(0) + bandTop) / 2;
+      const r = x.burned ? Math.min(12, 4 + x.s.orders.length) : 4;
+      const stopped = st.stopped[x.s.id];
+      const col = x.burned ? "var(--" + x.worst + ")" : "var(--fine)";
+      s += stopped ? '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="none" stroke="var(--ink-2)" stroke-width="2"/><line x1="' + (cx - r) + '" y1="' + (cy + r) + '" x2="' + (cx + r) + '" y2="' + (cy - r) + '" stroke="var(--ink-2)" stroke-width="2"/>'
+        : '<circle cx="' + cx + '" cy="' + cy + '" r="' + r + '" fill="' + col + '" fill-opacity="' + (x.burned ? .9 : .6) + '"/>';
+      if (x.burned) {
+        if (!ax5) {
+          const right = cx < w - 150;
+          s += '<text x="' + (right ? cx + r + 5 : cx - r - 5) + '" y="' + (x.never ? cy + 4 : cy - r - 6) + '" font-size="12" ' + (right ? "" : 'text-anchor="end" ') + 'fill="var(--ink)">' + esc(x.s.name.split(" ")[0]) + '</text>';
+        }
+        btns.push('<button class="dot" style="left:' + cx + 'px;top:' + cy + 'px" data-act="open:' + x.s.id + '" aria-pressed="' + (st.sel === x.s.id) + '" aria-label="' + esc(x.s.name) + ': ' + Math.round(x.neverPct * 100) + '% of cards never came right, about ' + fmtDays(x.typical) + ' days' + (stopped ? ', stopped' : '') + '"></button>');
+      }
+    });
+    s += '</svg>';
+    return '<div class="plot new" data-new="New: burn map"' + (this.primary ? ' id="map-choice"' : "") + ' style="width:' + w + 'px;height:' + h + 'px">' + s + btns.join("") + '</div>' +
+      '<div class="axis c1"><span>Across: typical days to arrive</span><span>Up: share of cards that never came right</span></div>';
+  }
+  mapRanked(list, compact) {
+    const st = this.st, burned = rank(list.filter(x => x.burned)), pend = list.filter(x => x.onlyPending), fine = list.filter(x => !x.burned && !x.onlyPending);
+    let h = "";
+    if (burned.length) h += '<div class="stack"><div class="ghead ft"><span>Burning you, worst first</span><span>Cards with trouble</span></div><div class="group">' + burned.map(x => this.mapRow(x)).join("") + '</div></div>';
+    else h += '<div class="state" style="padding-top:0;padding-bottom:0"><p class="well t3">' + IC.check + 'All is well.</p></div>';
+    if (pend.length) h += '<p class="sb ink2 pad">' + plural(pend.length, "seller is", "sellers are") + ' not on the map yet: every order is still in the mail. ' + pend.map(x => esc(x.s.name)).join(", ") + '.</p>';
+    if (fine.length) h += '<details class="fine"><summary class="bd">' + plural(fine.length, "seller", "sellers") + ' in the Fine corner</summary>' + fine.map(x => this.mapRow(x)).join("") + '</details>';
+    return h;
+  }
+  mapRow(x) {
+    const id = x.s.id, stopped = this.st.stopped[id];
+    return '<button class="row" data-act="open:' + id + '"' + (this.st.sel === id ? ' aria-current="true"' : "") + '>' + tile(x.burned ? x.worst : "fine") +
+      '<span class="grow"><span class="hl">' + esc(x.s.name) + '</span><span class="ft ink2">' + (x.burned ? phrase(x.kc) : plural(x.settled, "order", "orders") + ", about " + fmtDays(x.typical) + " days") +
+      (stopped ? ' <span class="stopped-mark">' + IC.stop + ' stopped</span>' : "") + '</span></span>' +
+      (x.burned ? '<span class="fig"><span class="hl num">' + x.trouble + '</span><span class="c1 ink2 num">of ' + x.cards + '</span></span>' : "") + IC.chev + '</button>';
+  }
+  slider() {
+    const T = this.st.T;
+    return '<div class="slider new" data-new="New: your slow line"><label class="sb" for="tol-' + this.uid + '"><span>Slow means over</span><strong class="num" data-part="tolv">' + T + ' days</strong></label>' +
+      '<input id="tol-' + this.uid + '" type="range" min="5" max="30" step="1" value="' + T + '" data-tol aria-valuetext="' + T + ' days"></div>';
+  }
+  mapMain(plotW, plotH, withList) {
+    const st = this.st, nStop = Object.keys(st.stopped).length;
+    let h = '<div class="tbar-row"><button class="tb" data-act="stoppedsheet">' + IC.stop.replace("<svg", '<svg style="width:20px;height:20px"') + 'Stopped' + (nStop ? " " + nStop : "") + '</button></div>';
+    h += '<div class="large-title" style="padding-top:0"><h1 class="lt">Burn map</h1>';
+    if (["empty", "loading", "failed"].includes(st.data)) return h + '</div>' + this.stateBody(st.data);
+    const list = this.list;
+    if (st.data === "early") {
+      const pend = list.filter(x => x.onlyPending);
+      return h + '</div><div class="state"><p class="bd">Too early to tell. All ' + pend.reduce((a, x) => a + x.pend, 0) + ' orders are still in the mail.</p><p class="sb ink2">A seller lands on the map once an order arrives, or once one has waited ' + LOST_AFTER + ' days. Waiting on: ' + pend.map(x => esc(x.s.name)).join(", ") + '.</p></div>';
+    }
+    h += this.summaryLine(list) + '</div>';
+    h += '<div class="segc" role="group" aria-label="View"><button data-act="mode:map" aria-pressed="' + (st.mode === "map") + '">Map</button><button data-act="mode:list" aria-pressed="' + (st.mode === "list") + '">List</button></div>';
+    h += '<div class="stack-lg" style="padding-top:var(--space-3)">';
+    if (st.mode === "map") h += '<div class="plotwrap" data-part="plot">' + this.plot(list, plotW, plotH) + '</div>';
+    h += this.slider();
+    if (withList || st.mode === "list") h += '<div data-part="ranked" class="stack-lg">' + this.mapRanked(list) + '</div>';
+    return h + '</div>';
+  }
+  sellerSheet() {
+    const st = this.st, x = this.find(st.sel);
+    return '<button class="scrim" aria-label="Close sheet" data-act="sheet-close"></button>' +
+      '<div class="sheet' + (st.large ? " large" : "") + '" role="dialog" aria-modal="true" aria-label="' + esc(x.s.name) + '">' +
+      '<button class="grab-hit" data-act="grow" aria-label="' + (st.large ? "Shrink sheet" : "Expand sheet") + '"></button><div class="grab" aria-hidden="true"><i></i></div>' +
+      '<div class="nav"><button class="tb" data-act="sheet-close">Close</button><span class="title">' + esc(x.s.name) + '</span><span style="width:44px"></span></div>' +
+      '<div class="sbody">' + this.detail(x) + '</div></div>';
+  }
+  stoppedSheet() {
+    const ids = Object.keys(this.st.stopped);
+    const body = ids.length ? '<div class="group new" data-new="New: stop list">' + ids.map(id => { const x = sum(ALL.find(s => s.id === id), this.st.T);
+      return '<div class="row" style="cursor:default"><span class="grow"><span class="hl">' + esc(x.s.name) + '</span><span class="ft ink2">Since ' + fd(this.st.stopped[id]) + '</span></span></div><div class="actions"><button class="btn" data-act="unstop:' + id + '">Start buying again</button></div>'; }).join("") + '</div>'
+      : '<div class="state"><p class="bd">Sellers you stop buying from show here. Tap a dot to stop one.</p><button class="btn" data-act="sheet-close">Back to the map</button></div>';
+    return '<button class="scrim" aria-label="Close sheet" data-act="sheet-close"></button><div class="sheet" role="dialog" aria-modal="true" aria-label="Stopped sellers">' +
+      '<button class="grab-hit" data-act="grow" aria-label="Expand sheet"></button><div class="grab" aria-hidden="true"><i></i></div>' +
+      '<div class="nav"><button class="tb" data-act="sheet-close">Close</button><span class="title">Stopped</span><span style="width:44px"></span></div><div class="sbody">' + body + '</div></div>';
+  }
+  renderMap() {
+    const st = this.st, P = this.pose;
+    const sheet = () => st.sheet === "seller" && st.sel ? this.sellerSheet() : st.sheet === "complaint" ? this.complaintSheet() : st.sheet === "stopped" ? this.stoppedSheet() : "";
+    if (P === "open") {
+      const pw = 455.5 - 32;
+      const left = this.mapMain(Math.floor(pw), 330, false);
+      const list = this.list;
+      let right, rbar = "";
+      if (["empty", "loading", "failed", "early"].includes(st.data)) right = '<p class="rpage-empty bd">The sellers burning you are listed on this page.</p>';
+      else if (st.sel && this.find(st.sel)) { const x = this.find(st.sel); right = '<div class="nav"><button class="tb" data-act="back">' + IC.back + 'All sellers</button><span class="title"></span></div><div class="large-title" style="padding-top:0"><h2 class="t2">' + esc(x.s.name) + '</h2></div>' + this.detail(x, { bar: this.ax !== "5" }); rbar = this._bar; }
+      else right = '<div class="large-title"><h2 class="t2">Burning you</h2></div><div data-part="ranked" class="stack-lg">' + this.mapRanked(list).replace('<span>Burning you, worst first</span>', '<span>Worst first</span>') + '</div>';
+      const leftSheet = st.sheet === "stopped" ? this.stoppedSheet() : "";
+      const rightSheet = st.sheet === "complaint" ? this.complaintSheet() : "";
+      return '<div class="page" data-page="left"><div class="scr">' + this.status("L") + '<div class="body plain">' + left + '</div>' + leftSheet + '</div></div>' +
+        '<div class="hinge" aria-hidden="true"></div>' +
+        '<div class="page" data-page="right"><div class="scr">' + this.status("R") + '<div class="body plain' + (rbar ? " has-bar" : "") + '">' + right + '</div>' + rbar + rightSheet + '</div></div>';
+    }
+    const w = Math.max(280, Math.floor(this.host.clientWidth || 466) - 32);
+    return '<div class="scr">' + this.status() + '<div class="body plain">' + this.mapMain(w, this.ax === "5" ? 300 : 250, true) + '</div>' + sheet() + '</div>';
+  }
+  renderParts() {
+    // Slider drag: redraw the plot and the list only, so the thumb stays under the finger.
+    const st = this.st, list = this.list;
+    const v = this.host.querySelector('[data-part="tolv"]'); if (v) v.textContent = st.T + " days";
+    const inp = this.host.querySelector("[data-tol]"); if (inp) inp.setAttribute("aria-valuetext", st.T + " days");
+    const p = this.host.querySelector('[data-part="plot"]');
+    if (p) { const pl = p.querySelector(".plot"); p.innerHTML = this.plot(list, pl.offsetWidth, pl.offsetHeight); }
+    this.host.querySelectorAll('[data-part="ranked"]').forEach(r => {
+      if (this.pose === "open" && r.closest('[data-page="right"]')) r.innerHTML = this.mapRanked(list).replace('<span>Burning you, worst first</span>', '<span>Worst first</span>');
+      else r.innerHTML = this.mapRanked(list);
+    });
+    const sum1 = this.host.querySelector(".large-title .sb"); if (sum1) sum1.outerHTML = this.summaryLine(list) || '<p class="sb ink2"></p>';
+  }
+  render() {
+    this.uid = this.uid || (Math.random().toString(36).slice(2, 8));
+    const ta = this.host.querySelector("textarea"), keep = ta && document.activeElement === ta;
+    this.host.innerHTML = this.concept === "strike" ? this.renderStrike() : this.renderMap();
+    if (keep) { const n = this.host.querySelector("textarea"); if (n) n.focus(); }
+  }
+}
+
+/* ---------------- Viewer ---------------- */
+const FRAMES = [
+  { key: "folded", device: "iphone-duo-folded", pose: "folded", ax: "", cap: "Duo folded, 466 × 678 pt (brief's size). Default text size." },
+  { key: "ax5", device: "iphone-duo-folded", pose: "folded", ax: "5", cap: "Duo folded at the largest accessibility text size (AX5: body 53 pt)." },
+  { key: "open", device: "iphone-duo-unfolded", pose: "open", ax: "", cap: "Duo open, 951 × 669 pt. Hinge gap from x 455.5 to 495.5; nothing crosses it." },
+  { key: "phone", device: "iphone-regular", pose: "phone", ax: "", cap: "Large phone. No size is written for it, so it is drawn at the brief's folded size. Drag the corner to resize." }
+];
+let H = readHash(), apps = [], hiddenOpts = new Set();
+function build() {
+  apps = [];
+  document.querySelectorAll(".frames").forEach(fr => {
+    const concept = fr.getAttribute("data-concept");
+    fr.innerHTML = "";
+    FRAMES.forEach((f, i) => {
+      const wrap = document.createElement("div"); wrap.className = "fwrap"; wrap.setAttribute("data-frame", f.key);
+      const dev = document.createElement("div"); dev.className = "device"; dev.setAttribute("data-device", f.device); if (f.ax) dev.setAttribute("data-ax", f.ax);
+      dev.setAttribute("aria-label", (concept === "strike" ? "Strike strip" : "Burn map") + ", " + f.cap);
+      const cap = document.createElement("div"); cap.className = "fcap"; cap.textContent = f.cap;
+      wrap.appendChild(dev); wrap.appendChild(cap); fr.appendChild(wrap);
+      apps.push(new App(dev, concept, f.pose, f.ax, i === 0, H));
+      if (f.pose === "phone" && concept === "map" && "ResizeObserver" in window) {
+        let lastW = 0; new ResizeObserver(() => { if (Math.abs(dev.clientWidth - lastW) > 8) { lastW = dev.clientWidth; const a = apps.find(x => x.host === dev); if (a) a.render(); } }).observe(dev);
+      }
+    });
+  });
+  applyView();
+}
+function applyView() {
+  const root = document.documentElement;
+  if (H.t === "light" || H.t === "dark") root.setAttribute("data-theme", H.t); else root.removeAttribute("data-theme");
+  document.querySelectorAll(".fwrap").forEach(w => { w.hidden = !(H.d === "all" || H.d === w.getAttribute("data-frame")); });
+  ["strike", "map"].forEach(c => {
+    const off = (H.c !== "all" && H.c !== c) || hiddenOpts.has(c);
+    document.getElementById("opt-" + c).hidden = off;
+  });
+  const anyHidden = ["strike", "map"].filter(c => document.getElementById("opt-" + c).hidden);
+  document.getElementById("restore").hidden = !anyHidden.length;
+  document.getElementById("restore-text").textContent = anyHidden.length ? "Hidden: " + anyHidden.map(c => c === "strike" ? "Strike strip" : "Burn map").join(", ") + "." : "";
+  [["ctl-s", "s"], ["ctl-t", "t"], ["ctl-d", "d"]].forEach(([id, k]) => document.querySelectorAll("#" + id + " button").forEach(b => b.setAttribute("aria-pressed", String(b.getAttribute("data-" + k) === H[k]))));
+}
+document.getElementById("ctl-s").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; H.s = b.dataset.s; H.v = ""; writeHash(H); build(); });
+document.getElementById("ctl-t").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; H.t = b.dataset.t; writeHash(H); applyView(); });
+document.getElementById("ctl-d").addEventListener("click", e => { const b = e.target.closest("button"); if (!b) return; H.d = b.dataset.d; H.ax = H.d === "ax5" ? "5" : ""; writeHash(H); applyView(); });
+document.getElementById("ctl-new").addEventListener("change", e => document.body.classList.toggle("show-new", e.target.checked));
+document.getElementById("ctl-reset").addEventListener("click", () => { H.v = ""; writeHash(H); build(); });
+document.querySelectorAll("[data-hide]").forEach(b => b.addEventListener("click", () => { hiddenOpts.add(b.dataset.hide); applyView(); }));
+document.getElementById("restore-btn").addEventListener("click", () => { hiddenOpts.clear(); if (H.c !== "all") { H.c = "all"; writeHash(H); } applyView(); });
+window.addEventListener("hashchange", () => { const n = readHash(); const rebuild = n.s !== H.s || n.v !== H.v; H = n; rebuild ? build() : applyView(); });
+build();
+})();
+</script>
+</body>
+</html>

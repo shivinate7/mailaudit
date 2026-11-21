@@ -16,17 +16,22 @@ Add these to the file URL after `#`. `c` is the option, `s` the state, `d` the d
 
 - Ledger: `c=ledger&s=` `list`, `detail`, `edit`, `review`, `applied`, `failed`, `stamp`, `stamp-review`, `range`, `range-invalid`, `empty`, `changes`, `undo-blocked`.
 - Correction slip: `c=slip&s=` `start`, `date-blank`, `date-pick`, `date-multi`, `date-ready`, `filed`, `failed`, `stamp`, `stamp-date`, `range`, `range-invalid`, `range-empty`, `journal`, `reverse-blocked`.
-- Day board: `c=board&s=` `start`, `day`, `multi`, `move`, `moved`, `failed`, `stamp`, `ordered`, `ordered-empty`, `changes`.
+- Day board: `c=board&s=` `start`, `day`, `multi`, `move`, `moved`, `failed`, `stamp`, `ordered`, `ordered-stamp`, `ordered-empty`, `changes`.
 
 Example: `#c=slip&s=date-pick&d=open&t=dark`. Focus ids for the waiting page: `concept-ledger`,
 `concept-slip`, `concept-board`. Each option has a Hide control in the shell's Option row.
+
+Labels: each option carries one dashed "New:" label, in the folded frame, on the part that carries
+the choice. "New labels" in the shell hides them. There is no "Today:" label: a blind designer does
+not see the current screen, so it cannot know which parts exist today.
 
 ## Sizes and sources
 
 - Duo folded 466 by 678, and Duo open 951 by 669 with the hinge from x 455.5 to x 495.5. These come
   from the brief: `layout.py devices` printed `unknown` for this repo. In the open pose each page is its
-  own 455.5-wide box. A check in the page (`#check=1`) walks each element and fails when one crosses the
-  hinge. It passed on every state I listed above.
+  own 455.5-wide box. A check in the page (`hingeCheck()`, or `#check=1`) walks each element and fails
+  when one crosses the hinge. It passed on all 38 states above. It went red on a planted element that
+  crosses the hinge, so it does catch the defect.
 - Large phone 440 by 956: my pick. Neither the brief nor the device list gives a size.
 - Status bar and home indicator insets (44 and 20 on the Duo, 62 and 34 on the phone) are my picks.
   No Apple page I read gives them. The CSS reads `env(safe-area-inset-*)` first.
@@ -78,9 +83,10 @@ Example: `#c=slip&s=date-pick&d=open&t=dark`. Focus ids for the waiting page: `c
    really came. A bar at the bottom shows the change, with Cancel and "Move it". The same calendar,
    switched to "Order days", picks a range with two taps. A second tap that falls before the first one
    becomes the start, so the range is never in the wrong order.
-   Gain: the job ("the wrong day") is literally a day on a calendar. Loss: a package with no received
-   date shows only under Order days, and its stamp cannot be changed there in this draw. Pick: show it,
-   and add a stamp control to the Order days rows if this option survives.
+   A package with no received date shows only under Order days. Its row has the same stamp control
+   (state `ordered-stamp`).
+   Gain: the job ("the wrong day") is literally a day on a calendar. Loss: on the folded screen, the
+   picked day's packages sit below the calendar, so the person scrolls to reach them. Pick: show it.
 
 8. **Several received dates.** Ledger lists each date as its own row. Slip asks "Which received date is
    wrong?" when a package has more than one. Day board says "Arrival 2 of 2; the other came Nov 4".
@@ -99,7 +105,11 @@ Example: `#c=slip&s=date-pick&d=open&t=dark`. Focus ids for the waiting page: `c
 
 11. **Stamp states are my assumption.** The brief names a stamp state but not its values. I drew four:
     Expected, Received, Part received and Overdue, each with its own icon shape (outline, filled with a
-    tick, half filled, dashed with a mark). Owner grant: yes. The real set replaces these.
+    tick, half filled, dashed with a mark). In lists the icon stands alone; the detail and the pickers
+    show the word.
+    Gain: four states cover the job's cases, and each shape reads without colour. Loss: if the real set
+    differs, every picker and icon changes. Pick: use these until the owner gives the real set.
+    Owner grant: yes.
 
 12. **Largest text (AX5).** Seven calendar columns cannot hold 53 pt digits, so the calendar becomes a
     day stepper ("One day earlier", "One day later", "Today"), and the board becomes a list of days.
@@ -116,8 +126,10 @@ Example: `#c=slip&s=date-pick&d=open&t=dark`. Focus ids for the waiting page: `c
 14. **Save failed.** Each option has a failed state: "Not saved. Nothing changed." with Try again, at the
     button that was pressed. Gain: a failure never looks like a success. Loss: none. Pick: keep it.
 
-15. **Haptics.** Not drawn. A move, a stamp change and a filing should each give a light haptic on save
-    (house rule ux-haptics-feel-substantial). The builder adds them; a mockup cannot show one.
+15. **Haptics.** A move, a stamp change and a filing each give a light haptic on save (house rule
+    ux-haptics-feel-substantial). A mockup cannot show one, so none is drawn.
+    Gain: a save feels like it landed, even when the eye is elsewhere. Loss: none seen. Pick: the
+    builder adds them.
 
 ## Run notes
 
@@ -125,3 +137,9 @@ Example: `#c=slip&s=date-pick&d=open&t=dark`. Focus ids for the waiting page: `c
   used none of its names, views or terms. This run is therefore less blind than a clean one.
 - No branch was named in the brief, so nothing was pushed.
 - A tap test clicked through each option's main flow in all four frames: 40 checks passed.
+- `check_ios_mockup.py`: clean. `label_once.py` on the rendered pages of six dense states: one hit,
+  "Halvorsen Games" twice in Filed. That is data (a package name), not a label.
+- Critique (single context, no sub-agent tool): the detector flagged the striped carbon background, now
+  a plain sunken surface. Also fixed: two names for Review, and an unfiled slip lost on Back.
+  Open: Ledger list rows show the stamp as an icon only, with no legend; on the folded Day board, the
+  picked day's packages sit below the calendar.

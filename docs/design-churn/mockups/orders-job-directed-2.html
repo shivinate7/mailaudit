@@ -95,7 +95,11 @@ figcaption b { color:var(--ink); }
 .mono { font-family:var(--mono); }
 
 /* the head: the answer to "did it come in", one fixed box in every state */
-.head { display:flex; flex-direction:column; gap:8px; min-height:168px; }
+/* A fixed height, and Pull now pinned to its foot, so no answer moves the button under the finger (no-layout-shift-under-pointer).
+   184 pt holds the longest state, the failure: a 34 pt answer, three lines of say, the next line and the 44 pt button. */
+.head { display:flex; flex-direction:column; gap:8px; height:184px; }
+.head .act { margin-top:auto; }
+.head.nopull { height:128px; }
 .head .ans { font:28px/34px var(--cochin); margin:0; display:flex; align-items:baseline; gap:10px; }
 .head .ans i { flex:none; width:12px; height:12px; border-radius:6px; background:var(--accent); align-self:center; }
 .head .ans.bad { color:var(--red); } .head .ans.bad i { background:var(--red); border-radius:2px; transform:rotate(45deg); }
@@ -116,7 +120,7 @@ figcaption b { color:var(--ink); }
 .slot .btn { min-width:88px; }
 .slot.ok { color:var(--green); } .slot.no { color:var(--red); }
 /* the dock: Pull now in reach of the thumb, above the tab bar (pull=foot) */
-.dockbox { position:absolute; left:16px; right:16px; bottom:calc(64px + 12px + var(--sab) + 12px); z-index:5; display:flex; align-items:center; gap:12px;
+.dev .dockbox { position:absolute; left:16px; right:16px; bottom:calc(64px + 12px + var(--sab) + 12px); z-index:5; display:flex; align-items:center; gap:12px;
   padding:12px; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 4px 16px var(--shadow); min-height:68px; }
 
 /* the day book */
@@ -248,19 +252,21 @@ details.raw pre { margin:0; font:11px/16px var(--mono); background:var(--card); 
 [data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:4; white-space:nowrap; letter-spacing:0; text-transform:none; }
 .tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::after { color:var(--new); }
 .tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .tag-today::after { color:var(--today); }
+.lrow.tag-new { outline-offset:-2px; } .lrow.tag-new::after, .tag-today::after { top:2px; }
 .notags [data-tag]::after { display:none; } .notags .tag-new, .notags .tag-today { outline:0; }
 
 /* ---------- AX5: the largest accessibility text size, folded. Each size is the default size scaled by its text
    style's AX5 / Large ratio from the HIG Dynamic Type table: title1 58/28, body 53/17, footnote 44/13, caption1 43/12,
    caption2 40/11. Rows stack, as LedgerTab.versionRow does at isAccessibilitySize. Chrome stays at the default size. */
-.ax5 .head { min-height:0; }
+.ax5 .head, .ax5 .head.nopull { height:auto; }
 .ax5 .head .ans { font-size:58px; line-height:68px; }
+.ax5 .head .ans i { width:28px; height:28px; border-radius:14px; }
 .ax5 .head .say { font-size:50px; line-height:58px; }
 .ax5 .head .next, .ax5 .slot { font-size:39px; line-height:46px; }
 .ax5 .act { flex-direction:column; align-items:stretch; }
 .ax5 .btn { font-size:53px; min-height:88px; border-radius:44px; }
 .ax5 .micro, .ax5 .dayh .micro { font-size:39px; line-height:46px; letter-spacing:0; }
-.ax5 .dayh { flex-direction:column; align-items:flex-start; }
+.ax5 .dayh { flex-direction:column; align-items:flex-start; position:static; }
 .ax5 .ent { grid-template-columns:1fr; gap:4px; }
 .ax5 .ent .tm { font-size:39px; line-height:46px; text-align:left; border-right:0; padding:0; }
 .ax5 .ent .what { font-size:53px; line-height:62px; }
@@ -271,7 +277,8 @@ details.raw pre { margin:0; font:11px/16px var(--mono); background:var(--card); 
 .ax5 .gap .tm { display:none; }
 .ax5 .gap p { font-size:49px; line-height:58px; } .ax5 .gap p small { font-size:46px; line-height:54px; }
 .ax5 .legend { font-size:44px; line-height:52px; flex-direction:column; }
-.ax5 .legend .m { width:28px; height:28px; }
+.ax5 .legend .m { width:28px; height:28px; border-radius:14px; }
+.ax5 .dc .m { transform:scale(2); }
 .ax5 .strip { grid-template-columns:repeat(7,1fr); }
 .ax5 .strip .dc { min-height:96px; }
 .ax5 .strip .dc.wk { min-height:48px; }
@@ -329,7 +336,11 @@ details.raw pre { margin:0; font:11px/16px var(--mono); background:var(--card); 
 <div class="figs">
   <figure>
     <div class="fit"><div class="dev folded ax5" id="frame-ax5" data-device="iphone-duo-folded" data-f="ax5"></div></div>
-    <figcaption><b>iPhone Duo, folded, AX5.</b> The largest accessibility text size. Rows stack; the nav bar and tab bar keep their size.</figcaption>
+    <figcaption><b>iPhone Duo, folded, AX5.</b> The largest accessibility text size, at the top. Rows stack; the nav bar and tab bar keep their size.</figcaption>
+  </figure>
+  <figure>
+    <div class="fit"><div class="dev folded ax5" id="frame-ax5b" data-device="iphone-duo-folded" data-f="ax5b"></div></div>
+    <figcaption><b>The same, scrolled to the log.</b> Each run stacks its time, outcome and source.</figcaption>
   </figure>
   <figure>
     <div class="fit"><div class="dev entry" id="frame-entry" data-device="iphone-duo-folded" data-f="entry"></div></div>
@@ -401,7 +412,7 @@ const OPTIONS = [
   { key: "detail", val: "lines", label: "Run lists its lines", focus: "detail-open" },
   { key: "detail", val: "count", label: "Run shows counts only", focus: "detail-open" },
 ];
-const DEF = { c: "daybook", s: "ok", gaps: "on", pull: "head", detail: "lines", v: "orders" };
+const DEF = { c: "daybook", s: "ok", gaps: "on", pull: "foot", detail: "lines", v: "orders" };
 let P = {}; let hidden = new Set(); let tagsOff = false;
 let live = null;          /* a running or asked run started by a press */
 let extra = [];           /* runs added by presses in this visit */
@@ -416,7 +427,7 @@ function readHash() {
   P = { ...DEF }; for (const k of Object.keys(DEF)) if (h.get(k)) P[k] = h.get(k);
   hidden = new Set((h.get("hide") || "").split(",").filter(Boolean));
   live = null; extra = []; sel = h.get("sel"); more = false; filter = "all"; dayPick = null; openRow = h.get("row");
-  view = { folded: P.v, phone: P.v, ax5: P.v === "ledger" ? "orders" : P.v };
+  view = { folded: P.v, phone: P.v, ax5: P.v === "ledger" ? "orders" : P.v, ax5b: "orders" };
   answer = null; stateOverride = null; timers.forEach(clearTimeout); timers = [];
   if (P.s === "running") live = { phase: "reading", page: 3, start: D(20, 9, 28) };
   if (P.s === "asked") live = { phase: "asked", start: D(20, 9, 20) };
@@ -451,7 +462,7 @@ function headFor(runs) {
   const nextAt = lastOk ? new Date(lastOk.at.getTime() + 12 * 36e5) : null;
   const next = nextAt ? `Next pull: after ${time(nextAt)}${daysAgo(nextAt) ? ` ${dayWord(nextAt).toLowerCase()}` : ""}, on the next store page load.` : "";
   if (live && live.phase === "asked") return { cls: "live", ans: "Waiting for the computer.", say: `You pressed Pull now at ${time(live.start)}. The extension starts it once Chrome is open with a TCGplayer store tab.`, next: "" };
-  if (live) return { cls: "live", ans: "Running now.", say: live.phase === "sending" ? "Sending the order pages to the ledger." : `Reading order page ${live.page}. Started on this phone at ${time(live.start)}.`, next: "" };
+  if (live) return { cls: "live", ans: "Running now.", say: live.phase === "sending" ? "Sending the order pages to the ledger." : `Started on this phone at ${time(live.start)}. Stop ends it and adds nothing.`, next: "" };
   if (s === "unknown") return { cls: "idle", ans: "Can't tell right now.", say: "The ledger server did not answer at 9:30 AM, so this phone cannot read the log. What shows below was read at 9:02 AM.", next: "" };
   if (s === "never") return { cls: "idle", ans: "No run yet.", say: "The first pull runs when Chrome loads a TCGplayer store page with the extension installed and its key saved.", next: "" };
   if (s === "quiet") return { cls: "quiet", ans: `No run since ${WDL[last.at.getDay()]}.`, say: `Last run ${full(last.at)}, ${span(NOW - last.at)} ago. The extension runs only when Chrome loads a TCGplayer store page.`, next: "" };
@@ -465,13 +476,13 @@ function headFor(runs) {
 function pullCtl(f) {
   const s = effState();
   let label = "Pull now", dis = false, why = "";
-  if (live) { dis = true; why = live.phase === "asked" ? "" : ""; }
+  if (live) { dis = true; label = live.phase === "asked" ? "Asked" : "Pulling"; }
   if (s === "unknown" && !stateOverride) label = "Try again";
   const a = answer;
   let slot = "";
-  if (live && live.phase === "asked") slot = `<span>Asked ${time(live.start)}.</span><button class="btn quiet small" data-act="cancel" type="button">Cancel ask</button>`;
-  else if (live && live.phase === "reading") slot = `<span>Page ${live.page}</span><button class="btn quiet small" data-act="stop" type="button">Stop</button>`;
-  else if (live) slot = `<span>Sending</span>`;
+  if (live && live.phase === "asked") slot = `<button class="btn quiet small" data-act="cancel" type="button" id="cancel-${f}">Cancel ask</button>`;
+  else if (live && live.phase === "reading") slot = `<button class="btn quiet small" data-act="stop" type="button" id="stop-${f}">Stop</button>`;
+  else if (live) slot = `<span>Stop is past: the pages are on their way.</span>`;
   else if (a) slot = `<span>${esc(a[1])}</span>`;
   const cls = !live && a ? a[0] : "";
   return `<div class="act"><button type="button" class="btn" id="pull-${f}" data-act="${label === "Try again" ? "retry" : "pull"}" ${dis ? 'aria-disabled="true" aria-describedby="slot-' + f + '"' : ""}>${label}</button>
@@ -480,7 +491,7 @@ function pullCtl(f) {
 
 function headHTML(f, runs, withPull) {
   const h = headFor(runs);
-  return `<section class="head tag-new" aria-label="Last run" data-tag="New: the answer">
+  return `<section class="head tag-new ${withPull ? "" : "nopull"}" aria-label="Last run" data-tag="New: the answer">
     <h2 class="ans ${h.cls}"><i aria-hidden="true"></i><span>${esc(h.ans)}</span></h2>
     <p class="say">${esc(h.say)}</p>
     <p class="next">${esc(h.next)}</p>
@@ -531,7 +542,7 @@ function bookHTML(f, runs) {
       aria-label="${esc(full(r.at))}, ${esc(entWhat(r).replace(/<[^>]+>/g, ""))}">
       <span class="tm">${time(r.at)}</span>
       <span class="bd"><span class="what">${entWhat(r)}</span><span class="how">${esc(entHow(r))}</span>
-      ${!r.ok && i === 0 ? `<span class="fix">${esc(KINDS[r.kind][1])}</span>` : ""}</span>
+</span>
       <span class="chev" aria-hidden="true">›</span></button>`;
     const older = runs[i + 1];
     if (P.gaps === "on" && older && r.at - older.at > GAP_MS) { out += gapHTML(r.at - older.at, firstGap, f, false); firstGap = false; }
@@ -547,7 +558,7 @@ function detailHTML(f, r, compact) {
   if (r.unreadable) parts.push(["Left out", `${r.unreadable} lines`]);
   let body = "";
   if (!r.ok) {
-    body = `<div class="advice"><p><b>${esc(KINDS[r.kind][0])}.</b> ${esc(KINDS[r.kind][1])}</p><div><button type="button" class="btn small" data-act="pull">Pull now</button></div></div>
+    body = `<div class="advice"><p><b>${esc(KINDS[r.kind][0])}.</b> ${esc(KINDS[r.kind][1])}</p>${f !== "open" && !compact ? `<div><button type="button" class="btn small" data-act="pull" ${live ? 'aria-disabled="true"' : ""}>Pull now</button></div>` : ""}</div>
       <details class="raw"><summary>What the extension recorded</summary><pre>kind: ${r.kind}\nat: ${r.at.toISOString()}</pre></details>`;
   } else if (r.stopped) {
     body = `<p class="dcount">You pressed Stop. No page was sent, so the ledger did not change.</p>`;
@@ -590,7 +601,7 @@ function stripHTML(f, runs, cal) {
   /* the open Duo draws four weeks; one page draws the last two weeks, seven to a row, so each day is a 44 pt target */
   const from = cal ? D(1, 0, 0) : new Date(weekStart(NOW).getTime() - 7 * 864e5);
   for (let i = 0; i < (cal ? 28 : 14); i++) days.push(new Date(from.getFullYear(), from.getMonth(), from.getDate() + i));
-  const wk = true ? WD.map((w) => `<span class="dc wk" aria-hidden="true"><span class="n">${f === "ax5" ? w[0] : w}</span></span>`).join("") : "";
+  const wk = true ? WD.map((w) => `<span class="dc wk" aria-hidden="true"><span class="n">${f.startsWith("ax5") ? w[0] : w}</span></span>`).join("") : "";
   return `<div class="strip cal" id="strip-${f}" role="group" aria-label="${cal ? "November, four weeks" : "This week and last week"}">${wk}${days.map((d) => {
     const [m, warn, said] = mark(d, runs);
     const later = d > NOW;
@@ -635,7 +646,7 @@ function regHTML(f, runs) {
       <span class="num" data-unit="read">${r.ok ? r.orders : ""}</span><span class="num add ${r.ok && !r.added ? "zero" : ""}" data-unit="new">${r.ok ? r.added : ""}</span>
       <span class="mk ${m}" aria-hidden="true"></span>
       ${r.ok ? "" : `<span class="why">${esc(KINDS[r.kind][0])}</span>`}</button>`;
-    if (isSel && f !== "open") out += `<div class="drawer">${detailHTML(f, r, true)}</div>`;
+    if (isSel) out += `<div class="drawer">${detailHTML(f, r, true)}</div>`;
     const older = list[i + 1];
     if (all && P.gaps === "on" && older && r.at - older.at > GAP_MS) { out += `<div class="rg" ${firstGap ? `id="gap-${f}"` : ""}>no run for ${span(r.at - older.at)}</div>`; firstGap = false; }
   });
@@ -673,7 +684,7 @@ function singlePage(f) {
   const runs = runsFor(effState());
   const v = view[f] || "orders";
   const reg = P.c === "register";
-  const foot = P.pull === "foot" && f !== "ax5";
+  const foot = P.pull === "foot" && !f.startsWith("ax5");
   let nav = "", body = "";
   if (v === "ledger") {
     nav = "";
@@ -702,7 +713,7 @@ function openPages() {
   let left, right;
   if (reg) {
     left = `${headHTML(f, runs, true)}${stripHTML(f, runs, true)}`;
-    right = `${segHTML(f)}${regHTML(f, runs)}${r && sel ? `<div class="drawer" style="border:0">${detailHTML(f, runs.find((x) => x.id === sel), false)}</div>` : ""}`;
+    right = `${segHTML(f)}${regHTML(f, runs)}`;
   } else {
     left = `${headHTML(f, runs, true)}${bookHTML(f, runs)}`;
     right = detailHTML(f, runs.find((x) => x.id === sel), false);
@@ -730,12 +741,15 @@ function buildControls() {
 function render() {
   const keep = {}; document.querySelectorAll("[data-scroll]").forEach((n) => (keep[n.dataset.scroll] = n.scrollTop));
   document.body.classList.toggle("notags", tagsOff);
-  for (const f of ["folded", "phone", "ax5"]) document.getElementById(`frame-${f}`).innerHTML = singlePage(f);
+  for (const f of ["folded", "phone", "ax5", "ax5b"]) document.getElementById(`frame-${f}`).innerHTML = singlePage(f);
   document.getElementById("frame-open").innerHTML = openPages();
   const saved = view.entry; view.entry = "ledger";
   document.getElementById("frame-entry").innerHTML = `${statusBar()}<div class="page one app"><div class="scroll nonav"><div class="pad">${ledgerHTML("entry", runsFor(effState()))}</div></div></div>`;
   view.entry = saved;
   document.querySelectorAll("[data-scroll]").forEach((n) => { if (keep[n.dataset.scroll]) n.scrollTop = keep[n.dataset.scroll]; });
+  const b = document.querySelector('[data-scroll="ax5b"]'), lg = document.getElementById("log-ax5b");
+  const toLog = () => { if (b && lg) b.scrollTop += lg.getBoundingClientRect().top - b.getBoundingClientRect().top - 8; };
+  if (b && lg && keep.ax5b === undefined) { toLog(); document.fonts && document.fonts.ready.then(() => requestAnimationFrame(toLog)); }
   buildControls();
   document.getElementById("tags").textContent = tagsOff ? "Show Today/New labels" : "Hide Today/New labels";
 }

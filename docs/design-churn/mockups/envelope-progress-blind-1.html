@@ -1,0 +1,872 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Envelope Progress Concepts</title>
+<style>
+/* Tokens. Spacing on the house 4 px step, radius 8 px (house tokens.md).
+   Colours are this designer's own choice: tokens.md gives roles, not values. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --radius: 8px;
+  --hit: 44px; /* HIG accessibility page: default iOS control size 44x44 pt */
+
+  --board: #E9EDF2;
+  --bezel: #2A313B;
+  --screen: #FBFCFD;
+  --raised: #FFFFFF;
+  --sunk: #F0F3F7;
+  --line: #C9D1DB;
+  --text: #17202B;
+  --text-2: #4E5A6A;
+  --accent: #1C5DB5;
+  --on-accent: #FFFFFF;
+  --accent-soft: #DCE7F7;
+  --done: #1B6E45;
+  --done-soft: #DAF0E3;
+  --short: #94470A;
+  --short-soft: #FAE6D3;
+  --hinge: #11161C;
+  --slot-empty: #8794A5;
+
+  /* Dynamic Type, iOS "Large (default)" column of the HIG typography page */
+  --fs-large: 34px; --lh-large: 41px;
+  --fs-t1: 28px; --lh-t1: 34px;
+  --fs-t2: 22px; --lh-t2: 28px;
+  --fs-t3: 20px; --lh-t3: 25px;
+  --fs-head: 17px; --lh-head: 22px;
+  --fs-body: 17px; --lh-body: 22px;
+  --fs-callout: 16px; --lh-callout: 21px;
+  --fs-sub: 15px; --lh-sub: 20px;
+  --fs-foot: 13px; --lh-foot: 18px;
+  --fs-c1: 12px; --lh-c1: 16px;
+  --fs-c2: 11px; --lh-c2: 13px;
+
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --board: #0C1015; --bezel: #000000; --screen: #141920; --raised: #1D242D; --sunk: #10151B;
+    --line: #34404F; --text: #E5EAF0; --text-2: #A3AEBC; --accent: #7AAEF1; --on-accent: #0C1015;
+    --accent-soft: #1B3050; --done: #61CB93; --done-soft: #16321F; --short: #F1B266; --short-soft: #3A2713;
+    --hinge: #000000; --slot-empty: #66768A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --board: #0C1015; --bezel: #000000; --screen: #141920; --raised: #1D242D; --sunk: #10151B;
+  --line: #34404F; --text: #E5EAF0; --text-2: #A3AEBC; --accent: #7AAEF1; --on-accent: #0C1015;
+  --accent-soft: #1B3050; --done: #61CB93; --done-soft: #16321F; --short: #F1B266; --short-soft: #3A2713;
+  --hinge: #000000; --slot-empty: #66768A; color-scheme: dark;
+}
+/* Largest accessibility size: the AX5 column of the HIG typography page */
+.ax5 {
+  --fs-large: 60px; --lh-large: 70px;
+  --fs-t1: 58px; --lh-t1: 68px;
+  --fs-t2: 56px; --lh-t2: 66px;
+  --fs-t3: 55px; --lh-t3: 65px;
+  --fs-head: 53px; --lh-head: 62px;
+  --fs-body: 53px; --lh-body: 62px;
+  --fs-callout: 51px; --lh-callout: 60px;
+  --fs-sub: 49px; --lh-sub: 58px;
+  --fs-foot: 44px; --lh-foot: 52px;
+  --fs-c1: 43px; --lh-c1: 51px;
+  --fs-c2: 40px; --lh-c2: 48px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--board);
+  color: var(--text);
+  font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: var(--fs-body); line-height: var(--lh-body);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* Text styles */
+.t-large { font-size: var(--fs-large); line-height: var(--lh-large); font-weight: 700; }
+.t-t1 { font-size: var(--fs-t1); line-height: var(--lh-t1); font-weight: 700; }
+.t-t2 { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; }
+.t-t3 { font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 600; }
+.t-head { font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; }
+.t-body { font-size: var(--fs-body); line-height: var(--lh-body); }
+.t-callout { font-size: var(--fs-callout); line-height: var(--lh-callout); }
+.t-sub { font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.t-foot { font-size: var(--fs-foot); line-height: var(--lh-foot); }
+.t-c1 { font-size: var(--fs-c1); line-height: var(--lh-c1); }
+.t-c2 { font-size: var(--fs-c2); line-height: var(--lh-c2); }
+.muted { color: var(--text-2); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Board (the page around the devices) */
+.banner {
+  background: var(--short-soft); color: var(--text);
+  border-bottom: 2px dashed var(--short);
+  padding: var(--space-2) var(--space-4); text-align: center;
+}
+.board { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6) var(--space-4); max-width: 1200px; margin-inline: auto; }
+.board h1 { margin: 0; }
+.board p { margin: 0; max-width: 70ch; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ctl { min-height: var(--hit); padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); }
+.ctl[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+label.ctl { display: inline-flex; align-items: center; gap: var(--space-2); }
+label.ctl select { border: 0; background: transparent; min-height: 40px; }
+.concepts { display: flex; flex-direction: column; gap: var(--space-10); padding: 0 var(--space-4) var(--space-10); max-width: 2200px; margin-inline: auto; }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3); }
+.concept-head h2 { margin: 0; }
+.concept-head p { margin: 0; flex: 1 1 30ch; max-width: 80ch; color: var(--text-2); }
+.frames { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-8); overflow-x: auto; padding-bottom: var(--space-2); }
+.frames > figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.frames > figure[hidden] { display: none; }
+figcaption { color: var(--text-2); max-width: 466px; }
+
+/* Devices */
+.device { background: var(--bezel); border-radius: 28px; padding: var(--space-3); flex: none; }
+.screen {
+  position: relative; overflow: hidden; background: var(--screen); border-radius: 18px;
+  width: 466px; height: 678px;
+  padding:
+    max(var(--space-3), env(safe-area-inset-top))
+    max(var(--space-4), env(safe-area-inset-right))
+    max(var(--space-2), env(safe-area-inset-bottom))
+    max(var(--space-4), env(safe-area-inset-left));
+}
+.device.phone .screen { resize: both; min-width: 360px; min-height: 600px; max-width: 520px; max-height: 1000px; }
+.device.open .pair { display: grid; grid-template-columns: 455.5px 40px 455.5px; width: 951px; height: 669px; }
+.device.open .screen { width: auto; height: 669px; border-radius: 18px; }
+.device.open .screen.left { border-top-right-radius: 4px; border-bottom-right-radius: 4px; }
+.device.open .screen.right { border-top-left-radius: 4px; border-bottom-left-radius: 4px; }
+.hinge { background: var(--hinge); border-radius: 4px; }
+
+/* App primitives inside a screen */
+.app { display: flex; flex-direction: column; gap: var(--space-3); height: 100%; min-height: 0; }
+.scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-4); }
+.stack { display: flex; flex-direction: column; gap: var(--space-2); }
+.row-line { display: flex; align-items: center; gap: var(--space-2); }
+.nav { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--hit); }
+.navbtn { min-height: var(--hit); min-width: var(--hit); padding: 0 var(--space-1); border: 0; background: none; color: var(--accent); display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-body); line-height: var(--lh-body); }
+.btn { min-height: var(--hit); padding: var(--space-2) var(--space-4); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; }
+.bar > .btn { white-space: nowrap; flex: none; }
+.ax5 .bar > .btn { white-space: normal; }
+.btn.primary { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.btn.quiet { color: var(--accent); }
+.btn.wide { width: 100%; }
+.field {
+  min-height: var(--hit); width: 100%; border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--sunk); padding: var(--space-2) var(--space-3);
+  font-size: var(--fs-body); line-height: var(--lh-body);
+}
+.field::placeholder { color: var(--text-2); }
+.section-h { margin: 0; color: var(--text-2); font-size: var(--fs-foot); line-height: var(--lh-foot); font-weight: 600; }
+.list { display: flex; flex-direction: column; gap: 0; border-radius: var(--radius); background: var(--raised); border: 1px solid var(--line); overflow: hidden; }
+.skel { background: var(--sunk); border-radius: var(--radius); }
+
+/* "New:" labels: dashed outline with a tag */
+.labels [data-new] { outline: 1.5px dashed var(--short); outline-offset: 2px; position: relative; }
+.labels [data-new]::after {
+  content: "New: " attr(data-new); position: absolute; right: 4px; top: -10px; z-index: 5;
+  background: var(--short-soft); color: var(--short); border: 1px dashed var(--short); border-radius: 4px;
+  padding: 0 4px; font-size: 11px; line-height: 16px; font-weight: 600; pointer-events: none; white-space: nowrap;
+}
+.ax5.labels [data-new]::after { font-size: 11px; }
+
+/* ---------- Ledger list ---------- */
+.gauge { display: flex; flex-direction: column; gap: var(--space-2); }
+.ticks { display: flex; gap: var(--space-1); height: 12px; }
+.tick { flex: 1 1 0; border-radius: 3px; background: var(--sunk); border: 1px solid var(--line); }
+.tick.on { background: var(--accent); border-color: var(--accent); }
+.gauge.complete .tick.on { background: var(--done); border-color: var(--done); }
+.tick.miss { background: var(--short-soft); border-color: var(--short); }
+.g-line { margin: 0; display: flex; align-items: baseline; flex-wrap: wrap; gap: 0 var(--space-2); }
+.g-num { font-size: var(--fs-t1); line-height: var(--lh-t1); font-weight: 700; }
+.gauge.complete .g-num { color: var(--done); }
+.gauge.short .g-num { color: var(--short); }
+.lrow { display: flex; align-items: stretch; border-top: 1px solid var(--line); }
+.lrow:first-child { border-top: 0; }
+.lrow-main { flex: 1 1 auto; min-height: var(--hit); display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); border: 0; background: none; text-align: left; }
+.lrow-main .name { flex: 1 1 auto; min-width: 0; }
+.pips { display: inline-flex; gap: var(--space-1); }
+.pip { width: 10px; height: 10px; border-radius: 50%; border: 1.5px solid var(--text-2); }
+.pip.on { background: var(--accent); border-color: var(--accent); }
+.lrow.done .pip.on { background: var(--done); border-color: var(--done); }
+.lrow.miss .pip:not(.on) { border-color: var(--short); background: var(--short-soft); }
+.lrow.done .name { color: var(--text-2); }
+.lrow .cnt { min-width: 4.5em; text-align: right; color: var(--text-2); }
+.lrow.done .cnt { color: var(--done); font-weight: 700; }
+.lrow.miss .cnt { color: var(--short); }
+.lrow-minus { width: var(--hit); min-height: var(--hit); border: 0; border-left: 1px solid var(--line); background: none; color: var(--accent); font-size: var(--fs-t3); }
+.lrow-minus.off { visibility: hidden; }
+.lrow-over { flex-basis: 100%; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); padding: 0 var(--space-3) var(--space-2); }
+.lrow.wrap { flex-wrap: wrap; }
+.flash { animation: flash 700ms ease-out; }
+@keyframes flash { from { background: var(--accent-soft); } to { background: transparent; } }
+.answer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.bar { display: flex; gap: var(--space-2); align-items: stretch; }
+.bar .field { flex: 1 1 auto; min-width: 0; }
+.ax5 .bar { flex-direction: column; }
+.ax5 .lrow-main { flex-wrap: wrap; }
+.ax5 .lrow .cnt { text-align: left; min-width: 0; }
+.ax5 .pips { display: none; }
+
+/* ---------- Slot tray ---------- */
+.tray { display: grid; grid-template-columns: repeat(6, minmax(0, 1fr)); gap: var(--space-2); align-content: start; }
+.slot {
+  position: relative; aspect-ratio: 5 / 7; border-radius: 6px; padding: var(--space-1);
+  border: 1.5px dashed var(--slot-empty); background: transparent; color: var(--text-2);
+  display: flex; flex-direction: column; justify-content: flex-end; text-align: left; overflow: hidden;
+  min-height: var(--hit);
+}
+.slot .slot-name { font-size: var(--fs-c2); line-height: var(--lh-c2); overflow-wrap: normal; word-break: keep-all; }
+.slot .slot-copy { position: absolute; top: var(--space-1); right: var(--space-1); font-size: var(--fs-c2); line-height: var(--lh-c2); }
+.slot .slot-mark { position: absolute; top: var(--space-1); left: var(--space-1); font-size: var(--fs-foot); line-height: var(--lh-foot); font-weight: 700; }
+.slot.filled { border: 1.5px solid var(--accent); background: var(--accent-soft); color: var(--text); }
+.tray.complete .slot.filled, .pipstrip.complete .slot.filled { border-color: var(--done); background: var(--done-soft); }
+.slot.miss { border: 1.5px solid var(--short); background: var(--short-soft); color: var(--text); }
+.tray.big .slot .slot-name { font-size: var(--fs-foot); line-height: var(--lh-foot); }
+.slot.skel { border: 0; background: var(--sunk); }
+.slot.pop { animation: pop 260ms ease-out; }
+@keyframes pop { from { transform: scale(0.9); } to { transform: scale(1); } }
+.status .cluster .btn { white-space: nowrap; }
+.pipstrip { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.pipstrip .slot { aspect-ratio: auto; width: 20px; height: 28px; min-height: 0; padding: 0; }
+.status { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); }
+.status.complete .g-num { color: var(--done); }
+.status.short .g-num { color: var(--short); }
+.card-ans { border-radius: var(--radius); background: var(--raised); border: 1px solid var(--line); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); min-height: 108px; justify-content: center; }
+.card-ans.ok { border-color: var(--accent); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip { min-height: var(--hit); padding: 0 var(--space-3); border-radius: 22px; border: 1px solid var(--line); background: var(--sunk); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.log { display: flex; flex-direction: column; }
+.log .lrow-main { cursor: default; }
+
+/* Sheet */
+.sheet-scrim { position: absolute; inset: 0; background: rgb(0 0 0 / 0.35); display: flex; align-items: flex-end; z-index: 10; }
+.sheet { background: var(--screen); width: 100%; border-radius: 14px 14px 0 0; padding: var(--space-3) var(--space-4) max(var(--space-6), env(safe-area-inset-bottom)); display: flex; flex-direction: column; gap: var(--space-3); max-height: 85%; overflow-y: auto; }
+.sheet-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; }
+.sheet-bar .navbtn { justify-self: start; }
+
+@media (prefers-reduced-motion: reduce) { .flash, .slot.pop { animation: none; } }
+@media (forced-colors: active) { .tick.on, .pip.on, .slot.filled { background: Highlight; border-color: Highlight; } .slot.miss, .tick.miss { border-style: dotted; } }
+</style>
+</head>
+<body>
+<div class="banner t-sub" role="note">Sample. No figure on this page is real: every sender, card name and count is made up.</div>
+
+<header class="board">
+  <div class="stack">
+    <h1 class="t-t1">Envelope progress</h1>
+    <p class="t-callout">Designer kind: blind. Each concept answers one job: hold an envelope from one sender, read the cards off one by one, and always know how many are found, how many remain, and whether the envelope is complete or short. Every control inside a device works. The frames of one concept share one state.</p>
+  </div>
+  <div class="cluster" aria-label="Page controls">
+    <label class="ctl t-sub">State
+      <select id="ctl-state">
+        <option value="progress">In progress</option>
+        <option value="complete">Complete</option>
+        <option value="short">Short</option>
+        <option value="nomatch">Name not on the list</option>
+        <option value="over">Copy beyond the count</option>
+        <option value="empty">No card list</option>
+        <option value="loading">Loading</option>
+        <option value="failed">List could not be read</option>
+      </select>
+    </label>
+    <label class="ctl t-sub">Devices
+      <select id="ctl-dev">
+        <option value="all">All</option>
+        <option value="folded">Duo folded</option>
+        <option value="open">Duo open</option>
+        <option value="phone">Large phone</option>
+        <option value="ax5">Largest text</option>
+      </select>
+    </label>
+    <div class="cluster" role="group" aria-label="Theme">
+      <button class="ctl t-sub" data-theme-btn="system" aria-pressed="true">System theme</button>
+      <button class="ctl t-sub" data-theme-btn="light" aria-pressed="false">Light</button>
+      <button class="ctl t-sub" data-theme-btn="dark" aria-pressed="false">Dark</button>
+    </div>
+    <button class="ctl t-sub" id="ctl-labels" aria-pressed="true">Show New labels</button>
+  </div>
+  <div class="cluster" aria-label="Options">
+    <button class="ctl t-sub" data-hide="ledger" aria-pressed="false">Hide Ledger list</button>
+    <button class="ctl t-sub" data-hide="tray" aria-pressed="false">Hide Slot tray</button>
+  </div>
+</header>
+
+<main class="concepts labels" id="concepts">
+  <section class="concept" id="opt-ledger" data-concept="ledger" aria-labelledby="h-ledger">
+    <div class="concept-head">
+      <h2 class="t-t2" id="h-ledger">Ledger list</h2>
+      <p class="t-sub">A checklist of the names on the envelope. A bar with one tick per card and one number sit above the list, so "how many left" is never a count. A name field sits under the thumb. A row that is done sinks to Found on the next press.</p>
+    </div>
+    <div class="frames" data-frames="ledger">
+      <figure data-fkey="folded"><div class="device" data-device="iphone-duo-folded"><div class="screen" data-slot="folded"></div></div><figcaption class="t-foot">Duo, folded: 466 by 678 pt, one hand.</figcaption></figure>
+      <figure data-fkey="open"><div class="device open" data-device="iphone-duo-unfolded"><div class="pair"><div class="screen left" data-slot="openL"></div><div class="hinge" aria-hidden="true"></div><div class="screen right" data-slot="openR"></div></div></div><figcaption class="t-foot">Duo, open: 951 by 669 pt. The hinge gap, x 455.5 to 495.5, holds nothing.</figcaption></figure>
+      <figure data-fkey="phone"><div class="device phone" data-device="iphone-regular"><div class="screen" data-slot="phone"></div></div><figcaption class="t-foot">Large phone: no size is written for it, so it is drawn at the brief&rsquo;s folded size. Drag the corner to resize.</figcaption></figure>
+      <figure data-fkey="ax5"><div class="device ax5" data-device="iphone-duo-folded" data-text-size="AX5"><div class="screen" data-slot="ax5"></div></div><figcaption class="t-foot">Duo, folded, at the largest accessibility text size (AX5).</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="opt-tray" data-concept="tray" aria-labelledby="h-tray">
+    <div class="concept-head">
+      <h2 class="t-t2" id="h-tray">Slot tray</h2>
+      <p class="t-sub">The envelope drawn as a tray with one card-shaped slot for each card it should hold. A found card fills its slot in place, and nothing moves. Done is a tray with no empty slot. There is no list to scroll: you type the name on the card and the answer card says which slot it fills.</p>
+    </div>
+    <div class="frames" data-frames="tray">
+      <figure data-fkey="folded"><div class="device" data-device="iphone-duo-folded"><div class="screen" data-slot="folded"></div></div><figcaption class="t-foot">Duo, folded: 466 by 678 pt, one hand.</figcaption></figure>
+      <figure data-fkey="open"><div class="device open" data-device="iphone-duo-unfolded"><div class="pair"><div class="screen left" data-slot="openL"></div><div class="hinge" aria-hidden="true"></div><div class="screen right" data-slot="openR"></div></div></div><figcaption class="t-foot">Duo, open: 951 by 669 pt. The hinge gap, x 455.5 to 495.5, holds nothing.</figcaption></figure>
+      <figure data-fkey="phone"><div class="device phone" data-device="iphone-regular"><div class="screen" data-slot="phone"></div></div><figcaption class="t-foot">Large phone: no size is written for it, so it is drawn at the brief&rsquo;s folded size. Drag the corner to resize.</figcaption></figure>
+      <figure data-fkey="ax5"><div class="device ax5" data-device="iphone-duo-folded" data-text-size="AX5"><div class="screen" data-slot="ax5"></div></div><figcaption class="t-foot">Duo, folded, at the largest accessibility text size (AX5).</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+(() => {
+  'use strict';
+
+  // ---------- Sample data (made up) ----------
+  const ENVELOPES = {
+    e1: { sender: 'Sample Seller 1', items: [
+      ['Ember Wisp', 2], ['Tidecaller Sage', 1], ['Granite Warden', 4], ['Moth Lantern', 1],
+      ['Quiet Harbor', 2], ['Thornback Ram', 1], ['Glass Heron', 1], ['Ashen Ledger', 1],
+      ['Saltmarsh Witch', 1], ['Copper Wren', 2], ['Hollow Drum', 1], ['Starfall Map', 1]
+    ] },
+    e2: { sender: 'Sample Seller 2', items: [] },
+    e3: { sender: 'Sample Seller 3', items: [
+      ['Lantern Fox', 1], ['Brine Hook', 3], ['Velvet Comet', 1], ['Rook of Ash', 2]
+    ] }
+  };
+  const PROGRESS = { 'Ember Wisp': 2, 'Tidecaller Sage': 1, 'Granite Warden': 2, 'Moth Lantern': 1, 'Quiet Harbor': 1, 'Glass Heron': 1 };
+
+  function fresh(env) {
+    const e = ENVELOPES[env];
+    return {
+      env, sender: e.sender, phase: 'loaded',
+      items: e.items.map(([name, count], i) => ({ id: env + '-' + i, name, count, found: 0 })),
+      extras: [], declared: false, query: '', answer: null, justDone: null,
+      history: [], log: [], sheet: false
+    };
+  }
+  function preset(name) {
+    const st = fresh('e1');
+    const fill = (map) => st.items.forEach(i => { i.found = map === 'all' ? i.count : (map[i.name] || 0); });
+    switch (name) {
+      case 'complete': fill('all'); break;
+      case 'short': fill('all'); st.items.find(i => i.name === 'Granite Warden').found = 3;
+        st.items.find(i => i.name === 'Starfall Map').found = 0; st.declared = true; break;
+      case 'nomatch': fill(PROGRESS); st.query = 'Sunken Bell'; break;
+      case 'over': fill(PROGRESS); st.query = 'Ember Wisp'; break;
+      case 'empty': return fresh('e2');
+      case 'loading': fill(PROGRESS); st.phase = 'loading'; break;
+      case 'failed': fill(PROGRESS); st.phase = 'failed'; break;
+      default: fill(PROGRESS);
+    }
+    return st;
+  }
+
+  // ---------- Page state ----------
+  const CONCEPTS = ['ledger', 'tray'];
+  const S = {};
+  const page = { state: 'progress', theme: 'system', dev: 'all', only: null, labels: true, hidden: {} };
+
+  function readHash() {
+    const h = new URLSearchParams(location.hash.slice(1));
+    if (h.get('s')) page.state = h.get('s');
+    if (h.get('t')) page.theme = h.get('t');
+    if (h.get('d')) page.dev = h.get('d');
+    page.only = CONCEPTS.includes(h.get('c')) ? h.get('c') : null;
+    if (h.get('labels') === '0') page.labels = false;
+  }
+  function writeHash() {
+    const h = new URLSearchParams();
+    if (page.only) h.set('c', page.only);
+    if (page.state !== 'progress') h.set('s', page.state);
+    if (page.theme !== 'system') h.set('t', page.theme);
+    if (page.dev !== 'all') h.set('d', page.dev);
+    if (!page.labels) h.set('labels', '0');
+    const s = h.toString();
+    history.replaceState(null, '', s ? '#' + s : location.pathname + location.search);
+  }
+
+  // ---------- Helpers ----------
+  const esc = (s) => String(s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+  function totals(st) {
+    let total = 0, found = 0;
+    st.items.forEach(i => { total += i.count; found += Math.min(i.found, i.count); });
+    const left = total - found;
+    const complete = st.items.length > 0 && left === 0;
+    return { total, found, left, complete, short: st.declared && left > 0 };
+  }
+  function norm(s) { return s.toLowerCase().replace(/[^a-z0-9 ]/g, '').replace(/\s+/g, ' ').trim(); }
+  function matches(st, q) {
+    const n = norm(q);
+    if (!n) return [];
+    return st.items
+      .filter(i => norm(i.name).includes(n) || norm(i.name).split(' ').some(w => w.startsWith(n)))
+      .sort((a, b) => (norm(b.name).startsWith(n) ? 1 : 0) - (norm(a.name).startsWith(n) ? 1 : 0));
+  }
+  const word = (n) => ['', 'one', 'both', 'all three', 'all four'][n] || 'all ' + n;
+  const snap = (st) => JSON.stringify({ items: st.items, extras: st.extras, declared: st.declared, log: st.log });
+
+  // ---------- Actions ----------
+  function mutate(k, fn) {
+    const st = S[k];
+    st.history.push(snap(st));
+    fn(st);
+  }
+  const act = {
+    add(k, id, from) {
+      const st = S[k]; const it = st.items.find(i => i.id === id);
+      st.justDone = null;
+      if (it.found >= it.count) { st.answer = { kind: 'over', id, from }; return; }
+      mutate(k, s => { it.found++; s.log.unshift({ id, n: it.found }); });
+      st.answer = { kind: 'added', id, from };
+      if (it.found === it.count) st.justDone = id;
+      if (from === 'field') st.query = '';
+    },
+    addExtraCopy(k, id) {
+      const st = S[k]; const it = st.items.find(i => i.id === id);
+      mutate(k, s => { s.extras.push(it.name + ' (extra copy)'); s.log.unshift({ extra: it.name + ' (extra copy)' }); });
+      st.answer = { kind: 'extra', name: it.name + ' (extra copy)' }; st.query = ''; st.justDone = null;
+    },
+    addExtra(k) {
+      const st = S[k]; const name = st.query.trim();
+      if (!name) return;
+      mutate(k, s => { s.extras.push(name); s.log.unshift({ extra: name }); });
+      st.answer = { kind: 'extra', name }; st.query = ''; st.justDone = null;
+    },
+    remove(k, id) {
+      const st = S[k]; const it = st.items.find(i => i.id === id);
+      if (it.found <= 0) return;
+      mutate(k, () => { it.found--; });
+      st.answer = { kind: 'removed', id }; st.justDone = null;
+    },
+    removeExtra(k, idx) {
+      const st = S[k];
+      mutate(k, s => { s.extras.splice(+idx, 1); });
+      st.answer = null; st.justDone = null;
+    },
+    slot(k, id, n) {
+      const st = S[k]; const it = st.items.find(i => i.id === id);
+      if (+n < it.found) act.remove(k, id); else act.add(k, id, 'slot');
+      st.answer = Object.assign({}, st.answer, { from: 'slot', n: +n });
+    },
+    undo(k) {
+      const st = S[k]; const prev = st.history.pop();
+      if (!prev) return;
+      Object.assign(st, JSON.parse(prev));
+      st.answer = { kind: 'undone' }; st.justDone = null;
+    },
+    declare(k) { mutate(k, s => { s.declared = true; }); S[k].answer = null; S[k].justDone = null; },
+    undeclare(k) { mutate(k, s => { s.declared = false; }); S[k].answer = null; },
+    sheet(k) { S[k].sheet = true; },
+    closeSheet(k) { S[k].sheet = false; },
+    pick(k, env) { S[k] = fresh(env); },
+    retry(k) { S[k] = preset('progress'); },
+    found(k, id) { act.add(k, id, 'field'); },
+    unlog(k, idx) {
+      const st = S[k]; const e = st.log[+idx];
+      if (!e) return;
+      mutate(k, s => {
+        s.log.splice(+idx, 1);
+        if (e.id) { const it = s.items.find(i => i.id === e.id); if (it.found > 0) it.found--; }
+        else { const x = s.extras.indexOf(e.extra); if (x >= 0) s.extras.splice(x, 1); }
+      });
+      st.answer = e.id ? { kind: 'removed', id: e.id } : null; st.justDone = null;
+    },
+    pickQuery(k, id) { const st = S[k]; st.query = st.items.find(i => i.id === id).name; st.answer = null; }
+  };
+
+  // ---------- Shared parts ----------
+  function nav(k, st, opts = {}) {
+    const back = `<button class="navbtn" data-act="sheet" data-k="${k}" aria-label="Envelopes"><span aria-hidden="true">&#8249;</span>${opts.compact ? '' : ' Envelopes'}</button>`;
+    const undo = st.history.length && st.phase === 'loaded'
+      ? `<button class="navbtn" data-act="undo" data-k="${k}">Undo</button>` : '<span></span>';
+    return `<div class="nav">${back}${undo}</div>`;
+  }
+  function sheet(k, st) {
+    if (!st.sheet) return '';
+    const rows = Object.entries(ENVELOPES).map(([id, e]) => {
+      const total = e.items.reduce((a, [, c]) => a + c, 0);
+      const cur = st.env === id;
+      const t = cur && st.phase === 'loaded' ? totals(st) : null;
+      const sub = !e.items.length ? 'No card list' : t ? (t.complete ? `${total} cards, complete` : `${total} cards, ${t.left} to find`) : `${total} cards`;
+      return `<div class="lrow"><button class="lrow-main" data-act="pick" data-k="${k}" data-id="${id}">
+        <span class="name stack" style="gap:0"><span class="t-body">${esc(e.sender)}</span><span class="t-sub muted">${esc(sub)}</span></span>
+        ${cur ? '<span class="t-sub muted">Open now</span>' : ''}</button></div>`;
+    }).join('');
+    return `<div class="sheet-scrim"><div class="sheet" role="dialog" aria-label="Envelopes">
+      <div class="sheet-bar"><button class="navbtn" data-act="closeSheet" data-k="${k}">Cancel</button><span class="t-head">Envelopes</span><span></span></div>
+      <div class="list">${rows}</div></div></div>`;
+  }
+  function emptyState(k) {
+    return `<div class="stack" style="flex:1;justify-content:center;gap:var(--space-4)">
+      <p class="t-body" style="margin:0">This envelope has no card list yet.</p>
+      <button class="btn primary" data-act="sheet" data-k="${k}">Pick another envelope</button></div>`;
+  }
+  function failedState(k) {
+    return `<div class="stack" style="flex:1;justify-content:center;gap:var(--space-4)">
+      <p class="t-body" style="margin:0">The card list for this envelope could not be read. Nothing you found is lost.</p>
+      <button class="btn primary" data-act="retry" data-k="${k}">Try again</button></div>`;
+  }
+  function field(k, st, ph) {
+    return `<input class="field" type="search" enterkeyhint="done" autocomplete="off" data-role="q" data-k="${k}" aria-label="Card name" placeholder="${esc(ph)}" value="${esc(st.query)}">`;
+  }
+
+  // ---------- Ledger list ----------
+  function ledgerGauge(st, focus) {
+    const t = totals(st);
+    let ticks = '';
+    st.items.forEach(i => { for (let n = 0; n < i.count; n++) ticks += `<i class="tick ${n < i.found ? 'on' : (t.short ? 'miss' : '')}"></i>`; });
+    let line;
+    if (t.complete) line = `<span class="g-num">All ${t.total}</span><span class="t-body">found</span>`;
+    else if (t.short) line = `<span class="g-num num">${t.left} short</span><span class="t-sub muted">You marked the envelope empty.</span>`;
+    else line = `<span class="g-num num">${t.left}</span><span class="t-body">to find, of ${t.total}</span>`;
+    const state = t.complete ? 'complete' : t.short ? 'short' : '';
+    return `<div class="gauge ${state}" ${focus ? 'id="ledger-gauge"' : ''} data-new="Count of cards to find" role="status" aria-live="polite">
+      <div class="ticks" aria-hidden="true">${ticks}</div><p class="g-line">${line}</p></div>`;
+  }
+  function ledgerRow(k, st, it, opts) {
+    const done = it.found >= it.count;
+    const miss = opts.short && !done;
+    const pips = Array.from({ length: it.count }, (_, n) => `<i class="pip ${n < it.found ? 'on' : ''}"></i>`).join('');
+    // A done row says so by shape and colour (a check), so the word "Found" shows once: as the section heading.
+    const cnt = done ? '<span aria-hidden="true">&#10003;</span>' : `${it.found} of ${it.count}`;
+    const a = st.answer;
+    const flash = a && a.id === it.id && (a.kind === 'added' || a.kind === 'removed') ? 'flash' : '';
+    const over = a && a.kind === 'over' && a.id === it.id && a.from !== 'field'
+      ? `<div class="lrow-over"><span class="t-sub muted">${it.count === 1 ? 'Already found.' : `${word(it.count)[0].toUpperCase() + word(it.count).slice(1)} already found.`}</span>
+         <button class="btn quiet" data-act="addExtraCopy" data-k="${k}" data-id="${it.id}">Count an extra copy</button></div>` : '';
+    const label = `${it.name}, ${it.found} of ${it.count} found. ${done ? '' : 'Press to count one.'}`;
+    return `<div class="lrow ${done ? 'done' : ''} ${miss ? 'miss' : ''} ${flash} ${over ? 'wrap' : ''}">
+      <button class="lrow-main" data-act="add" data-k="${k}" data-id="${it.id}" aria-label="${esc(label)}">
+        <span class="name t-body">${esc(it.name)}</span><span class="pips" aria-hidden="true">${pips}</span><span class="cnt t-sub num">${cnt}</span>
+      </button>
+      <button class="lrow-minus ${it.found ? '' : 'off'}" data-act="remove" data-k="${k}" data-id="${it.id}" aria-label="Take one ${esc(it.name)} back" ${it.found ? '' : 'tabindex="-1" aria-hidden="true"'}>&minus;</button>
+      ${over}</div>`;
+  }
+  function ledgerLists(k, st, which) {
+    const t = totals(st);
+    const q = st.query.trim();
+    const pool = q ? matches(st, q) : st.items;
+    const ids = new Set(pool.map(i => i.id));
+    const ordered = st.items.filter(i => ids.has(i.id));
+    const toFind = ordered.filter(i => i.found < i.count || i.id === st.justDone);
+    const found = ordered.filter(i => i.found >= i.count && i.id !== st.justDone);
+    let out = '';
+    if (which.includes('find') && toFind.length) {
+      out += `<div class="stack"><h3 class="section-h">${t.short ? 'Missing' : 'To find'}</h3><div class="list" data-new="${t.short ? 'Missing list' : 'Checklist'}">${toFind.map(i => ledgerRow(k, st, i, t)).join('')}</div></div>`;
+    }
+    if (which.includes('found') && found.length) {
+      out += `<div class="stack"><h3 class="section-h">Found</h3><div class="list">${found.map(i => ledgerRow(k, st, i, t)).join('')}</div></div>`;
+    }
+    if (which.includes('found') && st.extras.length) {
+      out += `<div class="stack"><h3 class="section-h">Not on the list</h3><div class="list">${st.extras.map((n, x) =>
+        `<div class="lrow"><span class="lrow-main"><span class="name t-body">${esc(n)}</span></span><button class="lrow-minus" data-act="removeExtra" data-k="${k}" data-id="${x}" aria-label="Remove ${esc(n)}">&minus;</button></div>`).join('')}</div></div>`;
+    }
+    if (which.includes('find') && which.includes('found') && q && !toFind.length && !found.length) {
+      out += `<p class="t-sub muted" style="margin:0">No name on this list matches.</p>`;
+    }
+    return out;
+  }
+  function ledgerAnswer(k, st) {
+    const q = st.query.trim(); const a = st.answer;
+    if (q) {
+      const m = matches(st, q);
+      const open = m.filter(i => i.found < i.count);
+      if (!m.length) return `<div class="answer" role="status" data-new="Answer by the field"><span class="t-sub">&ldquo;${esc(q)}&rdquo; is not on this list.</span><button class="btn quiet" data-act="addExtra" data-k="${k}">Count as extra</button></div>`;
+      if (!open.length && m.length === 1) {
+        const it = m[0];
+        return `<div class="answer" role="status"><span class="t-sub">${esc(it.name)}: ${it.count === 1 ? 'already found' : word(it.count) + ' already found'}.</span><button class="btn quiet" data-act="addExtraCopy" data-k="${k}" data-id="${it.id}">Count an extra copy</button></div>`;
+      }
+      if (open.length === 1) return `<div class="answer" role="status"><button class="btn primary" data-act="found" data-k="${k}" data-id="${open[0].id}">Count ${esc(open[0].name)}</button></div>`;
+      return '';
+    }
+    if (a && a.from === 'field' && a.kind === 'added') {
+      const it = st.items.find(i => i.id === a.id);
+      return `<div class="answer" role="status"><span class="t-sub">Counted ${esc(it.name)}, ${it.found} of ${it.count}.</span></div>`;
+    }
+    if (a && a.kind === 'extra') return `<div class="answer" role="status"><span class="t-sub">Counted ${esc(a.name)} as not on the list.</span></div>`;
+    return '';
+  }
+  function ledgerActions(k, st) {
+    const t = totals(st);
+    if (t.complete) return `<button class="btn primary" data-act="sheet" data-k="${k}">Next envelope</button>`;
+    if (t.short) return `<button class="btn" data-act="undeclare" data-k="${k}">Keep looking</button><button class="btn primary" data-act="sheet" data-k="${k}">Next envelope</button>`;
+    return `<button class="btn" data-act="declare" data-k="${k}">Envelope is empty</button>`;
+  }
+  function ledgerLoading(mode) {
+    const rows = Array.from({ length: 6 }, () => `<div class="skel" style="height:44px"></div>`).join('');
+    return `<div class="app" aria-busy="true"><div class="nav"><span class="navbtn">&#8249; Envelopes</span></div>
+      <div class="skel" style="height:41px;width:60%"></div>
+      <div class="gauge"><div class="skel" style="height:12px"></div><p class="g-line t-body muted" role="status">Reading the card list&hellip;</p></div>
+      <div class="scroll"><div class="stack">${rows}</div></div></div>`;
+  }
+
+  function ledger(k, st, mode) {
+    if (st.phase === 'loading') return mode === 'openR' ? `<div class="app"></div>` : ledgerLoading(mode);
+    if (st.phase === 'failed') return mode === 'openR' ? '<div class="app"></div>' : `<div class="app">${nav(k, st)}<h1 class="t-large" style="margin:0">${esc(st.sender)}</h1>${failedState(k)}</div>`;
+    if (!st.items.length) return mode === 'openR' ? `<div class="app">${sheet(k, st)}</div>` : `<div class="app">${nav(k, st)}<h1 class="t-large" style="margin:0">${esc(st.sender)}</h1>${emptyState(k)}</div>${mode === 'openL' ? '' : sheet(k, st)}`;
+    const focus = mode === 'folded';
+    const title = `<h1 class="t-large" style="margin:0">${esc(st.sender)}</h1>`;
+    if (mode === 'openL') {
+      return `<div class="app">${nav(k, st)}${title}
+        <div class="scroll" data-scroll="l">${ledgerLists(k, st, ['find'])}${!ledgerLists(k, st, ['find']) && !st.query ? '<p class="t-sub muted" style="margin:0">Every name on the list is found.</p>' : ''}</div>
+        ${ledgerAnswer(k, st)}<div class="bar">${field(k, st, 'Type a card name')}</div></div>`;
+    }
+    if (mode === 'openR') {
+      return `<div class="app"><div class="nav" aria-hidden="true"></div>${ledgerGauge(st, false)}
+        <div class="scroll" data-scroll="r">${ledgerLists(k, st, ['found'])}</div>
+        <div class="bar" style="justify-content:flex-end">${ledgerActions(k, st)}</div></div>${sheet(k, st)}`;
+    }
+    if (mode === 'ax5') {
+      return `<div class="app">${nav(k, st, { compact: true })}${ledgerGauge(st, false)}
+        <div class="scroll" data-scroll="a">${title}${ledgerLists(k, st, ['find', 'found'])}<div class="stack">${ledgerActions(k, st)}</div></div>
+        ${ledgerAnswer(k, st)}<div class="bar">${field(k, st, 'Card name')}</div></div>${sheet(k, st)}`;
+    }
+    return `<div class="app">${nav(k, st)}${title}${ledgerGauge(st, focus)}
+      <div class="scroll" data-scroll="m">${ledgerLists(k, st, ['find', 'found'])}</div>
+      ${ledgerAnswer(k, st)}
+      <div class="bar" data-new="Name field and done control">${field(k, st, 'Type a card name')}${totals(st).complete || totals(st).short ? '' : ledgerActions(k, st)}</div>
+      ${totals(st).complete || totals(st).short ? `<div class="bar" style="justify-content:flex-end">${ledgerActions(k, st)}</div>` : ''}
+    </div>${sheet(k, st)}`;
+  }
+
+  // ---------- Slot tray ----------
+  function trayGrid(k, st, opts) {
+    const t = totals(st);
+    let html = '';
+    st.items.forEach(it => {
+      for (let n = 0; n < it.count; n++) {
+        const filled = n < it.found;
+        const miss = !filled && t.short;
+        const a = st.answer;
+        const pop = a && a.id === it.id && ((a.kind === 'added' && n === it.found - 1) || (a.kind === 'removed' && n === it.found)) ? 'pop' : '';
+        if (opts.pips) { html += `<i class="slot ${filled ? 'filled' : ''} ${miss ? 'miss' : ''}"></i>`; continue; }
+        const lab = `${it.name}${it.count > 1 ? `, copy ${n + 1} of ${it.count}` : ''}, ${filled ? 'found. Press to take it back.' : 'not found yet. Press to fill it.'}`;
+        html += `<button class="slot ${filled ? 'filled' : ''} ${miss ? 'miss' : ''} ${pop}" data-act="slot" data-k="${k}" data-id="${it.id}" data-n="${n}" aria-label="${esc(lab)}">`
+          + (filled ? '<span class="slot-mark" aria-hidden="true">&#10003;</span>' : '')
+          + (it.count > 1 ? `<span class="slot-copy num" aria-hidden="true">${n + 1}/${it.count}</span>` : '')
+          + `<span class="slot-name" aria-hidden="true">${esc(it.name)}</span></button>`;
+      }
+    });
+    if (opts.pips) return `<div class="pipstrip ${t.complete ? 'complete' : ''}" aria-hidden="true">${html}</div>`;
+    return `<div class="tray ${opts.big ? 'big' : ''} ${t.complete ? 'complete' : ''}" ${opts.focus ? 'id="tray-slots"' : ''} data-new="One slot per card" role="group" aria-label="Card slots">${html}</div>${trayExtras(k, st)}`;
+  }
+  function trayExtras(k, st) {
+    return st.extras.length
+      ? `<div class="stack"><h3 class="section-h">Not on the list</h3><div class="chips">${st.extras.map((n, x) =>
+          `<button class="chip" data-act="removeExtra" data-k="${k}" data-id="${x}" aria-label="Remove ${esc(n)}">${esc(n)} <span aria-hidden="true">&times;</span></button>`).join('')}</div></div>` : '';
+  }
+  function trayLine(st) {
+    const t = totals(st);
+    if (t.complete) return `<p class="g-line"><span class="g-num">All ${t.total}</span><span class="t-body">found</span></p>`;
+    if (t.short) return `<p class="g-line"><span class="g-num num">${t.left} short</span></p>`;
+    return `<p class="g-line"><span class="g-num num">${t.left}</span><span class="t-body">to find</span></p>`;
+  }
+  function trayButtons(k, st) {
+    const t = totals(st);
+    if (t.complete) return `<button class="btn primary" data-act="sheet" data-k="${k}">Next envelope</button>`;
+    if (t.short) return `<button class="btn" data-act="undeclare" data-k="${k}">Keep looking</button><button class="btn primary" data-act="sheet" data-k="${k}">Next envelope</button>`;
+    return `<button class="btn" data-act="declare" data-k="${k}">Envelope is empty</button>`;
+  }
+  function trayStatus(k, st, withButtons) {
+    const t = totals(st);
+    return `<div class="status ${t.complete ? 'complete' : t.short ? 'short' : ''}" role="status" aria-live="polite">${trayLine(st)}${withButtons ? `<div class="cluster" style="flex-wrap:nowrap">${trayButtons(k, st)}</div>` : ''}</div>`;
+  }
+  function trayAnswer(k, st) {
+    const q = st.query.trim(); const a = st.answer; const t = totals(st);
+    let body;
+    if (q) {
+      const m = matches(st, q);
+      if (!m.length) {
+        body = `<p class="t-body" style="margin:0">&ldquo;${esc(q)}&rdquo; is not on this list.</p>
+          <div class="cluster"><button class="btn" data-act="addExtra" data-k="${k}">Count as extra</button></div>`;
+      } else {
+        const top = m.find(i => i.found < i.count) || m[0];
+        const others = m.filter(i => i !== top).slice(0, 3);
+        const chips = others.length ? `<div class="chips">${others.map(i => `<button class="chip" data-act="pickQuery" data-k="${k}" data-id="${i.id}">${esc(i.name)}</button>`).join('')}</div>` : '';
+        if (top.found < top.count) {
+          body = `<div class="row-line" style="justify-content:space-between;flex-wrap:wrap">
+              <span class="stack" style="gap:0"><span class="t-head">${esc(top.name)}</span><span class="t-sub muted num">${top.found} of ${top.count} found</span></span>
+              <button class="btn primary" data-act="found" data-k="${k}" data-id="${top.id}">Found it</button></div>${chips}`;
+        } else {
+          body = `<div class="stack" style="gap:0"><span class="t-head">${esc(top.name)}</span><span class="t-sub muted">${top.count === 1 ? 'Already found.' : word(top.count)[0].toUpperCase() + word(top.count).slice(1) + ' already found.'}</span></div>
+            <div class="cluster"><button class="btn" data-act="addExtraCopy" data-k="${k}" data-id="${top.id}">Count an extra copy</button></div>${chips}`;
+        }
+      }
+      return `<div class="card-ans ${m.length ? 'ok' : ''}" data-new="Answer card">${body}</div>`;
+    }
+    if (a && a.kind === 'added') {
+      const it = st.items.find(i => i.id === a.id);
+      body = `<span class="t-head">&#10003; ${esc(it.name)}</span><span class="t-sub muted num">${it.found === it.count && it.count > 1 ? word(it.count)[0].toUpperCase() + word(it.count).slice(1) + ' found' : `${it.found} of ${it.count} found`}</span>`;
+    } else if (a && a.kind === 'removed') {
+      const it = st.items.find(i => i.id === a.id);
+      body = `<span class="t-body">Took one ${esc(it.name)} back.</span>`;
+    } else if (a && a.kind === 'extra') {
+      body = `<span class="t-body">Counted ${esc(a.name)} as not on the list.</span>`;
+    } else if (a && a.kind === 'undone') {
+      body = `<span class="t-body">Undone.</span>`;
+    } else if (t.complete || t.short) {
+      body = `<span class="t-sub muted">A card turned up late? Type its name.</span>`;
+    } else {
+      body = `<span class="t-sub muted">Type the name on a card, or press its slot.</span>`;
+    }
+    return `<div class="card-ans" data-new="Answer card" role="status">${body}</div>`;
+  }
+  function trayLog(k, st) {
+    if (!st.log.length) return `<p class="t-sub muted" style="margin:0">Cards you count show here, newest first.</p>`;
+    return `<div class="list log">${st.log.slice(0, 8).map((e, x) => {
+      const it = e.id ? st.items.find(i => i.id === e.id) : null;
+      const text = it ? `${it.name}, ${e.n} of ${it.count}` : `${e.extra}, not on the list`;
+      return `<div class="lrow"><span class="lrow-main"><span class="name t-body">${esc(text)}</span></span><button class="lrow-minus" data-act="unlog" data-k="${k}" data-id="${x}" aria-label="Take back ${esc(text)}">&minus;</button></div>`;
+    }).join('')}</div>`;
+  }
+  function trayLoading(mode) {
+    const slots = Array.from({ length: 18 }, () => `<i class="slot skel"></i>`).join('');
+    return `<div class="app" aria-busy="true"><div class="nav"><span class="navbtn">&#8249; Envelopes</span></div>
+      <div class="skel" style="height:28px;width:50%"></div>
+      <div class="scroll"><div class="tray">${slots}</div></div>
+      <p class="t-body muted" role="status" style="margin:0">Reading the card list&hellip;</p></div>`;
+  }
+
+  function tray(k, st, mode) {
+    if (st.phase === 'loading') return mode === 'openR' ? '<div class="app"></div>' : trayLoading(mode);
+    if (st.phase === 'failed') return mode === 'openR' ? '<div class="app"></div>' : `<div class="app">${nav(k, st)}<h1 class="t-t2" style="margin:0">${esc(st.sender)}</h1>${failedState(k)}</div>`;
+    if (!st.items.length) return mode === 'openR' ? `<div class="app">${sheet(k, st)}</div>` : `<div class="app">${nav(k, st)}<h1 class="t-t2" style="margin:0">${esc(st.sender)}</h1>${emptyState(k)}</div>${mode === 'openL' ? '' : sheet(k, st)}`;
+    const fieldBox = `<div class="bar" data-new="Name field">${field(k, st, 'Type the name on the card')}</div>`;
+    if (mode === 'openL') {
+      return `<div class="app">${nav(k, st)}<h1 class="t-large" style="margin:0">${esc(st.sender)}</h1>
+        <div class="scroll" data-scroll="l">${trayGrid(k, st, { big: true })}</div>${trayStatus(k, st, true)}</div>`;
+    }
+    if (mode === 'openR') {
+      return `<div class="app"><div class="nav" aria-hidden="true"></div><h2 class="t-t2" style="margin:0">Read a card</h2>
+        ${trayAnswer(k, st)}${fieldBox}
+        <div class="scroll" data-scroll="r"><div class="stack"><h3 class="section-h">Counted</h3>${trayLog(k, st)}</div></div></div>${sheet(k, st)}`;
+    }
+    if (mode === 'ax5') {
+      return `<div class="app">${nav(k, st, { compact: true })}${trayStatus(k, st, false)}
+        <div class="scroll" data-scroll="a">${trayGrid(k, st, { pips: true })}<h1 class="t-t2" style="margin:0">${esc(st.sender)}</h1>${trayExtras(k, st)}<div class="stack">${trayButtons(k, st)}</div></div>
+        ${st.query.trim() || st.answer ? trayAnswer(k, st) : ''}${fieldBox}</div>${sheet(k, st)}`;
+    }
+    return `<div class="app">${nav(k, st)}<h1 class="t-t2" style="margin:0">${esc(st.sender)}</h1>
+      <div class="scroll" data-scroll="m">${trayGrid(k, st, { focus: mode === 'folded' })}</div>
+      ${trayStatus(k, st, true)}${trayAnswer(k, st)}${fieldBox}</div>${sheet(k, st)}`;
+  }
+
+  // ---------- Frames ----------
+  // The frames are static markup above, so a reader without script still sees each device.
+  const RENDER = { ledger, tray };
+
+  let focusAfter = null;
+  function render() {
+    CONCEPTS.forEach(k => {
+      const st = S[k];
+      document.querySelectorAll(`[data-frames="${k}"] [data-slot]`).forEach(el => {
+        const mode = el.dataset.slot;
+        const keep = {};
+        el.querySelectorAll('[data-scroll]').forEach(s => { keep[s.dataset.scroll] = s.scrollTop; });
+        el.innerHTML = RENDER[k](k, st, mode === 'phone' ? 'phone' : mode);
+        el.querySelectorAll('[data-scroll]').forEach(s => { if (keep[s.dataset.scroll] != null) s.scrollTop = keep[s.dataset.scroll]; });
+      });
+    });
+    if (focusAfter) {
+      const el = document.querySelector(focusAfter.sel);
+      if (el) { el.focus(); if (el.setSelectionRange) { const n = el.value.length; el.setSelectionRange(n, n); } }
+      focusAfter = null;
+    }
+  }
+  function slotSel(el) {
+    const slot = el.closest('[data-slot]'); const fig = el.closest('[data-frames]');
+    return `[data-frames="${fig.dataset.frames}"] [data-slot="${slot.dataset.slot}"]`;
+  }
+
+  // ---------- Events ----------
+  document.addEventListener('click', (e) => {
+    const b = e.target.closest('[data-act]');
+    if (!b) return;
+    const { act: name, k, id, n } = b.dataset;
+    if (name === 'slot') act.slot(k, id, n);
+    else if (name === 'add') act.add(k, id, 'row');
+    else act[name](k, id);
+    const sel = slotSel(b);
+    render();
+    const again = document.querySelector(sel + ` [data-act="${name}"]${id != null ? `[data-id="${id}"]` : ''}${n != null ? `[data-n="${n}"]` : ''}`);
+    if (again) again.focus({ preventScroll: true });
+  });
+  document.addEventListener('input', (e) => {
+    const f = e.target.closest('input[data-role="q"]');
+    if (!f) return;
+    const st = S[f.dataset.k];
+    st.query = f.value; st.answer = null; st.justDone = null;
+    focusAfter = { sel: slotSel(f) + ' input[data-role="q"]' };
+    render();
+  });
+  document.addEventListener('keydown', (e) => {
+    const f = e.target.closest('input[data-role="q"]');
+    if (e.key === 'Escape') {
+      const open = CONCEPTS.filter(k => S[k].sheet);
+      if (open.length) { open.forEach(k => { S[k].sheet = false; }); render(); }
+      return;
+    }
+    if (!f || e.key !== 'Enter') return;
+    e.preventDefault();
+    const k = f.dataset.k; const st = S[k]; const q = st.query.trim();
+    if (!q) return;
+    const m = matches(st, q); const open = m.filter(i => i.found < i.count);
+    if (!m.length) act.addExtra(k);
+    else if (open.length >= 1 && (k === 'tray' || open.length === 1)) act.add(k, open[0].id, 'field');
+    else if (m.length === 1) st.answer = { kind: 'over', id: m[0].id, from: 'field' };
+    focusAfter = { sel: slotSel(f) + ' input[data-role="q"]' };
+    render();
+  });
+
+  // ---------- Page controls ----------
+  function applyPage() {
+    const root = document.documentElement;
+    if (page.theme === 'system') root.removeAttribute('data-theme'); else root.setAttribute('data-theme', page.theme);
+    document.querySelectorAll('[data-theme-btn]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeBtn === page.theme)));
+    document.getElementById('ctl-state').value = page.state;
+    document.getElementById('ctl-dev').value = page.dev;
+    const lb = document.getElementById('ctl-labels');
+    lb.setAttribute('aria-pressed', String(page.labels));
+    document.getElementById('concepts').classList.toggle('labels', page.labels);
+    CONCEPTS.forEach(k => {
+      const hide = page.hidden[k] || (page.only && page.only !== k);
+      document.getElementById('opt-' + k).hidden = !!hide;
+      const hb = document.querySelector(`[data-hide="${k}"]`);
+      hb.setAttribute('aria-pressed', String(!!page.hidden[k]));
+      hb.textContent = (page.hidden[k] ? 'Show ' : 'Hide ') + (k === 'ledger' ? 'Ledger list' : 'Slot tray');
+    });
+    document.querySelectorAll('figure[data-fkey]').forEach(fg => { fg.hidden = page.dev !== 'all' && fg.dataset.fkey !== page.dev; });
+    writeHash();
+  }
+  document.getElementById('ctl-state').addEventListener('change', (e) => {
+    page.state = e.target.value; CONCEPTS.forEach(k => { S[k] = preset(page.state); }); applyPage(); render();
+  });
+  document.getElementById('ctl-dev').addEventListener('change', (e) => { page.dev = e.target.value; applyPage(); });
+  document.querySelectorAll('[data-theme-btn]').forEach(b => b.addEventListener('click', () => { page.theme = b.dataset.themeBtn; applyPage(); }));
+  document.getElementById('ctl-labels').addEventListener('click', () => { page.labels = !page.labels; applyPage(); });
+  document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+    const k = b.dataset.hide; page.hidden[k] = !page.hidden[k]; if (page.only === k) page.only = null; applyPage();
+  }));
+  window.addEventListener('hashchange', () => { readHash(); CONCEPTS.forEach(k => { S[k] = preset(page.state); }); applyPage(); render(); });
+
+  readHash();
+  CONCEPTS.forEach(k => { S[k] = preset(page.state); });
+
+  applyPage();
+  render();
+})();
+</script>
+</body>
+</html>
