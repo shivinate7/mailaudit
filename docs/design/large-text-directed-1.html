@@ -268,7 +268,14 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
     <div class="ctl" id="ctl-hide"><span>Cull</span></div>
   </div>
 
-  <div id="sections"></div>
+  <div id="sections">
+    <!-- Shown until the script draws the frames: the same three frames, folded first, empty. -->
+    <div class="frames">
+      <figure><div class="dev" data-device="iphone-duo-folded"><div class="status"><span>9:41</span><span>100%</span></div><p style="padding:48px 16px;margin:0">The frames draw with JavaScript. Open this page in a browser with scripts on.</p></div><figcaption><b>iPhone Duo, folded</b></figcaption></figure>
+      <figure><div class="dev" data-device="iphone-duo-unfolded"><div class="status"><span>9:41</span><span>100%</span></div></div><figcaption><b>iPhone Duo, open</b></figcaption></figure>
+      <figure><div class="dev" data-device="iphone-regular"><div class="status"><span>9:41</span><span>100%</span></div></div><figcaption><b>Large phone</b></figcaption></figure>
+    </div>
+  </div>
 
   <details class="audit" id="audit">
     <summary>Truncation check</summary>
