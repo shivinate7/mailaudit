@@ -1,0 +1,631 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Say It Back</title>
+<style>
+/* Colours are this mockup's own choice: the brief limited reads to the plan, so no repo token file was read.
+   Type sizes are iOS Dynamic Type styles at the default (Large) size, from the HIG typography page, read 2026-11-21. */
+:root {
+  --page: #ebe8e1; --page-ink: #1d1c1a; --page-ink-2: #5d5a54; --page-line: #cfcac0;
+  --frame: #1a1a1c; --bg: #f2f2f7; --surface: #ffffff; --ink: #1c1c1e; --ink-2: #6c6c72;
+  --sep: rgba(60,60,67,.2); --accent: #0b6b58; --accent-ink: #ffffff; --accent-soft: #dcefe9;
+  --check: #1e8449; --caption: #fbf6ea; --caption-line: #e4dac4; --focus-row: #fff1c9;
+  --new: #a8450c; --today: #55555c; --glass: rgba(255,255,255,.86); --hinge: #b8b3a8;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #141413; --page-ink: #f0ede6; --page-ink-2: #a9a59c; --page-line: #36342f;
+    --frame: #3a3a3d; --bg: #000000; --surface: #1c1c1e; --ink: #f2f2f7; --ink-2: #a1a1a8;
+    --sep: rgba(84,84,88,.6); --accent: #44c7a6; --accent-ink: #00261e; --accent-soft: #123a31;
+    --check: #4cd384; --caption: #211f1a; --caption-line: #3b3629; --focus-row: #33290f;
+    --new: #ff9d5c; --today: #a1a1a8; --glass: rgba(44,44,46,.9); --hinge: #4a4740;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #141413; --page-ink: #f0ede6; --page-ink-2: #a9a59c; --page-line: #36342f;
+  --frame: #3a3a3d; --bg: #000000; --surface: #1c1c1e; --ink: #f2f2f7; --ink-2: #a1a1a8;
+  --sep: rgba(84,84,88,.6); --accent: #44c7a6; --accent-ink: #00261e; --accent-soft: #123a31;
+  --check: #4cd384; --caption: #211f1a; --caption-line: #3b3629; --focus-row: #33290f;
+  --new: #ff9d5c; --today: #a1a1a8; --glass: rgba(44,44,46,.9); --hinge: #4a4740;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--page-ink);
+  font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  font-size: 17px; line-height: 22px;
+  padding: 0 16px 48px;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- page header ---------- */
+.sample {
+  margin: 0 -16px; padding: 8px 16px; text-align: center;
+  background: var(--page-ink); color: var(--page);
+  font-size: 13px; line-height: 18px; font-weight: 600;
+}
+header.top { max-width: 1120px; margin: 24px auto 16px; }
+header.top h1 { font-size: 34px; line-height: 41px; font-weight: 700; margin: 0; }
+header.top h1 .kind {
+  display: inline-block; font-size: 15px; line-height: 20px; font-weight: 600; color: var(--new);
+  border: 1.5px dashed var(--new); border-radius: 6px; padding: 2px 8px; margin-left: 8px;
+  vertical-align: 6px; white-space: nowrap;
+}
+header.top p.pitch { font-size: 20px; line-height: 25px; margin: 8px 0 0; color: var(--page-ink-2); max-width: 46em; }
+
+.controls { max-width: 1120px; margin: 0 auto 24px; display: flex; flex-wrap: wrap; gap: 12px 20px; align-items: flex-end; }
+.ctl-label { display: block; font-size: 13px; line-height: 18px; color: var(--page-ink-2); margin: 0 0 4px 4px; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: var(--page-line); }
+.seg button {
+  min-height: 44px; padding: 0 14px; border: 0; border-radius: 9px; background: transparent;
+  font-size: 15px; line-height: 20px; cursor: pointer; color: var(--page-ink);
+}
+.seg button[aria-pressed="true"] { background: var(--page); font-weight: 600; box-shadow: 0 1px 2px rgba(0,0,0,.15); }
+.plain-btn {
+  min-height: 44px; padding: 0 16px; border-radius: 10px; border: 1px solid var(--page-line);
+  background: transparent; font-size: 15px; cursor: pointer; color: var(--page-ink);
+}
+.plain-btn[aria-pressed="true"] { background: var(--page-line); }
+
+.stage { max-width: 1120px; margin: 0 auto; display: flex; flex-wrap: wrap; gap: 40px; align-items: flex-start; justify-content: center; }
+figure { margin: 0; }
+figcaption { font-size: 13px; line-height: 18px; color: var(--page-ink-2); margin: 12px auto 0; text-align: center; max-width: 380px; }
+figcaption b { color: var(--page-ink); font-weight: 600; }
+
+/* ---------- device frames ---------- */
+.device { background: var(--frame); padding: 10px; border-radius: 48px; box-shadow: 0 18px 40px rgba(0,0,0,.18); }
+.device.is-focus { box-shadow: 0 0 0 4px var(--accent), 0 18px 40px rgba(0,0,0,.18); }
+.screen {
+  position: relative; overflow: hidden; background: var(--bg); color: var(--ink); border-radius: 38px;
+  display: flex; flex-direction: column;
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+.phone .screen { width: min(360px, calc(100vw - 52px)); height: 800px; }
+
+.statusbar {
+  flex: none; height: 50px; display: flex; align-items: center; justify-content: space-between;
+  padding: 6px 28px 0; font-size: 15px; line-height: 20px; font-weight: 600;
+}
+.island { width: 110px; height: 32px; border-radius: 16px; background: #000; }
+.status-icons { display: flex; gap: 6px; align-items: center; }
+.status-icons span { display: block; background: currentColor; border-radius: 2px; }
+
+/* nav bar */
+.nav { flex: none; padding: 0 16px; }
+.nav-row { height: 44px; display: flex; align-items: center; justify-content: space-between; }
+.back {
+  min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; gap: 2px;
+  background: none; border: 0; color: var(--accent); font-size: 17px; padding: 0; cursor: pointer;
+}
+.nav-tools { display: flex; gap: 4px; }
+.icon-btn {
+  position: relative; width: 44px; height: 44px; border-radius: 22px; border: 0;
+  background: transparent; color: var(--accent); display: grid; place-items: center; cursor: pointer;
+}
+.icon-btn svg { width: 24px; height: 24px; }
+.icon-btn[aria-pressed="true"] { background: var(--accent-soft); }
+.large-title { font-size: 34px; line-height: 41px; font-weight: 700; margin: 0; }
+.subtitle { font-size: 15px; line-height: 20px; color: var(--ink-2); margin: 2px 0 10px; }
+
+/* list */
+.list-wrap { position: relative; flex: 1 1 auto; min-height: 0; overflow: auto; padding: 0 16px 8px; }
+.section-head { font-size: 13px; line-height: 18px; color: var(--ink-2); text-transform: uppercase; margin: 6px 16px; }
+.list { background: var(--surface); border-radius: 12px; overflow: hidden; }
+.row {
+  width: 100%; min-height: 56px; display: grid; grid-template-columns: 28px 1fr auto; gap: 12px; align-items: center;
+  padding: 8px 16px; border: 0; background: transparent; text-align: left; cursor: pointer; position: relative;
+}
+.row + .row::before { content: ""; position: absolute; top: 0; left: 56px; right: 0; height: 1px; background: var(--sep); }
+.row:active { background: var(--sep); }
+.row.focus-row { background: var(--focus-row); }
+.tick { width: 26px; height: 26px; border-radius: 13px; border: 2px solid var(--ink-2); display: grid; place-items: center; }
+.row[aria-checked="true"] .tick { background: var(--check); border-color: var(--check); }
+.tick svg { width: 16px; height: 16px; opacity: 0; color: #fff; }
+.row[aria-checked="true"] .tick svg { opacity: 1; }
+.r-name { font-size: 17px; line-height: 22px; display: block; }
+.r-meta { font-size: 13px; line-height: 18px; color: var(--ink-2); display: block; }
+.r-qty { font-size: 15px; line-height: 20px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+
+/* Caption slot: one fixed height in every state, reserved even when empty, so nothing moves under the pointer. */
+.caption {
+  position: relative; flex: none; height: 180px; margin: 0 12px 8px; padding: 10px 14px;
+  border-radius: 16px; background: var(--caption); border: 1px solid var(--caption-line);
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.cap-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 44px; }
+.cap-kicker { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; }
+.cap-tools { display: flex; align-items: center; gap: 4px; }
+.play {
+  width: 44px; height: 44px; margin-right: -8px; border: 0; background: transparent; color: var(--accent);
+  border-radius: 22px; display: grid; place-items: center; cursor: pointer;
+}
+.play svg { width: 22px; height: 22px; }
+.cap-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.cap-text { font-size: 20px; line-height: 25px; font-weight: 600; margin: 0; }
+.cap-text .soft { display: block; font-size: 17px; line-height: 22px; font-weight: 400; color: var(--ink-2); margin-top: 2px; }
+.cap-empty { color: var(--ink-2); font-weight: 400; font-size: 17px; line-height: 22px; }
+.cap-actions { flex: none; display: flex; gap: 8px; align-items: center; margin-top: auto; }
+.pill {
+  min-height: 44px; min-width: 44px; padding: 0 18px; border-radius: 22px; border: 0; cursor: pointer;
+  background: var(--accent-soft); color: var(--accent); font-size: 17px; font-weight: 600;
+}
+.pill.quiet { background: transparent; border: 1.5px solid var(--caption-line); color: var(--ink); }
+.pill[hidden] { display: none; }
+
+.matches { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.match {
+  min-height: 96px; border-radius: 14px; border: 2px solid var(--accent); background: var(--surface);
+  display: grid; grid-template-rows: auto 1fr; justify-items: start; gap: 2px; padding: 6px 10px; cursor: pointer; text-align: left;
+}
+.match .num { font-size: 34px; line-height: 41px; font-weight: 700; color: var(--accent); }
+.match .mname { font-size: 15px; line-height: 20px; font-weight: 600; }
+.match .mcode { font-size: 13px; line-height: 18px; color: var(--ink-2); display: block; font-weight: 400; }
+
+.wave { display: flex; gap: 4px; align-items: center; height: 28px; margin-top: auto; }
+.wave i { display: block; width: 5px; border-radius: 3px; background: var(--accent); animation: wv 1s ease-in-out infinite; }
+.wave i:nth-child(2) { animation-delay: .1s } .wave i:nth-child(3) { animation-delay: .2s }
+.wave i:nth-child(4) { animation-delay: .3s } .wave i:nth-child(5) { animation-delay: .4s }
+@keyframes wv { 0%,100% { height: 6px } 50% { height: 26px } }
+@media (prefers-reduced-motion: reduce) { .wave i { animation: none; height: 14px; } }
+
+/* bottom: floating tab bar with the trailing mic button in the thumb zone */
+.bottom { flex: none; height: 84px; display: flex; align-items: center; gap: 10px; padding: 0 16px 14px; }
+.tabbar {
+  flex: 1; height: 62px; border-radius: 31px; background: var(--glass); display: flex; justify-content: space-around; align-items: center;
+  box-shadow: 0 2px 12px rgba(0,0,0,.12);
+}
+.tab {
+  min-width: 64px; min-height: 52px; display: grid; place-items: center; border: 0; background: none;
+  font-size: 11px; line-height: 13px; color: var(--ink-2); cursor: pointer; border-radius: 26px; padding: 4px 6px;
+}
+.tab svg { width: 24px; height: 24px; }
+.tab[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
+.mic {
+  position: relative; flex: none; width: 62px; height: 62px; border-radius: 31px; border: 0;
+  background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; cursor: pointer;
+  box-shadow: 0 2px 12px rgba(0,0,0,.2); touch-action: none; user-select: none; -webkit-user-select: none;
+  transition: transform .12s;
+}
+.mic svg { width: 28px; height: 28px; }
+.mic[aria-pressed="true"] { transform: scale(1.12); box-shadow: 0 0 0 6px var(--accent-soft), 0 2px 12px rgba(0,0,0,.2); }
+.home-ind { position: absolute; bottom: 7px; left: 50%; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--ink); opacity: .85; }
+
+/* Today / New tags: placed absolutely, so hiding them moves nothing */
+.tag {
+  position: absolute; z-index: 5; pointer-events: none; white-space: nowrap;
+  font-size: 11px; line-height: 13px; font-weight: 600; padding: 2px 6px; border-radius: 5px;
+  background: var(--surface); border: 1.5px dashed var(--new); color: var(--new);
+}
+.tag.today { border-color: var(--today); color: var(--today); }
+.outlined-new { outline: 1.5px dashed var(--new); outline-offset: 3px; }
+body.hide-tags .tag { display: none; }
+body.hide-tags .outlined-new { outline: none; }
+
+/* ---------- fold, half-folded on the counter ---------- */
+.fold { border-radius: 36px; }
+.fold-body { width: 620px; perspective: 1400px; }
+@media (max-width: 700px) { .fold { zoom: .55; } }
+.half { position: relative; background: var(--bg); color: var(--ink); overflow: hidden; height: 352px; display: flex; flex-direction: column;
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.half.top { border-radius: 28px 28px 6px 6px; transform-origin: bottom center; transform: rotateX(14deg); padding-top: env(safe-area-inset-top, 0px); }
+.half.bottom { border-radius: 6px 6px 28px 28px; padding-bottom: env(safe-area-inset-bottom, 0px); }
+body.flat .half.top { transform: none; }
+.hinge { height: 12px; margin: 0 -10px; background: linear-gradient(var(--frame), var(--hinge), var(--frame)); }
+.half .statusbar { height: 36px; padding-top: 0; }
+.half .island { width: 90px; height: 26px; }
+.fold-title { display: flex; align-items: baseline; justify-content: space-between; padding: 0 20px 6px; gap: 12px; }
+.fold-title h3 { font-size: 22px; line-height: 28px; font-weight: 700; margin: 0; }
+.fold-title span { font-size: 15px; line-height: 20px; color: var(--ink-2); }
+.half.top .list-wrap { padding: 0 20px 12px; }
+.readback {
+  position: relative; flex: none; height: 180px; margin: 14px 20px 0; padding: 8px 16px 12px; border-radius: 18px;
+  background: var(--caption); border: 1px solid var(--caption-line); display: flex; flex-direction: column; overflow: hidden;
+}
+.readback .cap-text { font-size: 34px; line-height: 41px; font-weight: 700; }
+.readback .cap-text .soft { font-size: 22px; line-height: 28px; margin-top: 4px; }
+.fold-actions { position: relative; flex: none; display: grid; grid-template-columns: 1fr 1fr 1.4fr; gap: 10px; margin: 12px 20px 0; }
+.big { min-height: 72px; border-radius: 18px; border: 0; cursor: pointer; font-size: 22px; line-height: 28px; font-weight: 700; background: var(--accent-soft); color: var(--accent); }
+.big.primary { background: var(--accent); color: var(--accent-ink); }
+.big.undo { background: transparent; border: 2px solid var(--caption-line); color: var(--ink); }
+.fold-foot { font-size: 13px; line-height: 18px; color: var(--ink-2); margin: 10px 20px 0; }
+
+footer.src { max-width: 1120px; margin: 40px auto 0; border-top: 1px solid var(--page-line); padding-top: 16px; font-size: 13px; line-height: 18px; color: var(--page-ink-2); }
+footer.src ul { margin: 6px 0 0; padding-left: 18px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample: every card name, seller, code and figure on this page is invented. No figure here is real.</div>
+
+<header class="top">
+  <h1>Say It Back <span class="kind">idea mockup, not built</span></h1>
+  <p class="pitch">Tap a card in, and the app says it back in plain words, so a wrong tap is caught while the envelope is still in your hand.</p>
+</header>
+
+<div class="controls" role="group" aria-label="Mockup controls">
+  <div>
+    <span class="ctl-label" id="lbl-state">Screen state</span>
+    <div class="seg" role="group" aria-labelledby="lbl-state" id="state-seg">
+      <button data-s="checked">1 Row checked</button>
+      <button data-s="listening">2 Listening</button>
+      <button data-s="matches">3 Several matches</button>
+      <button data-s="fold">4 Fold on the counter</button>
+      <button data-s="nomatch">Extra: not found</button>
+    </div>
+  </div>
+  <div>
+    <span class="ctl-label" id="lbl-theme">Theme</span>
+    <div class="seg" role="group" aria-labelledby="lbl-theme" id="theme-seg">
+      <button data-t="auto">Auto</button>
+      <button data-t="light">Light</button>
+      <button data-t="dark">Dark</button>
+    </div>
+  </div>
+  <button class="plain-btn" id="next-state">Next state &rarr;</button>
+  <button class="plain-btn" id="toggle-tags" aria-pressed="true">Today / New labels</button>
+  <button class="plain-btn" id="toggle-flat" aria-pressed="false">Flatten the fold</button>
+</div>
+
+<main class="stage">
+  <figure>
+    <div class="device phone" id="phone-frame" data-device="iphone-duo-folded">
+      <div class="screen">
+        <div class="statusbar" aria-hidden="true"><span>9:41</span><span class="island"></span>
+          <span class="status-icons"><span style="width:17px;height:11px"></span><span style="width:24px;height:11px;border-radius:3px"></span></span></div>
+
+        <div class="nav">
+          <div class="nav-row">
+            <button class="back" aria-label="Back to Packages">
+              <svg viewBox="0 0 24 24" width="24" height="24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>Packages</button>
+            <div class="nav-tools">
+              <button class="icon-btn" id="speech-btn" aria-pressed="false" aria-label="Speak read-backs aloud">
+                <span class="tag" style="top:-10px;right:30px">New: speech on/off, off at first</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M4 9v6h4l5 4V5L8 9H4z"/><path id="spk-waves" d="M16.5 8.5a5 5 0 010 7M19 6a8.5 8.5 0 010 12"/><path id="spk-off" d="M17 9l5 6M22 9l-5 6"/></svg>
+              </button>
+              <button class="icon-btn" aria-label="Recent checks">
+                <span class="tag today" style="top:34px;right:0">Today: recent-checks log, holds every undo</span>
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>
+              </button>
+            </div>
+          </div>
+          <h2 class="large-title">Tidepool Cards</h2>
+          <p class="subtitle">4 cards &middot; ordered Oct 30 &middot; $2.40</p>
+        </div>
+
+        <div class="list-wrap">
+          <span class="tag today" style="top:2px;right:16px">Today: tap a row</span>
+          <div class="section-head">In this package</div>
+          <div class="list" id="phone-list" role="list"></div>
+        </div>
+
+        <section class="caption outlined-new" id="phone-caption" aria-label="Read-back">
+          <span class="tag" style="top:-8px;left:12px">New: read-back caption, fixed height</span>
+          <div class="cap-head"><span class="cap-kicker" id="cap-kicker">Read-back</span>
+            <span class="cap-tools">
+              <button class="pill" id="undo-btn" hidden>Undo</button>
+              <button class="play" id="play-btn" aria-label="Play the read-back aloud">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg></button>
+            </span></div>
+          <div class="cap-body" id="cap-body"></div>
+        </section>
+
+        <div class="bottom">
+          <nav class="tabbar" aria-label="Sections">
+            <button class="tab" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>Packages</button>
+            <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 4v16M10 4v16M15 4v16M3 15l18-6"/></svg>Tally</button>
+            <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 8l9 6 9-6"/></svg>Orphaned</button>
+          </nav>
+          <button class="mic outlined-new" id="mic" aria-pressed="false" aria-label="Hold to say a card name">
+            <span class="tag" style="top:-28px;right:0">New: hold to talk (slice 2)</span>
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/></svg>
+          </button>
+        </div>
+        <span class="home-ind" aria-hidden="true"></span>
+      </div>
+    </div>
+    <figcaption><b>iPhone Duo, folded</b> &middot; states 1 to 3. Tap a row. Hold the mic, then let go.</figcaption>
+  </figure>
+
+  <figure>
+    <div class="device fold" id="fold-frame" data-device="iphone-duo-unfolded">
+      <div class="fold-body">
+        <div class="half top">
+          <div class="statusbar" aria-hidden="true"><span>9:41</span><span class="island"></span>
+            <span class="status-icons"><span style="width:17px;height:11px"></span><span style="width:24px;height:11px;border-radius:3px"></span></span></div>
+          <div class="fold-title"><h3>Tidepool Cards</h3><span id="fold-count">1 of 4 in</span></div>
+          <div class="list-wrap">
+            <span class="tag today" style="top:2px;right:20px">Today: package list</span>
+            <div class="list" id="fold-list" role="list"></div>
+          </div>
+        </div>
+        <div class="hinge" aria-hidden="true"></div>
+        <div class="half bottom" id="fold-bottom">
+          <section class="readback outlined-new" aria-label="Last read-back">
+            <span class="tag" style="top:12px;right:64px">New: last read-back, large type</span>
+            <div class="cap-head"><span class="cap-kicker">Last read-back</span>
+              <button class="play" id="fold-play" aria-label="Play the read-back aloud">
+                <svg viewBox="0 0 24 24" fill="currentColor"><path d="M8 5.5v13l10.5-6.5z"/></svg></button></div>
+            <p class="cap-text" id="fold-text"></p>
+          </section>
+          <div class="fold-actions">
+            <span class="tag" style="top:-10px;left:0">New: counter-mode buttons</span>
+            <button class="big undo" id="f-undo">Undo</button>
+            <button class="big" id="f-next">Next</button>
+            <button class="big primary" id="f-got">Got it</button>
+          </div>
+          <p class="fold-foot">Got it checks the highlighted card. An open mic, if the owner allows it, lives here only.</p>
+          <span class="home-ind" aria-hidden="true"></span>
+        </div>
+      </div>
+    </div>
+    <figcaption><b>iPhone Duo, unfolded and half-folded on the counter</b> &middot; state 4. List on the top screen; Got it, Next and Undo on the bottom.</figcaption>
+  </figure>
+</main>
+
+<div class="vh" aria-live="polite" id="announcer"></div>
+
+<footer class="src">
+  Plan: <code>docs/ideas/plans/access.md</code>, section &ldquo;Phase 2: Say It Back, fleshed out&rdquo;.
+  Frame sizes are illustrative: the repo's device list writes no Duo size.
+  Colours are this mockup's own; no repo token file was read.
+  Apple pages read 2026-11-21, each answered 200:
+  <ul>
+    <li>HIG Typography: Dynamic Type at the default size (Large Title 34, Title 2 22, Title 3 20, Body 17, Subhead 15, Footnote 13, Caption 1 12, Caption 2 11).</li>
+    <li>HIG Accessibility and HIG Buttons: 44x44 pt hit region.</li>
+    <li>HIG Layout: respect safe areas; lay out by size class, so the half-folded pose is its own layout.</li>
+  </ul>
+</footer>
+
+<script>
+(function () {
+  "use strict";
+
+  // Invented sample package. "spoken" is the speakable name made at import:
+  // punctuation stripped, Æ folded to AE, "//" read as "return side".
+  var items = [
+    { name: "Æther-Bound Wanderer // Return", spoken: "Aether Bound Wanderer, return side", code: "XYZ 041", price: 1.20, acrossTotal: 1, acrossOther: 0 },
+    { name: "Wanderer, the Unmoored", spoken: "Wanderer, the Unmoored", code: "XYZ 112", price: 0.35, acrossTotal: 1, acrossOther: 0 },
+    { name: "Wanderer’s Return", spoken: "Wanderer's Return", code: "XYZ 113", price: 0.25, acrossTotal: 1, acrossOther: 0 },
+    { name: "Lantern Moth", spoken: "Lantern Moth", code: "XYZ 077", price: 0.60, acrossTotal: 4, acrossOther: 2 }
+  ];
+  var SELLER = "Tidepool Cards";
+  var NUMS = ["Zero", "One", "Two", "Three", "Four"];
+  var ORDER = ["checked", "listening", "matches", "fold", "nomatch"];
+
+  var st = { s: "checked", checked: [false, false, false, false], log: [], focus: 2, last: null, speech: false };
+  var theme = "auto";
+
+  function $(id) { return document.getElementById(id); }
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function count() { return st.checked.filter(Boolean).length; }
+
+  // Speech is optional: with no synthesis in the browser, every call is silent.
+  function say(text) {
+    if (!text) return;
+    try {
+      if (!("speechSynthesis" in window) || typeof SpeechSynthesisUtterance !== "function") return;
+      window.speechSynthesis.cancel();
+      window.speechSynthesis.speak(new SpeechSynthesisUtterance(text));
+    } catch (e) { /* silent */ }
+  }
+  function sayIfOn(text) { if (st.speech) say(text); }
+  function haptic() { try { if (navigator.vibrate) navigator.vibrate(12); } catch (e) {} }
+  // Screen readers hear the same line through a polite live region.
+  function announce(text) { var a = $("announcer"); a.textContent = ""; setTimeout(function () { a.textContent = text; }, 30); }
+
+  function readBackFor(i, undone) {
+    var n = count(), it = items[i], soft, speak;
+    if (undone) {
+      return { strong: "Undone: " + it.spoken + ".", soft: "Back to waiting. " + n + " of 4 from " + SELLER + ".",
+               speak: "Undone. " + it.spoken + " is back to waiting.", undo: false };
+    }
+    if (n === 4) {
+      var spent = items.reduce(function (a, x) { return a + x.price; }, 0);
+      soft = "Last of 4. Package complete. $" + spent.toFixed(2) + " spent.";
+      speak = "Got it. " + it.spoken + ". Last of four. Package complete. Two forty spent.";
+    } else {
+      soft = n + " of 4 from " + SELLER + ".";
+      speak = "Got it. " + it.spoken + ". " + NUMS[n] + " of four from " + SELLER + ".";
+    }
+    if (it.acrossTotal > 1) {
+      var across = it.acrossOther + 1;
+      soft += " " + across + " of " + it.acrossTotal + " arrived across sellers.";
+      speak += " " + NUMS[across] + " of " + NUMS[it.acrossTotal].toLowerCase() + " arrived across sellers.";
+    }
+    return { strong: "Got it. " + it.spoken + ".", soft: soft, speak: speak, undo: true };
+  }
+
+  function check(i, quiet) {
+    if (st.checked[i]) {
+      st.last = { strong: "Already in: " + items[i].spoken + ".", soft: "Nothing changed.", speak: items[i].spoken + " is already in.", undo: false };
+      if (!quiet) sayIfOn(st.last.speak);
+      return;
+    }
+    st.checked[i] = true; st.log.push(i);
+    st.last = readBackFor(i, false);
+    if (!quiet) { haptic(); announce(st.last.strong + " " + st.last.soft); sayIfOn(st.last.speak); }
+  }
+  // Undo reverses the newest entry of the recent-checks log; no second undo strip.
+  function undo() {
+    var i = st.log.pop();
+    if (i === undefined) return;
+    st.checked[i] = false;
+    st.last = readBackFor(i, true);
+    st.focus = i;
+    haptic(); announce(st.last.strong + " " + st.last.soft); sayIfOn(st.last.speak);
+  }
+
+  var tickSvg = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>';
+  function rowsHtml(withFocus) {
+    return items.map(function (it, i) {
+      var f = withFocus && i === st.focus ? " focus-row" : "";
+      return '<button class="row' + f + '" role="checkbox" aria-checked="' + st.checked[i] + '" data-i="' + i + '">' +
+        '<span class="tick">' + tickSvg + '</span>' +
+        '<span><span class="r-name">' + esc(it.name) + '</span><span class="r-meta">' + it.code + ' &middot; $' + it.price.toFixed(2) + '</span></span>' +
+        '<span class="r-qty">&times;1</span></button>';
+    }).join("");
+  }
+
+  function captionParts() {
+    if (st.s === "listening") {
+      return { kicker: "Listening", undo: false, html:
+        '<p class="cap-text">Listening&hellip;<span class="soft">Say a name or a number like XYZ 112.</span></p>' +
+        '<div class="wave" aria-hidden="true"><i></i><i></i><i></i><i></i><i></i></div>' };
+    }
+    if (st.s === "matches") {
+      return { kicker: "Two matches: say or tap a number", undo: false, html:
+        '<div class="matches">' +
+        '<button class="match" data-pick="1"><span class="num">1</span><span class="mname">Wanderer, the Unmoored<span class="mcode">XYZ 112</span></span></button>' +
+        '<button class="match" data-pick="2"><span class="num">2</span><span class="mname">Wanderer’s Return<span class="mcode">XYZ 113</span></span></button></div>' };
+    }
+    if (st.s === "nomatch") {
+      return { kicker: "Not found", undo: false, html:
+        '<p class="cap-text">Not found: &ldquo;Lantern Mouth&rdquo;.<span class="soft">Keep it, or send to orphaned?</span></p>' +
+        '<div class="cap-actions"><button class="pill" data-act="keep">Keep it</button><button class="pill quiet" data-act="orphan">Send to orphaned</button></div>' };
+    }
+    if (st.last) {
+      return { kicker: "Read-back", undo: st.last.undo, html: '<p class="cap-text">' + esc(st.last.strong) + '<span class="soft">' + esc(st.last.soft) + '</span></p>' };
+    }
+    return { kicker: "Read-back", undo: false, html: '<p class="cap-text cap-empty">Tap a card when it arrives. What you checked shows here.</p>' };
+  }
+
+  function render() {
+    $("phone-list").innerHTML = rowsHtml(false);
+    $("fold-list").innerHTML = rowsHtml(true);
+    var c = captionParts();
+    $("cap-kicker").textContent = c.kicker;
+    $("cap-body").innerHTML = c.html;
+    $("undo-btn").hidden = !c.undo;
+    $("fold-text").innerHTML = st.last ? esc(st.last.strong) + '<span class="soft">' + esc(st.last.soft) + '</span>' : '<span class="soft">Nothing checked yet.</span>';
+    $("fold-count").textContent = count() + " of 4 in";
+    $("mic").setAttribute("aria-pressed", String(st.s === "listening"));
+    $("speech-btn").setAttribute("aria-pressed", String(st.speech));
+    $("spk-waves").style.display = st.speech ? "" : "none";
+    $("spk-off").style.display = st.speech ? "none" : "";
+    $("phone-frame").classList.toggle("is-focus", st.s !== "fold");
+    $("fold-frame").classList.toggle("is-focus", st.s === "fold");
+    Array.prototype.forEach.call(document.querySelectorAll("#state-seg button"), function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-s") === st.s));
+    });
+    writeHash();
+  }
+
+  // Each header state starts from a known sample, so a deep link always shows the same picture.
+  function preset(s) {
+    st.log = []; st.checked = [false, false, false, false]; st.last = null;
+    check(0, true);
+    if (s === "fold") { check(1, true); st.focus = 2; }
+    st.s = s;
+  }
+  function setTheme(t) {
+    theme = t;
+    if (t === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", t);
+    Array.prototype.forEach.call(document.querySelectorAll("#theme-seg button"), function (b) {
+      b.setAttribute("aria-pressed", String(b.getAttribute("data-t") === t));
+    });
+    writeHash();
+  }
+  function writeHash() {
+    var h = "#s=" + st.s + (theme !== "auto" ? "&t=" + theme : "");
+    if (location.hash !== h) { try { history.replaceState(null, "", h); } catch (e) {} }
+  }
+  function readHash() {
+    var p = {};
+    location.hash.replace(/^#/, "").split("&").forEach(function (kv) { var a = kv.split("="); if (a[0]) p[a[0]] = a[1]; });
+    preset(ORDER.indexOf(p.s) >= 0 ? p.s : "checked");
+    setTheme(p.t === "light" || p.t === "dark" ? p.t : "auto");
+    render();
+  }
+  window.addEventListener("hashchange", readHash);
+
+  function goState(s) {
+    preset(s); render();
+    var target = s === "fold" ? $("fold-frame") : $("phone-frame");
+    try { target.scrollIntoView({ block: "nearest", behavior: "smooth" }); } catch (e) {}
+  }
+
+  $("state-seg").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) goState(b.getAttribute("data-s")); });
+  $("next-state").addEventListener("click", function () { goState(ORDER[(ORDER.indexOf(st.s) + 1) % ORDER.length]); });
+  $("theme-seg").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) setTheme(b.getAttribute("data-t")); });
+  $("toggle-tags").addEventListener("click", function () {
+    var hidden = document.body.classList.toggle("hide-tags");
+    this.setAttribute("aria-pressed", String(!hidden));
+  });
+  $("toggle-flat").addEventListener("click", function () {
+    this.setAttribute("aria-pressed", String(document.body.classList.toggle("flat")));
+  });
+  $("speech-btn").addEventListener("click", function () { st.speech = !st.speech; render(); if (st.speech && st.last) say(st.last.speak); });
+
+  // Play always works on a tap, even with speech off; it stays silent where the browser has no voice.
+  $("play-btn").addEventListener("click", function () {
+    if (st.s === "matches") say("Two matches. One: Wanderer, the Unmoored, X Y Z one twelve. Two: Wanderer's Return, X Y Z one thirteen.");
+    else if (st.s === "listening") say("Listening. Say a name or a number.");
+    else if (st.s === "nomatch") say("Not found. Keep it, or send to orphaned?");
+    else if (st.last) say(st.last.speak);
+  });
+  $("fold-play").addEventListener("click", function () { if (st.last) say(st.last.speak); });
+  $("undo-btn").addEventListener("click", function () { st.s = "checked"; undo(); render(); });
+
+  $("phone-list").addEventListener("click", function (e) {
+    var r = e.target.closest(".row"); if (!r) return;
+    var i = +r.getAttribute("data-i");
+    st.s = "checked";
+    if (st.checked[i]) { // tapping a checked row unchecks it through the same log
+      var k = st.log.lastIndexOf(i); if (k >= 0) st.log.splice(k, 1); st.log.push(i); undo();
+    } else check(i);
+    render();
+  });
+  $("fold-list").addEventListener("click", function (e) {
+    var r = e.target.closest(".row"); if (!r) return;
+    st.s = "fold"; st.focus = +r.getAttribute("data-i"); render();
+  });
+  $("cap-body").addEventListener("click", function (e) {
+    var b = e.target.closest("button"); if (!b) return;
+    var act = b.getAttribute("data-act"), pick = b.getAttribute("data-pick");
+    if (pick) { st.s = "checked"; check(pick === "1" ? 1 : 2); render(); }
+    else if (act === "keep") {
+      st.s = "checked"; st.last = { strong: "Kept.", soft: "Nothing changed. Say it again, or tap a row.", speak: "Kept. Nothing changed.", undo: false };
+      announce("Kept."); sayIfOn(st.last.speak); render();
+    } else if (act === "orphan") {
+      // Voice may file into the orphaned pile; only touch moves it out to a seller.
+      st.s = "checked"; st.last = { strong: "Sent to orphaned.", soft: "Only a tap moves it out to a seller.", speak: "Sent to orphaned.", undo: false };
+      announce("Sent to orphaned."); sayIfOn(st.last.speak); render();
+    }
+  });
+
+  // Hold to talk. Press shows Listening; release shows a canned result: two matches for "Wanderer".
+  var mic = $("mic"), held = false;
+  function micDown(e) { if (e) e.preventDefault(); held = true; st.s = "listening"; render(); }
+  function micUp() { if (!held) return; held = false; st.s = "matches"; render(); sayIfOn("Two matches. Say or tap a number."); }
+  mic.addEventListener("pointerdown", micDown);
+  mic.addEventListener("pointerup", micUp);
+  mic.addEventListener("pointercancel", micUp);
+  mic.addEventListener("pointerleave", micUp);
+  mic.addEventListener("keydown", function (e) { if ((e.key === " " || e.key === "Enter") && !held) micDown(e); });
+  mic.addEventListener("keyup", function (e) { if (e.key === " " || e.key === "Enter") micUp(); });
+
+  // Counter mode on the fold.
+  function nextOpen(from) {
+    for (var k = 1; k <= items.length; k++) { var j = (from + k) % items.length; if (!st.checked[j]) return j; }
+    return from;
+  }
+  $("f-got").addEventListener("click", function () { st.s = "fold"; check(st.focus); st.focus = nextOpen(st.focus); render(); });
+  $("f-next").addEventListener("click", function () { st.s = "fold"; st.focus = (st.focus + 1) % items.length; render(); });
+  $("f-undo").addEventListener("click", function () { st.s = "fold"; undo(); render(); });
+
+  readHash();
+})();
+</script>
+</body>
+</html>
