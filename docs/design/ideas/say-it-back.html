@@ -140,7 +140,7 @@ figcaption b { color: var(--page-ink); font-weight: 600; }
 .caption {
   position: relative; flex: none; height: 180px; margin: 0 12px 8px; padding: 10px 14px;
   border-radius: 16px; background: var(--caption); border: 1px solid var(--caption-line);
-  display: flex; flex-direction: column; overflow: hidden;
+  display: flex; flex-direction: column;
 }
 .cap-head { flex: none; display: flex; align-items: center; justify-content: space-between; gap: 8px; height: 44px; }
 .cap-kicker { font-size: 12px; line-height: 16px; font-weight: 600; color: var(--ink-2); text-transform: uppercase; letter-spacing: .04em; }
@@ -150,13 +150,13 @@ figcaption b { color: var(--page-ink); font-weight: 600; }
   border-radius: 22px; display: grid; place-items: center; cursor: pointer;
 }
 .play svg { width: 22px; height: 22px; }
-.cap-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; }
+.cap-body { flex: 1 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
 .cap-text { font-size: 20px; line-height: 25px; font-weight: 600; margin: 0; }
 .cap-text .soft { display: block; font-size: 17px; line-height: 22px; font-weight: 400; color: var(--ink-2); margin-top: 2px; }
 .cap-empty { color: var(--ink-2); font-weight: 400; font-size: 17px; line-height: 22px; }
 .cap-actions { flex: none; display: flex; gap: 8px; align-items: center; margin-top: auto; }
 .pill {
-  min-height: 44px; min-width: 44px; padding: 0 18px; border-radius: 22px; border: 0; cursor: pointer;
+  min-height: 44px; min-width: 44px; padding: 0 16px; border-radius: 22px; border: 0; cursor: pointer; white-space: nowrap;
   background: var(--accent-soft); color: var(--accent); font-size: 17px; font-weight: 600;
 }
 .pill.quiet { background: transparent; border: 1.5px solid var(--caption-line); color: var(--ink); }
@@ -179,7 +179,7 @@ figcaption b { color: var(--page-ink); font-weight: 600; }
 @media (prefers-reduced-motion: reduce) { .wave i { animation: none; height: 14px; } }
 
 /* bottom: floating tab bar with the trailing mic button in the thumb zone */
-.bottom { flex: none; height: 84px; display: flex; align-items: center; gap: 10px; padding: 0 16px 14px; }
+.dock { flex: none; height: 84px; display: flex; align-items: center; gap: 10px; padding: 0 16px 14px; }
 .tabbar {
   flex: 1; height: 62px; border-radius: 31px; background: var(--glass); display: flex; justify-content: space-around; align-items: center;
   box-shadow: 0 2px 12px rgba(0,0,0,.12);
@@ -319,14 +319,14 @@ footer.src ul { margin: 6px 0 0; padding-left: 18px; }
           <div class="cap-body" id="cap-body"></div>
         </section>
 
-        <div class="bottom">
+        <div class="dock">
           <nav class="tabbar" aria-label="Sections">
             <button class="tab" aria-current="page"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8l9-5 9 5v8l-9 5-9-5z"/><path d="M3 8l9 5 9-5M12 13v8"/></svg>Packages</button>
             <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 4v16M10 4v16M15 4v16M3 15l18-6"/></svg>Tally</button>
             <button class="tab"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 8l9 6 9-6"/></svg>Orphaned</button>
           </nav>
           <button class="mic outlined-new" id="mic" aria-pressed="false" aria-label="Hold to say a card name">
-            <span class="tag" style="top:-28px;right:0">New: hold to talk (slice 2)</span>
+            <span class="tag" style="bottom:-17px;right:-6px">New: hold to talk (slice 2)</span>
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="9" y="3" width="6" height="11" rx="3"/><path d="M5.5 11a6.5 6.5 0 0013 0M12 17.5V21"/></svg>
           </button>
         </div>
@@ -342,9 +342,8 @@ footer.src ul { margin: 6px 0 0; padding-left: 18px; }
         <div class="half top">
           <div class="statusbar" aria-hidden="true"><span>9:41</span><span class="island"></span>
             <span class="status-icons"><span style="width:17px;height:11px"></span><span style="width:24px;height:11px;border-radius:3px"></span></span></div>
-          <div class="fold-title"><h3>Tidepool Cards</h3><span id="fold-count">1 of 4 in</span></div>
+          <div class="fold-title" style="position:relative"><span class="tag today" style="top:4px;left:190px">Today: package list</span><h3>Tidepool Cards</h3><span id="fold-count">1 of 4 in</span></div>
           <div class="list-wrap">
-            <span class="tag today" style="top:2px;right:20px">Today: package list</span>
             <div class="list" id="fold-list" role="list"></div>
           </div>
         </div>
