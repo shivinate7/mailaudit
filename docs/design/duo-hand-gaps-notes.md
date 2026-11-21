@@ -2,7 +2,7 @@
 
 Mockup: `docs/design/duo-hand-gaps.html`. Open it from disk. Deep links: `#s=folded`, `#s=line-now`, `#s=this-envelope`, `#s=still-owed`, `#s=keep-held`, `#s=held-lines`, `#s=tie-post`, `#s=end-of-day`, `#s=suspense-rank`. With no hash, every part shows. Each option has a Hide button. "Show hidden options" brings them back.
 
-Debt `duo-hand-mockup-gaps` (Card in Hand mockup gaps). Decision `duo-card-in-hand` (Card in Hand on the Duo). The October mockup, "the round 2 mockup" below, is `docs/design/duo-card-in-hand/index.html` at commit b8d11e7 (Duo round 2 draws Lost and degen's stack order as options). It was never on main. Its line numbers below are at that commit.
+Debt `duo-hand-mockup-gaps` (Card in Hand mockup gaps). Decision `duo-card-in-hand` (Card in Hand on the Duo). The October mockup, "the round 2 mockup" below, is `docs/design/duo-card-in-hand/index.html` at commit b8d11e7 (Duo round 2 draws Lost and degen's stack order as options). It was never on main. Its home now is the archive branch `origin/archive/design/duo-round2` (head commit 441b4e46). Its line numbers below are at commit b8d11e7.
 
 Designer kind: informed. No brief named a kind.
 

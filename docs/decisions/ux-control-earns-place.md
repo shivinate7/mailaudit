@@ -1,4 +1,4 @@
-# Controls earn their place, and the end-of-day view opens from the empty query
+# Controls earn their place, and the End of mail day view opens from the empty query
 
 Kind: build
 
