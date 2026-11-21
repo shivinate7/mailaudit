@@ -1,0 +1,627 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Seller Record Card</title>
+<style>
+/* Type sizes: Apple HIG typography, iOS Dynamic Type table at the default (Large) size, read 2026-11-21.
+   Large Title 34/41, Title 1 28/34, Headline 17/22 semibold, Body 17/22, Subhead 15/20, Footnote 13/18,
+   Caption 1 12/16, Caption 2 11/13. Tap targets: 44x44 pt minimum (HIG accessibility and buttons pages). */
+:root {
+  --font: -apple-system, system-ui, sans-serif;
+  --page-bg: #e9e9ee;
+  --page-ink: #1d1d22;
+  --page-muted: #55555e;
+  --page-line: #c4c4cc;
+  --chip-bg: #ffffff;
+  --frame: #1b1b1f;
+
+  --bg: #f2f2f7;
+  --cell: #ffffff;
+  --cell-up: #ffffff;
+  --label: #000000;
+  --label-2: rgba(60, 60, 67, 0.66);
+  --label-3: rgba(60, 60, 67, 0.36);
+  --sep: rgba(60, 60, 67, 0.22);
+  --tint: #0a64cc;
+  --tint-soft: rgba(10, 100, 204, 0.11);
+  --warn: #c0352a;
+  --warn-soft: rgba(192, 53, 42, 0.12);
+  --ok: #24804a;
+  --bar: rgba(249, 249, 251, 0.86);
+  --dim: rgba(0, 0, 0, 0.22);
+  --sheet: #f2f2f7;
+  --ann-new: #a8318f;
+  --ann-today: #66666f;
+  --hl: rgba(10, 100, 204, 0.14);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page-bg: #111114; --page-ink: #ececf1; --page-muted: #a3a3b0; --page-line: #3a3a43; --chip-bg: #1e1e23; --frame: #3a3a42;
+    --bg: #000000; --cell: #1c1c1e; --cell-up: #2c2c2e; --label: #ffffff; --label-2: rgba(235, 235, 245, 0.64); --label-3: rgba(235, 235, 245, 0.32);
+    --sep: rgba(84, 84, 88, 0.6); --tint: #4b9dff; --tint-soft: rgba(75, 157, 255, 0.16); --warn: #ff6a5c; --warn-soft: rgba(255, 106, 92, 0.16);
+    --ok: #3fbf6c; --bar: rgba(30, 30, 32, 0.86); --dim: rgba(0, 0, 0, 0.5); --sheet: #1c1c1e; --ann-new: #f07ad8; --ann-today: #a0a0ad; --hl: rgba(75, 157, 255, 0.2);
+  }
+}
+:root[data-theme="dark"] {
+  --page-bg: #111114; --page-ink: #ececf1; --page-muted: #a3a3b0; --page-line: #3a3a43; --chip-bg: #1e1e23; --frame: #3a3a42;
+  --bg: #000000; --cell: #1c1c1e; --cell-up: #2c2c2e; --label: #ffffff; --label-2: rgba(235, 235, 245, 0.64); --label-3: rgba(235, 235, 245, 0.32);
+  --sep: rgba(84, 84, 88, 0.6); --tint: #4b9dff; --tint-soft: rgba(75, 157, 255, 0.16); --warn: #ff6a5c; --warn-soft: rgba(255, 106, 92, 0.16);
+  --ok: #3fbf6c; --bar: rgba(30, 30, 32, 0.86); --dim: rgba(0, 0, 0, 0.5); --sheet: #1c1c1e; --ann-new: #f07ad8; --ann-today: #a0a0ad; --hl: rgba(75, 157, 255, 0.2);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: var(--font);
+  background: var(--page-bg);
+  color: var(--page-ink);
+  -webkit-font-smoothing: antialiased;
+  padding: 0 16px 48px;
+}
+button { font-family: inherit; color: inherit; }
+button:focus-visible { outline: 2px solid var(--tint); outline-offset: 2px; }
+
+/* ---------- page chrome ---------- */
+.page-head { max-width: 1120px; margin: 0 auto; padding: 28px 0 12px; }
+.page-head h1 { font: 700 28px/34px var(--font); margin: 0; letter-spacing: -0.01em; }
+.page-head .kind { display: inline-block; font: 600 12px/16px var(--font); text-transform: uppercase; letter-spacing: 0.06em; color: var(--page-muted); border: 1px solid var(--page-line); border-radius: 6px; padding: 3px 7px; margin-left: 8px; vertical-align: 5px; }
+.page-head p { font: 400 17px/22px var(--font); margin: 6px 0 0; color: var(--page-muted); max-width: 62ch; }
+.sample { max-width: 1120px; margin: 8px auto 16px; font: 600 13px/18px var(--font); padding: 8px 12px; border-radius: 10px; border: 1.5px dashed var(--page-line); color: var(--page-muted); }
+.sample b { color: var(--page-ink); }
+
+.controls { max-width: 1120px; margin: 0 auto 12px; display: grid; gap: 10px; }
+.ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; }
+.ctl-row > .lbl { font: 600 12px/16px var(--font); text-transform: uppercase; letter-spacing: 0.06em; color: var(--page-muted); min-width: 64px; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: 4px; }
+.seg button, .tog {
+  min-height: 44px; padding: 6px 12px; border-radius: 10px; border: 1px solid var(--page-line);
+  background: var(--chip-bg); font: 500 15px/20px var(--font); cursor: pointer;
+}
+.seg button[aria-pressed="true"], .tog[aria-pressed="true"] { background: var(--page-ink); color: var(--page-bg); border-color: var(--page-ink); }
+.seg button .n { font-variant-numeric: tabular-nums; opacity: 0.6; margin-right: 6px; }
+.next { margin-left: 4px; }
+.caption { max-width: 1120px; margin: 4px auto 18px; font: 400 15px/20px var(--font); color: var(--page-muted); min-height: 40px; }
+.caption b { color: var(--page-ink); font-weight: 600; }
+
+.stage { max-width: 1120px; margin: 0 auto; display: flex; justify-content: center; }
+.fit { transform-origin: top center; }
+figure { margin: 0; }
+figcaption { text-align: center; font: 400 13px/18px var(--font); color: var(--page-muted); margin-top: 12px; max-width: 46ch; margin-left: auto; margin-right: auto; }
+[hidden] { display: none !important; }
+
+/* ---------- device frames ---------- */
+.device { --w: 390px; --h: 844px; }
+.bezel { background: var(--frame); border-radius: 58px; padding: 12px; box-shadow: 0 24px 60px -20px rgba(0,0,0,0.35); }
+.open-body { display: flex; align-items: stretch; background: var(--frame); border-radius: 58px; padding: 12px; box-shadow: 0 24px 60px -20px rgba(0,0,0,0.35); }
+.hinge { width: 14px; background: linear-gradient(90deg, rgba(0,0,0,0.25), rgba(255,255,255,0.06), rgba(0,0,0,0.25)); }
+
+.screen {
+  position: relative; width: var(--w); height: var(--h); overflow: hidden;
+  background: var(--bg); color: var(--label); border-radius: 46px;
+  font: 400 17px/22px var(--font);
+  -webkit-tap-highlight-color: transparent;
+}
+.open-body .screen.left { border-radius: 46px 10px 10px 46px; }
+.open-body .screen.right { border-radius: 10px 46px 46px 10px; }
+
+.statusbar {
+  position: absolute; z-index: 30; top: 0; left: 0; right: 0;
+  height: max(env(safe-area-inset-top), 54px);
+  display: flex; align-items: center; justify-content: space-between; padding: 6px 34px 0 46px;
+  font: 600 17px/22px var(--font); pointer-events: none;
+}
+.island { position: absolute; left: 50%; top: 11px; width: 124px; height: 36px; margin-left: -62px; background: #000; border-radius: 20px; }
+.right .island { display: none; }
+.sb-right { display: flex; gap: 6px; align-items: center; }
+.sb-bars { display: flex; gap: 2px; align-items: flex-end; height: 12px; }
+.sb-bars i { width: 3px; background: currentColor; border-radius: 1px; }
+.sb-batt { width: 25px; height: 12px; border: 1.5px solid currentColor; border-radius: 4px; padding: 1.5px; opacity: 0.9; }
+.sb-batt i { display: block; height: 100%; width: 72%; background: currentColor; border-radius: 1.5px; }
+.home-ind { position: absolute; z-index: 40; left: 50%; bottom: 8px; width: 140px; height: 5px; margin-left: -70px; border-radius: 3px; background: var(--label); opacity: 0.85; pointer-events: none; }
+
+/* scrolling content of one screen: clear of the status bar and the home indicator */
+.scroll {
+  position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding-top: max(env(safe-area-inset-top), 54px);
+  padding-bottom: calc(max(env(safe-area-inset-bottom), 34px) + 84px);
+  scrollbar-width: none;
+}
+.scroll::-webkit-scrollbar { display: none; }
+.topbar { position: absolute; z-index: 22; top: 0; left: 0; right: 0; height: calc(max(env(safe-area-inset-top), 54px) + 44px); padding: max(env(safe-area-inset-top), 54px) 8px 0; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; transition: background-color .2s; }
+.topbar .inline-title { grid-column: 2; font: 600 17px/22px var(--font); opacity: 0; transition: opacity .2s; }
+.topbar .navbtn { grid-column: 3; justify-self: end; }
+.scrolled .topbar { background: var(--bar); -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6); box-shadow: 0 0.5px 0 var(--sep); }
+.scrolled .topbar .inline-title { opacity: 1; }
+.navbar { display: flex; justify-content: flex-end; align-items: center; min-height: 44px; padding: 0 8px; }
+.navbtn { min-height: 44px; min-width: 44px; padding: 0 8px; border: 0; background: none; color: var(--tint); font: 400 17px/22px var(--font); cursor: pointer; border-radius: 22px; }
+.large-title { font: 700 34px/41px var(--font); letter-spacing: 0.01em; margin: 0; padding: 2px 16px 8px; }
+.subtle { font: 400 15px/20px var(--font); color: var(--label-2); padding: 0 16px 10px; }
+
+.section-h { font: 400 13px/18px var(--font); text-transform: uppercase; color: var(--label-2); padding: 18px 32px 6px; letter-spacing: 0.02em; }
+.section-f { font: 400 13px/18px var(--font); color: var(--label-2); padding: 6px 32px 0; }
+.group { position: relative; margin: 0 16px; background: var(--cell); border-radius: 26px; }
+.group > :first-child, .group > .tag:first-child + * { border-top-left-radius: 26px; border-top-right-radius: 26px; }
+.group > :last-child, .group > :last-child > :last-child { border-bottom-left-radius: 26px; border-bottom-right-radius: 26px; }
+
+/* package row */
+.prow { position: relative; display: flex; gap: 12px; align-items: center; padding: 10px 16px; min-height: 68px; transition: background-color .6s ease-out; background: var(--cell); }
+.prow + .prow::before { content: ""; position: absolute; top: 0; left: 64px; right: 0; border-top: 0.5px solid var(--sep); }
+.prow.hl { background: var(--hl); }
+.ring { flex: none; width: 36px; height: 36px; border-radius: 50%; display: grid; place-items: center; font: 600 12px/16px var(--font); font-variant-numeric: tabular-nums; color: var(--label-2); background: conic-gradient(var(--tint) calc(var(--p) * 1%), var(--sep) 0); position: relative; }
+.ring::after { content: ""; position: absolute; inset: 3px; border-radius: 50%; background: var(--cell); }
+.prow.hl .ring::after { background: var(--cell); }
+.ring span { position: relative; z-index: 1; }
+.ring.done { background: var(--ok); color: #fff; }
+.ring.done::after { display: none; }
+.prow-main { min-width: 0; flex: 1; }
+.prow-main .seller-link { max-width: calc(100% - 84px); }
+.seller-link {
+  position: relative; display: inline-flex; align-items: center; min-height: 44px; margin: -11px 0 -11px -6px; padding: 0 6px;
+  border: 0; background: none; color: var(--tint); font: 600 17px/22px var(--font); cursor: pointer; text-align: left; border-radius: 10px;
+}
+.seller-link:active { background: var(--tint-soft); }
+.prow-sub { font: 400 15px/20px var(--font); color: var(--label-2); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.prow-tail { position: absolute; right: 16px; top: 11px; font: 400 15px/20px var(--font); color: var(--label-2); font-variant-numeric: tabular-nums; }
+.prow-tail.open { color: var(--label); font-weight: 600; }
+.stamp { display: inline-block; font: 600 12px/16px var(--font); padding: 2px 7px; border-radius: 6px; background: var(--tint-soft); color: var(--tint); margin-right: 4px; }
+.stamp.warn { background: var(--warn-soft); color: var(--warn); }
+
+/* filter bar */
+.filterbar { display: flex; align-items: center; gap: 8px; padding: 4px 16px 6px; }
+.fchip { position: relative; display: inline-flex; align-items: center; gap: 2px; background: var(--tint-soft); color: var(--tint); border-radius: 22px; font: 600 15px/20px var(--font); padding: 0 0 0 14px; min-height: 44px; }
+.fchip button { min-width: 44px; min-height: 44px; border: 0; background: none; color: var(--tint); font: 400 22px/1 var(--font); cursor: pointer; border-radius: 22px; }
+
+/* floating tab bar */
+.tabbar {
+  position: absolute; z-index: 20; left: 16px; right: 16px; bottom: max(env(safe-area-inset-bottom), 26px);
+  height: 62px; border-radius: 31px; background: var(--bar);
+  -webkit-backdrop-filter: blur(20px) saturate(1.6); backdrop-filter: blur(20px) saturate(1.6);
+  box-shadow: 0 6px 24px -8px rgba(0,0,0,0.25), 0 0 0 0.5px var(--sep);
+  display: flex; padding: 4px;
+}
+.tab { flex: 1; border: 0; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font: 500 11px/13px var(--font); color: var(--label); border-radius: 27px; min-height: 44px; cursor: default; }
+.tab.on { color: var(--tint); background: var(--tint-soft); }
+.tab svg { width: 24px; height: 24px; }
+
+/* sheet at the medium detent: the list above it stays put */
+.dim { position: absolute; inset: 0; z-index: 24; background: var(--dim); }
+.sheet {
+  position: absolute; z-index: 25; left: 8px; right: 8px; bottom: 8px; height: 54%;
+  background: var(--sheet); border-radius: 38px;
+  box-shadow: 0 -8px 40px -12px rgba(0,0,0,0.35);
+  display: flex; flex-direction: column;
+}
+.sheet .group { --cell: var(--cell-up); }
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--label-3); margin: 6px auto 0; flex: none; }
+.sheet-bar { flex: none; display: grid; grid-template-columns: 64px 1fr 64px; align-items: center; padding: 2px 8px 4px; }
+.sheet-title { text-align: center; min-width: 0; }
+.sheet-title b { display: block; font: 600 17px/22px var(--font); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.sheet-title small { display: block; font: 400 12px/16px var(--font); color: var(--label-2); }
+.sheet-body { flex: 1; overflow-y: auto; border-radius: 0 0 38px 38px; padding-bottom: max(env(safe-area-inset-bottom), 30px); scrollbar-width: none; }
+.sheet-body::-webkit-scrollbar { display: none; }
+
+/* card content */
+.cell { position: relative; display: flex; align-items: center; gap: 12px; min-height: 44px; padding: 11px 16px; width: 100%; border: 0; background: var(--cell); text-align: left; font: 400 17px/22px var(--font); color: var(--label); }
+.cell + .cell::before, .out-hero + .cell::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; border-top: 0.5px solid var(--sep); }
+button.cell { cursor: pointer; }
+button.cell:active { background: var(--hl); }
+.cell .k { flex: 1; min-width: 0; }
+.cell .v { color: var(--label-2); font-variant-numeric: tabular-nums; text-align: right; }
+.cell .v.strong { color: var(--label); font-weight: 600; }
+.chev { flex: none; width: 8px; height: 13px; color: var(--label-3); }
+.out-hero { padding: 14px 16px; background: var(--cell); }
+.out-hero .big { font: 700 28px/34px var(--font); font-variant-numeric: tabular-nums; }
+.out-hero .big small { font: 400 17px/22px var(--font); color: var(--label-2); margin-left: 6px; }
+.thin-note { font: 400 15px/20px var(--font); color: var(--label-2); margin-top: 2px; }
+.warnline { display: flex; align-items: center; gap: 8px; margin-top: 6px; font: 600 15px/20px var(--font); }
+.dot { width: 9px; height: 9px; border-radius: 50%; background: var(--label-3); flex: none; }
+.warnline.on { color: var(--warn); }
+.warnline.on .dot { background: var(--warn); }
+.warnline.off { color: var(--label-2); font-weight: 400; }
+.range { margin-top: 10px; height: 22px; position: relative; }
+.range .track { position: absolute; left: 0; right: 0; top: 10px; height: 2px; background: var(--sep); border-radius: 1px; }
+.range .span { position: absolute; top: 7px; height: 8px; border-radius: 4px; background: var(--tint-soft); border: 1px solid var(--tint); }
+.range .med { position: absolute; top: 3px; width: 3px; height: 16px; border-radius: 2px; background: var(--tint); }
+.range .now { position: absolute; top: 1px; width: 0; height: 20px; border-left: 2px dashed var(--warn); }
+.range-key { display: flex; gap: 14px; font: 400 12px/16px var(--font); color: var(--label-2); margin-top: 2px; }
+.verdict { display: inline-block; font: 600 12px/16px var(--font); padding: 2px 8px; border-radius: 6px; margin-left: 8px; vertical-align: 2px; background: var(--tint-soft); color: var(--tint); }
+.verdict.thin { background: var(--sep); color: var(--label-2); }
+.empty-note { padding: 12px 16px; color: var(--label-2); font: 400 15px/20px var(--font); background: var(--cell); }
+
+/* folding phone left pane */
+.srow { position: relative; display: flex; align-items: center; gap: 12px; width: 100%; min-height: 60px; padding: 10px 16px; border: 0; background: var(--cell); text-align: left; cursor: pointer; font: inherit; color: var(--label); }
+.srow + .srow::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; border-top: 0.5px solid var(--sep); }
+.srow.sel { background: var(--hl); }
+.srow .nm { font: 600 17px/22px var(--font); }
+.srow .sub { font: 400 15px/20px var(--font); color: var(--label-2); }
+.srow .days { margin-left: auto; font: 600 17px/22px var(--font); font-variant-numeric: tabular-nums; }
+.srow .days.late { color: var(--warn); }
+.sortpill { position: relative; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 14px; border-radius: 22px; background: var(--cell); font: 500 15px/20px var(--font); color: var(--label); margin: 0 16px 4px; }
+
+/* Today / New labels */
+.ann { outline: 1.5px dashed var(--ann-new); outline-offset: 2px; }
+.ann.today { outline-color: var(--ann-today); }
+.tag { position: absolute; z-index: 5; right: 10px; top: -10px; font: 700 11px/13px var(--font); padding: 2px 6px; border-radius: 5px; background: var(--ann-new); color: #fff; letter-spacing: 0.02em; white-space: nowrap; pointer-events: none; }
+.ann.today > .tag { background: var(--ann-today); }
+.seller-link > .tag { right: auto; left: 4px; top: -6px; }
+.no-ann .ann { outline: none; }
+.no-ann .tag { display: none; }
+
+@media (max-width: 600px) {
+  .page-head h1 { font-size: 24px; line-height: 30px; }
+  .page-head .kind { margin: 6px 0 0; display: table; }
+  .ctl-row > .lbl { min-width: 100%; }
+}
+@media (prefers-reduced-motion: reduce) { .prow { transition: none; } }
+</style>
+</head>
+<body>
+<header class="page-head">
+  <h1>Seller record card <span class="kind">Idea mockup, not built</span></h1>
+  <p>Tap a seller's name on any package and see how that seller has done: orders, cards in, usual days to arrive, spend and stamps.</p>
+</header>
+<div class="sample" role="note"><b>Sample.</b> No figure on this page is real. Every seller, date, count and price is invented. The mockup's "today" is 2026-10-10.</div>
+
+<section class="controls" aria-label="Mockup controls">
+  <div class="ctl-row"><span class="lbl">State</span><div class="seg" id="states" role="group" aria-label="Screen state"></div><button class="tog next" id="next">Next state &#8594;</button></div>
+  <div class="ctl-row"><span class="lbl">Theme</span><div class="seg" id="themes" role="group" aria-label="Theme">
+    <button data-t="auto">System</button><button data-t="light">Light</button><button data-t="dark">Dark</button></div></div>
+  <div class="ctl-row"><span class="lbl">Options</span>
+    <button class="tog" id="tog-ann" aria-pressed="true">Today / New labels</button>
+    <button class="tog" id="tog-verdict" aria-pressed="false">Verdict word</button>
+    <button class="tog" id="tog-net" aria-pressed="false">Spend net of refunds</button>
+    <button class="tog" id="tog-kinds" aria-pressed="false">Problem-kind stamps</button>
+  </div>
+</section>
+<p class="caption" id="caption" aria-live="polite"></p>
+
+<main class="stage" id="stage">
+  <div class="fit" id="fit">
+    <figure class="device" data-device="iphone-duo-folded" id="dev-folded">
+      <div class="bezel"><div class="screen" id="scr-folded"></div></div>
+      <figcaption>iPhone, or the folding phone folded: one screen. Frame size is illustrative; the repo writes no device size.</figcaption>
+    </figure>
+    <figure class="device" data-device="iphone-duo-unfolded" id="dev-open" hidden>
+      <div class="open-body">
+        <div class="screen left" id="scr-left"></div>
+        <div class="hinge" aria-hidden="true"></div>
+        <div class="screen right" id="scr-right"></div>
+      </div>
+      <figcaption>Folding phone open: seller list on the left screen, the chosen card on the right. Frame size is illustrative.</figcaption>
+    </figure>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  // ---------- invented sample data ----------
+  var SELLERS = {
+    gravel:  { name: "Gravel Pit Games", since: "2026-07-15", orders: 5, owed: 34, arrived: 33, median: 6, lo: 4, hi: 9, gross: 20.15, refund: 0.75,
+               out: { days: 8, usual: 6, warn: false }, stamps: [["Claim filed", 1, "claim"], ["Refunded", 1, "refund"]], photos: 2 },
+    lantern: { name: "Lantern Row Cards", since: "2026-09-26", orders: 1, owed: 3, arrived: 2, median: null, gross: 2.60, refund: 0,
+               out: { days: 14, usual: null, warn: true }, stamps: [], photos: 0 },
+    copper:  { name: "Copper Kettle Cards", since: "2026-08-11", orders: 3, owed: 11, arrived: 9, median: 5, lo: 4, hi: 6, gross: 7.85, refund: 0,
+               out: { days: 9, usual: 5, warn: false }, stamps: [], photos: 0 },
+    fern:    { name: "Fern Hollow Games", since: "2026-08-30", orders: 3, owed: 9, arrived: 5, median: 7, lo: 5, hi: 8, gross: 4.95, refund: 0,
+               out: { days: 2, usual: 7, warn: false }, stamps: [["Poor packing", 1, "packing"]], photos: 1 },
+    tin:     { name: "Tin Roof TCG", since: "2026-10-07", orders: 1, owed: 2, arrived: 0, median: null, gross: 0.90, refund: 0,
+               out: { days: 3, usual: null, warn: false }, stamps: [], photos: 0 },
+    mossy:   { name: "Mossy Stone TCG", since: "2026-07-30", orders: 3, owed: 15, arrived: 15, median: 5, lo: 3, hi: 7, gross: 9.30, refund: 0, out: null, stamps: [], photos: 0 },
+    harbor:  { name: "Quiet Harbor Cards", since: "2026-08-21", orders: 2, owed: 6, arrived: 6, median: null, gross: 3.10, refund: 0, out: null, stamps: [], photos: 0 },
+    brass:   { name: "Brass Lamp Hobby", since: "2026-10-04", orders: 1, owed: 1, arrived: 1, median: null, gross: 0.40, refund: 0, out: null, stamps: [], photos: 0 }
+  };
+  // package: id, seller, cards, ordered, cards in, stamps, filters it answers
+  var PKGS = [
+    ["p1", "fern", 4, "2026-10-08", 0, [], ["out"]],
+    ["p2", "tin", 2, "2026-10-07", 0, [], ["out"]],
+    ["p3", "gravel", 3, "2026-10-02", 2, [], ["out"]],
+    ["p4", "copper", 2, "2026-10-01", 0, [], ["out"]],
+    ["p5", "lantern", 3, "2026-09-26", 2, ["Lost-mail warning"], ["out"]],
+    ["p6", "harbor", 2, "2026-10-05", 2, [], []],
+    ["p7", "brass", 1, "2026-10-04", 1, [], []],
+    ["p8", "mossy", 5, "2026-10-03", 5, [], []],
+    ["p9", "fern", 3, "2026-09-20", 3, ["Poor packing"], ["packing", "photos"]],
+    ["p10", "gravel", 12, "2026-09-12", 12, ["Refunded"], ["refund", "photos"]],
+    ["p11", "mossy", 4, "2026-09-09", 4, [], []],
+    ["p12", "copper", 5, "2026-09-02", 5, [], []],
+    ["p13", "gravel", 8, "2026-08-28", 8, ["Claim filed"], ["claim", "photos"]],
+    ["p14", "harbor", 4, "2026-08-21", 4, [], []],
+    ["p15", "copper", 4, "2026-08-11", 4, [], []],
+    ["p16", "gravel", 6, "2026-08-03", 6, [], []],
+    ["p17", "mossy", 6, "2026-07-30", 6, [], []],
+    ["p18", "gravel", 5, "2026-07-15", 5, [], []]
+  ];
+  var FILTER_NAMES = { orders: "All orders", out: "Cards out", claim: "Claim filed", refund: "Refunded", photos: "With photos", packing: "Poor packing" };
+
+  var STATES = [
+    { k: "row",    label: "Seller link on a row",   cap: "<b>Step 1.</b> The seller name on each package row is now a link. Tap <b>Gravel Pit Games</b> in the phone." },
+    { k: "card",   label: "Card with history",      cap: "<b>Steps 2 to 5.</b> A sheet opens at half height, and the row you tapped stays put above it. One order is still out: day 8, usually 6. Tap any count to filter the list." },
+    { k: "thin",   label: "Thin card, order out",   cap: "<b>Steps 3 and 4.</b> One order only, so no speed figure: \"too few orders to judge speed\". Day 14, with the lost-mail warning on." },
+    { k: "filter", label: "Count filters the list", cap: "<b>Step 5.</b> Tapping \"Refunded 1\" closed the card and filtered Packages to that package. The chip's &#215; clears the filter." },
+    { k: "back",   label: "Closed, same scroll",    cap: "<b>Step 6.</b> Done closes the card. The list keeps its scroll position, and the row you came from flashes once." },
+    { k: "open",   label: "Folding phone open",     cap: "<b>Folding phone open.</b> Sellers on the left screen, sorted by late now. The chosen card fills the right screen. Tap a seller to switch." }
+  ];
+
+  var st = { s: "row", t: "auto", cs: "gravel", src: "p3", seller: "lantern", f: "refund", fs: "gravel", ann: true, verdict: false, net: false, kinds: false };
+  var listScroll = null;
+
+  // ---------- helpers ----------
+  function esc(x) { return String(x).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function money(n) { return "$" + n.toFixed(2); }
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+  function tag(kind, text) { return '<span class="tag">' + (kind === "today" ? "Today: " : "New: ") + esc(text) + '</span>'; }
+  function annCls(kind) { return st.ann ? (kind === "today" ? " ann today" : " ann") : ""; }
+  var CHEV = '<svg class="chev" viewBox="0 0 8 13" aria-hidden="true"><path d="M1.5 1.5 6.5 6.5 1.5 11.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  function statusBar() {
+    return '<div class="statusbar" aria-hidden="true"><span>9:41</span><span class="island"></span><span class="sb-right">' +
+      '<span class="sb-bars"><i style="height:4px"></i><i style="height:6px"></i><i style="height:9px"></i><i style="height:12px"></i></span>' +
+      '<span class="sb-batt"><i></i></span></span></div>';
+  }
+  function tabBar() {
+    var ic = {
+      p: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7.5 12 3.5l8 4v9l-8 4-8-4z M4 7.5l8 4 8-4 M12 11.5v9" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+      t: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+      o: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h16v11H4z M8 8V5h8v3" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M11 13.5a1.5 1.5 0 1 1 2 1.4V16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/></svg>'
+    };
+    return '<nav class="tabbar" aria-label="Sections"><button class="tab on" aria-current="page" tabindex="-1">' + ic.p + 'Packages</button>' +
+      '<button class="tab" tabindex="-1">' + ic.t + 'Tally</button><button class="tab" tabindex="-1">' + ic.o + 'Orphaned</button></nav>';
+  }
+  function home() { return '<div class="home-ind" aria-hidden="true"></div>'; }
+
+  function pkgRow(p, opts) {
+    var s = SELLERS[p[1]], total = p[2], got = p[4], done = got === total;
+    var first = !!opts.firstLink;
+    var link = '<button class="seller-link' + (first ? annCls("new") : "") + '"' + (first ? ' id="seller-link"' : "") +
+      ' data-open="' + p[1] + '" data-pkg="' + p[0] + '">' + esc(s.name) + (first ? tag("new", "seller link") : "") + '</button>';
+    var stamps = p[5].map(function (x) { return '<span class="stamp' + (/Lost/.test(x) ? " warn" : "") + '">' + esc(x) + '</span>'; }).join("");
+    return '<div class="prow' + (opts.hl === p[0] ? " hl" : "") + '" data-row="' + p[0] + '">' +
+      '<div class="ring' + (done ? " done" : "") + '" style="--p:' + Math.round(got / total * 100) + '"><span>' + (done ? "&#10003;" : got + "/" + total) + '</span></div>' +
+      '<div class="prow-main">' + link +
+      '<div class="prow-sub">' + plural(total, "card", "cards") + ' · ordered ' + p[3] + '</div>' +
+      (stamps ? '<div style="margin-top:4px">' + stamps + '</div>' : "") + '</div>' +
+      '<div class="prow-tail' + (done ? "" : " open") + '">' + got + ' of ' + total + ' in</div></div>';
+  }
+
+  function listScreen(opts) {
+    var body;
+    if (opts.filter) {
+      var rows = PKGS.filter(function (p) { return p[1] === opts.filterSeller && (opts.filter === "orders" || p[6].indexOf(opts.filter) >= 0); });
+      body = '<div class="filterbar"><span class="fchip' + annCls("new") + '" id="filter-chip">' + esc(SELLERS[opts.filterSeller].name) + ' · ' + FILTER_NAMES[opts.filter] +
+        '<button aria-label="Clear filter" data-go="back">&#215;</button>' + tag("new", "filter from card") + '</span></div>' +
+        '<div class="subtle">' + plural(rows.length, "package matches", "packages match") + '</div>' +
+        '<div class="group">' + rows.map(function (p) { return pkgRow(p, {}); }).join("") + '</div>';
+    } else {
+      var coming = PKGS.filter(function (p) { return p[4] < p[2]; });
+      var allin = PKGS.filter(function (p) { return p[4] === p[2]; });
+      body = '<div class="section-h">Still coming · ' + coming.length + '</div><div class="group' + annCls("today") + '">' +
+        tag("today", "package rows") +
+        coming.map(function (p) { return pkgRow(p, { hl: opts.hl, firstLink: p[0] === "p3" }); }).join("") + '</div>' +
+        '<div class="section-h">All in · ' + allin.length + '</div><div class="group">' +
+        allin.map(function (p) { return pkgRow(p, { hl: opts.hl }); }).join("") + '</div>';
+    }
+    return statusBar() +
+      '<div class="topbar"><span class="inline-title">Packages</span><button class="navbtn" tabindex="-1">Import</button></div>' +
+      '<div class="scroll" id="list-scroll"><div class="navbar"></div>' +
+      '<h2 class="large-title">Packages</h2>' + body + '</div>' + tabBar() + home();
+  }
+
+  function rangeBar(s) {
+    var max = Math.max(s.hi, s.out ? s.out.days : 0) + 2;
+    function x(v) { return (v / max * 100).toFixed(1) + "%"; }
+    return '<div class="range" aria-hidden="true"><div class="track"></div>' +
+      '<div class="span" style="left:' + x(s.lo) + ';width:' + x(s.hi - s.lo) + '"></div>' +
+      '<div class="med" style="left:calc(' + x(s.median) + ' - 1px)"></div>' +
+      (s.out ? '<div class="now" style="left:' + x(s.out.days) + '"></div>' : "") + '</div>' +
+      '<div class="range-key"><span>Bar: ' + s.lo + '&#8211;' + s.hi + ' days, line at median ' + s.median + '</span>' + (s.out ? '<span>Dashes: today</span>' : "") + '</div>';
+  }
+
+  function cardBody(key) {
+    var s = SELLERS[key], h = "";
+    var thin = s.orders < 3 || s.median == null;
+    var outN = s.owed - s.arrived;
+    if (s.out) {
+      h += '<div class="section-h">Out now</div><div class="group' + annCls("new") + '" id="out-now">' + tag("new", "usually N days") +
+        '<div class="out-hero"><div class="big">Day ' + s.out.days + (thin ? '</div><div class="thin-note">Too few orders to judge speed</div>' : '<small>usually ' + s.out.usual + '</small></div>') +
+        '<div class="warnline ' + (s.out.warn ? "on" : "off") + '"><span class="dot"></span>Lost-mail warning ' + (s.out.warn ? "on" : "off") + '</div>' +
+        (thin ? "" : rangeBar(s)) + '</div>' +
+        '<button class="cell" data-filter="out" data-seller="' + key + '"><span class="k">' + plural(outN, "card", "cards") + ' out</span>' + CHEV + '</button></div>' +
+        '<div class="section-f">' + (thin ? "Usual speed shows from 3 orders on. " : "") + 'The warning keeps its own threshold.' + (thin ? "" : ' "Usually" only sits beside it.') + '</div>';
+    }
+    var verdict = st.verdict ? (thin ? '<span class="verdict thin">Too few orders</span>' : '<span class="verdict">Reliable</span>') : "";
+    var spend = st.net ? money(s.gross - s.refund) : money(s.gross);
+    h += '<div class="section-h">History</div><div class="group">' +
+      '<button class="cell" data-filter="orders" data-seller="' + key + '"><span class="k">Orders' + verdict + '</span><span class="v strong">' + s.orders + '</span>' + CHEV + '</button>' +
+      '<div class="cell"><span class="k">Cards in</span><span class="v strong">' + s.arrived + ' of ' + s.owed + '</span></div>' +
+      '<div class="cell"><span class="k">Days to arrive</span><span class="v' + (thin ? "" : " strong") + '">' +
+        (thin ? "too few orders" : "median " + s.median + " (" + s.lo + "&#8211;" + s.hi + ")") + '</span></div>' +
+      '<div class="cell"><span class="k">Spent' + (st.net ? ", net" : "") + '</span><span class="v strong">' + spend + '</span></div>' +
+      '</div><div class="section-f">' + (st.net ? "Refunds are taken off the spend." : "Gross spend. A refund shows as a stamp below.") + ' Counts only, no score.</div>';
+    h += '<div class="section-h">Stamps</div><div class="group">';
+    if (s.stamps.length) {
+      h += s.stamps.map(function (x) {
+        return '<button class="cell" data-filter="' + x[2] + '" data-seller="' + key + '"' + (x[2] === "refund" ? ' id="count-refunded"' : "") +
+          '><span class="k">' + esc(x[0]) + '</span><span class="v strong">' + x[1] + '</span>' + CHEV + '</button>';
+      }).join("");
+    } else if (!st.kinds) {
+      h += '<div class="empty-note">No stamps on this seller\'s packages yet.</div>';
+    }
+    if (st.kinds) {
+      h += '<div class="' + annCls("new").trim() + '" style="position:relative">' + tag("new", "problem-kind stamps") + ["Wrong printing", "Wrong condition", "Short count"].map(function (n) {
+        return '<div class="cell"><span class="k">' + n + '</span><span class="v">0</span></div>';
+      }).join("") + '</div>';
+    }
+    h += '</div>';
+    h += '<div class="section-h">Photos</div><div class="group">' +
+      (s.photos ? '<button class="cell" data-filter="photos" data-seller="' + key + '"><span class="k">Packages with photos</span><span class="v strong">' + s.photos + '</span>' + CHEV + '</button>'
+                : '<div class="empty-note">No package photos.</div>') + '</div>';
+    h += '<div class="section-f" style="padding-bottom:16px">Matched by exact seller name. Orphaned mail counts toward no seller.</div>';
+    return h;
+  }
+
+  function sheet(key) {
+    var s = SELLERS[key];
+    return '<div class="dim" data-go="back"></div>' +
+      '<section class="sheet' + annCls("new") + '" id="seller-card" role="dialog" aria-label="' + esc(s.name) + '">' +
+      '<div class="grabber"></div><div class="sheet-bar"><span></span>' +
+      '<div class="sheet-title"><b>' + esc(s.name) + '</b><small>' + plural(s.orders, "order", "orders") + ' since ' + s.since + '</small></div>' +
+      '<button class="navbtn" style="font-weight:600" data-go="back">Done</button></div>' +
+      '<div class="sheet-body">' + cardBody(key) + '</div>' + tag("new", "seller card") + '</section>';
+  }
+
+  // ---------- folding phone open ----------
+  function leftPane() {
+    var keys = Object.keys(SELLERS);
+    var late = keys.filter(function (k) { return SELLERS[k].out; }).sort(function (a, b) { return SELLERS[b].out.days - SELLERS[a].out.days; });
+    var rest = keys.filter(function (k) { return !SELLERS[k].out; });
+    function row(k) {
+      var s = SELLERS[k];
+      var sub = s.out ? ((s.orders >= 3 && s.median != null) ? "usually " + s.out.usual + " d" : "too few orders") + (s.out.warn ? " · warning on" : "")
+                      : plural(s.orders, "order", "orders") + " · all in";
+      return '<button class="srow' + (st.seller === k ? " sel" : "") + '" data-pick="' + k + '"' + (st.seller === k ? ' aria-current="true"' : "") + '>' +
+        '<span><span class="nm">' + esc(s.name) + '</span><br><span class="sub">' + sub + '</span></span>' +
+        (s.out ? '<span class="days' + (s.out.warn ? " late" : "") + '">' + s.out.days + ' d</span>' : '<span class="days"></span>') + CHEV + '</button>';
+    }
+    return statusBar() + '<div class="scroll" style="padding-bottom:48px"><div class="navbar" style="justify-content:flex-start"><button class="navbtn" tabindex="-1">&#8249; Packages</button></div><h2 class="large-title">Sellers</h2>' +
+      '<div class="sortpill' + annCls("new") + '" id="sort-late">Sorted by late now' + tag("new", "seller list") + '</div>' +
+      '<div class="section-h">Out now · ' + late.length + '</div><div class="group">' + late.map(row).join("") + '</div>' +
+      '<div class="section-h">Nothing out · ' + rest.length + '</div><div class="group">' + rest.map(row).join("") + '</div>' +
+      '</div>' + home();
+  }
+  function rightPane() {
+    var s = SELLERS[st.seller];
+    return statusBar() + '<div class="scroll" style="padding-bottom:48px"><div class="navbar"></div>' +
+      '<h2 class="large-title">' + esc(s.name) + '</h2><div class="subtle">' + plural(s.orders, "order", "orders") + ' since ' + s.since + '</div>' +
+      '<div id="seller-card-open">' + cardBody(st.seller) + '</div></div>' + home();
+  }
+
+  // ---------- render ----------
+  var scrFolded = document.getElementById("scr-folded");
+  var flashTimer = 0;
+  function render() {
+    if (st.t === "auto") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", st.t);
+    document.body.classList.toggle("no-ann", !st.ann);
+    var isOpen = st.s === "open";
+    document.getElementById("dev-folded").hidden = isOpen;
+    document.getElementById("dev-open").hidden = !isOpen;
+    var old = document.getElementById("list-scroll");
+    if (old && st.s !== "filter" && !old.closest("[hidden]") && old.dataset.filtered !== "1") listScroll = old.scrollTop;
+
+    if (isOpen) {
+      document.getElementById("scr-left").innerHTML = leftPane();
+      document.getElementById("scr-right").innerHTML = rightPane();
+    } else if (st.s === "filter") {
+      scrFolded.innerHTML = listScreen({ filter: st.f, filterSeller: st.fs });
+      document.getElementById("list-scroll").dataset.filtered = "1";
+    } else {
+      var src = st.s === "thin" ? "p5" : st.src;
+      var hl = (st.s === "card" || st.s === "thin" || st.s === "back") ? src : null;
+      scrFolded.innerHTML = listScreen({ hl: hl }) + (st.s === "card" ? sheet(st.cs) : st.s === "thin" ? sheet("lantern") : "");
+      var sc = document.getElementById("list-scroll");
+      if (listScroll == null && st.s !== "thin") listScroll = 0;
+      if (listScroll == null) {
+        var r = sc.querySelector('[data-row="' + src + '"]');
+        listScroll = r ? Math.max(0, (r.getBoundingClientRect().top - sc.getBoundingClientRect().top) / scaleNow() - 150) : 0;
+      }
+      sc.scrollTop = listScroll;
+      markScrolled(sc);
+      clearTimeout(flashTimer);
+      if (st.s === "back") flashTimer = setTimeout(function () { var r = scrFolded.querySelector(".prow.hl"); if (r) r.classList.remove("hl"); }, 900);
+    }
+    var def = STATES.filter(function (x) { return x.k === st.s; })[0];
+    document.getElementById("caption").innerHTML = def.cap;
+    Array.prototype.forEach.call(document.querySelectorAll("#states button"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.s === st.s)); });
+    Array.prototype.forEach.call(document.querySelectorAll("#themes button"), function (b) { b.setAttribute("aria-pressed", String(b.dataset.t === st.t)); });
+    [["tog-ann", "ann"], ["tog-verdict", "verdict"], ["tog-net", "net"], ["tog-kinds", "kinds"]].forEach(function (p) {
+      document.getElementById(p[0]).setAttribute("aria-pressed", String(st[p[1]]));
+    });
+    writeHash();
+    fit();
+  }
+
+  function writeHash() {
+    var parts = ["s=" + st.s];
+    if (st.t !== "auto") parts.push("t=" + st.t);
+    if (st.s === "open") parts.push("seller=" + st.seller);
+    if (st.s === "card" && st.cs !== "gravel") parts.push("cs=" + st.cs, "src=" + st.src);
+    if (st.s === "filter") parts.push("f=" + st.f, "fs=" + st.fs);
+    if (!st.ann) parts.push("labels=off");
+    if (st.verdict) parts.push("verdict=on");
+    if (st.net) parts.push("net=on");
+    if (st.kinds) parts.push("kinds=on");
+    var h = "#" + parts.join("&");
+    if (location.hash !== h) { try { history.replaceState(null, "", h); } catch (e) { /* file: URLs in some browsers */ } }
+  }
+  function readHash() {
+    location.hash.replace(/^#/, "").split("&").forEach(function (kv) {
+      var p = kv.split("="), k = p[0], v = decodeURIComponent(p[1] || "");
+      if (k === "s" && STATES.some(function (x) { return x.k === v; })) st.s = v;
+      if (k === "t" && /^(light|dark|auto)$/.test(v)) st.t = v;
+      if (k === "seller" && SELLERS[v]) st.seller = v;
+      if (k === "cs" && SELLERS[v]) st.cs = v;
+      if (k === "src" && /^p\d+$/.test(v)) st.src = v;
+      if (k === "f" && FILTER_NAMES[v]) st.f = v;
+      if (k === "fs" && SELLERS[v]) st.fs = v;
+      if (k === "labels") st.ann = v !== "off";
+      if (k === "verdict") st.verdict = v === "on";
+      if (k === "net") st.net = v === "on";
+      if (k === "kinds") st.kinds = v === "on";
+    });
+  }
+
+  // Scale the frames down in a narrow window, so the page never scrolls sideways.
+  function fit() {
+    var f = document.getElementById("fit"), stage = document.getElementById("stage");
+    f.style.transform = ""; stage.style.height = "";
+    var k = Math.min(1, stage.clientWidth / f.scrollWidth);
+    if (k < 1) { f.style.transform = "scale(" + k + ")"; stage.style.height = Math.ceil(f.scrollHeight * k) + "px"; }
+  }
+
+  // ---------- controls ----------
+  var segS = document.getElementById("states");
+  segS.innerHTML = STATES.map(function (x, i) { return '<button data-s="' + x.k + '"><span class="n">' + (i + 1) + '</span>' + x.label + '</button>'; }).join("");
+  segS.addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { st.s = b.dataset.s; if (st.s === "card") { st.cs = "gravel"; st.src = "p3"; } if (st.s === "filter") { st.f = "refund"; st.fs = "gravel"; } render(); } });
+  document.getElementById("next").addEventListener("click", function () {
+    var i = STATES.map(function (x) { return x.k; }).indexOf(st.s);
+    st.s = STATES[(i + 1) % STATES.length].k; if (st.s === "card") { st.cs = "gravel"; st.src = "p3"; } if (st.s === "filter") { st.f = "refund"; st.fs = "gravel"; } render();
+  });
+  document.getElementById("themes").addEventListener("click", function (e) { var b = e.target.closest("button"); if (b) { st.t = b.dataset.t; render(); } });
+  [["tog-ann", "ann"], ["tog-verdict", "verdict"], ["tog-net", "net"], ["tog-kinds", "kinds"]].forEach(function (p) {
+    document.getElementById(p[0]).addEventListener("click", function () { st[p[1]] = !st[p[1]]; render(); });
+  });
+
+  // ---------- taps inside the phones ----------
+  document.getElementById("stage").addEventListener("click", function (e) {
+    var t = e.target.closest("[data-open],[data-go],[data-filter],[data-pick]");
+    if (!t) return;
+    if (t.dataset.open) {
+      var k = t.dataset.open;
+      st.src = t.dataset.pkg;
+      if (k === "lantern") st.s = "thin";
+      else { st.s = "card"; st.cs = k; }
+    } else if (t.dataset.go) {
+      st.s = t.dataset.go;
+    } else if (t.dataset.filter) {
+      st.f = t.dataset.filter; st.fs = t.dataset.seller;
+      st.s = "filter";
+    } else if (t.dataset.pick) {
+      st.seller = t.dataset.pick;
+    }
+    render();
+  });
+
+  function scaleNow() { var m = /scale\(([\d.]+)\)/.exec(document.getElementById("fit").style.transform); return m ? parseFloat(m[1]) : 1; }
+  function markScrolled(sc) { var scr = sc.closest(".screen"); if (scr) scr.classList.toggle("scrolled", sc.scrollTop > 40); }
+  document.addEventListener("scroll", function (e) { if (e.target.classList && e.target.classList.contains("scroll")) markScrolled(e.target); }, true);
+
+  window.addEventListener("hashchange", function () { readHash(); render(); });
+  window.addEventListener("resize", fit);
+  readHash();
+  render();
+})();
+</script>
+</body>
+</html>

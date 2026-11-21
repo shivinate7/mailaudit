@@ -1,0 +1,808 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Import and safety copies</title>
+<style>
+/* Tokens. Spacing on the 4 px step, radius 8 px (house tokens.md). Colours are this designer's own, named by role. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --radius: 8px;
+  --font: -apple-system, system-ui, "SF Pro Text", "Helvetica Neue", sans-serif;
+
+  --page: #DCE2E7;
+  --surface: #EEF1F4;
+  --raised: #FFFFFF;
+  --text: #1A2430;
+  --text-2: #56636F;
+  --line: #D3DAE0;
+  --accent: #1F5FA8;
+  --accent-soft: #E1EAF6;
+  --on-accent: #FFFFFF;
+  --kept: #2B7449;
+  --kept-soft: #DFF0E6;
+  --changed: #8E5A00;
+  --changed-soft: #F5EAD4;
+  --skipped: #66727D;
+  --danger: #B3261E;
+  --danger-soft: #F8E1DF;
+  --bar: rgba(246, 248, 250, 0.86);
+  --device: #2A3138;
+  --hinge: #14191E;
+  --banner: #FFF3C2;
+  --banner-text: #4A3B00;
+
+  /* Dynamic Type, Large (default), from Apple's typography page, read 2026-11-21. */
+  --t-large: 34px; --l-large: 41px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap1: 12px; --l-cap1: 16px;
+  --t-cap2: 11px; --l-cap2: 13px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #050709; --surface: #0E1216; --raised: #1A2026; --text: #E8EDF1; --text-2: #9AA7B2; --line: #2C353D;
+    --accent: #7FB2F0; --accent-soft: #1C2C40; --on-accent: #0B1724; --kept: #74CF98; --kept-soft: #16301F;
+    --changed: #E5B45C; --changed-soft: #362813; --skipped: #98A4AE; --danger: #F2867D; --danger-soft: #3A1714;
+    --bar: rgba(22, 27, 32, 0.86); --device: #3A424A; --hinge: #000000; --banner: #3B3210; --banner-text: #FBE89A;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #050709; --surface: #0E1216; --raised: #1A2026; --text: #E8EDF1; --text-2: #9AA7B2; --line: #2C353D;
+  --accent: #7FB2F0; --accent-soft: #1C2C40; --on-accent: #0B1724; --kept: #74CF98; --kept-soft: #16301F;
+  --changed: #E5B45C; --changed-soft: #362813; --skipped: #98A4AE; --danger: #F2867D; --danger-soft: #3A1714;
+  --bar: rgba(22, 27, 32, 0.86); --device: #3A424A; --hinge: #000000; --banner: #3B3210; --banner-text: #FBE89A;
+}
+/* Largest accessibility size, AX5, same page. */
+.ax5 {
+  --t-large: 60px; --l-large: 70px; --t-title2: 56px; --l-title2: 66px; --t-title3: 55px; --l-title3: 65px;
+  --t-head: 53px; --l-head: 62px; --t-body: 53px; --l-body: 62px; --t-callout: 51px; --l-callout: 60px;
+  --t-sub: 49px; --l-sub: 58px; --t-foot: 44px; --l-foot: 52px; --t-cap1: 43px; --l-cap1: 51px; --t-cap2: 40px; --l-cap2: 48px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--text); font-family: var(--font); font-size: var(--t-body); line-height: var(--l-body); }
+button { font: inherit; color: inherit; }
+
+/* Page chrome around the devices */
+.banner { position: sticky; top: 0; z-index: 20; background: var(--banner); color: var(--banner-text); padding: var(--space-2) var(--space-4); font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600; }
+.chrome { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6) var(--space-4); max-inline-size: 1800px; margin-inline: auto; }
+.page-title { font-size: var(--t-title2); line-height: var(--l-title2); margin: 0; }
+.intro { margin: 0; color: var(--text-2); font-size: var(--t-sub); line-height: var(--l-sub); max-inline-size: 72ch; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.pill { min-block-size: 36px; padding: 0 var(--space-3); border-radius: 999px; border: 1px solid var(--line); background: var(--raised); cursor: pointer; font-size: var(--t-sub); }
+.pill[aria-pressed="true"] { background: var(--text); color: var(--raised); border-color: var(--text); }
+.tag { display: inline-flex; align-items: center; min-block-size: 24px; padding: 0 var(--space-2); border: 1.5px dashed var(--accent); border-radius: 6px; color: var(--accent); font-size: var(--t-foot); font-weight: 600; }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6) 0; border-top: 1px solid var(--line); scroll-margin-top: 48px; }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3); }
+.concept-head h2 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); }
+.states { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.states a { font-size: var(--t-foot); color: var(--accent); text-decoration: none; padding: var(--space-1) var(--space-2); border-radius: 6px; border: 1px solid var(--line); background: var(--raised); }
+.states a[aria-current="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.devices { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+.device-wrap { display: flex; flex-direction: column; gap: var(--space-2); }
+.device-label { font-size: var(--t-foot); color: var(--text-2); }
+.optbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; font-size: var(--t-foot); color: var(--text-2); }
+.optbar label { display: inline-flex; gap: var(--space-1); align-items: center; padding: var(--space-1) var(--space-2); border: 1px solid var(--line); border-radius: 6px; background: var(--raised); }
+[data-opt].opt-off { display: none !important; }
+
+/* Device frames. Sizes from the brief; the phone size is not written (see notes). */
+.device { position: relative; background: var(--device); border-radius: 28px; padding: 10px; flex: none; }
+.screen { position: relative; overflow: hidden; background: var(--surface); border-radius: 18px; container-type: inline-size;
+  --sa-top: env(safe-area-inset-top, 24px); --sa-bottom: env(safe-area-inset-bottom, 20px); }
+.device[data-device="iphone-duo-folded"] .screen { width: 466px; height: 678px; }
+.device[data-device="iphone-duo-unfolded"] .screen { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; background: transparent; border-radius: 18px; }
+.device[data-device="phone-large"] .screen { width: 402px; height: 874px; --sa-top: env(safe-area-inset-top, 54px); --sa-bottom: env(safe-area-inset-bottom, 34px); }
+.hinge { background: var(--hinge); }
+.pagepane { position: relative; overflow: hidden; background: var(--surface); container-type: inline-size; height: 669px; }
+.status { height: var(--sa-top); display: flex; align-items: flex-end; justify-content: space-between; padding: 0 var(--space-5) var(--space-1); font-size: var(--t-cap1); font-weight: 600; line-height: 16px; }
+.ax5 .status { font-size: 12px; }
+.homebar { position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; border-radius: 3px; background: var(--text); opacity: .35; transform: translateX(-50%); z-index: 9; }
+.view { position: absolute; inset: var(--sa-top) 0 0 0; display: flex; flex-direction: column; }
+.scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding: 0 var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+.scroll::-webkit-scrollbar { width: 0; }
+.scroll > * { flex-shrink: 0; }
+/* At AX5 the whole view scrolls, so the dock and shelf do not cover the content. The tab bar and the main action stay pinned. */
+.ax5 .view, .ax5 .sheet { overflow-y: auto; overscroll-behavior: contain; scrollbar-width: none; }
+.ax5 .view > .scroll, .ax5 .sheet > .scroll { flex: none; overflow: visible; }
+.ax5 .view > *, .ax5 .sheet > * { flex-shrink: 0; }
+.ax5 .tabbar { position: sticky; bottom: 0; background: var(--surface); }
+/* iOS keeps tab bar labels small at accessibility sizes and shows them large on a long press. */
+.ax5 .tab { font-size: 13px; line-height: 16px; }
+.ax5 .tab svg { width: 28px; height: 28px; }
+.ax5 .sheet > .dock { position: sticky; bottom: 0; }
+.ax5 .benchdock { display: contents; }
+.ax5 .shelf-head { order: 2; padding-top: var(--space-3); }
+.ax5 .shelf { order: 3; flex: none; }
+.ax5 .benchdock .act { order: 4; position: sticky; bottom: 0; background: var(--surface); padding-top: var(--space-2); padding-bottom: calc(var(--sa-bottom) + var(--space-1)); border-top: 1px solid var(--line); }
+
+/* iOS-like parts */
+.navbar { display: flex; align-items: center; justify-content: space-between; min-block-size: 44px; padding: 0 var(--space-2); }
+.navbtn { min-block-size: 44px; min-inline-size: 44px; padding: 0 var(--space-2); border: 0; background: none; color: var(--accent); font-size: var(--t-body); cursor: pointer; }
+.navbtn.strong { font-weight: 600; }
+.navbtn[disabled] { color: var(--text-2); opacity: .6; cursor: not-allowed; }
+.navtitle { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; text-align: center; flex: 1; }
+.ax5 .navbar { flex-wrap: wrap; }
+.ax5 .navtitle { order: 3; flex-basis: 100%; text-align: start; padding: 0 var(--space-2); }
+.large { font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; margin: 0; padding-top: var(--space-1); overflow-wrap: anywhere; }
+.title3 { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 600; margin: 0; }
+.head { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
+.sub { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); }
+.foot { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.callout { font-size: var(--t-callout); line-height: var(--l-callout); }
+.group { display: flex; flex-direction: column; gap: var(--space-2); }
+.group-label { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); padding: 0 var(--space-4); }
+.list { background: var(--raised); border-radius: 10px; overflow: hidden; display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; gap: var(--space-3); min-block-size: 44px; padding: var(--space-3) var(--space-4); border: 0; background: none; text-align: left; width: 100%; cursor: pointer; position: relative; font-size: var(--t-body); line-height: var(--l-body); }
+.row + .row::before { content: ""; position: absolute; top: 0; left: var(--space-4); right: 0; border-top: 1px solid var(--line); }
+.row .grow { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.row .chev { color: var(--text-2); font-size: var(--t-body); }
+.row.static { cursor: default; }
+.row.sel { background: var(--accent-soft); }
+.btn { min-block-size: 50px; border-radius: 12px; border: 0; padding: var(--space-3) var(--space-4); font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; cursor: pointer; width: 100%; }
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.plain { background: var(--raised); color: var(--accent); }
+.btn.danger { background: var(--danger-soft); color: var(--danger); }
+.btn.kept { background: var(--kept); color: var(--raised); }
+.dock { padding: var(--space-3) var(--space-4) calc(var(--sa-bottom) + var(--space-2)); display: flex; flex-direction: column; gap: var(--space-2); background: var(--surface); border-top: 1px solid var(--line); }
+.dock.withtabs { padding-bottom: var(--space-3); }
+.tabbar { margin: 0 var(--space-4) calc(var(--sa-bottom) + var(--space-1)); display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1); padding: var(--space-1); border-radius: 999px; background: var(--bar); backdrop-filter: blur(14px); border: 1px solid var(--line); }
+.tab { min-block-size: 48px; border: 0; background: none; border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: var(--t-cap2); line-height: var(--l-cap2); color: var(--text-2); cursor: pointer; }
+.tab svg { width: 22px; height: 22px; }
+.ax5 .tab svg { width: 40px; height: 40px; }
+.tab[aria-selected="true"] { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 2px; padding: 2px; background: var(--line); border-radius: 9px; }
+.seg button { min-block-size: 36px; border: 0; border-radius: 7px; background: transparent; font-size: var(--t-foot); font-weight: 600; cursor: pointer; padding: var(--space-1) var(--space-2); }
+.seg button[aria-pressed="true"] { background: var(--raised); }
+.field { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4); }
+.field input { font: inherit; font-size: var(--t-body); border: 0; background: transparent; color: var(--text); padding: 0; min-block-size: 28px; width: 100%; }
+.field input:focus { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* Shared figures */
+.figs { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+@container (max-width: 300px) { .figs { grid-template-columns: 1fr; } }
+.fig { background: var(--raised); border-radius: var(--radius); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); border-top: 3px solid var(--line); }
+.fig b { font-size: var(--t-title2); line-height: var(--l-title2); font-variant-numeric: tabular-nums; }
+.fig span { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+button.fig { border-left: 0; border-right: 0; border-bottom: 0; text-align: left; cursor: pointer; min-block-size: 44px; font: inherit; color: inherit; }
+button.fig[aria-pressed="true"] { box-shadow: inset 0 0 0 2px var(--accent); }
+.fig.new { border-top-color: var(--accent); }
+.fig.changed { border-top-color: var(--changed); }
+.fig.skipped { border-top-color: var(--skipped); }
+.kept-card { display: flex; gap: var(--space-3); align-items: flex-start; background: var(--kept-soft); color: var(--text); border-radius: var(--radius); padding: var(--space-3) var(--space-4); }
+.kept-card svg { flex: none; width: 24px; height: 24px; color: var(--kept); margin-top: 2px; }
+.ax5 .kept-card svg { width: 44px; height: 44px; }
+.kept-card .grow { display: flex; flex-direction: column; gap: var(--space-1); }
+.kept-card b { color: var(--kept); }
+.mini { display: inline-flex; gap: var(--space-2); flex-wrap: wrap; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.mini .n { color: var(--accent); font-weight: 600; }
+.mini .c { color: var(--changed); font-weight: 600; }
+.mini .s { color: var(--skipped); }
+.badge { font-size: var(--t-cap1); line-height: var(--l-cap1); font-weight: 600; border-radius: 6px; padding: 2px var(--space-2); white-space: nowrap; }
+.badge.new { background: var(--accent-soft); color: var(--accent); }
+.badge.changed { background: var(--changed-soft); color: var(--changed); }
+.badge.skipped { background: var(--line); color: var(--text-2); }
+.badge.kept { background: var(--kept-soft); color: var(--kept); }
+.progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.progress i { display: block; height: 100%; width: 63%; background: var(--accent); }
+.alert { background: var(--danger-soft); border-radius: var(--radius); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.alert .head { color: var(--danger); }
+details { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+details summary { cursor: pointer; min-block-size: 44px; display: flex; align-items: center; }
+details pre { white-space: pre-wrap; margin: 0; font-size: var(--t-cap1); }
+.answer { background: var(--kept-soft); border-radius: var(--radius); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.answer .head { color: var(--kept); }
+.inline-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.inline-actions .btn { width: auto; flex: 1 1 140px; min-block-size: 44px; font-size: var(--t-sub); }
+
+/* Sheet */
+.sheet-veil { position: absolute; inset: 0; background: rgba(0,0,0,.28); z-index: 5; display: flex; flex-direction: column; justify-content: flex-end; }
+.sheet { background: var(--surface); border-radius: 14px 14px 0 0; display: flex; flex-direction: column; max-block-size: calc(100% - var(--sa-top) - 8px); min-block-size: 0; flex: 1; }
+.sheet.full { flex: 1; }
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-2) auto 0; }
+.sheet .scroll { padding-top: var(--space-2); }
+
+/* Bench concept */
+.plate { background: var(--raised); border-radius: var(--radius); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); border-left: 4px solid var(--kept); }
+.plate .top { display: flex; justify-content: space-between; gap: var(--space-2); align-items: baseline; flex-wrap: wrap; }
+.compare { display: grid; grid-template-columns: minmax(0,1.3fr) minmax(0,1fr) 28px minmax(0,1fr); align-items: center; background: var(--raised); border-radius: var(--radius); overflow: hidden; font-variant-numeric: tabular-nums; }
+.compare > * { padding: var(--space-2) var(--space-3); min-block-size: 44px; display: flex; align-items: center; border-top: 1px solid var(--line); }
+.compare > .h { border-top: 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); font-weight: 600; min-block-size: 32px; }
+.compare .gate { justify-content: center; color: var(--text-2); padding: 0; }
+.compare .num { justify-content: flex-end; font-weight: 600; }
+.compare .lock { color: var(--kept); }
+.compare .rowlabel { font-size: var(--t-sub); line-height: var(--l-sub); }
+.compare .same { background: var(--kept-soft); }
+@container (max-width: 300px) {
+  .compare { grid-template-columns: 1fr; }
+  .compare .gate { display: none; }
+  .compare > .h:not(:first-child) { display: none; }
+  .compare .num { justify-content: flex-start; border-top: 0; padding-top: 0; }
+  .compare .num::before { content: attr(data-k); font-weight: 400; color: var(--text-2); margin-right: var(--space-2); }
+}
+/* Largest text: the same one-column shape the narrow container query gives. */
+.ax5 .figs { grid-template-columns: 1fr; }
+.ax5 .compare { grid-template-columns: 1fr; }
+.ax5 .compare .gate { display: none; }
+.ax5 .compare > .h { display: none; }
+.ax5 .compare .num { justify-content: flex-start; border-top: 0; padding-top: 0; }
+.ax5 .compare .num::before { content: attr(data-k); font-weight: 400; color: var(--text-2); margin-right: var(--space-2); }
+.shelf { display: flex; gap: var(--space-2); overflow-x: auto; padding: var(--space-1) var(--space-4) var(--space-2); scrollbar-width: none; }
+.shelf::-webkit-scrollbar { display: none; }
+.slot { flex: none; inline-size: 148px; min-block-size: 76px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: 2px; text-align: left; cursor: pointer; }
+.ax5 .slot { inline-size: 360px; }
+.slot.file { border: 1.5px dashed var(--accent); color: var(--accent); justify-content: center; }
+.slot.on { outline: 2.5px solid var(--accent); outline-offset: -1px; }
+.slot b { font-size: var(--t-sub); line-height: var(--l-sub); }
+.slot span { font-size: var(--t-cap1); line-height: var(--l-cap1); color: var(--text-2); }
+.slot.fresh { background: var(--kept-soft); }
+.shelf-head { display: flex; justify-content: space-between; align-items: center; padding: 0 var(--space-4); }
+.benchdock { background: var(--surface); border-top: 1px solid var(--line); padding-top: var(--space-2); padding-bottom: calc(var(--sa-bottom) + var(--space-1)); display: flex; flex-direction: column; gap: var(--space-1); }
+.benchdock .act { padding: 0 var(--space-4) var(--space-2); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip { min-block-size: 44px; border-radius: 22px; border: 1px solid var(--line); background: var(--raised); padding: 0 var(--space-3); font-size: var(--t-sub); cursor: pointer; text-align: left; }
+.chip[aria-pressed="true"] { border-color: var(--accent); background: var(--accent-soft); color: var(--accent); font-weight: 600; }
+.changes { display: flex; flex-direction: column; background: var(--raised); border-radius: var(--radius); overflow: hidden; }
+.change { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-2); padding: var(--space-2) var(--space-4); border-top: 1px solid var(--line); min-block-size: 44px; align-items: center; }
+.change:first-child { border-top: 0; }
+.change .foot { grid-column: 1 / -1; }
+.pagehead { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 700; margin: 0; padding-top: var(--space-3); }
+.empty { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) 0; }
+.tray { flex: 1 0 auto; min-block-size: 240px; border: 2px dashed var(--line); border-radius: 14px; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: var(--space-3); padding: var(--space-6) var(--space-5); background: repeating-linear-gradient(135deg, transparent 0 14px, var(--accent-soft) 14px 15px); }
+.tray .btn { width: auto; }
+.gatebar { display: flex; align-items: center; gap: var(--space-2); color: var(--text-2); font-size: var(--t-foot); }
+
+@media (prefers-reduced-motion: no-preference) {
+  .sheet { animation: rise .22s ease-out; }
+  @keyframes rise { from { transform: translateY(24px); opacity: .6; } to { transform: none; opacity: 1; } }
+}
+@media (forced-colors: active) {
+  .fig, .slot, .chip, .plate, .compare, .list, .btn { border: 1px solid CanvasText; }
+}
+</style>
+</head>
+<body>
+<div class="banner" role="note">Sample: no figure on this page is real. Every order, count, date and size is made up.</div>
+
+<main class="chrome">
+  <div class="stack" style="display:flex;flex-direction:column;gap:var(--space-2)">
+    <h1 class="page-title">Import and safety copies</h1>
+    <p class="intro">Designer kind: blind (import-and-backup-blind-2). Drawn from the job only, with no view of today's screen, so every part is marked New. Two concepts, each with its own structure, way to move around and first screen. Tap inside any device: the four frames share one state per concept.</p>
+  </div>
+  <div class="cluster" role="group" aria-label="Theme">
+    <span class="foot">Theme</span>
+    <button class="pill" data-theme-set="system">System</button>
+    <button class="pill" data-theme-set="light">Light</button>
+    <button class="pill" data-theme-set="dark">Dark</button>
+    <span class="foot" style="margin-inline-start:var(--space-4)">Concepts</span>
+    <button class="pill" data-hide="logbook" aria-pressed="false">Hide Logbook</button>
+    <button class="pill" data-hide="bench" aria-pressed="false">Hide Bench</button>
+  </div>
+
+  <section class="concept" id="concept-logbook" data-concept="logbook">
+    <div class="concept-head">
+      <h2>Logbook</h2><span class="tag">New: whole screen</span>
+      <span class="foot">Two tabs, Imports and Safety copies. Each import is a log entry you can open, check and undo.</span>
+    </div>
+    <div class="states" data-states="logbook"></div>
+    <div class="optbar" data-opts="logbook"></div>
+    <div class="devices" data-devices="logbook">
+      <div class="device" data-device="iphone-duo-folded"><div class="screen"><p class="sub" style="padding:var(--space-8) var(--space-4)">This mockup draws its screens with JavaScript. Turn it on to see Logbook.</p></div></div>
+      <div class="device" data-device="iphone-duo-unfolded"><div class="screen"><div class="pagepane"></div><div class="hinge"></div><div class="pagepane"></div></div></div>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-bench" data-concept="bench">
+    <div class="concept-head">
+      <h2>Bench</h2><span class="tag">New: whole screen</span>
+      <span class="foot">Bold concept. No tabs and no history list. One bench compares Now against whatever you lay on it: a file or a safety copy. Import and restore are the same act.</span>
+    </div>
+    <div class="states" data-states="bench"></div>
+    <div class="optbar" data-opts="bench"></div>
+    <div class="devices" data-devices="bench">
+      <div class="device" data-device="iphone-duo-folded"><div class="screen"><p class="sub" style="padding:var(--space-8) var(--space-4)">This mockup draws its screens with JavaScript. Turn it on to see Bench.</p></div></div>
+      <div class="device" data-device="iphone-duo-unfolded"><div class="screen"><div class="pagepane"></div><div class="hinge"></div><div class="pagepane"></div></div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Sample data (not real) ---------- */
+  var NOW = { orders: 1284, checkins: 312 };
+  var FILE = { name: "orders-2026-11-20.csv", rows: 1287 };
+  var RANGES = {
+    all:   { label: "Whole file", dates: "Oct 2 to Nov 19", nw: 46, ch: 3, sk: 1238 },
+    since: { label: "Since last import", dates: "Nov 12 to Nov 19", nw: 31, ch: 1, sk: 22 },
+    custom:{ label: "Pick dates", dates: "Nov 1 to Nov 19", nw: 40, ch: 2, sk: 409 }
+  };
+  var IMPORTS = [
+    { id: "nov", stamp: "November haul", dates: "Oct 2 to Nov 19", when: "Today, 9:14 PM", nw: 46, ch: 3, sk: 1238 },
+    { id: "mid", stamp: "Mid-Oct restock", dates: "Sep 20 to Oct 14", when: "Oct 15", nw: 112, ch: 0, sk: 1019 },
+    { id: "first", stamp: "First load", dates: "Jan 3 to Sep 19", when: "Sep 21", nw: 1126, ch: 0, sk: 0 }
+  ];
+  var COPIES = [
+    { id: "c1", when: "Today, 9:14 PM", size: "184 KB", why: "Made before import November haul" },
+    { id: "c2", when: "Nov 12, 8:02 AM", size: "171 KB", why: "Made by you" },
+    { id: "c3", when: "Oct 15, 7:40 PM", size: "166 KB", why: "Made before import Mid-Oct restock" },
+    { id: "c4", when: "Sep 21, 6:12 PM", size: "150 KB", why: "Made before import First load" }
+  ];
+  var NEW_ROWS = [
+    ["Order 4471-02", "Northgate Cards", "3 items, $4.18"],
+    ["Order 4471-03", "Pine Hollow Games", "1 item, $0.62"],
+    ["Order 4472-11", "Ridgeway Singles", "6 items, $7.90"],
+    ["Order 4473-05", "Lantern Box", "2 items, $1.35"]
+  ];
+  var CHANGED_ROWS = [
+    ["Order 4402-07", "Status: shipped, was processing"],
+    ["Order 4410-01", "Total: $3.12, was $3.40 (a refund)"],
+    ["Order 4415-09", "Tracking number added"]
+  ];
+  var SKIPPED_ROWS = [
+    ["Order 4301-04", "Already here, no difference"],
+    ["Order 4301-05", "Already here, no difference"],
+    ["Order 4299-12", "Not a purchase line"]
+  ];
+
+  /* ---------- State ---------- */
+  var state = {
+    theme: "system",
+    hidden: { logbook: false, bench: false },
+    logbook: { s: "imports", back: "done", seg: "new", sel: "nov", copy: "c2", mode: "merge", stamp: "November haul", range: "all", opts: { undo: true, files: true, restoreMode: true } },
+    bench:   { s: "empty", back: "file", range: "all", src: "file", mode: "merge", stamp: "November haul", opts: { presets: true, restoreMode: true, keeplist: true } }
+  };
+  var STATES = {
+    logbook: [
+      ["imports", "Imports"], ["imports-empty", "No imports yet"], ["checking", "Checking file"], ["preview", "Check before import"],
+      ["error", "File not readable"], ["done", "Import done"], ["edit", "Edit stamp and dates"],
+      ["copies", "Safety copies"], ["copy-made", "Copy made"], ["copies-unknown", "Copies not readable"], ["restore", "Restore a copy"], ["restore-exact", "Restore exactly"], ["restored", "Restored"], ["undone", "Restore undone"]
+    ],
+    bench: [
+      ["empty", "Bench empty"], ["first", "No orders yet"], ["file", "File on bench"], ["file-range", "Narrowed dates"], ["edit", "Edit stamp"],
+      ["merging", "Merging"], ["merged", "Merged"], ["copied", "Copy made"], ["error", "File not readable"], ["copy", "Copy on bench"], ["copy-exact", "Match copy exactly"], ["restored", "Restored"]
+    ]
+  };
+  var OPTS = {
+    logbook: [["undo", "Undo import button"], ["files", "Save copy to Files"], ["restoreMode", "Two restore modes"]],
+    bench: [["presets", "Date presets"], ["restoreMode", "Two restore modes"], ["keeplist", "Kept check-ins list"]]
+  };
+
+  /* ---------- Small helpers ---------- */
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function n(x) { return x.toLocaleString("en-US"); }
+  var ICON = {
+    shield: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M12 3l8 3v6c0 4.5-3.4 8.3-8 9-4.6-.7-8-4.5-8-9V6l8-3z"/><path d="M8.5 12l2.5 2.5 4.5-5"/></svg>',
+    tray: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M4 13l2-8h12l2 8v6H4v-6z"/><path d="M4 13h5l1 2h4l1-2h5"/></svg>',
+    stack: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="4" width="14" height="5" rx="1.5"/><rect x="5" y="10" width="14" height="5" rx="1.5"/><rect x="5" y="16" width="14" height="4" rx="1.5"/></svg>',
+    lock: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 018 0v3"/></svg>',
+    arrow: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M5 12h14M13 6l6 6-6 6"/></svg>'
+  };
+  function opt(c, name, html) { return '<div data-opt="' + c + ':' + name + '">' + html + '</div>'; }
+  function kept(text, sub) {
+    return '<div class="kept-card">' + ICON.shield + '<div class="grow"><div class="callout"><b>' + text + '</b></div>' + (sub ? '<div class="foot" style="color:var(--text)">' + sub + '</div>' : '') + '</div></div>';
+  }
+  /* The three counts are also the switch for the list below them, so each count shows once. */
+  function figs(r, c, seg) {
+    function f(k, cls, num, label) {
+      if (!c) return '<div class="fig ' + cls + '"><b>' + n(num) + '</b><span>' + label + '</span></div>';
+      return '<button class="fig ' + cls + '" data-c="' + c + '" data-set="seg" data-v="' + k + '" aria-pressed="' + (seg === k) + '"><b>' + n(num) + '</b><span>' + label + '</span></button>';
+    }
+    return '<div class="figs" id="figs" role="group" aria-label="Show orders">' +
+      f("new", "new", r.nw, "new orders") + f("changed", "changed", r.ch, "changed") + f("skipped", "skipped", r.sk, "skipped") + '</div>';
+  }
+  function rowsFor(seg) {
+    var src = seg === "new" ? NEW_ROWS : seg === "changed" ? CHANGED_ROWS : SKIPPED_ROWS;
+    return '<div class="list">' + src.map(function (r) {
+      var badge = seg === "new" ? '<span class="badge new">New</span>' : seg === "changed" ? '<span class="badge kept">Check-in kept</span>' : '';
+      return '<div class="row static"><div class="grow"><span>' + esc(r[0]) + '</span><span class="foot">' + esc(r[1]) + (r[2] ? ', ' + esc(r[2]) : '') + '</span></div>' + badge + '</div>';
+    }).join("") + '</div>';
+  }
+  function tabbar(active) {
+    return '<nav class="tabbar" role="tablist" aria-label="Sections">' +
+      '<button class="tab" role="tab" data-c="logbook" data-go="imports" aria-selected="' + (active === "imports") + '">' + ICON.tray + 'Imports</button>' +
+      '<button class="tab" role="tab" data-c="logbook" data-go="copies" aria-selected="' + (active === "copies") + '">' + ICON.stack + 'Safety copies</button></nav>';
+  }
+  function sheet(inner, full) { return '<div class="sheet-veil"><div class="sheet' + (full ? ' full' : '') + '" role="dialog" aria-modal="true"><div class="grabber"></div>' + inner + '</div></div>'; }
+
+  /* ================= Logbook ================= */
+  function lbImportsList(st, compact) {
+    var rows = IMPORTS.map(function (im) {
+      return '<button class="row' + (!compact && st.sel === im.id ? ' sel' : '') + '" data-c="logbook" data-go="done" data-sel="' + im.id + '"><div class="grow"><span class="head">' + esc(im.id === "nov" ? st.stamp : im.stamp) + '</span>' +
+        '<span class="foot">' + esc(im.dates) + '. Imported ' + esc(im.when) + '</span>' +
+        '<span class="mini"><span class="n">+' + n(im.nw) + ' new</span><span class="' + (im.ch ? 'c' : 's') + '">' + n(im.ch) + ' changed</span><span class="s">' + n(im.sk) + ' skipped</span></span></div><span class="chev" aria-hidden="true">›</span></button>';
+    }).join("");
+    return kept(n(NOW.checkins) + " check-ins, never touched by an import", "An import adds new orders and updates changed ones. It never removes an order or a check-in.") +
+      '<div class="group"><div class="group-label">Imports, newest first</div><div class="list">' + rows + '</div></div>';
+  }
+  function lbImportsMain(st, wide) {
+    if (st.s === "imports-empty") {
+      return '<div class="empty"><h2 class="title3">No imports yet</h2><p class="sub" style="margin:0">Import an order file to fill your list.</p></div>';
+    }
+    return lbImportsList(st, !wide);
+  }
+  function lbImportDock(st) {
+    return '<div class="dock withtabs"><button class="btn primary" id="lb-import" data-c="logbook" data-go="checking">Import a file</button></div>';
+  }
+  function lbPreviewBody(st) {
+    var r = RANGES[st.range];
+    return '<div class="foot">' + esc(FILE.name) + ', ' + n(FILE.rows) + ' rows read</div>' +
+      kept("Your " + n(NOW.checkins) + " check-ins stay ticked", "A safety copy of everything is made before the import starts.") +
+      '<div class="group"><div class="group-label">Stamp and dates</div><div class="list">' +
+        '<button class="row" data-c="logbook" data-go="edit"><div class="grow"><span class="foot">Stamp</span><span>' + esc(st.stamp) + '</span></div><span class="chev">›</span></button>' +
+        '<button class="row" data-c="logbook" data-go="edit"><div class="grow"><span class="foot">Orders dated</span><span>' + esc(r.dates) + '</span></div><span class="chev">›</span></button>' +
+      '</div></div>' +
+      '<div class="group"><div class="group-label">What changes. Tap a count to see its orders.</div>' + figs(r, "logbook", st.seg) + rowsFor(st.seg) + '</div>';
+  }
+  function lbPreviewSheet(st) {
+    var r = RANGES[st.range];
+    return sheet('<div class="navbar"><button class="navbtn" data-c="logbook" data-go="imports">Cancel</button><div class="navtitle">Check before import</div><span style="min-inline-size:60px"></span></div>' +
+      '<div class="scroll">' + lbPreviewBody(st) + '</div>' +
+      '<div class="dock"><button class="btn primary" id="lb-confirm" data-c="logbook" data-go="done" data-sel="nov">Import ' + n(r.nw + r.ch) + ' orders</button></div>', true);
+  }
+  function lbChecking() {
+    return sheet('<div class="navbar"><span style="min-inline-size:60px"></span><div class="navtitle">Check before import</div><span style="min-inline-size:60px"></span></div>' +
+      '<div class="scroll"><div class="foot">' + esc(FILE.name) + '</div><div class="group"><div class="callout">Reading orders, 812 of ' + n(FILE.rows) + ' rows</div><div class="progress" role="progressbar" aria-valuenow="63" aria-valuemin="0" aria-valuemax="100"><i></i></div></div>' +
+      kept("Nothing has changed yet", "Reading the file only compares. Your list moves only when you press Import.") +
+      '<button class="btn plain" data-c="logbook" data-go="preview">Show sample result</button></div>' +
+      '<div class="dock"><button class="btn danger" data-c="logbook" data-go="imports">Stop reading</button></div>', true);
+  }
+  function lbError() {
+    return sheet('<div class="navbar"><button class="navbtn" data-c="logbook" data-go="imports">Close</button><div class="navtitle">Check before import</div><span style="min-inline-size:60px"></span></div>' +
+      '<div class="scroll"><div class="alert"><div class="head">This file has no orders that can be read</div><div class="sub" style="color:var(--text)">It may be a different kind of export. Nothing was changed.</div>' +
+      '<details><summary>What the file said</summary><pre>Row 1: expected column "Order Date", found "Date Sold". 0 of 412 rows matched.</pre></details></div>' +
+      kept(n(NOW.checkins) + " check-ins, as before", "") + '</div>' +
+      '<div class="dock"><button class="btn primary" data-c="logbook" data-go="checking">Choose another file</button></div>', true);
+  }
+  function lbDone(st, inPane) {
+    var im = IMPORTS.filter(function (x) { return x.id === st.sel; })[0] || IMPORTS[0];
+    var r = im.id === "nov" ? RANGES[st.range] : im;
+    var just = im.id === "nov";
+    var head = '<div class="navbar"><button class="navbtn" data-c="logbook" data-go="imports">‹ Imports</button><span></span><button class="navbtn" data-c="logbook" data-go="edit">Edit</button></div>' +
+      '<div class="scroll"><h1 class="large">' + esc(just ? st.stamp : im.stamp) + '</h1>' +
+      '<div class="foot">Orders dated ' + esc(r.dates || im.dates) + '. Imported ' + esc(im.when) + '.</div>' +
+      (just ? '<div class="answer" id="lb-answer"><div class="head">Imported ' + n(r.nw) + ' new and ' + n(r.ch) + ' changed</div><div class="sub" style="color:var(--text)">' + n(NOW.checkins) + ' check-ins kept, the same as before.</div></div>' : '') +
+      '<div class="group">' + figs(r, "logbook", st.seg) + rowsFor(st.seg) + '</div>' +
+      '<div class="group"><div class="group-label">Safety copy made before this import</div><div class="list"><button class="row" data-c="logbook" data-go="restore" data-copy="' + (just ? "c1" : "c3") + '"><div class="grow"><span>' + (just ? "Today, 9:14 PM" : "Oct 15, 7:40 PM") + '</span><span class="foot">' + (just ? "184 KB" : "166 KB") + '</span></div><span class="chev">›</span></button></div></div>' +
+      opt("logbook", "undo", '<button class="btn danger" id="lb-undo" data-c="logbook" data-go="restore" data-copy="' + (just ? "c1" : "c3") + '">Undo this import</button>') +
+      '</div>';
+    return head;
+  }
+  function lbEdit(st) {
+    var r = RANGES[st.range];
+    return sheet('<div class="navbar"><button class="navbtn" data-c="logbook" data-act="edit-cancel">Cancel</button><div class="navtitle">Stamp and dates</div><button class="navbtn strong" data-c="logbook" data-act="edit-done">Done</button></div>' +
+      '<div class="scroll"><div class="group"><div class="group-label">Stamp, a name for this batch of orders</div><div class="list"><label class="field"><span class="foot">Stamp</span><input data-c="logbook" data-input="stamp" value="' + esc(st.stamp) + '" aria-label="Stamp"></label></div></div>' +
+      '<div class="group"><div class="group-label">Orders dated</div><div class="list">' +
+        ["all", "since", "custom"].map(function (k) { return '<button class="row" data-c="logbook" data-set="range" data-v="' + k + '"><div class="grow"><span>' + RANGES[k].label + '</span><span class="foot">' + RANGES[k].dates + '</span></div>' + (st.range === k ? '<span style="color:var(--accent)" aria-label="Chosen">✓</span>' : '') + '</button>'; }).join("") +
+      '</div><div class="foot" style="padding:0 var(--space-4)">The counts follow the dates: ' + n(r.nw) + ' new, ' + n(r.ch) + ' changed. A check-in is never part of the change.</div></div></div>');
+  }
+  function lbCopiesList(st, compact) {
+    if (st.s === "undone") {
+      return '<div class="answer" id="lb-undone"><div class="head">Restore undone</div><div class="sub" style="color:var(--text)">Your list is as it was just before the restore.</div></div>' + lbCopiesList({ s: "copies", copy: st.copy }, compact);
+    }
+    if (st.s === "copies-unknown") {
+      return '<div class="alert"><div class="head">Your safety copies could not be read</div><div class="sub" style="color:var(--text)">They are not gone. This list could not load.</div><details><summary>What the phone said</summary><pre>Storage read timed out after 5 s.</pre></details></div>' +
+        '<button class="btn plain" data-c="logbook" data-go="copies">Try again</button>';
+    }
+    return '<div class="foot">A copy holds every order, every check-in and every stamp.</div>' +
+      '<div class="list">' + COPIES.map(function (c) {
+        return '<button class="row' + (!compact && st.copy === c.id ? ' sel' : '') + '" data-c="logbook" data-go="restore" data-copy="' + c.id + '"><div class="grow"><span class="head">' + c.when + '</span><span class="foot">' + c.size + '. ' + c.why + '</span></div><span class="chev">›</span></button>';
+      }).join("") + '</div>';
+  }
+  function lbCopiesDock(st) {
+    return '<div class="dock withtabs">' + (st && st.s === "copy-made" ? '<div class="answer" id="lb-copy-answer"><div class="head">Safety copy made: today, 9:22 PM, 186 KB</div></div>' : '') +
+      '<button class="btn primary" id="lb-make-copy" data-c="logbook" data-go="copy-made">Make a safety copy now</button></div>';
+  }
+  function lbRestoreBody(st) {
+    var c = COPIES.filter(function (x) { return x.id === st.copy; })[0] || COPIES[1];
+    var exact = st.mode === "exact";
+    return '<h2 class="title3">' + c.when + '</h2><div class="foot">' + c.size + '. ' + c.why + '</div>' +
+      opt("logbook", "restoreMode", '<div class="group"><div class="group-label">How to restore</div><div class="list">' +
+        '<button class="row" data-c="logbook" data-set="mode" data-v="merge"><div class="grow"><span>Bring back what is missing</span><span class="foot">Adds orders and check-ins that are in the copy and not here. Keeps everything you did since.</span></div>' + (!exact ? '<span style="color:var(--accent)">✓</span>' : '') + '</button>' +
+        '<button class="row" data-c="logbook" data-set="mode" data-v="exact"><div class="grow"><span>Go back to exactly this copy</span><span class="foot">Your list becomes the copy. Work since then leaves the list but stays in a new safety copy.</span></div>' + (exact ? '<span style="color:var(--accent)">✓</span>' : '') + '</button>' +
+      '</div></div>') +
+      (exact
+        ? '<div class="alert"><div class="head">14 check-ins made since Nov 12 leave the list</div><div class="sub" style="color:var(--text)">They are kept in a safety copy made first, so you can bring them back.</div></div>'
+        : kept("Nothing you have now is removed", "Brings back 2 orders and 0 check-ins missing from your list.")) +
+      opt("logbook", "files", st.saved
+        ? '<div class="answer" id="lb-saved"><div class="head">Saved to Files: ' + c.when + ' copy, ' + c.size + '</div></div>'
+        : '<button class="btn plain" data-c="logbook" data-act="save-files">Save this copy to Files</button>');
+  }
+  function lbRestoreSheet(st) {
+    var exact = st.mode === "exact";
+    return sheet('<div class="navbar"><button class="navbtn" data-c="logbook" data-go="copies">Cancel</button><div class="navtitle">Restore</div><span style="min-inline-size:60px"></span></div>' +
+      '<div class="scroll">' + lbRestoreBody(st) + '</div>' +
+      '<div class="dock"><button class="btn ' + (exact ? 'danger' : 'primary') + '" id="lb-restore" data-c="logbook" data-go="restored">' + (exact ? 'Go back to this copy' : 'Bring back missing') + '</button></div>', true);
+  }
+  function lbRestored(st) {
+    var exact = st.mode === "exact";
+    return '<div class="answer" id="lb-restored"><div class="head">' + (exact ? 'Your list is now the Nov 12 copy' : 'Brought back 2 orders') + '</div>' +
+      '<div class="sub" style="color:var(--text)">A safety copy of the list just before this was made: Today, 9:20 PM, 186 KB.</div>' +
+      '<div class="inline-actions"><button class="btn plain" data-c="logbook" data-act="undo-restore">Undo restore</button></div></div>';
+  }
+
+  /* The edit sheet sits over the state it opened from. */
+  function overBack(st, fn) {
+    st.s = st.back || "done";
+    var out = fn(st);
+    st.s = "edit";
+    return out;
+  }
+  function logbookFolded(st) {
+    if (st.s === "edit") return overBack(st, logbookFolded) + lbEdit(st);
+    var s = st.s, base, overlay = "";
+    var onCopies = /^cop|^restore|^undone/.test(s);
+    if (onCopies) {
+      base = '<div class="scroll"><h1 class="large">Safety copies</h1>' + (s === "restored" ? lbRestored(st) : "") + lbCopiesList(st, true) + '</div>' + lbCopiesDock(st) + tabbar("copies");
+    } else if (s === "done" || s === "edit") {
+      base = lbDone(st) + tabbar("imports");
+    } else {
+      base = '<div class="scroll"><h1 class="large">Imports</h1>' + lbImportsMain(st) + '</div>' + lbImportDock(st) + tabbar("imports");
+    }
+    if (s === "restored") base = '<div class="scroll"><h1 class="large">Safety copies</h1>' + lbRestored(st) + lbCopiesList(st, true) + '</div>' + lbCopiesDock(st) +tabbar("copies");
+    if (s === "checking") overlay = lbChecking();
+    if (s === "preview") overlay = lbPreviewSheet(st);
+    if (s === "error") overlay = lbError();
+    if (s === "edit") overlay = lbEdit(st);
+    if (s === "restore") overlay = lbRestoreSheet(st);
+    return '<div class="view">' + base + '</div>' + overlay;
+  }
+  function logbookOpen(st) {
+    if (st.s === "edit") { var pb = overBack(st, logbookOpen); return [pb[0], pb[1] + lbEdit(st)]; }
+    var s = st.s, left, right, rightOverlay = "";
+    var onCopies = /^cop|^restore|^undone/.test(s);
+    if (onCopies) {
+      left = '<div class="scroll"><h1 class="large">Safety copies</h1>' + lbCopiesList(st, false) + '</div>' + lbCopiesDock(st) +tabbar("copies");
+      if (s === "copies-unknown") right = '<div class="scroll"><div class="empty"><p class="sub" style="margin:0">Pick a safety copy once the list loads.</p></div></div>';
+      else right = '<div class="navbar"><span></span><div class="navtitle">Restore</div><span></span></div><div class="scroll">' + lbRestoreBody(st) + '</div>' +
+        '<div class="dock"><button class="btn ' + (st.mode === "exact" ? 'danger' : 'primary') + '" data-c="logbook" data-go="restored">' + (st.mode === "exact" ? 'Go back to this copy' : 'Bring back missing') + '</button></div>';
+      if (s === "copies" || s === "copy-made" || s === "undone") right = '<div class="navbar"><span></span><div class="navtitle">Restore</div><span></span></div><div class="scroll">' + lbRestoreBody(st) + '</div><div class="dock"><button class="btn primary" data-c="logbook" data-go="restored">' + (st.mode === "exact" ? 'Go back to this copy' : 'Bring back missing') + '</button></div>';
+    } else if (s === "restored") {
+      left = '<div class="scroll"><h1 class="large">Safety copies</h1>' + lbCopiesList(st, false) + '</div>' + lbCopiesDock(st) +tabbar("copies");
+      right = '<div class="scroll" style="padding-top:var(--space-4)">' + lbRestored(st) + '</div>';
+    } else {
+      left = '<div class="scroll"><h1 class="large">Imports</h1>' + lbImportsMain(st, /^(done|edit)$/.test(s)) + '</div>' + lbImportDock(st) + tabbar("imports");
+      if (s === "imports-empty") right = '<div class="scroll"><div class="empty"><p class="sub" style="margin:0">An import you open shows here, with its new, changed and skipped orders.</p></div></div>';
+      else if (s === "checking" || s === "preview" || s === "error") {
+        var inner = s === "checking" ? lbChecking() : s === "preview" ? lbPreviewSheet(st) : lbError();
+        right = ''; rightOverlay = inner;
+      } else right = lbDone(st);
+      if (s === "edit") { right = lbDone(st); rightOverlay = lbEdit(st); }
+    }
+    return ['<div class="view">' + left + '</div>', '<div class="view">' + right + '</div>' + rightOverlay];
+  }
+
+  /* ================= Bench ================= */
+  function bRange(st) { return RANGES[st.range]; }
+  function bNowPlate(st) {
+    var s = st.s;
+    var orders = s === "merged" ? NOW.orders + bRange(st).nw : NOW.orders;
+    return '<div class="plate" id="bench-now"><div class="top"><span class="head">Now</span><span class="foot">Last safety copy: ' + (s === "merged" || s === "restored" || s === "copied" ? "just now" : "today, 9:14 PM") + '</span></div>' +
+      '<div class="mini" style="font-size:var(--t-sub);line-height:var(--l-sub)"><span>' + n(orders) + ' orders</span><span style="color:var(--kept);font-weight:600">' + n(NOW.checkins) + ' check-ins</span></div></div>';
+  }
+  function bCompare(st, after) {
+    var isCopy = /^copy|restored/.test(st.s);
+    var exact = st.s === "copy-exact";
+    var r = bRange(st);
+    var rowsData = isCopy
+      ? [["Orders", n(NOW.orders), exact ? "1,238" : n(NOW.orders + 2), false],
+         ["Check-ins", n(NOW.checkins), exact ? "298" : n(NOW.checkins), !exact],
+         ["Stamps", "3", exact ? "2" : "3", !exact]]
+      : [["Orders", n(NOW.orders), n(NOW.orders + r.nw), false],
+         ["Check-ins", n(NOW.checkins), n(NOW.checkins), true],
+         ["Stamps", "3", "4", false]];
+    var h = '<div class="compare" id="bench-compare" role="table" aria-label="Now and after"><div class="h" role="columnheader"></div><div class="h num" role="columnheader">Now</div><div class="h gate"></div><div class="h num" role="columnheader">' + esc(after) + '</div>';
+    rowsData.forEach(function (row) {
+      var same = row[3];
+      h += '<div class="rowlabel' + (same ? ' same' : '') + '">' + row[0] + '</div><div class="num' + (same ? ' same' : '') + '" data-k="Now">' + row[1] + '</div><div class="gate' + (same ? ' same lock' : '') + '">' + (same ? ICON.lock : ICON.arrow) + '</div><div class="num' + (same ? ' same' : '') + '" data-k="After">' + row[2] + '</div>';
+    });
+    return h + '</div>';
+  }
+  function bFileCard(st) {
+    var r = bRange(st);
+    return '<div class="group"><div class="group-label">On the bench: ' + esc(FILE.name) + '</div><div class="list">' +
+      '<button class="row" data-c="bench" data-go="edit"><div class="grow"><span class="foot">Stamp</span><span>' + esc(st.stamp) + '</span></div><span class="chev">›</span></button>' +
+      '<div class="row static" style="flex-direction:column;align-items:stretch"><span class="foot">Orders dated ' + esc(r.dates) + '</span>' +
+      opt("bench", "presets", '<div class="chips" role="group" aria-label="Dates">' + ["all", "since", "custom"].map(function (k) { return '<button class="chip" data-c="bench" data-set="range" data-v="' + k + '" aria-pressed="' + (st.range === k) + '">' + RANGES[k].label + '</button>'; }).join("") + '</div>') +
+      '</div></div></div>';
+  }
+  function bChanges(st) {
+    var r = bRange(st);
+    var list = NEW_ROWS.slice(0, 3).map(function (x) { return '<div class="change"><span>' + esc(x[0]) + '</span><span class="badge new">New</span><span class="foot">' + esc(x[1]) + ', ' + esc(x[2]) + '</span></div>'; }).join("") +
+      CHANGED_ROWS.slice(0, Math.min(2, r.ch)).map(function (x) { return '<div class="change"><span>' + esc(x[0]) + '</span><span class="badge changed">Changed</span><span class="foot">' + esc(x[1]) + '. Check-in kept.</span></div>'; }).join("");
+    return '<div class="group"><div class="group-label">' + n(r.nw) + ' new, ' + n(r.ch) + ' changed, ' + n(r.sk) + ' skipped</div><div class="changes">' + list +
+      '<div class="change"><span class="foot">' + n(r.sk) + ' orders skipped: already here and the same, or not a purchase.</span></div></div></div>';
+  }
+  function bCopyCard(st) {
+    var exact = st.s === "copy-exact";
+    return '<div class="group"><div class="group-label">On the bench: safety copy, Nov 12, 8:02 AM, 171 KB</div>' +
+      opt("bench", "restoreMode", '<div class="chips" role="group" aria-label="How to restore"><button class="chip" data-c="bench" data-go="copy" aria-pressed="' + !exact + '">Bring back missing</button><button class="chip" data-c="bench" data-go="copy-exact" aria-pressed="' + exact + '">Match copy exactly</button></div>') +
+      (exact ? '<div class="alert"><div class="head">14 check-ins made since Nov 12 leave the list</div><div class="sub" style="color:var(--text)">A safety copy of Now is made first, so they can come back.</div></div>'
+             : kept("Nothing you have now is removed", "2 orders in the copy are missing here. They come back.")) + '</div>';
+  }
+  function bKeepList() {
+    return opt("bench", "keeplist", '<div class="group"><div class="group-label">Check-ins that stay ticked, sample</div><div class="changes">' +
+      [["Order 4380-02", "Ticked Nov 14"], ["Order 4377-10", "Ticked Nov 14"], ["Order 4366-01", "Ticked Nov 9"]].map(function (x) { return '<div class="change"><span>' + x[0] + '</span><span class="badge kept">Kept</span><span class="foot">' + x[1] + '</span></div>'; }).join("") +
+      '<div class="change"><span class="foot">and 309 more</span></div></div></div>');
+  }
+  function bShelf(st) {
+    var src = /^copy|restored/.test(st.s) ? "c2" : /^file|edit|merging|merged|error/.test(st.s) ? "file" : "";
+    /* On the empty bench the tray holds the file control, so the shelf shows copies only. */
+    var slots = st.s === "empty" ? '' : '<button class="slot file' + (src === "file" ? ' on' : '') + '" data-c="bench" data-go="file"><b>Lay a file</b><span>Pick an order file</span></button>';
+    if (st.s === "merged" || st.s === "restored" || st.s === "copied") slots += '<button class="slot fresh" data-c="bench" data-go="copy"><b>Just now</b><span>186 KB, ' + (st.s === "copied" ? 'made by you' : 'made before ' + (st.s === "merged" ? 'merge' : 'restore')) + '</span></button>';
+    slots += COPIES.map(function (c) { return '<button class="slot' + (src === c.id ? ' on' : '') + '" data-c="bench" data-go="copy"><b>' + c.when.replace("Today, ", "Today ") + '</b><span>' + c.size + '</span></button>'; }).join("");
+    return '<div class="shelf-head"><span class="foot">Lay something on the bench</span><button class="navbtn" style="font-size:var(--t-foot)" data-c="bench" data-go="copied">Copy now</button></div><div class="shelf" role="list">' + slots + '</div>';
+  }
+  function bAction(st) {
+    var s = st.s, r = bRange(st);
+    if (s === "file" || s === "file-range") return '<div class="act"><button class="btn primary" id="bench-merge" data-c="bench" data-go="merging">Merge ' + n(r.nw + r.ch) + ' orders</button></div>';
+    if (s === "copy") return '<div class="act"><button class="btn primary" id="bench-restore" data-c="bench" data-go="restored">Bring back 2 orders</button></div>';
+    if (s === "copy-exact") return '<div class="act"><button class="btn danger" id="bench-restore" data-c="bench" data-go="restored">Match the Nov 12 copy</button></div>';
+    if (s === "merging") return '<div class="act"><button class="btn danger" data-c="bench" data-go="file">Stop merge</button></div>';
+    return "";
+  }
+  function bMain(st, part) {
+    var s = st.s, out = "";
+    if (s === "first") return '<div class="empty"><h2 class="title3">No orders yet</h2><p class="sub" style="margin:0">Lay an order file on the bench to see what it would add.</p><button class="btn primary" data-c="bench" data-go="file">Lay a file</button></div>';
+    if (s === "empty") return '<div class="tray" id="bench-tray"><h2 class="title3">The bench is empty</h2><p class="sub" style="margin:0">Lay a file or a safety copy on it. Every change shows here, next to Now, before anything moves.</p><button class="btn primary" data-c="bench" data-go="file">Lay a file</button></div>';
+    if (s === "error") return '<div class="alert"><div class="head">This file has no orders that can be read</div><div class="sub" style="color:var(--text)">Nothing moved. Now is as it was.</div><details><summary>What the file said</summary><pre>Row 1: expected column "Order Date", found "Date Sold". 0 of 412 rows matched.</pre></details><button class="btn plain" data-c="bench" data-go="file">Pick another file</button></div>';
+    if (s === "merging") return '<div class="group"><div class="callout">Merging, 31 of ' + n(bRange(st).nw + bRange(st).ch) + '</div><div class="progress"><i></i></div></div>' + kept(n(NOW.checkins) + " check-ins locked during the merge", "A safety copy was made a moment ago.");
+    if (s === "merged") return '<div class="answer" id="bench-answer"><div class="head">Merged ' + n(bRange(st).nw) + ' new and ' + n(bRange(st).ch) + ' changed</div><div class="sub" style="color:var(--text)">' + n(NOW.checkins) + ' check-ins kept. A safety copy from just before is first on the shelf.</div><div class="inline-actions"><button class="btn plain" data-c="bench" data-go="copy">Undo merge</button></div></div>';
+    if (s === "copied") return '<div class="answer" id="bench-answer"><div class="head">Safety copy made: just now, 186 KB</div><div class="sub" style="color:var(--text)">It is first on the shelf. Nothing else moved.</div></div>';
+    if (s === "restored") return '<div class="answer" id="bench-answer"><div class="head">Brought back from the Nov 12 copy</div><div class="sub" style="color:var(--text)">A safety copy of Now from just before is first on the shelf.</div><div class="inline-actions"><button class="btn plain" data-c="bench" data-go="copy">Undo restore</button></div></div>';
+    return out;
+  }
+  function benchFolded(st) {
+    var s = st.s, body;
+    var isFile = /^file|^edit/.test(s), isCopy = /^copy/.test(s);
+    body = '<div class="scroll"><h1 class="large">Bench</h1>' + bNowPlate(st) +
+      (isFile ? bCompare(st, "After") + bFileCard(st) + bChanges(st) : isCopy ? bCompare(st, "After") + bCopyCard(st) + bKeepList() : bMain(st)) + '</div>';
+    var overlay = s === "edit" ? bEdit(st) : "";
+    return '<div class="view">' + body + (s === "first" ? '' : '<div class="benchdock">' + bAction(st) + bShelf(st) + '</div>') + '</div>' + overlay;
+  }
+  function bEdit(st) {
+    return sheet('<div class="navbar"><button class="navbtn" data-c="bench" data-act="edit-cancel">Cancel</button><div class="navtitle">Stamp</div><button class="navbtn strong" data-c="bench" data-act="edit-done">Done</button></div>' +
+      '<div class="scroll"><div class="group"><div class="group-label">A name for the orders in this file</div><div class="list"><label class="field"><span class="foot">Stamp</span><input data-c="bench" data-input="stamp" value="' + esc(st.stamp) + '" aria-label="Stamp"></label></div></div>' +
+      '<div class="group"><div class="group-label">Past stamps</div><div class="list">' + IMPORTS.slice(1).map(function (im) { return '<div class="row static"><div class="grow"><span>' + im.stamp + '</span><span class="foot">' + im.dates + '</span></div></div>'; }).join("") + '</div></div></div>');
+  }
+  function benchOpen(st) {
+    var s = st.s, isFile = /^file|^edit/.test(s), isCopy = /^copy/.test(s);
+    var left = '<div class="scroll"><h1 class="pagehead">Now</h1>' + bNowPlate(st) + bKeepListAlways() + '</div>' + (s === "first" ? '' : '<div class="benchdock">' + bShelf(st) + '</div>');
+    var right;
+    if (isFile) right = '<div class="scroll"><h1 class="pagehead">After merge</h1>' + bCompare(st, "After") + bFileCard(st) + bChanges(st) + '</div><div class="benchdock">' + bAction(st) + '</div>';
+    else if (isCopy) right = '<div class="scroll"><h1 class="pagehead">After restore</h1>' + bCompare(st, "After") + bCopyCard(st) + '</div><div class="benchdock">' + bAction(st) + '</div>';
+    else right = '<div class="scroll"><h1 class="pagehead">' + (s === "merged" || s === "restored" || s === "copied" ? "Done" : "Bench") + '</h1>' + bMain(st) + '</div>' + (s === "merging" ? '<div class="benchdock">' + bAction(st) + '</div>' : '');
+    var overlay = s === "edit" ? bEdit(st) : "";
+    return ['<div class="view">' + left + '</div>', '<div class="view">' + right + '</div>' + overlay];
+  }
+  function bKeepListAlways() {
+    return '<div class="group"><div class="group-label">Check-ins, sample</div><div class="changes">' +
+      [["Order 4380-02", "Ticked Nov 14"], ["Order 4377-10", "Ticked Nov 14"], ["Order 4366-01", "Ticked Nov 9"], ["Order 4361-03", "Ticked Nov 9"]].map(function (x) { return '<div class="change"><span>' + x[0] + '</span><span class="badge kept">Ticked</span><span class="foot">' + x[1] + '</span></div>'; }).join("") +
+      '<div class="change"><span class="foot">and 308 more. Nothing on the right page can untick these.</span></div></div></div>';
+  }
+
+  /* ---------- Frames ---------- */
+  function status(t) { return '<div class="status" aria-hidden="true"><span>9:41</span><span>' + (t || "") + '</span></div>'; }
+  function frameFolded(c, extraClass, label) {
+    var st = state[c];
+    var html = c === "logbook" ? logbookFolded(st) : benchFolded(st);
+    return '<div class="device-wrap"><div class="device-label">' + label + '</div><div class="device ' + (extraClass || '') + '" data-device="iphone-duo-folded"><div class="screen">' + status() + html + '<div class="homebar"></div></div></div></div>';
+  }
+  function frameOpen(c) {
+    var st = state[c];
+    var p = c === "logbook" ? logbookOpen(st) : benchOpen(st);
+    return '<div class="device-wrap"><div class="device-label">Duo, open: 951 x 669 pt, hinge 455.5 to 495.5</div><div class="device" data-device="iphone-duo-unfolded"><div class="screen">' +
+      '<div class="pagepane">' + status() + p[0] + '</div><div class="hinge" aria-hidden="true"></div><div class="pagepane">' + status() + p[1] + '<div class="homebar"></div></div></div></div></div>';
+  }
+  function framePhone(c) {
+    var st = state[c];
+    var html = c === "logbook" ? logbookFolded(st) : benchFolded(st);
+    return '<div class="device-wrap"><div class="device-label">Large phone: 402 x 874 pt, size assumed (brief gives none)</div><div class="device" data-device="phone-large"><div class="screen">' + status() + html + '<div class="homebar"></div></div></div></div>';
+  }
+
+  /* ---------- Render ---------- */
+  function render() {
+    var root = document.documentElement;
+    if (state.theme === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", state.theme);
+    document.querySelectorAll("[data-theme-set]").forEach(function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-theme-set") === state.theme)); });
+    ["logbook", "bench"].forEach(function (c) {
+      var sec = document.getElementById("concept-" + c);
+      sec.hidden = state.hidden[c];
+      document.querySelector('[data-hide="' + c + '"]').setAttribute("aria-pressed", String(state.hidden[c]));
+      document.querySelector('[data-states="' + c + '"]').innerHTML = STATES[c].map(function (p) {
+        return '<a href="#c=' + c + '&s=' + p[0] + '" aria-current="' + (state[c].s === p[0]) + '">' + p[1] + '</a>';
+      }).join("");
+      document.querySelector('[data-opts="' + c + '"]').innerHTML = '<span>Hide an option:</span>' + OPTS[c].map(function (o) {
+        return '<label><input type="checkbox" data-c="' + c + '" data-optt="' + o[0] + '"' + (state[c].opts[o[0]] ? '' : ' checked') + '> ' + o[1] + '</label>';
+      }).join("");
+      var dev = document.querySelector('[data-devices="' + c + '"]');
+      var keepScroll = Array.prototype.map.call(dev.querySelectorAll(".scroll"), function (e) { return e.scrollTop; });
+      dev.innerHTML = frameFolded(c, "", "Duo, folded: 466 x 678 pt") + frameOpen(c) + framePhone(c) + frameFolded(c, "ax5", "Duo, folded, largest text (AX5)");
+      dev.querySelectorAll(".scroll").forEach(function (e, i) { if (keepScroll[i]) e.scrollTop = keepScroll[i]; });
+      Object.keys(state[c].opts).forEach(function (k) {
+        dev.querySelectorAll('[data-opt="' + c + ':' + k + '"]').forEach(function (e) { e.classList.toggle("opt-off", !state[c].opts[k]); });
+      });
+    });
+  }
+
+  /* ---------- Hash deep links: #c=bench&s=file&t=dark ---------- */
+  function readHash() {
+    var h = {}; location.hash.replace(/^#/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) h[p[0]] = decodeURIComponent(p[1] || ""); });
+    if (h.t === "dark" || h.t === "light" || h.t === "system") state.theme = h.t;
+    if (h.c && state[h.c] && h.s && STATES[h.c].some(function (p) { return p[0] === h.s; })) {
+      state[h.c].s = h.s;
+      if (h.c === "bench" && h.s === "file-range") state.bench.range = "since";
+      if (h.c === "bench" && h.s === "file") state.bench.range = "all";
+      if (h.c === "logbook" && h.s === "restore") state.logbook.mode = "merge";
+      if (h.c === "logbook" && h.s === "restore-exact") { state.logbook.mode = "exact"; state.logbook.s = "restore"; }
+      if (h.c === "bench" && h.s === "copy-exact") state.bench.mode = "exact";
+    }
+    /* &only=1 shows one concept alone, for a screenshot or a review link. */
+    if (h.only === "1" && state[h.c]) { state.hidden.logbook = h.c !== "logbook"; state.hidden.bench = h.c !== "bench"; }
+    render();
+    if (h.only !== "1" && h.c && document.getElementById("concept-" + h.c)) document.getElementById("concept-" + h.c).scrollIntoView();
+  }
+  window.addEventListener("hashchange", readHash);
+
+  document.addEventListener("click", function (e) {
+    var t = e.target.closest("button, a, input");
+    if (!t) return;
+    if (t.hasAttribute("data-theme-set")) { state.theme = t.getAttribute("data-theme-set"); render(); return; }
+    if (t.hasAttribute("data-hide")) { var k = t.getAttribute("data-hide"); state.hidden[k] = !state.hidden[k]; render(); return; }
+    if (t.hasAttribute("data-optt")) { var c0 = t.getAttribute("data-c"); state[c0].opts[t.getAttribute("data-optt")] = !t.checked; render(); return; }
+    var c = t.getAttribute("data-c");
+    if (!c) return;
+    var st = state[c];
+    if (t.hasAttribute("data-sel")) st.sel = t.getAttribute("data-sel");
+    if (t.hasAttribute("data-copy")) st.copy = t.getAttribute("data-copy");
+    if (t.hasAttribute("data-set")) {
+      var key = t.getAttribute("data-set"), v = t.getAttribute("data-v");
+      st[key] = v;
+      if (c === "bench" && key === "range") st.s = v === "all" ? "file" : "file-range";
+    }
+    if (t.hasAttribute("data-act")) {
+      var act = t.getAttribute("data-act");
+      /* Cancel and Done return to the state the edit sheet opened from, so editing never imports. */
+      if (act === "edit-cancel") { st.stamp = st.stampOnOpen || st.stamp; st.range = st.rangeOnOpen || st.range; st.s = st.back || st.s; }
+      if (act === "edit-done") st.s = st.back || st.s;
+      if (act === "save-files") st.saved = true;
+      if (act === "undo-restore") st.s = "undone";
+      if (c === "bench" && st.s === "file" && st.range !== "all") st.s = "file-range";
+      if (c === "bench" && st.s === "file-range" && st.range === "all") st.s = "file";
+      render(); return;
+    }
+    if (t.hasAttribute("data-go")) {
+      var to = t.getAttribute("data-go");
+      if (to === "edit" && st.s !== "edit") { st.back = st.s; st.stampOnOpen = st.stamp; st.rangeOnOpen = st.range; }
+      if (to !== st.s) st.saved = false;
+      if (c === "logbook" && to === "restore-exact") { st.mode = "exact"; to = "restore"; }
+      st.s = to;
+      if (c === "bench" && st.s === "file" && t.classList.contains("slot")) st.range = "all";
+      if (c === "logbook" && st.s === "checking") st.range = "all";
+      history.replaceState(null, "", "#c=" + c + "&s=" + st.s + (state.theme !== "system" ? "&t=" + state.theme : ""));
+    }
+    render();
+  });
+  document.addEventListener("input", function (e) {
+    var t = e.target;
+    if (t.hasAttribute("data-input")) { state[t.getAttribute("data-c")][t.getAttribute("data-input")] = t.value || "Untitled"; }
+  });
+  document.addEventListener("change", function (e) {
+    if (e.target.hasAttribute("data-input")) render();
+  });
+
+  readHash();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,875 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Year close sketches</title>
+<style>
+/* Tokens. Spacing on the house 4 px step, radius 8 px, colours by role.
+   Type sizes are iOS Dynamic Type points (Apple typography page, Large default and AX5). */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --radius: 8px;
+  --inset-top: 48px;     /* drawn status bar band: no Apple page read gives this number */
+  --inset-bottom: 20px;  /* drawn home indicator band: same */
+  --hinge: 40px;
+
+  --t-large: 34px; --l-large: 41px;
+  --t-title1: 28px; --l-title1: 34px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap1: 12px; --l-cap1: 16px;
+  --t-cap2: 11px; --l-cap2: 13px;
+
+  --sys: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  --mono: "SF Mono", ui-monospace, Menlo, Consolas, monospace;
+
+  /* light set */
+  --surface: #eef1f4;
+  --surface-raised: #ffffff;
+  --surface-sunk: #e2e7ec;
+  --text: #17202b;
+  --text-muted: #566273;
+  --line: #cfd6de;
+  --accent: #2b4fc4;
+  --accent-text: #ffffff;
+  --accent-soft: #dfe6fb;
+  --done: #23774a;
+  --done-soft: #dcefe3;
+  --warn: #9a4d12;
+  --warn-soft: #f7e6d6;
+  --danger: #b3261e;
+  --paper: #fbfaf6;
+  --paper-ink: #2a2a33;
+  --paper-rule: #c9c6bb;
+  --scrim: rgba(20, 28, 38, 0.36);
+  --frame: #222a33;
+  --hinge-fill: #10151b;
+  --chrome: #ffffff;
+  --mark-new: #2b4fc4;
+  --mark-today: #6b7685;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #11161c; --surface-raised: #1b222b; --surface-sunk: #0b0f14;
+    --text: #e7ecf2; --text-muted: #9ba7b6; --line: #2d3742;
+    --accent: #8ea6ff; --accent-text: #0d1530; --accent-soft: #1f2a4d;
+    --done: #6dc897; --done-soft: #17301f; --warn: #e7a868; --warn-soft: #3a2614;
+    --danger: #f28b82;
+    --paper: #23262b; --paper-ink: #e9e6dc; --paper-rule: #4a4d55;
+    --scrim: rgba(0, 0, 0, 0.55); --frame: #000000; --hinge-fill: #000000;
+    --chrome: #161c23; --mark-new: #8ea6ff; --mark-today: #9ba7b6;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #11161c; --surface-raised: #1b222b; --surface-sunk: #0b0f14;
+  --text: #e7ecf2; --text-muted: #9ba7b6; --line: #2d3742;
+  --accent: #8ea6ff; --accent-text: #0d1530; --accent-soft: #1f2a4d;
+  --done: #6dc897; --done-soft: #17301f; --warn: #e7a868; --warn-soft: #3a2614;
+  --danger: #f28b82;
+  --paper: #23262b; --paper-ink: #e9e6dc; --paper-rule: #4a4d55;
+  --scrim: rgba(0, 0, 0, 0.55); --frame: #000000; --hinge-fill: #000000;
+  --chrome: #161c23; --mark-new: #8ea6ff; --mark-today: #9ba7b6;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: var(--sys);
+  background: var(--surface-sunk);
+  color: var(--text);
+  font-size: var(--t-body); line-height: var(--l-body);
+  -webkit-text-size-adjust: 100%;
+}
+button { font: inherit; color: inherit; }
+button:focus-visible, input:focus-visible, a:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Mockup chrome (not part of the app) ---------- */
+.mk { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); background: var(--chrome); border-bottom: 1px solid var(--line); }
+.mk-sample { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline; padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--warn-soft); color: var(--warn); font-size: var(--t-sub); line-height: var(--l-sub); }
+.mk-sample strong { font-weight: 600; }
+.mk-who { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.mk-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.mk-row > .mk-label { font-size: var(--t-foot); color: var(--text-muted); min-width: 72px; }
+.chip { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; padding: 0 var(--space-3); border-radius: 999px; border: 1px solid var(--line); background: var(--surface-raised); font-size: var(--t-sub); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-text); border-color: var(--accent); }
+.chip[disabled] { opacity: .45; cursor: not-allowed; }
+.opt { display: inline-flex; align-items: stretch; border-radius: 999px; border: 1px solid var(--line); background: var(--surface-raised); }
+.opt .chip { border: 0; }
+.opt .hide { min-width: 44px; min-height: 44px; border: 0; background: none; border-left: 1px solid var(--line); border-radius: 0 999px 999px 0; cursor: pointer; color: var(--text-muted); font-size: var(--t-foot); padding: 0 var(--space-3); }
+.mk-why { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); max-width: 72ch; }
+
+.stage { overflow-x: auto; padding: var(--space-6) var(--space-4) var(--space-12); }
+.concept { display: none; flex-direction: column; gap: var(--space-4); }
+.concept.on { display: flex; }
+.concept > header { display: flex; flex-direction: column; gap: var(--space-1); max-width: 72ch; }
+.concept > header h2 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); font-weight: 700; }
+.concept > header p { margin: 0; color: var(--text-muted); font-size: var(--t-sub); line-height: var(--l-sub); }
+.frames { display: flex; gap: var(--space-8); align-items: flex-start; flex-wrap: wrap; }
+.frame-cap { display: flex; flex-direction: column; gap: var(--space-2); }
+.frame-cap > figcaption { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); max-width: 466px; }
+.frame-cap[hidden] { display: none; }
+
+/* ---------- Device frames ---------- */
+.device { position: relative; width: 466px; height: 678px; border-radius: 24px; overflow: hidden; background: var(--frame); box-shadow: 0 0 0 6px var(--frame); flex: none; }
+.device.unfolded { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px var(--hinge) 455.5px; }
+.device.unfolded > .hinge { background: var(--hinge-fill); }
+.device.unfolded > .page { position: relative; overflow: hidden; container-type: inline-size; }
+.device > .page.solo { position: absolute; inset: 0; container-type: inline-size; }
+@media (max-width: 520px) {
+  .device.phone { width: calc(100vw - 2 * var(--space-4)); height: calc(100svh - 2 * var(--space-4)); }
+}
+
+/* A screen inside a page */
+.screen {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  background: var(--surface); color: var(--text);
+  padding-top: max(env(safe-area-inset-top), var(--inset-top));
+  padding-bottom: max(env(safe-area-inset-bottom), var(--inset-bottom));
+  overflow: hidden;
+}
+.statusbar { position: absolute; top: 0; left: 0; right: 0; height: var(--inset-top); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-6); font-size: var(--t-foot); font-weight: 600; pointer-events: none; }
+.statusbar .dots { display: flex; gap: var(--space-1); }
+.statusbar .dots i { width: 16px; height: 8px; border-radius: 2px; background: var(--text); opacity: .7; }
+.homebar { position: absolute; bottom: 6px; left: 50%; width: 120px; margin-left: -60px; height: 4px; border-radius: 4px; background: var(--text); opacity: .35; pointer-events: none; }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-4); padding-bottom: var(--space-4); }
+
+/* Type helpers read the size tokens, so AX5 swaps them in one place */
+.t-large { font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; }
+.t-title1 { font-size: var(--t-title1); line-height: var(--l-title1); font-weight: 700; }
+.t-title2 { font-size: var(--t-title2); line-height: var(--l-title2); font-weight: 700; }
+.t-title3 { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 600; }
+.t-head { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
+.t-body { font-size: var(--t-body); line-height: var(--l-body); }
+.t-callout { font-size: var(--t-callout); line-height: var(--l-callout); }
+.t-sub { font-size: var(--t-sub); line-height: var(--l-sub); }
+.t-foot { font-size: var(--t-foot); line-height: var(--l-foot); }
+.t-cap1 { font-size: var(--t-cap1); line-height: var(--l-cap1); }
+.muted { color: var(--text-muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Navigation bar */
+.nav { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-2); }
+.nav .grow { flex: 1; text-align: center; font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navbtn { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); background: none; border: 0; color: var(--accent); font-size: var(--t-body); cursor: pointer; border-radius: var(--radius); }
+.navbtn.strong { font-weight: 600; }
+.navbtn svg { width: 12px; height: 20px; }
+.title-block { padding: 0 var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); }
+.title-block h1, .title-block h2 { margin: 0; }
+
+/* Grouped list */
+.group { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-4); }
+.group > .ghead { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); padding: 0 var(--space-1); color: var(--text-muted); }
+.list { list-style: none; margin: 0; padding: 0; background: var(--surface-raised); border-radius: var(--radius); display: flex; flex-direction: column; }
+.list > li + li { border-top: 1px solid var(--line); }
+.row { display: flex; align-items: center; gap: var(--space-3); min-height: 44px; padding: var(--space-2) var(--space-3); width: 100%; text-align: left; background: none; border: 0; }
+button.row { cursor: pointer; }
+.row .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.row .who { font-size: var(--t-body); line-height: var(--l-body); overflow-wrap: anywhere; }
+.row .meta { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.row .amt { font-size: var(--t-body); line-height: var(--l-body); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row .amt.unknown { color: var(--warn); font-size: var(--t-foot); }
+.row .chev { width: 8px; height: 14px; color: var(--text-muted); flex: none; }
+.glyph { width: 24px; height: 24px; flex: none; }
+.row.flash { animation: flash 1.2s ease-out; }
+@keyframes flash { from { background: var(--accent-soft); } to { background: transparent; } }
+
+/* Buttons */
+.btn { min-height: 44px; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); padding: 0 var(--space-4); border-radius: var(--radius); border: 0; cursor: pointer; font-size: var(--t-body); font-weight: 600; }
+.btn { line-height: var(--l-body); padding-block: var(--space-2); text-align: center; }
+.btn.fill { background: var(--accent); color: var(--accent-text); }
+.btn.tint { background: var(--accent-soft); color: var(--accent); }
+.btn.plain { background: none; color: var(--accent); }
+.btn.wide { width: 100%; }
+
+/* State blocks: empty, failed, unknown are different shapes */
+.state { margin: 0 var(--space-4); padding: var(--space-4); border-radius: var(--radius); background: var(--surface-raised); display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.state.failed { border-left: 4px solid var(--danger); }
+.state.unknown { border-left: 4px solid var(--warn); }
+.state p { margin: 0; }
+
+/* Bottom action bar: the main act sits in thumb reach */
+.actionbar { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); background: var(--surface-raised); border-top: 1px solid var(--line); }
+.actionbar .sum { display: flex; justify-content: space-between; gap: var(--space-3); align-items: baseline; flex-wrap: wrap; }
+.actionbar .done-note { display: flex; gap: var(--space-2); align-items: center; color: var(--done); }
+
+/* Tab bar floats as a capsule at the bottom */
+.tabbar { display: flex; justify-content: center; padding: var(--space-2) var(--space-4) 0; }
+.tabbar .cap { display: flex; gap: var(--space-1); padding: var(--space-1); border-radius: 999px; background: var(--surface-raised); border: 1px solid var(--line); box-shadow: 0 4px 16px rgba(0,0,0,.12); }
+.tab { min-width: 88px; min-height: 48px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; border: 0; border-radius: 999px; background: none; cursor: pointer; color: var(--text-muted); font-size: var(--t-cap2); line-height: var(--l-cap2); font-weight: 600; padding: 0 var(--space-3); }
+.tab svg { width: 22px; height: 22px; }
+.tab[aria-current="page"] { color: var(--accent); background: var(--accent-soft); }
+
+/* Sheet */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: var(--space-12); z-index: 6; background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; display: flex; flex-direction: column; box-shadow: 0 -8px 24px rgba(0,0,0,.18); }
+.sheet .grabber { width: 36px; height: 4px; border-radius: 4px; background: var(--line); align-self: center; margin-top: var(--space-2); }
+.sheet .body { flex: 1; overflow: auto; padding: var(--space-2) var(--space-4) var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); }
+.facts { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius); }
+.facts li { display: flex; gap: var(--space-3); padding: var(--space-3); align-items: flex-start; }
+.facts li + li { border-top: 1px solid var(--line); }
+.facts .glyph { margin-top: 2px; }
+
+/* Search field */
+.search { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius); background: var(--surface-sunk); }
+.search svg { width: 16px; height: 16px; color: var(--text-muted); flex: none; }
+.search input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: var(--t-body); color: var(--text); min-height: 44px; }
+.search input::placeholder { color: var(--text-muted); }
+
+/* Year summary figures */
+.figures { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-6); padding: 0 var(--space-4); }
+.figure { display: flex; flex-direction: column; }
+.saved-note { color: var(--done); }
+
+/* Year rows */
+.yearrow[aria-current="true"] { background: var(--accent-soft); }
+.yearrow .yr { font-size: var(--t-title2); line-height: var(--l-title2); font-weight: 700; font-variant-numeric: tabular-nums; min-width: 64px; }
+
+/* New / Today marks */
+.mark { position: relative; outline: 2px dashed var(--mark-new); outline-offset: -2px; border-radius: var(--radius); }
+.mark.today { outline-color: var(--mark-today); }
+.mark::before { content: attr(data-mark); position: absolute; top: 0; right: 0; z-index: 4; font-size: var(--t-cap2); line-height: var(--l-cap2); font-weight: 600; padding: 2px var(--space-1); background: var(--mark-new); color: var(--accent-text); border-radius: 0 var(--radius) 0 var(--radius); pointer-events: none; }
+.mark.today::before { background: var(--mark-today); color: var(--surface); }
+.no-marks .mark { outline: 0; }
+.no-marks .mark::before { display: none; }
+
+/* ---------- Receipt roll (content type only: the roll is printed matter) ---------- */
+.roll-scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-2) var(--space-4) var(--space-4); }
+.paper { position: relative; background: var(--paper); color: var(--paper-ink); padding: var(--space-4) var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); box-shadow: 0 1px 0 var(--paper-rule); }
+.paper::before { content: ""; position: absolute; left: 0; right: 0; top: -8px; height: 8px;
+  background: linear-gradient(135deg, transparent 50%, var(--paper) 50%) 0 0 / 12px 8px repeat-x,
+              linear-gradient(-135deg, transparent 50%, var(--paper) 50%) 0 0 / 12px 8px repeat-x; }
+.paper .pl { font-family: var(--mono); font-size: var(--t-foot); line-height: var(--l-foot); display: grid; grid-template-columns: 6ch 1fr auto; gap: var(--space-2); font-variant-numeric: tabular-nums; }
+.paper .pl .s { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.paper .pl.gap { color: var(--warn); }
+.paper .pl.hi { background: var(--warn-soft); }
+.paper .ph { font-family: var(--mono); font-size: var(--t-sub); line-height: var(--l-sub); text-align: center; font-weight: 600; letter-spacing: .04em; }
+.paper .rule { border-top: 1px dashed var(--paper-rule); margin: var(--space-1) 0; }
+.paper .tot { font-family: var(--mono); display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600; flex-wrap: wrap; }
+.paper .fold-more { font-family: var(--mono); font-size: var(--t-foot); color: var(--text-muted); text-align: center; }
+.perf { display: flex; flex-direction: column; gap: var(--space-2); }
+.perf .cut { display: flex; align-items: center; gap: var(--space-2); color: var(--text-muted); }
+.perf .cut::before, .perf .cut::after { content: ""; flex: 1; border-top: 2px dashed var(--line); }
+.perf .cut svg { width: 20px; height: 20px; }
+.perf .ask { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3); background: var(--surface-raised); border-radius: var(--radius); }
+.perf .ask .btns { display: flex; justify-content: space-between; gap: var(--space-2); }
+.slips { display: flex; flex-direction: column; gap: var(--space-2); }
+.slip-strip { display: flex; gap: var(--space-2); overflow-x: auto; overscroll-behavior-x: contain; padding-bottom: var(--space-1); scroll-snap-type: x proximity; }
+.slip { flex: 0 0 auto; width: 168px; display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-1); padding: var(--space-2) var(--space-3); min-height: 44px; background: var(--surface-raised); border-radius: var(--radius); border-top: 4px solid var(--accent); scroll-snap-align: start; }
+.slip .main { min-width: 0; max-width: 100%; display: flex; flex-direction: column; }
+.slip .main > span { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.ax5 .slip { width: 380px; }
+.ax5 .slip .main > span { white-space: normal; }
+.spike { display: flex; flex-direction: column; gap: var(--space-2); }
+.stub { display: flex; align-items: center; gap: var(--space-3); min-height: 56px; padding: var(--space-2) var(--space-3); width: 100%; border: 0; cursor: pointer; text-align: left; background: var(--paper); color: var(--paper-ink); border-radius: 2px; box-shadow: inset 0 -2px 0 var(--paper-rule); }
+.stub .yr { font-family: var(--mono); font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 700; }
+.stub .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.stub .hole { width: 12px; height: 12px; border-radius: 50%; background: var(--surface); box-shadow: inset 0 1px 2px rgba(0,0,0,.3); flex: none; }
+.unrolled { display: flex; flex-direction: column; gap: var(--space-2); }
+.tearing { animation: tear .45s ease-in forwards; transform-origin: top center; }
+@keyframes tear { to { transform: translateY(-48px) scaleY(.08); opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .tearing { animation: none; opacity: 0; } .row.flash { animation: none; } }
+
+/* ---------- Biggest accessibility text size (AX5 points from Apple's table) ---------- */
+.ax5 {
+  --t-large: 60px; --l-large: 70px;
+  --t-title1: 58px; --l-title1: 68px;
+  --t-title2: 56px; --l-title2: 66px;
+  --t-title3: 55px; --l-title3: 65px;
+  --t-head: 53px; --l-head: 62px;
+  --t-body: 53px; --l-body: 62px;
+  --t-callout: 51px; --l-callout: 60px;
+  --t-sub: 49px; --l-sub: 58px;
+  --t-foot: 44px; --l-foot: 52px;
+  --t-cap1: 43px; --l-cap1: 51px;
+  --t-cap2: 40px; --l-cap2: 48px;
+}
+.ax5 .row, .ax5 .slip, .ax5 .stub, .ax5 .actionbar .sum, .ax5 .facts li { flex-wrap: wrap; }
+.ax5 .row .main, .ax5 .slip .main, .ax5 .stub .main { flex-basis: 100%; }
+.ax5 .glyph { width: 44px; height: 44px; }
+.ax5 .tab { min-width: 0; flex: 1; }
+.ax5 .tab span { display: none; }
+.ax5 .tab svg { width: 44px; height: 44px; }
+.ax5 .paper .pl { grid-template-columns: 1fr; gap: 0; }
+.ax5 .paper .pl .s { white-space: normal; }
+.ax5 .nav .grow { white-space: normal; }
+.ax5 .statusbar { font-size: 13px; }
+.ax5 .mark::before { font-size: 11px; line-height: 13px; }
+.ax5 .yearrow .yr { min-width: 0; }
+.ax5 .perf .ask .btns { flex-direction: column-reverse; }
+.ax5 .actionbar .sum { display: none; }
+.ax5 .actionbar { padding: var(--space-2) var(--space-4); }
+.ax5 .actionbar .btn { padding: var(--space-1) var(--space-3); }
+
+@media (forced-colors: active) {
+  .chip[aria-pressed="true"], .tab[aria-current="page"] { outline: 2px solid CanvasText; }
+  .mark { outline-color: CanvasText; }
+}
+</style>
+</head>
+<body>
+<div class="mk" role="region" aria-label="Mockup controls">
+  <div class="mk-sample" id="sample-banner"><strong>Sample.</strong> <span>No figure, name or order on this page is real.</span></div>
+  <div class="mk-who">Blind designer 1, year close. No current screen, spec, tokens or mockups were read.</div>
+  <div class="mk-row" id="concept-picker"><span class="mk-label">Concept</span></div>
+  <div class="mk-row" id="state-picker"><span class="mk-label">State</span></div>
+  <div class="mk-row" id="device-picker"><span class="mk-label">Device</span></div>
+  <div class="mk-row"><span class="mk-label">View</span>
+    <button class="chip" type="button" data-mk="theme" id="theme-btn">Theme: system</button>
+    <button class="chip" type="button" data-mk="marks" id="marks-btn" aria-pressed="true">New and Today marks</button>
+  </div>
+  <div class="mk-why" id="state-why"></div>
+</div>
+
+<main class="stage" id="stage">
+  <section class="concept" id="concept-shelf" data-concept="shelf">
+    <header><h2>Year shelf</h2><p>A deliberate close. Done orders stay in Orders until you put the year away. A put-away year lives on its own shelf, Years, read only, with search and export.</p></header>
+    <div class="frames">
+      <figure class="frame-cap" data-cap="folded"><div class="device folded" data-device="iphone-duo-folded"><div class="page solo" data-slot="folded"></div></div><figcaption>Two-screen device, folded. 466 x 678 pt.</figcaption></figure>
+      <figure class="frame-cap" data-cap="open"><div class="device unfolded" data-device="iphone-duo-unfolded"><div class="page" data-slot="left"></div><div class="hinge" aria-hidden="true"></div><div class="page" data-slot="right"></div></div><figcaption>Two-screen device, open. 951 x 669 pt, hinge x 455.5 to 495.5 kept empty.</figcaption></figure>
+      <figure class="frame-cap" data-cap="phone"><div class="device phone" data-device="iphone-phone"><div class="page solo" data-slot="phone"></div></div><figcaption>Large phone. Size not written: drawn at the brief's folded size. Open this page on the phone to see it at its own size.</figcaption></figure>
+      <figure class="frame-cap" data-cap="ax5"><div class="device folded ax5" data-device="iphone-duo-folded-ax5"><div class="page solo" data-slot="ax5"></div></div><figcaption>Folded, biggest accessibility text size (AX5).</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-roll" data-concept="roll">
+    <header><h2>Receipt roll</h2><p>The bold one. No lists and no tabs: each year is one printed roll. Arrived orders print onto the roll, orders still coming wait as slips under it. Closing the year tears the roll off, and it hangs above as a stub with its total. The past sits above the present.</p></header>
+    <div class="frames">
+      <figure class="frame-cap" data-cap="folded"><div class="device folded" data-device="iphone-duo-folded"><div class="page solo" data-slot="folded"></div></div><figcaption>Two-screen device, folded. 466 x 678 pt.</figcaption></figure>
+      <figure class="frame-cap" data-cap="open"><div class="device unfolded" data-device="iphone-duo-unfolded"><div class="page" data-slot="left"></div><div class="hinge" aria-hidden="true"></div><div class="page" data-slot="right"></div></div><figcaption>Two-screen device, open. Left page: past rolls. Right page: this year's roll.</figcaption></figure>
+      <figure class="frame-cap" data-cap="phone"><div class="device phone" data-device="iphone-phone"><div class="page solo" data-slot="phone"></div></div><figcaption>Large phone. Size not written: drawn at the brief's folded size.</figcaption></figure>
+      <figure class="frame-cap" data-cap="ax5"><div class="device folded ax5" data-device="iphone-duo-folded-ax5"><div class="page solo" data-slot="ax5"></div></div><figcaption>Folded, biggest accessibility text size (AX5).</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-sinks" data-concept="sinks">
+    <header><h2>Self-sorting</h2><p>No close act at all. An order leaves the daily list the moment its last item arrives and sinks into its year. A year locks itself once it has ended and its last order is in.</p></header>
+    <div class="frames">
+      <figure class="frame-cap" data-cap="folded"><div class="device folded" data-device="iphone-duo-folded"><div class="page solo" data-slot="folded"></div></div><figcaption>Two-screen device, folded. 466 x 678 pt.</figcaption></figure>
+      <figure class="frame-cap" data-cap="open"><div class="device unfolded" data-device="iphone-duo-unfolded"><div class="page" data-slot="left"></div><div class="hinge" aria-hidden="true"></div><div class="page" data-slot="right"></div></div><figcaption>Two-screen device, open. Left: orders still coming and the years. Right: the picked year.</figcaption></figure>
+      <figure class="frame-cap" data-cap="phone"><div class="device phone" data-device="iphone-phone"><div class="page solo" data-slot="phone"></div></div><figcaption>Large phone. Size not written: drawn at the brief's folded size.</figcaption></figure>
+      <figure class="frame-cap" data-cap="ax5"><div class="device folded ax5" data-device="iphone-duo-folded-ax5"><div class="page solo" data-slot="ax5"></div></div><figcaption>Folded, biggest accessibility text size (AX5).</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  /* ---------- Sample data: orders, received or still coming, a year, an amount ---------- */
+  function rng(seed) { var s = seed >>> 0; return function () { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296; }; }
+  var W1 = ['Harbor', 'Maple', 'North', 'Copper', 'Lantern', 'Willow', 'Granite', 'Bluebird', 'Orchard', 'Summit', 'Juniper', 'Pebble', 'Fern', 'Quarry'];
+  var W2 = ['Goods', 'Trading', 'Supply', 'Market', 'Shop', 'Outlet', 'Exchange', 'Depot'];
+  var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  function makeYear(y, count, seed) {
+    var r = rng(seed), out = [];
+    for (var i = 0; i < count; i++) {
+      var m = Math.floor(r() * 12), d = 1 + Math.floor(r() * 28);
+      var items = 1 + Math.floor(r() * 6);
+      var amt = Math.round((0.6 + r() * r() * 34) * items * 0.6 * 100) / 100;
+      out.push({ id: String(y).slice(2) + '-' + (1000 + i * 3 + Math.floor(r() * 3)), y: y, m: m, d: d,
+        seller: W1[Math.floor(r() * W1.length)] + ' ' + W2[Math.floor(r() * W2.length)], items: items, amt: amt });
+    }
+    out.sort(function (a, b) { return (a.m - b.m) || (a.d - b.d); });
+    return out;
+  }
+  var CUR = 2026, NEXT = 2027;
+  var DATA = { 2024: makeYear(2024, 184, 24), 2025: makeYear(2025, 231, 25), 2026: makeYear(2026, 212, 26) };
+  var NOPRICE = {};
+  [17, 88, 150].forEach(function (i) { NOPRICE[DATA[2026][i].id] = true; });
+  var OPEN = (function () {
+    var r = rng(77), out = [];
+    var days = [[10, 18], [10, 26], [11, 2], [11, 5], [11, 9], [11, 11], [11, 14], [11, 17], [11, 20]];
+    for (var i = 0; i < days.length; i++) {
+      var items = 2 + Math.floor(r() * 5);
+      out.push({ id: '26-' + (1700 + i * 5), y: 2026, m: days[i][0], d: days[i][1], seller: W1[(i * 5 + 3) % W1.length] + ' ' + W2[(i * 3 + 1) % W2.length],
+        items: items, got: Math.floor(r() * items), amt: Math.round((2 + r() * 26) * 100) / 100 });
+    }
+    return out;
+  })();
+
+  function money(n) { return '$' + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ','); }
+  function dateOf(o) { return MON[o.m] + ' ' + o.d; }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+  /* ---------- State, kept in the URL hash ---------- */
+  var S = { c: 'shelf', s: 'default', o: '', t: '', d: 'all', tab: 'orders', y: '', q: '', f: '', stub: '', saved: '', hide: [], marks: true, arrived: [], full: false };
+  var STATES = [['default', 'Year end'], ['confirm', 'Closing'], ['closed', 'Closed'], ['unknown', 'Total unknown'], ['error', 'Years failed'], ['empty', 'No orders yet']];
+  var DEVICES = [['all', 'All'], ['folded', 'Folded'], ['open', 'Open'], ['phone', 'Phone'], ['ax5', 'Folded AX5']];
+  var CONCEPTS = [['shelf', 'Year shelf'], ['roll', 'Receipt roll'], ['sinks', 'Self-sorting']];
+
+  function readHash() {
+    var h = location.hash.replace(/^#/, ''), p = {};
+    h.split('&').forEach(function (kv) { if (!kv) return; var i = kv.indexOf('='); p[decodeURIComponent(i < 0 ? kv : kv.slice(0, i))] = i < 0 ? '' : decodeURIComponent(kv.slice(i + 1)); });
+    if (p.c && /^(shelf|roll|sinks)$/.test(p.c)) S.c = p.c;
+    /* A key missing from the link means its default, so each deep link opens one exact view */
+    S.s = 'default'; S.o = '';
+    if (p.s === 'confirm') S.o = 'confirm'; else if (/^(default|closed|unknown|error|empty)$/.test(p.s || '')) S.s = p.s;
+    S.t = (p.t === 'dark' || p.t === 'light') ? p.t : '';
+    S.d = /^(all|folded|open|phone|ax5)$/.test(p.d || '') ? p.d : 'all';
+    S.tab = p.tab === 'years' ? 'years' : 'orders';
+    S.y = /^\d{4}$/.test(p.y || '') ? p.y : '';
+    S.stub = /^\d{4}$/.test(p.stub || '') ? p.stub : '';
+    S.f = p.f === 'noprice' ? 'noprice' : '';
+    S.hide = p.hide ? p.hide.split(',').filter(Boolean) : [];
+    S.marks = p.marks !== '0';
+  }
+  function writeHash() {
+    var p = ['c=' + S.c, 's=' + (S.o === 'confirm' ? 'confirm' : S.s)];
+    if (S.t) p.push('t=' + S.t);
+    if (S.d !== 'all') p.push('d=' + S.d);
+    if (S.tab !== 'orders') p.push('tab=' + S.tab);
+    if (S.y) p.push('y=' + S.y);
+    if (S.stub) p.push('stub=' + S.stub);
+    if (S.f) p.push('f=' + S.f);
+    if (S.hide.length) p.push('hide=' + S.hide.join(','));
+    if (!S.marks) p.push('marks=0');
+    history.replaceState(null, '', '#' + p.join('&'));
+  }
+
+  /* ---------- Derived figures ---------- */
+  function priceOf(o) { return (S.s === 'unknown' && NOPRICE[o.id]) ? null : o.amt; }
+  function curDone() {
+    if (S.s === 'empty') return [];
+    var list = DATA[CUR].slice();
+    if (S.c === 'sinks') OPEN.forEach(function (o) { if (S.arrived.indexOf(o.id) >= 0) list.push(o); });
+    return list;
+  }
+  function openList() {
+    if (S.s === 'empty') return [];
+    if (S.c === 'sinks' && S.s === 'closed') return [];
+    return OPEN.filter(function (o) { return S.c !== 'sinks' || S.arrived.indexOf(o.id) < 0; });
+  }
+  function totalOf(list) {
+    var t = 0, gaps = 0, items = 0;
+    list.forEach(function (o) { var p = priceOf(o); items += o.items; if (p == null) gaps++; else t += p; });
+    return { sum: t, gaps: gaps, count: list.length, items: items };
+  }
+  function closedYears() {
+    if (S.s === 'error' || S.s === 'empty') return [];
+    var ys = [2025, 2024];
+    if (S.s === 'closed') ys.unshift(CUR);
+    return ys;
+  }
+  function yearOrders(y) {
+    y = +y;
+    if (y === CUR) return curDone();
+    return DATA[y] || [];
+  }
+
+  /* ---------- Small parts ---------- */
+  var ICON = {
+    back: '<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    chev: '<svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    search: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="2"/><path d="m11 11 4 4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    tray: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13h5l1.5 3h5L16 13h5M3 13l3-8h12l3 8v6H3z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    shelf: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 20h18M5 20V6h4v14M10 20V4h4v16M15 20l2-13 4 .6-2 12.4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    scissors: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="6" cy="6" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><circle cx="6" cy="18" r="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M8.5 7.5 20 18M8.5 16.5 20 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    lock: '<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><rect x="5" y="11" width="14" height="10" rx="2" fill="currentColor"/><path d="M8 11V8a4 4 0 0 1 8 0v3" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+    box: '<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 8 12 3l9 5v9l-9 5-9-5z M3 8l9 5 9-5 M12 13v9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    warn: '<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--warn)"><path d="M12 3 22 20H2z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M12 10v4M12 17v.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+  };
+  function checkGlyph() { return '<svg class="glyph" viewBox="0 0 24 24" aria-hidden="true" style="color:var(--done)"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="m7 12 3.5 3.5L17 9" fill="none" stroke="var(--surface-raised)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>'; }
+  function ringGlyph(got, of) {
+    var c = 2 * Math.PI * 9, f = of ? got / of : 0;
+    return '<svg class="glyph" viewBox="0 0 24 24" role="img" aria-label="' + got + ' of ' + of + ' items arrived" style="color:var(--accent)"><circle cx="12" cy="12" r="9" fill="none" stroke="var(--line)" stroke-width="3"/><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="3" stroke-dasharray="' + (c * f).toFixed(1) + ' ' + c.toFixed(1) + '" transform="rotate(-90 12 12)"/></svg>';
+  }
+  function statusbar() { return '<div class="statusbar" aria-hidden="true"><span>9:41</span><span class="dots"><i></i><i></i></span></div><div class="homebar" aria-hidden="true"></div>'; }
+  function mark(kind, label, inner, tag) { tag = tag || 'div'; return '<' + tag + ' class="mark' + (kind === 'today' ? ' today' : '') + '" data-mark="' + (kind === 'today' ? 'Today: ' : 'New: ') + label + '">' + inner + '</' + tag + '>'; }
+
+  function openRow(o, tappable) {
+    var inner = ringGlyph(o.got, o.items) + '<span class="main"><span class="who">' + esc(o.seller) + '</span><span class="meta num">' + dateOf(o) + ', ' + o.got + ' of ' + o.items + ' items</span></span><span class="amt">' + money(o.amt) + '</span>';
+    if (tappable) return '<li><button type="button" class="row" data-act="arrive" data-arg="' + o.id + '" aria-label="' + esc(o.seller) + ': mark the rest arrived">' + inner + '</button></li>';
+    return '<li><div class="row">' + inner + '</div></li>';
+  }
+  function doneRow(o, flash) {
+    var p = priceOf(o);
+    return '<li><div class="row' + (flash ? ' flash' : '') + '">' + checkGlyph() + '<span class="main"><span class="who">' + esc(o.seller) + '</span><span class="meta num">' + dateOf(o) + ', ' + o.items + ' items, no. ' + o.id + '</span></span>' +
+      (p == null ? '<span class="amt unknown">No price</span>' : '<span class="amt">' + money(p) + '</span>') + '</div></li>';
+  }
+  function matches(o) { if (S.f === 'noprice' && !NOPRICE[o.id]) return false; if (!S.q) return true; var q = S.q.toLowerCase(); return o.seller.toLowerCase().indexOf(q) >= 0 || o.id.indexOf(q) >= 0; }
+
+  /* Shared year detail (Year shelf and Self-sorting) */
+  function yearDetail(y, opts) {
+    var list = yearOrders(y), t = totalOf(list), sub = list.filter(matches).slice().reverse();
+    var h = '';
+    h += '<div class="nav">' + (opts.back ? '<button class="navbtn" type="button" data-act="back">' + ICON.back + '<span>' + opts.back + '</span></button>' : '<span style="min-width:44px"></span>') +
+      '<span class="grow"></span><span style="min-width:44px"></span></div>';
+    h += '<div class="scroll">';
+    h += '<div class="title-block"><h2 class="t-large num">' + y + '</h2><span class="t-sub muted">' + opts.status + '</span></div>';
+    h += '<div class="figures">' +
+      '<div class="figure"><span class="t-foot muted">Spent</span><span class="t-title1 num">' + (t.gaps ? 'Unknown' : money(t.sum)) + '</span>' + (t.gaps ? '<span class="t-foot" style="color:var(--warn)">' + t.gaps + ' orders have no price</span>' : '') + '</div>' +
+      '<div class="figure"><span class="t-foot muted">Orders</span><span class="t-title1 num">' + t.count + '</span></div>' +
+      '<div class="figure"><span class="t-foot muted">Items</span><span class="t-title1 num">' + t.items + '</span></div></div>';
+    if (opts.note) h += '<p class="t-sub muted" style="margin:0;padding:0 var(--space-4)">' + opts.note + '</p>';
+    if (S.f === 'noprice') h += '<div class="state unknown"><p class="t-body">Showing only the orders with no price.</p><button class="btn tint" type="button" data-act="clearf">Show all orders</button></div>';
+    var exp = '<div class="group" style="flex-direction:row;flex-wrap:wrap;align-items:center">' +
+      '<button class="btn tint" type="button" data-act="export" data-arg="' + y + '">Export ' + y + '</button>' +
+      (S.saved === String(y) ? '<span class="t-foot saved-note" role="status">Saved year-' + y + '-sample.csv</span>' : '') + '</div>';
+    h += opts.markExport ? mark('new', 'export', exp) : exp;
+    h += '<div class="group"><label class="search">' + ICON.search + '<input type="search" data-q placeholder="Find a seller or order number" value="' + esc(S.q) + '" aria-label="Find in ' + y + '"></label></div>';
+    h += '<div class="group" data-list-for="' + y + '">' + yearListInner(y) + '</div>';
+    if (opts.takeOut) h += '<div class="group"><button class="btn plain" type="button" data-act="takeout">Take ' + y + ' back out</button><span class="t-foot muted">Its done orders go back to Orders. Nothing is lost either way.</span></div>';
+    h += '</div>';
+    return h;
+  }
+  function yearListInner(y) {
+    var list = yearOrders(y).filter(matches).slice().reverse();
+    if (!list.length) return '<div class="state" style="margin:0"><p class="t-body">No order in ' + y + ' matches "' + esc(S.q) + '".</p><button class="btn tint" type="button" data-act="clearq">Clear search</button></div>';
+    return '<ul class="list">' + list.map(function (o) { return doneRow(o); }).join('') + '</ul>';
+  }
+
+  /* =====================================================================
+     Concept: Year shelf
+     ===================================================================== */
+  function shelfOrders(pose) {
+    var h = '<div class="nav"></div><div class="scroll">';
+    h += '<div class="title-block"><h2 class="t-large">Orders</h2></div>';
+    if (S.s === 'empty') {
+      h += '<div class="state"><p class="t-body">Orders you add show here, sorted into still coming and arrived.</p><button class="btn fill" type="button" data-act="fill">Add sample orders</button></div></div>';
+      return h;
+    }
+    var open = openList(), done = curDone();
+    h += mark('today', 'order list', '<div class="group"><div class="ghead"><span class="t-foot">Still coming</span><span class="t-foot num">' + open.length + '</span></div><ul class="list">' + open.map(function (o) { return openRow(o); }).join('') + '</ul></div>');
+    if (S.s !== 'closed') {
+      var shown = S.f === 'noprice' ? done.filter(function (o) { return NOPRICE[o.id]; }) : done.slice().reverse();
+      h += '<div class="group"><div class="ghead"><span class="t-foot">Arrived in ' + CUR + '</span>' +
+        (S.f ? '<button class="navbtn t-foot" type="button" data-act="clearf">Show all ' + done.length + '</button>' : '<span class="t-foot num">' + done.length + '</span>') +
+        '</div><ul class="list">' + shown.map(function (o) { return doneRow(o); }).join('') + '</ul></div>';
+    }
+    h += '</div>';
+    h += shelfBar();
+    return h;
+  }
+  function shelfBar() {
+    var t = totalOf(curDone());
+    if (S.s === 'closed') {
+      return mark('new', 'put away result', '<div class="actionbar" role="status"><div class="done-note">' + checkGlyph() + '<span class="t-body">' + CUR + ' is put away: ' + t.count + ' orders, ' + money(t.sum) + '.</span></div>' +
+        '<button class="btn tint wide" type="button" data-act="openyear" data-arg="' + CUR + '">Open ' + CUR + ' in Years</button></div>');
+    }
+    var spent = t.gaps
+      ? '<span class="t-sub" style="color:var(--warn)">Spent: unknown, ' + t.gaps + ' have no price</span>' + (S.f ? '' : '<button class="navbtn t-sub" type="button" data-act="showgaps">Show them</button>')
+      : '<span class="t-sub muted num">Spent ' + money(t.sum) + '</span>';
+    return mark('new', 'put away bar', '<div class="actionbar"><div class="sum"><span class="t-head num">' + t.count + ' arrived in ' + CUR + '</span>' + spent + '</div>' +
+      '<button class="btn fill wide" type="button" data-act="ask">Put away ' + CUR + '</button></div>');
+  }
+  function shelfSheet() {
+    var t = totalOf(curDone()), open = openList();
+    var h = '<div class="scrim" data-act="cancel" aria-hidden="true"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Put away ' + CUR + '"><span class="grabber" aria-hidden="true"></span>';
+    h += '<div class="nav"><button class="navbtn" type="button" data-act="cancel">Cancel</button><span class="grow">Put away ' + CUR + '</span><button class="navbtn strong" type="button" data-act="confirm">Put away</button></div>';
+    h += '<div class="body"><ul class="facts">' +
+      '<li>' + ICON.box + '<span class="main t-body">' + t.count + ' arrived orders leave Orders and go to Years, under ' + CUR + '.</span></li>' +
+      '<li>' + ringGlyph(1, 3) + '<span class="main t-body">' + open.length + ' orders still coming stay in Orders. Each joins ' + CUR + ' in Years when its last item arrives.</span></li>' +
+      '<li>' + (t.gaps ? ICON.warn : checkGlyph()) + '<span class="main t-body">' + (t.gaps ? 'Spent in ' + CUR + ' is unknown: ' + t.gaps + ' orders have no price. If you put it away now, its total stays unknown.' : 'Spent in ' + CUR + ': ' + money(t.sum) + ' so far.') + '</span></li>' +
+      '</ul><p class="t-sub muted" style="margin:0">Nothing is deleted. You can take ' + CUR + ' back out from Years.</p></div></div>';
+    return h;
+  }
+  function shelfYears(pose) {
+    var h = '<div class="nav"></div><div class="scroll"><div class="title-block"><h2 class="t-large">Years</h2></div>';
+    if (S.s === 'error') {
+      h += '<div class="state failed"><p class="t-body">Put-away years did not load. Your orders are not changed.</p><button class="btn fill" type="button" data-act="retry">Try again</button></div></div>';
+      return h;
+    }
+    var ys = closedYears();
+    if (!ys.length) {
+      h += '<div class="state"><p class="t-body">No year is put away yet. A year shows here once you put it away from Orders.</p><button class="btn tint" type="button" data-act="tab" data-arg="orders">Go to Orders</button></div></div>';
+      return h;
+    }
+    h += mark('new', 'year shelf', '<div class="group"><ul class="list">' + ys.map(function (y) {
+      var t = totalOf(yearOrders(y));
+      return '<li><button class="row yearrow" type="button" data-act="openyear" data-arg="' + y + '"><span class="yr">' + y + '</span><span class="main"><span class="who num">' + money(t.sum) + '</span><span class="meta num">' + t.count + ' orders, ' + t.items + ' items</span></span>' + ICON.chev + '</button></li>';
+    }).join('') + '</ul></div>');
+    h += '</div>';
+    return h;
+  }
+  function shelfTabbar() {
+    return '<nav class="tabbar" aria-label="Sections"><div class="cap">' +
+      '<button class="tab" type="button" data-act="tab" data-arg="orders"' + (S.tab === 'orders' ? ' aria-current="page"' : '') + '>' + ICON.tray + '<span>Orders</span></button>' +
+      mark('new', 'tab', '<button class="tab" type="button" data-act="tab" data-arg="years"' + (S.tab === 'years' ? ' aria-current="page"' : '') + '>' + ICON.shelf + '<span>Years</span></button>', 'span') +
+      '</div></nav>';
+  }
+  function yearOpts(y, back) {
+    var closedCur = S.s === 'closed' && +y === CUR;
+    return { back: back, small: true, markExport: true,
+      status: closedCur ? 'Put away just now. Read only.' : 'Put away. Read only.',
+      note: closedCur ? openList().length + ' orders still coming join ' + CUR + ' here when they arrive.' : '',
+      takeOut: closedCur };
+  }
+  function shelfScreen(slot) {
+    var single = slot !== 'left' && slot !== 'right';
+    var h = '<div class="screen">' + statusbar();
+    if (single) {
+      if (S.tab === 'years') h += S.y && S.s !== 'error' ? yearDetail(S.y, yearOpts(S.y, 'Years')) : shelfYears();
+      else h += shelfOrders();
+      h += shelfTabbar();
+      if (S.o === 'confirm' && S.tab === 'orders') h += shelfSheet();
+    } else if (slot === 'left') {
+      h += shelfOrders();
+      if (S.o === 'confirm') h += shelfSheet();
+    } else {
+      h += S.y && S.s !== 'error' ? yearDetail(S.y, yearOpts(S.y, 'Years')) : shelfYears();
+    }
+    return h + '</div>';
+  }
+
+  /* =====================================================================
+     Concept: Receipt roll
+     ===================================================================== */
+  function paperLines(list, limit, hiGaps) {
+    var h = '', show = list;
+    if (limit && list.length > limit && !S.full) { h += '<button class="btn plain" type="button" data-act="fullroll">Show ' + (list.length - limit) + ' earlier lines</button>'; show = list.slice(list.length - limit); }
+    show.forEach(function (o) {
+      var p = priceOf(o);
+      h += '<div class="pl' + (p == null ? ' gap' : '') + (p == null && hiGaps ? ' hi' : '') + '" data-gap="' + (p == null ? 1 : 0) + '"><span>' + dateOf(o) + '</span><span class="s">' + esc(o.seller) + ' x' + o.items + '</span><span>' + (p == null ? 'no price' : money(p)) + '</span></div>';
+    });
+    return h;
+  }
+  function rollTotal(list) {
+    var t = totalOf(list);
+    return '<div class="rule"></div><div class="tot"><span>' + t.count + ' orders</span><span>' + (t.gaps ? 'TOTAL UNKNOWN' : money(t.sum)) + '</span></div>' +
+      (t.gaps ? '<div class="tot" style="font-weight:400;color:var(--warn)"><span>' + t.gaps + ' lines have no price</span></div>' : '');
+  }
+  function rollSpike(inPage) {
+    var h = '';
+    if (S.s === 'error') return '<div class="state failed" style="margin:0"><p class="t-body">Past rolls did not load. This year\'s roll is not changed.</p><button class="btn fill" type="button" data-act="retry">Try again</button></div>';
+    var ys = closedYears().slice().reverse();
+    if (!ys.length) return inPage ? '<div class="state" style="margin:0"><p class="t-body">No roll torn off yet. Tear off a year at its dashed line and it hangs here.</p><button class="btn tint" type="button" data-act="fill">Add sample orders</button></div>' : '';
+    h += '<div class="spike" aria-label="Past rolls">';
+    ys.forEach(function (y) {
+      var t = totalOf(yearOrders(y)), open = S.stub === String(y);
+      h += '<button class="stub" type="button" data-act="stub" data-arg="' + y + '" aria-expanded="' + open + '"><span class="hole" aria-hidden="true"></span><span class="yr">' + y + '</span><span class="main"><span class="t-sub num" style="font-family:var(--mono)">' + money(t.sum) + '</span><span class="t-foot num" style="opacity:.75">' + t.count + ' orders</span></span><span class="t-foot" style="color:var(--accent)">' + (open ? 'Roll up' : 'Unroll') + '</span></button>';
+      if (open) {
+        h += '<div class="unrolled">';
+        h += '<div class="cluster" style="display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center"><button class="btn tint" type="button" data-act="export" data-arg="' + y + '">Export ' + y + '</button>' + (S.saved === String(y) ? '<span class="t-foot saved-note" role="status">Saved year-' + y + '-sample.csv</span>' : '') + '</div>';
+        h += '<label class="search">' + ICON.search + '<input type="search" data-q placeholder="Find on this roll" value="' + esc(S.q) + '" aria-label="Find on the ' + y + ' roll"></label>';
+        h += '<div class="paper" data-list-for="' + y + '" data-paper="1">' + rollListInner(y) + '</div>';
+        if (S.s === 'closed' && +y === CUR) h += '<button class="btn plain" type="button" data-act="takeout">Tape ' + y + ' back on</button>';
+        h += '</div>';
+      }
+    });
+    return h + '</div>';
+  }
+  function rollListInner(y) {
+    var list = yearOrders(y).filter(matches);
+    if (!list.length) return '<div class="pl"><span></span><span class="s">No line matches "' + esc(S.q) + '"</span><span></span></div><button class="btn plain" type="button" data-act="clearq">Clear search</button>';
+    return '<div class="ph">' + y + '</div>' + paperLines(list, 0) + rollTotal(yearOrders(y));
+  }
+  function rollPresent() {
+    var h = '';
+    if (S.s === 'empty') {
+      return '<div class="state" style="margin:0"><p class="t-body">Nothing is printed yet. Orders print onto this roll as they arrive.</p><button class="btn fill" type="button" data-act="fill">Add sample orders</button></div>';
+    }
+    var closed = S.s === 'closed', yr = closed ? NEXT : CUR, list = closed ? [] : curDone();
+    h += '<div class="paper roll-paper">';
+    h += '<div class="ph">' + yr + ' ROLL</div>';
+    if (closed) h += '<div class="fold-more">Nothing printed in ' + NEXT + ' yet.</div>';
+    else if (S.f === 'noprice') h += '<div class="fold-more">Only the lines with no price</div>' + paperLines(list.filter(function (o) { return NOPRICE[o.id]; }), 0, true) + '<button class="btn plain" type="button" data-act="clearf">Show the whole roll</button>' + rollTotal(list);
+    else h += paperLines(list, 14, false) + rollTotal(list);
+    h += '</div>';
+    // perforation: the year-close act
+    h += '<div class="perf">';
+    if (closed) {
+      var t = totalOf(curDone());
+      h += mark('new', 'tear result', '<div class="ask" role="status"><span class="t-body">' + CUR + ' torn off: ' + t.count + ' orders, ' + money(t.sum) + '. It hangs above with the other years.</span><div class="btns"><button class="btn tint" type="button" data-act="stub" data-arg="' + CUR + '" data-force="1">Unroll ' + CUR + '</button></div></div>');
+    } else if (S.o === 'confirm') {
+      var t2 = totalOf(list);
+      h += '<div class="cut" aria-hidden="true">' + ICON.scissors + '</div>';
+      h += mark('new', 'tear-off', '<div class="ask" role="dialog" aria-label="Tear off ' + CUR + '"><span class="t-body">Tear off ' + CUR + '? ' + t2.count + ' printed orders, ' + (t2.gaps ? 'total unknown (' + t2.gaps + ' have no price)' : money(t2.sum)) + '. The ' + openList().length + ' slips below stay, and print onto ' + CUR + ' when they arrive.</span>' +
+        '<div class="btns"><button class="btn plain" type="button" data-act="cancel">Cancel</button><button class="btn fill" type="button" data-act="confirm">Tear off</button></div></div>');
+    } else {
+      h += mark('new', 'tear-off', '<div class="cut" aria-hidden="true">' + ICON.scissors + '</div><button class="btn fill wide" type="button" data-act="ask">Tear off ' + CUR + '</button>' +
+        (S.s === 'unknown' && !S.f ? '<button class="btn plain wide" type="button" data-act="showgaps">Show the lines with no price</button>' : ''));
+    }
+    h += '</div>';
+    var open = openList();
+    h += mark('today', 'orders still coming', '<div class="slips"><span class="t-foot muted">Still coming: ' + open.length + (closed ? ', they print onto ' + CUR : '') + '</span><div class="slip-strip" tabindex="0" aria-label="Slips still coming, scrolls sideways">' + open.map(function (o) {
+      return '<div class="slip">' + ringGlyph(o.got, o.items) + '<span class="main"><span class="t-body">' + esc(o.seller) + '</span><span class="t-foot muted num">' + dateOf(o) + ', ' + o.got + ' of ' + o.items + ' items</span><span class="t-body num">' + money(o.amt) + '</span></span></div>';
+    }).join('') + '</div></div>');
+    return h;
+  }
+  function rollScreen(slot) {
+    var h = '<div class="screen">' + statusbar();
+    if (slot === 'left') {
+      h += '<div class="nav"><span class="grow">Past rolls</span></div><div class="roll-scroll">' + mark('new', 'spike of past years', rollSpike(true)) + '</div>';
+    } else if (slot === 'right') {
+      h += '<div class="nav"><span class="grow">' + (S.s === 'closed' ? NEXT : CUR) + ' roll</span></div><div class="roll-scroll" data-bottom="1">' + rollPresent() + '</div>';
+    } else {
+      h += '<div class="nav"><span class="grow">' + (S.s === 'closed' ? NEXT : CUR) + ' roll</span></div><div class="roll-scroll" data-bottom="' + (S.stub ? 0 : 1) + '">' + mark('new', 'past years above', rollSpike(false)) + rollPresent() + '</div>';
+    }
+    return h + '</div>';
+  }
+
+  /* =====================================================================
+     Concept: Self-sorting
+     ===================================================================== */
+  var lastSunk = '';
+  function sinksMain(withDetailLink) {
+    var h = '<div class="nav"></div><div class="scroll"><div class="title-block"><h2 class="t-large">Orders</h2></div>';
+    if (S.s === 'empty') {
+      return h + '<div class="state"><p class="t-body">Orders you add show here until their last item arrives.</p><button class="btn fill" type="button" data-act="fill">Add sample orders</button></div></div>';
+    }
+    var open = openList();
+    var stillComing = mark('today', 'order list', '<div class="group"><div class="ghead"><span class="t-foot">Still coming, tap when the rest arrives</span><span class="t-foot num">' + open.length + '</span></div>' +
+      (open.length ? '<ul class="list">' + open.map(function (o) { return openRow(o, true); }).join('') + '</ul>' : '<div class="state" style="margin:0"><p class="t-body">All is well. Nothing is still coming.</p><button class="btn tint" type="button" data-act="reset-arrived">Bring the sample back</button></div>') + '</div>');
+    h += '<div class="group"><div class="ghead"><span class="t-foot">By year</span></div>';
+    if (S.s === 'error') {
+      h += '<div class="state failed" style="margin:0"><p class="t-body">The years did not load. Orders still coming are not changed.</p><button class="btn fill" type="button" data-act="retry">Try again</button></div></div>' + stillComing + '</div>';
+      return h;
+    }
+    var ys = [CUR, 2025, 2024];
+    h += mark('new', 'year rows', '<ul class="list">' + ys.map(function (y) {
+      var t = totalOf(yearOrders(y)), locked = y !== CUR || S.s === 'closed';
+      var sub = y === CUR && !locked ? t.count + ' arrived, ' + open.length + ' still coming' : t.count + ' orders';
+      var spent = t.gaps ? '<span class="amt unknown">Unknown</span>' : '<span class="amt">' + money(t.sum) + '</span>';
+      return '<li><button class="row yearrow' + (lastSunk && y === CUR ? ' flash' : '') + '" type="button" data-act="openyear" data-arg="' + y + '"' + (String(y) === S.y ? ' aria-current="true"' : '') + '>' +
+        (locked ? '<span style="color:var(--done)" title="Locked">' + ICON.lock + '</span>' : '<span style="color:var(--accent)">' + ICON.box + '</span>') +
+        '<span class="yr">' + y + '</span><span class="main"><span class="meta num">' + sub + '</span></span>' + spent + ICON.chev + '</button></li>';
+    }).join('') + '</ul>');
+    h += '</div>';
+    if (S.s === 'unknown') h += '<div class="state unknown"><p class="t-body">' + CUR + ' spent is unknown: 3 orders have no price.</p><button class="btn tint" type="button" data-act="openyear" data-arg="' + CUR + '" data-gaps="1">Show them in ' + CUR + '</button></div>';
+    h += stillComing + '</div>';
+    return h;
+  }
+  function sinksOpts(y, back) {
+    y = +y; var locked = y !== CUR || S.s === 'closed';
+    return { back: back, small: true, markExport: true,
+      status: locked ? (y === CUR ? 'Locked: the year ended and its last order arrived.' : 'Locked.') : 'Open year. It locks itself after Dec 31 once nothing is still coming.',
+      note: '', takeOut: false };
+  }
+  function sinksScreen(slot) {
+    var h = '<div class="screen">' + statusbar();
+    if (slot === 'left') h += sinksMain();
+    else if (slot === 'right') {
+      var y = S.y || String(CUR);
+      h += (S.s === 'error' || S.s === 'empty') ? '<div class="nav"></div><div class="scroll"><div class="state"><p class="t-body">Pick a year on the left to see its orders.</p></div></div>' : yearDetail(y, sinksOpts(y, ''));
+    } else {
+      h += S.y && S.s !== 'error' && S.s !== 'empty' ? yearDetail(S.y, sinksOpts(S.y, 'Orders')) : sinksMain();
+    }
+    return h + '</div>';
+  }
+
+  /* ---------- Render ---------- */
+  var SCREENS = { shelf: shelfScreen, roll: rollScreen, sinks: sinksScreen };
+  function renderChrome() {
+    var cp = document.getElementById('concept-picker');
+    cp.innerHTML = '<span class="mk-label">Concept</span>' + CONCEPTS.filter(function (c) { return S.hide.indexOf(c[0]) < 0; }).map(function (c) {
+      return '<span class="opt"><button class="chip" type="button" data-mk="concept" data-arg="' + c[0] + '" aria-pressed="' + (S.c === c[0]) + '">' + c[1] + '</button><button class="hide" type="button" data-mk="hide" data-arg="' + c[0] + '" aria-label="Hide ' + c[1] + '">Hide</button></span>';
+    }).join('') + (S.hide.length ? '<button class="chip" type="button" data-mk="unhide">Show hidden (' + S.hide.length + ')</button>' : '');
+    var sp = document.getElementById('state-picker');
+    var cur = S.o === 'confirm' ? 'confirm' : S.s;
+    sp.innerHTML = '<span class="mk-label">State</span>' + STATES.map(function (s) {
+      var off = S.c === 'sinks' && s[0] === 'confirm';
+      return '<button class="chip" type="button" data-mk="state" data-arg="' + s[0] + '" aria-pressed="' + (cur === s[0]) + '"' + (off ? ' disabled title="Self-sorting has no close act, so it has no closing step."' : '') + '>' + s[1] + '</button>';
+    }).join('');
+    var dp = document.getElementById('device-picker');
+    dp.innerHTML = '<span class="mk-label">Device</span>' + DEVICES.map(function (d) { return '<button class="chip" type="button" data-mk="device" data-arg="' + d[0] + '" aria-pressed="' + (S.d === d[0]) + '">' + d[1] + '</button>'; }).join('');
+    document.getElementById('theme-btn').textContent = 'Theme: ' + (S.t || 'system');
+    var mb = document.getElementById('marks-btn'); mb.setAttribute('aria-pressed', String(S.marks));
+    var why = { default: 'Year end: the year is over, its arrived orders still sit in the daily view.', confirm: 'The close act asks once, with what moves and what stays.',
+      closed: 'After the close: daily work holds only what is still coming.', unknown: 'Some arrived orders have no price, so the year\'s spend is unknown, never zero.',
+      error: 'The closed years failed to load. Shown as a failure, never as empty.', empty: 'A new user with no orders at all.' };
+    document.getElementById('state-why').textContent = why[cur];
+  }
+  function render() {
+    if (S.c === 'sinks' && S.o === 'confirm') S.o = '';
+    if (S.hide.indexOf(S.c) >= 0) { var vis = CONCEPTS.filter(function (c) { return S.hide.indexOf(c[0]) < 0; }); if (vis.length) S.c = vis[0][0]; }
+    if (S.t) document.documentElement.setAttribute('data-theme', S.t); else document.documentElement.removeAttribute('data-theme');
+    document.body.classList.toggle('no-marks', !S.marks);
+    renderChrome();
+    var keepFocus = document.activeElement && document.activeElement.hasAttribute('data-q');
+    document.querySelectorAll('.concept').forEach(function (sec) {
+      var on = sec.dataset.concept === S.c && S.hide.indexOf(S.c) < 0;
+      sec.classList.toggle('on', on);
+      if (!on) return;
+      var fn = SCREENS[S.c];
+      sec.querySelectorAll('[data-slot]').forEach(function (slot) { slot.innerHTML = fn(slot.dataset.slot); });
+      sec.querySelectorAll('.frame-cap').forEach(function (fc) { fc.hidden = !(S.d === 'all' || S.d === fc.dataset.cap); });
+      sec.querySelectorAll('[data-bottom="1"]').forEach(function (el) { el.scrollTop = el.scrollHeight; });
+    });
+    if (keepFocus) { /* search re-render is handled in place, see onInput */ }
+    writeHash();
+    lastSunk = '';
+  }
+
+  /* ---------- Acts ---------- */
+  function act(name, arg, el) {
+    switch (name) {
+      case 'ask': S.o = 'confirm'; S.tab = 'orders'; break;
+      case 'cancel': S.o = ''; break;
+      case 'confirm':
+        if (S.c === 'roll') {
+          var papers = document.querySelectorAll('.concept.on .roll-paper');
+          papers.forEach(function (p) { p.classList.add('tearing'); });
+          var wait = window.matchMedia('(prefers-reduced-motion: reduce)').matches ? 0 : 450;
+          setTimeout(function () { S.o = ''; S.s = 'closed'; S.f = ''; render(); }, wait);
+          return;
+        }
+        S.o = ''; S.s = 'closed'; S.f = ''; break;
+      case 'tab': S.tab = arg; S.y = ''; S.q = ''; break;
+      case 'openyear': S.y = String(arg); S.tab = 'years'; S.q = ''; S.f = (el && el.dataset.gaps) ? 'noprice' : ''; break;
+      case 'back': S.y = ''; S.q = ''; break;
+      case 'takeout': S.s = 'default'; S.y = ''; S.stub = ''; S.tab = 'orders'; break;
+      case 'retry': S.s = 'default'; break;
+      case 'fill': S.s = 'default'; S.arrived = []; break;
+      case 'showgaps': S.f = 'noprice'; break;
+      case 'clearf': S.f = ''; break;
+      case 'clearq': S.q = ''; break;
+      case 'stub': S.stub = (S.stub === String(arg) && !(el && el.dataset.force)) ? '' : String(arg); S.q = ''; S.f = ''; break;
+      case 'arrive': if (S.arrived.indexOf(arg) < 0) S.arrived.push(arg); lastSunk = arg; break;
+      case 'reset-arrived': S.arrived = []; break;
+      case 'fullroll': S.full = true; break;
+      case 'export': exportYear(arg); S.saved = String(arg); break;
+    }
+    render();
+  }
+  function exportYear(y) {
+    var rows = [['order', 'seller', 'placed', 'items', 'amount']].concat(yearOrders(y).map(function (o) { var p = priceOf(o); return [o.id, o.seller, y + '-' + String(o.m + 1).padStart(2, '0') + '-' + String(o.d).padStart(2, '0'), o.items, p == null ? '' : p.toFixed(2)]; }));
+    var csv = 'Sample data, not real\n' + rows.map(function (r) { return r.join(','); }).join('\n');
+    try {
+      var a = document.createElement('a');
+      a.href = URL.createObjectURL(new Blob([csv], { type: 'text/csv' }));
+      a.download = 'year-' + y + '-sample.csv';
+      document.body.appendChild(a); a.click(); a.remove();
+    } catch (e) { /* the saved note still answers the press */ }
+  }
+  document.addEventListener('click', function (e) {
+    var m = e.target.closest('[data-mk]');
+    if (m) {
+      var k = m.dataset.mk, a = m.dataset.arg;
+      if (k === 'concept') { S.c = a; S.y = ''; S.q = ''; S.stub = ''; S.f = ''; }
+      else if (k === 'hide') { S.hide.push(a); }
+      else if (k === 'unhide') { S.hide = []; }
+      else if (k === 'state') { if (a === 'confirm') { S.s = 'default'; S.o = 'confirm'; S.tab = 'orders'; } else { S.s = a; S.o = ''; } S.f = ''; S.y = ''; S.stub = ''; S.arrived = []; }
+      else if (k === 'device') { S.d = a; }
+      else if (k === 'theme') { S.t = S.t === '' ? 'dark' : S.t === 'dark' ? 'light' : ''; }
+      else if (k === 'marks') { S.marks = !S.marks; }
+      render(); return;
+    }
+    var b = e.target.closest('[data-act]');
+    if (b) { act(b.dataset.act, b.dataset.arg, b); }
+  });
+  /* Search keeps its own field: only the lists re-render, so typing never loses focus */
+  document.addEventListener('input', function (e) {
+    if (!e.target.hasAttribute('data-q')) return;
+    S.q = e.target.value;
+    document.querySelectorAll('.concept.on [data-q]').forEach(function (inp) { if (inp !== e.target) inp.value = S.q; });
+    document.querySelectorAll('.concept.on [data-list-for]').forEach(function (box) {
+      box.innerHTML = box.dataset.paper ? rollListInner(box.dataset.listFor) : yearListInner(box.dataset.listFor);
+    });
+  });
+  window.addEventListener('hashchange', function () { readHash(); render(); });
+  readHash(); render();
+})();
+</script>
+</body>
+</html>

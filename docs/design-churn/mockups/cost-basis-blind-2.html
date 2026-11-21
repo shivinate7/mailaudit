@@ -1,0 +1,828 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cost basis, blind 2</title>
+<style>
+/* Tokens. House step 4 px, radius 8 px (tokens.md). Colours are this designer's own choice:
+   bookkeeper's ink on a grey-green ledger paper. Ink blue = paid and arrived, red ink = paid and still out. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --radius: 8px; --radius-sheet: 16px;
+  --sa-top: 28px; --sa-bottom: 20px; /* stand-ins: no written inset for these devices */
+
+  --surface: #eef2ee; --surface-raised: #fbfcfa; --surface-sunk: #e2e8e3;
+  --text: #17222e; --text-muted: #4f5d66; --rule: #c3cec6; --rule-strong: #2b3a46;
+  --got: #1d4f91; --got-soft: #d7e3f3;
+  --out: #a3241c; --out-soft: #f4dcd8;
+  --late: #7a1610;
+  --refund: #5a4b86; --refund-soft: #e3def0;
+  --focus: #1d4f91;
+  --glass: rgba(251,252,250,.82);
+  --page: #dfe5e0; --banner: #f7e7a6; --banner-text: #3a3000;
+
+  /* Dynamic Type, default size (HIG typography, read 2026-11-21) */
+  --t-large: 34px; --l-large: 41px;
+  --t-title1: 28px; --l-title1: 34px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap1: 12px; --l-cap1: 16px;
+  --t-cap2: 11px; --l-cap2: 13px;
+  color-scheme: light dark;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #111719; --surface-raised: #1a2225; --surface-sunk: #0b1012;
+    --text: #e3eae6; --text-muted: #9fb0aa; --rule: #2f3d40; --rule-strong: #c9d6d0;
+    --got: #8db8f2; --got-soft: #1d2f47; --out: #f2938a; --out-soft: #45201d; --late: #ffb4ab;
+    --refund: #c3b5f0; --refund-soft: #2c2645; --focus: #8db8f2; --glass: rgba(26,34,37,.84);
+    --page: #090d0e; --banner: #4a3f10; --banner-text: #fbefc0;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #111719; --surface-raised: #1a2225; --surface-sunk: #0b1012;
+  --text: #e3eae6; --text-muted: #9fb0aa; --rule: #2f3d40; --rule-strong: #c9d6d0;
+  --got: #8db8f2; --got-soft: #1d2f47; --out: #f2938a; --out-soft: #45201d; --late: #ffb4ab;
+  --refund: #c3b5f0; --refund-soft: #2c2645; --focus: #8db8f2; --glass: rgba(26,34,37,.84);
+  --page: #090d0e; --banner: #4a3f10; --banner-text: #fbefc0;
+}
+/* Biggest accessibility size, AX5 (HIG typography, read 2026-11-21) */
+.ax5 {
+  --t-large: 60px; --l-large: 70px; --t-title1: 58px; --l-title1: 68px;
+  --t-title2: 56px; --l-title2: 66px; --t-title3: 55px; --l-title3: 65px;
+  --t-body: 53px; --l-body: 62px; --t-callout: 51px; --l-callout: 60px;
+  --t-sub: 49px; --l-sub: 58px; --t-foot: 44px; --l-foot: 52px;
+  --t-cap1: 43px; --l-cap1: 51px; --t-cap2: 40px; --l-cap2: 48px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--text);
+  font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  font-size: var(--t-body); line-height: var(--l-body);
+}
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--text-muted); }
+
+/* ---------- page chrome (not part of the app) ---------- */
+.sample { position: sticky; top: 0; z-index: 50; background: var(--banner); color: var(--banner-text);
+  padding: var(--space-2) var(--space-4); font-size: var(--t-sub); line-height: var(--l-sub); text-align: center; }
+.chrome { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-6) var(--space-4) var(--space-10); }
+.intro { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 60rem; }
+.intro h1 { margin: 0; font-size: var(--t-title1); line-height: var(--l-title1); font-weight: 700; }
+.intro p { margin: 0; color: var(--text-muted); max-inline-size: 70ch; }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.controls .group { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; padding: var(--space-1);
+  border: 1px solid var(--rule); border-radius: var(--radius); background: var(--surface-raised); }
+.controls .group > span { padding-inline: var(--space-2); font-size: var(--t-foot); color: var(--text-muted); }
+.pill { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid transparent;
+  background: transparent; font-size: var(--t-sub); }
+.pill[aria-pressed="true"] { background: var(--text); color: var(--surface-raised); }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; }
+.concept-head h2 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); }
+.concept-head p { margin: 0; flex-basis: 100%; color: var(--text-muted); max-inline-size: 75ch; }
+.tag { border: 1.5px dashed var(--text-muted); border-radius: var(--radius); padding: 0 var(--space-2);
+  font-size: var(--t-foot); color: var(--text-muted); }
+.hide-btn { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--rule);
+  background: var(--surface-raised); font-size: var(--t-foot); }
+.stage { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; overflow-x: auto; padding-bottom: var(--space-2); }
+.frame { display: flex; flex-direction: column; gap: var(--space-2); }
+.frame > figcaption { font-size: var(--t-foot); color: var(--text-muted); }
+.restore { display: none; }
+.restore.on { display: block; }
+
+/* ---------- device ---------- */
+.device { position: relative; background: var(--surface); border-radius: 20px; overflow: hidden;
+  outline: 6px solid var(--rule-strong); outline-offset: 0; flex: none; }
+.device.open { display: flex; background: var(--rule-strong); }
+.device.open .page { position: relative; width: 455.5px; height: 100%; background: var(--surface); overflow: hidden; }
+.device.open .hinge { width: 40px; flex: none; background: var(--rule-strong); }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column;
+  padding-top: max(env(safe-area-inset-top), var(--sa-top));
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.statusbar { position: absolute; top: 0; left: 0; right: 0; height: var(--sa-top); display: flex; align-items: center;
+  padding: 0 var(--space-6); font-size: var(--t-foot); font-weight: 600; pointer-events: none; }
+.ax5 .statusbar { font-size: 13px; }
+.homebar { position: absolute; bottom: 6px; left: 50%; width: 120px; height: 5px; margin-left: -60px; border-radius: 3px;
+  background: var(--text); opacity: .5; pointer-events: none; z-index: 30; }
+.scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; padding-bottom: calc(var(--space-10) * 3 + max(env(safe-area-inset-bottom), var(--sa-bottom))); }
+.scroll::-webkit-scrollbar { width: 0; }
+
+/* nav bar */
+.navbar { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 var(--space-2); gap: var(--space-2); }
+.navbtn { min-height: 44px; min-width: 44px; padding: 0 var(--space-2); border: 0; background: transparent; color: var(--got);
+  font-size: var(--t-body); display: inline-flex; align-items: center; gap: var(--space-1); }
+.largetitle { margin: 0; padding: 0 var(--space-4); font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; overflow-wrap: anywhere; }
+.inline-title { font-size: var(--t-headline, var(--t-body)); font-weight: 600; text-align: center; flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+/* floating tab bar and bottom bar */
+.bottom { position: absolute; left: 0; right: 0; bottom: 0; z-index: 20; display: flex; flex-direction: column; gap: var(--space-2);
+  padding: 0 var(--space-4) calc(max(env(safe-area-inset-bottom), var(--sa-bottom)) + var(--space-1)); }
+.glass { background: var(--surface-raised); border: 1px solid var(--rule); border-radius: 999px; }
+@supports (backdrop-filter: blur(1px)) { .glass { background: var(--glass); backdrop-filter: blur(16px) saturate(1.4); } }
+.tabbar { display: flex; justify-content: space-around; padding: var(--space-1); }
+.tab { flex: 1; min-height: 52px; border: 0; background: transparent; border-radius: 999px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px; font-size: var(--t-cap2); line-height: var(--l-cap2); color: var(--text-muted); }
+.tab svg { width: 22px; height: 22px; }
+.tab[aria-selected="true"] { color: var(--got); background: var(--got-soft); font-weight: 600; }
+.ax5 .tab { font-size: 13px; line-height: 16px; }
+.searchrow { display: flex; gap: var(--space-2); align-items: center; }
+.search { flex: 1; min-width: 0; min-height: 44px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-4); }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; font-size: var(--t-body); outline: none; }
+.search:focus-within { outline: 2px solid var(--focus); }
+.roundbtn { min-height: 44px; min-width: 44px; padding: 0 var(--space-4); border-radius: 999px; border: 1px solid var(--rule);
+  background: var(--text); color: var(--surface-raised); font-weight: 600; font-size: var(--t-body); white-space: nowrap; }
+
+/* lists */
+.section-h { padding: var(--space-4) var(--space-4) var(--space-2); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); display: flex; justify-content: space-between; gap: var(--space-2); }
+.list { display: flex; flex-direction: column; margin: 0 var(--space-4); background: var(--surface-raised); border-radius: var(--radius); border: 1px solid var(--rule); overflow: hidden; }
+.row { display: grid; grid-template-columns: 1fr auto; gap: var(--space-3); align-items: center; min-height: 56px; width: 100%;
+  padding: var(--space-2) var(--space-4); border: 0; border-top: 1px solid var(--rule); background: transparent; text-align: left; }
+.list > .row:first-child { border-top: 0; }
+.row[aria-current="true"] { background: var(--got-soft); }
+.row-main { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.row .name { font-size: var(--t-body); line-height: var(--l-body); overflow-wrap: anywhere; }
+.row .sub { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); display: flex; align-items: center; gap: var(--space-2); flex-wrap: wrap; }
+.row .amt { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; text-align: right; }
+.row .amt b { font-weight: 600; font-size: var(--t-body); }
+.row .amt span { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.ax5 .row { grid-template-columns: 1fr; }
+.ax5 .row .amt { align-items: flex-start; text-align: left; }
+.bar { display: inline-flex; width: 64px; height: 8px; border-radius: 4px; overflow: hidden; background: var(--surface-sunk); flex: none; border: 1px solid var(--rule); }
+.bar i { display: block; height: 100%; }
+.bar .g { background: var(--got); } .bar .o { background: var(--out); }
+.bar .r { background: repeating-linear-gradient(135deg, var(--refund) 0 2px, transparent 2px 4px); }
+.ax5 .bar { width: 160px; height: 16px; border-radius: 8px; }
+.lateflag { color: var(--late); font-weight: 600; display: inline-flex; align-items: center; gap: 2px; }
+.lateflag::before { content: ""; width: 8px; height: 8px; border-radius: 50%; background: var(--late); display: inline-block; }
+
+/* summary stats that are also filters */
+.stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); padding: var(--space-3) var(--space-4); }
+.ax5 .stats { grid-template-columns: 1fr; }
+.stat { min-height: 72px; display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: var(--space-1);
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius); border: 1px solid var(--rule); background: var(--surface-raised); text-align: left; }
+.stat .k { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); display: flex; align-items: center; gap: var(--space-1); }
+.stat .k::before { content: ""; width: 10px; height: 10px; border-radius: 2px; background: var(--sw); flex: none; }
+.stat .v { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 600; letter-spacing: -.01em; }
+.stat .x { font-size: var(--t-cap1); line-height: var(--l-cap1); color: var(--text-muted); }
+.stat[aria-pressed="true"] { background: var(--sw-soft); border-color: var(--sw); box-shadow: inset 0 0 0 1px var(--sw); }
+.stat[data-k="got"] { --sw: var(--got); --sw-soft: var(--got-soft); }
+.stat[data-k="out"] { --sw: var(--out); --sw-soft: var(--out-soft); }
+.stat[data-k="ref"] { --sw: var(--refund); --sw-soft: var(--refund-soft); }
+.ax-search { display: none; padding: 0 var(--space-4) var(--space-2); }
+.ax5 .ax-search { display: block; }
+.ax5 .hero-q { display: none; } /* at AX5 the line fills the screen; the figures carry the meaning */
+.ax5 .bottom .search { display: none; }
+.ax5 .bottom .searchrow { justify-content: flex-end; }
+.roundbtn { flex: none; }
+.hero-q { padding: 0 var(--space-4); font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-muted); margin: 0; }
+.toolbar-inline { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: 0 var(--space-4); flex-wrap: wrap; }
+.menu-btn { min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--rule); background: var(--surface-raised); font-size: var(--t-sub); }
+
+/* notices and states */
+.notice { margin: var(--space-2) var(--space-4); padding: var(--space-3); border-radius: var(--radius); border: 1px solid var(--rule);
+  background: var(--surface-raised); display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--t-sub); line-height: var(--l-sub); }
+.notice .actions { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.btn { min-height: 44px; padding: 0 var(--space-4); border-radius: var(--radius); border: 1px solid var(--rule); background: var(--surface-raised); font-size: var(--t-body); font-weight: 600; color: var(--got); }
+.btn.primary { background: var(--got); color: var(--surface-raised); border-color: var(--got); }
+.btn.wide { width: 100%; }
+.empty { padding: var(--space-8) var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); align-items: flex-start; }
+.empty p { margin: 0; font-size: var(--t-body); line-height: var(--l-body); }
+details.machine { font-size: var(--t-foot); color: var(--text-muted); }
+details.machine summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.skel { height: 56px; border-top: 1px solid var(--rule); display: flex; align-items: center; gap: var(--space-3); padding: 0 var(--space-4); }
+.skel i { display: block; height: 12px; border-radius: 6px; background: var(--surface-sunk); }
+.progress { height: 6px; border-radius: 3px; background: var(--surface-sunk); overflow: hidden; }
+.progress i { display: block; height: 100%; width: 42%; background: var(--got); }
+
+/* detail */
+.detail-h { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-3); }
+.detail-h h3 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); overflow-wrap: anywhere; }
+.basis { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4); margin: 0 var(--space-4);
+  border-radius: var(--radius); background: var(--got-soft); }
+.basis .big { font-size: var(--t-title1); line-height: var(--l-title1); font-weight: 700; color: var(--got); }
+.basis .lbl { font-size: var(--t-sub); line-height: var(--l-sub); }
+.line { display: grid; grid-template-columns: 1fr auto; gap: var(--space-2); padding: var(--space-2) var(--space-4); border-top: 1px solid var(--rule); min-height: 52px; align-items: center; }
+.list > .line:first-child { border-top: 0; }
+.line .s { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.line .a { text-align: right; }
+.line.refunded .a b { text-decoration: line-through; color: var(--text-muted); font-weight: 400; }
+.ax5 .line { grid-template-columns: 1fr; }
+.ax5 .line .a { text-align: left; }
+.dot { width: 10px; height: 10px; border-radius: 50%; display: inline-block; flex: none; }
+.dot.g { background: var(--got); } .dot.o { background: transparent; border: 2px solid var(--out); }
+.dot.l { background: var(--late); } .dot.r { background: var(--refund); }
+.placeholder { padding: var(--space-8) var(--space-6); color: var(--text-muted); font-size: var(--t-body); }
+
+/* statement */
+.form { margin: 0 var(--space-4); background: var(--surface-raised); border: 1px solid var(--rule); border-radius: var(--radius); display: flex; flex-direction: column; }
+.frow { display: flex; justify-content: space-between; align-items: center; gap: var(--space-3); min-height: 52px; padding: var(--space-2) var(--space-4); border-top: 1px solid var(--rule); flex-wrap: wrap; }
+.form > .frow:first-child { border-top: 0; }
+.frow .fl { display: flex; flex-direction: column; min-width: 0; }
+.frow .fl small { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.seg { display: inline-flex; padding: 2px; border-radius: var(--radius); background: var(--surface-sunk); gap: 2px; flex-wrap: wrap; }
+.seg button { min-height: 40px; min-width: 56px; padding: 0 var(--space-3); border: 0; border-radius: 6px; background: transparent; font-size: var(--t-sub); }
+.seg button[aria-pressed="true"] { background: var(--surface-raised); box-shadow: 0 0 0 1px var(--rule); font-weight: 600; }
+.switch { width: 52px; height: 32px; border-radius: 16px; border: 1px solid var(--rule); background: var(--surface-sunk); position: relative; flex: none; padding: 0; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 26px; height: 26px; border-radius: 50%; background: var(--surface-raised); border: 1px solid var(--rule); transition: left .15s; }
+.switch[aria-checked="true"] { background: var(--got); border-color: var(--got); }
+.switch[aria-checked="true"]::after { left: 22px; }
+.ax5 .switch { width: 64px; height: 40px; border-radius: 20px; }
+.ax5 .switch::after { width: 34px; height: 34px; }
+.ax5 .switch[aria-checked="true"]::after { left: 26px; }
+.doc { margin: 0 var(--space-4); padding: var(--space-4); background: var(--surface-raised); border: 1px solid var(--rule); border-radius: var(--radius); display: flex; flex-direction: column; gap: var(--space-3); }
+.doc h4 { margin: 0; font-size: var(--t-headline, 17px); font-weight: 600; }
+.doc table { width: 100%; border-collapse: collapse; font-size: var(--t-foot); line-height: var(--l-foot); }
+.doc th { text-align: left; font-weight: 600; color: var(--text-muted); border-bottom: 1px solid var(--rule-strong); padding: var(--space-1) 0; }
+.doc td { padding: var(--space-1) 0; border-bottom: 1px solid var(--rule); }
+.doc td.r, .doc th.r { text-align: right; }
+.doc tfoot td { border-top: 2px solid var(--rule-strong); border-bottom: 0; font-weight: 600; }
+.answer { padding: var(--space-3); border-radius: var(--radius); background: var(--got-soft); font-size: var(--t-sub); line-height: var(--l-sub); }
+.share-block { padding: 0; }
+.sheet .share-block { padding: var(--space-4); }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* sheet */
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.32); z-index: 40; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: calc(var(--sa-top) + var(--space-4)); z-index: 41; background: var(--surface);
+  border-radius: var(--radius-sheet) var(--radius-sheet) 0 0; display: flex; flex-direction: column; border-top: 1px solid var(--rule); }
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--rule); margin: var(--space-2) auto 0; }
+.sheet .scroll { padding-bottom: calc(var(--space-10) + var(--sa-bottom)); }
+
+/* ---------- Split ledger concept ---------- */
+.ledger-head { display: grid; grid-template-columns: 1fr 2px 1fr; padding: var(--space-2) 0 0; }
+.ledger-head .col { min-height: 44px; border: 0; background: transparent; display: flex; flex-direction: column; gap: 2px; padding: var(--space-2) var(--space-4) var(--space-3); text-align: left; }
+.ledger-head .col.l { align-items: flex-end; text-align: right; }
+.ledger-head .col .k { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-muted); display: flex; gap: var(--space-1); align-items: center; }
+.ledger-head .col .v { font-size: var(--t-title1); line-height: var(--l-title1); font-weight: 700; letter-spacing: -.02em; }
+.ledger-head .col.l .v { color: var(--got); }
+.ledger-head .col.r .v { color: var(--out); }
+.ledger-head .col .x { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.ledger-head .col[aria-pressed="true"] .k { color: var(--text); font-weight: 600; }
+.sortmark { font-size: var(--t-cap1); }
+.spine { background: var(--rule-strong); }
+.ledger-rule { height: 5px; border-top: 1px solid var(--rule-strong); border-bottom: 1px solid var(--rule-strong); margin: 0 var(--space-4); }
+.ledger-sub { display: flex; justify-content: center; gap: var(--space-2); flex-wrap: wrap; padding: var(--space-2) var(--space-4); }
+.chip { min-height: 36px; padding: 0 var(--space-3); border-radius: 999px; border: 1px solid var(--rule); background: var(--surface-raised); font-size: var(--t-foot); display: inline-flex; align-items: center; gap: var(--space-1); }
+.chip[aria-pressed="true"] { background: var(--out-soft); border-color: var(--out); font-weight: 600; }
+.chip.ref[aria-pressed="true"] { background: var(--refund-soft); border-color: var(--refund); }
+.trow { display: grid; grid-template-columns: 1fr 2px 1fr; width: 100%; border: 0; background: transparent; padding: 0; text-align: left; }
+.trow + .trow, .tline-wrap + .trow { border-top: 1px solid var(--rule); }
+.trow .lc, .trow .rc { padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: 2px; min-height: 60px; justify-content: center; min-width: 0; }
+.trow .lc { padding-left: var(--space-4); }
+.trow .rc { padding-right: var(--space-4); }
+.trow .nm { font-size: var(--t-sub); line-height: var(--l-sub); overflow-wrap: anywhere; }
+.trow .ga { color: var(--got); font-weight: 600; align-self: flex-end; text-align: right; font-size: var(--t-body); }
+.trow .oa { color: var(--out); font-weight: 600; font-size: var(--t-body); }
+.trow .oa.zero { color: var(--text-muted); font-weight: 400; }
+.trow .mt { font-size: var(--t-cap1); line-height: var(--l-cap1); color: var(--text-muted); }
+.trow .lc .mt.r { align-self: flex-end; }
+.trow[aria-expanded="true"] { background: var(--surface-raised); }
+.tline-wrap { display: grid; grid-template-columns: 1fr 2px 1fr; background: var(--surface-raised); }
+.tline-col { display: flex; flex-direction: column; padding: 0 0 var(--space-2); min-width: 0; }
+.tline { height: 40px; display: flex; flex-direction: column; justify-content: center; padding: 0 var(--space-3); border-top: 1px dashed var(--rule); font-size: var(--t-cap1); line-height: var(--l-cap1); min-width: 0; }
+.tline .t1 { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tline-col.l .tline { text-align: right; }
+.tline .gv { color: var(--got); font-weight: 600; }
+.tline .ov { color: var(--out); font-weight: 600; }
+.tline .rv { color: var(--refund); text-decoration: line-through; }
+.tline-foot { padding: var(--space-2) var(--space-3) 0; font-size: var(--t-cap1); line-height: var(--l-cap1); color: var(--text-muted); }
+.tline-col.l .tline-foot { text-align: right; }
+/* AX5: the T cannot hold two columns of 53 pt type, so each row stacks */
+.ax5 .ledger-head, .ax5 .trow, .ax5 .tline-wrap { grid-template-columns: 1fr; }
+.ax5 .spine { display: none; }
+.ax5 .ledger-head .col.l, .ax5 .trow .lc .mt.r, .ax5 .trow .ga, .ax5 .tline-col.l .tline, .ax5 .tline-col.l .tline-foot { align-items: flex-start; text-align: left; align-self: flex-start; }
+.ax5 .tline { height: auto; min-height: 52px; padding: var(--space-2) var(--space-4); }
+.ax5 .tline .t1 { white-space: normal; }
+.ax5 .trow .rc { padding-left: var(--space-4); }
+/* open pose: each page owns one side of the T, rows keep one height so the two pages line up */
+.open .trow .lc, .open .trow .rc { height: 64px; min-height: 0; }
+.open .trow { grid-template-columns: 1fr; }
+.open .trow .nm { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.open .tline-wrap { grid-template-columns: 1fr; }
+.pg-row { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-3); }
+.pg-row.rgt { grid-template-columns: auto 1fr; }
+.open .ledger-head { grid-template-columns: 1fr; }
+
+@media (forced-colors: active) {
+  .stat, .chip, .seg button, .switch, .tab, .row, .trow { border: 1px solid ButtonText; }
+  .stat[aria-pressed="true"], .chip[aria-pressed="true"], .tab[aria-selected="true"], .seg button[aria-pressed="true"] { outline: 3px solid Highlight; }
+  .bar i, .dot { forced-color-adjust: none; }
+}
+@media (prefers-reduced-motion: reduce) { .switch::after { transition: none; } }
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample. No figure, card name or seller on this page is real.</div>
+<main class="chrome">
+  <header class="intro">
+    <h1>Cost basis: what did I pay for what I got?</h1>
+    <p>Designer kind: blind. Designer cost-basis-blind-2. Two concepts. Each draws the iPhone Duo folded, the Duo open, a large phone and the folded Duo at the biggest accessibility text size. Every tap works.</p>
+    <div class="controls" role="toolbar" aria-label="Mockup controls">
+      <div class="group" role="group" aria-label="State"><span>State</span>
+        <button class="pill" data-g="s" data-v="loaded">Loaded</button>
+        <button class="pill" data-g="s" data-v="loading">Loading</button>
+        <button class="pill" data-g="s" data-v="empty">Empty</button>
+        <button class="pill" data-g="s" data-v="failed">Failed</button>
+        <button class="pill" data-g="s" data-v="unknown">No price</button>
+        <button class="pill" data-g="s" data-v="filtered">Filter emptied</button>
+      </div>
+      <div class="group" role="group" aria-label="Theme"><span>Theme</span>
+        <button class="pill" data-g="t" data-v="auto">System</button>
+        <button class="pill" data-g="t" data-v="light">Light</button>
+        <button class="pill" data-g="t" data-v="dark">Dark</button>
+      </div>
+      <button class="hide-btn restore" id="restore">Show both concepts</button>
+    </div>
+  </header>
+
+  <section class="concept" id="concept-card-list" data-concept="cards">
+    <div class="concept-head">
+      <h2>Card list</h2><span class="tag">New: whole screen</span>
+      <button class="hide-btn" data-hide="concept-card-list">Hide this concept</button>
+      <p>Three tabs: Cards, Sellers, Statement. The first screen answers the question in three figures, and each figure filters the list under it. A card opens its lines, pooled across sellers. Open, the list sits on the left page and the card on the right.</p>
+    </div>
+    <div class="stage" data-stage="cards">
+      <figure class="frame" style="margin:0"><figcaption>iPhone Duo, folded. 466 x 678 pt</figcaption><div class="device" data-device="iphone-duo-folded" data-frame="cards-folded" data-dev="folded" style="width:466px;height:678px"></div></figure>
+      <figure class="frame" style="margin:0"><figcaption>iPhone Duo, open. 951 x 669 pt, hinge x 455.5 to 495.5</figcaption><div class="device open" data-device="iphone-duo-unfolded" data-frame="cards-open" data-dev="open" style="width:951px;height:669px"></div></figure>
+      <figure class="frame" style="margin:0"><figcaption>Large phone. 440 x 956 pt, a stand-in size (none written)</figcaption><div class="device" data-device="iphone-regular" data-frame="cards-phone" data-dev="phone" style="width:440px;height:956px"></div></figure>
+      <figure class="frame" style="margin:0"><figcaption>iPhone Duo, folded, biggest accessibility text (AX5)</figcaption><div class="device ax5" data-device="iphone-duo-folded" data-text-size="ax5" data-frame="cards-ax5" data-dev="ax5" style="width:466px;height:678px"></div></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-split-ledger" data-concept="ledger">
+    <div class="concept-head">
+      <h2>Split ledger</h2><span class="tag">New: whole screen</span>
+      <button class="hide-btn" data-hide="concept-split-ledger">Hide this concept</button>
+      <p>The bold one. One screen, no tabs. Every card is one line of a T account: what you paid for copies that arrived on the left of the spine, what you paid for copies still out on the right. Open, the hinge is the spine. Tap a line to open it in place. "Close the year" makes the statement.</p>
+    </div>
+    <div class="stage" data-stage="ledger">
+      <figure class="frame" style="margin:0"><figcaption>iPhone Duo, folded. 466 x 678 pt</figcaption><div class="device" data-device="iphone-duo-folded" data-frame="ledger-folded" data-dev="folded" style="width:466px;height:678px"></div></figure>
+      <figure class="frame" style="margin:0"><figcaption>iPhone Duo, open. 951 x 669 pt, hinge x 455.5 to 495.5</figcaption><div class="device open" data-device="iphone-duo-unfolded" data-frame="ledger-open" data-dev="open" style="width:951px;height:669px"></div></figure>
+      <figure class="frame" style="margin:0"><figcaption>Large phone. 440 x 956 pt, a stand-in size (none written)</figcaption><div class="device" data-device="iphone-regular" data-frame="ledger-phone" data-dev="phone" style="width:440px;height:956px"></div></figure>
+      <figure class="frame" style="margin:0"><figcaption>iPhone Duo, folded, biggest accessibility text (AX5)</figcaption><div class="device ax5" data-device="iphone-duo-folded" data-text-size="ax5" data-frame="ledger-ax5" data-dev="ax5" style="width:466px;height:678px"></div></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  /* ---------- sample data ---------- */
+  var seed = 7;
+  function rnd() { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; }
+  var ADJ = ["Ashen","Gilded","Hollow","Tidebound","Ember","Frostward","Verdant","Iron","Silent","Crimson","Lunar","Thorned","Stormcalled","Pale","Brass","Wild"];
+  var NOUN = ["Lantern","Oath","Warden","Drake","Sigil","Harbinger","Bloom","Archive","Courier","Spire","Familiar","Relic","Tempest","Vow","Gate","Mire"];
+  var SELLERS = ["Northgate Cards","Harbor Card Co","Two Rivers Games","Lowland Singles","Copper Fox TCG","Midway Collectibles","Elm Street Cards","Bright Deck","Old Mill Games","Ridge Card Shop","Saltbox Singles","Quarry Games","Pinecone Cards","Lakeside Singles"];
+  var combos = [];
+  ADJ.forEach(function (a) { NOUN.forEach(function (n) { combos.push(a + " " + n); }); });
+  for (var i = combos.length - 1; i > 0; i--) { var j = Math.floor(rnd() * (i + 1)); var t = combos[i]; combos[i] = combos[j]; combos[j] = t; }
+  var LATE_DAYS = 21;
+  var CARDS = combos.slice(0, 214).sort().map(function (name, ci) {
+    var n = 1 + Math.floor(rnd() * 4), lines = [];
+    for (var k = 0; k < n; k++) {
+      var r = rnd(), st = r < 0.72 ? "got" : r < 0.88 ? "out" : r < 0.95 ? "ref" : "late";
+      var days = st === "late" ? 22 + Math.floor(rnd() * 30) : st === "out" ? 2 + Math.floor(rnd() * 18) : 0;
+      var price = Math.round((0.08 + Math.pow(rnd(), 3) * 3.4) * 100) / 100;
+      var ship = Math.round((0.05 + rnd() * 0.3) * 100) / 100;
+      var month = 1 + Math.floor(rnd() * 11);
+      lines.push({ seller: SELLERS[Math.floor(rnd() * SELLERS.length)], qty: 1 + Math.floor(Math.pow(rnd(), 2) * 4),
+        price: price, ship: ship, status: st === "late" ? "out" : st, late: st === "late", days: days,
+        year: rnd() < 0.12 ? 2025 : 2026, date: "2026-" + (month < 10 ? "0" : "") + month + "-" + (10 + Math.floor(rnd() * 18)),
+        noprice: false });
+    }
+    return { id: ci, name: name, lines: lines };
+  });
+  // the "No price" state: twelve lines whose file row held no price
+  var NOPRICE = [];
+  for (var q = 3; q < 214 && NOPRICE.length < 12; q += 17) NOPRICE.push(q);
+
+  function money(v) { return "$" + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  function lineCost(l, ship) { return l.qty * (l.price + (ship === false ? 0 : l.ship)); }
+  function sum(c, state, opts) {
+    opts = opts || {};
+    var s = { got: 0, out: 0, ref: 0, nGot: 0, nOut: 0, nRef: 0, late: 0, lateAmt: 0, unknown: 0, sellersOut: {} , maxDays: 0};
+    c.lines.forEach(function (l, li) {
+      if (opts.year && l.year !== opts.year) return;
+      if (state === "unknown" && NOPRICE.indexOf(c.id) >= 0 && li === 0) { s.unknown++; return; }
+      var v = lineCost(l, opts.ship);
+      if (l.status === "got") { s.got += v; s.nGot += l.qty; }
+      else if (l.status === "out") { s.out += v; s.nOut += l.qty; s.sellersOut[l.seller] = 1; s.maxDays = Math.max(s.maxDays, l.days);
+        if (l.late) { s.late += l.qty; s.lateAmt += v; } }
+      else { s.ref += v; s.nRef += l.qty; }
+    });
+    return s;
+  }
+  function totals(state, opts) {
+    var t = { got: 0, out: 0, ref: 0, nGot: 0, nOut: 0, nRef: 0, late: 0, lateCards: 0, unknown: 0, cards: 0 };
+    CARDS.forEach(function (c) { var s = sum(c, state, opts); t.got += s.got; t.out += s.out; t.ref += s.ref; t.nGot += s.nGot;
+      t.nOut += s.nOut; t.nRef += s.nRef; t.late += s.late; if (s.late) t.lateCards++; t.unknown += s.unknown; if (s.nGot || s.nOut || s.nRef) t.cards++; });
+    return t;
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (ch) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]; }); }
+  function plural(n, w) { return n + " " + w + (n === 1 ? "" : "s"); }
+
+  /* ---------- page state ---------- */
+  var G = { s: "loaded", t: "auto" };
+  var DEVICES = [
+    { key: "folded", attr: "iphone-duo-folded", w: 466, h: 678, cap: "iPhone Duo, folded. 466 x 678 pt" },
+    { key: "open", attr: "iphone-duo-unfolded", w: 951, h: 669, cap: "iPhone Duo, open. 951 x 669 pt, hinge x 455.5 to 495.5" },
+    { key: "phone", attr: "iphone-regular", w: 440, h: 956, cap: "Large phone. 440 x 956 pt, a stand-in size (none written)" },
+    { key: "ax5", attr: "iphone-duo-folded-ax5", w: 466, h: 678, cap: "iPhone Duo, folded, biggest accessibility text (AX5)" }
+  ];
+  var frames = {};
+  function newCtx(concept, dev) {
+    return { concept: concept, dev: dev.key, tab: "cards", sel: null, seller: null, filter: null, sort: "name", q: "", sheet: false,
+      done: false, exp: {}, year: 2026, ship: true, incOut: true, incRef: true, fmt: "CSV", sortMenu: false };
+  }
+
+  function stateQuery(ctx) { return G.s === "filtered" ? (ctx.q || "zz") : ctx.q; }
+  function stateFilter(ctx) { return G.s === "filtered" ? (ctx.filter || "ref") : ctx.filter; }
+  function visibleCards(ctx) {
+    var q = stateQuery(ctx).trim().toLowerCase(), f = stateFilter(ctx);
+    var list = CARDS.map(function (c) { return { c: c, s: sum(c, G.s) }; }).filter(function (x) {
+      if (q && x.c.name.toLowerCase().indexOf(q) < 0) return false;
+      if (f === "got" && !x.s.nGot) return false;
+      if (f === "out" && !x.s.nOut) return false;
+      if (f === "ref" && !x.s.nRef) return false;
+      if (f === "late" && !x.s.late) return false;
+      if (f === "noprice" && !x.s.unknown) return false;
+      return true;
+    });
+    if (ctx.sort === "got") list.sort(function (a, b) { return b.s.got - a.s.got; });
+    if (ctx.sort === "out") list.sort(function (a, b) { return b.s.out - a.s.out; });
+    return list;
+  }
+  var FILTER_NAME = { got: "Arrived", out: "Still out", ref: "Refunded", late: "Late", noprice: "No price" };
+
+  /* ---------- shared pieces ---------- */
+  var ICON = {
+    cards: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="3" width="12" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M19 7v12a2 2 0 0 1-2 2H8" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+    sellers: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9l2-5h14l2 5M4 9v11h16V9M3 9h18" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    statement: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z M9 11h7 M9 15h7" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    search: '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><circle cx="11" cy="11" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 16l4 4" stroke="currentColor" stroke-width="2"/></svg>',
+    back: '<svg viewBox="0 0 24 24" width="20" height="20" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>'
+  };
+  function statusbar() { return '<div class="statusbar" aria-hidden="true">9:41</div>'; }
+  function searchField(ctx, ph, role) {
+    return '<label class="search glass">' + ICON.search + '<input data-role="' + (role || "q") + '" type="search" placeholder="' + ph + '" aria-label="' + ph + '" value="' + esc(ctx.q) + '"></label>';
+  }
+  function bar(s) {
+    var tot = s.nGot + s.nOut + s.nRef || 1;
+    return '<span class="bar" aria-hidden="true"><i class="g" style="width:' + (s.nGot / tot * 100) + '%"></i><i class="o" style="width:' + (s.nOut / tot * 100) + '%"></i><i class="r" style="width:' + (s.nRef / tot * 100) + '%"></i></span>';
+  }
+  function nonLoaded(ctx, where) {
+    if (G.s === "loading") {
+      var sk = ""; for (var i = 0; i < 6; i++) sk += '<div class="skel"><i style="width:' + (40 + i * 7 % 30) + '%"></i><i style="width:56px;margin-left:auto"></i></div>';
+      return '<div class="notice" role="status"><div>Reading 3 order files. 1,206 of 2,931 lines so far.</div><div class="progress"><i></i></div>' +
+        '<div class="actions"><button class="btn" data-act="stop">Stop</button></div></div><div class="list" aria-hidden="true">' + sk + '</div>';
+    }
+    if (G.s === "empty") return '<div class="empty"><p>Import an order file, and what you paid for each card shows here.</p><button class="btn primary" data-act="noop">Import orders</button></div>';
+    if (G.s === "failed") return '<div class="empty" role="alert"><p>The saved check-ins could not be read, so no figure here is known yet.</p><button class="btn primary" data-act="noop">Try again</button>' +
+      '<details class="machine"><summary>What the app said</summary><div>read failed: storage returned no data (sample text)</div></details></div>';
+    return null;
+  }
+
+  /* ---------- Card list concept ---------- */
+  function cardsList(ctx) {
+    var nl = nonLoaded(ctx); if (nl) return '<h1 class="largetitle">Cards</h1>' + nl;
+    var t = totals(G.s), f = stateFilter(ctx), list = visibleCards(ctx);
+    var h = '<h1 class="largetitle">Cards</h1>';
+    h += '<div class="ax-search">' + searchField(ctx, "Search 214 cards", "qa") + '</div>';
+    h += '<p class="hero-q">All your orders, shipping split into each card. Tap a figure to list only those cards.</p>';
+    h += '<div class="stats">' +
+      stat("got", "Arrived", money(t.got), plural(t.nGot, "copy").replace("copys", "copies"), f) +
+      stat("out", "Still out", money(t.out), t.late ? '<span class="lateflag">' + t.lateCards + ' late</span>' : plural(t.nOut, "copy").replace("copys", "copies"), f) +
+      stat("ref", "Refunded", money(t.ref), "back to you", f) + '</div>';
+    if (G.s === "unknown") h += '<div class="notice"><div>' + t.unknown + ' lines in your files have no price, so these figures leave them out.</div><div class="actions"><button class="btn" data-act="filter" data-v="noprice" aria-pressed="' + (f === "noprice") + '">Show those cards</button></div></div>';
+    h += '<div class="toolbar-inline"><span class="section-h" style="padding:0">' + (f ? FILTER_NAME[f] + ", " : "") + plural(list.length, "card") + '</span>' +
+      '<button class="menu-btn" data-act="sortmenu" aria-haspopup="true" aria-expanded="' + ctx.sortMenu + '">Sort: ' + { name: "Name", got: "Most paid", out: "Most still out" }[ctx.sort] + '</button></div>';
+    if (ctx.sortMenu) h += '<div class="list" style="margin-top:8px" role="menu">' + ["name", "got", "out"].map(function (k) {
+      return '<button class="row" role="menuitemradio" aria-checked="' + (ctx.sort === k) + '" data-act="sort" data-v="' + k + '"><span class="name">' + { name: "Name", got: "Most paid", out: "Most still out" }[k] + '</span><span>' + (ctx.sort === k ? "✓" : "") + '</span></button>'; }).join("") + '</div>';
+    if (!list.length) {
+      h += '<div class="empty"><p>No card matches “' + esc(stateQuery(ctx)) + '”' + (f ? " in " + FILTER_NAME[f] : "") + '.</p><button class="btn primary" data-act="clear">Clear search and filter</button></div>';
+      return h;
+    }
+    h += '<div class="section-h"></div><div class="list">';
+    list.forEach(function (x) {
+      var s = x.s, n = s.nGot + s.nOut + s.nRef;
+      h += '<button class="row" data-act="open" data-id="' + x.c.id + '" aria-current="' + (ctx.sel === x.c.id) + '">' +
+        '<span class="row-main"><span class="name">' + esc(x.c.name) + '</span><span class="sub">' + bar(s) + '<span>' + s.nGot + ' of ' + n + '</span>' +
+        (s.late ? '<span class="lateflag">late</span>' : '') + (s.unknown ? '<span>price unknown</span>' : '') + '</span></span>' +
+        // the row's figure follows the filter: the amount the person asked to see
+        (f === "out" ? '<span class="amt num"><b style="color:var(--out)">' + money(s.out) + '</b><span>' + s.nOut + ' still to come</span></span>'
+        : f === "ref" ? '<span class="amt num"><b style="color:var(--refund)">' + money(s.ref) + '</b><span>' + s.nRef + ' refunded</span></span>'
+        : '<span class="amt num"><b>' + money(s.got) + '</b><span>' + (s.nGot ? money(s.got / s.nGot) + ' each' : 'none yet') + '</span></span>') + '</button>';
+    });
+    return h + '</div>';
+  }
+  function stat(k, label, v, x, f) {
+    return '<button class="stat num" data-k="' + k + '" data-act="filter" data-v="' + k + '" aria-pressed="' + (f === k) + '"><span class="k">' + label + '</span><span class="v">' + v + '</span><span class="x">' + x + '</span></button>';
+  }
+  function statusDot(l) { return l.status === "got" ? '<span class="dot g" title="Arrived"></span>' : l.status === "ref" ? '<span class="dot r" title="Refunded"></span>' : l.late ? '<span class="dot l" title="Late"></span>' : '<span class="dot o" title="Still out"></span>'; }
+  function cardDetail(ctx, id, withBack) {
+    var c = CARDS[id], s = sum(c, G.s), h = "";
+    if (withBack) h += '<div class="navbar"><button class="navbtn" data-act="back">' + ICON.back + 'Cards</button><span></span></div>';
+    h += '<div class="detail-h"><h3>' + esc(c.name) + '</h3><div class="muted" style="font-size:var(--t-sub);line-height:var(--l-sub)">' + plural(c.lines.length, "order line") + ' from ' + plural(Object.keys(c.lines.reduce(function (a, l) { a[l.seller] = 1; return a; }, {})).length, "seller") + '</div></div>';
+    h += '<div class="basis num"><span class="lbl">Paid for the ' + s.nGot + ' that arrived</span><span class="big">' + money(s.got) + '</span><span class="lbl">' + (s.nGot ? money(s.got / s.nGot) + ' a copy, shipping split in' : 'No copy has arrived') + '</span></div>';
+    var groups = [["got", "Arrived"], ["out", "Still out"], ["ref", "Refunded"]];
+    groups.forEach(function (g) {
+      var ls = c.lines.filter(function (l) { return l.status === g[0]; });
+      if (!ls.length) return;
+      var amt = ls.reduce(function (a, l) { return a + lineCost(l); }, 0);
+      h += '<div class="section-h"><span>' + g[1] + '</span><span class="num">' + money(amt) + '</span></div><div class="list">';
+      ls.forEach(function (l, li) {
+        var unknown = G.s === "unknown" && NOPRICE.indexOf(c.id) >= 0 && c.lines.indexOf(l) === 0;
+        h += '<div class="line' + (l.status === "ref" ? " refunded" : "") + '"><div><div style="display:flex;gap:8px;align-items:center">' + statusDot(l) + esc(l.seller) + '</div>' +
+          '<div class="s num">' + l.date + ', ' + l.qty + ' x ' + (unknown ? 'price unknown' : money(l.price) + ' + ' + money(l.ship) + ' shipping') +
+          (l.status === "out" ? ', ' + l.days + ' days' + (l.late ? ', <span class="lateflag">late</span>' : '') : '') + '</div></div>' +
+          '<div class="a num"><b>' + (unknown ? '?' : money(lineCost(l))) + '</b></div></div>';
+      });
+      h += '</div>';
+    });
+    return h;
+  }
+  function sellerStats() {
+    var m = {};
+    CARDS.forEach(function (c) { c.lines.forEach(function (l) {
+      var x = m[l.seller] || (m[l.seller] = { got: 0, out: 0, ref: 0, late: 0, n: 0 });
+      x.n++; var v = lineCost(l); if (l.status === "got") x.got += v; else if (l.status === "out") { x.out += v; if (l.late) x.late++; } else x.ref += v; }); });
+    return m;
+  }
+  function sellersList(ctx) {
+    var nl = nonLoaded(ctx); if (nl) return '<h1 class="largetitle">Sellers</h1>' + nl;
+    var m = sellerStats(), h = '<h1 class="largetitle">Sellers</h1><p class="hero-q">Who still owes you mail, most first.</p><div class="section-h"></div><div class="list">';
+    Object.keys(m).sort(function (a, b) { return m[b].out - m[a].out; }).forEach(function (k) {
+      var x = m[k]; var tot = x.got + x.out + x.ref || 1;
+      h += '<button class="row" data-act="seller" data-v="' + esc(k) + '" aria-current="' + (ctx.seller === k) + '"><span class="row-main"><span class="name">' + esc(k) + '</span><span class="sub"><span class="bar" aria-hidden="true"><i class="g" style="width:' + x.got / tot * 100 + '%"></i><i class="o" style="width:' + x.out / tot * 100 + '%"></i><i class="r" style="width:' + x.ref / tot * 100 + '%"></i></span>' + plural(x.n, "line") + (x.late ? '<span class="lateflag">' + x.late + ' late</span>' : '') + '</span></span>' +
+        '<span class="amt num"><b style="color:var(--out)">' + money(x.out) + '</b><span>of ' + money(x.got + x.out) + '</span></span></button>';
+    });
+    return h + '</div>';
+  }
+  function sellerDetail(ctx, name, withBack) {
+    var h = withBack ? '<div class="navbar"><button class="navbtn" data-act="back">' + ICON.back + 'Sellers</button><span></span></div>' : "";
+    h += '<div class="detail-h"><h3>' + esc(name) + '</h3></div><div class="section-h"><span>Still out first</span></div><div class="list">';
+    var rows = [];
+    CARDS.forEach(function (c) { c.lines.forEach(function (l) { if (l.seller === name) rows.push({ c: c, l: l }); }); });
+    rows.sort(function (a, b) { var o = { out: 0, got: 1, ref: 2 }; return o[a.l.status] - o[b.l.status] || b.l.days - a.l.days; });
+    rows.forEach(function (r) { var l = r.l;
+      h += '<div class="line' + (l.status === "ref" ? " refunded" : "") + '"><div><div style="display:flex;gap:8px;align-items:center">' + statusDot(l) + esc(r.c.name) + '</div><div class="s num">' + l.date + ', ' + l.qty + ' x ' + money(l.price) + (l.status === "out" ? ', ' + l.days + ' days' : '') + '</div></div><div class="a num"><b>' + money(lineCost(l)) + '</b></div></div>'; });
+    return h + '</div>';
+  }
+  function statementForm(ctx, title) {
+    var h = title ? '<h1 class="largetitle">Statement</h1>' : '';
+    h += '<p class="hero-q">A clean summary for your records, one line per card name.</p><div class="section-h"></div><div class="form">' +
+      '<div class="frow"><span class="fl">Year</span><span class="seg" role="group" aria-label="Year">' + [2025, 2026].map(function (y) { return '<button data-act="year" data-v="' + y + '" aria-pressed="' + (ctx.year === y) + '">' + y + '</button>'; }).join("") + '</span></div>' +
+      '<div class="frow"><span class="fl">Split shipping into each card<small>Each order’s shipping shared by its copies</small></span><button class="switch" role="switch" aria-checked="' + ctx.ship + '" aria-label="Split shipping into each card" data-act="tog" data-v="ship"></button></div>' +
+      '<div class="frow"><span class="fl">List copies still out<small>As their own column, not in the cost</small></span><button class="switch" role="switch" aria-checked="' + ctx.incOut + '" aria-label="List copies still out" data-act="tog" data-v="incOut"></button></div>' +
+      '<div class="frow"><span class="fl">List refunds</span><button class="switch" role="switch" aria-checked="' + ctx.incRef + '" aria-label="List refunds" data-act="tog" data-v="incRef"></button></div>' +
+      '<div class="frow"><span class="fl">File</span><span class="seg" role="group" aria-label="File type">' + ["CSV", "PDF"].map(function (y) { return '<button data-act="fmt" data-v="' + y + '" aria-pressed="' + (ctx.fmt === y) + '">' + y + '</button>'; }).join("") + '</span></div></div>';
+    return h;
+  }
+  function statementDoc(ctx) {
+    var opts = { year: ctx.year, ship: ctx.ship }, t = totals(G.s, opts);
+    var rows = CARDS.map(function (c) { return { c: c, s: sum(c, G.s, opts) }; }).filter(function (x) { return x.s.nGot || x.s.nOut || x.s.nRef; });
+    var h = '<div class="section-h"><span>Preview</span><span>' + plural(rows.length, "card") + '</span></div><div class="doc num"><h4>' + ctx.year + ' cost basis</h4><table><thead><tr><th>Card</th><th class="r">Got</th><th class="r">Paid</th>' +
+      (ctx.incOut ? '<th class="r">Out</th>' : '') + (ctx.incRef ? '<th class="r">Back</th>' : '') + '</tr></thead><tbody>';
+    function m0(v) { return v ? money(v) : '–'; }
+    rows.slice(0, 6).forEach(function (x) { h += '<tr><td>' + esc(x.c.name) + '</td><td class="r">' + x.s.nGot + '</td><td class="r">' + m0(x.s.got) + '</td>' + (ctx.incOut ? '<td class="r">' + m0(x.s.out) + '</td>' : '') + (ctx.incRef ? '<td class="r">' + m0(x.s.ref) + '</td>' : '') + '</tr>'; });
+    h += '<tr><td colspan="5" class="muted">and ' + (rows.length - 6) + ' more</td></tr></tbody><tfoot><tr><td>Total</td><td class="r">' + t.nGot + '</td><td class="r">' + money(t.got) + '</td>' + (ctx.incOut ? '<td class="r">' + money(t.out) + '</td>' : '') + (ctx.incRef ? '<td class="r">' + money(t.ref) + '</td>' : '') + '</tr></tfoot></table>' +
+      (G.s === "unknown" ? '<div class="muted" style="font-size:var(--t-foot)">' + t.unknown + ' lines with no price are listed apart, at the end.</div>' : '') + '</div>';
+    return h;
+  }
+  function shareBlock(ctx, label) {
+    var t = totals(G.s, { year: ctx.year, ship: ctx.ship });
+    return '<div class="stack share-block">' + (ctx.done ? '<div class="answer num" role="status">' + ctx.year + ' statement ready as ' + ctx.fmt + ': ' + t.cards + ' cards, ' + money(t.got) + ' paid for what arrived. The share sheet opens next.</div>' : '') +
+      '<button class="btn primary wide" data-act="share">' + label + '</button></div>';
+  }
+  function tabbar(ctx) {
+    return '<div class="glass tabbar" role="tablist">' + [["cards", "Cards"], ["sellers", "Sellers"], ["statement", "Statement"]].map(function (x) {
+      return '<button class="tab" role="tab" data-act="tab" data-v="' + x[0] + '" aria-selected="' + (ctx.tab === x[0]) + '">' + ICON[x[0]] + x[1] + '</button>'; }).join("") + '</div>';
+  }
+  function cardsMain(ctx, compact) {
+    // compact: one column (folded, phone, ax5); returns screen html
+    var body;
+    if (ctx.tab === "cards") body = (compact && ctx.sel !== null && G.s !== "loading" && G.s !== "empty" && G.s !== "failed") ? cardDetail(ctx, ctx.sel, true) : cardsList(ctx);
+    else if (ctx.tab === "sellers") body = (compact && ctx.seller && !nonLoaded(ctx)) ? sellerDetail(ctx, ctx.seller, true) : sellersList(ctx);
+    else body = nonLoaded(ctx) ? '<h1 class="largetitle">Statement</h1>' + nonLoaded(ctx) : statementForm(ctx, true) + (compact ? statementDoc(ctx) : '');
+    var top = '';
+    if (ctx.tab === "statement" && !nonLoaded(ctx)) top = shareBlock(ctx, "Share statement");
+    else if (ctx.tab !== "statement" && !(compact && (ctx.sel !== null || ctx.seller)) && !nonLoaded(ctx)) top = '<div class="searchrow">' + searchField(ctx, ctx.tab === "cards" ? "Search 214 cards" : "Search sellers") + '</div>';
+    var bottom = '<div class="bottom">' + top + tabbar(ctx) + '</div>';
+    return '<div class="screen">' + statusbar() + '<div class="scroll" data-scroll="main">' + body + '</div>' + bottom + '</div>';
+  }
+  function cardsRight(ctx) {
+    var body;
+    if (nonLoaded(ctx)) body = '<div class="placeholder">' + (G.s === "loading" ? "The card opens here when the files are read." : "Nothing to open yet.") + '</div>';
+    else if (ctx.tab === "cards") { var id = ctx.sel !== null ? ctx.sel : visibleCards(ctx)[0] && visibleCards(ctx)[0].c.id; body = id === undefined ? '<div class="placeholder">No card to show.</div>' : '<div style="height:44px"></div>' + cardDetail(ctx, id, false); }
+    else if (ctx.tab === "sellers") { var s = ctx.seller || Object.keys(sellerStats()).sort(function (a, b) { return sellerStats()[b].out - sellerStats()[a].out; })[0]; body = '<div style="height:44px"></div>' + sellerDetail(ctx, s, false); }
+    else body = '<div style="height:44px"></div>' + statementDoc(ctx);
+    return '<div class="screen">' + statusbar() + '<div class="scroll" data-scroll="right">' + body + '</div></div>';
+  }
+
+  /* ---------- Split ledger concept ---------- */
+  function ledgerHead(ctx, side, t) {
+    var f = stateFilter(ctx);
+    var L = '<button class="col l num" data-act="lsort" data-v="got" aria-pressed="' + (ctx.sort === "got") + '"><span class="k">Arrived' + (ctx.sort === "got" ? ' <span class="sortmark">sorted</span>' : '') + '</span><span class="v">' + money(t.got) + '</span><span class="x">' + t.nGot + ' copies arrived</span></button>';
+    var R = '<button class="col r num" data-act="lsort" data-v="out" aria-pressed="' + (ctx.sort === "out") + '"><span class="k">Still out' + (ctx.sort === "out" ? ' <span class="sortmark">sorted</span>' : '') + '</span><span class="v">' + money(t.out) + '</span><span class="x">' + t.nOut + ' copies, ' + money(t.ref) + ' refunded</span></button>';
+    if (side === "l") return '<div class="ledger-head">' + L + '</div>';
+    if (side === "r") return '<div class="ledger-head">' + R + '</div>';
+    return '<div class="ledger-head">' + L + '<div class="spine"></div>' + R + '</div>';
+  }
+  function ledgerChips(ctx, t) {
+    var f = stateFilter(ctx);
+    return '<div class="ledger-sub">' +
+      '<button class="chip" data-act="filter" data-v="late" aria-pressed="' + (f === "late") + '"><span class="dot l"></span>' + t.lateCards + ' cards late, ' + LATE_DAYS + '+ days</button>' +
+      '<button class="chip ref" data-act="filter" data-v="ref" aria-pressed="' + (f === "ref") + '"><span class="dot r"></span>Refunds</button>' +
+      (G.s === "unknown" ? '<button class="chip" data-act="filter" data-v="noprice" aria-pressed="' + (f === "noprice") + '">' + t.unknown + ' lines, no price</button>' : '') + '</div>';
+  }
+  function tLeft(x, side) {
+    var s = x.s;
+    var nm = '<span class="nm">' + esc(x.c.name) + '</span>';
+    var amt = '<span class="ga num">' + (s.nGot ? money(s.got) : '–') + '</span>';
+    var mt = '<span class="mt num r">' + (s.nGot ? s.nGot + ' at ' + money(s.got / s.nGot) : 'none arrived') + (s.unknown ? ', price unknown' : '') + '</span>';
+    if (side === "page") return '<div class="lc"><div class="pg-row"><span class="nm">' + esc(x.c.name) + '</span>' + amt + '</div><div class="pg-row"><span class="mt">' + plural(x.c.lines.length, "line") + '</span>' + mt + '</div></div>';
+    return '<div class="lc">' + nm + amt + mt + '</div>';
+  }
+  function tRight(x, side) {
+    var s = x.s, sellers = Object.keys(s.sellersOut);
+    var amt = '<span class="oa num' + (s.nOut ? '' : ' zero') + '">' + (s.nOut ? money(s.out) : (s.nRef ? '–' : 'all in')) + '</span>';
+    var mt = '<span class="mt num">' + (s.nOut ? plural(s.nOut, "copy").replace("copys", "copies") + ', ' + s.maxDays + ' days' : '') + (s.late ? ' <span class="lateflag">late</span>' : '') + (s.nRef ? (s.nOut ? ', ' : '') + money(s.ref) + ' back' : '') + '</span>';
+    if (side === "page") return '<div class="rc"><div class="pg-row rgt">' + amt + '<span class="mt" style="text-align:right;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">' + esc(sellers.join(", ")) + '</span></div>' + mt + '</div>';
+    return '<div class="rc">' + amt + mt + '</div>';
+  }
+  function tLines(x, side, rowsNeeded) {
+    var c = x.c, gl = c.lines.filter(function (l) { return l.status === "got"; }), ol = c.lines.filter(function (l) { return l.status !== "got"; });
+    var n = rowsNeeded || Math.max(gl.length, ol.length);
+    function col(ls, cls) {
+      var h = '<div class="tline-col ' + cls + '">';
+      for (var i = 0; i < n; i++) { var l = ls[i];
+        if (!l) { h += '<div class="tline" aria-hidden="true"></div>'; continue; }
+        var v = money(lineCost(l));
+        h += '<div class="tline num"><span class="t1">' + esc(l.seller) + '</span><span class="t1">' + l.qty + ' x ' + money(l.price + l.ship) + ', ' +
+          (l.status === "got" ? '<span class="gv">' + v + '</span>' : l.status === "ref" ? '<span class="rv">' + v + '</span> refunded' : '<span class="ov">' + v + '</span>, ' + l.days + ' d' + (l.late ? ' <span class="lateflag">late</span>' : '')) + '</span></div>';
+      }
+      return h + '</div>';
+    }
+    var foot = function (cls, txt) { return '<div class="tline-foot ' + cls + '">' + txt + '</div>'; };
+    if (side === "l") return '<div class="tline-wrap">' + col(gl, "l") + '</div>';
+    if (side === "r") return '<div class="tline-wrap">' + col(ol, "r") + '</div>';
+    return '<div class="tline-wrap">' + col(gl, "l") + '<div class="spine"></div>' + col(ol, "r") + '</div>';
+  }
+  function ledgerRows(ctx, side) {
+    var list = visibleCards(ctx), h = "";
+    if (!list.length) {
+      if (side === "r") return '<div class="placeholder"></div>';
+      return '<div class="empty"><p>No card matches “' + esc(stateQuery(ctx)) + '”' + (stateFilter(ctx) ? ' in ' + FILTER_NAME[stateFilter(ctx)] : '') + '.</p><button class="btn primary" data-act="clear">Clear search and filter</button></div>';
+    }
+    list.forEach(function (x) {
+      var open = !!ctx.exp[x.c.id];
+      var label = esc(x.c.name) + ': got ' + money(x.s.got) + ', still out ' + money(x.s.out);
+      if (side === "l") h += '<button class="trow" data-act="exp" data-id="' + x.c.id + '" aria-expanded="' + open + '" aria-label="' + label + '">' + tLeft(x, "page") + '</button>';
+      else if (side === "r") h += '<button class="trow" data-act="exp" data-id="' + x.c.id + '" aria-expanded="' + open + '" aria-label="' + label + '">' + tRight(x, "page") + '</button>';
+      else h += '<button class="trow" data-act="exp" data-id="' + x.c.id + '" aria-expanded="' + open + '" aria-label="' + label + '">' + tLeft(x) + '<span class="spine"></span>' + tRight(x) + '</button>';
+      if (open) h += tLines(x, side === "l" ? "l" : side === "r" ? "r" : null);
+    });
+    return h;
+  }
+  function ledgerBottom(ctx, which) {
+    var s = '';
+    if (which !== "r") s += searchField(ctx, "Search 214 cards");
+    if (which !== "l") s += '<button class="roundbtn" data-act="sheet">Close the year</button>';
+    return '<div class="bottom"><div class="searchrow">' + s + '</div></div>';
+  }
+  function ledgerSheet(ctx) {
+    return '<div class="scrim" data-act="unsheet"></div><div class="sheet" role="dialog" aria-label="Close the year"><div class="grabber" aria-hidden="true"></div>' +
+      '<div class="navbar"><button class="navbtn" data-act="unsheet">Cancel</button><span class="inline-title">Close ' + ctx.year + '</span><button class="navbtn" data-act="share" style="font-weight:600">Share</button></div>' +
+      '<div class="scroll" data-scroll="sheet">' + statementForm(ctx, false) + statementDoc(ctx) + (ctx.done ? shareBlock(ctx, "Share again") : '') + '</div></div>';
+  }
+  function ledgerScreen(ctx, side) {
+    var nl = nonLoaded(ctx);
+    var t = totals(G.s);
+    var body;
+    if (nl) body = side === "r" ? '<div class="placeholder">' + (G.s === "loading" ? "Still out fills in here." : "") + '</div>' : nl;
+    else body = '<div class="ax-search">' + searchField(ctx, "Search 214 cards", "qa") + '</div>' + ledgerHead(ctx, side, t) + '<div class="ledger-rule"></div>' + ledgerChips(ctx, t) + ledgerRows(ctx, side);
+    if (side === "r" && !nl) body = ledgerHead(ctx, "r", t) + '<div class="ledger-rule"></div>' + '<div class="ledger-sub" style="visibility:' + 'visible">' + ledgerChips(ctx, t).replace('<div class="ledger-sub">', '').replace(/<\/div>$/, '') + '</div>' + ledgerRows(ctx, "r");
+    if (side === "l" && !nl) body = ledgerHead(ctx, "l", t) + '<div class="ledger-rule"></div><div class="ledger-sub"><span class="chip" style="border-style:dashed" aria-hidden="true">Tap a line to open it</span></div>' + ledgerRows(ctx, "l");
+    var bottom = nl && G.s !== "loading" ? '' : ledgerBottom(ctx, side);
+    if (nl && side === "r") bottom = '';
+    return '<div class="screen">' + statusbar() + '<div class="scroll" data-scroll="' + (side || "main") + '">' + body + '</div>' + (nl ? '' : bottom) + (ctx.sheet && side !== "l" ? ledgerSheet(ctx) : '') + '</div>';
+  }
+
+  /* ---------- frames ---------- */
+  function render(fid) {
+    var F = frames[fid], ctx = F.ctx, el = F.el, dev = F.dev;
+    // keep scroll and focus across re-render
+    var sc = {}; el.querySelectorAll("[data-scroll]").forEach(function (s) { sc[s.getAttribute("data-scroll")] = s.scrollTop; });
+    var foc = document.activeElement && el.contains(document.activeElement) && document.activeElement.getAttribute("data-role");
+    var caret = foc ? document.activeElement.selectionStart : 0;
+    var html;
+    if (dev.key === "open") {
+      var L, R;
+      if (ctx.concept === "cards") { L = cardsMain(ctx, false); R = cardsRight(ctx); }
+      else { L = ledgerScreen(ctx, "l"); R = ledgerScreen(ctx, "r"); }
+      html = '<div class="page" data-page="l">' + L + '</div><div class="hinge" aria-hidden="true"></div><div class="page" data-page="r">' + R + '<div class="homebar"></div></div>';
+    } else {
+      html = (ctx.concept === "cards" ? cardsMain(ctx, true) : ledgerScreen(ctx, null)) + '<div class="homebar"></div>';
+    }
+    el.innerHTML = html;
+    el.querySelectorAll("[data-scroll]").forEach(function (s) { var k = s.getAttribute("data-scroll"); if (sc[k]) s.scrollTop = sc[k]; });
+    if (foc) { var inp = el.querySelector('[data-role="' + foc + '"]'); if (inp) { inp.focus(); try { inp.setSelectionRange(caret, caret); } catch (e) {} } }
+    if (dev.key === "open" && ctx.concept === "ledger") syncPages(el);
+  }
+  function syncPages(el) {
+    var a = el.querySelector('[data-scroll="l"]'), b = el.querySelector('[data-scroll="r"]');
+    if (!a || !b) return;
+    var lock = false;
+    function link(x, y) { x.addEventListener("scroll", function () { if (lock) return; lock = true; y.scrollTop = x.scrollTop; requestAnimationFrame(function () { lock = false; }); }); }
+    link(a, b); link(b, a);
+  }
+  function buildStage(concept) {
+    DEVICES.forEach(function (dev) {
+      var fid = concept + "-" + dev.key, d = document.querySelector('[data-frame="' + fid + '"]');
+      frames[fid] = { el: d, dev: dev, ctx: newCtx(concept, dev) };
+    });
+  }
+
+  /* ---------- events ---------- */
+  document.addEventListener("click", function (e) {
+    var g = e.target.closest("[data-g]");
+    if (g) { G[g.getAttribute("data-g")] = g.getAttribute("data-v"); applyGlobal(); writeHash(); return; }
+    var hb = e.target.closest("[data-hide]");
+    if (hb) { document.getElementById(hb.getAttribute("data-hide")).hidden = true; document.getElementById("restore").classList.add("on"); return; }
+    if (e.target.closest("#restore")) { document.querySelectorAll(".concept").forEach(function (c) { c.hidden = false; }); e.target.classList.remove("on"); return; }
+    var a = e.target.closest("[data-act]"); if (!a) return;
+    var fe = a.closest("[data-frame]"); if (!fe) return;
+    var fid = fe.getAttribute("data-frame"), ctx = frames[fid].ctx, v = a.getAttribute("data-v"), act = a.getAttribute("data-act");
+    switch (act) {
+      case "tab": ctx.tab = v; ctx.sel = null; ctx.seller = null; ctx.done = false; ctx.sortMenu = false; break;
+      case "open": ctx.sel = +a.getAttribute("data-id"); break;
+      case "back": ctx.sel = null; ctx.seller = null; break;
+      case "seller": ctx.seller = v; break;
+      case "filter": ctx.filter = ctx.filter === v ? null : v; if (G.s === "filtered") { G.s = "loaded"; syncPills(); } break;
+      case "clear": ctx.filter = null; ctx.q = ""; if (G.s === "filtered") { G.s = "loaded"; syncPills(); applyGlobal(); writeHash(); return; } break;
+      case "sortmenu": ctx.sortMenu = !ctx.sortMenu; break;
+      case "sort": ctx.sort = v; ctx.sortMenu = false; break;
+      case "lsort": ctx.sort = ctx.sort === v ? "name" : v; break;
+      case "exp": var id = +a.getAttribute("data-id"); if (ctx.exp[id]) delete ctx.exp[id]; else ctx.exp[id] = 1; break;
+      case "year": ctx.year = +v; ctx.done = false; break;
+      case "fmt": ctx.fmt = v; ctx.done = false; break;
+      case "tog": ctx[v] = !ctx[v]; ctx.done = false; break;
+      case "share": ctx.done = true; break;
+      case "sheet": ctx.sheet = true; ctx.done = false; break;
+      case "unsheet": ctx.sheet = false; break;
+      case "stop": G.s = "empty"; syncPills(); applyGlobal(); writeHash(); return;
+      default: return;
+    }
+    render(fid);
+  });
+  document.addEventListener("input", function (e) {
+    var role = e.target.getAttribute("data-role"); if (role !== "q" && role !== "qa") return;
+    var fe = e.target.closest("[data-frame]"); var fid = fe.getAttribute("data-frame");
+    frames[fid].ctx.q = e.target.value; if (G.s === "filtered") { G.s = "loaded"; syncPills(); }
+    render(fid);
+  });
+
+  function syncPills() {
+    document.querySelectorAll("[data-g]").forEach(function (b) { b.setAttribute("aria-pressed", G[b.getAttribute("data-g")] === b.getAttribute("data-v")); });
+  }
+  function applyGlobal() {
+    if (G.t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", G.t);
+    syncPills(); Object.keys(frames).forEach(render);
+  }
+  function writeHash() {
+    var p = []; if (G.s !== "loaded") p.push("s=" + G.s); if (G.t !== "auto") p.push("t=" + G.t);
+    history.replaceState(null, "", p.length ? "#" + p.join("&") : location.pathname + location.search);
+  }
+  function readHash() {
+    var h = {}; location.hash.replace(/^#/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) h[p[0]] = decodeURIComponent(p[1] || ""); });
+    if (h.s) G.s = h.s; if (h.t) G.t = h.t;
+    // c: show one concept. v: open a tab (cards concept). sel: open a card. sheet=1: open "Close the year".
+    if (h.c) document.querySelectorAll(".concept").forEach(function (c) { c.hidden = c.id !== "concept-" + h.c; });
+    if (h.c) document.getElementById("restore").classList.add("on");
+    Object.keys(frames).forEach(function (fid) { var ctx = frames[fid].ctx;
+      if (h.v && ctx.concept === "cards") ctx.tab = h.v;
+      if (h.sel) { var id = +h.sel; if (ctx.concept === "cards") ctx.sel = id; else ctx.exp[id] = 1; }
+      if (h.sheet && ctx.concept === "ledger") ctx.sheet = true;
+      if (h.f) ctx.filter = h.f;
+    });
+  }
+  buildStage("cards"); buildStage("ledger");
+  readHash(); applyGlobal();
+  window.addEventListener("hashchange", function () { location.reload(); });
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mail Day Conveyor</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (native-build-lanes), so this page has one theme.
+   Cochin sets words, Menlo sets numbers (typography-cochin-and-mono). The system font sets chrome only. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar and home indicator: unmeasured on the Duo. Drawn at 20 pt, as duo-hand-gaps does. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  /* Dynamic Type, Large (default), HIG typography page read 2026-11-21. */
+  --t-title: 28px; --t-title-l: 34px; --t-title2: 22px; --t-head: 17px; --t-body: 17px; --t-sub: 15px; --t-foot: 13px; --t-cap: 12px; --t-cap2: 11px;
+  --hit: 44px;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
+.kind { color:var(--inkSoft); margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+.toolbar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.toolbar a, .toolbar button, .tool { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.toolbar [aria-current="true"], .toolbar [aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.toolbar .lab { color:var(--inkSoft); font-size:13px; }
+a:focus-visible, button:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept[hidden] { display:none; }
+section.concept { display:flex; flex-direction:column; gap:12px; }
+section.concept h2 { font-family:var(--cochin); font-size:24px; margin:0; }
+.stage { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+figcaption b { color:var(--ink); }
+.fit { max-width:100%; overflow-x:auto; }
+.helper { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.helper .lab { font-size:13px; color:var(--inkSoft); }
+
+/* ---- devices, 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; flex:none; }
+.dev.folded { width:466px; height:678px; }
+/* Large phone: no written size (layout.py devices: unknown; the HIG layout page read 2026-11-21 has no device table).
+   A stand-in that starts at the folded outer screen and resizes. */
+.dev.phone { width:466px; height:678px; resize:both; min-width:320px; min-height:560px; max-width:560px; max-height:1000px; }
+.dev.open { width:951px; height:669px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font:600 12px var(--sys); z-index:8; pointer-events:none; }
+/* The system keyboard: iOS chrome, not an app colour, so these greys sit outside the tokens. */
+.keys { position:absolute; left:0; right:0; bottom:0; background:#D2D0D6; z-index:7; padding:8px 6px; display:flex; flex-direction:column; gap:8px; }
+.folded .keys, .phone .keys { height:289px; }   /* duo-fold-and-keyboard: outer screen keys 250 to 289 pt; the taller read */
+.open .keys { top:405px; }                       /* duo-fold-and-keyboard: the panel draws from about y 405 pt */
+.keys .row { display:flex; gap:6px; justify-content:center; }
+.keys .k { height:42px; flex:0 1 38px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font:18px var(--sys); color:#111; }
+.keys .k.w { flex-basis:260px; font-size:14px; }
+.keys .k.d { flex-basis:88px; font-size:14px; }
+.keys .sugg { height:36px; display:flex; justify-content:space-around; align-items:center; font:15px var(--sys); color:#333; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:9; pointer-events:none; }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+
+/* ---- one screen: status, head, body, thumb, inset ---- */
+.scr { position:absolute; inset:0; display:flex; flex-direction:column; font-family:var(--cochin); }
+.scr.up { bottom:289px; }
+.open .scr.up { bottom:264px; }
+.scr > .top { height:var(--sat); flex:none; }
+.scr > .head { flex:none; padding:8px 16px 0; display:flex; flex-direction:column; gap:8px; }
+.scr > .body { flex:1 1 auto; overflow-y:auto; padding:12px 16px 16px; display:flex; flex-direction:column; gap:12px; overscroll-behavior:contain; }
+.scr > .dock { flex:none; background:var(--paper); border-top:1px solid var(--line); }
+.dock .thumb { padding:8px 16px; display:flex; gap:8px; }
+.dock .foot { padding:0 16px 8px; display:flex; gap:8px; align-items:center; }
+.dock .foot .mini { min-height:48px; }
+.scr > .inset { height:var(--sab); flex:none; }
+.scr.up > .inset { display:none; }
+
+/* The rail: four stations, a real sequence, so numbered. */
+.rail { list-style:none; margin:0; padding:0; display:grid; grid-template-columns:repeat(4,1fr); position:relative; }
+.rail::before { content:""; position:absolute; left:12.5%; right:12.5%; top:13px; height:2px; background:var(--line); }
+.rail.three { grid-template-columns:repeat(3,1fr); }
+.rail.three::before { left:16.6%; right:16.6%; }
+.rail li { position:relative; display:flex; flex-direction:column; align-items:center; gap:4px; font:var(--t-cap) var(--cochin); color:var(--inkSoft); min-height:44px; }
+.rail li i { width:28px; height:28px; border-radius:50%; border:2px solid var(--line); background:var(--paper); display:grid; place-items:center; font:700 12px var(--mono); font-style:normal; color:var(--inkSoft); }
+.rail li.past i { border-color:var(--green); background:var(--green); color:var(--card); }
+.rail li.now { color:var(--ink); font-weight:700; }
+.rail li.now i { border-color:var(--accent); background:var(--accent); color:var(--card); }
+.where { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; }
+.where .n { font:var(--t-sub)/1.2 var(--mono); color:var(--ink); }
+.where .n small { color:var(--inkSoft); font-size:var(--t-cap); }
+.meter { height:4px; background:var(--line); border-radius:2px; overflow:hidden; }
+.meter i { display:block; height:100%; background:var(--accent); }
+.meter.full i { background:var(--green); }
+
+/* Controls */
+.btn { font:700 var(--t-body)/1.2 var(--cochin); min-height:var(--hit); padding:10px 16px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; }
+.btn.go { background:var(--accent); border-color:var(--accent); color:var(--card); flex:1 1 auto; }
+.btn.quiet { font-weight:400; }
+.btn.go.quietgo { background:var(--card); border-color:var(--accent); color:var(--accent); }
+.btn small.off { display:block; font:400 var(--t-foot)/1.3 var(--cochin); color:var(--inkSoft); }
+.btn[aria-disabled="true"] { background:var(--card); border-color:var(--line); color:var(--inkSoft); }
+.mini { font:var(--t-cap)/1 var(--mono); min-height:var(--hit); min-width:var(--hit); padding:0 12px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.why { font:var(--t-foot)/1.3 var(--cochin); color:var(--inkSoft); margin:0; }
+.ask { font:700 var(--t-title2)/1.2 var(--cochin); margin:0; }
+.say { font:var(--t-body)/1.35 var(--cochin); margin:0; }
+.soft { color:var(--inkSoft); }
+.micro { font:var(--t-cap2)/1.2 var(--mono); color:var(--inkSoft); letter-spacing:.4px; }
+.stepper { display:flex; align-items:center; gap:12px; }
+.stepper .v { font:700 48px/1 var(--mono); min-width:96px; text-align:center; }
+.stepper .s { width:56px; height:56px; border-radius:8px; border:1px solid var(--line); background:var(--card); font:28px var(--sys); color:var(--ink); cursor:pointer; }
+.piles { display:flex; flex-direction:column; border:1px solid var(--line); border-radius:8px; background:var(--card); }
+.piles .p { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:4px 4px 4px 12px; border-top:1px solid var(--line); min-height:52px; }
+.piles .p:first-child { border-top:0; }
+.piles .p b { font:700 var(--t-body) var(--cochin); }
+.piles .p .stepper { gap:4px; }
+.piles .p .stepper .v { font-size:var(--t-body); min-width:44px; }
+.piles .p .stepper .s { width:44px; height:44px; font-size:20px; }
+.sum { font:var(--t-foot) var(--mono); }
+.sum.off { color:var(--red); }
+
+/* Field and answers */
+.field { display:flex; align-items:center; gap:8px; min-height:48px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); }
+.field input { flex:1; min-width:0; border:0; background:transparent; font:16px var(--cochin); color:var(--ink); min-height:46px; }
+.field input:focus { outline:none; }
+.field:focus-within { border-color:var(--accent); }
+.chip { font:var(--t-cap) var(--mono); color:var(--manilaInk); background:var(--manila); border-radius:5px; padding:4px 8px; white-space:nowrap; }
+.who { font:700 var(--t-title2)/1.2 var(--cochin); margin:0; }
+.meta { font:var(--t-cap2)/1.3 var(--mono); color:var(--inkSoft); display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.meta .owe { color:var(--red); font-weight:700; }
+.lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.line { position:relative; display:flex; gap:8px; align-items:flex-start; min-height:56px; padding:4px 8px 4px 4px; border-top:1px solid var(--line); background:var(--card); }
+.line:first-child { border-top:0; }
+.line .box { flex:0 0 44px; height:44px; display:grid; place-items:center; border:0; background:none; cursor:pointer; padding:0; }
+.line .box i { width:28px; height:28px; border:2px solid var(--inkSoft); border-radius:8px; display:block; position:relative; }
+.line .t { flex:1; padding:8px 0; min-width:0; }
+.line .t b { font:600 var(--t-sub)/1.25 var(--cochin); display:flex; justify-content:space-between; gap:8px; }
+.line .t b span { font:var(--t-cap) var(--mono); color:var(--inkSoft); font-weight:400; }
+.line .t small { font:var(--t-cap)/1.3 var(--cochin); color:var(--inkSoft); display:block; }
+.line .t small .hold { color:var(--manilaInk); font-weight:700; }
+.line .stp { display:flex; align-items:center; gap:2px; }
+.line .stp button { width:44px; height:44px; border:0; background:none; cursor:pointer; display:grid; place-items:center; padding:0; font:18px var(--sys); color:var(--ink); }
+.line .stp .c { font:700 var(--t-cap) var(--mono); color:var(--manilaInk); min-width:36px; text-align:center; }
+.line.done { background:var(--greenSoft); }
+.line.done .t b { color:var(--inkSoft); }
+.line.done .box i { background:var(--green); border-color:var(--green); }
+.line.done .box i::after { content:""; position:absolute; left:7px; top:2px; width:8px; height:14px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.line.partial .box i { background:var(--manila); border-color:var(--manilaInk); }
+.line.held { background:color-mix(in srgb, var(--manila) 55%, var(--card)); }
+/* Owner ruling, item 77 a: the typed card's line carries a 3 pt accent bar in the leading pad. */
+.line.now::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
+.offer { background:color-mix(in srgb, var(--manila) 50%, transparent); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; min-height:112px; }
+.offer p { margin:0; font:var(--t-foot)/1.3 var(--cochin); }
+.notice { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; }
+.notice b { font:700 var(--t-sub) var(--cochin); }
+.notice small { font:var(--t-foot) var(--cochin); }
+.tie { display:flex; flex-direction:column; gap:8px; }
+.tie .env { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; }
+.panel { background:var(--card); border:1px solid var(--accent); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.panel .opt { text-align:left; display:flex; flex-direction:column; gap:2px; font-weight:400; }
+.panel .opt b { font:700 var(--t-sub) var(--cochin); }
+.panel .opt small { font:var(--t-foot) var(--cochin); color:var(--inkSoft); }
+.err { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 8px); z-index:6; box-shadow:0 2px 8px var(--shadow); background:var(--redSoft); color:var(--red); border-radius:8px; padding:8px 12px; display:flex; align-items:center; justify-content:space-between; gap:8px; font:var(--t-foot)/1.3 var(--cochin); }
+.err .mini { color:var(--red); border-color:var(--red); }
+.receipt { font:var(--t-cap) var(--mono); color:var(--manilaInk); }
+
+/* Day ledger (left page and Done) */
+.day { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; }
+.day li { display:grid; grid-template-columns:32px 1fr auto; gap:8px; align-items:center; min-height:44px; border-top:1px solid var(--line); font:var(--t-sub)/1.25 var(--cochin); }
+.day li:first-child { border-top:0; }
+.day li .ix { font:var(--t-cap) var(--mono); color:var(--inkSoft); text-align:right; }
+.day li .r { font:var(--t-cap) var(--mono); }
+.day li.cur { background:color-mix(in srgb, var(--accent) 8%, transparent); }
+.day li.cur .ix { color:var(--accent); font-weight:700; }
+.day li .short { color:var(--red); font-weight:700; }
+.day li .ok { color:var(--green); font-weight:700; }
+.day li .aside { color:var(--manilaInk); font-weight:700; }
+.day li.wait { color:var(--inkSoft); }
+.pilehd { font:var(--t-cap2) var(--mono); color:var(--inkSoft); padding-top:8px; }
+.footing { border-top:1px solid var(--ink); border-bottom:3px double var(--ink); padding:8px 0; display:flex; justify-content:space-between; font:700 var(--t-sub) var(--mono); }
+.big-done { font:700 var(--t-title-l)/1.1 var(--cochin); margin:0; }
+.allwell { font:var(--t-body) var(--cochin); color:var(--green); font-weight:700; }
+.miss { font:var(--t-foot) var(--mono); color:var(--red); font-weight:700; }
+
+/* Belt concept */
+.tap { min-height:168px; border:2px dashed var(--accent); border-radius:12px; background:var(--card); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; cursor:pointer; font:700 var(--t-title2) var(--cochin); color:var(--accent); width:100%; }
+.tap .v { font:700 48px/1 var(--mono); color:var(--ink); }
+.stacks { display:flex; gap:16px; flex-wrap:wrap; align-items:flex-end; min-height:76px; }
+.stack { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.stack .env-s { display:flex; flex-direction:column-reverse; gap:2px; }
+.stack .env-s i { width:40px; height:8px; border-radius:2px; background:var(--manila); border:1px solid var(--manilaInk); display:block; }
+.stack .env-s i.d { background:var(--green); border-color:var(--green); }
+.stack .env-s i.cur { background:var(--accent); border-color:var(--accent); }
+.stack small { font:var(--t-cap2) var(--mono); color:var(--inkSoft); }
+.stack.now small { color:var(--ink); font-weight:700; }
+.belt { list-style:none; margin:0; padding:0; display:flex; flex-direction:column; gap:0; }
+.belt li { display:flex; justify-content:space-between; gap:8px; min-height:32px; align-items:center; font:var(--t-foot)/1.25 var(--cochin); color:var(--inkSoft); border-top:1px dotted var(--line); }
+.belt li b { color:var(--ink); font-weight:600; }
+.belt li.cut { border-top:1px solid var(--ink); color:var(--ink); font:var(--t-cap) var(--mono); padding-top:4px; }
+.belt li.cut .short { color:var(--red); font-weight:700; }
+.belt li.newest b { color:var(--green); }
+.scr.up .body { padding-top:8px; }
+.answer { min-height:104px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; }
+.answer .from { font:var(--t-foot) var(--cochin); color:var(--inkSoft); }
+.answer .card { font:700 var(--t-title2)/1.2 var(--cochin); }
+.answer .rest { display:flex; gap:4px; overflow-x:auto; }
+.answer .rest button { flex:none; }
+.answer .rest button { font:var(--t-foot) var(--cochin); min-height:44px; padding:0 10px; border:1px solid var(--line); background:var(--paper); border-radius:8px; cursor:pointer; color:var(--ink); }
+
+/* Packages stand-in (paused) */
+.pk-head { font:700 var(--t-title-l)/1.1 var(--cochin); margin:0; }
+.pk-card { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; opacity:.85; }
+.resume { background:var(--card); border:2px solid var(--accent); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; text-align:left; cursor:pointer; width:100%; }
+.resume b { font:700 var(--t-body) var(--cochin); color:var(--accent); }
+.resume span { font:var(--t-foot) var(--cochin); color:var(--ink); }
+.tabbar { flex:none; margin:0 16px 8px; height:64px; border:1px solid var(--line); border-radius:32px; background:color-mix(in srgb, var(--paper) 62%, var(--card)); display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px; }
+.tabbar span { display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:28px; font:12px var(--sys); color:var(--inkSoft); }
+.tabbar span.on { background:var(--card); color:var(--accent); }
+
+/* Today / New tags: dashed outlines, off with the Labels switch */
+.tags [data-tag] { outline:1.5px dashed var(--accent); outline-offset:2px; position:relative; }
+.tags [data-tag].today { outline-color:var(--inkSoft); }
+.tags [data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 10px/14px var(--sys); background:var(--accent); color:var(--card); padding:0 6px; border-radius:4px; z-index:3; pointer-events:none; white-space:nowrap; }
+.tags [data-tag].today::after { background:var(--inkSoft); }
+
+/* Biggest accessibility size, AX5, HIG typography page read 2026-11-21. */
+.ax5 { --t-title:58px; --t-title-l:60px; --t-title2:56px; --t-head:53px; --t-body:53px; --t-sub:49px; --t-foot:44px; --t-cap:43px; --t-cap2:40px; }
+.ax5 .rail { display:none; }
+.ax5 .where { flex-wrap:wrap; }
+.ax5 .thumb [data-act="setaside"] { display:none; }
+/* AX5: the whole screen scrolls, and the dock (the act and the field) stays pinned above the keys. */
+.ax5 .scr { display:block; overflow-y:auto; }
+.ax5 .scr > .body { overflow:visible; }
+.ax5 .scr > .dock { position:sticky; bottom:0; z-index:4; }
+.ax5 .dock .foot { flex-wrap:wrap; }
+.ax5-only { display:none; }
+.ax5 .ax5-only { display:block; }
+.ax5 .not-ax5 { display:none; }
+.ax5 .stepper .v { font-size:53px; }
+.ax5 .field input { font-size:53px; min-height:72px; }
+.ax5 .line .box { flex-basis:56px; }
+.ax5 .line { flex-wrap:wrap; }
+.ax5 .day li { grid-template-columns:1fr; }
+.ax5 .day li .ix { text-align:left; }
+.ax5 .tabbar span { font-size:12px; } /* duo-card-in-hand: bar labels stop at the default size */
+
+@media (prefers-reduced-motion: no-preference) {
+  .line .box i, .rail li i { transition: background-color .18s ease, border-color .18s ease; }
+}
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" role="note">Sample. No figure, seller, card or order on this page is real.</div>
+  <h1>Mail day as one conveyor</h1>
+  <p class="kind">Designer kind: directed. Direction: conveyor, a single linear path, one step at a time.</p>
+  <p class="sub">The whole mail day runs as one path: bring the post in, sort it into small piles, open each envelope, and finish when the pile is empty. Each concept below is live. Press anything inside a device. Every device shows the same moment, so a press in one moves all of them. Pause leaves the path, and the place is kept, even across a page reload.</p>
+
+  <div class="toolbar" role="group" aria-label="Concepts">
+    <span class="lab">Concept</span>
+    <a href="#c=stations&amp;s=bring" data-c="stations">Stations</a>
+    <a href="#c=belt&amp;s=bring" data-c="belt">Card belt</a>
+    <button type="button" data-hide="stations">Hide Stations</button>
+    <button type="button" data-hide="belt">Hide Card belt</button>
+    <button type="button" id="restore">Show hidden concepts</button>
+    <button type="button" id="tagsw" aria-pressed="true">Today and New labels</button>
+  </div>
+  <div class="toolbar" role="group" aria-label="States" id="states">
+    <span class="lab">Jump to</span>
+  </div>
+
+  <section class="concept" id="concept-stations" data-concept="stations">
+    <h2>Stations</h2>
+    <p class="sub">The envelope is the unit. Four stations stay on screen as a rail: Bring In, Sort, Open, Done. The one press that moves you on always sits in the same place at the thumb. Open holds one envelope at a time; Next Envelope ends it and counts the pile down.</p>
+    <div class="helper" data-helper="stations"></div>
+    <div class="stage" data-stage="stations">
+      <figure><div class="fit"><div class="dev folded" id="focus-stations" data-device="iphone-duo-folded" data-concept="stations" data-pose="folded" role="region" aria-label="Stations, folded"></div></div><figcaption><b>Duo folded.</b> Outer screen, 466 x 678 pt (duo-fold-and-keyboard). Touch, one hand.</figcaption></figure>
+      <figure><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-concept="stations" data-pose="open" role="region" aria-label="Stations, open"></div></div><figcaption><b>Duo open.</b> 951 x 669 pt, two pages; nothing sits across x 455.5 to 495.5. Keys from y 405.</figcaption></figure>
+      <figure><div class="fit"><div class="dev phone" data-device="iphone-large" data-concept="stations" data-pose="phone" role="region" aria-label="Stations, phone"></div></div><figcaption><b>Large phone.</b> No written size: a stand-in that starts at 466 x 678 pt. Drag its corner to resize.</figcaption></figure>
+      <figure><div class="fit"><div class="dev folded ax5" data-device="iphone-duo-folded-ax5" data-concept="stations" data-pose="ax5" role="region" aria-label="Stations, ax5"></div></div><figcaption><b>Duo folded, AX5.</b> The biggest accessibility text size: body 53 pt (HIG typography). The rail folds into the count line.</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-belt" data-concept="belt">
+    <h2>Card belt</h2>
+    <p class="sub">The card is the unit. You count while you sort: one tap per envelope as it lands on a pile. Then each card in your hand passes the field once, and the belt above it keeps what went by. Envelope Empty cuts the belt and counts the pile down.</p>
+    <div class="helper" data-helper="belt"></div>
+    <div class="stage" data-stage="belt">
+      <figure><div class="fit"><div class="dev folded" id="focus-belt" data-device="iphone-duo-folded" data-concept="belt" data-pose="folded" role="region" aria-label="Card belt, folded"></div></div><figcaption><b>Duo folded.</b> Outer screen, 466 x 678 pt (duo-fold-and-keyboard). Touch, one hand.</figcaption></figure>
+      <figure><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-concept="belt" data-pose="open" role="region" aria-label="Card belt, open"></div></div><figcaption><b>Duo open.</b> 951 x 669 pt, two pages; nothing sits across x 455.5 to 495.5. Keys from y 405.</figcaption></figure>
+      <figure><div class="fit"><div class="dev phone" data-device="iphone-large" data-concept="belt" data-pose="phone" role="region" aria-label="Card belt, phone"></div></div><figcaption><b>Large phone.</b> No written size: a stand-in that starts at 466 x 678 pt. Drag its corner to resize.</figcaption></figure>
+      <figure><div class="fit"><div class="dev folded ax5" data-device="iphone-duo-folded-ax5" data-concept="belt" data-pose="ax5" role="region" aria-label="Card belt, ax5"></div></div><figcaption><b>Duo folded, AX5.</b> The biggest accessibility text size: body 53 pt (HIG typography). The rail folds into the count line.</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ------------------------------------------------------------------ sample data (invented) */
+const ORDERS = [
+  { gk:"K", seller:"Kestrel Card Co.", date:"2026-11-04", lines:[
+    { key:"K1", name:"Lightning Bolt", qty:4, price:"$1.12", set:"Magic 2011 · NM" },
+    { key:"K2", name:"Counterspell", qty:2, price:"$0.48", set:"Dominaria Remastered · NM" },
+    { key:"K3", name:"Brainstorm", qty:1, price:"$0.62", set:"Commander Masters · LP" } ] },
+  { gk:"L", seller:"Low Tide Games", date:"2026-11-06", lines:[
+    { key:"L1", name:"Arcane Signet", qty:1, price:"$0.85", set:"Commander Legends · NM" },
+    { key:"L2", name:"Sol Ring", qty:1, price:"$1.40", set:"Commander Masters · NM" },
+    { key:"L3", name:"Command Tower", qty:1, price:"$0.25", set:"Commander Legends · NM" } ] },
+  { gk:"N", seller:"Northgate TCG", date:"2026-11-08", lines:[
+    { key:"N1", name:"Thoughtseize", qty:1, price:"$9.80", set:"Double Masters · NM" },
+    { key:"N2", name:"Fatal Push", qty:2, price:"$0.90", set:"Aether Revolt · NM" } ] },
+  { gk:"T", seller:"Tinpot Cards", date:"2026-11-02", lines:[
+    { key:"T1", name:"Arcane Signet", qty:1, price:"$0.85", set:"Commander Legends · LP" },
+    { key:"T2", name:"Swords to Plowshares", qty:1, price:"$1.95", set:"Masters 25 · NM" } ] },
+  { gk:"H", seller:"Halcyon Cards", date:"2026-11-01", lines:[
+    { key:"H1", name:"Path to Exile", qty:2, price:"$1.60", set:"Modern Masters · NM" } ] },
+  { gk:"G", seller:"Gilt Edge Games", date:"2026-10-30", lines:[
+    { key:"G1", name:"Opt", qty:4, price:"$0.10", set:"Dominaria · NM" } ] },
+  { gk:"B", seller:"Brightwater TCG", date:"2026-11-12", lines:[
+    { key:"B1", name:"Ponder", qty:3, price:"$0.35", set:"Magic 2012 · NM" } ] },
+];
+/* What the physical pile holds, in pile order. The app never sees this; the helper uses it to type for you. */
+const PILE = [
+  ["Lightning Bolt", "Counterspell"],             // Kestrel; Brainstorm is missing from the envelope
+  ["Arcane Signet", "Sol Ring", "Command Tower"],  // Low Tide; Arcane Signet ties with Tinpot
+  ["Thoughtseize", "Fatal Push"],
+  ["Swords to Plowshares", "Arcane Signet"],
+  ["Path to Exile"],
+  ["Mox Opal"],                                   // matches no open order
+];
+const TODAY = "2026-11-21";
+const STATIONS = ["Bring In", "Sort", "Open", "Done"];
+const BELT_STATIONS = ["Sort and Count", "Open", "Done"];
+
+/* ------------------------------------------------------------------ state */
+const KEY = "mail-day-flow-directed-1:mock";   // this mockup's own key; the app's keys are frozen and untouched
+const fresh = (concept) => ({ concept, station:"bring", count:6, piles:[3,3], taps:[], pile:0, env:0, interPile:false,
+  query:"", held:[], shown:null, typed:[], got:{}, log:[], aside:false, paused:false, failNext:false, err:null,
+  receipt:null, belt:[], chosen:null, offerFor:null, empty:false });
+let S = { stations: fresh("stations"), belt: fresh("belt") };
+let active = "stations";
+let appliedHash = "";
+function save() { try { localStorage.setItem(KEY, JSON.stringify({ S, active, appliedHash })); } catch (e) {} }
+function load() { try { const v = JSON.parse(localStorage.getItem(KEY) || "null"); if (v && v.S && v.S.stations && v.S.belt) { S = v.S; active = v.active || "stations"; appliedHash = v.appliedHash || ""; } } catch (e) {} }
+
+/* ------------------------------------------------------------------ rules (stand-ins for the bundle's matcher, handStep and Post) */
+const lineOf = (key) => { for (const o of ORDERS) for (const l of o.lines) if (l.key === key) return [o, l]; return [null, null]; };
+const got = (st, key) => st.got[key] || 0;
+const owedLines = (st, o) => o.lines.filter(l => got(st, l.key) < l.qty);
+const norm = (s) => s.trim().toLowerCase();
+function envelopesHolding(st, name) {
+  const q = norm(name); if (!q) return [];
+  return ORDERS.filter(o => o.lines.some(l => got(st, l.key) < l.qty && l.name.toLowerCase().includes(q))).map(o => o.gk);
+}
+function exactName(st, q) {
+  const n = norm(q); let hit = null;
+  for (const o of ORDERS) for (const l of o.lines) if (l.name.toLowerCase() === n) hit = l.name;
+  return hit;
+}
+/* The answer for the typed text, with the Suspense line: held names narrow a tie (new-envelope-ends-an-envelope). */
+function answer(st) {
+  const q = norm(st.query);
+  if (!q) return { kind: st.shown ? "env" : "none", gk: st.shown };
+  let hits = envelopesHolding(st, q);
+  const exact = exactName(st, q);
+  if (hits.length >= 2 && st.held.length) {
+    const fits = hits.filter(gk => st.held.every(h => envelopesHolding(st, h).includes(gk)));
+    if (fits.length === 1) return { kind:"env", gk:fits[0], offer:true };
+  }
+  if (hits.length >= 2 && exact) {
+    // a held card that pairs with this one decides it; else a tie
+    return { kind:"tie", gks:hits, name:exact };
+  }
+  if (hits.length >= 2) return { kind:"many", gks:hits };
+  if (hits.length === 1) {
+    const offer = st.held.length > 0 && st.held.every(h => envelopesHolding(st, h).includes(hits[0]));
+    return { kind:"env", gk:hits[0], offer };
+  }
+  // The shown envelope stays after its typed card checks in, so the lines stay under the finger (HandScreen `shown`).
+  const sh = st.shown && ORDERS.find(o => o.gk === st.shown);
+  if (sh && sh.lines.some(l => l.name.toLowerCase().includes(q))) return { kind:"env", gk:sh.gk };
+  return { kind:"nomatch", text:st.query.trim() };
+}
+const pileTotal = (st) => st.concept === "belt" ? st.taps.reduce((a,b)=>a+b,0) : st.piles.reduce((a,b)=>a+b,0);
+const pileSizes = (st) => st.concept === "belt" ? st.taps : st.piles;
+const envTotal = (st) => st.concept === "belt" ? pileTotal(st) : st.count;
+function pileOfEnv(st, i) { let n = 0; const ps = pileSizes(st); for (let p = 0; p < ps.length; p++) { n += ps[p]; if (i < n) return p; } return ps.length - 1; }
+function firstOfPile(st, p) { return pileSizes(st).slice(0, p).reduce((a,b)=>a+b,0); }
+
+/* ------------------------------------------------------------------ acts. Every move forward is a press; nothing checks in by itself (orphaned-mail-never-decides). */
+function write(st, fn) {
+  if (st.failNext) { st.failNext = false; st.err = "Not saved. The check-in did not reach the ledger."; return false; }
+  st.err = null; fn(); return true;
+}
+const A = {
+  start(st) { st.station = st.concept === "belt" ? "bring" : "sort"; },
+  inc(st) { st.count = Math.min(40, st.count + 1); }, dec(st) { st.count = Math.max(0, st.count - 1); },
+  pinc(st, i) { st.piles[i]++; }, pdec(st, i) { st.piles[i] = Math.max(0, st.piles[i] - 1); },
+  addpile(st) { st.piles.push(0); },
+  split(st) { const n = st.count, k = Math.max(1, Math.ceil(n / 4)); st.piles = Array.from({length:k}, (_, i) => Math.floor(n / k) + (i < n % k ? 1 : 0)); },
+  tap(st) { if (!st.taps.length) st.taps = [0]; st.taps[st.taps.length - 1]++; },
+  untap(st) { if (!st.taps.length) return; st.taps[st.taps.length - 1] = Math.max(0, st.taps[st.taps.length - 1] - 1); },
+  newpile(st) { if (st.taps.length && st.taps[st.taps.length - 1] > 0) st.taps.push(0); },
+  open(st) { if (st.concept === "belt") st.taps = st.taps.filter(n => n > 0); st.station = "open"; st.env = 0; st.pile = 0; st.interPile = false; },
+  type(st, v) {
+    st.query = v; st.receipt = null; st.chosen = null;
+    const a = answer(st);
+    if (a.kind === "env") st.shown = a.gk;
+    if (a.kind === "nomatch" || a.kind === "tie" || a.kind === "many") st.shown = null;
+  },
+  pick(st, name) { A.type(st, name); },
+  hold(st) {   // the typed shared name goes on the Suspense line
+    const a = answer(st); if (a.kind !== "tie") return;
+    if (!st.held.includes(a.name)) st.held.push(a.name);
+    st.typed.push(a.name); st.query = ""; st.shown = null;
+  },
+  line(st, key) {
+    write(st, () => { const [, l] = lineOf(key); st.got[key] = got(st, key) >= l.qty ? 0 : l.qty;
+      if (st.got[key]) { st.belt.push({ name:l.name, seller:lineOf(key)[0].seller, n:l.qty }); if (!st.typed.includes(l.name)) st.typed.push(l.name); } });
+  },
+  step(st, key, d) { write(st, () => { const [, l] = lineOf(key); st.got[key] = Math.max(0, Math.min(l.qty, got(st, key) + d)); }); },
+  checkin(st) {  // belt: the typed card's own line, full count
+    const a = answer(st); if (a.kind !== "env") return;
+    const o = ORDERS.find(x => x.gk === a.gk); const q = norm(st.query);
+    const l = o.lines.find(x => x.name.toLowerCase().includes(q) && got(st, x.key) < x.qty) || o.lines.find(x => x.name.toLowerCase().includes(q));
+    if (!l) return;
+    if (write(st, () => { st.got[l.key] = l.qty; st.belt.push({ name:l.name, seller:o.seller, n:l.qty }); st.typed.push(l.name); })) {
+      st.receipt = l.name + " in, from " + o.seller; st.query = ""; st.shown = o.gk; st.chosen = null;
+    }
+  },
+  post(st) {     // the held cards and the typed one, in one save
+    const a = answer(st); if (a.kind !== "env" || !a.offer) return;
+    const o = ORDERS.find(x => x.gk === a.gk);
+    const names = [...st.held, exactName(st, st.query) || st.query];
+    if (write(st, () => { for (const n of names) { const l = o.lines.find(x => x.name.toLowerCase() === norm(n)); if (l) { st.got[l.key] = l.qty; st.belt.push({ name:l.name, seller:o.seller, n:l.qty }); } } })) {
+      st.receipt = names.length + " cards checked in, " + st.held.length + " held"; st.held = []; st.typed.push(...names.slice(-1)); st.query = ""; st.shown = o.gk;
+    }
+  },
+  setaside(st) { st.aside = !st.aside; },
+  aside(st, why) {
+    const a = answer(st); const gk = st.shown;
+    const o = gk ? ORDERS.find(x => x.gk === gk) : null;
+    st.log.push({ n:st.env, gk, seller:o ? o.seller : null, outcome:"aside", why,
+      cards: why === "orphan" ? [...st.typed, ...(a.kind === "nomatch" ? [a.text] : [])].filter(Boolean) : [], short: o ? owedLines(st, o).map(l => l.name) : [] });
+    A._next(st);
+  },
+  next(st) {   // New Envelope: ends this envelope and counts the pile down
+    const o = st.shown ? ORDERS.find(x => x.gk === st.shown) : null;
+    const short = o ? owedLines(st, o).map(l => l.name) : [];
+    st.log.push({ n:st.env, gk:st.shown, seller:o ? o.seller : null, outcome: !o ? "empty" : short.length ? "short" : "in", short,
+      got: o ? o.lines.reduce((s,l)=>s+Math.min(got(st,l.key),l.qty),0) : 0, qty: o ? o.lines.reduce((s,l)=>s+l.qty,0) : 0 });
+    if (st.held.length) st.log[st.log.length-1].released = [...st.held];
+    A._next(st);
+  },
+  _next(st) {
+    st.query = ""; st.shown = null; st.held = []; st.typed = []; st.aside = false; st.receipt = null; st.err = null;
+    if (st.concept === "belt") st.belt.push({ cut:true, entry:st.log[st.log.length-1] });
+    st.env++;
+    if (st.env >= envTotal(st)) { st.station = "done"; return; }
+    const p = pileOfEnv(st, st.env);
+    if (p !== st.pile) { st.interPile = true; st.pile = p; }
+  },
+  nextpile(st) { st.interPile = false; },
+  pause(st) { st.paused = true; }, resume(st) { st.paused = false; },
+  close(st) { const c = st.concept; S[c] = fresh(c); },
+  retry(st) { st.err = null; },
+  failsw(st) { st.failNext = !st.failNext; },
+  sample(st) {   // mockup helper: types the next card from the physical pile
+    const cards = PILE[st.env] || [];
+    const done = new Set(st.typed.map(norm));
+    const nxt = cards.find(c => !done.has(norm(c)) && !st.held.map(norm).includes(norm(c)));
+    if (nxt) A.type(st, nxt);
+  },
+};
+
+/* ------------------------------------------------------------------ pieces */
+const esc = (s) => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+const btn = (act, label, cls = "btn", extra = "") => `<button type="button" class="${cls}" data-act="${act}" ${extra}>${label}</button>`;
+function rail(st) {
+  const B = st.concept === "belt", L = B ? BELT_STATIONS : STATIONS;
+  const i = B ? { bring:0, open:1, done:2 }[st.station] : { bring:0, sort:1, open:2, done:3 }[st.station];
+  return `<ol class="rail ${B ? "three" : ""}" aria-label="Mail day, step ${i+1} of ${L.length}" data-tag="New: the ${B ? "three" : "four"} stations">` + L.map((s, k) =>
+    `<li class="${k < i ? "past" : k === i ? "now" : ""}" ${k === i ? 'aria-current="step"' : ""}><i>${k+1}</i>${s}</li>`).join("") + `</ol>`;
+}
+function where(st) {
+  const tot = envTotal(st), done = Math.min(st.env, tot), left = tot - done;
+  let txt;
+  if (st.station === "bring") txt = st.concept === "belt" ? `${pileTotal(st)} <small>counted</small>` : `Count the pile`;
+  else if (st.station === "sort") txt = `${pileTotal(st)} of ${st.count} <small>in piles</small>`;
+  else if (st.station === "done") txt = `${tot} of ${tot} <small>accounted for</small>`;
+  else txt = `Envelope ${Math.min(st.env+1, tot)} of ${tot} <small>${left} left, pile ${st.pile+1} of ${pileSizes(st).length}</small>`;
+  const pct = tot ? Math.round(100 * done / tot) : 0;
+  return `<div class="where"><span class="n">${txt}</span>${st.station === "done" ? "" : btn("pause", "Pause", "mini", 'aria-label="Pause the mail day. Your place is kept."')}</div>
+    <div class="meter ${pct === 100 ? "full" : ""}" role="progressbar" aria-valuemin="0" aria-valuemax="${tot}" aria-valuenow="${done}" aria-label="Envelopes accounted for"><i style="width:${pct}%"></i></div>`;
+}
+function stackMeter(st) {
+  const ps = pileSizes(st); let n = 0;
+  return `<div class="stacks" aria-label="Piles" data-tag="New: the piles">` + ps.map((size, p) => {
+    const cells = Array.from({ length:size }, (_, k) => { const i = n + k; return `<i class="${i < st.env ? "d" : (i === st.env && st.station === "open") ? "cur" : ""}"></i>`; }).join("");
+    const left = Math.max(0, Math.min(size, n + size - st.env)); n += size;
+    return `<div class="stack ${p === st.pile && st.station === "open" ? "now" : ""}"><span class="env-s">${cells}</span><small>pile ${p+1}: ${st.station === "bring" ? size : left + " left"}</small></div>`;
+  }).join("") + `</div>`;
+}
+function errLine(st) { return st.err ? `<div class="err" role="alert"><span>${esc(st.err)}</span>${btn("retry", "Try Again", "mini")}</div>` : ""; }
+function field(st, fid) {
+  const chip = st.held.length ? `<span class="chip" aria-label="Held: ${esc(st.held.join(", "))}. Not checked in.">${st.held.length} held</span>` : "";
+  return `<label class="field" data-tag="Today: the Card in Hand field" ><span class="micro" style="position:absolute;left:-9999px">Card in hand</span>
+    <input id="${fid}" data-input="q" value="${esc(st.query)}" placeholder="Type the card in hand" autocomplete="off" autocapitalize="off" spellcheck="false" enterkeyhint="done">${chip}</label>`;
+}
+function linesOf(st, o, nowName) {
+  const q = norm(nowName || "");
+  return `<div class="lines">` + o.lines.map(l => {
+    const g = got(st, l.key), cls = g >= l.qty ? "done" : g > 0 ? "partial" : "";
+    const now = q && l.name.toLowerCase().includes(q) ? "now" : "";
+    const held = st.held.map(norm).includes(l.name.toLowerCase()) ? "held" : "";
+    const step = l.qty > 1 ? `<span class="stp">${btn(`step:${l.key}:-1`, "−", "", `aria-label="One fewer ${esc(l.name)}"`)}<span class="c">${g}/${l.qty}</span>${btn(`step:${l.key}:1`, "+", "", `aria-label="One more ${esc(l.name)}"`)}</span>` : "";
+    return `<div class="line ${cls} ${now} ${held}"><button type="button" class="box" data-act="line:${l.key}" aria-label="${esc(l.name)}, ${g} of ${l.qty} in" aria-pressed="${g >= l.qty}"><i></i></button>
+      <span class="t"><b>${esc(l.name)}<span>${l.price}</span></b><small>${l.qty > 1 ? "×" + l.qty + " · " : ""}${esc(l.set)}${held ? ' · <span class="hold">on the Suspense line</span>' : ""}</small>${step}</span></div>`;
+  }).join("") + `</div>`;
+}
+function owedText(st, o, bare) {
+  const ow = owedLines(st, o); const n = ow.reduce((s,l)=>s+l.qty-got(st,l.key),0);
+  const v = ow.reduce((s,l)=>s+(l.qty-got(st,l.key))*parseFloat(l.price.slice(1)),0);
+  if (bare) return `${n} left · $${v.toFixed(2)}`;
+  return n ? `<span class="owe">Still owed here: ${n} left · $${v.toFixed(2)}</span>` : `<span style="color:var(--ink);font-weight:700">complete</span>`;
+}
+function envelopeView(st, a, full) {
+  const o = ORDERS.find(x => x.gk === a.gk);
+  const offer = a.offer ? `<div class="offer" data-tag="Today: the Post offer, under the sender (item 42 A)"><p>Your held card came with this envelope. Nothing is checked in until you post.</p>
+      ${btn("post", `Post ${st.held.length + 1} Cards Here, ${st.held.length} Held`, "btn go")}</div>`
+    : st.receipt ? `<div class="offer"><p>Posted with this envelope.</p><span class="receipt">${esc(st.receipt)}</span></div>` : "";
+  return `<div><span class="micro">It came from</span><p class="who">${esc(o.seller)}</p><div class="meta"><span>ordered ${o.date}</span>${owedText(st, o)}</div></div>
+    ${offer}${full ? linesOf(st, o, st.query) : ""}`;
+}
+function answerArea(st, full) {
+  const a = answer(st);
+  if (a.kind === "env") return envelopeView(st, a, full);
+  if (a.kind === "tie" && !full) return `<div class="tie" data-tag="Today: the tie"><span class="micro">${a.gks.length} envelopes hold ${esc(a.name)}</span>
+      <b class="say" style="font-weight:700">${a.gks.map(gk => esc(ORDERS.find(x => x.gk === gk).seller)).join(" or ")}</b>
+      <p class="why">Hold it, then type the next card from this envelope. That card decides it.</p></div>`;
+  if (a.kind === "tie") return `<div class="tie" data-tag="Today: the tie"><span class="micro">${a.gks.length} envelopes hold ${esc(a.name)}</span>
+      ${full ? btn("hold", `Hold ${esc(a.name)}`, "btn") : ""}
+      <p class="why">Hold it, then type the next card from this envelope. That card decides it. Nothing checks in until you post.</p>
+      ${a.gks.map(gk => { const o = ORDERS.find(x => x.gk === gk); return `<div class="env"><b class="say" style="font-weight:700">${esc(o.seller)}</b><span class="meta"><span>ordered ${o.date}</span><span>${owedLines(st,o).length} open lines</span></span></div>`; }).join("")}
+      </div>`;
+  if (a.kind === "many") return `<p class="why">${a.gks.length} envelopes hold a card like “${esc(st.query.trim())}”. Keep typing.</p>`;
+  if (a.kind === "nomatch") return `<p class="say">No open envelope holds “${esc(a.text)}”.</p><p class="why">Check the spelling, or set this envelope aside. Set Aside records it in Orphaned with the cards you typed.</p>`;
+  if (st.held.length) return `<div class="notice"><span class="micro" style="color:var(--manilaInk)">Suspense</span><b>${esc(st.held.join(", "))}</b><small>Not checked in. Type the next card from this envelope.</small></div>`;
+  return `<p class="why">Type a card from the envelope in your hand. The envelope it came from shows here.</p>`;
+}
+function asidePanel(st) {
+  if (!st.aside) return "";
+  const a = answer(st), o = st.shown ? ORDERS.find(x => x.gk === st.shown) : null;
+  const short = o ? owedLines(st, o) : [];
+  const opts = [];
+  if (a.kind === "nomatch" || (!o && st.typed.length)) opts.push(`<button type="button" class="btn opt" data-act="aside:orphan"><b>Record in Orphaned</b><small>An envelope with ${esc([...st.typed, a.text].filter(Boolean).join(", "))}. It waits there until its cards name an order.</small></button>`);
+  if (o && short.length) opts.push(`<button type="button" class="btn opt" data-act="aside:short"><b>Leave It Short</b><small>${esc(short.map(l => l.name).join(", "))} stay owed. It shows under Not normal today.</small></button>`);
+  opts.push(`<button type="button" class="btn opt" data-act="aside:other"><b>Not an Order</b><small>Counts this envelope as done. Nothing is saved.</small></button>`);
+  return `<div class="panel" role="group" aria-label="Set this envelope aside" data-tag="New: Set Aside, in place"><span class="micro">Set this envelope aside</span>${opts.join("")}${btn("setaside", "Keep It Open", "btn quiet")}</div>`;
+}
+
+/* ------------------------------------------------------------------ Done (the end-of-day view of duo-hand-gaps part 7, reached as the last station) */
+function pileList(st) {
+  let lastP = -1;
+  return `<ul class="day" aria-label="Today's pile">` + st.log.map(e => {
+    const p = pileOfEnv(st, e.n); const hd = p !== lastP ? `</ul><div class="pilehd">pile ${p+1}</div><ul class="day">` : ""; lastP = p;
+    const r = e.outcome === "in" ? `<span class="r ok">${e.got}/${e.qty}</span>` : e.outcome === "short" ? `<span class="r short">${e.got}/${e.qty}</span>`
+      : e.outcome === "aside" ? `<span class="r aside">${e.why === "orphan" ? "Orphaned" : e.why === "short" ? "short" : "set aside"}</span>` : `<span class="r soft">nothing typed</span>`;
+    return hd + `<li><span class="ix">${e.n+1}</span><span>${e.seller ? esc(e.seller) : e.why === "orphan" ? "No sender: " + esc(e.cards.join(", ")) : "Not an order"}</span>${r}</li>`;
+  }).join("") + `</ul>`;
+}
+function notNormal(st) {
+  const items = [];
+  for (const e of st.log) if ((e.outcome === "short" || (e.outcome === "aside" && e.why === "short")) && e.seller) {
+    const o = ORDERS.find(x => x.gk === e.gk); items.push(`<li><span class="ix">${e.n+1}</span><span>${esc(e.seller)}: ${esc(e.short.join(", "))} missing</span><span class="r short">${owedText(st, o, true)}</span></li>`); }
+  for (const e of st.log) if (e.outcome === "aside" && e.why === "orphan") items.push(`<li><span class="ix">${e.n+1}</span><span>Waiting in Orphaned: ${esc(e.cards.join(", "))}</span><span class="r aside">no order yet</span></li>`);
+  // Today's transitBox follows unchanged (duo-hand-gaps part 7): packages past the 14-day usual transit.
+  const past = ORDERS.filter(o => owedLines(st, o).length && (Date.parse(TODAY) - Date.parse(o.date)) / 864e5 > 14 && !st.log.some(e => e.gk === o.gk));
+  const pastHtml = past.map(o => `<li><span class="ix">!</span><span>${esc(o.seller)}, ordered ${o.date}: past usual transit</span><span class="r" style="color:var(--amber)">claim by ${new Date(Date.parse(o.date)+30*864e5).toISOString().slice(0,10)}</span></li>`).join("");
+  return items.length || past.length ? `<ul class="day" aria-label="Not normal today">${items.join("")}${pastHtml}</ul>` : `<p class="allwell">All is well.</p>`;
+}
+function missingLine(st) {
+  const n = ORDERS.reduce((s,o)=>s+owedLines(st,o).reduce((t,l)=>t+l.qty-got(st,l.key),0),0);
+  return `<span class="micro">Across all orders</span><span class="miss">${n} copies still missing</span>`;
+}
+function doneTop(st) {
+  const ins = st.log.filter(e => e.outcome === "in").length, aside = st.log.length - ins;
+  return `<p class="big-done" data-tag="New: the done moment">The pile is empty.</p>
+    <p class="say">${st.log.length} of ${envTotal(st)} envelopes accounted for: ${ins} complete, ${aside} set aside or short.</p>`;
+}
+
+/* ------------------------------------------------------------------ screens */
+function keysHtml(sugg) {
+  return `<div class="keys" aria-hidden="true">${sugg ? `<div class="sugg"><span>Lightning</span><span>Arcane</span><span>Sol</span></div>` : ""}
+    <div class="row">${"qwertyuiop".split("").map(k=>`<span class="k">${k}</span>`).join("")}</div>
+    <div class="row">${"asdfghjkl".split("").map(k=>`<span class="k">${k}</span>`).join("")}</div>
+    <div class="row">${"zxcvbnm".split("").map(k=>`<span class="k">${k}</span>`).join("")}</div>
+    <div class="row"><span class="k w">space</span><span class="k d">done</span></div></div>`;
+}
+function pausedScreen(st, pose) {
+  const tot = envTotal(st);
+  const where = st.station === "open" ? `Envelope ${st.env+1} of ${tot}, pile ${st.pile+1}${st.shown ? ", " + ORDERS.find(o=>o.gk===st.shown).seller + " open" : ""}${st.query ? `, “${esc(st.query)}” typed` : ""}${st.held.length ? `, ${st.held.length} held` : ""}.`
+    : st.station === "sort" ? `Sorting: ${pileTotal(st)} of ${st.count} envelopes in piles.` : `Counting: ${pileTotal(st) || st.count} envelopes so far.`;
+  return `<div class="scr"><div class="top"></div><div class="body">
+    <p class="pk-head today" data-tag="Today: Packages">Packages</p>
+    <button type="button" class="resume" data-act="resume" data-tag="New: Resume, in place of Card in Hand"><b>Resume Mail Day</b><span>${where}</span><span class="soft">Nothing was lost while you were away.</span></button>
+    ${ORDERS.slice(0,3).map(o=>`<div class="pk-card"><b class="say" style="font-weight:700">${esc(o.seller)}</b><span class="meta"><span>ordered ${o.date}</span><span>${o.lines.length} lines</span></span></div>`).join("")}
+  </div><div class="tabbar" aria-hidden="true"><span>Ledger</span><span>Orphaned</span><span>Tally</span><span class="on">Packages</span></div><div class="inset"></div></div>`;
+}
+function emptyScreen() {
+  return `<div class="scr"><div class="top"></div><div class="head"></div><div class="body">
+    <p class="ask">No order is waiting on mail.</p><p class="why">Every copy in the ledger is in. Import new orders, and the next mail day starts from them.</p></div>
+    <div class="dock"><div class="thumb">${btn("close", "Open the Ledger Tab", "btn go")}</div></div><div class="inset"></div></div>`;
+}
+
+/* Stations: one column (folded, phone, AX5) */
+function stationsOne(st, fid) {
+  if (st.paused) return pausedScreen(st);
+  if (st.empty) return emptyScreen();
+  const head = `<div class="head">${rail(st)}${where(st)}</div>`;
+  let body = "", thumb = "", up = false;
+  if (st.station === "bring") {
+    body = `<p class="ask">How many envelopes came today?</p>
+      <div class="stepper">${btn("dec", "−", "s", 'aria-label="One fewer envelope"')}<span class="v" aria-live="polite">${st.count}</span>${btn("inc", "+", "s", 'aria-label="One more envelope"')}</div>
+      <p class="why">Count the pile on the table. You can change it while you sort.</p>`;
+    thumb = st.count ? btn("start", "Sort Them", "btn go") : `<button type="button" class="btn go" aria-disabled="true">Sort Them<small class="off">Count at least one envelope first.</small></button>`;
+  } else if (st.station === "sort") {
+    const tot = pileTotal(st), ok = tot === st.count;
+    body = `<p class="ask">Sort them into small piles.</p>
+      <div class="piles">${st.piles.map((n,i)=>`<div class="p"><b>Pile ${i+1}</b><span class="stepper">${btn(`pdec:${i}`,"−","s",`aria-label="One fewer in pile ${i+1}"`)}<span class="v">${n}</span>${btn(`pinc:${i}`,"+","s",`aria-label="One more in pile ${i+1}"`)}</span></div>`).join("")}</div>
+      <div class="where"><span></span>${btn("addpile","Add a Pile","mini")}</div>
+      <p class="why">Piles of three or four give you a short finish line, often.</p>`;
+    thumb = ok ? btn("open", "Open Pile 1", "btn go") : `<button type="button" class="btn go" aria-disabled="true">Open Pile 1<small class="off">${tot < st.count ? st.count - tot + " not in a pile yet" : tot - st.count + " more than you counted"}.</small></button>`;
+  } else if (st.station === "open" && st.interPile) {
+    const done = firstOfPile(st, st.pile);
+    body = `<p class="big-done" style="font-size:var(--t-title)">Pile ${st.pile} is done.</p><p class="say">${done} of ${envTotal(st)} envelopes accounted for. Pile ${st.pile+1} has ${pileSizes(st)[st.pile]}.</p>`;
+    thumb = btn("nextpile", `Open Pile ${st.pile+1}`, "btn go");
+  } else if (st.station === "open") {
+    up = !st.aside && answer(st).kind !== "env";
+    body = `${errLine(st)}<div class="not-ax5">${field(st, fid)}</div>${answerArea(st, true)}${asidePanel(st)}${st.aside ? "" : btn("setaside", "Set Aside", "btn quiet ax5-only")}`;
+    const last = st.env + 1 >= envTotal(st), endOfPile = !last && pileOfEnv(st, st.env + 1) !== st.pile;
+    thumb = `${btn("setaside", "Set Aside", "btn quiet", 'aria-expanded="' + st.aside + '"')}${btn("next", "Next Envelope", st.shown ? "btn go" : "btn go quietgo", 'data-tag="New: the thumb slot"')}`;
+  } else {
+    body = `${doneTop(st)}<span class="micro">Today's pile</span>${pileList(st)}<span class="micro">Not normal today</span>${notNormal(st)}${missingLine(st)}`;
+    thumb = btn("close", "Close Mail Day", "btn go");
+  }
+  return `<div class="scr ${up ? "up" : ""}"><div class="top"></div>${head}<div class="body">${body}</div><div class="dock"><div class="thumb">${thumb}</div>${st.station === "open" && !st.interPile ? `<div class="foot ax5-only">${field(st, fid + "-ax5")}</div>` : ""}</div><div class="inset"></div></div>${up ? keysHtml(true) : ""}`;
+}
+
+/* Stations: open Duo. Left page is the day; right page is the station at work. */
+function stationsOpen(st, fid) {
+  if (st.paused || st.empty) {
+    const one = st.paused ? pausedScreen(st) : emptyScreen();
+    return `<div class="page l">${one}</div><div class="page r"><div class="scr"><div class="top"></div><div class="body"><p class="why">${st.paused ? "Packages keeps its one-page layout on the open Duo (duo-card-in-hand, default)." : ""}</p></div></div></div>`;
+  }
+  const one = stationsOne(st, fid);
+  const tot = envTotal(st);
+  let rows = ""; let n = 0;
+  pileSizes(st).forEach((size, p) => {
+    rows += `<div class="pilehd">pile ${p+1}</div><ul class="day">`;
+    for (let k = 0; k < size; k++, n++) {
+      const e = st.log.find(x => x.n === n);
+      const r = !e ? (n === st.env && st.station === "open" ? `<span class="r" style="color:var(--accent)">open</span>` : `<span class="r soft">waiting</span>`)
+        : e.outcome === "in" ? `<span class="r ok">${e.got}/${e.qty}</span>` : e.outcome === "short" ? `<span class="r short">${e.got}/${e.qty}</span>` : `<span class="r aside">set aside</span>`;
+      const name = e ? (e.seller || (e.why === "orphan" ? "No sender" : "Not an order")) : n === st.env && st.shown ? ORDERS.find(o=>o.gk===st.shown).seller : "";
+      rows += `<li class="${n === st.env && st.station === "open" ? "cur" : e ? "" : "wait"}"><span class="ix">${n+1}</span><span>${esc(name)}</span>${r}</li>`;
+    }
+    rows += `</ul>`;
+  });
+  const left = st.station === "bring" ? `<p class="say soft">The day's envelopes line up here once you count them.</p>`
+    : st.station === "done" ? `<span class="micro">Today's pile</span>${pileList(st)}` : `<span class="micro">The day</span>${rows}`;
+  const leftPage = `<div class="scr"><div class="top"></div><div class="head">${rail(st)}</div><div class="body">${left}</div><div class="inset"></div></div>`;
+  // The right page: the station body, without the rail (the left page carries it).
+  let right = one.replace(/<ol class="rail[^"]*"[\s\S]*?<\/ol>/, "");
+  if (st.station === "done") right = right.replace(/<span class="micro">Today's pile<\/span>[\s\S]*?(<span class="micro">Not normal today)/, "$1");
+  const up = /class="scr up"/.test(one);
+  return `<div class="page l ${up ? "" : ""}">${leftPage}</div><div class="page r">${right.replace(/<div class="keys"[\s\S]*$/, "")}</div>${up ? keysHtml(true) : ""}`;
+}
+
+/* Card belt: one column */
+function beltOne(st, fid) {
+  if (st.paused) return pausedScreen(st);
+  if (st.empty) return emptyScreen();
+  let head = "", body = "", thumb = "", up = false, foot = "";
+  if (st.station === "bring") {
+    const tot = pileTotal(st);
+    head = `<div class="head">${rail(st)}${where(st)}</div>`;
+    body = `<p class="ask">Lay each envelope on a pile. Tap once for each.</p>
+      <button type="button" class="tap" data-act="tap" aria-label="One more envelope on pile ${Math.max(1, st.taps.length)}" data-tag="New: count by tapping"><span class="v">${st.taps.length ? st.taps[st.taps.length-1] : 0}</span>+1 Envelope<small class="micro">on pile ${Math.max(1, st.taps.length)}</small></button>
+      <div class="where">${btn("untap", "Take One Back", "mini")}${btn("newpile", "Start a New Pile", "mini")}</div>
+      ${tot ? stackMeter(st) : ""}`;
+    thumb = tot ? btn("open", `Open Pile 1 of ${st.taps.filter(n=>n>0).length}`, "btn go") : `<button type="button" class="btn go" aria-disabled="true">Open Pile 1<small class="off">Tap once for each envelope first.</small></button>`;
+  } else if (st.station === "open" && st.interPile) {
+    head = `<div class="head">${rail(st)}${where(st)}</div>`;
+    body = `${stackMeter(st)}<p class="big-done" style="font-size:var(--t-title)">Pile ${st.pile} is done.</p><p class="say">Pile ${st.pile+1} has ${pileSizes(st)[st.pile]} envelopes.</p>`;
+    thumb = btn("nextpile", `Open Pile ${st.pile+1}`, "btn go");
+  } else if (st.station === "open") {
+    head = `<div class="head">${where(st)}</div>`;
+    const a = answer(st);
+    up = !st.aside;
+    const recent = st.belt.slice(up ? -1 : -6);
+    const beltHtml = `<ul class="belt" aria-label="Cards that went by">` + recent.map((b, i) => b.cut
+      ? `<li class="cut"><span>${b.entry.seller ? esc(b.entry.seller) : "Envelope " + (b.entry.n+1)}</span><span class="${b.entry.outcome === "short" ? "short" : ""}">${b.entry.outcome === "aside" ? "set aside" : b.entry.got + "/" + b.entry.qty}</span></li>`
+      : `<li class="${i === recent.length-1 ? "newest" : ""}"><b>${esc(b.name)}${b.n > 1 ? " ×" + b.n : ""}</b><span>${esc(b.seller)}</span></li>`).join("") + `</ul>`;
+    let ans;
+    if (a.kind === "env") {
+      const o = ORDERS.find(x => x.gk === a.gk);
+      const q = norm(st.query);
+      const l = q ? o.lines.find(x => x.name.toLowerCase().includes(q)) : null;
+      const rest = owedLines(st, o).filter(x => x !== l);
+      const heldHere = a.offer ? `<span class="micro" style="color:var(--manilaInk)">${esc(st.held.join(", "))} held, posts with it</span>` : "";
+      ans = `<div class="answer" data-tag="New: the card's answer">
+        ${l ? `<span class="card">${esc(l.name)} <span class="micro">${got(st,l.key)}/${l.qty} in</span></span>` : st.receipt ? `<span class="receipt">${esc(st.receipt)}</span>` : ""}
+        <span class="from">from <b style="color:var(--ink)">${esc(o.seller)}</b>, ordered ${o.date}</span>
+        ${heldHere || (rest.length ? `<span class="rest" aria-label="Still owed here. Tap one to pick it.">${rest.map(x=>btn(`pick:${x.name}`, esc(x.name), "")).join("")}</span>` : `<span class="micro" style="color:var(--green)">Nothing else owed here</span>`)}</div>`;
+    } else ans = `<div class="answer">${answerArea(st, false)}</div>`;
+    body = `${errLine(st)}${beltHtml}${ans}${asidePanel(st)}${st.aside ? "" : btn("setaside", "Set Aside", "btn quiet ax5-only")}`;
+    const last = st.env + 1 >= envTotal(st);
+    const primary = a.kind === "env" && a.offer ? btn("post", `Post ${st.held.length + 1} Cards Here, ${st.held.length} Held`, "btn go")
+      : a.kind === "env" && norm(st.query) ? btn("checkin", "Check In", "btn go", 'data-tag="New: one press per card"')
+      : a.kind === "tie" ? btn("hold", `Hold ${esc(a.name)}`, "btn go")
+      : `<button type="button" class="btn go" aria-disabled="true" aria-describedby="why3">Check In</button>`;
+    thumb = `${btn("setaside", "Set Aside", "btn quiet", 'aria-expanded="' + st.aside + '"')}${primary}`;
+    foot = `<div class="foot">${field(st, fid)}${btn("next", "Envelope Empty", "mini")}</div>`;
+    if (!(a.kind === "env" && norm(st.query)) && a.kind !== "tie") thumb += `<span id="why3" class="why" style="position:absolute;left:-9999px">Type a card first.</span>`;
+  } else {
+    head = `<div class="head">${rail(st)}${where(st)}</div>`;
+    const cards = st.belt.filter(b => !b.cut).reduce((s,b)=>s+b.n,0);
+    body = `${doneTop(st)}<div class="footing" data-tag="New: the footing"><span>${cards} copies in today</span><span>${st.log.length}/${envTotal(st)}</span></div>
+      <span class="micro">Today's pile</span>${pileList(st)}<span class="micro">Not normal today</span>${notNormal(st)}${missingLine(st)}`;
+    thumb = btn("close", "Close Mail Day", "btn go");
+  }
+  return `<div class="scr ${up ? "up" : ""}"><div class="top"></div>${head}<div class="body">${body}</div><div class="dock"><div class="thumb">${thumb}</div>${foot}</div><div class="inset"></div></div>${up ? keysHtml(false) : ""}`;
+}
+
+/* Card belt: open Duo. Left page: the whole belt of the day. Right page: the card, its envelope and the field. */
+function beltOpen(st, fid) {
+  if (st.paused || st.empty) return stationsOpen(st, fid);
+  if (st.station !== "open" || st.interPile) {
+    const one = beltOne(st, fid);
+    const left = st.station === "done" ? `<div class="scr"><div class="top"></div><div class="head">${rail(st)}</div><div class="body"><span class="micro">Today's pile</span>${pileList(st)}</div><div class="inset"></div></div>`
+      : `<div class="scr"><div class="top"></div><div class="head">${rail(st)}</div><div class="body">${pileTotal(st) ? stackMeter(st) : `<p class="say soft">Your piles stack up here as you tap.</p>`}</div><div class="inset"></div></div>`;
+    let right = one.replace(/<ol class="rail[^"]*"[\s\S]*?<\/ol>/, "");
+    if (st.station === "done") right = right.replace(/<span class="micro">Today's pile<\/span>[\s\S]*?(<span class="micro">Not normal today)/, "$1");
+    if (st.station === "bring") right = right.replace(/<div class="stacks"[\s\S]*?<\/div><\/div>\s*$/, "");
+    return `<div class="page l">${left}</div><div class="page r">${right}</div>`;
+  }
+  const a = answer(st);
+  const all = `<ul class="belt" aria-label="Cards that went by today">` + st.belt.map((b,i,arr) => b.cut
+    ? `<li class="cut"><span>${b.entry.seller ? esc(b.entry.seller) : "Envelope " + (b.entry.n+1)}</span><span class="${b.entry.outcome === "short" ? "short" : ""}">${b.entry.outcome === "aside" ? "set aside" : b.entry.got + "/" + b.entry.qty}</span></li>`
+    : `<li class="${i === arr.length-1 ? "newest" : ""}"><b>${esc(b.name)}${b.n > 1 ? " ×" + b.n : ""}</b><span>${esc(b.seller)}</span></li>`).join("") + `</ul>`;
+  const leftPage = `<div class="scr up"><div class="top"></div><div class="head">${where(st)}${stackMeter(st)}</div><div class="body"><span class="micro">The belt</span>${st.belt.length ? all : `<p class="why">Each card you check in passes here.</p>`}</div></div>`;
+  let ansHtml;
+  if (a.kind === "env") ansHtml = envelopeView(st, a, true);
+  else ansHtml = answerArea(st, false);
+  const last = st.env + 1 >= envTotal(st);
+  const primary = a.kind === "env" && a.offer ? btn("post", `Post ${st.held.length + 1} Cards Here, ${st.held.length} Held`, "btn go")
+    : a.kind === "env" && norm(st.query) ? btn("checkin", "Check In", "btn go") : a.kind === "tie" ? btn("hold", `Hold ${esc(a.name)}`, "btn go")
+    : `<button type="button" class="btn go" aria-disabled="true">Check In</button>`;
+  const rightPage = `<div class="scr up"><div class="top"></div><div class="body">${errLine(st)}${ansHtml.replace(/<div class="offer"[\s\S]*?<\/div>/, a.offer ? "" : "$&")}${asidePanel(st)}</div>
+    <div class="dock"><div class="thumb">${btn("setaside", "Set Aside", "btn quiet")}${primary}</div>
+    <div class="foot">${field(st, fid)}${btn("next", "Envelope Empty", "mini")}</div></div></div>`;
+  return `<div class="page l">${leftPage}</div><div class="page r">${rightPage}</div>${keysHtml(false)}`;
+}
+
+/* ------------------------------------------------------------------ frames */
+const POSES = [
+  { id:"folded", cls:"folded", dev:"iphone-duo-folded", cap:"<b>Duo folded.</b> Outer screen, 466 x 678 pt (duo-fold-and-keyboard). Touch, one hand." },
+  { id:"open", cls:"open", dev:"iphone-duo-unfolded", cap:"<b>Duo open.</b> 951 x 669 pt, two pages; nothing sits across x 455.5 to 495.5. Keys from y 405." },
+  { id:"phone", cls:"phone", dev:"iphone-large", cap:"<b>Large phone.</b> No written size: a stand-in that starts at 466 x 678 pt. Drag its corner to resize." },
+  { id:"ax5", cls:"folded ax5", dev:"iphone-duo-folded-ax5", cap:"<b>Duo folded, AX5.</b> The biggest accessibility text size: body 53 pt (HIG typography). The rail folds into the count line." },
+];
+function frame(concept, pose) {
+  const st = S[concept]; const fid = `q-${concept}-${pose.id}`;
+  const inner = pose.id === "open" ? (concept === "stations" ? stationsOpen(st, fid) : beltOpen(st, fid)) : (concept === "stations" ? stationsOne(st, fid) : beltOne(st, fid));
+  return `<div class="status" aria-hidden="true"><span>9:41</span><span>100%</span></div>${pose.id === "open" ? '<div class="fold" aria-hidden="true"></div>' : ""}${inner}`;
+}
+function build() {
+  for (const c of ["stations", "belt"]) {
+    document.querySelector(`[data-helper="${c}"]`).innerHTML = `<span class="lab">Mockup helpers, not part of the screen:</span>
+      <button type="button" class="tool" data-act="sample" data-for="${c}">Type the Next Card for Me</button>
+      <button type="button" class="tool" data-act="failsw" data-for="${c}" aria-pressed="false">Fail the Next Save</button>
+      <button type="button" class="tool" data-act="leave" data-for="${c}">Reload the Page</button>
+      <button type="button" class="tool" data-act="reset" data-for="${c}">Start Over</button>`;
+  }
+  const st = document.getElementById("states");
+  st.innerHTML += PRESETS.map(p => `<a href="#c=${p.c}&amp;s=${p.s}">${p.label}</a>`).join("");
+}
+function render(keepFocus) {
+  const fe = document.activeElement; const fid = fe && fe.id; const sel = fe && fe.selectionStart;
+  for (const el of document.querySelectorAll(".dev")) {
+    const c = el.dataset.concept, p = POSES.find(x => x.id === el.dataset.pose);
+    el.innerHTML = frame(c, p);
+  }
+  for (const b of document.querySelectorAll('[data-act="failsw"]')) b.setAttribute("aria-pressed", String(S[b.dataset.for].failNext));
+  for (const a of document.querySelectorAll(".toolbar a[data-c]")) a.setAttribute("aria-current", String(a.dataset.c === active));
+  if (keepFocus && fid) { const n = document.getElementById(fid); if (n) { n.focus(); try { n.setSelectionRange(sel, sel); } catch (e) {} } }
+  save();
+}
+
+/* ------------------------------------------------------------------ deep links: #c=<concept>&s=<state> */
+const PRESETS = [
+  { c:"stations", s:"bring", label:"Stations: Bring In" },
+  { c:"stations", s:"sort", label:"Sort" },
+  { c:"stations", s:"envelope", label:"An envelope" },
+  { c:"stations", s:"tie", label:"A tie" },
+  { c:"stations", s:"post", label:"Post a held card" },
+  { c:"stations", s:"nomatch", label:"No match" },
+  { c:"stations", s:"aside", label:"Set Aside" },
+  { c:"stations", s:"pile-done", label:"A pile done" },
+  { c:"stations", s:"error", label:"Save failed" },
+  { c:"stations", s:"paused", label:"Paused" },
+  { c:"stations", s:"done", label:"Done" },
+  { c:"stations", s:"done-well", label:"Done, all is well" },
+  { c:"stations", s:"empty", label:"Nothing to open" },
+  { c:"belt", s:"bring", label:"Card belt: Count" },
+  { c:"belt", s:"card", label:"A card" },
+  { c:"belt", s:"tie", label:"A tie" },
+  { c:"belt", s:"post", label:"Post" },
+  { c:"belt", s:"mid", label:"Mid pile" },
+  { c:"belt", s:"error", label:"Save failed" },
+  { c:"belt", s:"paused", label:"Paused" },
+  { c:"belt", s:"done", label:"Done" },
+];
+function run(st, acts) { for (const a of acts) { const [f, ...args] = a.split(":"); if (f === "type") A.type(st, args.join(":")); else A[f](st, ...args); } }
+function preset(c, s) {
+  const st = fresh(c); S[c] = st; active = c;
+  const B = c === "belt";
+  const counted = B ? ["tap","tap","tap","newpile","tap","tap","tap"] : ["start"];
+  const env1 = ["type:Lightning Bolt", B ? "checkin" : "line:K1", "type:Counterspell", B ? "checkin" : "line:K2", "next"];
+  const env2 = ["type:Arcane Signet", "hold", "type:Sol Ring", "post", "type:Command Tower", B ? "checkin" : "line:L3", "next"];
+  const env3 = ["type:Thoughtseize", B ? "checkin" : "line:N1", "type:Fatal Push", B ? "checkin" : "line:N2", "next"];
+  const env4 = ["nextpile", "type:Swords to Plowshares", B ? "checkin" : "line:T2", "type:Arcane Signet", B ? "checkin" : "line:T1", "next"];
+  const env5 = ["type:Path to Exile", B ? "checkin" : "line:H1", "next"];
+  const env6 = ["type:Mox Opal", "setaside", "aside:orphan"];
+  const go = (...x) => run(st, [...counted, "open", ...x.flat()]);
+  switch (s) {
+    case "bring": if (B) run(st, ["tap","tap","tap","newpile","tap"]); break;
+    case "sort": run(st, ["start"]); st.piles = [3, 2]; break;
+    case "envelope": go(["type:Lightning Bolt", "line:K1", "type:Counterspell"]); break;
+    case "card": go(["type:Lightning Bolt", "checkin", "type:Counterspell"]); break;
+    case "tie": go(env1, ["type:Arcane Signet"]); break;
+    case "post": go(env1, ["type:Arcane Signet", "hold", "type:Sol Ring"]); break;
+    case "mid": go(env1, env2, ["type:Thought"]); break;
+    case "nomatch": go(env1, env2, env3, env4, env5, ["type:Mox Opal"]); break;
+    case "aside": go(env1, env2, env3, env4, env5, ["type:Mox Opal", "setaside"]); break;
+    case "pile-done": go(env1, env2, env3); break;
+    case "error": go(["type:Lightning Bolt"]); st.failNext = true; B ? A.checkin(st) : A.line(st, "K1"); break;
+    case "paused": go(env1, ["type:Arcane Signet", "hold", "type:Sol R"]); A.pause(st); break;
+    case "done": go(env1, env2, env3, env4, env5, env6); break;
+    case "done-well": go(["type:Lightning Bolt", "line:K1", "type:Counterspell", "line:K2", "type:Brainstorm", "line:K3", "next"], env2, env3, env4, env5, ["type:Mox Opal", "setaside", "aside:other"]);
+      st.got.G1 = 4; break;
+    case "empty": st.empty = true; break;
+  }
+}
+function fromHash(ev) {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const c = h.get("c"), s = h.get("s");
+  // A reload keeps the place: a deep link applies once, and again only when the hash changes.
+  if (c && S[c] && s && (ev || location.hash !== appliedHash)) { preset(c, s); show(c); appliedHash = location.hash; }
+  else if (c && S[c]) { active = c; show(c); }
+  render(false);
+  if (c) { const el = document.getElementById(`concept-${c}`); if (el && s) el.scrollIntoView({ block:"start" }); }
+}
+const hidden = new Set();
+function show(c) { /* a deep link brings its concept back if it was hidden */ hidden.delete(c); applyHidden(); }
+function applyHidden() { for (const sec of document.querySelectorAll("section.concept")) sec.hidden = hidden.has(sec.dataset.concept); }
+
+/* ------------------------------------------------------------------ events */
+document.addEventListener("click", (ev) => {
+  const hb = ev.target.closest("[data-hide]"); if (hb) { hidden.add(hb.dataset.hide); applyHidden(); return; }
+  if (ev.target.closest("#restore")) { hidden.clear(); applyHidden(); return; }
+  if (ev.target.closest("#tagsw")) { const b = ev.target.closest("#tagsw"); const on = b.getAttribute("aria-pressed") !== "true"; b.setAttribute("aria-pressed", String(on)); document.body.classList.toggle("tags", on); return; }
+  const el = ev.target.closest("[data-act]"); if (!el) return;
+  if (el.getAttribute("aria-disabled") === "true") return;
+  const dev = el.closest(".dev"); const c = dev ? dev.dataset.concept : el.dataset.for; if (!c) return;
+  const st = S[c]; active = c;
+  const [f, ...args] = el.dataset.act.split(":");
+  if (f === "leave") { save(); location.reload(); return; }
+  if (f === "reset") { S[c] = fresh(c); render(false); return; }
+  if (f === "pick") A.pick(st, args.join(":"));
+  else if (A[f]) A[f](st, ...args);
+  render(false);
+  // Focus stays with the act: the same control in the same frame, when it still exists.
+  if (dev) { const same = dev.querySelector(`[data-act="${CSS.escape(el.dataset.act)}"]`); if (same) same.focus({ preventScroll:true }); }
+});
+document.addEventListener("input", (ev) => {
+  const el = ev.target; if (el.dataset.input !== "q") return;
+  const c = el.closest(".dev").dataset.concept; active = c; A.type(S[c], el.value); render(true);
+});
+window.addEventListener("hashchange", fromHash);
+
+document.body.classList.add("tags");
+load(); build(); fromHash();
+</script>
+</body>
+</html>

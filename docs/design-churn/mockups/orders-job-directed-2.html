@@ -1,0 +1,810 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orders run log</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle),
+   so this page draws one theme. Chrome (status bar, nav bar, tab bar, this page's own frame) is the system font;
+   app words are Cochin and numbers Menlo (typography-cochin-and-mono). */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot and home indicator: unmeasured on every device here; drawn at the 20 pt floor the UI tests use
+     (DuoHandUITests.statusBarFloor), as the repo's other Duo mockups do. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  --new:#2E7A5E; --today:#A8443C;
+  color-scheme: light;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+.doc h1 { font-family:var(--sys); font-size:26px; margin:0; }
+.doc p { margin:4px 0 0; max-width:80ch; color:var(--inkSoft); }
+.kind { font-weight:600; color:var(--ink); }
+.ctl { display:flex; flex-direction:column; gap:8px; }
+.ctl .grp { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ctl .grp > b { font-size:13px; min-width:72px; color:var(--inkSoft); font-weight:600; }
+.ctl a, .ctl button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; gap:6px;
+  border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl .chip { display:inline-flex; align-items:stretch; border:1px solid var(--line); border-radius:8px; background:var(--card); }
+.ctl .chip a { border:0; background:transparent; }
+.ctl .chip button { border:0; border-left:1px solid var(--line); border-radius:0 8px 8px 0; background:transparent; min-width:44px; justify-content:center; color:var(--inkSoft); }
+.ctl .chip[hidden] { display:none; }
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.figs { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; max-width:100%; }
+figcaption { font-size:14px; color:var(--inkSoft); max-width:60ch; }
+figcaption b { color:var(--ink); }
+.fit { max-width:100%; overflow-x:auto; padding:4px; }
+
+/* ---------- device frames, 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; font-family:var(--sys); color:var(--ink); }
+.dev.folded { width:466px; height:678px; }            /* brief: 466 x 678 pt, portrait */
+.dev.open { width:951px; height:669px; }              /* brief: 951 x 669 pt, fold 455.5 to 495.5 */
+.dev.phone { width:375px; height:812px; }             /* test/screens.mjs: the only written phone size */
+.dev.entry { width:466px; height:360px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font:600 12px var(--sys); z-index:6; }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.page.one { left:0; right:0; }
+.page.l { left:0; width:455.5px; }
+.page.r { left:495.5px; width:455.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:7; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+
+/* system nav bar: back at the leading edge, the screen's title centred */
+.nav { position:absolute; left:0; right:0; top:var(--sat); height:44px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 8px; z-index:5;
+  background:color-mix(in srgb, var(--paper) 92%, transparent); }
+.nav .back { font:17px var(--sys); color:var(--accent); background:none; border:0; min-height:44px; min-width:44px; padding:0 8px; display:flex; align-items:center; gap:4px; cursor:pointer; justify-self:start; }
+.nav .back::before { content:""; width:10px; height:10px; border:solid currentColor; border-width:0 0 2.5px 2.5px; transform:rotate(45deg); margin-right:2px; }
+.nav .ttl { font:12px var(--mono); letter-spacing:3.6px; text-transform:uppercase; color:var(--inkSoft); }
+.scroll { position:absolute; left:0; right:0; top:calc(var(--sat) + 44px); bottom:0; overflow-y:auto; overscroll-behavior:contain; }
+.scroll.nonav { top:var(--sat); }
+.pad { padding:8px 16px 0; display:flex; flex-direction:column; gap:16px; }
+/* single page with the system tab bar: the content scrolls clear of the bar */
+.withbar .pad { padding-bottom:calc(64px + 12px + var(--sab) + 16px); }
+.withbar.dock .pad { padding-bottom:calc(64px + 12px + var(--sab) + 104px); }
+.r .scroll { bottom:calc(669px - 593px); }                /* the right page stops above the Duo bar at y 593 */
+.r .pad { padding-bottom:16px; }
+.l .pad { padding-bottom:24px; }                          /* the left page has no bar (DuoPages) */
+
+/* tab bar: the floating glass pill, 64 pt, 24 pt in, 12 pt up (phone-nav-is-bottom-bar; DuoSpine.DuoBar on the open Duo) */
+.bar { position:absolute; height:64px; border:1px solid var(--line); border-radius:32px; z-index:6;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px) saturate(1.4); box-shadow:0 4px 16px var(--shadow);
+  display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px; }
+.bar.single { left:24px; right:24px; bottom:calc(12px + var(--sab)); }
+.bar.duo { left:519.5px; width:407.5px; top:593px; }
+.bar span { display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:28px; font:10px var(--sys); color:var(--inkSoft); gap:4px; }
+.bar span::before { content:""; width:20px; height:20px; border:1.5px solid currentColor; border-radius:5px; }
+.bar span.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+.bar .badge { position:relative; }
+.bar .badge::after { content:"3"; position:absolute; top:6px; left:calc(50% + 4px); min-width:16px; height:16px; border-radius:8px; background:var(--red); color:var(--card); font:600 10px/16px var(--sys); text-align:center; }
+
+/* ---------- app content ---------- */
+.app { font-family:var(--cochin); }
+.micro { font:11px/14px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.mono { font-family:var(--mono); }
+
+/* the head: the answer to "did it come in", one fixed box in every state */
+/* A fixed height, and Pull now pinned to its foot, so no answer moves the button under the finger (no-layout-shift-under-pointer).
+   184 pt holds the longest state, the failure: a 34 pt answer, three lines of say, the next line and the 44 pt button. */
+.head { display:flex; flex-direction:column; gap:8px; height:184px; }
+.head .act { margin-top:auto; }
+.head.nopull { height:128px; }
+.head .ans { font:28px/34px var(--cochin); margin:0; display:flex; align-items:baseline; gap:10px; }
+.head .ans i { flex:none; width:12px; height:12px; border-radius:6px; background:var(--accent); align-self:center; }
+.head .ans.bad { color:var(--red); } .head .ans.bad i { background:var(--red); border-radius:2px; transform:rotate(45deg); }
+.head .ans.quiet { color:var(--manilaInk); } .head .ans.quiet i { background:transparent; border:2px solid var(--amber); }
+.head .ans.idle i { background:transparent; border:2px solid var(--inkSoft); }
+.head .ans.live i { background:var(--accent); animation:pulse 1.6s ease-in-out infinite; }
+@keyframes pulse { 50% { opacity:.35; } }
+@media (prefers-reduced-motion: reduce) { .head .ans.live i { animation:none; } }
+.head .say { font:16px/21px var(--cochin); margin:0; max-width:52ch; }
+.head .next { font:11px/14px var(--mono); color:var(--inkSoft); margin:0; min-height:14px; }
+.act { display:flex; align-items:center; gap:12px; min-height:44px; }
+.btn { font:600 17px var(--cochin); min-height:44px; min-width:132px; padding:0 20px; border-radius:22px; border:1px solid var(--accent);
+  background:var(--accent); color:var(--card); cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.btn[aria-disabled="true"] { background:var(--card); color:var(--inkSoft); border-color:var(--line); cursor:default; }
+.btn.quiet { background:var(--card); color:var(--accent); }
+.btn.small { min-width:88px; font-size:15px; padding:0 14px; }
+.slot { font:11px/14px var(--mono); color:var(--inkSoft); min-height:28px; flex:1; display:flex; align-items:center; gap:8px; }
+.slot .btn { min-width:88px; }
+.slot.ok { color:var(--green); } .slot.no { color:var(--red); }
+/* the dock: Pull now in reach of the thumb, above the tab bar (pull=foot) */
+.dev .dockbox { position:absolute; left:16px; right:16px; bottom:calc(64px + 12px + var(--sab) + 12px); z-index:5; display:flex; align-items:center; gap:12px;
+  padding:12px; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 4px 16px var(--shadow); min-height:68px; }
+
+/* the day book */
+.book { display:flex; flex-direction:column; }
+.dayh { position:sticky; top:0; z-index:2; background:var(--paper); display:flex; justify-content:space-between; align-items:flex-end;
+  min-height:32px; padding:8px 0 4px; border-bottom:1px solid var(--line); }
+.dayh .micro:last-child { letter-spacing:0; text-transform:none; }
+.ent { display:grid; grid-template-columns:64px 1fr 20px; gap:0 12px; align-items:start; min-height:64px; padding:10px 0;
+  border-bottom:1px solid var(--line); background:none; border-left:0; border-right:0; border-top:0; text-align:left; font:inherit; color:inherit; width:100%; cursor:pointer; position:relative; }
+.ent .tm { font:11px/22px var(--mono); color:var(--inkSoft); text-align:right; padding-right:12px; border-right:3px double var(--line); align-self:stretch; }
+.ent .bd { display:flex; flex-direction:column; gap:2px; min-width:0; }
+.ent .what { font:17px/22px var(--cochin); }
+.ent .what b { font:600 15px var(--mono); }
+.ent .how { font:13.5px/18px var(--cochin); color:var(--inkSoft); }
+.ent .fix { font:13.5px/18px var(--cochin); color:var(--ink); }
+.ent .chev { font:22px/22px var(--cochin); color:var(--inkSoft); }
+.ent.bad .what { color:var(--red); }
+.ent.bad .tm { color:var(--red); }
+.ent.sel { background:color-mix(in srgb, var(--accent) 8%, transparent); }
+.ent.sel::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
+.ent.live { cursor:default; grid-template-columns:64px 1fr auto; }
+.ent.live::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--accent); }
+.ent.live .what { color:var(--accent); }
+.gap { display:grid; grid-template-columns:64px 1fr; gap:0 12px; min-height:52px; padding:10px 0; border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(135deg, transparent 0 7px, color-mix(in srgb, var(--line) 55%, transparent) 7px 8px); }
+.gap .tm { border-right:3px double var(--line); }
+.gap p { margin:0; font:italic 15px/20px var(--cochin); color:var(--inkSoft); }
+.gap p small { display:block; font:13.5px/18px var(--cochin); font-style:normal; }
+.cache { font:13.5px/18px var(--cochin); color:var(--manilaInk); background:var(--manila); border-radius:8px; padding:8px 12px; }
+.empty { font:16px/21px var(--cochin); color:var(--inkSoft); padding:16px 0; border-top:1px solid var(--line); }
+
+/* run detail */
+.det { display:flex; flex-direction:column; gap:12px; }
+.det h2 { font:24px/30px var(--cochin); margin:0; }
+.det .out { font:17px/22px var(--cochin); margin:0; }
+.det .out.bad { color:var(--red); }
+.parts { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; padding:8px 0; border-top:1px solid var(--line); border-bottom:1px solid var(--line); align-items:baseline; }
+.parts dt { font:10px var(--cochin); letter-spacing:1.6px; text-transform:uppercase; color:var(--inkSoft); white-space:nowrap; }
+.parts dd { margin:0; font:11px/18px var(--mono); }
+.lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.ln { display:grid; grid-template-columns:1fr auto; gap:2px 12px; padding:8px 12px; border-top:1px solid var(--line); min-height:52px; }
+.ln:first-child { border-top:0; }
+.ln b { font:15px/20px var(--cochin); font-weight:400; min-width:0; }
+.ln span { font:11px/20px var(--mono); color:var(--inkSoft); text-align:right; }
+.ln small { grid-column:1 / -1; font:13px/16px var(--cochin); color:var(--inkSoft); }
+.more { font:600 15px var(--cochin); color:var(--accent); background:none; border:0; border-top:1px solid var(--line); min-height:44px; width:100%; cursor:pointer; text-align:left; padding:0 12px; }
+.advice { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.advice p { margin:0; font:15px/20px var(--cochin); }
+.advice b { font-weight:600; }
+details.raw summary { font:13.5px var(--cochin); color:var(--inkSoft); min-height:44px; display:flex; align-items:center; cursor:pointer; }
+details.raw pre { margin:0; font:11px/16px var(--mono); background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px; white-space:pre-wrap; }
+.dcount { font:13.5px/18px var(--cochin); color:var(--inkSoft); margin:0; }
+
+/* ---------- the register ---------- */
+.strip { display:grid; grid-template-columns:repeat(14, 1fr); gap:0; border:1px solid var(--line); border-radius:8px; background:var(--card); overflow:hidden; }
+.strip.cal { grid-template-columns:repeat(7, 1fr); }
+.dc { min-height:52px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border:0; border-left:1px solid var(--line);
+  background:none; font:inherit; color:inherit; cursor:pointer; padding:4px 0; position:relative; }
+.strip .dc:nth-child(14n+1) { border-left:0; }
+.strip.cal .dc { border-top:1px solid var(--line); min-height:56px; }
+.strip.cal .dc:nth-child(7n+1) { border-left:0; }
+.strip.cal .dc.wk { border-top:0; min-height:28px; cursor:default; }
+.dc .n { font:10px/12px var(--mono); color:var(--inkSoft); }
+.dc .m { width:12px; height:12px; display:block; }
+.dc .m.full { border-radius:6px; background:var(--accent); }
+.dc .m.ring { border-radius:6px; border:2px solid var(--accent); }
+.dc .m.fail { position:relative; } .dc .m.fail::before, .dc .m.fail::after { content:""; position:absolute; left:5px; top:-1px; width:2.5px; height:14px; background:var(--red); transform:rotate(45deg); }
+.dc .m.fail::after { transform:rotate(-45deg); }
+.dc .m.none { height:2px; width:10px; background:var(--inkSoft); margin:5px 0; }
+.dc .m.pre { visibility:hidden; }
+.dc .warn { position:absolute; top:4px; right:4px; width:6px; height:6px; border-radius:3px; background:var(--red); }
+.dc.today .n { color:var(--ink); font-weight:700; }
+.dc.today::after { content:""; position:absolute; left:4px; right:4px; bottom:3px; height:2px; background:var(--ink); }
+.dc.pick { background:color-mix(in srgb, var(--accent) 14%, transparent); }
+.dc.later { cursor:default; } .dc.later .n { opacity:.5; }
+.legend { display:flex; flex-wrap:wrap; gap:4px 14px; font:13px/18px var(--cochin); color:var(--inkSoft); }
+.legend span { display:inline-flex; align-items:center; gap:6px; }
+.legend .m { width:10px; height:10px; display:inline-block; }
+.seg { display:grid; grid-template-columns:repeat(3,1fr); background:color-mix(in srgb, var(--line) 60%, transparent); border-radius:9px; padding:2px; min-height:44px; }
+.seg button { font:15px var(--cochin); border:0; background:none; border-radius:7px; color:var(--ink); cursor:pointer; min-height:40px; }
+.seg button[aria-pressed="true"] { background:var(--card); box-shadow:0 1px 3px var(--shadow); font-weight:600; }
+.reg { display:flex; flex-direction:column; }
+.rh, .rr { display:grid; grid-template-columns:minmax(0,1.6fr) minmax(0,1fr) 44px 44px 24px; gap:0 8px; align-items:center; }
+.rh { min-height:28px; border-bottom:1px solid var(--ink); position:sticky; top:0; background:var(--paper); z-index:2; }
+.rh span { font:10px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.rh span.num, .rr .num { text-align:right; }
+.rr { min-height:48px; border-bottom:1px solid var(--line); width:100%; background:none; border-left:0; border-right:0; border-top:0; font:inherit; color:inherit; text-align:left; padding:0; cursor:pointer; position:relative; }
+.rr .w { font:11px/14px var(--mono); }
+.rr .w small { display:block; color:var(--inkSoft); font-size:10px; }
+.rr .by { font:14px/18px var(--cochin); color:var(--inkSoft); }
+.rr .num { font:12px var(--mono); }
+.rr .num.add { font-weight:700; }
+.rr .num.zero { color:var(--inkSoft); }
+.rr .mk { justify-self:center; }
+.rr.bad .w, .rr.bad .num { color:var(--red); }
+.rr .why { grid-column:1 / -1; font:13.5px/18px var(--cochin); color:var(--red); padding:0 0 8px; }
+.rr.sel { background:color-mix(in srgb, var(--accent) 8%, transparent); }
+.rr.sel::before { content:""; position:absolute; left:-8px; top:0; bottom:0; width:3px; background:var(--accent); }
+.rr.live { cursor:default; } .rr.live .w, .rr.live .by { color:var(--accent); }
+.rr.live::before { content:""; position:absolute; left:-8px; top:0; bottom:0; width:3px; background:var(--accent); }
+.rg { min-height:36px; display:flex; align-items:center; justify-content:center; font:11px var(--mono); color:var(--inkSoft); border-bottom:1px solid var(--line);
+  background:repeating-linear-gradient(135deg, transparent 0 7px, color-mix(in srgb, var(--line) 55%, transparent) 7px 8px); }
+.rt { display:flex; justify-content:space-between; align-items:center; min-height:40px; border-bottom:3px double var(--ink); gap:8px; }
+.rt span:first-child { font:10px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.rt span:last-child { font:11px var(--mono); }
+.drawer { padding:8px 0 12px; border-bottom:1px solid var(--line); display:flex; flex-direction:column; gap:8px; }
+.mk.full, .mk.ring { width:10px; height:10px; border-radius:5px; display:block; }
+.mk.full { background:var(--accent); } .mk.ring { border:2px solid var(--accent); }
+.mk.fail { width:12px; height:12px; display:block; position:relative; }
+.mk.fail::before, .mk.fail::after { content:""; position:absolute; left:5px; top:-1px; width:2.5px; height:14px; background:var(--red); transform:rotate(45deg); }
+.mk.fail::after { transform:rotate(-45deg); }
+
+/* ---------- the Ledger tab, the entrance ---------- */
+.lt { display:flex; flex-direction:column; }
+.lt .title { font:12px var(--mono); letter-spacing:3.6px; text-transform:uppercase; color:var(--inkSoft); text-align:center; padding:8px 0 0; }
+.lt .grp { font:11px var(--mono); letter-spacing:2.2px; text-transform:uppercase; color:var(--inkSoft); padding:16px 4px 8px; }
+.lcard { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.lrow { display:flex; align-items:center; gap:12px; min-height:52px; padding:8px 16px; border:0; border-top:1px solid var(--line); background:none; width:100%; font:inherit; color:inherit; text-align:left; cursor:pointer; }
+.lrow:first-child { border-top:0; }
+.lrow .t { display:flex; flex-direction:column; gap:4px; flex:1; min-width:0; }
+.lrow .t b { font:20px/23px var(--cochin); font-weight:400; }
+.lrow .t small { font:13.5px var(--cochin); color:var(--inkSoft); }
+.lrow .v { font:14px var(--mono); color:var(--accent); text-align:right; }
+.lrow .v.fix { color:var(--manilaInk); }
+.lrow .c { font:22px var(--cochin); color:var(--inkSoft); }
+
+/* ---------- tags: dashed outline on what exists today, and on what an option adds ---------- */
+[data-tag] { position:relative; }
+[data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:4; white-space:nowrap; letter-spacing:0; text-transform:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::after { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .tag-today::after { color:var(--today); }
+.lrow.tag-new { outline-offset:-2px; } .lrow.tag-new::after, .tag-today::after { top:2px; }
+.notags [data-tag]::after { display:none; } .notags .tag-new, .notags .tag-today { outline:0; }
+
+/* ---------- AX5: the largest accessibility text size, folded. Each size is the default size scaled by its text
+   style's AX5 / Large ratio from the HIG Dynamic Type table: title1 58/28, body 53/17, footnote 44/13, caption1 43/12,
+   caption2 40/11. Rows stack, as LedgerTab.versionRow does at isAccessibilitySize. Chrome stays at the default size. */
+.ax5 .head, .ax5 .head.nopull { height:auto; }
+.ax5 .head .ans { font-size:58px; line-height:68px; }
+.ax5 .head .ans i { width:28px; height:28px; border-radius:14px; }
+.ax5 .head .say { font-size:50px; line-height:58px; }
+.ax5 .head .next, .ax5 .slot { font-size:39px; line-height:46px; }
+.ax5 .act { flex-direction:column; align-items:stretch; }
+.ax5 .btn { font-size:53px; min-height:88px; border-radius:44px; }
+.ax5 .micro, .ax5 .dayh .micro { font-size:39px; line-height:46px; letter-spacing:0; }
+.ax5 .dayh { flex-direction:column; align-items:flex-start; position:static; }
+.ax5 .ent { grid-template-columns:1fr; gap:4px; }
+.ax5 .ent .tm { font-size:39px; line-height:46px; text-align:left; border-right:0; padding:0; }
+.ax5 .ent .what { font-size:53px; line-height:62px; }
+.ax5 .ent .what b { font-size:47px; }
+.ax5 .ent .how, .ax5 .ent .fix { font-size:46px; line-height:54px; }
+.ax5 .ent .chev { display:none; }
+.ax5 .gap { grid-template-columns:1fr; }
+.ax5 .gap .tm { display:none; }
+.ax5 .gap p { font-size:49px; line-height:58px; } .ax5 .gap p small { font-size:46px; line-height:54px; }
+.ax5 .legend { font-size:44px; line-height:52px; flex-direction:column; }
+.ax5 .legend .m { width:28px; height:28px; border-radius:14px; }
+.ax5 .dc .m { transform:scale(2); }
+.ax5 .strip { grid-template-columns:repeat(7,1fr); }
+.ax5 .strip .dc { min-height:96px; }
+.ax5 .strip .dc.wk { min-height:48px; }
+.ax5 .strip .dc:nth-child(7n+1) { border-left:0; }
+.ax5 .dc .n { font-size:36px; line-height:40px; }
+.ax5 .seg { grid-template-columns:1fr; }
+.ax5 .seg button { font-size:49px; min-height:72px; }
+.ax5 .rh { display:none; }
+.ax5 .rr { grid-template-columns:1fr auto; gap:4px 12px; padding:8px 0; }
+.ax5 .rr .w { font-size:39px; line-height:46px; grid-column:1; }
+.ax5 .rr .w small { font-size:36px; }
+.ax5 .rr .by { font-size:46px; line-height:54px; grid-column:1; }
+.ax5 .rr .num { font-size:43px; text-align:left; grid-column:1; }
+.ax5 .rr .num::after { content:attr(data-unit); font-family:var(--cochin); margin-left:12px; }
+.ax5 .rr .mk { grid-column:2; grid-row:1; transform:scale(2.4); margin:12px; }
+.ax5 .rr .why { font-size:46px; line-height:54px; }
+.ax5 .rt { flex-direction:column; align-items:flex-start; padding:8px 0; }
+.ax5 .rt span:first-child { font-size:36px; } .ax5 .rt span:last-child { font-size:39px; line-height:46px; }
+.ax5 .rg { font-size:39px; min-height:72px; text-align:center; }
+.ax5 .cache { font-size:46px; line-height:54px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No date, count, order, card, seller or price on this page is real. Sizes come from the brief and from test/screens.mjs; nothing here is measured.</div>
+
+<header class="doc">
+  <h1>Orders: a run log</h1>
+  <p><span class="kind">Designer kind: directed.</span> <span class="kind">Direction: run-log, a readable history of every run.</span>
+  The screen answers "Did my new orders come in, or is it broken?" by keeping every run of the orders extension as a line in a book: when it ran, who started it, what it read, what it added, and what failed and why. Silence is written down too.</p>
+  <p>Two concepts. <b>Day book</b>: runs as dated entries in plain sentences, a pull button over them, a run's page beside them on the open Duo. <b>Register</b>: runs as ruled account lines with weekly totals, under a strip of days that shows the rhythm at a glance. Press anything: Pull now, Stop, Cancel ask, an entry, a day, Back.</p>
+</header>
+
+<section class="ctl" aria-label="Mockup controls">
+  <div class="grp" id="g-concept"><b>Concept</b></div>
+  <div class="grp" id="g-state"><b>State</b></div>
+  <div class="grp" id="g-opt"><b>Options</b></div>
+  <div class="grp"><b>Page</b><button type="button" id="restore">Show hidden options</button><button type="button" id="tags">Hide Today/New labels</button></div>
+</section>
+
+<div class="figs">
+  <figure>
+    <div class="fit"><div class="dev folded" id="frame-folded" data-device="iphone-duo-folded" data-f="folded"></div></div>
+    <figcaption><b>iPhone Duo, folded.</b> 466 x 678 pt, one screen, touch. Drawn first.</figcaption>
+  </figure>
+  <figure>
+    <div class="fit"><div class="dev phone" id="frame-phone" data-device="iphone-regular" data-f="phone"></div></div>
+    <figcaption><b>Large iPhone.</b> No size for it is written; drawn at 375 x 812, the phone viewport in test/screens.mjs.</figcaption>
+  </figure>
+</div>
+<figure>
+  <div class="fit"><div class="dev open" id="frame-open" data-device="iphone-duo-unfolded" data-f="open"></div></div>
+  <figcaption><b>iPhone Duo, open.</b> 951 x 669 pt, two pages, fold from x 455.5 to 495.5 kept empty. The tab bar sits under the right page (duo-card-in-hand, item 23 a); the right page stops above it at y 593.</figcaption>
+</figure>
+<div class="figs">
+  <figure>
+    <div class="fit"><div class="dev folded ax5" id="frame-ax5" data-device="iphone-duo-folded" data-f="ax5"></div></div>
+    <figcaption><b>iPhone Duo, folded, AX5.</b> The largest accessibility text size, at the top. Rows stack; the nav bar and tab bar keep their size.</figcaption>
+  </figure>
+  <figure>
+    <div class="fit"><div class="dev folded ax5" id="frame-ax5b" data-device="iphone-duo-folded" data-f="ax5b"></div></div>
+    <figcaption><b>The same, scrolled to the log.</b> Each run stacks its time, outcome and source.</figcaption>
+  </figure>
+  <figure>
+    <div class="fit"><div class="dev entry" id="frame-entry" data-device="iphone-duo-folded" data-f="entry"></div></div>
+    <figcaption><b>The way in.</b> The Ledger tab's Data card, folded, scrolled to the card. A new Orders row sits first; its value is the state in one word or figure.</figcaption>
+  </figure>
+</div>
+</main>
+
+<script>
+/* ---------------- sample data ---------------- */
+const D = (d, h, m) => new Date(2026, 10, d, h, m);
+const NOW = D(20, 9, 30);
+const BY = { store: ["Store", "Store page load"], chrome: ["Chrome", "Pull now in Chrome"], phone: ["Phone", "Pull now on this phone"] };
+const KINDS = {
+  "signed-out": ["Signed out of TCGplayer", "Sign in on the computer, then load any store page. Or sign in and press Pull now here."],
+  "timeout": ["An order page took over 30 seconds", "TCGplayer was slow. Pull again later."],
+  "fetch": ["TCGplayer did not answer the order page", "TCGplayer may be down or busy. Pull again in a few minutes."],
+};
+const SELLERS = ["Northgate Cards", "Bluefin Games", "Copper Owl TCG", "Harbor Lane Collectibles", "Quillstone", "Two Rivers Hobby"];
+const NAMES = ["Ember Warden", "Tidecaller's Oath (Foil)", "Glass Orchard", "Ashen Courier", "Lantern Moth", "Saltmarsh Herald",
+  "Brass Sentinel", "Quiet Arbor", "Thornback Ferry", "Vellum Archivist", "Riverglass Token", "Hollow Bell"];
+const sampleLines = (n, seed) => Array.from({ length: n }, (_, i) => {
+  const k = (i + seed) % NAMES.length;
+  return { name: NAMES[k], seller: SELLERS[(i * 5 + seed) % SELLERS.length], qty: 1 + ((i + seed) % 4 === 0 ? 3 : 0), price: (0.1 + ((k * 37 + seed) % 90) / 100).toFixed(2) };
+});
+const BASE = [
+  { id: "r20a", at: D(20, 9, 14), by: "store", ok: true, orders: 41, pages: 6, secs: 14, added: 12 },
+  { id: "r19c", at: D(19, 20, 2), by: "chrome", ok: true, orders: 40, pages: 6, secs: 11, added: 0 },
+  { id: "r19b", at: D(19, 19, 58), by: "store", ok: false, kind: "signed-out" },
+  { id: "r19a", at: D(19, 7, 40), by: "store", ok: true, orders: 40, pages: 6, secs: 13, added: 3 },
+  { id: "r16", at: D(16, 18, 10), by: "phone", ok: true, orders: 38, pages: 5, secs: 12, added: 5 },
+  { id: "r15", at: D(15, 9, 20), by: "store", ok: true, orders: 37, pages: 5, secs: 12, added: 8, unreadable: 2 },
+  { id: "r14b", at: D(14, 22, 5), by: "store", ok: false, kind: "timeout" },
+  { id: "r14a", at: D(14, 9, 0), by: "store", ok: true, orders: 36, pages: 5, secs: 10, added: 0 },
+  { id: "r13", at: D(13, 20, 45), by: "store", ok: true, orders: 36, pages: 5, secs: 12, added: 21 },
+  { id: "r12", at: D(12, 8, 30), by: "store", ok: true, orders: 30, pages: 4, secs: 9, added: 4 },
+  { id: "r10", at: D(10, 19, 15), by: "phone", ok: true, orders: 28, pages: 4, secs: 9, added: 6 },
+  { id: "r9", at: D(9, 9, 5), by: "store", ok: true, orders: 27, pages: 4, secs: 8, added: 9 },
+  { id: "r8", at: D(8, 9, 14), by: "chrome", ok: true, orders: 27, pages: 4, secs: 31, added: 212, first: true },
+];
+BASE.forEach((r, i) => { if (r.ok) r.lines = sampleLines(Math.min(r.added, 40), i * 3); });
+
+/* ---------------- formatting ---------------- */
+const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"], MO = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const WDL = ["Sunday","Monday","Tuesday","Wednesday","Thursday","Friday","Saturday"];
+const time = (d) => { let h = d.getHours(), m = String(d.getMinutes()).padStart(2, "0"); const ap = h < 12 ? "AM" : "PM"; h = h % 12 || 12; return `${h}:${m} ${ap}`; };
+const dayKey = (d) => `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}`;
+const daysAgo = (d) => Math.round((new Date(NOW.getFullYear(), NOW.getMonth(), NOW.getDate()) - new Date(d.getFullYear(), d.getMonth(), d.getDate())) / 864e5);
+const dayWord = (d) => { const a = daysAgo(d); return a === 0 ? "Today" : a === 1 ? "Yesterday" : `${WD[d.getDay()]}, ${MO[d.getMonth()]} ${d.getDate()}`; };
+const full = (d) => `${WD[d.getDay()]}, ${MO[d.getMonth()]} ${d.getDate()}, ${time(d)}`;
+const span = (ms) => { const h = Math.floor(ms / 36e5), dd = Math.floor(h / 24), hh = h % 24;
+  const p = []; if (dd) p.push(`${dd} day${dd > 1 ? "s" : ""}`); if (hh || !dd) p.push(`${hh} hour${hh !== 1 ? "s" : ""}`); return p.join(", "); };
+const lines = (n) => `${n} new line${n === 1 ? "" : "s"}`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const GAP_MS = 24 * 36e5;   /* a silence over a day is written in the log */
+
+/* ---------------- state ---------------- */
+const STATES = {
+  ok: "Came in", nothing: "Nothing new", partial: "Lines left out", failed: "Failed", quiet: "Quiet for days",
+  never: "Never run", unknown: "Unknown", asked: "Asked, waiting", running: "Running",
+};
+const OPTIONS = [
+  { key: "c", val: "daybook", label: "Day book", focus: "log-folded" },
+  { key: "c", val: "register", label: "Register", focus: "log-folded" },
+  { key: "gaps", val: "on", label: "Silence written", focus: "log-folded" },
+  { key: "gaps", val: "off", label: "Runs only", focus: "log-folded" },
+  { key: "pull", val: "head", label: "Pull now on top", focus: "frame-phone" },
+  { key: "pull", val: "foot", label: "Pull now by the thumb", focus: "frame-phone" },
+  { key: "detail", val: "lines", label: "Run lists its lines", focus: "detail-open" },
+  { key: "detail", val: "count", label: "Run shows counts only", focus: "detail-open" },
+];
+const DEF = { c: "daybook", s: "ok", gaps: "on", pull: "foot", detail: "lines", v: "orders" };
+let P = {}; let hidden = new Set(); let tagsOff = false;
+let live = null;          /* a running or asked run started by a press */
+let extra = [];           /* runs added by presses in this visit */
+let sel = null; let more = false; let filter = "all"; let dayPick = null; let openRow = null;
+let view = {};            /* per single-page frame: orders | detail | ledger */
+let answer = null;        /* the answer slot under Pull now: [class, text] */
+let timers = [];
+let stateOverride = null; /* after a press resolves, the run list moves on from the linked state */
+
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  P = { ...DEF }; for (const k of Object.keys(DEF)) if (h.get(k)) P[k] = h.get(k);
+  hidden = new Set((h.get("hide") || "").split(",").filter(Boolean));
+  live = null; extra = []; sel = h.get("sel"); more = false; filter = "all"; dayPick = null; openRow = h.get("row");
+  view = { folded: P.v, phone: P.v, ax5: P.v === "ledger" ? "orders" : P.v, ax5b: "orders" };
+  answer = null; stateOverride = null; timers.forEach(clearTimeout); timers = [];
+  if (P.s === "running") live = { phase: "reading", page: 3, start: D(20, 9, 28) };
+  if (P.s === "asked") live = { phase: "asked", start: D(20, 9, 20) };
+  /* a hidden option's value is not drawn: fall back to its sibling */
+  for (const o of OPTIONS) if (hidden.has(`${o.key}=${o.val}`) && P[o.key] === o.val) {
+    const alt = OPTIONS.find((x) => x.key === o.key && x.val !== o.val && !hidden.has(`${x.key}=${x.val}`)); if (alt) P[o.key] = alt.val;
+  }
+}
+function writeHash(patch) {
+  const h = new URLSearchParams(location.hash.slice(1));
+  for (const [k, v] of Object.entries(patch)) { if (v === null || v === DEF[k] && k !== "s") h.delete(k); else h.set(k, v); }
+  if (hidden.size) h.set("hide", [...hidden].join(",")); else h.delete("hide");
+  location.hash = h.toString();
+}
+
+/* the runs a state shows, newest first */
+function runsFor(s) {
+  let r = BASE.map((x) => ({ ...x }));
+  if (s === "never") return [];
+  if (s === "nothing") Object.assign(r[0], { added: 0, lines: [] });
+  if (s === "partial") Object.assign(r[0], { added: 10, unreadable: 2, lines: sampleLines(10, 4) });
+  if (s === "failed") r[0] = { id: "r20a", at: D(20, 9, 14), by: "store", ok: false, kind: "signed-out" };
+  if (s === "quiet") r = r.filter((x) => x.at < D(17, 0, 0));
+  return [...extra, ...r];
+}
+const effState = () => stateOverride || P.s;
+
+/* ---------------- the head: one answer ---------------- */
+function headFor(runs) {
+  const s = effState();
+  const last = runs[0], lastOk = runs.find((x) => x.ok);
+  const nextAt = lastOk ? new Date(lastOk.at.getTime() + 12 * 36e5) : null;
+  const next = nextAt ? `Next pull: after ${time(nextAt)}${daysAgo(nextAt) ? ` ${dayWord(nextAt).toLowerCase()}` : ""}, on the next store page load.` : "";
+  if (live && live.phase === "asked") return { cls: "live", ans: "Waiting for the computer.", say: `You pressed Pull now at ${time(live.start)}. The extension starts it once Chrome is open with a TCGplayer store tab.`, next: "" };
+  if (live) return { cls: "live", ans: "Running now.", say: live.phase === "sending" ? "Sending the order pages to the ledger." : `Started on this phone at ${time(live.start)}. Stop ends it and adds nothing.`, next: "" };
+  if (s === "unknown") return { cls: "idle", ans: "Can't tell right now.", say: "The ledger server did not answer at 9:30 AM, so this phone cannot read the log. What shows below was read at 9:02 AM.", next: "" };
+  if (s === "never") return { cls: "idle", ans: "No run yet.", say: "The first pull runs when Chrome loads a TCGplayer store page with the extension installed and its key saved.", next: "" };
+  if (s === "quiet") return { cls: "quiet", ans: `No run since ${WDL[last.at.getDay()]}.`, say: `Last run ${full(last.at)}, ${span(NOW - last.at)} ago. The extension runs only when Chrome loads a TCGplayer store page.`, next: "" };
+  if (!last.ok) return { cls: "bad", ans: "Not coming in.", say: `${KINDS[last.kind][0]}, ${dayWord(last.at).toLowerCase()} at ${time(last.at)}. ${KINDS[last.kind][1]}`, next: lastOk ? `Last good pull: ${dayWord(lastOk.at).toLowerCase()}, ${time(lastOk.at)}.` : "" };
+  const when = `${daysAgo(last.at) ? dayWord(last.at).toLowerCase() : "today"} at ${time(last.at)}`;
+  if (last.unreadable) return { cls: "", ans: "Came in, with gaps.", say: `${lines(last.added)} ${when}. ${last.unreadable} lines could not be read and were left out.`, next };
+  if (!last.added) return { cls: "", ans: "Ran. Nothing new.", say: `${last.orders} orders read ${when}; all of their lines were in the ledger already.`, next };
+  return { cls: "", ans: "Came in.", say: `${lines(last.added)} ${when}, from ${last.orders} orders read.`, next };
+}
+
+function pullCtl(f) {
+  const s = effState();
+  let label = "Pull now", dis = false, why = "";
+  if (live) { dis = true; label = live.phase === "asked" ? "Asked" : "Pulling"; }
+  if (s === "unknown" && !stateOverride) label = "Try again";
+  const a = answer;
+  let slot = "";
+  if (live && live.phase === "asked") slot = `<button class="btn quiet small" data-act="cancel" type="button" id="cancel-${f}">Cancel ask</button>`;
+  else if (live && live.phase === "reading") slot = `<button class="btn quiet small" data-act="stop" type="button" id="stop-${f}">Stop</button>`;
+  else if (live) slot = `<span>Stop is past: the pages are on their way.</span>`;
+  else if (a) slot = `<span>${esc(a[1])}</span>`;
+  const cls = !live && a ? a[0] : "";
+  return `<div class="act"><button type="button" class="btn" id="pull-${f}" data-act="${label === "Try again" ? "retry" : "pull"}" ${dis ? 'aria-disabled="true" aria-describedby="slot-' + f + '"' : ""}>${label}</button>
+    <div class="slot ${cls}" id="slot-${f}" aria-live="polite">${slot}</div></div>`;
+}
+
+function headHTML(f, runs, withPull) {
+  const h = headFor(runs);
+  return `<section class="head tag-new ${withPull ? "" : "nopull"}" aria-label="Last run" data-tag="New: the answer">
+    <h2 class="ans ${h.cls}"><i aria-hidden="true"></i><span>${esc(h.ans)}</span></h2>
+    <p class="say">${esc(h.say)}</p>
+    <p class="next">${esc(h.next)}</p>
+    ${withPull ? pullCtl(f) : ""}
+  </section>`;
+}
+
+/* ---------------- day book ---------------- */
+function entWhat(r) {
+  if (!r.ok) return esc(KINDS[r.kind][0]);
+  if (r.stopped) return "Stopped. Nothing was added.";
+  if (r.first) return `First pull: <b>${r.added}</b> new lines`;
+  if (r.unreadable) return `<b>${r.added}</b> new lines, <b>${r.unreadable}</b> left out`;
+  if (!r.added) return "Nothing new";
+  return `<b>${r.added}</b> new line${r.added === 1 ? "" : "s"}`;
+}
+function entHow(r) {
+  if (!r.ok || r.stopped) return `${BY[r.by][1]}.`;
+  return `${BY[r.by][1]}. ${r.orders} orders read, ${r.pages} pages, ${r.secs} s.`;
+}
+function liveEnt(f) {
+  if (!live) return "";
+  const asked = live.phase === "asked";
+  return `<div class="ent live" role="status"><span class="tm">${time(live.start)}</span><span class="bd">
+    <span class="what">${asked ? "Asked from this phone" : live.phase === "sending" ? "Sending to the ledger" : `Reading page ${live.page}`}</span>
+    <span class="how">${asked ? "Waits until Chrome has a TCGplayer store tab open." : "Pull now on this phone."}</span></span><span></span></div>`;
+}
+function gapHTML(ms, first, f, ongoing) {
+  return `<div class="gap" ${first ? `id="gap-${f}"` : ""}><span class="tm"></span><p>No run for ${span(ms)}${ongoing ? ", so far" : ""}.${first ? `<small>The extension runs only when Chrome loads a TCGplayer store page, or when someone presses Pull now.</small>` : ""}</p></div>`;
+}
+function bookHTML(f, runs) {
+  const s = effState();
+  if (s === "never" && !runs.length) return `<section class="book" id="log-${f}" aria-label="Run log"><p class="empty">Each run will be written here: when it ran, what it read and what it added.</p></section>`;
+  let out = "", lastDay = null, firstGap = true;
+  if (s === "unknown" && !stateOverride) out += `<p class="cache">Read at 9:02 AM. Runs after that are not shown.</p>`;
+  if (live) { out += `<div class="dayh"><span class="micro">Today</span><span class="micro"></span></div>` + liveEnt(f); lastDay = dayKey(NOW); }
+  if (P.gaps === "on" && runs[0] && NOW - runs[0].at > GAP_MS && !live) { out += `<div class="dayh"><span class="micro">Today</span><span class="micro"></span></div>` + gapHTML(NOW - runs[0].at, true, f, true); firstGap = false; lastDay = dayKey(NOW); }
+  runs.forEach((r, i) => {
+    const k = dayKey(r.at);
+    if (k !== lastDay) {
+      const dayRuns = runs.filter((x) => dayKey(x.at) === k);
+      const add = dayRuns.reduce((a, x) => a + (x.ok ? x.added : 0), 0);
+      out += `<div class="dayh"><span class="micro">${dayWord(r.at)}</span><span class="micro">${add ? `${add} new` : ""}</span></div>`;
+      lastDay = k;
+    }
+    const isSel = (f === "open" || view[f] === "detail") && sel === r.id;
+    out += `<button type="button" class="ent ${r.ok ? "" : "bad"} ${isSel ? "sel" : ""}" data-act="run" data-id="${r.id}" ${i === 0 ? `id="ent-${f}"` : ""}
+      aria-label="${esc(full(r.at))}, ${esc(entWhat(r).replace(/<[^>]+>/g, ""))}">
+      <span class="tm">${time(r.at)}</span>
+      <span class="bd"><span class="what">${entWhat(r)}</span><span class="how">${esc(entHow(r))}</span>
+</span>
+      <span class="chev" aria-hidden="true">›</span></button>`;
+    const older = runs[i + 1];
+    if (P.gaps === "on" && older && r.at - older.at > GAP_MS) { out += gapHTML(r.at - older.at, firstGap, f, false); firstGap = false; }
+  });
+  return `<section class="book" id="log-${f}" aria-label="Run log">${out}</section>`;
+}
+
+/* ---------------- run detail (shared by both concepts) ---------------- */
+function detailHTML(f, r, compact) {
+  if (!r) return `<div class="det" id="detail-${f}"><p class="dcount">Pick a run to read it in full.</p></div>`;
+  const parts = [["Started by", BY[r.by][1]], ["When", full(r.at)]];
+  if (r.ok) parts.push(["Orders read", `${r.orders}, the last 120 days`], ["Pages", `${r.pages}`], ["Took", `${r.secs} s`], ["New lines", `${r.added}`]);
+  if (r.unreadable) parts.push(["Left out", `${r.unreadable} lines`]);
+  let body = "";
+  if (!r.ok) {
+    body = `<div class="advice"><p><b>${esc(KINDS[r.kind][0])}.</b> ${esc(KINDS[r.kind][1])}</p>${f !== "open" && !compact ? `<div><button type="button" class="btn small" data-act="pull" ${live ? 'aria-disabled="true"' : ""}>Pull now</button></div>` : ""}</div>
+      <details class="raw"><summary>What the extension recorded</summary><pre>kind: ${r.kind}\nat: ${r.at.toISOString()}</pre></details>`;
+  } else if (r.stopped) {
+    body = `<p class="dcount">You pressed Stop. No page was sent, so the ledger did not change.</p>`;
+  } else if (r.unreadable && P.detail === "lines") {
+    body = `<div class="advice"><p><b>${r.unreadable} lines could not be read.</b> Their price or count did not read as a number, so they were left out. Nothing was guessed. The other lines were added.</p></div>`;
+  }
+  if (r.ok && !r.stopped) {
+    if (P.detail === "lines" && r.added) {
+      const shown = more ? r.lines : r.lines.slice(0, compact ? 3 : 5);
+      const rest = r.added - shown.length;
+      body += `<div class="lines" aria-label="New lines">${shown.map((l) => `<div class="ln"><b>${esc(l.name)}</b><span>${l.qty} x $${l.price}</span><small>${esc(l.seller)}</small></div>`).join("")}
+        ${rest > 0 ? `<button type="button" class="more" data-act="more">${rest} more lines</button>` : ""}</div>`;
+    } else if (P.detail === "lines") {
+      body += `<p class="dcount">Every line on these ${r.orders} orders was in the ledger already.</p>`;
+    } else {
+      body += `<p class="dcount">${r.added ? `${lines(r.added)}. They show in Packages and Tally.` : "No new lines."}</p>`;
+    }
+  }
+  return `<div class="det" id="detail-${f}">
+    ${compact ? "" : `<h2>${esc(dayWord(r.at))}, ${time(r.at)}</h2>`}
+    ${compact ? "" : `<p class="out ${r.ok ? "" : "bad"}">${entWhat(r)}</p>`}
+    <dl class="parts">${parts.map(([k, v]) => `<dt>${k}</dt><dd>${esc(v)}</dd>`).join("")}</dl>
+    ${body}</div>`;
+}
+
+/* ---------------- register ---------------- */
+function mark(day, runs) {
+  const rs = runs.filter((x) => dayKey(x.at) === dayKey(day));
+  const first = runs[runs.length - 1];
+  if (!first || day < new Date(first.at.getFullYear(), first.at.getMonth(), first.at.getDate())) return ["pre", false, "before the first run"];
+  if (day > NOW) return ["pre", false, "later"];
+  const ok = rs.filter((x) => x.ok), bad = rs.some((x) => !x.ok);
+  if (!rs.length) return ["none", false, "no run"];
+  if (!ok.length) return ["fail", false, "failed"];
+  const add = ok.reduce((a, x) => a + x.added, 0);
+  return [add ? "full" : "ring", bad, add ? `${add} new lines` : "ran, nothing new"];
+}
+function stripHTML(f, runs, cal) {
+  const days = [];
+  /* the open Duo draws four weeks; one page draws the last two weeks, seven to a row, so each day is a 44 pt target */
+  const from = cal ? D(1, 0, 0) : new Date(weekStart(NOW).getTime() - 7 * 864e5);
+  for (let i = 0; i < (cal ? 28 : 14); i++) days.push(new Date(from.getFullYear(), from.getMonth(), from.getDate() + i));
+  const wk = true ? WD.map((w) => `<span class="dc wk" aria-hidden="true"><span class="n">${f.startsWith("ax5") ? w[0] : w}</span></span>`).join("") : "";
+  return `<div class="strip cal" id="strip-${f}" role="group" aria-label="${cal ? "November, four weeks" : "This week and last week"}">${wk}${days.map((d) => {
+    const [m, warn, said] = mark(d, runs);
+    const later = d > NOW;
+    const k = dayKey(d);
+    return `<button type="button" class="dc ${daysAgo(d) === 0 ? "today" : ""} ${dayPick === k ? "pick" : ""} ${later ? "later" : ""}" ${later ? "disabled" : `data-act="day" data-day="${k}"`}
+      aria-pressed="${dayPick === k}" aria-label="${WD[d.getDay()]} ${MO[d.getMonth()]} ${d.getDate()}, ${said}${warn ? ", a run failed" : ""}">
+      <span class="n">${d.getDate()}</span><span class="m ${m}"></span>${warn ? '<span class="warn"></span>' : ""}</button>`;
+  }).join("")}</div>
+  <div class="legend" aria-hidden="true"><span><i class="m mk full"></i>New lines</span><span><i class="m mk ring"></i>Nothing new</span><span><i class="m mk fail"></i>Only failures</span><span><i class="m" style="height:2px;background:var(--inkSoft)"></i>No run</span></div>`;
+}
+function segHTML(f) {
+  const b = (v, l) => `<button type="button" data-act="filter" data-v="${v}" aria-pressed="${filter === v}">${l}</button>`;
+  return `<div class="seg" role="group" aria-label="Show">${b("all", "All runs")}${b("bad", "Failures")}${b("new", "New lines")}</div>`;
+}
+function weekStart(d) { const x = new Date(d.getFullYear(), d.getMonth(), d.getDate()); x.setDate(x.getDate() - x.getDay()); return x; }
+function regHTML(f, runs) {
+  const s = effState();
+  if (s === "never" && !runs.length) return `<section class="reg" id="log-${f}" aria-label="Run register"><p class="empty">Each run will be ruled in here: when, who started it, orders read and lines added.</p></section>`;
+  let list = runs;
+  if (filter === "bad") list = runs.filter((r) => !r.ok);
+  if (filter === "new") list = runs.filter((r) => r.ok && r.added);
+  if (dayPick) list = list.filter((r) => dayKey(r.at) === dayPick);
+  let out = `<div class="rh" aria-hidden="true"><span>When</span><span>By</span><span class="num">Read</span><span class="num">New</span><span></span></div>`;
+  if (s === "unknown" && !stateOverride) out = `<p class="cache">Read at 9:02 AM. Runs after that are not shown.</p>` + out;
+  if (live) out += `<div class="rr live" role="status"><span class="w">${time(live.start)}<small>Today</small></span><span class="by">${live.phase === "asked" ? "Asked" : `Page ${live.page || ""}`}</span><span class="num"></span><span class="num"></span><span class="mk"></span></div>`;
+  const all = !dayPick && filter === "all";
+  if (all && P.gaps === "on" && runs[0] && NOW - runs[0].at > GAP_MS && !live) out += `<div class="rg" id="gap-${f}">no run for ${span(NOW - runs[0].at)}, so far</div>`;
+  let curWeek = null, firstGap = !(all && P.gaps === "on" && runs[0] && NOW - runs[0].at > GAP_MS && !live);
+  const total = (ws) => { const rs = runs.filter((x) => weekStart(x.at).getTime() === ws.getTime());
+    const add = rs.reduce((a, x) => a + (x.ok ? x.added : 0), 0), bad = rs.filter((x) => !x.ok).length;
+    return `<div class="rt"><span>Week of ${MO[ws.getMonth()]} ${ws.getDate()}</span><span>${rs.length} runs, ${bad} failed, ${add} new lines</span></div>`; };
+  if (!list.length) out += `<p class="empty">No run matches. <button type="button" class="btn quiet small" data-act="clear">Show all runs</button></p>`;
+  list.forEach((r, i) => {
+    const ws = weekStart(r.at);
+    if (all && curWeek && ws.getTime() !== curWeek.getTime()) out += total(curWeek);
+    curWeek = ws;
+    const isSel = (f === "open" ? sel === r.id : openRow === r.id);
+    const m = !r.ok ? "fail" : r.added ? "full" : "ring";
+    out += `<button type="button" class="rr ${r.ok ? "" : "bad"} ${isSel ? "sel" : ""}" data-act="row" data-id="${r.id}" ${i === 0 ? `id="ent-${f}"` : ""} aria-expanded="${isSel}"
+      aria-label="${esc(full(r.at))}, ${BY[r.by][0]}, ${r.ok ? `${r.orders} read, ${r.added} new` : esc(KINDS[r.kind][0])}">
+      <span class="w">${MO[r.at.getMonth()]} ${r.at.getDate()}<small>${time(r.at)}</small></span><span class="by">${BY[r.by][0]}</span>
+      <span class="num" data-unit="read">${r.ok ? r.orders : ""}</span><span class="num add ${r.ok && !r.added ? "zero" : ""}" data-unit="new">${r.ok ? r.added : ""}</span>
+      <span class="mk ${m}" aria-hidden="true"></span>
+      ${r.ok ? "" : `<span class="why">${esc(KINDS[r.kind][0])}</span>`}</button>`;
+    if (isSel) out += `<div class="drawer">${detailHTML(f, r, true)}</div>`;
+    const older = list[i + 1];
+    if (all && P.gaps === "on" && older && r.at - older.at > GAP_MS) { out += `<div class="rg" ${firstGap ? `id="gap-${f}"` : ""}>no run for ${span(r.at - older.at)}</div>`; firstGap = false; }
+  });
+  if (all && curWeek && list.length) out += total(curWeek);
+  return `<section class="reg" id="log-${f}" aria-label="Run register">${out}</section>`;
+}
+
+/* ---------------- frames ---------------- */
+const statusBar = () => `<div class="status" aria-hidden="true"><span>9:30</span><span>100%</span></div>`;
+const tabBar = (duo) => `<nav class="bar ${duo ? "duo" : "single"}" aria-label="Tabs (system)"><span class="on">Ledger</span><span class="badge">Orphaned</span><span>Tally</span><span>Packages</span></nav>`;
+
+function ledgerValue(runs) {
+  const s = effState();
+  if (live) return [live.phase === "asked" ? "Asked" : "Running", "", "Pull now on this phone"];
+  if (s === "unknown" && !stateOverride) return ["Unknown", "fix", "The server did not answer"];
+  if (s === "never") return ["Never run", "", "No run yet"];
+  const last = runs[0];
+  if (s === "quiet") return [`${Math.floor((NOW - last.at) / 864e5)} days quiet`, "fix", `Last run ${dayWord(last.at)}, ${time(last.at)}`];
+  if (!last.ok) return ["Failed", "fix", `${dayWord(last.at)}, ${time(last.at)}`];
+  return [last.added ? `${last.added} new` : "Nothing new", "", `${dayWord(last.at)}, ${time(last.at)}`];
+}
+function ledgerHTML(f, runs) {
+  const [v, cls, sub] = ledgerValue(runs);
+  return `<div class="lt"><div class="title" role="heading" aria-level="1">Ledger</div><div class="grp" role="heading" aria-level="2">Data</div>
+    <div class="lcard">
+      <button type="button" class="lrow tag-new" data-tag="New: Orders" data-act="toorders" id="orders-row-${f}"><span class="t"><b>Orders</b><small>${esc(sub)}</small></span><span class="v ${cls}">${esc(v)}</span><span class="c" aria-hidden="true">›</span></button>
+      <div class="tag-today" data-tag="Today: Sync, History, Backup">
+      <div class="lrow"><span class="t"><b>Sync</b><small>Last sync 9:29 AM</small></span><span class="v">On</span><span class="c" aria-hidden="true">›</span></div>
+      <div class="lrow"><span class="t"><b>History</b></span><span class="v">Saved versions</span><span class="c" aria-hidden="true">›</span></div>
+      <div class="lrow"><span class="t"><b>Backup</b></span></div></div>
+    </div></div>`;
+}
+
+function singlePage(f) {
+  const runs = runsFor(effState());
+  const v = view[f] || "orders";
+  const reg = P.c === "register";
+  const foot = P.pull === "foot" && !f.startsWith("ax5");
+  let nav = "", body = "";
+  if (v === "ledger") {
+    nav = "";
+    body = ledgerHTML(f, runs);
+    return `${statusBar()}<div class="page one app withbar"><div class="scroll nonav"><div class="pad">${body}</div></div></div>${tabBar(false)}`;
+  }
+  if (v === "detail") {
+    const r = runs.find((x) => x.id === sel) || runs[0];
+    nav = `<div class="nav"><button type="button" class="back" data-act="back">Orders</button><span class="ttl">Run</span><span></span></div>`;
+    body = detailHTML(f, r, false);
+    return `${statusBar()}${nav}<div class="page one app withbar"><div class="scroll"><div class="pad">${body}</div></div></div>${tabBar(false)}`;
+  }
+  nav = `<div class="nav"><button type="button" class="back" data-act="ledger">Ledger</button><span class="ttl">Orders</span><span></span></div>`;
+  body = headHTML(f, runs, !foot) + (reg ? (f === "ax5" ? "" : "") + stripHTML(f, runs, false) + segHTML(f) + regHTML(f, runs) : bookHTML(f, runs));
+  const dock = foot ? `<div class="dockbox app tag-new" data-tag="New: Pull now by the thumb">${pullCtl(f)}</div>` : "";
+  return `${statusBar()}${nav}<div class="page one app withbar ${foot ? "dock" : ""}"><div class="scroll" data-scroll="${f}"><div class="pad">${body}</div></div></div>${dock}${tabBar(false)}`;
+}
+
+function openPages() {
+  const f = "open";
+  const runs = runsFor(effState());
+  const reg = P.c === "register";
+  const r = runs.find((x) => x.id === sel) || runs.find((x) => !live) || null;
+  if (!sel && runs[0]) sel = runs[0].id;
+  const nav = `<div class="nav" style="right:auto;width:455.5px"><button type="button" class="back" data-act="noop">Ledger</button><span class="ttl">Orders</span><span></span></div>`;
+  let left, right;
+  if (reg) {
+    left = `${headHTML(f, runs, true)}${stripHTML(f, runs, true)}`;
+    right = `${segHTML(f)}${regHTML(f, runs)}`;
+  } else {
+    left = `${headHTML(f, runs, true)}${bookHTML(f, runs)}`;
+    right = detailHTML(f, runs.find((x) => x.id === sel), false);
+  }
+  return `${statusBar()}<div class="page l app">${nav}<div class="scroll" data-scroll="open-l"><div class="pad">${left}</div></div></div>
+    <div class="fold" aria-hidden="true"><span>FOLD, 40 PT</span></div>
+    <div class="page r app"><div class="scroll nonav" data-scroll="open-r"><div class="pad" ${reg ? "" : 'style="padding-top:60px"'}>${right}</div></div></div>${tabBar(true)}`;
+}
+
+/* ---------------- controls of this page ---------------- */
+function buildControls() {
+  const gc = document.getElementById("g-concept"), gs = document.getElementById("g-state"), go = document.getElementById("g-opt");
+  gc.querySelectorAll(".chip,a").forEach((n) => n.remove()); gs.querySelectorAll("a").forEach((n) => n.remove()); go.querySelectorAll(".chip").forEach((n) => n.remove());
+  const chip = (o, host) => {
+    const id = `${o.key}=${o.val}`;
+    const el = document.createElement("span"); el.className = "chip"; el.hidden = hidden.has(id);
+    el.innerHTML = `<a href="#" data-k="${o.key}" data-v="${o.val}" aria-current="${P[o.key] === o.val}">${o.label}</a><button type="button" aria-label="Hide ${o.label}" data-hide="${id}">×</button>`;
+    host.appendChild(el);
+  };
+  OPTIONS.filter((o) => o.key === "c").forEach((o) => chip(o, gc));
+  OPTIONS.filter((o) => o.key !== "c").forEach((o) => chip(o, go));
+  for (const [k, l] of Object.entries(STATES)) { const a = document.createElement("a"); a.href = "#"; a.textContent = l; a.dataset.k = "s"; a.dataset.v = k; a.setAttribute("aria-current", P.s === k); gs.appendChild(a); }
+}
+
+function render() {
+  const keep = {}; document.querySelectorAll("[data-scroll]").forEach((n) => (keep[n.dataset.scroll] = n.scrollTop));
+  document.body.classList.toggle("notags", tagsOff);
+  for (const f of ["folded", "phone", "ax5", "ax5b"]) document.getElementById(`frame-${f}`).innerHTML = singlePage(f);
+  document.getElementById("frame-open").innerHTML = openPages();
+  const saved = view.entry; view.entry = "ledger";
+  document.getElementById("frame-entry").innerHTML = `${statusBar()}<div class="page one app"><div class="scroll nonav"><div class="pad">${ledgerHTML("entry", runsFor(effState()))}</div></div></div>`;
+  view.entry = saved;
+  document.querySelectorAll("[data-scroll]").forEach((n) => { if (keep[n.dataset.scroll]) n.scrollTop = keep[n.dataset.scroll]; });
+  const b = document.querySelector('[data-scroll="ax5b"]'), lg = document.getElementById("log-ax5b");
+  const toLog = () => { if (b && lg) b.scrollTop += lg.getBoundingClientRect().top - b.getBoundingClientRect().top - 8; };
+  if (b && lg && keep.ax5b === undefined) { toLog(); document.fonts && document.fonts.ready.then(() => requestAnimationFrame(toLog)); }
+  buildControls();
+  document.getElementById("tags").textContent = tagsOff ? "Show Today/New labels" : "Hide Today/New labels";
+}
+
+/* ---------------- presses ---------------- */
+function startPull() {
+  if (live) return;
+  timers.forEach(clearTimeout); timers = [];
+  answer = null;
+  live = { phase: "asked", start: D(20, 9, 30) };
+  render();
+  let page = 0;
+  const step = () => {
+    page++;
+    if (page <= 6) { live = { phase: "reading", page, start: D(20, 9, 30) }; render(); timers.push(setTimeout(step, 700)); }
+    else { live = { phase: "sending", start: D(20, 9, 30) }; render(); timers.push(setTimeout(done, 900)); }
+  };
+  const done = () => {
+    const r = { id: `p${extra.length}`, at: D(20, 9, 31), by: "phone", ok: true, orders: 41, pages: 6, secs: 9, added: 2, lines: sampleLines(2, 7) };
+    extra.unshift(r); live = null; stateOverride = "ok"; answer = ["ok", "Done. 2 new lines."]; sel = r.id; render();
+  };
+  timers.push(setTimeout(step, 1400));
+}
+document.addEventListener("click", (e) => {
+  const t = e.target.closest("[data-act],[data-k],[data-hide],#restore,#tags");
+  if (!t) return;
+  const frame = t.closest(".dev"); const f = frame && frame.dataset.f;
+  if (t.id === "restore") { hidden.clear(); writeHash({}); return; }
+  if (t.id === "tags") { tagsOff = !tagsOff; render(); return; }
+  if (t.dataset.hide) {
+    hidden.add(t.dataset.hide); const [k, v] = t.dataset.hide.split("=");
+    const alt = OPTIONS.find((x) => x.key === k && x.val !== v && !hidden.has(`${x.key}=${x.val}`));
+    writeHash(P[k] === v && alt ? { [k]: alt.val } : {}); return;
+  }
+  if (t.dataset.k) { e.preventDefault(); writeHash({ [t.dataset.k]: t.dataset.v, sel: null, row: null }); return; }
+  const act = t.dataset.act;
+  if (t.getAttribute("aria-disabled") === "true") return;
+  if (act === "pull") startPull();
+  else if (act === "retry") { answer = ["", "Reading the log"]; render(); timers.push(setTimeout(() => { stateOverride = "ok"; answer = ["ok", "Read at 9:30 AM."]; render(); }, 900)); }
+  else if (act === "cancel") { timers.forEach(clearTimeout); live = null; answer = ["", "Ask cancelled. Nothing ran."]; render(); }
+  else if (act === "stop") { timers.forEach(clearTimeout); const start = live.start; live = null;
+    extra.unshift({ id: `s${extra.length}`, at: D(20, 9, 30), by: "phone", ok: true, stopped: true, added: 0, orders: 0, pages: 0, secs: 0, lines: [] });
+    answer = ["", "Stopped. Nothing was added."]; render(); }
+  else if (act === "run") { sel = t.dataset.id; more = false; if (f !== "open") view[f] = "detail"; render(); }
+  else if (act === "row") { const id = t.dataset.id; more = false; if (f === "open") sel = sel === id ? null : id; else openRow = openRow === id ? null : id; render(); }
+  else if (act === "back") { view[f] = "orders"; render(); }
+  else if (act === "ledger") { view[f] = "ledger"; render(); }
+  else if (act === "toorders") { if (f !== "entry") { view[f] = "orders"; render(); } }
+  else if (act === "more") { more = true; render(); }
+  else if (act === "filter") { filter = t.dataset.v; render(); }
+  else if (act === "day") { dayPick = dayPick === t.dataset.day ? null : t.dataset.day; render(); }
+  else if (act === "clear") { filter = "all"; dayPick = null; render(); }
+});
+window.addEventListener("hashchange", () => { readHash(); render(); });
+readHash(); render();
+</script>
+</body>
+</html>

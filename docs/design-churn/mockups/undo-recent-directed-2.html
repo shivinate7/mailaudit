@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Recent Day Log</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native interface is held to light (UIUserInterfaceStyle),
+   so this page draws one theme. Cochin sets words, Menlo sets numbers (typography-cochin-and-mono). */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the 20 pt floor that duo-hand-tap-shift uses (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+  color-scheme: light;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; padding-top:max(16px, env(safe-area-inset-top)); }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0 0 4px; }
+.kind { font:12px var(--mono); color:var(--inkSoft); margin:0; }
+.sub { color:var(--inkSoft); margin:4px 0 12px; max-width:76ch; }
+nav.ctl { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+nav.ctl a, nav.ctl button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav.ctl a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav.ctl .sep { width:100%; height:0; }
+nav.ctl .lbl { font:12px var(--mono); color:var(--inkSoft); align-self:center; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { margin:28px 0 40px; border-top:1px solid var(--line); padding-top:16px; }
+section[hidden], figure[hidden] { display:none; }
+.frames { display:flex; flex-direction:column; gap:28px; margin-top:16px; }
+figure { margin:0; }
+figcaption { margin-top:8px; max-width:80ch; font-size:14px; }
+figcaption b { font-family:var(--cochin); font-size:17px; }
+.cap { font-family:var(--cochin); font-size:16px; font-weight:700; margin:0 0 6px; }
+.read { font:12px/1.5 var(--mono); color:var(--inkSoft); margin-top:6px; }
+.read .ok { color:var(--green); } .read .bad { color:var(--red); font-weight:700; }
+.read button { font:12px var(--mono); min-height:32px; border:1px solid var(--line); background:var(--card); border-radius:6px; padding:0 8px; cursor:pointer; color:var(--ink); margin-top:4px; }
+.fit { width:100%; overflow:hidden; }
+
+/* ---------- device frames: 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; font-family:var(--sys); color:var(--ink); }
+.dev.folded, .dev.ax5 { width:466px; height:678px; }
+.dev.phone { width:402px; height:874px; border-radius:40px; }
+.dev.open { width:951px; height:669px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center; padding:0 20px;
+  font-size:12px; font-weight:600; z-index:9; background:var(--paper); }
+.phone .status { height:62px; align-items:flex-end; padding-bottom:12px; padding-inline:32px; }
+.island { position:absolute; top:11px; left:50%; width:124px; height:36px; margin-left:-62px; background:#000; border-radius:18px; z-index:10; }
+.hinge { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, var(--paper)); z-index:8; }
+.hinge span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; }
+.pg.one { left:0; right:0; }
+.pg.l { left:0; width:455.5px; } .pg.r { left:495.5px; width:455.5px; }
+/* navigation bar: inline title, back to the Ledger tab (NavigationStack push) */
+.navb { position:absolute; left:0; right:0; height:44px; display:flex; align-items:center; justify-content:center; font:600 17px var(--sys); z-index:4; background:var(--paper); }
+.navb .back { position:absolute; left:8px; top:0; height:44px; min-width:44px; display:flex; align-items:center; gap:2px; color:var(--accent); font-weight:400; font-size:17px; padding:0 8px; }
+.navb .back i { font-style:normal; font-size:24px; line-height:1; margin-top:-2px; }
+.rhead { position:absolute; left:24px; right:24px; font-family:var(--cochin); font-size:20px; font-weight:700; display:flex; align-items:baseline; justify-content:space-between; }
+.rhead small { font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; text-transform:uppercase; font-weight:400; }
+
+/* system tab bar (iOS 26 floats a glass bar); drawn over its measured zone */
+.tabzone { position:absolute; left:0; right:0; z-index:7; }
+.tabpill { position:absolute; left:16px; right:16px; top:4px; height:58px; border-radius:29px; border:1px solid var(--line);
+  background:color-mix(in srgb, var(--paper) 70%, white); box-shadow:0 4px 12px var(--shadow); display:flex; align-items:center; padding:4px; gap:4px; }
+.tab { flex:1; height:100%; border-radius:25px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:var(--inkSoft); font:10px var(--sys); }
+.tab b { font:16px/18px var(--sys); }
+.tab.on { color:var(--accent); background:var(--card); }
+.duobar { position:absolute; z-index:7; height:64px; border-radius:32px; border:1px solid var(--line); background:color-mix(in srgb, var(--paper) 70%, white);
+  box-shadow:0 4px 12px var(--shadow); display:flex; align-items:center; padding:4px; gap:4px; }
+.duobar .tab { font:12px var(--cochin); }
+.bartop { position:absolute; left:0; right:0; height:0; border-top:1px dashed var(--red); z-index:8; pointer-events:none; }
+.bartop span { position:absolute; right:8px; top:-15px; font:10px var(--mono); color:var(--red); background:var(--paper); padding:0 3px; }
+
+/* ---------- the log list ---------- */
+.list { position:absolute; left:0; right:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:thin; }
+.list:focus-visible { outline-offset:-2px; }
+.dayh { position:sticky; top:0; z-index:2; height:28px; display:flex; align-items:flex-end; justify-content:space-between; padding:0 16px 4px;
+  font:10px var(--mono); letter-spacing:1.4px; text-transform:uppercase; color:var(--inkSoft); background:var(--paper); border-bottom:1px solid var(--line); }
+.row { position:relative; height:72px; display:grid; grid-template-columns:var(--gut, 16px) minmax(0,1fr) 72px; border-bottom:1px solid var(--line); background:var(--paper); }
+.row .body { padding:9px 8px 0 0; min-width:0; display:flex; flex-direction:column; }
+.l1 { height:14px; display:flex; justify-content:space-between; gap:8px; font:10px/14px var(--mono); letter-spacing:1px; text-transform:uppercase; color:var(--inkSoft); }
+.l1 .when { white-space:nowrap; }
+.l2 { height:22px; display:flex; align-items:baseline; gap:8px; }
+.subj { font:16px/22px var(--cochin); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; }
+.fig { font:11px var(--mono); color:var(--ink); white-space:nowrap; }
+.l3 { height:18px; display:flex; align-items:baseline; gap:8px; }
+.sell { font:13.5px/18px var(--cochin); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; flex:1; }
+.ord { font:10px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.row.st-undone .subj { text-decoration:line-through; text-decoration-thickness:1px; color:var(--inkSoft); }
+.end { position:relative; width:72px; height:72px; }
+.undo { position:absolute; inset:0; width:72px; height:72px; border:0; background:transparent; padding:0; cursor:pointer; display:flex; align-items:center; justify-content:center;
+  font:11px var(--mono); letter-spacing:1px; color:var(--accent); }
+.undo span { border-bottom:1px solid var(--line); padding-bottom:1px; }
+.undo:active { background:color-mix(in srgb, var(--accent) 10%, transparent); }
+.undo[aria-disabled="true"] { color:var(--inkSoft); cursor:default; }
+.undo[aria-disabled="true"] span { border-bottom-color:transparent; }
+.endst { position:absolute; inset:0; display:flex; flex-direction:column; align-items:center; justify-content:center; font:10px/13px var(--mono); letter-spacing:.8px; color:var(--inkSoft); text-align:center; }
+.listfoot { padding:16px; font:13.5px var(--cochin); color:var(--inkSoft); }
+.empty { padding:24px 16px; display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
+.empty p { margin:0; font:17px/1.35 var(--cochin); }
+
+/* Day tape: rows inside the cut take a tint and a gutter bar; the cut line sits under the oldest one. Neither changes a box. */
+/* The picked rows take the card fill, lighter than paper, so inkSoft and the accent UNDO keep their contrast (an accent tint
+   dropped both to about 4.2:1). */
+.tape .row.incut { background:var(--card); }
+.tape .row.incut::before { content:""; position:absolute; left:4px; top:8px; bottom:8px; width:4px; border-radius:2px; background:var(--accent); }
+.tape .row.incut.st-undone::before, .tape .row.incut.st-changed::before, .tape .row.incut.st-nothing::before { background:var(--line); }
+.tape .row.cutedge::after { content:""; position:absolute; left:0; right:0; bottom:-2px; height:0; border-top:2px dashed var(--accent); z-index:1; pointer-events:none; }
+
+/* Audit sheet: the gutter holds the device mark at rest and the tick in select mode, in one 44 pt box */
+.sheet .row { --gut:44px; }
+.gut { position:relative; }
+.mark { position:absolute; left:10px; top:22px; width:26px; height:26px; border-radius:13px; display:grid; place-items:center; color:var(--inkSoft); }
+.mark svg { width:16px; height:16px; }
+.tick { position:absolute; left:0; top:0; width:44px; height:72px; border:0; background:transparent; padding:0; cursor:pointer; }
+.tick i { position:absolute; left:10px; top:22px; width:26px; height:26px; border-radius:13px; border:1.5px solid var(--accent); background:var(--card); display:grid; place-items:center;
+  color:var(--card); font-style:normal; font:700 14px var(--sys); }
+.tick[aria-checked="true"] i { background:var(--accent); }
+.tick[aria-disabled="true"] i { border-color:var(--line); background:transparent; }
+.sheet .row.ticked { background:var(--card); }
+.sheet .row.inspect { background:var(--card); box-shadow:inset 3px 0 0 var(--accent); }
+.rowbtn { position:absolute; left:44px; top:0; bottom:0; right:72px; border:0; background:transparent; padding:0; cursor:pointer; }
+.days { position:absolute; left:16px; right:16px; height:44px; display:flex; gap:4px; padding:4px; border-radius:22px; background:color-mix(in srgb, var(--line) 45%, var(--paper)); }
+.days button { flex:1; border:0; border-radius:18px; background:transparent; font:13px var(--sys); color:var(--ink); cursor:pointer; display:flex; align-items:center; justify-content:center; gap:6px; min-width:0; }
+.days button[aria-pressed="true"] { background:var(--card); font-weight:600; box-shadow:0 1px 3px var(--shadow); }
+.days button small { font:11px var(--mono); color:var(--inkSoft); }
+
+/* ---------- the tray: one reserved box above the bar. Every state of a cell sits in the same grid cell, so the box keeps
+   the tallest state's height and a press moves nothing (card-the-action-row-is-reserved, no-layout-shift-under-pointer). */
+.tray { position:absolute; left:0; right:0; padding:8px 16px; display:flex; flex-direction:column; gap:8px; background:var(--paper); border-top:1px solid var(--line); z-index:3; }
+.stack { display:grid; } .stack > * { grid-area:1 / 1; min-width:0; }
+.stack > .off { visibility:hidden; }
+.meta { font:11px/16px var(--mono); color:var(--inkSoft); }
+.meta b { color:var(--ink); font-weight:600; }
+.meta.done { color:var(--ink); } /* green on paper is 4.29:1, under the 4.5 floor for small text */
+.meta.done::before { content:"\2713  "; color:var(--green); }
+.btnrow { display:flex; gap:8px; align-items:stretch; }
+.bulk { flex:1; min-height:44px; border-radius:8px; border:1px solid var(--red); background:var(--redSoft); color:var(--red); font:15px var(--cochin); cursor:pointer; padding:6px 12px; text-align:left; }
+.bulk.armed { background:var(--red); color:var(--card); font-weight:700; }
+.bulk[aria-disabled="true"] { border-style:dashed; border-color:var(--line); background:transparent; color:var(--inkSoft); cursor:default; }
+.plain { flex:1; min-height:44px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--accent); font:15px var(--cochin); cursor:pointer; padding:6px 12px; text-align:left; }
+.side { flex:0 0 80px; min-height:44px; border:0; border-left:1px solid var(--line); background:transparent; color:var(--ink); font:15px var(--cochin); cursor:pointer; }
+.side.off-slot { visibility:hidden; }
+.ghost { flex:1; min-height:44px; border-radius:8px; border:1px dashed var(--line); display:flex; align-items:center; padding:6px 12px; font:15px var(--cochin); color:var(--inkSoft); }
+.seg { display:flex; gap:4px; padding:4px; border-radius:22px; background:color-mix(in srgb, var(--line) 45%, var(--paper)); min-height:44px; }
+.seg button { flex:1; border:0; border-radius:18px; background:transparent; font:13px var(--sys); color:var(--ink); cursor:pointer; min-height:36px; }
+.seg button[aria-pressed="true"] { background:var(--card); font-weight:600; box-shadow:0 1px 3px var(--shadow); }
+
+/* the day tape: a ruled strip of the day, one tick per action. The whole strip is the 44 pt slider. */
+.rail { position:relative; height:44px; touch-action:none; cursor:ew-resize; border-radius:6px; background:var(--card); border:1px solid var(--line); user-select:none; }
+.rail.v { height:auto; width:72px; cursor:ns-resize; }
+.rail .fill { position:absolute; background:color-mix(in srgb, var(--accent) 16%, transparent); }
+.rail .tk { position:absolute; background:var(--ink); }
+.rail .tk.inert { background:var(--line); }
+.rail .hr { position:absolute; font:11px var(--mono); color:var(--inkSoft); }
+.rail .hd { position:absolute; background:var(--accent); }
+.rail .hd::after { content:""; position:absolute; background:var(--accent); border-radius:50%; width:12px; height:12px; }
+.rail:not(.v) .tk { top:20px; width:2px; height:16px; margin-left:-1px; }
+.rail:not(.v) .hr { top:2px; transform:translateX(-50%); }
+.rail:not(.v) .fill { top:0; bottom:0; }
+.rail:not(.v) .hd { top:0; bottom:0; width:2px; margin-left:-1px; }
+.rail:not(.v) .hd::after { left:-5px; bottom:-6px; }
+.rail.v .tk { left:30px; height:2px; width:34px; margin-top:-1px; }
+.rail.v .hr { left:6px; transform:translateY(-50%); }
+.rail.v .fill { left:0; right:0; }
+.rail.v .hd { left:0; right:0; height:2px; margin-top:-1px; }
+.rail.v .hd::after { right:-6px; top:-5px; }
+
+/* right page panels on the open Duo */
+.panel { position:absolute; left:24px; right:24px; display:flex; flex-direction:column; gap:8px; }
+.groups { overflow-y:auto; display:flex; flex-direction:column; gap:12px; font-size:14px; }
+.grp b { font-family:var(--cochin); font-size:16px; display:block; }
+.grp span { font:11px var(--mono); color:var(--inkSoft); }
+.grp p { margin:2px 0 0; font:14px/1.35 var(--cochin); }
+.insp { display:flex; flex-direction:column; gap:4px; }
+.insp .big { font:28px/34px var(--cochin); margin:0 0 8px; }
+.kv { display:grid; grid-template-columns:96px 1fr; border-top:1px solid var(--line); min-height:36px; align-items:center; }
+.kv dt { font:10px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.kv dd { margin:0; font:15px var(--cochin); }
+.kv dd.n { font:13px var(--mono); }
+
+/* tags: dashed outline on what exists today, and on what a concept adds */
+/* A tagged part keeps its own position: the tag reads the nearest placed box. */
+.when, .kv, .navb > span:not(.back) { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:6;
+  white-space:nowrap; letter-spacing:0; text-transform:none; pointer-events:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .tag-today::before { color:var(--today); }
+body.notags [data-tag]::before { display:none; } body.notags .tag-new, body.notags .tag-today { outline:0; }
+
+/* ---------- biggest accessibility size (AX5), folded. Sizes scale each style by Apple's AX5 table (typography page):
+   caption2 11 to 40, caption1 12 to 43, footnote 13 to 44, body 17 to 53. ---------- */
+/* Rows flatten into one column, and UNDO follows the name, so the first row's UNDO shows without a scroll. */
+.ax5 .row { display:flex; flex-direction:column; height:auto; padding:12px 16px 12px var(--axpad, 16px); }
+.ax5.sheet .row { --axpad:56px; }
+.ax5 .row .body, .ax5 .l1, .ax5 .l2, .ax5 .l3 { display:contents; }
+.ax5 .row .gut { position:absolute; left:0; top:0; bottom:0; width:44px; }
+.ax5 .lab { order:1; } .ax5 .subj { order:2; } .ax5 .row .end { order:3; width:auto; height:64px; margin:4px 0 8px; }
+.ax5 .when { order:4; } .ax5 .fig { order:5; } .ax5 .sell { order:6; } .ax5 .ord { order:7; }
+.ax5 .lab, .ax5 .when { font:36px/44px var(--mono); letter-spacing:0; text-transform:uppercase; color:var(--inkSoft); }
+.ax5 .subj { font-size:50px; line-height:58px; white-space:normal; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; flex:none; }
+.ax5 .fig { font-size:39px; line-height:48px; }
+.ax5 .sell { font-size:46px; line-height:52px; max-width:100%; flex:none; }
+.ax5 .ord { font-size:36px; line-height:44px; }
+.ax5.sheet .dayh { display:none; } /* the day button above already names the day */
+.ax5 .undo { width:100%; height:64px; font-size:39px; border:1px solid var(--line); border-radius:8px; }
+.ax5 .endst br { display:none; } /* one line, so an end state keeps the 64 pt of the UNDO bar */
+.ax5 .endst { display:block; line-height:64px; white-space:nowrap; font-size:36px; text-align:center; }
+.ax5 .dayh { height:auto; font-size:36px; padding-top:8px; letter-spacing:0; }
+.ax5 .mark, .ax5 .tick i { top:16px; }
+.ax5 .tick { height:100%; }
+.ax5 .rowbtn { display:none; }
+.ax5 .meta { font-size:36px; line-height:44px; }
+.ax5 .bulk, .ax5 .plain, .ax5 .ghost, .ax5 .side { font-size:39px; line-height:46px; }
+.ax5 .btnrow { flex-direction:column; }
+.ax5 .side { flex-basis:auto; border-left:0; border-top:1px solid var(--line); min-height:56px; }
+.ax5 .seg button { font-size:30px; }
+.ax5 .days button { font-size:30px; } .ax5 .days button small { display:none; }
+.isempty .tray, .isempty .days, .isempty .pg.r .panel, .isempty .pg.r .rhead { display:none; }
+.axhead { padding:12px 16px; border-bottom:1px solid var(--line); }
+.mark[data-tag]::before { left:-6px; right:auto; top:-16px; }
+
+/* web 375 reference (Today) */
+.web { position:relative; width:375px; height:812px; background:var(--paper); border:1px solid var(--ink); overflow:hidden; font-family:var(--cochin); }
+.web .card { position:absolute; left:12px; right:12px; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.web .wrow { position:absolute; left:12px; right:12px; height:72px; border-bottom:1px solid var(--line); }
+.web .wbar { position:absolute; left:0; right:0; top:736px; bottom:0; background:color-mix(in srgb, var(--paper) 75%, white); border-top:1px solid var(--line); display:flex; justify-content:space-around; align-items:flex-start; padding-top:12px; font:12px var(--cochin); color:var(--inkSoft); }
+@media (prefers-reduced-motion: no-preference) { .undo, .bulk, .tick i { transition:background-color .12s ease; } }
+@media (forced-colors: active) { .rail .hd, .rail .tk { forced-color-adjust:none; background:CanvasText; } .bulk, .plain, .ghost { border:1px solid ButtonText; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No card, seller, order, count, time or device on this page is real. Row places come from this drawing, not from a simulator.</div>
+<h1>Recent: the whole day, scrubbed and undone in bulk</h1>
+<p class="kind">Designer kind: directed. Direction: audit trail: a full day log you can scrub and undo in bulk.</p>
+<p class="sub">Two concepts, each on the Duo folded (466 x 678 pt), the Duo open (951 x 669 pt, fold at x 455.5 to 495.5), a large phone (size not written; see its frame), and the Duo folded at the biggest accessibility size. Light theme only. Every frame works: tap UNDO, drag the tape, tick rows, arm and run a bulk undo. Under each frame a readout measures every UNDO box and the bulk button against the bar, and says whether the last press moved any of them.</p>
+
+<nav class="ctl" aria-label="Concepts, states and devices">
+  <span class="lbl">Concept</span>
+  <a href="#c=tape" data-k="c" data-v="tape">Day tape</a>
+  <a href="#c=sheet" data-k="c" data-v="sheet">Audit sheet</a>
+  <a href="#" data-k="all">All</a>
+  <span class="sep"></span>
+  <span class="lbl">State</span>
+  <a href="#s=rest" data-k="s" data-v="rest">At rest</a>
+  <a href="#s=pick" data-k="s" data-v="pick">Picked</a>
+  <a href="#s=armed" data-k="s" data-v="armed">Armed</a>
+  <a href="#s=done" data-k="s" data-v="done">Bulk done</a>
+  <a href="#s=single" data-k="s" data-v="single">One row undone</a>
+  <a href="#s=empty" data-k="s" data-v="empty">Empty</a>
+  <span class="sep"></span>
+  <span class="lbl">Device</span>
+  <a href="#d=folded" data-k="d" data-v="folded">Duo folded</a>
+  <a href="#d=open" data-k="d" data-v="open">Duo open</a>
+  <a href="#d=phone" data-k="d" data-v="phone">Large phone</a>
+  <a href="#d=ax5" data-k="d" data-v="ax5">Folded, AX5 text</a>
+  <a href="#d=web" data-k="d" data-v="web">Web 375 today</a>
+  <span class="sep"></span>
+  <button type="button" data-hide="tape">Hide Day tape</button>
+  <button type="button" data-hide="sheet">Hide Audit sheet</button>
+  <button type="button" data-hide="arm-first">Hide Arm first</button>
+  <button type="button" data-hide="run-at-once">Hide Run at once</button>
+  <button type="button" data-tags>Hide tags</button>
+</nav>
+
+<!-- Day tape. Folded first, then open (ios-apps, Mockups). -->
+<section class="concept" data-concept="tape" id="concept-tape">
+  <h2>Day tape</h2>
+  <p class="sub">The day is a ruled tape in a tray above the bar, one tick per action. Drag it back to the first wrong tap: every row since then lights up in place, and one bar undoes them all. Each row keeps its own UNDO, one tap, as ruled.</p>
+  <div class="frames">
+    <figure data-dev="folded"><p class="cap">Duo folded, 466 x 678 pt</p><div class="fit"><div class="dev folded tape" id="tape-folded" data-device="iphone-duo-folded" data-concept="tape" data-kind="folded"></div></div><div class="read"></div></figure>
+    <figure data-dev="open"><p class="cap">Duo open, 951 x 669 pt: the log on the left page, the tape and its batch on the right</p><div class="fit"><div class="dev open tape" id="tape-open" data-device="iphone-duo-unfolded" data-concept="tape" data-kind="open"></div></div><div class="read"></div></figure>
+    <figure data-dev="phone"><p class="cap">Large phone. Size not written: drawn at 402 x 874 pt (see notes)</p><div class="fit"><div class="dev phone tape" id="tape-phone" data-device="iphone-regular" data-concept="tape" data-kind="phone"></div></div><div class="read"></div></figure>
+    <figure data-dev="ax5"><p class="cap">Duo folded at AX5, the biggest accessibility text size</p><div class="fit"><div class="dev ax5 tape" id="tape-ax5" data-device="iphone-duo-folded" data-concept="tape" data-kind="ax5"></div></div><div class="read"></div></figure>
+  </div>
+</section>
+
+<section class="concept" data-concept="sheet" id="concept-sheet">
+  <h2>Audit sheet</h2>
+  <p class="sub">The log is a ruled sheet with a who column: a mark for the device that made each action. Switch days at the top. Press Select, tick rows (or every live row, or every row of the same order), and one bar undoes the ticked rows. On the open Duo, a tap on a row shows its full entry on the right page.</p>
+  <div class="frames">
+    <figure data-dev="folded"><p class="cap">Duo folded, 466 x 678 pt</p><div class="fit"><div class="dev folded sheet" id="sheet-folded" data-device="iphone-duo-folded" data-concept="sheet" data-kind="folded"></div></div><div class="read"></div></figure>
+    <figure data-dev="open"><p class="cap">Duo open, 951 x 669 pt: the sheet on the left page, the entry or the ticked batch on the right</p><div class="fit"><div class="dev open sheet" id="sheet-open" data-device="iphone-duo-unfolded" data-concept="sheet" data-kind="open"></div></div><div class="read"></div></figure>
+    <figure data-dev="phone"><p class="cap">Large phone. Size not written: drawn at 402 x 874 pt (see notes)</p><div class="fit"><div class="dev phone sheet" id="sheet-phone" data-device="iphone-regular" data-concept="sheet" data-kind="phone"></div></div><div class="read"></div></figure>
+    <figure data-dev="ax5"><p class="cap">Duo folded at AX5, the biggest accessibility text size</p><div class="fit"><div class="dev ax5 sheet" id="sheet-ax5" data-device="iphone-duo-folded" data-concept="sheet" data-kind="ax5"></div></div><div class="read"></div></figure>
+  </div>
+</section>
+
+<section class="concept" data-concept="arm" id="concept-arm">
+  <h2>Bulk undo: arm first, or run at once</h2>
+  <p class="sub">Shown on Day tape, folded. The same choice applies to Audit sheet. A single row's UNDO never arms (ruled: one tap, no arm).</p>
+  <div class="frames">
+    <figure data-opt="arm-first"><p class="cap">Arm first: the first press turns the bar red and asks; Cancel takes the reserved slot</p><div class="fit"><div class="dev folded tape" id="arm-first-folded" data-device="iphone-duo-folded" data-concept="tape" data-kind="folded" data-preset="armed" data-arm="on"></div></div><div class="read"></div></figure>
+    <figure data-opt="run-at-once"><p class="cap">Run at once: one press undoes the batch</p><div class="fit"><div class="dev folded tape" id="run-at-once-folded" data-device="iphone-duo-folded" data-concept="tape" data-kind="folded" data-preset="done" data-arm="off"></div></div><div class="read"></div></figure>
+  </div>
+</section>
+
+<section class="concept" data-concept="web" id="concept-web">
+  <h2>Today, on the web at 375 px</h2>
+  <p class="sub">Drawn from debt <code>recent-undo-under-bar</code>: with the page at the top, the first open Recent row's UNDO cell spans y 705 to 777 and the bottom bar starts at y 736. Both concepts move the log to its own screen, so no row can reach the bar.</p>
+  <div class="frames"><figure data-dev="web"><div class="fit"><div class="web" id="web-today" aria-label="Web Ledger tab at 375 px, today"></div></div></figure></div>
+</section>
+</main>
+
+<script>
+// ---------------- sample data: one fixed day, frozen when the screen opens (recent-checks-can-be-undone, No layout shift)
+const D = [
+  { id:'r1', day:0, t:'14:51', lab:'Checked', subj:'Lightning Bolt', fig:'1 of 4', sell:'Alpha Cards', ord:'#7F3A-21', dev:'Phone', st:'live', before:'0', after:'1 of 4' },
+  { id:'r2', day:0, t:'14:50', lab:'Checked', subj:'Ponder', fig:'2 of 2', sell:'Alpha Cards', ord:'#7F3A-21', dev:'Phone', st:'live', before:'1', after:'2 of 2' },
+  { id:'r3', day:0, t:'14:49', lab:'Count 2 → 3', subj:'Brainstorm', fig:'3 of 4', sell:'Beta Games', ord:'#7F3A-19', dev:'Phone', st:'live', before:'2', after:'3 of 4' },
+  { id:'r4', day:0, t:'14:47', lab:'Package checked', subj:'Beta Games, 6 cards', fig:'6 of 6', sell:'Beta Games', ord:'#7F3A-19', dev:'Phone', st:'live', before:'0 of 6', after:'6 of 6' },
+  { id:'r5', day:0, t:'14:40', lab:'Un-checked', subj:'Counterspell', fig:'0 of 1', sell:'Gamma Cards', ord:'#6C02-88', dev:'Mac', st:'live', before:'1', after:'0 of 1' },
+  { id:'r6', day:0, t:'14:32', lab:'Stamp · Refunded', subj:'Delta Hobby, order #6B11-04', fig:'', sell:'Delta Hobby', ord:'#6B11-04', dev:'Mac', st:'changed', before:'no stamp', after:'Refunded' },
+  { id:'r7', day:0, t:'14:28', lab:'Checked', subj:'Swords to Plowshares', fig:'1 of 2', sell:'Gamma Cards', ord:'#6C02-88', dev:'Phone', st:'undone', at:'14:30', before:'0', after:'1 of 2' },
+  { id:'r8', day:0, t:'13:15', lab:'Envelope recorded', subj:'Blue envelope, no return address', fig:'2 cards', sell:'Orphaned', ord:'', dev:'Phone', st:'live', before:'none', after:'recorded' },
+  { id:'r9', day:0, t:'12:02', lab:'Checked', subj:'Preordain', fig:'1 of 3', sell:'Epsilon TCG', ord:'#6A90-12', dev:'Phone', st:'live', before:'0', after:'1 of 3' },
+  { id:'r10', day:0, t:'11:40', lab:'Assigned', subj:'White bubble mailer', fig:'3 cards', sell:'Alpha Cards', ord:'#7F3A-20', dev:'Mac', st:'live', before:'envelope', after:'3 cards in' },
+  { id:'r11', day:0, t:'10:12', lab:'Checked', subj:'Thoughtseize', fig:'1 of 1', sell:'Beta Games', ord:'#6F77-30', dev:'Phone', st:'nothing', before:'0', after:'1 of 1' },
+  { id:'r12', day:0, t:'9:05', lab:'Checked', subj:'Dark Ritual', fig:'4 of 4', sell:'Zeta Cards', ord:'#6E45-07', dev:'Phone', st:'live', before:'3', after:'4 of 4' },
+  { id:'y1', day:1, t:'21:10', lab:'Checked', subj:'Fatal Push', fig:'1 of 2', sell:'Alpha Cards', ord:'#6D31-55', dev:'Mac', st:'live', before:'0', after:'1 of 2' },
+  { id:'y2', day:1, t:'20:44', lab:'Package checked', subj:'Eta Games, 3 cards', fig:'3 of 3', sell:'Eta Games', ord:'#6D29-02', dev:'Mac', st:'live', before:'0 of 3', after:'3 of 3' },
+];
+const DAYS = ['Today', 'Yesterday', 'Thu Nov 19'];
+const mins = t => { const [h, m] = t.split(':').map(Number); return h * 60 + m; };
+const fmt = m => `${Math.floor(m / 60)}:${String(m % 60).padStart(2, '0')}`;
+const T0 = 480, T1 = 900; // the tape runs 8:00 to 15:00 today
+const NOW0 = mins('14:52');
+const isLive = e => e.st === 'live';
+const ICON = { Phone:'<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="4.5" y="1.5" width="7" height="13" rx="1.6" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="7" y1="12.3" x2="9" y2="12.3" stroke="currentColor" stroke-width="1.3"/></svg>',
+  Mac:'<svg viewBox="0 0 16 16" aria-hidden="true"><rect x="2.5" y="3" width="11" height="7.5" rx="1" fill="none" stroke="currentColor" stroke-width="1.3"/><line x1="1" y1="13" x2="15" y2="13" stroke="currentColor" stroke-width="1.3"/></svg>' };
+
+// ---------------- device geometry, in pt from the frame's top
+const DEV = {
+  folded: { W:466, H:678, sat:20, barTop:595, barH:83, one:true },   // tab bar 595 + 83 (duo-fold-and-keyboard)
+  ax5:    { W:466, H:678, sat:20, barTop:595, barH:83, one:true, ax:true },
+  phone:  { W:402, H:874, sat:62, barTop:791, barH:83, one:true },   // size and bar not written: see notes
+  open:   { W:951, H:669, sat:20, foot:24, duoBar:{ left:519.5, right:927, top:593, h:64 } }, // DuoBarMetrics: pill 64, lift 12, 24 in
+};
+
+const frames = [];
+function mkState(preset, arm) {
+  const s = { rows: D.map(e => ({ ...e })), now: NOW0, cut: null, armed: false, msg: null, sel: new Set(), selecting: false,
+    day: 0, devf: 'All', inspect: 'r1', arm: arm !== 'off', last: 'Opened' };
+  applyPreset(s, preset);
+  return s;
+}
+function applyPreset(s, p) {
+  if (p === 'empty') { s.rows = []; return; }
+  if (p === 'single') { const r = s.rows.find(e => e.id === 'r1'); r.st = 'undone'; r.at = '14:52'; return; }
+  if (p === 'pick' || p === 'armed' || p === 'done') {
+    s.cut = mins('14:32');
+    ['r1', 'r3', 'r5'].forEach(id => s.sel.add(id)); s.selecting = true;
+  }
+  if (p === 'armed') s.armed = true;
+  if (p === 'done') s.doneOnBuild = true;
+}
+const now = s => fmt(s.now);
+const tick = s => { s.now += 1; return fmt(s.now); };
+
+// ---------------- what a press undoes
+function cutRows(s) { return s.cut == null ? [] : s.rows.filter(e => e.day === 0 && mins(e.t) >= s.cut); }
+function batch(fr) {
+  const s = fr.s;
+  const rows = fr.concept === 'tape' ? cutRows(s) : s.rows.filter(e => s.sel.has(e.id));
+  return { rows, live: rows.filter(isLive), skip: rows.filter(e => !isLive(e)) };
+}
+function runBatch(fr) {
+  const s = fr.s, b = batch(fr), at = tick(s);
+  // Newest first, each by its own delta (undo-removes-only-its-delta). Rows in an end state are skipped and named.
+  b.live.forEach(e => { e.st = 'undone'; e.at = at; });
+  const sk = b.skip.length ? ` Skipped ${b.skip.length}: ${skipWhy(b.skip)}.` : '';
+  s.msg = `${b.live.length} undone at ${at}.${sk}`;
+  s.short = `${b.live.length} undone${b.skip.length ? `, ${b.skip.length} skipped` : ''}`; // the AX5 form: each row shows its own end state
+  s.cut = null; s.armed = false; s.sel.clear(); s.selecting = false;
+}
+function skipWhy(list) {
+  const w = { undone:'already undone', changed:'changed since', nothing:'nothing to undo' };
+  return [...new Set(list.map(e => w[e.st]))].join(', ');
+}
+const undoLabel = e => `Undo ${e.lab.toLowerCase()} ${e.subj}, ${e.sell}`;
+
+// ---------------- rows
+function endCell(fr, e) {
+  if (e.st === 'undone') return `<span class="endst">UNDONE <br>${e.at}</span>`;
+  if (e.st === 'changed') return `<span class="endst">CHANGED <br>SINCE</span>`;
+  if (e.st === 'nothing') return `<span class="endst">NOTHING <br>TO UNDO</span>`;
+  const inert = fr.concept === 'sheet' && fr.s.selecting;
+  return `<button class="undo" type="button" data-act="undo" data-undo="${e.id}" aria-label="${undoLabel(e)}"${inert ? ' aria-disabled="true" tabindex="-1"' : ''}><span>UNDO</span></button>`;
+}
+function rowHTML(fr, e, i, opts) {
+  const s = fr.s, tape = fr.concept === 'tape', ax = fr.cfg.ax;
+  let cls = 'row st-' + e.st;
+  if (tape && opts.incut.has(e.id)) cls += ' incut';
+  if (tape && opts.edge === e.id) cls += ' cutedge';
+  if (!tape && s.sel.has(e.id)) cls += ' ticked';
+  if (!tape && fr.kind === 'open' && !s.selecting && s.inspect === e.id) cls += ' inspect';
+  let gut = '<div class="gut"></div>';
+  if (!tape) {
+    gut = s.selecting
+      ? `<div class="gut"><button class="tick" type="button" role="checkbox" data-act="tick" data-id="${e.id}" aria-checked="${s.sel.has(e.id)}" aria-label="Tick ${e.subj}"${isLive(e) ? '' : ' aria-disabled="true"'}><i>${s.sel.has(e.id) ? '✓' : ''}</i></button></div>`
+      : `<div class="gut"><span class="mark" role="img" aria-label="${e.dev}"${opts.tagDev && i === 0 ? ' data-tag="New: device" ' : ''}>${ICON[e.dev]}</span></div>`;
+  }
+  const when = tape ? `<span class="when"${opts.tagDev && i === 0 ? ' data-tag="New: device"' : ''}>${e.dev} ${e.t}</span>` : `<span class="when">${e.t}</span>`;
+  const rowbtn = !tape && fr.kind === 'open' ? `<button class="rowbtn" type="button" data-act="${s.selecting ? 'tick' : 'inspect'}" data-id="${e.id}" aria-label="${s.selecting ? 'Tick' : 'Show'} ${e.subj}"></button>` : '';
+  const tagUndo = opts.tagToday && i === 0 && isLive(e) ? ' data-tag="Today (web): UNDO cell" ' : '';
+  return `<div class="${cls}" data-id="${e.id}">${gut}<div class="body">
+    <div class="l1"><span class="lab">${e.lab}</span>${when}</div>
+    <div class="l2"><span class="subj">${e.subj}</span>${e.fig ? `<span class="fig">${e.fig}</span>` : ''}</div>
+    <div class="l3"><span class="sell">${e.sell}</span>${e.ord ? `<span class="ord">${e.ord}</span>` : ''}</div>
+  </div>${rowbtn}<div class="end${tagUndo ? ' tag-today' : ''}"${tagUndo}>${endCell(fr, e)}</div></div>`;
+}
+function listHTML(fr) {
+  const s = fr.s, tape = fr.concept === 'tape';
+  if (!s.rows.length) return `<div class="empty"><p>Nothing to undo from the last 14 days. Each card you tick shows here.</p><button class="plain" type="button" data-act="nop">Open Packages</button></div>`;
+  const inc = new Set(cutRows(s).map(e => e.id)), inRows = cutRows(s);
+  const opts = { incut: inc, edge: inRows.length ? inRows[inRows.length - 1].id : null, tagDev: fr.tags, tagToday: fr.tags };
+  let html = '', n = 0;
+  const days = tape ? [0, 1] : [s.day];
+  for (const d of days) {
+    const rows = s.rows.filter(e => e.day === d && (tape || s.devf === 'All' || e.dev === s.devf));
+    if (!rows.length && tape) continue;
+    const live = rows.filter(isLive).length;
+    html += `<div class="dayh"><span>${DAYS[d]}</span><span>${rows.length} · ${live} live</span></div>`;
+    if (!rows.length) html += `<div class="empty"><p>No actions on ${DAYS[d] === 'Thu Nov 19' ? 'Thursday' : DAYS[d].toLowerCase()}${s.devf !== 'All' ? ' from the ' + s.devf : ''}.</p><button class="plain" type="button" data-act="${s.devf !== 'All' ? 'devf' : 'day'}" data-v="${s.devf !== 'All' ? 'All' : 0}">${s.devf !== 'All' ? 'Show all devices' : 'Show today'}</button></div>`;
+    rows.forEach(e => { html += rowHTML(fr, e, n++, opts); });
+  }
+  return html + `<div class="listfoot">The log keeps 14 days. Rows freeze while this screen is open.</div>`;
+}
+
+// ---------------- the tray (one-page) and right page (open)
+// The longest report a batch can give: a hidden copy holds its height in each reserved cell.
+const LONGEST = '12 undone at 14:59. Skipped 3: already undone, changed since, nothing to undo.';
+const SHORTEST_MAX = '12 undone, 3 skipped';
+const msgOf = (fr, s) => fr.cfg.ax ? s.short : s.msg;
+const longOf = fr => fr.cfg.ax ? SHORTEST_MAX : LONGEST;
+const vis = (on, html) => html.replace(/^<(\w+)/, `<$1${on ? '' : ' aria-hidden="true"'}`).replace(/class="/, `class="${on ? '' : 'off '}`);
+function tapeCtl(fr) {
+  const s = fr.s, b = batch(fr), st = s.cut == null ? (s.msg ? 'done' : 'rest') : s.armed ? 'armed' : 'ready';
+  const from = s.cut == null ? '' : fmt(s.cut);
+  const meta = [
+    vis(st === 'rest', `<div class="meta">Today: <b>${s.rows.filter(e => e.day === 0).length}</b> actions, <b>${s.rows.filter(e => e.day === 0 && isLive(e)).length}</b> live. Drag the tape back to the first wrong tap.</div>`),
+    vis(st === 'ready' || st === 'armed', `<div class="meta"><b>${b.live.length}</b> to undo, ${from} to ${b.rows[0] ? b.rows[0].t : from}${b.skip.length ? `. ${b.skip.length} skipped: ${skipWhy(b.skip)}` : ''}.</div>`),
+    vis(st === 'done', `<div class="meta done">${s.msg || ''}</div>`),
+    vis(false, `<div class="meta">${LONGEST}</div>`),
+  ].join('');
+  const id = fr.el.id, ax = fr.cfg.ax;
+  // At AX5 the line above is not drawn, so a finished batch reports in the ghost slot, where the press was.
+  const btn = [
+    vis(st === 'rest' || st === 'done', `<div class="btnrow"><span class="ghost${ax && st === 'done' ? ' meta done' : ''}">${ax && st === 'done' ? s.short : 'Pick a start on the tape'}</span><button class="side off-slot" type="button" tabindex="-1">Clear</button></div>`),
+    ax ? vis(false, `<div class="btnrow"><span class="ghost meta">${SHORTEST_MAX}</span></div>`) : '',
+    vis(st === 'ready', `<div class="btnrow"><button class="bulk" type="button" data-act="arm" data-bulk${b.live.length ? '' : ' aria-disabled="true"'}>${b.live.length ? `Undo ${b.live.length} since ${from}` : `Nothing live since ${from}`}</button><button class="side" type="button" data-act="clear">Clear</button></div>`),
+    vis(st === 'armed', `<div class="btnrow"><button class="bulk armed" type="button" data-act="confirm" data-bulk>Yes, undo ${b.live.length} since ${from}</button><button class="side" type="button" data-act="cancel">Cancel</button></div>`),
+    vis(false, `<div class="btnrow"><button class="bulk armed" type="button" tabindex="-1">Yes, undo 12 since 14:32</button><button class="side" type="button" tabindex="-1">Cancel</button></div>`),
+  ].join('');
+  return { meta: `<div class="stack">${meta}</div>`, btn: `<div class="stack" id="${id}-ctl">${btn}</div>` };
+}
+function sheetCtl(fr) {
+  const s = fr.s, b = batch(fr), id = fr.el.id;
+  const st = s.selecting ? (s.armed ? 'armed' : 'sel') : (s.msg ? 'done' : 'rest');
+  const devs = ['All', 'Phone', 'Mac'];
+  const row1 = [
+    vis(st === 'rest', `<div class="seg" role="group" aria-label="Device">${devs.map(d => `<button type="button" data-act="devf" data-v="${d}" aria-pressed="${s.devf === d}">${d === 'All' ? 'All devices' : d}</button>`).join('')}</div>`),
+    vis(st === 'sel' || st === 'armed', `<div class="seg" role="group" aria-label="Tick many"><button type="button" data-act="all" aria-pressed="false">Every live row</button><button type="button" data-act="same" aria-pressed="false"${s.sel.size ? '' : ' aria-disabled="true"'}>Same order</button></div>`),
+    vis(st === 'done', `<div class="meta done" style="display:flex;align-items:center;min-height:44px">${msgOf(fr, s) || ''}</div>`),
+    vis(false, `<div class="meta" style="display:flex;align-items:center;min-height:44px">${longOf(fr)}</div>`),
+  ].join('');
+  const n = b.live.length;
+  const row2 = [
+    vis(st === 'rest' || st === 'done', `<div class="btnrow"><button class="plain" type="button" data-act="select">Select rows to undo</button><button class="side off-slot" type="button" tabindex="-1">Cancel</button></div>`),
+    vis(st === 'sel', `<div class="btnrow"><button class="bulk" type="button" data-act="arm" data-bulk${n ? '' : ' aria-disabled="true"'}>${n ? `Undo ${n} ticked` : 'Tick rows to undo them'}</button><button class="side" type="button" data-act="cancel">Cancel</button></div>`),
+    vis(st === 'armed', `<div class="btnrow"><button class="bulk armed" type="button" data-act="confirm" data-bulk>Yes, undo ${n} ticked</button><button class="side" type="button" data-act="cancel">Cancel</button></div>`),
+    vis(false, `<div class="btnrow"><button class="bulk" type="button" tabindex="-1">Tick rows to undo them</button><button class="side" type="button" tabindex="-1">Cancel</button></div>`),
+  ].join('');
+  return { row1: `<div class="stack">${row1}</div>`, btn: `<div class="stack" id="${id}-ctl">${row2}</div>` };
+}
+// The tape gives each action of the day an equal slot, oldest at the start, so the last few minutes (where a mis-tap
+// sits) get as much room as a quiet morning. An hour mark heads the first action of each hour.
+const todayAsc = s => s.rows.filter(e => e.day === 0).slice().sort((a, b) => mins(a.t) - mins(b.t));
+const cutIndex = s => { const t = todayAsc(s); if (s.cut == null) return t.length; const k = t.findIndex(e => mins(e.t) >= s.cut); return k < 0 ? t.length : k; };
+function rail(fr, vertical) {
+  const s = fr.s, today = todayAsc(s), n = Math.max(1, today.length);
+  const p = f => (vertical ? 1 - f : f) * 100, prop = vertical ? 'top' : 'left';
+  let h = '', lastHr = -1, lastAt = -1;
+  today.forEach((e, i) => {
+    const hr = Math.floor(mins(e.t) / 60), f = (i + 0.5) / n;
+    if (hr !== lastHr && f - lastAt > 0.07) { h += `<span class="hr" style="${prop}:${p(f)}%">${hr}</span>`; lastAt = f; }
+    lastHr = hr;
+    h += `<i class="tk${isLive(e) ? '' : ' inert'}" style="${prop}:${p(f)}%"></i>`;
+  });
+  const k = cutIndex(s), f0 = k / n;
+  const a = Math.min(p(f0), p(1)), z = Math.max(p(f0), p(1));
+  const fill = vertical ? `top:${a}%;height:${z - a}%` : `left:${a}%;width:${z - a}%`;
+  const b = batch(fr);
+  const vt = s.cut == null ? 'No start picked' : `From ${fmt(s.cut)}, ${b.live.length} to undo`;
+  return `<div class="rail${vertical ? ' v' : ''}" role="slider" tabindex="0" aria-label="Undo from" aria-orientation="${vertical ? 'vertical' : 'horizontal'}"
+    aria-valuemin="0" aria-valuemax="${today.length}" aria-valuenow="${today.length - k}" aria-valuetext="${vt}" data-rail>${h}<span class="fill" style="${fill}"></span><span class="hd" style="${prop}:${p(f0)}%"></span></div>`;
+}
+function groupsHTML(fr) {
+  const b = batch(fr);
+  if (!b.rows.length) return fr.concept === 'tape'
+    ? `<p style="margin:0;font:15px/1.4 var(--cochin)">The rows the tape takes light up on the left page, and gather here by order.</p>`
+    : `<p style="margin:0;font:15px/1.4 var(--cochin)">Tick rows on the left page. They gather here by order.</p>`;
+  const g = new Map();
+  b.rows.forEach(e => { const k = e.sell + (e.ord ? ' ' + e.ord : ''); if (!g.has(k)) g.set(k, []); g.get(k).push(e); });
+  return [...g].map(([k, list]) => `<div class="grp"><b>${k}</b><span>${list.filter(isLive).length} to undo${list.some(e => !isLive(e)) ? `, ${list.filter(e => !isLive(e)).length} skipped` : ''}</span>
+    <p>${list.map(e => isLive(e) ? e.subj : `<s>${e.subj}</s>`).join(', ')}</p></div>`).join('');
+}
+function inspectHTML(fr) {
+  const s = fr.s, e = s.rows.find(r => r.id === s.inspect) || s.rows[0];
+  if (!e) return `<p style="margin:0;font:15px var(--cochin)">Nothing to show.</p>`;
+  const stw = { live:'Can be undone', undone:`Undone at ${e.at}`, changed:'Changed since: stays as it is', nothing:'Nothing to undo' }[e.st];
+  return `<div class="insp"><span class="l1" style="height:auto"><span>${e.lab}</span></span><p class="big">${e.subj}</p>
+    <dl style="margin:0">
+    <div class="kv"><dt>Order</dt><dd class="n">${e.ord || 'none'}</dd></div>
+    <div class="kv"><dt>Seller</dt><dd>${e.sell}</dd></div>
+    <div class="kv"><dt>Count</dt><dd class="n">${e.before} → ${e.after}</dd></div>
+    <div class="kv${fr.tags ? ' tag-new' : ''}"${fr.tags ? ' data-tag="New: device"' : ''}><dt>Device</dt><dd>${ICON[e.dev].replace('<svg', '<svg style="width:14px;height:14px;vertical-align:-2px;margin-right:6px"')}${e.dev}</dd></div>
+    <div class="kv"><dt>Time</dt><dd class="n">${DAYS[e.day]} ${e.t}</dd></div>
+    <div class="kv"><dt>State</dt><dd>${stw}</dd></div></dl></div>`;
+}
+
+// ---------------- frame build
+function build(fr) {
+  const c = fr.cfg, s = fr.s, el = fr.el, tape = fr.concept === 'tape';
+  const statusbar = `<div class="status"><span>${now(s)}</span><span>100%</span></div>${fr.kind === 'phone' ? '<div class="island"></div>' : ''}`;
+  if (c.one) {
+    const navTop = fr.kind === 'phone' ? 62 : 20;
+    const daysTop = navTop + 44;
+    const listTop = tape ? navTop + 44 : daysTop + 48;
+    const trayBottom = c.H - c.barTop + 8;
+    const tagTray = fr.tags ? ` data-tag="${tape ? 'New: day tape and bulk undo' : 'New: select and bulk undo'}"` : '';
+    el.innerHTML = `${statusbar}<div class="pg one">
+      <div class="navb" style="top:${navTop}px"><span class="back"><i>‹</i>Ledger</span><span${fr.tags ? ' data-tag="New: own screen" class="tag-new" style="padding:0 8px"' : ''}>Recent</span></div>
+      ${tape ? '' : c.ax ? `<div class="days" style="top:${daysTop}px"><button type="button" data-act="daycycle" aria-label="Day: ${DAYS[s.day]}. A menu in the build." aria-pressed="true">${DAYS[s.day]} ⌄</button></div>` : `<div class="days" role="group" aria-label="Day" style="top:${daysTop}px">${DAYS.map((d, i) => `<button type="button" data-act="day" data-v="${i}" aria-pressed="${s.day === i}">${d}<small>${s.rows.filter(e => e.day === i).length}</small></button>`).join('')}</div>`}
+      <div class="list" tabindex="0" aria-label="Recent actions" style="top:${listTop}px"></div>
+      <div class="tray${fr.tags ? ' tag-new' : ''}"${tagTray} id="${el.id}-tray" style="bottom:${trayBottom}px">${tape ? '<div data-railslot></div>' : ''}<div data-ctl></div></div>
+    </div>
+    <div class="tabzone" style="top:${c.barTop}px;height:${c.barH}px"><div class="tabpill">${tabs()}</div></div>
+    <div class="bartop" style="top:${c.barTop}px"><span>bar top y ${c.barTop}${fr.kind === 'phone' ? ' (assumed)' : ''}</span></div>`;
+  } else {
+    const b = c.duoBar;
+    el.innerHTML = `${statusbar}
+    <div class="pg l"><div class="navb" style="top:20px"><span class="back"><i>‹</i>Ledger</span><span${fr.tags ? ' data-tag="New: own screen" class="tag-new" style="padding:0 8px"' : ''}>Recent</span></div>
+      ${tape ? '' : `<div class="days" role="group" aria-label="Day" style="top:64px">${DAYS.map((d, i) => `<button type="button" data-act="day" data-v="${i}" aria-pressed="${s.day === i}">${d}<small>${s.rows.filter(e => e.day === i).length}</small></button>`).join('')}</div>`}
+      <div class="list" tabindex="0" aria-label="Recent actions" style="top:${tape ? 64 : 112}px;bottom:${c.foot}px"></div></div>
+    <div class="hinge" aria-hidden="true"><span>FOLD 40 PT</span></div>
+    <div class="pg r">
+      <div class="rhead" style="top:28px">${tape ? 'Undo from a point in the day' : 'Entry'}<small data-rsub></small></div>
+      ${tape
+        ? `<div class="panel" style="top:68px;height:437px;flex-direction:row;gap:16px"><div data-railslot style="display:flex"></div><div class="groups" data-groups style="flex:1"></div></div>`
+        : `<div class="panel" style="top:68px;height:381px"><div data-insp class="groups"></div></div>
+           <div class="panel" style="top:457px"><div class="stack" data-row1></div></div>`}
+      <div class="panel${fr.tags ? ' tag-new' : ''}"${fr.tags ? ` data-tag="New: bulk undo"` : ''} style="top:513px;height:60px;justify-content:flex-end" id="${el.id}-tray"><div data-ctl></div></div>
+    </div>
+    <div class="duobar" style="left:${b.left}px;width:${b.right - b.left}px;top:${b.top}px">${tabs()}</div>
+    <div class="bartop" style="top:${b.top}px;left:495.5px"><span>bar top y ${b.top}, right page</span></div>`;
+  }
+  refresh(fr);
+}
+function tabs() {
+  return ['Ledger:⚙︎', 'Orphaned:✉︎', 'Tally:#', 'Packages:▢'].map((t, i) => { const [n, g] = t.split(':'); return `<span class="tab${i === 0 ? ' on' : ''}"><b>${g}</b>${n}</span>`; }).join('');
+}
+// Refresh replaces the inner parts and keeps the list's scroll, so a press moves no box (the readout proves it).
+function refresh(fr) {
+  const el = fr.el, s = fr.s, tape = fr.concept === 'tape';
+  const list = el.querySelector('.list'), top = list.scrollTop;
+  el.classList.toggle('isempty', !s.rows.length); // a log with no data hides its day switch, filters and tray (ux-unknown-is-not-empty)
+  list.innerHTML = listHTML(fr); list.scrollTop = top;
+  el.querySelector('.status span').textContent = now(s);
+  const rs = el.querySelector('[data-railslot]');
+  if (rs && !fr.dragging) rs.innerHTML = rail(fr, fr.kind === 'open');
+  if (fr.kind === 'open') {
+    const ctl = el.querySelector('[data-ctl]');
+    if (tape) { const t = tapeCtl(fr); el.querySelector('[data-groups]').innerHTML = t.meta + groupsHTML(fr); ctl.innerHTML = t.btn; }
+    else {
+      el.querySelector('[data-insp]').innerHTML = s.selecting ? groupsHTML(fr) : inspectHTML(fr);
+      const t = sheetCtl(fr);
+      el.querySelector('[data-row1]').innerHTML = t.row1;
+      ctl.innerHTML = t.btn;
+      // On the spread the single Undo for the shown entry always holds its own slot in the rest row. An entry in an end
+      // state shows it off, with the reason, so Select never slides into the place just pressed.
+      const e = s.rows.find(r => r.id === s.inspect), restRow = ctl.querySelector('.stack > .btnrow');
+      if (restRow && e) {
+        const why = { undone: `Undone ${e.at}`, changed: 'Changed since', nothing: 'Nothing to undo' }[e.st];
+        restRow.insertAdjacentHTML('afterbegin', `<button class="plain" type="button" data-act="undo" data-undo="${e.id}" aria-label="${why ? why : undoLabel(e)}"${why ? ' aria-disabled="true"' : ''} style="flex:0 0 132px${why ? ';color:var(--inkSoft);border-style:dashed' : ''}">${why || 'Undo this'}</button>`);
+      }
+    }
+    if (!tape) el.querySelector('.rhead').firstChild.textContent = s.selecting ? 'To undo' : 'Entry';
+    el.querySelector('[data-rsub]').textContent = tape ? (s.cut == null ? '' : 'from ' + fmt(s.cut)) : (s.selecting ? `${s.sel.size} ticked` : '');
+  } else {
+    const t = tape ? tapeCtl(fr) : sheetCtl(fr), first = tape ? t.meta : t.row1;
+    // At AX5 the tape's line is dropped (the button says the same), and the sheet's pick row follows the rows in its
+    // own reserved box, so the first UNDO shows without a scroll and a state change there moves no row.
+    if (fr.cfg.ax) { el.querySelector('[data-ctl]').innerHTML = t.btn; if (!tape) list.insertAdjacentHTML('beforeend', `<div class="axhead">${first}</div>`); list.scrollTop = top; }
+    else el.querySelector('[data-ctl]').innerHTML = first + t.btn;
+  }
+  layoutTray(fr);
+}
+function layoutTray(fr) {
+  if (!fr.cfg.one) return;
+  const el = fr.el, c = fr.cfg, tray = el.querySelector('.tray'), list = el.querySelector('.list');
+  const s = el.getBoundingClientRect().height / c.H || 1;
+  const th = tray.getBoundingClientRect().height / s;
+  if (!th) return;
+  // The list ends 8 pt above the tray, and the tray ends 8 pt above the bar: no row can scroll under the bar.
+  list.style.bottom = (c.H - c.barTop + 8 + th + 8) + 'px';
+}
+
+// ---------------- presses
+function snapshot(fr) {
+  const b = fr.el.getBoundingClientRect(), k = b.height / fr.cfg.H || 1, m = new Map();
+  // Each row's end cell, and every control outside the list (tray, day switch, right page), keyed by what it does.
+  fr.el.querySelectorAll('.list .end, [data-act], [data-rail]').forEach(x => {
+    const row = x.closest('.list .row');
+    if (row && !x.classList.contains('end')) return;
+    const key = row ? 'end:' + row.dataset.id : 'ctl:' + (x.dataset.act || 'rail') + ':' + (x.dataset.v || x.dataset.id || x.dataset.undo || '');
+    const r = x.getBoundingClientRect(); if (!r.height || x.closest('.off')) return; // a hidden state is not on screen
+    m.set(key, { top: (r.top - b.top) / k, left: (r.left - b.left) / k });
+  });
+  return m;
+}
+function press(fr, name, fn) {
+  const before = snapshot(fr);
+  fn(); fr.s.last = name; refresh(fr);
+  const after = snapshot(fr);
+  let moved = 0, max = 0, n = 0;
+  before.forEach((v, k) => { const a = after.get(k); if (!a) return; n++; const d = Math.max(Math.abs(a.top - v.top), Math.abs(a.left - v.left)); if (d > 0.5) { moved++; max = Math.max(max, d); } });
+  fr.moveRead = { name, moved, n, max: Math.round(max) };
+  readout(fr);
+}
+function onClick(fr, ev) {
+  const t = ev.target.closest('[data-act]'); if (!t || !fr.el.contains(t)) return;
+  if (t.getAttribute('aria-disabled') === 'true') return;
+  const s = fr.s, act = t.dataset.act;
+  if (s.msg && act !== 'undo') s.msg = null;
+  if (act === 'undo') press(fr, 'UNDO on one row', () => { const e = s.rows.find(r => r.id === t.dataset.undo); e.st = 'undone'; e.at = tick(s); s.msg = null; s.armed = false; }); // a row press disarms the bulk bar, so its count is re-read
+  else if (act === 'clear') press(fr, 'Clear', () => { s.cut = null; s.armed = false; });
+  // Cancel disarms and keeps the pick. In select mode with nothing armed, it leaves select mode.
+  else if (act === 'cancel') press(fr, 'Cancel', () => { if (s.armed) s.armed = false; else { s.selecting = false; s.sel.clear(); } });
+  else if (act === 'arm') press(fr, s.arm ? 'Arm' : 'Bulk undo', () => { if (s.arm) s.armed = true; else runBatch(fr); });
+  else if (act === 'confirm') press(fr, 'Bulk undo', () => runBatch(fr));
+  else if (act === 'select') press(fr, 'Select', () => { s.selecting = true; s.msg = null; });
+  else if (act === 'tick') press(fr, 'Tick', () => { const e = s.rows.find(r => r.id === t.dataset.id); if (!isLive(e)) return; s.sel.has(e.id) ? s.sel.delete(e.id) : s.sel.add(e.id); s.armed = false; });
+  else if (act === 'all') press(fr, 'Every live row', () => { s.rows.filter(e => e.day === s.day && isLive(e) && (s.devf === 'All' || e.dev === s.devf)).forEach(e => s.sel.add(e.id)); s.armed = false; });
+  else if (act === 'same') press(fr, 'Same order', () => { const ords = new Set(s.rows.filter(e => s.sel.has(e.id)).map(e => e.ord).filter(Boolean)); s.rows.filter(e => isLive(e) && ords.has(e.ord)).forEach(e => s.sel.add(e.id)); s.armed = false; });
+  else if (act === 'devf') press(fr, 'Device filter', () => { s.devf = t.dataset.v; });
+  else if (act === 'day') press(fr, 'Day', () => { s.day = +t.dataset.v; fr.el.querySelector('.list').scrollTop = 0; });
+  else if (act === 'daycycle') press(fr, 'Day', () => { s.day = (s.day + 1) % DAYS.length; fr.el.querySelector('.list').scrollTop = 0; fr.el.querySelector('[data-act="daycycle"]').textContent = DAYS[s.day] + ' ⌄'; });
+  else if (act === 'inspect') press(fr, 'Show entry', () => { s.inspect = t.dataset.id; });
+}
+// The tape: drag anywhere on it, or use the arrow keys. It snaps to an action, and past the newest one it clears.
+function railAt(fr, ev) {
+  const r = ev.currentTarget.getBoundingClientRect(), v = fr.kind === 'open';
+  const f = v ? 1 - (ev.clientY - r.top) / r.height : (ev.clientX - r.left) / r.width;
+  const today = todayAsc(fr.s); if (!today.length) return null;
+  // Snap to the nearest slot edge: the cut starts at that action. The far edge (now) clears it.
+  const k = Math.round(Math.max(0, Math.min(1, f)) * today.length);
+  return k >= today.length ? null : mins(today[k].t);
+}
+// One listener per frame element. Each event reads the frame's current object, so a re-route keeps one binding.
+const frameOf = el => frames.find(f => f.el === el);
+function bindRail(el) {
+  el.addEventListener('pointerdown', ev => {
+    const rl = ev.target.closest('[data-rail]'); if (!rl) return;
+    const fr = frameOf(el);
+    ev.preventDefault(); rl.setPointerCapture(ev.pointerId);
+    fr.before = snapshot(fr); fr.dragging = true;
+    const move = e => { const c = railAt(fr, { currentTarget: rl, clientX: e.clientX, clientY: e.clientY }); if (c !== fr.s.cut) { fr.s.cut = c; fr.s.armed = false; fr.s.msg = null; refresh(fr); patchRail(fr, rl); } };
+    move(ev);
+    const up = () => { rl.removeEventListener('pointermove', move); rl.removeEventListener('pointerup', up); rl.removeEventListener('pointercancel', up); fr.dragging = false;
+      const after = snapshot(fr); let moved = 0, n = 0, max = 0;
+      fr.before.forEach((v, k) => { const a = after.get(k); if (!a) return; n++; const d = Math.max(Math.abs(a.top - v.top), Math.abs(a.left - v.left)); if (d > 0.5) { moved++; max = Math.max(max, d); } });
+      fr.s.last = 'Scrub'; fr.moveRead = { name: 'Scrub the tape', moved, n, max: Math.round(max) }; refresh(fr); readout(fr); };
+    rl.addEventListener('pointermove', move); rl.addEventListener('pointerup', up); rl.addEventListener('pointercancel', up);
+  });
+  el.addEventListener('keydown', ev => {
+    const rl = ev.target.closest('[data-rail]'); if (!rl) return;
+    const fr = frameOf(el);
+    const today = fr.s.rows.filter(e => e.day === 0).map(e => mins(e.t)).sort((a, b) => b - a); // newest first
+    const i = fr.s.cut == null ? -1 : today.indexOf(fr.s.cut);
+    const back = ['ArrowLeft', 'ArrowDown'].includes(ev.key), fwd = ['ArrowRight', 'ArrowUp'].includes(ev.key);
+    if (!back && !fwd) return; ev.preventDefault();
+    press(fr, 'Scrub the tape (keys)', () => { const j = back ? Math.min(today.length - 1, i + 1) : i - 1; fr.s.cut = j < 0 ? null : today[j]; fr.s.armed = false; fr.s.msg = null; });
+    fr.el.querySelector('[data-rail]').focus();
+  });
+}
+function patchRail(fr, rl) {
+  const tmp = document.createElement('div'); tmp.innerHTML = rail(fr, fr.kind === 'open');
+  const n = tmp.firstElementChild;
+  rl.querySelector('.fill').setAttribute('style', n.querySelector('.fill').getAttribute('style'));
+  rl.querySelector('.hd').setAttribute('style', n.querySelector('.hd').getAttribute('style'));
+  rl.setAttribute('aria-valuenow', n.getAttribute('aria-valuenow')); rl.setAttribute('aria-valuetext', n.getAttribute('aria-valuetext'));
+}
+
+// ---------------- readout: every UNDO box and the bulk button against the bar, and what the last press moved
+function readout(fr, scrollTest) {
+  const out = fr.fig.querySelector('.read'), c = fr.cfg;
+  const b = fr.el.getBoundingClientRect(), k = b.height / c.H || 1; if (!b.height) return;
+  const list = fr.el.querySelector('.list').getBoundingClientRect();
+  const lim = c.one ? c.barTop : c.H - c.foot; // left page: no bar, the home-indicator foot
+  let lowest = 0, n = 0, under = 0;
+  fr.el.querySelectorAll('.list .undo').forEach(u => {
+    const r = u.getBoundingClientRect(); const top = Math.max(r.top, list.top), bot = Math.min(r.bottom, list.bottom);
+    if (bot - top <= 0) return; n++; const y = (bot - b.top) / k; lowest = Math.max(lowest, y); if (y > lim + 0.5) under++;
+  });
+  let bulk = '';
+  const bb = [...fr.el.querySelectorAll('[data-bulk]')].filter(x => x.getBoundingClientRect().height && !x.closest('.off'));
+  const barTop = c.one ? c.barTop : c.duoBar.top;
+  if (bb.length) { const r = bb[0].getBoundingClientRect(); const t = Math.round((r.top - b.top) / k), y = Math.round((r.bottom - b.top) / k);
+    bulk = ` · bulk button y ${t} to ${y}, <span class="${y <= barTop ? 'ok' : 'bad'}">${y <= barTop ? `${barTop - y} pt above the bar` : 'UNDER THE BAR'}</span>`; }
+  const ok = under === 0;
+  // Fail when the first live row starts in view but its UNDO does not show: the layout hides the control, not the scroll.
+  const first = fr.el.querySelector('.list .row.st-live');
+  let none = '';
+  if (first && n === 0) {
+    const r = first.getBoundingClientRect();
+    none = r.top < list.bottom && r.bottom > list.top ? ` · <span class="bad">FIRST LIVE ROW IN VIEW WITHOUT ITS UNDO</span>` : ' · the next live row is below, a scroll away';
+  }
+  let h = `In this drawing: ${n} UNDO box${n === 1 ? '' : 'es'} in view, lowest edge y ${Math.round(lowest)}, ${c.one ? 'bar' : 'left-page foot'} at y ${lim}: <span class="${ok ? 'ok' : 'bad'}">${ok ? 'none under it' : under + ' UNDER IT'}</span>${none}${bulk}.`;
+  if (fr.moveRead) { const m = fr.moveRead; h += `<br>Last press: ${m.name}. Boxes moved: <span class="${m.moved ? 'bad' : 'ok'}">${m.moved} of ${m.n}${m.moved ? `, up to ${m.max} pt` : ''}</span>.`; }
+  if (scrollTest) h += `<br>${scrollTest}`;
+  out.innerHTML = h + `<br><button type="button" data-scrolltest>Scroll test: top, middle, bottom</button>`;
+  out.querySelector('[data-scrolltest]').onclick = () => runScrollTest(fr);
+}
+function runScrollTest(fr) {
+  const list = fr.el.querySelector('.list'), c = fr.cfg, keep = list.scrollTop;
+  const lim = c.one ? c.barTop : c.H - c.foot, b = fr.el.getBoundingClientRect(), k = b.height / c.H || 1, res = [];
+  for (const [name, f] of [['top', 0], ['middle', 0.5], ['bottom', 1]]) {
+    list.scrollTop = (list.scrollHeight - list.clientHeight) * f;
+    const L = list.getBoundingClientRect(); let low = 0;
+    list.querySelectorAll('.undo').forEach(u => { const r = u.getBoundingClientRect(); const bot = Math.min(r.bottom, L.bottom); if (bot - Math.max(r.top, L.top) > 0) low = Math.max(low, (bot - b.top) / k); });
+    res.push(`${name} ${Math.round(low)}`);
+  }
+  list.scrollTop = keep;
+  const worst = Math.max(...res.map(x => +x.split(' ')[1]));
+  readout(fr, `Scroll test, lowest UNDO edge: ${res.join(', ')}; limit ${lim}: <span class="${worst <= lim ? 'ok' : 'bad'}">${worst <= lim ? 'clear at every scroll' : 'UNDER at some scroll'}</span>.`);
+}
+
+// ---------------- web 375 today (static, from the debt's numbers)
+function web() {
+  const w = document.getElementById('web-today');
+  w.innerHTML = `<div style="position:absolute;left:12px;top:16px;font:12px var(--mono);letter-spacing:3.6px;color:var(--inkSoft)">LEDGER</div>
+  <div style="position:absolute;left:12px;right:12px;top:48px;height:348px;border:1px dashed var(--line);border-radius:8px;display:grid;place-items:center;font:12px var(--mono);color:var(--inkSoft)">View card and Data rows: not drawn</div>
+  <div class="card" style="top:409px;height:420px"></div>
+  <div style="position:absolute;left:24px;top:420px;font:20px var(--cochin)">Recent</div><div style="position:absolute;right:24px;top:424px;font:14px var(--mono);color:var(--accent)">Undo a tap ›</div>
+  ${[561, 633, 705].map((y, i) => `<div class="wrow" style="top:${y}px"><div style="position:absolute;left:12px;top:9px;font:10px var(--mono);color:var(--inkSoft)">CHECKED</div><div style="position:absolute;left:12px;top:24px;font:16px var(--cochin)">${['Lightning Bolt', 'Ponder', 'Brainstorm'][i]}</div><div style="position:absolute;left:12px;top:46px;font:13.5px var(--cochin);color:var(--inkSoft)">Alpha Cards</div>
+    <div ${i === 2 ? 'class="tag-today" data-tag="Today: UNDO y 705 to 777, half under the bar"' : ''} style="position:absolute;right:0;top:0;width:72px;height:72px;display:grid;place-items:center;font:11px var(--mono);color:var(--accent)">UNDO</div></div>`).join('')}
+  <div class="wbar"><span style="color:var(--accent)">Ledger</span><span>Orphaned</span><span>Tally</span><span>Packages</span></div>
+  <div class="bartop" style="top:736px"><span>bar top y 736</span></div>`;
+}
+
+// ---------------- routing: #c=tape|sheet, #s=rest|pick|armed|done|single|empty, #d=folded|open|phone|ax5|web, joined with &
+const hidden = new Set();
+const param = k => { const m = location.hash.match(new RegExp('[#&]' + k + '=([\\w-]+)')); return m && m[1]; };
+function setup() {
+  frames.length = 0;
+  const preset = param('s') || 'rest';
+  document.querySelectorAll('.dev').forEach(el => {
+    const fig = el.closest('figure'); const kind = el.dataset.kind;
+    const fr = { el, fig, kind, cfg: DEV[kind], concept: el.dataset.concept, tags: !document.body.classList.contains('notags') && (kind === 'folded' || kind === 'open') };
+    fr.s = mkState(el.dataset.preset || preset, el.dataset.arm || 'on');
+    frames.push(fr);
+    if (!el._bound) { el.addEventListener('click', ev => onClick(frameOf(el), ev)); bindRail(el); el._bound = true; }
+    build(fr);
+    if (fr.s.doneOnBuild) { runBatch(fr); refresh(fr); }
+  });
+}
+function fit() { document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; d.style.zoom = Math.min(1, w.clientWidth / parseFloat(getComputedStyle(d).width)); }); }
+function route() {
+  const c = param('c'), d = param('d');
+  document.querySelectorAll('section.concept').forEach(sec => {
+    const k = sec.dataset.concept;
+    let off = (c && k !== c && k !== 'web' && k !== 'arm') || hidden.has(k);
+    if (c && (k === 'web' || k === 'arm') && !d) off = true;
+    if (k === 'web') off = (d && d !== 'web') || (c && d !== 'web');
+    if (k === 'arm') off = off || (d && d !== 'folded') || (c && c !== 'tape');
+    if (d === 'web') off = k !== 'web';
+    sec.hidden = off;
+  });
+  document.querySelectorAll('figure[data-dev]').forEach(f => { f.hidden = d && d !== 'web' && f.dataset.dev !== d; });
+  document.querySelectorAll('figure[data-opt]').forEach(f => { f.hidden = hidden.has(f.dataset.opt); });
+  document.querySelectorAll('nav.ctl a').forEach(a => { const k = a.dataset.k; a.setAttribute('aria-current', String(k === 'all' ? !location.hash || location.hash === '#' : param(k) === a.dataset.v)); });
+  fit(); setup(); frames.forEach(fr => readout(fr));
+}
+document.querySelectorAll('nav.ctl a').forEach(a => a.addEventListener('click', e => {
+  if (a.dataset.k === 'all') return; e.preventDefault();
+  const cur = { c: param('c'), s: param('s'), d: param('d') }; cur[a.dataset.k] = cur[a.dataset.k] === a.dataset.v ? null : a.dataset.v;
+  location.hash = ['c', 's', 'd'].filter(k => cur[k]).map(k => k + '=' + cur[k]).join('&') || '#';
+}));
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide, name = b.textContent.replace(/^(Hide|Show) /, '');
+  hidden.has(o) ? hidden.delete(o) : hidden.add(o); b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + name; route();
+}));
+document.querySelector('[data-tags]').addEventListener('click', e => { document.body.classList.toggle('notags'); e.target.textContent = document.body.classList.contains('notags') ? 'Show tags' : 'Hide tags'; route(); });
+addEventListener('hashchange', route);
+addEventListener('resize', () => { fit(); frames.forEach(fr => { layoutTray(fr); readout(fr); }); });
+web();
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(route); route();
+</script>
+</body>
+</html>

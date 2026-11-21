@@ -1,0 +1,665 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Duo Book Mode</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle), so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  --new:#2E7A5E; --today:#A8443C;
+  --ax:1;   /* text scale: 1 at the default size; the AX5 switch raises it */
+  --axc:1;  /* text capped at xxxLarge: the Post bar and the held chip (duo-card-in-hand, items 104 a and the chip) */
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left); }
+main { max-width:1400px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:26px; line-height:1.2; margin:0; }
+.kind { margin:0; color:var(--inkSoft); font-size:14px; }
+.kind b { color:var(--ink); }
+.bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.bar > span { font-size:13px; color:var(--inkSoft); min-width:64px; }
+.bar a, .bar button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.bar a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.bar a[hidden], .bar button[hidden] { display:none; }
+.bar .hide { color:var(--inkSoft); border-style:dashed; }
+.pitch { margin:0; max-width:80ch; font-family:var(--cochin); font-size:17px; line-height:1.45; }
+#stage { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure[hidden] { display:none; }
+figcaption { max-width:560px; font-size:14px; color:var(--inkSoft); }
+figcaption b { font-family:var(--cochin); font-size:18px; color:var(--ink); display:flex; align-items:center; gap:8px; }
+figcaption svg { flex:0 0 auto; }
+.fit { overflow:hidden; }
+.fit > .frame { transform-origin:0 0; }
+
+/* ---------- device frames: 1 CSS px = 1 pt ---------- */
+.frame { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:14px; overflow:hidden; font-family:var(--sys); color:var(--ink); }
+.frame[data-ax="5"] { --ax:2.6; --axc:1.3; }
+.status { position:absolute; left:0; right:0; top:0; height:20px; display:flex; justify-content:space-between; align-items:center; padding:0 16px;
+  font:600 12px var(--sys); z-index:8; }
+.hinge { position:absolute; background:color-mix(in srgb, var(--line) 55%, transparent); z-index:9; display:grid; place-items:center; }
+.hinge span { font:10.5px var(--mono); letter-spacing:1.2px; color:var(--inkSoft); text-transform:uppercase; white-space:nowrap; }
+.hinge.v span { transform:rotate(-90deg); }
+.leaf { position:absolute; left:0; right:0; display:flex; flex-direction:column; overflow:hidden; }
+.leaf.page { top:0; bottom:0; }
+.scroll { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.pad { padding:12px 16px 16px; display:flex; flex-direction:column; gap:12px; }
+
+/* type: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) */
+.w { font-family:var(--cochin); }
+.micro { font:calc(10.5px * var(--ax))/1.25 var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.soft { color:var(--inkSoft); }
+.f12m { font:calc(12px * var(--ax))/1.3 var(--mono); }
+.f11m { font:calc(11px * var(--ax))/1.3 var(--mono); }
+.f13 { font-size:calc(13px * var(--ax)); line-height:1.35; }
+.f14 { font-size:calc(14px * var(--ax)); line-height:1.35; }
+.f15 { font-size:calc(15px * var(--ax)); line-height:1.3; }
+.f17 { font-size:calc(17px * var(--ax)); line-height:1.25; }
+.f22 { font-size:calc(22px * var(--ax)); line-height:1.2; }
+b, .b { font-weight:700; }
+
+.run { flex:0 0 auto; display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; gap:4px 12px; padding:8px 16px 0; font-family:var(--cochin); }
+/* The running head and the index tabs are chrome on every page: capped at xxxLarge like the Post bar, with the large-content viewer on a long press. */
+.run .f17 { font-size:calc(17px * var(--axc)); }
+.run .f12m { font-size:calc(12px * var(--axc)); }
+.run .mini { font-size:calc(13px * var(--axc)); }
+.sender { flex:0 0 auto; display:flex; flex-direction:column; gap:2px; padding:8px 16px 8px; border-bottom:1px solid var(--line); font-family:var(--cochin); }
+.mini { font:calc(13px * var(--ax)) var(--mono); min-height:44px; min-width:44px; padding:0 12px; border:1px solid var(--line); background:var(--card); color:var(--ink);
+  border-radius:8px; cursor:pointer; display:inline-flex; align-items:center; justify-content:center; }
+.mini.red { color:var(--red); }
+.lines { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.line { display:flex; gap:8px; min-height:64px; width:100%; padding:0 12px 0 4px; border:0; border-top:1px solid var(--line); background:var(--card);
+  text-align:left; font:inherit; color:inherit; cursor:pointer; align-items:center; }
+.line:first-child { border-top:0; }
+.line .box { flex:0 0 44px; height:44px; display:grid; place-items:center; }
+.line .box i { width:28px; height:28px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; position:relative; }
+.line .t { flex:1; display:flex; flex-direction:column; gap:2px; padding:10px 0; font-family:var(--cochin); }
+.line .t span:first-child { display:flex; justify-content:space-between; gap:8px; font-weight:600; }
+.line.done { background:var(--greenSoft); }
+.line.done .box i { background:var(--green); border-color:var(--green); }
+.line.done .box i::after { content:""; position:absolute; left:8px; top:3px; width:8px; height:14px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.note { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:2px; font-family:var(--cochin); }
+.note .micro { color:var(--manilaInk); }
+.tile { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; font-family:var(--cochin); }
+.tile .row { display:flex; justify-content:space-between; align-items:center; gap:8px; flex-wrap:wrap; }
+.amber { color:var(--amber); } .red { color:var(--red); } .green { color:var(--green); }
+
+.fieldrow { flex:0 0 auto; display:flex; flex-wrap:wrap; gap:8px; align-items:stretch; padding:8px 16px; }
+.fieldrow > .mini { flex:1 0 auto; max-width:max-content; }
+.frame[data-ax="5"] .fieldrow > .mini { max-width:none; }
+.field { flex:1 1 60%; min-height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; gap:8px;
+  font:calc(16px * var(--ax)) var(--cochin); cursor:text; min-width:0; text-align:left; color:var(--ink); }
+.field .ph { color:var(--inkSoft); }
+.field .q { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.field .caret { width:2px; height:1.2em; background:var(--accent); flex:0 0 auto; }
+.chip { margin-left:auto; font:calc(11px * var(--axc)) var(--mono); background:var(--manila); color:var(--manilaInk); border-radius:6px; padding:2px 6px; white-space:nowrap; }
+.envrow { display:flex; justify-content:space-between; align-items:center; gap:8px; font-family:var(--cochin); }
+.match { min-height:44px; display:flex; align-items:center; width:100%; border:0; background:transparent; cursor:pointer; padding:0 0 0 10px; text-align:left;
+  font:calc(15px * var(--ax)) var(--cochin); color:var(--ink); border-left:3px solid transparent; }
+.matches.held .match { color:var(--inkSoft); }
+.matches.held .match.on { color:var(--ink); font-weight:700; border-left-color:var(--accent); }
+
+.strip { flex:0 0 auto; min-height:52px; display:flex; gap:8px; overflow-x:auto; padding:0 16px 8px; scrollbar-width:none; }
+.sug { flex:0 0 auto; min-height:44px; padding:0 14px; border:1px solid var(--line); border-radius:22px; background:var(--card); color:var(--ink);
+  font:calc(15px * var(--ax)) var(--cochin); cursor:pointer; white-space:nowrap; }
+.strip.held .sug { color:var(--inkSoft); }
+.strip.held .sug.on { color:var(--ink); font-weight:700; border-color:var(--accent); box-shadow:inset 0 -3px 0 var(--accent); }
+
+/* the Post bar: hairline, 4 pt, the 44 pt button, 4 pt = 53 pt (owner item 103 b) */
+.slot { flex:0 0 auto; border-top:1px solid var(--line); background:color-mix(in srgb, var(--manila) 50%, var(--paper)); padding:4px 16px; min-height:53px; display:flex; align-items:center; }
+.postbtn { width:100%; min-height:44px; border:0; border-radius:8px; background:var(--accent); color:var(--card); font:700 calc(13px * var(--axc)) var(--mono); cursor:pointer; }
+.receipt { font:calc(13px * var(--axc)) var(--mono); color:var(--green); }
+
+/* thumb-index tabs at the spine (New in Turning leaves) */
+.spine { flex:0 0 auto; display:flex; gap:4px; padding:0 12px; }
+.spine.down { border-top:1px solid var(--line); align-items:flex-start; padding-bottom:6px; }
+.spine.up { border-bottom:1px solid var(--line); align-items:flex-end; padding-top:6px; }
+.spine.head { border-bottom:1px solid var(--line); align-items:flex-end; padding-top:4px; }
+.tab { min-height:44px; flex:1 1 0; min-width:0; border:1px solid var(--line); background:var(--manila); color:var(--manilaInk); cursor:pointer;
+  font:calc(14px * var(--axc)) var(--cochin); display:flex; align-items:center; justify-content:center; gap:6px; padding:0 8px; white-space:nowrap; }
+.spine.down .tab { border-top:0; border-radius:0 0 8px 8px; margin-top:-1px; }
+.spine.up .tab, .spine.head .tab { border-bottom:0; border-radius:8px 8px 0 0; margin-bottom:-1px; }
+.tab[aria-selected="true"] { background:var(--paper); color:var(--ink); font-weight:700; }
+.tab .n { font:calc(11px * var(--axc)) var(--mono); background:var(--red); color:var(--card); border-radius:9px; padding:1px 6px; }
+
+/* the system keyboard: iOS chrome, not an app colour, so its greys sit outside the tokens (as in duo-hand-post-sender) */
+.keys { position:absolute; left:0; right:0; bottom:0; background:#D2D0D6; z-index:7; padding:8px 4px 0; display:flex; flex-direction:column; gap:10px; }
+.keys .r { display:flex; gap:6px; justify-content:center; }
+.keys button { height:42px; flex:1 1 0; max-width:58px; background:#FFFFFF; border:0; border-radius:6px; font:18px var(--sys); color:#111; cursor:pointer; padding:0; }
+.keys button.g { background:#ABADB5; font-size:14px; max-width:84px; }
+.keys button.sp { max-width:none; flex:5 1 0; font-size:14px; }
+.keys .cap { position:absolute; right:8px; top:-18px; font:10.5px var(--mono); color:var(--inkSoft); background:var(--paper); padding:1px 4px; }
+
+/* the system tab bar: floats at the bottom of the screen (tab-bars page). Glass = paper at 62% (phone-nav-is-bottom-bar). */
+.tabbar { position:absolute; left:0; right:0; bottom:0; z-index:6; display:flex; justify-content:center; align-items:flex-start; padding-top:8px; pointer-events:none; }
+.tabbar .pill { pointer-events:auto; display:flex; gap:2px; padding:4px; border-radius:32px; background:color-mix(in srgb, var(--paper) 62%, transparent);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--line); box-shadow:0 2px 12px rgba(28,43,36,0.08); }
+.tabbar .it { width:76px; min-height:54px; border-radius:28px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font:10px var(--sys); color:var(--inkSoft); }
+.tabbar .it.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); font-weight:600; }
+.tabbar svg { width:20px; height:20px; }
+.homeind { position:absolute; left:50%; bottom:8px; width:134px; height:5px; margin-left:-67px; border-radius:3px; background:var(--ink); z-index:10; }
+
+/* Packages pieces */
+.letter { display:flex; flex-direction:column; gap:8px; padding:12px 16px; font-family:var(--cochin); }
+.mast { font:700 calc(22px * var(--ax)) var(--cochin); letter-spacing:4px; text-align:center; border-bottom:2px solid var(--gold); padding-bottom:4px; }
+.tallies { display:grid; grid-template-columns:1.2fr 1fr 1fr; border:1px solid var(--line); border-radius:8px; background:var(--card); }
+.tallies div { padding:8px 12px; display:flex; flex-direction:column; gap:2px; }
+.tallies div + div { border-left:1px solid var(--line); }
+.tallies b { font:700 calc(20px * var(--ax)) var(--mono); }
+.opener { min-height:52px; border:0; border-radius:8px; background:var(--accent); color:var(--card); font:700 calc(17px * var(--ax)) var(--cochin); cursor:pointer; width:100%; }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; font-family:var(--cochin); }
+.pkg .prog { height:4px; border-radius:2px; background:var(--line); overflow:hidden; }
+.pkg .prog i { display:block; height:100%; background:var(--accent); }
+
+/* dashed labels: what exists today, and what a concept adds */
+:where([data-tag]) { position:relative; }
+.tags-on .tag-new { outline:2px dashed var(--new); outline-offset:-2px; }
+.tags-on .tag-today { outline:2px dashed var(--today); outline-offset:-2px; }
+.tags-on [data-tag]::after { content:attr(data-tag); position:absolute; right:6px; top:2px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper);
+  z-index:11; white-space:nowrap; pointer-events:none; }
+.tags-on .tag-new::after { color:var(--new); } .tags-on .tag-today::after { color:var(--today); }
+.tags-on .tag-low::after { top:auto; bottom:2px; }
+/* On the tab rows the label sits on the page side of the tabs, so it never covers a tab's name or badge. */
+.tags-on .tag-spine-down::after { top:-16px; left:6px; right:auto; }
+.tags-on .tag-spine-up::after { top:auto; bottom:-16px; left:6px; right:auto; }
+button:focus-visible, a:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+@media (prefers-reduced-motion: no-preference) { .line { transition:background-color .18s ease; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No seller, card, price, count or date on this page is real. Sizes the device has not reported are marked as estimates in the captions.</div>
+<h1>The open Duo held on its side: book mode</h1>
+<p class="kind"><b>Designer kind: directed.</b> Direction: book mode, a tall spread with two independent pages. Designer duo-poses-directed-2. Light theme only: the native app is held to light.</p>
+<p class="pitch" id="pitch"></p>
+
+<div class="bar" role="group" aria-label="Concept">
+  <span>Concept</span>
+  <a href="#c=facing" data-c="facing">Facing leaves</a>
+  <a href="#c=turning" data-c="turning">Turning leaves</a>
+  <button type="button" class="hide" data-hide="facing">Hide Facing leaves</button>
+  <button type="button" class="hide" data-hide="turning">Hide Turning leaves</button>
+</div>
+<div class="bar" role="group" aria-label="Pose">
+  <span>Pose</span>
+  <a href="#p=all" data-p="all">Every pose</a>
+  <a href="#p=folded" data-p="folded">Folded</a>
+  <a href="#p=laptop" data-p="laptop">Laptop</a>
+  <a href="#p=tall" data-p="tall">Held tall</a>
+  <a href="#p=open" data-p="open">Open, side by side</a>
+  <a href="#p=phone" data-p="phone">Phone</a>
+</div>
+<div class="bar" role="group" aria-label="State">
+  <span>State</span>
+  <a href="#s=today" data-s="today">Today</a>
+  <a href="#s=packages" data-s="packages">Packages</a>
+  <a href="#s=empty" data-s="empty">Empty</a>
+  <a href="#s=typing" data-s="typing">Typing</a>
+  <a href="#s=envelope" data-s="envelope">Envelope</a>
+  <a href="#s=held" data-s="held">Held card, Post</a>
+  <a href="#s=posted" data-s="posted">After Post</a>
+  <a href="#s=nomatch" data-s="nomatch">No match</a>
+  <a href="#s=keysdown" data-s="keysdown">Keys down</a>
+  <a href="#s=copies" data-s="copies" data-only="turning">All copies</a>
+  <a href="#s=late" data-s="late">Past 14 days</a>
+</div>
+<div class="bar" role="group" aria-label="Text size and labels">
+  <span>Text</span>
+  <a href="#ax=1" data-ax="1">Default (Large)</a>
+  <a href="#ax=5" data-ax="5">AX5, the largest</a>
+  <button type="button" id="tagsBtn">Hide Today and New labels</button>
+</div>
+
+<section id="stage">
+  <!-- Folded first (ios-apps, Mockups). Each pose is its own layout. -->
+  <figure data-pose="folded"><div class="fit"><div class="frame" id="f-folded" data-device="iphone-duo-folded" style="width:466px;height:678px"></div></div><figcaption id="cap-folded"></figcaption></figure>
+  <figure data-pose="laptop"><div class="fit"><div class="frame" id="f-laptop" data-device="iphone-duo-unfolded" style="width:669px;height:951px"></div></div><figcaption id="cap-laptop"></figcaption></figure>
+  <figure data-pose="tall"><div class="fit"><div class="frame" id="f-tall" data-device="iphone-duo-unfolded" style="width:669px;height:951px"></div></div><figcaption id="cap-tall"></figcaption></figure>
+  <figure data-pose="open"><div class="fit"><div class="frame" id="f-open" data-device="iphone-duo-unfolded" style="width:951px;height:669px"></div></div><figcaption id="cap-open"></figcaption></figure>
+  <figure data-pose="phone"><div class="fit"><div class="frame" id="f-phone" data-device="iphone-pro" style="width:466px;height:678px"></div></div><figcaption id="cap-phone"></figcaption></figure>
+</section>
+</main>
+
+<script>
+// ---------- sample data: invented sellers and prices; real card names only ----------
+const TODAY = '2026-07-14';
+const ENV = [
+  { id:'gamma', seller:'Gamma Cards', date:'2026-07-01', lines:[['Lightning Bolt',0.42,'NM'],['Path to Exile',0.31,'NM'],['Swords to Plowshares',0.55,'LP'],['Ponder',0.18,'NM'],['Preordain',0.20,'NM'],['Counterspell',0.38,'NM']] },
+  { id:'alpha', seller:'Alpha Cards', date:'2026-07-08', lines:[['Brainstorm',0.25,'NM'],['Lightning Bolt',0.40,'LP'],['Opt',0.10,'NM']] },
+  { id:'beta',  seller:'Beta Games',  date:'2026-07-11', lines:[['Thoughtseize',3.10,'NM'],['Duress',0.15,'NM'],['Ponder',0.20,'NM']] },
+  { id:'kappa', seller:'Kappa Games', date:'2026-06-28', lines:[['Brainstorm',0.22,'NM'],['Duress',0.14,'LP']] },
+  { id:'delta', seller:'Delta Hobby', date:'2026-06-12', lines:[['Fatal Push',0.90,'NM'],['Lightning Bolt',0.44,'NM']] },
+];
+const BASE_IN = 38, BASE_OUT = 9, BASE_OWED = 6.40;   // the rest of a sample mail day, not drawn
+const STAMPS = [['claim','Claim filed'],['refunded','Refunded'],['contacted','Seller contacted'],['reshipped','Reshipped'],['partial','Partial refund'],['other','Other']];
+const days = d => Math.round((Date.parse(TODAY) - Date.parse(d)) / 864e5);
+const addDays = (d, n) => new Date(Date.parse(d) + n * 864e5).toISOString().slice(0, 10);
+const fmt = n => '$' + n.toFixed(2);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+// ---------- state ----------
+let S;
+function base() {
+  return { c:'facing', p:'laptop', s:'envelope', ax:'1', query:'', shown:null, chosen:null, hold:null, held:[], checked:new Set(['gamma|3']),
+    receipt:null, keys:true, top:'env', desk:'desk', screen:'hand', stamps:{} };
+}
+const live = e => e.lines.map((l, i) => ({ name:l[0], price:l[1], cond:l[2], key:e.id + '|' + i, done:S.checked.has(e.id + '|' + i) }));
+const env = id => ENV.find(e => e.id === id);
+const owedIn = e => live(e).filter(l => !l.done).reduce((a, l) => a + l.price, 0);
+const isLate = e => days(e.date) >= 14 && !S.stamps[e.id] && live(e).some(l => !l.done);
+const lateRows = () => ENV.filter(e => days(e.date) >= 14 && live(e).some(l => !l.done)).sort((a, b) => days(a.date) - days(b.date));
+function names(q) {
+  q = q.trim().toLowerCase(); if (!q) return [];
+  const set = new Set();
+  ENV.forEach(e => live(e).forEach(l => { if (!l.done && l.name.toLowerCase().includes(q)) set.add(l.name); }));
+  return [...set].sort();
+}
+const envsWith = n => ENV.filter(e => live(e).some(l => !l.done && l.name === n));
+function counts() {
+  let i = BASE_IN, o = BASE_OUT, m = BASE_OWED;
+  ENV.forEach(e => live(e).forEach(l => { if (l.done) i++; else { o++; m += l.price; } }));
+  return { i, o, m };
+}
+function offer() {
+  if (!S.shown || S.receipt) return null;
+  const e = env(S.shown), open = live(e).filter(l => !l.done).map(l => l.name);
+  const held = S.held.filter(n => open.includes(n));
+  if (!held.length) return null;
+  const typed = S.chosen && open.includes(S.chosen) && !held.includes(S.chosen) ? 1 : 0;
+  return { held, n: held.length + typed };
+}
+
+// ---------- acts ----------
+function afterType() {
+  S.receipt = null; S.chosen = null; S.hold = null;
+  const m = names(S.query);
+  S.shown = null;
+  if (m.length === 1 && m[0].toLowerCase() === S.query.trim().toLowerCase()) pick(m[0], false);
+}
+function pick(n, tapped) {
+  if (tapped && !S.hold) S.hold = names(S.query);
+  S.chosen = n; S.query = n; S.receipt = null;
+  const es = envsWith(n);
+  if (es.length === 1) { S.shown = es[0].id; }
+  else { S.shown = null; if (!S.held.includes(n)) S.held.push(n); }
+  if (S.top === 'late') S.top = 'env';
+}
+function post() {
+  const o = offer(); if (!o) return;
+  const e = env(S.shown); let n = 0;
+  const take = name => { const l = live(e).find(x => !x.done && x.name === name); if (l) { S.checked.add(l.key); n++; } };
+  o.held.forEach(take); if (S.chosen && !o.held.includes(S.chosen)) take(S.chosen);
+  S.held = S.held.filter(h => !o.held.includes(h));
+  S.receipt = { n, held:o.held.length }; S.hold = null;
+}
+function act(a, v) {
+  switch (a) {
+    case 'key':
+      if (v === 'del') S.query = S.query.slice(0, -1);
+      else if (v === 'hide') { S.keys = false; break; }
+      else if (v === 'space') S.query += ' ';
+      else S.query += v;
+      afterType(); break;
+    case 'field': S.keys = true; break;
+    case 'match': pick(v, true); break;
+    case 'line': S.checked.has(v) ? S.checked.delete(v) : S.checked.add(v); break;
+    case 'post': post(); break;
+    case 'newenv': S.query = ''; S.shown = null; S.chosen = null; S.hold = null; S.receipt = null; break;
+    case 'close': S.screen = 'packages'; S.keys = false; break;
+    case 'open-hand': S.screen = 'hand'; S.keys = S.p === 'laptop' || S.c === 'facing'; break;
+    case 'top': S.top = v; break;
+    case 'onetop': S.top = v; S.desk = 'desk'; break;
+    case 'desk': S.desk = v; break;
+    case 'late-open': S.top = 'late'; break;
+    case 'late-back': S.top = 'env'; break;
+    case 'stamp': { const [id, k] = v.split(':'); S.stamps[id] = k; break; }
+    case 'undo': delete S.stamps[v]; break;
+  }
+  render();
+}
+
+// ---------- pieces ----------
+const icon = {
+  Ledger:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="10" cy="10" r="3"/><path d="M10 2v3M10 15v3M2 10h3M15 10h3M4.3 4.3l2.1 2.1M13.6 13.6l2.1 2.1M4.3 15.7l2.1-2.1M13.6 6.4l2.1-2.1"/></svg>',
+  Orphaned:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="2.5" y="4.5" width="15" height="11" rx="1.5"/><path d="M3 5.5l7 5 7-5"/></svg>',
+  Tally:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M7 3l-2 14M15 3l-2 14M3 7.5h14M2.5 12.5h14"/></svg>',
+  Packages:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M10 2.5l7 3.5v8l-7 3.5-7-3.5V6z"/><path d="M3 6l7 3.5L17 6M10 9.5v8"/></svg>',
+};
+const tabbar = (h, tag) => `<div class="tabbar${tag ? ' tag-today tag-low' : ''}" ${tag ? `data-tag="${tag}"` : ''} style="height:${h}px"><div class="pill">${
+  ['Ledger','Orphaned','Tally','Packages'].map(t => `<span class="it${t === 'Packages' ? ' on' : ''}">${icon[t]}${t}</span>`).join('')}</div></div><div class="homeind"></div>`;
+function keys(h, cap) {
+  const row = s => `<div class="r">${[...s].map(k => `<button data-act="key" data-v="${k}" aria-label="${k}">${k}</button>`).join('')}</div>`;
+  return `<div class="keys" style="height:${h}px" aria-label="System keys">${cap ? `<span class="cap">${cap}</span>` : ''}
+    ${row('qwertyuiop')}${row('asdfghjkl')}
+    <div class="r"><button class="g" aria-label="Shift" tabindex="-1">⇧</button>${[...'zxcvbnm'].map(k => `<button data-act="key" data-v="${k}" aria-label="${k}">${k}</button>`).join('')}<button class="g" data-act="key" data-v="del" aria-label="Delete">⌫</button></div>
+    <div class="r"><button class="g" tabindex="-1">123</button><button class="sp" data-act="key" data-v="space">space</button><button class="g" data-act="key" data-v="hide" aria-label="Hide keys">⌄ hide</button></div>
+  </div>`;
+}
+const status = () => `<div class="status"><span>9:41</span><span>●●● 100%</span></div>`;
+function runHead(withClose) {
+  const c = counts();
+  return `<div class="run"><span class="f17 b">Mail day</span><span class="f12m soft">${c.i} in · ${c.o} out · ${fmt(c.m)} owed</span>${withClose ? `<button class="mini" data-act="close">Close</button>` : ''}</div>`;
+}
+function senderHead(tag) {
+  if (S.top !== 'env' || !S.shown) return '';
+  const e = env(S.shown), slim = S.ax === '5';   // from AX3 up the head shows the seller only (owner item 105 a)
+  return `<div class="sender${tag ? ' tag-today' : ''}" ${tag ? `data-tag="${tag}"` : ''}>${slim ? '' : '<span class="micro">It came from</span>'}
+    <span class="f22 b">${esc(e.seller)}</span>${slim ? '' : `<span class="f11m soft">ordered ${e.date} · ${fmt(owedIn(e))} still owed here</span>`}</div>`;
+}
+function linesHtml(e) {
+  return `<div class="lines">${live(e).map(l => `<button class="line${l.done ? ' done' : ''}" data-act="line" data-v="${l.key}" aria-pressed="${l.done}">
+    <span class="box"><i></i></span><span class="t"><span class="f15"><span>${esc(l.name)}</span><span class="f12m soft">${fmt(l.price)}</span></span><span class="f12m soft">Sample Set · ${l.cond}</span></span></button>`).join('')}</div>`;
+}
+function tieHtml(n) {
+  const es = envsWith(n);
+  return `<div class="tile"><span class="micro">${es.length} envelopes hold this card</span>
+    <span class="f13 soft">Name the next card from this envelope to tell them apart. Nothing checks in until you post.</span>
+    ${es.map(e => `<div class="row"><b class="f15">${esc(e.seller)}</b><span class="f11m soft">ordered ${e.date} · ${live(e).filter(l => !l.done).length} cards out</span></div>`).join('')}</div>`;
+}
+function lateBox() {
+  const r = lateRows(); if (!r.length) return '';
+  const closing = r.filter(e => days(e.date) >= 30 && !S.stamps[e.id]).length;
+  return `<div class="tile"><div class="row"><span class="f14">Past 14 days: ${r.length} envelopes${closing ? `<br><span class="f13 red">${closing} refund window closing</span>` : ''}</span>
+    <button class="mini" data-act="late-open" aria-label="Open past 14 days">Open</button></div></div>`;
+}
+function lateHtml(withBack) {
+  const r = lateRows(), cards = r.reduce((a, e) => a + live(e).filter(l => !l.done).length, 0), owed = r.reduce((a, e) => a + owedIn(e), 0);
+  return `<div class="envrow"><span class="f22 b">Past 14 days</span>${withBack ? '<button class="mini" data-act="late-back">Back</button>' : ''}</div>
+    <span class="f11m soft">${r.length} envelopes · ${cards} cards · ${fmt(owed)} · oldest last</span>
+    ${r.map(e => { const d = days(e.date), dead = d >= 30, st = S.stamps[e.id];
+      return `<div class="tile"><div class="row"><b class="f15">${esc(e.seller)}</b><b class="f12m ${dead ? 'red' : 'amber'}">${d} d</b></div>
+        <span class="f11m ${dead ? 'red' : 'soft'}">${dead ? 'refund window closing' : 'claim by ' + addDays(e.date, 30)}</span>
+        <div class="row" style="min-height:44px;justify-content:flex-start">${st
+          ? `<span class="f13 soft">Stamped ${STAMPS.find(s => s[0] === st)[1]}</span><span style="flex:1"></span><button class="mini" data-act="undo" data-v="${e.id}">Undo</button>`
+          : STAMPS.slice(0, 2).map(s => `<button class="mini" data-act="stamp" data-v="${e.id}:${s[0]}">${s[1]}</button>`).join('') + '<button class="mini">More</button>'}</div></div>`; }).join('')}
+    <span class="f13 soft w">Days count from the order date. TCGplayer counts 30 days from the delivery estimate, so its window can close later.</span>`;
+}
+function copiesHtml() {
+  const m = names(S.query), n = S.chosen || (m.length === 1 ? m[0] : null) ||
+    ENV.flatMap(e => e.lines.map(l => l[0])).find(x => x.toLowerCase() === S.query.trim().toLowerCase());
+  if (!n) return `<span class="f14 soft w">Type a card to see every copy you bought, from every seller.</span>`;
+  const rows = [];
+  ENV.forEach(e => live(e).forEach(l => { if (l.name === n) rows.push({ e, l }); }));
+  const inC = rows.filter(r => r.l.done).length, owed = rows.filter(r => !r.l.done).reduce((a, r) => a + r.l.price, 0);
+  return `<div class="tile" id="copies-head"><span class="f22 b">${esc(n)}</span><span class="f12m soft">${inC} of ${rows.length} in · ${fmt(owed)} still owed</span></div>
+    <div class="lines">${rows.map(r => `<div class="line" style="cursor:default${r.l.done ? ';background:var(--greenSoft)' : ''}"><span class="box f12m ${r.l.done ? 'green' : 'soft'}">${r.l.done ? 'in' : 'out'}</span>
+      <span class="t"><span class="f15"><span>${esc(r.e.seller)}</span><span class="f12m soft">${fmt(r.l.price)}</span></span><span class="f12m soft">ordered ${r.e.date} · ${r.l.cond}</span></span></div>`).join('')}</div>
+    <span class="f13 soft w">The same copies the Tally row for this name lists. A tap here checks nothing in.</span>`;
+}
+function answerBody(c, onePage) {
+  if (S.top === 'late') return lateHtml(c === 'facing');
+  if (S.top === 'copies') return copiesHtml();
+  let h = '';
+  const q = S.query.trim(), m = names(q);
+  if (S.chosen && envsWith(S.chosen).length > 1) h = tieHtml(S.chosen);
+  else if (S.shown) h = linesHtml(env(S.shown));
+  else if (!q) h = `<span class="f14 soft w">Type the card in hand. The envelope it came from shows here.</span>`;
+  else if (!m.length) h = `<span class="f14 soft w">No open envelope holds “${esc(q)}”.</span>`;
+  else h = `<span class="f14 soft w">${m.length} cards match “${esc(q)}”. Pick one ${c === 'turning' ? 'under the field' : 'from Matches'}, or keep typing.</span>`;
+  if (c === 'facing' && !onePage) h += lateBox();
+  return h;
+}
+function matchesHtml() {
+  const m = S.hold || names(S.query);
+  if (!m.length || (S.shown && !S.hold && m.length === 1)) return '';
+  return `<span class="micro">Matches</span><div class="matches${S.hold ? ' held' : ''}">${m.map(n =>
+    `<button class="match${n === S.chosen ? ' on' : ''}" data-act="match" data-v="${esc(n)}">${esc(n)}</button>`).join('')}</div>`;
+}
+// Turning leaves: the matches sit in one row under the field, like the system's word suggestions, so they stay above the keys
+// on a short desk page. A tap holds the row: every name keeps its place and the tapped one is marked (no-layout-shift-under-pointer).
+function stripHtml(tag) {
+  const m = S.hold || names(S.query);
+  const t = tag ? ` tag-new" data-tag="${tag}` : '';
+  if (!m.length || (S.shown && !S.hold && m.length === 1)) return `<div class="strip${t}"><span class="f13 soft w" style="align-self:center">${S.query.trim() ? '' : 'Matches show here as you type.'}</span></div>`;
+  return `<div class="strip${S.hold ? ' held' : ''}${t}" role="list" aria-label="Matches">${m.map(n =>
+    `<button class="sug${n === S.chosen ? ' on' : ''}" role="listitem" data-act="match" data-v="${esc(n)}">${esc(n)}</button>`).join('')}</div>`;
+}
+function suspenseHtml() {
+  return S.held.map(n => `<div class="note"><span class="micro">Suspense</span><b class="f15">${esc(n)}</b><span class="f13">Not checked in. The next card from its envelope decides it.</span></div>`).join('');
+}
+function field(chip) {
+  const q = S.query;
+  return `<button class="field" data-act="field" aria-label="Card name">${q ? `<span class="q">${esc(q)}</span>` : `<span class="ph">Card in hand</span>`}${S.keys ? '<span class="caret"></span>' : ''}${
+    chip && S.held.length ? `<span class="chip">${S.held.length} held</span>` : ''}</button>`;
+}
+// reserve: Facing leaves keeps the 53 pt slot on the desk page at all times, even empty. The matches sit right
+// above it, so a slot that came and went would land under the finger that tapped a match (no-layout-shift-under-pointer).
+function slot(tag, reserve) {
+  const o = offer(), t = tag ? ` tag-new" data-tag="${tag}` : '';
+  if (o) return `<div class="slot${t}"><button class="postbtn" data-act="post">Post ${o.n} cards here, ${o.held.length} held</button></div>`;
+  // At the largest sizes the receipt shows the count alone; "Posted." is spoken only (owner item 106 a).
+  if (S.receipt) return `<div class="slot${t}"><span class="receipt" aria-label="Posted. ${S.receipt.n} cards">${S.ax === '5' ? '' : 'Posted. '}${S.receipt.n} cards</span></div>`;
+  if (reserve) return `<div class="slot" style="background:transparent" aria-hidden="true"></div>`;
+  return '';
+}
+// On one screen the two tab rows join: Held is the desk page's tab, so S.desk selects it and the answer tabs step back.
+const spineTop = (cls, one) => `<div class="spine ${cls}" role="tablist" aria-label="Answer page">${[['env','Envelope'],['copies','All copies'],['late','Late', lateRows().filter(isLate).length], ...(one ? [['held','Held', S.held.length]] : [])].map(([id, t, n]) => {
+  const sel = id === 'held' ? S.desk === 'held' : (S.top === id && !(one && S.desk === 'held'));
+  return `<button class="tab" role="tab" aria-selected="${sel}" data-act="${id === 'held' ? 'desk' : (one ? 'onetop' : 'top')}" data-v="${id}">${t}${n ? `<span class="n">${n}</span>` : ''}</button>`; }).join('')}</div>`;
+const spineDesk = cls => `<div class="spine ${cls}" role="tablist" aria-label="Desk page">${[['desk','Desk'],['held','Held', S.held.length]].map(([id, t, n]) =>
+  `<button class="tab" role="tab" aria-selected="${S.desk === id}" data-act="desk" data-v="${id}">${t}${n ? `<span class="n">${n}</span>` : ''}</button>`).join('')}</div>`;
+
+// ---------- Packages pieces (shared by both concepts) ----------
+function pkgCards() {
+  return ENV.map(e => { const ls = live(e), n = ls.filter(l => l.done).length;
+    return `<div class="pkg"><div class="envrow"><b class="f15">${esc(e.seller)}</b><span class="f12m soft">${n} of ${ls.length}</span></div>
+      <span class="f11m soft">ordered ${e.date} · ${fmt(owedIn(e))} still owed</span><div class="prog"><i style="width:${Math.round(100 * n / ls.length)}%"></i></div></div>`; }).join('');
+}
+function letterhead(opener) {
+  const c = counts();
+  return `<div class="letter"><div class="mast">MANIFEST</div>
+    <div class="tallies"><div><span class="micro">Received</span><b>${c.i}</b></div><div><span class="micro">Out</span><b>${c.o}</b></div><div><span class="micro">Owed</span><b>${fmt(c.m)}</b></div></div>
+    ${opener ? `<button class="opener${opener === true ? '' : ' tag-new'}" data-act="open-hand" ${opener === true ? '' : `data-tag="${opener}"`}>Card in Hand</button>` : ''}</div>`;
+}
+
+// ---------- frames ----------
+const SAT = 20, TAB = 83;          // status bar foot drawn at the UI test's 20 pt floor; tab bar 83 pt from the folded reading
+const STK = { w:669, h:951, h0:455.5, h1:495.5, keys:264 };   // stacked: the open screen turned; keys height assumed from the side-by-side drawn panel
+const OPEN = { w:951, h:669, f0:455.5, f1:495.5, keysTop:405 };
+const ONE = { w:466, h:678, keys:289, tab:83 };   // outer screen; keys 250 to 289 read, the taller drawn
+
+function stackedToday() {
+  return `${status()}<div class="leaf" style="top:${SAT}px;bottom:${TAB}px"><div class="scroll"><div class="pad">${letterhead(false)}${pkgCards()}${pkgCards()}</div></div></div>
+    <div class="hinge tag-today" data-tag="Today: one page runs under the hinge" style="left:0;right:0;top:${STK.h0}px;height:40px"><span>hinge · 40 pt</span></div>${tabbar(TAB)}`;
+}
+function stackedPackages(c) {
+  const top = `${status()}<div class="leaf" style="top:${SAT}px;height:${STK.h0 - SAT}px"><div class="run"><span class="f22 b">Packages</span><span class="f12m soft">${ENV.length} open</span></div>
+    <div class="scroll" data-scroll="pk"><div class="pad">${pkgCards()}</div></div></div>`;
+  const bottom = `<div class="leaf tag-new" data-tag="New: letterhead and opener on the desk page" style="top:${STK.h1}px;bottom:${TAB}px">${letterhead(true).replace('class="letter"', 'class="letter" style="flex:1;justify-content:space-between;padding-bottom:16px"')}</div>${tabbar(TAB)}`;
+  return top + hingeH(c) + bottom;
+}
+function hingeH(c) {
+  return `<div class="hinge" style="left:0;right:0;top:${STK.h0}px;height:40px"><span>hinge · 40 pt · nothing crosses</span></div>`;
+}
+function stackedHand(c) {
+  const kb = S.keys ? STK.keys : TAB, botH = STK.h - STK.h1 - kb;
+  let top, bottom;
+  if (c === 'facing') {
+    top = `${status()}<div class="leaf tag-new tag-low" data-tag="New: answer page, its own scroll" style="top:${SAT}px;height:${STK.h0 - SAT}px">${runHead(true)}${senderHead('Today: sender head')}
+      <div class="scroll" data-scroll="ans"><div class="pad">${answerBody(c)}</div></div></div>`;
+    bottom = `<div class="leaf tag-new tag-low" data-tag="New: desk page, its own scroll" style="top:${STK.h1}px;height:${botH}px"><div class="fieldrow">${field(true)}<button class="mini" data-act="newenv">New envelope</button></div>
+      <div class="scroll" data-scroll="desk"><div class="pad" style="padding-top:4px">${matchesHtml()}${suspenseHtml()}</div></div>
+      ${slot('Today: the 53 pt Post bar, on the keys', true)}</div>`;
+  } else {
+    top = `${status()}<div class="leaf" style="top:${SAT}px;height:${STK.h0 - SAT}px">${runHead(true)}${senderHead()}
+      <div class="scroll" data-scroll="ans-${S.top}"><div class="pad">${answerBody(c)}</div></div>${slot('New: Post at the answer page foot')}
+      <div class="tag-new tag-spine-down" data-tag="New: index tabs at the spine" id="spine-top">${spineTop('down')}</div></div>`;
+    bottom = `<div class="leaf" style="top:${STK.h1}px;height:${botH}px"><div class="tag-new tag-spine-up" data-tag="New: the desk page turns on its own">${spineDesk('up')}</div>
+      ${S.desk === 'held'
+        ? `<div class="scroll" data-scroll="held"><div class="pad">${S.held.length ? suspenseHtml() : '<span class="f14 soft w">No card is held. A card two envelopes share waits here until the next card from its envelope decides it.</span>'}</div></div>`
+        : `<div class="fieldrow">${field(false)}<button class="mini" data-act="newenv">New envelope</button></div>${S.keys
+            ? stripHtml('New: matches in one row, under the field')
+            : `<div class="scroll" data-scroll="desk"><div class="pad" style="padding-top:4px">${matchesHtml() || '<span class="f14 soft w">Tap the field to type the next card.</span>'}</div></div>`}`}</div>`;
+  }
+  return top + hingeH(c) + bottom + (S.keys ? keys(STK.keys, 'keys height on this pose: estimate') : tabbar(TAB));
+}
+function openHand(c) {
+  const kTop = S.keys ? OPEN.keysTop : OPEN.h - 76;
+  const fold = `<div class="hinge v" style="top:0;bottom:0;left:${OPEN.f0}px;width:40px"><span>fold · 40 pt</span></div>`;
+  const deskInner = c === 'facing'
+    ? `${runHead(true)}<div class="fieldrow">${field(true)}</div><div class="scroll" data-scroll="odesk"><div class="pad" style="padding-top:4px"><div class="envrow"><span class="f14 soft">This envelope</span><button class="mini" data-act="newenv">New envelope</button></div>${matchesHtml()}${suspenseHtml()}</div></div>`
+    : `<div class="tag-new" data-tag="New: page tabs at the head">${spineDesk('head')}</div>${S.desk === 'held'
+        ? `<div class="scroll"><div class="pad">${S.held.length ? suspenseHtml() : '<span class="f14 soft w">No card is held.</span>'}</div></div>`
+        : `<div class="fieldrow">${field(false)}<button class="mini" data-act="close">Close</button></div><div class="scroll" data-scroll="odesk"><div class="pad" style="padding-top:4px"><div class="envrow"><span class="f14 soft">This envelope</span><button class="mini" data-act="newenv">New envelope</button></div>${matchesHtml()}</div></div>`}`;
+  const ansInner = c === 'facing'
+    ? `${senderHead()}<div class="scroll" data-scroll="oans"><div class="pad">${answerBody(c)}</div></div>${slot()}`
+    : `${spineTop('head')}${runHead(false)}${senderHead()}<div class="scroll" data-scroll="oans-${S.top}"><div class="pad">${answerBody(c)}</div></div>${slot()}`;
+  const tagL = c === 'facing' ? ' tag-today" data-tag="Today: built, side by side' : '';
+  return `${status()}<div class="leaf${tagL}" style="top:${SAT}px;left:0;width:${OPEN.f0}px;height:${kTop - SAT}px">${deskInner}</div>${fold}
+    <div class="leaf" style="top:${SAT}px;left:${OPEN.f1}px;right:0;height:${kTop - SAT}px">${ansInner}</div>
+    ${S.keys ? keys(OPEN.h - OPEN.keysTop, 'keys span both pages: measured') : `<div style="position:absolute;left:${OPEN.f1}px;right:0;bottom:0;height:76px">${tabbar(76).replace('<div class="homeind"></div>', '')}</div><div class="homeind"></div>`}`;
+}
+function openPackages() {
+  return `${status()}<div class="leaf tag-today" data-tag="Today: Packages keeps one page" style="top:${SAT}px;bottom:${TAB}px"><div class="scroll"><div class="pad">${letterhead(true)}${pkgCards()}</div></div></div>
+    <div class="hinge v" style="top:0;bottom:0;left:${OPEN.f0}px;width:40px"><span>fold · 40 pt</span></div>${tabbar(TAB)}`;
+}
+function onePage(c, phone) {
+  // The phone has no written size or inset: it is drawn as the folded frame, with the same 20 pt status floor.
+  const isl = '', sat = SAT, st = status();
+  if (c === 'facing' || S.screen === 'packages' || S.s === 'today') {
+    const opener = c === 'turning' && S.s !== 'today' ? 'New: Card in Hand on one screen' : false;
+    return `${st}${isl}<div class="leaf${c === 'facing' || S.s === 'today' ? ' tag-today" data-tag="Today: unchanged' : ''}" style="top:${sat}px;bottom:${ONE.tab}px"><div class="scroll" data-scroll="one-pk"><div class="pad">${
+      letterhead(opener)}${pkgCards()}</div></div></div>${tabbar(ONE.tab)}`;
+  }
+  const kb = S.keys ? ONE.keys : ONE.tab;
+  // At AX5 with the keys up, the running head and the tabs step aside for the field, the matches and one line; hide brings them back.
+  const tight = S.ax === '5' && S.keys;
+  const tabs = tight ? '' : spineTop('down', true), heldUp = S.desk === 'held';
+  const body = heldUp
+    ? `<div class="pad">${S.held.length ? suspenseHtml() : '<span class="f14 soft w">No card is held.</span>'}</div>`
+    : `<div class="pad">${answerBody(c, false)}</div>`;
+  return `${st}${isl}<div class="leaf tag-new" data-tag="New: answer on top, input under it" style="top:${sat}px;bottom:${kb}px">${tight ? '' : runHead(true)}${heldUp ? '' : senderHead()}
+    <div class="scroll" data-scroll="one-${heldUp ? 'held' : S.top}">${body}</div>${slot()}${tabs}
+    <div class="fieldrow">${field(false)}<button class="mini" data-act="newenv">New envelope</button></div>${stripHtml()}</div>
+    ${S.keys ? keys(ONE.keys) : tabbar(ONE.tab)}`;
+}
+
+// ---------- captions ----------
+const sideView = deg => `<svg width="44" height="28" viewBox="0 0 44 28" aria-hidden="true"><path d="M6 24h30" stroke="currentColor" stroke-width="3"/><path d="M6 24 ${6 + 28 * Math.cos(deg * Math.PI / 180)} ${24 - 28 * Math.sin(deg * Math.PI / 180)}" stroke="var(--accent)" stroke-width="3"/></svg>`;
+const CAP = {
+  folded: c => c === 'facing'
+    ? `<b>Folded · 466 x 678 pt</b>Unchanged. Card in Hand opens on two pages only (decision duo-card-in-hand, Defaults, not owner). Packages keeps today's one page.`
+    : `<b>Folded · 466 x 678 pt</b>The spread closes to one screen and keeps its order: answer on top, the field under it, the keys at the bottom. The two tab rows join into one. Departs from: Card in Hand on two pages only (default, not owner). Keys drawn 289 pt, the taller of the two outer-screen readings.`,
+  laptop: c => `<b>${sideView(110)} Laptop · 669 x 951 pt, hinge y 455.5 to 495.5</b>` + (c === 'facing'
+    ? `The answer page stands up; the desk page lies flat. Each page scrolls on its own. The keys and the Post bar stay on the flat page, so no press pushes the standing screen back.`
+    : `The answer page and the desk page each carry index tabs at the spine, the edge nearest your hands, where a press tips the standing screen least. Post sits under the lines it names.`)
+    + ` Keys drawn 264 pt (the side-by-side panel); no stacked keyboard reading exists.`,
+  tall: c => `<b>${sideView(180)} Held tall · flat, 669 x 951 pt</b>` + (c === 'facing'
+    ? `Same pages as laptop. Keys come up when you touch the field and go with hide; with the keys down the system tab bar shows at the bottom (item 28 a).`
+    : `Same pages as laptop. With the keys down the desk page has room: turn it to Held and every Suspense card shows above the tab bar, never under the keys.`),
+  open: c => c === 'facing'
+    ? `<b>Open, side by side · 951 x 669 pt</b>Today's built Card in Hand, unchanged: desk left, answer right, keys across both pages, the bar under the right page.`
+    : `<b>Open, side by side · 951 x 669 pt</b>The built layout plus the page tabs at each page's head. Side by side the spine is vertical, so the tabs cannot face it.`,
+  phone: c => (c === 'facing'
+    ? `<b>Phone, portrait</b>Unchanged: no fold, one page.`
+    : `<b>Phone, portrait</b>The folded layout, as on the outer screen.`) + ` The phone's size is not written in the device list or the brief; it is drawn at the folded frame's size, as a stand-in.`,
+};
+const PITCH = {
+  facing: 'Facing leaves. Two pages, each its own book page: the answer page on top holds the envelope; the desk page below holds the field, the matches and every press of the hand. Each scrolls alone, and nothing sits on the hinge. The structure is the built side-by-side screen, turned on its side.',
+  turning: 'Turning leaves. Each page turns on its own, by index tabs that face the spine. The answer page turns between the envelope, every copy of the card in hand, and the late mail. The desk page turns between the field and the held cards. On one screen the spread closes, and keeps the same order.',
+};
+
+// ---------- render and route ----------
+const frames = { folded:'f-folded', laptop:'f-laptop', tall:'f-tall', open:'f-open', phone:'f-phone' };
+let tagsOn = true; const hidden = new Set();
+function render() {
+  const c = S.c, kept = {};
+  document.querySelectorAll('[data-scroll]').forEach(el => kept[el.closest('.frame').id + el.dataset.scroll] = el.scrollTop);
+  for (const [p, id] of Object.entries(frames)) {
+    const f = document.getElementById(id);
+    f.dataset.ax = S.ax;
+    let h;
+    if (p === 'folded' || p === 'phone') h = onePage(c, p === 'phone');
+    else if (S.s === 'today') h = p === 'open' ? openPackages() : stackedToday();
+    else if (S.screen === 'packages') h = p === 'open' ? openPackages() : stackedPackages(c);
+    else h = p === 'open' ? openHand(c) : stackedHand(c);
+    f.innerHTML = h;
+    document.getElementById('cap-' + p).innerHTML = CAP[p](c) + (S.s === 'today' && p !== 'folded' && p !== 'phone' ? ' <b class="w" style="display:inline;font-size:14px;color:var(--today)">Today:</b> held on its side the screen is one page; rows run under the hinge and Card in Hand cannot open.' : '');
+    f.parentElement.parentElement.id = p === 'laptop' ? 'focus-' + c : '';
+  }
+  document.querySelectorAll('[data-scroll]').forEach(el => { const k = el.closest('.frame').id + el.dataset.scroll; if (k in kept) el.scrollTop = kept[k]; });
+  document.getElementById('stage').classList.toggle('tags-on', tagsOn);
+  document.getElementById('pitch').textContent = PITCH[c];
+  document.querySelectorAll('#stage figure').forEach(fig => fig.hidden = S.p !== 'all' && fig.dataset.pose !== S.p);
+  document.querySelectorAll('[data-c]').forEach(a => { a.setAttribute('aria-current', String(a.dataset.c === c)); a.hidden = hidden.has(a.dataset.c); });
+  document.querySelectorAll('[data-p]').forEach(a => a.setAttribute('aria-current', String(a.dataset.p === S.p)));
+  document.querySelectorAll('[data-s]').forEach(a => { a.setAttribute('aria-current', String(a.dataset.s === S.s)); a.hidden = a.dataset.only && a.dataset.only !== c; });
+  document.querySelectorAll('[data-ax]').forEach(a => { if (a.tagName === 'A') a.setAttribute('aria-current', String(a.dataset.ax === S.ax)); });
+  fit();
+}
+function fit() {
+  const stage = document.getElementById('stage'), all = S.p === 'all';
+  document.querySelectorAll('#stage .fit').forEach(w => {
+    const f = w.firstElementChild, fw = parseFloat(f.style.width), fh = parseFloat(f.style.height);
+    const room = all ? Math.min(stage.clientWidth, fw > 700 ? 600 : 360) : stage.clientWidth;
+    const s = Math.min(1, room / fw, all ? 1 : Math.max(0.5, (innerHeight - 40) / fh));
+    f.style.transform = `scale(${s})`; w.style.width = fw * s + 'px'; w.style.height = fh * s + 'px';
+  });
+}
+function preset(s) {
+  const k = { c:S.c, p:S.p, ax:S.ax };
+  S = Object.assign(base(), k, { s });
+  const type = q => { S.query = q; afterType(); };
+  switch (s) {
+    case 'packages': case 'today': S.screen = 'packages'; S.keys = false; break;
+    case 'typing': type('p'); break;
+    case 'envelope': type('path'); pick('Path to Exile', true); break;
+    case 'held': type('bolt'); pick('Lightning Bolt', true); type('path'); pick('Path to Exile', true); if (S.c === 'turning') S.desk = 'desk'; break;
+    case 'posted': type('bolt'); pick('Lightning Bolt', true); type('path'); pick('Path to Exile', true); post(); break;
+    case 'nomatch': type('zz'); break;
+    case 'keysdown': type('path'); pick('Path to Exile', true); S.keys = false; break;
+    case 'copies': type('bolt'); pick('Lightning Bolt', true); if (S.c === 'turning') S.top = 'copies'; break;
+    case 'late': S.top = 'late'; S.keys = false; break;
+  }
+}
+function route() {
+  const h = new URLSearchParams(location.hash.slice(1).replace(/,/g, '&'));
+  const prev = S || base();
+  S = S || base();
+  const c = h.get('c') || prev.c, p = h.get('p') || prev.p, s = h.get('s') || prev.s, ax = h.get('ax') || prev.ax;
+  const changed = !S._init || s !== prev.s || c !== prev.c;
+  S.c = hidden.has(c) ? (c === 'facing' ? 'turning' : 'facing') : c; S.p = p; S.ax = ax;
+  if (changed) { preset(s); S._init = true; }
+  render();
+}
+// The bars write one key each; merge it into the current hash so a link keeps the other keys.
+document.querySelectorAll('.bar a').forEach(a => a.addEventListener('click', ev => {
+  ev.preventDefault();
+  const cur = new URLSearchParams(location.hash.slice(1));
+  ['c','p','s','ax'].forEach(k => { if (!cur.has(k) && S[k]) cur.set(k, S[k]); });
+  const [k, v] = a.getAttribute('href').slice(1).split('=');
+  cur.set(k, v);
+  location.hash = cur.toString();
+}));
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide;
+  if (hidden.has(o)) hidden.delete(o); else { if (hidden.size === 1) return; hidden.add(o); }
+  b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + (o === 'facing' ? 'Facing leaves' : 'Turning leaves');
+  if (hidden.has(S.c)) { S.c = o === 'facing' ? 'turning' : 'facing'; preset(S.s); }
+  render();
+}));
+document.getElementById('tagsBtn').addEventListener('click', e => { tagsOn = !tagsOn; e.target.textContent = (tagsOn ? 'Hide' : 'Show') + ' Today and New labels'; render(); });
+document.getElementById('stage').addEventListener('click', e => {
+  const b = e.target.closest('[data-act]'); if (!b) return;
+  act(b.dataset.act, b.dataset.v);
+});
+// A hardware keyboard types into the drawn field too.
+addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey || S.screen !== 'hand') return;
+  if (/^[a-z ]$/i.test(e.key)) { act('key', e.key === ' ' ? 'space' : e.key.toLowerCase()); e.preventDefault(); }
+  else if (e.key === 'Backspace') { act('key', 'del'); e.preventDefault(); }
+});
+addEventListener('hashchange', route); addEventListener('resize', fit);
+route();
+</script>
+</body>
+</html>

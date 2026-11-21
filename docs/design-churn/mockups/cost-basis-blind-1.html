@@ -1,0 +1,840 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cost basis mockup</title>
+<style>
+/* Tokens. House step: 4 px. Radius: 8 px. Colours by role, light and dark. Values are this designer's own. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px; --space-12: 48px;
+  --radius: 8px;
+  --hit: 44px;                 /* Apple: default control size 44x44 pt */
+  --status-h: var(--space-8);  /* drawn, not an Apple figure */
+  --home-h: var(--space-5);    /* drawn, not an Apple figure */
+  --font: -apple-system, system-ui, sans-serif;
+
+  --page: #E4E8EC;             /* mockup canvas behind the devices */
+  --bezel: #1D232B;
+  --surface: #F4F6F8;
+  --raised: #FFFFFF;
+  --text: #152131;
+  --muted: #586677;
+  --line: #D3DAE2;
+  --accent: #0B5F7E;
+  --on-accent: #FFFFFF;
+  --accent-soft: #DCEBF1;
+  --arrived: #2C7A4C;
+  --waiting: #985A00;
+  --refunded: #6E5499;
+  --bar: rgba(244, 246, 248, 0.92);
+  --sample: #FFF2C6;
+  --sample-text: #4A3A00;
+  --scrim: rgba(21, 33, 49, 0.32);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0A0E12; --bezel: #000000; --surface: #10161D; --raised: #19212B; --text: #E5ECF2;
+    --muted: #9AA8B7; --line: #2B3644; --accent: #63C3E3; --on-accent: #062433; --accent-soft: #15303C;
+    --arrived: #63C68D; --waiting: #EFA941; --refunded: #B9A0E4; --bar: rgba(16, 22, 29, 0.92);
+    --sample: #3A3110; --sample-text: #F4E3A6; --scrim: rgba(0, 0, 0, 0.5);
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0A0E12; --bezel: #000000; --surface: #10161D; --raised: #19212B; --text: #E5ECF2;
+  --muted: #9AA8B7; --line: #2B3644; --accent: #63C3E3; --on-accent: #062433; --accent-soft: #15303C;
+  --arrived: #63C68D; --waiting: #EFA941; --refunded: #B9A0E4; --bar: rgba(16, 22, 29, 0.92);
+  --sample: #3A3110; --sample-text: #F4E3A6; --scrim: rgba(0, 0, 0, 0.5);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--text); font-family: var(--font); font-size: 15px; line-height: 20px; }
+button, input { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Mockup page chrome (not part of the app) ---------- */
+.sample { background: var(--sample); color: var(--sample-text); padding: var(--space-3) var(--space-4); font-weight: 600; text-align: center; }
+.chrome { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-6) var(--space-4) var(--space-12); max-inline-size: 2200px; margin-inline: auto; }
+.intro { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 72ch; }
+.intro h1 { margin: 0; font-size: 28px; line-height: 34px; }
+.intro p { margin: 0; color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; position: sticky; top: 0; z-index: 5; background: var(--page); padding-block: var(--space-2); }
+.controls label { display: flex; gap: var(--space-2); align-items: center; }
+.controls select, .linkbtn { min-height: var(--hit); padding-inline: var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); color: var(--text); font: inherit; }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; }
+.concept-head h2 { margin: 0; font-size: 22px; line-height: 28px; }
+.concept-head p { margin: 0; color: var(--muted); flex: 1 1 32ch; }
+.newtag { border: 1.5px dashed var(--accent); color: var(--accent); border-radius: var(--radius); padding: var(--space-1) var(--space-2); font-size: 13px; line-height: 18px; }
+.devices { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+.device { display: flex; flex-direction: column; gap: var(--space-2); }
+.device-cap { font-size: 13px; line-height: 18px; color: var(--muted); max-inline-size: 466px; }
+.restored { display: none; }
+.hidden-list { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+
+/* ---------- Device frames ---------- */
+.screen { position: relative; border: var(--space-2) solid var(--bezel); border-radius: var(--space-8); background: var(--surface); overflow: hidden; display: flex; }
+.screen.folded { width: calc(466px + 2 * var(--space-2)); height: calc(678px + 2 * var(--space-2)); }
+.screen.open { width: calc(951px + 2 * var(--space-2)); height: calc(669px + 2 * var(--space-2)); }
+.screen.phone { width: calc(466px + 2 * var(--space-2)); height: calc(678px + 2 * var(--space-2)); resize: both; min-width: 300px; min-height: 480px; }
+.hinge { flex: 0 0 40px; background: var(--bezel); }
+.page { position: relative; display: flex; flex-direction: column; overflow: hidden; background: var(--surface);
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); }
+.folded .page, .phone .page { flex: 1 1 auto; }
+.open .page { flex: 0 0 455.5px; }
+.status { flex: none; height: var(--status-h); display: flex; justify-content: space-between; align-items: center; padding-inline: var(--space-6); font-size: 13px; font-weight: 600; }
+.homebar { flex: none; height: var(--home-h); display: flex; justify-content: center; align-items: center; }
+.homebar::after { content: ""; width: 35%; height: 5px; border-radius: 3px; background: var(--text); opacity: 0.8; }
+
+/* ---------- App type: Apple Dynamic Type text styles, Large (default) and AX5 ---------- */
+.app { display: contents; }
+.page {
+  --lt: 34px/41px; --t1: 28px/34px; --t2: 22px/28px; --t3: 20px/25px; --hl: 17px/22px; --bd: 17px/22px;
+  --co: 16px/21px; --sb: 15px/20px; --fn: 13px/18px; --c1: 12px/16px; --c2: 11px/13px; --pip: 12px; }
+.page[data-ax="5"] {
+  --lt: 60px/70px; --t1: 58px/68px; --t2: 56px/66px; --t3: 55px/65px; --hl: 53px/62px; --bd: 53px/62px;
+  --co: 51px/60px; --sb: 49px/58px; --fn: 44px/52px; --c1: 43px/51px; --c2: 40px/48px; --pip: 0px; }
+.t-lt { font: 700 var(--lt) var(--font); letter-spacing: 0.01em; }
+.t-t1 { font: 400 var(--t1) var(--font); }
+.t-t2 { font: 700 var(--t2) var(--font); }
+.t-t3 { font: 600 var(--t3) var(--font); }
+.t-hl { font: 600 var(--hl) var(--font); }
+.t-bd { font: 400 var(--bd) var(--font); }
+.t-co { font: 400 var(--co) var(--font); }
+.t-sb { font: 400 var(--sb) var(--font); }
+.t-fn { font: 400 var(--fn) var(--font); }
+.t-c1 { font: 400 var(--c1) var(--font); }
+.num { font-variant-numeric: tabular-nums; }
+.muted { color: var(--muted); }
+.c-arrived { color: var(--arrived); } .c-waiting { color: var(--waiting); } .c-refunded { color: var(--refunded); }
+
+/* ---------- App parts ---------- */
+.nav { flex: none; display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-4) var(--space-2); }
+.navrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: var(--hit); }
+.navrow .mid { flex: 1; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navside { display: flex; align-items: center; gap: var(--space-1); min-width: var(--hit); }
+.navside.end { justify-content: flex-end; }
+.ltitle { margin: 0; overflow-wrap: anywhere; }
+.plain { background: none; border: 0; color: var(--accent); min-height: var(--hit); min-width: var(--hit); padding: 0 var(--space-2); display: inline-flex; align-items: center; gap: var(--space-1); border-radius: var(--radius); }
+.plain[hidden] { display: none; }
+.filled { background: var(--accent); color: var(--on-accent); border: 0; min-height: var(--hit); padding: 0 var(--space-5); border-radius: 999px; font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); }
+.wide { width: 100%; }
+.scroll { flex: 1 1 auto; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-2) var(--space-4) var(--space-6); }
+.bottom { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4) 0; background: var(--bar); border-top: 1px solid var(--line); }
+.stack { display: flex; flex-direction: column; gap: var(--space-2); }
+.stack-0 { display: flex; flex-direction: column; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+
+.search { display: flex; align-items: center; gap: var(--space-2); min-height: var(--hit); padding: 0 var(--space-3); border-radius: 999px; background: var(--raised); border: 1px solid var(--line); }
+.search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; min-height: var(--hit); }
+.search svg { flex: none; width: 1em; height: 1em; color: var(--muted); font: 400 var(--bd) var(--font); }
+.plain svg { height: 1.1em; width: auto; }
+
+.tabbar { display: flex; justify-content: space-around; border-radius: 999px; background: var(--raised); border: 1px solid var(--line); padding: var(--space-1); }
+.tab { flex: 1; background: none; border: 0; min-height: var(--hit); border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; color: var(--muted); padding: var(--space-1); }
+.tab svg { width: 22px; height: 22px; }
+.tab[aria-selected="true"] { color: var(--accent); background: var(--accent-soft); }
+.page[data-ax="5"] .tab svg { display: none; }
+
+.group { background: var(--raised); border-radius: var(--radius); border: 1px solid var(--line); display: flex; flex-direction: column; }
+.group > * + * { border-top: 1px solid var(--line); } /* list separators, not spacing */
+.row { display: flex; align-items: center; gap: var(--space-3); min-height: var(--hit); padding: var(--space-2) var(--space-4); background: none; border: 0; width: 100%; text-align: left; }
+.row .grow { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row .end { flex: none; text-align: right; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.row .name { overflow-wrap: anywhere; }
+.chev { flex: none; width: 8px; color: var(--muted); }
+.page[data-ax="5"] .row { flex-wrap: wrap; }
+.page[data-ax="5"] .row .end { align-items: flex-start; text-align: left; flex-basis: 100%; }
+.page[data-ax="5"] .chev { display: none; }
+.sectionhead { margin: 0; padding: 0 var(--space-1); color: var(--muted); }
+
+.pips { display: inline-flex; flex-wrap: wrap; gap: 3px; align-items: center; }
+.pip { width: var(--pip); height: var(--pip); flex: none; }
+.page[data-ax="5"] .pips { display: none; }
+.copies { display: inline-flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-4); padding: 0 var(--space-1); }
+.legend span { display: inline-flex; gap: var(--space-1); align-items: center; }
+.legend .pip { width: 12px; height: 12px; }
+.page[data-ax="5"] .legend .pip { width: 32px; height: 32px; }
+
+.seg { display: flex; border-radius: var(--radius); background: var(--line); padding: 2px; gap: 2px; }
+.seg button { font: 400 var(--sb) var(--font); flex: 1; min-height: var(--hit); border: 0; border-radius: 6px; background: none; color: var(--text); padding: 0 var(--space-2); }
+.seg button[aria-pressed="true"] { background: var(--raised); font-weight: 600; }
+.page[data-ax="5"] .seg { flex-direction: column; }
+
+.switchrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--hit); padding: var(--space-2) var(--space-4); background: none; border: 0; width: 100%; text-align: left; }
+.switch { flex: none; width: 52px; height: 32px; border-radius: 16px; background: var(--line); position: relative; border: 1px solid var(--line); }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; width: 26px; height: 26px; border-radius: 50%; background: #FFFFFF; transition: transform 0.15s ease-out; }
+.switchrow[aria-checked="true"] .switch { background: var(--arrived); border-color: var(--arrived); }
+.switchrow[aria-checked="true"] .switch::after { transform: translateX(20px); }
+.page[data-ax="5"] .switchrow { flex-wrap: wrap; }
+
+.placeholder-bar { display: inline-block; background: var(--line); border-radius: 4px; color: transparent; }
+.notice { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) var(--space-1); }
+details summary { cursor: pointer; min-height: var(--hit); display: flex; align-items: center; color: var(--accent); }
+details pre { white-space: pre-wrap; margin: 0; padding: var(--space-3); background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); font: 400 var(--fn) var(--font); }
+
+.toasthost { position: relative; display: inline-flex; }
+.toast { position: absolute; z-index: 20; top: calc(100% + var(--space-1)); right: 0; width: max-content; max-width: 280px; background: var(--text); color: var(--surface); border-radius: var(--radius); padding: var(--space-2) var(--space-3); font: 400 var(--fn) var(--font); }
+.toast.up { top: auto; bottom: calc(100% + var(--space-1)); }
+.page[data-ax="5"] .toast { max-width: 380px; }
+
+/* Ledger: the three figures are the filter */
+.figs { display: grid; grid-template-columns: 1.4fr 1fr 1fr; gap: var(--space-2); }
+.fig { display: flex; flex-direction: column; align-items: flex-start; gap: 2px; padding: var(--space-3); min-height: var(--hit); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); text-align: left; }
+.fig[aria-pressed="true"] { border: 2px solid var(--accent); padding: calc(var(--space-3) - 1px); }
+.fig .lab { display: inline-flex; gap: var(--space-1); align-items: center; }
+.fig .lab .pip { width: 10px; height: 10px; }
+.page[data-ax="5"] .figs { grid-template-columns: 1fr; }
+.listmeta { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); flex-wrap: wrap; padding-inline: var(--space-1); }
+
+/* Detail headline */
+.bigfig { display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* Sentence concept */
+.sentence { margin: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.sentence p { margin: 0; }
+.w { background: none; border: 0; padding: 0 2px; color: var(--accent); font: inherit; border-bottom: 2px solid currentColor; border-radius: 2px; min-height: 0; line-height: inherit; font-variant-numeric: tabular-nums; }
+.w.c-waiting { color: var(--waiting); }
+.w.c-refunded { color: var(--refunded); }
+.w[aria-current="true"] { background: var(--accent-soft); }
+.w-hit { display: inline-block; padding-block: calc((var(--hit) - 1lh) / 2); margin-block: calc((1lh - var(--hit)) / 2); }
+.needs { display: flex; flex-direction: column; gap: var(--space-2); }
+.results { position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(100% + var(--space-2)); max-height: calc(var(--hit) * 8); overflow: auto; background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); }
+.bottom { position: relative; }
+.toolbar { display: flex; align-items: center; gap: var(--space-2); }
+.toolbar .search { flex: 1; min-width: 0; }
+.page[data-ax="5"] .toolbar { flex-wrap: wrap; }
+
+/* Sheet */
+.sheet-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 10; display: flex; flex-direction: column; justify-content: flex-end; }
+.sheet { background: var(--surface); border-radius: var(--space-4) var(--space-4) 0 0; max-height: 92%; padding-bottom: var(--home-h); display: flex; flex-direction: column; overflow: hidden; }
+.grabber { align-self: center; width: 36px; height: 5px; border-radius: 3px; background: var(--muted); opacity: 0.5; margin-top: var(--space-2); }
+.panel { display: flex; flex-direction: column; flex: 1 1 auto; min-height: 0; }
+.preview { width: 100%; border-collapse: collapse; font: 400 var(--fn) var(--font); font-variant-numeric: tabular-nums; }
+.preview th, .preview td { padding: var(--space-1) var(--space-2); text-align: right; border-bottom: 1px solid var(--line); }
+.preview th:first-child, .preview td:first-child { text-align: left; }
+.preview tfoot td { font-weight: 600; border-bottom: 0; }
+.page[data-ax="5"] .preview thead { display: none; }
+.page[data-ax="5"] .preview tr { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); border-bottom: 1px solid var(--line); padding-block: var(--space-2); }
+.page[data-ax="5"] .preview td { border: 0; padding: 0; text-align: left; }
+.statement { background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.emptyright { flex: 1; display: flex; align-items: center; justify-content: center; padding: var(--space-8); text-align: center; }
+
+@media (prefers-reduced-motion: reduce) { .switch::after { transition: none; } }
+@media (forced-colors: active) { .fig[aria-pressed="true"], .seg button[aria-pressed="true"], .tab[aria-selected="true"] { outline: 2px solid CanvasText; } .switchrow[aria-checked="true"] .switch { outline: 2px solid Highlight; } }
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample: no figure, card name or seller on this page is real.</div>
+<div class="chrome">
+  <div class="intro">
+    <h1>Cost basis: what you paid for what you got</h1>
+    <p>Designer kind: blind. Designer: cost-basis-blind-1. Two concepts, each drawn on the Duo folded, the Duo open, a large phone, and the Duo folded at the largest accessibility text size. Every control in every frame works.</p>
+  </div>
+  <noscript><p>This mockup draws its frames with JavaScript. Turn it on to see the screens; the notes file beside this page lists every choice.</p></noscript>
+  <div class="controls" role="group" aria-label="Mockup controls">
+    <label>State
+      <select id="ctl-s">
+        <option value="loaded">Loaded</option>
+        <option value="loading">Loading</option>
+        <option value="empty">Empty (nothing imported)</option>
+        <option value="error">Failed read</option>
+        <option value="nomatch">Search finds nothing</option>
+      </select>
+    </label>
+    <label>Open every frame at
+      <select id="ctl-v">
+        <option value="">First screen</option>
+        <option value="card">The card that cost most</option>
+        <option value="wait">In the mail</option>
+        <option value="refunds">Refunds</option>
+        <option value="late">Waiting over 30 days</option>
+        <option value="sellers">Sellers or card names</option>
+        <option value="seller">One seller (Ledger)</option>
+        <option value="year">Year totals (Ledger)</option>
+        <option value="export">Export or share sheet</option>
+        <option value="search">A search</option>
+      </select>
+    </label>
+    <label>Theme
+      <select id="ctl-t">
+        <option value="system">System</option>
+        <option value="light">Light</option>
+        <option value="dark">Dark</option>
+      </select>
+    </label>
+    <button class="linkbtn" id="ctl-reset" type="button">Reset every frame</button>
+    <span class="hidden-list" id="hidden-list"></span>
+  </div>
+
+  <section class="concept" id="concept-ledger" data-concept="ledger">
+    <div class="concept-head">
+      <h2>Ledger</h2>
+      <p>A familiar three-tab app. The three totals at the top are the filter for the pooled card list. Open, the list sits on the left page and the card on the right.</p>
+      <span class="newtag">New: totals that filter the pooled list, and a pip for each copy</span>
+      <button class="linkbtn" type="button" data-hide="ledger">Hide Ledger</button>
+    </div>
+    <div class="devices" data-concept-frames="ledger">
+      <div class="device"><div class="device-cap">Duo folded, 466 x 678 pt, default text size.</div><div class="screen folded" data-device="iphone-duo-folded" data-frame="folded" id="ledger-folded"></div></div>
+      <div class="device"><div class="device-cap">Duo open, 951 x 669 pt. Hinge gap from x 455.5 to x 495.5; nothing sits across it.</div><div class="screen open" data-device="iphone-duo-unfolded" data-frame="open" id="ledger-open"></div></div>
+      <div class="device"><div class="device-cap">Large phone, portrait. No size was given: drawn at the folded size. Drag the corner to your phone's size.</div><div class="screen phone" data-device="iphone-large" data-frame="phone" id="ledger-phone"></div></div>
+      <div class="device"><div class="device-cap">Duo folded at the largest accessibility text size (AX5).</div><div class="screen folded" data-device="iphone-duo-folded-ax5" data-frame="ax5" id="ledger-ax5"></div></div>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-sentence" data-concept="sentence">
+    <div class="concept-head">
+      <h2>Sentence</h2>
+      <p>The bold one. The first screen answers the question in one sentence, and each figure in it is a link to the lines that add up to it. No tab bar: you move by tapping the words. The sentence is also what you share.</p>
+      <span class="newtag">New: a sentence of figures as the whole navigation</span>
+      <button class="linkbtn" type="button" data-hide="sentence">Hide Sentence</button>
+    </div>
+    <div class="devices" data-concept-frames="sentence">
+      <div class="device"><div class="device-cap">Duo folded, 466 x 678 pt, default text size.</div><div class="screen folded" data-device="iphone-duo-folded" data-frame="folded" id="sentence-folded"></div></div>
+      <div class="device"><div class="device-cap">Duo open, 951 x 669 pt. Hinge gap from x 455.5 to x 495.5; nothing sits across it.</div><div class="screen open" data-device="iphone-duo-unfolded" data-frame="open" id="sentence-open"></div></div>
+      <div class="device"><div class="device-cap">Large phone, portrait. No size was given: drawn at the folded size. Drag the corner to your phone's size.</div><div class="screen phone" data-device="iphone-large" data-frame="phone" id="sentence-phone"></div></div>
+      <div class="device"><div class="device-cap">Duo folded at the largest accessibility text size (AX5).</div><div class="screen folded" data-device="iphone-duo-folded-ax5" data-frame="ax5" id="sentence-ax5"></div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+/* ---------- Sample data: seeded, so every load draws the same figures ---------- */
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const R = rng(20261121);
+const pick = a => a[Math.floor(R() * a.length)];
+const PRE = ["Ashen","Gilded","Hollow","Brine","Ember","Verdant","Silent","Iron","Lunar","Thorn","Glass","Storm","Copper","Rune","Mire","Dusk","Frost","Cinder","Pale","Wild"];
+const NOUN = ["Warden","Archivist","Familiar","Lantern","Tithe","Wurm","Herald","Ritual","Gambit","Sentinel","Pilgrim","Oracle","Bloom","Marauder","Charm","Tutor"];
+const NAMES = []; PRE.forEach(p => NOUN.forEach(n => NAMES.push(p + " " + n)));
+for (let i = NAMES.length - 1; i > 0; i--) { const j = Math.floor(R() * (i + 1)); [NAMES[i], NAMES[j]] = [NAMES[j], NAMES[i]]; }
+const SA = ["North","Pocket","Corner","Lucky","Blue","Second","Old Mill","Harbor","Attic","Union"];
+const SB = ["Cards","Games","Collectibles","Hobby","Card Shop","Card Co."];
+const SELLERS = []; SA.forEach(a => SB.forEach(b => SELLERS.push(a + " " + b)));
+const DAY = 86400000;
+const TODAY = Date.UTC(2026, 10, 21);
+const START = Date.UTC(2025, 0, 6);
+const ORDERS = [];
+for (let i = 0; i < 720; i++) {
+  const r = R();
+  const date = TODAY - Math.floor((r * r * 0.0 + Math.pow(R(), 1.25)) * (TODAY - START) / DAY) * DAY - DAY;
+  const o = { id: 1000 + i, seller: pick(SELLERS), date, age: Math.round((TODAY - date) / DAY), lines: [], ship: 0 };
+  const n = 1 + Math.floor(R() * R() * 8);
+  for (let k = 0; k < n; k++) {
+    const card = NAMES[Math.floor(Math.pow(R(), 1.35) * NAMES.length)];
+    let price = R() < 0.04 ? 8 + R() * 17 : Math.exp(R() * 3.2 - 2.0);
+    price = Math.max(0.1, Math.round(price * 100) / 100);
+    const qty = R() < 0.7 ? 1 : R() < 0.6 ? 2 : R() < 0.6 ? 3 : 4;
+    const l = { card, qty, price, got: 0, wait: 0, ref: 0, order: o };
+    if (o.age < 18) { if (R() < 0.35) l.got = qty; else l.wait = qty; }
+    else { const s = R(); if (s < 0.93) l.got = qty; else if (s < 0.955) l.wait = qty; else if (s < 0.985) l.ref = qty; else if (qty > 1) { l.got = qty - 1; l.ref = 1; } else l.ref = 1; }
+    o.lines.push(l);
+  }
+  const sub = o.lines.reduce((a, l) => a + l.price * l.qty, 0);
+  o.ship = sub >= 5 ? 0 : pick([0.99, 1.31, 1.79]);
+  ORDERS.push(o);
+}
+/* Three lines whose price is not in the file: shown as unknown, never as zero. */
+[ORDERS[40].lines[0], ORDERS[333].lines[0], ORDERS[611].lines[0]].forEach(l => { l.price = null; });
+
+const CACHE = {};
+function agg(year, ship) {
+  const key = year + "|" + ship;
+  if (CACHE[key]) return CACHE[key];
+  const cards = new Map(), sellers = new Map();
+  const T = { paidGot: 0, paidWait: 0, refAmt: 0, got: 0, wait: 0, ref: 0, waitOrders: new Set(), lateOrders: new Set(), noPrice: [], lines: [], orders: 0 };
+  for (const o of ORDERS) {
+    if (new Date(o.date).getUTCFullYear() !== year) continue;
+    T.orders++;
+    const sub = o.lines.reduce((a, l) => a + (l.price == null ? 0 : l.price * l.qty), 0);
+    for (const l of o.lines) {
+      const unit = l.price == null ? null : l.price + (ship && sub > 0 ? o.ship * l.price / sub : 0);
+      let c = cards.get(l.card); if (!c) { c = { name: l.card, ordered: 0, got: 0, wait: 0, ref: 0, paidGot: 0, paidWait: 0, refAmt: 0, noPrice: 0, sellers: new Set(), lines: [] }; cards.set(l.card, c); }
+      let s = sellers.get(o.seller); if (!s) { s = { name: o.seller, orders: new Set(), paidGot: 0, paidWait: 0, refAmt: 0, lines: [] }; sellers.set(o.seller, s); }
+      const ln = { l, unit, o };
+      c.lines.push(ln); s.lines.push(ln); s.orders.add(o.id); T.lines.push(ln);
+      c.ordered += l.qty; c.got += l.got; c.wait += l.wait; c.ref += l.ref; c.sellers.add(o.seller);
+      T.got += l.got; T.wait += l.wait; T.ref += l.ref;
+      if (l.wait) { T.waitOrders.add(o.id); if (o.age > 30) T.lateOrders.add(o.id); }
+      if (unit == null) { c.noPrice += l.qty; T.noPrice.push(ln); continue; }
+      c.paidGot += unit * l.got; c.paidWait += unit * l.wait; c.refAmt += unit * l.ref;
+      s.paidGot += unit * l.got; s.paidWait += unit * l.wait; s.refAmt += unit * l.ref;
+      T.paidGot += unit * l.got; T.paidWait += unit * l.wait; T.refAmt += unit * l.ref;
+    }
+  }
+  return (CACHE[key] = { cards, sellers, T, year, ship });
+}
+
+/* ---------- Format ---------- */
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+const money = n => "$" + n.toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const count = n => n.toLocaleString("en-US");
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const dfmt = t => { const d = new Date(t); return MON[d.getUTCMonth()] + " " + d.getUTCDate(); };
+const plural = (n, one, many) => count(n) + " " + (n === 1 ? one : many);
+
+/* ---------- Shapes: arrived is filled, in the mail is a ring, refunded is a slashed ring ---------- */
+const SHAPE = {
+  got: '<svg class="pip c-arrived" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="5" fill="currentColor"/></svg>',
+  wait: '<svg class="pip c-waiting" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.25" fill="none" stroke="currentColor" stroke-width="1.5"/></svg>',
+  ref: '<svg class="pip c-refunded" viewBox="0 0 12 12" aria-hidden="true"><circle cx="6" cy="6" r="4.25" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M2.6 9.4 9.4 2.6" stroke="currentColor" stroke-width="1.5"/></svg>'
+};
+function pips(got, wait, ref) {
+  const out = []; const cap = 10; let n = 0;
+  for (const [k, v] of [["got", got], ["wait", wait], ["ref", ref]]) for (let i = 0; i < v && n < cap; i++, n++) out.push(SHAPE[k]);
+  const more = got + wait + ref - n;
+  return '<span class="pips" aria-hidden="true">' + out.join("") + (more > 0 ? '<span class="t-c1 muted">+' + more + '</span>' : "") + "</span>";
+}
+function copiesText(c) { return count(c.got) + " of " + count(c.ordered); }
+function copiesLabel(c) { return c.got + " of " + c.ordered + " copies arrived" + (c.wait ? ", " + c.wait + " in the mail" : "") + (c.ref ? ", " + c.ref + " refunded" : ""); }
+const ICON = {
+  search: '<svg viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>',
+  back: '<svg viewBox="0 0 10 18" width="10" height="18" aria-hidden="true"><path d="M8.5 1.5 1.5 9l7 7.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1.5 1.5 6.5 7l-5 5.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  share: '<svg viewBox="0 0 18 22" width="18" height="22" aria-hidden="true"><path d="M9 14V2M4.5 6 9 1.5 13.5 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/><path d="M5.5 9H3v11h12V9h-2.5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+  cards: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="3" width="12" height="16" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M5 6.5v12.5a2 2 0 0 0 2 2h9" fill="none" stroke="currentColor" stroke-width="1.7"/></svg>',
+  sellers: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 10v10h16V10M3 10l2-6h14l2 6zM10 20v-5h4v5" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  report: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/><path d="M9 12h7M9 16h7M9 8h3" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
+};
+
+/* ---------- Global mockup state, mirrored in the URL hash ---------- */
+const G = { s: "loaded", t: "system", hide: [] };
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  G.s = ["loaded","loading","empty","error","nomatch"].includes(h.get("s")) ? h.get("s") : "loaded";
+  G.t = ["light","dark"].includes(h.get("t")) ? h.get("t") : "system";
+  G.hide = (h.get("hide") || "").split(",").filter(x => x === "ledger" || x === "sentence");
+  G.c = ["ledger","sentence"].includes(h.get("c")) ? h.get("c") : null;
+  G.v = VIEWS.includes(h.get("v")) ? h.get("v") : null;
+}
+/* View deep links: v=card | sellers | seller | year | export | wait | refunds | late | share | search */
+const VIEWS = ["card","sellers","seller","year","export","wait","refunds","late","share","search"];
+function applyView(inst) {
+  const v = G.v; const st = inst.st;
+  if (!v) return;
+  const A = agg(st.year, st.ship);
+  const top = [...A.cards.values()].sort((a, b) => b.paidGot - a.paidGot)[0].name;
+  const topSeller = [...A.sellers.values()].sort((a, b) => b.paidGot - a.paidGot)[0].name;
+  if (inst.concept === "ledger") {
+    if (v === "card") st.card = top;
+    if (v === "sellers") st.tab = "sellers";
+    if (v === "seller") { st.tab = "sellers"; st.seller = topSeller; }
+    if (v === "year" || v === "export" || v === "share") { st.tab = "report"; st.sheet = v !== "year"; }
+    if (v === "wait") st.filter = "wait";
+    if (v === "refunds") st.filter = "ref";
+    if (v === "late") { st.tab = "report"; st.special = "late"; }
+    if (v === "search") { st.q = "lantern"; st.qTouched = true; }
+  } else {
+    if (v === "card") { st.proof = "got"; st.card = top; }
+    if (v === "wait") st.proof = "wait";
+    if (v === "refunds") st.proof = "ref";
+    if (v === "late") st.proof = "late";
+    if (v === "sellers" || v === "seller") st.proof = "names";
+    if (v === "export" || v === "share" || v === "year") st.sheet = true;
+    if (v === "search") { st.q = "lantern"; st.qTouched = true; }
+  }
+}
+function writeHash() {
+  const h = new URLSearchParams();
+  if (G.c) h.set("c", G.c);
+  if (G.s !== "loaded") h.set("s", G.s);
+  if (G.t !== "system") h.set("t", G.t);
+  if (G.v) h.set("v", G.v);
+  if (G.hide.length) h.set("hide", G.hide.join(","));
+  const str = h.toString();
+  history.replaceState(null, "", str ? "#" + str : location.pathname + location.search);
+}
+
+/* ---------- Frames ---------- */
+const FRAMES = [
+  { key: "folded", dev: "iphone-duo-folded", cls: "folded", layout: "compact", ax: "0", cap: "Duo folded, 466 x 678 pt, default text size." },
+  { key: "open", dev: "iphone-duo-unfolded", cls: "open", layout: "split", ax: "0", cap: "Duo open, 951 x 669 pt. Hinge gap from x 455.5 to x 495.5; nothing sits across it." },
+  { key: "phone", dev: "iphone-large", cls: "phone", layout: "compact", ax: "0", cap: "Large phone, portrait. No size was given: drawn at the folded size. Drag the corner to your phone's size." },
+  { key: "ax5", dev: "iphone-duo-folded-ax5", cls: "folded", layout: "compact", ax: "5", cap: "Duo folded at the largest accessibility text size (AX5)." }
+];
+const INST = [];
+function freshState(concept) {
+  return concept === "ledger"
+    ? { tab: "cards", card: null, seller: null, filter: "all", sort: "name", q: "", year: 2026, ship: false, sheet: false, fmt: "csv", onlyGot: true, toast: null, stopped: false }
+    : { proof: null, card: null, q: "", year: 2026, ship: false, sheet: false, fmt: "csv", onlyGot: true, toast: null, stopped: false };
+}
+function build() {
+  for (const concept of ["ledger", "sentence"]) {
+    for (const f of FRAMES) {
+      const el = document.getElementById(concept + "-" + f.key);
+      const inst = { concept, f, el, st: freshState(concept) };
+      applyView(inst);
+      INST.push(inst);
+      inst.el.addEventListener("click", e => onClick(inst, e));
+      inst.el.addEventListener("input", e => onInput(inst, e));
+    }
+  }
+}
+function pageShell(inst, inner, side) {
+  return '<div class="page" data-ax="' + inst.f.ax + '" data-side="' + side + '"><div class="app"><div class="status" aria-hidden="true"><span>9:41</span><span></span></div>' + inner + '<div class="homebar" aria-hidden="true"></div></div></div>';
+}
+function render(inst) {
+  const keep = {};
+  inst.el.querySelectorAll("[data-scroll]").forEach(s => { keep[s.dataset.scroll] = s.scrollTop; });
+  const act = document.activeElement && inst.el.contains(document.activeElement) ? document.activeElement.dataset.focus : null;
+  const pages = inst.concept === "ledger" ? renderLedger(inst) : renderSentence(inst);
+  if (inst.f.layout === "split") inst.el.innerHTML = pageShell(inst, pages.left, "left") + '<div class="hinge" aria-hidden="true"></div>' + pageShell(inst, pages.right, "right");
+  else inst.el.innerHTML = pageShell(inst, pages.single, "single");
+  inst.el.querySelectorAll("[data-scroll]").forEach(s => { if (keep[s.dataset.scroll] != null) s.scrollTop = keep[s.dataset.scroll]; });
+  if (act) { const n = inst.el.querySelector('[data-focus="' + act + '"]'); if (n) { n.focus(); if (n.setSelectionRange) n.setSelectionRange(n.value.length, n.value.length); } }
+}
+function renderAll() { INST.forEach(render); }
+
+/* ---------- Shared state screens ---------- */
+function stateBlock(inst, where) {
+  const st = inst.st;
+  if (G.s === "loading" && !st.stopped) return '<div class="notice" role="status"><p class="t-hl" style="margin:0">Reading 2 order files</p><p class="t-sb muted" style="margin:0">1,840 of 2,512 lines read.</p><button class="t-hl filled" type="button" data-act="stop" data-focus="stop-' + where + '">Stop</button></div>';
+  if (G.s === "loading" && st.stopped) return '<div class="notice" role="status"><p class="t-hl" style="margin:0">Stopped before the end. No total is shown, because it would be short.</p><button class="t-hl filled" type="button" data-act="unstop">Read again</button></div>';
+  if (G.s === "empty") return '<div class="notice"><p class="t-bd" style="margin:0">No orders yet. Import your order history to see what each card cost.</p><span class="toasthost"><button class="t-hl filled" type="button" data-act="toast" data-toast="import-' + where + '">Import order history</button>' + toast(inst, "import-" + where, "The file picker opens here.") + "</span></div>";
+  if (G.s === "error") return '<div class="notice" role="alert"><p class="t-bd" style="margin:0">Could not read the order file. No total is shown until it reads.</p><button class="t-hl filled" type="button" data-act="toast" data-toast="retry-' + where + '">Try again</button>' + toast(inst, "retry-" + where, "Reading again.") + '<details><summary class="t-sb">What the reader said</summary><pre>Row 412: column "Price" is missing. File: order-history-2026.csv</pre></details></div>';
+  return null;
+}
+function toast(inst, key, text, up) { return inst.st.toast === key ? '<span class="toast' + (up ? " up" : "") + '" role="status">' + esc(text) + "</span>" : ""; }
+function figValue(text) { return G.s === "loaded" || G.s === "nomatch" ? text : '<span class="placeholder-bar">' + text + "</span>"; }
+function searchField(inst, ph, key) {
+  const q = G.s === "nomatch" && !inst.st.qTouched ? "zzq" : inst.st.q;
+  return '<div class="search">' + ICON.search + '<input type="search" class="t-bd" placeholder="' + esc(ph) + '" aria-label="' + esc(ph) + '" value="' + esc(q) + '" data-act="q" data-focus="' + key + '"></div>';
+}
+function curQ(inst) { return (G.s === "nomatch" && !inst.st.qTouched ? "zzq" : inst.st.q).trim().toLowerCase(); }
+function noMatch(inst, q) { return '<div class="notice"><p class="t-bd" style="margin:0">No card name has “' + esc(q) + '” in it.</p><button class="t-hl filled" type="button" data-act="clearq">Clear search</button></div>'; }
+function needsLook(A, actPrefix) {
+  const items = [];
+  if (A.T.lateOrders.size) items.push('<button class="row" type="button" data-act="' + actPrefix + 'late">' + SHAPE.wait + '<span class="grow"><span class="t-bd">' + plural(A.T.lateOrders.size, "order has", "orders have") + ' waited more than 30 days</span><span class="t-fn muted">It may be lost. Ask the seller.</span></span>' + ICON.chev + "</button>");
+  if (A.T.noPrice.length) items.push('<button class="row" type="button" data-act="' + actPrefix + 'noprice"><span class="grow"><span class="t-bd">' + plural(A.T.noPrice.length, "line has", "lines have") + ' no price in the file</span><span class="t-fn muted">Not counted in any total.</span></span>' + ICON.chev + "</button>");
+  return items.length ? '<div class="stack"><h3 class="sectionhead t-fn">Needs a look</h3><div class="group">' + items.join("") + "</div></div>" : '<p class="t-sb muted" style="margin:0">All is well.</p>';
+}
+function legend() { return '<div class="legend t-fn" aria-hidden="false"><span>' + SHAPE.got + 'Arrived</span><span>' + SHAPE.wait + 'In the mail</span><span>' + SHAPE.ref + 'Refunded</span></div>'; }
+
+/* Lines of one card or one seller, grouped */
+function linesBlock(lines, groupBy) {
+  const groups = new Map();
+  for (const x of lines) { const k = groupBy === "seller" ? x.o.seller : "Order " + x.o.id; if (!groups.has(k)) groups.set(k, { o: x.o, rows: [] }); groups.get(k).rows.push(x); }
+  let out = "";
+  for (const [k, g] of groups) {
+    const head = groupBy === "seller" ? esc(k) : esc(dfmt(g.o.date) + ", order " + g.o.id);
+    out += '<div class="stack"><h3 class="sectionhead t-fn">' + head + '</h3><div class="group">';
+    for (const x of g.rows) {
+      const l = x.l;
+      const price = x.unit == null ? '<span class="t-fn muted">price not in file</span>'
+        : (l.got + l.wait ? '<span class="t-bd num">' + money(x.unit * (l.got + l.wait)) + "</span>" : "") +
+          (l.ref ? '<span class="t-fn num c-refunded">' + SHAPE.ref + " " + money(x.unit * l.ref) + "</span>" : "");
+      const sub = (groupBy === "seller" ? dfmt(x.o.date) + ", " : "") + l.qty + " × " + (x.unit == null ? "?" : money(x.unit));
+      const name = groupBy === "seller" ? "" : '<span class="t-bd name">' + esc(l.card) + "</span>";
+      out += '<div class="row" aria-label="' + esc(l.card + ", " + l.got + " arrived, " + l.wait + " in the mail, " + l.ref + " refunded") + '"><span class="grow">' + name + '<span class="copies"><span class="t-fn muted num">' + esc(sub) + "</span>" + pips(l.got, l.wait, l.ref) + '</span></span><span class="end">' + price + "</span></div>";
+    }
+    out += "</div></div>";
+  }
+  return out;
+}
+
+/* ---------- Concept: Ledger ---------- */
+function ledgerCardsList(inst, A, where) {
+  const st = inst.st;
+  const sb = stateBlock(inst, where);
+  if (G.s === "empty" || G.s === "error") return sb;
+  const T = A.T;
+  const figs =[["all", "got", "Arrived", T.paidGot], ["wait", "wait", "In the mail", T.paidWait], ["ref", "ref", "Refunded", T.refAmt]];
+  let out = '<div class="figs" role="group" aria-label="Show cards by state">';
+  for (const [k, shape, lab, v] of figs) out += '<button class="fig" type="button" aria-pressed="' + (st.filter === k) + '" data-act="filter" data-v="' + k + '" id="' + (k === "all" ? "ledger-figs-" + inst.f.key : "") + '"><span class="lab t-fn">' + SHAPE[shape] + lab + '</span><span class="' + (k === "all" ? "t-t2" : "t-hl") + ' num">' + figValue(money(v)) + "</span></button>";
+  out += "</div>";
+  if (sb) return out + sb;
+  let list = [...A.cards.values()];
+  if (st.filter === "all") list = list.filter(c => c.got > 0);
+  if (st.filter === "wait") list = list.filter(c => c.wait > 0);
+  if (st.filter === "ref") list = list.filter(c => c.ref > 0);
+  const q = curQ(inst);
+  if (q) list = list.filter(c => c.name.toLowerCase().includes(q));
+  const sorts = { name: (a, b) => a.name.localeCompare(b.name), paid: (a, b) => b.paidGot - a.paidGot, wait: (a, b) => b.paidWait - a.paidWait || a.name.localeCompare(b.name) };
+  list.sort(sorts[st.sort]);
+  const sortLab = { name: "Name", paid: "Most paid", wait: "Most in the mail" }[st.sort];
+  const metaTail = { all: " with copies that arrived", wait: " with copies in the mail", ref: " with refunded copies" }[st.filter];
+  out += '<div class="listmeta"><span class="t-fn muted">' + plural(list.length, "card name", "card names") + metaTail + '</span><button class="plain t-sb" type="button" data-act="sort">Sort: ' + sortLab + "</button></div>";
+  if (!list.length && q) return out + noMatch(inst, q);
+  out += '<div class="group">';
+  for (const c of list) {
+    const amt = st.filter === "wait" ? '<span class="t-bd num c-waiting">' + money(c.paidWait) + "</span>" : st.filter === "ref" ? '<span class="t-bd num c-refunded">' + money(c.refAmt) + "</span>" : '<span class="t-bd num">' + money(c.paidGot) + "</span>" + (c.got ? '<span class="t-fn muted num">' + money(c.paidGot / c.got) + " each</span>" : "");
+    const sel = inst.f.layout === "split" && st.card === c.name ? ' style="background:var(--accent-soft)"' : "";
+    out += '<button class="row" type="button" data-act="card" data-k="' + esc(c.name) + '"' + sel + ' aria-label="' + esc(c.name + ", " + copiesLabel(c)) + '"><span class="grow"><span class="t-bd name">' + esc(c.name) + '</span><span class="copies"><span class="t-fn muted num">' + copiesText(c) + "</span>" + pips(c.got, c.wait, c.ref) + '<span class="t-fn muted">' + plural(c.sellers.size, "seller", "sellers") + '</span></span></span><span class="end">' + amt + "</span>" + ICON.chev + "</button>";
+  }
+  return out + "</div>";
+}
+function ledgerSellersList(inst, A, where) {
+  const sb = stateBlock(inst, where); if (sb) return sb;
+  const list = [...A.sellers.values()].sort((a, b) => b.paidGot - a.paidGot);
+  let out = '<div class="listmeta"><span class="t-fn muted">' + plural(list.length, "seller", "sellers") + ', most paid first</span></div><div class="group">';
+  for (const s of list) out += '<button class="row" type="button" data-act="seller" data-k="' + esc(s.name) + '"><span class="grow"><span class="t-bd name">' + esc(s.name) + '</span><span class="t-fn muted">' + plural(s.orders.size, "order", "orders") + '</span></span><span class="end"><span class="t-bd num">' + money(s.paidGot) + "</span>" + (s.paidWait ? '<span class="t-fn num c-waiting">' + money(s.paidWait) + " in the mail</span>" : "") + "</span>" + ICON.chev + "</button>";
+  return out + "</div>";
+}
+function yearSeg(inst) { return '<div class="seg" role="group" aria-label="Year">' + [2025, 2026].map(y => '<button type="button" data-act="year" data-v="' + y + '" aria-pressed="' + (inst.st.year === y) + '">' + y + "</button>").join("") + "</div>"; }
+function shipSwitch(inst) { return '<div class="group"><button class="switchrow" type="button" role="switch" aria-checked="' + inst.st.ship + '" data-act="ship"><span class="grow stack-0"><span class="t-bd">Count shipping in what cards cost</span><span class="t-fn muted">Spread over each order’s cards by price.</span></span><span class="switch" aria-hidden="true"></span></button></div>'; }
+function ledgerReport(inst, A, where) {
+  const sb = stateBlock(inst, where);
+  let out = yearSeg(inst);
+  if (sb) return out + sb;
+  const T = A.T;
+  out += '<div class="group">' +
+    '<div class="row"><span class="grow"><span class="t-bd">' + SHAPE.got + ' Paid for cards that arrived</span><span class="t-fn muted">' + plural(T.got, "copy", "copies") + ", " + plural(A.cards.size, "card name", "card names") + '</span></span><span class="end t-hl num">' + money(T.paidGot) + "</span></div>" +
+    '<div class="row"><span class="grow"><span class="t-bd">' + SHAPE.wait + ' Still in the mail</span><span class="t-fn muted">' + plural(T.wait, "copy", "copies") + ", " + plural(T.waitOrders.size, "order", "orders") + '</span></span><span class="end t-hl num c-waiting">' + money(T.paidWait) + "</span></div>" +
+    '<div class="row"><span class="grow"><span class="t-bd">' + SHAPE.ref + ' Came back as refunds</span><span class="t-fn muted">' + plural(T.ref, "copy", "copies") + '</span></span><span class="end t-hl num c-refunded">' + money(T.refAmt) + "</span></div>" +
+    '<div class="row"><span class="grow"><span class="t-bd">Spent, after refunds</span><span class="t-fn muted">Arrived plus in the mail</span></span><span class="end t-hl num">' + money(T.paidGot + T.paidWait) + "</span></div></div>";
+  out += shipSwitch(inst) + needsLook(A, "l-");
+  if (inst.f.layout === "compact") out += '<button class="t-hl filled wide" type="button" data-act="sheet" id="ledger-export-' + inst.f.key + '">Export ' + inst.st.year + " summary</button>";
+  return out;
+}
+function exportPanel(inst, A, asSheet, title) {
+  const st = inst.st;
+  let list = [...A.cards.values()].sort((a, b) => a.name.localeCompare(b.name));
+  if (st.onlyGot) list = list.filter(c => c.got > 0);
+  const fname = "cost-basis-" + st.year + (st.fmt === "csv" ? ".csv" : ".pdf");
+  const head = '<div class="nav"><div class="navrow"><div class="navside">' + (asSheet ? '<button class="plain t-bd" type="button" data-act="unsheet">Cancel</button>' : "") + '</div><span class="mid t-hl">' + esc(title) + '</span><div class="navside end"><span class="toasthost"><button class="plain t-bd" type="button" data-act="toast" data-toast="share" aria-label="Share ' + esc(fname) + '">' + ICON.share + "</button>" + toast(inst, "share", "The share sheet opens with " + fname + ".") + "</span></div></div></div>";
+  let rows = "";
+  for (const c of list.slice(0, 7)) rows += "<tr><td>" + esc(c.name) + "</td><td>" + c.got + (st.onlyGot ? "" : "/" + c.ordered) + "</td><td>" + money(c.paidGot) + "</td><td>" + (c.got ? money(c.paidGot / c.got) : "–") + "</td></tr>";
+  const T = A.T;
+  const body = '<div class="scroll" data-scroll="exp"><div class="seg" role="group" aria-label="File type"><button type="button" data-act="fmt" data-v="csv" aria-pressed="' + (st.fmt === "csv") + '">Spreadsheet</button><button type="button" data-act="fmt" data-v="pdf" aria-pressed="' + (st.fmt === "pdf") + '">PDF</button></div>' +
+    '<div class="group"><button class="switchrow" type="button" role="switch" aria-checked="' + st.onlyGot + '" data-act="onlyGot"><span class="t-bd">Only cards that arrived</span><span class="switch" aria-hidden="true"></span></button></div>' +
+    '<div class="stack"><h3 class="sectionhead t-fn">Preview of ' + esc(fname) + ', one row per card name</h3><div class="group" style="padding:var(--space-2)"><table class="preview"><thead><tr><th>Card</th><th>Copies</th><th>Paid</th><th>Each</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td colspan="4" class="muted" style="font-weight:400;text-align:left">and ' + count(Math.max(0, list.length - 7)) + ' more rows</td></tr><tr><td>Total</td><td>' + count(T.got) + "</td><td>" + money(T.paidGot) + "</td><td></td></tr></tfoot></table></div></div>" +
+    '<p class="t-fn muted" style="margin:0">' + (st.ship ? "Shipping is spread over the cards." : "Shipping is not in these figures.") + " " + (T.noPrice.length ? plural(T.noPrice.length, "line with no price is", "lines with no price are") + " listed at the end, unpriced." : "") + "</p>" +
+    '<span class="toasthost"><button class="t-hl filled wide" type="button" data-act="toast" data-toast="copy">Copy as text</button>' + toast(inst, "copy", "Copied: " + count(list.length) + " rows and the total.", true) + "</span></div>";
+  return '<div class="panel">' + head + body + "</div>";
+}
+function ledgerCardDetail(inst, A, back) {
+  const c = A.cards.get(inst.st.card);
+  if (!c) return '<div class="emptyright t-bd muted">This card is not in ' + inst.st.year + '.</div>';
+  let out = '<div class="nav"><div class="navrow"><div class="navside">' + back + '</div><span class="mid t-hl"></span><div class="navside end"></div></div><h1 class="ltitle t-t2">' + esc(c.name) + "</h1></div>";
+  out += '<div class="scroll" data-scroll="card"><div class="bigfig"><span class="t-lt num">' + money(c.paidGot) + '</span><span class="t-sb muted">for ' + plural(c.got, "copy", "copies") + " that arrived" + (c.got ? ", " + money(c.paidGot / c.got) + " each on average" : "") + "</span>" +
+    (c.wait ? '<span class="t-sb c-waiting num">' + SHAPE.wait + " " + money(c.paidWait) + " for " + plural(c.wait, "copy", "copies") + " still in the mail</span>" : "") +
+    (c.ref ? '<span class="t-sb c-refunded num">' + SHAPE.ref + " " + money(c.refAmt) + " refunded for " + plural(c.ref, "copy", "copies") + "</span>" : "") +
+    (c.noPrice ? '<span class="t-sb muted">' + plural(c.noPrice, "copy has", "copies have") + " no price in the file, so it is not in the figure.</span>" : "") +
+    "</div>" + legend() + linesBlock(c.lines, "seller") + "</div>";
+  return out;
+}
+function ledgerSellerDetail(inst, A, back) {
+  const s = A.sellers.get(inst.st.seller);
+  if (!s) return '<div class="emptyright t-bd muted">No orders from this seller in ' + inst.st.year + '.</div>';
+  let out = '<div class="nav"><div class="navrow"><div class="navside">' + back + '</div><span class="mid"></span><div class="navside end"></div></div><h1 class="ltitle t-t2">' + esc(s.name) + "</h1></div>";
+  out += '<div class="scroll" data-scroll="seller"><div class="bigfig"><span class="t-lt num">' + money(s.paidGot) + '</span><span class="t-sb muted">for cards that arrived, over ' + plural(s.orders.size, "order", "orders") + "</span>" + (s.paidWait ? '<span class="t-sb c-waiting num">' + SHAPE.wait + " " + money(s.paidWait) + " still in the mail</span>" : "") + "</div>" + legend() + linesBlock(s.lines.slice().sort((a, b) => b.o.date - a.o.date), "order") + "</div>";
+  return out;
+}
+function ledgerSpecialList(inst, A, kind, back) {
+  const T = A.T;
+  const lines = kind === "late" ? T.lines.filter(x => x.l.wait && x.o.age > 30) : T.noPrice;
+  const title = kind === "late" ? "Waiting over 30 days" : "No price in the file";
+  return '<div class="nav"><div class="navrow"><div class="navside">' + back + '</div><span class="mid"></span><div class="navside end"></div></div><h1 class="ltitle t-t2">' + title + '</h1></div><div class="scroll" data-scroll="special">' + legend() + linesBlock(lines, "order") + "</div>";
+}
+function tabbar(inst) {
+  const t = inst.st.tab;
+  const tabs = [["cards", "Cards", ICON.cards], ["sellers", "Sellers", ICON.sellers], ["report", "Year", ICON.report]];
+  return '<div class="tabbar" role="tablist">' + tabs.map(([k, lab, ic]) => '<button class="tab t-c1" role="tab" type="button" aria-selected="' + (t === k) + '" data-act="tab" data-v="' + k + '">' + ic + "<span>" + lab + "</span></button>").join("") + "</div>";
+}
+function renderLedger(inst) {
+  const st = inst.st;
+  const A = agg(st.year, st.ship);
+  const tabTitle = { cards: "Cards", sellers: "Sellers", report: st.year + " in total" }[st.tab];
+  const listBody = st.tab === "cards" ? ledgerCardsList(inst, A, "list") : st.tab === "sellers" ? ledgerSellersList(inst, A, "list") : ledgerReport(inst, A, "list");
+  const showSearch = st.tab === "cards" && (G.s === "loaded" || G.s === "nomatch");
+  const bottom = '<div class="bottom">' + (showSearch ? searchField(inst, "Search card names", "q-ledger") : "") + tabbar(inst) + "</div>";
+  const listPage = '<div class="nav"><div class="navrow"><div class="navside"></div><span class="mid"></span><div class="navside end"></div></div><h1 class="ltitle t-lt">' + tabTitle + '</h1></div><div class="scroll" data-scroll="list-' + st.tab + '">' + listBody + "</div>" + bottom;
+  const backLab = st.tab === "sellers" ? "Sellers" : st.tab === "report" ? String(st.year) : "Cards";
+  const back = '<button class="plain t-bd" type="button" data-act="back">' + ICON.back + backLab + "</button>";
+  let detail = null;
+  if (st.special) detail = ledgerSpecialList(inst, A, st.special, back);
+  else if (st.tab === "cards" && st.card) detail = ledgerCardDetail(inst, A, back);
+  else if (st.tab === "sellers" && st.seller) detail = ledgerSellerDetail(inst, A, back);
+  if (inst.f.layout === "split") {
+    let right;
+    const ok = G.s === "loaded" || G.s === "nomatch";
+    if (!ok) right = '<div class="emptyright t-bd muted">' + (G.s === "empty" ? "A card’s copies and prices show here." : "Nothing to show until the orders read.") + "</div>";
+    else if (st.tab === "report") right = exportPanel(inst, A, false, "Export " + st.year);
+    else if (detail) right = detail.replace('data-act="back"', 'data-act="back" hidden');
+    else right = '<div class="emptyright t-bd muted">' + (st.tab === "cards" ? "Pick a card to see what each copy cost." : "Pick a seller to see their orders.") + "</div>";
+    if (st.special && st.tab === "report") right = detail;
+    return { left: listPage, right };
+  }
+  let single = detail ? detail + '<div class="bottom">' + tabbar(inst) + "</div>" : listPage;
+  if (st.sheet && st.tab === "report" && (G.s === "loaded" || G.s === "nomatch")) single += '<div class="sheet-scrim" data-act="unsheet-scrim"><div class="sheet" role="dialog" aria-label="Export ' + st.year + ' summary"><div class="grabber" aria-hidden="true"></div>' + exportPanel(inst, A, true, "Export " + st.year) + "</div></div>";
+  return { single };
+}
+
+/* ---------- Concept: Sentence ---------- */
+function sentenceHome(inst, A) {
+  const st = inst.st;
+  const T = A.T;
+  const sb = stateBlock(inst, "home");
+  const cur = k => inst.f.layout === "split" && (st.proof || "got") === k && !st.card ? ' aria-current="true"' : "";
+  let body;
+  if (sb && G.s !== "loading") body = sb;
+  else if (sb) body = '<p class="t-t1" style="margin:0">In ' + st.year + ' you paid <span class="placeholder-bar">$0,000.00</span> for <span class="placeholder-bar">0,000 cards</span> that arrived.</p>' + sb;
+  else {
+    body = '<div class="sentence t-t1" id="sentence-' + inst.f.key + '">' +
+      "<p>In " + st.year + ' you paid <span class="w-hit"><button class="w" type="button" data-act="proof" data-v="got"' + cur("got") + ">" + money(T.paidGot) + '</button></span> for <span class="w-hit"><button class="w" type="button" data-act="proof" data-v="names"' + cur("names") + ">" + plural(T.got, "card", "cards") + "</button></span> that arrived.</p>" +
+      '<p><span class="w-hit"><button class="w c-waiting" type="button" data-act="proof" data-v="wait"' + cur("wait") + ">" + money(T.paidWait) + "</button></span> is still in the mail, in " + plural(T.waitOrders.size, "order", "orders") + ".</p>" +
+      '<p><span class="w-hit"><button class="w c-refunded" type="button" data-act="proof" data-v="ref"' + cur("ref") + ">" + money(T.refAmt) + '</button></span> came back as refunds.</p><p>That is <strong class="num">' + money(T.paidGot + T.paidWait) + "</strong> spent, after refunds.</p></div>" +
+      '<p class="t-sb muted" style="margin:0">You ordered ' + plural(A.cards.size, "card name", "card names") + " from " + plural(A.sellers.size, "seller", "sellers") + ". " + (st.ship ? "Shipping is counted in." : "Shipping is not counted.") + "</p>" +
+      shipSwitch(inst) + needsLook(A, "s-");
+  }
+  const loaded = G.s === "loaded" || G.s === "nomatch";
+  const q = curQ(inst);
+  let results = "";
+  if (loaded && q) {
+    const hits = [...A.cards.values()].filter(c => c.name.toLowerCase().includes(q)).sort((a, b) => a.name.localeCompare(b.name)).slice(0, 8);
+    results = '<div class="results" role="listbox">' + (hits.length ? '<div class="group" style="border:0">' + hits.map(c => '<button class="row" type="button" role="option" data-act="card" data-k="' + esc(c.name) + '"><span class="grow"><span class="t-bd name">' + esc(c.name) + '</span></span><span class="end t-bd num">' + money(c.paidGot) + "</span></button>").join("") + "</div>" : noMatch(inst, q)) + "</div>";
+  }
+  const shareBtn = loaded ? '<span class="toasthost"><button class="plain t-bd" type="button" data-act="sheet" aria-label="Share the ' + st.year + ' sentence and table" id="sentence-share-' + inst.f.key + '">' + ICON.share + "</button></span>" : "";
+  const yearBtn = '<button class="plain t-bd" type="button" data-act="yeartoggle" aria-label="Year ' + st.year + ', show ' + (st.year === 2026 ? 2025 : 2026) + '">' + st.year + " ▾</button>";
+  return '<div class="nav"><div class="navrow"><div class="navside">' + yearBtn + '</div><span class="mid"></span><div class="navside end">' + shareBtn + '</div></div></div><div class="scroll" data-scroll="home">' + body + "</div>" +
+    '<div class="bottom">' + results + '<div class="toolbar">' + (loaded ? searchField(inst, "Look up a card", "q-sentence") : '<span class="t-fn muted" style="min-height:var(--hit);display:flex;align-items:center">Search opens once the orders read.</span>') + "</div></div>";
+}
+function sentenceProof(inst, A, showBack) {
+  const st = inst.st;
+  const T = A.T;
+  const kind = st.proof || "got";
+  const back = showBack ? '<button class="plain t-bd" type="button" data-act="home">' + ICON.back + st.year + "</button>" : "";
+  let head, body;
+  if (kind === "got" || kind === "names") {
+    const list = [...A.cards.values()].filter(c => c.got > 0).sort(kind === "got" ? (a, b) => b.paidGot - a.paidGot : (a, b) => a.name.localeCompare(b.name));
+    head = '<p class="t-t3" style="margin:0">' + money(T.paidGot) + " for " + plural(T.got, "card", "cards") + ", across " + plural(list.length, "card name", "card names") + ".</p>";
+    body = '<p class="t-fn muted" style="margin:0">' + (kind === "got" ? "Most paid first." : "By name.") + ' Each row pools every seller.</p><div class="group">' + list.map(c => '<button class="row" type="button" data-act="card" data-k="' + esc(c.name) + '" aria-label="' + esc(c.name + ", " + copiesLabel(c)) + '"><span class="grow"><span class="t-bd name">' + esc(c.name) + '</span><span class="copies"><span class="t-fn muted num">' + copiesText(c) + "</span>" + pips(c.got, c.wait, c.ref) + '</span></span><span class="end"><span class="t-bd num">' + money(c.paidGot) + '</span><span class="t-fn muted num">' + money(c.paidGot / c.got) + " each</span></span>" + ICON.chev + "</button>").join("") + "</div>";
+  } else {
+    const pickL = kind === "wait" ? x => x.l.wait > 0 : kind === "ref" ? x => x.l.ref > 0 : kind === "late" ? x => x.l.wait > 0 && x.o.age > 30 : x => x.unit == null;
+    const lines = T.lines.filter(pickL).sort((a, b) => a.o.date - b.o.date);
+    const sum = { wait: T.paidWait, ref: T.refAmt, late: lines.reduce((a, x) => a + x.unit * x.l.wait, 0) }[kind];
+    const orders = new Set(lines.map(x => x.o.id)).size;
+    head = '<p class="t-t3" style="margin:0">' + ({ wait: money(sum) + " is still in the mail, in " + plural(orders, "order", "orders") + ".", ref: money(sum) + " came back, over " + plural(lines.length, "line", "lines") + ".", late: plural(orders, "order has", "orders have") + " waited more than 30 days.", noprice: plural(lines.length, "line has", "lines have") + " no price in the file." }[kind]) + "</p>";
+    body = '<p class="t-fn muted" style="margin:0">Oldest order first.</p>' + legend() + linesBlock(lines, "order");
+  }
+  return '<div class="nav"><div class="navrow"><div class="navside">' + back + '</div><span class="mid"></span><div class="navside end"></div></div>' + head + '</div><div class="scroll" data-scroll="proof-' + kind + '">' + body + "</div>";
+}
+function sentenceCard(inst, A, backLab) {
+  const c = A.cards.get(inst.st.card);
+  const back = '<button class="plain t-bd" type="button" data-act="uncard">' + ICON.back + esc(backLab) + "</button>";
+  if (!c) return '<div class="nav"><div class="navrow"><div class="navside">' + back + '</div></div></div><div class="emptyright t-bd muted">This card is not in ' + inst.st.year + ".</div>";
+  let s = "You got " + count(c.got) + " of " + count(c.ordered) + " " + esc(c.name) + " for " + money(c.paidGot) + (c.got ? ", " + money(c.paidGot / c.got) + " a copy." : ".");
+  let s2 = "";
+  if (c.wait) s2 += ' <span class="c-waiting">' + plural(c.wait, "copy", "copies") + ", " + money(c.paidWait) + ", " + (c.wait === 1 ? "is" : "are") + " still in the mail.</span>";
+  if (c.ref) s2 += ' <span class="c-refunded">' + plural(c.ref, "copy", "copies") + " came back as " + money(c.refAmt) + ".</span>";
+  if (c.noPrice) s2 += " " + plural(c.noPrice, "copy has", "copies have") + " no price in the file.";
+  return '<div class="nav"><div class="navrow"><div class="navside">' + back + '</div><span class="mid"></span><div class="navside end"></div></div></div><div class="scroll" data-scroll="card"><p class="t-t3 num" style="margin:0">' + s + s2 + "</p><p class=\"t-fn muted\" style=\"margin:0\">From " + plural(c.sellers.size, "seller", "sellers") + ".</p>" + legend() + linesBlock(c.lines, "seller") + "</div>";
+}
+function sentenceShare(inst, A) {
+  const st = inst.st;
+  const T = A.T;
+  const fname = "cost-basis-" + st.year + (st.fmt === "csv" ? ".csv" : ".pdf");
+  let list = [...A.cards.values()].sort((a, b) => a.name.localeCompare(b.name));
+  if (st.onlyGot) list = list.filter(c => c.got > 0);
+  let rows = "";
+  for (const c of list.slice(0, 5)) rows += "<tr><td>" + esc(c.name) + "</td><td>" + c.got + "</td><td>" + money(c.paidGot) + "</td></tr>";
+  return '<div class="sheet-scrim" data-act="unsheet-scrim"><div class="sheet" role="dialog" aria-label="Share ' + st.year + '"><div class="grabber" aria-hidden="true"></div><div class="panel"><div class="nav"><div class="navrow"><div class="navside"><button class="plain t-bd" type="button" data-act="unsheet">Cancel</button></div><span class="mid t-hl">Share ' + st.year + '</span><div class="navside end"><span class="toasthost"><button class="plain t-bd" type="button" data-act="toast" data-toast="share" style="font-weight:600">Share</button>' + toast(inst, "share", "The share sheet opens with " + fname + ".") + '</span></div></div></div>' +
+    '<div class="scroll" data-scroll="share"><div class="statement"><p class="t-bd" style="margin:0">In ' + st.year + " I paid " + money(T.paidGot) + " for " + plural(T.got, "card", "cards") + " that arrived. " + money(T.paidWait) + " is still in the mail. " + money(T.refAmt) + " came back as refunds. That is " + money(T.paidGot + T.paidWait) + ' spent, after refunds.</p><table class="preview"><thead><tr><th>Card</th><th>Copies</th><th>Paid</th></tr></thead><tbody>' + rows + '</tbody><tfoot><tr><td colspan="3" class="muted" style="font-weight:400;text-align:left">and ' + count(Math.max(0, list.length - 5)) + " more rows</td></tr></tfoot></table></div>" +
+    '<div class="seg" role="group" aria-label="File type"><button type="button" data-act="fmt" data-v="csv" aria-pressed="' + (st.fmt === "csv") + '">Spreadsheet</button><button type="button" data-act="fmt" data-v="pdf" aria-pressed="' + (st.fmt === "pdf") + '">PDF</button></div>' +
+    '<div class="group"><button class="switchrow" type="button" role="switch" aria-checked="' + st.onlyGot + '" data-act="onlyGot"><span class="t-bd">Only cards that arrived</span><span class="switch" aria-hidden="true"></span></button></div>' +
+    '<p class="t-fn muted" style="margin:0">' + (st.ship ? "Shipping is spread over the cards." : "Shipping is not in these figures.") + "</p></div></div></div></div>";
+}
+function renderSentence(inst) {
+  const st = inst.st;
+  const A = agg(st.year, st.ship);
+  const loaded = G.s === "loaded" || G.s === "nomatch";
+  const home = sentenceHome(inst, A);
+  const proofName = { got: "Most paid", names: "By name", wait: "In the mail", ref: "Refunds", late: "Late", noprice: "No price" }[st.proof || "got"];
+  if (inst.f.layout === "split") {
+    let right;
+    if (!loaded) right = '<div class="emptyright t-bd muted">' + (G.s === "empty" ? "The cards behind each figure show here." : "Nothing to show until the orders read.") + "</div>";
+    else if (st.card) right = sentenceCard(inst, A, proofName);
+    else right = sentenceProof(inst, A, false);
+    return { left: home + (st.sheet && loaded ? sentenceShare(inst, A) : ""), right };
+  }
+  let single;
+  if (loaded && st.card) single = sentenceCard(inst, A, st.proof ? proofName : String(st.year));
+  else if (loaded && st.proof) single = sentenceProof(inst, A, true);
+  else single = home;
+  if (st.sheet && loaded && !st.card && !st.proof) single += sentenceShare(inst, A);
+  return { single };
+}
+
+/* ---------- Events ---------- */
+function onClick(inst, e) {
+  const t = e.target.closest("[data-act]");
+  if (!t || !inst.el.contains(t)) return;
+  const st = inst.st, a = t.dataset.act, v = t.dataset.v, k = t.dataset.k;
+  if (a === "q") return;
+  if (a === "unsheet-scrim" && e.target !== t) return;
+  if (st.toast && a !== "toast") st.toast = null;
+  switch (a) {
+    case "tab": st.tab = v; st.card = null; st.seller = null; st.special = null; st.sheet = false; break;
+    case "filter": st.filter = v; break;
+    case "sort": st.sort = { name: "paid", paid: "wait", wait: "name" }[st.sort]; break;
+    case "card": st.card = k; st.special = null; if (inst.concept === "sentence") { st.q = ""; st.qTouched = true; } break;
+    case "seller": st.seller = k; st.special = null; break;
+    case "back": if (st.special) st.special = null; else { st.card = null; st.seller = null; } break;
+    case "year": st.year = Number(v); break;
+    case "yeartoggle": st.year = st.year === 2026 ? 2025 : 2026; break;
+    case "ship": st.ship = !st.ship; break;
+    case "onlyGot": st.onlyGot = !st.onlyGot; break;
+    case "fmt": st.fmt = v; break;
+    case "sheet": st.sheet = true; break;
+    case "unsheet": case "unsheet-scrim": st.sheet = false; break;
+    case "toast": st.toast = t.dataset.toast; break;
+    case "stop": st.stopped = true; break;
+    case "unstop": st.stopped = false; break;
+    case "clearq": st.q = ""; st.qTouched = true; break;
+    case "l-late": st.special = "late"; break;
+    case "l-noprice": st.special = "noprice"; break;
+    case "proof": st.proof = v; st.card = null; break;
+    case "s-late": st.proof = "late"; st.card = null; break;
+    case "s-noprice": st.proof = "noprice"; st.card = null; break;
+    case "home": st.proof = null; st.card = null; break;
+    case "uncard": st.card = null; break;
+    default: return;
+  }
+  render(inst);
+  const sel = inst.el.querySelector('[data-act="' + a + '"]' + (v ? '[data-v="' + v + '"]' : "") + (t.dataset.toast ? '[data-toast="' + t.dataset.toast + '"]' : ""));
+  if (sel && ["filter", "year", "fmt", "ship", "onlyGot", "tab", "toast", "sort", "proof"].includes(a)) sel.focus();
+}
+function onInput(inst, e) {
+  const t = e.target;
+  if (t.dataset.act !== "q") return;
+  inst.st.q = t.value; inst.st.qTouched = true;
+  if (inst.concept === "ledger") { inst.st.card = null; }
+  render(inst);
+}
+
+/* ---------- Mockup controls ---------- */
+function applyGlobal() {
+  const root = document.documentElement;
+  if (G.t === "system") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", G.t);
+  document.getElementById("ctl-s").value = G.s;
+  document.getElementById("ctl-t").value = G.t;
+  document.getElementById("ctl-v").value = G.v || "";
+  for (const c of ["ledger", "sentence"]) document.getElementById("concept-" + c).hidden = G.hide.includes(c) || (G.c && G.c !== c);
+  const hl = document.getElementById("hidden-list");
+  hl.innerHTML = G.hide.map(c => '<button class="linkbtn" type="button" data-show="' + c + '">Show ' + (c === "ledger" ? "Ledger" : "Sentence") + "</button>").join("") + (G.c ? '<button class="linkbtn" type="button" data-show-all="1">Show both concepts</button>' : "");
+}
+document.getElementById("ctl-s").addEventListener("change", e => { G.s = e.target.value; INST.forEach(i => { i.st.qTouched = false; i.st.q = ""; i.st.stopped = false; }); writeHash(); renderAll(); });
+document.getElementById("ctl-v").addEventListener("change", e => { G.v = e.target.value || null; writeHash(); INST.forEach(i => { i.st = freshState(i.concept); applyView(i); }); renderAll(); });
+document.getElementById("ctl-t").addEventListener("change", e => { G.t = e.target.value; writeHash(); applyGlobal(); });
+document.getElementById("ctl-reset").addEventListener("click", () => { G.v = null; writeHash(); INST.forEach(i => { i.st = freshState(i.concept); }); renderAll(); });
+document.addEventListener("click", e => {
+  const h = e.target.closest("[data-hide]"); if (h) { G.hide = [...new Set([...G.hide, h.dataset.hide])]; writeHash(); applyGlobal(); return; }
+  const s = e.target.closest("[data-show]"); if (s) { G.hide = G.hide.filter(x => x !== s.dataset.show); writeHash(); applyGlobal(); return; }
+  if (e.target.closest("[data-show-all]")) { G.c = null; writeHash(); applyGlobal(); }
+});
+window.addEventListener("hashchange", () => { readHash(); INST.forEach(i => { i.st = freshState(i.concept); applyView(i); }); applyGlobal(); renderAll(); });
+
+readHash();
+build();
+applyGlobal();
+renderAll();
+</script>
+</body>
+</html>

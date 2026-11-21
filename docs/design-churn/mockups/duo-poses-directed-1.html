@@ -1,0 +1,782 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Duo Desk Mode</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (Info.plist UIUserInterfaceStyle Light),
+   so this page draws one theme. A data-theme switch would change nothing the app ships. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor), as the other Duo mockups do. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+html { color-scheme: light; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1180px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--sys); font-size:28px; line-height:1.15; margin:0; }
+h2 { font-family:var(--sys); font-size:22px; margin:0; }
+h3 { font-family:var(--sys); font-size:17px; margin:0; }
+p { margin:0; }
+.kind { font-size:14px; color:var(--inkSoft); }
+.kind b { color:var(--ink); }
+.sub { color:var(--inkSoft); max-width:78ch; }
+.pick { border-left:3px solid var(--accent); padding:4px 12px; max-width:80ch; }
+nav { display:flex; flex-direction:column; gap:8px; }
+nav .grp { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+nav .grp > span { font-size:13px; color:var(--inkSoft); min-width:72px; }
+nav a, nav button, .ctl { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+a:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:16px; }
+section.concept[hidden], figure[hidden], .frame[hidden] { display:none; }
+.lede { max-width:80ch; }
+.row-frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+.frame { display:flex; flex-direction:column; gap:6px; max-width:100%; }
+.frame.big { flex:1 1 100%; }
+.cap { font-family:var(--sys); font-size:16px; font-weight:700; }
+.read { font:12px/1.45 var(--mono); color:var(--inkSoft); max-width:80ch; }
+.read.cut { color:var(--red); } .read.ok { color:var(--green); }
+.fit { max-width:100%; overflow:hidden; }
+figcaption, .say { max-width:80ch; font-size:14px; }
+.say ul { margin:4px 0 0; padding-left:20px; }
+
+/* ---------- device frames: 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:14px; overflow:hidden; font-family:var(--cochin); line-height:normal;
+  --rb:1; --rh:1; --rt:1; --r1:1; --rf:1; --rc:1; --rcap:1; }
+/* AX5, the biggest accessibility size. Each style scales by its own ratio from the HIG Typography tables, read 2026-11-21:
+   Body and Headline 17 -> 53, Title 1 28 -> 58, Title 2 22 -> 56, Footnote 13 -> 44, Caption 1 12 -> 43. */
+.dev.ax5 { --rb:calc(53 / 17); --rh:calc(53 / 17); --r1:calc(58 / 28); --rt:calc(56 / 22); --rf:calc(44 / 13); --rc:calc(43 / 12); }
+.dev .status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font:600 12px var(--sys); z-index:9; }
+.pg { position:absolute; overflow:hidden; }
+.pg > .in { position:absolute; inset:0; display:flex; flex-direction:column; gap:12px; padding:16px; }
+/* The flat page's field hugs the fold: 4 pt in, 4 pt gaps, so two match rows clear the keys (reader below). */
+.stacked .pg.bot > .in, .one .pg.bot > .in { padding-top:4px; gap:4px; }
+/* Content never squeezes: what does not fit runs past the page and scrolls, as a List would. */
+.pg > .in > *, .orders > *, .ans > * { flex-shrink:0; }
+/* AX5 on the folded page: the head's figures and "It came from" leave, as the slim head does from AX3 up (item 105 a). */
+.one.ax5 [data-id="hand-head"], .one.ax5 .ans > .micro { display:none; }
+.fold { position:absolute; background:color-mix(in srgb, var(--line) 55%, transparent); z-index:8; display:grid; place-items:center; pointer-events:none; }
+.fold span { font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+.fold.v span { transform:rotate(-90deg); }
+.fold.over { background:repeating-linear-gradient(135deg, color-mix(in srgb, var(--red) 22%, transparent) 0 6px, transparent 6px 12px); outline:1px dashed var(--red); }
+
+/* type: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) */
+.micro { font-family:var(--mono); font-size:calc(10.5px * var(--rc)); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.soft { color:var(--inkSoft); }
+.mono { font-family:var(--mono); }
+.t1 { font-size:calc(28px * var(--r1)); font-weight:700; line-height:1.1; }
+.t2 { font-size:calc(22px * var(--rt)); font-weight:700; line-height:1.15; }
+.bd { font-size:calc(15px * var(--rb)); }
+.fn { font-size:calc(13px * var(--rf)); }
+.meta { font-family:var(--mono); font-size:calc(11px * var(--rc)); color:var(--inkSoft); }
+.owe { font-family:var(--mono); color:var(--red); }
+.hint { font-size:calc(15px * var(--rb)); color:var(--inkSoft); max-width:44ch; }
+
+/* controls: every target at least 44 x 44 pt (HIG Accessibility, Buttons) */
+:where(.dev button) { font:inherit; color:inherit; background:none; border:0; padding:0; margin:0; cursor:pointer; text-align:left; }
+/* Read at arm's length in laptop pose: the standing page sets the seller as Large Title and each line as Body (HIG Typography, Large default). */
+.stacked .pg.top .t1 { font-size:calc(34px * var(--r1)); }
+.stacked .pg.top .ln .nm b { font-size:calc(17px * var(--rb)); }
+.stacked .pg.top .fig b { font-size:calc(34px * var(--r1)); }
+.pill { font-family:var(--mono); font-size:calc(11.5px * var(--rc)); border:1px solid var(--line); background:var(--card); border-radius:5px; padding:8px 12px;
+  color:var(--ink); white-space:nowrap; min-height:44px; display:inline-flex; align-items:center; justify-content:center; flex:none; }
+.pill.go { background:var(--accent); border-color:var(--accent); color:var(--card); font-weight:700; }
+.field { min-height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; gap:8px;
+  font-size:calc(16px * var(--rb)); flex:none; min-width:0; }
+.prow .field { flex:1 1 auto; }
+/* AX5: rows stack as ViewThatFits would (layout.md ux-swift-same-intent), so no figure or name is cut. */
+.dev.ax5 .figs { grid-template-columns:1fr 1fr !important; }
+.dev.ax5 .orow { flex-wrap:wrap; }
+.dev.ax5 .orow .who { flex-basis:100%; }
+.dev.ax5 .prow { flex-wrap:wrap; }
+.field.on { border-color:var(--accent); }
+.field .typed { min-width:0; overflow:hidden; white-space:nowrap; flex:1; display:flex; align-items:center; }
+.field.on .typed::after { content:""; width:2px; height:1.1em; background:var(--accent); margin-left:1px; flex:none; }
+.field .typed.empty { color:var(--inkSoft); }
+.field.on .typed.empty::after { order:-1; margin:0 1px 0 0; }
+.field.search { min-height:44px; font-family:var(--sys); font-size:calc(17px * var(--rb)); border-radius:22px; background:color-mix(in srgb, var(--line) 45%, var(--card)); border-color:transparent; }
+.field.search::before { content:""; width:14px; height:14px; border:2px solid var(--inkSoft); border-radius:50%; flex:none; }
+.chip { flex:none; font-family:var(--mono); font-size:calc(12px * min(var(--rc), 1.5)); white-space:nowrap; background:var(--manila); color:var(--manilaInk); border-radius:5px; padding:4px 8px; }
+.prow { display:flex; align-items:center; gap:8px; flex:none; }
+
+/* the answer page */
+.ans { display:flex; flex-direction:column; gap:8px; min-height:0; }
+.figs { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px; }
+.fig { display:flex; flex-direction:column; gap:2px; border-top:1px solid var(--line); padding-top:8px; }
+.fig b { font-family:var(--mono); font-size:calc(20px * var(--rt)); font-weight:700; }
+.fig.warn b { color:var(--amber); }
+.letterhead { font-family:var(--cochin); font-size:calc(17px * var(--rh)); letter-spacing:4px; color:var(--ink); }
+.orderline { display:flex; flex-wrap:wrap; gap:4px 16px; align-items:baseline; }
+.orderline .owe-wrap { display:inline-flex; gap:8px; align-items:baseline; }
+.orderline em { font-style:normal; font-family:var(--cochin); font-size:calc(13px * var(--rf)); color:var(--inkSoft); }
+.progress { height:3px; background:var(--line); border-radius:2px; position:relative; overflow:hidden; flex:none; }
+.progress i { position:absolute; left:0; top:0; bottom:0; background:var(--accent); }
+.progress.full i { background:var(--green); }
+.lines { display:grid; grid-template-columns:1fr 1fr; column-gap:16px; align-content:start; min-height:0; }
+.book .lines, .one .lines { grid-template-columns:1fr; }
+.ln { display:flex; align-items:center; gap:8px; min-height:44px; border-top:1px solid var(--line); }
+.ln .bx { flex:0 0 44px; height:44px; display:grid; place-items:center; }
+.ln .bx i { width:26px; height:26px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; font-style:normal; font-family:var(--sys); font-size:16px; color:var(--card); }
+.ln.in .bx i { background:var(--green); border-color:var(--green); }
+.ln.in .bx i::before { content:"\2713"; }
+.ln .nm { flex:1; min-width:0; display:flex; flex-direction:column; }
+.ln .nm b { font-size:calc(14px * var(--rb)); font-weight:600; }
+.ln.in .nm b { color:var(--inkSoft); }
+.ln .nm span { font-family:var(--mono); font-size:calc(11px * var(--rc)); color:var(--inkSoft); }
+.ln.flash .bx i { box-shadow:0 0 0 3px color-mix(in srgb, var(--green) 35%, transparent); }
+.ln.ro .bx { cursor:default; }
+.tie { display:flex; flex-direction:column; gap:8px; }
+.tiecards { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.book .tiecards, .one .tiecards { grid-template-columns:1fr; }
+.tiecard { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:2px; }
+.tiecard b { font-size:calc(15px * var(--rb)); }
+/* the Post bar: 53 pt, a 1 pt hairline, 4 pt, the 44 pt button, 4 pt (item 103 b). Its text caps at xxxLarge (item 104 a). */
+.postbar { position:absolute; left:0; right:0; height:53px; border-top:1px solid var(--line); padding:4px 16px; background:var(--paper); z-index:6; display:flex; }
+.postbar .pill { flex:1; font-size:11.5px; }
+.postbar .rcpt { flex:1; display:flex; align-items:center; gap:12px; font-family:var(--mono); font-size:12px; }
+.postbar .rcpt b { font-family:var(--cochin); font-size:15px; color:var(--green); }
+
+/* the input page */
+.mlist { display:flex; flex-direction:column; min-height:0; flex:none; }
+.mrow { display:flex; align-items:center; gap:8px; min-height:44px; border-top:1px solid var(--line); }
+.mrow:first-child { border-top:0; }
+.mrow .pick { flex:1; min-width:0; min-height:44px; display:flex; align-items:center; gap:12px; padding-left:10px; border:0; }
+.mrow .pick b { font-weight:400; font-size:calc(15px * var(--rb)); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.mrow.chosen .pick { box-shadow:inset 3px 0 0 var(--accent); }
+.mrow.chosen .pick b { font-weight:700; }
+.mrow.dim .pick b { color:var(--inkSoft); }
+.mrow .meta { white-space:nowrap; }
+.mrow .bx { flex:0 0 44px; height:44px; display:grid; place-items:center; }
+.mrow .bx i { width:26px; height:26px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; font-style:normal; font-family:var(--sys); font-size:16px; color:var(--card); }
+.mrow.in .bx i { background:var(--green); border-color:var(--green); }
+.mrow.in .bx i::before { content:"\2713"; }
+.mrow .two { flex:0 0 auto; font-family:var(--mono); font-size:calc(11px * var(--rc)); color:var(--manilaInk); padding-right:8px; }
+.orders { display:flex; flex-direction:column; min-height:0; }
+.orow { display:flex; align-items:center; gap:12px; min-height:56px; border-top:1px solid var(--line); padding:6px 0 6px 10px; width:100%; }
+.orow:first-child { border-top:0; }
+.orow.sel { box-shadow:inset 3px 0 0 var(--accent); }
+.orow .who { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.orow .who b { font-size:calc(15px * var(--rb)); font-weight:700; }
+.orow .opill { font-family:var(--cochin); font-weight:700; font-size:calc(12.5px * var(--rf)); color:var(--red); white-space:nowrap; }
+.orow .flag { font-family:var(--mono); font-size:calc(11px * var(--rc)); color:var(--amber); font-weight:700; white-space:nowrap; }
+.navrow { display:flex; align-items:center; gap:8px; min-height:44px; font-family:var(--sys); }
+.navrow .back { color:var(--accent); font-size:calc(17px * min(var(--rb), 1)); min-height:44px; min-width:44px; display:inline-flex; align-items:center; }
+.navrow .ttl { font-weight:600; font-size:calc(17px * min(var(--rb), 1)); margin:0 auto; }
+.empty-q { display:flex; flex-direction:column; gap:8px; align-items:flex-start; padding:8px 0; }
+
+/* the system tab bar: floats over the content at the bottom of the screen (HIG Tab bars). Labels stop growing at Large (duo-card-in-hand, Tab bar text). */
+.tabbar { position:absolute; left:16px; right:16px; height:64px; border-radius:32px; z-index:7; display:flex; align-items:center; justify-content:space-around;
+  background:color-mix(in srgb, var(--card) 86%, transparent); border:1px solid var(--line); box-shadow:0 2px 10px rgba(28,43,36,0.06); font-family:var(--sys); }
+.tabbar .tb { display:flex; flex-direction:column; align-items:center; gap:2px; font:10px var(--sys); color:var(--inkSoft); min-width:64px; min-height:44px; justify-content:center; text-align:center; }
+.tabbar .tb i { width:20px; height:16px; border:1.5px solid currentColor; border-radius:4px; }
+.tabbar .tb.on { color:var(--accent); font-weight:600; }
+/* A Post bar on the answer page: the page's scroll region ends above it, as DuoSystemBar's content margin does. */
+.pg.top.withbar > .in { bottom:53px; overflow:hidden; }
+.home { position:absolute; bottom:8px; left:50%; width:134px; height:5px; margin-left:-67px; border-radius:3px; background:var(--ink); z-index:11; opacity:.8; }
+
+/* the system keyboard: iOS chrome, not an app colour, so its greys sit outside the tokens. Stock keys only (item 22). */
+.keys { position:absolute; left:0; right:0; bottom:0; background:#D2D0D6; z-index:10; display:flex; flex-direction:column; font-family:var(--sys); }
+.keys .sugg { height:44px; display:grid; grid-template-columns:1fr 1fr 1fr; align-items:center; text-align:center; font-size:15px; color:#555; border-bottom:1px solid #C3C1C8; }
+.keys .kb { flex:1; display:flex; flex-direction:column; justify-content:space-evenly; padding:4px 3px 24px; }
+.keys .kr { display:flex; gap:6px; justify-content:center; }
+.keys button.k { height:42px; flex:0 1 52px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font:18px var(--sys); color:#111; text-align:center; box-shadow:0 1px 0 #8E8C93; }
+.keys button.k.w { flex:0 1 300px; font-size:15px; }
+.keys button.k.fn { background:#ABAAB2; font-size:14px; flex-basis:80px; }
+.keys button.k.ret { background:#ABAAB2; font-size:15px; flex-basis:110px; }
+.guide { position:absolute; left:0; right:0; height:0; border-top:2px dashed var(--accent); z-index:12; pointer-events:none; }
+.guide.plain { border-top-style:dotted; }
+.guide span { position:absolute; right:8px; top:-17px; font:11px var(--mono); color:var(--accent); background:var(--paper); padding:0 4px; white-space:nowrap; }
+.guide.plain span { top:2px; background:#D2D0D6; }
+.finger { position:absolute; width:44px; height:44px; margin:-22px 0 0 -22px; border-radius:50%; border:2px solid var(--accent); background:color-mix(in srgb, var(--accent) 18%, transparent); z-index:20; pointer-events:none; }
+
+/* tags: a dashed outline on what exists today, and on what a concept adds */
+[data-tag] { position:relative; }
+.tagged [data-tag]::before { content:attr(data-tag); position:absolute; right:2px; top:-15px; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper);
+  z-index:13; white-space:nowrap; letter-spacing:0; text-transform:none; pointer-events:none; }
+.tagged .tag-new { outline:2px dashed var(--new); outline-offset:1px; } .tagged .tag-new::before { color:var(--new); }
+.tagged .tag-today { outline:2px dashed var(--today); outline-offset:1px; } .tagged .tag-today::before { color:var(--today); }
+
+@media (prefers-reduced-motion: no-preference) { .ln.flash .bx i { transition:box-shadow .3s; } }
+@media (forced-colors: active) { .ln .bx i, .mrow .bx i, .pill, .field { border:1px solid CanvasText; } .mrow.chosen .pick, .orow.sel { outline:2px solid Highlight; } }
+</style>
+</head>
+<body class="tagged">
+<main>
+<div class="banner" role="note">Sample. No card, seller, order, count, date or price on this page is real. Places come from the code, the records and this drawing, not from a simulator.</div>
+<h1>Desk mode: the Duo in its stacked poses</h1>
+<p class="kind"><b>Designer kind: directed.</b> Direction: desk mode. The laptop pose is the primary pose. Keys and list below, answer above.</p>
+<p class="sub">Stacked pages are the open inner screen turned a quarter: 669 by 951 pt, top page y 0 to 455.5, fold 455.5 to 495.5, bottom page 495.5 to 951. No record measures this window; the size is the brief's open size turned. Laptop is the hinge half open (<code>DuoHinge.halfOpen</code>), tall is flat (<code>.flat</code>); both report <code>DuoSpread.stacked</code>. The keys' height in this pose is unmeasured: they are drawn with the side-by-side frame's 263 pt plus its 44 pt drawn strip, so they start at y 644 (dashed); the dotted line at 667 is the top with no word suggestions. Light theme only: the app ships light. The laptop, tall and folded Typewriter frames are live: tap them or type on your own keyboard. Shift and 123 are drawn, not live; the other frames are references. Ruled: answer page on top, system tab bar at the bottom of the screen (item 28 a), the tab bar stays under the keys while they are up.</p>
+<p class="pick"><b>Pick: Typewriter.</b> In laptop pose the top page stands up at arm's length and wobbles under a finger, and the bottom page lies under the hand. Typewriter puts every press but Post on the flat page and makes the standing page a large, quiet answer. Desk is the safer step: it keeps today's press places and only stacks the pages.</p>
+
+<nav aria-label="Concepts, poses and states">
+  <div class="grp"><span>Concept</span>
+    <a href="#c=typewriter">Typewriter (pick)</a><a href="#c=desk">Desk</a><a href="#c=today">Today</a><a href="#">All</a></div>
+  <div class="grp"><span>Pose</span>
+    <a href="#p=folded">Folded</a><a href="#p=book">Side by side</a><a href="#p=laptop">Laptop</a><a href="#p=tall">Tall</a><a href="#p=phone">Large phone</a><a href="#z=ax5">AX5 text only</a></div>
+  <div class="grp"><span>State</span>
+    <a href="#s=list">Orders</a><a href="#s=order">An order open</a><a href="#s=search">Search, keys up</a><a href="#s=nomatch">Search finds nothing</a><a href="#s=noledger">No ledger yet</a>
+    <a href="#s=hand">Card in Hand, empty</a><a href="#s=one">One match</a><a href="#s=two">Two matches</a><a href="#s=held">Shared name held</a><a href="#s=offer">Post offer</a><a href="#s=posted">Posted</a><a href="#s=postfail">Post failed</a><a href="#s=keysdown">Keys down</a></div>
+  <div class="grp"><span>Cull</span>
+    <button type="button" data-hide="typewriter">Hide Typewriter</button>
+    <button type="button" data-hide="tw-folded">Hide Typewriter on the folded screen</button>
+    <button type="button" data-hide="desk">Hide Desk</button>
+    <button type="button" data-tags>Hide tags</button>
+    <button type="button" data-reset>Reset the sample</button></div>
+</nav>
+
+<!-- ================= Typewriter ================= -->
+<section class="concept" data-concept="typewriter">
+  <h2>Typewriter</h2>
+  <p class="lede">The standing page is the answer, read at arm's length; the flat page is the typewriter. The field sits on the fold's lower edge with New envelope and Close beside it. Each match row carries its own check box, so a card checks in where it was named, and the answer above ticks the same line. On Packages the field-shaped opener says what Card in Hand does, and an order opens its lines on the flat page. The one press left on the standing page is Post, at its lower edge, nearest the hand.</p>
+  <div class="row-frames" data-slot="typewriter-fold" data-device="iphone-duo-folded"></div>
+  <div class="row-frames" data-slot="typewriter" data-device="iphone-duo-unfolded"></div>
+  <div class="say"><b>Typewriter on the folded screen (option).</b> Card in Hand opens on the one folded page too, with the answer above the field and the keys. <button type="button" class="ctl" data-hide="tw-folded">Hide this option</button></div>
+  <div class="row-frames" data-slot="tw-folded" data-device="iphone-duo-folded"></div>
+</section>
+
+<!-- ================= Desk ================= -->
+<section class="concept" data-concept="desk">
+  <h2>Desk</h2>
+  <p class="lede">Packages spreads over both stacked pages: orders below, the picked order or the day above, as a list under its detail. The field below is the Packages search and filters the list. Card in Hand opens from its own control beside the search and stacks today's two pages: the answer page above with its tappable lines and Post bar, the left page below with the keys. The check-in presses stay where they are today, on the lines of the answer page. Like Typewriter, it moves Post to the answer page's foot, the head's figures up and Close into the field row, and it adds a search.</p>
+  <div class="row-frames" data-slot="desk-fold" data-device="iphone-duo-folded"></div>
+  <div class="row-frames" data-slot="desk" data-device="iphone-duo-unfolded"></div>
+</section>
+
+<!-- ================= Today ================= -->
+<section class="concept" data-concept="today">
+  <h2>Today, for reference</h2>
+  <p class="lede">What the build draws now in a stacked pose: <code>DuoSpread.pages(for:)</code> returns nil for stacked pages, so Packages keeps its one page across the whole 951 pt, and the fold runs through it. Card in Hand does not open (<code>PackagesTab.twoPages</code> is false). Nothing here is an option.</p>
+  <div class="row-frames" data-slot="today-fold" data-device="iphone-duo-folded"></div>
+  <div class="row-frames" data-slot="today" data-device="iphone-duo-unfolded"></div>
+</section>
+</main>
+
+<script>
+'use strict';
+// ---------------- the sample (Sample banner: nothing here is real) ----------------
+const TODAY = '2026-10-28';
+const ORDERS = [
+  { gk:'alpha', seller:'Alpha Cards', id:'4F2A-01C7', date:'2026-10-14', lines:[
+    { n:'Lightning Bolt', set:'Magic 2011', p:1.12 }, { n:'Path to Exile', set:'Conflux', p:0.88 },
+    { n:'Swords to Plowshares', set:'Ice Age', p:1.40 }, { n:'Brainstorm', set:'Commander Masters', p:0.62, in:true },
+    { n:'Ponder', set:'Commander Masters', p:0.18, in:true }, { n:'Mana Leak', set:'Tempest', p:0.30 },
+    { n:'Remand', set:'Ravnica', p:0.45 }, { n:'Serum Visions', set:'Fifth Dawn', p:0.25, in:true },
+    { n:'Spell Pierce', set:'Zendikar', p:0.20 }, { n:'Mystic Remora', set:'Ice Age', p:0.90 } ] },
+  { gk:'beta', seller:'Beta Games', id:'77B0-4E1D', date:'2026-10-02', lines:[
+    { n:'Swords to Plowshares', set:'Fifth Edition', p:1.35 }, { n:'Wrath of God', set:'Tenth Edition', p:2.10 }, { n:'Opt', set:'Ixalan', p:0.12, in:true } ] },
+  { gk:'kestrel', seller:'Kestrel Card Co.', id:'1C9D-22A0', date:'2026-10-09', lines:[
+    { n:'Counterspell', set:'Dominaria Remastered', p:0.48, in:true }, { n:'Preordain', set:'Magic 2011', p:0.20 }, { n:'Fact or Fiction', set:'Invasion', p:0.35 } ] },
+  { gk:'harbor', seller:'Harbor Hobby', id:'5A31-9F02', date:'2026-09-30', lines:[
+    { n:'Llanowar Elves', set:'Dominaria', p:0.25 }, { n:'Giant Growth', set:'Fourth Edition', p:0.15 } ] },
+  { gk:'owl', seller:'Owl Post Cards', id:'30E8-B7C4', date:'2026-10-20', lines:[
+    { n:'Dark Ritual', set:'Mercadian Masques', p:0.40 }, { n:'Duress', set:'Urza’s Saga', p:0.22 }, { n:'Thoughtseize', set:'Lorwyn', p:6.10 } ] },
+  { gk:'shelf', seller:'Seventh Shelf', id:'8D44-0A6B', date:'2026-10-18', lines:[
+    { n:'Shock', set:'Stronghold', p:0.15, in:true }, { n:'Lava Spike', set:'Champions', p:0.20, in:true } ] },
+];
+const byGk = Object.fromEntries(ORDERS.map(o => [o.gk, o]));
+const days = d => Math.round((Date.parse(TODAY) - Date.parse(d)) / 864e5);
+const money = v => '$' + v.toFixed(2);
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;' }[c]));
+
+function fresh(concept = 'today') {
+  return { concept, mode:'pk', sel:null, drill:false, q:'', keys:false, noledger:false,
+    typed:'', chosen:null, hold:null, held:null, strays:[], receipt:null, flash:null,
+    ins:new Set(ORDERS.flatMap(o => o.lines.filter(l => l.in).map(l => o.gk + '|' + l.n))) };
+}
+const isIn = (st, gk, n) => st.ins.has(gk + '|' + n);
+const left = (st, o) => o.lines.filter(l => !isIn(st, o.gk, l.n));
+const leftMoney = (st, o) => left(st, o).reduce((a, l) => a + l.p, 0);
+function dayFigs(st) {
+  let inn = 0, out = 0, cash = 0;
+  for (const o of ORDERS) for (const l of o.lines) isIn(st, o.gk, l.n) ? inn++ : (out++, cash += l.p);
+  const late = ORDERS.filter(o => left(st, o).length && days(o.date) > 14).length;
+  return { inn, out, cash, late };
+}
+// The web matcher: a case-insensitive part of the card name or seller (duo-card-in-hand, Defaults). One row per name.
+function match(st, t) {
+  t = t.trim().toLowerCase(); if (!t) return [];
+  const m = new Map();
+  for (const o of ORDERS) for (const l of o.lines) {
+    if (isIn(st, o.gk, l.n)) continue;
+    if (!l.n.toLowerCase().includes(t) && !o.seller.toLowerCase().includes(t)) continue;
+    if (!m.has(l.n)) m.set(l.n, { name:l.n, gks:[] });
+    m.get(l.n).gks.push(o.gk);
+  }
+  return [...m.values()].sort((a, b) => a.name.localeCompare(b.name)).slice(0, 6);
+}
+function handView(st) {
+  const matches = st.hold || match(st, st.typed);
+  let env = null, tie = null, current = null;
+  if (st.receipt) env = st.receipt.gk;
+  else if (st.chosen) { const m = matches.find(x => x.name === st.chosen); if (m) { if (m.gks.length === 1) { env = m.gks[0]; current = m.name; } else tie = m.gks; } }
+  else if (matches.length === 1 && matches[0].gks.length === 1) { env = matches[0].gks[0]; current = matches[0].name; }
+  if (!env && !tie && st.flash) env = st.flash.gk;
+  // The offer stands while the held card's envelope shows, even after its mate checked in from its own row (Typewriter),
+  // so a row tick never strands the held card.
+  const mate = current && !isIn(st, env, current) ? [current] : [];
+  const offer = !st.receipt && st.held && env && (current || st.flash) && st.held.gks.includes(env) ? { gk:env, cards:[...mate, st.held.name] } : null;
+  return { matches, env, tie, current, offer };
+}
+function pkList(st) {
+  const q = st.q.trim().toLowerCase();
+  return ORDERS.filter(o => left(st, o).length)
+    .filter(o => !q || o.seller.toLowerCase().includes(q) || o.id.toLowerCase().includes(q) || o.lines.some(l => l.n.toLowerCase().includes(q)))
+    .sort((a, b) => a.date.localeCompare(b.date));
+}
+
+// ---------------- geometry, in pt ----------------
+const KEYS_FRAME = 263, KEYS_STRIP = 44, KEYS_PLAIN_DROP = 23;   // duo-fold-and-keyboard; 405 -> 428 from duo-hand-held-box
+const BAR_ZONE = 83;   // system tab bar zone, the folded reading (duo-fold-and-keyboard); unmeasured in the stacked pose
+const L = {
+  stacked: { kind:'stacked', w:669, h:951, ans:{ x:0, y:0, w:669, h:455.5 }, inp:{ x:0, y:495.5, w:669, h:455.5 }, fold:{ x:0, y:455.5, w:669, h:40 },
+    keysTop:951 - KEYS_FRAME - KEYS_STRIP },
+  book: { kind:'book', w:951, h:669, ans:{ x:495.5, y:0, w:455.5, h:669 }, inp:{ x:0, y:0, w:455.5, h:669 }, fold:{ x:455.5, y:0, w:40, h:669 }, keysTop:405 },
+  // Folded: the outer screen keys read 250 to 289 pt tall; the taller is drawn.
+  one: { kind:'one', w:466, h:678, ans:{ x:0, y:0, w:466, h:236 }, inp:{ x:0, y:236, w:466, h:442 }, fold:null, keysTop:678 - 289 },
+};
+
+// ---------------- pieces ----------------
+const tag = (kind, text) => ` data-tag="${esc(text)}" class-tag="${kind}"`;   // class-tag is folded into class by fixTags()
+function keysHTML(lay, ret) {
+  const row = s => s.split('').map(k => `<button class="k" data-act="key" data-k="${k}" aria-label="${k}">${k}</button>`).join('');
+  return `<div class="keys" style="top:${lay.keysTop}px" role="group" aria-label="System keyboard">
+    <div class="sugg" aria-hidden="true"><span></span><span></span><span></span></div>
+    <div class="kb"><div class="kr">${row('qwertyuiop')}</div><div class="kr">${row('asdfghjkl')}</div>
+    <div class="kr"><button class="k fn" aria-hidden="true" tabindex="-1">⇧</button>${row('zxcvbnm')}<button class="k fn" data-act="bksp" aria-label="Delete">⌫</button></div>
+    <div class="kr"><button class="k fn" aria-hidden="true" tabindex="-1">123</button><button class="k w" data-act="key" data-k=" ">space</button><button class="k ret" data-act="done" aria-label="Done, keys down">${ret}</button></div></div></div>`
+    + (lay.kind === 'stacked' ? `<div class="guide" style="top:${lay.keysTop}px"><span>keys drawn from y ${lay.keysTop} pt, unmeasured in this pose</span></div>
+       <div class="guide plain" style="top:${lay.keysTop + KEYS_PLAIN_DROP}px"><span>${lay.keysTop + KEYS_PLAIN_DROP} pt: no word suggestions</span></div>` : '');
+}
+const TABS = ['Packages', 'Tally', 'Orphaned', 'Ledger'];
+function tabbarHTML(lay, st) {
+  // Live frames draw the tabs as buttons; reference frames draw them still.
+  const t = lay.h - BAR_ZONE + 6, cur = (st && st.tab) || 'Packages';
+  return `<div class="tabbar" style="top:${t}px" role="tablist" aria-label="Tabs">${TABS.map(n => st
+    ? `<button class="tb${n === cur ? ' on' : ''}" role="tab" aria-selected="${n === cur}" data-act="tab" data-tab="${n}" data-n="${n}"><i></i>${n}</button>`
+    : `<span class="tb${n === cur ? ' on' : ''}" role="tab" aria-selected="${n === cur}"><i></i>${n}</span>`).join('')}</div>`;
+}
+const page = (r, cls, inner, extra = '') => `<div class="pg ${cls}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"${extra}><div class="in">${inner}</div></div>`;
+const foldHTML = (lay, over) => lay.fold ? `<div class="fold ${lay.kind === 'book' ? 'v' : ''} ${over ? 'over' : ''}" style="left:${lay.fold.x}px;top:${lay.fold.y}px;width:${lay.fold.w}px;height:${lay.fold.h}px" aria-hidden="true"><span>${over ? 'THE FOLD RUNS THROUGH THIS PAGE' : 'FOLD 40 PT'}</span></div>` : '';
+const statusHTML = () => `<div class="status" aria-hidden="true"><span>9:41</span><span>100%</span></div>`;
+
+function lineHTML(st, gk, l, live, readOnly) {
+  const on = isIn(st, gk, l.n), fl = st.flash && st.flash.gk === gk && st.flash.n === l.n;
+  const box = `<i aria-hidden="true"></i>`;
+  const lab = `${l.n}, ${money(l.p)}, ${on ? 'checked in' : 'not checked in'}`;
+  return `<div class="ln${on ? ' in' : ''}${fl ? ' flash' : ''}${readOnly ? ' ro' : ''}" data-id="line:${esc(l.n)}">`
+    + (readOnly ? `<span class="bx" role="img" aria-label="${esc(lab)}">${box}</span>`
+                : `<button class="bx" data-act="${live}" data-gk="${gk}" data-n="${esc(l.n)}" aria-label="${esc(lab)}" aria-pressed="${on}">${box}</button>`)
+    + `<span class="nm"><b>${esc(l.n)}</b><span>${money(l.p)} · ${esc(l.set)}</span></span></div>`;
+}
+function orderLine(st, o, tagIt) {
+  const n = left(st, o).length;
+  const owe = n ? `<span class="owe-wrap"${tagIt ? tag('today', 'Today: still owed on the order line (item 78 a)') : ''}><em>Still owed here</em><span class="owe meta" style="color:var(--red)">${n} left · ${money(leftMoney(st, o))}</span></span>` : `<span class="owe-wrap"><em style="color:var(--ink)">complete</em></span>`;
+  return `<div class="orderline"><span class="meta">ordered ${o.date}</span>${owe}</div>`;
+}
+
+// ---------- the answer page ----------
+function answerPK(st, lay) {
+  if (st.noledger) return `<span class="letterhead">MANIFEST</span><p class="t2">No orders yet.</p>
+    <p class="hint">Orders come from an OrderWand CSV, imported on the web app. They reach this phone at the next sync.</p>`;
+  const f = dayFigs(st);
+  if (!st.sel) return `<div class="ans" data-id="ans-day"><span class="letterhead">MANIFEST</span>
+    <div class="figs"${tag('new', 'New: the day on the standing page')}>
+      <div class="fig"><span class="micro">in</span><b>${f.inn}</b></div><div class="fig"><span class="micro">out</span><b>${f.out}</b></div>
+      <div class="fig"><span class="micro">still out</span><b class="owe">${money(f.cash)}</b></div>
+      <div class="fig${f.late ? ' warn' : ''}"><span class="micro">past 14 days</span><b>${f.late}</b></div></div>
+    <p class="hint">${st.concept === 'desk' ? 'Pick an order below. Its lines show here.' : 'Pick an order below to open its lines there.'}</p></div>`;
+  const o = byGk[st.sel], n = o.lines.length, got = n - left(st, o).length, late = days(o.date);
+  return `<div class="ans" data-id="ans-order"><span class="micro">${o.id}</span><span class="t1">${esc(o.seller)}</span>
+    ${orderLine(st, o, false)}
+    <div class="orderline"><span class="meta">${got} of ${n} in</span>${late > 14 && left(st, o).length ? `<span class="meta" style="color:var(--amber);font-weight:700">${late} days since the order</span>` : ''}</div>
+    <div class="progress${got === n ? ' full' : ''}" aria-hidden="true"><i style="width:${(got / n) * 100}%"></i></div>
+    ${st.concept === 'typewriter' && st.drill ? '' /* the lines are open on the flat page; the standing page keeps the summary only, so no name shows twice */
+      : `<div class="lines"${st.concept === 'desk' ? tag('new', 'New: the order’s lines check in here') : ''}>${o.lines.map(l => lineHTML(st, o.gk, l, 'pkcheck', st.concept !== 'desk')).join('')}</div>`}</div>`;
+}
+function answerHand(st, lay, concept) {
+  const v = handView(st), f = dayFigs(st), stacked = lay.kind !== 'book';
+  // Stacked and folded: the head's figures move to the standing page; its Close joins the field row. Side by side keeps today's head.
+  const head = stacked ? `<div class="prow" data-id="hand-head"${tag('new', 'New: the head moves up; still out is added')}><span class="micro">Mail day</span><span class="meta" style="margin-left:auto">${f.inn} in · ${f.out} out · ${money(f.cash)} still out</span></div>` : '';
+  let body;
+  if (v.tie) body = `<div class="tie"><span class="micro">${v.tie.length} envelopes hold this card</span>
+      <p class="fn">Name the next card from this envelope to tell them apart. Nothing checks in until you post.</p>
+      <div class="tiecards">${v.tie.map(g => { const o = byGk[g]; return `<div class="tiecard"><b>${esc(o.seller)}</b><span class="meta">ordered ${o.date} · ${left(st, o).length} cards out</span></div>`; }).join('')}</div></div>`;
+  else if (v.env) {
+    const o = byGk[v.env], ro = concept === 'typewriter' && stacked;
+    body = `<div class="ans" data-id="env:${o.gk}"><span class="micro">It came from</span><span class="${stacked ? 't1' : 't2'}">${esc(o.seller)}</span>${orderLine(st, o, !ro)}
+      <div class="lines"${ro ? tag('new', 'New: lines show, the row below checks in') : ''}>${o.lines.map(l => lineHTML(st, o.gk, l, 'line', ro)).join('')}</div></div>`;
+  } else if (st.typed.trim() && !v.matches.length) body = `<p class="hint">No open envelope holds “${esc(st.typed.trim())}”.</p>`;
+  else body = `<p class="hint">${stacked ? 'The envelope it came from shows here.' : 'Type the card in hand. The envelope it came from shows here.'}</p>`;
+  return head + body;
+}
+function postBarHTML(st, lay, concept) {
+  if (st.mode !== 'hand') return '';
+  const v = handView(st);
+  if (!v.offer && !st.receipt) return '';
+  // Side by side: pinned just above the keys (item 103 b). Stacked and folded: pinned at the answer page's foot, above the fold or the field.
+  const foot = lay.kind === 'book' ? (st.keys ? lay.keysTop : lay.h - BAR_ZONE) : lay.ans.y + lay.ans.h;
+  const x = lay.ans.x, w = lay.ans.w;
+  const t = lay.kind !== 'book' ? tag('new', 'New: Post at the answer page’s foot') : tag('today', 'Today: Post bar above the keys');
+  const n = v.offer && v.offer.cards.length, words = n === 1 ? 'Post the held card here' : `Post ${n} cards here, 1 held`;
+  // Receipt: "Posted." with the count, or "Not posted." in red with its fix (duo-card-in-hand, default, not owner).
+  const inner = st.receipt ? (st.receipt.failed
+      ? `<span class="rcpt" role="alert"><b style="color:var(--red)">Not posted.</b><span style="color:var(--red)">Type the card again to post.</span></span>`
+      : `<span class="rcpt" role="status"><b>Posted.</b>${st.receipt.n} card${st.receipt.n === 1 ? '' : 's'}</span>`)
+    : `<button class="pill go" data-act="post" aria-label="${words}" data-id="post">${words}</button>`;
+  return `<div class="postbar" style="left:${x}px;width:${w}px;top:${foot - 53}px"${t}>${inner}</div>`;
+}
+
+// ---------- the input page ----------
+function fieldHTML(st, ph, extraTag = '') {
+  const chipT = [st.held && '1 held', st.strays.length && `${st.strays.length} released`].filter(Boolean).join(' · ');
+  const typed = st.typed ? `<span class="typed">${esc(st.typed)}</span>` : `<span class="typed empty">${ph}</span>`;
+  return `<button class="field${st.keys ? ' on' : ''}" data-act="focus" data-id="field" aria-label="Card name: ${esc(st.typed || 'empty')}"${extraTag}>${typed}${chipT ? `<span class="chip" role="status">${chipT}</span>` : ''}</button>`;
+}
+function inputHand(st, lay, concept) {
+  const v = handView(st), f = dayFigs(st), stacked = lay.kind !== 'book', tw = concept === 'typewriter' && stacked;
+  const rows = v.matches.map(m => {
+    const one = m.gks.length === 1, inn = one && isIn(st, m.gks[0], m.name);
+    const cls = `mrow${st.chosen ? (m.name === st.chosen ? ' chosen' : ' dim') : ''}${inn ? ' in' : ''}`;
+    const meta = one ? `<span class="meta">${esc(byGk[m.gks[0]].seller)}</span>` : `<span class="two">${m.gks.length} envelopes</span>`;
+    const box = tw && one ? `<button class="bx" data-act="rowcheck" data-gk="${m.gks[0]}" data-n="${esc(m.name)}" aria-label="Check in ${esc(m.name)}" aria-pressed="${inn}"${m === v.matches[0] ? tag('new', 'New: check in from the row') : ''}><i aria-hidden="true"></i></button>` : (tw ? `<span class="bx" aria-hidden="true"></span>` : '');
+    return `<div class="${cls}" data-id="match:${esc(m.name)}"><button class="pick" data-act="choose" data-n="${esc(m.name)}"${m.name === st.chosen ? ' aria-selected="true"' : ''}><b>${esc(m.name)}</b>${meta}</button>${box}</div>`;
+  }).join('');
+  const list = rows ? `<div class="mlist" data-id="mlist" aria-label="Matches">${rows}</div>` : '';
+  if (tw) {
+    return `<div class="prow" data-id="fieldrow">${fieldHTML(st, 'Type the card in hand', tag('new', 'New: the field on the fold’s lower edge'))}
+      <button class="pill" data-act="newenv" data-id="newenv">New envelope</button><button class="pill" data-act="close" data-id="close">Close</button></div>${list}`;
+  }
+  // Today's left page (HandScreen.leftPage): head, field, This envelope, matches. Desk keeps it and turns it under the answer.
+  const head = `<div class="prow" data-id="hand-head"><span class="bd" style="font-weight:700">Mail day</span><span class="meta" style="margin-left:auto">${f.inn} in · ${f.out} out</span><button class="pill" data-act="close" data-id="close">Close</button></div>`;
+  const envrow = `<div class="prow" data-id="envrow"><span class="soft fn" style="margin-right:auto">This envelope</span><button class="pill" data-act="newenv" data-id="newenv">New envelope</button></div>`;
+  // Desk, stacked: today's left page has no room above the keys (head, field and This envelope fill 148 pt), so its controls share one row.
+  if (stacked) return `<div class="prow" data-id="fieldrow">${fieldHTML(st, 'Type the card in hand')}<button class="pill" data-act="newenv" data-id="newenv">New envelope</button><button class="pill" data-act="close" data-id="close">Close</button></div>${list}`;
+  return head + fieldHTML(st, 'Type the card in hand') + envrow + (list ? `<span class="micro">Matches</span>${list}` : '');
+}
+function inputPK(st, lay, concept) {
+  if (st.noledger) return `<div class="empty-q"><p class="bd">Import an OrderWand CSV on the web app, then sync.</p><button class="pill" data-act="ledger">Open Ledger</button></div>`;
+  if (st.drill && st.sel && st.concept === 'typewriter') {
+    const o = byGk[st.sel];
+    return `<div class="navrow" data-id="navrow"${tag('new', 'New: an order opens its lines here')}><button class="back" data-act="back">‹ Orders</button><span class="ttl">Lines</span><span style="width:76px"></span></div>
+      <div class="orders" data-id="lineslist">${o.lines.map(l => lineHTML(st, o.gk, l, 'pkcheck', false)).join('')}</div>`;
+  }
+  const rows = pkList(st);
+  const first = concept === 'typewriter'
+    ? `<div class="prow" data-id="fieldrow"><button class="field" data-act="openhand" data-id="opener" aria-label="Open Card in Hand"${tag('new', 'New: the Card in Hand control, drawn as its field')}><span class="typed empty">Type the card in hand</span></button></div>`
+    // Card in Hand leads the row: an open leaves the hand's field under the finger, never its Close.
+    : `<div class="prow" data-id="fieldrow"><button class="pill" data-act="openhand" data-id="opener"${tag('new', 'New: the Card in Hand control’s stacked place')}>Card in Hand</button>
+       <button class="field search${st.keys ? ' on' : ''}" data-act="focus" data-id="search" aria-label="Search orders: ${esc(st.q || 'empty')}"${tag('new', 'New: Packages search, below the fold')}>${st.q ? `<span class="typed">${esc(st.q)}</span>` : `<span class="typed empty">Search orders</span>`}</button></div>`;
+  const list = rows.length ? `<div class="orders" data-id="orders" aria-label="Orders">${rows.map(o => {
+      const n = left(st, o).length, d = days(o.date);
+      return `<button class="orow${st.sel === o.gk ? ' sel' : ''}" data-act="pick" data-gk="${o.gk}" data-id="order:${o.gk}" aria-label="${esc(o.seller)}, ${n} left">
+        <span class="who"><b>${esc(o.seller)}</b><span class="meta">ordered ${o.date}</span></span>${d > 14 ? `<span class="flag">${d} d</span>` : ''}<span class="opill">${n} left · ${money(leftMoney(st, o))}</span></button>`; }).join('')}</div>`
+    : `<div class="empty-q"><p class="bd">No order matches “${esc(st.q.trim())}”.</p><button class="pill" data-act="clearq">Clear search</button></div>`;
+  return first + list;
+}
+
+// ---------- whole frames ----------
+function stackedFrame(st, concept, pose, live) {
+  const lay = L.stacked, hand = st.mode === 'hand';
+  const ret = hand ? 'done' : 'search';
+  // Another tab: this mockup draws Packages and Card in Hand only, so the standing page says so and the bar leads back.
+  const away = st.tab && st.tab !== 'Packages';
+  const top = away ? `<p class="hint">${st.tab} is not part of this mockup. Packages, in the tab bar, brings the sample back.</p>` : hand ? answerHand(st, lay, concept) : answerPK(st, lay);
+  const bot = away ? '' : hand ? inputHand(st, lay, concept) : inputPK(st, lay, concept);
+  const bar = hand && !away ? postBarHTML(st, lay, concept) : '';
+  return `<div class="dev stacked" style="width:${lay.w}px;height:${lay.h}px" data-device="iphone-duo-unfolded" data-pose="${pose}" data-concept="${concept}"${live ? ` data-live="${concept}"` : ''} role="group" aria-label="${concept} ${pose} pose">
+    ${statusHTML()}
+    ${page({ ...lay.ans, y:lay.ans.y + 20, h:lay.ans.h - 20 }, bar ? 'top withbar' : 'top', top, ' data-id="toppage"')}
+    ${foldHTML(lay)}
+    ${page(lay.inp, 'bot', bot)}
+    ${bar}
+    ${st.keys && !away ? keysHTML(lay, ret) : tabbarHTML(lay, live ? st : null)}
+    ${st.keys ? '' : '<div class="home" aria-hidden="true"></div>'}
+    <div class="finger" hidden></div></div>`;
+}
+function bookFrame(st) {
+  // Today on two pages side by side: Card in Hand, left page input, right page answer, keys spanning both from y 405.
+  const lay = L.book;
+  return `<div class="dev book" style="width:${lay.w}px;height:${lay.h}px" data-device="iphone-duo-unfolded" data-pose="book">
+    ${statusHTML()}
+    ${page({ ...lay.inp, y:20, h:lay.h - 20 }, 'bot', inputHand(st, lay, 'today'), tag('today', 'Today: unchanged by both concepts'))}
+    ${foldHTML(lay)}
+    ${page({ ...lay.ans, y:20, h:lay.h - 20 }, 'top', answerHand(st, lay, 'today'))}
+    ${postBarHTML(st, lay, 'today')}
+    ${keysHTML(lay, 'done')}</div>`;
+}
+function onePK(st, ax5, device, label) {
+  // Today's one page: the letterhead and figures, then the order cards (PackagesView, PackageRow). Unchanged by both concepts.
+  const f = dayFigs(st), rows = pkList({ ...st, q:'' });
+  return `<div class="dev one${ax5 ? ' ax5' : ''}" style="width:466px;height:678px" data-device="${device}" data-pose="${device === 'iphone-duo-folded' ? 'folded' : 'phone'}" role="group" aria-label="${label}">
+    ${statusHTML()}
+    <div class="pg" style="left:0;top:20px;width:466px;height:658px"><div class="in" style="padding-bottom:${BAR_ZONE + 8}px">
+      <span class="letterhead" style="text-align:center">MANIFEST</span>
+      <div class="figs" style="grid-template-columns:repeat(3, minmax(0,1fr))"><div class="fig"><span class="micro">in</span><b>${f.inn}</b></div><div class="fig"><span class="micro">out</span><b>${f.out}</b></div><div class="fig"><span class="micro">still out</span><b class="owe">${money(f.cash)}</b></div></div>
+      <div class="orders">${rows.map(o => { const n = left(st, o).length, d = days(o.date);
+        return `<div class="orow"><span class="who"><b>${esc(o.seller)}</b><span class="meta">${o.id} · ordered ${o.date}</span></span>${d > 14 ? `<span class="flag">${d} d</span>` : ''}<span class="opill">${n} left · ${money(leftMoney(st, o))}</span></div>`; }).join('')}</div>
+    </div></div>
+    ${tabbarHTML({ h:678 })}<div class="home" aria-hidden="true"></div></div>`;
+}
+function oneHand(st, ax5, live) {
+  // Typewriter on the folded screen (option): answer above, field and matches below, keys at the foot.
+  const lay = L.one;
+  const bar = postBarHTML(st, lay, 'typewriter');
+  return `<div class="dev one${ax5 ? ' ax5' : ''}" style="width:466px;height:678px" data-device="iphone-duo-folded" data-pose="folded" data-concept="twfold"${live ? ' data-live="twfold"' : ''} role="group" aria-label="Typewriter folded">
+    ${statusHTML()}
+    ${page({ ...lay.ans, y:20, h:lay.ans.h - 20 }, bar ? 'top withbar' : 'top', st.mode === 'hand' ? answerHand(st, lay, 'typewriter') : answerPK(st, lay))}
+    ${page(lay.inp, 'bot', st.mode === 'hand' ? inputHand(st, lay, 'typewriter') : inputPK(st, lay, 'typewriter'))}
+    ${bar}
+    ${st.keys ? keysHTML(lay, 'done') : tabbarHTML(lay)}
+    <div class="finger" hidden></div></div>`;
+}
+function todayStacked(st) {
+  // Today: one page over 951 pt; the fold strip lies across the list.
+  const lay = L.stacked, f = dayFigs(st), rows = pkList(st);
+  return `<div class="dev stacked" style="width:669px;height:951px" data-device="iphone-duo-unfolded" data-pose="laptop">
+    ${statusHTML()}
+    <div class="pg" style="left:0;top:20px;width:669px;height:931px"><div class="in">
+      <span class="letterhead" style="text-align:center">MANIFEST</span>
+      <div class="figs" style="grid-template-columns:repeat(3, minmax(0,1fr))"><div class="fig"><span class="micro">in</span><b>${f.inn}</b></div><div class="fig"><span class="micro">out</span><b>${f.out}</b></div><div class="fig"><span class="micro">still out</span><b class="owe">${money(f.cash)}</b></div></div>
+      <div class="prow"${tag('today', 'Today: the Card in Hand control shows on side-by-side pages only')}><span class="soft fn">No Card in Hand control in this pose</span></div>
+      <div class="orders">${rows.concat(rows).map((o, i) => { const n = left(st, o).length, d = days(o.date);
+        return `<div class="orow"><span class="who"><b>${esc(o.seller)}</b><span class="meta">${o.id} · ordered ${o.date}</span></span>${d > 14 ? `<span class="flag">${d} d</span>` : ''}<span class="opill">${n} left · ${money(leftMoney(st, o))}</span></div>`; }).join('')}</div>
+    </div></div>
+    ${foldHTML(lay, true)}
+    ${tabbarHTML(lay)}<div class="home" aria-hidden="true"></div></div>`;
+}
+
+// ---------------- state, per concept: every pose of a concept draws from one state ----------------
+// twfold is the Typewriter-on-the-folded-screen option: its own state, opening in Card in Hand with the keys up.
+const freshFor = k => k === 'twfold' ? Object.assign(fresh('typewriter'), { mode:'hand', keys:true }) : fresh(k);
+const S = { typewriter:freshFor('typewriter'), desk:freshFor('desk'), today:freshFor('today'), twfold:freshFor('twfold') };
+// Search states exist in Desk only: Typewriter has no Packages search, so a query there could not be seen or cleared.
+const presetTargets = s => ['search', 'nomatch'].includes(s) ? ['desk'] : ['typewriter', 'desk', 'twfold'];
+function applyPreset(s) { for (const k of ['typewriter', 'desk', 'twfold']) { S[k] = freshFor(k); if (presetTargets(s).includes(k)) PRESETS[s](S[k]); } }
+const PRESETS = {
+  list:     st => {},
+  order:    st => { st.sel = 'alpha'; st.drill = true; },
+  search:   st => { st.keys = true; st.q = 'kes'; },
+  nomatch:  st => { st.keys = true; st.q = 'zz'; },
+  noledger: st => { st.noledger = true; },
+  hand:     st => { st.mode = 'hand'; st.keys = true; },
+  one:      st => { st.mode = 'hand'; st.keys = true; st.typed = 'path'; },
+  two:      st => { st.mode = 'hand'; st.keys = true; st.typed = 'to'; },
+  held:     st => { st.mode = 'hand'; st.keys = true; st.typed = 'swo'; act(st, { act:'choose', n:'Swords to Plowshares' }); },
+  offer:    st => { st.mode = 'hand'; st.keys = true; st.typed = 'swo'; act(st, { act:'choose', n:'Swords to Plowshares' }); st.typed = 'bolt'; st.hold = null; st.chosen = null; },
+  posted:   st => { PRESETS.offer(st); act(st, { act:'post' }); },
+  // A failed save: nothing checks in, the held card stays held, and the receipt says so in red.
+  postfail: st => { PRESETS.offer(st); const v = handView(st); st.receipt = { gk:v.offer.gk, n:0, failed:true }; },
+  keysdown: st => { st.mode = 'hand'; st.keys = false; st.typed = 'to'; },
+};
+function act(st, a) {
+  const v = st.mode === 'hand' ? handView(st) : null;
+  switch (a.act) {
+    case 'key': if (st.mode === 'hand') { st.typed += a.k; st.hold = null; st.chosen = null; st.receipt = null; st.flash = null; } else { st.q += a.k; } break;
+    case 'bksp': if (st.mode === 'hand') { st.typed = st.typed.slice(0, -1); st.hold = null; st.chosen = null; st.receipt = null; st.flash = null; } else st.q = st.q.slice(0, -1); break;
+    case 'focus': st.keys = true; break;
+    case 'done': st.keys = false; break;
+    case 'choose': {
+      // A tap holds the list: every row keeps its place until the next keystroke, a Post, New envelope or Close (item 48).
+      st.hold = v.matches; st.chosen = a.n; st.flash = null;
+      const m = v.matches.find(x => x.name === a.n);
+      if (m && m.gks.length > 1) { if (st.held && st.held.name !== m.name) st.strays.push(st.held.name); st.held = { name:m.name, gks:m.gks }; }
+      break; }
+    case 'rowcheck': st.hold = v.matches; st.chosen = a.n; st.ins.has(a.gk + '|' + a.n) ? st.ins.delete(a.gk + '|' + a.n) : st.ins.add(a.gk + '|' + a.n); st.flash = { gk:a.gk, n:a.n }; break;
+    case 'line': st.hold = v ? v.matches : null; st.ins.has(a.gk + '|' + a.n) ? st.ins.delete(a.gk + '|' + a.n) : st.ins.add(a.gk + '|' + a.n); st.flash = { gk:a.gk, n:a.n }; break;
+    case 'post': if (v.offer) { for (const n of v.offer.cards) st.ins.add(v.offer.gk + '|' + n); st.receipt = { gk:v.offer.gk, n:v.offer.cards.length }; st.held = null; st.typed = ''; st.hold = null; st.chosen = null; } break;
+    case 'newenv': st.typed = ''; st.hold = null; st.chosen = null; st.receipt = null; st.flash = null; if (st.held) { st.strays.push(st.held.name); st.held = null; } break;
+    case 'close': st.mode = 'pk'; st.keys = false; st.typed = ''; st.hold = null; st.chosen = null; st.receipt = null; st.flash = null; break;
+    case 'openhand': st.mode = 'hand'; st.keys = true; st.drill = false; break;
+    case 'pick': st.sel = a.gk; st.drill = st.concept === 'typewriter'; st.keys = false; break;
+    case 'back': st.drill = false; break;
+    case 'pkcheck': st.ins.has(a.gk + '|' + a.n) ? st.ins.delete(a.gk + '|' + a.n) : st.ins.add(a.gk + '|' + a.n); st.flash = { gk:a.gk, n:a.n }; break;
+    case 'clearq': st.q = ''; break;
+    case 'ledger': st.tab = 'Ledger'; st.keys = false; break;
+    case 'tab': st.tab = a.n; st.keys = false; break;
+  }
+}
+
+// ---------------- render ----------------
+function block(title, html, extra = '') {
+  return `<div class="frame"${extra}><p class="cap">${title}</p><div class="fit">${html}</div><div class="read" data-read></div></div>`;
+}
+function fixTags(root) {
+  root.querySelectorAll('[class-tag]').forEach(e => { e.classList.add('tag-' + e.getAttribute('class-tag')); e.removeAttribute('class-tag'); });
+}
+function renderConcept(c) {
+  if (c === 'twfold') {
+    const s2 = document.querySelector('[data-slot="tw-folded"]'), st = S.twfold;
+    s2.innerHTML = block('Typewriter folded, default text, live', oneHand(st, false, true).replace('data-live', 'id="focus-tw-folded" data-live'), ' data-pose="folded" data-size="default" data-opt="tw-folded"')
+      + block('Typewriter folded, AX5 text', oneHand(st, true, false), ' data-pose="folded" data-size="ax5" data-opt="tw-folded"');
+    fixTags(s2); return;
+  }
+  const st = S[c], slot = document.querySelector(`[data-slot="${c}"]`), fslot = document.querySelector(`[data-slot="${c}-fold"]`);
+  if (!slot) return;
+  let h = '', fh = '';
+  if (c === 'today') {
+    fh += block('Folded, default text (today)', onePK(st, false, 'iphone-duo-folded', 'Folded'), ' data-pose="folded" data-size="default"');
+    h += block('Stacked today: one page over the fold', todayStacked(st), ' data-pose="laptop"');
+  } else {
+    fh += block('Folded, default text: today’s Packages, unchanged', onePK(st, false, 'iphone-duo-folded', 'Folded'), ' data-pose="folded" data-size="default"');
+    fh += block('Folded, AX5 text', onePK(st, true, 'iphone-duo-folded', 'Folded AX5'), ' data-pose="folded" data-size="ax5"');
+    h += block(`Laptop pose, live: ${c === 'typewriter' ? 'Typewriter' : 'Desk'}`, stackedFrame(st, c, 'laptop', true).replace('data-live', `id="focus-${c}" data-live`), ' data-pose="laptop"');
+    h += block('Tall pose, live (held flat in two hands)', stackedFrame(st, c, 'tall', true), ' data-pose="tall"');
+    h += block('Side by side: today’s Card in Hand, unchanged', bookFrame(fresh2(st)), ' data-pose="book"');
+    h += block('Large phone: today’s Packages, unchanged. Size not written; drawn at the folded 466 x 678 pt as a stand-in', onePK(st, false, 'iphone-regular', 'Large phone'), ' data-pose="phone"');
+  }
+  slot.innerHTML = h; fixTags(slot);
+  fslot.innerHTML = fh; fixTags(fslot);
+}
+// The side-by-side reference shows the same sample with Card in Hand open, keys up, and two matches.
+function fresh2(st) { const s = fresh(); s.ins = new Set(st.ins); s.mode = 'hand'; s.keys = true; s.typed = 'to'; return s; }
+function renderAll() { for (const c of Object.keys(S)) renderConcept(c); route(true); }
+
+// ---------------- readers: every number printed comes from this drawing ----------------
+function geo(d) { const b = d.getBoundingClientRect(), s = b.width / d.offsetWidth || 1;
+  return el => { if (!el) return null; const r = el.getBoundingClientRect(); return { top:Math.round((r.top - b.top) / s), bot:Math.round((r.bottom - b.top) / s), left:Math.round((r.left - b.left) / s), right:Math.round((r.right - b.left) / s) }; }; }
+function readStatic(d, out) {
+  if (!d.getBoundingClientRect().width) return;
+  const y = geo(d), parts = [], keys = d.querySelector('.keys');
+  if (d.classList.contains('stacked') && d.dataset.concept) {
+    const kt = keys ? y(keys).top : null;
+    // The keys' top is the drawn layout value; the rect reads 1 pt low for the frame's border.
+    const K = L.stacked.keysTop, F = L.stacked.inp.y;
+    parts.push(kt ? `room between the fold's lower edge (${F}) and the keys: ${(K - F).toFixed(1)} pt, ${(K + KEYS_PLAIN_DROP - F).toFixed(1)} pt with no suggestions` : 'keys down');
+    // Every control of the flat page must sit clear of the keys and the fold.
+    const ctl = [...d.querySelectorAll('.pg.bot button, .pg.bot .field')];
+    // A list row may scroll under the keys; a fixed control may not.
+    const under = ctl.filter(e => { const g = y(e); return kt && !e.closest('.orders, .mlist') ? g.bot > kt + 1 && g.top < kt : false; });
+    const below = ctl.filter(e => { const g = y(e); return kt ? g.top >= kt : false; });
+    if (kt) parts.push(under.length ? `${under.length} control(s) partly under the keys` : 'no control partly under the keys', below.length ? `${below.length} more row control(s) scroll under the keys` : 'every control above the keys');
+    const topCtl = [...d.querySelectorAll('.pg.top button, .postbar button')];
+    parts.push(`presses on the standing page: ${topCtl.length}`);
+    const fold = [...d.querySelectorAll('button')].filter(e => { const g = y(e); return g.bot > 456 && g.top < 495; });
+    parts.push(fold.length ? `${fold.length} control(s) across the fold` : 'nothing across the fold');
+    out.className = 'read ' + (under.length || fold.length ? 'cut' : 'ok');
+  } else if (d.classList.contains('one')) {
+    const clip = [...d.querySelectorAll('.orow b, .t1, .t2, .letterhead, .field .typed, .mrow b, .fig b')].filter(e => e.scrollWidth > e.clientWidth + 1);
+    const all = [...d.querySelectorAll('.orow, .mrow')], floor = keys ? y(keys).top : 678 - BAR_ZONE;
+    const rows = all.filter(e => y(e).bot <= floor);
+    parts.push(`${rows.length} whole row(s) above the ${keys ? 'keys' : 'tab bar'}${all.length > rows.length ? `, ${all.length - rows.length} more scroll` : ''}`, clip.length ? `${clip.length} text run(s) cut off` : 'no text cut off');
+    // No whole row on the first screen is a finding, not a fault: the list still scrolls.
+    out.className = 'read ' + (clip.length ? 'cut' : rows.length || !all.length ? 'ok' : '');
+  } else if (d.classList.contains('stacked')) {
+    const fold = [...d.querySelectorAll('.orow')].filter(e => { const g = y(e); return g.bot > 456 && g.top < 495; });
+    parts.push(fold.length ? `${fold.length} order row(s) cut by the fold` : 'no row on the fold');
+    out.className = 'read ' + (fold.length ? 'cut' : 'ok');
+  } else { out.className = 'read'; parts.push('reference: today’s side-by-side Card in Hand; keys from y 405 pt'); }
+  out.textContent = 'In this drawing: ' + parts.join(' · ');
+}
+let lastPress = null;   // { concept, frameId, x, y (client), before: {id: rect}, what }
+// The page the press landed on: a key press counts as the flat page, where the keys lie.
+const pageOf = el => el.closest('.postbar') ? '.postbar' : el.closest('.pg.top') ? '.pg.top' : '.pg.bot';
+function snapshot(d, scope) { const y = geo(d), m = {}; d.querySelectorAll(`${scope} [data-id]`).forEach(e => { m[e.dataset.id] = y(e); }); return m; }
+// A press that leaves a check-in or a Post under the finger can write a wrong check-in on a second tap: that is the harm
+// no-layout-shift-under-pointer guards. Another control there is named, in soft ink.
+const WRITES = ['rowcheck', 'line', 'pkcheck', 'post', 'choose'];
+function readPress(d, out) {
+  if (!lastPress) return;
+  const after = snapshot(d, lastPress.scope), moved = [];
+  // Typing re-filters the list by design while the finger stays on the keys, so a keystroke is not read for moves.
+  if (!['key', 'bksp'].includes(lastPress.what)) for (const [id, a] of Object.entries(lastPress.before)) {
+    const b = after[id]; if (!b) continue;
+    if (a.top !== b.top || a.left !== b.left) moved.push(`${id.replace(/^\w+:/, '')} moved ${Math.abs(b.top - a.top) || Math.abs(b.left - a.left)} pt`);
+  }
+  const el = document.elementFromPoint(lastPress.cx, lastPress.cy);
+  const hit = el && el.closest('[data-act], [data-id]');
+  const name = !hit ? 'nothing' : hit.dataset.act ? `${hit.dataset.act}${hit.dataset.n ? ' ' + hit.dataset.n : hit.dataset.gk ? ' ' + hit.dataset.gk : ''} (a control)` : hit.dataset.id;
+  const f = d.querySelector('.finger'); if (f) { f.hidden = false; f.style.left = lastPress.px + 'px'; f.style.top = lastPress.py + 'px'; }
+  const other = hit && hit.dataset.act && hit.dataset.act !== lastPress.what && !['key', 'bksp'].includes(lastPress.what);
+  const danger = other && WRITES.includes(hit.dataset.act);
+  out.textContent = `Last press: ${lastPress.what}${lastPress.n ? ' ' + lastPress.n : ''}. Under the finger after: ${name}${other && !danger ? ', a different control that writes nothing' : ''}. ${moved.length ? 'Moved on that page: ' + moved.join(', ') : 'Nothing else on that page moved.'}`;
+  out.className = 'read ' + (danger || moved.length ? 'cut' : other ? '' : 'ok');
+}
+function readFrames() {
+  document.querySelectorAll('.frame').forEach(fr => {
+    const d = fr.querySelector('.dev'), out = fr.querySelector('[data-read]');
+    if (!d || fr.hidden || !d.getBoundingClientRect().width) return;
+    if (lastPress && d.dataset.live && frameKey(d) === lastPress.key) readPress(d, out); else readStatic(d, out);
+  });
+}
+
+// ---------------- events ----------------
+let active = 'typewriter';
+document.addEventListener('click', e => {
+  const b = e.target.closest('.dev [data-act]'); if (!b) return;
+  const d = b.closest('.dev'), c = d.dataset.live; if (!c) return;
+  active = c;
+  const s = geo(d), r = d.getBoundingClientRect(), z = r.width / d.offsetWidth;
+  const key = frameKey(d);
+  const scope = pageOf(b);
+  lastPress = { key, scope, what:b.dataset.act, n:b.dataset.n || '', cx:e.clientX, cy:e.clientY, px:(e.clientX - r.left) / z, py:(e.clientY - r.top) / z, before:snapshot(d, scope) };
+  act(S[c], { act:b.dataset.act, k:b.dataset.k, n:b.dataset.n, gk:b.dataset.gk });
+  const keep = window.scrollY;
+  renderConcept(c); route(false);
+  window.scrollTo(0, keep);
+  readFrames();
+});
+// A press is read back on the frame it landed in: concept, pose and text size name that frame.
+const frameKey = d => `${d.dataset.live}|${d.dataset.pose}|${d.classList.contains('ax5')}`;
+document.addEventListener('keydown', e => {
+  const st = S[active]; if (!st || !st.keys || e.metaKey || e.ctrlKey || e.altKey) return;
+  if (e.target.closest && e.target.closest('nav')) return;
+  let a = null;
+  if (/^[a-z ]$/i.test(e.key)) a = { act:'key', k:e.key.toLowerCase() };
+  else if (e.key === 'Backspace') a = { act:'bksp' };
+  else if (e.key === 'Enter') a = { act:'done' };
+  if (!a) return;
+  e.preventDefault(); lastPress = null; act(st, a); renderConcept(active); route(false); readFrames();
+});
+
+// ---------------- deep links: #c=, #p=, #s=, #z=, joined with & ----------------
+const hidden = new Set();
+const param = k => { const m = location.hash.match(new RegExp('[#&]' + k + '=([\\w-]+)')); return m && m[1]; };
+function fit() { document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; if (!d) return; d.style.zoom = ''; const avail = w.parentElement.parentElement.clientWidth; d.style.zoom = Math.min(1, avail / d.offsetWidth, w.closest('.frame').dataset.pose === 'laptop' ? 1 : 0.62); }); }
+function route(fromHash) {
+  const c = param('c'), p = param('p'), s = param('s'), z = param('z');
+  if (fromHash && s && PRESETS[s]) { applyPreset(s); for (const k of ['typewriter', 'desk', 'twfold']) renderConcept(k); }
+  document.querySelectorAll('section.concept').forEach(x => { x.hidden = (c && x.dataset.concept !== c) || hidden.has(x.dataset.concept); });
+  document.querySelectorAll('.frame').forEach(fr => {
+    fr.hidden = (p && fr.dataset.pose !== p) || (z && fr.dataset.size !== z) || (fr.dataset.opt && hidden.has(fr.dataset.opt));
+  });
+  document.querySelectorAll('.say').forEach(x => { x.hidden = hidden.has('tw-folded') || (p && p !== 'folded') || z; });
+  document.querySelectorAll('nav a').forEach(a => {
+    const h = a.getAttribute('href'), [key, val] = h.slice(1).split('=');
+    a.setAttribute('aria-current', String(h === '#' ? !c && !p && !s && !z : param(key) === val));
+  });
+  fit(); readFrames();
+}
+document.querySelectorAll('nav a').forEach(a => a.addEventListener('click', e => {
+  const h = a.getAttribute('href'); if (h === '#') return;
+  e.preventDefault();
+  const [key, val] = h.slice(1).split('='), cur = { c:param('c'), p:param('p'), s:param('s'), z:param('z') };
+  cur[key] = cur[key] === val ? null : val;
+  location.hash = Object.entries(cur).filter(([, v]) => v).map(([n, v]) => `${n}=${v}`).join('&') || '#';
+}));
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide;
+  hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  document.querySelectorAll(`[data-hide="${o}"]`).forEach(x => { x.textContent = x.textContent.replace(/^(Hide|Show)/, hidden.has(o) ? 'Show' : 'Hide'); });
+  route(false);
+}));
+document.querySelector('[data-tags]').addEventListener('click', e => { document.body.classList.toggle('tagged'); e.target.textContent = document.body.classList.contains('tagged') ? 'Hide tags' : 'Show tags'; fit(); });
+document.querySelector('[data-reset]').addEventListener('click', () => { for (const k of Object.keys(S)) S[k] = freshFor(k); lastPress = null; renderAll(); });
+addEventListener('hashchange', () => { lastPress = null; for (const k of Object.keys(S)) S[k] = freshFor(k); renderAll(); });
+addEventListener('resize', () => route(false));
+renderAll();
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(() => route(false));
+</script>
+</body>
+</html>

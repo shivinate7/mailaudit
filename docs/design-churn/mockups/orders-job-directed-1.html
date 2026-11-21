@@ -1,0 +1,659 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orders Lamp</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The app and the native client ship light only,
+   so the screens have one theme. data-theme on the root is honoured for the reviewer chrome only. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --wax:#A8443C; --waxLit:#C86A5F; --waxDeep:#66231D;
+  --cochin: Cochin, "Hoefler Text", Palatino, Georgia, serif;
+  --mono: Menlo, ui-monospace, SFMono-Regular, monospace;
+  --desk: #E6DCCB; /* reviewer chrome only, outside the screens */
+  --new:#2E7A5E; --today:#A8443C;
+  color-scheme: light;
+}
+* { box-sizing: border-box; }
+html, body { margin:0; background:var(--desk); color:var(--ink); }
+body { font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+button { font-family:inherit; }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+/* ---------- reviewer chrome (not part of any screen) ---------- */
+.banner { background:var(--manila); color:var(--manilaInk); padding:8px 16px; font-weight:600; text-align:center; font-size:13px; }
+.chrome { max-width:1280px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.chrome h1 { font-family:var(--cochin); font-weight:400; font-size:28px; margin:0; }
+.kind { font-size:14px; margin:0; }
+.kind b { font-weight:600; }
+.chrome p.sub { margin:0; color:var(--inkSoft); max-width:80ch; font-size:14px; }
+.ctl { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ctl .lab { font-size:12px; font-weight:600; color:var(--inkSoft); min-width:84px; }
+.chip { font-size:13px; min-height:36px; padding:0 12px; border:1px solid var(--line); background:var(--card); color:var(--ink);
+  border-radius:999px; cursor:pointer; }
+.chip[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--card); }
+.chip.hide { border-style:dashed; }
+.chip:disabled { opacity:.45; cursor:default; }
+section.concept { max-width:1280px; margin:0 auto; padding:8px 16px 32px; display:flex; flex-direction:column; gap:12px; }
+section.concept[hidden] { display:none; }
+section.concept h2 { font-family:var(--cochin); font-weight:400; font-size:24px; margin:0; }
+section.concept > p { margin:0; max-width:80ch; color:var(--inkSoft); font-size:14px; }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure[hidden] { display:none; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+figcaption b { color:var(--ink); }
+.fit { max-width:100%; overflow:hidden; }
+
+/* ---------- device frames: 1 CSS px = 1 pt ---------- */
+.dev { position:relative; overflow:hidden; background:var(--paper); color:var(--ink); border:1px solid var(--ink); border-radius:24px;
+  font-family:-apple-system, system-ui, sans-serif;
+  --sat: max(env(safe-area-inset-top), 20px);         /* status bar foot: unmeasured, drawn at the UI tests' 20 pt floor */
+  --sab: max(env(safe-area-inset-bottom), 0px);
+  /* Dynamic Type, Large (default), from Apple's typography page */
+  --lt:34px; --t1:28px; --t2:22px; --t3:20px; --hd:17px; --body:17px; --callout:16px; --sub:15px; --foot:13px; --c1:12px; --c2:11px;
+  --hero:120px; }
+.dev.ax { /* AX5, the biggest accessibility size, from the same table */
+  --lt:60px; --t1:58px; --t2:56px; --t3:55px; --hd:53px; --body:53px; --callout:51px; --sub:49px; --foot:44px; --c1:43px; --c2:40px;
+  --hero:88px; }
+.dev.folded, .dev.phone { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 24px; font:600 12px -apple-system, system-ui, sans-serif; z-index:8; pointer-events:none; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; z-index:9;
+  background:repeating-linear-gradient(90deg, color-mix(in srgb, var(--ink) 18%, transparent) 0 1px, color-mix(in srgb, var(--line) 70%, transparent) 1px 40px); }
+.fold span { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(-90deg); font:10px var(--mono); color:var(--inkSoft); letter-spacing:2px; }
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; }
+.dev:not(.open) .pg { left:0; right:0; }
+.open .pg.l { left:0; width:455.5px; }
+.open .pg.r { left:495.5px; width:455.5px; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:83px; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; }
+.scroll::-webkit-scrollbar { display:none; }
+.open .pg.l .scroll { bottom:var(--sab); }
+.col { display:flex; flex-direction:column; gap:0; padding:0 16px 24px; }
+
+/* the system tab bar: region measured on the folded pose (y 595, 83 pt tall); the capsule inside it is drawn, not measured */
+.tabbar { position:absolute; left:0; right:0; bottom:0; height:83px; z-index:6; display:flex; align-items:flex-start; justify-content:center; padding-top:6px; }
+.tabbar .cap { width:calc(100% - 32px); height:58px; border-radius:29px; display:grid; grid-template-columns:repeat(4,1fr); align-items:center;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px) saturate(1.4); -webkit-backdrop-filter:blur(12px) saturate(1.4);
+  border:1px solid var(--line); box-shadow:0 4px 16px rgba(28,43,36,0.06); padding:0 4px; }
+.tabbar .t { display:flex; flex-direction:column; align-items:center; gap:2px; font:500 10px -apple-system, system-ui, sans-serif; color:var(--inkSoft); height:50px; justify-content:center; border-radius:25px; }
+.tabbar .t.on { color:var(--accent); background:color-mix(in srgb, var(--card) 90%, transparent); }
+.tabbar svg { width:22px; height:22px; fill:none; stroke:currentColor; stroke-width:1.6; }
+
+/* ---------- app type: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---------- */
+.mast { display:flex; flex-direction:column; align-items:center; padding:12px 8px 0; gap:0; position:relative; }
+.mast .sealrow { display:flex; align-items:center; gap:12px; width:100%; max-width:270px; height:36px; }
+.mast .sealrow i { flex:1; height:1px; background:color-mix(in srgb, var(--gold) 75%, transparent); }
+.seal { width:36px; height:36px; border-radius:50%; background:radial-gradient(circle at 38% 34%, var(--waxLit), var(--wax) 55%, var(--waxDeep)); box-shadow:inset 0 0 0 3px color-mix(in srgb, var(--waxDeep) 50%, transparent); }
+.mast .title { font-family:var(--cochin); font-size:31px; letter-spacing:6px; text-transform:uppercase; margin-top:12px; line-height:38px; }
+.mast .house { font-family:var(--cochin); font-size:10px; letter-spacing:3px; text-transform:uppercase; color:var(--inkSoft); margin-top:8px; }
+.mast .tallies { display:grid; grid-template-columns:1fr 1fr 1.7fr; width:100%; margin-top:12px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.mast .tallies div { padding:8px 4px; display:flex; flex-direction:column; align-items:center; gap:2px; }
+.mast .tallies div + div { border-left:1px solid var(--line); }
+.mast .tallies small { font-family:var(--cochin); font-size:10px; letter-spacing:1.6px; text-transform:uppercase; color:var(--inkSoft); }
+.mast .tallies b { font:400 15px var(--mono); }
+.mast .bar8 { width:100%; height:8px; background:var(--line); position:relative; }
+.mast .bar8::after { content:""; position:absolute; left:0; top:0; bottom:0; width:64%; background:var(--accent); }
+.tabtitle { font:calc(var(--c1) * 12 / 12) var(--mono); letter-spacing:3.6px; text-transform:uppercase; color:var(--inkSoft); text-align:center; padding-top:16px; }
+.grp { font:calc(var(--c1) * 11 / 12) var(--mono); letter-spacing:2.2px; text-transform:uppercase; color:var(--inkSoft); padding:16px 0 8px 4px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; display:flex; flex-direction:column; }
+.row { display:flex; align-items:center; gap:12px; min-height:52px; padding:8px 16px; border:0; background:transparent; width:100%; text-align:left; color:inherit; cursor:pointer; }
+.row + .row, .row + .panel + .row, .card > .row:not(:first-child) { border-top:1px solid var(--line); }
+.row .tt { flex:1; display:flex; flex-direction:column; gap:4px; min-width:0; }
+.row .tt b { font:400 var(--t3)/1.2 var(--cochin); }
+.row .tt small { font:calc(var(--foot) * 13.5 / 13)/1.3 var(--cochin); color:var(--inkSoft); }
+.row .val { font:calc(var(--callout) * 14 / 16) var(--mono); display:flex; align-items:center; gap:8px; white-space:nowrap; }
+.row .chev { font:var(--t3) var(--cochin); color:var(--inkSoft); transition:transform .2s; width:12px; text-align:center; }
+.row[aria-expanded="true"] .chev { transform:rotate(90deg); }
+.row.sel { background:color-mix(in srgb, var(--accent) 10%, var(--card)); }
+.ax .row { flex-wrap:wrap; }
+.ax .row .tt { flex-basis:calc(100% - 24px); }
+.ax .pin.flow { position:static; padding:0 16px 24px; }
+.ax .pin.flow::before { display:none; }
+.ax .row .val { white-space:normal; }
+
+/* the lamp */
+.lamp { display:inline-grid; place-items:center; flex:none; position:relative; }
+.lamp svg { display:block; overflow:visible; }
+.lamp .dot { animation:write 1.8s ease-out infinite; }
+.lamp .dot.d2 { animation-delay:.3s; } .lamp .dot.d3 { animation-delay:.6s; }
+@keyframes write { 0% { opacity:.25; } 30%, 70% { opacity:1; } 100% { opacity:.25; } }
+.lamp .disc { transition:fill .25s ease-out, stroke .25s ease-out; }
+.btn[aria-disabled="true"] { opacity:.55; }
+@media (prefers-reduced-motion: reduce) { .lamp .dot { animation:none; } .lamp .disc { transition:none; } .row .chev, details.said summary::before { transition:none; } }
+
+/* the Orders panel and screen parts */
+.panel { border-top:1px solid var(--line); padding:12px 12px 12px; display:flex; flex-direction:column; gap:12px; }
+.say { font:calc(var(--t2) * 26 / 22)/1.2 var(--cochin); margin:0; }
+.say.s { font-size:calc(var(--t2) * 22 / 22); }
+.fig { font:calc(var(--foot) * 13 / 13)/1.45 var(--mono); color:var(--inkSoft); margin:0; }
+.fig.warn { color:var(--manilaInk); background:var(--manila); border-radius:8px; padding:8px; }
+.btn { width:100%; min-height:50px; border-radius:25px; border:1px solid var(--accent); background:var(--accent); color:var(--card);
+  font:400 var(--t3)/1.15 var(--cochin); padding:8px 16px; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:8px; }
+.btn.stop { background:var(--card); color:var(--accent); }
+.btn.quiet { background:var(--card); color:var(--accent); }
+.ans { min-height:20px; font:calc(var(--c1) * 11 / 12)/1.4 var(--mono); color:var(--inkSoft); text-align:center; }
+.ans.ok { color:var(--green); }
+.parts { display:grid; grid-template-columns:auto 1fr; column-gap:12px; row-gap:6px; align-items:baseline; }
+.parts dt { font:calc(var(--c2) * 10 / 11) var(--cochin); letter-spacing:1.6px; text-transform:uppercase; color:var(--inkSoft); white-space:nowrap; }
+.parts dd { margin:0; font:calc(var(--c1) * 11 / 12)/1.45 var(--mono); }
+.parts.tagged { padding:6px 6px 18px; margin:0; }
+body.nolabels .parts.tagged { padding:0; }
+.ax .parts { grid-template-columns:1fr; row-gap:2px; }
+.ax .parts dd { margin-bottom:8px; }
+details.said { border-top:1px solid var(--line); }
+details.said summary { min-height:44px; display:flex; align-items:center; gap:8px; cursor:pointer; list-style:none; font:var(--foot) var(--cochin); color:var(--inkSoft); }
+details.said summary::-webkit-details-marker { display:none; }
+details.said summary::before { content:"\203A"; font:var(--t3) var(--cochin); transition:transform .2s; display:inline-block; width:12px; }
+details.said[open] summary::before { transform:rotate(90deg); }
+details.said pre { margin:0 0 8px; padding:8px; background:var(--paper); border-radius:8px; font:calc(var(--c2) * 10.5 / 11)/1.4 var(--mono); white-space:pre-wrap; word-break:break-all; color:var(--ink); }
+
+/* concept: Signal screen */
+.nav { position:absolute; left:0; right:0; top:var(--sat); height:44px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 8px; z-index:5;
+  background:color-mix(in srgb, var(--paper) 88%, transparent); }
+.nav .back { justify-self:start; min-height:44px; min-width:44px; display:flex; align-items:center; gap:2px; border:0; background:transparent; color:var(--accent); font:var(--body) -apple-system, system-ui, sans-serif; cursor:pointer; padding:0 8px; }
+.nav .back span { font-size:calc(var(--body) * 1.4); line-height:1; margin-top:-3px; }
+.nav .nt { font:600 var(--body) -apple-system, system-ui, sans-serif; }
+.nav .back, .nav .nt, .sheet .sh .nt, .sheet .sh .done { font-size:17px; } /* bar titles keep their size; iOS shows them in the large content viewer */
+.sig { display:flex; flex-direction:column; align-items:center; text-align:center; gap:12px; padding:68px 24px 16px; }
+.ax .sig { padding-top:68px; }
+.sig .fig { max-width:34ch; }
+.sigparts { margin:8px 16px 0; padding:12px 16px; }
+.pin { position:absolute; left:16px; right:16px; bottom:91px; display:flex; flex-direction:column; gap:4px; z-index:4; }
+.pin::before { content:""; position:absolute; left:-16px; right:-16px; top:-16px; bottom:-8px; background:linear-gradient(to bottom, transparent, var(--paper) 16px); z-index:-1; }
+.open .pg.l .pin { bottom:calc(var(--sab) + 16px); }
+.rightcol { padding:64px 24px 24px; display:flex; flex-direction:column; gap:12px; }
+.rightcol h3 { margin:0; font:400 var(--t2) var(--cochin); }
+
+/* concept: Letterhead lamp */
+.mast .lampslot { position:absolute; right:0; top:8px; width:44px; height:44px; border:0; background:transparent; padding:0; cursor:pointer; display:grid; place-items:center; border-radius:22px; }
+.pkg { margin-top:12px; }
+.pkg .hd { display:flex; justify-content:space-between; align-items:baseline; padding:12px 16px 8px; }
+.pkg .hd b { font:700 var(--t3) var(--cochin); }
+.pkg .hd span { font:calc(var(--c1) * 11 / 12) var(--mono); color:var(--inkSoft); }
+.pkg .ln { display:flex; justify-content:space-between; padding:12px 16px; border-top:1px solid var(--line); font:var(--sub) var(--cochin); }
+.pkg .ln span { font:12px var(--mono); color:var(--inkSoft); }
+.countline { font:12px var(--mono); color:var(--inkSoft); text-align:center; padding:8px 0 0; }
+.scrim { position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 22%, transparent); z-index:10; }
+.sheet { position:absolute; left:0; right:0; bottom:0; top:236px; z-index:11; background:var(--card); border-radius:24px 24px 0 0; border-top:1px solid var(--line);
+  display:flex; flex-direction:column; box-shadow:0 -6px 24px rgba(28,43,36,0.06); }
+.sheet .grab { width:36px; height:5px; border-radius:3px; background:var(--line); align-self:center; margin-top:6px; flex:none; }
+.sheet .sh { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 8px; height:48px; flex:none; }
+.sheet .sh .nt { font:600 var(--body) -apple-system, system-ui, sans-serif; grid-column:2; }
+.sheet .sh .done { grid-column:3; justify-self:end; min-height:44px; min-width:44px; border:0; background:transparent; color:var(--accent); font:600 var(--body) -apple-system, system-ui, sans-serif; cursor:pointer; padding:0 8px; }
+.sheet .sb { overflow-y:auto; scrollbar-width:none; padding:4px 16px 24px; display:flex; flex-direction:column; gap:12px; }
+.sheet .lead { display:flex; gap:16px; align-items:center; }
+.ax .sheet { top:72px; }
+.ax .sheet .lead { flex-direction:column; align-items:flex-start; }
+.ax .sheet .sh { height:auto; min-height:56px; }
+.open .sheet { top:64px; left:16px; right:16px; bottom:91px; border-radius:24px; border:1px solid var(--line); }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+.tagged { position:relative; }
+.tagged > .tagtxt { position:absolute; right:4px; top:2px; font:600 10.5px/14px -apple-system, system-ui, sans-serif; padding:0 4px; background:var(--paper); z-index:7; white-space:nowrap; pointer-events:none; }
+.tagged > .tagtxt.tl { right:auto; left:4px; }
+.tagged > .tagtxt.under { top:auto; bottom:-14px; right:0; }
+.tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .tag-new > .tagtxt { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .tag-today > .tagtxt { color:var(--today); }
+body.nolabels .tag-new, body.nolabels .tag-today { outline:0; }
+body.nolabels .tagtxt { display:none; }
+
+@media (forced-colors: active) { .lamp .disc { stroke:CanvasText; } .btn { border:2px solid ButtonText; } }
+@media (max-width:520px) { .chrome h1 { font-size:22px; } }
+</style>
+</head>
+<body>
+<div class="banner" role="note">Sample. No figure, time, count, seller or card on this page is real.</div>
+
+<div class="chrome">
+  <h1>Orders lamp: did my new orders come in, or is it broken?</h1>
+  <p class="kind"><b>Designer kind:</b> directed. <b>Direction:</b> status-light: a glanceable state and one button.</p>
+  <p class="sub">The orders status screen (unbuilt, debt <code>orders-job-unbuilt</code>). The phone reads <code>GET /orders/status</code> from the Worker; the pull itself runs in Chrome on the computer. Three concepts, each drawn on the iPhone Duo folded (466 x 678 pt), open (951 x 669 pt, fold x 455.5 to 495.5), the large phone (size not written, drawn at 466 x 678 pt), and the folded pose at AX5. Light only: the app ships one palette. Every lamp, row, button, sheet and disclosure works: press them.</p>
+
+  <div class="ctl" role="group" aria-label="State">
+    <span class="lab">State</span>
+    <span id="stateChips" class="ctl"></span>
+  </div>
+  <div class="ctl" role="group" aria-label="The one button">
+    <span class="lab">Button</span>
+    <button class="chip" data-mode="pull" type="button">Pull from phone (pick)</button>
+    <button class="chip" data-mode="check" type="button">Check only</button>
+  </div>
+  <div class="ctl" role="group" aria-label="Device">
+    <span class="lab">Device</span>
+    <button class="chip" data-dev="all" type="button">All</button>
+    <button class="chip" data-dev="folded" type="button">Duo folded</button>
+    <button class="chip" data-dev="open" type="button">Duo open</button>
+    <button class="chip" data-dev="phone" type="button">Large phone</button>
+    <button class="chip" data-dev="ax" type="button">Folded, AX5</button>
+  </div>
+  <div class="ctl" role="group" aria-label="Concepts and labels">
+    <span class="lab">Show</span>
+    <button class="chip hide" data-hidec="row" type="button">Hide Ledger row</button>
+    <button class="chip hide" data-hidec="signal" type="button">Hide Signal screen</button>
+    <button class="chip hide" data-hidec="letter" type="button">Hide Letterhead lamp</button>
+    <button class="chip hide" data-hidec="button" type="button">Hide The one button</button>
+    <button class="chip" id="labelsChip" type="button" aria-pressed="true">Today / New labels</button>
+  </div>
+</div>
+
+<section class="concept" data-c="row">
+  <h2>Ledger row</h2>
+  <p>The lamp is a row at the top of the Ledger tab's Data group, beside Sync. Its value is the lamp and one word. A press opens the panel in place, as Sync opens: one sentence, the one button, the particulars. Closest to today's Ledger tab; you see it only on the Ledger tab.</p>
+  <div class="frames" data-frames="row">
+    <figure data-d="folded"><div><div class="dev folded" data-device="iphone-duo-folded" aria-label="Ledger row, Duo folded"></div></div><figcaption></figcaption></figure>
+    <figure data-d="open"><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" aria-label="Ledger row, Duo open"></div></div><figcaption></figcaption></figure>
+    <figure data-d="phone"><div><div class="dev phone" data-device="iphone-large" aria-label="Ledger row, large phone"></div></div><figcaption></figcaption></figure>
+    <figure data-d="ax"><div><div class="dev folded ax" data-device="iphone-duo-folded" aria-label="Ledger row, Duo folded at AX5"></div></div><figcaption></figcaption></figure>
+  </div>
+</section>
+
+<section class="concept" data-c="signal">
+  <h2>Signal screen</h2>
+  <p>The Orders row pushes a screen of its own. The lamp is the hero, 120 pt, with one sentence under it. The one button is pinned above the tab bar, in the thumb's reach. Open, the left page is the signal and the right page holds the particulars.</p>
+  <div class="frames" data-frames="signal">
+    <figure data-d="folded"><div><div class="dev folded" data-device="iphone-duo-folded" aria-label="Signal screen, Duo folded"></div></div><figcaption></figcaption></figure>
+    <figure data-d="open"><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" aria-label="Signal screen, Duo open"></div></div><figcaption></figcaption></figure>
+    <figure data-d="phone"><div><div class="dev phone" data-device="iphone-large" aria-label="Signal screen, large phone"></div></div><figcaption></figcaption></figure>
+    <figure data-d="ax"><div><div class="dev folded ax" data-device="iphone-duo-folded" aria-label="Signal screen, Duo folded at AX5"></div></div><figcaption></figcaption></figure>
+  </div>
+</section>
+
+<section class="concept" data-c="letter">
+  <h2>Letterhead lamp</h2>
+  <p>A small lamp sits on the masthead of every working screen, at the end of the seal's rule, so the answer shows while you check in mail. A press opens a sheet with the sentence and the one button. The most glanceable; it changes the masthead.</p>
+  <div class="frames" data-frames="letter">
+    <figure data-d="folded"><div><div class="dev folded" data-device="iphone-duo-folded" aria-label="Letterhead lamp, Duo folded"></div></div><figcaption></figcaption></figure>
+    <figure data-d="open"><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" aria-label="Letterhead lamp, Duo open"></div></div><figcaption></figcaption></figure>
+    <figure data-d="phone"><div><div class="dev phone" data-device="iphone-large" aria-label="Letterhead lamp, large phone"></div></div><figcaption></figcaption></figure>
+    <figure data-d="ax"><div><div class="dev folded ax" data-device="iphone-duo-folded" aria-label="Letterhead lamp, Duo folded at AX5"></div></div><figcaption></figcaption></figure>
+  </div>
+</section>
+
+<section class="concept" data-c="button">
+  <h2>The one button</h2>
+  <p>What the one button does, drawn on the Signal screen, folded, in each option's own state. Pull from phone asks the computer to pull, and needs a Worker and extension change. Check only reads the status again, and runs on today's Worker.</p>
+  <div class="frames" data-frames="button"></div>
+</section>
+
+<script>
+'use strict';
+// ---------- sample data: no figure here is real ----------
+const SAID = (s, f) => JSON.stringify({ lastSuccessAt: s, lastFailure: f }, null, 1);
+const ST = {
+  good:      { lamp:'good',    word:'Pulled',   say:'Pulled 2 hours ago.', fig:'12 new lines from 41 orders.',
+               last:'Sat, Nov 21, 7:12 AM', added:'12', orders:'41', fail:'None.', next:'On the next TCGplayer page after 7:12 PM',
+               said: SAID('2026-11-21T13:12:00Z', null) },
+  unreadable:{ lamp:'good',    word:'Pulled',   say:'Pulled 2 hours ago.', fig:'12 new lines from 41 orders.', warn:'3 lines could not be read and were left out. Nothing was guessed.',
+               last:'Sat, Nov 21, 7:12 AM', added:'12', orders:'41', fail:'3 lines left out, Sat, Nov 21, 7:12 AM', next:'On the next TCGplayer page after 7:12 PM',
+               said: SAID('2026-11-21T13:12:00Z', { kind:'unreadable', at:'2026-11-21T13:12:00Z', count:3 }) },
+  quiet:     { lamp:'quiet',   word:'Quiet',    say:'No pull in 4 days.', fig:'Chrome pulls when you open a TCGplayer page on your computer.',
+               last:'Tue, Nov 17, 8:02 PM', added:'2', orders:'38', fail:'None.', next:'On the next TCGplayer page',
+               said: SAID('2026-11-18T02:02:00Z', null) },
+  signedout: { lamp:'signin',  word:'Sign in',  say:'Signed out of TCGplayer.', fig:'Sign in to TCGplayer in Chrome on your computer. The next store page you open pulls.',
+               last:'Fri, Nov 20, 6:40 PM', added:'5', orders:'40', fail:'Signed out, Sat, Nov 21, 8:55 AM', next:'After you sign in, on the next TCGplayer page',
+               said: SAID('2026-11-21T00:40:00Z', { kind:'signed-out', at:'2026-11-21T14:55:00Z' }) },
+  fetch:     { lamp:'failed',  word:'Failed',   say:'The last pull failed 46 minutes ago.', fig:'TCGplayer did not answer the order page. Nothing was added. Try again in a few minutes.',
+               last:'Fri, Nov 20, 6:40 PM', added:'5', orders:'40', fail:'No answer from TCGplayer, Sat, Nov 21, 8:55 AM', next:'On the next TCGplayer page',
+               said: SAID('2026-11-21T00:40:00Z', { kind:'fetch', at:'2026-11-21T14:55:00Z' }) },
+  timeout:   { lamp:'failed',  word:'Failed',   say:'The last pull failed 46 minutes ago.', fig:'An order page took over 30 seconds. TCGplayer is slow right now. Nothing was added.',
+               last:'Fri, Nov 20, 6:40 PM', added:'5', orders:'40', fail:'Too slow, Sat, Nov 21, 8:55 AM', next:'On the next TCGplayer page',
+               said: SAID('2026-11-21T00:40:00Z', { kind:'timeout', at:'2026-11-21T14:55:00Z' }) },
+  empty:     { lamp:'failed',  word:'Failed',   say:'The last pull failed 46 minutes ago.', fig:'The order page held no orders. TCGplayer may have sent its sign-in page. Nothing was added.',
+               last:'Fri, Nov 20, 6:40 PM', added:'5', orders:'40', fail:'Empty order page, Sat, Nov 21, 8:55 AM', next:'On the next TCGplayer page',
+               said: SAID('2026-11-21T00:40:00Z', { kind:'empty', at:'2026-11-21T14:55:00Z' }) },
+  noitems:   { lamp:'failed',  word:'Failed',   say:'The last pull found no card orders.', fig:'No TCGplayer card orders in the last 120 days. Nothing was added.',
+               last:'Fri, Nov 20, 6:40 PM', added:'5', orders:'40', fail:'No card orders, Sat, Nov 21, 8:55 AM', next:'On the next TCGplayer page',
+               said: SAID('2026-11-21T00:40:00Z', { kind:'no-items', at:'2026-11-21T14:55:00Z' }) },
+  asked:     { lamp:'busy',    word:'Asked',    say:'Asked your computer to pull.', fig:'Waiting for Chrome on your computer to pick it up.', pullOnly:true,
+               last:'Sat, Nov 21, 7:12 AM', added:'12', orders:'41', fail:'None.', next:'Asked at 9:41 AM',
+               said: SAID('2026-11-21T13:12:00Z', null) + '\n' + JSON.stringify({ request:{ at:'2026-11-21T15:41:00Z', state:'asked' } }) },
+  running:   { lamp:'busy',    word:'Pulling',  say:'Pulling on your computer.', fig:'Order page 3 read.', pullOnly:true,
+               last:'Sat, Nov 21, 7:12 AM', added:'12', orders:'41', fail:'None.', next:'Running now',
+               said: SAID('2026-11-21T13:12:00Z', null) + '\n' + JSON.stringify({ request:{ at:'2026-11-21T15:41:00Z', state:'running', page:3 } }) },
+  noanswer:  { lamp:'quiet',   word:'No answer',say:'Your computer did not pick up the pull.', fig:'Asked 15 minutes ago. Chrome may be closed, or the computer asleep.', pullOnly:true,
+               last:'Sat, Nov 21, 7:12 AM', added:'12', orders:'41', fail:'None.', next:'On the next TCGplayer page',
+               said: SAID('2026-11-21T13:12:00Z', null) + '\n' + JSON.stringify({ request:{ at:'2026-11-21T15:26:00Z', state:'expired' } }) },
+  unknown:   { lamp:'unknown', word:'Unknown',  say:'Can’t reach the ledger server.', fig:'This phone could not read the orders status. Nothing is known about the last pull.',
+               last:'Unknown', added:'Unknown', orders:'Unknown', fail:'Unknown', next:'Unknown', said:'No reply: the request did not reach the server.' },
+  never:     { lamp:'never',   word:'Not yet',  say:'No pull has run yet.', fig:'The first pull runs when you open a TCGplayer page in Chrome on your computer.',
+               last:'Never', added:'None yet', orders:'None yet', fail:'None.', next:'On the first TCGplayer page',
+               said: SAID(null, null) },
+  nosync:    { lamp:'unknown', word:'Unknown',  say:'This phone has no sync key.', fig:'The orders status comes through Sync. Set up Sync to see it.',
+               last:'Unknown', added:'Unknown', orders:'Unknown', fail:'Unknown', next:'Unknown', said:'Not asked: no sync key on this phone.' },
+};
+const STATE_ORDER = [['good','Pulled'],['unreadable','Lines left out'],['quiet','Quiet'],['signedout','Signed out'],['fetch','Failed: no answer'],
+  ['timeout','Failed: slow'],['empty','Failed: empty'],['noitems','Failed: no orders'],['asked','Asked'],['running','Pulling'],['noanswer','No answer'],
+  ['unknown','Unknown'],['never','Never run'],['nosync','No sync key']];
+
+// ---------- the lamp: colour by meaning, and a shape for each, so colour is never the only cue ----------
+const LAMP = {
+  good:    { fill:'var(--green)', glyph:'tick',  label:'Pulled' },
+  quiet:   { fill:'var(--amber)', glyph:'clock', label:'Needs your computer' },
+  signin:  { fill:'var(--amber)', glyph:'in',    label:'Needs sign-in' },
+  failed:  { fill:'var(--red)',   glyph:'bang',  label:'Failed' },
+  busy:    { fill:'var(--accent)',glyph:'dots',  label:'Running' },
+  unknown: { fill:'var(--silver)',glyph:'q',     label:'Unknown', dashed:true },
+  never:   { fill:'var(--card)',  glyph:'none',  label:'Never run', hollow:true },
+};
+function lampSVG(kind, size, id) {
+  const L = LAMP[kind], r = 50, ink = (L.hollow || kind === 'unknown') ? 'var(--ink)' : 'var(--card)';
+  const sw = size >= 60 ? 6 : 9;
+  const g = {
+    tick:  `<path d="M30 52 L44 66 L71 36" fill="none" stroke="${ink}" stroke-width="${sw+1}" stroke-linecap="round" stroke-linejoin="round"/>`,
+    clock: `<circle cx="50" cy="50" r="24" fill="none" stroke="${ink}" stroke-width="${sw-1}"/><path d="M50 36 V50 L60 58" fill="none" stroke="${ink}" stroke-width="${sw-1}" stroke-linecap="round"/>`,
+    in:    `<text x="50" y="62" text-anchor="middle" font-family="Menlo, ui-monospace, monospace" font-weight="700" font-size="34" fill="${ink}">in</text>`,
+    bang:  `<path d="M50 28 V56" stroke="${ink}" stroke-width="${sw+2}" stroke-linecap="round"/><circle cx="50" cy="72" r="${sw/2+2}" fill="${ink}"/>`,
+    dots:  `<circle class="dot" cx="34" cy="50" r="6" fill="${ink}"/><circle class="dot d2" cx="50" cy="50" r="6" fill="${ink}"/><circle class="dot d3" cx="66" cy="50" r="6" fill="${ink}"/>`,
+    q:     `<text x="50" y="64" text-anchor="middle" font-family="Cochin, Georgia, serif" font-weight="700" font-size="44" fill="${ink}">?</text>`,
+    none:  '',
+  }[L.glyph];
+  const ring = size >= 60 ? `<circle cx="50" cy="50" r="${r+5}" fill="none" stroke="var(--gold)" stroke-width="1.5"/>` : '';
+  const spin = ''; // busy is shown by its dots, written in turn: stationery, not a spinner (motion-stationery-not-software)
+  const edge = L.hollow ? `stroke="var(--inkSoft)" stroke-width="${size>=60?3:8}"` : L.dashed ? `stroke="var(--inkSoft)" stroke-width="${size>=60?3:8}" stroke-dasharray="${size>=60?'8 6':'14 10'}"` : 'stroke="none"';
+  return `<span class="lamp" ${id ? `id="${id}"` : ''} role="img" aria-label="Orders: ${L.label}" style="width:${size}px;height:${size}px">
+    <svg viewBox="-12 -12 124 124" width="${size}" height="${size}" aria-hidden="true">${ring}${spin}<circle class="disc" cx="50" cy="50" r="${r}" fill="${L.fill}" ${edge}/>${g}</svg></span>`;
+}
+
+// ---------- page state ----------
+const P = { state:'good', mode:'pull', dev:'all', hidden:new Set(), labels:true };
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get('s') && ST[h.get('s')]) P.state = h.get('s');
+  if (['pull','check'].includes(h.get('btn'))) P.mode = h.get('btn');
+  if (['all','folded','open','phone','ax'].includes(h.get('d'))) P.dev = h.get('d');
+  P.hidden = new Set((h.get('hide') || '').split(',').filter(Boolean));
+  if (h.get('c')) { const keep = h.get('c').split(','); ['row','signal','letter','button'].forEach(c => { if (!keep.includes(c)) P.hidden.add(c); }); }
+  P.labels = h.get('labels') !== 'off';
+  if (P.mode === 'check' && ST[P.state].pullOnly) P.state = 'good';
+}
+function writeHash() {
+  const h = new URLSearchParams();
+  h.set('s', P.state); h.set('btn', P.mode); if (P.dev !== 'all') h.set('d', P.dev);
+  if (P.hidden.size) h.set('hide', [...P.hidden].join(','));
+  if (!P.labels) h.set('labels', 'off');
+  history.replaceState(null, '', '#' + h.toString());
+}
+
+// ---------- frames ----------
+const DEVICES = [
+  { d:'folded', cls:'folded', name:'Duo folded', cap:'466 x 678 pt, one screen. Tab bar region y 595 to 678 (measured).' },
+  { d:'open',   cls:'open',   name:'Duo open',   cap:'951 x 669 pt. Nothing crosses the fold at x 455.5 to 495.5. The bar sits under the right page, as DuoPages draws it.' },
+  { d:'phone',  cls:'phone',  name:'Large phone', cap:'Size not written anywhere: drawn at the folded 466 x 678 pt. The layout is one column, so it holds at any portrait width.' },
+  { d:'ax',     cls:'folded ax', name:'Duo folded, AX5', cap:'Dynamic Type AX5: body 53 pt. Rows wrap, the particulars stack, the button grows.' },
+];
+const frames = [];
+function makeFrames() {
+  // The frames are written in the HTML (folded first, then open), so a reader without script still finds each pose.
+  document.querySelectorAll('.frames > figure[data-d]').forEach(fig => {
+    const dv = DEVICES.find(x => x.d === fig.dataset.d);
+    const dev = fig.querySelector('.dev');
+    fig.querySelector('figcaption').innerHTML = `<b>${dv.name}.</b> ${dv.cap}`;
+    frames.push({ c: fig.closest('[data-frames]').dataset.frames, d: dv.d, el: dev, mode: null, L: null });
+  });
+  // The one button: Signal screen, folded, once per option
+  const host = document.querySelector('[data-frames="button"]');
+  [['pull','Pull from phone (pick)','A press asks Chrome on the computer to pull, through the Worker. Stop takes the ask back. New: a Worker route and an extension check.'],
+   ['check','Check only','A press reads GET /orders/status again. It starts nothing: a pull runs only when you open a TCGplayer page on the computer. Runs on today’s Worker.']].forEach(([m, name, cap]) => {
+    const fig = document.createElement('figure'); fig.dataset.opt = m;
+    const dev = document.createElement('div'); dev.className = 'dev folded'; dev.dataset.device = 'iphone-duo-folded';
+    dev.setAttribute('aria-label', `The one button, ${name}`);
+    fig.append(dev);
+    const fc = document.createElement('figcaption');
+    fc.innerHTML = `<b>${name}.</b> ${cap} <button class="chip hide" type="button" data-hideopt="${m}">Hide ${name.replace(' (pick)','')}</button>`;
+    fig.append(fc); host.append(fig);
+    frames.push({ c:'signal', d:'folded', el:dev, mode:m, opt:m, L:null });
+  });
+}
+function freshLocal(f) {
+  const mode = f.mode || P.mode;
+  let s = P.state;
+  if (mode === 'check' && ST[s].pullOnly) s = 'good';
+  return { s, data: { ...ST[s] }, mode, open: f.d !== 'folded' && f.d !== 'phone' ? true : (f.c === 'row' ? true : false),
+           sheet: f.c === 'letter' && f.d !== 'folded', view:'screen', said:false, ans:'', ansOk:false, timers:[], prev:null };
+}
+function resetAll() { frames.forEach(f => { if (f.L) f.L.timers.forEach(clearTimeout); f.L = freshLocal(f); render(f); }); }
+
+// ---------- the one button ----------
+function buttonFor(L) {
+  if (L.s === 'nosync') return { label:'Open Sync', act:'sync', cls:'' };
+  if (L.mode === 'check') return { label:'Check again', act:'check', cls:'' };
+  if (L.s === 'asked' || L.s === 'running') return { label:'Stop', act:'stop', cls:'stop' };
+  if (L.s === 'unknown') return { label:'Check again', act:'check', cls:'' };
+  return { label:'Pull now', act:'pull', cls:'' };
+}
+function btnHTML(f, L, id) {
+  const b = buttonFor(L);
+  const tag = f.opt ? ` tagged ${f.opt === 'pull' ? 'tag-new' : 'tag-today'}` : '';
+  const tagtxt = f.opt ? `<span class="tagtxt">${f.opt === 'pull' ? 'New: asks the computer' : 'Today’s Worker: reads status'}</span>` : '';
+  return `<div class="${tag.trim()}" style="display:flex;flex-direction:column;gap:4px">${tagtxt}
+    <button type="button" class="btn ${b.cls}" data-act="${b.act}" ${id ? `id="${id}"` : ''} ${L.lock ? 'aria-disabled="true"' : ''}>${b.label}</button>
+    <div class="ans ${L.ansOk ? 'ok' : ''}" aria-live="polite">${L.ans || ''}</div></div>`;
+}
+function partsHTML(L) {
+  const D = L.data;
+  return `<dl class="parts tagged tag-new"><span class="tagtxt under">New: lines and orders kept by the status</span>
+    <dt>Last pull</dt><dd>${D.last}</dd>
+    <dt>New lines</dt><dd>${D.added}</dd>
+    <dt>Orders read</dt><dd>${D.orders}</dd>
+    <dt>Last failure</dt><dd>${D.fail}</dd>
+    <dt>Next pull</dt><dd>${D.next}</dd></dl>`;
+}
+function saidHTML(L) {
+  return `<details class="said" data-act="said" ${L.said ? 'open' : ''}><summary>What the server said</summary><pre>${esc(L.data.said)}</pre></details>`;
+}
+function esc(s) { return String(s).replace(/[&<>]/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;' }[c])); }
+function sayHTML(L, small) {
+  return `<p class="say ${small ? 's' : ''}">${L.data.say}</p><p class="fig">${L.data.fig}</p>${L.data.warn ? `<p class="fig warn">${L.data.warn}</p>` : ''}`;
+}
+
+// ---------- chrome parts ----------
+const ICON = {
+  ledger:'<circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/>',
+  orphaned:'<rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 7l9 6 9-6"/>',
+  tally:'<path d="M9 3L7 21M17 3l-2 18M4 8h17M3 16h17"/>',
+  packages:'<path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/>',
+};
+function tabbar(on) {
+  const t = (k, n) => `<span class="t ${k === on ? 'on' : ''}"><svg viewBox="0 0 24 24" aria-hidden="true">${ICON[k]}</svg>${n}</span>`;
+  return `<div class="tabbar" aria-label="Tab bar"><div class="cap">${t('ledger','Ledger')}${t('orphaned','Orphaned')}${t('tally','Tally')}${t('packages','Packages')}</div></div>`;
+}
+const STATUS = `<div class="status" aria-hidden="true"><span>9:41</span><span>●●● 100%</span></div>`;
+const FOLD = `<div class="fold" aria-hidden="true"><span>FOLD</span></div>`;
+function masthead(lampSlot) {
+  return `<div class="mast tagged tag-today"><span class="tagtxt tl">Today: masthead</span>
+    <div class="sealrow"><i></i><span class="seal" aria-hidden="true"></span><i></i></div>
+    <div class="title">Manifest</div><div class="house">C.H Postal Company</div>
+    <div class="tallies"><div><small>In</small><b>41</b></div><div><small>Out</small><b>23</b></div><div><small>Outstanding</small><b>$18.40</b></div></div>
+    <div class="bar8"></div>${lampSlot || ''}</div>`;
+}
+
+// ---------- concept: Ledger row ----------
+function ordersRow(f, L, opts) {
+  const id = (f.d === 'folded' && !f.opt) ? 'row-lamp' : '';
+  const state = opts.detailRight ? 'aria-current="true"' : `aria-expanded="${L.open}"`;
+  return `<div class="tagged tag-new"><span class="tagtxt">New: Orders row</span>
+    <button type="button" class="row ${opts.detailRight ? 'sel' : ''}" data-act="row" ${state}>
+      <span class="tt"><b>Orders</b><small>From Chrome on your computer</small></span>
+      <span class="val">${lampSVG(L.data.lamp, f.d === 'ax' ? 40 : 18, id)}<span>${L.data.word}</span></span>
+      <span class="chev" aria-hidden="true">›</span>
+    </button></div>`;
+}
+function ordersPanel(f, L) {
+  return `<div class="panel">${sayHTML(L, true)}${btnHTML(f, L)}${partsHTML(L)}${saidHTML(L)}</div>`;
+}
+function otherRows() {
+  return `<button type="button" class="row" data-act="noop"><span class="tt"><b>Sync</b><small>Last sync 9:40 AM</small></span><span class="val">On</span><span class="chev" aria-hidden="true">›</span></button>
+    <button type="button" class="row" data-act="noop"><span class="tt"><b>History</b></span><span class="val">Saved versions</span><span class="chev" aria-hidden="true">›</span></button>
+    <button type="button" class="row" data-act="noop"><span class="tt"><b>Backup</b></span></button>`;
+}
+function renderRow(f, L) {
+  if (f.d === 'open') {
+    return `<div class="pg l"><div class="scroll"><div class="col">${masthead()}<div class="tabtitle">Ledger</div><div class="grp">Data</div>
+        <div class="card tagged tag-today"><span class="tagtxt">Today: Data group</span>${ordersRow(f, L, { detailRight:true })}${otherRows()}</div></div></div></div>
+      ${FOLD}<div class="pg r"><div class="scroll"><div class="rightcol tagged tag-new" style="padding-top:24px"><span class="tagtxt">New: detail beside the list</span>
+        <div style="display:flex;gap:12px;align-items:center">${lampSVG(L.data.lamp, 44)}<h3>Orders</h3></div>
+        ${sayHTML(L)}${btnHTML(f, L)}${partsHTML(L)}${saidHTML(L)}</div></div>${tabbar('ledger')}</div>${STATUS}`;
+  }
+  const mh = f.d === 'ax' ? '' : masthead();
+  const top = f.d === 'ax' ? '<div class="grp">Data</div>' : `<div class="tabtitle">Ledger</div><div class="grp">Data</div>`;
+  return `<div class="pg"><div class="scroll"><div class="col">${mh}${top}
+      <div class="card">${ordersRow(f, L, {})}${L.open ? ordersPanel(f, L) : ''}${otherRows()}</div></div></div>${tabbar('ledger')}</div>${STATUS}`;
+}
+
+// ---------- concept: Signal screen ----------
+function renderSignal(f, L) {
+  const id = (f.d === 'folded' && !f.opt) ? 'signal-lamp' : '';
+  const bid = f.opt ? `btn-${f.opt}` : '';
+  if (L.view === 'list') {
+    return `<div class="pg"><div class="scroll"><div class="col">${f.d === 'ax' ? '' : masthead()}<div class="tabtitle">Ledger</div><div class="grp">Data</div>
+      <div class="card">${ordersRow(f, L, {})}${otherRows()}</div></div></div>${tabbar('ledger')}</div>${STATUS}`;
+  }
+  const nav = `<div class="nav"><button type="button" class="back" data-act="back"><span aria-hidden="true">‹</span>Ledger</button><span class="nt">Orders</span><span></span></div>`;
+  const hero = `<div class="sig tagged tag-new"><span class="tagtxt">New: the signal</span>${lampSVG(L.data.lamp, f.d === 'ax' ? 88 : 120, id)}${sayHTML(L)}</div>`;
+  if (f.d === 'open') {
+    return `<div class="pg l">${nav}<div class="scroll" style="bottom:120px">${hero}</div>
+        <div class="pin">${btnHTML(f, L, bid)}</div></div>
+      ${FOLD}<div class="pg r"><div class="scroll"><div class="rightcol"><h3>Particulars</h3>
+        <div class="card sigparts">${partsHTML(L)}${saidHTML(L)}</div></div></div>${tabbar('ledger')}</div>${STATUS}`;
+  }
+  if (f.d === 'ax') { // AX5: the button joins the flow under the sentence, so the reading area is not cut to a strip
+    return `<div class="pg">${nav}<div class="scroll">${hero}<div class="pin flow">${btnHTML(f, L, bid)}</div>
+      <div class="card sigparts">${partsHTML(L)}${saidHTML(L)}</div></div>${tabbar('ledger')}</div>${STATUS}`;
+  }
+  return `<div class="pg">${nav}<div class="scroll" style="bottom:152px">${hero}
+      <div class="card sigparts">${partsHTML(L)}${saidHTML(L)}</div></div>
+      <div class="pin">${btnHTML(f, L, bid)}</div>${tabbar('ledger')}</div>${STATUS}`;
+}
+
+// ---------- concept: Letterhead lamp ----------
+function pkgCards() {
+  return `<div class="countline">Showing unreceived · 6 packages</div>
+    <div class="card pkg"><div class="hd"><b>Gamma Cards</b><span>3 of 5 in</span></div>
+      <div class="ln">Lightning Bolt<span>$0.42</span></div><div class="ln">Path to Exile<span>$0.31</span></div></div>
+    <div class="card pkg"><div class="hd"><b>Delta Games</b><span>0 of 2 in</span></div>
+      <div class="ln">Ponder<span>$0.18</span></div><div class="ln">Preordain<span>$0.20</span></div></div>`;
+}
+function sheetHTML(f, L) {
+  return `<div class="scrim" data-act="done"></div>
+    <div class="sheet tagged tag-new" role="dialog" aria-label="Orders"><span class="tagtxt">New: Orders sheet</span>
+      <span class="grab" aria-hidden="true"></span>
+      <div class="sh"><span class="nt">Orders</span><button type="button" class="done" data-act="done">Done</button></div>
+      <div class="sb"><div class="lead">${lampSVG(L.data.lamp, f.d === 'ax' ? 72 : 64)}<p class="say">${L.data.say}</p></div>
+        <p class="fig">${L.data.fig}</p>${L.data.warn ? `<p class="fig warn">${L.data.warn}</p>` : ''}
+        ${btnHTML(f, L)}${partsHTML(L)}${saidHTML(L)}</div></div>`;
+}
+function renderLetter(f, L) {
+  const id = (f.d === 'folded' && !f.opt) ? 'letter-lamp' : '';
+  const slot = `<button type="button" class="lampslot tagged tag-new" data-act="lamp" aria-label="Orders: ${LAMP[L.data.lamp].label}. Open orders status"><span class="tagtxt under">New: lamp</span>${lampSVG(L.data.lamp, 22, id)}</button>`;
+  if (f.d === 'open') {
+    return `<div class="pg l"><div class="scroll" style="bottom:var(--sab)"><div class="col">${masthead(slot)}${pkgCards()}</div></div></div>
+      ${FOLD}<div class="pg r"><div class="scroll"><div class="col" style="padding-top:12px">${L.sheet ? '' : pkgCards()}</div></div>
+        ${L.sheet ? sheetHTML(f, L) : ''}${tabbar('packages')}</div>${STATUS}`;
+  }
+  return `<div class="pg"><div class="scroll"><div class="col">${masthead(slot)}${pkgCards()}${pkgCards()}</div></div>${tabbar('packages')}${L.sheet ? sheetHTML(f, L) : ''}</div>${STATUS}`;
+}
+
+function render(f) {
+  const L = f.L;
+  const scrollTops = [...f.el.querySelectorAll('.scroll, .sb')].map(s => s.scrollTop);
+  f.el.innerHTML = f.c === 'row' ? renderRow(f, L) : f.c === 'signal' ? renderSignal(f, L) : renderLetter(f, L);
+  [...f.el.querySelectorAll('.scroll, .sb')].forEach((s, i) => { if (scrollTops[i]) s.scrollTop = scrollTops[i]; });
+}
+
+// ---------- presses inside a frame ----------
+function setState(f, s, extra) {
+  const L = f.L; L.s = s; L.data = { ...ST[s], ...(extra || {}) }; render(f);
+}
+function press(f, act, ev) {
+  const L = f.L;
+  if (act === 'said') { ev.preventDefault(); L.said = !L.said; render(f); return; }
+  if (act === 'row') {
+    if (f.c === 'signal') { L.view = 'screen'; render(f); return; }
+    if (f.d === 'open') return;
+    L.open = !L.open; render(f); return;
+  }
+  if (act === 'back') { L.view = 'list'; render(f); return; }
+  if (act === 'lamp') { L.sheet = true; render(f); return; }
+  if (act === 'done') { L.sheet = false; render(f); return; }
+  if (act === 'noop') return;
+  if (act === 'sync') { L.ans = 'This opens Sync in the Ledger tab.'; L.ansOk = false; render(f); return; }
+  if (act === 'check') {
+    const t = '9:41 AM';
+    L.ans = L.s === 'unknown' ? `Still can’t reach the server at ${t}.` : `Checked at ${t}. Nothing changed.`; L.ansOk = false; render(f); return;
+  }
+  if (L.lock) return; // the first 0.8 s after Pull now: a second tap of a double tap must not stop the pull it asked for
+  if (act === 'pull') {
+    L.prev = L.s; L.ans = ''; L.lock = true; setState(f, 'asked');
+    L.timers.push(setTimeout(() => { L.lock = false; render(f); }, 800));
+    L.timers.push(setTimeout(() => { setState(f, 'running', { fig:'Order page 1 read.' }); }, 2200));
+    L.timers.push(setTimeout(() => { setState(f, 'running', { fig:'Order page 2 read.' }); }, 3200));
+    L.timers.push(setTimeout(() => { setState(f, 'running', { fig:'Order page 3 read.' }); }, 4200));
+    L.timers.push(setTimeout(() => {
+      L.ans = 'Pull done.'; L.ansOk = true;
+      setState(f, 'good', { say:'Pulled just now.', fig:'4 new lines from 42 orders.', last:'Sat, Nov 21, 9:41 AM', added:'4', orders:'42', next:'On the next TCGplayer page after 9:41 PM' });
+    }, 5400));
+    return;
+  }
+  if (act === 'stop') {
+    L.timers.forEach(clearTimeout); L.timers = [];
+    L.ans = 'Stopped. Nothing was added.'; L.ansOk = false;
+    setState(f, L.prev && !ST[L.prev].pullOnly ? L.prev : 'good'); return;
+  }
+}
+document.addEventListener('click', ev => {
+  const a = ev.target.closest('[data-act]'); if (!a) return;
+  const dev = ev.target.closest('.dev'); const f = frames.find(x => x.el === dev); if (!f) return;
+  const act = a.dataset.act;
+  if (act === 'said' && !ev.target.closest('summary')) return;
+  press(f, act, ev);
+});
+
+// ---------- reviewer controls ----------
+function paintControls() {
+  const sc = document.getElementById('stateChips');
+  sc.innerHTML = STATE_ORDER.map(([k, n]) => `<button class="chip" type="button" data-state="${k}" aria-pressed="${P.state === k}" ${P.mode === 'check' && ST[k].pullOnly ? 'disabled title="Only with Pull from phone"' : ''}>${n}</button>`).join('');
+  document.querySelectorAll('[data-mode]').forEach(b => b.setAttribute('aria-pressed', String(P.mode === b.dataset.mode)));
+  document.querySelectorAll('[data-dev]').forEach(b => b.setAttribute('aria-pressed', String(P.dev === b.dataset.dev)));
+  document.querySelectorAll('[data-hidec]').forEach(b => {
+    const c = b.dataset.hidec, h = P.hidden.has(c), n = b.textContent.replace(/^(Hide|Show) /, '');
+    b.textContent = (h ? 'Show ' : 'Hide ') + n; b.setAttribute('aria-pressed', String(h));
+  });
+  document.querySelectorAll('section.concept').forEach(s => { s.hidden = P.hidden.has(s.dataset.c); });
+  document.querySelectorAll('figure[data-d]').forEach(fg => { fg.hidden = P.dev !== 'all' && fg.dataset.d !== P.dev; });
+  document.querySelectorAll('figure[data-opt]').forEach(fg => { fg.hidden = P.hidden.has('opt-' + fg.dataset.opt); });
+  document.querySelectorAll('[data-hideopt]').forEach(b => {
+    b.textContent = b.textContent.replace(/^(Hide|Show)/, P.hidden.has('opt-' + b.dataset.hideopt) ? 'Show' : 'Hide');
+  });
+  document.body.classList.toggle('nolabels', !P.labels);
+  document.getElementById('labelsChip').setAttribute('aria-pressed', String(P.labels));
+  fit();
+}
+document.addEventListener('click', ev => {
+  const b = ev.target.closest('.chrome button, [data-hideopt]'); if (!b) return;
+  if (b.dataset.state) { P.state = b.dataset.state; resetAll(); }
+  else if (b.dataset.mode) { P.mode = b.dataset.mode; if (P.mode === 'check' && ST[P.state].pullOnly) P.state = 'good'; resetAll(); }
+  else if (b.dataset.dev) { P.dev = b.dataset.dev; }
+  else if (b.dataset.hidec) { const c = b.dataset.hidec; P.hidden.has(c) ? P.hidden.delete(c) : P.hidden.add(c); }
+  else if (b.dataset.hideopt) { const c = 'opt-' + b.dataset.hideopt; P.hidden.has(c) ? P.hidden.delete(c) : P.hidden.add(c); }
+  else if (b.id === 'labelsChip') { P.labels = !P.labels; }
+  writeHash(); paintControls();
+});
+// Scale the 951 pt open frame to the page width, so the page never scrolls sideways.
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; d.style.zoom = ''; const host = w.closest('section') || document.body; const s = Math.min(1, (host.clientWidth - 32) / 953); d.style.zoom = s; });
+  document.querySelectorAll('figure:not([hidden]) > .dev, figure:not([hidden]) > div:not(.fit) > .dev').forEach(d => {
+    const s = Math.min(1, (document.documentElement.clientWidth - 32) / 468); d.style.zoom = s < 1 ? s : '';
+  });
+}
+addEventListener('resize', fit);
+addEventListener('hashchange', () => { readHash(); resetAll(); paintControls(); });
+readHash(); makeFrames(); resetAll(); paintControls();
+</script>
+</body>
+</html>

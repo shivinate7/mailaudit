@@ -1,0 +1,854 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Large text check-in</title>
+<style>
+/* Colour by role. Values are this designer's own choice: tokens.md gives roles, not values. */
+:root {
+  color-scheme: light;
+  --page: #E8ECF0;
+  --surface: #F5F7F9;
+  --raised: #FFFFFF;
+  --text: #15202B;
+  --muted: #4E5A66;
+  --line: #D2D9E0;
+  --line-strong: #8C97A3;
+  --accent: #1F5FAD;
+  --on-accent: #FFFFFF;
+  --accent-soft: #E1EAF6;
+  --disabled-bg: #E3E7EB;
+  --done: #2E6A3E;
+  --warn: #8A4A00;
+  --bezel: #2B3138;
+  --hinge: #1B1F25;
+  --anno: #6B3AA6;
+  --anno-on: #FFFFFF;
+  --scrim: rgb(10 16 24 / 0.4);
+
+  --space-1: 4px;
+  --space-2: 8px;
+  --space-3: 12px;
+  --space-4: 16px;
+  --space-5: 20px;
+  --space-6: 24px;
+  --space-8: 32px;
+  --radius: 8px;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0A0F14;
+    --surface: #10161D;
+    --raised: #18212B;
+    --text: #E8EDF2;
+    --muted: #A6B1BD;
+    --line: #2A3541;
+    --line-strong: #6F7B88;
+    --accent: #7BB1F0;
+    --on-accent: #0A1A2D;
+    --accent-soft: #1C3150;
+    --disabled-bg: #222C37;
+    --done: #7FC08F;
+    --warn: #F1B566;
+    --bezel: #000000;
+    --hinge: #05080B;
+    --anno: #C6A0F2;
+    --anno-on: #1A0B2E;
+    --scrim: rgb(0 0 0 / 0.55);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0A0F14;
+  --surface: #10161D;
+  --raised: #18212B;
+  --text: #E8EDF2;
+  --muted: #A6B1BD;
+  --line: #2A3541;
+  --line-strong: #6F7B88;
+  --accent: #7BB1F0;
+  --on-accent: #0A1A2D;
+  --accent-soft: #1C3150;
+  --disabled-bg: #222C37;
+  --done: #7FC08F;
+  --warn: #F1B566;
+  --bezel: #000000;
+  --hinge: #05080B;
+  --anno: #C6A0F2;
+  --anno-on: #1A0B2E;
+  --scrim: rgb(0 0 0 / 0.55);
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--page);
+  color: var(--text);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: 1rem;
+  line-height: 1.45;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Page chrome around the frames */
+.sample {
+  display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: baseline;
+  padding: var(--space-2) var(--space-4);
+  background: var(--warn); color: var(--surface);
+  font-weight: 600;
+}
+.top { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6) var(--space-4) var(--space-4); max-width: 72rem; }
+.top h1 { margin: 0; font-size: 1.75rem; line-height: 1.2; }
+.top p { margin: 0; max-width: 62ch; }
+.kind { color: var(--muted); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-6); }
+.group { display: flex; flex-direction: column; gap: var(--space-1); border: 0; padding: 0; margin: 0; min-width: 0; }
+.group legend { padding: 0; font-size: 0.875rem; color: var(--muted); }
+.seg { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.seg button {
+  min-height: 44px; padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--raised); cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
+.hidden-list { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.hidden-list:empty { display: none; }
+
+.concept { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6) var(--space-4); border-top: 1px solid var(--line); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: baseline; max-width: 72rem; }
+.concept-head h2 { margin: 0; font-size: 1.375rem; line-height: 1.25; }
+.concept-head p { margin: 0; flex: 1 1 100%; max-width: 70ch; }
+.concept-head .hide { margin-inline-start: auto; }
+.pagebtn {
+  min-height: 44px; padding: var(--space-2) var(--space-3);
+  border: 1px solid var(--line-strong); border-radius: var(--radius);
+  background: var(--raised); cursor: pointer;
+}
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-6); align-items: flex-start; }
+.frame-wrap { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; max-width: 100%; }
+.frame-wrap figcaption { font-size: 0.875rem; color: var(--muted); max-width: 60ch; }
+.device { padding: 10px; border-radius: 26px; background: var(--bezel); width: max-content; }
+
+/* The drawn screen. 1 CSS px = 1 pt. Insets are drawing values, see notes item 14. */
+.screen {
+  --inset-top: 24px; --inset-bottom: 20px;
+  position: relative; overflow: hidden;
+  width: var(--w); height: var(--h);
+  border-radius: 14px;
+  background: var(--surface); color: var(--text);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--bd); line-height: var(--bd-lh);
+}
+.screen[data-kind="phone"] { --inset-top: 60px; --inset-bottom: 32px; border-radius: 40px; }
+.screen.open { display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.hinge { background: var(--hinge); }
+.page {
+  position: relative;
+  display: flex; flex-direction: column;
+  height: 100%; min-height: 0; min-width: 0;
+  padding-top: max(env(safe-area-inset-top), var(--inset-top));
+  padding-bottom: max(env(safe-area-inset-bottom), var(--inset-bottom));
+  background: var(--surface);
+}
+.page.raisedpage { background: var(--raised); }
+.scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.scroll-body { display: flex; flex-direction: column; }
+
+/* Navigation bar */
+.nav {
+  display: grid; grid-template-columns: 1fr auto 1fr; align-items: center;
+  gap: var(--space-2); min-height: 44px; padding: 0 var(--space-3);
+  flex: none;
+}
+.nav-lead { justify-self: start; display: flex; }
+.nav-trail { justify-self: end; display: flex; }
+.nav-ttl { font-size: var(--hd); line-height: var(--hd-lh); font-weight: 600; text-align: center; min-width: 0; hyphens: auto; }
+.screen[data-ax] .nav { grid-template-columns: auto 1fr auto; padding-block: var(--space-1); }
+.screen[data-ax] .nav-ttl { text-align: start; }
+.nav-ttl.collapses { opacity: 0; }
+.nav-ttl.collapses::before { content: attr(data-title); }
+.page.scrolled .nav-ttl.collapses { opacity: 1; }
+.lt { margin: 0; padding: 0 var(--space-4) var(--space-2); font-size: var(--lt); line-height: var(--lt-lh); font-weight: 700; }
+
+/* Buttons */
+.btn { border: 0; border-radius: var(--radius); min-height: 44px; min-width: 44px; cursor: pointer; }
+.textbtn { background: none; color: var(--accent); font-size: var(--bd); line-height: var(--bd-lh); padding: 0 var(--space-2); }
+.textbtn[aria-disabled="true"] { color: var(--muted); cursor: default; }
+.primary {
+  width: 100%;
+  background: var(--accent); color: var(--on-accent);
+  font-size: var(--hd); line-height: var(--hd-lh); font-weight: 600;
+  padding: var(--space-3) var(--space-4);
+  text-wrap: balance; hyphens: manual;
+}
+.primary[aria-disabled="true"] { background: var(--disabled-bg); color: var(--muted); cursor: default; }
+.secondary {
+  background: var(--accent-soft); color: var(--accent);
+  font-size: var(--hd); line-height: var(--hd-lh); font-weight: 600;
+  padding: var(--space-3) var(--space-4);
+}
+
+/* Facts: arrived of ordered, and money still owed */
+.facts { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: var(--space-2) var(--space-4); }
+.fact { display: flex; flex-direction: column; gap: var(--space-1); min-width: 0; }
+.fact-line { display: flex; flex-wrap: wrap; align-items: baseline; column-gap: 0.3em; }
+.fig { font-size: var(--fig); line-height: var(--fig-lh); font-weight: 700; font-variant-numeric: tabular-nums; white-space: nowrap; }
+.of { font-size: var(--fig); line-height: var(--fig-lh); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.lbl { font-size: var(--fn); line-height: var(--fn-lh); color: var(--muted); }
+.fig.unk { color: var(--warn); }
+.bar { display: block; height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; }
+.bar > i { display: block; height: 100%; background: var(--accent); }
+@media (prefers-reduced-motion: no-preference) { .bar > i { transition: width 300ms ease-out; } }
+
+/* Lists */
+.list { display: flex; flex-direction: column; }
+.sec {
+  position: sticky; top: 0; z-index: 1; margin: 0;
+  padding: var(--space-3) var(--space-4) var(--space-1);
+  background: var(--surface); color: var(--muted);
+  font-size: var(--fn); line-height: var(--fn-lh); font-weight: 600;
+}
+.row {
+  display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-3);
+  width: 100%; min-height: 44px;
+  padding: var(--space-3) var(--space-4) var(--space-3) var(--space-3);
+  border: 0; border-bottom: 1px solid var(--line); border-inline-start: 4px solid transparent;
+  background: var(--raised); color: var(--text); text-align: start; cursor: pointer;
+  font-size: var(--bd); line-height: var(--bd-lh);
+}
+.row .name { flex: 1 1 9em; min-width: 0; display: flex; flex-direction: column; hyphens: auto; overflow-wrap: normal; word-break: normal; }
+.row .seller { font-size: var(--fn); line-height: var(--fn-lh); color: var(--muted); }
+.row .cnt { display: flex; align-items: center; gap: var(--space-2); margin-inline-start: auto; white-space: nowrap; color: var(--muted); font-variant-numeric: tabular-nums; }
+.mark { position: relative; flex: none; width: 0.85em; height: 0.85em; min-width: 16px; min-height: 16px; border-radius: 50%; border: 2px solid var(--line-strong); }
+.row.picked { background: var(--accent-soft); border-inline-start-color: var(--accent); }
+.row.picked .mark { background: var(--accent); border-color: var(--accent); }
+.row.done .mark { background: var(--done); border-color: var(--done); }
+.row.picked .mark::after, .row.done .mark::after {
+  content: ""; position: absolute; left: 30%; top: 10%; width: 30%; height: 55%;
+  border: solid var(--raised); border-width: 0 2px 2px 0; transform: rotate(45deg);
+}
+.row[aria-disabled="true"] { cursor: default; }
+.row.done .cnt { color: var(--done); }
+.row.current { outline: 3px solid var(--accent); outline-offset: -3px; }
+.row.sel { background: var(--accent-soft); border-inline-start-color: var(--accent); }
+.note-line { margin: 0; padding: var(--space-3) var(--space-4); font-size: var(--bd); line-height: var(--bd-lh); }
+
+/* Empty, failed and done states */
+.state { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) var(--space-4); }
+.state p { margin: 0; }
+.state details { font-size: var(--fn); line-height: var(--fn-lh); color: var(--muted); }
+.state summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--accent); }
+.state code { font-family: ui-monospace, Menlo, monospace; overflow-wrap: anywhere; }
+
+/* Thumb dock */
+.dock { flex: none; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-2); background: var(--raised); border-top: 1px solid var(--line); }
+
+/* Fact tabs */
+.ftabs { flex: none; display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-3); }
+.screen[data-ax] .ftabs, .ftabs.vertical { grid-template-columns: 1fr; }
+.ftab {
+  position: relative;
+  display: flex; flex-direction: column; gap: var(--space-1); align-items: flex-start; text-align: start;
+  min-height: 44px; padding: var(--space-2) var(--space-3);
+  border: 2px solid var(--line); border-radius: var(--radius);
+  background: var(--raised); cursor: pointer;
+}
+.ftab[aria-selected="true"] { border-color: var(--accent); background: var(--accent-soft); }
+.ftab .bar { align-self: stretch; }
+.ftabs.vertical { gap: var(--space-3); }
+.ftabs.vertical .ftab { padding: var(--space-4); gap: var(--space-2); }
+.ftabs.vertical .fig, .ftabs.vertical .of { font-size: var(--hfig); line-height: var(--hfig-lh); }
+.tbar { flex: none; display: grid; grid-template-columns: auto 1fr; gap: var(--space-2); align-items: center; padding: var(--space-3) var(--space-4) var(--space-2); background: var(--raised); border-top: 1px solid var(--line); }
+.screen[data-ax] .tbar { grid-template-columns: 1fr; }
+
+/* One card at a time */
+.factband { flex: none; padding: var(--space-2) var(--space-4) var(--space-3); border-bottom: 1px solid var(--line); }
+.hero { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); }
+.hero .fig, .hero .of { font-size: var(--hfig); line-height: var(--hfig-lh); }
+.hero .facts { flex-direction: column; align-items: stretch; }
+.qwrap { display: flex; flex-direction: column; }
+.qwrap > .q { margin-block-start: auto; }
+.q { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-5) var(--space-4); }
+.q-name { margin: 0; font-size: var(--t1); line-height: var(--t1-lh); font-weight: 700; hyphens: auto; overflow-wrap: normal; }
+.q-sub { margin: 0; color: var(--muted); }
+.screen:not([data-ax]) .q-name { font-size: var(--lt); line-height: var(--lt-lh); }
+.q-pos { margin: 0; font-size: var(--fn); line-height: var(--fn-lh); color: var(--muted); }
+.answers { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-2); background: var(--raised); border-top: 1px solid var(--line); }
+.alt { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.alt > .btn { flex: 1 1 0; min-width: fit-content; }
+.stepper { flex: 1 1 100%; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.stepper .btn { min-width: 2.2em; }
+.stepper output { font-size: var(--fig); line-height: var(--fig-lh); font-weight: 700; font-variant-numeric: tabular-nums; }
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 9; border: 0; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; top: calc(var(--inset-top) + var(--space-2));
+  z-index: 10; display: flex; flex-direction: column;
+  background: var(--surface); border-radius: 12px 12px 0 0;
+  padding-bottom: max(env(safe-area-inset-bottom), var(--inset-bottom));
+}
+.grabber { flex: none; width: 36px; height: 5px; border-radius: 3px; background: var(--line-strong); margin: var(--space-2) auto 0; }
+
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.lblbar { display: flex; align-items: center; gap: var(--space-2); }
+.lblbar .bar { flex: 1 1 auto; }
+.ftab.compact .lbl, .ftab.compact .bar { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.textbtn.icon { display: flex; align-items: center; justify-content: center; }
+.textbtn.icon svg { width: 0.9em; height: 0.9em; min-width: 22px; min-height: 22px; fill: none; stroke: currentColor; stroke-width: 2.4; stroke-linecap: round; }
+
+/* Dashed "New:" labels. They float, so they move nothing. */
+.anno { position: relative; outline: 2px dashed var(--anno); outline-offset: -2px; }
+.anno::after {
+  content: "New: " attr(data-new);
+  position: absolute; top: 0; right: 0; z-index: 8;
+  padding: 1px 6px; border-radius: 4px;
+  background: var(--anno); color: var(--anno-on);
+  font: 600 11px/1.35 -apple-system, system-ui, sans-serif;
+  pointer-events: none; white-space: nowrap;
+}
+:root[data-anno="off"] .anno { outline: none; }
+:root[data-anno="off"] .anno::after { display: none; }
+
+@media (forced-colors: active) {
+  .row.picked, .row.sel { border-inline-start-color: Highlight; }
+  .mark { forced-color-adjust: none; }
+  .ftab[aria-selected="true"] { border-color: Highlight; }
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note"><span>Sample.</span><span>No figure, card or seller on this page is real.</span></div>
+
+<header class="top">
+  <h1>Large text check-in</h1>
+  <p class="kind">Designer kind: blind. Designer: large-text-blind-1.</p>
+  <p>Three concepts. Each keeps three things in view at every text size: how many cards arrived out of how many were ordered, how much money is still owed, and the main button. Tap rows and buttons in any frame: every frame of a concept shares one state.</p>
+  <div class="controls">
+    <fieldset class="group"><legend>Theme</legend><div class="seg" data-ctl="t"></div></fieldset>
+    <fieldset class="group"><legend>Text size, for every frame but the AX5 one</legend><div class="seg" data-ctl="z"></div></fieldset>
+    <fieldset class="group"><legend>State</legend><div class="seg" data-ctl="s"></div></fieldset>
+    <fieldset class="group"><legend>Dashed labels</legend><div class="seg" data-ctl="a"></div></fieldset>
+  </div>
+  <div class="hidden-list" id="hidden-list"></div>
+</header>
+
+<main id="concepts">
+<noscript><p class="top">This mockup draws its screens with script. Turn script on to see them.</p></noscript>
+<section class="concept" id="concept-dock" data-c="dock" aria-labelledby="h-dock">
+<div class="concept-head"><h2 id="h-dock">Thumb dock</h2><button class="pagebtn" data-page="only" data-k="dock">Show only this</button><button class="pagebtn hide" data-page="hide" data-k="dock">Hide this concept</button><p>One list, grouped by seller. The arrived count, the money still owed and the main button share one band at the bottom, in reach of the thumb. Cancel and Undo sit in the title bar, where iOS puts Cancel. Open, the sellers sit on the first screen and their cards on the second.</p></div>
+<div class="frames">
+<figure class="frame-wrap" data-i="0"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="1"><figcaption></figcaption><div class="fit"><div class="device" id="focus-dock"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="2"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen open" data-kind="open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="3"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="phone" data-device="iphone-large" style="--w:440px;--h:956px"></div></div></div></figure>
+</div></section>
+<section class="concept" id="concept-tabs" data-c="tabs" aria-labelledby="h-tabs">
+<div class="concept-head"><h2 id="h-tabs">Fact tabs</h2><button class="pagebtn" data-page="only" data-k="tabs">Show only this</button><button class="pagebtn hide" data-page="hide" data-k="tabs">Hide this concept</button><p>The two facts are the tabs. Tap the money to see the cards still coming; tap the count to see the cards that arrived. The facts are the way around, so they are always on screen. The button bar sits at the bottom; at accessibility sizes Cancel moves to the title bar.</p></div>
+<div class="frames">
+<figure class="frame-wrap" data-i="0"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="1"><figcaption></figcaption><div class="fit"><div class="device" id="focus-tabs"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="2"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen open" data-kind="open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="3"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="phone" data-device="iphone-large" style="--w:440px;--h:956px"></div></div></div></figure>
+</div></section>
+<section class="concept" id="concept-ask" data-c="ask" aria-labelledby="h-ask">
+<div class="concept-head"><h2 id="h-ask">One card at a time</h2><button class="pagebtn" data-page="only" data-k="ask">Show only this</button><button class="pagebtn hide" data-page="hide" data-k="ask">Hide this concept</button><p>No list on the first screen: the facts fill it, with one button to start. Then the app asks about one card at a time, in big type, with the answers under the thumb. The list is one tap away when folded, and always open on the second screen when open.</p></div>
+<div class="frames">
+<figure class="frame-wrap" data-i="0"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="1"><figcaption></figcaption><div class="fit"><div class="device" id="focus-ask"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="2"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen open" data-kind="open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="3"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="phone" data-device="iphone-large" style="--w:440px;--h:956px"></div></div></div></figure>
+</div></section>
+</main>
+
+<script>
+"use strict";
+/* Apple HIG, Typography, iOS Dynamic Type sizes (read 2026-11-21). [size, leading] in pt. */
+const TYPE = {
+  large: { label: "Default (Large)", lt:[34,41], t1:[28,34], t2:[22,28], t3:[20,25], hd:[17,22], bd:[17,22], fn:[13,18], c1:[12,16] },
+  xxxl:  { label: "xxxLarge",        lt:[40,48], t1:[34,41], t2:[28,34], t3:[26,32], hd:[23,29], bd:[23,29], fn:[19,24], c1:[18,23] },
+  ax3:   { label: "AX3",             lt:[52,61], t1:[48,57], t2:[44,52], t3:[43,51], hd:[40,48], bd:[40,48], fn:[33,40], c1:[32,39] },
+  ax5:   { label: "AX5 (largest)",   lt:[60,70], t1:[58,68], t2:[56,66], t3:[55,65], hd:[53,62], bd:[53,62], fn:[44,52], c1:[43,51] },
+};
+const DEVICES = {
+  folded: { w: 466, h: 678, attr: "iphone-duo-folded", name: "Duo folded, 466 x 678 pt" },
+  open:   { w: 951, h: 669, attr: "iphone-duo-unfolded", name: "Duo open, 951 x 669 pt, hinge gap 455.5 to 495.5" },
+  phone:  { w: 440, h: 956, attr: "iphone-large", name: "Large phone, drawn at 440 x 956 pt (size not given, see notes)" },
+};
+const FRAMES = [
+  { kind: "folded" },
+  { kind: "folded", z: "ax5", focus: true },
+  { kind: "open" },
+  { kind: "phone" },
+];
+
+/* Sample data. Each card: name, ordered, arrived, price each. */
+const ORDERS = [
+  { seller: "Northgate Cards", cards: [["Ember Wyrm",4,0,0.35],["Tidecaller Adept",2,2,0.20],["Hollowroot Sentinel",1,0,1.75],["Glasswing Courier",3,1,0.15]] },
+  { seller: "Briar and Pine Games", cards: [["Saltmarsh Witch",2,0,0.60],["Thunderhollow Prospector",1,0,2.40],["Ashen Lantern",4,4,0.10]] },
+  { seller: "Lowtide Collectibles", cards: [["Mirrorglade Archivist of the Ninth Spire",1,0,3.25],["Quillback Scout",3,0,0.25],["Duskmantle Herald",2,1,0.80]] },
+  { seller: "Kestrel Card Company", cards: [["Copperleaf Druid",4,0,0.12],["Stormcrown Colossus",1,0,6.50],["Lichen Path",2,0,0.18],["Brineworks Engineer",1,1,0.45]] },
+  { seller: "Old Mill Tabletop", cards: [["Sunken Bell",2,0,0.30],["Wickerwing Familiar",3,0,0.22]] },
+];
+/* The rest of the order history, off screen, so the totals reach four digits. */
+const STATES = {
+  normal:  { label: "Normal",          base: { ordered: 1995, arrived: 1275, owed: 401.00 } },
+  picking: { label: "Picking",         base: { ordered: 1995, arrived: 1275, owed: 401.00 }, picks: ["0-0","0-2","1-0"] },
+  empty:   { label: "Empty",           base: { ordered: 0, arrived: 0, owed: 0 }, none: true },
+  error:   { label: "Read failed",     base: { ordered: 0, arrived: 0, owed: 0 }, error: true },
+  done:    { label: "All arrived",     base: { ordered: 1995, arrived: 1995, owed: 0 }, allDone: true },
+  max:     { label: "Biggest figures", base: { ordered: 9963, arrived: 9948, owed: 12460.10 } },
+};
+const CONCEPTS = [
+  { key: "dock", name: "Thumb dock",
+    text: "One list, grouped by seller. The arrived count, the money still owed and the main button share one band at the bottom, in reach of the thumb. Cancel and Undo sit in the title bar, where iOS puts Cancel. Open, the sellers sit on the first screen and their cards on the second." },
+  { key: "tabs", name: "Fact tabs",
+    text: "The two facts are the tabs. Tap the money to see the cards still coming; tap the count to see the cards that arrived. The facts are the way around, so they are always on screen. The button bar sits at the bottom; at accessibility sizes Cancel moves to the title bar." },
+  { key: "ask", name: "One card at a time",
+    text: "No list on the first screen: the facts fill it, with one button to start. Then the app asks about one card at a time, in big type, with the answers under the thumb. The list is one tap away when folded, and always open on the second screen when open." },
+];
+
+const NF = new Intl.NumberFormat("en-US");
+const CF = new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" });
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
+/* ---------- Model ---------- */
+function makeModel(stateKey) {
+  const st = STATES[stateKey];
+  const orders = st.none || st.error ? [] : ORDERS.map((o, oi) => ({
+    seller: o.seller,
+    cards: o.cards.map(([name, qty, got, price], ci) => ({ key: oi + "-" + ci, oi, name, qty, got: st.allDone ? qty : got, price })),
+  }));
+  return {
+    state: stateKey, error: !!st.error, base: { ...st.base }, orders,
+    picks: new Set(st.picks || []), last: null, tab: "coming", sel: 0, sheet: false,
+    run: stateKey === "picking" ? { on: true, cur: "0-0", some: null, ended: false, marked: 0 } : { on: false, cur: null, some: null, ended: false, marked: 0 },
+  };
+}
+const allCards = m => m.orders.flatMap(o => o.cards);
+const card = (m, key) => allCards(m).find(c => c.key === key);
+const isOpen = c => c.got < c.qty;
+function totals(m) {
+  let ordered = m.base.ordered, arrived = m.base.arrived, owed = m.base.owed;
+  for (const c of allCards(m)) { ordered += c.qty; arrived += c.got; owed += (c.qty - c.got) * c.price; }
+  return { ordered, arrived, owed };
+}
+const isEmpty = m => !m.error && m.orders.length === 0;
+const allIn = m => !m.error && m.orders.length > 0 && allCards(m).every(c => !isOpen(c));
+const pickedCards = m => [...m.picks].reduce((n, k) => { const c = card(m, k); return n + (c ? (m.tab === "arrived" ? c.got : c.qty - c.got) : 0); }, 0);
+
+function markPicks(m) {
+  const prev = [...m.picks].map(k => { const c = card(m, k); return { key: k, got: c.got }; });
+  for (const k of m.picks) { const c = card(m, k); c.got = c.qty; }
+  m.last = { prev, verb: "mark" }; m.picks.clear();
+}
+function unmarkPicks(m) {
+  const prev = [...m.picks].map(k => { const c = card(m, k); return { key: k, got: c.got }; });
+  for (const k of m.picks) card(m, k).got = 0;
+  m.last = { prev, verb: "unmark" }; m.picks.clear();
+}
+function undo(m) { if (!m.last) return; for (const p of m.last.prev) card(m, p.key).got = p.got; m.last = null; }
+function nextOpenAfter(m, key) {
+  const list = allCards(m); const i = list.findIndex(c => c.key === key);
+  for (let j = i + 1; j < list.length; j++) if (isOpen(list[j])) return list[j].key;
+  return null;
+}
+function advance(m) {
+  const nxt = nextOpenAfter(m, m.run.cur);
+  m.run.some = null;
+  if (nxt) m.run.cur = nxt; else m.run.ended = true;
+}
+
+/* ---------- Shared pieces ---------- */
+function typeVars(z, ax) {
+  const t = TYPE[z]; let s = "";
+  for (const k of ["lt","t1","t2","t3","hd","bd","fn","c1"]) s += `--${k}:${t[k][0]}px;--${k}-lh:${t[k][1]}px;`;
+  /* Figures use Title 2 at the standard sizes and Headline at accessibility sizes (notes item 6). */
+  const fig = ax ? t.hd : t.t2; const hfig = ax ? t.t2 : t.lt;
+  s += `--fig:${fig[0]}px;--fig-lh:${fig[1]}px;--hfig:${hfig[0]}px;--hfig-lh:${hfig[1]}px;`;
+  return s;
+}
+function factsHTML(m, f, opts = {}) {
+  if (opts.bare && f.ax && !m.error) {
+    const t = totals(m);
+    const pct = t.ordered ? Math.round(t.arrived / t.ordered * 1000) / 10 : 0;
+    return `<div class="facts"><div class="fact"><div class="fact-line"><span class="fig">${NF.format(t.arrived)}/${NF.format(t.ordered)}</span><span class="sr"> arrived</span></div>` +
+      `<span class="bar" aria-hidden="true"><i style="width:${pct}%"></i></span></div>` +
+      `<div class="fact"><div class="fact-line"><span class="fig">${CF.format(t.owed)}</span><span class="sr"> still owed</span></div></div></div>`;
+  }
+  if (m.error) {
+    return `<div class="facts"><div class="fact"><div class="fact-line"><span class="fig unk">Unknown</span> <span class="lbl">arrived and still owed</span></div></div></div>`;
+  }
+  const t = totals(m);
+  const pct = t.ordered ? Math.round(t.arrived / t.ordered * 1000) / 10 : 0;
+  const count = f.ax
+    ? `<span class="fig">${NF.format(t.arrived)}/${NF.format(t.ordered)}</span>`
+    : `<span class="fig">${NF.format(t.arrived)}</span><span class="of">of ${NF.format(t.ordered)}</span>`;
+  return `<div class="facts">` +
+    (f.ax
+      ? `<div class="fact"><div class="fact-line">${count}</div><div class="lblbar"><span class="lbl">arrived</span><span class="bar" aria-hidden="true"><i style="width:${pct}%"></i></span></div></div>`
+      : `<div class="fact"><div class="fact-line">${count} <span class="lbl">arrived</span></div><span class="bar" aria-hidden="true"><i style="width:${pct}%"></i></span></div>`) +
+    `<div class="fact"><div class="fact-line"><span class="fig">${CF.format(t.owed)}</span> <span class="lbl">still owed</span></div></div>` +
+    `</div>`;
+}
+function rowHTML(c, o) {
+  const st = o.picked ? "picked" : o.sel ? "sel" : !isOpen(c) && !o.arrivedView ? "done" : "open";
+  const tappable = o.tappable !== false;
+  return `<button class="row ${st}${o.current ? " current" : ""}" data-act="${o.act || ""}" data-arg="${c.key}"` +
+    `${tappable ? "" : ` aria-disabled="true" title="All ${c.qty} already received"`}` +
+    `${o.toggle ? ` aria-pressed="${!!o.picked}"` : ""}${o.current ? ` aria-current="true"` : ""}>` +
+    `<span class="name">${esc(c.name)}${o.seller ? `<span class="seller">${esc(o.seller)}</span>` : ""}</span>` +
+    `<span class="cnt"><span class="count">${c.got} of ${c.qty}</span><span class="mark" aria-hidden="true"></span></span></button>`;
+}
+function primaryBtn(p, f, annoNew) {
+  const lbl = f.ax && p.short ? p.short : p.label;
+  return `<button class="btn primary${annoNew ? " anno" : ""}"${annoNew ? ` data-new="${annoNew}"` : ""} data-act="${p.act || ""}"${p.disabled ? ` aria-disabled="true"` : ""}>${esc(lbl)}</button>`;
+}
+function stateBlock(m) {
+  if (m.error) return `<div class="state"><p>Saved check-ins could not be read. Nothing was changed.</p>` +
+    `<details><summary>What the device said</summary><code>read failed: storage access was blocked</code></details></div>`;
+  if (isEmpty(m)) return `<div class="state"><p>No orders yet. Import an order export to fill this list.</p></div>`;
+  return "";
+}
+function listPrimary(m) {
+  if (m.error) return { label: "Try again", act: "retry" };
+  if (isEmpty(m) || allIn(m)) return { label: "Import orders", act: "import" };
+  const k = pickedCards(m);
+  if (m.tab === "arrived") {
+    if (k) return { label: `Move ${k} back`, act: "unmark" };
+    return { label: "Tap a card to move it back", short: "Pick a card", disabled: true };
+  }
+  if (k) return { label: `Check in ${k}`, act: "mark" };
+  return { label: "Tap the cards that came", short: "Pick the cards", disabled: true };
+}
+function slotBtn(m, ghost) {
+  if (m.picks.size) return `<button class="btn textbtn" data-act="cancel">Cancel</button>`;
+  if (m.last) return `<button class="btn textbtn" data-act="undo">Undo</button>`;
+  return ghost ? `<button class="btn textbtn" aria-disabled="true" title="Nothing is picked">Cancel</button>` : "";
+}
+
+/* ---------- Concept: Thumb dock ---------- */
+function dockList(m, f, onlyOrder) {
+  const sb = stateBlock(m); if (sb) return sb;
+  let h = allIn(m) ? `<p class="note-line">Everything has arrived.</p>` : "";
+  m.orders.forEach((o, oi) => {
+    if (onlyOrder != null && oi !== onlyOrder) return;
+    if (onlyOrder == null) h += `<h3 class="sec">${esc(o.seller)}</h3>`;
+    h += `<div class="list">` + o.cards.map(c => rowHTML(c, { picked: m.picks.has(c.key), act: "pick", toggle: true, tappable: isOpen(c) })).join("") + `</div>`;
+  });
+  return h;
+}
+function dockNav(m, f, title, collapses) {
+  return `<div class="nav"><div class="nav-lead">${slotBtn(m)}</div>` +
+    (collapses ? `<div class="nav-ttl collapses" data-title="${esc(title)}" aria-hidden="true"></div>` : `<div class="nav-ttl">${esc(title)}</div>`) + `<div class="nav-trail"></div></div>`;
+}
+function renderDock(m, f) {
+  const p = listPrimary(m);
+  if (f.kind === "open") {
+    const o = m.orders[m.sel];
+    const idx = m.error || isEmpty(m) ? stateBlock(m) : `<div class="list">` + m.orders.map((ord, oi) => {
+      const q = ord.cards.reduce((a, c) => a + c.qty, 0), g = ord.cards.reduce((a, c) => a + c.got, 0);
+      const cur = oi === m.sel;
+      return `<button class="row ${cur ? "sel" : "open"}" data-act="sel" data-arg="${oi}"${cur ? ` aria-current="true"` : ""}>` +
+        `<span class="name">${esc(ord.seller)}</span><span class="cnt"><span class="count">${g} of ${q}</span></span></button>`;
+    }).join("") + `</div>`;
+    return `<div class="page">` +
+        `<div class="nav"><div class="nav-lead"></div>${f.ax ? `<div class="nav-ttl">Mail day</div>` : `<div class="nav-ttl collapses" data-title="Mail day" aria-hidden="true"></div>`}<div class="nav-trail"></div></div>` +
+        `<div class="scroll main" data-k="idx">${f.ax ? "" : `<h1 class="lt">Mail day</h1>`}${idx}</div>` +
+        `<div class="dock anno" data-new="facts stay on the first screen">${factsHTML(m, f)}</div></div>` +
+      `<div class="hinge" aria-hidden="true"></div>` +
+      `<div class="page">${dockNav(m, f, o ? o.seller : "Cards")}` +
+        `<div class="scroll" data-k="cards">${o ? dockList(m, f, m.sel) : ""}</div>` +
+        `<div class="dock anno" data-new="button under the thumb">${primaryBtn(p, f)}</div></div>`;
+  }
+  return `<div class="page">${dockNav(m, f, "Mail day", !f.ax)}` +
+    `<div class="scroll main" data-k="list">${f.ax ? "" : `<h1 class="lt">Mail day</h1>`}<div class="scroll-body">${dockList(m, f)}</div></div>` +
+    `<div class="dock anno" data-new="thumb dock">${factsHTML(m, f)}${primaryBtn(p, f)}</div></div>`;
+}
+
+/* ---------- Concept: Fact tabs ---------- */
+function tabsTabs(m, f, vertical) {
+  let coming, arrived;
+  /* With no read there is nothing to switch between, so the tabs give way to one unknown line. */
+  if (m.error) return `<div class="ftabs">${factsHTML(m, f)}</div>`;
+  {
+    const t = totals(m);
+    const toCome = t.ordered - t.arrived;
+    const pct = t.ordered ? Math.round(t.arrived / t.ordered * 1000) / 10 : 0;
+    coming = `<span class="fact-line"><span class="fig">${CF.format(t.owed)}</span> <span class="lbl">still owed</span></span>` +
+      (f.ax ? "" : `<span class="lbl">${NF.format(toCome)} cards to come</span>`);
+    arrived = `<span class="fact-line">${f.ax ? `<span class="fig">${NF.format(t.arrived)}/${NF.format(t.ordered)}</span>` : `<span class="fig">${NF.format(t.arrived)}</span><span class="of">of ${NF.format(t.ordered)}</span>`} <span class="lbl">arrived</span></span>` +
+      `<span class="bar" aria-hidden="true"><i style="width:${pct}%"></i></span>`;
+  }
+  const tab = (k, inner) => `<button class="ftab${f.ax && m.tab !== k ? " compact" : ""}" role="tab" aria-selected="${m.tab === k}" data-act="tab" data-arg="${k}">${inner}</button>`;
+  return `<div class="ftabs anno${vertical ? " vertical" : ""}" data-new="facts are the tabs" role="tablist" aria-label="Views">${tab("coming", coming)}${tab("arrived", arrived)}</div>`;
+}
+function tabsList(m, f) {
+  const sb = stateBlock(m); if (sb) return sb;
+  const coming = m.tab === "coming";
+  const rows = allCards(m).filter(c => coming ? isOpen(c) : c.got > 0).sort((a, b) => a.name.localeCompare(b.name));
+  if (!rows.length) {
+    return coming
+      ? `<div class="state"><p>Everything has arrived.</p></div>`
+      : `<div class="state"><p>No cards have arrived yet.</p><button class="btn secondary" data-act="tab" data-arg="coming">Show cards still coming</button></div>`;
+  }
+  return `<div class="list" role="tabpanel">` + rows.map(c => rowHTML(c, {
+    picked: m.picks.has(c.key), act: "pick", toggle: true, arrivedView: !coming,
+    seller: f.ax ? "" : m.orders[c.oi].seller,
+  })).join("") + `</div>`;
+}
+function tabsBar(m, f) {
+  const p = listPrimary(m);
+  if (f.ax) return `<div class="tbar">${primaryBtn(p, f)}</div>`;
+  return `<div class="tbar anno" data-new="Cancel beside the button">${slotBtn(m, true)}${primaryBtn(p, f)}</div>`;
+}
+function tabsNav(m, f, title) {
+  return `<div class="nav"><div class="nav-lead">${f.ax ? slotBtn(m) : ""}</div><div class="nav-ttl">${esc(title)}</div><div class="nav-trail"></div></div>`;
+}
+function renderTabs(m, f) {
+  if (f.kind === "open") {
+    return `<div class="page">${tabsNav({ picks: new Set(), last: null }, f, "Mail day")}${tabsTabs(m, f, true)}</div>` +
+      `<div class="hinge" aria-hidden="true"></div>` +
+      `<div class="page">${tabsNav(m, f, m.tab === "coming" ? "Still coming" : "Arrived")}<div class="scroll" data-k="list">${tabsList(m, f)}</div>${tabsBar(m, f)}</div>`;
+  }
+  return `<div class="page">${tabsNav(m, f, "Mail day")}${tabsTabs(m, f)}<div class="scroll" data-k="list">${tabsList(m, f)}</div>${tabsBar(m, f)}</div>`;
+}
+
+/* ---------- Concept: One card at a time ---------- */
+function askListHTML(m, f) {
+  const sb = stateBlock(m); if (sb) return sb;
+  let h = "";
+  m.orders.forEach(o => {
+    h += `<h3 class="sec">${esc(o.seller)}</h3><div class="list">` +
+      o.cards.map(c => rowHTML(c, { act: "jump", current: m.run.on && !m.run.ended && m.run.cur === c.key })).join("") + `</div>`;
+  });
+  return h;
+}
+function listBtn(f) {
+  return f.ax
+    ? `<button class="btn textbtn icon" data-act="sheet" aria-label="All cards"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 6h2M10 6h10M4 12h2M10 12h10M4 18h2M10 18h10"/></svg></button>`
+    : `<button class="btn textbtn" data-act="sheet">All cards</button>`;
+}
+function askStart(m, f, showListBtn) {
+  const trail = showListBtn && !m.error && !isEmpty(m) ? listBtn(f) : "";
+  const nav = `<div class="nav"><div class="nav-lead"></div>${f.ax ? `<div class="nav-ttl">Mail day</div>` : `<div class="nav-ttl collapses" data-title="Mail day" aria-hidden="true"></div>`}<div class="nav-trail">${trail}</div></div>`;
+  let body, p;
+  if (m.error || isEmpty(m)) { body = stateBlock(m); p = listPrimary(m); }
+  else if (allIn(m)) { body = `<div class="state"><p>Everything has arrived.</p></div>`; p = { label: "Import orders", act: "import" }; }
+  else {
+    const first = allCards(m).find(isOpen); const o = m.orders[first.oi];
+    const left = o.cards.reduce((a, c) => a + c.qty - c.got, 0);
+    body = `<div class="state"><p>${esc(o.seller)} has ${left} ${left === 1 ? "card" : "cards"} still coming.</p></div>`;
+    p = { label: `Start with ${o.seller}`, short: "Start", act: "start" };
+  }
+  return `<div class="page">${nav}<div class="scroll main" data-k="start">${f.ax ? "" : `<h1 class="lt">Mail day</h1>`}` +
+    `<div class="hero anno" data-new="facts fill the first screen">${factsHTML(m, f)}</div>${body}</div>` +
+    `<div class="answers">${primaryBtn(p, f)}</div></div>`;
+}
+function askQuestion(m, f, showListBtn) {
+  const trail = showListBtn ? listBtn(f) : "";
+  if (m.run.ended) {
+    return `<div class="page"><div class="nav"><div class="nav-lead"></div><div class="nav-ttl">Mail day</div><div class="nav-trail">${trail}</div></div>` +
+      `<div class="factband">${factsHTML(m, f)}</div>` +
+      `<div class="scroll" data-k="q"><div class="q"><p class="q-name">${allIn(m) ? "Every card has arrived." : "That was the end of the list."}</p>` +
+      `<p class="q-sub">${m.run.marked} marked received this run.</p></div></div>` +
+      `<div class="answers">${primaryBtn({ label: "Back to start", act: "end" }, f)}</div></div>`;
+  }
+  const c = card(m, m.run.cur); const o = m.orders[c.oi];
+  const pos = o.cards.indexOf(c) + 1; const left = c.qty - c.got;
+  const nav = `<div class="nav"><div class="nav-lead"><button class="btn textbtn" data-act="stop">Cancel</button></div>` +
+    `<div class="nav-ttl">${f.ax ? "" : esc(o.seller)}</div><div class="nav-trail">${trail}</div></div>`;
+  const sub = (c.got === 0 ? `${c.qty} ordered, none arrived yet.` : `${c.qty} ordered, ${c.got} arrived.`) + (isOpen(c) ? " How many came?" : "");
+  let answers;
+  if (!isOpen(c)) {
+    answers = primaryBtn({ label: "Keep and go on", act: "keep" }, f) +
+      `<div class="alt"><button class="btn secondary" data-act="unmarkone">Unmark</button></div>`;
+  } else if (m.run.some != null) {
+    answers = primaryBtn({ label: `Check in ${m.run.some}`, act: "somemark" }, f) +
+      `<div class="alt"><div class="stepper"><button class="btn secondary" data-act="dec" aria-label="One fewer"${m.run.some <= 1 ? ` aria-disabled="true"` : ""}>&minus;</button>` +
+      `<output aria-live="polite">${m.run.some} of ${left}</output>` +
+      `<button class="btn secondary" data-act="inc" aria-label="One more"${m.run.some >= left - 1 ? ` aria-disabled="true"` : ""}>+</button></div>` +
+      `<button class="btn secondary" data-act="notyet">None</button></div>`;
+  } else {
+    answers = primaryBtn({ label: left === 1 ? "It came" : `All ${left} came`, act: "all" }, f) +
+      `<div class="alt">${left > 1 ? `<button class="btn secondary" data-act="some">Some</button>` : ""}<button class="btn secondary" data-act="notyet">None</button></div>`;
+  }
+  return `<div class="page">${nav}<div class="factband">${factsHTML(m, f, { bare: true })}</div>` +
+    `<div class="scroll qwrap" data-k="q"><div class="q"><p class="q-name">${esc(c.name)}</p><p class="q-sub">${sub}</p>` +
+    `<p class="q-pos">Card ${pos} of ${o.cards.length} from ${f.ax ? esc(o.seller) : "this seller"}</p></div></div>` +
+    `<div class="answers anno" data-new="answers under the thumb">${answers}</div></div>`;
+}
+function renderAsk(m, f) {
+  const left = m.run.on ? askQuestion(m, f, f.kind !== "open") : askStart(m, f, f.kind !== "open");
+  if (f.kind === "open") {
+    return left + `<div class="hinge" aria-hidden="true"></div>` +
+      `<div class="page anno" data-new="list on the second screen"><div class="nav"><div class="nav-lead"></div><div class="nav-ttl">All cards</div><div class="nav-trail"></div></div>` +
+      `<div class="scroll" data-k="list">${askListHTML(m, f)}</div></div>`;
+  }
+  const sheet = m.sheet ? `<button class="scrim" data-act="sheetclose" aria-label="Close the list"></button>` +
+    `<div class="sheet" role="dialog" aria-label="All cards"><div class="grabber" aria-hidden="true"></div>` +
+    `<div class="nav"><div class="nav-lead"></div><div class="nav-ttl">All cards</div><div class="nav-trail"><button class="btn textbtn" data-act="sheetclose">Done</button></div></div>` +
+    `<div class="scroll" data-k="sheet">${askListHTML(m, f)}</div></div>` : "";
+  return left + sheet;
+}
+
+const RENDER = { dock: renderDock, tabs: renderTabs, ask: renderAsk };
+
+/* ---------- Actions ---------- */
+function act(cKey, a, arg) {
+  const m = M[cKey];
+  switch (a) {
+    case "pick": { const c = card(m, arg); if (!c) return; if (m.tab !== "arrived" && !isOpen(c)) return;
+      m.picks.has(arg) ? m.picks.delete(arg) : m.picks.add(arg); m.last = null; break; }
+    case "mark": markPicks(m); break;
+    case "unmark": unmarkPicks(m); break;
+    case "cancel": m.picks.clear(); break;
+    case "undo": undo(m); break;
+    case "sel": m.sel = +arg; break;
+    case "tab": m.tab = arg; m.picks.clear(); m.last = null; break;
+    case "retry": case "import": setGlobal({ s: "normal" }); return;
+    case "start": { const first = allCards(m).find(isOpen); m.run = { on: true, cur: first.key, some: null, ended: false, marked: 0 }; break; }
+    case "all": { const c = card(m, m.run.cur); m.run.marked += c.qty - c.got; c.got = c.qty; advance(m); break; }
+    case "some": m.run.some = 1; break;
+    case "inc": { const c = card(m, m.run.cur); if (m.run.some < c.qty - c.got - 1) m.run.some++; break; }
+    case "dec": if (m.run.some > 1) m.run.some--; break;
+    case "somemark": { const c = card(m, m.run.cur); c.got += m.run.some; m.run.marked += m.run.some; advance(m); break; }
+    case "notyet": case "keep": advance(m); break;
+    case "unmarkone": { const c = card(m, m.run.cur); c.got = 0; break; }
+    case "stop": case "end": m.run = { on: false, cur: null, some: null, ended: false, marked: 0 }; break;
+    case "sheet": m.sheet = true; break;
+    case "sheetclose": m.sheet = false; break;
+    case "jump": { if (!m.run.on || m.run.ended) m.run = { on: true, cur: arg, some: null, ended: false, marked: m.run.marked }; else { m.run.cur = arg; m.run.some = null; } m.sheet = false; break; }
+    default: return;
+  }
+  renderConcept(cKey);
+}
+
+/* ---------- Page state, hash deep links ---------- */
+const G = { t: "auto", z: "large", s: "normal", a: "on", c: "", hide: [] };
+let M = {};
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (["auto","light","dark"].includes(h.get("t"))) G.t = h.get("t");
+  if (TYPE[h.get("z")]) G.z = h.get("z");
+  if (STATES[h.get("s")]) G.s = h.get("s");
+  if (["on","off"].includes(h.get("a"))) G.a = h.get("a");
+  G.c = CONCEPTS.some(c => c.key === h.get("c")) ? h.get("c") : "";
+  G.hide = (h.get("hide") || "").split(",").filter(k => CONCEPTS.some(c => c.key === k));
+}
+function writeHash() {
+  const p = new URLSearchParams();
+  if (G.c) p.set("c", G.c);
+  if (G.s !== "normal") p.set("s", G.s);
+  if (G.t !== "auto") p.set("t", G.t);
+  if (G.z !== "large") p.set("z", G.z);
+  if (G.a !== "on") p.set("a", G.a);
+  if (G.hide.length) p.set("hide", G.hide.join(","));
+  const s = p.toString().replace(/%2C/g, ",");
+  history.replaceState(null, "", s ? "#" + s : location.pathname + location.search);
+}
+function setGlobal(patch) {
+  const stateChanged = patch.s && patch.s !== G.s;
+  Object.assign(G, patch);
+  if (stateChanged || patch.s) M = Object.fromEntries(CONCEPTS.map(c => [c.key, makeModel(G.s)]));
+  writeHash(); applyAll();
+}
+
+const CTL = {
+  t: [["auto","Auto"],["light","Light"],["dark","Dark"]],
+  z: Object.entries(TYPE).map(([k, v]) => [k, v.label]),
+  s: Object.entries(STATES).map(([k, v]) => [k, v.label]),
+  a: [["on","Show"],["off","Hide"]],
+};
+function renderControls() {
+  document.querySelectorAll("[data-ctl]").forEach(el => {
+    const k = el.dataset.ctl;
+    el.innerHTML = CTL[k].map(([v, l]) => `<button type="button" data-ctl-k="${k}" data-ctl-v="${v}" aria-pressed="${G[k] === v}">${esc(l)}</button>`).join("");
+  });
+  const hidden = CONCEPTS.filter(c => G.hide.includes(c.key));
+  const hl = document.getElementById("hidden-list");
+  hl.innerHTML = (G.c ? `<span>Showing ${esc(CONCEPTS.find(c => c.key === G.c).name)} only.</span><button class="pagebtn" data-page="all">Show all concepts</button>` : "") +
+    (hidden.length ? `<span>Hidden:</span>` + hidden.map(c => `<button class="pagebtn" data-page="unhide" data-k="${c.key}">Show ${esc(c.name)}</button>`).join("") : "");
+}
+function buildSections() {
+  const main = document.getElementById("concepts");
+  main.innerHTML = CONCEPTS.map(c => `<section class="concept" id="concept-${c.key}" data-c="${c.key}" aria-labelledby="h-${c.key}">` +
+    `<div class="concept-head"><h2 id="h-${c.key}">${esc(c.name)}</h2>` +
+    `<button class="pagebtn" data-page="only" data-k="${c.key}">Show only this</button>` +
+    `<button class="pagebtn hide" data-page="hide" data-k="${c.key}">Hide this concept</button><p>${esc(c.text)}</p></div>` +
+    `<div class="frames">` + FRAMES.map((fr, i) => {
+      const d = DEVICES[fr.kind];
+      return `<figure class="frame-wrap" data-i="${i}"><figcaption></figcaption><div class="fit"><div class="device"${fr.focus ? ` id="focus-${c.key}"` : ""}>` +
+        `<div class="screen${fr.kind === "open" ? " open" : ""}" data-kind="${fr.kind}" data-device="${d.attr}" style="--w:${d.w}px;--h:${d.h}px"></div></div></div></figure>`;
+    }).join("") + `</div></section>`).join("");
+}
+function renderConcept(cKey) {
+  const sec = document.getElementById("concept-" + cKey);
+  sec.querySelectorAll(".frame-wrap").forEach(wrap => {
+    const fr = FRAMES[+wrap.dataset.i]; const z = fr.z || G.z; const ax = z === "ax3" || z === "ax5";
+    const f = { kind: fr.kind, z, ax };
+    wrap.querySelector("figcaption").textContent = `${DEVICES[fr.kind].name}. Text size ${TYPE[z].label}.`;
+    const scr = wrap.querySelector(".screen");
+    const keep = {}; scr.querySelectorAll(".scroll[data-k]").forEach(s => { keep[s.dataset.k] = s.scrollTop; });
+    scr.setAttribute("style", `--w:${DEVICES[fr.kind].w}px;--h:${DEVICES[fr.kind].h}px;` + typeVars(z, ax));
+    if (ax) scr.setAttribute("data-ax", ""); else scr.removeAttribute("data-ax");
+    scr.innerHTML = RENDER[cKey](M[cKey], f);
+    scr.querySelectorAll(".scroll[data-k]").forEach(s => {
+      if (keep[s.dataset.k] != null) s.scrollTop = keep[s.dataset.k];
+      if (s.classList.contains("main")) s.closest(".page").classList.toggle("scrolled", s.scrollTop > 8);
+    });
+  });
+}
+function applyAll() {
+  const root = document.documentElement;
+  if (G.t === "auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", G.t);
+  root.setAttribute("data-anno", G.a);
+  CONCEPTS.forEach(c => {
+    document.getElementById("concept-" + c.key).hidden = (G.c && G.c !== c.key) || G.hide.includes(c.key);
+    renderConcept(c.key);
+  });
+  renderControls(); fit();
+}
+function fit() {
+  document.querySelectorAll(".concept:not([hidden]) .fit").forEach(el => {
+    const dev = el.firstElementChild; dev.style.zoom = "";
+    const avail = el.closest(".frames").clientWidth; const w = dev.offsetWidth;
+    if (w > avail && avail > 0) dev.style.zoom = String(Math.max(0.3, avail / w));
+  });
+}
+
+document.addEventListener("click", e => {
+  const ctl = e.target.closest("[data-ctl-k]");
+  if (ctl) { setGlobal({ [ctl.dataset.ctlK]: ctl.dataset.ctlV }); return; }
+  const pb = e.target.closest("[data-page]");
+  if (pb) {
+    const k = pb.dataset.k;
+    if (pb.dataset.page === "hide") setGlobal({ hide: [...new Set([...G.hide, k])], c: G.c === k ? "" : G.c });
+    else if (pb.dataset.page === "unhide") setGlobal({ hide: G.hide.filter(x => x !== k) });
+    else if (pb.dataset.page === "only") setGlobal({ c: k, hide: G.hide.filter(x => x !== k) });
+    else if (pb.dataset.page === "all") setGlobal({ c: "" });
+    return;
+  }
+  const b = e.target.closest("[data-act]");
+  if (!b || !b.dataset.act || b.getAttribute("aria-disabled") === "true") return;
+  const sec = b.closest(".concept"); if (!sec) return;
+  act(sec.dataset.c, b.dataset.act, b.dataset.arg);
+});
+document.addEventListener("scroll", e => {
+  const s = e.target;
+  if (s.classList && s.classList.contains("main")) s.closest(".page").classList.toggle("scrolled", s.scrollTop > 8);
+}, true);
+window.addEventListener("resize", fit);
+window.addEventListener("hashchange", () => { const old = G.s; readHash(); if (G.s !== old) M = Object.fromEntries(CONCEPTS.map(c => [c.key, makeModel(G.s)])); applyAll(); });
+
+readHash();
+M = Object.fromEntries(CONCEPTS.map(c => [c.key, makeModel(G.s)]));
+if (!document.querySelector(".concept")) buildSections();
+applyAll();
+if (G.c) document.getElementById("concept-" + G.c).scrollIntoView();
+</script>
+</body>
+</html>

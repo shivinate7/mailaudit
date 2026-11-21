@@ -1,0 +1,709 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>First Card Guide</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle), so this page
+   draws one theme. The dark set in tokens.json belongs to the orders extension only. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Dynamic Type, Large (default), HIG typography page, read 2026-11-21. */
+  --fs-lt:34px; --fs-t2:22px; --fs-t3:20px; --fs-hd:17px; --fs-body:17px; --fs-call:16px; --fs-sub:15px; --fs-foot:13px; --fs-c1:12px; --fs-c2:11px;
+  --fs-mast:31px; /* MastheadView: title 31 relativeTo .largeTitle */
+  --new:#2E7A5E; --today:#A8443C;
+  /* The system keyboard is iOS chrome, not an app colour, so these greys sit outside the tokens (as in duo-hand-post-sender.html). */
+  --kb:#D2D0D6; --kbkey:#FFFFFF; --kbink:#111111;
+}
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) { color-scheme: light; } }
+:root[data-theme="dark"] { color-scheme: light; }
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1960px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+.intro { display:flex; flex-direction:column; gap:4px; }
+.intro h1 { font-family:var(--cochin); font-size:28px; margin:0; font-weight:700; }
+.intro p { margin:0; color:var(--inkSoft); max-width:80ch; }
+.kind { font:13px var(--mono); color:var(--ink); }
+.panel { display:flex; flex-direction:column; gap:8px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; }
+.ctlrow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.ctlrow > span { font-size:13px; color:var(--inkSoft); min-width:120px; }
+.ctlrow a, .ctlrow button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--paper); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctlrow a[aria-current="true"], .ctlrow button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctlrow button.hide { color:var(--red); }
+.ctlrow a[hidden], .ctlrow button[hidden] { display:none; }
+.stage { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+figcaption b { font-family:var(--cochin); font-size:17px; color:var(--ink); }
+.fitwrap { max-width:100%; overflow-x:auto; }
+:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+
+/* ---------- devices: 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; font-family:var(--sys); flex:none; }
+.dev.folded, .dev.ax5 { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+.dev.phone { width:402px; height:874px; }
+/* Status bar foot: unmeasured on the Duo; drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). Phone: drawn at 54 pt, an estimate. */
+.dev { --sat:max(env(safe-area-inset-top), 20px); --sab:max(env(safe-area-inset-bottom), 12px); --kbh:264px; }
+.dev.phone { --sat:max(env(safe-area-inset-top), 54px); --sab:max(env(safe-area-inset-bottom), 34px); --kbh:291px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:flex-end; padding:0 20px 2px;
+  font:600 var(--fs-c1)/1 var(--sys); z-index:9; pointer-events:none; }
+.dev.ax5 .status { font-size:12px; }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.dev.folded .page, .dev.ax5 .page, .dev.phone .page { left:0; right:0; }
+.dev.open .page.l { left:0; width:455.5px; }
+.dev.open .page.r { left:495.5px; width:455.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, transparent); z-index:8; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1px; white-space:nowrap; }
+
+/* scroll body of a page: between the status bar and the tab bar */
+.body { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; padding:12px 16px calc(var(--sab) + 96px);
+  display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); scrollbar-width:none; }
+.body::-webkit-scrollbar { display:none; }
+.body.nobar { padding-bottom:calc(var(--sab) + 16px); }
+.body.underslip { padding-bottom:calc(var(--sab) + 300px); } /* the last card scrolls clear of the slip */
+.dev.ax5 .body.underslip { padding-bottom:420px; }
+.tags-on .slot[data-tag]::before, .tags-on .slip[data-tag]::before { top:2px; }
+.body > *, .sbody > *, .ans > * { flex-shrink:0; } /* a scroll column never squeezes its children */
+/* At AX5 the sheet's bar text is capped, as the tab bar's is, so Cancel and the title never overlap; a long press would show the large content viewer. */
+.dev.ax5 .sheet .bar b, .dev.ax5 .sheet .bar button, .dev.ax5 .hand .top b, .dev.ax5 .hand .top button { font-size:22px; }
+
+/* masthead: one letterhead (masthead-is-one-letterhead) */
+.mh { display:flex; flex-direction:column; gap:4px; padding-bottom:8px; border-bottom:1px solid var(--line); flex:none; }
+.mt { font:700 var(--fs-mast)/1.15 var(--cochin); letter-spacing:4px; text-transform:uppercase; color:var(--ink); }
+.mt::after { content:""; display:block; width:56px; height:2px; background:var(--gold); margin-top:6px; }
+.tallies { display:flex; gap:16px; flex-wrap:wrap; font:var(--fs-foot)/1.3 var(--mono); color:var(--inkSoft); }
+.tallies b { color:var(--ink); font-weight:700; }
+
+/* empty and status states */
+.lone { display:flex; flex-direction:column; gap:16px; padding-top:24px; }
+.lone p { margin:0; font-size:var(--fs-t3); line-height:1.35; max-width:30ch; }
+.lone .soft { color:var(--inkSoft); font-size:var(--fs-sub); }
+.btn { font:600 var(--fs-hd)/1.2 var(--sys); min-height:50px; min-width:44px; padding:12px 20px; border-radius:999px; border:1px solid var(--accent);
+  background:var(--accent); color:var(--card); cursor:pointer; align-self:flex-start; }
+.btn.quiet { background:transparent; color:var(--accent); border-color:var(--line); }
+.btn.link { background:transparent; border:0; color:var(--accent); padding:12px 4px; }
+.btns { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.rule-progress { height:2px; background:var(--line); position:relative; overflow:hidden; max-width:260px; }
+.rule-progress i { position:absolute; left:0; top:0; bottom:0; width:62%; background:var(--accent); }
+details.machine { font-size:var(--fs-foot); color:var(--inkSoft); font-family:var(--sys); }
+details.machine summary { min-height:44px; display:flex; align-items:center; cursor:pointer; }
+details.machine pre { margin:0; font:var(--fs-c1)/1.4 var(--mono); white-space:pre-wrap; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px; }
+
+/* package card (Today: PackagesView card) */
+.list { display:flex; flex-direction:column; gap:8px; }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; position:relative; }
+.pkg .head { display:grid; grid-template-columns:1fr auto; gap:2px 8px; padding:12px 12px 14px; min-height:64px; width:100%; text-align:left; background:none; border:0; font:inherit; color:inherit; cursor:pointer; }
+.pkg .seller { font:700 var(--fs-hd)/1.25 var(--cochin); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.pkg .val { font:var(--fs-foot)/1.3 var(--mono); color:var(--ink); text-align:right; }
+.pkg .meta { font:var(--fs-c1)/1.3 var(--mono); color:var(--inkSoft); grid-column:1 / -1; }
+.pkg .bar { position:absolute; left:12px; right:12px; bottom:6px; height:3px; background:var(--line); border-radius:2px; overflow:hidden; }
+.pkg .bar i { display:block; height:100%; background:var(--accent); }
+.pkg.done .bar i { background:var(--green); }
+.lines { border-top:1px solid var(--line); }
+.ln { display:flex; align-items:center; gap:8px; min-height:56px; padding:4px 12px 4px 4px; border-top:1px solid var(--line); }
+.ln:first-child { border-top:0; }
+.ln .box { flex:none; width:44px; height:44px; display:grid; place-items:center; background:none; border:0; cursor:pointer; padding:0; }
+.ln .box i { width:28px; height:28px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; position:relative; background:var(--card); }
+.ln.done { background:var(--greenSoft); }
+.ln.done .box i { background:var(--green); border-color:var(--green); }
+.ln.done .box i::after { content:""; position:absolute; left:8px; top:3px; width:8px; height:14px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.ln .lt { flex:1; min-width:0; display:flex; flex-direction:column; }
+.ln .lt b { font:600 var(--fs-body)/1.25 var(--cochin); }
+.ln .lt small { font:var(--fs-c1)/1.3 var(--cochin); color:var(--inkSoft); }
+.ln .pr { font:var(--fs-foot)/1 var(--mono); color:var(--inkSoft); }
+.ln .held { font:var(--fs-c2)/1.2 var(--mono); color:var(--manilaInk); background:var(--manila); border-radius:4px; padding:2px 6px; }
+
+/* the target ring: outline, so it takes no space (no-layout-shift-under-pointer); inset, so it stays inside its page */
+.ring { outline:3px solid var(--accent); outline-offset:-3px; border-radius:8px; }
+.ring-pulse { animation:ring 1600ms ease-in-out 2; }
+@keyframes ring { 50% { outline-color:color-mix(in srgb, var(--accent) 35%, transparent); } }
+
+/* system tab bar, iOS 26 floating glass (Today: RootView / DuoSpine bar). Height drawn at 64 pt, an estimate; a DuoShellUITests comment caps it at 76 pt. */
+.tb { position:absolute; left:16px; right:16px; bottom:var(--sab); height:64px; border-radius:999px; display:grid; grid-template-columns:repeat(4, 1fr);
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(16px) saturate(1.4); -webkit-backdrop-filter:blur(16px) saturate(1.4);
+  border:1px solid var(--line); box-shadow:0 4px 16px color-mix(in srgb, var(--ink) 10%, transparent); z-index:6; padding:4px; }
+.tb button { font:600 10px/1.1 var(--sys); color:var(--ink); background:none; border:0; border-radius:999px; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; gap:3px; min-height:44px; cursor:pointer; position:relative; }
+.tb button[aria-current="page"] { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+.tb svg { width:22px; height:22px; stroke:currentColor; fill:none; stroke-width:1.6; stroke-linecap:round; stroke-linejoin:round; }
+.tb .slot-dot { position:absolute; top:6px; right:calc(50% - 18px); width:8px; height:8px; border-radius:50%; background:var(--gold); }
+
+/* sheet (iOS sheet: Cancel leading, title centred) */
+.scrim { position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 28%, transparent); z-index:10; }
+.sheet { position:absolute; left:0; right:0; bottom:0; top:calc(var(--sat) + 10px); background:var(--paper); border-radius:16px 16px 0 0; z-index:11;
+  display:flex; flex-direction:column; box-shadow:0 -2px 16px color-mix(in srgb, var(--ink) 18%, transparent); }
+.sheet .bar { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; min-height:56px; padding:0 8px; border-bottom:1px solid var(--line); }
+.sheet .bar b { font:600 var(--fs-hd)/1.2 var(--sys); }
+.sheet .bar button { justify-self:start; font:var(--fs-hd)/1 var(--sys); color:var(--accent); background:none; border:0; min-height:44px; min-width:44px; padding:0 8px; cursor:pointer; }
+.sheet .sbody { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:16px; font-family:var(--cochin); }
+.sheet .lead { margin:0; font-size:var(--fs-body); line-height:1.4; }
+.group { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.row { display:flex; align-items:center; gap:12px; min-height:60px; padding:8px 12px; border-top:1px solid var(--line); width:100%; background:none; border-left:0; border-right:0; border-bottom:0;
+  font:inherit; color:inherit; text-align:left; cursor:pointer; }
+.group > .row:first-child { border-top:0; }
+.row .rt { flex:1; display:flex; flex-direction:column; gap:2px; }
+.row .rt b { font:600 var(--fs-body)/1.25 var(--cochin); }
+.row .rt small { font:var(--fs-foot)/1.3 var(--cochin); color:var(--inkSoft); }
+.row .chev { color:var(--inkSoft); font:var(--fs-body) var(--sys); }
+.row[aria-disabled="true"] { cursor:default; }
+.row .val { font:var(--fs-foot) var(--mono); color:var(--inkSoft); }
+.glabel { font:600 var(--fs-foot)/1.3 var(--sys); color:var(--inkSoft); padding:0 4px; }
+.steps { margin:0; padding-left:24px; display:flex; flex-direction:column; gap:8px; font-size:var(--fs-body); line-height:1.4; }
+.qr { width:160px; height:160px; align-self:center; background:
+  repeating-linear-gradient(90deg, var(--ink) 0 8px, transparent 8px 20px), repeating-linear-gradient(0deg, var(--card) 0 12px, transparent 12px 20px);
+  border:8px solid var(--card); outline:1px solid var(--line); display:grid; place-items:center; }
+.qr span { background:var(--card); font:600 11px var(--mono); color:var(--ink); padding:4px 6px; border-radius:4px; }
+.cam { position:relative; height:260px; width:100%; border:0; padding:0; cursor:pointer; border-radius:12px; background:var(--ink); display:grid; place-items:center; overflow:hidden; }
+.cam .frame { width:170px; height:170px; border:3px solid var(--card); border-radius:16px; display:grid; place-items:center; }
+.cam .frame .qr { width:130px; height:130px; border-width:6px; }
+.cam p { position:absolute; bottom:8px; left:0; right:0; margin:0; text-align:center; color:var(--card); font:var(--fs-foot) var(--sys); }
+.file { display:flex; align-items:center; gap:12px; }
+.file .ic { width:36px; height:44px; border:1.5px solid var(--inkSoft); border-radius:4px; display:grid; place-items:end center; font:9px var(--mono); color:var(--inkSoft); padding-bottom:4px; flex:none; }
+
+/* ---------- concept: Margin note — a manila slip tucked into the ledger ---------- */
+.slip { position:absolute; left:12px; right:12px; bottom:calc(var(--sab) + 76px); height:188px; z-index:7; background:var(--manila); color:var(--ink);
+  border-radius:4px 4px 12px 4px; box-shadow:0 6px 18px color-mix(in srgb, var(--ink) 16%, transparent); padding:12px 14px; display:flex; flex-direction:column; gap:8px;
+  font-family:var(--cochin); transform:rotate(-0.6deg); }
+.slip::before { content:""; position:absolute; left:28px; top:-7px; width:54px; height:14px; background:color-mix(in srgb, var(--card) 70%, transparent); transform:rotate(-3deg); border-radius:2px; }
+.slip .sh { display:flex; justify-content:space-between; align-items:baseline; gap:8px; }
+.slip .count { font:var(--fs-c1) var(--mono); color:var(--manilaInk); }
+.slip .term { font:700 var(--fs-t3)/1.2 var(--cochin); }
+.slip p { margin:0; font-size:var(--fs-body); line-height:1.35; flex:1; overflow-y:auto; }
+.slip .btns { gap:4px; }
+.slip .btn { min-height:44px; padding:8px 16px; font-size:var(--fs-sub); }
+.slip .btn.link { color:var(--manilaInk); }
+.slip.leaving { animation:tuck 520ms cubic-bezier(.5,0,.75,0) forwards; }
+@keyframes tuck { to { transform:translate(-38%, 210px) scale(.12) rotate(-8deg); opacity:0; } }
+/* open Duo: the slip becomes the left page itself, a letter beside the work */
+.letter { display:flex; flex-direction:column; gap:16px; padding-top:8px; }
+.letter .term { font:700 var(--fs-t2)/1.2 var(--cochin); }
+.letter p { margin:0; font-size:var(--fs-body); line-height:1.45; max-width:34ch; }
+.letter .count { font:var(--fs-c1) var(--mono); color:var(--manilaInk); }
+.leaf { background:var(--manila); border-radius:4px 4px 16px 4px; padding:20px; display:flex; flex-direction:column; gap:12px; box-shadow:0 6px 18px color-mix(in srgb, var(--ink) 12%, transparent); min-height:300px; }
+.gloss { display:grid; grid-template-columns:auto 1fr; gap:8px 12px; font-size:var(--fs-sub); line-height:1.35; }
+.gloss dt { font-weight:700; } .gloss dd { margin:0; color:var(--inkSoft); }
+.gloss dt.dim, .gloss dd.dim { opacity:.45; }
+
+/* ---------- concept: Envelope in hand ---------- */
+.hand { position:absolute; inset:0; display:flex; flex-direction:column; font-family:var(--cochin); }
+.hand .top { flex:none; display:flex; justify-content:space-between; align-items:center; min-height:44px; padding:calc(var(--sat) + 4px) 8px 0 16px; }
+.hand .top b { font:600 var(--fs-hd) var(--sys); }
+.hand .top button { font:var(--fs-hd) var(--sys); color:var(--accent); background:none; border:0; min-height:44px; padding:0 8px; cursor:pointer; }
+.hand .slot { flex:none; height:128px; margin:4px 16px 0; padding:10px 12px; background:var(--manila); border-radius:8px; display:flex; flex-direction:column; gap:4px; overflow-y:auto; }
+.hand .slot .count { font:var(--fs-c1) var(--mono); color:var(--manilaInk); }
+.hand .slot p { margin:0; font-size:var(--fs-body); line-height:1.3; }
+.hand .slot .btns { gap:4px; }
+.hand .slot .btn { min-height:44px; padding:6px 14px; font-size:var(--fs-sub); }
+.hand .ans { flex:1; overflow-y:auto; padding:12px 16px; display:flex; flex-direction:column; gap:8px; scrollbar-width:none; }
+.hand .ans::-webkit-scrollbar { display:none; }
+.hand .fieldrow { flex:none; padding:8px 16px; display:flex; gap:8px; align-items:center; }
+.field { flex:1; height:48px; border:1px solid var(--accent); background:var(--card); border-radius:999px; padding:0 16px; font:16px var(--cochin); color:var(--ink); min-width:0; }
+.field::placeholder { color:var(--inkSoft); }
+.chip { font:var(--fs-c2) var(--mono); background:var(--manila); color:var(--manilaInk); border-radius:999px; padding:4px 8px; white-space:nowrap; }
+.keys { flex:none; height:var(--kbh); background:var(--kb); padding:8px 4px; display:flex; flex-direction:column; gap:10px; }
+.keys .r { display:flex; gap:5px; justify-content:center; }
+.keys .k { height:42px; flex:0 1 38px; background:var(--kbkey); border-radius:6px; display:grid; place-items:center; font:18px var(--sys); color:var(--kbink); }
+.keys .k.w { flex:0 1 220px; font-size:14px; }
+.keys .k.m { flex:0 1 60px; font-size:14px; }
+.env { display:flex; gap:12px; align-items:center; }
+.env svg { width:64px; height:44px; flex:none; }
+.env p { margin:0; font-size:var(--fs-sub); color:var(--inkSoft); }
+.cand { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; gap:2px; }
+.cand b { font:600 var(--fs-body)/1.2 var(--cochin); } .cand small { font:var(--fs-c1) var(--mono); color:var(--inkSoft); }
+.anshead { font:600 var(--fs-foot)/1.3 var(--sys); color:var(--inkSoft); }
+.others { font-size:var(--fs-foot); color:var(--inkSoft); margin:0; }
+/* open Duo: keys span both pages (duo-card-in-hand, keys across the fold, item 22); panel drawn from y 405 (duo-fold-and-keyboard, debt duo-keyboard-gap-unmeasured) */
+.dev.open .okeys { position:absolute; left:0; right:0; top:405px; bottom:0; z-index:9; background:var(--kb); padding:8px 6px; display:flex; flex-direction:column; gap:10px; }
+.dev.open .okeys .r { display:flex; gap:6px; justify-content:center; }
+.dev.open .okeys .k { height:42px; flex:0 0 42px; background:var(--kbkey); border-radius:6px; display:grid; place-items:center; font:18px var(--sys); color:var(--kbink); }
+.dev.open .okeys .k.w { flex-basis:300px; font-size:14px; }
+
+/* ---------- Ledger tab ---------- */
+.ledger h2 { font:700 var(--fs-lt)/1.15 var(--sys); margin:4px 0 0; }
+
+/* ---------- tags: dashed outline on what exists today, and on what an option adds ---------- */
+:where([data-tag]) { position:relative; } /* zero specificity: an absolutely placed part (the bar, the slip) keeps its own position */
+.tags-on [data-tag]::before { content:attr(data-tag); position:absolute; right:6px; top:-9px; font:600 10px/14px var(--sys); padding:0 4px; background:var(--paper);
+  z-index:5; white-space:nowrap; pointer-events:none; letter-spacing:0; text-transform:none; transform:none; }
+.tags-on .tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tags-on .tag-new::before { color:var(--new); }
+.tags-on .tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tags-on .tag-today::before { color:var(--today); }
+.tags-on .tb[data-tag]::before { top:-16px; }
+.tags-on .ring.tag-today { outline:3px solid var(--accent); outline-offset:-3px; }
+
+/* ---------- AX5, the largest accessibility size (HIG typography, AX5 table, read 2026-11-21) ---------- */
+.dev.ax5 { --fs-lt:60px; --fs-t2:56px; --fs-t3:55px; --fs-hd:53px; --fs-body:53px; --fs-call:51px; --fs-sub:49px; --fs-foot:44px; --fs-c1:43px; --fs-c2:40px;
+  --fs-mast:55px; /* 31 x 60/34, relativeTo .largeTitle */ }
+.dev.ax5 .pkg .seller { white-space:normal; }
+.dev.ax5 .pkg .head { grid-template-columns:1fr; }
+.dev.ax5 .pkg .val { text-align:left; }
+.dev.ax5 .ln { flex-wrap:wrap; }
+.dev.ax5 .ln .lt { flex-basis:300px; }
+/* At AX5 the slip cannot hold a fixed height; it takes the lower half as its own scroll region, so the list keeps the upper half. */
+.dev.ax5 .slip { height:auto; top:300px; transform:none; overflow-y:auto; }
+.dev.ax5 .slip p { overflow:visible; flex:none; }
+.dev.ax5 .slip .btns { flex-direction:column; align-items:stretch; }
+.dev.ax5 .btn { align-self:stretch; }
+.dev.ax5 .hand .slot { height:auto; overflow:visible; }
+.dev.ax5 .lone p { max-width:none; }
+.dev.ax5 .tb button { font-size:10px; } /* the bar labels stop growing at the default size (duo-card-in-hand, tab bar text) */
+.dev.ax5 .mt { letter-spacing:2px; }
+.dev.ax5 .tallies { flex-direction:column; gap:4px; }
+
+@media (prefers-reduced-motion: reduce) { .slip.leaving { animation:none; opacity:0; } .ring-pulse { animation:none; } }
+@media (forced-colors: active) { .ring { outline-color:Highlight; } .ln .box i { border-color:CanvasText; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner" role="note">Sample. No figure, seller, card, order or count on this page is real, and the code drawn is a placeholder that holds no key.</div>
+
+<section class="intro">
+  <h1>First card guide</h1>
+  <p class="kind">Designer kind: directed. Direction: guided first card: walk through one real card, then step away.</p>
+  <p>The first minute of MANIFEST on a phone: bring the orders in, meet one real card from them, tick it, and the guide leaves. Every frame below runs the same state, so a tap in any frame moves them all. Light only: the native app is held to light.</p>
+</section>
+
+<section class="panel" aria-label="Mockup controls">
+  <div class="ctlrow" id="concepts"><span>Concept</span>
+    <a href="#c=margin&s=m1" data-c="margin">Margin note</a>
+    <a href="#c=hand&s=h1" data-c="hand">Envelope in hand</a>
+    <button type="button" class="hide" data-hide="margin">Hide Margin note</button>
+    <button type="button" class="hide" data-hide="hand">Hide Envelope in hand</button>
+  </div>
+  <div class="ctlrow" id="routes"><span>Orders reach the phone</span>
+    <a href="#r=code&s=route" data-r="code">Code from the computer</a>
+    <a href="#r=file&s=route" data-r="file">Open the file here</a>
+    <button type="button" class="hide" data-hide="code">Hide Code from the computer</button>
+    <button type="button" class="hide" data-hide="file">Hide Open the file here</button>
+  </div>
+  <div class="ctlrow" id="stepnav"><span>State</span></div>
+  <div class="ctlrow"><span>Show</span>
+    <button type="button" id="tagsbtn" aria-pressed="true">Today / New tags</button>
+    <button type="button" id="resetbtn">Start over</button>
+  </div>
+</section>
+
+<div class="stage" id="stage">
+  <figure><div class="fitwrap"><div class="dev folded" data-device="iphone-duo-folded" id="f-folded" aria-label="iPhone Duo folded, 466 by 678 points"></div></div>
+    <figcaption><b>Duo, folded.</b> 466 x 678 pt, one page, one hand.</figcaption></figure>
+  <figure><div class="fitwrap"><div class="dev open" data-device="iphone-duo-unfolded" id="f-open" aria-label="iPhone Duo open, 951 by 669 points"></div></div>
+    <figcaption><b>Duo, open.</b> 951 x 669 pt. Two pages; the hinge strip x 455.5 to 495.5 holds nothing.</figcaption></figure>
+  <figure><div class="fitwrap"><div class="dev phone" data-device="iphone-large" id="f-phone" aria-label="Large iPhone, 402 by 874 points"></div></div>
+    <figcaption><b>Large phone.</b> 402 x 874 pt: a size this page chose; no record gives one.</figcaption></figure>
+  <figure><div class="fitwrap"><div class="dev ax5" data-device="iphone-duo-folded-ax5" id="f-ax5" aria-label="iPhone Duo folded at the largest accessibility text size"></div></div>
+    <figcaption><b>Duo, folded, AX5.</b> The largest accessibility text size. Body 53 pt.</figcaption></figure>
+</div>
+</main>
+
+<script>
+"use strict";
+/* ---------------- sample data (no real seller, card or order) ---------------- */
+const PKGS = [
+  { id:"p1", seller:"Riverbend Cards", date:"3 Nov", lines:[
+    { k:"p1a", name:"Counterspell", set:"Mystery Booster", price:"0.89" },
+    { k:"p1b", name:"Llanowar Elves", set:"Dominaria", price:"0.25" },
+    { k:"p1c", name:"Swords to Plowshares", set:"Eternal Masters", price:"1.49" },
+    { k:"p1d", name:"Brainstorm", set:"Masters 25", price:"0.49" } ] },
+  { id:"p2", seller:"Owl and Oak Games", date:"4 Nov", lines:[
+    { k:"p2a", name:"Lightning Bolt", set:"Magic 2010", price:"0.42" },
+    { k:"p2b", name:"Thought Scour", set:"Modern Horizons", price:"0.26" } ] },
+  { id:"p3", seller:"Copper Kettle TCG", date:"6 Nov", lines:[
+    { k:"p3a", name:"Lightning Bolt", set:"Magic 2010", price:"0.39" },
+    { k:"p3b", name:"Opt", set:"Dominaria", price:"0.12" },
+    { k:"p3c", name:"Ponder", set:"Magic 2012", price:"0.35" } ] },
+  { id:"p4", seller:"Mint Lantern", date:"8 Nov", lines:[ { k:"p4a", name:"Sakura-Tribe Elder", set:"Commander Legends", price:"0.31" } ] },
+  { id:"p5", seller:"Northgate Hobbies", date:"9 Nov", lines:[
+    { k:"p5a", name:"Path to Exile", set:"Conflux", price:"2.10" }, { k:"p5b", name:"Fatal Push", set:"Aether Revolt", price:"1.05" },
+    { k:"p5c", name:"Dark Ritual", set:"Tempest", price:"0.44" } ] },
+  { id:"p6", seller:"Fable Street Cards", date:"11 Nov", lines:[
+    { k:"p6a", name:"Rampant Growth", set:"Core 2020", price:"0.22" }, { k:"p6b", name:"Cultivate", set:"Magic 2011", price:"0.29" } ] },
+];
+const DAY_PKGS = PKGS.concat([
+  { id:"p7", seller:"Harbor Lights Cards", date:"12 Nov", lines:[{k:"p7a",name:"Duress",set:"Urza's Saga",price:"0.18"},{k:"p7b",name:"Thoughtseize",set:"Lorwyn",price:"9.80"}] },
+  { id:"p8", seller:"Saltmarsh Games", date:"13 Nov", lines:[{k:"p8a",name:"Giant Growth",set:"Alpha Reprint",price:"0.15"}] },
+  { id:"p9", seller:"Bramble and Thorn", date:"13 Nov", lines:[{k:"p9a",name:"Arcane Signet",set:"Commander",price:"0.60"},{k:"p9b",name:"Sol Ring",set:"Commander",price:"1.10"}] },
+]);
+const FIRST = { cards:412, pkgs:63, sellers:41, value:"318.40" };
+const DAY = { cards:1936, out:1511, pkgs:268, sellers:97, value:"1,204.77", inValue:"262.15" };
+
+/* ---------------- state ---------------- */
+const STEPS = {
+  common: [["empty","Empty"],["bring","Bring in orders"],["route","Route screen"],["arriving","Reading"],["failed","Failed"],["summary","Summary"]],
+  margin: [["m1","Guide 1: package"],["m2","Guide 2: card"],["m3","Guide 3: ticked"],["away","Stepped away"],["ledger","Ledger: guide again"],["day","A day later"]],
+  hand:   [["h1","Guide 1: type"],["h2","Guide 2: found"],["tie","Two packages"],["none","No order"],["h3","Guide 3: ticked"],["away","Stepped away"],["ledger","Ledger: guide again"],["day","A day later"]],
+};
+const S = { c:"margin", s:"empty", r:"code", pick:0, typed:"", held:"", ticks:{}, tab:"packages", openPkg:"", leaving:false, hidden:new Set(), tags:true };
+
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get("c") && ["margin","hand"].includes(h.get("c"))) S.c = h.get("c");
+  if (h.get("r") && ["code","file"].includes(h.get("r"))) S.r = h.get("r");
+  if (h.get("s")) S.s = h.get("s");
+  // A deep link sets the state it names, with the sample input that state needs.
+  S.leaving = false; S.tab = S.s === "ledger" ? "ledger" : "packages";
+  if (S.s === "m1") { S.openPkg = ""; S.ticks = {}; S.pick = 0; }
+  if (S.s === "m2") { S.openPkg = PKGS[S.pick].id; S.ticks = {}; }
+  if (S.s === "m3") { S.openPkg = PKGS[S.pick].id; S.ticks = { [PKGS[S.pick].lines[0].k]: true }; }
+  if (S.s === "h1") { S.typed = ""; S.held = ""; S.ticks = {}; }
+  if (S.s === "h2") { if (!S.typed || matches(S.typed).length !== 1) S.typed = "Counterspell"; S.ticks = {}; }
+  if (S.s === "tie") { S.typed = "Lightning Bolt"; S.ticks = {}; }
+  if (S.s === "none") { S.typed = "Mox Opal"; S.ticks = {}; }
+  if (S.s === "h3") { if (!S.typed || matches(S.typed).length !== 1) S.typed = "Counterspell"; const m = matches(S.typed)[0]; S.ticks = { [m.line.k]: true }; }
+  if (["away","day","ledger"].includes(S.s) && !Object.keys(S.ticks).length) S.ticks = { p1a:true };
+  if (["away","day"].includes(S.s)) S.openPkg = S.c === "margin" ? PKGS[S.pick].id : "p1";
+  if (!validStep(S.s)) S.s = "empty";
+}
+function validStep(s) { return STEPS.common.concat(STEPS[S.c]).some(([k]) => k === s); }
+function go(patch) {
+  Object.assign(S, patch);
+  const p = new URLSearchParams({ c:S.c, s:S.s, r:S.r });
+  history.replaceState(null, "", "#" + p.toString());
+  render();
+}
+function matches(q) {
+  q = q.trim().toLowerCase(); if (q.length < 3) return [];
+  const out = [];
+  PKGS.forEach(p => p.lines.forEach(l => { if (l.name.toLowerCase().includes(q)) out.push({ pkg:p, line:l }); }));
+  return out;
+}
+function handStep() { // the hand concept's step follows what is typed
+  const m = matches(S.typed);
+  if (S.typed.trim().length < 3) return "h1";
+  if (m.length === 0) return "none";
+  if (m.length > 1) return "tie";
+  return S.ticks[m[0].line.k] ? "h3" : "h2";
+}
+
+/* ---------------- pieces ---------------- */
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;" }[c]));
+const ICON = {
+  ledger:'<svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/></svg>',
+  orphaned:'<svg viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  tally:'<svg viewBox="0 0 24 24"><path d="M9 3L7 21M17 3l-2 18M4 9h17M3 15h17"/></svg>',
+  packages:'<svg viewBox="0 0 24 24"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>',
+};
+function tabbar(opts = {}) {
+  const t = opts.tab || S.tab;
+  const tabs = [["ledger","Ledger"],["orphaned","Orphaned"],["tally","Tally"],["packages","Packages"]];
+  return `<nav class="tb ${S.tags ? "tag-today" : ""}" data-tag="Today: system tab bar" aria-label="Tabs">${tabs.map(([k,l]) =>
+    `<button type="button" data-act="tab" data-tab="${k}" ${t===k ? 'aria-current="page"' : ""}>${ICON[k]}<span>${l}</span>${k==="ledger" && opts.dot ? '<i class="slot-dot" aria-hidden="true"></i>' : ""}</button>`).join("")}</nav>`;
+}
+function status() { return `<div class="status" aria-hidden="true"><span>9:41</span><span>100%</span></div>`; }
+function tag(kind, text) { return S.tags ? `class="tag-${kind}" data-tag="${kind === "new" ? "New" : "Today"}: ${esc(text)}"` : ""; }
+function masthead(kind) {
+  let t = "";
+  // Today's tally cells, as Masthead.swift builds them: cards have/total, packages done/n, value in/all.
+  if (kind === "first") t = `<div class="tallies"><span><b>${countTicks()}/${FIRST.cards}</b> cards</span><span><b>0/${FIRST.pkgs}</b> packages</span><span><b>$${inValue()}/$${FIRST.value}</b> value</span></div>`;
+  if (kind === "day") t = `<div class="tallies"><span><b>${(DAY.cards - DAY.out).toLocaleString()}/${DAY.cards.toLocaleString()}</b> cards</span><span><b>71/${DAY.pkgs}</b> packages</span><span><b>$${DAY.inValue}/$${DAY.value}</b> value</span></div>`;
+  return `<header class="mh" ${tag("today","masthead")}><div class="mt">Manifest</div>${t}</header>`;
+}
+function inValue() { // the value received grows by each ticked card's price
+  let v = 0;
+  PKGS.forEach(p => p.lines.forEach(l => { if (S.ticks[l.k]) v += parseFloat(l.price); }));
+  return v.toFixed(2);
+}
+function countTicks() { return Object.values(S.ticks).filter(Boolean).length; }
+function pkgCard(p, o = {}) {
+  const got = p.lines.filter(l => S.ticks[l.k]).length, n = p.lines.length;
+  const owed = p.lines.filter(l => !S.ticks[l.k]).reduce((a, l) => a + parseFloat(l.price), 0).toFixed(2);
+  const open = o.open;
+  const ringed = o.ring ? " ring" : "";
+  const lines = open ? `<div class="lines">${p.lines.map(l => lineRow(l, o.ringLine === l.k, o.held)).join("")}</div>` : "";
+  return `<article class="pkg${got===n ? " done" : ""}${ringed}" id="${o.idp || ""}${p.id}">
+    <button type="button" class="head" data-act="openpkg" data-p="${p.id}" aria-expanded="${open ? "true" : "false"}">
+      <span class="seller">${esc(p.seller)}</span><span class="val">$${owed}</span>
+      <span class="meta">Ordered ${p.date}, ${got} of ${n} card${n>1?"s":""} in</span></button>
+    ${lines}<div class="bar" aria-hidden="true"><i style="width:${Math.round(got/n*100)}%"></i></div></article>`;
+}
+function lineRow(l, ring, held) {
+  const d = !!S.ticks[l.k];
+  return `<div class="ln${d ? " done" : ""}${ring ? " ring" : ""}">
+    <button type="button" class="box" data-act="tick" data-k="${l.k}" aria-pressed="${d}" aria-label="${d ? "Untick" : "Tick"} ${esc(l.name)}"><i></i></button>
+    <span class="lt"><b>${esc(l.name)}</b><small>${esc(l.set)}</small></span>
+    ${held === l.name ? '<span class="held">held</span>' : ""}<span class="pr">$${l.price}</span></div>`;
+}
+
+/* ---------------- shared screens (both concepts) ---------------- */
+function emptyBody() {
+  return `${masthead()}<div class="lone" ${tag("new","empty state")}>
+    <p>MANIFEST ticks off your card orders as the mail comes in. It starts with your order file.</p>
+    <button type="button" class="btn" data-act="go" data-s="bring">Bring in orders</button></div>`;
+}
+function arrivingBody() {
+  return `${masthead()}<div class="lone" ${tag("new","reading state")} role="status">
+    <p>Reading your orders.</p><div class="rule-progress" aria-hidden="true"><i></i></div>
+    <span class="soft">257 lines so far. Nothing here is replaced; new lines are added.</span></div>`;
+}
+function failedBody() {
+  const again = S.r === "file" ? "Pick another file" : "Scan again";
+  return `${masthead()}<div class="lone" ${tag("new","failed state")} role="alert">
+    <p>That file is not an OrderWand order export, so nothing came in. Nothing in MANIFEST changed.</p>
+    <button type="button" class="btn" data-act="go" data-s="route">${again}</button>
+    <details class="machine"><summary>What the file held</summary><pre>First row: Date,Description,Amount
+No column named "Order Number".</pre></details></div>`;
+}
+function summaryBody() {
+  return `${masthead("first")}<div class="lone" ${tag("new","import summary")} role="status">
+    <p>${FIRST.cards} cards came in: ${FIRST.pkgs} packages from ${FIRST.sellers} sellers.</p>
+    <span class="soft">Nothing was removed. Bringing the file in again only adds what is new.</span>
+    <div class="btns"><button type="button" class="btn" data-act="go" data-s="${S.c === "margin" ? "m1" : "h1"}" id="opt-start">Show me one card</button>
+    <button type="button" class="btn link" data-act="skip">Skip the guide</button></div></div>`;
+}
+function bringSheet() {
+  const rows = [];
+  if (!S.hidden.has("code")) rows.push(`<button type="button" class="row" data-act="route" data-r="code" id="row-route-code" ${tag("new","Code from the computer")}>
+      <span class="rt"><b>From my computer</b><small>Open MANIFEST there, drop the file in, then scan the code it shows.</small></span><span class="chev">›</span></button>`);
+  if (!S.hidden.has("file")) rows.push(`<button type="button" class="row" data-act="route" data-r="file" id="row-route-file" ${tag("new","Open the file here")}>
+      <span class="rt"><b>From a file on this phone</b><small>Send the file to this phone first, by AirDrop or Files.</small></span><span class="chev">›</span></button>`);
+  return `<div class="scrim" data-act="go" data-s="empty"></div><section class="sheet" role="dialog" aria-modal="true" aria-label="Bring in orders">
+    <div class="bar"><button type="button" data-act="go" data-s="empty">Cancel</button><b>Bring in orders</b><span></span></div>
+    <div class="sbody"><p class="lead">Your orders come from the CSV file OrderWand saves. Where is it?</p>
+    <div class="group">${rows.join("")}</div>
+    <p class="lead" style="font-size:var(--fs-foot);color:var(--inkSoft)">Already use MANIFEST on a computer? The same code brings that ledger here.</p></div></section>`;
+}
+function routeSheet() {
+  if (S.r === "file" && !S.hidden.has("file")) return `<div class="scrim"></div><section class="sheet" role="dialog" aria-modal="true" aria-label="Pick the order file" id="opt-route-file">
+    <div class="bar"><button type="button" data-act="go" data-s="bring">Cancel</button><b>Recents</b><span></span></div>
+    <div class="sbody" style="font-family:var(--sys)"><div class="group">
+      <button type="button" class="row" data-act="go" data-s="arriving"><span class="file"><span class="ic">CSV</span><span class="rt"><b style="font-family:var(--sys)">OrderWand export.csv</b><small style="font-family:var(--sys)">Today, 48 KB</small></span></span></button>
+      <button type="button" class="row" data-act="go" data-s="failed"><span class="file"><span class="ic">CSV</span><span class="rt"><b style="font-family:var(--sys)">bank statement.csv</b><small style="font-family:var(--sys)">Yesterday, 12 KB</small></span></span></button>
+    </div><p style="margin:0;font-size:var(--fs-foot);color:var(--inkSoft)">The system file picker (Today: iOS). MANIFEST reads the file and keeps no copy of it.</p></div></section>`;
+  return `<div class="scrim"></div><section class="sheet" role="dialog" aria-modal="true" aria-label="Scan the code" id="opt-route-code">
+    <div class="bar"><button type="button" data-act="go" data-s="bring">Cancel</button><b>From my computer</b><span></span></div>
+    <div class="sbody"><ol class="steps"><li>On the computer, open the MANIFEST page and drop the file onto it.</li><li>It shows a code. Point this camera at it.</li></ol>
+    <button type="button" class="cam" data-act="go" data-s="arriving" aria-label="Camera view. In this mockup, a tap finds the code."><span class="frame"><span class="qr"><span>sample</span></span></span><p>Hold the code inside the square</p></button></div></section>`;
+}
+
+/* ---------------- Margin note ---------------- */
+const SLIP = {
+  m1: p => ({ term:"A package", text:`One seller's order, as the post brings it. This one is your oldest: ${esc(p.seller)}, ordered ${p.date}. Tap it to open.` }),
+  m2: p => ({ term:"A card", text:`Each line is one card in that package. When ${esc(p.lines[0].name)} is in your hand, tick its box.` }),
+  m3: p => ({ term:"Ticked", text:`Tap the box again to untick it; nothing is lost. Mail that shows no sender is an envelope: file it under Orphaned.` }),
+};
+function slip(step, frame) {
+  const p = PKGS[S.pick]; const d = SLIP[step](p); const n = step.slice(1);
+  let acts = "";
+  if (step === "m1") acts = `<button type="button" class="btn link" data-act="another">Not here yet: show another</button><button type="button" class="btn link" data-act="skip">Skip the guide</button>`;
+  if (step === "m2") acts = `<button type="button" class="btn link" data-act="another">Not in my mail yet</button><button type="button" class="btn link" data-act="skip">Skip the guide</button>`;
+  if (step === "m3") acts = `<button type="button" class="btn" data-act="done">Done</button>`;
+  return `<aside class="slip${S.leaving ? " leaving" : ""}" id="opt-margin" ${tag("new","the guide slip")} aria-live="polite" aria-label="Guide">
+    <div class="sh"><span class="term">${d.term}</span><span class="count">${n} of 3</span></div><p>${d.text}</p><div class="btns">${acts}</div></aside>`;
+}
+function marginList(step) {
+  const p = PKGS[S.pick];
+  return `<div class="list" ${tag("today","Packages list")}>${PKGS.map(q => pkgCard(q, {
+    open: S.openPkg === q.id, ring: step === "m1" && q.id === p.id, ringLine: step === "m2" && q.id === p.id ? p.lines[0].k : "" })).join("")}</div>`;
+}
+function marginLetter(step) { // the open Duo's left page
+  const p = PKGS[S.pick]; const d = SLIP[step](p); const n = +step.slice(1);
+  const g = [["Package","One seller's order."],["Card","One line in it."],["Envelope","The mail in your hand. With no sender, it goes to Orphaned."]];
+  let acts = "";
+  if (step === "m1") acts = `<button type="button" class="btn link" data-act="another">Not here yet: show another</button><button type="button" class="btn link" data-act="skip">Skip the guide</button>`;
+  if (step === "m2") acts = `<button type="button" class="btn link" data-act="another">Not in my mail yet</button><button type="button" class="btn link" data-act="skip">Skip the guide</button>`;
+  if (step === "m3") acts = `<button type="button" class="btn" data-act="done">Done</button>`;
+  return `${masthead("first")}<div class="letter"><div class="leaf${S.leaving ? " slip leaving" : ""}" id="opt-margin" ${tag("new","the guide, as the left page")} aria-live="polite" style="${S.leaving ? "position:relative;inset:auto;height:auto" : ""}">
+    <span class="count">${n} of 3</span><span class="term">${d.term}</span><p>${d.text.replace("Tap it to open.","Tap it on the right page to open.")}</p>
+    <dl class="gloss">${g.map(([t,x], i) => `<dt class="${i+1 > n ? "dim" : ""}">${t}</dt><dd class="${i+1 > n ? "dim" : ""}">${x}</dd>`).join("")}</dl>
+    <div class="btns">${acts}</div></div></div>`;
+}
+
+/* ---------------- Envelope in hand ---------------- */
+const ENV_SVG = '<svg viewBox="0 0 64 44" aria-hidden="true"><rect x="1" y="1" width="62" height="42" rx="3" fill="var(--manila)" stroke="var(--manilaInk)"/><path d="M1 3l31 22L63 3" fill="none" stroke="var(--manilaInk)"/><rect x="44" y="6" width="12" height="10" fill="none" stroke="var(--manilaInk)" stroke-dasharray="2 2"/></svg>';
+function handSlot(step) {
+  const m = matches(S.typed);
+  let n = 1, t = "", acts = "";
+  if (step === "h1") { t = "Pick up one envelope from today's mail. Type the name of a card inside it."; }
+  if (step === "h2") { n = 2; t = `That is a package: the order ${esc(m[0].pkg.seller)} sent, from ${m[0].pkg.date}. Tick ${esc(m[0].line.name)}; the other cards should be in the same envelope.`; }
+  if (step === "tie") { n = 2; t = `Two packages hold ${esc(m[0].line.name)}, so it cannot say who sent this envelope. Type another card from it.`;
+    acts = `<button type="button" class="btn quiet" data-act="hold">Type another card</button>`; }
+  if (step === "none") { n = 2; t = `No order holds “${esc(S.typed.trim())}”. Check the spelling, or file the envelope under Orphaned; it waits there until you know.`;
+    acts = `<button type="button" class="btn quiet" data-act="clear">Try another card</button>`; }
+  if (step === "h3") { n = 3; t = "Ticked. Tap the box again to untick it; nothing is lost. That is the whole job."; acts = `<button type="button" class="btn" data-act="done">Done</button>`; }
+  return `<div class="slot" id="opt-hand" ${tag("new","the guide line")} aria-live="polite"><span class="count">${n} of 3</span><p>${t}</p>${acts ? `<div class="btns">${acts}</div>` : ""}</div>`;
+}
+function handAnswer(step) {
+  const m = matches(S.typed);
+  if (step === "h1") return `<div class="env">${ENV_SVG}<p>The card on top is enough. MANIFEST looks for it in your ${FIRST.pkgs} packages.</p></div>`;
+  if (step === "h2" || step === "h3") { const p = m[0].pkg;
+    return `<span class="anshead">Found in one package</span>${pkgCard(p, { open:true, ringLine: step === "h2" ? m[0].line.k : "", held:S.held })}
+      <p class="others">${p.lines.length - 1} other card${p.lines.length > 2 ? "s" : ""} came in this order. Tick each one you find.</p>`; }
+  if (step === "tie") return `<span class="anshead">Two packages, no pick</span>${m.map(x => `<div class="cand"><b>${esc(x.pkg.seller)}</b><small>Ordered ${x.pkg.date}, ${x.pkg.lines.length} cards</small></div>`).join("")}`;
+  if (step === "none") return `<div class="env">${ENV_SVG}<p>Nothing was ticked and nothing was filed.</p></div>`;
+  return "";
+}
+function field() {
+  const chip = S.held ? `<span class="chip">1 held</span>` : "";
+  return `<div class="fieldrow"><input class="field" data-act="type" value="${esc(S.typed)}" placeholder="Card name" aria-label="Card name" autocomplete="off" spellcheck="false">${chip}</div>`;
+}
+function keys() {
+  const row = s => `<div class="r">${s.split("").map(c => `<span class="k">${c}</span>`).join("")}</div>`;
+  return `<div class="keys" aria-hidden="true">${row("qwertyuiop")}${row("asdfghjkl")}${row("zxcvbnm")}<div class="r"><span class="k m">123</span><span class="k w">space</span><span class="k m">return</span></div></div>`;
+}
+function handScreen(step, kind) {
+  // At AX5 the guide line cannot hold a fixed slot above a scroll area this short, so it scrolls with the answer.
+  if (kind === "ax5") return `<div class="hand"><div class="top"><b>Your first card</b><button type="button" data-act="skip">Skip</button></div>
+    <div class="ans">${handSlot(step)}${handAnswer(step)}</div>${field()}${keys()}</div>`;
+  return `<div class="hand"><div class="top"><b>Your first card</b><button type="button" data-act="skip">Skip</button></div>
+    ${handSlot(step)}<div class="ans">${handAnswer(step)}</div>${field()}${keys()}</div>`;
+}
+
+/* ---------------- step away, Ledger, day after ---------------- */
+function workingList(kind) {
+  const list = kind === "day" ? DAY_PKGS : PKGS;
+  return `${masthead(kind === "day" ? "day" : "first")}<div class="list" ${tag("today","Packages list")}>${list.map(p => pkgCard(p, { open:S.openPkg === p.id })).join("")}</div>`;
+}
+function ledgerBody() {
+  return `<div class="ledger" style="display:flex;flex-direction:column;gap:16px"><h2>Ledger</h2>
+    <span class="glabel">Data</span><div class="group" ${tag("today","Ledger tab, Data group")}>
+      <div class="row" aria-disabled="true"><span class="rt"><b>Sync</b><small>Up to date</small></span><span class="val">2 min</span></div>
+      <div class="row" aria-disabled="true"><span class="rt"><b>Backup</b><small>Save a copy of the ledger</small></span><span class="chev">›</span></div></div>
+    <span class="glabel">Help</span><div class="group" ${tag("new","guide again")}>
+      <button type="button" class="row" id="opt-again" data-act="again"><span class="rt"><b>First card guide</b><small>Walk through one card again. It ticks nothing by itself.</small></span><span class="chev">›</span></button></div>
+    <div class="group" ${tag("today","Reset, last")}><div class="row" aria-disabled="true"><span class="rt"><b style="color:var(--red)">Reset</b></span></div></div></div>`;
+}
+function otherTab(t) {
+  if (t === "orphaned") return `<div class="lone"><p style="font-size:var(--fs-body)" ${tag("today","Orphaned empty line")}>Nothing waiting: record a package here when you can’t tell who sent it.</p></div>`;
+  return `<div class="lone"><p style="font-size:var(--fs-body)">Tally pools one card across every seller. Not drawn here: unchanged.</p></div>`;
+}
+
+/* ---------------- frame renderers ---------------- */
+function curStep() { return S.c === "hand" && ["h1","h2","tie","none","h3"].includes(S.s) ? handStep() : S.s; }
+function onePage(kind) {
+  const s = curStep();
+  let body = "", over = "", bar = true, dot = false, withSlip = false;
+  if (S.tab === "ledger" && ["away","day","ledger"].includes(s)) body = ledgerBody();
+  else if (["orphaned","tally"].includes(S.tab) && ["away","day"].includes(s)) body = otherTab(S.tab);
+  else if (s === "empty") body = emptyBody();
+  else if (s === "bring") { body = emptyBody(); over = bringSheet(); }
+  else if (s === "route") { body = emptyBody(); over = routeSheet(); }
+  else if (s === "arriving") body = arrivingBody();
+  else if (s === "failed") body = failedBody();
+  else if (s === "summary") body = summaryBody();
+  else if (["m1","m2","m3"].includes(s)) { body = masthead("first") + marginList(s); over = slip(s, kind); withSlip = true; }
+  else if (["h1","h2","tie","none","h3"].includes(s)) { return status() + `<div class="page">${handScreen(s, kind)}</div>`; }
+  else if (s === "away") { body = workingList("first"); }
+  else if (s === "day") body = workingList("day");
+  return status() + `<div class="page"><div class="body${bar ? "" : " nobar"}${withSlip ? " underslip" : ""}">${body}</div>${over}${bar ? tabbar({ dot }) : ""}</div>`;
+}
+function twoPages() {
+  const s = curStep();
+  let L = "", R = "", rOver = "", keysUp = false, dot = false, lb = "body nobar";
+  const title = `${masthead(["empty","bring","route","arriving","failed"].includes(s) ? "" : "first")}<div class="lone" ${tag("new","the three words, ahead of the guide")}><p style="color:var(--inkSoft);font-size:var(--fs-body)">Three words, and one real card will show you each.</p>
+    <dl class="gloss"><dt>Package</dt><dd>One seller's order.</dd><dt>Card</dt><dd>One line in it.</dd><dt>Envelope</dt><dd>The mail in your hand. With no sender, it goes to Orphaned.</dd></dl></div>`;
+  if (S.tab === "ledger" && ["away","day","ledger"].includes(s)) { L = masthead("first"); R = ledgerBody(); }
+  else if (["orphaned","tally"].includes(S.tab) && ["away","day"].includes(s)) { L = masthead("first"); R = otherTab(S.tab); }
+  else if (["empty","bring","route"].includes(s)) { L = title; R = `<div class="lone" ${tag("new","empty state")}><p>MANIFEST ticks off your card orders as the mail comes in. It starts with your order file.</p><button type="button" class="btn" data-act="go" data-s="bring">Bring in orders</button></div>`;
+    if (s === "bring") rOver = bringSheet(); if (s === "route") rOver = routeSheet(); }
+  else if (s === "arriving") { L = title; R = arrivingBody().replace(masthead(), ""); }
+  else if (s === "failed") { L = title; R = failedBody().replace(masthead(), ""); }
+  else if (s === "summary") { L = title; R = summaryBody().replace(masthead("first"), ""); }
+  else if (["m1","m2","m3"].includes(s)) { L = marginLetter(s); R = marginList(s); }
+  else if (["h1","h2","tie","none","h3"].includes(s)) { keysUp = true;
+    L = `<div class="hand" style="position:relative;inset:auto;height:405px"><div class="top" style="padding-top:var(--sat)"><b>Your first card</b><button type="button" data-act="skip">Skip</button></div>${handSlot(s)}
+      <div style="flex:1"></div>${field()}</div>`;
+    R = `<div class="hand" style="position:relative;inset:auto;height:405px"><div class="ans" style="padding-top:calc(var(--sat) + 12px)">${handAnswer(s)}</div></div>`; }
+  else if (s === "away" || s === "day") { L = masthead(s === "day" ? "day" : "first");
+    // Today PackagesView puts a Card in Hand control above the list on two pages (openHand, "hand-open").
+    R = `<div style="display:flex;justify-content:flex-end"><span ${tag("today","Card in Hand control")}><button type="button" class="btn quiet" style="min-height:44px;padding:8px 14px;font-size:var(--fs-sub)" aria-disabled="true">Card in Hand</button></span></div>`
+      + workingList(s === "day" ? "day" : "first").replace(masthead(s === "day" ? "day" : "first"), ""); }
+  const hand = keysUp;
+  const lpage = hand ? `<div class="page l">${L}</div>` : `<div class="page l"><div class="${lb}">${L}</div></div>`;
+  const rpage = hand ? `<div class="page r">${R}</div>` : `<div class="page r"><div class="body">${R}</div>${rOver}${tabbar({ dot })}</div>`;
+  const okeys = hand ? `<div class="okeys" aria-hidden="true">${["qwertyuiop","asdfghjkl","zxcvbnm"].map(r => `<div class="r">${r.split("").map(c => `<span class="k">${c}</span>`).join("")}</div>`).join("")}<div class="r"><span class="k w">space</span></div></div>` : "";
+  return status() + lpage + `<div class="fold" aria-hidden="true"><span>hinge 455.5–495.5</span></div>` + rpage + okeys;
+}
+
+/* ---------------- render ---------------- */
+function render(focus) {
+  document.body.classList.toggle("tags-on", S.tags);
+  if (S.hidden.has(S.c)) S.c = S.c === "margin" ? "hand" : "margin";
+  if (S.hidden.has(S.r)) S.r = S.r === "code" ? "file" : "code";
+  const frames = { "f-folded":"folded", "f-open":"open", "f-phone":"phone", "f-ax5":"ax5" };
+  for (const [id, kind] of Object.entries(frames)) {
+    const el = document.getElementById(id);
+    // Keep each scroll area where it was: a tick re-draws the frame, and a real tick moves nothing (no-layout-shift-under-pointer).
+    const kept = [...el.querySelectorAll(".body, .ans, .sbody")].map(x => x.scrollTop);
+    const sameStep = el.dataset.step === S.s + S.tab;
+    el.innerHTML = kind === "open" ? twoPages() : onePage(kind);
+    if (sameStep || ["m2","m3","h3","away"].includes(S.s)) el.querySelectorAll(".body, .ans, .sbody").forEach((x, i) => { if (kept[i] != null) x.scrollTop = kept[i]; });
+    el.dataset.step = S.s + S.tab;
+    // Every frame draws the same parts; only the folded frame keeps the bare ids, so each id is unique and a focus finds one element.
+    if (kind !== "folded") el.querySelectorAll("[id]").forEach(x => { x.id += "-" + kind; });
+  }
+  // the control rows
+  document.querySelectorAll("#concepts a").forEach(a => { a.setAttribute("aria-current", a.dataset.c === S.c ? "true" : "false"); a.hidden = S.hidden.has(a.dataset.c); });
+  document.querySelectorAll("#routes a").forEach(a => { a.setAttribute("aria-current", a.dataset.r === S.r ? "true" : "false"); a.hidden = S.hidden.has(a.dataset.r); });
+  document.querySelectorAll("[data-hide]").forEach(b => { b.hidden = S.hidden.has(b.dataset.hide); });
+  const nav = document.getElementById("stepnav"); const cur = curStep();
+  nav.innerHTML = "<span>State</span>" + STEPS.common.concat(STEPS[S.c]).map(([k, l]) =>
+    `<a href="#c=${S.c}&r=${S.r}&s=${k}" aria-current="${k === cur ? "true" : "false"}">${l}</a>`).join("");
+  document.getElementById("tagsbtn").setAttribute("aria-pressed", String(S.tags));
+  // A ring the slip or the masthead hides is scrolled into view once, at a step change, never during a press.
+  // Only AX5 needs it: at the default size the target always sits above the slip.
+  document.querySelectorAll(".dev .body").forEach(b => {
+    const r = b.querySelector(".ring"); if (!r) return;
+    const slipEl = b.parentElement.querySelector(".slip");
+    const limit = slipEl ? slipEl.offsetTop - b.offsetTop : b.clientHeight;
+    const top = r.getBoundingClientRect().top - b.getBoundingClientRect().top;
+    if (top < 0 || top + Math.min(r.offsetHeight, 80) > limit) b.scrollTop += top - 8;
+  });
+  if (focus) { // keep typing in the frame that has the field focused
+    const inp = document.querySelector(`#${focus.frame} .field`);
+    if (inp) { inp.focus(); try { inp.setSelectionRange(focus.pos, focus.pos); } catch (e) {} }
+  }
+}
+
+/* ---------------- events ---------------- */
+document.addEventListener("click", e => {
+  const hide = e.target.closest("[data-hide]");
+  if (hide) { S.hidden.add(hide.dataset.hide); if (S.hidden.has("margin") && S.hidden.has("hand")) S.hidden.delete(hide.dataset.hide === "margin" ? "hand" : "margin");
+    if (S.hidden.has("code") && S.hidden.has("file")) S.hidden.delete(hide.dataset.hide === "code" ? "file" : "code"); render(); return; }
+  if (e.target.id === "tagsbtn") { S.tags = !S.tags; render(); return; }
+  if (e.target.id === "resetbtn") { Object.assign(S, { s:"empty", pick:0, typed:"", held:"", ticks:{}, tab:"packages", openPkg:"", leaving:false }); go({}); return; }
+  const t = e.target.closest("[data-act]"); if (!t || !t.closest(".dev")) return;
+  const act = t.dataset.act, s = curStep();
+  if (act === "go") { const n = t.dataset.s; go({ s:n });
+    // A tap that starts the read plays it: the summary follows, as a short read would. The State row reaches Failed.
+    if (n === "arriving") setTimeout(() => { if (S.s === "arriving") go({ s:"summary" }); }, 1600); if (["m1","m2","m3","h1","h2","tie","none","h3"].includes(n)) { readHash(); render(); } return; }
+  if (act === "route") { go({ r:t.dataset.r, s:"route" }); return; }
+  if (act === "skip") { go({ s:"away", tab:"packages", openPkg:"" }); return; }
+  if (act === "another") { go({ pick:(S.pick + 1) % PKGS.length, openPkg:"", s:"m1" }); return; }
+  if (act === "openpkg") { const id = t.dataset.p;
+    if (s === "m1") { if (id === PKGS[S.pick].id) go({ openPkg:id, s:"m2" }); else go({ openPkg: S.openPkg === id ? "" : id }); return; }
+    go({ openPkg: S.openPkg === id ? "" : id }); return; }
+  if (act === "tick") { const k = t.dataset.k; const ticks = { ...S.ticks, [k]: !S.ticks[k] };
+    if (s === "m2" && k === PKGS[S.pick].lines[0].k && ticks[k]) { go({ ticks, s:"m3" }); return; }
+    if (s === "m3" && k === PKGS[S.pick].lines[0].k && !ticks[k]) { go({ ticks, s:"m2" }); return; }
+    if (S.c === "hand" && ["h1","h2","tie","none","h3"].includes(s)) { S.ticks = ticks; go({ s: handStep() }); return; }
+    go({ ticks }); return; }
+  if (act === "done") { // the one orchestrated motion: the guide tucks itself into the Ledger tab
+    const reduce = matchMedia("(prefers-reduced-motion: reduce)").matches;
+    if (S.c === "hand") { go({ s:"away", tab:"packages", openPkg: matches(S.typed)[0]?.pkg.id || "" }); return; }
+    S.leaving = true; render(); setTimeout(() => { S.leaving = false; go({ s:"away", tab:"packages" }); }, reduce ? 0 : 540); return; }
+  if (act === "hold") { go({ held: matches(S.typed)[0].line.name, typed:"" , s:"h1" }); return; }
+  if (act === "clear") { go({ typed:"", s:"h1" }); return; }
+  if (act === "tab") { const tab = t.dataset.tab;
+    if (["away","day","ledger"].includes(s)) go({ tab, s: tab === "ledger" ? "ledger" : (s === "ledger" ? "away" : s) }); return; }
+  if (act === "again") { go({ s: S.c === "margin" ? "m1" : "h1", tab:"packages", openPkg:"", typed:"" }); return; }
+});
+document.addEventListener("input", e => {
+  if (!e.target.matches(".field")) return;
+  const frame = e.target.closest(".dev").id, pos = e.target.selectionStart;
+  S.typed = e.target.value;
+  const st = handStep(); Object.assign(S, { s: st });
+  history.replaceState(null, "", "#" + new URLSearchParams({ c:S.c, s:S.s, r:S.r }).toString());
+  render({ frame, pos });
+});
+window.addEventListener("hashchange", () => { readHash(); render(); });
+readHash(); render();
+</script>
+</body>
+</html>

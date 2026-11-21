@@ -1,0 +1,574 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Panels Over Ledger</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle), so one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --gold:#C9A961;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  /* Tab bar with the home indicator band: drawn 64 pt, not measured. */
+  --tabh: calc(44px + max(env(safe-area-inset-bottom), 20px));
+  --new:#2E7A5E; --today:#A8443C;
+  /* Text sizes from the native code (LedgerTab.swift), at the default Dynamic Type size. */
+  --f-row:20px; --f-sub:13.5px; --f-val:14px; --f-chev:22px; --f-glab:11px; --f-title:12px; --f-cell:12px;
+  --f-when:11px; --f-vlab:14px; --f-fig:10.5px; --f-plab:10px; --f-pval:11px; --f-lh:22px; --f-tal:12px; --f-head:20px;
+  --row-min:52px;
+}
+* { box-sizing:border-box; }
+html { -webkit-text-size-adjust:100%; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.45; }
+main { max-width:1100px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:-apple-system, system-ui, sans-serif; font-size:26px; line-height:1.2; margin:0; }
+h2 { font-size:20px; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+.kind { font-size:13px; color:var(--inkSoft); margin:0; }
+code { font-family:var(--mono); font-size:.9em; }
+nav.ctl { display:flex; flex-direction:column; gap:8px; }
+nav.ctl .grp { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+nav.ctl .grp > span { font-size:13px; color:var(--inkSoft); min-width:64px; }
+nav.ctl a, nav.ctl button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav.ctl a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav.ctl button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
+:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:16px; }
+section.concept[hidden], figure[hidden] { display:none; }
+.chead { display:flex; flex-wrap:wrap; gap:8px 16px; align-items:baseline; justify-content:space-between; }
+.chead p { margin:4px 0 0; color:var(--inkSoft); max-width:72ch; }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; max-width:100%; }
+figcaption { font-size:14px; max-width:60ch; }
+figcaption b { font-size:15px; }
+.readout { font-size:13px; color:var(--inkSoft); min-height:20px; }
+.readout.bad { color:var(--red); font-weight:600; }
+.readout.ok { color:var(--green); font-weight:600; }
+.fitwrap { position:relative; }
+
+/* ---------- device frames: 1 CSS px = 1 pt ---------- */
+.dev { position:absolute; left:0; top:0; transform-origin:0 0; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden;
+  font-family:-apple-system, system-ui, sans-serif; color:var(--ink); }
+.dev.folded { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+.dev.phone { width:375px; height:812px; }
+.screen { position:absolute; inset:0; z-index:0; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 20px; font-size:12px; font-weight:600; z-index:9; pointer-events:none; }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.page.one { left:0; right:0; }
+.page.l { left:0; width:455.5px; }
+.page.r { left:495.5px; width:455.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, transparent); z-index:8; pointer-events:none; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:var(--tabh); overflow-y:auto; overscroll-behavior:contain; scrollbar-width:none; }
+.page.l .scroll.full { bottom:0; }
+.scroll::-webkit-scrollbar { display:none; }
+.sc { position:relative; padding:0 16px 24px; display:flex; flex-direction:column; }
+
+/* tab bar: the bar's glass is paper at 62% (phone-nav-is-bottom-bar) */
+.tabbar { position:absolute; left:0; right:0; bottom:0; height:var(--tabh); background:color-mix(in srgb, var(--paper) 62%, transparent);
+  -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px); border-top:1px solid var(--line); display:flex; z-index:7; padding:0 8px max(env(safe-area-inset-bottom), 20px); }
+.page.r .tabbar { left:0; right:0; }
+.tabbar span { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:10px; color:var(--inkSoft); position:relative; }
+.tabbar span i { width:20px; height:18px; border:1.5px solid currentColor; border-radius:5px; display:block; }
+.tabbar span.on { color:var(--accent); font-weight:600; }
+.tabbar span em { position:absolute; top:2px; left:calc(50% + 6px); background:var(--red); color:var(--card); font-style:normal; font-size:10px; border-radius:8px; padding:0 5px; font-weight:600; }
+
+/* ---------- the Ledger tab (LedgerTab.swift, ledger-tab-holds-options) ---------- */
+.mast { display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 0 8px; border-bottom:1px solid var(--line); }
+.mast .lh { font-family:var(--cochin); font-size:var(--f-lh); letter-spacing:.28em; line-height:1.2; }
+.mast .tal { display:flex; flex-wrap:wrap; justify-content:center; gap:4px 16px; font:var(--f-tal)/1.3 var(--mono); color:var(--inkSoft); }
+.mast .tal b { color:var(--ink); font-weight:600; }
+.ltitle { font:var(--f-title)/1.3 var(--mono); letter-spacing:.3em; text-transform:uppercase; text-align:center; color:var(--inkSoft); padding-top:16px; }
+.glab { font:var(--f-glab)/1.3 var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--inkSoft); padding:16px 0 8px 4px; }
+.card { position:relative; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.card.reset { margin-top:20px; }
+.lrow { appearance:none; width:100%; display:flex; align-items:center; gap:12px; min-height:var(--row-min); padding:8px 16px; border:0; border-top:1px solid var(--line);
+  background:transparent; color:inherit; text-align:left; cursor:pointer; font:inherit; }
+.card > .lrow:first-child, .card > [data-row]:first-child { border-top:0; }
+.lrow .tx { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.lrow .t { font-family:var(--cochin); font-size:var(--f-row); line-height:1.25; }
+.lrow .s { font-family:var(--cochin); font-size:var(--f-sub); line-height:1.3; color:var(--inkSoft); }
+.lrow .v { font:var(--f-val)/1.3 var(--mono); color:var(--ink); text-align:right; }
+.lrow .ch { font-family:var(--cochin); font-size:var(--f-chev); color:var(--inkSoft); line-height:1; width:12px; text-align:center; transition:transform 160ms ease; }
+.lrow[aria-expanded="true"] .ch { transform:rotate(90deg); }
+.lrow[aria-expanded="true"] .v { color:var(--accent); }
+.lrow.red .t { color:var(--red); }
+.lrow.open-mark { box-shadow:inset 3px 0 0 var(--accent); }
+
+/* ---------- the panel: paper fill, ruled top (head-panels-carry-paper-fill) ---------- */
+.panel { background:var(--paper); border-top:1px solid var(--line); padding:4px 8px 12px; display:flex; flex-direction:column; gap:8px; }
+.panel.flow { background:transparent; }  /* today: panelWrap and the native panels paint no fill */
+.panel.laid { position:absolute; z-index:6; border:1px solid var(--line); border-radius:0 0 8px 8px; overflow-y:auto; overscroll-behavior:contain;
+  box-shadow:0 8px 16px var(--shadow), 0 2px 0 var(--shadow); }
+.panel.laid.up { border-radius:8px 8px 0 0; box-shadow:0 -8px 16px var(--shadow), 0 -2px 0 var(--shadow); }
+.panel.laid.square, .panel.laid.up.square { border-radius:0; }
+.grid { display:grid; gap:1px; background:var(--line); border:1px solid var(--line); margin-top:8px; }
+.grid.c2 { grid-template-columns:repeat(2, minmax(0,1fr)); }
+.grid.c4 { grid-template-columns:repeat(4, minmax(0,1fr)); }
+.cell { appearance:none; border:0; min-height:44px; padding:4px 6px; background:var(--card); color:var(--ink); font:var(--f-cell)/1.25 var(--mono); cursor:pointer; }
+.cell[aria-pressed="true"] { background:var(--accent); color:var(--card); }
+.cell.span2 { grid-column:span 2; }
+.cell.spanall { grid-column:1 / -1; }
+.subrow { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.plab { font-family:var(--cochin); font-size:var(--f-plab); letter-spacing:.16em; text-transform:uppercase; color:var(--inkSoft); }
+.well { display:inline-flex; align-items:stretch; height:44px; border-radius:999px; background:var(--card); box-shadow:inset 0 0 0 1px var(--line); overflow:hidden; }
+.well button { appearance:none; width:44px; border:0; background:transparent; color:var(--ink); font:15px var(--mono); cursor:pointer; }
+.well output { min-width:46px; display:grid; place-items:center; font:13px var(--mono); box-shadow:inset 1px 0 0 var(--line), inset -1px 0 0 var(--line); }
+.months { display:flex; flex-wrap:wrap; gap:4px; }
+.months .cell { border:1px solid var(--line); padding:0 10px; }
+.months .cell[aria-pressed="true"] { border-color:var(--accent); }
+.linkish { appearance:none; border:0; background:transparent; min-height:44px; display:inline-flex; align-items:center; gap:6px; padding:0; color:var(--ink); font-family:var(--cochin); font-size:var(--f-sub); cursor:pointer; }
+.linkish b { color:var(--accent); width:10px; font-weight:400; }
+.dates { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.dates span.d { min-height:44px; display:inline-flex; align-items:center; padding:0 12px; border-radius:8px; background:var(--card); border:1px solid var(--line); font:13px var(--mono); }
+.parts { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; align-items:baseline; padding-top:4px; }
+.parts .pv { font:var(--f-pval)/1.6 var(--mono); }
+.vers { display:flex; flex-direction:column; }
+.ver { border-top:1px solid var(--line); }
+.ver:first-child { border-top:0; }
+.ver > button { appearance:none; width:100%; border:0; background:transparent; color:inherit; cursor:pointer; min-height:45px; display:flex; align-items:baseline; gap:8px; padding:12px 0 8px; text-align:left; flex-wrap:wrap; }
+.ver .w { font:var(--f-when)/1.3 var(--mono); color:var(--inkSoft); }
+.ver .lb { font-family:var(--cochin); font-size:var(--f-vlab); line-height:1.3; flex:1; min-width:0; }
+.ver .lb.soft { color:var(--inkSoft); }
+.ver .fg { font:var(--f-fig)/1.3 var(--mono); color:var(--inkSoft); }
+.ask { display:flex; gap:8px; padding:0 0 12px; flex-wrap:wrap; }
+.ask .restore { flex:1 1 160px; min-height:44px; border-radius:8px; border:1px solid var(--red); background:var(--redSoft); color:var(--red); font:600 13px var(--mono); cursor:pointer; }
+.ask .restore.armed { background:var(--red); color:var(--card); }
+.ask .cancel { min-width:80px; min-height:44px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink); font:13px var(--mono); cursor:pointer; }
+.ask .cancel[data-off] { visibility:hidden; }
+.say { font-family:var(--cochin); font-size:var(--f-sub); color:var(--green); min-height:20px; }
+
+/* the layer that takes the tap outside a panel: it closes the panel and the tap reaches no row */
+.catch { position:absolute; inset:0; z-index:5; background:transparent; cursor:default; }
+.veil .catch { background:color-mix(in srgb, var(--paper) 45%, transparent); }
+
+/* Facing page, one screen: the panel docks above the tab bar, in reach of the thumb */
+.dock { position:absolute; left:0; right:0; bottom:var(--tabh); max-height:64%; z-index:6; display:flex; flex-direction:column; background:var(--paper);
+  border-top:1px solid var(--line); border-radius:12px 12px 0 0; box-shadow:0 -8px 20px var(--shadow), 0 -1px 0 var(--line); touch-action:none; }
+.dhead { display:flex; flex-direction:column; align-items:stretch; padding:0 8px 0 16px; cursor:grab; border-bottom:1px solid var(--line); }
+.dhead .grab { width:36px; height:5px; border-radius:3px; background:var(--line); align-self:center; margin:6px 0 2px; }
+.dhead .hrow { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; }
+.dhead .ht { font-family:var(--cochin); font-size:var(--f-head); line-height:1.2; }
+.done { appearance:none; border:0; background:transparent; color:var(--accent); font:600 17px -apple-system, system-ui, sans-serif; min-width:44px; min-height:44px; padding:0 8px; cursor:pointer; }
+.dbody { overflow-y:auto; overscroll-behavior:contain; padding:0 8px 12px; display:flex; flex-direction:column; gap:8px; }
+.dbody > .panel { border-top:0; padding:0; background:transparent; }
+/* Facing page, two pages: the right page is the panel */
+.facing { position:absolute; left:0; right:0; top:var(--sat); bottom:var(--tabh); display:flex; flex-direction:column; background:var(--paper); }
+.facing .dhead { cursor:default; padding-top:8px; }
+.facing .dbody { padding:0 16px 16px; }
+.facing .empty { margin:auto 32px; text-align:center; font-family:var(--cochin); font-size:var(--f-sub); color:var(--inkSoft); line-height:1.5; }
+
+/* arrival: a fade and a 4 pt move, 220 ms (motion-disclosure-panels-arrive, motion-timings) */
+@keyframes arr-down { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+@keyframes arr-up { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+@keyframes arr-fade { from { opacity:0; } to { opacity:1; } }
+.arr-down { animation:arr-down 220ms cubic-bezier(.16,1,.3,1) both; }
+.arr-up { animation:arr-up 220ms cubic-bezier(.16,1,.3,1) both; }
+.arr-fade { animation:arr-fade 220ms cubic-bezier(.16,1,.3,1) both; }
+@media (prefers-reduced-motion: reduce) { .arr-down, .arr-up, .arr-fade { animation:none; } .lrow .ch { transition:none; } }
+
+/* biggest accessibility text size, AX5: each size times the AX5 / Large ratio of its text style (Apple typography page) */
+.ax5 { --f-row:55px; --f-sub:45.5px; --f-val:44.5px; --f-chev:60px; --f-glab:39.5px; --f-title:43px; --f-cell:43px; --f-when:39.5px; --f-vlab:43.5px;
+  --f-fig:38px; --f-plab:36.5px; --f-pval:39.5px; --f-lh:56px; --f-tal:43px; --f-head:55px; --row-min:72px; }
+/* at accessibility sizes a row stacks its title over its value, as versionRow already does (LedgerTab.swift) */
+.ax5 .lrow { flex-wrap:wrap; align-items:flex-start; }
+.ax5 .lrow .tx { flex:1 1 100%; }
+.ax5 .lrow .v { text-align:left; flex:1; }
+.ax5 .ver > button { flex-direction:column; align-items:flex-start; gap:4px; }
+.ax5 .ask .restore { padding:8px 12px; }
+.ax5 .grid.c2, .ax5 .grid.c4 { grid-template-columns:1fr; }
+.ax5 .cell.span2, .ax5 .cell.spanall { grid-column:auto; }
+.ax5 .well { height:auto; } .ax5 .well button { width:72px; font-size:43px; } .ax5 .well output { font-size:43px; min-width:96px; }
+.ax5 .ask .restore, .ax5 .ask .cancel { font-size:39.5px; flex-basis:100%; }
+.ax5 .done { font-size:40px; }
+.ax5 .mast .lh { letter-spacing:.08em; }
+.ax5 .dates span.d { font-size:39.5px; }
+.ax5 .dock { max-height:78%; }
+
+/* tags: dashed outline on what exists today and on what an option adds */
+:where([data-tag]) { position:relative; }
+.tags [data-tag]::before { content:attr(data-tag); position:absolute; right:6px; top:-9px; font:600 10.5px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:4; white-space:nowrap; pointer-events:none; }
+.tags .tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .tags .tag-new::before { color:var(--new); }
+.tags .tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .tags .tag-today::before { color:var(--today); }
+.tags .dock[data-tag]::before, .tags .facing[data-tag]::before, .tags .panel.laid[data-tag]::before, .tags .mast[data-tag]::before { top:4px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No figure, count, date, seller or version on this page is real.</div>
+<h1>Panels over the ledger: nothing under your finger moves</h1>
+<p class="kind">Designer kind: informed. Designer panels-overlay-informed-1.</p>
+<p class="sub">The pain: “Everything jumps when I open a menu.” Today a panel on the Ledger tab mounts in the list and pushes every row under it down. Each frame below is live: tap a row to open its panel, pick, tap outside to close. Under each frame a line reads how far any row moved on the last tap. Ruled and kept: panels overlay the list (owner, 2026-10-11), paper fill for Sorted by and History (item 63 a), one panel open at a time, a 220 ms fade with a 4 pt move.</p>
+
+<nav class="ctl" aria-label="Deep links and controls">
+  <div class="grp"><span>Concept</span>
+    <a href="#c=today" data-k="c" data-v="today">Today</a>
+    <a href="#c=laid" data-k="c" data-v="laid">Laid sheet</a>
+    <a href="#c=dock" data-k="c" data-v="dock">Facing page (bold)</a>
+    <a href="#" data-k="c" data-v="">All</a>
+  </div>
+  <div class="grp"><span>Device</span>
+    <a href="#d=folded" data-k="d" data-v="folded">Duo folded</a>
+    <a href="#d=open" data-k="d" data-v="open">Duo open</a>
+    <a href="#d=phone" data-k="d" data-v="phone">Large phone</a>
+    <a href="#d=ax5" data-k="d" data-v="ax5">Folded, AX5 text</a>
+    <a href="#" data-k="d" data-v="">All</a>
+  </div>
+  <div class="grp"><span>Open</span>
+    <a href="#p=sort" data-k="p" data-v="sort">Sorted by</a>
+    <a href="#p=range" data-k="p" data-v="range">Orders from</a>
+    <a href="#p=history" data-k="p" data-v="history">History</a>
+    <a href="#p=sync" data-k="p" data-v="sync">Sync</a>
+    <a href="#" data-k="p" data-v="">None</a>
+  </div>
+  <div class="grp"><span>Show</span>
+    <button type="button" data-toggle="tags" aria-pressed="true">Today / New tags</button>
+    <button type="button" data-toggle="veil" aria-pressed="false">Veil behind a laid sheet</button>
+    <button type="button" data-toggle="square" aria-pressed="false">Square sheet corners</button>
+  </div>
+  <div class="grp"><span>Hide</span>
+    <button type="button" data-hide="today">Hide Today</button>
+    <button type="button" data-hide="laid">Hide Laid sheet</button>
+    <button type="button" data-hide="dock">Hide Facing page</button>
+  </div>
+</nav>
+
+<section class="concept" data-concept="today" id="cx-today">
+  <div class="chead"><div><h2>Today: the panel pushes the list</h2>
+    <p>Native <code>LedgerTab.syncRow</code> and <code>history</code> mount the panel inside the Data card, in flow. The web's Sorted by and Orders from panels do the same (<code>panelWrap</code> in <code>src/app.jsx</code>). Not an option: drawn so the jump can be felt.</p></div></div>
+  <div class="frames">
+    <figure data-dev="folded" id="focus-today"><div class="fitwrap"><div data-device="iphone-duo-folded"></div></div>
+      <figcaption><b>Folded.</b> Duo folded, 466 x 678 pt. Open Sorted by: Orders from, the Data card and Reset drop by the panel's height.</figcaption><div class="readout" aria-live="polite"></div></figure>
+  </div>
+</section>
+
+<section class="concept" data-concept="laid" id="cx-laid">
+  <div class="chead"><div><h2>Laid sheet</h2>
+    <p>The panel is a sheet of paper laid on the list, hanging from the row you tapped. The rows under it stay where they were. Near the bottom it hangs upward instead, so the row you tapped stays in sight. A tap anywhere outside closes it and presses nothing. On the open Duo the Ledger takes both pages, and a sheet stays on its own page.</p></div></div>
+  <div class="frames">
+    <figure data-dev="folded" id="focus-laid"><div class="fitwrap"><div data-device="iphone-duo-folded"></div></div>
+      <figcaption><b>Folded.</b> Duo folded, 466 x 678 pt.</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="open"><div class="fitwrap"><div data-device="iphone-duo-unfolded"></div></div>
+      <figcaption><b>Open.</b> Duo open, 951 x 669 pt. The Ledger takes both pages; nothing crosses the fold.</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="phone"><div class="fitwrap"><div data-device="iphone-regular"></div></div>
+      <figcaption><b>Large phone.</b> Drawn at 375 x 812 pt, the one phone size this repo writes (see notes).</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="ax5"><div class="fitwrap"><div data-device="iphone-duo-folded" data-text-size="AX5"></div></div>
+      <figcaption><b>Folded, AX5.</b> The biggest accessibility text size. History hangs upward from its row.</figcaption><div class="readout" aria-live="polite"></div></figure>
+  </div>
+</section>
+
+<section class="concept" data-concept="dock" id="cx-dock">
+  <div class="chead"><div><h2>Facing page (bold)</h2>
+    <p>On one screen the panel rises from the bottom edge, above the tab bar, where the thumb already is. Swipe it down, tap Done, or tap outside. On the open Duo there is no overlay at all: the left page holds the rows and the right page becomes the open panel, like the facing page of a ledger. Nothing on the left page is ever covered.</p></div></div>
+  <div class="frames">
+    <figure data-dev="folded" id="focus-dock"><div class="fitwrap"><div data-device="iphone-duo-folded"></div></div>
+      <figcaption><b>Folded.</b> Duo folded, 466 x 678 pt.</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="open"><div class="fitwrap"><div data-device="iphone-duo-unfolded"></div></div>
+      <figcaption><b>Open.</b> Duo open, 951 x 669 pt. The right page is the panel; the left page is never covered.</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="phone"><div class="fitwrap"><div data-device="iphone-regular"></div></div>
+      <figcaption><b>Large phone.</b> Drawn at 375 x 812 pt, the one phone size this repo writes (see notes).</figcaption><div class="readout" aria-live="polite"></div></figure>
+    <figure data-dev="ax5"><div class="fitwrap"><div data-device="iphone-duo-folded" data-text-size="AX5"></div></div>
+      <figcaption><b>Folded, AX5.</b> The biggest accessibility text size. The dock grows to 78% of the screen and scrolls inside.</figcaption><div class="readout" aria-live="polite"></div></figure>
+  </div>
+</section>
+</main>
+
+<script>
+(() => {
+  /* ---------- sample data: the vocabularies are the app's own (src/app.jsx PKG_SORTS, RANGES); every figure is sample ---------- */
+  const SORTS = [["newest","Newest"],["oldest","Oldest"],["value","$ remaining"],["rate","Unit rate"],["seller","Seller A–Z"]];
+  const RANGES = [["all","All time"],["30","30 days"],["45","45 days"],["60","60 days"],["90","90 days"],["days","Last…"],["custom","By month"]];
+  const MONTHS = ["Nov 2026","Oct 2026","Sep 2026","Aug 2026","Jul 2026","Jun 2026","May 2026"];
+  const LINES = { all:[232,0], "30":[96,136], "45":[140,92], "60":[171,61], "90":[214,18], days:[64,168], custom:[58,174] };
+  const VERSIONS = [
+    { id:"v1", when:"Nov 20, 9:41 PM", label:"Mail day", fig:"412 / 449", cards:412, ms:true },
+    { id:"v2", when:"Nov 19, 6:02 PM", label:"Before import", fig:"398 / 449", cards:398, ms:true },
+    { id:"v3", when:"Nov 18, 8:15 PM", label:"Autosave", fig:"371 / 402", cards:371, ms:false },
+    { id:"v4", when:"Nov 16, 7:30 PM", label:"Import · 38 lines", fig:"356 / 402", cards:356, ms:true },
+    { id:"v5", when:"Nov 14, 9:05 PM", label:"Autosave", fig:"340 / 364", cards:340, ms:false },
+    { id:"v6", when:"Nov 12, 5:48 PM", label:"Mail day", fig:"322 / 364", cards:322, ms:true },
+  ];
+  const TITLES = { sort:"Sorted by", range:"Orders from", history:"History", sync:"Sync" };
+  const DEV = { folded:{ cls:"folded", w:466, h:678, data:"iphone-duo-folded" }, ax5:{ cls:"folded", w:466, h:678, data:"iphone-duo-folded" },
+                open:{ cls:"open", w:951, h:669, data:"iphone-duo-unfolded" }, phone:{ cls:"phone", w:375, h:812, data:"iphone-regular" } };
+  const LAYOUT = { today:["folded"], laid:["folded","open","phone","ax5"], dock:["folded","open","phone","ax5"] };
+  const opts = { tags:true, veil:false, square:false };
+  const frames = [];
+
+  const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");
+  const sortLabel = (st) => SORTS.find(([k]) => k === st.sort)[1];
+  const rangeLabel = (st) => st.range === "all" ? "All time" : st.range === "days" ? `Last ${st.days} days` : st.range === "custom" ? st.month : `${st.range} days`;
+  const rangeSub = (st) => { const [n, out] = LINES[st.range]; return `${n} lines${out ? ` · ${out} outside` : ""}`; };
+  const tag = (kind, text) => opts.tags ? ` data-tag="${esc(text)}" class-tag="tag-${kind}"` : "";
+
+  /* ---------- rows ---------- */
+  function row(f, id, title, o = {}) {
+    const st = f.st, opens = !!o.opens, isOpen = opens && st.open === id;
+    const mark = isOpen && f.concept === "dock" ? " open-mark" : "";
+    return `<button type="button" class="lrow${o.red ? " red" : ""}${mark}" data-row="${id}" data-act="${o.act || (opens ? "toggle:" + id : "noop")}"`
+      + (opens ? ` aria-expanded="${isOpen}"` : "") + (o.pressed != null ? ` aria-pressed="${o.pressed}"` : "") + `>`
+      + `<span class="tx"><span class="t">${esc(title)}</span>${o.sub ? `<span class="s">${esc(o.sub)}</span>` : ""}</span>`
+      + (o.value ? `<span class="v">${esc(o.value)}</span>` : "") + (opens ? `<span class="ch" aria-hidden="true">›</span>` : "") + `</button>`
+      + (f.concept === "today" && isOpen ? panelFlow(f, id) : "");
+  }
+  const mast = () => `<div class="mast" data-row="mast"${tag("today","Today: masthead")}><div class="lh">MANIFEST</div>`
+    + `<div class="tal"><span><b>412</b> received</span><span><b>37</b> to come</span><span><b>$58.20</b> outstanding</span></div></div>`
+    + `<div class="ltitle" data-row="ltitle">Ledger</div>`;
+  const viewGroup = (f) => `<div class="glab" data-row="glab-view">View</div><div class="card"${tag("today","Today: web rows; native has no View group yet")}>`
+    + row(f, "show", "Showing", { act:"show", value: f.st.showing ? "● Unreceived" : "○ Everything", pressed: f.st.showing })
+    + row(f, "sort", "Sorted by", { opens:true, value: sortLabel(f.st) })
+    + row(f, "range", "Orders from", { opens:true, sub: rangeSub(f.st), value: rangeLabel(f.st) }) + `</div>`;
+  const dataGroup = (f) => `<div class="glab" data-row="glab-data">Data</div><div class="card"${tag("today","Today: rows")}>`
+    + row(f, "sync", "Sync", { opens:true, sub:"Synced 4 min ago", value:"On" })
+    + row(f, "history", "History", { opens:true, value:"Saved versions" })
+    + row(f, "backup", "Backup") + `</div>`;
+  const resetBox = (f) => `<div class="card reset">${row(f, "reset", "Reset", { red:true })}</div>`;
+
+  /* ---------- panel bodies ---------- */
+  function body(f, kind) {
+    const st = f.st;
+    if (kind === "sort") {
+      return `<div class="grid c2" role="group" aria-label="Sorted by">` + SORTS.map(([k, l], i) =>
+        `<button type="button" class="cell${i === SORTS.length - 1 ? " spanall" : ""}" data-act="sort:${k}" aria-pressed="${st.sort === k}">${esc(l)}</button>`).join("") + `</div>`;
+    }
+    if (kind === "range") {
+      let h = `<div class="grid c4" role="group" aria-label="Orders from">` + RANGES.map(([k, l], i) =>
+        `<button type="button" class="cell${i === RANGES.length - 1 ? " span2" : ""}" data-act="range:${k}" aria-pressed="${st.range === k}">${esc(l)}</button>`).join("") + `</div>`;
+      if (st.range === "days") h += `<div class="subrow"><span class="plab">Last</span><span class="well"><button type="button" data-act="days:-1" aria-label="Fewer days">−</button>`
+        + `<output aria-label="Number of days">${st.days}</output><button type="button" data-act="days:1" aria-label="More days">+</button></span><span class="plab">days</span></div>`;
+      if (st.range === "custom") {
+        h += `<span class="plab">Month</span><div class="months">` + MONTHS.map((m) =>
+          `<button type="button" class="cell" data-act="month:${m}" aria-pressed="${st.month === m}">${m}</button>`).join("") + `</div>`
+          + `<button type="button" class="linkish" data-act="exact" aria-expanded="${st.exact}"><b>${st.exact ? "–" : "+"}</b>Exact dates</button>`;
+        if (st.exact) h += `<div class="dates"><span class="d">Oct 1, 2026</span><span aria-hidden="true">–</span><span class="d">Oct 31, 2026</span></div>`;
+      }
+      return h;
+    }
+    if (kind === "sync") {
+      return `<div class="parts"><span class="plab">Server</span><span class="pv">Reached. The ledger matches.</span>`
+        + `<span class="plab">Last sync</span><span class="pv">Today, 9:37 PM</span></div>`;
+    }
+    if (kind === "history") {
+      return `<div class="vers">` + VERSIONS.map((v) => {
+        const open = st.ver === v.id;
+        return `<div class="ver"><button type="button" data-act="ver:${v.id}" aria-expanded="${open}"><span class="w">${v.when}</span>`
+          + `<span class="lb${v.ms ? "" : " soft"}">${esc(v.label)}</span><span class="fg">${v.fig}</span></button>`
+          + (open ? `<div class="ask"><button type="button" class="restore${st.armed ? " armed" : ""}" data-act="restore">${st.armed ? `Tap again to replace ${v.cards} cards` : "Restore this version"}</button>`
+            + `<button type="button" class="cancel" data-act="cancel"${st.armed ? "" : " data-off aria-hidden=\"true\" tabindex=\"-1\""}>Cancel</button></div>`
+            + `<div class="say" aria-live="polite">${st.restored === v.id ? "Sample: nothing was replaced." : ""}</div>` : "")
+          + `</div>`;
+      }).join("") + `</div>`;
+    }
+    return "";
+  }
+  const arrive = (f, dir) => f.st.just ? ` arr-${dir}` : "";
+  const panelFlow = (f, id) => `<div class="panel flow${arrive(f, "fade")}" data-panel${tag("today","Today: in the card, pushes the rows")}>${body(f, id)}</div>`;
+  const panelLaid = (f) => `<div class="panel laid${opts.square ? " square" : ""}" data-panel data-anchor="${f.st.open}" role="dialog" aria-label="${TITLES[f.st.open]}"${tag("new","New: laid over the rows")}>${body(f, f.st.open)}</div>`;
+  const dock = (f) => `<div class="dock${arrive(f, "up")}" data-panel role="dialog" aria-label="${TITLES[f.st.open]}"${tag("new","New: docked at the thumb")}>`
+    + `<div class="dhead" data-drag><span class="grab" aria-hidden="true"></span><div class="hrow"><span class="ht">${TITLES[f.st.open]}</span>`
+    + `<button type="button" class="done" data-act="close">Done</button></div></div>`
+    + `<div class="dbody"><div class="panel">${body(f, f.st.open)}</div></div></div>`;
+  const facing = (f) => f.st.open
+    ? `<div class="facing${arrive(f, "up")}" data-panel role="region" aria-label="${TITLES[f.st.open]}"${tag("new","New: the facing page is the panel")}>`
+      + `<div class="dhead"><div class="hrow"><span class="ht">${TITLES[f.st.open]}</span><button type="button" class="done" data-act="close">Done</button></div></div>`
+      + `<div class="dbody"><div class="panel">${body(f, f.st.open)}</div></div></div>`
+    : `<div class="facing"${tag("new","New: the facing page waits")}><p class="empty">Tap Sorted by, Orders from, Sync or History. It opens on this page.</p></div>`;
+
+  const tabbar = () => `<div class="tabbar" aria-hidden="true"><span class="on"><i></i>Ledger</span><span><i></i>Orphaned<em>2</em></span><span><i></i>Tally</span><span><i></i>Packages</span></div>`;
+  const status = () => `<div class="status" aria-hidden="true"><span>9:41</span><span>100%</span></div>`;
+  const scroll = (inner, extra = "", cls = "") => `<div class="scroll${cls}"><div class="sc">${inner}${extra}</div></div>`;
+
+  function screen(f) {
+    const st = f.st, c = f.concept, two = f.dev === "open";
+    const all = mast() + viewGroup(f) + dataGroup(f) + resetBox(f);
+    const catcher = st.open && (c === "laid" || (c === "dock" && !two)) ? `<div class="catch" data-act="close" aria-hidden="true"></div>` : "";
+    if (!two) {
+      const laid = c === "laid" && st.open ? panelLaid(f) : "";
+      return `<div class="page one">${scroll(all, laid)}</div>${catcher}${c === "dock" && st.open ? dock(f) : ""}${tabbar()}`;
+    }
+    if (c === "laid") {
+      const left = ["sort","range"].includes(st.open) ? panelLaid(f) : "";
+      const right = ["sync","history"].includes(st.open) ? panelLaid(f) : "";
+      return `<div class="page l"${tag("new","New: Ledger on two pages")}>${scroll(mast() + viewGroup(f), left, " full")}</div>`
+        + `<div class="page r">${scroll(dataGroup(f) + resetBox(f), right)}${tabbar()}</div>${catcher}<div class="fold"><span>fold, 40 pt</span></div>`;
+    }
+    return `<div class="page l">${scroll(all, "", " full")}</div><div class="page r">${facing(f)}${tabbar()}</div><div class="fold"><span>fold, 40 pt</span></div>`;
+  }
+
+  /* ---------- one live frame ---------- */
+  function measure(f) {
+    const s = f.scale, out = {};
+    f.el.querySelectorAll("[data-row]").forEach((r) => {
+      const sc = r.closest(".sc"); if (!sc) return;
+      out[r.dataset.row] = (r.getBoundingClientRect().top - sc.getBoundingClientRect().top) / s;
+    });
+    return out;
+  }
+  function render(f, { keepScroll = true, tap = false } = {}) {
+    const before = tap && f.el.firstChild ? measure(f) : null;
+    const scrolls = keepScroll ? [...f.el.querySelectorAll(".scroll")].map((e) => e.scrollTop) : [];
+    const pb = f.el.querySelector(".dbody, .panel.laid");
+    const pScroll = pb ? pb.scrollTop : 0;
+    f.el.className = `dev ${DEV[f.dev].cls}${f.dev === "ax5" ? " ax5" : ""}${opts.tags ? " tags" : ""}${opts.veil ? " veil" : ""}`;
+    f.el.innerHTML = status() + `<div class="screen">${screen(f)}</div>`;
+    f.el.querySelectorAll("[class-tag]").forEach((e) => { e.classList.add(e.getAttribute("class-tag")); e.removeAttribute("class-tag"); });
+    f.el.querySelectorAll(".scroll").forEach((e, i) => { if (scrolls[i] != null) e.scrollTop = scrolls[i]; });
+    placeLaid(f);
+    // Behind a laid sheet or the dock, the rows sleep for the keyboard too; the open row stays, as it closes the panel.
+    if (f.st.open && (f.concept === "laid" || (f.concept === "dock" && f.dev !== "open")))
+      f.el.querySelectorAll(".lrow").forEach((r) => { if (r.dataset.row !== f.st.open) r.inert = true; });
+    const pa = f.el.querySelector(".dbody, .panel.laid");
+    if (pa && !f.st.just) pa.scrollTop = pScroll;
+    if (before && f.lastTap) {
+      const after = measure(f); let worst = 0, who = "";
+      for (const k in before) if (k in after) { const d = Math.abs(after[k] - before[k]); if (d > worst + 0.5) { worst = d; who = k; } }
+      const names = { glab_data:"Data", "glab-data":"The Data group", sync:"Sync", history:"History", backup:"Backup", reset:"Reset", range:"Orders from", sort:"Sorted by", "glab-view":"View" };
+      f.read.className = "readout " + (worst > 0.5 ? "bad" : "ok");
+      f.read.textContent = worst > 0.5 ? `Last tap: ${names[who] || who} moved ${Math.round(worst)} pt.` : `Last tap (${f.lastTap}): no row moved.`;
+    }
+    f.st.just = false;
+  }
+  function placeLaid(f) {
+    const p = f.el.querySelector(".panel.laid"); if (!p) return;
+    const sc = p.parentElement, sv = sc.parentElement, s = f.scale;
+    const r = sc.querySelector(`[data-row="${p.dataset.anchor}"]`), card = r.closest(".card");
+    const scR = sc.getBoundingClientRect(), rR = r.getBoundingClientRect(), cR = card.getBoundingClientRect();
+    const rowTop = (rR.top - scR.top) / s, rowBot = (rR.bottom - scR.top) / s;
+    p.style.left = (cR.left - scR.left) / s + "px"; p.style.width = cR.width / s + "px";
+    const H = p.scrollHeight;
+    const viewTop = sv.scrollTop + 8, viewBot = sv.scrollTop + sv.clientHeight - 8;
+    const below = viewBot - rowBot, above = rowTop - viewTop;
+    let up = false;
+    if (H > below && above > below) up = true;
+    if (up) { const h = Math.min(H, above); p.style.top = rowTop - h + "px"; p.style.maxHeight = h + "px"; p.classList.add("up"); }
+    else { p.style.top = rowBot + "px"; p.style.maxHeight = Math.max(below, 120) + "px"; }
+    if (f.st.just) p.classList.add(up ? "arr-up" : "arr-down");
+    if (up && opts.tags) p.setAttribute("data-tag", "New: hangs upward near the bottom");
+  }
+  function scrollToAnchor(f) {
+    if (!f.st.open) return;
+    const r = f.el.querySelector(`[data-row="${f.st.open}"]`); if (!r) return;
+    const sv = r.closest(".scroll"), sc = r.closest(".sc");
+    const top = (r.getBoundingClientRect().top - sc.getBoundingClientRect().top) / f.scale;
+    sv.scrollTop = Math.max(0, top - (f.dev === "ax5" ? 8 : 120));
+  }
+
+  function act(f, a, src) {
+    const st = f.st, [verb, arg] = a.split(/:(.*)/s);
+    const was = st.open;
+    f.lastTap = verb === "toggle" ? `${TITLES[arg]} row` : verb === "close" ? (src && src.classList.contains("catch") ? "outside the panel" : "Done") : verb;
+    switch (verb) {
+      case "toggle": st.open = st.open === arg ? null : arg; st.ver = null; st.armed = false; st.restored = null; break; // panels close each other
+      case "close": st.open = null; st.ver = null; st.armed = false; break;
+      case "show": st.showing = !st.showing; f.lastTap = "Showing"; break;
+      case "sort": st.sort = arg; st.open = null; f.lastTap = "a sort"; break; // a pick closes Sorted by, as the web does
+      case "range": st.range = arg; f.lastTap = "a range"; break;            // Orders from stays open: Last… and By month ask for more
+      case "days": st.days = Math.max(1, st.days + Number(arg)); f.lastTap = "a day step"; break;
+      case "month": st.month = arg; f.lastTap = "a month"; break;
+      case "exact": st.exact = !st.exact; f.lastTap = "Exact dates"; break;
+      case "ver": st.ver = st.ver === arg ? null : arg; st.armed = false; st.restored = null; f.lastTap = "a version"; break;
+      case "restore": if (st.armed) { st.armed = false; st.restored = st.ver; } else st.armed = true; f.lastTap = "Restore"; break;
+      case "cancel": st.armed = false; f.lastTap = "Cancel"; break;
+      default: f.lastTap = "a row that opens nothing"; break;
+    }
+    st.just = !!st.open && st.open !== was;
+    render(f, { tap:true });
+    if (st.just !== undefined) {
+      const target = st.open && st.open !== was ? f.el.querySelector("[data-panel] button") : !st.open && was ? f.el.querySelector(`[data-row="${was}"]`) : null;
+      if (target) target.focus({ preventScroll:true });
+    }
+  }
+
+  function wire(f) {
+    f.el.addEventListener("click", (e) => {
+      const b = e.target.closest("[data-act]"); if (!b || !f.el.contains(b)) return;
+      act(f, b.dataset.act, b);
+    });
+    f.el.addEventListener("keydown", (e) => { if (e.key === "Escape" && f.st.open) { f.lastTap = "Escape"; act(f, "close"); } });
+    // swipe the dock down to close it (Facing page, one screen)
+    let y0 = null, d = null;
+    f.el.addEventListener("pointerdown", (e) => {
+      const h = e.target.closest("[data-drag]"); if (!h || e.target.closest("button")) return;
+      d = h.closest(".dock"); y0 = e.clientY; d.setPointerCapture(e.pointerId); d.style.transition = "none";
+    });
+    f.el.addEventListener("pointermove", (e) => { if (y0 == null) return; const dy = Math.max(0, (e.clientY - y0) / f.scale); d.style.transform = `translateY(${dy}px)`; });
+    const end = (e) => {
+      if (y0 == null) return; const dy = (e.clientY - y0) / f.scale; y0 = null;
+      if (dy > 56) { act(f, "close"); f.read.textContent = f.read.textContent.replace(/\(.*?\)/, "(a swipe down)"); }
+      else { d.style.transition = "transform 160ms ease"; d.style.transform = ""; }
+    };
+    f.el.addEventListener("pointerup", end); f.el.addEventListener("pointercancel", end);
+  }
+
+  function fit(f) {
+    const avail = f.wrap.closest(".frames").clientWidth || DEV[f.dev].w;
+    f.scale = Math.min(1, avail / DEV[f.dev].w);
+    f.el.style.transform = f.scale < 1 ? `scale(${f.scale})` : "";
+    f.wrap.style.width = DEV[f.dev].w * f.scale + "px"; f.wrap.style.height = DEV[f.dev].h * f.scale + "px";
+  }
+
+  function build(hash) {
+    frames.length = 0;
+    for (const c of Object.keys(LAYOUT)) {
+      for (const dev of LAYOUT[c]) {
+        // The frames are in the markup (so a static reader finds each device); a fresh copy drops old listeners.
+        const old = document.querySelector(`#cx-${c} figure[data-dev="${dev}"]`);
+        const fig = old.cloneNode(true); old.replaceWith(fig);
+        const wrap = fig.querySelector(".fitwrap"), el = fig.querySelector("[data-device]"), read = fig.querySelector(".readout");
+        read.className = "readout"; read.textContent = "Tap a row to read what moved.";
+        const p = hash.p || (c === "today" ? "sort" : dev === "ax5" ? "history" : dev === "open" ? "range" : "sort");
+        const f = { concept:c, dev, el, wrap, read, scale:1,
+          st:{ open: hash.p === "" ? null : p, sort:"newest", showing:true, range:"90", days:21, month:"Oct 2026", exact:false, ver: (dev === "ax5" && p === "history") ? "v2" : null, armed:false, restored:null, just:false } };
+        frames.push(f); fit(f); render(f, { keepScroll:false }); scrollToAnchor(f); render(f); wire(f);
+      }
+    }
+  }
+
+  function parse() {
+    const h = {}; location.hash.replace(/^#/, "").split("&").forEach((kv) => { if (!kv) return; const [k, v = ""] = kv.split("="); h[k] = decodeURIComponent(v); });
+    return h;
+  }
+  function apply() {
+    const h = parse();
+    opts.tags = h.k !== "0"; opts.veil = h.v === "1"; opts.square = h.e === "square";
+    document.querySelectorAll("[data-toggle]").forEach((b) => b.setAttribute("aria-pressed", String(opts[b.dataset.toggle])));
+    const hidden = (h.hide || "").split(",").filter(Boolean);
+    document.querySelectorAll("section.concept").forEach((s) => {
+      s.hidden = (h.c && s.dataset.concept !== h.c) || hidden.includes(s.dataset.concept);
+    });
+    document.querySelectorAll("[data-hide]").forEach((b) => b.setAttribute("aria-pressed", String(hidden.includes(b.dataset.hide))));
+    document.querySelectorAll("nav.ctl a").forEach((a) => a.setAttribute("aria-current", String((h[a.dataset.k] || "") === a.dataset.v)));
+    build({ p: h.p === undefined ? undefined : h.p });
+    document.querySelectorAll("figure[data-dev]").forEach((fig) => { fig.hidden = !!h.d && fig.dataset.dev !== h.d; });
+    frames.forEach((f) => { fit(f); render(f); });
+  }
+  function setHash(mut) {
+    const h = parse(); mut(h);
+    const s = Object.entries(h).filter(([, v]) => v !== "" && v != null).map(([k, v]) => `${k}=${encodeURIComponent(v)}`).join("&");
+    location.hash = s ? "#" + s : "#";
+  }
+  document.querySelectorAll("nav.ctl a").forEach((a) => a.addEventListener("click", (e) => { e.preventDefault(); setHash((h) => { h[a.dataset.k] = a.dataset.v; }); }));
+  document.querySelectorAll("[data-toggle]").forEach((b) => b.addEventListener("click", () => setHash((h) => {
+    const t = b.dataset.toggle;
+    if (t === "tags") h.k = opts.tags ? "0" : ""; if (t === "veil") h.v = opts.veil ? "" : "1"; if (t === "square") h.e = opts.square ? "" : "square";
+  })));
+  document.querySelectorAll("[data-hide]").forEach((b) => b.addEventListener("click", () => setHash((h) => {
+    const set = new Set((h.hide || "").split(",").filter(Boolean)); set.has(b.dataset.hide) ? set.delete(b.dataset.hide) : set.add(b.dataset.hide); h.hide = [...set].join(",");
+  })));
+  addEventListener("hashchange", apply);
+  addEventListener("resize", () => frames.forEach((f) => { fit(f); render(f); }));
+  apply();
+})();
+</script>
+</body>
+</html>

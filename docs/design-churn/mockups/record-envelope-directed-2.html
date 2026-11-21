@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Record Envelope Picker</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The app ships one theme, light, so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the 20 pt floor the Duo UI tests use (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+html { color-scheme: light; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+.kind { font-size:14px; margin:0; }
+.kind b { color:var(--accent); }
+.controls { display:flex; flex-direction:column; gap:8px; }
+.ctlrow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ctlrow > span { font-size:13px; color:var(--inkSoft); min-width:72px; }
+.ctl { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl.hide { color:var(--red); }
+.ctl:focus-visible, .frame button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { display:flex; flex-direction:column; gap:16px; }
+section.concept[hidden], figure[hidden] { display:none; }
+section.concept > h2 { font-family:var(--cochin); font-size:24px; margin:8px 0 0; }
+section.concept > p { margin:0; max-width:72ch; }
+.figs { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; max-width:100%; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+figcaption b { color:var(--ink); font-family:var(--cochin); font-size:16px; }
+.scroller { max-width:100%; overflow-x:auto; padding:12px 0 4px; }
+
+/* ---------------- device frames, 1 CSS px = 1 pt ---------------- */
+.frame { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; flex:none;
+  font-family:var(--sys); color:var(--ink); }
+.frame[data-dev="folded"] { width:466px; height:678px; }
+.frame[data-dev="open"] { width:951px; height:669px; }
+.frame[data-dev="phone"] { width:402px; height:874px; --sat: max(env(safe-area-inset-top), 54px); }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 20px; font:600 12px var(--sys); z-index:30; pointer-events:none; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; z-index:40; pointer-events:none;
+  background:color-mix(in srgb, var(--line) 45%, transparent); }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.pageL, .pageR, .pageFull { position:absolute; top:0; bottom:0; overflow:hidden; }
+.pageFull { left:0; right:0; }
+.pageL { left:0; width:455.5px; }
+.pageR { left:495.5px; right:0; }
+
+/* ---- the envelope head: pinned, nothing ever covers it ---- */
+.head { position:absolute; left:0; right:0; top:var(--sat); height:76px; padding:8px 16px; display:flex; gap:12px; align-items:center;
+  background:var(--card); border-bottom:3px double var(--line); z-index:20; font-family:var(--cochin); }
+.head .who { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.head .t { font-size:22px; line-height:28px; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.head .m { font:12px/16px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.head .m.exact { color:var(--green); }
+.stamp { flex:none; width:60px; height:60px; border:2px dashed var(--gold); border-radius:4px; display:flex; flex-direction:column; align-items:center;
+  justify-content:center; background:var(--paper); }
+.stamp b { font:700 24px/26px var(--mono); }
+.stamp small { font:11px/13px var(--mono); color:var(--inkSoft); }
+
+/* ---- the tray: the recorded cards, one fixed-height strip ---- */
+.tray { position:absolute; left:0; right:0; top:calc(var(--sat) + 76px); height:52px; display:flex; gap:8px; align-items:center; padding:0 16px;
+  overflow-x:auto; overflow-y:hidden; background:var(--paper); border-bottom:1px solid var(--line); z-index:15; scrollbar-width:none; }
+.tray .empty { font-family:var(--cochin); font-size:15px; color:var(--inkSoft); white-space:nowrap; }
+.chip { flex:none; min-height:44px; display:inline-flex; align-items:center; gap:6px; padding:0 4px; background:none; border:0; cursor:pointer; font:inherit; color:var(--ink); }
+.chip span { display:inline-flex; gap:6px; align-items:center; height:32px; padding:0 10px; border:1px solid var(--line); background:var(--card); border-radius:16px;
+  font:15px var(--cochin); white-space:nowrap; }
+.chip i { font:12px var(--mono); font-style:normal; color:var(--inkSoft); }
+.chip.typed span { background:var(--manila); color:var(--manilaInk); border-color:var(--manila); }
+.chip.typed i { color:var(--manilaInk); }
+
+/* ---- the picker ---- */
+.pickhead { position:absolute; left:0; right:0; height:56px; display:flex; gap:8px; align-items:center; padding:0 16px; z-index:12; background:var(--paper); }
+.seg { flex:1; display:flex; height:36px; padding:2px; border-radius:9px; background:color-mix(in srgb, var(--line) 70%, transparent); position:relative; }
+.seg button { flex:1; border:0; background:transparent; border-radius:7px; font:500 13px var(--sys); color:var(--ink); cursor:pointer; position:relative;
+  min-height:44px; margin:-4px 0; }
+.seg button::before { content:""; position:absolute; inset:4px 0; border-radius:7px; z-index:-1; }
+.seg button[aria-pressed="true"]::before { background:var(--card); box-shadow:0 1px 2px var(--line); }
+.seg button[aria-pressed="true"] { font-weight:600; }
+.seg button:disabled { color:var(--inkSoft); cursor:default; }
+/* after the first card, the orders segment carries an accent dot and colour: the next step, without moving anything */
+.seg button.cue { color:var(--accent); font-weight:600; }
+.seg button.cue::after { content:""; position:absolute; top:6px; right:10px; width:6px; height:6px; border-radius:3px; background:var(--accent); }
+.typebtn { flex:none; min-width:44px; min-height:44px; display:inline-flex; align-items:center; justify-content:center; gap:6px; padding:0 10px; border:1px solid var(--line);
+  background:var(--card); border-radius:8px; font:15px var(--cochin); color:var(--ink); cursor:pointer; }
+.typebtn svg { width:20px; height:14px; }
+.list { position:absolute; left:0; right:0; overflow-y:auto; overscroll-behavior:contain; scrollbar-width:thin; }
+.sect { position:sticky; top:0; z-index:2; padding:4px 16px; font:600 12px var(--mono); color:var(--inkSoft); background:var(--paper); border-bottom:1px solid var(--line); }
+.row { display:flex; align-items:center; gap:12px; width:100%; min-height:52px; padding:4px 44px 4px 16px; border:0; border-bottom:1px solid var(--line); background:var(--card);
+  text-align:left; font:inherit; color:var(--ink); cursor:pointer; }
+.row .n { flex:1; min-width:0; font:17px/22px var(--cochin); }
+.row .c { flex:none; font:13px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.slot { flex:none; width:30px; height:30px; border-radius:15px; border:1.5px solid var(--inkSoft); display:grid; place-items:center; font:700 13px var(--mono); color:var(--inkSoft); }
+.slot.on { background:var(--accent); border-color:var(--accent); color:var(--card); }
+.slot.full { background:var(--green); border-color:var(--green); color:var(--card); }
+.rail { position:absolute; right:2px; width:36px; display:flex; flex-direction:column; justify-content:space-between; z-index:13; padding:4px 0; }
+.rail button { flex:1; min-height:0; border:0; background:transparent; font:600 11px var(--sys); color:var(--accent); cursor:pointer; padding:0; }
+.hint { padding:16px; font:15px/21px var(--cochin); color:var(--inkSoft); }
+
+/* slips: one order's own lines, as a packing slip */
+.slip { margin:12px 16px; background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.slip header { display:flex; align-items:baseline; gap:12px; padding:10px 12px 8px; border-bottom:1px dashed var(--line); font-family:var(--cochin); }
+.slip header b { flex:1; font-size:17px; }
+.slip header span { font:12px var(--mono); color:var(--inkSoft); }
+.slip header .fit { color:var(--inkSoft); }
+.slip header .fit.exact { color:var(--green); font-weight:700; }
+.slip.behind header b { color:var(--inkSoft); font-weight:400; }
+.slip .row { padding-right:12px; background:transparent; }
+.slip .row:last-child { border-bottom:0; }
+.slip .row.got .n { color:var(--inkSoft); }
+
+/* tiles: the flat card index */
+.tiles { display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px; padding:8px 44px 8px 16px; }
+.tile { position:relative; height:76px; padding:8px 40px 8px 10px; display:flex; flex-direction:column; justify-content:space-between; text-align:left;
+  background:var(--card); border:1px solid var(--line); border-radius:8px; font:inherit; color:var(--ink); cursor:pointer; }
+.tile.on { border-color:var(--accent); box-shadow:inset 3px 0 0 var(--accent); }
+.tile .n { font:15px/19px var(--cochin); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.tile .c { font:12px var(--mono); color:var(--inkSoft); }
+.tile .slot { position:absolute; right:6px; top:8px; width:28px; height:28px; }
+.tiles + .sect, .sect + .tiles { }
+.fits { position:absolute; left:0; right:0; height:44px; display:flex; align-items:center; gap:8px; padding:0 16px; border:0; border-bottom:1px solid var(--line);
+  background:var(--paper); font:15px var(--cochin); color:var(--ink); cursor:pointer; z-index:12; text-align:left; width:100%; }
+.fits b { font-weight:400; flex:1; }
+.fits .exact { color:var(--green); font-weight:700; }
+.fits svg { width:8px; height:12px; }
+
+/* ---- the field: typing, the fallback ---- */
+.fieldrow { position:absolute; left:0; right:0; height:64px; padding:8px 16px; display:flex; gap:8px; align-items:center; background:var(--paper); z-index:12; }
+.field { flex:1; min-height:48px; border:1px solid var(--accent); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font:17px var(--cochin); }
+.field .ph { color:var(--inkSoft); }
+.field::after { content:""; width:2px; height:22px; background:var(--accent); margin-left:1px; animation:blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity:0; } }
+@media (prefers-reduced-motion: reduce) { .field::after { animation:none; } }
+.done { flex:none; min-height:44px; padding:0 8px; border:0; background:none; font:600 15px var(--sys); color:var(--accent); cursor:pointer; }
+.astyped { background:var(--manila); color:var(--manilaInk); }
+.astyped .n { font-size:15px; }
+
+/* ---- the action bar: Close, Discard, Save; the armed ask takes the bar's own row ---- */
+.bar { position:absolute; left:0; right:0; height:60px; display:flex; gap:8px; align-items:center; padding:0 16px; background:var(--card);
+  border-top:1px solid var(--line); z-index:16; }
+.btn { min-height:44px; padding:0 14px; border-radius:8px; border:1px solid var(--line); background:var(--card); font:15px var(--cochin); color:var(--ink); cursor:pointer; white-space:nowrap; }
+.bar .btn:not(.save):not(.armed) { border-color:transparent; background:transparent; padding:0 8px; }
+.btn.discard { color:var(--red); }
+.btn:disabled { color:var(--inkSoft); border-color:var(--line); cursor:default; }
+.btn.save { margin-left:auto; background:var(--ink); border-color:var(--ink); color:var(--card); font-weight:700; padding:0 18px; }
+.btn.save:disabled { background:var(--card); color:var(--inkSoft); border-color:var(--line); font-weight:400; cursor:default; }
+.btn.armed { flex:1; background:var(--red); border-color:var(--red); color:var(--card); font-weight:700; }
+.btn.primary { background:var(--ink); border-color:var(--ink); color:var(--card); font-weight:700; }
+.receipt { flex:1; font:15px var(--cochin); }
+.receipt.gone { color:var(--red); }
+.receipt.kept { color:var(--green); }
+.why { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
+
+/* ---- the system tab bar: iOS chrome ---- */
+.tabs { position:absolute; left:0; right:0; height:83px; display:flex; justify-content:center; align-items:flex-start; padding-top:8px; z-index:14; pointer-events:none; }
+.tabs nav { pointer-events:auto; display:flex; gap:2px; padding:4px; height:64px; border-radius:32px; background:color-mix(in srgb, var(--paper) 62%, transparent);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--line); box-shadow:0 4px 16px rgba(28,43,36,0.06); }
+.tabs button { width:84px; border:0; border-radius:28px; background:transparent; font:500 10px var(--sys); color:var(--ink); cursor:pointer; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:3px; }
+.tabs button i { width:22px; height:18px; border:1.5px solid currentColor; border-radius:5px; display:block; }
+.tabs button[aria-current="page"] { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); font-weight:700; }
+
+/* ---- the system keyboard: iOS chrome, not an app colour, so its greys sit outside the tokens ---- */
+.keys { position:absolute; left:0; right:0; bottom:0; background:#D1D3D9; z-index:25; padding:6px 4px 8px; display:flex; flex-direction:column; gap:10px; }
+.keys .sugg { height:36px; display:flex; justify-content:space-around; align-items:center; font:15px var(--sys); color:#1C1C1E; border-bottom:1px solid #B8BAC1; }
+.keys .r { display:flex; gap:6px; justify-content:center; }
+.keys .r button { flex:0 1 38px; height:42px; border:0; border-radius:6px; background:#FFFFFF; font:20px var(--sys); color:#111; box-shadow:0 1px 0 #898A8D; cursor:pointer; padding:0; }
+.keys .r button.w { flex:1 1 auto; max-width:320px; font-size:15px; }
+.keys .r button.g { background:#ABB0BA; font-size:15px; flex-basis:52px; }
+.frame[data-dev="open"] .keys .r button { flex-basis:72px; max-width:72px; }
+.frame[data-dev="open"] .keys .r button.w { max-width:400px; }
+
+/* ---- the chip menu: a native-style menu under the tray, over the list ---- */
+.menu { position:absolute; left:16px; width:240px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 24px rgba(28,43,36,0.18);
+  z-index:22; overflow:hidden; font-family:var(--cochin); }
+.menu .mt { padding:8px 14px; font:12px var(--mono); color:var(--inkSoft); border-bottom:1px solid var(--line); }
+.menu button { display:flex; justify-content:space-between; width:100%; min-height:44px; padding:0 14px; border:0; border-bottom:1px solid var(--line); background:none; font:17px var(--cochin);
+  color:var(--ink); cursor:pointer; align-items:center; }
+.menu button:last-child { border-bottom:0; color:var(--red); }
+
+/* ---- the could-have-come-from panel (index concept) ---- */
+.panel { position:absolute; left:0; right:0; z-index:18; background:var(--paper); border-top:1px solid var(--line); overflow-y:auto; }
+.panel .ph { display:flex; align-items:center; justify-content:space-between; padding:4px 16px; font:15px var(--cochin); }
+.tie { margin:0 16px; padding:8px 12px; border-radius:8px; background:var(--manila); color:var(--manilaInk); font:14px var(--cochin); }
+
+/* ---- open pose: the envelope's own list on the left page ---- */
+.inlist { position:absolute; left:0; right:0; overflow-y:auto; }
+.inrow { display:flex; align-items:center; gap:4px; min-height:48px; padding:0 8px 0 16px; border-bottom:1px solid var(--line); background:var(--card); }
+.inrow .n { flex:1; font:17px var(--cochin); }
+.inrow.typed { background:var(--manila); color:var(--manilaInk); }
+.inrow .q { width:28px; text-align:center; font:15px var(--mono); }
+.step { width:44px; height:44px; border:0; background:none; font:17px var(--mono); color:var(--ink); cursor:pointer; }
+.intitle { padding:12px 16px 4px; font:600 12px var(--mono); color:var(--inkSoft); }
+
+/* ---- the pile: the Orphaned view behind the composer ---- */
+.pile { position:absolute; left:0; right:0; top:var(--sat); bottom:0; padding:12px 16px; display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); overflow:hidden; }
+.pile h3 { margin:0; font:700 30px/36px var(--cochin); }
+.recbtn { min-height:52px; border:0; border-radius:8px; background:var(--ink); color:var(--card); font:700 17px var(--cochin); cursor:pointer; }
+.recbtn.resume { background:var(--accent); }
+.env { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:4px; }
+.env .eh { display:flex; align-items:center; gap:8px; font:11px var(--mono); color:var(--inkSoft); }
+.env .eh span { flex:1; }
+.env .eh em { font-style:normal; border:1px solid var(--line); border-radius:6px; padding:2px 8px; color:var(--ink); }
+.env .eh em.d { color:var(--red); }
+.env .eh .edit { font:11px var(--mono); min-height:44px; margin:-12px 0; padding:0 10px; border:0; background:none; color:var(--ink); cursor:pointer; text-decoration:underline; }
+.env .eh .edit.resume { color:var(--accent); font-weight:700; }
+.env p { margin:0; font-size:15px; }
+.env.fresh { border-color:var(--green); }
+.otherview { position:absolute; left:0; right:0; top:var(--sat); bottom:83px; display:grid; place-items:center; text-align:center; padding:24px; font:17px/24px var(--cochin); color:var(--inkSoft); }
+
+/* ---- accessibility text size: AX5 on the folded pose ---- */
+.ax .head { height:120px; }
+.ax .head .t { font-size:40px; line-height:46px; white-space:normal; }
+.ax .head .m { font-size:28px; line-height:34px; }
+.ax .stamp { display:none; }
+.ax .tray { display:none; }
+.ax .seg button { font-size:24px; }
+.ax .seg { height:56px; }
+.ax .pickhead { height:72px; }
+.ax .typebtn { font-size:28px; min-height:56px; }
+.ax .typebtn span { display:none; }
+.ax .typebtn svg { width:30px; height:22px; }
+.ax .row { flex-wrap:wrap; padding-right:16px; }
+.ax .row .n { flex-basis:100%; order:-1; font-size:53px; line-height:62px; }
+.ax .row .c { font-size:43px; line-height:51px; }
+.ax .slot { width:56px; height:56px; border-radius:28px; font-size:28px; }
+.ax .sect { font-size:28px; }
+.ax .rail { display:none; }
+.ax .bar { height:88px; }
+.ax .btn { font-size:40px; min-height:72px; }
+.ax .slip header b { font-size:40px; }
+.ax .slip header span { font-size:28px; }
+.ax .slip header { flex-wrap:wrap; }
+.ax .tiles { grid-template-columns:1fr; padding-right:16px; }
+.ax .tile { height:auto; min-height:150px; padding-right:72px; }
+.ax .tile .n { font-size:44px; line-height:52px; }
+.ax .tile .c { font-size:28px; }
+.ax .tile .slot { width:56px; height:56px; }
+.ax .fits { height:72px; font-size:28px; }
+.ax .done, .ax .panel .ph { font-size:28px; }
+.ax .menu button, .ax .menu .mt { font-size:28px; min-height:64px; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { outline-offset:-2px; }
+.tags-on [data-tag]::after { content:attr(data-tag); position:absolute; right:6px; top:2px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper);
+  z-index:50; white-space:nowrap; pointer-events:none; }
+.tags-on .tag-new { outline:2px dashed var(--new); } .tags-on .tag-new::after { color:var(--new); }
+.tags-on .tag-today { outline:2px dashed var(--today); } .tags-on .tag-today::after { color:var(--today); }
+
+.legend { display:flex; flex-wrap:wrap; gap:16px; font-size:13px; color:var(--inkSoft); }
+.legend i { display:inline-block; width:18px; height:10px; vertical-align:middle; margin-right:6px; border:2px dashed; }
+footer { font-size:13px; color:var(--inkSoft); }
+@media (max-width: 520px) { main { padding:16px; } h1 { font-size:24px; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner" role="note">Sample. No figure, seller, order, card or count on this page is real. Sizes not measured are marked in the notes.</div>
+<h1>Record an envelope by tapping, not typing</h1>
+<p class="kind">Designer kind: <b>directed</b> (record-envelope-directed-2). Direction: <b>keyboardless: tap-to-pick from the order's own cards, typing only as a fallback</b>.</p>
+<p class="sub">The keys stay down until you ask for them. Every card you could be holding is already in the ledger, so you tap it. The envelope's head is pinned at the top: no key, no Save bar and no Discard ask can reach it. Everything is live: tap cards, open Type, arm Discard, switch tabs.</p>
+
+<div class="controls" aria-label="Mockup controls">
+  <div class="ctlrow"><span>Concept</span>
+    <a class="ctl" data-nav="c" data-v="slip" href="#c=slip">Packing slip</a>
+    <a class="ctl" data-nav="c" data-v="index" href="#c=index">Card index</a>
+    <a class="ctl" data-nav="c" data-v="both" href="#c=both">Both</a>
+    <button class="ctl hide" type="button" data-hide="slip">Hide Packing slip</button>
+    <button class="ctl hide" type="button" data-hide="index">Hide Card index</button>
+  </div>
+  <div class="ctlrow"><span>State</span>
+    <a class="ctl" data-nav="s" data-v="empty" href="#s=empty">Empty</a>
+    <a class="ctl" data-nav="s" data-v="picking" href="#s=picking">Picking</a>
+    <a class="ctl" data-nav="s" data-v="orders" href="#s=orders">Its orders</a>
+    <a class="ctl" data-nav="s" data-v="typing" href="#s=typing">Typing</a>
+    <a class="ctl" data-nav="s" data-v="armed" href="#s=armed">Discard armed</a>
+    <a class="ctl" data-nav="s" data-v="discarded" href="#s=discarded">Discarded</a>
+    <a class="ctl" data-nav="s" data-v="closed" href="#s=closed">Closed, kept</a>
+    <a class="ctl" data-nav="s" data-v="saved" href="#s=saved">Saved</a>
+    <a class="ctl" data-nav="s" data-v="edit" href="#s=edit">Edit draft</a>
+    <a class="ctl" data-nav="s" data-v="editarmed" href="#s=editarmed">Edit, Discard armed</a>
+  </div>
+  <div class="ctlrow"><span>Device</span>
+    <a class="ctl" data-nav="d" data-v="all" href="#d=all">All</a>
+    <a class="ctl" data-nav="d" data-v="folded" href="#d=folded">Duo folded</a>
+    <a class="ctl" data-nav="d" data-v="ax5" href="#d=ax5">Folded, AX5</a>
+    <a class="ctl" data-nav="d" data-v="open" href="#d=open">Duo open</a>
+    <a class="ctl" data-nav="d" data-v="phone" href="#d=phone">Large phone</a>
+    <button class="ctl" type="button" id="tagbtn" aria-pressed="true">Hide Today/New tags</button>
+  </div>
+  <div class="legend"><span><i style="border-color:var(--today)"></i>Today: a part that exists now</span><span><i style="border-color:var(--new)"></i>New: a part this concept adds</span><span>Theme: light only. The app ships one theme.</span></div>
+</div>
+
+<section class="concept" id="concept-slip" data-concept="slip">
+  <h2>Packing slip</h2>
+  <p>Pick the first card from an A to Z list with a letter rail at the thumb. Then <b>Its orders</b> opens the order slips that hold it, and you tap the rest of the envelope off those slips. The slips hold their order while you tap; a slip that explains less goes soft in place.</p>
+  <div class="figs" data-figs="slip">
+    <figure data-dev="folded"><div class="scroller"><div class="frame" data-dev="folded" data-device="iphone-duo-folded" data-c="slip" data-d="folded" role="group" aria-label="Packing slip"></div></div><figcaption></figcaption></figure>
+    <figure data-dev="ax5"><div class="scroller"><div class="frame ax" data-dev="folded" data-device="iphone-duo-folded" data-c="slip" data-d="ax5" role="group" aria-label="Packing slip"></div></div><figcaption></figcaption></figure>
+    <figure data-dev="open"><div class="scroller"><div class="frame" data-dev="open" data-device="iphone-duo-unfolded" data-c="slip" data-d="open" role="group" aria-label="Packing slip"></div></div><figcaption></figcaption></figure>
+    <figure data-dev="phone"><div class="scroller"><div class="frame" data-dev="phone" data-device="phone-large" data-c="slip" data-d="phone" role="group" aria-label="Packing slip"></div></div><figcaption></figcaption></figure>
+  </div>
+</section>
+
+<section class="concept" id="concept-index" data-concept="index">
+  <h2>Card index</h2>
+  <p>One flat index of every card still owed, as tiles. A to Z with a letter rail, or oldest order first. No list ever narrows or reorders while you tap. The matched lines sit behind one line under the tray: <b>Could have come from</b>.</p>
+  <div class="figs" data-figs="index">
+    <figure data-dev="folded"><div class="scroller"><div class="frame" data-dev="folded" data-device="iphone-duo-folded" data-c="index" data-d="folded" role="group" aria-label="Card index"></div></div><figcaption></figcaption></figure>
+    <figure data-dev="ax5"><div class="scroller"><div class="frame ax" data-dev="folded" data-device="iphone-duo-folded" data-c="index" data-d="ax5" role="group" aria-label="Card index"></div></div><figcaption></figcaption></figure>
+    <figure data-dev="open"><div class="scroller"><div class="frame" data-dev="open" data-device="iphone-duo-unfolded" data-c="index" data-d="open" role="group" aria-label="Card index"></div></div><figcaption></figcaption></figure>
+    <figure data-dev="phone"><div class="scroller"><div class="frame" data-dev="phone" data-device="phone-large" data-c="index" data-d="phone" role="group" aria-label="Card index"></div></div><figcaption></figcaption></figure>
+  </div>
+</section>
+
+<footer>Notes: record-envelope-directed-2-notes.md, beside this file. Deep links: <code>#c=slip|index|both</code>, <code>s=empty|picking|orders|typing|armed|discarded|closed|saved|edit|editarmed</code>, <code>d=all|folded|ax5|open|phone</code>, joined with <code>&amp;</code>.</footer>
+</main>
+
+<script>
+"use strict";
+/* ---------- sample ledger: invented sellers, sample cards ---------- */
+const PKGS = [
+  { gk:"p1", seller:"Brindle Cards", date:"2026-10-24", lines:[["Lightning Bolt",2],["Counterspell",1],["Llanowar Elves",1],["Sol Ring",1]] },
+  { gk:"p2", seller:"Northgate Games", date:"2026-10-27", lines:[["Lightning Bolt",2],["Counterspell",1],["Brainstorm",2],["Swords to Plowshares",1]] },
+  { gk:"p3", seller:"Ox and Quill", date:"2026-10-30", lines:[["Dark Ritual",3],["Llanowar Elves",1],["Ponder",1],["Arcane Signet",1]] },
+  { gk:"p4", seller:"Harbor Hobby", date:"2026-11-03", lines:[["Birds of Paradise",1],["Thoughtseize",1],["Brainstorm",1],["Cultivate",2]] },
+  { gk:"p5", seller:"Kestrel Tabletop", date:"2026-11-06", lines:[["Fatal Push",2],["Opt",4],["Path to Exile",1],["Mana Leak",1]] },
+  { gk:"p6", seller:"Mossline Cards", date:"2026-11-09", lines:[["Opt",2],["Duress",1],["Lightning Bolt",1],["Elvish Mystic",2]] },
+  { gk:"p7", seller:"Quarry Lane", date:"2026-11-12", lines:[["Giant Growth",2],["Kodama's Reach",1],["Negate",1],["Rampant Growth",1],["Shock",3]] },
+  { gk:"p8", seller:"Tidewater TCG", date:"2026-11-15", lines:[["Terminate",1],["Unsummon",2],["Vampiric Tutor",1],["Wrath of God",1],["Young Pyromancer",1],["Ash Barrens",2]] },
+];
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const day = (iso) => { const [, m, d] = iso.split("-"); return `${+d} ${MON[+m - 1]}`; };
+const norm = (s) => s.normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase().replace(/[^a-z0-9]+/g, " ").trim();
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]));
+
+/* outstanding names, as outstandingNames in src/view-rules.mjs gives them */
+const OUT = (() => {
+  const m = new Map();
+  for (const p of PKGS) for (const [name, qty] of p.lines) {
+    const k = norm(name);
+    if (!m.has(k)) m.set(k, { k, name, qty:0, sellers:new Set(), oldest:p.date });
+    const e = m.get(k); e.qty += qty; e.sellers.add(p.seller); if (p.date < e.oldest) e.oldest = p.date;
+  }
+  return [...m.values()].sort((a, b) => a.name.localeCompare(b.name));
+})();
+const outOf = (k) => OUT.find((o) => o.k === k);
+
+/* rankCandidates, as src/view-rules.mjs ranks: most explained, then fewest left owed, then fewest unexplained */
+function rank(entries) {
+  const total = entries.reduce((s, e) => s + e.qty, 0);
+  const list = [];
+  for (const p of PKGS) {
+    let matched = 0; const pool = p.lines.reduce((s, l) => s + l[1], 0);
+    for (const e of entries) { const l = p.lines.find((x) => norm(x[0]) === e.k); if (l) matched += Math.min(e.qty, l[1]); }
+    if (matched <= 0) continue;
+    list.push({ p, matched, pkgLeft: pool - matched, envLeft: total - matched, exact: pool === matched && total === matched });
+  }
+  list.sort((a, b) => b.matched - a.matched || a.pkgLeft - b.pkgLeft || a.envLeft - b.envLeft || a.p.date.localeCompare(b.p.date));
+  const top = list[0];
+  const tied = top ? list.filter((c) => c.matched === top.matched && c.pkgLeft === top.pkgLeft && c.envLeft === top.envLeft).length : 0;
+  return { list, tied, total };
+}
+
+/* ---------- frames ---------- */
+const DEV = {
+  folded: { w:466, h:678, keys:289, tabTop:595, label:"iPhone Duo, folded. 466 x 678 pt." },
+  ax5:    { w:466, h:678, keys:289, tabTop:595, label:"iPhone Duo, folded, largest accessibility text (AX5)." },
+  open:   { w:951, h:669, keysTop:405, tabTop:586, label:"iPhone Duo, open. 951 x 669 pt, hinge 455.5 to 495.5 pt." },
+  phone:  { w:402, h:874, keys:289, tabTop:791, label:"Large phone, portrait. Drawn at 402 x 874 pt: no size is written (see notes)." },
+};
+const STARTED = "00:41";
+const frames = [];
+const hashParams = () => Object.fromEntries(location.hash.replace(/^#/, "").split("&").filter(Boolean).map((p) => p.split("=")));
+
+function seedState(concept, s) {
+  const st = { screen:"compose", view:"all", keys:false, typed:"", armed:false, menu:null, panel:false, sort:"az",
+               entries:[], kept:null, receipt:null, saved:[], tab:"orphaned", slipOrder:null };
+  const add = (name, q, typed) => st.entries.push({ k:norm(name), name, qty:q, typed:!!typed });
+  if (s !== "empty") { add("Lightning Bolt", 2); add("Counterspell", 1); }
+  if (["armed", "discarded", "closed", "saved"].includes(s)) add("Brainstorm", 1);
+  if (["armed", "discarded", "closed", "saved"].includes(s)) add("Foil token, Elf", 1, true);
+  if (s === "orders") { st.view = "slips"; if (concept === "index") { st.view = "all"; st.panel = true; } }
+  if (s === "typing") { st.keys = true; st.typed = "Brai"; }
+  if (s === "armed") st.armed = true;
+  if (s === "discarded") { st.screen = "pile"; st.receipt = { gone:true, n:5 }; st.entries = []; }
+  if (s === "closed") { st.screen = "pile"; st.kept = st.entries; st.entries = []; st.receipt = { kept:true, n:5 }; }
+  if (s === "saved") { st.screen = "pile"; st.saved = [{ n:5, names:st.entries.map((e) => (e.qty > 1 ? `×${e.qty} ` : "") + e.name) }]; st.entries = []; st.receipt = { saved:true, n:5 }; }
+  if (s === "edit" || s === "editarmed") { st.entries = []; openEdit(st); add("Duress", 1); if (s === "editarmed") st.armed = true; }
+  return st;
+}
+
+/* the saved envelope of 19 Nov, which Edit opens as a draft of its own */
+const ENV19 = [["Ponder", 1], ["Dark Ritual", 2]];
+function openEdit(st) {
+  const saved = st.env19 || ENV19;
+  st.edit = { date:"19 Nov", n:saved.reduce((a, [, q]) => a + q, 0) };
+  st.entries = (st.editKept || saved.map(([name, qty]) => ({ k:norm(name), name, qty, typed:false }))).map((e) => ({ ...e }));
+  st.editKept = null; st.screen = "compose"; st.receipt = null; st.view = "all"; st.slipOrder = null;
+}
+
+const cardsIn = (st) => st.entries.reduce((s, e) => s + e.qty, 0);
+const qtyIn = (st, k) => { const e = st.entries.find((x) => x.k === k); return e ? e.qty : 0; };
+function addCard(st, name, typed) {
+  const k = norm(name); const e = st.entries.find((x) => x.k === k);
+  if (e) e.qty += 1; else st.entries.push({ k, name, qty:1, typed:!!typed && !outOf(k) });
+}
+function fitLine(st) {
+  const n = cardsIn(st);
+  if (!n) return { t:"No cards yet", cls:"" };
+  const r = rank(st.entries);
+  if (!r.list.length) return { t:"No open order holds these", cls:"" };
+  if (r.tied > 1) return { t:`Could have come from ${r.list.length} orders, ${r.tied} tied`, cls:"" };
+  if (r.list[0].exact) return { t:`${r.list[0].p.seller} holds exactly these`, cls:"exact" };
+  return { t:`Could have come from ${r.list.length} order${r.list.length === 1 ? "" : "s"}`, cls:"" };
+}
+
+/* ---------- parts ---------- */
+const kbdIcon = '<svg viewBox="0 0 20 14" aria-hidden="true"><rect x=".75" y=".75" width="18.5" height="12.5" rx="2" fill="none" stroke="currentColor" stroke-width="1.5"/><path d="M4 4.5h1.5M8 4.5h1.5M12 4.5h1.5M16 4.5h.5M4 8h1.5M8 8h1.5M12 8h1.5M6 11h8" stroke="currentColor" stroke-width="1.5"/></svg>';
+const chev = '<svg viewBox="0 0 8 12" aria-hidden="true"><path d="M1.5 1l5 5-5 5" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>';
+
+function headHTML(fr) {
+  const st = fr.st, n = cardsIn(st), fit = fitLine(st);
+  const ax = fr.dev === "ax5";
+  const title = st.edit ? `Envelope of ${st.edit.date}` : "New envelope";
+  const when = st.edit ? `Editing · saved with ${st.edit.n} cards` : `Started ${STARTED}`;
+  return `<header class="head tag-new" data-tag="New: pinned envelope head" aria-label="${title}, ${when}, ${n} card${n === 1 ? "" : "s"} now. ${fit.t}.">
+    <div class="who"><span class="t">${title}</span>
+      <span class="m">${ax ? `${n} card${n === 1 ? "" : "s"}` : when}</span>
+      ${ax ? "" : `<span class="m ${fit.cls}">${esc(fit.t)}</span>`}</div>
+    <div class="stamp" aria-hidden="true"><b>${n}</b><small>card${n === 1 ? "" : "s"}</small></div>
+  </header>`;
+}
+
+function trayHTML(fr) {
+  const st = fr.st;
+  const chips = st.entries.map((e) => `<button class="chip${e.typed ? " typed" : ""}" type="button" data-act="chip" data-k="${e.k}" aria-label="${esc(e.name)}, ${e.qty} in this envelope. Change">
+    <span>${esc(e.name)} <i>×${e.qty}</i></span></button>`).join("");
+  return `<div class="tray tag-new" data-tag="New: tray" aria-label="In this envelope">${chips || '<span class="empty">Tap a card below. It lands here.</span>'}</div>`;
+}
+
+function barHTML(fr, top, page) {
+  const st = fr.st, n = cardsIn(st), ax = fr.dev === "ax5";
+  const style = `style="top:${top}px"`;
+  /* an edit draft's Discard drops the changes only; the saved card's own Discard deletes the envelope, so the two get two names */
+  const askWords = st.edit ? "Tap again to discard your changes" : `Tap again to discard ${n} card${n === 1 ? "" : "s"}`;
+  if (st.armed && ax) {
+    return `<div class="bar tag-new" data-tag="New: ask takes the bar" style="top:${top - 128}px;height:216px;flex-direction:column;align-items:stretch;justify-content:center" ${page || ""}>
+      <button class="btn armed" type="button" data-act="confirm" style="white-space:normal;line-height:1.1;padding:8px 14px">${askWords}</button>
+      <button class="btn" type="button" data-act="unarm" data-first>Cancel</button></div>`;
+  }
+  if (st.armed) {
+    return `<div class="bar tag-new" data-tag="New: ask takes the bar" ${style} ${page || ""}>
+      <button class="btn" type="button" data-act="unarm" data-first>Cancel</button>
+      <button class="btn armed" type="button" data-act="confirm">${askWords}</button></div>`;
+  }
+  return `<div class="bar tag-new" data-tag="New: one bar for the draft" ${style} ${page || ""}>
+    <button class="btn" type="button" data-act="close">Close</button>
+    <button class="btn discard" type="button" data-act="arm" ${n || st.edit ? "" : 'disabled aria-describedby="why-' + fr.id + '"'}>${st.edit && !ax ? "Discard changes" : "Discard"}</button>
+    <button class="btn save" type="button" data-act="save" ${n ? "" : 'disabled aria-describedby="why-' + fr.id + '"'}>${ax ? "Save" : st.edit ? "Save changes" : "Save envelope"}</button>
+    <span class="why" id="why-${fr.id}">Tap a card first.</span></div>`;
+}
+
+function tabsHTML(fr, top, left, width) {
+  const tabs = [["ledger", "Ledger"], ["orphaned", "Orphaned"], ["tally", "Tally"], ["packages", "Packages"]];
+  return `<div class="tabs tag-today" data-tag="Today: tab bar" style="top:${top}px;${left != null ? `left:${left}px;width:${width}px;right:auto` : ""}">
+    <nav aria-label="Tabs">${tabs.map(([k, l]) => `<button type="button" data-act="tab" data-v="${k}" ${fr.st.tab === k ? 'aria-current="page"' : ""}><i></i>${l}</button>`).join("")}</nav></div>`;
+}
+
+function keysHTML(fr, top) {
+  const rows = ["qwertyuiop", "asdfghjkl", "zxcvbnm"];
+  const typed = fr.st.typed;
+  const sug = OUT.filter((o) => typed && norm(o.name).includes(norm(typed))).slice(0, 3).map((o) => o.name);
+  return `<div class="keys" style="top:${top}px" aria-label="System keyboard (drawn)">
+    <div class="sugg">${(sug.length ? sug : ["", "", ""]).map((s) => `<span>${esc(s)}</span>`).join("")}</div>
+    ${rows.map((r, i) => `<div class="r">${i === 2 ? '<button type="button" class="g" data-act="key" data-k="shift" aria-label="Shift">⇧</button>' : ""}${[...r].map((c) => `<button type="button" data-act="key" data-k="${c}">${c}</button>`).join("")}${i === 2 ? '<button type="button" class="g" data-act="key" data-k="del" aria-label="Delete">⌫</button>' : ""}</div>`).join("")}
+    <div class="r"><button type="button" class="g" data-act="key" data-k="123">123</button><button type="button" class="w" data-act="key" data-k=" ">space</button><button type="button" class="g" data-act="key" data-k="ret">done</button></div>
+  </div>`;
+}
+
+/* the A to Z list of every outstanding card */
+function allListHTML(fr) {
+  const st = fr.st; let html = "", letter = "";
+  for (const o of OUT) {
+    const L = o.name[0].toUpperCase();
+    if (L !== letter) { letter = L; html += `<div class="sect" data-letter="${L}">${L}</div>`; }
+    const q = qtyIn(st, o.k);
+    html += `<button class="row" type="button" data-act="add" data-name="${esc(o.name)}" aria-label="${esc(o.name)}, ${o.qty} out from ${o.sellers.size} seller${o.sellers.size === 1 ? "" : "s"}${q ? `, ${q} in this envelope` : ""}. Add one">
+      <span class="slot${q ? " on" : ""}" aria-hidden="true">${q ? q : "+"}</span><span class="n">${esc(o.name)}</span>
+      <span class="c">${o.qty} out${o.sellers.size > 1 ? ` · ${o.sellers.size} sellers` : ""}</span></button>`;
+  }
+  return html;
+}
+function railHTML(top, bottom) {
+  const letters = [...new Set(OUT.map((o) => o.name[0].toUpperCase()))];
+  return `<div class="rail tag-new" data-tag="New: letter rail" style="top:${top}px;bottom:${bottom}px" aria-label="Jump to letter">${letters.map((l) => `<button type="button" data-act="jump" data-l="${l}" aria-label="Jump to ${l}">${l}</button>`).join("")}</div>`;
+}
+
+/* the slips: each candidate order's own lines. Their order holds while you tap. */
+function slipsHTML(fr) {
+  const st = fr.st;
+  if (!st.entries.length) return `<p class="hint">Tap the first card from All cards. The orders that hold it open here, with the rest of their cards.</p>`;
+  const r = rank(st.entries);
+  const byGk = new Map(r.list.map((c) => [c.p.gk, c]));
+  if (!st.slipOrder) st.slipOrder = r.list.map((c) => c.p.gk);
+  for (const c of r.list) if (!st.slipOrder.includes(c.p.gk)) st.slipOrder.push(c.p.gk);
+  const top = r.list[0];
+  let html = r.tied > 1 ? `<p class="tie" role="note">${r.tied} orders fit equally well. Nothing is checked in: you pick the order later, on the saved envelope.</p>` : "";
+  for (const gk of st.slipOrder) {
+    const c = byGk.get(gk); if (!c) continue;
+    const behind = !(c.matched === top.matched && c.pkgLeft === top.pkgLeft && c.envLeft === top.envLeft);
+    html += `<article class="slip${behind ? " behind" : ""}" aria-label="${esc(c.p.seller)}, ordered ${day(c.p.date)}, explains ${c.matched} of ${r.total}">
+      <header><b>${esc(c.p.seller)}</b><span>${day(c.p.date)}</span><span class="fit${c.exact ? " exact" : ""}">fits ${c.matched} of ${r.total}</span></header>
+      ${c.p.lines.map(([name, q]) => {
+        const have = qtyIn(st, norm(name)), full = have >= q;
+        return `<button class="row${full ? " got" : ""}" type="button" data-act="add" data-name="${esc(name)}" aria-label="${esc(name)}, ${q} on this order${have ? `, ${have} in this envelope` : ""}. Add one">
+          <span class="slot${full ? " full" : have ? " on" : ""}" aria-hidden="true">${full ? "✓" : have || "+"}</span><span class="n">${esc(name)}</span><span class="c">${q} on order</span></button>`;
+      }).join("")}</article>`;
+  }
+  return html;
+}
+
+/* the flat card index: tiles, A to Z or oldest order first */
+function tilesHTML(fr) {
+  const st = fr.st; let groups;
+  if (st.sort === "az") {
+    groups = []; for (const o of OUT) { const L = o.name[0].toUpperCase(); let g = groups.at(-1); if (!g || g.key !== L) groups.push(g = { key:L, label:L, items:[] }); g.items.push(o); }
+  } else {
+    const m = new Map(); for (const o of [...OUT].sort((a, b) => a.oldest.localeCompare(b.oldest) || a.name.localeCompare(b.name))) {
+      if (!m.has(o.oldest)) m.set(o.oldest, { key:o.oldest, label:"Ordered " + day(o.oldest), items:[] }); m.get(o.oldest).items.push(o); }
+    groups = [...m.values()];
+  }
+  return groups.map((g) => `<div class="sect" data-letter="${g.key}">${g.label}</div><div class="tiles">${g.items.map((o) => {
+    const q = qtyIn(st, o.k);
+    return `<button class="tile${q ? " on" : ""}" type="button" data-act="add" data-name="${esc(o.name)}" aria-label="${esc(o.name)}, ${o.qty} out${q ? `, ${q} in this envelope` : ""}. Add one">
+      <span class="n">${esc(o.name)}</span><span class="c">${o.qty} out${o.sellers.size > 1 ? ` · ${o.sellers.size} sellers` : ""}</span>
+      <span class="slot${q ? " on" : ""}" aria-hidden="true">${q || "+"}</span></button>`; }).join("")}</div>`).join("");
+}
+
+/* the could-have-come-from list: the matched lines, read only */
+function fromHTML(fr, withHead) {
+  const st = fr.st, r = rank(st.entries);
+  if (!st.entries.length) return `<p class="hint">Tap a card. The orders that could have sent it show here.</p>`;
+  if (!r.list.length) return `<p class="hint">No open order holds these cards.</p>`;
+  const top = r.list[0];
+  return `${withHead ? `<div class="ph"><b>Could have come from</b><button class="done" type="button" data-act="panel">Done</button></div>` : ""}
+    ${r.tied > 1 ? `<p class="tie" role="note">${r.tied} orders fit equally well. Nothing is checked in here.</p>` : ""}
+    ${r.list.map((c) => {
+      const behind = !(c.matched === top.matched && c.pkgLeft === top.pkgLeft && c.envLeft === top.envLeft);
+      return `<article class="slip${behind ? " behind" : ""}"><header><b>${esc(c.p.seller)}</b><span>${day(c.p.date)}</span><span class="fit${c.exact ? " exact" : ""}">fits ${c.matched} of ${r.total}</span></header>
+      ${c.p.lines.filter(([n]) => qtyIn(st, norm(n))).map(([name, q]) => `<div class="row got" style="cursor:default"><span class="slot full" aria-hidden="true">✓</span><span class="n">${esc(name)}</span><span class="c">${Math.min(q, qtyIn(st, norm(name)))} of ${q}</span></div>`).join("")}</article>`;
+    }).join("")}`;
+}
+
+function menuHTML(fr, top) {
+  const e = fr.st.entries.find((x) => x.k === fr.st.menu); if (!e) return "";
+  return `<div class="menu" role="menu" style="top:${top}px" aria-label="${esc(e.name)}">
+    <div class="mt">${esc(e.name)}: ${e.qty} in this envelope</div>
+    <button type="button" role="menuitem" data-act="inc" data-k="${e.k}">One more <span>+</span></button>
+    <button type="button" role="menuitem" data-act="dec" data-k="${e.k}" ${e.qty > 1 ? "" : "disabled"}>One fewer <span>−</span></button>
+    <button type="button" role="menuitem" data-act="rm" data-k="${e.k}">Take it out</button></div>`;
+}
+
+function fieldHTML(fr, top) {
+  const t = fr.st.typed;
+  return `<div class="fieldrow tag-today" data-tag="Today: card name field" style="top:${top}px">
+    <div class="field" role="textbox" aria-label="Card name">${t ? esc(t) : '<span class="ph">Type a card name…</span>'}</div>
+    <button class="done" type="button" data-act="hidekeys">Back to tapping</button></div>`;
+}
+function suggHTML(fr) {
+  const t = fr.st.typed.trim();
+  const found = OUT.filter((o) => t && norm(o.name).includes(norm(t)));
+  let html = found.map((o) => `<button class="row" type="button" data-act="add" data-name="${esc(o.name)}"><span class="slot${qtyIn(fr.st, o.k) ? " on" : ""}" aria-hidden="true">${qtyIn(fr.st, o.k) || "+"}</span><span class="n">${esc(o.name)}</span><span class="c">${o.qty} out</span></button>`).join("");
+  if (t && !found.some((o) => norm(o.name) === norm(t))) html += `<button class="row astyped" type="button" data-act="addtyped"><span class="n">Add “${esc(t)}” as typed</span></button>`;
+  return html || `<p class="hint">Type part of the name. Matches come from the cards still owed.</p>`;
+}
+
+/* ---------- screens ---------- */
+function composeFull(fr, D) {
+  const st = fr.st, sat = fr.sat, ax = fr.dev === "ax5";
+  const headH = ax ? 120 : 76, trayH = ax ? 0 : 52;
+  const below = sat + headH + trayH;
+  const barH = ax ? 88 : 60, barTop = D.tabTop - barH;
+  let html = headHTML(fr) + trayHTML(fr);
+  if (st.keys) {
+    const keysTop = D.h - D.keys;
+    html += fieldHTML(fr, below) + `<div class="list" data-list style="top:${below + 64}px;bottom:${D.keys}px">${suggHTML(fr)}</div>` + keysHTML(fr, keysTop);
+    return html;
+  }
+  const phH = ax ? 72 : 56;
+  let listTop = below + phH;
+  if (fr.concept === "slip") {
+    const n = st.entries.length;
+    html += `<div class="pickhead tag-new" data-tag="New: tap picker" style="top:${below}px">
+      <div class="seg" role="group" aria-label="Pick from">
+        <button type="button" data-act="view" data-v="all" aria-pressed="${st.view === "all"}">All cards</button>
+        <button type="button" data-act="view" data-v="slips" aria-pressed="${st.view === "slips"}" ${n ? "" : `disabled aria-describedby="why2-${fr.id}"`} class="${n && st.view === "all" ? "cue" : ""}">Its orders${n ? " · " + rank(st.entries).list.length : ""}</button>
+      </div><span class="why" id="why2-${fr.id}">Tap a card first.</span>
+      <button class="typebtn" type="button" data-act="type" aria-label="Type a card name">${kbdIcon}<span>Type</span></button></div>`;
+    html += `<div class="list" data-list id="${fr.focusId}" style="top:${listTop}px;bottom:${D.h - barTop}px">${st.view === "slips" ? slipsHTML(fr) : allListHTML(fr)}</div>`;
+    if (st.view === "all") html += railHTML(listTop + 4, D.h - barTop + 4);
+  } else {
+    html += `<div class="pickhead tag-new" data-tag="New: tap picker" style="top:${below}px">
+      <div class="seg" role="group" aria-label="Order the cards">
+        <button type="button" data-act="sort" data-v="az" aria-pressed="${st.sort === "az"}">A to Z</button>
+        <button type="button" data-act="sort" data-v="old" aria-pressed="${st.sort === "old"}">Oldest order first</button>
+      </div>
+      <button class="typebtn" type="button" data-act="type" aria-label="Type a card name">${kbdIcon}<span>Type</span></button></div>`;
+    const fit = fitLine(st), fitsH = ax ? 72 : 44;
+    html += `<button class="fits tag-new" data-tag="New: matched lines" type="button" data-act="panel" style="top:${listTop}px" ${st.entries.length ? "" : "disabled"}>
+      <b class="${fit.cls}">${st.entries.length ? esc(fit.t) : "Could have come from: tap a card first"}</b>${st.entries.length ? chev : ""}</button>`;
+    listTop += fitsH;
+    html += `<div class="list" data-list id="${fr.focusId}" style="top:${listTop}px;bottom:${D.h - barTop}px">${tilesHTML(fr)}</div>`;
+    if (st.sort === "az") html += railHTML(listTop + 4, D.h - barTop + 4);
+    if (st.panel) html += `<div class="panel" style="top:${listTop - fitsH}px;bottom:${D.h - barTop}px">${fromHTML(fr, true)}</div>`;
+  }
+  if (st.menu) html += menuHTML(fr, below + 4);
+  html += barHTML(fr, barTop) + tabsHTML(fr, D.tabTop);
+  return html;
+}
+
+function composeOpen(fr, D) {
+  const st = fr.st, sat = fr.sat;
+  const below = sat + 76;
+  const barTop = D.h - 60 - 12;
+  const n = st.entries.length;
+  let left = headHTML(fr);
+  left += `<div class="inlist tag-new" data-tag="New: the envelope's own list" style="top:${below}px;bottom:${D.h - barTop}px">
+    <div class="intitle">In this envelope</div>
+    ${n ? st.entries.map((e) => `<div class="inrow${e.typed ? " typed" : ""}"><span class="n">${esc(e.name)}</span>
+      <button class="step" type="button" data-act="dec2" data-k="${e.k}" aria-label="${e.qty > 1 ? "One fewer" : "Take out"} ${esc(e.name)}">−</button><span class="q">${e.qty}</span>
+      <button class="step" type="button" data-act="inc" data-k="${e.k}" aria-label="One more ${esc(e.name)}">+</button></div>`).join("") : '<p class="hint">Tap a card on the right page. It lands here.</p>'}
+    ${fr.concept === "index" ? `<div class="intitle">Could have come from</div>${fromHTML(fr, false)}` : ""}</div>`;
+  left += barHTML(fr, barTop);
+  let right = "";
+  if (st.keys) {
+    right += fieldHTML(fr, sat + 8) + `<div class="list" data-list style="top:${sat + 72}px;bottom:${D.h - D.keysTop}px">${suggHTML(fr)}</div>`;
+  } else if (fr.concept === "slip") {
+    right += `<div class="pickhead tag-new" data-tag="New: tap picker" style="top:${sat + 8}px">
+      <div class="seg" role="group" aria-label="Pick from">
+        <button type="button" data-act="view" data-v="all" aria-pressed="${st.view === "all"}">All cards</button>
+        <button type="button" data-act="view" data-v="slips" aria-pressed="${st.view === "slips"}" ${n ? "" : "disabled"} class="${n && st.view === "all" ? "cue" : ""}">Its orders${n ? " · " + rank(st.entries).list.length : ""}</button></div>
+      <button class="typebtn" type="button" data-act="type" aria-label="Type a card name">${kbdIcon}<span>Type</span></button></div>
+      <div class="list" data-list id="${fr.focusId}" style="top:${sat + 64}px;bottom:${D.h - D.tabTop}px">${st.view === "slips" ? slipsHTML(fr) : allListHTML(fr)}</div>
+      ${st.view === "all" ? railHTML(sat + 68, D.h - D.tabTop + 4) : ""}`;
+  } else {
+    right += `<div class="pickhead tag-new" data-tag="New: tap picker" style="top:${sat + 8}px">
+      <div class="seg" role="group" aria-label="Order the cards">
+        <button type="button" data-act="sort" data-v="az" aria-pressed="${st.sort === "az"}">A to Z</button>
+        <button type="button" data-act="sort" data-v="old" aria-pressed="${st.sort === "old"}">Oldest order first</button></div>
+      <button class="typebtn" type="button" data-act="type" aria-label="Type a card name">${kbdIcon}<span>Type</span></button></div>
+      <div class="list" data-list id="${fr.focusId}" style="top:${sat + 64}px;bottom:${D.h - D.tabTop}px">${tilesHTML(fr)}</div>
+      ${st.sort === "az" ? railHTML(sat + 68, D.h - D.tabTop + 4) : ""}`;
+  }
+  right += tabsHTML(fr, D.tabTop, 0, 455.5);
+  let html = `<div class="pageL">${left}</div><div class="pageR">${right}</div>`;
+  if (st.keys) html += keysHTML(fr, D.keysTop);
+  return html;
+}
+
+function pileHTML(fr, D, pageW) {
+  const st = fr.st;
+  const kept = st.kept && st.kept.length;
+  const keptN = kept ? st.kept.reduce((s, e) => s + e.qty, 0) : 0;
+  const rc = st.receipt;
+  const fresh = st.saved.map((s) => `<div class="env fresh"><div class="eh"><span>Envelope · 2026-11-21 · ${s.n} cards</span><em>Edit</em><em class="d">Discard</em></div><p>${s.names.map(esc).join(", ")}</p></div>`).join("");
+  const receipt = rc ? `<div class="bar" style="top:${D.tabTop - 60}px;height:60px;${pageW ? `width:${pageW}px;right:auto` : ""}" role="status">
+      <span class="receipt ${rc.gone || rc.editGone ? "gone" : "kept"}">${rc.gone ? `Draft discarded. Its ${rc.n} cards are gone.` : rc.editGone ? `Changes discarded. The envelope of 19 Nov keeps its ${rc.n} cards.` : rc.editKept ? "Your changes to the envelope of 19 Nov are kept." : rc.kept ? `Draft kept with ${rc.n} cards.` : rc.edit ? `Envelope of 19 Nov saved with ${rc.n} cards.` : `Envelope saved with ${rc.n} cards.`}</span></div>` : "";
+  const e19 = st.env19 || ENV19, e19n = e19.reduce((a, [, q]) => a + q, 0);
+  return `<div class="pile">
+    <h3>Orphaned</h3>
+    <button class="recbtn${kept ? " resume" : ""} tag-new" data-tag="${kept ? "New: resume names the draft" : "Today: record button"}" type="button" data-act="record">${kept ? `Resume envelope · ${keptN} cards` : "+ Record an envelope"}</button>
+    ${fresh}
+    <div class="env"><div class="eh"><span>Envelope · 2026-11-19 · ${e19n} card${e19n === 1 ? "" : "s"}</span><button class="edit${st.editKept ? " resume" : ""}" type="button" data-act="openEdit">${st.editKept ? "Resume edit" : "Edit"}</button><em class="d">Discard</em></div><p>${e19.map(([nm, q]) => (q > 1 ? `×${q} ` : "") + esc(nm)).join(", ")}</p></div>
+    <div class="env"><div class="eh"><span>Envelope · 2026-11-17 · 1 card</span><em>Edit</em><em class="d">Discard</em></div><p>Thoughtseize</p></div>
+  </div>${receipt}`;
+}
+
+function otherHTML(fr) {
+  const k = fr.st.tab, n = cardsIn(fr.st);
+  return `<div class="otherview"><div><b style="color:var(--ink)">${k[0].toUpperCase() + k.slice(1)}</b> (not drawn).<br>${n ? `The envelope draft waits on Orphaned with ${n} cards.` : ""}</div></div>`;
+}
+
+function render(fr) {
+  const D = DEV[fr.dev], st = fr.st;
+  let body = `<div class="status" aria-hidden="true"><span>9:41</span><span>●●● ▮</span></div>`;
+  if (fr.dev === "open") {
+    if (st.tab !== "orphaned") body += `<div class="pageL">${otherHTML(fr)}</div><div class="pageR">${tabsHTML(fr, D.tabTop, 0, 455.5)}</div>`;
+    else if (st.screen === "pile") body += `<div class="pageL">${pileHTML(fr, D, 455.5)}</div><div class="pageR"><p class="hint" style="margin-top:80px">Tap an envelope to see where it could have come from.</p>${tabsHTML(fr, D.tabTop, 0, 455.5)}</div>`;
+    else body += composeOpen(fr, D);
+    body += `<div class="fold" aria-hidden="true"><span>hinge 455.5 to 495.5 pt</span></div>`;
+  } else {
+    if (st.tab !== "orphaned") body += otherHTML(fr) + tabsHTML(fr, D.tabTop);
+    else if (st.screen === "pile") body += pileHTML(fr, D) + tabsHTML(fr, D.tabTop);
+    else body += `<div class="pageFull">${composeFull(fr, D)}</div>`;
+  }
+  const keepScroll = fr.el.querySelector("[data-list]")?.scrollTop || 0;
+  fr.el.innerHTML = body;
+  const list = fr.el.querySelector("[data-list]");
+  if (list && fr.keepScroll) list.scrollTop = keepScroll;
+  fr.keepScroll = false;
+  if (fr.focusFirst) { fr.el.querySelector("[data-first]")?.focus({ preventScroll:true }); fr.focusFirst = false; }
+}
+
+let armTimers = new Map();
+function act(fr, el) {
+  const st = fr.st, a = el.dataset.act;
+  const hold = () => { fr.keepScroll = true; };
+  switch (a) {
+    case "add": addCard(st, el.dataset.name); st.menu = null; hold(); if (st.keys) st.typed = ""; break;
+    case "addtyped": addCard(st, st.typed.trim(), true); st.typed = ""; hold(); break;
+    case "chip": st.menu = st.menu === el.dataset.k ? null : el.dataset.k; hold(); break;
+    case "inc": { const e = st.entries.find((x) => x.k === el.dataset.k); if (e) e.qty++; hold(); break; }
+    case "dec": { const e = st.entries.find((x) => x.k === el.dataset.k); if (e && e.qty > 1) e.qty--; hold(); break; }
+    case "dec2": { const e = st.entries.find((x) => x.k === el.dataset.k); if (e) { e.qty--; if (!e.qty) st.entries = st.entries.filter((x) => x !== e); } hold(); break; }
+    case "rm": st.entries = st.entries.filter((x) => x.k !== el.dataset.k); st.menu = null; hold(); break;
+    case "view": if (st.view !== el.dataset.v) { st.view = el.dataset.v; st.slipOrder = null; } break;
+    case "sort": st.sort = el.dataset.v; break;
+    case "panel": st.panel = !st.panel; break;
+    case "type": st.keys = true; st.menu = null; st.panel = false; break;
+    case "hidekeys": st.keys = false; st.typed = ""; break;
+    case "key": {
+      const k = el.dataset.k;
+      if (k === "del") st.typed = st.typed.slice(0, -1);
+      else if (k === "ret") { if (st.typed.trim()) { const m = OUT.find((o) => norm(o.name) === norm(st.typed)); addCard(st, m ? m.name : st.typed.trim(), !m); st.typed = ""; } }
+      else if (k.length === 1) st.typed += st.typed ? k : k.toUpperCase();
+      hold(); break;
+    }
+    case "jump": { const list = fr.el.querySelector("[data-list]"); const s = list?.querySelector(`[data-letter="${el.dataset.l}"]`); if (s) list.scrollTop = s.offsetTop; return; }
+    case "arm": st.armed = true; st.menu = null; fr.focusFirst = true; hold();
+      clearTimeout(armTimers.get(fr)); armTimers.set(fr, setTimeout(() => { if (st.armed) { st.armed = false; fr.keepScroll = true; render(fr); } }, 4000)); break;
+    case "unarm": st.armed = false; hold(); break;
+    case "confirm": { const n = cardsIn(st);
+      if (st.edit) { st.receipt = { editGone:true, n:st.edit.n }; st.edit = null; } else { st.kept = null; st.receipt = { gone:true, n }; }
+      st.entries = []; st.armed = false; st.keys = false; st.screen = "pile"; break; }
+    case "close": { const n = cardsIn(st);
+      if (st.edit) { st.editKept = st.entries; st.edit = null; st.receipt = { editKept:true }; } else { st.kept = st.entries; st.receipt = n ? { kept:true, n } : null; }
+      st.entries = []; st.keys = false; st.armed = false; st.screen = "pile"; break; }
+    case "openEdit": openEdit(st); break;
+    case "save": { const n = cardsIn(st);
+      if (st.edit) { st.env19 = st.entries.map((e) => [e.name, e.qty]); st.edit = null; st.entries = []; st.screen = "pile"; st.receipt = { saved:true, n, edit:true }; break; }
+      st.saved.unshift({ n, names:st.entries.map((e) => (e.qty > 1 ? `×${e.qty} ` : "") + e.name) }); st.entries = []; st.kept = null; st.screen = "pile"; st.receipt = { saved:true, n }; break; }
+    case "record": st.entries = st.kept || []; st.kept = null; st.screen = "compose"; st.receipt = null; st.view = "all"; st.slipOrder = null; break;
+    case "tab": st.tab = el.dataset.v; break;
+    default: return;
+  }
+  render(fr);
+}
+
+/* ---------- build the figures ---------- */
+const ORDER = ["folded", "ax5", "open", "phone"];
+const CAP = {
+  folded: "Folded first. One page: head, tray, picker, bar, tab bar. Keys stay down until Type.",
+  ax5: "Head capped at 40 pt so it stays one band; the tray folds into the head's count; the letter rail gives way to section heads; the armed ask grows up over the list, never over the head.",
+  open: "Left page: the envelope and its bar. Right page: the picker and the tab bar. Keys, when asked for, span both pages from y 405.",
+  phone: "Same order as folded, with more rows in reach. Size is a placeholder until a figure is written.",
+};
+function build() {
+  const s = hashParams().s || "picking";
+  frames.length = 0;
+  for (const frame of document.querySelectorAll(".frame[data-c]")) {
+    const concept = frame.dataset.c, dev = frame.dataset.d;
+    frame.setAttribute("aria-label", `${concept === "slip" ? "Packing slip" : "Card index"}: ${DEV[dev].label}`);
+    frame.closest("figure").querySelector("figcaption").innerHTML = `<b>${DEV[dev].label}</b> ${CAP[dev]}`;
+    const fr = { id:`${concept}-${dev}`, concept, dev, el:frame, sat: dev === "phone" ? 54 : 20, st:seedState(concept, s),
+                 focusId: dev === "folded" ? `choice-${concept}` : `pick-${concept}-${dev}` };
+    if (!frame.dataset.wired) {
+      frame.addEventListener("click", (ev) => { const b = ev.target.closest("[data-act]"); const f = frame._fr; if (b && f && frame.contains(b) && !b.disabled) act(f, b); });
+      frame.dataset.wired = "1";
+    }
+    frame._fr = fr;
+    frames.push(fr);
+    render(fr);
+  }
+}
+
+/* ---------- page controls ---------- */
+const hidden = new Set();
+function applyView() {
+  const p = hashParams();
+  const c = p.c || "both", d = p.d || "all";
+  for (const sec of document.querySelectorAll("section.concept")) sec.hidden = hidden.has(sec.dataset.concept) || (c !== "both" && c !== sec.dataset.concept);
+  for (const fig of document.querySelectorAll("figure")) fig.hidden = d !== "all" && fig.dataset.dev !== d;
+  for (const a of document.querySelectorAll("[data-nav]")) {
+    const k = a.dataset.nav, v = a.dataset.v, cur = { c, s:p.s || "picking", d }[k];
+    a.setAttribute("aria-current", String(cur === v));
+    const next = { ...p, [k]:v };
+    a.href = "#" + Object.entries(next).map(([kk, vv]) => `${kk}=${vv}`).join("&");
+  }
+  for (const b of document.querySelectorAll("[data-hide]")) b.hidden = hidden.has(b.dataset.hide);
+  for (const a of document.querySelectorAll('[data-nav="c"]')) if (hidden.has(a.dataset.v)) a.hidden = true;
+}
+let lastS = null;
+function onHash() {
+  const s = hashParams().s || "picking";
+  if (s !== lastS) { build(); lastS = s; }
+  applyView();
+}
+document.querySelectorAll("[data-hide]").forEach((b) => b.addEventListener("click", () => { hidden.add(b.dataset.hide); applyView(); }));
+const tagbtn = document.getElementById("tagbtn");
+tagbtn.addEventListener("click", () => {
+  const on = document.body.classList.toggle("tags-on");
+  tagbtn.setAttribute("aria-pressed", String(on));
+  tagbtn.textContent = on ? "Hide Today/New tags" : "Show Today/New tags";
+});
+document.body.classList.add("tags-on");
+window.addEventListener("hashchange", onHash);
+onHash();
+</script>
+</body>
+</html>

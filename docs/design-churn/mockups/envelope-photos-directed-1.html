@@ -1,0 +1,924 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Envelope Photos, Camera First</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle),
+   so this page draws one theme. The scrim token is the camera's surround and the viewer's backdrop. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --waxLit:#C86A5F;
+  --shadow:rgba(28,43,36,0.06); --scrim:rgba(28,43,36,0.92);
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Content words are Cochin and numbers Menlo (typography-cochin-and-mono). Off a Mac they fall back. */
+  --cochin: Cochin, "Liberation Serif", Georgia, serif;
+  --mono: Menlo, "DejaVu Sans Mono", ui-monospace, monospace;
+  /* Status bar foot: unmeasured on these screens. Drawn at the 20 pt floor the Duo UI tests use. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+html { -webkit-text-size-adjust:100%; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { margin:0 auto; padding:16px; max-width:2400px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; max-width:100ch; }
+h1 { font-family:var(--cochin); font-size:28px; margin:16px 0 4px; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0; }
+.kind { font-weight:600; margin:4px 0; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:100ch; }
+nav.ctl { display:flex; flex-direction:column; gap:8px; margin:16px 0; }
+nav.ctl .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+nav.ctl .lab { font-size:13px; color:var(--inkSoft); min-width:6em; }
+nav.ctl a, nav.ctl button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav.ctl a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { border-top:1px solid var(--line); padding-top:16px; margin-top:24px; }
+section.concept[hidden], [hidden] { display:none !important; }
+.chead { display:flex; flex-direction:column; gap:4px; max-width:100ch; }
+.chead p { margin:0; color:var(--inkSoft); }
+.frames { display:flex; flex-wrap:wrap; gap:32px 24px; align-items:flex-start; margin:16px 0; }
+.fcap { margin:0 0 8px; font-size:13px; color:var(--inkSoft); max-width:466px; }
+.fcap b { color:var(--ink); font-size:14px; }
+.fwrap { max-width:100%; overflow-x:auto; }
+.sources { max-width:100ch; } .sources li { margin:4px 0; }
+code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
+.legend { display:flex; flex-wrap:wrap; gap:12px; font-size:13px; }
+.tagname { display:inline-block; font-size:12.5px; font-weight:600; padding:1px 6px; border:2px dashed currentColor; border-radius:4px; }
+.tagname.t { color:var(--today); } .tagname.n { color:var(--new); }
+
+/* ---------- device frames. 1 CSS px = 1 pt. ---------- */
+.dev { position:relative; overflow:hidden; background:var(--paper); border:1px solid var(--ink); border-radius:16px; font-family:var(--sys);
+  color:var(--ink); line-height:1.25; flex:none;
+  /* Dynamic Type: each size is the native size times its text style's ratio (Apple typography page). */
+  --kb:1; --kc:1; --kf:1; --kh:1; }
+.dev.ax5 { --kb:3.1176; --kc:3.5833; --kf:3.3846; --kh:3.1176; }
+.dev.folded { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; border-radius:12px; }
+.dev.pro { width:402px; height:874px; border-radius:24px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); padding:0 20px; display:flex; justify-content:space-between; align-items:center;
+  font:600 12px var(--sys); z-index:30; pointer-events:none; }
+.status.light { color:var(--card); }
+.scr { position:absolute; inset:0; }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.hinge { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, transparent); z-index:1; }
+.body { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:none; }
+.body::-webkit-scrollbar { display:none; }
+.stack { display:flex; flex-direction:column; gap:12px; padding:0 16px; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:6px; top:-9px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper);
+  z-index:4; white-space:nowrap; pointer-events:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+.tl[data-tag]::before { left:-2px; right:auto; }
+.rhead[data-tag]::before { top:auto; bottom:-8px; }
+.notags [data-tag]::before { display:none; } .notags .tag-new, .notags .tag-today { outline:0; }
+
+/* ---------- Today: running head and tab bars ---------- */
+.rhead { height:46px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); margin:0 16px 12px; }
+.rhead b { font:700 15px var(--cochin); letter-spacing:3px; }
+.rhead span { font:11px var(--mono); color:var(--inkSoft); }
+.tabbar { position:absolute; left:16px; right:16px; bottom:21px; height:62px; border-radius:31px; display:flex; padding:4px;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); border:1px solid var(--line); box-shadow:0 2px 8px var(--shadow); z-index:12;
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+.tabbar.duo { left:calc(495.5px + 24px); right:24px; bottom:12px; height:64px; border-radius:32px; }
+.tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:0; background:none; color:var(--inkSoft);
+  font:500 11px var(--sys); border-radius:27px; cursor:pointer; min-height:44px; }
+.tab.on { color:var(--accent); background:color-mix(in srgb, var(--card) 90%, transparent); }
+.tab svg { width:22px; height:22px; }
+
+/* ---------- content type: Cochin words, Menlo numbers ---------- */
+.micro { font-family:var(--mono); font-size:calc(11px * var(--kc)); letter-spacing:0.12em; text-transform:uppercase; color:var(--inkSoft); }
+.entry { font-family:var(--cochin); font-size:calc(13.5px * var(--kb)); color:var(--ink); }
+.note { font-family:var(--mono); font-size:calc(11px * var(--kc)); color:var(--inkSoft); overflow-wrap:anywhere; }
+.mini { font-family:var(--mono); font-size:calc(11px * var(--kc)); color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:5px;
+  padding:4px 8px; cursor:pointer; position:relative; }
+.mini::after { content:""; position:absolute; inset:-10px -4px; } /* 44 pt hit area, as outsetHit does */
+.mini.red { color:var(--red); border-color:var(--redSoft); }
+.mini.armed { background:var(--red); color:var(--card); border-color:var(--red); font-weight:700; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); }
+.cands { border:1px dashed var(--today); border-radius:6px; padding:6px 8px; font-family:var(--mono); font-size:calc(10.5px * var(--kc)); color:var(--inkSoft); }
+.empty { font-family:var(--cochin); font-size:calc(14px * var(--kb)); color:var(--inkSoft); text-align:center; padding:28px 8px; }
+
+/* photo tiles: 56 pt squares (photo-thumbnails-and-viewer), radius 8, manila fill while loading */
+.tile { width:56px; height:56px; flex:none; border-radius:8px; border:1px solid var(--line); background:var(--manila); padding:0; overflow:hidden;
+  cursor:pointer; position:relative; display:block; color:var(--manilaInk); }
+.tile svg { width:100%; height:100%; display:block; }
+.tile .n { position:absolute; right:3px; bottom:3px; font:600 10px var(--mono); background:var(--card); color:var(--ink); border-radius:4px; padding:0 4px; line-height:14px; }
+.tile.add { background:var(--card); border:1.5px dashed var(--inkSoft); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  font:10px var(--mono); color:var(--inkSoft); }
+.tile.add svg { width:22px; height:22px; }
+.tile.lost { display:flex; align-items:center; justify-content:center; font:11px var(--mono); cursor:default; }
+.tile.sel { outline:3px solid var(--accent); outline-offset:1px; }
+.strip { display:flex; gap:8px; flex-wrap:wrap; }
+
+/* ---------- Shutter first: the pile row ---------- */
+.env { display:flex; gap:12px; padding:12px; }
+.env .txt { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.env .hd { display:flex; align-items:center; gap:8px; min-height:24px; }
+.env .hd .micro { flex:1; min-width:0; }
+.env.cell { cursor:pointer; width:100%; text-align:left; font:inherit; color:inherit; }
+.env.cell.on { outline:2px solid var(--accent); outline-offset:-1px; }
+.ax5 .env { flex-direction:column; }
+.ax5 .env .hd { flex-wrap:wrap; }
+.armask { display:flex; gap:4px; justify-content:flex-end; flex-wrap:wrap; }
+
+/* the tab bar accessory: the one way in */
+.acc { position:absolute; left:16px; right:16px; bottom:91px; z-index:11; display:flex; gap:8px; align-items:center; padding:6px;
+  border-radius:32px; background:color-mix(in srgb, var(--paper) 62%, transparent); border:1px solid var(--line); box-shadow:0 2px 8px var(--shadow);
+  backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); }
+.open .acc { left:16px; right:16px; bottom:12px; }
+.acc .shoot { flex:1; min-height:52px; border-radius:26px; border:0; background:var(--ink); color:var(--card); display:flex; align-items:center; gap:12px;
+  padding:0 16px 0 6px; cursor:pointer; text-align:left; }
+.acc .shoot .dot { width:40px; height:40px; border-radius:50%; border:3px solid var(--card); display:grid; place-items:center; flex:none; }
+.acc .shoot .dot i { width:28px; height:28px; border-radius:50%; background:var(--card); display:block; }
+.acc .shoot b { font:600 calc(17px * min(var(--kh), 1.353)) var(--sys); display:block; }
+.acc .shoot small { font:calc(12px * min(var(--kc), 1.5)) var(--mono); opacity:0.85; display:block; }
+.acc .type { min-height:52px; min-width:64px; border-radius:26px; border:1px solid var(--line); background:var(--card); color:var(--ink);
+  font:500 calc(15px * min(var(--kb), 1.353)) var(--sys); padding:0 14px; cursor:pointer; }
+
+/* ---------- the camera (both options) ---------- */
+.cam { position:absolute; inset:0; background:linear-gradient(var(--scrim), var(--scrim)), var(--ink); color:var(--card); display:flex; flex-direction:column; z-index:20; }
+.cam .bar { padding-top:var(--sat); min-height:calc(var(--sat) + 52px); display:flex; align-items:center; justify-content:space-between; padding-left:8px; padding-right:8px; gap:8px; }
+.cam .bar .t { font:600 calc(15px * min(var(--kh), 1.353)) var(--sys); text-align:center; flex:1; min-width:0; }
+.sysbtn { font:calc(17px * min(var(--kb), 1.353)) var(--sys); color:inherit; background:none; border:0; min-height:44px; min-width:44px; padding:0 8px; cursor:pointer; }
+.sysbtn.b { font-weight:600; }
+.sysbtn[disabled] { opacity:0.45; cursor:default; }
+.vf { position:relative; flex:1; min-height:0; margin:0 12px; border-radius:12px; overflow:hidden; background:var(--ink); }
+.vf > svg { position:absolute; inset:0; width:100%; height:100%; }
+.vf .guide { position:absolute; inset:14% 10%; pointer-events:none; }
+.vf .guide i { position:absolute; width:28px; height:28px; border:3px solid var(--card); }
+.vf .guide i:nth-child(1) { left:0; top:0; border-right:0; border-bottom:0; border-top-left-radius:6px; }
+.vf .guide i:nth-child(2) { right:0; top:0; border-left:0; border-bottom:0; border-top-right-radius:6px; }
+.vf .guide i:nth-child(3) { left:0; bottom:0; border-right:0; border-top:0; border-bottom-left-radius:6px; }
+.vf .guide i:nth-child(4) { right:0; bottom:0; border-left:0; border-top:0; border-bottom-right-radius:6px; }
+.vf .hint { position:absolute; left:0; right:0; top:10px; text-align:center; font:calc(13px * min(var(--kf), 1.46)) var(--sys); }
+.vf .hint span { background:var(--scrim); padding:4px 10px; border-radius:12px; }
+.vf::after { content:""; position:absolute; left:0; right:0; bottom:0; height:45%; background:linear-gradient(transparent, var(--scrim)); pointer-events:none; }
+.shutter[disabled] { opacity:0.35; cursor:default; }
+.vf .flash { position:absolute; inset:0; background:var(--card); opacity:0; pointer-events:none; }
+.vf .flash.go { animation:flash 220ms ease-out; }
+@keyframes flash { 0% { opacity:0.85; } 100% { opacity:0; } }
+.tray { min-height:76px; display:flex; align-items:center; gap:8px; padding:10px 12px; overflow-x:auto; }
+.tray .tile { border-color:color-mix(in srgb, var(--card) 40%, transparent); }
+.tray .cap { font:calc(13px * min(var(--kf), 1.46)) var(--sys); opacity:0.85; }
+.err { display:flex; align-items:center; gap:8px; background:var(--card); color:var(--ink); border-radius:8px; padding:6px 6px 6px 10px; font:calc(13px * min(var(--kf),1.46)) var(--sys); flex:1; }
+.err .sysbtn { color:var(--accent); font-weight:600; font-size:15px; }
+.shutrow { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; gap:8px; padding:4px 12px calc(16px + 12px); }
+.shutrow .l { justify-self:start; } .shutrow .r { justify-self:end; }
+.shutter { width:76px; height:76px; border-radius:50%; border:4px solid var(--card); background:none; display:grid; place-items:center; cursor:pointer; padding:0; }
+.shutter i { width:60px; height:60px; border-radius:50%; background:var(--card); display:block; transition:transform 90ms; }
+.shutter:active i { transform:scale(0.9); }
+.pill { font:600 calc(15px * min(var(--kb), 1.353)) var(--sys); color:var(--ink); background:var(--card); border:0; border-radius:22px; min-height:44px; padding:0 16px; cursor:pointer; }
+.denied { position:absolute; inset:0; display:flex; flex-direction:column; justify-content:center; gap:12px; padding:24px; background:var(--ink); }
+.denied p { margin:0; font:calc(17px * min(var(--kb), 2)) var(--sys); }
+.denied .pill { align-self:flex-start; }
+.denied .ghost { background:none; color:var(--card); border:1px solid color-mix(in srgb, var(--card) 50%, transparent); }
+
+/* ---------- the composer (today's ComposerView, with the shot leading) ---------- */
+.comp { padding:12px; display:flex; flex-direction:column; gap:8px; border-color:var(--accent); }
+.hero { width:100%; height:180px; border-radius:8px; border:1px solid var(--line); overflow:hidden; padding:0; background:var(--manila); cursor:zoom-in; display:block; }
+.hero svg { width:100%; height:100%; display:block; }
+.nophoto { display:flex; align-items:center; gap:8px; justify-content:space-between; border:1.5px dashed var(--inkSoft); border-radius:8px; padding:8px 8px 8px 12px; }
+.nophoto span { font-family:var(--cochin); font-size:calc(14px * var(--kb)); color:var(--inkSoft); }
+.ax5 .nophoto { flex-direction:column; align-items:flex-start; }
+.field { width:100%; font-family:var(--cochin); font-size:calc(16px * var(--kb)); color:var(--ink); background:var(--card); border:1px solid var(--line); border-radius:8px;
+  padding:12px; min-height:48px; resize:none; }
+.field::placeholder { color:var(--inkSoft); }
+.sugg { border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.sugg:empty { display:none; }
+.sugg button { display:flex; justify-content:space-between; align-items:center; gap:8px; width:100%; min-height:44px; padding:8px 12px; border:0; border-top:1px solid var(--line);
+  background:var(--card); cursor:pointer; text-align:left; }
+.sugg button:first-child { border-top:0; }
+.sugg .nm { font-family:var(--cochin); font-size:calc(14px * var(--kb)); color:var(--ink); }
+.sugg .q { font-family:var(--mono); font-size:calc(10.5px * var(--kc)); color:var(--inkSoft); white-space:nowrap; }
+.sugg .typed { background:var(--manila); color:var(--manilaInk); font-family:var(--cochin); font-size:calc(13px * var(--kf)); }
+.ents { display:flex; flex-direction:column; border-top:1px solid var(--line); }
+.ents:empty { display:none; }
+.ent { display:flex; align-items:center; border-bottom:1px solid var(--line); padding-left:12px; }
+.ent .entry { flex:1; min-width:0; }
+.step { width:44px; height:44px; border:0; background:none; font-family:var(--mono); font-size:calc(15px * var(--kb)); color:var(--ink); cursor:pointer; }
+.qty { font-family:var(--mono); font-size:calc(13px * var(--kc)); min-width:20px; text-align:center; }
+.foot { display:flex; align-items:center; gap:8px; padding-top:4px; }
+.foot .note { flex:1; }
+.ax5 .foot { flex-direction:column; align-items:stretch; }
+.save { font-family:var(--mono); font-size:calc(11px * var(--kc)); font-weight:700; background:var(--accent); color:var(--card); border:1px solid var(--accent); border-radius:5px; padding:4px 8px; cursor:pointer; position:relative; }
+.save::after { content:""; position:absolute; inset:-10px -4px; }
+.save[aria-disabled="true"] { background:var(--card); color:var(--inkSoft); border-color:var(--line); font-weight:400; cursor:not-allowed; }
+.why { font-family:var(--mono); font-size:calc(10.5px * var(--kc)); color:var(--inkSoft); text-align:right; }
+
+/* ---------- the detail page (open Duo right page, and Live viewfinder's pushed page) ---------- */
+.det { display:flex; flex-direction:column; gap:12px; padding:12px 16px 100px; }
+.car { position:relative; border-radius:8px; overflow:hidden; border:1px solid var(--line); background:var(--manila); height:300px; touch-action:pan-y; }
+.car button.ph { position:absolute; inset:0; border:0; padding:0; background:none; cursor:zoom-in; }
+.car svg { width:100%; height:100%; display:block; }
+.dots { display:flex; justify-content:center; gap:0; }
+.dots button { width:28px; height:44px; border:0; background:none; cursor:pointer; display:grid; place-items:center; padding:0; }
+.dots button i { width:8px; height:8px; border-radius:50%; background:var(--line); display:block; }
+.dots button.on i { background:var(--ink); }
+.navbar { display:flex; align-items:center; gap:4px; min-height:44px; padding:0 8px; }
+.navbar .t { flex:1; text-align:center; font:600 calc(17px * min(var(--kh),1.353)) var(--sys); min-width:0; }
+.navbar .sysbtn { color:var(--accent); }
+.navbar .sp { min-width:88px; }
+.rowbtns { display:flex; gap:8px; flex-wrap:wrap; align-items:center; }
+.btn2 { font:500 calc(15px * min(var(--kb),1.353)) var(--sys); color:var(--accent); background:var(--card); border:1px solid var(--line); border-radius:22px; min-height:44px;
+  padding:0 16px; cursor:pointer; display:inline-flex; align-items:center; gap:8px; }
+.btn2 svg { width:20px; height:20px; }
+
+/* ---------- Live viewfinder: the contact sheet and the docked camera ---------- */
+.sheetgrid { display:grid; grid-template-columns:repeat(2, minmax(0,1fr)); gap:16px 12px; }
+.ax5 .sheetgrid { grid-template-columns:1fr; }
+.print { display:flex; flex-direction:column; gap:6px; border:0; background:none; padding:0; text-align:left; cursor:pointer; font:inherit; color:inherit; }
+.print .ph { position:relative; aspect-ratio:4 / 3; background:var(--card); border:1px solid var(--line); border-radius:4px; padding:6px; box-shadow:0 1px 2px var(--shadow); }
+.print .ph.multi { box-shadow:4px 4px 0 -1px var(--card), 4px 4px 0 0 var(--line), 8px 8px 0 -1px var(--card), 8px 8px 0 0 var(--line); }
+.print .ph svg { width:100%; height:100%; display:block; border-radius:2px; }
+.print .ph .n { position:absolute; left:10px; bottom:10px; font:600 10px var(--mono); background:var(--card); border-radius:4px; padding:0 4px; line-height:16px; }
+.print .blank { width:100%; height:100%; border:1.5px dashed var(--manilaInk); border-radius:2px; background:var(--manila); color:var(--manilaInk);
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; font-family:var(--mono); font-size:calc(10.5px * var(--kc)); text-align:center; }
+.print .blank svg { width:26px; height:26px; }
+.print .lostp { width:100%; height:100%; background:var(--manila); color:var(--manilaInk); display:grid; place-items:center; font:11px var(--mono); border-radius:2px; }
+.print .cap { display:flex; flex-direction:column; gap:2px; padding:0 2px; }
+.print .cap .entry { font-weight:700; }
+.print.on .ph { outline:3px solid var(--accent); outline-offset:2px; }
+.dock { position:absolute; left:0; right:0; bottom:83px; height:216px; z-index:11; background:var(--scrim); color:var(--card); display:flex; flex-direction:column; }
+.open .dock { bottom:0; height:236px; }
+.dock .vf { margin:8px 8px 0; }
+.dock .over { position:absolute; left:8px; right:8px; top:8px; bottom:0; display:flex; flex-direction:column; justify-content:space-between; pointer-events:none; }
+.dock .over > * { pointer-events:auto; }
+.dock .top { display:flex; justify-content:space-between; align-items:flex-start; }
+.dock .chip { font:600 calc(13px * min(var(--kf),1.46)) var(--sys); background:var(--scrim); color:var(--card); border:0; border-radius:16px; min-height:44px; padding:0 12px; cursor:pointer; }
+.dock .shutrow { padding:0 8px 8px; }
+.dock .shutter { width:64px; height:64px; } .dock .shutter i { width:50px; height:50px; }
+.dock.min { height:60px; }
+.dock.min .bar1 { display:flex; align-items:center; gap:8px; padding:8px 12px; height:100%; }
+.dock .lastshot { width:48px; height:48px; border-radius:8px; border:2px solid var(--card); padding:0; overflow:hidden; background:var(--manila); cursor:pointer; position:relative; }
+.dock .lastshot svg { width:100%; height:100%; display:block; }
+.dock .lastshot .n { position:absolute; right:2px; bottom:2px; font:600 10px var(--mono); background:var(--card); color:var(--ink); border-radius:4px; padding:0 3px; }
+
+/* the composer sheet (Live viewfinder, one page) */
+.sheet { position:absolute; left:0; right:0; bottom:0; top:calc(var(--sat) + 72px); z-index:22; background:var(--paper); border-radius:16px 16px 0 0;
+  box-shadow:0 -4px 20px var(--shadow); display:flex; flex-direction:column; }
+.sheet .grab { width:36px; height:5px; border-radius:3px; background:var(--line); margin:6px auto 0; }
+.sheet .scroll { flex:1; overflow-y:auto; padding:0 16px 24px; scrollbar-width:none; }
+.shade { position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 30%, transparent); z-index:21; }
+
+/* ---------- the viewer ---------- */
+.viewer { position:absolute; inset:0; z-index:40; background:var(--scrim); color:var(--card); display:flex; flex-direction:column; outline:none; }
+.viewer .vtop { padding-top:var(--sat); min-height:calc(var(--sat) + 52px); display:flex; align-items:center; justify-content:space-between; padding-left:8px; padding-right:8px; }
+.viewer .count { font:calc(13px * min(var(--kc),1.5)) var(--mono); }
+.viewer .stage { flex:1; position:relative; overflow:hidden; touch-action:none; cursor:zoom-in; }
+.viewer .stage.z { cursor:grab; }
+.viewer .img { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; transform-origin:0 0; }
+.viewer .img svg { width:100%; height:auto; max-height:100%; display:block; }
+.viewer .vbot { min-height:96px; display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 12px 28px; flex-wrap:wrap; }
+.viewer .zoomhint { font:calc(12px * min(var(--kc),1.5)) var(--sys); opacity:0.8; }
+.rm { font:600 calc(15px * min(var(--kb),1.353)) var(--sys); color:var(--red); background:var(--card); border:0; border-radius:22px; min-height:44px; padding:0 16px; cursor:pointer; }
+.rm.armed { background:var(--red); color:var(--card); }
+.undo { display:flex; align-items:center; gap:8px; background:var(--card); color:var(--ink); border-radius:12px; padding:4px 4px 4px 12px; font:calc(14px * min(var(--kb),1.353)) var(--sys); flex:1; min-width:0; }
+.undo span { flex:1; }
+.undo .sysbtn { color:var(--accent); font-weight:600; }
+.vgrid { position:absolute; left:0; top:0; bottom:0; width:455.5px; padding:calc(var(--sat) + 60px) 16px 16px; display:grid; grid-template-columns:repeat(2, 1fr);
+  gap:12px; align-content:start; z-index:41; }
+.vgrid .tile { width:100%; height:auto; aspect-ratio:4 / 3; border:2px solid transparent; }
+.vgrid .tile.sel { outline:3px solid var(--card); }
+.vgrid .lbl { grid-column:1 / -1; color:var(--card); font:600 13px var(--sys); }
+.toast { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 8px); z-index:60; background:var(--ink); color:var(--card); border-radius:12px; padding:10px 14px;
+  font:13px var(--sys); box-shadow:0 4px 12px var(--shadow); }
+
+@media (prefers-reduced-motion: reduce) { .vf .flash.go { animation:none; } .shutter i { transition:none; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No envelope, card name, date, note or photo on this page is real. The photos are drawings. No camera runs: the viewfinder is a drawing too.</div>
+<h1>Envelope photos, camera first</h1>
+<p class="kind">Designer kind: directed. Direction: camera-first: the camera opens first; everything else follows the shot.</p>
+<p class="sub">Two options for the native Orphaned tab: <b>Shutter first</b> and <b>Live viewfinder</b>. Each is drawn on the iPhone Duo folded (466 x 678 pt), the folded Duo at the largest text size (AX5), the open Duo (951 x 669 pt, fold strip at x 455.5 to 495.5), and the large phone (402 pt wide; its height is not written, see Sizes). Light theme only: the native app is held to light. Every frame is live: shoot, add cards, open, zoom, swipe and remove photos. Each frame keeps its own state. A deep link resets it.</p>
+<div class="legend"><span class="tagname t">Today: part</span> exists in the app now. <span class="tagname n">New: part</span> is what the option adds. <button type="button" id="tagsbtn" class="mini" style="font-size:13px">Hide the tags</button></div>
+
+<nav class="ctl" aria-label="Mockup controls">
+  <div class="row"><span class="lab">Option</span>
+    <a href="#c=shutter" data-k="c" data-v="shutter">Shutter first</a>
+    <a href="#c=live" data-k="c" data-v="live">Live viewfinder</a>
+    <a href="#" data-k="c" data-v="">Both</a>
+  </div>
+  <div class="row"><span class="lab">State</span>
+    <a href="#s=pile" data-k="s" data-v="pile">Pile</a>
+    <a href="#s=empty" data-k="s" data-v="empty">Empty</a>
+    <a href="#s=camera" data-k="s" data-v="camera">Camera, one shot taken</a>
+    <a href="#s=compose" data-k="s" data-v="compose">Cards and note</a>
+    <a href="#s=resume" data-k="s" data-v="resume">Draft kept after Cancel</a>
+    <a href="#s=detail" data-k="s" data-v="detail">One envelope</a>
+    <a href="#s=viewer" data-k="s" data-v="viewer">Viewer</a>
+    <a href="#s=zoomed" data-k="s" data-v="zoomed">Viewer, zoomed</a>
+    <a href="#s=removed" data-k="s" data-v="removed">Photo removed</a>
+    <a href="#s=denied" data-k="s" data-v="denied">Camera access off</a>
+    <a href="#s=photo-error" data-k="s" data-v="photo-error">Photo not saved</a>
+    <a href="#s=collapsed" data-k="s" data-v="collapsed">Camera hidden (Live viewfinder)</a>
+  </div>
+  <div class="row"><span class="lab">Device</span>
+    <a href="#d=folded" data-k="d" data-v="folded">Duo folded</a>
+    <a href="#d=open" data-k="d" data-v="open">Duo open</a>
+    <a href="#d=pro" data-k="d" data-v="pro">Large phone</a>
+    <a href="#size=ax5" data-k="size" data-v="ax5">Folded, AX5 text</a>
+    <a href="#d=" data-k="d" data-v="">All devices</a>
+  </div>
+  <div class="row"><span class="lab">Remove asks</span>
+    <a href="#del=undo" data-k="del" data-v="undo">Remove, then Undo</a>
+    <a href="#del=ask" data-k="del" data-v="ask">Tap again to remove</a>
+  </div>
+  <div class="row"><span class="lab">Hide</span>
+    <button type="button" data-hide="shutter">Hide Shutter first</button>
+    <button type="button" data-hide="live">Hide Live viewfinder</button>
+    <button type="button" data-hide-del="ask">Hide Tap again to remove</button>
+    <button type="button" data-hide-del="undo">Hide Remove, then Undo</button>
+  </div>
+</nav>
+
+<section class="concept" id="concept-shutter" data-concept="shutter">
+  <div class="chead">
+    <h2>Shutter first</h2>
+    <p>One press on the shutter bar opens the camera full screen. Shoot as many as you need; each shot drops into the tray. Done takes you to the cards and the note, with the shot on top. In the pile, each envelope leads with its photo, or with a dashed Add photo square. On the open Duo the camera keeps the left page while you type on the right.</p>
+  </div>
+  <div class="frames">
+    <div data-frame="folded"><p class="fcap"><b>Duo folded</b>, default text size</p><div class="fwrap"><div class="dev folded" data-device="iphone-duo-folded" data-c="shutter" data-d="folded"></div></div></div>
+    <div data-frame="ax5"><p class="fcap"><b>Duo folded, AX5</b> (Accessibility XXXL, the largest)</p><div class="fwrap"><div class="dev folded ax5" data-device="iphone-duo-folded" data-c="shutter" data-d="folded" data-ax="1"></div></div></div>
+    <div data-frame="open"><p class="fcap"><b>Duo open</b>, two pages; nothing sits across the fold strip</p><div class="fwrap"><div class="dev open" data-device="iphone-duo-unfolded" data-c="shutter" data-d="open"></div></div></div>
+    <div data-frame="pro"><p class="fcap"><b>Large phone</b>, 402 pt wide; height not written, drawn at 874 pt</p><div class="fwrap"><div class="dev pro" data-device="iphone-regular" data-c="shutter" data-d="pro"></div></div></div>
+  </div>
+</section>
+
+<section class="concept" id="concept-live" data-concept="live">
+  <div class="chead">
+    <h2>Live viewfinder</h2>
+    <p>The Orphaned tab opens on a live camera, docked above the tab bar where the thumb rests. The pile above it is a contact sheet: each envelope is its own print, a stacked print when it has several photos, and a manila blank when it has none. A shot opens a sheet for the cards and the note. Tap a print for its page.</p>
+  </div>
+  <div class="frames">
+    <div data-frame="folded"><p class="fcap"><b>Duo folded</b>, default text size</p><div class="fwrap"><div class="dev folded" data-device="iphone-duo-folded" data-c="live" data-d="folded"></div></div></div>
+    <div data-frame="ax5"><p class="fcap"><b>Duo folded, AX5</b> (Accessibility XXXL, the largest)</p><div class="fwrap"><div class="dev folded ax5" data-device="iphone-duo-folded" data-c="live" data-d="folded" data-ax="1"></div></div></div>
+    <div data-frame="open"><p class="fcap"><b>Duo open</b>, two pages; nothing sits across the fold strip</p><div class="fwrap"><div class="dev open" data-device="iphone-duo-unfolded" data-c="live" data-d="open"></div></div></div>
+    <div data-frame="pro"><p class="fcap"><b>Large phone</b>, 402 pt wide; height not written, drawn at 874 pt</p><div class="fwrap"><div class="dev pro" data-device="iphone-regular" data-c="live" data-d="pro"></div></div></div>
+  </div>
+</section>
+
+<section class="sources" id="sizes">
+  <h2>Sizes and sources</h2>
+  <ul>
+    <li>Duo folded: 466 x 678 pt; the system tab bar starts at y 595 and is 83 pt tall with the bottom inset (measurement <code>duo-fold-and-keyboard</code>, 2026-11-08). The tab bar's capsule inside that band is drawn, not measured.</li>
+    <li>Duo open: 951 x 669 pt, fold strip 455.5 to 495.5 pt (same record). The tab bar is the Duo spine's pill under the right page: 64 pt tall, 24 pt in, 12 pt up (<code>DuoBarMetrics</code>, <code>DuoSpine.swift</code>).</li>
+    <li>Large phone: 402 pt wide, the window an 18 Pro UI test logged (<code>TallyUITests</code>, measured 2026-10-28). Its height, status bar and tab bar are not written anywhere I read. Drawn at 874 pt tall with the Duo's tab bar band: a placeholder, not a figure.</li>
+    <li>Status bar foot: unmeasured; drawn at 20 pt, the floor the Duo UI tests use. The keyboard is not drawn; on the folded Duo it covers 250 to 289 pt (same record).</li>
+    <li>Text sizes: Apple typography page, read 2026-11-21. Default (Large): Body 17, Footnote 13, Caption 1 12. AX5: Body 53, Footnote 44, Caption 1 43. Each native size is scaled by its style's ratio, as <code>Font.custom(_:size:relativeTo:)</code> does.</li>
+    <li>Photo tiles 56 pt, radius 8, manila while loading; the Lost tile (<code>photo-thumbnails-and-viewer</code>, <code>PhotoStrip</code> in <code>src/app.jsx</code>, <code>PhotoViews.swift</code>).</li>
+  </ul>
+</section>
+</main>
+
+<script>
+'use strict';
+/* ---------- sample data. Card names are common Magic cards; dates and notes are invented. ---------- */
+const LOST_SAYS = 'Photo lost: neither this device nor the backup has it.';
+const SAMPLE = [
+  { id: 'e1', date: '2026-11-18', entries: [{ name: 'Sol Ring', qty: 1 }, { name: 'Arcane Signet', qty: 2 }, { name: 'Command Tower', qty: 1 }],
+    note: 'Blue bubble mailer, smudged postmark', photos: [{ id: 'p1', seed: 3 }, { id: 'p2', seed: 11 }, { id: 'p3', seed: 7 }] },
+  { id: 'e2', date: '2026-11-15', entries: [{ name: 'Lightning Bolt', qty: 1 }], note: '', photos: [{ id: 'p4', seed: 21 }] },
+  { id: 'e3', date: '2026-11-12', entries: [{ name: 'Counterspell', qty: 1 }, { name: 'Brainstorm', qty: 1 }], note: 'Plain white envelope, no return address', photos: [] },
+  { id: 'e4', date: '2026-11-02', entries: [{ name: 'Swords to Plowshares', qty: 1 }], note: '', photos: [{ id: 'p5', seed: 5, lost: true }] },
+];
+const OUTSTANDING = [
+  ['Sol Ring', 3, 2], ['Solemn Simulacrum', 1, 1], ['Swords to Plowshares', 2, 2], ['Counterspell', 2, 1], ['Cultivate', 1, 1],
+  ['Lightning Bolt', 4, 3], ['Llanowar Elves', 2, 2], ['Brainstorm', 1, 1], ['Arcane Signet', 3, 2], ['Command Tower', 2, 2],
+  ['Path to Exile', 1, 1], ['Ponder', 2, 1], ['Rampant Growth', 1, 1], ['Sakura-Tribe Elder', 1, 1],
+];
+const clone = (x) => JSON.parse(JSON.stringify(x));
+const esc = (s) => String(s).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+const cardsOf = (e) => e.entries.reduce((a, x) => a + x.qty, 0);
+const plural = (n, w) => `${n} ${w}${n === 1 ? '' : 's'}`;
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+const shortDate = (d) => `${+d.slice(8)} ${MONTHS[+d.slice(5, 7) - 1]}`;
+
+/* ---------- the drawn photos: an envelope on a desk, from a seed. Token colours only. ---------- */
+function rng(seed) { let a = seed * 2654435761 >>> 0; return () => { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+let uid = 0;
+function photoSVG(seed, label = 'Envelope photo') {
+  const r = rng(seed), id = 'g' + (++uid);
+  const rot = (r() * 12 - 6).toFixed(1), bubble = r() > 0.5, manila = r() > 0.55, sticker = r() > 0.6;
+  const fill = manila ? 'var(--manila)' : bubble ? 'var(--greenSoft)' : 'var(--card)';
+  const scrib = (x, y, w) => { let d = `M${x} ${y}`; for (let i = 0; i < w; i += 9) d += ` q4 ${(r() * 10 - 5).toFixed(1)} 9 ${(r() * 4 - 2).toFixed(1)}`; return `<path d="${d}" style="fill:none;stroke:var(--ink);stroke-width:3;stroke-linecap:round;opacity:.78"/>`; };
+  const lines = [0, 1, 2].map((i) => scrib(150 + r() * 10, 160 + i * 22, 90 + r() * 70)).join('');
+  return `<svg viewBox="0 0 400 300" preserveAspectRatio="xMidYMid slice" role="img" aria-label="${esc(label)}">
+    <defs><pattern id="${id}" width="14" height="14" patternUnits="userSpaceOnUse"><circle cx="7" cy="7" r="4" style="fill:var(--ink);opacity:.07"/></pattern>
+    <linearGradient id="${id}d" x1="0" y1="0" x2="1" y2="1"><stop offset="0" style="stop-color:var(--line)"/><stop offset="1" style="stop-color:var(--inkSoft)"/></linearGradient></defs>
+    <rect width="400" height="300" style="fill:url(#${id}d)"/>
+    <g transform="rotate(${rot} 200 150)">
+      <rect x="46" y="48" width="308" height="204" rx="5" style="fill:var(--ink);opacity:.18" transform="translate(4 6)"/>
+      <rect x="46" y="48" width="308" height="204" rx="5" style="fill:${fill};stroke:var(--line);stroke-width:2"/>
+      ${bubble ? `<rect x="46" y="48" width="308" height="204" rx="5" style="fill:url(#${id})"/>` : ''}
+      <rect x="296" y="62" width="40" height="48" rx="2" style="fill:var(--gold)"/><rect x="301" y="67" width="30" height="38" style="fill:var(--waxLit);opacity:.7"/>
+      <circle cx="270" cy="92" r="20" style="fill:none;stroke:var(--inkSoft);stroke-width:2;opacity:.8"/>
+      <path d="M232 84 q10 -6 20 0 t20 0 t20 0 M232 96 q10 -6 20 0 t20 0 t20 0" style="fill:none;stroke:var(--inkSoft);stroke-width:2;opacity:.7"/>
+      ${sticker ? `<rect x="132" y="140" width="170" height="80" rx="3" style="fill:var(--card);stroke:var(--line)"/>` : ''}
+      ${lines}
+      <path d="M62 66 h46 M62 78 h30" style="stroke:var(--inkSoft);stroke-width:2;opacity:.25"/>
+    </g></svg>`;
+}
+const ICON = {
+  camera: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 8h3l2-3h6l2 3h3v11H4z" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round"/><circle cx="12" cy="13" r="3.6" style="fill:none;stroke:currentColor;stroke-width:1.8"/></svg>',
+  torch: '<svg viewBox="0 0 24 24" aria-hidden="true" width="22" height="22"><path d="M8 3h8v4l-2 3v11h-4V10L8 7z" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="3" style="fill:none;stroke:currentColor;stroke-width:1.8"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1" style="stroke:currentColor;stroke-width:1.8"/></svg>',
+  env: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" style="fill:none;stroke:currentColor;stroke-width:1.8"/><path d="M3.5 7l8.5 6 8.5-6" style="fill:none;stroke:currentColor;stroke-width:1.8"/></svg>',
+  num: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4L7 20M17 4l-2 16M4 9h16M3 15h16" style="stroke:currentColor;stroke-width:1.8"/></svg>',
+  box: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10" style="fill:none;stroke:currentColor;stroke-width:1.8;stroke-linejoin:round"/></svg>',
+  down: '<svg viewBox="0 0 24 24" aria-hidden="true" width="18" height="18"><path d="M6 9l6 6 6-6" style="fill:none;stroke:currentColor;stroke-width:2"/></svg>',
+};
+
+/* ---------- one live frame ---------- */
+const P = {};  // the page's hash parameters
+class Frame {
+  constructor(el) {
+    this.el = el; this.c = el.dataset.c; this.d = el.dataset.d; this.ax = el.dataset.ax === '1';
+    this.focusId = !this.ax && this.d === 'folded' ? (this.c === 'shutter' ? 'focus-shutter-first' : 'focus-live-viewfinder') : '';
+    el.addEventListener('click', (e) => this.onClick(e));
+    el.addEventListener('input', (e) => this.onInput(e));
+    el.addEventListener('keydown', (e) => this.onKey(e));
+    this.reset(P.s || 'pile');
+  }
+  reset(s) {
+    const st = { envs: clone(SAMPLE), view: 'pile', cam: null, draft: null, v: null, sel: this.d === 'open' ? 'e1' : null, undo: null, armed: false,
+      discard: null, dockMin: false, failNext: false, seed: 40, toast: '', sheet: false };
+    const shot = () => ({ id: 'n' + (st.seed), seed: st.seed++ });
+    const draft = (n, ents = []) => ({ photos: Array.from({ length: n }, shot), entries: ents, note: '', input: '', editing: null });
+    switch (s) {
+      case 'empty': st.envs = []; st.sel = null; break;
+      case 'camera': st.draft = draft(1); if (this.c === 'shutter') { st.view = 'camera'; st.cam = { target: 'draft' }; } break;
+      case 'compose': st.draft = draft(2, [{ name: 'Sol Ring', qty: 1 }]); st.view = 'compose'; st.sheet = true; break;
+      case 'resume': st.draft = draft(2, [{ name: 'Sol Ring', qty: 1 }]); break;
+      case 'detail': st.sel = 'e1'; if (this.c === 'live') st.view = 'detail'; break;
+      case 'viewer': st.v = { src: 'e1', i: 1, z: 1, x: 0, y: 0 }; break;
+      case 'zoomed': st.v = { src: 'e1', i: 1, z: 2.5, x: -0.8, y: -0.85 };  // zoomed on the hand-written address break;
+      case 'removed': { const e = st.envs[0]; const [ph] = e.photos.splice(1, 1); st.v = { src: 'e1', i: 1, z: 1, x: 0, y: 0 };
+        st.undo = { src: 'e1', at: 1, ph, text: 'Photo removed from this envelope.' }; break; }
+      case 'denied': st.denied = true; if (this.c === 'shutter') { st.view = 'camera'; st.cam = { target: 'draft' }; } break;
+      case 'photo-error': st.draft = draft(1); st.camErr = true; if (this.c === 'shutter') { st.view = 'camera'; st.cam = { target: 'draft' }; } break;
+      case 'collapsed': st.dockMin = this.c === 'live'; break;
+    }
+    if (st.view === 'compose' && this.c === 'live') st.view = 'pile';
+    this.st = st; this.render();
+  }
+  /* ---------- helpers ---------- */
+  env(id) { return this.st.envs.find((e) => e.id === id); }
+  photosOf(src) { return src === 'draft' ? (this.st.draft ? this.st.draft.photos : []) : (this.env(src) || { photos: [] }).photos; }
+  newShot() { const s = this.st.seed++; return { id: 'n' + s, seed: s }; }
+  get one() { return this.d !== 'open'; }
+  toast(t) { this.st.toast = t; this.render(); clearTimeout(this.tt); this.tt = setTimeout(() => { this.st.toast = ''; this.render(); }, 2600); }
+
+  /* ---------- pieces ---------- */
+  status(light) { return `<div class="status${light ? ' light' : ''}"><span>9:41</span><span>●●● ▮</span></div>`; }
+  tabbar() {
+    const t = [['Ledger', ICON.gear], ['Orphaned', ICON.env], ['Tally', ICON.num], ['Packages', ICON.box]];
+    return `<div class="tabbar${this.one ? '' : ' duo'} tag-today" data-tag="Today: tab bar" role="tablist">${t.map(([n, i]) =>
+      `<button class="tab${n === 'Orphaned' ? ' on' : ''}" role="tab" aria-selected="${n === 'Orphaned'}" data-act="tab" data-n="${n}">${i}<span>${n}</span></button>`).join('')}</div>`;
+  }
+  rhead() { return `<div class="rhead tag-today" data-tag="Today: running head (masthead above, not drawn)"><b>MANIFEST</b><span>Orphaned · ${this.st.envs.length} waiting</span></div>`; }
+  tileFor(src, p, i, n) {
+    if (p.lost) return `<div class="tile lost" role="img" aria-label="${LOST_SAYS}" title="${LOST_SAYS}">Lost</div>`;
+    return `<button class="tile" data-act="view" data-src="${src}" data-i="${i}" aria-label="Open photo ${i + 1} of ${n}">${photoSVG(p.seed)}${n > 1 && i === 0 ? `<span class="n">${n}</span>` : ''}</button>`;
+  }
+  addTile(target, label = 'Add photo') { return `<button class="tile add" data-act="shoot" data-target="${target}" aria-label="${label}">${ICON.camera}<span>Add</span></button>`; }
+  cands() { return `<div class="cands tag-today" data-tag="Today">Could have come from · candidate rows and This one, unchanged</div>`; }
+  entriesHTML(e) {
+    return e.entries.map((x) => `<div class="entry">${x.qty > 1 ? '×' + x.qty + ' ' : ''}${esc(x.name)}</div>`).join('') + (e.note ? `<div class="note">${esc(e.note)}</div>` : '');
+  }
+  headBtns(e) {
+    if (this.st.discard === e.id) return `<div class="armask"><button class="mini" data-act="discard-cancel">Cancel</button><button class="mini armed" data-act="discard-go" data-id="${e.id}">Tap again to discard ${plural(cardsOf(e), 'card')}</button></div>`;
+    return `<button class="mini" data-act="edit" data-id="${e.id}">Edit</button><button class="mini red" data-act="discard" data-id="${e.id}">Discard</button>`;
+  }
+
+  /* Shutter first: one pile row. On the open Duo the row is a cell that picks the right page. */
+  rowS(e, i) {
+    const p = e.photos[0];
+    const tile = p ? this.tileFor(e.id, p, 0, e.photos.length) : this.addTile(e.id, `Add a photo to the ${shortDate(e.date)} envelope`);
+    const tag = i === 0 ? ` tag-new tl" data-tag="New: the photo leads the row` : (!p && i === 2 ? ` tag-new tl" data-tag="New: Add photo square` : '');
+    const head = `<div class="hd"><span class="micro">Envelope · ${e.date} · ${plural(cardsOf(e), 'card')}</span>${this.one ? this.headBtns(e) : ''}</div>`;
+    if (!this.one) {
+      return `<div class="card env cell${this.st.sel === e.id ? ' on' : ''}" data-act="pick" data-id="${e.id}" role="button" tabindex="0" aria-pressed="${this.st.sel === e.id}">
+        <div class="${tag ? tag.slice(1) : ''}" style="flex:none">${tile}</div><div class="txt">${head}${this.entriesHTML(e)}</div></div>`;
+    }
+    return `<div class="card"><div class="env"><div class="${tag ? tag.slice(1) : ''}" style="flex:none;align-self:flex-start">${tile}</div><div class="txt">${head}${this.entriesHTML(e)}</div></div>
+      <div style="padding:0 12px 12px">${this.cands()}</div></div>`;
+  }
+  pileS() {
+    const st = this.st;
+    let h = this.rhead() + '<div class="stack">';
+    if (st.undo && !st.v && (this.one || st.undo.src === 'draft')) h += this.undoBar();
+    if (st.view === 'compose' && this.one) h += this.composer('inline');
+    if (!st.envs.length && !(st.view === 'compose')) h += `<p class="empty">No envelopes are waiting. When one comes with no name on it, photograph it with the bar below.</p>`;
+    h += st.envs.map((e, i) => (st.draft && st.draft.editing === e.id && st.view === 'compose' && this.one) ? '' : this.rowS(e, i)).join('');
+    h += `<div style="height:${this.one ? 170 : 90}px"></div></div>`;
+    return h;
+  }
+  accessory() {
+    const d = this.st.draft, has = d && (d.photos.length || d.entries.length);
+    const composing = this.st.view === 'compose';
+    const sub = has && !composing ? `<small>${plural(d.photos.length, 'photo')} · ${plural(d.entries.reduce((a, x) => a + x.qty, 0), 'card')} kept</small>` : '';
+    const label = composing ? 'Open the camera' : has ? 'Resume envelope' : (this.ax ? 'Photograph' : 'Photograph an envelope');
+    return `<div class="acc tag-new" data-tag="New: shutter bar"${this.focusId ? ` id="${this.focusId}"` : ''}>
+      <button class="type" data-act="type" aria-label="Type the cards, no photo">Type</button>
+      <button class="shoot" data-act="shoot" data-target="draft"><span class="dot"><i></i></span><span><b>${label}</b>${sub}</span></button></div>`;
+  }
+
+  /* The camera. target 'draft' fills the new envelope; an envelope id adds to that envelope. */
+  camera() {
+    const st = this.st, t = st.cam.target, toDraft = t === 'draft';
+    const shots = toDraft ? (st.draft ? st.draft.photos : []) : (st.cam.shots || []);
+    const title = toDraft ? (st.draft && st.draft.editing ? 'Photos for this envelope' : 'New envelope') : `Add to ${shortDate(this.env(t).date)} envelope`;
+    const vf = st.denied
+      ? `<div class="denied" role="alert"><p>Camera access is off for MANIFEST, so it cannot take the photo.</p>
+          <button class="pill" data-act="settings">Open Settings</button>${toDraft ? '<button class="pill ghost" data-act="nophoto">Type the cards instead</button>' : ''}</div>`
+      : `${photoSVG(st.seed, 'Viewfinder: the envelope in front of the camera')}<div class="guide"><i></i><i></i><i></i><i></i></div>
+         <div class="hint"><span>Fill the frame with the envelope</span></div><div class="flash"></div>`;
+    const tray = st.camErr
+      ? `<div class="err" role="alert"><span>This photo was not saved: the phone is out of space. The envelope still saves without it.</span><button class="sysbtn" data-act="retry">Try again</button></div>`
+      : shots.length ? shots.map((p, i) => this.tileFor(toDraft ? 'draft' : 'cam', p, i, 1)).join('') + `<span class="cap">${plural(shots.length, 'shot')}</span>`
+      : st.denied ? '' : `<span class="cap">${toDraft ? 'Shoot the front and the back if they both carry marks.' : 'Each shot is added to this envelope.'}</span>`;
+    const left = st.denied ? `<span></span>` : this.one || !toDraft
+      ? (toDraft ?`<button class="sysbtn l" data-act="nophoto">No photo</button>` : `<span></span>`)
+      : `<button class="sysbtn l" data-act="cam-close">Close camera</button>`;
+    const right = shots.length && (this.one || !toDraft) ? `<button class="pill r" data-act="cam-done">Done</button>` : `<span class="r" style="min-width:64px"></span>`;
+    return `<div class="cam tag-new" data-tag="New: camera">
+      <div class="bar"><button class="sysbtn" data-act="cam-cancel">Cancel</button><span class="t">${esc(title)}</span><button class="sysbtn" data-act="torch" aria-label="Torch" aria-pressed="${!!st.torch}">${ICON.torch}</button></div>
+      <div class="vf">${vf}</div>
+      <div class="tray" aria-live="polite">${tray}</div>
+      <div class="shutrow">${left}<button class="shutter" data-act="snap" aria-label="Take photo"${st.denied ? ' disabled' : ''}><i></i></button>${right}</div></div>`;
+  }
+
+  /* The composer: today's ComposerView, with the shot on top. mode: inline (one page), sheet, page (open Duo). */
+  composer(mode) {
+    const d = this.st.draft, n = d.entries.reduce((a, x) => a + x.qty, 0), ready = d.entries.length > 0;
+    const last = d.photos.length - 1;
+    const photos = d.photos.length
+      ? `<div class="tag-new" data-tag="New: the shot leads"><button class="hero" data-act="view" data-src="draft" data-i="${last}" aria-label="Open the newest photo">${photoSVG(d.photos[last].seed)}</button></div>
+         <div class="strip">${d.photos.map((p, i) => this.tileFor('draft', p, i, 1)).join('')}${this.addTile('draft', 'Take another photo')}</div>`
+      : `<div class="nophoto tag-new" data-tag="New"><span>No photo of this envelope yet.</span><button class="btn2" data-act="shoot" data-target="draft">${ICON.camera}Photograph it</button></div>`;
+    const save = `<button class="save" data-act="save" aria-disabled="${!ready}" ${ready ? '' : 'aria-describedby="why-' + this.uid() + '" title="Add a card to save"'}>Save envelope</button>`;
+    const foot = mode !== 'inline' ? `<div class="foot"><span class="note">${plural(n, 'card')}</span></div>`
+      : `<div class="foot"><span class="note">${plural(n, 'card')}</span><button class="mini" data-act="comp-cancel">Cancel</button>${save}</div>`;
+    const why = ready ? '' : `<div class="why" id="why-${this.uid()}">Add a card to save</div>`;
+    const body = `${mode === 'inline' ? `<span class="micro">${d.editing ? 'Edit envelope' : 'New envelope'}</span>` : ''}${photos}
+      <textarea class="field" rows="2" data-in="name" placeholder="Type a card name…" aria-label="Card name">${esc(d.input)}</textarea>
+      <div class="sugg" data-sugg>${this.suggHTML()}</div>
+      <div class="ents" data-ents>${this.entsHTML()}</div>
+      <textarea class="field" rows="2" data-in="note" placeholder="Note (optional) — tracking #, sender, mailer…" aria-label="Note">${esc(d.note)}</textarea>
+      ${foot}${mode === 'sheet' ? '' : why}`;  // the page mode's why line sits in the body, once
+    if (mode === 'inline') return `<div class="card comp tag-today" data-tag="Today: composer, photos now lead">${body}</div>`;
+    if (mode === 'page') return `<div class="navbar"><button class="sysbtn" data-act="comp-cancel">Cancel</button><span class="t">${d.editing ? 'Edit envelope' : 'New envelope'}</span>
+        <button class="sysbtn b" data-act="save" aria-disabled="${!ready}" ${ready ? '' : 'title="Add a card to save"'} style="${ready ? '' : 'opacity:.45'}">Save</button></div>
+        <div class="det" style="padding-top:4px">${body}</div>`;
+    return body;
+  }
+  uid() { if (!this._u) this._u = 'f' + (++uid); return this._u; }
+  suggHTML() {
+    const d = this.st.draft, q = d.input.trim().toLowerCase();
+    if (!q) return '';
+    const found = OUTSTANDING.filter(([n]) => n.toLowerCase().includes(q)).slice(0, 4);
+    let h = found.map(([n, out, s]) => `<button data-act="add" data-name="${esc(n)}"><span class="nm">${esc(n)}</span><span class="q">${out} out · ${plural(s, 'seller')}</span></button>`).join('');
+    if (!found.some(([n]) => n.toLowerCase() === q)) h += `<button class="typed" data-act="add" data-name="${esc(d.input.trim())}">Add “${esc(d.input.trim())}” as typed</button>`;
+    return h;
+  }
+  entsHTML() {
+    return this.st.draft.entries.map((e, i) => `<div class="ent"><span class="entry">${esc(e.name)}</span>
+      <button class="step" data-act="qty" data-i="${i}" data-dq="-1" aria-label="${e.qty > 1 ? 'One fewer' : 'Remove'} ${esc(e.name)}">–</button><span class="qty">${e.qty}</span>
+      <button class="step" data-act="qty" data-i="${i}" data-dq="1" aria-label="One more ${esc(e.name)}">+</button></div>`).join('');
+  }
+
+  /* One envelope's page: the photos first. */
+  detail(e, withNav) {
+    if (!e) return `<p class="empty">Pick an envelope on the left.</p>`;
+    const i = Math.min(this.st.ci || 0, Math.max(0, e.photos.length - 1)), p = e.photos[i];
+    const car = e.photos.length
+      ? `<div class="car" data-swipe="${e.id}">${p.lost ? `<div class="tile lost" style="width:100%;height:100%;border:0" role="img" aria-label="${LOST_SAYS}">Lost</div>`
+          : `<button class="ph" data-act="view" data-src="${e.id}" data-i="${i}" aria-label="Open photo ${i + 1} of ${e.photos.length}">${photoSVG(p.seed)}</button>`}</div>
+         ${e.photos.length > 1 ? `<div class="dots">${e.photos.map((_, k) => `<button data-act="ci" data-i="${k}" class="${k === i ? 'on' : ''}" aria-label="Photo ${k + 1}"><i></i></button>`).join('')}</div>` : ''}`
+      : `<div class="nophoto"><span>No photo of this envelope.</span><button class="btn2" data-act="shoot" data-target="${e.id}">${ICON.camera}Photograph it</button></div>`;
+    const nav = withNav ? `<div class="navbar"><button class="sysbtn" data-act="back">‹ Orphaned</button><span class="t">Envelope, ${shortDate(e.date)}</span><span class="sp"></span></div>` : '';
+    const undo = this.st.undo && !this.st.v && this.st.undo.src === e.id ? this.undoBar() : '';
+    return `${nav}<div class="det">${undo}<div class="tag-new" data-tag="New: photos lead the page">${car}</div>
+      ${e.photos.length ? `<div class="rowbtns"><button class="btn2" data-act="shoot" data-target="${e.id}">${ICON.camera}Add photo</button><span class="note">${plural(e.photos.length, 'photo')}</span></div>` : ''}
+      <div class="card" style="padding:12px;display:flex;flex-direction:column;gap:4px"><div class="env hd" style="padding:0;display:flex"><span class="micro">Envelope · ${e.date} · ${plural(cardsOf(e), 'card')}</span>${this.headBtns(e)}</div>${this.entriesHTML(e)}</div>
+      ${this.cands()}</div>`;
+  }
+
+  /* Live viewfinder: the contact sheet and the docked camera. */
+  printL(e, i) {
+    const p = e.photos[0], on = !this.one && this.st.sel === e.id;
+    const ph = !p ? `<div class="blank">${ICON.camera}<span>No photo</span></div>`
+      : p.lost ? `<div class="lostp" role="img" aria-label="${LOST_SAYS}">Lost</div>` : photoSVG(p.seed);
+    const more = e.entries.length > 1 ? ` <span class="note">+${e.entries.length - 1} more</span>` : '';
+    const tag = i === 0 ? ' tag-new" data-tag="New: a stacked print, 3 photos' : i === 2 ? ' tag-new" data-tag="New: no photo yet' : '';
+    return `<button class="print${on ? ' on' : ''}" data-act="pick" data-id="${e.id}" aria-label="Envelope of ${shortDate(e.date)}, ${plural(cardsOf(e), 'card')}, ${p ? plural(e.photos.length, 'photo') : 'no photo'}">
+      <span class="ph${e.photos.length > 1 ? ' multi' : ''}${tag}">${ph}${e.photos.length > 1 ? `<span class="n">${e.photos.length}</span>` : ''}</span>
+      <span class="cap"><span class="entry">${esc(e.entries[0].name)}${more}</span><span class="note">${shortDate(e.date)}${e.note ? ' · ' + esc(e.note) : ''}</span></span></button>`;
+  }
+  pileL() {
+    const st = this.st;
+    let h = this.rhead() + '<div class="stack">';
+    if (st.undo && !st.v && this.one) h += this.undoBar();
+    if (!st.envs.length) h += `<p class="empty">No envelopes are waiting. When one comes with no name on it, point the camera below at it and press the shutter.</p>`;
+    else h += `<div class="sheetgrid">${st.envs.map((e, i) => this.printL(e, i)).join('')}</div>`;
+    h += `<div style="height:${st.dockMin ? 160 : (this.one ? 320 : 260)}px"></div></div>`;
+    return h;
+  }
+  dock() {
+    const st = this.st, d = st.draft;
+    if (st.dockMin) return `<div class="dock min tag-new" data-tag="New: camera, hidden"${this.focusId ? ` id="${this.focusId}"` : ''}><div class="bar1">
+      <button class="chip" data-act="dock-show" aria-expanded="false">${ICON.camera} Show camera</button><span style="flex:1"></span>
+      <button class="chip" data-act="type">Type</button></div></div>`;
+    const vf = st.denied
+      ? `<div class="denied" role="alert" style="padding:12px;gap:8px"><p style="font-size:15px">Camera access is off for MANIFEST.</p><div class="rowbtns"><button class="pill" data-act="settings">Open Settings</button><button class="pill ghost" data-act="type">Type the cards instead</button></div></div>`
+      : `${photoSVG(st.seed, 'Viewfinder: the envelope in front of the camera')}<div class="guide" style="inset:10% 14%"><i></i><i></i><i></i><i></i></div><div class="flash"></div>`;
+    const err = st.camErr ? `<div class="err" role="alert" style="flex:none;max-width:100%"><span>Not saved: the phone is out of space.</span><button class="sysbtn" data-act="retry">Try again</button></div>` : '';
+    const last = d && d.photos.length ? `<button class="lastshot" data-act="open-draft" aria-label="Open the new envelope, ${plural(d.photos.length, 'photo')}">${photoSVG(d.photos[d.photos.length - 1].seed)}<span class="n">${d.photos.length}</span></button>` : '<span style="width:48px"></span>';
+    return `<div class="dock tag-new" data-tag="New: live camera"${this.focusId ? ` id="${this.focusId}"` : ''}>
+      <div class="vf">${vf}</div>
+      <div class="over"><div class="top"><span>${err}</span><button class="chip" data-act="dock-hide" aria-expanded="true">Hide ${ICON.down}</button></div>
+        ${st.denied ? '' : `<div class="shutrow"><button class="chip l" data-act="type">Type</button><button class="shutter" data-act="snap" aria-label="Take photo"><i></i></button><span class="r">${last}</span></div>`}</div></div>`;
+  }
+
+  /* The viewer: full screen, the photo first. */
+  viewer() {
+    const st = this.st, v = st.v, list = this.photosOf(v.src);
+    if (!list.length) return '';
+    v.i = Math.max(0, Math.min(v.i, list.length - 1));
+    const p = list[v.i];
+    const rmBtn = P.del === 'ask'
+      ? (st.armed ? `<button class="sysbtn" data-act="rm-cancel">Cancel</button><button class="rm armed" data-act="rm-go">Tap again to remove</button>` : `<button class="rm" data-act="rm-arm">Remove from envelope</button>`)
+      : `<button class="rm" data-act="rm-go">Remove from envelope</button>`;
+    const bot = st.undo && st.undo.src === v.src
+      ? `<div class="undo" role="status"><span>${st.undo.text}</span><button class="sysbtn" data-act="undo">Undo</button><button class="sysbtn" data-act="undo-x" aria-label="Dismiss">✕</button></div>`
+      : `<span class="zoomhint">Pinch or double-tap to zoom</span><span style="display:flex;gap:4px">${p.lost ? '' : rmBtn}</span>`;
+    const grid = this.one ? '' : `<div class="vgrid"><span class="lbl">${v.src === 'draft' ? 'New envelope' : 'Envelope, ' + shortDate(this.env(v.src).date)} · ${plural(list.length, 'photo')}</span>
+      ${list.map((q, k) => q.lost ? `<div class="tile lost" role="img" aria-label="${LOST_SAYS}" style="width:100%;height:auto;aspect-ratio:4/3">Lost</div>`
+        : `<button class="tile${k === v.i ? ' sel' : ''}" data-act="vgo" data-i="${k}" aria-label="Photo ${k + 1}">${photoSVG(q.seed)}</button>`).join('')}</div>`;
+    const pos = this.one ? '' : 'left:495.5px;';
+    return `<div class="viewer tag-new" data-tag="New: zoom, swipe, remove" role="dialog" aria-modal="true" aria-label="Envelope photo viewer" tabindex="-1" style="${pos}" data-viewer>
+      <div class="vtop"><button class="sysbtn" data-act="vclose">Close</button><span class="count">${v.i + 1} of ${list.length}</span><span style="min-width:60px"></span></div>
+      <div class="stage${v.z > 1 ? ' z' : ''}" data-stage>${p.lost ? `<div class="tile lost" style="position:absolute;inset:30%;width:auto;height:auto">Lost</div>` : `<div class="img" data-img style="transform:${this.tf()}">${photoSVG(p.seed, 'Envelope photo ' + (v.i + 1))}</div>`}</div>
+      <div class="vbot">${bot}</div></div>${grid ? `<div style="position:absolute;inset:0;right:455.5px;background:var(--scrim);z-index:39"></div><div style="position:absolute;top:0;bottom:0;left:455.5px;width:40px;background:var(--scrim);z-index:39"></div>${grid}` : ''}`;
+  }
+  tf() { const v = this.st.v; return `translate(${(v.x * 100).toFixed(2)}%, ${(v.y * 100).toFixed(2)}%) scale(${v.z})`; }
+  undoBar() { const u = this.st.undo; return `<div class="undo card" role="status" style="border:1px solid var(--line)"><span>${u.text}</span><button class="sysbtn" data-act="undo">Undo</button><button class="sysbtn" data-act="undo-x" aria-label="Dismiss">✕</button></div>`; }
+
+  /* ---------- render ---------- */
+  render() {
+    const st = this.st, keep = this.el.querySelector('.body') ? this.el.querySelector('.body').scrollTop : 0;
+    let h = '';
+    if (this.one) {
+      const camOn = this.c === 'shutter' && st.view === 'camera';
+      h += this.status(camOn || st.v);
+      if (this.c === 'shutter') {
+        // While the composer is open it holds its own Add photo square, so the shutter bar steps aside and Save stays clear.
+        h += `<div class="body">${this.pileS()}</div>` + (st.view === 'compose' ? '' : this.accessory()) + this.tabbar();
+        if (camOn) h += this.camera();
+      } else {
+        h += st.view === 'detail' ? `<div class="body">${this.detail(this.env(st.sel), true)}<div style="height:100px"></div></div>` : `<div class="body">${this.pileL()}</div>` + this.dock();
+        h += this.tabbar();
+        if (st.view === 'camera' && st.cam) h += this.camera();
+        if (st.sheet && st.draft) {
+          const ready = st.draft.entries.length > 0;
+          h += `<div class="shade" data-act="noop"></div><div class="sheet tag-new" data-tag="New: sheet after the shot" role="dialog" aria-label="New envelope"><div class="grab"></div>
+            <div class="navbar"><button class="sysbtn" data-act="comp-cancel">Cancel</button><span class="t">${st.draft.editing ? 'Edit envelope' : 'New envelope'}</span>
+            <button class="sysbtn b" data-act="save" aria-disabled="${!ready}" title="${ready ? '' : 'Add a card to save'}" style="${ready ? '' : 'opacity:.45'}">Save</button></div>
+            <div class="scroll"><div style="display:flex;flex-direction:column;gap:8px">${this.composer('sheet')}${ready ? '' : '<div class="why">Add a card to save</div>'}</div></div></div>`;
+        }
+      }
+      if (st.v) h += this.viewer();
+    } else {
+      const composing = st.draft && (st.view === 'compose' || (this.c === 'shutter' && st.view === 'camera' && st.cam && st.cam.target === 'draft') || (this.c === 'live' && st.sheet));
+      let left, right;
+      if (this.c === 'shutter') {
+        left = st.view === 'camera' && st.cam ? this.camera() : `<div class="body">${this.pileS()}</div>${this.accessory()}`;
+      } else {
+        left = `<div class="body">${this.pileL()}</div>${this.dock()}`;
+        if (st.view === 'camera' && st.cam) left += this.camera();
+      }
+      right = composing ? `<div class="body">${this.composer('page')}<div style="height:90px"></div></div>` : `<div class="body">${this.detail(this.env(st.sel), false)}</div>`;
+      h += this.status(false) + `<div class="page l">${left}</div><div class="hinge" aria-hidden="true"></div><div class="page r">${right}</div>` + this.tabbar();
+      if (st.v) h += this.viewer();
+    }
+    if (st.toast) h += `<div class="toast" role="status">${esc(st.toast)}</div>`;
+    this.el.innerHTML = h;
+    const b = this.el.querySelector('.body'); if (b) b.scrollTop = keep;
+    if (st.v) this.wireViewer();
+  }
+  flash() { const f = this.el.querySelector('.flash'); if (f) { f.classList.remove('go'); void f.offsetWidth; f.classList.add('go'); } }
+
+  /* ---------- acts ---------- */
+  onClick(e) {
+    const b = e.target.closest('[data-act]'); if (!b || !this.el.contains(b)) return;
+    if (b.closest('[data-stage]')) return;
+    const st = this.st, a = b.dataset.act;
+    const startDraft = () => { if (!st.draft) st.draft = { photos: [], entries: [], note: '', input: '', editing: null }; };
+    switch (a) {
+      case 'noop': return;
+      case 'tab': if (b.dataset.n !== 'Orphaned') return this.toast(`${b.dataset.n} is not drawn in this mockup.`); return;
+      case 'type': startDraft(); st.view = 'compose'; st.sheet = true; st.cam = null; break;
+      case 'shoot': {
+        const t = b.dataset.target;
+        if (t === 'draft') startDraft();
+        if (this.c === 'live' && t === 'draft' && this.one) { st.sheet = false; st.dockMin = false; st.view = 'pile'; break; }
+        if (this.c === 'live' && t === 'draft') { st.dockMin = false; break; }
+        st.cam = { target: t, shots: [] }; st.view = 'camera'; st.sheet = false; break;
+      }
+      case 'snap': {
+        if (st.denied) return;
+        if (st.camErr) { this.flash(); return; }
+        const shot = this.newShot();
+        if (this.c === 'live' && !(st.view === 'camera' && st.cam)) {
+          startDraft(); st.draft.photos.push(shot); st.sheet = true;
+          if (!this.one) st.view = 'compose';
+        } else if (st.cam.target === 'draft') { startDraft(); st.draft.photos.push(shot); }
+        else st.cam.shots.push(shot);
+        this.render(); this.flash(); return;
+      }
+      case 'retry': st.camErr = false; break;
+      case 'torch': st.torch = !st.torch; return this.toast(st.torch ? 'Torch on.' : 'Torch off.');
+      case 'settings': return this.toast('This would open the Settings app at MANIFEST. Nothing opens in a mockup.');
+      case 'nophoto': startDraft(); st.cam = null; st.view = 'compose'; st.sheet = true; st.denied = false; break;
+      case 'cam-close': st.cam = null; st.view = 'compose'; break;
+      case 'cam-cancel': {
+        const t = st.cam && st.cam.target; st.cam = null; st.camErr = false; st.denied = false;
+        st.view = (t === 'draft' && !this.one) ? 'pile' : (st.sel && this.c === 'live' && t !== 'draft' && this.one ? 'detail' : 'pile');
+        break;
+      }
+      case 'cam-done': {
+        const t = st.cam.target;
+        if (t === 'draft') { st.view = 'compose'; st.sheet = true; }
+        else { const env = this.env(t); env.photos.push(...st.cam.shots); st.sel = t; st.view = this.c === 'live' && this.one ? 'detail' : 'pile';
+          if (st.cam.shots.length) st.toast = `${plural(st.cam.shots.length, 'photo')} added to the ${shortDate(env.date)} envelope.`; }
+        st.cam = null; break;
+      }
+      case 'open-draft': st.sheet = true; if (!this.one) st.view = 'compose'; break;
+      case 'comp-cancel': st.view = this.c === 'live' && st.sel && this.one && st.draft && st.draft.editing ? 'detail' : 'pile'; st.sheet = false; st.cam = null;
+        if (st.draft && st.draft.editing) st.draft = null; break;  // an edit's draft is kept by the model today; the mockup lets it go
+      case 'add': this.addName(b.dataset.name); return;
+      case 'qty': { const i = +b.dataset.i, d = st.draft.entries[i]; d.qty += +b.dataset.dq; if (d.qty < 1) st.draft.entries.splice(i, 1); this.refreshComposer(); return; }
+      case 'save': {
+        const d = st.draft; if (!d || !d.entries.length) return this.toast('Add a card to save.');
+        if (d.editing) { const e = this.env(d.editing); e.entries = d.entries; e.note = d.note.trim(); e.photos = d.photos; st.sel = e.id; }
+        else { const id = 'e' + (++uid); st.envs.unshift({ id, date: '2026-11-21', entries: d.entries, note: d.note.trim(), photos: d.photos }); st.sel = id; }
+        st.draft = null; st.view = 'pile'; st.sheet = false; st.cam = null; st.ci = 0; break;
+      }
+      case 'edit': { const e = this.env(b.dataset.id); st.draft = { photos: clone(e.photos), entries: clone(e.entries), note: e.note, input: '', editing: e.id }; st.view = 'compose'; st.sheet = true; break; }
+      case 'discard': st.discard = b.dataset.id; clearTimeout(this.dt); this.dt = setTimeout(() => { if (this.st.discard) { this.st.discard = null; this.render(); } }, 4000); break;
+      case 'discard-cancel': st.discard = null; break;
+      case 'discard-go': st.envs = st.envs.filter((x) => x.id !== b.dataset.id); st.discard = null; if (st.sel === b.dataset.id) { st.sel = this.one ? null : (st.envs[0] || {}).id; st.view = 'pile'; } break;
+      case 'pick': st.sel = b.dataset.id; st.ci = 0; if (this.one) st.view = 'detail'; break;
+      case 'back': st.view = 'pile'; break;
+      case 'ci': st.ci = +b.dataset.i; break;
+      case 'dock-hide': st.dockMin = true; break;
+      case 'dock-show': st.dockMin = false; break;
+      case 'view': {
+        const src = b.dataset.src === 'cam' ? null : b.dataset.src; if (!src) return this.toast('This shot is added when you press Done.');
+        st.v = { src, i: +b.dataset.i, z: 1, x: 0, y: 0 }; st.armed = false; this.opener = b.getAttribute('aria-label'); break;
+      }
+      case 'vgo': st.v = { ...st.v, i: +b.dataset.i, z: 1, x: 0, y: 0 }; st.armed = false; break;
+      case 'vclose': return this.closeViewer();
+      case 'rm-arm': st.armed = true; clearTimeout(this.at); this.at = setTimeout(() => { if (this.st.armed) { this.st.armed = false; this.render(); } }, 4000); break;
+      case 'rm-cancel': st.armed = false; break;
+      case 'rm-go': {
+        const list = this.photosOf(st.v.src), [ph] = list.splice(st.v.i, 1);
+        st.armed = false;
+        st.undo = P.del === 'ask' ? null : { src: st.v.src, at: st.v.i, ph, text: st.v.src === 'draft' ? 'Photo removed from the new envelope.' : 'Photo removed from this envelope.' };
+        if (!list.length) st.v = null; else st.v = { ...st.v, i: Math.min(st.v.i, list.length - 1), z: 1, x: 0, y: 0 };
+        if (P.del === 'ask') return this.toast('Photo removed.');
+        break;
+      }
+      case 'undo': { const u = st.undo; this.photosOf(u.src).splice(u.at, 0, u.ph); if (st.v) st.v = { ...st.v, i: u.at }; st.undo = null; break; }
+      case 'undo-x': st.undo = null; break;
+      default: return;
+    }
+    this.render();
+    if (st.v) { const v = this.el.querySelector('[data-viewer]'); if (v && a === 'view') v.focus(); }
+  }
+  closeViewer() {
+    this.st.v = null; this.st.armed = false; this.render();
+    const back = this.opener && [...this.el.querySelectorAll('[aria-label]')].find((x) => x.getAttribute('aria-label') === this.opener);
+    if (back) back.focus();
+  }
+  addName(name) {
+    const d = this.st.draft; if (!name || !name.trim()) return;
+    const hit = d.entries.find((x) => x.name.toLowerCase() === name.trim().toLowerCase());
+    if (hit) hit.qty++; else d.entries.push({ name: name.trim(), qty: 1 });
+    d.input = ''; const f = this.el.querySelector('[data-in="name"]'); if (f) f.value = '';
+    this.refreshComposer(); if (f) f.focus();
+  }
+  refreshComposer() {
+    // Only the lists redraw, so the field keeps its focus and the keyboard never drops.
+    const s = this.el.querySelector('[data-sugg]'), en = this.el.querySelector('[data-ents]');
+    if (s) s.innerHTML = this.suggHTML(); if (en) en.innerHTML = this.entsHTML();
+    const n = this.st.draft.entries.reduce((a, x) => a + x.qty, 0), ready = this.st.draft.entries.length > 0;
+    this.el.querySelectorAll('.foot .note').forEach((x) => { x.textContent = plural(n, 'card'); });
+    this.el.querySelectorAll('[data-act="save"]').forEach((x) => { x.setAttribute('aria-disabled', String(!ready)); if (x.classList.contains('sysbtn')) x.style.opacity = ready ? '' : '.45'; x.title = ready ? '' : 'Add a card to save'; });
+    this.el.querySelectorAll('.why').forEach((x) => { x.hidden = ready; });
+  }
+  onInput(e) {
+    const k = e.target.dataset && e.target.dataset.in; if (!k || !this.st.draft) return;
+    if (k === 'name') {
+      const v = e.target.value;
+      if (v.includes('\n')) { this.addName(v.split('\n')[0]); return; }  // Return records the name, as the native field does
+      this.st.draft.input = v; const s = this.el.querySelector('[data-sugg]'); if (s) s.innerHTML = this.suggHTML();
+    } else this.st.draft.note = e.target.value;
+  }
+  onKey(e) {
+    if (!this.st.v) { if (e.key === 'Enter' && e.target.dataset && e.target.dataset.act === 'pick') e.target.click(); return; }
+    if (e.key === 'Escape') { e.preventDefault(); this.closeViewer(); }
+    if (e.key === 'ArrowRight' || e.key === 'ArrowLeft') { this.go(e.key === 'ArrowRight' ? 1 : -1); }
+  }
+  go(dir) {
+    const list = this.photosOf(this.st.v.src), i = this.st.v.i + dir;
+    if (i < 0 || i >= list.length) return;
+    this.st.v = { ...this.st.v, i, z: 1, x: 0, y: 0 }; this.st.armed = false; this.render();
+    const v = this.el.querySelector('[data-viewer]'); if (v) v.focus();
+  }
+
+  /* The viewer's gestures. At 1x a tap closes it (today's rule) and a sideways drag turns the photo.
+     Double-tap (or double-click) zooms to 2.5x at that point; when zoomed, a drag pans and a tap does nothing.
+     A wheel or a two-finger pinch zooms too. */
+  wireViewer() {
+    const stage = this.el.querySelector('[data-stage]'), img = this.el.querySelector('[data-img]'); if (!stage || !img) return;
+    const v = this.st.v, pts = new Map(); let start = null, moved = false, tapT = null, pinch0 = null;
+    const clamp = () => { const m = v.z - 1; v.x = Math.max(-m, Math.min(0, v.x)); v.y = Math.max(-m, Math.min(0, v.y)); };
+    const apply = () => { clamp(); img.style.transform = this.tf(); stage.classList.toggle('z', v.z > 1); };
+    const zoomAt = (z, cx, cy) => { const r = stage.getBoundingClientRect(), fx = (cx - r.left) / r.width, fy = (cy - r.top) / r.height;
+      const ox = (fx - v.x) / v.z, oy = (fy - v.y) / v.z; v.z = Math.max(1, Math.min(4, z)); v.x = fx - ox * v.z; v.y = fy - oy * v.z; if (v.z === 1) { v.x = 0; v.y = 0; } apply(); };
+    stage.addEventListener('pointerdown', (e) => { stage.setPointerCapture(e.pointerId); pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 1) { start = { x: e.clientX, y: e.clientY, vx: v.x, vy: v.y }; moved = false; }
+      if (pts.size === 2) { const [a, b] = [...pts.values()]; pinch0 = { d: Math.hypot(a[0] - b[0], a[1] - b[1]), z: v.z }; } });
+    stage.addEventListener('pointermove', (e) => { if (!pts.has(e.pointerId)) return; pts.set(e.pointerId, [e.clientX, e.clientY]);
+      if (pts.size === 2 && pinch0) { const [a, b] = [...pts.values()]; zoomAt(pinch0.z * Math.hypot(a[0] - b[0], a[1] - b[1]) / pinch0.d, (a[0] + b[0]) / 2, (a[1] + b[1]) / 2); moved = true; return; }
+      if (!start) return; const dx = e.clientX - start.x, dy = e.clientY - start.y; if (Math.hypot(dx, dy) > 6) moved = true;
+      const r = stage.getBoundingClientRect();
+      if (v.z > 1) { v.x = start.vx + dx / r.width; v.y = start.vy + dy / r.height; apply(); } else img.style.transform = `translateX(${dx}px)`; });
+    const up = (e) => { if (!pts.has(e.pointerId)) return; pts.delete(e.pointerId); if (pts.size) return; pinch0 = null;
+      const dx = start ? e.clientX - start.x : 0; start = null;
+      if (v.z === 1 && moved) { if (Math.abs(dx) > 60) return this.go(dx < 0 ? 1 : -1); img.style.transform = this.tf(); return; }
+      if (moved) return;
+      if (tapT) { clearTimeout(tapT); tapT = null; zoomAt(v.z > 1 ? 1 : 2.5, e.clientX, e.clientY); return; }
+      tapT = setTimeout(() => { tapT = null; if (v.z === 1) this.closeViewer(); }, 260); };
+    stage.addEventListener('pointerup', up); stage.addEventListener('pointercancel', up);
+    stage.addEventListener('wheel', (e) => { e.preventDefault(); zoomAt(v.z * (e.deltaY < 0 ? 1.15 : 1 / 1.15), e.clientX, e.clientY); }, { passive: false });
+  }
+}
+
+/* ---------- the page: deep links, option filters and hide buttons ---------- */
+const frames = [...document.querySelectorAll('.dev')];
+const hidden = new Set(), hiddenDel = new Set();
+function readHash() {
+  for (const k of ['c', 's', 'd', 'size', 'del', 't']) delete P[k];
+  location.hash.replace(/^#/, '').split('&').filter(Boolean).forEach((kv) => { const [k, v = ''] = kv.split('='); P[k] = decodeURIComponent(v); });
+  if (!P.del) P.del = hiddenDel.has('undo') ? 'ask' : 'undo';
+  if (hiddenDel.has(P.del)) P.del = P.del === 'undo' ? 'ask' : 'undo';
+}
+function route() {
+  readHash();
+  document.querySelectorAll('section.concept').forEach((s) => { const c = s.dataset.concept; s.hidden = hidden.has(c) || (!!P.c && P.c !== c); });
+  document.querySelectorAll('[data-frame]').forEach((f) => {
+    const k = f.dataset.frame;
+    f.hidden = P.size === 'ax5' ? k !== 'ax5' : (P.d ? (P.d === 'folded' ? !(k === 'folded' || k === 'ax5') : k !== P.d) : false);
+  });
+  frames.forEach((el) => { if (!el.fr) el.fr = new Frame(el); else el.fr.reset(P.s || 'pile'); });
+  document.querySelectorAll('nav.ctl a').forEach((a) => {
+    const k = a.dataset.k, v = a.dataset.v; a.setAttribute('aria-current', String((P[k] || '') === v || (k === 'del' && P.del === v)));
+    a.hidden = k === 'del' && hiddenDel.has(v);
+  });
+}
+document.querySelectorAll('nav.ctl a').forEach((a) => a.addEventListener('click', (e) => {
+  e.preventDefault(); readHash(); const k = a.dataset.k, v = a.dataset.v;
+  if (v) P[k] = v; else delete P[k];
+  if (k === 'size') delete P.d; if (k === 'd') delete P.size;
+  const h = ['c', 's', 'd', 'size', 'del'].filter((x) => P[x] && !(x === 'del' && P[x] === 'undo')).map((x) => `${x}=${P[x]}`).join('&');
+  if (('#' + h) === location.hash || (!h && !location.hash)) route(); else location.hash = h;
+}));
+document.querySelectorAll('[data-hide]').forEach((b) => b.addEventListener('click', () => {
+  const c = b.dataset.hide, name = b.textContent.replace(/^(Hide|Show) /, '');
+  hidden.has(c) ? hidden.delete(c) : hidden.add(c); b.textContent = (hidden.has(c) ? 'Show ' : 'Hide ') + name; route();
+}));
+document.querySelectorAll('[data-hide-del]').forEach((b) => b.addEventListener('click', () => {
+  const c = b.dataset.hideDel, name = b.textContent.replace(/^(Hide|Show) /, '');
+  if (!hiddenDel.has(c) && hiddenDel.size) return;  // one remove style always stays
+  hiddenDel.has(c) ? hiddenDel.delete(c) : hiddenDel.add(c); b.textContent = (hiddenDel.has(c) ? 'Show ' : 'Hide ') + name; route();
+}));
+document.getElementById('tagsbtn').addEventListener('click', (e) => {
+  const on = document.body.classList.toggle('notags'); e.target.textContent = on ? 'Show the tags' : 'Hide the tags';
+});
+addEventListener('hashchange', route);
+route();
+</script>
+</body>
+</html>

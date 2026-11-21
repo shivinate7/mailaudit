@@ -1,0 +1,832 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Duo Poses Mockup</title>
+<style>
+/* Colour roles. Light set, then dark set (system default, then explicit). Values are this designer's own. */
+:root {
+  --surface: #f4f6f8;
+  --surface-raised: #ffffff;
+  --surface-sunk: #e9edf1;
+  --text: #17202b;
+  --text-muted: #566271;
+  --line: #d5dbe2;
+  --accent: #0b6a85;
+  --accent-text: #ffffff;
+  --accent-soft: #d9ecf1;
+  --owed: #8f5300;
+  --ok: #2b7a4b;
+  --danger: #b3261e;
+  --key: #e3e8ed;
+  --key-fn: #cfdbe4;
+  --bezel: #2b3138;
+  --hinge: #11161b;
+  --page: #e6e9ec;
+  --mark: #fde9b8;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-11: 44px;
+  --radius: 8px;
+  /* Placeholders: no page read gives the status bar or home indicator height (notes item 12). */
+  --sb-h: var(--space-11);
+  --hi-h: var(--space-5);
+  /* Dynamic Type, iOS, Large (default): size / leading in pt, Apple typography page, read 2026-11-21. */
+  --t-large: 34px; --l-large: 41px;
+  --t-title1: 28px; --l-title1: 34px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-subhead: 15px; --l-subhead: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap1: 12px; --l-cap1: 16px;
+  --t-cap2: 11px; --l-cap2: 13px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #0f1419; --surface-raised: #18202a; --surface-sunk: #0a0e12;
+    --text: #e8edf2; --text-muted: #9aa7b4; --line: #2a3440;
+    --accent: #4fb4d1; --accent-text: #06222b; --accent-soft: #143340;
+    --owed: #e8a94c; --ok: #62c48e; --danger: #f2877e;
+    --key: #222c37; --key-fn: #2c3b4a; --bezel: #000000; --hinge: #000000; --page: #070a0d; --mark: #5a4613;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #0f1419; --surface-raised: #18202a; --surface-sunk: #0a0e12;
+  --text: #e8edf2; --text-muted: #9aa7b4; --line: #2a3440;
+  --accent: #4fb4d1; --accent-text: #06222b; --accent-soft: #143340;
+  --owed: #e8a94c; --ok: #62c48e; --danger: #f2877e;
+  --key: #222c37; --key-fn: #2c3b4a; --bezel: #000000; --hinge: #000000; --page: #070a0d; --mark: #5a4613;
+  color-scheme: dark;
+}
+/* Largest accessibility size, AX5, same Apple table. */
+[data-text="ax5"] {
+  --t-large: 60px; --l-large: 70px;
+  --t-title1: 58px; --l-title1: 68px;
+  --t-title2: 56px; --l-title2: 66px;
+  --t-title3: 55px; --l-title3: 65px;
+  --t-body: 53px; --l-body: 62px;
+  --t-callout: 51px; --l-callout: 60px;
+  --t-subhead: 49px; --l-subhead: 58px;
+  --t-foot: 44px; --l-foot: 52px;
+  --t-cap1: 43px; --l-cap1: 51px;
+  --t-cap2: 40px; --l-cap2: 48px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page);
+  color: var(--text);
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: var(--t-body); line-height: var(--l-body);
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+button:disabled { cursor: not-allowed; opacity: .45; }
+.num { font-variant-numeric: tabular-nums; }
+
+/* ---------- Mockup page chrome (not part of the app) ---------- */
+.sample {
+  position: sticky; top: 0; z-index: 10;
+  background: var(--owed); color: var(--surface-raised);
+  padding: var(--space-2) var(--space-4); font-size: var(--t-subhead); line-height: var(--l-subhead); font-weight: 600;
+}
+.page { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-6) var(--space-4) var(--space-11); max-width: 1680px; margin-inline: auto; }
+.intro { display: flex; flex-direction: column; gap: var(--space-3); max-width: 46rem; }
+.intro h1 { margin: 0; font-size: var(--t-title1); line-height: var(--l-title1); }
+.intro p { margin: 0; color: var(--text-muted); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; }
+.ctl { display: flex; flex-direction: column; gap: var(--space-1); }
+.ctl > span { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.ctl { max-width: 100%; }
+.seg { display: inline-flex; flex-wrap: wrap; max-width: 100%; background: var(--surface-sunk); border-radius: var(--radius); padding: var(--space-1); gap: var(--space-1); }
+.seg button { min-height: 44px; padding: 0 var(--space-3); border-radius: 6px; font-size: var(--t-subhead); }
+.seg button[aria-pressed="true"] { background: var(--surface-raised); font-weight: 600; box-shadow: 0 0 0 1px var(--line); }
+.chip { min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface-raised); font-size: var(--t-subhead); }
+.chip[aria-pressed="false"] { color: var(--text-muted); text-decoration: line-through; }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); scroll-margin-top: var(--space-11); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.concept-head h2 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); }
+.concept-head p { margin: 0; color: var(--text-muted); flex-basis: 100%; max-width: 46rem; }
+.new-tag { border: 2px dashed var(--accent); color: var(--accent); border-radius: var(--radius); padding: 2px var(--space-2); font-size: var(--t-foot); line-height: var(--l-foot); font-weight: 600; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+.frame { display: flex; flex-direction: column; gap: var(--space-2); max-width: 100%; }
+.frame[hidden] { display: none; }
+.frame figcaption { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.holder { max-width: 100%; }
+.resizer { resize: both; overflow: hidden; width: 466px; height: 678px; min-width: 320px; min-height: 560px; max-width: 100%; border-radius: var(--radius); }
+.resizer > .device { width: 100% !important; height: 100% !important; }
+
+/* ---------- Device frames ---------- */
+.device {
+  position: relative; overflow: hidden; background: var(--bezel);
+  border-radius: var(--radius); box-shadow: 0 0 0 6px var(--bezel);
+  display: grid;
+}
+.device.single { grid-template: 1fr / 1fr; }
+.device.book { grid-template-columns: 455.5px 40px 455.5px; grid-template-rows: 100%; }
+.device.tall { grid-template-rows: 455.5px 40px 455.5px; grid-template-columns: 100%; }
+.hinge { background: var(--hinge); }
+.screen { position: relative; overflow: hidden; background: var(--surface); display: flex; flex-direction: column; min-height: 0; min-width: 0; font-size: var(--t-body); line-height: var(--l-body); }
+.sb {
+  flex: none; height: max(env(safe-area-inset-top), var(--sb-h));
+  padding-inline: max(env(safe-area-inset-left), var(--space-6)) max(env(safe-area-inset-right), var(--space-6));
+  display: flex; align-items: center; justify-content: space-between;
+  font-size: 15px; font-weight: 600;
+}
+.sb i { font-style: normal; font-size: 12px; letter-spacing: 1px; }
+.hi { flex: none; height: max(env(safe-area-inset-bottom), var(--hi-h)); display: grid; place-items: center; }
+.hi::before { content: ""; width: 134px; max-width: 40%; height: 5px; border-radius: 3px; background: var(--text); opacity: .85; }
+.body { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.pad-x { padding-inline: max(env(safe-area-inset-left), var(--space-4)) max(env(safe-area-inset-right), var(--space-4)); }
+
+/* ---------- Shared app parts ---------- */
+.nav { display: flex; flex-direction: column; gap: var(--space-2); padding-block: var(--space-1) var(--space-2); }
+.nav-row { display: flex; align-items: center; justify-content: space-between; min-height: 44px; gap: var(--space-2); }
+.back { min-height: 44px; min-width: 44px; color: var(--accent); display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--t-body); }
+.large-title { margin: 0; font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; }
+.title { margin: 0; font-size: var(--t-headline, var(--t-body)); line-height: var(--l-body); font-weight: 600; }
+.figures { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-6); align-items: baseline; }
+.fig { display: inline-flex; align-items: baseline; gap: var(--space-1); }
+.fig b { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 700; font-variant-numeric: tabular-nums; }
+.fig span { font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--text-muted); }
+.fig.owed b { color: var(--owed); }
+.fig.unknown b { color: var(--text-muted); }
+.segc { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface-sunk); border-radius: var(--radius); padding: 2px; gap: 2px; }
+.segc button { min-height: 44px; border-radius: 6px; font-size: var(--t-subhead); line-height: var(--l-subhead); padding: 0 var(--space-2); }
+.segc button[aria-pressed="true"] { background: var(--surface-raised); font-weight: 600; box-shadow: 0 1px 0 var(--line); }
+.list { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; }
+.row {
+  display: grid; grid-template-columns: 28px 1fr auto; gap: var(--space-3); align-items: center; text-align: left;
+  min-height: 60px; padding-block: var(--space-2); border-bottom: 1px solid var(--line); width: 100%;
+}
+.row[aria-current="true"] { background: var(--accent-soft); }
+.row .who { font-weight: 600; font-size: var(--t-body); line-height: var(--l-body); overflow-wrap: anywhere; }
+.row .meta { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.row .amt { font-size: var(--t-body); line-height: var(--l-body); font-variant-numeric: tabular-nums; text-align: right; }
+.row.arrived .amt { color: var(--text-muted); }
+[data-text="ax5"] .row { grid-template-columns: 1fr; }
+[data-text="ax5"] .row .amt { text-align: left; }
+.dot { width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--text-muted); display: grid; place-items: center; }
+.dot.on { background: var(--ok); border-color: var(--ok); }
+.dot.on::after { content: ""; width: 9px; height: 5px; border-left: 2px solid #fff; border-bottom: 2px solid #fff; transform: translateY(-1px) rotate(-45deg); }
+[data-text="ax5"] .dot { width: 44px; height: 44px; }
+mark { background: var(--mark); color: inherit; border-radius: 2px; }
+.note { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding-block: var(--space-6); }
+.note p { margin: 0; }
+.btn {
+  min-height: 44px; padding: 0 var(--space-4); border-radius: var(--radius);
+  background: var(--accent); color: var(--accent-text); font-weight: 600; font-size: var(--t-body);
+}
+.btn.quiet { background: var(--surface-sunk); color: var(--accent); }
+.btn.wide { width: 100%; }
+.skel { height: 60px; border-bottom: 1px solid var(--line); display: grid; grid-template-columns: 28px 1fr 64px; gap: var(--space-3); align-items: center; }
+.skel i { display: block; height: 12px; border-radius: 6px; background: var(--surface-sunk); }
+.search {
+  display: flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-3);
+  border-radius: var(--radius); background: var(--surface-sunk); color: var(--text-muted); width: 100%; text-align: left;
+  font-size: var(--t-body);
+}
+.search .q { color: var(--text); flex: 1; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.search .q:empty::before { content: attr(data-ph); color: var(--text-muted); }
+.search.active { box-shadow: inset 0 0 0 2px var(--accent); }
+.caret { display: inline-block; width: 2px; height: 1.1em; background: var(--accent); vertical-align: -3px; animation: blink 1s steps(1) infinite; }
+@keyframes blink { 50% { opacity: 0; } }
+@media (prefers-reduced-motion: reduce) { .caret { animation: none; } }
+.tabbar {
+  align-self: center; display: flex; gap: var(--space-1); padding: var(--space-1);
+  border-radius: 999px; background: color-mix(in srgb, var(--surface-raised) 82%, transparent);
+  box-shadow: 0 0 0 1px var(--line), 0 6px 18px rgba(0,0,0,.12); backdrop-filter: blur(12px);
+}
+.tabbar button { min-width: 96px; min-height: 48px; border-radius: 999px; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: 11px; line-height: 13px; color: var(--text-muted); gap: 2px; }
+.tabbar button[aria-current="page"] { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.tabbar svg { width: 22px; height: 22px; }
+.float-foot { display: flex; flex-direction: column; gap: var(--space-2); padding-block: var(--space-2); }
+.status-line { min-height: var(--l-foot); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); display: flex; gap: var(--space-2); align-items: center; }
+.status-line .act { color: var(--accent); font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; }
+.detail { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: var(--space-4); padding-block: var(--space-2) var(--space-4); }
+.detail h3 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-4); margin: 0; }
+.facts dt { color: var(--text-muted); font-size: var(--t-subhead); line-height: var(--l-subhead); }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+[data-text="ax5"] .facts { grid-template-columns: 1fr; gap: 0; }
+.pill { display: inline-flex; align-items: center; gap: var(--space-1); padding: 2px var(--space-2); border-radius: var(--radius); font-size: var(--t-foot); line-height: var(--l-foot); font-weight: 600; }
+.pill.open { background: var(--surface-sunk); color: var(--owed); }
+.pill.done { background: var(--surface-sunk); color: var(--ok); }
+.markbtn { min-width: 12.5em; }
+
+/* Ledger keyboard: one home for the keys, used folded (on demand) and on the tall pose's lower page (always). */
+.kbd { line-height: 22px; display: flex; flex-direction: column; gap: 0; background: var(--surface-sunk); padding-block: var(--space-1); border-top: 1px solid var(--line); }
+.kbd-row { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; }
+.kbd.fill { flex: 1; min-height: 0; }
+.kbd.fill .kbd-row { flex: 1; }
+.kbd.fill button span { font-size: 22px; }
+.kbd button { min-height: 44px; padding: 3px 2px; display: grid; }
+.kbd button span { display: grid; place-items: center; border-radius: 6px; background: var(--surface-raised); box-shadow: 0 1px 0 var(--line); font-size: 18px; }
+.kbd button.fn span { background: var(--key-fn); font-size: var(--t-subhead); }
+.kbd button:active span { background: var(--accent-soft); }
+
+/* ---------- Desk calculator ---------- */
+.display { display: flex; flex-direction: column; gap: var(--space-2); padding-block: var(--space-2); flex: none; }
+.display .mode { font-size: var(--t-subhead); line-height: var(--l-subhead); color: var(--text-muted); font-weight: 600; }
+.bigfigs { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1) var(--space-4); align-items: baseline; }
+.bigfig { display: flex; align-items: baseline; gap: var(--space-2); }
+.bigfig b { font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; font-variant-numeric: tabular-nums; min-width: 2ch; }
+.bigfig span { font-size: var(--t-body); line-height: var(--l-body); color: var(--text-muted); }
+.bigfig.owed b { color: var(--owed); }
+.bigfig.unknown b { color: var(--text-muted); }
+.tape {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--surface-raised); border-radius: var(--radius); box-shadow: inset 0 0 0 1px var(--line);
+  display: flex; flex-direction: column;
+}
+.tape-wrap { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-bottom: var(--space-3); }
+.tline {
+  display: grid; grid-template-columns: 24px 1fr auto; gap: var(--space-1) var(--space-3); align-items: center;
+  text-align: left; padding: var(--space-2) var(--space-3); min-height: 52px; width: 100%;
+  border-bottom: 1px dashed var(--line); font-variant-numeric: tabular-nums;
+}
+.tline .oid { font-size: var(--t-body); line-height: var(--l-body); font-weight: 600; letter-spacing: .02em; }
+.tline .meta { grid-column: 2 / 4; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
+.tline .amt { font-size: var(--t-body); line-height: var(--l-body); }
+.tline[aria-current="true"] { background: var(--accent-soft); }
+.tline[aria-current="true"] .oid { color: var(--accent); }
+.tline.arrived .oid, .tline.arrived .amt { color: var(--text-muted); }
+[data-text="ax5"] .tline { grid-template-columns: 1fr; }
+[data-text="ax5"] .tline .meta { grid-column: auto; }
+.tline .dot { width: 18px; height: 18px; }
+[data-text="ax5"] .tline .dot { display: none; }
+.keys { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding-block: var(--space-2); min-width: 0; }
+.keys.fill { flex: 1; min-height: 0; }
+.echo {
+  height: 44px; flex: none; display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); align-items: center;
+  padding: 0 var(--space-3); border-radius: var(--radius); background: var(--surface-sunk); overflow: hidden;
+}
+/* The key pad and its echo keep the default text sizes at every text size, as the system keyboard does;
+   the display and tape above carry the large text (notes item 9). Values: Title 3, Subhead, Body at Large (default). */
+.echo .entry { font-size: 20px; line-height: 25px; font-weight: 600; font-variant-numeric: tabular-nums; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.echo .entry.ph { font-size: 15px; font-weight: 400; color: var(--text-muted); }
+.echo .res { font-size: 15px; line-height: 20px; color: var(--text-muted); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 16em; }
+.echo .res.msg { color: var(--ok); font-weight: 600; }
+.pad { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: var(--space-2); }
+.keys.fill .pad { flex: 1; grid-auto-rows: 1fr; }
+.pad button {
+  min-height: 48px; border-radius: var(--radius); background: var(--key);
+  font-size: 20px; line-height: 25px; font-variant-numeric: tabular-nums;
+  display: grid; place-items: center; padding: 0 var(--space-1);
+}
+.pad button.fn { background: var(--key-fn); font-size: 15px; line-height: 20px; font-weight: 600; }
+.pad button.fn[aria-pressed="true"] { background: var(--accent-soft); color: var(--accent); outline: 2px solid var(--accent); outline-offset: -2px; }
+@media (forced-colors: active) {
+  .row[aria-current="true"], .tline[aria-current="true"], .seg button[aria-pressed="true"], .segc button[aria-pressed="true"] { outline: 2px solid CanvasText; outline-offset: -2px; }
+  .tabbar button[aria-current="page"] { outline: 2px solid CanvasText; }
+  .pad button, .kbd button span, .btn, .search, .echo { border: 1px solid ButtonText; }
+}
+.pad button.go { background: var(--accent); color: var(--accent-text); font-size: 17px; line-height: 22px; font-weight: 700; grid-column: span 2; }
+.pad button:active:not(:disabled) { filter: brightness(.92); }
+[data-text="ax5"] .pad button { min-height: 44px; }
+.calc-split { flex: 1; min-height: 0; display: flex; flex-direction: column; gap: 0; }
+.calc-split > .top { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+/* Largest text: display and tape scroll together as one column above the fixed key pad. */
+[data-text="ax5"] .calc-split > .top { overflow-y: auto; }
+[data-text="ax5"] .tape-wrap { flex: none; }
+[data-text="ax5"] .tape { flex: none; overflow: visible; }
+/* Largest text, Ledger: the whole page scrolls, and the search and tab bar stay pinned. */
+[data-text="ax5"] .body:not(.calc-split) { overflow-y: auto; }
+[data-text="ax5"] .body:not(.calc-split) > * { flex: none; }
+[data-text="ax5"] .body:not(.calc-split) > .list { overflow: visible; }
+[data-text="ax5"] .body:not(.calc-split) > .float-foot { position: sticky; bottom: 0; background: var(--surface); margin-top: auto; }
+[data-text="ax5"] .segc { grid-auto-flow: row; }
+.row, .tline, .skel { flex: none; }
+.err { color: var(--danger); font-weight: 600; }
+.echo-count { min-width: 6.5em; justify-content: flex-end; white-space: nowrap; }
+/* Option chips: each one press removes one option (notes items 5, 9, 10). */
+.tab-square .tabbar, .tab-square .tabbar button { border-radius: var(--radius); }
+.no-echo .echo, .no-echo .echo-count { display: none; }
+.ax-keys-scale [data-text="ax5"] .pad { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+.ax-keys-scale [data-text="ax5"] .pad button { font-size: var(--t-title3); line-height: var(--l-title3); padding-block: var(--space-1); }
+.ax-keys-scale [data-text="ax5"] .pad button.fn { font-size: var(--t-subhead); line-height: var(--l-subhead); grid-column: 1 / -1; }
+.ax-keys-scale [data-text="ax5"] .pad button.go { font-size: var(--t-body); line-height: var(--l-body); grid-column: 1 / -1; }
+.ax-keys-scale [data-text="ax5"] .echo { height: auto; grid-template-columns: minmax(0, 1fr); padding-block: var(--space-1); }
+.ax-keys-scale [data-text="ax5"] .echo .entry, .ax-keys-scale [data-text="ax5"] .echo .entry.ph { font-size: var(--t-title3); line-height: var(--l-title3); }
+.ax-keys-scale [data-text="ax5"] .echo .res { font-size: var(--t-subhead); line-height: var(--l-subhead); max-width: none; }
+.ax-keys-scale [data-text="ax5"] .calc-split > .keys { flex: 1 1 55%; min-height: 0; overflow-y: auto; }
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample. No figure, order, seller or amount on this page is real.</div>
+<main class="page">
+  <header class="intro">
+    <h1>Duo poses: two concepts</h1>
+    <p>Designer kind: blind. Designer duo-poses-blind-2. Each concept is drawn folded, open as a book, open tall like a laptop, on a large phone, and folded at the largest text size. Every key and row works.</p>
+    <div class="controls" role="group" aria-label="Mockup controls">
+      <div class="ctl"><span>Theme</span><div class="seg" data-ctl="t">
+        <button data-v="system">System</button><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+      <div class="ctl"><span>State</span><div class="seg" data-ctl="s">
+        <button data-v="loaded">Loaded</button><button data-v="loading">Loading</button><button data-v="error">Failed</button><button data-v="empty">No orders</button><button data-v="nomatch">No match</button></div></div>
+      <div class="ctl"><span>Pose</span><div class="seg" data-ctl="p">
+        <button data-v="all">All</button><button data-v="folded">Folded</button><button data-v="book">Book</button><button data-v="tall">Laptop</button><button data-v="phone">Phone</button><button data-v="ax5">Largest text</button></div></div>
+      <div class="ctl"><span>Show or hide an option</span><div style="display:flex;flex-wrap:wrap;gap:var(--space-2)">
+        <button class="chip" data-hide="ledger" aria-pressed="true">Ledger</button>
+        <button class="chip" data-hide="calculator" aria-pressed="true">Desk calculator</button>
+        <button class="chip" data-hide="swap" aria-pressed="false">Calculator keys on the left page (book)</button>
+        <button class="chip" data-hide="capsule" aria-pressed="true">Capsule tab bar</button>
+        <button class="chip" data-hide="echo" aria-pressed="true">Echo line beside the keys</button>
+        <button class="chip" data-hide="axfixed" aria-pressed="true">Calculator keys keep their size at largest text</button>
+      </div></div>
+    </div>
+  </header>
+
+  <section class="concept" id="ledger" aria-labelledby="ledger-h">
+    <div class="concept-head">
+      <h2 id="ledger-h">Ledger</h2>
+      <span class="new-tag">New: whole screen</span>
+      <p>A list of orders with a detail page. Folded, it is a phone app. Open as a book, the list sits on one page and the order on the other. Propped as a laptop, the list is the answer on the upper page, and the search keys, filter and Mark arrived sit on the lower page.</p>
+    </div>
+    <div class="frames">
+      <figure class="frame" id="ledger-folded" data-pose="folded" style="margin:0"><div class="holder"><div class="device single" data-device="iphone-duo-folded" data-concept="ledger" data-layout="single" style="width:466px;height:678px"></div></div><figcaption>Duo folded, 466 x 678 pt</figcaption></figure>
+      <figure class="frame" id="ledger-book" data-pose="book" style="margin:0"><div class="holder"><div class="device book" data-device="iphone-duo-unfolded" data-posture="book" data-concept="ledger" data-layout="book" style="width:951px;height:669px"></div></div><figcaption>Duo open as a book, 951 x 669 pt, hinge x 455.5 to 495.5</figcaption></figure>
+      <figure class="frame" id="ledger-tall" data-pose="tall" style="margin:0"><div class="holder"><div class="device tall" data-device="iphone-duo-unfolded" data-posture="tall" data-concept="ledger" data-layout="tall" style="width:669px;height:951px"></div></div><figcaption>Duo open tall, propped like a laptop: the open pose turned, 669 x 951 pt, hinge y 455.5 to 495.5</figcaption></figure>
+      <figure class="frame" id="ledger-phone" data-pose="phone" style="margin:0"><div class="resizer"><div class="device single" data-device="phone-large" data-concept="ledger" data-layout="single" style="width:466px;height:678px"></div></div><figcaption>Large phone, no written size: drag the corner to resize</figcaption></figure>
+      <figure class="frame" id="ledger-ax5" data-pose="ax5" style="margin:0"><div class="holder"><div class="device single" data-device="iphone-duo-folded" data-text="ax5" data-concept="ledger" data-layout="single" style="width:466px;height:678px"></div></div><figcaption>Duo folded, largest text (AX5)</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="calculator" aria-labelledby="calc-h">
+    <div class="concept-head">
+      <h2 id="calc-h">Desk calculator</h2>
+      <span class="new-tag">New: whole screen</span>
+      <p>The bold concept. No list screen, no tabs, no back button. A display shows the count and the money owed, a tape below it rolls the matching orders, and a key pad does every act: type part of an order number, step with the arrows, press Mark arrived. Propped as a laptop, the display and tape fill the upper page and the keys fill the lower page.</p>
+    </div>
+    <div class="frames">
+      <figure class="frame" id="calculator-folded" data-pose="folded" style="margin:0"><div class="holder"><div class="device single" data-device="iphone-duo-folded" data-concept="calculator" data-layout="single" style="width:466px;height:678px"></div></div><figcaption>Duo folded, 466 x 678 pt</figcaption></figure>
+      <figure class="frame" id="calculator-book" data-pose="book" style="margin:0"><div class="holder"><div class="device book" data-device="iphone-duo-unfolded" data-posture="book" data-concept="calculator" data-layout="book" style="width:951px;height:669px"></div></div><figcaption>Duo open as a book, 951 x 669 pt, hinge x 455.5 to 495.5</figcaption></figure>
+      <figure class="frame" id="calculator-tall" data-pose="tall" style="margin:0"><div class="holder"><div class="device tall" data-device="iphone-duo-unfolded" data-posture="tall" data-concept="calculator" data-layout="tall" style="width:669px;height:951px"></div></div><figcaption>Duo open tall, propped like a laptop: the open pose turned, 669 x 951 pt, hinge y 455.5 to 495.5</figcaption></figure>
+      <figure class="frame" id="calculator-phone" data-pose="phone" style="margin:0"><div class="resizer"><div class="device single" data-device="phone-large" data-concept="calculator" data-layout="single" style="width:466px;height:678px"></div></div><figcaption>Large phone, no written size: drag the corner to resize</figcaption></figure>
+      <figure class="frame" id="calculator-ax5" data-pose="ax5" style="margin:0"><div class="holder"><div class="device single" data-device="iphone-duo-folded" data-text="ax5" data-concept="calculator" data-layout="single" style="width:466px;height:678px"></div></div><figcaption>Duo folded, largest text (AX5)</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  /* ---------- Sample data: invented orders. Amounts in cents. ---------- */
+  var BASE = [
+    ['48213907', 'Kestrel Cards', 3, 640, 'Nov 9', false],
+    ['48219144', 'Harbor Row Games', 1, 85, 'Nov 9', true],
+    ['48224410', 'Two Rivers Hobby', 7, 1825, 'Nov 10', false],
+    ['48230076', 'Lantern Card Co.', 2, 310, 'Nov 10', false],
+    ['48236652', 'Ninth Street Comics', 12, 3800, 'Nov 11', true],
+    ['48241389', 'Quarry Lane Toys', 1, 115, 'Nov 11', false],
+    ['48247715', 'Saltmarsh Games', 4, 960, 'Nov 12', false],
+    ['48252041', 'Kestrel Cards', 2, 441, 'Nov 12', false],
+    ['48258830', 'Copperfield Cards', 5, 1275, 'Nov 13', true],
+    ['48264117', 'Old Mill Hobby', 1, 220, 'Nov 14', false],
+    ['48269902', 'Redwing Supply', 3, 705, 'Nov 14', false],
+    ['48275541', 'Bramble Collectibles', 6, 1530, 'Nov 15', false],
+    ['48281064', 'Pine and Post', 2, 550, 'Nov 16', true],
+    ['48286437', 'Two Rivers Hobby', 1, 95, 'Nov 17', false]
+  ];
+  function freshOrders() { return BASE.map(function (r) { return { id: r[0], seller: r[1], items: r[2], cents: r[3], placed: r[4], arrived: r[5] }; }); }
+
+  var app = { s: 'loaded', t: 'system', p: 'all', hide: { ledger: false, calculator: false }, swap: false, opt: { capsule: true, echo: true, axfixed: true } };
+  function applyOpts() {
+    document.body.classList.toggle('tab-square', !app.opt.capsule);
+    document.body.classList.toggle('no-echo', !app.opt.echo);
+    document.body.classList.toggle('ax-keys-scale', !app.opt.axfixed);
+  }
+  var concepts = {
+    ledger: { orders: freshOrders(), tab: 'orders', filter: 'open', q: '', sel: '48213907', view: 'list', kb: false, msg: '', undo: null },
+    calculator: { orders: freshOrders(), mode: 'open', entry: '', sel: '48213907', msg: '', undo: null }
+  };
+
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function money(c) { return '$' + (c / 100).toFixed(2); }
+  function fmtId(id, digits) {
+    var spaced = id.slice(0, 4) + ' ' + id.slice(4);
+    if (!digits) return esc(spaced);
+    var at = id.indexOf(digits);
+    if (at < 0) return esc(spaced);
+    var out = '', i;
+    for (i = 0; i < id.length; i++) {
+      if (i === 4) out += ' ';
+      var ch = esc(id[i]);
+      out += (i >= at && i < at + digits.length) ? '<mark>' + ch + '</mark>' : ch;
+    }
+    return out.replace(/<\/mark><mark>/g, '').replace(/<\/mark> <mark>/g, ' ');
+  }
+  function plural(n, one, many) { return n + ' ' + (n === 1 ? one : many); }
+  function sb() { return '<div class="sb" aria-hidden="true"><span class="num">9:41</span><i>&#9679;&#9679;&#9679; &#9646;</i></div>'; }
+  function hi() { return '<div class="hi" aria-hidden="true"></div>'; }
+  var ICON = {
+    list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>',
+    people: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 20v-1a5 5 0 0 1 10 0v1M8 11a3 3 0 1 0 0-6 3 3 0 0 0 0 6zM15 20v-1a4 4 0 0 1 6-3.5M17 11a2.5 2.5 0 1 0 0-5"/></svg>',
+    search: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.2-4.2"/></svg>'
+  };
+
+  /* ---------- Shared figures ---------- */
+  function totals(orders) {
+    var open = orders.filter(function (o) { return !o.arrived; });
+    return { open: open.length, all: orders.length, owed: open.reduce(function (a, o) { return a + o.cents; }, 0) };
+  }
+  function figuresHTML(orders, cls) {
+    if (app.s === 'loading') return '<div class="' + cls + '"><span class="fig unknown"><b>&mdash;</b><span>open, reading</span></span><span class="fig unknown"><b>&mdash;</b><span>owed, reading</span></span></div>';
+    if (app.s === 'error') return '<div class="' + cls + '"><span class="fig unknown"><b>?</b><span>open, not known</span></span><span class="fig unknown"><b>?</b><span>owed, not known</span></span></div>';
+    var t = totals(orders);
+    return '<div class="' + cls + '"><span class="fig"><b>' + t.open + '</b><span>open of ' + t.all + '</span></span><span class="fig owed"><b>' + money(t.owed) + '</b><span>owed</span></span></div>';
+  }
+  function stateNote(retryAct) {
+    if (app.s === 'loading') return '<div class="note" role="status"><p>Reading orders&hellip;</p></div>';
+    if (app.s === 'error') return '<div class="note"><p class="err">Orders could not be read.</p><p>The count and the money owed are not known until they are read.</p><button class="btn" data-act="retry">Try again</button></div>';
+    if (app.s === 'empty') return '<div class="note"><p>No orders yet. Add your order history to start checking orders off.</p><button class="btn" data-act="add">Add orders</button></div>';
+    return '';
+  }
+  function skeleton(n) { var h = '', i; for (i = 0; i < n; i++) h += '<div class="skel" aria-hidden="true"><i style="width:22px;height:22px;border-radius:50%"></i><i style="width:' + (50 + (i * 17) % 40) + '%"></i><i></i></div>'; return h; }
+  function dataReady() { return app.s === 'loaded' || app.s === 'nomatch'; }
+
+  /* =================== Ledger =================== */
+  function ledgerMatches(st) {
+    var q = st.q.trim().toLowerCase(), digits = q.replace(/\s/g, '');
+    var held = st.undo && st.undo.id;
+    return st.orders.filter(function (o) {
+      if (o.id === held) return true; // a row just marked holds its place until the next act
+      if (st.filter === 'open' && o.arrived) return false;
+      if (st.filter === 'arrived' && !o.arrived) return false;
+      if (!q) return true;
+      return o.seller.toLowerCase().indexOf(q) >= 0 || (/^\d+$/.test(digits) && o.id.indexOf(digits) >= 0);
+    });
+  }
+  function ledgerFix(st) {
+    var m = ledgerMatches(st);
+    // The order just marked stays selected, so its page and its Undo stay in view.
+    var pinned = st.undo && st.undo.id === st.sel;
+    if (!pinned && !m.some(function (o) { return o.id === st.sel; })) st.sel = m.length ? m[0].id : null;
+    return m;
+  }
+  function lRow(o, st, expand) {
+    var digits = /^\d+$/.test(st.q.replace(/\s/g, '')) ? st.q.replace(/\s/g, '') : '';
+    var who = esc(o.seller);
+    if (st.q && !digits) { var at = o.seller.toLowerCase().indexOf(st.q.trim().toLowerCase()); if (at >= 0) who = esc(o.seller.slice(0, at)) + '<mark>' + esc(o.seller.slice(at, at + st.q.trim().length)) + '</mark>' + esc(o.seller.slice(at + st.q.trim().length)); }
+    var meta = 'Order ' + fmtId(o.id, digits) + ', ' + plural(o.items, 'item', 'items');
+    if (expand) meta += ', placed ' + o.placed + (o.arrived ? ', arrived' : ', not here yet');
+    return '<button class="row pad-x' + (o.arrived ? ' arrived' : '') + '" data-act="sel" data-arg="' + o.id + '" aria-current="' + (o.id === st.sel) + '">' +
+      '<span class="dot' + (o.arrived ? ' on' : '') + '" role="img" aria-label="' + (o.arrived ? 'Arrived' : 'Not here yet') + '"></span>' +
+      '<span><div class="who">' + who + '</div><div class="meta">' + meta + '</div></span>' +
+      '<span class="amt">' + money(o.cents) + '</span></button>';
+  }
+  function lList(st, m, opts) {
+    if (!dataReady()) return '<div class="list" data-scroll="l">' + (app.s === 'loading' ? skeleton(6) : '') + '<div class="pad-x">' + stateNote() + '</div></div>';
+    if (!m.length) {
+      var why = st.q ? 'No ' + (st.filter === 'all' ? '' : st.filter + ' ') + 'order matches &ldquo;' + esc(st.q) + '&rdquo;.' : (st.filter === 'open' ? 'Every order has arrived. All is well.' : 'No order has arrived yet.');
+      var ctl = st.q ? '<button class="btn quiet" data-act="clearq">Clear search</button>' : (st.filter === 'open' ? '<button class="btn quiet" data-act="filter" data-arg="arrived">Show arrived</button>' : '<button class="btn quiet" data-act="filter" data-arg="open">Show open</button>');
+      return '<div class="list" data-scroll="l"><div class="pad-x note"><p>' + why + '</p>' + ctl + '</div></div>';
+    }
+    return '<div class="list" data-scroll="l" aria-label="Orders">' + m.map(function (o) { return lRow(o, st, opts && opts.expand && o.id === st.sel); }).join('') + '</div>';
+  }
+  function lFilter(st) {
+    if (!dataReady()) return '';
+    return '<div class="segc" role="group" aria-label="Show">' + ['open', 'arrived', 'all'].map(function (f) {
+      return '<button data-act="filter" data-arg="' + f + '" aria-pressed="' + (st.filter === f) + '">' + f[0].toUpperCase() + f.slice(1) + '</button>';
+    }).join('') + '</div>';
+  }
+  function lSearch(st, active) {
+    if (!dataReady()) return '';
+    return '<button class="search' + (active ? ' active' : '') + '" data-act="kb" aria-label="Search by seller or order number">' + ICON.search +
+      '<span class="q" data-ph="Seller or order number">' + esc(st.q) + '</span>' + (active ? '<span class="caret"></span>' : '') + '</button>';
+  }
+  function lTabbar(st) {
+    return '<nav class="tabbar" aria-label="Sections">' +
+      '<button data-act="tab" data-arg="orders"' + (st.tab === 'orders' ? ' aria-current="page"' : '') + '>' + ICON.list + 'Orders</button>' +
+      '<button data-act="tab" data-arg="sellers"' + (st.tab === 'sellers' ? ' aria-current="page"' : '') + '>' + ICON.people + 'Sellers</button></nav>';
+  }
+  function lKeyboard(fill) {
+    var rows = ['1234567890', 'QWERTYUIOP', 'ASDFGHJKL', 'ZXCVBNM'];
+    var h = '<div class="kbd' + (fill ? ' fill' : '') + '" role="group" aria-label="Keys">';
+    rows.forEach(function (r, i) {
+      h += '<div class="kbd-row">' + r.split('').map(function (k) { return '<button data-act="type" data-arg="' + k + '" aria-label="' + k + '"><span>' + k + '</span></button>'; }).join('');
+      if (i === 2) h += '<button class="fn" data-act="bksp" aria-label="Delete"><span>&#9003;</span></button>';
+      if (i === 3) h += '<button class="fn" data-act="type" data-arg=" " aria-label="Space" style="grid-column:span 2"><span>space</span></button>';
+      h += '</div>';
+    });
+    return h + '</div>';
+  }
+  function lStatus(st) {
+    return '<div class="status-line" role="status">' + (st.msg ? '<span>' + esc(st.msg) + '</span>' + (st.undo ? '<button class="act" data-act="undo">Undo</button>' : '') : '') + '</div>';
+  }
+  function lMarkBtn(st, o) {
+    if (!o) return '<button class="btn wide markbtn" disabled title="Pick an order first">Mark arrived</button>';
+    return '<button class="btn wide markbtn' + (o.arrived ? ' quiet' : '') + '" data-act="mark">' + (o.arrived ? 'Mark not arrived' : 'Mark arrived') + '</button>';
+  }
+  function lDetail(st, o, withBack) {
+    var back = withBack ? '<div class="nav-row"><button class="back" data-act="back">&#8249; Orders</button></div>' : '';
+    if (!dataReady()) return '<div class="body pad-x">' + back + '</div>';
+    if (!o) return '<div class="body pad-x">' + back + '<div class="note"><p>Pick an order on the other page to see it here.</p></div></div>';
+    return '<div class="body pad-x">' + back + '<div class="detail" data-scroll="d">' +
+      '<h3>' + esc(o.seller) + '</h3>' +
+      '<span class="pill ' + (o.arrived ? 'done' : 'open') + '">' + (o.arrived ? 'Arrived' : 'Not here yet') + '</span>' +
+      '<dl class="facts"><dt>Order</dt><dd>' + fmtId(o.id) + '</dd><dt>Items</dt><dd>' + o.items + '</dd><dt>Cost</dt><dd>' + money(o.cents) + '</dd><dt>Placed</dt><dd>' + o.placed + '</dd></dl>' +
+      '</div><div class="float-foot">' + lMarkBtn(st, o) + lStatus(st) + '</div></div>';
+  }
+  function lSellers(st) {
+    if (!dataReady()) return '<div class="list" data-scroll="s">' + (app.s === 'loading' ? skeleton(5) : '') + '<div class="pad-x">' + stateNote() + '</div></div>';
+    var by = {};
+    st.orders.forEach(function (o) { var s = by[o.seller] || (by[o.seller] = { open: 0, owed: 0, n: 0 }); s.n++; if (!o.arrived) { s.open++; s.owed += o.cents; } });
+    var names = Object.keys(by).sort();
+    return '<div class="list" data-scroll="s" aria-label="Sellers">' + names.map(function (n) {
+      var s = by[n];
+      return '<button class="row pad-x" data-act="seller" data-arg="' + esc(n) + '"><span class="dot' + (s.open ? '' : ' on') + '" aria-hidden="true"></span><span><div class="who">' + esc(n) + '</div><div class="meta">' + (s.open ? plural(s.open, 'order', 'orders') + ' not here yet' : 'All arrived') + '</div></span><span class="amt' + '">' + (s.owed ? money(s.owed) : '') + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function lListScreen(st, m, opt) {
+    var h = '<div class="body">';
+    h += '<div class="nav pad-x"><h3 class="large-title">' + (st.tab === 'sellers' ? 'Sellers' : 'Orders') + '</h3>' + figuresHTML(st.orders, 'figures') + (st.tab === 'orders' ? lFilter(st) : '') + '</div>';
+    h += st.tab === 'sellers' ? lSellers(st) : lList(st, m, opt);
+    if (!opt.noFoot) {
+      h += '<div class="float-foot pad-x">' + (st.tab === 'orders' ? lSearch(st, st.kb) : '') + (st.kb && st.tab === 'orders' ? '' : lTabbar(st)) + '</div>';
+      if (st.kb && st.tab === 'orders') h += '<div class="float-foot pad-x" style="padding-block:0"><button class="btn quiet" data-act="kbdone" style="align-self:flex-end">Done</button></div>' + lKeyboard();
+    }
+    return h + '</div>';
+  }
+  function renderLedger(dev, st) {
+    var layout = dev.getAttribute('data-layout');
+    var m = ledgerFix(st);
+    var sel = st.orders.filter(function (o) { return o.id === st.sel; })[0];
+    if (layout === 'single') {
+      var inner = (st.view === 'detail' && sel && st.tab === 'orders' && dataReady()) ? lDetail(st, sel, true) : lListScreen(st, m, {});
+      return '<div class="screen">' + sb() + inner + (st.kb && st.view !== 'detail' ? '' : hi()) + '</div>';
+    }
+    if (layout === 'book') {
+      return '<div class="screen">' + sb() + lListScreen(st, m, {}) + (st.kb ? '' : hi()) + '</div><div class="hinge" aria-hidden="true"></div>' +
+        '<div class="screen">' + sb() + (st.tab === 'orders' ? lDetail(st, sel, false) : '<div class="body pad-x"><div class="note"><p>Pick a seller to see their orders in the list.</p></div></div>') + hi() + '</div>';
+    }
+    /* tall: answer page above the hinge, keys page below it */
+    var top = '<div class="screen">' + sb() + lListScreen(st, m, { noFoot: true, expand: true }) + '</div>';
+    var echo = dataReady() && st.tab === 'orders' ? '<span class="status-line echo-count">' + plural(m.length, 'match', 'matches') + '</span>' : '';
+    var bottom = '<div class="screen"><div class="body">' +
+      (st.tab === 'orders' && dataReady()
+        ? '<div class="float-foot pad-x"><div style="display:grid;grid-template-columns:1fr auto;gap:var(--space-3);align-items:center">' + lSearch(st, true) + echo + '</div>' +
+          '<div style="display:grid;grid-template-columns:1fr auto;gap:var(--space-3);align-items:center">' + lFilter(st) + lMarkBtn(st, sel) + '</div>' + lStatus(st) + '</div>' + lKeyboard(true)
+        : '<div class="pad-x note" style="flex:1"><p>' + (st.tab === 'sellers' ? 'Pick a seller on the upper page.' : 'Keys wake once the orders are read.') + '</p></div>') +
+      '<div class="float-foot pad-x">' + lTabbar(st) + '</div></div>' + hi() + '</div>';
+    return top + '<div class="hinge" aria-hidden="true"></div>' + bottom;
+  }
+  function ledgerAct(st, act, arg) {
+    switch (act) {
+      case 'sel': st.sel = arg; st.view = 'detail'; st.kb = false; st.msg = ''; st.undo = null; break;
+      case 'back': st.view = 'list'; break;
+      case 'filter': st.filter = arg; st.msg = ''; st.undo = null; break;
+      case 'kb': st.kb = true; break;
+      case 'kbdone': st.kb = false; break;
+      case 'type': st.q = (st.q + arg).slice(0, 24); st.undo = null; st.msg = ''; break;
+      case 'bksp': st.q = st.q.slice(0, -1); st.undo = null; st.msg = ''; break;
+      case 'clearq': st.q = ''; st.undo = null; st.msg = ''; break;
+      case 'tab': st.tab = arg; st.view = 'list'; st.kb = false; break;
+      case 'seller': st.tab = 'orders'; st.q = arg; st.filter = 'all'; st.view = 'list'; break;
+      case 'mark': markToggle(st, st.sel, ledgerMatches(st)); break;
+      case 'undo': undo(st); break;
+    }
+  }
+
+  /* =================== Desk calculator =================== */
+  function calcMatches(st) {
+    var held = st.undo && st.undo.id;
+    return st.orders.filter(function (o) {
+      if (o.id === held) return true; // a line just marked holds its place until the next act
+      if (st.mode === 'open' && o.arrived) return false;
+      if (st.mode === 'arrived' && !o.arrived) return false;
+      return !st.entry || o.id.indexOf(st.entry) >= 0;
+    });
+  }
+  function calcFix(st) {
+    var m = calcMatches(st);
+    if (!m.some(function (o) { return o.id === st.sel; })) st.sel = m.length ? m[0].id : null;
+    return m;
+  }
+  function cDisplay(st, m) {
+    var modeName = { open: 'Open orders', arrived: 'Arrived orders', all: 'All orders' }[st.mode];
+    var h = '<div class="display pad-x"><div class="mode">' + modeName + (st.entry ? ' with &ldquo;' + st.entry + '&rdquo; in the number' : '') + '</div>';
+    if (app.s === 'loading') h += '<div class="bigfigs"><span class="bigfig unknown"><b>&mdash;</b><span>reading</span></span><span class="bigfig unknown"><b>&mdash;</b><span>owed</span></span></div>';
+    else if (app.s === 'error') h += '<div class="bigfigs"><span class="bigfig unknown"><b>?</b><span>not known</span></span><span class="bigfig unknown"><b>?</b><span>owed</span></span></div>';
+    else {
+      var owed = st.orders.filter(function (o) { return !o.arrived && (!st.entry || o.id.indexOf(st.entry) >= 0); }).reduce(function (a, o) { return a + o.cents; }, 0);
+      h += '<div class="bigfigs"><span class="bigfig"><b>' + m.length + '</b><span>' + (st.entry ? (m.length === 1 ? 'match' : 'matches') : (st.mode === 'all' ? 'orders' : st.mode)) + '</span></span><span class="bigfig owed"><b>' + money(owed) + '</b><span>owed</span></span></div>';
+    }
+    return h + '</div>';
+  }
+  function cTape(st, m) {
+    var h = '<div class="tape-wrap pad-x"><div class="tape" data-scroll="t" aria-label="Tape">';
+    if (app.s === 'loading') h += skeleton(5);
+    else if (!dataReady()) h += '<div class="pad-x">' + stateNote() + '</div>';
+    else if (!m.length) {
+      if (st.entry) h += '<div class="pad-x note"><p>No ' + (st.mode === 'all' ? '' : st.mode + ' ') + 'order has &ldquo;' + st.entry + '&rdquo; in its number.</p><button class="btn quiet" data-act="C">Clear the number</button></div>';
+      else if (st.mode === 'open') h += '<div class="pad-x note"><p>Every order has arrived. All is well.</p><button class="btn quiet" data-act="mode" data-arg="arrived">Show arrived</button></div>';
+      else h += '<div class="pad-x note"><p>No order has arrived yet.</p><button class="btn quiet" data-act="mode" data-arg="open">Show open</button></div>';
+    } else {
+      h += m.map(function (o) {
+        return '<button class="tline' + (o.arrived ? ' arrived' : '') + '" data-act="sel" data-arg="' + o.id + '" aria-current="' + (o.id === st.sel) + '">' +
+          '<span class="dot' + (o.arrived ? ' on' : '') + '" role="img" aria-label="' + (o.arrived ? 'Arrived' : 'Not here yet') + '"></span>' +
+          '<span class="oid">' + fmtId(o.id, st.entry) + '</span><span class="amt">' + money(o.cents) + '</span>' +
+          '<span class="meta">' + esc(o.seller) + ', ' + plural(o.items, 'item', 'items') + ', ' + o.placed + (o.arrived ? ', arrived' : '') + '</span></button>';
+      }).join('');
+    }
+    return h + '</div></div>';
+  }
+  function cKeys(st, m, fill) {
+    var ready = dataReady();
+    var sel = st.orders.filter(function (o) { return o.id === st.sel; })[0];
+    var idx = m.findIndex(function (o) { return o.id === st.sel; });
+    var dis = ready ? '' : ' disabled title="Keys wake once the orders are read"';
+    var echo = '<div class="echo" aria-live="polite">' +
+      (st.entry ? '<span class="entry">' + fmtId(st.entry.length > 4 ? st.entry : st.entry) + '</span>' : '<span class="entry ph">Type part of an order number</span>') +
+      (st.msg && ready ? '<span class="res msg">' + esc(st.msg) + '</span>' :
+      '<span class="res">' + (!ready ? (app.s === 'loading' ? 'reading' : 'not read') : (sel ? esc(sel.seller) + ' ' + money(sel.cents) : plural(m.length, 'match', 'matches'))) + '</span>') + '</div>';
+    function k(label, act, arg, cls, extra) { return '<button class="' + (cls || '') + '" data-act="' + act + '"' + (arg != null ? ' data-arg="' + arg + '"' : '') + (extra || dis) + '>' + label + '</button>'; }
+    function modeKey(v, label) { return k(label, 'mode', v, 'fn', (ready ? '' : dis) + ' aria-pressed="' + (st.mode === v) + '"'); }
+    var markLabel = sel && sel.arrived ? 'Mark not arrived' : 'Mark arrived';
+    var markExtra = !ready ? dis : (sel ? '' : ' disabled title="No order on the tape to mark"');
+    var undoExtra = !ready ? dis : (st.undo ? '' : ' disabled title="Nothing to undo yet"');
+    var upExtra = !ready ? dis : (idx > 0 ? '' : ' disabled title="Already at the first line"');
+    var dnExtra = !ready ? dis : (idx >= 0 && idx < m.length - 1 ? '' : ' disabled title="Already at the last line"');
+    var pad = '<div class="pad" role="group" aria-label="Keys">' +
+      modeKey('open', 'Open') + modeKey('arrived', 'Arrived') + modeKey('all', 'All') + k('&#9003;', 'bksp', null, 'fn', ready && st.entry ? ' aria-label="Delete"' : (ready ? ' disabled title="Nothing typed" aria-label="Delete"' : dis)) +
+      k('7', 'd', 7) + k('8', 'd', 8) + k('9', 'd', 9) + k('Undo', 'undo', null, 'fn', undoExtra) +
+      k('4', 'd', 4) + k('5', 'd', 5) + k('6', 'd', 6) + k('&#9650;', 'up', null, 'fn', upExtra + ' aria-label="Previous line"') +
+      k('1', 'd', 1) + k('2', 'd', 2) + k('3', 'd', 3) + k('&#9660;', 'down', null, 'fn', dnExtra + ' aria-label="Next line"') +
+      k('C', 'C', null, 'fn', ready && st.entry ? ' aria-label="Clear the number"' : (ready ? ' disabled title="Nothing typed" aria-label="Clear the number"' : dis)) + k('0', 'd', 0) +
+      '<button class="go markbtn" data-act="mark"' + markExtra + '>' + markLabel + '</button></div>';
+    return '<div class="keys pad-x' + (fill ? ' fill' : '') + '">' + echo + pad + '</div>';
+  }
+  function renderCalc(dev, st) {
+    var layout = dev.getAttribute('data-layout');
+    var m = calcFix(st);
+    if (layout === 'single') {
+      return '<div class="screen">' + sb() + '<div class="body calc-split"><div class="top">' + cDisplay(st, m) + cTape(st, m) + '</div>' + cKeys(st, m, false) + '</div>' + hi() + '</div>';
+    }
+    var answer = '<div class="screen">' + sb() + '<div class="body">' + cDisplay(st, m) + cTape(st, m) + '</div>' + (layout === 'book' ? hi() : '') + '</div>';
+    var keys = '<div class="screen">' + (layout === 'book' ? sb() : '') + '<div class="body">' + cKeys(st, m, true) + '</div>' + hi() + '</div>';
+    var hinge = '<div class="hinge" aria-hidden="true"></div>';
+    if (layout === 'book' && app.swap) return keys + hinge + answer;
+    return answer + hinge + keys;
+  }
+  function calcAct(st, act, arg) {
+    switch (act) {
+      case 'd': if (st.entry.length < 8) st.entry += arg; st.msg = ''; st.undo = null; break;
+      case 'bksp': st.entry = st.entry.slice(0, -1); st.msg = ''; st.undo = null; break;
+      case 'C': st.entry = ''; st.msg = ''; st.undo = null; break;
+      case 'mode': st.mode = arg; st.msg = ''; st.undo = null; break;
+      case 'sel': st.sel = arg; st.msg = ''; break;
+      case 'up': case 'down':
+        var m = calcMatches(st), i = m.findIndex(function (o) { return o.id === st.sel; });
+        i = Math.max(0, Math.min(m.length - 1, i + (act === 'up' ? -1 : 1)));
+        if (m[i]) st.sel = m[i].id; break;
+      case 'mark': markToggle(st, st.sel, calcMatches(st)); break;
+      case 'undo': undo(st); break;
+    }
+  }
+
+  /* ---------- One home for marking, used by both concepts ---------- */
+  function markToggle(st, id, listBefore) {
+    var o = st.orders.filter(function (x) { return x.id === id; })[0];
+    if (!o) return;
+    var at = listBefore.indexOf(o);
+    o.arrived = !o.arrived;
+    st.undo = { id: id, sel: id };
+    st.msg = (o.arrived ? 'Marked arrived: ' : 'Marked not arrived: ') + o.seller;
+    // Desk calculator only: like a till roll, the cursor steps to the next line, so the next press marks the next order.
+    // The marked line itself holds its place (calcMatches) until the next act, so nothing moves under the thumb.
+    if (st !== concepts.calculator) return;
+    var leaves = (st.mode === 'open' && o.arrived) || (st.mode === 'arrived' && !o.arrived);
+    if (leaves && listBefore[at + 1]) st.sel = listBefore[at + 1].id;
+  }
+  function undo(st) {
+    if (!st.undo) return;
+    var o = st.orders.filter(function (x) { return x.id === st.undo.id; })[0];
+    o.arrived = !o.arrived; st.sel = st.undo.sel; st.undo = null;
+    st.msg = 'Undone: ' + o.seller;
+  }
+
+  /* ---------- Rendering, keeping scroll positions so a press moves nothing ---------- */
+  function render(name) {
+    var st = concepts[name];
+    document.querySelectorAll('.device[data-concept="' + name + '"]').forEach(function (dev) {
+      var keep = {};
+      dev.querySelectorAll('[data-scroll]').forEach(function (el) { keep[el.getAttribute('data-scroll')] = el.scrollTop; });
+      var focusAct = document.activeElement && dev.contains(document.activeElement) ? [document.activeElement.getAttribute('data-act'), document.activeElement.getAttribute('data-arg')] : null;
+      dev.innerHTML = name === 'ledger' ? renderLedger(dev, st) : renderCalc(dev, st);
+      dev.querySelectorAll('[data-scroll]').forEach(function (el) { var v = keep[el.getAttribute('data-scroll')]; if (v) el.scrollTop = v; });
+      if (focusAct && focusAct[0]) {
+        var sel = '[data-act="' + focusAct[0] + '"]' + (focusAct[1] != null ? '[data-arg="' + CSS.escape(focusAct[1]) + '"]' : '');
+        var f = dev.querySelector(sel); if (f) f.focus({ preventScroll: true });
+      }
+    });
+  }
+  function renderAll() { render('ledger'); render('calculator'); fit(); }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('.device [data-act]');
+    if (!b || b.disabled) return;
+    var dev = b.closest('.device'), name = dev.getAttribute('data-concept');
+    var act = b.getAttribute('data-act'), arg = b.getAttribute('data-arg');
+    if (act === 'retry') { setState('loading'); setTimeout(function () { setState('loaded'); }, 900); return; }
+    if (act === 'add') { setState('loaded'); return; }
+    if (name === 'ledger') ledgerAct(concepts.ledger, act, arg); else calcAct(concepts.calculator, act, arg);
+    render(name);
+  });
+
+  /* ---------- Mockup controls and deep links: #s=..&t=..&p=..&c=..&swap=1 ---------- */
+  function setState(s) {
+    app.s = s;
+    var L = concepts.ledger, K = concepts.calculator;
+    if (s === 'empty') { L.orders = []; K.orders = []; }
+    else if (L.orders.length === 0) { L.orders = freshOrders(); K.orders = freshOrders(); }
+    if (s === 'nomatch') { L.q = '9999'; L.filter = 'open'; L.view = 'list'; L.tab = 'orders'; K.entry = '9999'; K.mode = 'open'; }
+    else if (L.q === '9999') { L.q = ''; K.entry = ''; }
+    syncControls(); writeHash(); renderAll();
+  }
+  function setTheme(t) {
+    app.t = t;
+    if (t === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', t);
+    syncControls(); writeHash();
+  }
+  function setPose(p) {
+    app.p = p;
+    document.querySelectorAll('.frame').forEach(function (f) { f.hidden = !(p === 'all' || f.getAttribute('data-pose') === p); });
+    syncControls(); writeHash(); fit();
+  }
+  function setHidden() {
+    document.getElementById('ledger').hidden = app.hide.ledger;
+    document.getElementById('calculator').hidden = app.hide.calculator;
+    syncControls(); writeHash(); render('calculator'); fit();
+  }
+  function syncControls() {
+    document.querySelectorAll('[data-ctl]').forEach(function (g) {
+      var k = g.getAttribute('data-ctl');
+      g.querySelectorAll('button').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-v') === app[k])); });
+    });
+    document.querySelector('[data-hide="ledger"]').setAttribute('aria-pressed', String(!app.hide.ledger));
+    document.querySelector('[data-hide="calculator"]').setAttribute('aria-pressed', String(!app.hide.calculator));
+    document.querySelector('[data-hide="swap"]').setAttribute('aria-pressed', String(app.swap));
+    ['capsule', 'echo', 'axfixed'].forEach(function (k) { document.querySelector('[data-hide="' + k + '"]').setAttribute('aria-pressed', String(app.opt[k])); });
+    applyOpts();
+  }
+  function writeHash() {
+    var parts = [];
+    if (app.s !== 'loaded') parts.push('s=' + app.s);
+    if (app.t !== 'system') parts.push('t=' + app.t);
+    if (app.p !== 'all') parts.push('p=' + app.p);
+    if (app.hide.ledger && !app.hide.calculator) parts.push('c=calculator');
+    if (app.hide.calculator && !app.hide.ledger) parts.push('c=ledger');
+    if (app.swap) parts.push('swap=1');
+    if (!app.opt.capsule) parts.push('tabbar=square');
+    if (!app.opt.echo) parts.push('echo=0');
+    if (!app.opt.axfixed) parts.push('axkeys=scale');
+    history.replaceState(null, '', parts.length ? '#' + parts.join('&') : location.pathname + location.search);
+  }
+  function readHash() {
+    var h = {}; location.hash.replace(/^#/, '').split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) h[p[0]] = p[1] || ''; });
+    var S = { loaded: 1, loading: 1, error: 1, empty: 1, nomatch: 1 }, T = { system: 1, light: 1, dark: 1 }, P = { all: 1, folded: 1, book: 1, tall: 1, phone: 1, ax5: 1 };
+    app.swap = h.swap === '1';
+    app.opt.capsule = h.tabbar !== 'square'; app.opt.echo = h.echo !== '0'; app.opt.axfixed = h.axkeys !== 'scale';
+    app.hide.ledger = h.c === 'calculator'; app.hide.calculator = h.c === 'ledger';
+    document.getElementById('ledger').hidden = app.hide.ledger;
+    document.getElementById('calculator').hidden = app.hide.calculator;
+    setTheme(T[h.t] ? h.t : 'system');
+    setPose(P[h.p] ? h.p : 'all');
+    setState(S[h.s] ? h.s : 'loaded');
+  }
+  document.querySelectorAll('[data-ctl]').forEach(function (g) {
+    g.addEventListener('click', function (e) {
+      var b = e.target.closest('button'); if (!b) return;
+      var k = g.getAttribute('data-ctl'), v = b.getAttribute('data-v');
+      if (k === 's') setState(v); else if (k === 't') setTheme(v); else setPose(v);
+    });
+  });
+  document.querySelectorAll('[data-hide]').forEach(function (b) {
+    b.addEventListener('click', function () {
+      var k = b.getAttribute('data-hide');
+      if (k === 'swap') app.swap = !app.swap; else if (k in app.opt) app.opt[k] = !app.opt[k]; else app.hide[k] = !app.hide[k];
+      setHidden();
+    });
+  });
+  window.addEventListener('hashchange', readHash);
+
+  /* Scale each frame down to fit a narrow window; 1 CSS px = 1 pt at full size. */
+  function fit() {
+    document.querySelectorAll('.holder').forEach(function (h) {
+      var d = h.firstElementChild, w = parseFloat(d.style.width);
+      var avail = h.closest('.frames').clientWidth;
+      d.style.zoom = avail && avail < w ? String(avail / w) : '';
+    });
+  }
+  window.addEventListener('resize', fit);
+  readHash();
+})();
+</script>
+</body>
+</html>

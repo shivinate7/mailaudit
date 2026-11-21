@@ -1,0 +1,816 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sync Trust</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle),
+   so the app frames have one theme. The page around them follows prefers-color-scheme and t=dark|light. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --wax:#A8443C; --waxLit:#C86A5F; --waxDeep:#66231D;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the UI tests' 20 pt floor, as duo-hand-post-sender.html does. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 0px);
+  --new:#2E7A5E; --today:#A8443C;
+  /* page chrome (outside the device frames) */
+  --pg-bg: var(--paper); --pg-ink: var(--ink); --pg-soft: var(--inkSoft); --pg-card: var(--card); --pg-line: var(--line);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) { --pg-bg:#1E1B24; --pg-ink:#EFE6D6; --pg-soft:#B1A6BB; --pg-card:#27232E; --pg-line:#443D4D; }
+}
+:root[data-theme="dark"] { --pg-bg:#1E1B24; --pg-ink:#EFE6D6; --pg-soft:#B1A6BB; --pg-card:#27232E; --pg-line:#443D4D; }
+
+* { box-sizing: border-box; }
+body { margin:0; background:var(--pg-bg); color:var(--pg-ink); font-family:var(--sys); font-size:15px; line-height:1.45; }
+main { max-width:1080px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
+h2 { font-family:var(--cochin); font-size:22px; margin:0; }
+.sub { color:var(--pg-soft); margin:0; max-width:70ch; }
+code { font-family:var(--mono); font-size:.88em; }
+.bar { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.bar a, .bar button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--pg-line);
+  border-radius:8px; background:var(--pg-card); color:var(--pg-ink); text-decoration:none; cursor:pointer; }
+.bar a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.bar .lab { font-size:13px; color:var(--pg-soft); min-width:5.5em; }
+.bar button.sim { border-style:dashed; }
+:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+section.option { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--pg-line); padding-top:16px; }
+section.option[hidden] { display:none; }
+.kind { font:12px var(--mono); color:var(--pg-soft); }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+.frames figure { margin:0; display:flex; flex-direction:column; gap:8px; max-width:100%; }
+.frames figure[hidden] { display:none; }
+.frames figcaption { font-size:13px; color:var(--pg-soft); max-width:466px; }
+.frames figcaption b { color:var(--pg-ink); font-family:var(--cochin); font-size:16px; }
+.fitbox { position:relative; overflow:hidden; }
+.fitbox > .dev { position:absolute; left:0; top:0; transform-origin:0 0; }
+
+/* ---------------- the device ---------------- */
+.dev { background:var(--paper); color:var(--ink); border:1px solid var(--ink); border-radius:12px; overflow:hidden; font-family:var(--cochin); }
+.dev.folded, .dev.phone { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+:where(.dev) button { font:inherit; color:inherit; background:none; border:0; padding:0; cursor:pointer; text-align:inherit; }
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; }
+.pg.full { left:0; right:0; } .pg.l { left:0; width:455.5px; } .pg.r { left:495.5px; right:0; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:20; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font:600 12px var(--sys); z-index:15; background:var(--paper); }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:none;
+  display:flex; flex-direction:column; gap:12px; padding-bottom:104px; }
+.scroll::-webkit-scrollbar { display:none; }
+
+/* masthead: one letterhead (masthead-is-one-letterhead) */
+.mast { padding:12px 24px 0; display:flex; flex-direction:column; align-items:center; gap:8px; }
+.sealrow { width:100%; display:grid; grid-template-columns:60px 1fr 60px; align-items:center; }
+.sealrow .rules { display:flex; align-items:center; gap:12px; max-width:270px; width:100%; justify-self:center; }
+.sealrow .rule { flex:1; height:1px; background:var(--gold); opacity:.75; }
+.seal { width:36px; height:36px; border-radius:50%; flex:none;
+  background:radial-gradient(circle at 36% 30%, var(--waxLit), var(--wax) 52%, var(--waxDeep)); box-shadow:inset 0 0 0 3px color-mix(in srgb, var(--waxDeep) 35%, transparent); }
+.mtitle { font-size:31px; line-height:1; letter-spacing:.2em; text-transform:uppercase; padding-left:.2em; margin-top:4px; }
+.house { font-size:10px; letter-spacing:.32em; text-transform:uppercase; color:var(--inkSoft); }
+.tallies { width:100%; display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line); padding-top:12px; margin-top:4px; }
+.cells { display:grid; grid-template-columns:1fr 1fr 1.35fr; }
+.cell { display:flex; flex-direction:column; align-items:center; gap:4px; }
+.cell + .cell { border-left:1px solid var(--line); }
+.cell .k { font-size:10px; letter-spacing:.18em; text-transform:uppercase; color:var(--inkSoft); }
+.cell .v { font:13px var(--mono); color:var(--inkSoft); } .cell .v b { color:var(--accent); }
+.pbar { height:8px; border-radius:4px; background:var(--line); overflow:hidden; }
+.pbar i { display:block; height:100%; background:var(--accent); border-radius:4px; transition:width .24s ease-out; }
+.mline { font:10.5px var(--mono); color:var(--inkSoft); height:14px; white-space:nowrap; overflow:hidden; }
+.mfoot { display:flex; gap:8px; font:10.5px var(--mono); color:var(--inkSoft); }
+.mfoot span:first-child { flex:1; color:var(--red); } .mfoot .slot { width:13ch; text-align:right; }
+
+/* the postmark (option Postmark): a fixed 56 x 52 box, so no state moves the letterhead */
+.postmark { width:60px; height:60px; justify-self:end; position:relative; display:grid; place-items:center; }
+.postmark .ring { width:58px; height:58px; border-radius:50%; border:1.5px solid var(--accent); display:grid; place-items:center; align-content:center;
+  gap:0; color:var(--accent); background:color-mix(in srgb, var(--card) 70%, transparent); }
+.postmark .ring::before { content:""; position:absolute; inset:4px; border-radius:50%; border:1px dashed color-mix(in srgb, var(--accent) 55%, transparent); }
+.postmark .w { font:10px/12px var(--cochin); letter-spacing:.02em; text-transform:uppercase; }
+.postmark .t { font:10px/12px var(--mono); }
+.postmark.stale .ring { border-color:var(--manilaInk); color:var(--manilaInk); background:var(--manila); }
+.postmark.stale .ring::before { border-color:color-mix(in srgb, var(--manilaInk) 55%, transparent); }
+.postmark .badge { position:absolute; right:-2px; top:-2px; min-width:20px; height:20px; border-radius:10px; background:var(--accent); color:var(--card);
+  font:600 11px/20px var(--mono); text-align:center; padding:0 5px; }
+.postmark.lands .ring { animation:land .42s cubic-bezier(.2,.8,.25,1); }
+@keyframes land { 0% { transform:scale(1.25) rotate(-8deg); opacity:.2; } 100% { transform:none; opacity:1; } }
+.cancel { position:absolute; right:56px; top:20px; width:44px; height:20px; pointer-events:none; }
+
+/* the advisory line: manila, one line, a tap opens Sync (ruled-head-one-advisory-entrance) */
+.advisory { margin:0 16px; min-height:44px; padding:8px; background:var(--manila); color:var(--manilaInk); border-top:1px solid color-mix(in srgb, var(--manilaInk) 40%, transparent);
+  border-bottom:1px solid color-mix(in srgb, var(--manilaInk) 40%, transparent); font-size:13.5px; line-height:1.35; display:flex; align-items:center; width:calc(100% - 32px); }
+
+/* the merge slip (option Slip): the web's Notice, greenSoft with a green hairline */
+.slip { margin:0 16px; background:var(--greenSoft); border:1px solid var(--green); border-radius:8px; display:flex; align-items:flex-start; gap:4px; padding:0 0 0 12px; }
+.slip p { flex:1; margin:0; padding:12px 0; font-size:13.5px; line-height:1.35; }
+.slip .acts { display:flex; align-items:center; }
+.mini { min-height:44px; min-width:44px; padding:0 8px; display:inline-flex; align-items:center; justify-content:center; font:12px var(--mono) !important;
+  color:var(--accent) !important; text-decoration:underline; text-underline-offset:3px; }
+.x { width:44px; height:44px; display:grid; place-items:center; color:var(--inkSoft) !important; font:15px var(--sys) !important; }
+.note { margin:0 16px; display:flex; align-items:center; gap:8px; font-size:12.5px; line-height:1.35; color:var(--ink); }
+.note span { flex:1; padding:8px 0; }
+
+/* ruled panel over the list: paper fill (head-panels-carry-paper-fill), disclosure panels overlay (motion-disclosure-panels-arrive) */
+.panel { background:var(--paper); border-top:1px solid var(--line); border-bottom:1px solid var(--line); display:flex; flex-direction:column; }
+.overlay { position:absolute; left:0; right:0; z-index:8; box-shadow:0 12px 24px -12px rgba(28,43,36,.35); max-height:calc(100% - var(--panel-top) - 96px); overflow-y:auto; }
+.ph { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 16px 4px; }
+.ph b { font-size:16px; }
+.crow { display:grid; grid-template-columns:1fr auto; gap:2px 12px; padding:8px 16px; border-top:1px solid var(--line); align-items:baseline; }
+.crow .n { font-size:14px; font-weight:600; } .crow .s { grid-column:1; font-size:11.5px; color:var(--inkSoft); }
+.crow .why { grid-column:1 / -1; font-size:12px; color:var(--manilaInk); line-height:1.35; }
+.tagin { font:11px var(--mono); color:var(--green); } .tagout { font:11px var(--mono); color:var(--manilaInk); }
+.before { padding:8px 16px 12px; border-top:1px solid var(--line); display:flex; flex-direction:column; gap:4px; font-size:12.5px; line-height:1.35; }
+.btnrow { display:flex; gap:8px; flex-wrap:wrap; }
+.btn { min-height:44px; padding:0 12px; border:1px solid var(--line) !important; border-radius:8px; background:var(--card) !important; font:12px var(--mono) !important;
+  display:inline-flex; align-items:center; }
+.btn.armed { background:var(--redSoft) !important; border-color:var(--red) !important; color:var(--red) !important; }
+.btn.prime { background:var(--accent) !important; border-color:var(--accent) !important; color:var(--card) !important; font-weight:700 !important; }
+
+/* package cards */
+.list { display:flex; flex-direction:column; gap:8px; padding:0 16px; }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; position:relative; }
+.pkg.done { border-color:var(--gold); }
+.pkg .hd { display:flex; justify-content:space-between; align-items:baseline; gap:8px; padding:10px 12px 6px; }
+.pkg .hd b { font-size:15px; } .pkg .hd span { font:11px var(--mono); color:var(--inkSoft); }
+.pkg .pb { position:absolute; left:0; right:0; top:0; height:3px; background:transparent; } .pkg .pb i { display:block; height:100%; background:var(--accent); }
+.pkg.done .pb i { background:var(--green); }
+.it { display:flex; align-items:center; gap:4px; min-height:52px; border-top:1px solid var(--line); width:100%; }
+.it .box { flex:0 0 44px; height:44px; display:grid; place-items:center; }
+.it .box i { width:24px; height:24px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; position:relative; }
+.it.full { background:var(--greenSoft); }
+.it.full .box i { background:var(--green); border-color:var(--green); }
+.it.full .box i::after, .it.part .box i::after { content:""; position:absolute; left:7px; top:2px; width:6px; height:12px; border:solid var(--card); border-width:0 2.5px 2.5px 0; transform:rotate(45deg); }
+.it.part .box i { background:var(--accent); border-color:var(--accent); }
+.it .t { flex:1; padding:6px 12px 6px 0; display:flex; flex-direction:column; }
+.it .t b { font-size:14px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
+.it .t b span { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.it .t small { font-size:11.5px; color:var(--inkSoft); }
+.it.flash { animation:flash 1.6s ease-out; }
+@keyframes flash { 0% { box-shadow:inset 4px 0 0 var(--green); } 100% { box-shadow:inset 4px 0 0 transparent; } }
+
+/* Tally rows */
+.trow { display:flex; align-items:center; gap:4px; min-height:56px; background:var(--card); border:1px solid var(--line); border-radius:8px; width:100%; }
+.trow .t { flex:1; padding:8px 12px 8px 0; display:flex; flex-direction:column; }
+.trow .t b { font-size:14px; font-weight:600; display:flex; justify-content:space-between; gap:8px; } .trow .t b span { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.trow .t small { font-size:11.5px; color:var(--inkSoft); }
+.trow.full { background:var(--greenSoft); }
+
+/* Ledger tab rows */
+.lrows { margin:0 16px; background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; flex-direction:column; }
+.lrow { display:flex; align-items:center; gap:8px; min-height:56px; padding:8px 12px; width:100%; }
+.lgroup + .lgroup { border-top:1px solid var(--line); }
+.lrow .t { flex:1; display:flex; flex-direction:column; } .lrow .t b { font-size:16px; } .lrow .t small { font-size:12px; color:var(--inkSoft); }
+.lrow .v { font:12px var(--mono); color:var(--accent); text-decoration:underline; text-underline-offset:3px; }
+.lrow .v.fix { color:var(--manilaInk); }
+.parts { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; padding:8px 12px 12px; border-top:1px solid var(--line); align-items:baseline; }
+.parts .pl { font-size:10px; letter-spacing:.16em; text-transform:uppercase; color:var(--inkSoft); } .parts .pv { font:11px/16px var(--mono); }
+.ver { border-top:1px solid var(--line); padding:0 12px; display:flex; flex-direction:column; gap:8px; }
+.ver > button { display:flex; align-items:baseline; gap:8px; min-height:45px; width:100%; padding-top:12px; }
+.ver .w { font:11px var(--mono); color:var(--inkSoft); } .ver .lb { flex:1; font-size:14px; } .ver .lb.soft { color:var(--inkSoft); } .ver .f { font:10.5px var(--mono); color:var(--inkSoft); }
+.ver.hi { background:color-mix(in srgb, var(--accent) 8%, transparent); }
+.ver .ask { padding-bottom:12px; display:flex; flex-direction:column; gap:8px; font-size:12.5px; }
+.done-msg { margin:0 16px; padding:12px; background:var(--greenSoft); border:1px solid var(--green); border-radius:8px; font-size:13.5px; }
+
+/* sheets and the system share sheet: iOS chrome */
+.scrim { position:absolute; inset:0; background:rgba(28,43,36,.28); z-index:30; }
+.sheet { position:absolute; left:0; right:0; bottom:0; top:calc(var(--sat) + 24px); background:var(--paper); border-radius:16px 16px 0 0; z-index:31; display:flex; flex-direction:column; overflow:hidden; }
+.sheet .grab { width:36px; height:5px; border-radius:3px; background:var(--line); align-self:center; margin-top:6px; }
+.sheet .tb { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 8px; font-family:var(--sys); }
+.sheet .tb b { font:600 17px var(--sys); text-align:center; }
+.sheet .tb .done { justify-self:end; min-height:44px; padding:0 8px; font:600 17px var(--sys) !important; color:var(--accent) !important; }
+.sheet .body { overflow-y:auto; flex:1; display:flex; flex-direction:column; gap:12px; padding-bottom:24px; }
+.share { position:absolute; left:8px; right:8px; bottom:8px; background:#F7F7F8; border-radius:16px; z-index:31; font-family:var(--sys); color:#111; padding:12px 16px 16px; display:flex; flex-direction:column; gap:12px; }
+.share .file { display:flex; gap:12px; align-items:center; } .share .doc { width:36px; height:44px; border:1px solid #BBB; border-radius:4px; background:#FFF; }
+.share .file b { font:600 14px var(--sys); display:block; } .share .file small { font:12px var(--sys); color:#666; }
+.share .apps { display:flex; gap:16px; } .share .apps span { display:flex; flex-direction:column; align-items:center; gap:4px; font:11px var(--sys); }
+.share .apps i { width:56px; height:56px; border-radius:14px; background:#E4E4E8; display:block; }
+.share .acts { background:#FFF; border-radius:10px; } .share .acts div { padding:12px; border-top:1px solid #E4E4E8; font:15px var(--sys); } .share .acts div:first-child { border-top:0; }
+.share .close { position:absolute; right:8px; top:4px; width:44px; height:44px; display:grid; place-items:center; font:17px var(--sys) !important; color:#666 !important; }
+
+/* the floating tab bar */
+.tabbar { position:absolute; left:24px; right:24px; bottom:calc(12px + var(--sab)); height:64px; border-radius:32px; z-index:12;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(16px) saturate(1.4); -webkit-backdrop-filter:blur(16px) saturate(1.4);
+  border:1px solid var(--line); box-shadow:0 6px 20px -8px rgba(28,43,36,.3); display:grid; grid-template-columns:repeat(4,1fr); padding:4px; font-family:var(--sys); }
+.tabbar button { border-radius:28px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; color:var(--inkSoft) !important; position:relative; min-height:44px; }
+.tabbar button[aria-current="page"] { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent) !important; }
+.tabbar svg { width:22px; height:22px; } .tabbar span { font:500 10px var(--sys); }
+.tabbar .bd { position:absolute; top:4px; left:calc(50% + 6px); min-width:16px; height:16px; border-radius:8px; background:var(--red); color:#FFF; font:600 10px/16px var(--sys); padding:0 4px; }
+
+/* the right page when it holds no panel: the second column of cards */
+.rhead { padding:16px 16px 0; font-size:13px; color:var(--inkSoft); }
+
+/* AX5 frame: text at the AX5 sizes of Apple's table (Footnote 44, Body 53, Caption 1 43). */
+.ax .scroll { padding-top:12px; }
+.ax .slip p, .ax .advisory, .ax .note span { font-size:44px; line-height:52px; }
+.ax .slip { flex-direction:column; padding:0 12px 8px; }
+.ax .slip .acts { align-self:stretch; justify-content:space-between; }
+.ax .mini { font-size:43px !important; min-height:60px; }
+.ax .x { width:60px; height:60px; font-size:36px !important; }
+.ax .pkg .hd b { font-size:53px; line-height:62px; } .ax .pkg .hd { flex-direction:column; }
+.ax .pkg .hd span, .ax .it .t b span { font-size:43px; }
+.ax .it .t b { font-size:53px; line-height:62px; flex-direction:column; }
+.ax .it .t small { font-size:43px; line-height:51px; }
+.ax .crow .n { font-size:53px; line-height:62px; } .ax .crow .s, .ax .crow .why { font-size:43px; line-height:51px; } .ax .ph b { font-size:53px; }
+.ax .tagin, .ax .tagout { font-size:43px; } .ax .crow { grid-template-columns:1fr; }
+.ax .before { font-size:44px; line-height:52px; } .ax .btn { font-size:43px !important; min-height:64px; }
+.ax .sheet .body p, .ax .dk p { font-size:53px; line-height:62px; }
+.ax .dk .eh { font-size:43px; }
+
+/* Docket (option Postmark) */
+.dk { display:flex; flex-direction:column; }
+.dk p { margin:0; padding:4px 16px 12px; font-size:15px; line-height:1.4; }
+.dk .sec { padding:12px 16px 4px; font-size:12px; color:var(--inkSoft); border-top:1px solid var(--line); }
+.dk .entry { border-top:1px solid var(--line); }
+.dk .eh { display:flex; flex-direction:column; gap:2px; padding:10px 16px; width:100%; min-height:44px; font-size:13.5px; line-height:1.35; }
+.dk .eh .w { font:11px var(--mono); color:var(--inkSoft); }
+.dk .entry .crow { padding-left:28px; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:6px; top:-8px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:6; white-space:nowrap; pointer-events:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+body.notags [data-tag] { outline:0; } body.notags [data-tag]::before { display:none; }
+
+@media (prefers-reduced-motion: reduce) { * { animation:none !important; transition:none !important; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No figure, seller, card, time or count on this page is real. Sizes are the brief's; row heights are estimates from the code, not measurements.</div>
+<h1>Did my phone and my laptop agree?</h1>
+<p class="sub">Designer kind: <b>informed</b> (sync-trust-informed-1). The native app after a sync: the merge notice, the copy that lost, the kept copy, and counts that can be old. Two options: <b>Slip</b>, a port of the web's merge notice, and <b>Postmark</b>, a bold one that puts the last agreement on the letterhead. Every frame is live: tap the tabs, rows and controls. The dashed buttons play what the other device or the disk does.</p>
+
+<div class="bar" role="group" aria-label="Options">
+  <span class="lab">Options</span>
+  <a href="#c=today" data-c="today">Today</a>
+  <a href="#c=slip" data-c="slip">Slip</a>
+  <a href="#c=postmark" data-c="postmark">Postmark</a>
+  <a href="#c=all" data-c="all">All</a>
+  <button type="button" data-hide="slip">Hide Slip</button>
+  <button type="button" data-hide="postmark">Hide Postmark</button>
+  <button type="button" id="tags">Hide tags</button>
+</div>
+<div class="bar" role="group" aria-label="Devices">
+  <span class="lab">Devices</span>
+  <a href="#d=all" data-d="all">All</a>
+  <a href="#d=folded" data-d="folded">Duo folded</a>
+  <a href="#d=open" data-d="open">Duo open</a>
+  <a href="#d=phone" data-d="phone">Large phone</a>
+  <a href="#d=ax5" data-d="ax5">Folded at AX5</a>
+</div>
+
+<section class="option" data-option="today" id="opt-today">
+  <h2>Today</h2>
+  <p class="sub">What main draws now. A merge lands with no word (debt <code>native-merge-notice-unbuilt</code>). The damaged-load line names a kept copy that nothing opens (<code>native-kept-copy-has-no-route</code>). A Tally check-in leaves Packages on old rows until a Packages check-in or a restart (<code>native-masthead-stale-after-tabs</code>). Native has no 24-hour stale line (<code>SyncPanel.row</code>).</p>
+  <div class="bar" data-states="today"></div>
+  <div class="bar" data-sims="today"></div>
+  <div class="frames" data-frames="today">
+    <figure data-view="folded"><div class="fitbox"><div class="dev folded" data-device="iphone-duo-folded" role="group" aria-label="Today, Duo folded"></div></div><figcaption class="cap-folded"></figcaption></figure>
+    <figure data-view="open"><div class="fitbox"><div class="dev open" data-device="iphone-duo-unfolded" role="group" aria-label="Today, Duo open"></div></div><figcaption class="cap-open"></figcaption></figure>
+    <figure data-view="phone"><div class="fitbox"><div class="dev phone" data-device="iphone-regular" role="group" aria-label="Today, large phone"></div></div><figcaption class="cap-phone"></figcaption></figure>
+    <figure data-view="ax5"><div class="fitbox"><div class="dev folded ax" data-device="iphone-duo-folded-ax5" role="group" aria-label="Today, Duo folded at AX5"></div></div><figcaption class="cap-ax5"></figcaption></figure>
+  </div>
+</section>
+
+<section class="option" data-option="slip" id="opt-slip">
+  <h2>Slip</h2>
+  <span class="kind">Port. The web's Notice under the letterhead, with its list of changes and a way to the copy that lost.</span>
+  <p class="sub">After a merge that changed something, a green slip under the letterhead says what came in and what was lost, in the bundle's <code>mergeSummary</code> words. <b>Changes</b> lays the changed cards over the list (on the open Duo, on the right page). When the other device's later change won, the panel leads to History, where the copy from before the merge waits with Restore. The kept copy gets a Share control. Packages reads every write. The web's 24-hour stale line comes to native.</p>
+  <div class="bar" data-states="slip"></div>
+  <div class="bar" data-sims="slip"></div>
+  <div class="frames" data-frames="slip">
+    <figure data-view="folded"><div class="fitbox"><div class="dev folded" data-device="iphone-duo-folded" role="group" aria-label="Slip, Duo folded"></div></div><figcaption class="cap-folded"></figcaption></figure>
+    <figure data-view="open"><div class="fitbox"><div class="dev open" data-device="iphone-duo-unfolded" role="group" aria-label="Slip, Duo open"></div></div><figcaption class="cap-open"></figcaption></figure>
+    <figure data-view="phone"><div class="fitbox"><div class="dev phone" data-device="iphone-regular" role="group" aria-label="Slip, large phone"></div></div><figcaption class="cap-phone"></figcaption></figure>
+    <figure data-view="ax5"><div class="fitbox"><div class="dev folded ax" data-device="iphone-duo-folded-ax5" role="group" aria-label="Slip, Duo folded at AX5"></div></div><figcaption class="cap-ax5"></figcaption></figure>
+  </div>
+</section>
+
+<section class="option" data-option="postmark" id="opt-postmark">
+  <h2>Postmark</h2>
+  <span class="kind">Bold. The letterhead carries a postmark: when this phone last agreed with the server. It opens a docket of merges.</span>
+  <p class="sub">A postmark beside the seal reads <i>Agreed 2:02 PM</i>. It stays on every working view, so the answer to the question is always one glance away. When a merge changed something, the postmark lands again with a count. A tap opens the Docket: each merge, the cards it changed, who won each clash, and Restore for the copy from before. After 24 hours with no agreement the postmark turns manila. Kept copies sit at the foot of the Docket.</p>
+  <div class="bar" data-states="postmark"></div>
+  <div class="bar" data-sims="postmark"></div>
+  <div class="frames" data-frames="postmark">
+    <figure data-view="folded"><div class="fitbox"><div class="dev folded" data-device="iphone-duo-folded" role="group" aria-label="Postmark, Duo folded"></div></div><figcaption class="cap-folded"></figcaption></figure>
+    <figure data-view="open"><div class="fitbox"><div class="dev open" data-device="iphone-duo-unfolded" role="group" aria-label="Postmark, Duo open"></div></div><figcaption class="cap-open"></figcaption></figure>
+    <figure data-view="phone"><div class="fitbox"><div class="dev phone" data-device="iphone-regular" role="group" aria-label="Postmark, large phone"></div></div><figcaption class="cap-phone"></figcaption></figure>
+    <figure data-view="ax5"><div class="fitbox"><div class="dev folded ax" data-device="iphone-duo-folded-ax5" role="group" aria-label="Postmark, Duo folded at AX5"></div></div><figcaption class="cap-ax5"></figcaption></figure>
+  </div>
+</section>
+</main>
+
+<script>
+(() => {
+"use strict";
+/* ---------- sample data: the ledger shapes (items, received, stamps) with made-up values ---------- */
+const PKGS = [
+  { seller: "Sample Cards Co.", date: "Oct 28", id: "S-1042" },
+  { seller: "North Ridge Games", date: "Oct 30", id: "S-1077" },
+  { seller: "Lantern Hobby", date: "Nov 2", id: "S-1103" },
+];
+const ITEMS = [
+  { k: "lbA", name: "Lightning Bolt", set: "Sample Set · NM", price: 0.42, qty: 2, pkg: 0 },
+  { k: "cs", name: "Counterspell", set: "Sample Set · LP", price: 0.55, qty: 1, pkg: 0 },
+  { k: "po", name: "Ponder", set: "Sample Set · NM", price: 0.18, qty: 2, pkg: 0 },
+  { k: "pe", name: "Path to Exile", set: "Sample Set · NM", price: 0.31, qty: 1, pkg: 1 },
+  { k: "pr", name: "Preordain", set: "Sample Set · NM", price: 0.20, qty: 3, pkg: 1 },
+  { k: "bs", name: "Brainstorm", set: "Sample Set · NM", price: 0.25, qty: 2, pkg: 2 },
+  { k: "sp", name: "Swords to Plowshares", set: "Sample Set · LP", price: 0.55, qty: 1, pkg: 2 },
+  { k: "lbB", name: "Lightning Bolt", set: "Sample Set · LP", price: 0.40, qty: 2, pkg: 2 },
+];
+const START = { lbA: 2, po: 1, pe: 1, bs: 2 };
+const NAMES = [...new Set(ITEMS.map((i) => i.name))];
+const money = (n) => "$" + n.toFixed(2);
+
+/* The two merges the demo can play. Each mirrors mergeLedger's stats, and the sentence is mergeSummary's. */
+const MERGES = {
+  add: {
+    apply: (r) => ({ ...r, cs: 1, pr: 2 }),
+    sentence: "Merged — 3 check-ins from the other device. Nothing of yours was lost.",
+    rows: [
+      { k: "cs", tag: "in", word: "+1 in", why: "" },
+      { k: "pr", tag: "in", word: "+2 in", why: "" },
+    ],
+    removed: false, at: "2:02 PM",
+  },
+  remove: {
+    apply: (r) => { const o = { ...r, cs: 1 }; delete o.bs; return o; },
+    sentence: "Merged — 1 check-in from the other device. Removed by the other device’s later changes: un-checked 1 card.",
+    rows: [
+      { k: "cs", tag: "in", word: "+1 in", why: "" },
+      { k: "bs", tag: "out", word: "un-checked", why: "You checked in 2 at 11:40 AM. The other device un-checked them at 1:55 PM. The later change wins." },
+    ],
+    removed: true, at: "2:02 PM",
+  },
+};
+const OLDER = { at: "Yesterday, 8:15 PM", sentence: "Merged — 12 check-ins and 1 stamp from the other device. Nothing of yours was lost." };
+
+function fresh() {
+  return { tab: "packages", rec: { ...START }, pkgRec: { ...START }, merge: null, slip: false, changes: false, history: false, sync: false,
+    row: null, armed: false, restored: false, kept: false, share: false, stale: false, docket: false, unseen: 0, lands: false,
+    flash: null, saved: false, openEntry: "now" };
+}
+
+/* ---------- state presets for the deep links ---------- */
+const STATES = {
+  today: [
+    ["start", "Packages"], ["merged", "After a merge"], ["kept", "Damaged load"], ["tally", "After a Tally check-in"],
+  ],
+  slip: [
+    ["start", "Packages"], ["merged", "Merge slip"], ["merged-remove", "Slip, a card lost"], ["changes", "Changes"], ["before", "Copy before, in History"],
+    ["armed", "Restore armed"], ["kept", "Kept copy"], ["share", "Share kept copy"], ["stale", "Stale, 24 h"], ["sync", "Sync panel"], ["tally", "After a Tally check-in"],
+  ],
+  postmark: [
+    ["start", "Packages"], ["merged", "Postmark lands"], ["merged-remove", "A card lost"], ["docket", "Docket"], ["armed", "Restore armed"],
+    ["kept", "Kept copy in Docket"], ["share", "Share kept copy"], ["stale", "Stale, 24 h"], ["sync", "Sync panel"], ["tally", "After a Tally check-in"],
+  ],
+};
+function preset(c, s) {
+  const st = fresh();
+  const merge = (kind) => applyMerge(st, c, kind);
+  switch (s) {
+    case "merged": merge("add"); break;
+    case "merged-remove": merge("remove"); break;
+    case "changes": merge("remove"); st.changes = true; break;
+    case "before": merge("remove"); openBefore(st); break;
+    case "docket": merge("remove"); st.docket = true; st.unseen = 0; break;
+    case "armed": merge("remove"); if (c === "postmark") { st.docket = true; st.unseen = 0; st.armed = true; } else { openBefore(st); st.armed = true; } break;
+    case "kept": st.kept = true; if (c === "postmark") st.docket = true; break;
+    case "share": st.kept = true; st.share = true; if (c === "postmark") st.docket = true; break;
+    case "stale": st.stale = true; break;
+    case "sync": st.stale = true; st.tab = "ledger"; st.sync = true; break;
+    case "tally": st.tab = "packages"; st.rec.lbB = 1; st.flash = "lbB"; st.scrollTo = true; if (c === "today") st.pkgRec = { ...START }; else st.pkgRec = { ...st.rec }; break;
+  }
+  st.lands = false;
+  return st;
+}
+function applyMerge(st, c, kind) {
+  const m = MERGES[kind];
+  st.rec = m.apply(st.rec);
+  st.pkgRec = { ...st.rec };   // an adopted reply reloads Packages, Tally, Orphaned and the masthead today
+  st.merge = kind;
+  st.slip = c === "slip";
+  st.changes = false;
+  st.unseen = c === "postmark" ? m.rows.length : 0;
+  st.lands = c === "postmark";
+  st.stale = false;
+  st.restored = false; st.armed = false;
+}
+function openBefore(st) { st.tab = "ledger"; st.history = true; st.sync = false; st.row = "before"; st.changes = false; }
+
+/* ---------- figures ---------- */
+function figures(rec) {
+  let have = 0, total = 0, inV = 0, allV = 0, done = 0;
+  PKGS.forEach((p, i) => {
+    const its = ITEMS.filter((t) => t.pkg === i);
+    if (its.every((t) => (rec[t.k] || 0) >= t.qty)) done++;
+  });
+  ITEMS.forEach((t) => { const h = Math.min(rec[t.k] || 0, t.qty); have += h; total += t.qty; inV += h * t.price; allV += t.qty * t.price; });
+  return { have, total, done, n: PKGS.length, inV, allV, left: total - have, leftV: allV - inV, pct: (100 * have) / total };
+}
+
+/* ---------- icons (line icons in the bar's 22 pt box) ---------- */
+const ICON = {
+  ledger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>',
+  orphaned: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>',
+  tally: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 4l-2 16M17 4l-2 16M4 9h16M3 15h16"/></svg>',
+  packages: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 3l8 4.5v9L12 21l-8-4.5v-9z"/><path d="M4 7.5l8 4.5 8-4.5M12 12v9"/></svg>',
+};
+const CANCEL = '<svg class="cancel" viewBox="0 0 44 20" fill="none" stroke="currentColor" stroke-width="1.2" aria-hidden="true" style="color:var(--accent);opacity:.55"><path d="M0 4q5.5-4 11 0t11 0 11 0 11 0M0 10q5.5-4 11 0t11 0 11 0 11 0M0 16q5.5-4 11 0t11 0 11 0 11 0"/></svg>';
+
+/* ---------- views ---------- */
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+function masthead(f, st, c, tab) {
+  const fg = figures(st.rec);
+  const count = tab === "tally" ? `${NAMES.length} unique items` : tab === "orphaned" ? "1 envelope waiting" : `${PKGS.length} packages · autosaves`;
+  let pm = '<span aria-hidden="true"></span>';
+  if (c === "postmark") {
+    const stale = st.stale;
+    const w = stale ? "Since" : "Agreed", t = stale ? "Nov 19" : (st.merge ? MERGES[st.merge].at.replace(" PM", "") : "1:48");
+    const lab = stale ? "Not agreed with the server since Nov 19, 6:02 PM. Open the Docket." : `Agreed with the server at ${st.merge ? MERGES[st.merge].at : "1:48 PM"}. Open the Docket.`;
+    pm = `<button class="postmark ${stale ? "stale" : ""} ${st.lands ? "lands" : ""} tag-new" data-tag="New: postmark" id="${f.focusId}" data-act="docket" aria-label="${esc(lab)}${st.unseen ? `, ${st.unseen} changes` : ""}">`
+      + `${stale ? "" : CANCEL}<span class="ring"><span class="w">${w}</span><span class="t">${t}</span></span>${st.unseen ? `<span class="badge">${st.unseen}</span>` : ""}</button>`;
+  }
+  return `<header class="mast">
+    <div class="sealrow"><span aria-hidden="true"></span><span class="rules"><span class="rule"></span><span class="seal" role="img" aria-label="MANIFEST seal"></span><span class="rule"></span></span>${pm}</div>
+    <div class="mtitle">Manifest</div><div class="house">C.H Postal Company</div>
+    <div class="tallies">
+      <div class="cells">
+        <div class="cell"><span class="k">cards</span><span class="v"><b>${fg.have}</b>/${fg.total}</span></div>
+        <div class="cell"><span class="k">packages</span><span class="v"><b>${fg.done}</b>/${fg.n}</span></div>
+        <div class="cell"><span class="k">value</span><span class="v"><b>${money(fg.inV)}</b>/${money(fg.allV)}</span></div>
+      </div>
+      <div class="pbar" role="img" aria-label="Cards received ${Math.round(fg.pct)} percent"><i style="width:${fg.pct}%"></i></div>
+      <div class="mline">${count}</div>
+      <div class="mfoot"><span>${fg.left} still missing · ${money(fg.leftV)}</span><span class="slot">${st.saved ? "saved" : " "}</span></div>
+    </div></header>`;
+}
+
+function advisory(st, c) {
+  if (!st.stale || c === "today") return "";
+  return `<button class="advisory tag-new" data-tag="New: 24-hour line (web case 4)" data-act="advisory">Not backed up since Nov 19 — tap to fix</button>`;
+}
+
+function slip(f, st, c) {
+  if (c !== "slip" || !st.slip || !st.merge) return "";
+  const m = MERGES[st.merge];
+  return `<div class="slip tag-new" data-tag="New: merge slip" id="${f.focusId}" role="status">
+    <p>${esc(m.sentence)}</p>
+    <span class="acts"><button class="mini" data-act="changes" aria-expanded="${st.changes}">${st.changes ? "Close" : "Changes"}</button>
+    <button class="x" data-act="dismiss" aria-label="Dismiss">✕</button></span></div>`;
+}
+
+function changesPanel(st, onPage) {
+  const m = MERGES[st.merge];
+  const rows = m.rows.map((r) => {
+    const it = ITEMS.find((i) => i.k === r.k);
+    return `<div class="crow"><span class="n">${esc(it.name)}</span><span class="${r.tag === "in" ? "tagin" : "tagout"}">${r.word}</span>
+      <span class="s">${esc(PKGS[it.pkg].seller)} · ${esc(it.set)}</span>${r.why ? `<span class="why">${esc(r.why)}</span>` : ""}</div>`;
+  }).join("");
+  const before = m.removed
+    ? `<div class="before"><span>Your copy from just before this merge is saved in History as <i>before sync</i>.</span>
+       <span class="btnrow"><button class="btn" data-act="open-before">Open in History</button></span></div>` : "";
+  return `<div class="panel ${onPage ? "" : "overlay"}" role="region" aria-label="What the merge changed" style="${onPage ? "" : "top:var(--panel-top)"}">
+    <div class="ph"><b>What the merge changed</b><span class="tagin" style="color:var(--inkSoft)">${m.at}</span></div>
+    ${rows}${before}
+    <div class="before"><span class="btnrow"><button class="btn" data-act="changes">Close</button></span></div></div>`;
+}
+
+function keptNote(st, c) {
+  if (!st.kept) return "";
+  const txt = "1 entry could not be read; the original is kept on this device.";
+  if (c === "today") return `<div class="note tag-today" data-tag="Today: no route"><span>${txt}</span></div>`;
+  if (c === "slip") return `<div class="note"><span>${txt}</span><button class="btn tag-new" data-tag="New: Share" data-act="share">Share it</button></div>`;
+  return `<div class="note"><span>${txt} It is in the Docket.</span></div>`;
+}
+
+function pkgCards(st, c, from, to) {
+  const rec = c === "today" ? st.pkgRec : st.rec;
+  return PKGS.map((p, i) => ({ p, i })).slice(from, to).map(({ p, i }) => {
+    const its = ITEMS.filter((t) => t.pkg === i);
+    const h = its.reduce((a, t) => a + Math.min(rec[t.k] || 0, t.qty), 0), n = its.reduce((a, t) => a + t.qty, 0);
+    const lines = its.map((t) => {
+      const r = rec[t.k] || 0, cls = r >= t.qty ? "full" : r > 0 ? "part" : "";
+      return `<button class="it ${cls} ${st.flash === t.k && c !== "today" ? "flash" : ""}" data-act="pkg-check" data-k="${t.k}" aria-label="${esc(t.name)}, ${r} of ${t.qty} received">
+        <span class="box"><i></i></span><span class="t"><b>${esc(t.name)}<span>${r}/${t.qty} · ${money(t.price)}</span></b><small>${esc(t.set)}</small></span></button>`;
+    }).join("");
+    const stale = c === "today" && st.tab === "packages" && JSON.stringify(st.pkgRec) !== JSON.stringify(st.rec) && i === 2;
+    return `<article class="pkg ${h === n ? "done" : ""} ${stale ? "tag-today" : ""}" ${stale ? 'data-tag="Today: old rows after a Tally check-in"' : ""}>
+      <span class="pb"><i style="width:${(100 * h) / n}%"></i></span>
+      <div class="hd"><b>${esc(p.seller)}</b><span>${p.date} · ${h}/${n}</span></div>${lines}</article>`;
+  }).join("");
+}
+
+function tallyRows(st, from, to) {
+  return NAMES.slice(from, to).map((name) => {
+    const its = ITEMS.filter((t) => t.name === name);
+    const h = its.reduce((a, t) => a + Math.min(st.rec[t.k] || 0, t.qty), 0), n = its.reduce((a, t) => a + t.qty, 0);
+    const sellers = [...new Set(its.map((t) => PKGS[t.pkg].seller))];
+    return `<button class="trow ${h >= n ? "full" : ""}" data-act="tally-check" data-name="${esc(name)}" aria-label="${esc(name)}, ${h} of ${n}">
+      <span class="it ${h >= n ? "full" : h ? "part" : ""}" style="border:0;min-height:0;width:auto;background:none"><span class="box"><i></i></span></span>
+      <span class="t"><b>${esc(name)}<span>${h}/${n}</span></b><small>${sellers.length} seller${sellers.length > 1 ? "s" : ""} · ${sellers.map(esc).join(", ")}</small></span></button>`;
+  }).join("");
+}
+
+function orphanedView() {
+  return `<div class="list"><article class="pkg"><div class="hd"><b>Envelope, no sender</b><span>Nov 18 · 2 cards</span></div>
+    <div class="it"><span class="box"><i></i></span><span class="t"><b>Ponder<span>1</span></b><small>Recorded on this device</small></span></div></article></div>`;
+}
+
+function ledgerRows(st, c, inlinePanels) {
+  const syncSub = st.stale ? "Not backed up since Nov 19" : `Backed up 2026-11-21${st.sync ? " — tap to close" : ""}`;
+  const syncVal = st.stale ? "Check" : "On";
+  let h = `<div class="lrows">`;
+  h += `<div class="lgroup"><button class="lrow" data-act="sync" aria-expanded="${st.sync}"><span class="t"><b>Sync</b><small>${syncSub}</small></span><span class="v ${st.stale ? "fix" : ""}">${syncVal}</span></button>`;
+  if (st.sync && inlinePanels) h += syncParts(st);
+  h += `</div><div class="lgroup"><button class="lrow" data-act="history" aria-expanded="${st.history}"><span class="t"><b>History</b></span><span class="v">Saved versions</span></button>`;
+  if (st.history && inlinePanels) h += historyList(st);
+  h += `</div><div class="lgroup"><button class="lrow" data-act="noop"><span class="t"><b>Backup</b></span></button></div>`;
+  if (c === "slip" && st.kept) h += `<div class="lgroup tag-new" data-tag="New: kept copy row"><button class="lrow" data-act="share"><span class="t"><b>Kept copy</b><small>Nov 20, 3:14 PM · 1 entry could not be read</small></span><span class="v">Share</span></button></div>`;
+  h += `<div class="lgroup"><button class="lrow" data-act="noop"><span class="t"><b style="color:var(--red)">Reset</b></span></button></div></div>`;
+  return h;
+}
+function syncParts(st) {
+  return `<div class="parts"><span class="pl">Server</span><span class="pv">${st.stale ? "Could not be reached" : "Connected"}</span>
+    <span class="pl">Last sync</span><span class="pv">${st.stale ? "Nov 19, 6:02 PM" : st.merge ? "Nov 21, 2:02 PM" : "Nov 21, 1:48 PM"}</span></div>`;
+}
+function historyList(st) {
+  const rows = [];
+  if (st.merge && MERGES[st.merge].removed) rows.push({ id: "before", w: "Nov 21, 2:02 PM", lb: "before sync", f: "8/11", m: true });
+  rows.push({ id: "h1", w: "Nov 21, 1:00 PM", lb: "hourly", f: "8/10", m: false });
+  rows.push({ id: "h2", w: "Nov 20, 9:00 PM", lb: "daily", f: "8/9", m: false });
+  return `<div style="border-top:1px solid var(--line)">` + rows.map((r) => {
+    const open = st.row === r.id;
+    const ask = open ? `<div class="ask">
+      <span class="btnrow"><button class="btn ${st.armed ? "armed" : ""}" data-act="restore" data-id="${r.id}">${st.armed ? "Tap again to replace 10 cards" : "Restore this version"}</button>${st.armed ? `<button class="btn" data-act="cancel">Cancel</button>` : ""}</span></div>` : "";
+    return `<div class="ver ${open && r.id === "before" ? "hi" : ""}"><button data-act="ver" data-id="${r.id}" aria-expanded="${open}"><span class="w">${r.w}</span><span class="lb ${r.m ? "" : "soft"}">${r.lb}</span><span class="f">${r.f}</span></button>${ask}</div>`;
+  }).join("") + `</div>`;
+}
+
+function docket(st, ax) {
+  const m = st.merge && MERGES[st.merge];
+  const say = st.stale ? "This phone has not agreed with the server since Nov 19, 6:02 PM. Its numbers may be older than the other device’s."
+    : `This phone and the server agreed at ${m ? m.at : "1:48 PM"}. The numbers on every tab are the agreed ones.`;
+  let h = `<div class="dk"><p>${say}</p>`;
+  if (st.stale) h += `<p style="padding-top:0"><button class="btn" data-act="advisory">Open Sync</button></p>`;
+  h += `<div class="sec">Merges on this device</div>`;
+  if (m) {
+    const open = st.openEntry === "now";
+    h += `<div class="entry"><button class="eh" data-act="entry" data-id="now" aria-expanded="${open}"><span class="w">Today, ${m.at}</span><span>${esc(m.sentence)}</span></button>`;
+    if (open) {
+      h += m.rows.map((r) => { const it = ITEMS.find((i) => i.k === r.k);
+        return `<div class="crow"><span class="n">${esc(it.name)}</span><span class="${r.tag === "in" ? "tagin" : "tagout"}">${r.word}</span><span class="s">${esc(PKGS[it.pkg].seller)}</span>${r.why ? `<span class="why">${esc(r.why)}</span>` : ""}</div>`; }).join("");
+      if (m.removed) h += `<div class="before" style="padding-left:28px"><span>Your copy from just before this merge is saved in History as <i>before sync</i> (8 lines, 11 checked in).</span>
+        <span class="btnrow"><button class="btn ${st.armed ? "armed" : ""}" data-act="restore" data-id="before">${st.armed ? "Tap again to replace 10 cards" : "Restore this version"}</button>${st.armed ? `<button class="btn" data-act="cancel">Cancel</button>` : ""}</span></div>`;
+    }
+    h += `</div>`;
+  }
+  if (st.restored) h += `<p class="done-msg" style="margin:8px 16px">Restored the copy from before the merge. It goes to the other device on the next sync.</p>`;
+  const o = st.openEntry === "older";
+  h += `<div class="entry"><button class="eh" data-act="entry" data-id="older" aria-expanded="${o}"><span class="w">${OLDER.at}</span><span>${OLDER.sentence}</span></button>${o ? `<div class="crow"><span class="s">12 cards and 1 stamp, listed as above.</span></div>` : ""}</div>`;
+  if (st.kept) h += `<div class="sec">Kept on this device</div><div class="entry"><div class="before" style="border:0"><span>Nov 20, 3:14 PM: 1 entry could not be read when the ledger loaded. The original file is kept.</span><span class="btnrow"><button class="btn tag-new" data-tag="New: Share" data-act="share">Share it</button></span></div></div>`;
+  return h + `</div>`;
+}
+
+function sheet(title, body) {
+  return `<div class="scrim" data-act="close-sheet"></div><div class="sheet" role="dialog" aria-label="${esc(title)}"><span class="grab"></span>
+    <div class="tb"><span></span><b>${esc(title)}</b><button class="done" data-act="close-sheet">Done</button></div><div class="body">${body}</div></div>`;
+}
+function shareSheet() {
+  return `<div class="scrim" data-act="close-share"></div><div class="share" role="dialog" aria-label="Share"><button class="close" data-act="close-share" aria-label="Close">✕</button>
+    <div class="file"><span class="doc"></span><span><b>ledger.kept-20261120T211402118Z.json</b><small>JSON document · sample</small></span></div>
+    <div class="apps"><span><i></i>AirDrop</span><span><i></i>Mail</span><span><i></i>Files</span></div>
+    <div class="acts"><div>Copy</div><div>Save to Files</div></div></div>`;
+}
+
+function tabbar(st, f) {
+  const tabs = [["ledger", "Ledger"], ["orphaned", "Orphaned"], ["tally", "Tally"], ["packages", "Packages"]];
+  return `<nav class="tabbar" aria-label="Views">${tabs.map(([k, l]) => `<button data-act="tab" data-tab="${k}" ${st.tab === k ? 'aria-current="page"' : ""}>${ICON[k]}<span>${l}</span>${k === "orphaned" ? '<b class="bd">1</b>' : ""}</button>`).join("")}</nav>`;
+}
+const status = () => `<div class="status"><span>9:41</span><span>●●● ▮</span></div>`;
+
+/* one working page: letterhead, the lines, the list */
+function workingTop(f, st, c, tab) {
+  return masthead(f, st, c, tab) + advisory(st, c) + slip(f, st, c) + (tab === "packages" ? keptNote(st, c) : "");
+}
+
+function renderSingle(f) {
+  const { st, c } = f;
+  let body = "";
+  if (st.tab === "packages") body = workingTop(f, st, c, "packages") + `<div class="list ${c === "today" && st.merge ? "tag-today" : ""}" ${c === "today" && st.merge ? 'data-tag="Today: a merge landed, with no word"' : ""}>${pkgCards(st, c, 0, 3)}</div>`;
+  else if (st.tab === "tally") body = workingTop(f, st, c, "tally") + `<div class="list">${tallyRows(st, 0, NAMES.length)}</div>`;
+  else if (st.tab === "orphaned") body = workingTop(f, st, c, "orphaned") + orphanedView();
+  else body = masthead(f, st, c, "ledger") + (st.restored && c !== "postmark" ? `<p class="done-msg">Restored the copy from before the merge. It goes to the other device on the next sync.</p>` : "") + ledgerRows(st, c, true);
+  let over = "";
+  if (c === "slip" && st.changes && st.merge && st.tab !== "ledger") over = changesPanel(st, false);
+  let h = status() + `<div class="pg full"><div class="scroll">${body}</div>${over}</div>` + tabbar(st, f);
+  if (c === "postmark" && st.docket) h += sheet("Docket", docket(st));
+  if (st.share) h += shareSheet();
+  return h;
+}
+
+function renderOpen(f) {
+  const { st, c } = f;
+  let left = "", right = "";
+  if (st.tab === "packages") {
+    left = workingTop(f, st, c, "packages") + `<div class="list">${pkgCards(st, c, 0, 2)}</div>`;
+    right = `<div class="list" style="padding-top:16px">${pkgCards(st, c, 2, 3)}</div>`;
+  } else if (st.tab === "tally") {
+    left = workingTop(f, st, c, "tally") + `<div class="list">${tallyRows(st, 0, 3)}</div>`;
+    right = `<div class="list" style="padding-top:16px">${tallyRows(st, 3, NAMES.length)}</div>`;
+  } else if (st.tab === "orphaned") {
+    left = workingTop(f, st, c, "orphaned") + orphanedView();
+    right = `<p class="rhead">No envelope chosen.</p>`;
+  } else {
+    left = masthead(f, st, c, "ledger") + ledgerRows(st, c, false);
+    right = st.restored && c !== "postmark" ? `<p class="done-msg" style="margin-top:16px">Restored the copy from before the merge. It goes to the other device on the next sync.</p>` : "";
+    if (st.sync) right += `<div class="lrows" style="margin-top:16px"><div class="lgroup"><div class="lrow"><span class="t"><b>Sync</b></span></div>${syncParts(st)}</div></div>`;
+    else if (st.history) right += `<div class="lrows" style="margin-top:16px"><div class="lgroup"><div class="lrow"><span class="t"><b>History</b></span></div>${historyList(st)}</div></div>`;
+    else right += `<p class="rhead">Sync and History open on this page.</p>`;
+  }
+  // the right page takes a panel the left page opens, so the list under the thumb holds still
+  if (c === "slip" && st.changes && st.merge && st.tab !== "ledger") right = `<div style="padding-top:16px">${changesPanel(st, true)}</div>`;
+  if (c === "postmark" && st.docket) right = `<div class="tb" style="display:grid;grid-template-columns:1fr auto;align-items:center;padding:12px 8px 0 16px"><b style="font-size:22px">Docket</b><button class="mini" data-act="close-sheet">Close</button></div>` + docket(st);
+  let h = `<div class="pg l">${status()}<div class="scroll">${left}</div></div>`
+    + `<div class="fold"><span>FOLD</span></div>`
+    + `<div class="pg r">${status()}<div class="scroll">${right}</div>${tabbar(st, f).replace('class="tabbar"', 'class="tabbar"')}${st.share ? shareSheet() : ""}</div>`;
+  return h;
+}
+
+/* AX5: the folded pose at the largest accessibility size, scrolled to the part that changes */
+function renderAx(f) {
+  const { st, c } = f;
+  let body = "";
+  if (c === "slip") {
+    body = slip(f, st, c) || `<p class="note"><span>No merge yet. Play one with the buttons above.</span></p>`;
+    if (st.changes && st.merge) body += changesPanel(st, true);
+    body += `<div class="list">${pkgCards(st, c, 0, 1)}</div>`;
+  } else if (c === "postmark") {
+    body = masthead(f, st, c, "packages").replace(/<div class="tallies">[\s\S]*<\/div><\/header>/, "</header>")
+      + `<p class="note"><span style="font-size:13px;line-height:1.35">The postmark keeps the default size at every text size; a long press shows it big (the large content viewer), as the open Duo's tab bar does.</span></p>`;
+    if (st.docket) body += docket(st, true);
+    else body += `<div class="list">${pkgCards(st, c, 0, 1)}</div>`;
+  } else {
+    body = keptNote(st, c) + `<div class="list">${pkgCards(st, c, 0, 1)}</div>`;
+  }
+  return status() + `<div class="pg full"><div class="scroll">${body}</div></div>` + tabbar(st, f) + (st.share ? shareSheet() : "");
+}
+
+/* ---------- frames ---------- */
+const DEVICES = [
+  { d: "folded", cls: "folded", data: "iphone-duo-folded", w: 466, h: 678, cap: "<b>Duo, folded.</b> One screen, 466 x 678 pt, portrait (the brief's size)." },
+  { d: "open", cls: "open", data: "iphone-duo-unfolded", w: 951, h: 669, cap: "<b>Duo, open.</b> 951 x 669 pt; nothing sits across the fold (x 455.5 to 495.5). The bar sits under the right page." },
+  { d: "phone", cls: "phone", data: "iphone-regular", w: 466, h: 678, cap: "<b>Large phone.</b> The brief gives no size, so it is drawn at the brief's one phone size, 466 x 678 pt." },
+  { d: "ax5", cls: "folded ax", data: "iphone-duo-folded-ax5", w: 466, h: 678, cap: "<b>Duo, folded, AX5.</b> The largest accessibility text size, scrolled to the part that changes." },
+];
+const frames = [];
+let current = { c: "all", s: "", d: "all" };
+
+function render(f) {
+  f.el.innerHTML = f.d === "open" ? renderOpen(f) : f.d === "ax5" ? renderAx(f) : renderSingle(f);
+  const top = f.el.querySelector(".slip");
+  if (top) f.el.style.setProperty("--panel-top", top.offsetTop + top.offsetHeight + 28 + "px");
+  // A deep link opens with the changed card in view. A tap never scrolls: the list holds still under the thumb.
+  if (f.st.scrollTo) {
+    const tgt = f.el.querySelector(".pkg.tag-today, .it.flash");
+    const sc = tgt && tgt.closest(".scroll");
+    if (sc) sc.scrollTop = tgt.closest(".pkg").offsetTop - 96;
+    f.st.scrollTo = false;
+  }
+  f.st.lands = false; f.st.flash = null;
+}
+function build() {
+  ["today", "slip", "postmark"].forEach((c) => {
+    const host = document.querySelector(`[data-frames="${c}"]`);
+    DEVICES.forEach((dv) => {
+      const fig = host.querySelector(`figure[data-view="${dv.d}"]`);
+      const box = fig.querySelector(".fitbox"), el = fig.querySelector(".dev");
+      fig.querySelector("figcaption").innerHTML = dv.cap;
+      const f = { c, d: dv.d, el, box, w: dv.w, h: dv.h, st: fresh(), focusId: dv.d === "folded" ? (c === "slip" ? "slip-notice" : c === "postmark" ? "postmark" : "") : "" };
+      el.dataset.idx = frames.length; frames.push(f);
+    });
+    const sb = document.querySelector(`[data-states="${c}"]`);
+    sb.innerHTML = `<span class="lab">States</span>` + STATES[c].map(([s, l]) => `<a href="#c=${c}&s=${s}" data-s="${c}:${s}">${l}</a>`).join("");
+    const sim = document.querySelector(`[data-sims="${c}"]`);
+    sim.innerHTML = `<span class="lab">Play</span><button class="sim" data-sim="add" data-c="${c}">Other device: 3 check-ins</button><button class="sim" data-sim="remove" data-c="${c}">Other device: a later un-check</button>`
+      + `<button class="sim" data-sim="kept" data-c="${c}">Load a damaged file</button><button class="sim" data-sim="stale" data-c="${c}">25 hours, no agreement</button><button class="sim" data-sim="reset" data-c="${c}">Start again</button>`;
+  });
+  frames.forEach(render);
+  fit();
+}
+function fit() {
+  frames.forEach((f) => {
+    const avail = Math.min(f.box.parentElement.parentElement.clientWidth || f.w, f.w);
+    const s = Math.min(1, avail / f.w);
+    f.el.style.transform = `scale(${s})`;
+    f.box.style.width = f.w * s + "px"; f.box.style.height = f.h * s + "px";
+  });
+}
+window.addEventListener("resize", fit);
+
+/* ---------- taps inside a device ---------- */
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act]"); if (!b) return;
+  const dev = b.closest(".dev"); if (!dev) return;
+  const f = frames[+dev.dataset.idx], st = f.st, c = f.c;
+  switch (b.dataset.act) {
+    case "tab": st.tab = b.dataset.tab; st.changes = false; if (c === "today" && st.tab === "packages") { /* today: Packages keeps the rows it read */ } break;
+    case "dismiss": st.slip = false; st.changes = false; break;
+    case "changes": st.changes = !st.changes; break;
+    case "open-before": openBefore(st); break;
+    case "advisory": st.tab = "ledger"; st.sync = true; st.history = false; st.docket = false; break;
+    case "sync": st.sync = !st.sync; if (st.sync) st.history = false; break;
+    case "history": st.history = !st.history; if (st.history) st.sync = false; st.row = null; st.armed = false; break;
+    case "ver": st.row = st.row === b.dataset.id ? null : b.dataset.id; st.armed = false; break;
+    case "restore":
+      if (!st.armed) { st.armed = true; clearTimeout(f.t); f.t = setTimeout(() => { st.armed = false; render(f); }, 4000); }
+      else { clearTimeout(f.t); st.armed = false; st.restored = true; st.rec = { ...START, bs: 2, cs: 1 }; st.pkgRec = { ...st.rec }; st.row = null; st.unseen = 0; st.slip = false; }
+      break;
+    case "cancel": clearTimeout(f.t); st.armed = false; break;
+    case "docket": st.docket = !st.docket; st.unseen = 0; st.openEntry = "now"; break;
+    case "close-sheet": st.docket = false; st.armed = false; break;
+    case "entry": st.openEntry = st.openEntry === b.dataset.id ? null : b.dataset.id; break;
+    case "share": st.share = true; break;
+    case "close-share": st.share = false; break;
+    case "pkg-check": {
+      const k = b.dataset.k, t = ITEMS.find((i) => i.k === k), rec = c === "today" ? st.pkgRec : st.rec;
+      const v = (rec[k] || 0) >= t.qty ? 0 : (rec[k] || 0) + 1;
+      st.rec = { ...st.rec, [k]: v }; st.pkgRec = { ...(c === "today" ? st.pkgRec : st.rec), [k]: v };
+      if (c === "today") st.pkgRec = { ...st.pkgRec, ...st.rec };   // a Packages check-in reloads Packages
+      st.saved = true; break;
+    }
+    case "tally-check": {
+      const its = ITEMS.filter((i) => i.name === b.dataset.name);
+      const next = its.find((i) => (st.rec[i.k] || 0) < i.qty);
+      if (next) st.rec = { ...st.rec, [next.k]: (st.rec[next.k] || 0) + 1 };
+      else its.forEach((i) => { st.rec = { ...st.rec, [i.k]: 0 }; });
+      if (c !== "today") st.pkgRec = { ...st.rec };   // the options reload Packages after every write
+      if (next) st.flash = next.k;
+      st.saved = true; break;
+    }
+    default: return;
+  }
+  render(f);
+});
+
+/* ---------- the Play buttons act on every frame of their option ---------- */
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-sim]"); if (!b) return;
+  frames.filter((f) => f.c === b.dataset.c).forEach((f) => {
+    const st = f.st;
+    if (b.dataset.sim === "reset") f.st = fresh();
+    else if (b.dataset.sim === "kept") st.kept = true;
+    else if (b.dataset.sim === "stale") { st.stale = true; }
+    else applyMerge(st, f.c, b.dataset.sim);
+    render(f);
+  });
+});
+
+/* ---------- options, devices, deep links ---------- */
+const hidden = new Set();
+document.querySelectorAll("[data-hide]").forEach((b) => b.addEventListener("click", () => {
+  const k = b.dataset.hide;
+  hidden.has(k) ? hidden.delete(k) : hidden.add(k);
+  b.textContent = (hidden.has(k) ? "Show " : "Hide ") + k[0].toUpperCase() + k.slice(1);
+  apply();
+}));
+document.getElementById("tags").addEventListener("click", (e) => {
+  document.body.classList.toggle("notags");
+  e.currentTarget.textContent = document.body.classList.contains("notags") ? "Show tags" : "Hide tags";
+});
+function parse() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  return { c: p.get("c") || "all", s: p.get("s") || "", d: p.get("d") || "all", t: p.get("t") || "" };
+}
+function apply() {
+  const q = parse();
+  if (q.t) document.documentElement.dataset.theme = q.t; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll("section.option").forEach((sec) => {
+    const k = sec.dataset.option;
+    sec.hidden = hidden.has(k) || (q.c !== "all" && q.c !== k);
+  });
+  document.querySelectorAll(".frames figure").forEach((fig) => { fig.hidden = q.d !== "all" && fig.dataset.view !== q.d; });
+  document.querySelectorAll("[data-c]").forEach((a) => a.tagName === "A" && a.setAttribute("aria-current", String(a.dataset.c === q.c)));
+  document.querySelectorAll("[data-d]").forEach((a) => a.setAttribute("aria-current", String(a.dataset.d === q.d)));
+  document.querySelectorAll("[data-s]").forEach((a) => a.setAttribute("aria-current", String(a.dataset.s === `${q.c}:${q.s}`)));
+  if (q.s && q.c !== "all") frames.filter((f) => f.c === q.c).forEach((f) => { f.st = preset(q.c, q.s); render(f); });
+  fit();
+}
+window.addEventListener("hashchange", apply);
+build();
+apply();
+})();
+</script>
+</body>
+</html>

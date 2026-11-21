@@ -1,0 +1,812 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sync trust mockup</title>
+<style>
+/* House steps: 4 px space step, 8 px radius. Colours are this designer's own choice, by role. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px;
+  --radius: 8px;
+  /* Status bar and home indicator heights: designer's choice, unmeasured. */
+  --sb: 44px; --hi: 28px; --tabbar-h: 56px;
+  /* Dynamic Type, default size (HIG typography, read 2026-11-21). */
+  --t-lt: 34px; --l-lt: 41px; --t-t3: 20px; --l-t3: 25px; --t-hl: 17px; --l-hl: 22px;
+  --t-body: 17px; --l-body: 22px; --t-sub: 15px; --l-sub: 20px; --t-fn: 13px; --l-fn: 18px;
+  --t-c1: 12px; --l-c1: 16px;
+  color-scheme: light;
+  --stage: #E3E6EB; --stage-text: #232831; --stage-line: #C4C9D2;
+  --bg: #F4F5F8; --raised: #FFFFFF; --text: #14171C; --text-2: #565D6B; --line: #D9DCE2;
+  --this: #3A47BD; --this-soft: #E4E6F8; --other: #0A7268; --other-soft: #DDF0EC;
+  --warn: #8C5200; --warn-hatch: #E6B04A; --warn-soft: #FBF1DD;
+  --fail: #B0212A; --fail-soft: #FBE3E4;
+  --aside: #7A8190; --aside-hatch: #C9CDD5;
+  --on-accent: #FFFFFF; --hinge: #2A2E35; --frame: #1C1F25;
+  --ann: #7B3FB0;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --stage: #0A0C10; --stage-text: #D5D9E0; --stage-line: #2A2F38;
+    --bg: #101318; --raised: #1A1E25; --text: #ECEEF2; --text-2: #A3AAB7; --line: #2D333D;
+    --this: #9AA4FF; --this-soft: #23284A; --other: #48C7B7; --other-soft: #163A36;
+    --warn: #F2B64E; --warn-hatch: #7A5A1C; --warn-soft: #2E2516;
+    --fail: #FF7A7A; --fail-soft: #3A1C1F;
+    --aside: #8D94A2; --aside-hatch: #3A404B;
+    --on-accent: #0D1020; --hinge: #000000; --frame: #000000;
+    --ann: #C99BF2;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --stage: #0A0C10; --stage-text: #D5D9E0; --stage-line: #2A2F38;
+  --bg: #101318; --raised: #1A1E25; --text: #ECEEF2; --text-2: #A3AAB7; --line: #2D333D;
+  --this: #9AA4FF; --this-soft: #23284A; --other: #48C7B7; --other-soft: #163A36;
+  --warn: #F2B64E; --warn-hatch: #7A5A1C; --warn-soft: #2E2516;
+  --fail: #FF7A7A; --fail-soft: #3A1C1F;
+  --aside: #8D94A2; --aside-hatch: #3A404B;
+  --on-accent: #0D1020; --hinge: #000000; --frame: #000000;
+  --ann: #C99BF2;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--stage); color: var(--stage-text);
+  font-family: -apple-system, system-ui, sans-serif; font-size: 15px; line-height: 1.4;
+  -webkit-text-size-adjust: 100%;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--this); outline-offset: 2px; }
+
+/* Page chrome around the frames (not part of the app). */
+.banner { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: center;
+  padding: var(--space-3) var(--space-4); background: var(--warn-soft); color: var(--text);
+  border-bottom: 2px dashed var(--warn); }
+.banner strong { font-size: 17px; }
+.kit { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); }
+.kit h1 { margin: 0; font-size: 22px; line-height: 28px; }
+.kit p { margin: 0; max-width: 70ch; }
+.ctl { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ctl > span { min-width: 6rem; font-weight: 600; }
+.chip { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius);
+  border: 1px solid var(--stage-line); background: transparent; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--stage-text); color: var(--stage); border-color: var(--stage-text); }
+.chip.hide { border-style: dashed; }
+.stage { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start;
+  padding: var(--space-4) var(--space-4) var(--space-10); overflow-x: auto; }
+.dev { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.dev figcaption { font-size: 13px; color: var(--stage-text); }
+.dev figcaption b { display: block; font-size: 15px; }
+.bezel { padding: 10px; background: var(--frame); border-radius: 28px; }
+.dev[hidden] { display: none; }
+.open-wrap { display: flex; }
+.hinge { width: 40px; flex: none; background: var(--hinge);
+  background-image: linear-gradient(90deg, transparent 45%, #555b66 50%, transparent 55%); }
+
+/* The app screen. 1 CSS px = 1 pt. */
+.scr { position: relative; overflow: hidden; background: var(--bg); color: var(--text);
+  font-family: -apple-system, system-ui, sans-serif; font-size: var(--t-body); line-height: var(--l-body);
+  font-variant-numeric: tabular-nums; display: flex; flex-direction: column;
+  padding-top: max(env(safe-area-inset-top), var(--sb));
+  padding-bottom: max(env(safe-area-inset-bottom), var(--hi)); }
+.scr.folded { width: 466px; height: 678px; border-radius: 18px; }
+.scr.page { width: 455.5px; height: 669px; }
+.scr.page.l { border-radius: 18px 0 0 18px; }
+.scr.page.r { border-radius: 0 18px 18px 0; }
+.scr.phone { width: 430px; height: 932px; border-radius: 40px; }
+.scr.ax {
+  --t-lt: 60px; --l-lt: 72px; --t-t3: 55px; --l-t3: 66px; --t-hl: 53px; --l-hl: 62px;
+  --t-body: 53px; --l-body: 62px; --t-sub: 49px; --l-sub: 58px; --t-fn: 44px; --l-fn: 52px;
+  --t-c1: 43px; --l-c1: 51px;
+}
+.sbar { position: absolute; inset: 0 0 auto 0; height: var(--sb); display: flex; align-items: center;
+  justify-content: space-between; padding: 0 var(--space-6); font-size: 15px; font-weight: 600; z-index: 3; }
+.sbar .glyphs { display: flex; gap: var(--space-1); align-items: center; }
+.sbar .glyphs i { display: block; width: 18px; height: 10px; border: 1.5px solid currentColor; border-radius: 3px; }
+.homeind { position: absolute; left: 50%; bottom: 8px; width: 134px; height: 5px; margin-left: -67px;
+  border-radius: 3px; background: var(--text); opacity: .85; z-index: 4; }
+.body { flex: 1; overflow-y: auto; overflow-x: hidden; display: flex; flex-direction: column;
+  gap: var(--space-5); padding: var(--space-2) var(--space-4) calc(var(--tabbar-h) + var(--space-6)); }
+.body.no-tabs { padding-bottom: var(--space-6); }
+.body.has-act { padding-bottom: calc(var(--tabbar-h) + 50px + var(--space-10)); }
+.nav { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.back { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 44px; min-width: 44px;
+  padding: 0; border: 0; background: none; color: var(--this); font-size: var(--t-body); cursor: pointer; }
+.back::before { content: ""; width: 10px; height: 10px; border-left: 2.5px solid currentColor;
+  border-bottom: 2.5px solid currentColor; transform: rotate(45deg); }
+.lt { margin: 0; font-size: var(--t-lt); line-height: var(--l-lt); font-weight: 700; letter-spacing: .2px; }
+.t3 { margin: 0; font-size: var(--t-t3); line-height: var(--l-t3); font-weight: 600; }
+.sub { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); }
+.fn { font-size: var(--t-fn); line-height: var(--l-fn); color: var(--text-2); }
+.c1 { font-size: var(--t-c1); line-height: var(--l-c1); color: var(--text-2); }
+.stack { display: flex; flex-direction: column; gap: var(--space-2); }
+.stack-3 { display: flex; flex-direction: column; gap: var(--space-3); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.group { display: flex; flex-direction: column; background: var(--raised); border-radius: var(--radius); }
+.group > * + * { border-top: 1px solid var(--line); }
+.sechead { font-size: var(--t-fn); line-height: var(--l-fn); color: var(--text-2); padding: 0 var(--space-4); }
+.row { display: flex; align-items: center; gap: var(--space-3); min-height: 44px;
+  padding: var(--space-2) var(--space-4); width: 100%; text-align: left; border: 0; border-radius: 0;
+  background: none; font-size: var(--t-body); line-height: var(--l-body); color: var(--text); }
+button.row { cursor: pointer; }
+.row .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.row .val { color: var(--text-2); }
+.chev { flex: none; width: 8px; height: 8px; border-right: 2px solid var(--aside); border-top: 2px solid var(--aside);
+  transform: rotate(45deg); }
+.dot { flex: none; width: 10px; height: 10px; border-radius: 50%; background: var(--this); }
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 50px;
+  padding: 0 var(--space-5); border-radius: var(--radius); border: 0; cursor: pointer;
+  background: var(--this); color: var(--on-accent); font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; }
+.btn.plain { background: var(--raised); color: var(--this); border: 1px solid var(--line); }
+.btn.small { min-height: 44px; font-size: var(--t-sub); line-height: var(--l-sub); padding: 0 var(--space-3); }
+.btn.wide { width: 100%; }
+.ax .btn { min-height: 80px; padding: var(--space-2) var(--space-4); }
+
+/* Agreement seal: two rings. Shape carries the state, so the word shows once. */
+.seal { flex: none; width: 40px; height: 28px; }
+.ax .seal { width: 64px; height: 44px; }
+.summary { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius); background: var(--raised); border: 1px solid var(--line); text-align: left;
+  width: 100%; color: var(--text); font-size: var(--t-body); line-height: var(--l-body); }
+button.summary { cursor: pointer; }
+.summary .grow { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.summary.is-warn { border: 2px dashed var(--warn); }
+.summary.is-fail { border: 2px solid var(--fail); background: var(--fail-soft); }
+.summary.is-merged { border: 2px solid var(--this); }
+.ax .summary { flex-direction: column; align-items: flex-start; }
+
+/* Counts. Stale counts are hatched with a dashed edge (the edge survives forced colours). */
+.counts { display: flex; gap: var(--space-2); }
+.count { flex: 1; display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3);
+  border-radius: var(--radius); background: var(--raised); border: 1px solid var(--line); }
+.count b { font-size: var(--t-t3); line-height: var(--l-t3); }
+.counts.stale .count { border: 2px dashed var(--warn);
+  background-image: repeating-linear-gradient(135deg, transparent 0 7px, var(--warn-soft) 7px 14px); }
+.counts.stale.fade .count { background-image: none; opacity: .55; }
+.counts.busy .count b { opacity: .45; }
+.ax .counts { flex-direction: column; }
+.asof { display: flex; align-items: center; gap: var(--space-2); color: var(--warn); font-size: var(--t-fn); line-height: var(--l-fn); font-weight: 600; }
+
+/* Kept and set-aside copies. Kept: solid edge in its device colour and a tick. Set aside: hatched grey. */
+.clash { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3);
+  background: var(--raised); border-radius: var(--radius); border: 1px solid var(--line); }
+.clash.flash { outline: 3px solid var(--this); outline-offset: 2px; }
+.halves { display: flex; gap: var(--space-2); }
+.ax .halves { flex-direction: column; }
+.copy { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1);
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius); min-height: 92px; }
+.copy .who { display: flex; align-items: center; gap: var(--space-1); font-size: var(--t-c1); line-height: var(--l-c1); font-weight: 600; }
+.copy .v { font-size: var(--t-body); line-height: var(--l-body); }
+.copy.kept { border: 2px solid var(--dev); }
+.copy.kept .who::after { content: ""; width: 10px; height: 6px; margin-left: auto; border-left: 2.5px solid var(--dev);
+  border-bottom: 2.5px solid var(--dev); transform: rotate(-45deg) translateY(-2px); }
+.copy.aside { border: 2px dashed var(--aside); color: var(--text-2);
+  background-image: repeating-linear-gradient(135deg, transparent 0 6px, var(--aside-hatch) 6px 7px); }
+.copy.aside .v { text-decoration: line-through; text-decoration-color: var(--aside); }
+.copy.this { --dev: var(--this); }
+.copy.other { --dev: var(--other); }
+.copy .who i { width: 8px; height: 8px; border-radius: 50%; background: var(--dev); }
+.answer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); min-height: 44px;
+  font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text); }
+.answer .btn { min-height: 44px; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); font-size: var(--t-fn); line-height: var(--l-fn); color: var(--text-2); }
+.legend span { display: inline-flex; align-items: center; gap: var(--space-2); }
+.sw { width: 22px; height: 14px; border-radius: 3px; }
+.sw.k { border: 2px solid var(--text-2); }
+.sw.a { border: 2px dashed var(--aside); background-image: repeating-linear-gradient(135deg, transparent 0 4px, var(--aside-hatch) 4px 5px); }
+details.why { font-size: var(--t-fn); line-height: var(--l-fn); color: var(--text-2); }
+details.why summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; color: var(--this); }
+.spin { width: 18px; height: 18px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--this); animation: spin 1s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; border-top-color: var(--warn); } }
+.empty { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4);
+  background: var(--raised); border-radius: var(--radius); border: 1px solid var(--line); }
+
+/* Tab bar: floats above the content at the bottom (HIG tab bars). */
+.tabbar { position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(var(--hi) + var(--space-1));
+  height: var(--tabbar-h); display: flex; gap: var(--space-1); padding: var(--space-1); z-index: 2;
+  border-radius: 28px; background: color-mix(in srgb, var(--raised) 88%, transparent);
+  border: 1px solid var(--line); backdrop-filter: blur(12px); }
+.tab { position: relative; flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center;
+  gap: 2px; border: 0; border-radius: 24px; background: none; cursor: pointer; color: var(--text-2);
+  font-size: 11px; line-height: 13px; font-weight: 600; min-height: 44px; }
+.tab[aria-selected="true"] { color: var(--this); background: var(--this-soft); }
+.tab svg { width: 22px; height: 22px; }
+.tab .badge { position: absolute; top: 6px; left: calc(50% + 10px); width: 9px; height: 9px; border-radius: 50%; background: var(--this); }
+.bottom-act { position: absolute; left: var(--space-4); right: var(--space-4);
+  bottom: calc(var(--hi) + var(--tabbar-h) + var(--space-3)); z-index: 2; }
+.ax .bottom-act { position: static; }
+
+/* Item list */
+.mk { flex: none; width: 22px; height: 16px; }
+.st { flex: none; font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); }
+.st.Done { color: var(--other); }
+.st.Flagged { color: var(--fail); }
+.ax .row { flex-wrap: wrap; }
+
+/* Ladder concept: two rails, one per device; rungs are syncs. */
+.lad { display: flex; flex-direction: column; margin: 0 calc(-1 * var(--space-4)); }
+.lrow { position: relative; padding: var(--space-2) 44px; display: flex; flex-direction: column; gap: var(--space-2); }
+.lrow::before, .lrow::after { content: ""; position: absolute; top: 0; bottom: 0; width: 0; }
+.lrow::before { left: 20px; border-left: 4px solid var(--this); }
+.lrow::after { right: 20px; border-right: 4px solid var(--other); }
+.lrow.o-unknown::after { border-right-style: dotted; opacity: .7; }
+.lrow.t-unknown::before { border-left-style: dotted; opacity: .7; }
+.lrow.no-l::before, .lrow.no-r::after { display: none; }
+.lrow.start::before, .lrow.start::after { top: 50%; }
+.pg-l .lrow { padding-right: var(--space-4); }
+.pg-r .lrow { padding-left: var(--space-4); }
+/* The bar is placed against the row (.lrow), so it meets both rails. */
+.rung { min-height: 56px; display: flex; align-items: center; justify-content: center; }
+.rung .bar { position: absolute; top: 50%; left: 20px; right: 20px; height: 4px; margin-top: -2px; display: flex; }
+.rung .bar i { flex: 1; }
+.rung .bar i:first-child { background: var(--this); }
+.rung .bar i:last-child { background: var(--other); }
+.rung.thin .bar { height: 2px; margin-top: -1px; opacity: .6; }
+.pg-l .rung .bar { right: 0; }
+.pg-l .rung .bar i:last-child { display: none; }
+.pg-r .rung .bar { left: 0; }
+.pg-r .rung .bar i:first-child { display: none; }
+.rung .knot { position: relative; z-index: 1; display: inline-flex; align-items: center; gap: var(--space-2);
+  min-height: 44px; padding: var(--space-1) var(--space-3); border-radius: 22px; border: 2px solid var(--text);
+  background: var(--raised); color: var(--text); font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600; cursor: pointer; }
+.rung.thin .knot { border-width: 1px; border-color: var(--line); font-weight: 400; color: var(--text-2); }
+.rung .knot[aria-expanded="true"] { background: var(--text); color: var(--raised); }
+.ldcap { position: absolute; top: 50%; width: 10px; height: 10px; margin-top: -5px; border-radius: 50%; }
+.pg-l .ldcap { right: -5px; background: var(--this); }
+.pg-r .ldcap { left: -5px; background: var(--other); }
+.tick { display: flex; align-items: center; gap: var(--space-2); font-size: var(--t-fn); line-height: var(--l-fn); color: var(--text-2); min-height: 32px; }
+.tick.r { justify-content: flex-end; text-align: right; }
+.tick b { color: var(--text); font-weight: 600; }
+.tick::before { content: ""; flex: none; width: 16px; height: 2px; background: var(--this); margin-left: -24px; }
+.tick.r::before { display: none; }
+.tick.r::after { content: ""; flex: none; width: 16px; height: 2px; background: var(--other); margin-right: -24px; }
+.railhead { display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--t-fn); line-height: var(--l-fn); font-weight: 600; }
+.railhead .t { color: var(--this); } .railhead .o { color: var(--other); }
+.nowline { display: flex; align-items: center; gap: var(--space-2); font-size: var(--t-c1); line-height: var(--l-c1); color: var(--text-2); }
+.nowline::after { content: ""; flex: 1; border-top: 1px dashed var(--text-2); }
+.ax .lrow { padding: var(--space-2) var(--space-5); }
+.ax .lrow::before { left: 6px; } .ax .lrow::after { right: 6px; }
+.ax .rung .bar { left: 8px; right: 8px; }
+.ax .tick::before, .ax .tick.r::after { display: none; }
+.ax .railhead { flex-direction: column; }
+.half { display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* Annotations: dashed New: labels. */
+.ann { position: relative; outline: 2px dashed var(--ann); outline-offset: 3px; }
+.ann::before { content: attr(data-ann); position: absolute; top: -12px; right: 6px; z-index: 5;
+  padding: 0 6px; font: 600 11px/16px -apple-system, system-ui, sans-serif; color: #fff; background: var(--ann);
+  border-radius: 4px; pointer-events: none; }
+body.no-ann .ann { outline: none; }
+body.no-ann .ann::before { display: none; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="banner" role="note"><strong>Sample</strong><span>No figure, name or time on this page is real. Every item, count and merge is made up.</span></div>
+
+<section class="kit" aria-label="Mockup controls">
+  <h1>Do both devices agree?</h1>
+  <p>Designer kind: blind. Designer: sync-trust-blind-1. One page, two concepts. Every frame below draws the same state at once, so a tap in one frame shows in all.</p>
+  <div class="ctl" role="group" aria-label="Concept"><span>Concept</span><span id="conceptCtl" class="cluster"></span></div>
+  <div class="ctl" role="group" aria-label="State"><span>State</span><span id="stateCtl" class="cluster"></span></div>
+  <div class="ctl" role="group" aria-label="Look"><span>Look</span><span id="lookCtl" class="cluster"></span></div>
+  <p id="deeplink" class="fn"></p>
+</section>
+
+<main class="stage" id="stage">
+  <figure class="dev" data-device="iphone-duo-folded" data-key="folded">
+    <figcaption><b>Duo, folded</b>466 × 678 pt, from the brief</figcaption>
+    <div class="bezel"><div class="scr folded" id="f-folded"></div></div>
+  </figure>
+  <figure class="dev" data-device="iphone-duo-unfolded" data-key="open">
+    <figcaption><b>Duo, open</b>951 × 669 pt, from the brief. Hinge gap x 455.5 to 495.5; nothing crosses it.</figcaption>
+    <div class="bezel"><div class="open-wrap"><div class="scr page l pg-l" id="f-open-l"></div><div class="hinge" aria-hidden="true"></div><div class="scr page r pg-r" id="f-open-r"></div></div></div>
+  </figure>
+  <figure class="dev" data-device="iphone-regular" data-key="phone">
+    <figcaption><b>Large phone</b>430 × 932 pt: size chosen by the designer, unmeasured. No size was written.</figcaption>
+    <div class="bezel"><div class="scr phone" id="f-phone"></div></div>
+  </figure>
+  <figure class="dev" data-device="iphone-duo-folded-ax5" data-key="ax">
+    <figcaption><b>Duo, folded, largest accessibility text</b>466 × 678 pt. AX5 sizes from the HIG typography table.</figcaption>
+    <div class="bezel"><div class="scr folded ax" id="f-ax"></div></div>
+  </figure>
+</main>
+
+<script>
+(function () {
+"use strict";
+
+/* ---------- Sample data (all made up) ---------- */
+const ITEMS = [
+  { id: "i1", name: "Brass hinge set", st: "Done" },
+  { id: "i2", name: "Linen spool", st: "Open", note: "" },
+  { id: "i3", name: "Oak pegs, bag of 40", st: "Done" },
+  { id: "i4", name: "Copper wire, 2 m", st: "Done" },
+  { id: "i5", name: "Felt pads", st: "Open" },
+  { id: "i6", name: "Small glass jar", st: "Open" },
+  { id: "i7", name: "Cedar shims", st: "Open" },
+  { id: "i8", name: "Steel washers", st: "Done" }
+];
+const MERGES = [
+  { id: "m3", when: "Today 9:42", at: "9:42", fromOther: 14, fromThis: 2, clashes: [
+    { id: "c1", item: "i1", field: "Status", t: { v: "Done", at: "9:31" }, o: { v: "Open", at: "9:12" }, kept: "t" },
+    { id: "c2", item: "i2", field: "Note", t: { v: "Two in the box", at: "9:05" }, o: { v: "Box arrived crushed", at: "9:28" }, kept: "o" },
+    { id: "c3", item: "i3", field: "Status", t: { v: "Flagged", at: "9:20" }, o: { v: "Done", at: "9:36" }, kept: "o" }
+  ], others: ["Copper wire, 2 m: Open to Done, from Laptop", "Steel washers: Open to Done, from Laptop", "Felt pads: note added, from this phone", "11 more from Laptop, 1 more from this phone"] },
+  { id: "m2", when: "Yesterday 18:05", at: "Yesterday", fromOther: 6, fromThis: 9, clashes: [
+    { id: "c4", item: "i6", field: "Status", t: { v: "Flagged", at: "17:40" }, o: { v: "Open", at: "17:58" }, kept: "o" }
+  ], others: ["5 more from Laptop, 9 from this phone"] },
+  { id: "m1", when: "Mon 12:30", at: "Mon", fromOther: 3, fromThis: 0, clashes: [], others: ["3 from Laptop"] }
+];
+const BASE = { Done: 212, Open: 125, Flagged: 3 };
+const STATES = {
+  agree:   { label: "Agree", now: "9:44" },
+  merged:  { label: "Just merged", now: "9:44" },
+  stale:   { label: "Offline, counts old", now: "10:31" },
+  syncing: { label: "Syncing", now: "9:44" },
+  failed:  { label: "Sync failed", now: "10:31" },
+  never:   { label: "One device only", now: "9:44" }
+};
+const CONCEPTS = {
+  tab: { name: "Sync tab", line: "The checklist opens first. A Sync tab holds both devices and every merge." },
+  ladder: { name: "Ladder", line: "Bold: the app opens on a time ladder. One rail per device; each sync is a rung." }
+};
+const DEVICES = ["folded", "open", "phone", "ax"];
+
+/* ---------- App state, shared by all frames ---------- */
+const app = {
+  c: "tab", s: "merged", t: "auto", d: "all", v: "list", m: "m3", i: "", stale: "hatch", ann: true,
+  hidden: [], kept: {}, answer: null, open: { m3: true }, timer: null, prevS: null, stopped: false
+};
+
+/* ---------- Helpers ---------- */
+const esc = (x) => String(x).replace(/[&<>"]/g, (ch) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+const item = (id) => ITEMS.find((x) => x.id === id);
+const merge = (id) => MERGES.find((x) => x.id === id);
+const allClashes = () => MERGES.flatMap((m) => m.clashes.map((c) => Object.assign({ m: m.id }, c)));
+const keptOf = (c) => app.kept[c.id] || c.kept;
+const unread = () => app.s === "merged";
+const merges = () => (app.s === "never" ? [] : MERGES);
+const ann = (txt) => (app.ann ? ` ann" data-ann="New: ${esc(txt)}` : "");
+
+function statusOf(i) {
+  const c = allClashes().find((x) => x.item === i.id && x.field === "Status" && x.m !== "m2");
+  if (c && app.s !== "never") return keptOf(c) === "t" ? c.t.v : c.o.v;
+  const c2 = allClashes().find((x) => x.item === i.id && x.field === "Status");
+  if (c2 && app.s !== "never") return keptOf(c2) === "t" ? c2.t.v : c2.o.v;
+  return i.st;
+}
+function counts() {
+  const n = Object.assign({}, BASE);
+  if (app.s === "never") return n;
+  allClashes().filter((c) => c.field === "Status").forEach((c) => {
+    const k = keptOf(c);
+    if (k === c.kept) return;
+    const from = c.kept === "t" ? c.t.v : c.o.v;
+    const to = k === "t" ? c.t.v : c.o.v;
+    n[from] -= 1; n[to] += 1;
+  });
+  return n;
+}
+function seal(state) {
+  // Two rings: this device (left) and Laptop (right). Overlap = agree.
+  const T = "var(--this)", O = "var(--other)";
+  const r = 10;
+  if (state === "never") return `<svg class="seal" viewBox="0 0 40 28" aria-hidden="true"><circle cx="14" cy="14" r="${r}" fill="none" stroke="${T}" stroke-width="3"/><circle cx="28" cy="14" r="${r}" fill="none" stroke="var(--aside)" stroke-width="2" stroke-dasharray="2 3"/></svg>`;
+  if (state === "stale" || state === "failed") {
+    const oc = state === "failed" ? "var(--fail)" : O;
+    return `<svg class="seal" viewBox="0 0 40 28" aria-hidden="true"><circle cx="11" cy="14" r="${r}" fill="none" stroke="${T}" stroke-width="3"/><circle cx="29" cy="14" r="${r}" fill="none" stroke="${oc}" stroke-width="3" stroke-dasharray="${state === "failed" ? "0" : "3 3"}"/>${state === "failed" ? '<path d="M25 10l8 8M33 10l-8 8" stroke="var(--fail)" stroke-width="3"/>' : ""}</svg>`;
+  }
+  if (state === "syncing") return `<svg class="seal" viewBox="0 0 40 28" aria-hidden="true"><circle cx="15" cy="14" r="${r}" fill="none" stroke="${T}" stroke-width="3"/><circle cx="25" cy="14" r="${r}" fill="none" stroke="${O}" stroke-width="3" stroke-dasharray="6 4"/></svg>`;
+  const knot = state === "merged" ? `<path d="M20 6A10 10 0 0 1 20 22A10 10 0 0 1 20 6Z" fill="var(--text)"/>` : "";
+  return `<svg class="seal" viewBox="0 0 40 28" aria-hidden="true"><circle cx="16" cy="14" r="${r}" fill="none" stroke="${T}" stroke-width="3"/><circle cx="24" cy="14" r="${r}" fill="none" stroke="${O}" stroke-width="3"/>${knot}</svg>`;
+}
+function mark() { // the "changed on both" mark beside an item: two overlapping dots
+  return `<svg class="mk" viewBox="0 0 22 16" aria-hidden="true"><circle cx="8" cy="8" r="6" fill="var(--this)"/><circle cx="14" cy="8" r="6" fill="var(--other)" fill-opacity=".85"/></svg>`;
+}
+const icon = {
+  list: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="12" r="1.2" fill="currentColor"/><circle cx="4" cy="18" r="1.2" fill="currentColor"/></svg>`,
+  sync: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="9" cy="12" r="6"/><circle cx="15" cy="12" r="6"/></svg>`,
+  ladder: `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M6 3v18M18 3v18M6 8h12M6 16h12"/></svg>`
+};
+
+/* ---------- Status summary: one home for both concepts ---------- */
+function summaryParts() {
+  const now = STATES[app.s].now;
+  switch (app.s) {
+    case "agree": return { cls: "", head: "All is well." };
+    case "merged": return { cls: "is-merged", head: "Merged at 9:42. 3 items changed on both.", sub: "The later change was kept. The other copy is set aside." };
+    case "stale": return { cls: "is-warn", head: "Offline since 9:44. Counts may be old.", sub: "Laptop may have changed things. 2 changes here wait to send." };
+    case "syncing": return { cls: "", head: "Comparing with Laptop.", sub: "Counts update when it ends." };
+    case "failed": return { cls: "is-fail", head: `Sync failed at ${now}. Counts are from 9:42.`, sub: "Your changes are safe on this phone." };
+    case "never": return { cls: "", head: "Only this phone so far.", sub: "Link a second device to compare." };
+  }
+}
+function summary(asButton, id) {
+  const p = summaryParts();
+  const tag = asButton ? "button" : "div";
+  const act = asButton ? ` data-act="go" data-v="sync" aria-label="${esc(p.head)} Open Sync."` : "";
+  const busy = app.s === "syncing" ? `<span class="spin" aria-hidden="true"></span>` : "";
+  return `<${tag} class="summary ${p.cls}${ann("trust summary")}" ${id ? `id="${id}"` : ""}${act}>
+    ${seal(app.s)}<span class="grow"><span>${esc(p.head)}</span>${p.sub ? `<span class="fn">${esc(p.sub)}</span>` : ""}</span>${busy}${asButton ? '<span class="chev" aria-hidden="true"></span>' : ""}</${tag}>`;
+}
+function syncAction(wide) {
+  // Main action, answered where it was pressed.
+  const w = wide ? " wide" : "";
+  if (app.s === "syncing") return `<div class="answer"><span class="spin" aria-hidden="true"></span><span class="grow">Syncing. 4 of 16 changes.</span><button class="btn plain small" data-act="stop">Stop</button></div>`;
+  if (app.s === "never") return `<button class="btn${w}" data-act="link">Link a device</button>`;
+  const note = app.stopped ? `<span class="fn">Stopped. Nothing changed.</span>` : "";
+  const label = app.s === "failed" ? "Try again" : "Sync now";
+  // Loud only when something is not normal; quiet when all is well.
+  const quiet = app.s === "agree" || app.s === "merged" ? " plain" : "";
+  return `<div class="stack">${note}<button class="btn${quiet}${w}" data-act="sync">${label}</button></div>`;
+}
+function whyDisclosure() {
+  if (app.s !== "failed") return "";
+  return `<details class="why"><summary>What the server said</summary><span>503 Service Unavailable, request 7f3e (sample)</span></details>`;
+}
+function countsBlock() {
+  const n = counts();
+  const stale = app.s === "stale" || app.s === "failed";
+  const cls = stale ? ` stale${app.stale === "fade" ? " fade" : ""}` : app.s === "syncing" ? " busy" : "";
+  const asof = stale ? `<div class="asof">${staleGlyph()}<span>As of 9:42</span></div>` : "";
+  return `<div class="stack">${asof}<div class="counts${cls}${ann(stale ? "stale counts" : "counts")}" aria-label="Counts${stale ? ", as of 9:42" : ""}">
+    ${["Done", "Open", "Flagged"].map((k) => `<div class="count"><b>${n[k]}</b><span class="fn">${k}</span></div>`).join("")}
+  </div></div>`;
+}
+function staleGlyph() {
+  return `<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="8" cy="8" r="6.5" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2"/><path d="M8 4.5V8l2.5 1.5" stroke="currentColor" stroke-width="2" fill="none"/></svg>`;
+}
+
+/* ---------- Compare card: one home for kept and set-aside copies ---------- */
+function copyCell(c, side, opts) {
+  const k = keptOf(c);
+  const kept = k === side;
+  const val = side === "t" ? c.t : c.o;
+  const who = side === "t" ? "This phone" : "Laptop";
+  const ans = app.answer && app.answer.c === c.id && app.answer.side === side;
+  let foot = "";
+  if (ans) foot = `<div class="answer" role="status"><span>Now using ${who === "This phone" ? "this phone's" : "Laptop's"} copy.</span><button class="btn plain small" data-act="undo" data-c="${c.id}">Undo</button></div>`;
+  else if (!kept) foot = `<button class="btn plain small" data-act="use" data-c="${c.id}" data-side="${side}" aria-label="Use ${who}'s copy of ${esc(item(c.item).name)}">Use this copy</button>`;
+  const name = opts && opts.name ? `<span class="fn">${esc(item(c.item).name)}</span>` : "";
+  return `<div class="copy ${side === "t" ? "this" : "other"} ${kept ? "kept" : "aside"}" aria-label="${who}, ${kept ? "kept" : "set aside"}">
+    ${name}<span class="who"><i></i>${who}, ${val.at}</span><span class="v">${esc(val.v)}</span>${foot}</div>`;
+}
+function clashCard(c, flash) {
+  return `<div class="clash${flash ? " flash" : ""}" id="clash-${c.id}">
+    <div class="cluster"><b>${esc(item(c.item).name)}</b><span class="fn">${c.field}</span></div>
+    <div class="halves${ann("kept and set-aside copies")}">${copyCell(c, "t")}${copyCell(c, "o")}</div></div>`;
+}
+function legend() {
+  return `<div class="legend" aria-hidden="true"><span><i class="sw k"></i>Kept</span><span><i class="sw a"></i>Set aside</span></div>`;
+}
+
+/* ---------- Shared chrome ---------- */
+function sbar(side) {
+  const now = STATES[app.s].now;
+  if (side === "r") return `<div class="sbar" aria-hidden="true"><span></span><span class="glyphs"><i></i></span></div>`;
+  if (side === "l") return `<div class="sbar" aria-hidden="true"><span>${now}</span><span></span></div>`;
+  return `<div class="sbar" aria-hidden="true"><span>${now}</span><span class="glyphs"><i></i></span></div>`;
+}
+function tabbar(tabs) {
+  return `<nav class="tabbar" role="tablist" aria-label="Sections">${tabs.map((t) => `<button class="tab" role="tab" aria-selected="${t.sel}" data-act="go" data-v="${t.v}">${t.badge ? '<span class="badge"></span><span class="sr">New merge</span>' : ""}${icon[t.icon]}<span>${t.label}</span></button>`).join("")}</nav>`;
+}
+const homeind = `<div class="homeind" aria-hidden="true"></div>`;
+
+/* ================= Concept: Sync tab ================= */
+function tabList(ctx) {
+  const rows = ITEMS.map((i) => {
+    const hit = app.s !== "never" && allClashes().some((c) => c.item === i.id && c.m === "m3") && (app.s === "merged" || app.s === "agree");
+    const st = statusOf(i);
+    return `<button class="row" data-act="item" data-i="${i.id}"><span class="grow"><span>${esc(i.name)}</span></span>${hit ? mark() + '<span class="sr">changed on both devices</span>' : ""}<span class="st ${st}">${st}</span><span class="chev" aria-hidden="true"></span></button>`;
+  }).join("");
+  return `<h1 class="lt">Checklist</h1>${summary(true, "choice-sync-tab")}${whyDisclosure()}${countsBlock()}
+    <div class="stack"><div class="sechead">Items, 340 (8 shown)</div><div class="group">${rows}</div></div>`;
+}
+function tabItem(ctx, withBack) {
+  const i = item(app.i) || ITEMS[0];
+  const cs = allClashes().filter((c) => c.item === i.id && app.s !== "never");
+  const back = withBack ? `<div class="nav"><button class="back" data-act="go" data-v="list">Checklist</button></div>` : "";
+  const body = cs.length
+    ? `${legend()}${cs.map((c) => `<div class="stack"><span class="fn">${merge(c.m).when} merge</span>${clashCard(c)}</div>`).join("")}`
+    : `<div class="empty"><span>No clash on this item. Both devices hold the same copy.</span></div>`;
+  return `${back}<h1 class="lt">${esc(i.name)}</h1><div class="cluster"><span class="st ${statusOf(i)}">${statusOf(i)}</span></div>${body}`;
+}
+function tabSync(ctx) {
+  const ms = merges();
+  const dev = app.s === "never"
+    ? `<div class="group"><div class="row"><span class="dot" aria-hidden="true"></span><span class="grow"><span>This phone</span><span class="fn">No second device</span></span></div></div>`
+    : `<div class="group${ann("last-synced time per device")}">
+        <div class="row"><span class="dot" aria-hidden="true"></span><span class="grow"><span>This phone</span><span class="fn">Last sync 9:42</span></span></div>
+        <div class="row"><span class="dot" style="background:var(--other)" aria-hidden="true"></span><span class="grow"><span>Laptop</span><span class="fn">Last seen 9:42</span></span></div></div>`;
+  const list = ms.length
+    ? `<div class="stack"><div class="sechead">Merges</div><div class="group${ann("merge history")}">${ms.map((m) => `<button class="row" data-act="merge" data-m="${m.id}" ${ctx.pose === "l" && app.m === m.id ? 'aria-current="true" style="background:var(--this-soft)"' : ""}>
+        ${m.id === "m3" && unread() ? '<span class="dot" aria-hidden="true"></span><span class="sr">Unread</span>' : '<span style="width:10px" aria-hidden="true"></span>'}
+        <span class="grow"><span>${m.when}</span><span class="fn">${m.clashes.length ? `${m.clashes.length} changed on both` : "No clash"}, ${m.fromOther + m.fromThis} changes in all</span></span><span class="chev" aria-hidden="true"></span></button>`).join("")}</div></div>`
+    : `<div class="empty"><span>Merges show here once a second device syncs.</span></div>`;
+  const act = `<div class="${ctx.ax ? "" : "bottom-act"}">${syncAction(true)}</div>`;
+  return `<h1 class="lt">Sync</h1>${summary(false)}${whyDisclosure()}${dev}${list}${act}`;
+}
+function tabMerge(ctx, withBack) {
+  const m = merge(app.m) || MERGES[0];
+  const back = withBack ? `<div class="nav"><button class="back" data-act="go" data-v="sync">Sync</button></div>` : "";
+  const clashes = m.clashes.length
+    ? `${legend()}${m.clashes.map((c) => clashCard(Object.assign({ m: m.id }, c), app.i === c.item)).join("")}`
+    : `<div class="empty"><span>No item changed on both devices in this merge.</span></div>`;
+  return `${back}<h1 class="lt">${m.when}</h1>
+    <p class="sub" style="margin:0">Laptop sent ${m.fromOther} changes; this phone sent ${m.fromThis}. ${m.clashes.length ? `${m.clashes.length} changed on both. The later change was kept.` : ""}</p>
+    ${clashes}
+    <details class="why"><summary>Other changes (${m.fromOther + m.fromThis - m.clashes.length})</summary><ul>${m.others.map((o) => `<li>${esc(o)}</li>`).join("")}</ul></details>`;
+}
+function renderTab(ctx) {
+  // ctx.pose: single | l | r ; ctx.ax
+  const v = app.v;
+  const onSync = v === "sync" || v === "merge";
+  const tabs = [
+    { v: "list", label: "Checklist", icon: "list", sel: !onSync },
+    { v: "sync", label: "Sync", icon: "sync", sel: onSync, badge: unread() }
+  ];
+  let html = "";
+  if (ctx.pose === "single") {
+    const map = { list: tabList, item: (c) => tabItem(c, true), sync: tabSync, merge: (c) => tabMerge(c, true) };
+    html = `<div class="body${v === "sync" && !ctx.ax ? " has-act" : ""}">${(map[v] || tabList)(ctx)}</div>${tabbar(tabs)}`;
+  } else if (ctx.pose === "l") {
+    html = `<div class="body${onSync ? " has-act" : ""}">${onSync ? tabSync(ctx) : tabList(ctx)}</div>${tabbar(tabs)}`;
+  } else {
+    let right;
+    if (onSync) right = app.s === "never" ? `<div class="empty"><span>Merges show here once a second device syncs.</span></div>` : tabMerge(ctx, false);
+    else right = app.i ? tabItem(ctx, false) : tabSideSummary(ctx);
+    html = `<div class="body no-tabs">${right}</div>`;
+  }
+  return html;
+}
+function tabSideSummary(ctx) {
+  const clashes = app.s === "never" ? [] : MERGES[0].clashes.map((c) => Object.assign({ m: "m3" }, c));
+  return `<h1 class="lt">Latest merge</h1>${clashes.length && app.s !== "never" ? `<p class="sub" style="margin:0">${MERGES[0].when}. Tap an item on the left, or use a copy here.</p>${legend()}${clashes.map((c) => clashCard(c)).join("")}` : `<div class="empty"><span>Merges show here once a second device syncs.</span><button class="btn" data-act="link">Link a device</button></div>`}`;
+}
+
+/* ================= Concept: Ladder ================= */
+// Rows run from now (top) back in time. Each row knows what each page shows, so the open pose lines up.
+function ladderRows() {
+  const rows = [];
+  const S = app.s;
+  rows.push({ k: "head", h: 112 });
+  rows.push({ k: "now", h: 40 });
+  if (S === "syncing") rows.push({ k: "syncing", h: 64 });
+  if (S === "stale" || S === "failed") rows.push({ k: "pending", h: 72 });
+  rows.push({ k: "counts", h: S === "stale" || S === "failed" ? 132 : 104 });
+  if (S === "never") { rows.push({ k: "never", h: 160 }); return rows; }
+  MERGES.forEach((m, idx) => {
+    if (idx > 0) rows.push({ k: "ticks", m, h: 40 });
+    rows.push({ k: "rung", m, h: 64 });
+    if (app.open[m.id]) {
+      if (m.clashes.length) rows.push({ k: "legend", h: 32 });
+      m.clashes.forEach((c) => rows.push({ k: "clash", m, c: Object.assign({ m: m.id }, c), h: 196 }));
+      rows.push({ k: "others", m, h: 48 });
+    }
+  });
+  rows.push({ k: "end", h: 48 });
+  return rows;
+}
+function rungKnot(m) {
+  const n = m.clashes.length;
+  const label = n ? `${m.at === "Yesterday" || m.at === "Mon" ? m.when : m.at}: ${n} changed on both` : `${m.when}: no clash`;
+  const unreadDot = m.id === "m3" && unread() ? '<span class="dot" aria-hidden="true"></span>' : "";
+  return `<button class="knot" data-act="toggle" data-m="${m.id}" aria-expanded="${!!app.open[m.id]}">${unreadDot}${esc(label)}</button>`;
+}
+function ladderCell(r, pose, ax) {
+  // pose: single | l | r
+  const S = app.s;
+  const both = pose === "single";
+  switch (r.k) {
+    case "head": {
+      if (pose === "r") return `<div class="stack" style="align-items:flex-end;text-align:right"><span class="sub">${S === "never" ? "Not linked" : "Last seen 9:42"}</span>${S === "never" ? "" : `<span class="fn">Sent 14 changes at 9:42</span>`}</div>`;
+      const rh = both ? `<div class="railhead"><span class="t">This phone</span><span class="o">${S === "never" ? "Second device" : "Laptop"}</span></div>` : `<div class="railhead"><span class="t">This phone</span><span></span></div>`;
+      return `${rh}${summary(false, "choice-ladder")}${whyDisclosure()}`;
+    }
+    case "now": return pose === "r" ? `<div class="nowline" aria-hidden="true"></div>` : `<div class="nowline">Now, ${STATES[S].now}</div>`;
+    case "syncing":
+      if (pose === "r") return `<div class="tick r"><span>Sending to this phone</span></div>`;
+      if (pose === "l") return `<div class="tick"><span>Receiving from Laptop</span></div>`;
+      return `<div class="cluster" style="justify-content:space-between"><div class="tick"><span>Receiving</span></div><div class="tick r"><span>Sending</span></div></div>`;
+    case "pending": {
+      const t = `<div class="tick"><span><b>2 changes</b> wait to send</span></div>`;
+      const o = `<div class="tick r"><span>Not heard since 9:42</span></div>`;
+      if (pose === "l") return t;
+      if (pose === "r") return o;
+      return t + o;
+    }
+    case "counts":
+      if (pose === "r") return S === "stale" || S === "failed" ? `<div class="tick r"><span>Laptop may hold newer counts</span></div>` : "";
+      return countsBlock();
+    case "never":
+      if (pose === "r") return `<div class="empty"><span>A second device shows on this rail.</span></div>`;
+      return `<div class="empty"><span>Merges show here once a second device syncs.</span></div>`;
+    case "rung":
+      if (pose === "r") return `<div class="rung ${r.m.clashes.length ? "" : "thin"}"><div class="bar"><i></i><i></i></div><span class="ldcap"></span><span class="fn" style="position:relative;background:var(--bg);padding:0 8px">Laptop sent ${r.m.fromOther}</span></div>`;
+      return `<div class="rung ${r.m.clashes.length ? "" : "thin"}${r.m.id === "m3" ? ann("merge rung") : ""}"><div class="bar"><i></i><i></i></div>${pose === "l" ? '<span class="ldcap"></span>' : ""}${rungKnot(r.m)}</div>`;
+    case "legend": return pose === "r" ? "" : legend();
+    case "clash":
+      if (pose === "l") return `<div class="half"><b>${esc(item(r.c.item).name)}</b><span class="fn">${r.c.field}</span>${copyCell(r.c, "t")}</div>`;
+      if (pose === "r") return `<div class="half"><b class="fn" style="font-weight:600">${esc(item(r.c.item).name)}</b><span class="fn">${r.c.field}</span>${copyCell(r.c, "o")}</div>`;
+      return clashCard(r.c, app.i === r.c.item);
+    case "others":
+      if (pose === "r") return "";
+      return `<details class="why"><summary>Other changes (${r.m.fromOther + r.m.fromThis - r.m.clashes.length})</summary><ul>${r.m.others.map((o) => `<li>${esc(o)}</li>`).join("")}</ul></details>`;
+    case "ticks": {
+      const t = `<div class="tick"><span>${r.m.fromThis} change${r.m.fromThis === 1 ? "" : "s"} here</span></div>`;
+      const o = `<div class="tick r"><span>${r.m.fromOther} on Laptop</span></div>`;
+      if (pose === "l") return t; if (pose === "r") return o;
+      return `<div class="cluster" style="justify-content:space-between">${t}${o}</div>`;
+    }
+    case "end": return pose === "r" ? "" : `<div class="fn">Older syncs: none kept in this sample.</div>`;
+  }
+  return "";
+}
+function renderLadder(ctx) {
+  const onList = app.v === "list" || app.v === "item";
+  const tabs = [
+    { v: "ladder", label: "Sync", icon: "ladder", sel: !onList, badge: false },
+    { v: "list", label: "Checklist", icon: "list", sel: onList }
+  ];
+  if (onList && ctx.pose !== "r") {
+    const rows = ITEMS.map((i) => {
+      const hit = app.s !== "never" && allClashes().some((c) => c.item === i.id && c.m === "m3");
+      const st = statusOf(i);
+      // Only a row that changed on both devices leads somewhere: it opens its rung on the ladder.
+      if (!hit) return `<div class="row"><span class="grow"><span>${esc(i.name)}</span></span><span class="st ${st}">${st}</span></div>`;
+      return `<button class="row" data-act="jump" data-i="${i.id}"><span class="grow"><span>${esc(i.name)}</span></span>${mark()}<span class="sr">changed on both devices, opens the ladder</span><span class="st ${st}">${st}</span><span class="chev" aria-hidden="true"></span></button>`;
+    }).join("");
+    return `<div class="body"><h1 class="lt">Checklist</h1>${countsBlock()}<div class="group">${rows}</div></div>${tabbar(tabs)}`;
+  }
+  // Open pose with the checklist on the left: the right page shows the whole ladder, both rails.
+  if (onList && ctx.pose === "r") ctx = { pose: "single", ax: ctx.ax, solo: true };
+  const rows = ladderRows();
+  const S = app.s;
+  const out = rows.map((r, idx) => {
+    let cls = "lrow";
+    if (idx === 0) cls += " start";
+    const unknownO = (S === "stale" || S === "failed") && (r.k === "now" || r.k === "pending" || r.k === "counts");
+    if (unknownO) cls += " o-unknown";
+    if (S === "never") cls += " o-unknown";
+    if (ctx.pose === "l") cls += " no-r";
+    if (ctx.pose === "r") cls += " no-l";
+    return `<div class="${cls}" data-row="${idx}">${ladderCell(r, ctx.pose, ctx.ax)}</div>`;
+  }).join("");
+  const showTabs = ctx.pose !== "r" && !ctx.solo;
+  const title = ctx.pose === "r" ? `<h1 class="lt" style="text-align:right">${S === "never" ? "Second device" : "Laptop"}</h1>` : `<h1 class="lt">Sync</h1>`;
+  // The main action has one place in every state: Sync now, progress with Stop, Try again, or Link a device.
+  const act = ctx.pose !== "r" && !ctx.solo ? `<div class="${ctx.ax ? "" : "bottom-act"}">${syncAction(true)}</div>` : "";
+  // In the open pose both pages keep the same title height so rows line up.
+  return `<div class="body${showTabs ? "" : " no-tabs"}${act && !ctx.ax ? " has-act" : ""}">${title}<div class="lad">${out}</div>${ctx.ax ? act : ""}</div>${ctx.ax ? "" : act}${showTabs ? tabbar(tabs) : ""}`;
+}
+
+/* ---------- Render ---------- */
+function screen(el, ctx) {
+  const inner = app.c === "ladder" ? renderLadder(ctx) : renderTab(ctx);
+  el.innerHTML = sbar(ctx.pose === "single" ? "" : ctx.pose) + inner + (ctx.pose === "r" ? "" : homeind);
+}
+function render() {
+  document.body.classList.toggle("no-ann", !app.ann);
+  if (app.t === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", app.t);
+  screen(document.getElementById("f-folded"), { pose: "single" });
+  screen(document.getElementById("f-open-l"), { pose: "l" });
+  screen(document.getElementById("f-open-r"), { pose: "r" });
+  screen(document.getElementById("f-phone"), { pose: "single" });
+  screen(document.getElementById("f-ax"), { pose: "single", ax: true });
+  lineUpPages();
+  // Ids stay unique: only the folded frame keeps them (the focus target for a reviewer).
+  document.querySelectorAll(".scr:not(#f-folded) [id]").forEach((el) => el.removeAttribute("id"));
+  document.querySelectorAll(".dev").forEach((f) => { f.hidden = app.d !== "all" && f.dataset.key !== app.d; });
+  controls();
+  writeHash();
+}
+// Open pose, Ladder: each row takes the taller of its two pages, so a rung meets itself at the hinge.
+function lineUpPages() {
+  const L = document.querySelectorAll("#f-open-l .lrow"), R = document.querySelectorAll("#f-open-r .lrow");
+  if (!L.length || L.length !== R.length) return;
+  L.forEach((el, i) => { el.style.minHeight = ""; R[i].style.minHeight = ""; });
+  const hs = Array.from(L, (el, i) => Math.max(el.offsetHeight, R[i].offsetHeight));
+  L.forEach((el, i) => { el.style.minHeight = hs[i] + "px"; R[i].style.minHeight = hs[i] + "px"; });
+}
+function controls() {
+  const vis = Object.keys(CONCEPTS).filter((k) => !app.hidden.includes(k));
+  document.getElementById("conceptCtl").innerHTML =
+    Object.keys(CONCEPTS).map((k) => app.hidden.includes(k)
+      ? `<button class="chip hide" data-ctl="show" data-k="${k}">Show ${CONCEPTS[k].name}</button>`
+      : `<button class="chip" aria-pressed="${app.c === k}" data-ctl="c" data-k="${k}" title="${esc(CONCEPTS[k].line)}">${CONCEPTS[k].name}</button>${vis.length > 1 ? `<button class="chip hide" data-ctl="hide" data-k="${k}" aria-label="Hide ${CONCEPTS[k].name}">Hide</button>` : ""}`).join("")
+    + `<span class="fn">${esc(CONCEPTS[app.c].line)}</span>`;
+  document.getElementById("stateCtl").innerHTML = Object.keys(STATES).map((k) =>
+    `<button class="chip" aria-pressed="${app.s === k}" data-ctl="s" data-k="${k}">${STATES[k].label}</button>`).join("");
+  document.getElementById("lookCtl").innerHTML =
+    ["auto", "light", "dark"].map((k) => `<button class="chip" aria-pressed="${app.t === k}" data-ctl="t" data-k="${k}">Theme ${k}</button>`).join("")
+    + ["all"].concat(DEVICES).map((k) => `<button class="chip" aria-pressed="${app.d === k}" data-ctl="d" data-k="${k}">${{ all: "All frames", folded: "Folded", open: "Open", phone: "Large phone", ax: "AX5" }[k]}</button>`).join("")
+    + `<button class="chip" aria-pressed="${app.stale === "hatch"}" data-ctl="stale" data-k="hatch">Stale counts hatched</button><button class="chip" aria-pressed="${app.stale === "fade"}" data-ctl="stale" data-k="fade">Stale counts faded</button>`
+    + `<button class="chip" aria-pressed="${app.ann}" data-ctl="ann">New: labels</button>`;
+}
+
+/* ---------- Hash: deep links ---------- */
+function writeHash() {
+  const p = new URLSearchParams();
+  p.set("c", app.c); p.set("s", app.s);
+  if (app.t !== "auto") p.set("t", app.t);
+  if (app.d !== "all") p.set("d", app.d);
+  p.set("v", app.v);
+  if (app.v === "merge" || app.c === "tab") p.set("m", app.m);
+  if (app.i) p.set("i", app.i);
+  if (app.c === "ladder") p.set("o", Object.keys(app.open).filter((k) => app.open[k]).join(","));
+  if (app.stale !== "hatch") p.set("stale", app.stale);
+  if (!app.ann) p.set("a", "0");
+  if (app.hidden.length) p.set("h", app.hidden.join(","));
+  const h = "#" + p.toString();
+  if (location.hash !== h) history.replaceState(null, "", h);
+  document.getElementById("deeplink").textContent = "Deep link to this view: " + h;
+}
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (CONCEPTS[p.get("c")]) app.c = p.get("c");
+  if (STATES[p.get("s")]) app.s = p.get("s");
+  if (["light", "dark"].includes(p.get("t"))) app.t = p.get("t");
+  if (DEVICES.includes(p.get("d"))) app.d = p.get("d");
+  const v = p.get("v");
+  app.v = ["list", "item", "sync", "merge", "ladder"].includes(v) ? v : (app.c === "ladder" ? "ladder" : "list");
+  if (app.c === "tab" && app.v === "ladder") app.v = "list";
+  if (app.c === "ladder" && (app.v === "sync" || app.v === "merge")) app.v = "ladder";
+  if (merge(p.get("m"))) app.m = p.get("m");
+  app.i = item(p.get("i")) ? p.get("i") : "";
+  if (p.has("o")) { app.open = {}; p.get("o").split(",").filter(Boolean).forEach((k) => { app.open[k] = true; }); }
+  else app.open = app.s === "merged" ? { m3: true } : {};
+  if (p.get("stale") === "fade") app.stale = "fade";
+  app.ann = p.get("a") !== "0";
+  app.hidden = (p.get("h") || "").split(",").filter((k) => CONCEPTS[k]);
+  if (app.hidden.includes(app.c)) app.c = Object.keys(CONCEPTS).find((k) => !app.hidden.includes(k)) || "tab";
+}
+
+/* ---------- Presses ---------- */
+document.addEventListener("click", (e) => {
+  const b = e.target.closest("[data-act],[data-ctl]");
+  if (!b) return;
+  const a = b.dataset.act, ctl = b.dataset.ctl, k = b.dataset.k;
+  if (ctl === "c") { app.c = k; app.v = k === "ladder" ? "ladder" : "list"; app.i = ""; app.answer = null; app.open = app.s === "merged" ? { m3: true } : {}; }
+  if (ctl === "s") { setState(k); }
+  if (ctl === "t") app.t = k;
+  if (ctl === "d") app.d = k;
+  if (ctl === "stale") app.stale = k;
+  if (ctl === "ann") app.ann = !app.ann;
+  if (ctl === "hide") { app.hidden.push(k); if (app.c === k) { app.c = Object.keys(CONCEPTS).find((x) => !app.hidden.includes(x)); app.v = app.c === "ladder" ? "ladder" : "list"; } }
+  if (ctl === "show") app.hidden = app.hidden.filter((x) => x !== k);
+  if (a === "go") { const v = b.dataset.v; app.v = app.c === "ladder" && v === "sync" ? "ladder" : v; app.answer = null; if (v === "list") app.i = ""; }
+  if (a === "item") { app.i = b.dataset.i; app.v = "item"; app.answer = null; }
+  if (a === "merge") { app.m = b.dataset.m; app.v = "merge"; app.i = ""; app.answer = null; if (app.m === "m3" && app.s === "merged") {/* stays unread until a sync clears it */} }
+  if (a === "toggle") { app.open[b.dataset.m] = !app.open[b.dataset.m]; }
+  if (a === "jump") { // checklist row in the ladder concept: open the rung that holds this item
+    const c = allClashes().find((x) => x.item === b.dataset.i);
+    app.v = "ladder"; app.i = b.dataset.i;
+    if (c) app.open[c.m] = true;
+    setTimeout(() => { const el = document.querySelector("#f-folded #clash-" + (c ? c.id : "")); if (el) el.scrollIntoView({ block: "center" }); }, 0);
+  }
+  if (a === "use") { app.kept[b.dataset.c] = b.dataset.side; app.answer = { c: b.dataset.c, side: b.dataset.side }; }
+  if (a === "undo") { delete app.kept[b.dataset.c]; app.answer = null; }
+  if (a === "sync") { app.stopped = false; app.prevS = app.s; app.s = "syncing"; clearTimeout(app.timer);
+    app.timer = setTimeout(() => { app.s = "agree"; app.open = {}; render(); }, 2600); }
+  if (a === "stop") { clearTimeout(app.timer); app.s = app.prevS || "agree"; app.stopped = true; }
+  if (a === "link") { app.s = "syncing"; app.prevS = "never"; clearTimeout(app.timer); app.timer = setTimeout(() => { app.s = "merged"; app.open = { m3: true }; render(); }, 2600); }
+  render();
+});
+function setState(k) {
+  clearTimeout(app.timer); app.s = k; app.stopped = false; app.answer = null;
+  app.open = k === "merged" ? { m3: true } : {};
+  if (k === "never") { app.kept = {}; if (app.v === "merge") app.v = "sync"; }
+}
+window.addEventListener("hashchange", () => { readHash(); render(); });
+document.addEventListener("toggle", lineUpPages, true);
+readHash();
+render();
+})();
+</script>
+</body>
+</html>

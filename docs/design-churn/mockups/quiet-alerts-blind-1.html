@@ -1,0 +1,1000 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Quiet alerts, blind 1</title>
+<style>
+/* House tokens: 4 px step, 8 px radius, colour by role. Values are this designer's own. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px; --space-12: 48px;
+  --radius: 8px;
+  --font: -apple-system, system-ui, sans-serif;
+
+  --page: #E3E7ED;
+  --surface: #F1F3F6;
+  --raised: #FFFFFF;
+  --text: #15191F;
+  --text-2: #545C68;
+  --line: #D3D9E1;
+  --accent: #1F4FD1;
+  --on-accent: #FFFFFF;
+  --lost: #C0281C;
+  --sync: #6A3DC2;
+  --late: #9A5A00;
+  --minor: #5E6773;
+  --shade: rgba(21, 25, 31, 0.07);
+  --scrim: rgba(10, 14, 20, 0.32);
+  --badge: #D92D20;
+  --sample: #FFF2C2;
+  --sample-text: #4A3B00;
+
+  /* Dynamic Type, Large (default), from the HIG typography page: size / leading in pt. */
+  --t-large: 34px; --l-large: 41px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap: 12px; --l-cap: 16px;
+
+  /* Frame bands. No HIG page read gives these heights; see notes item 14. */
+  --status-h: 44px;
+  --home-h: 20px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #05070A; --surface: #0E1116; --raised: #1A1F27; --text: #E9EDF2; --text-2: #A5AEBB;
+    --line: #2B323D; --accent: #86A6FF; --on-accent: #0B1020; --lost: #FF7B6F; --sync: #B89CFF;
+    --late: #F0B45A; --minor: #9AA3AF; --shade: rgba(255, 255, 255, 0.07); --scrim: rgba(0, 0, 0, 0.55);
+    --badge: #FF5A4E; --sample: #3A3000; --sample-text: #FFE58A; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #05070A; --surface: #0E1116; --raised: #1A1F27; --text: #E9EDF2; --text-2: #A5AEBB;
+  --line: #2B323D; --accent: #86A6FF; --on-accent: #0B1020; --lost: #FF7B6F; --sync: #B89CFF;
+  --late: #F0B45A; --minor: #9AA3AF; --shade: rgba(255, 255, 255, 0.07); --scrim: rgba(0, 0, 0, 0.55);
+  --badge: #FF5A4E; --sample: #3A3000; --sample-text: #FFE58A; color-scheme: dark;
+}
+/* Dynamic Type AX5 (the largest accessibility size), from the same HIG table. */
+.device[data-ax="5"] {
+  --t-large: 60px; --l-large: 70px;
+  --t-title2: 56px; --l-title2: 66px;
+  --t-title3: 55px; --l-title3: 65px;
+  --t-head: 53px; --l-head: 62px;
+  --t-body: 53px; --l-body: 62px;
+  --t-sub: 49px; --l-sub: 58px;
+  --t-foot: 44px; --l-foot: 52px;
+  --t-cap: 43px; --l-cap: 51px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--text); font-family: var(--font); font-size: 15px; line-height: 20px; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+svg.g { width: 20px; height: 20px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.8; stroke-linecap: round; stroke-linejoin: round; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Mockup chrome (outside the device) ---------- */
+.sample { background: var(--sample); color: var(--sample-text); padding: var(--space-2) var(--space-4); font-weight: 600; text-align: center; }
+.chrome { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); max-inline-size: 72rem; margin-inline: auto; }
+.chrome h1 { margin: 0; font-size: 22px; line-height: 28px; }
+.chrome p { margin: 0; color: var(--text-2); max-inline-size: 60ch; }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; }
+.ctl { display: flex; flex-direction: column; gap: var(--space-1); }
+.ctl > span { font-size: 13px; color: var(--text-2); }
+.seg-web { display: flex; flex-wrap: wrap; background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); padding: 2px; gap: 2px; }
+.seg-web button { padding: var(--space-1) var(--space-3); border-radius: 6px; min-height: 32px; }
+.seg-web button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.seg-web button:disabled { opacity: 0.45; cursor: not-allowed; }
+.restore { min-height: 32px; padding: var(--space-1) var(--space-3); border: 1px dashed var(--text-2); border-radius: var(--radius); }
+
+.concepts { display: flex; flex-wrap: wrap; gap: var(--space-8); padding: var(--space-4); justify-content: center; align-items: flex-start; }
+.concept { display: flex; flex-direction: column; gap: var(--space-3); max-inline-size: 100%; }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; gap: var(--space-3); align-items: flex-start; justify-content: space-between; max-inline-size: 466px; }
+.concept-head h2 { margin: 0; font-size: 20px; line-height: 25px; }
+.concept-head p { margin: 0; color: var(--text-2); }
+.concept-head .tag { align-self: flex-start; display: inline-block; border: 1px dashed var(--accent); color: var(--accent); border-radius: var(--radius); padding: 0 var(--space-2); font-size: 13px; }
+.hide-btn { flex: none; min-height: 32px; padding: var(--space-1) var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-6); max-inline-size: 100%; overflow-x: auto; }
+
+/* ---------- Device frames ---------- */
+.device { position: relative; flex: none; display: flex; background: #000; border-radius: 28px; padding: 10px; box-shadow: 0 0 0 1px var(--line); }
+.device[hidden] { display: none; }
+.device[data-device="iphone-duo-folded"] .screen { width: 466px; height: 678px; }
+.device[data-device="iphone-duo-unfolded"] .screen { width: 455.5px; height: 669px; }
+.device[data-device="iphone-duo-unfolded"] .hinge { width: 40px; flex: none; background: linear-gradient(90deg, #111, #2a2a2a 50%, #111); }
+.device[data-device="iphone-large"] .screen { width: 466px; height: 678px; resize: both; overflow: hidden; min-width: 320px; min-height: 480px; }
+.device-cap { font-size: 13px; color: var(--text-2); }
+
+.screen {
+  position: relative; overflow: hidden; background: var(--surface); color: var(--text); border-radius: 18px;
+  padding-top: calc(var(--status-h) + env(safe-area-inset-top, 0px));
+  padding-bottom: calc(var(--home-h) + env(safe-area-inset-bottom, 0px));
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
+  display: flex; flex-direction: column; font-size: var(--t-body); line-height: var(--l-body);
+}
+.status { position: absolute; inset: 0 0 auto 0; height: var(--status-h); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-6); font-size: 15px; font-weight: 600; z-index: 3; }
+.status .dots { display: flex; gap: var(--space-1); }
+.status .dots i { width: 6px; height: 6px; border-radius: 3px; background: currentColor; display: block; opacity: 0.7; }
+.home-ind { position: absolute; left: 50%; bottom: 7px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--text); opacity: 0.85; z-index: 6; }
+.app { flex: 1; min-height: 0; display: flex; flex-direction: column; position: relative; }
+.scroll { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
+.pad { padding: 0 var(--space-4); }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-6 { display: flex; flex-direction: column; gap: var(--space-6); }
+
+/* Navigation bar */
+.navbar { display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 var(--space-2); gap: var(--space-2); }
+.navbar .title { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; text-align: center; flex: 1; }
+.navbtn { min-height: 44px; min-width: 44px; padding: 0 var(--space-2); color: var(--accent); display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--t-body); }
+.large-title { margin: 0; padding: var(--space-1) var(--space-4) var(--space-2); font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; }
+
+/* Grouped list */
+.group { background: var(--raised); border-radius: var(--radius); margin: 0 var(--space-4); overflow: hidden; }
+.group-head { padding: var(--space-4) var(--space-8) var(--space-2); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); display: flex; gap: var(--space-2); align-items: center; }
+.group-foot { padding: var(--space-2) var(--space-8) 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.row { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4); min-height: 44px; width: 100%; }
+.row + .row { border-top: 1px solid var(--line); }
+.row .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row .about { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
+.row .reason { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); }
+.row .time { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); white-space: nowrap; }
+.row .chev { color: var(--text-2); align-self: center; }
+.row[aria-current="true"] { background: color-mix(in srgb, var(--accent) 10%, var(--raised)); }
+.row.quiet .about { font-weight: 500; color: var(--text-2); }
+.row.center { align-items: center; }
+
+/* Kind badge: shape and colour carry the kind, so its name shows once per screen. */
+.kind { width: 32px; height: 32px; border-radius: 16px; flex: none; display: grid; place-items: center; }
+.kind.lost { color: var(--lost); background: color-mix(in srgb, var(--lost) 14%, transparent); }
+.kind.sync { color: var(--sync); background: color-mix(in srgb, var(--sync) 14%, transparent); }
+.kind.late { color: var(--late); background: color-mix(in srgb, var(--late) 16%, transparent); }
+.kind.minor { color: var(--minor); background: transparent; border: 1.5px dashed var(--minor); }
+.kind.unknown { color: var(--text-2); background: repeating-linear-gradient(45deg, var(--shade) 0 4px, transparent 4px 8px); border: 1.5px solid var(--text-2); }
+.device[data-ax="5"] .kind { width: 56px; height: 56px; border-radius: 28px; }
+.device[data-ax="5"] .kind svg.g { width: 32px; height: 32px; }
+
+/* Native-shaped controls */
+.btn { min-height: 44px; padding: var(--space-2) var(--space-4); border-radius: var(--radius); font-weight: 600; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); font-size: var(--t-body); line-height: var(--l-body); }
+.btn.filled { background: var(--accent); color: var(--on-accent); }
+.btn.tinted { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); }
+.btn.plain { color: var(--accent); font-weight: 400; }
+.btn.wide { width: 100%; }
+.btn-row { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.btn-row .btn { flex: 1 1 10rem; }
+
+.segmented { display: flex; background: color-mix(in srgb, var(--text) 8%, transparent); border-radius: var(--radius); padding: 2px; gap: 2px; }
+.segmented button { flex: 1; min-height: 40px; border-radius: 6px; font-size: var(--t-sub); line-height: var(--l-sub); text-align: center; padding: var(--space-1) var(--space-2); }
+.segmented button[aria-checked="true"] { background: var(--raised); font-weight: 600; box-shadow: 0 1px 2px rgba(0, 0, 0, 0.18); }
+.device[data-ax="5"] .segmented { flex-direction: column; }
+.device[data-ax="5"] .segmented button { text-align: start; padding: var(--space-2) var(--space-3); }
+
+.stepper { display: inline-flex; border-radius: var(--radius); background: color-mix(in srgb, var(--text) 8%, transparent); flex: none; }
+.stepper button { min-width: 48px; min-height: 44px; font-size: 22px; display: grid; place-items: center; }
+.stepper button + button { border-left: 1px solid var(--line); }
+.stepper button:disabled { opacity: 0.35; cursor: not-allowed; }
+.set-row { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: var(--space-2) var(--space-3); padding: var(--space-3) var(--space-4); min-height: 44px; }
+.set-row + .set-row, .group > .seg-wrap + .set-row { border-top: 1px solid var(--line); }
+.set-row .label { flex: 1 1 12rem; font-size: var(--t-body); line-height: var(--l-body); }
+.set-row .value { font-weight: 600; font-variant-numeric: tabular-nums; }
+.seg-wrap { padding: var(--space-3) var(--space-4); }
+
+.toggle { width: 51px; height: 31px; border-radius: 16px; background: color-mix(in srgb, var(--text) 18%, transparent); position: relative; flex: none; }
+.toggle::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 14px; background: #fff; box-shadow: 0 1px 3px rgba(0, 0, 0, 0.3); transition: transform 0.2s; }
+.toggle[aria-checked="true"] { background: #2FA84F; }
+.toggle[aria-checked="true"]::after { transform: translateX(20px); }
+.toggle-hit { min-height: 44px; min-width: 60px; display: grid; place-items: center; }
+
+/* Answer shown at the press */
+.answer { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: color-mix(in srgb, var(--accent) 10%, var(--raised)); font-size: var(--t-sub); line-height: var(--l-sub); }
+.answer .btn { min-height: 44px; padding: 0 var(--space-2); }
+
+/* State cards */
+.state { margin: var(--space-4); padding: var(--space-5) var(--space-4); background: var(--raised); border-radius: var(--radius); display: flex; flex-direction: column; gap: var(--space-4); align-items: flex-start; }
+.state p { margin: 0; font-size: var(--t-body); line-height: var(--l-body); }
+.state.calm p { font-size: var(--t-title2); line-height: var(--l-title2); font-weight: 600; }
+.state .btn { align-self: stretch; }
+
+/* Tab bar, floating */
+.tabbar { position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(var(--home-h) + var(--space-1)); height: 56px; display: flex; border-radius: 28px; background: color-mix(in srgb, var(--raised) 82%, transparent); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); box-shadow: 0 0 0 1px var(--line), 0 6px 20px rgba(0, 0, 0, 0.14); z-index: 4; padding: var(--space-1); }
+.tabbar button { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; line-height: 13px; border-radius: 24px; color: var(--text-2); position: relative; min-height: 44px; }
+.tabbar button[aria-selected="true"] { color: var(--accent); background: color-mix(in srgb, var(--accent) 12%, transparent); font-weight: 600; }
+.tabbar .badge { position: absolute; top: 2px; left: calc(50% + 6px); min-width: 18px; height: 18px; border-radius: 9px; background: var(--badge); color: #fff; font-size: 11px; line-height: 18px; text-align: center; padding: 0 5px; font-weight: 600; }
+.tab-space { height: 72px; flex: none; }
+
+/* Concept 1: the quiet line */
+.quiet-line { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-4) var(--space-4) var(--space-2); }
+.quiet-line::before, .quiet-line::after { content: ""; flex: 1; height: 0; border-top: 2px dashed var(--text-2); opacity: 0.55; }
+.quiet-line button { min-height: 44px; padding: 0 var(--space-4); border-radius: 22px; background: var(--raised); box-shadow: 0 0 0 1px var(--line); font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); display: inline-flex; align-items: center; gap: var(--space-2); }
+.note-tag { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--text-2); }
+.detail-title { margin: 0; color: var(--text);font-size: var(--t-title2); line-height: var(--l-title2); font-weight: 700; }
+.kind-line { display: flex; gap: var(--space-2); align-items: center; font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); }
+.body-text { margin: 0; font-size: var(--t-body); line-height: var(--l-body); }
+.fact { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1) var(--space-3); padding: var(--space-3) var(--space-4); font-size: var(--t-body); line-height: var(--l-body); }
+.fact + .fact { border-top: 1px solid var(--line); }
+.fact .k { color: var(--text-2); }
+.fact .v { font-weight: 600; font-variant-numeric: tabular-nums; }
+.q-ask { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; margin: 0; }
+.hint { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); margin: 0; }
+
+/* Concept 2: rehearsal week */
+.hero { padding: var(--space-1) var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
+.hero .big { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); font-weight: 700; }
+.hero .small { margin: 0; font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); }
+.axis { display: flex; padding: 0 var(--space-4) var(--space-1) calc(var(--space-4) + 64px); font-size: var(--t-cap); line-height: var(--l-cap); color: var(--text-2); }
+.axis span { flex: 1; }
+.axis span:last-child { flex: 0; }
+.week { display: flex; flex-direction: column; padding: 0 var(--space-4); }
+.day { display: flex; align-items: center; height: 44px; position: relative; }
+.day + .day { border-top: 1px solid var(--line); }
+.day .dname { width: 64px; flex: none; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.day.today .dname { color: var(--text); font-weight: 700; }
+.day.past .band { opacity: 0.72; }
+.band { position: relative; flex: 1; height: 100%; }
+.band .q { position: absolute; top: 12px; bottom: 12px; background: var(--shade); border-radius: 4px; }
+.band .tick { position: absolute; top: 6px; bottom: 6px; width: 0; border-left: 1.5px dotted var(--text-2); opacity: 0.6; }
+.band .now { position: absolute; top: 0; bottom: 0; width: 2px; background: var(--accent); }
+.band .now::before { content: ""; position: absolute; top: -3px; left: -3px; width: 8px; height: 8px; border-radius: 4px; background: var(--accent); }
+.mark { position: absolute; top: 0; width: 44px; height: 44px; margin-left: -22px; display: grid; place-items: center; z-index: 1; }
+.mark .dot { width: 28px; height: 28px; border-radius: 14px; display: grid; place-items: center; color: #fff; }
+.mark .dot svg.g { width: 16px; height: 16px; stroke-width: 2.2; }
+.mark .dot.lost { background: var(--lost); } .mark .dot.sync { background: var(--sync); } .mark .dot.late { background: var(--late); } .mark .dot.minor { background: var(--minor); }
+:root[data-theme="dark"] .mark .dot { color: #0E1116; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mark .dot { color: #0E1116; } }
+.mark .hollow { width: 12px; height: 12px; border-radius: 6px; border: 2px solid var(--minor); background: var(--surface); }
+.mark .chip { min-width: 28px; height: 24px; padding: 0 6px; border-radius: 6px; border: 1.5px solid var(--text-2); background: var(--raised); color: var(--text); font-size: 12px; line-height: 20px; font-weight: 700; display: inline-flex; align-items: center; gap: 2px; }
+.mark .chip svg.g { width: 12px; height: 12px; }
+.mark[aria-current="true"] .dot, .mark[aria-current="true"] .chip, .mark[aria-current="true"] .hollow { outline: 3px solid var(--accent); outline-offset: 2px; }
+.mark.unknown .dot { background: repeating-linear-gradient(45deg, var(--text-2) 0 3px, transparent 3px 6px); border: 1.5px solid var(--text-2); }
+.nowrule { display: flex; align-items: center; gap: var(--space-2); font-size: var(--t-cap); line-height: var(--l-cap); color: var(--accent); font-weight: 600; padding: 0 var(--space-4); }
+.nowrule::after { content: ""; flex: 1; border-top: 2px solid var(--accent); }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); padding: var(--space-3) var(--space-4); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.legend span { display: inline-flex; align-items: center; gap: var(--space-2); }
+.legend .dot { width: 16px; height: 16px; border-radius: 8px; background: var(--text-2); display: inline-block; }
+.legend .hollow { width: 12px; height: 12px; border-radius: 6px; border: 2px solid var(--minor); display: inline-block; }
+.legend .chip { width: 18px; height: 14px; border-radius: 4px; border: 1.5px solid var(--text-2); display: inline-block; }
+
+/* The ladder: what matters most at the top; the quiet line sits between rungs. */
+.ladder { background: var(--raised); border-top: 1px solid var(--line); padding: var(--space-2) var(--space-4) var(--space-2); display: flex; flex-direction: column; gap: 0; flex: none; }
+.ladder.inline { border-top: 0; border-radius: var(--radius); margin: 0 var(--space-4); }
+.ladder-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); padding: var(--space-1) 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.rung { display: flex; align-items: center; gap: var(--space-3); min-height: 44px; width: 100%; padding: var(--space-1) 0; }
+.rung .name { flex: 1; font-size: var(--t-body); line-height: var(--l-body); }
+.rung .fate { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap; }
+.rung.above .fate { color: var(--accent); font-weight: 600; }
+.rung.below .name { color: var(--text-2); }
+.rung .kind { width: 28px; height: 28px; }
+.rung .why { display: block; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.line-bar { display: flex; align-items: center; gap: var(--space-2); height: 16px; color: var(--accent); font-size: 11px; line-height: 13px; font-weight: 700; }
+.line-bar::before, .line-bar::after { content: ""; flex: 1; height: 0; border-top: 3px solid var(--accent); border-radius: 2px; }
+.rung .fate { min-width: 28px; justify-content: center; }
+.mini-dot { width: 16px; height: 16px; border-radius: 8px; display: inline-block; }
+.mini-dot.lost { background: var(--lost); } .mini-dot.sync { background: var(--sync); } .mini-dot.late { background: var(--late); } .mini-dot.minor { background: var(--minor); }
+.mini-chip { width: 20px; height: 15px; border-radius: 4px; border: 1.5px solid var(--text-2); display: inline-block; }
+.mini-hollow { width: 12px; height: 12px; border-radius: 6px; border: 2px solid var(--minor); display: inline-block; }
+.device[data-ax="5"] .mini-dot, .device[data-ax="5"] .mini-hollow { width: 28px; height: 28px; border-radius: 14px; }
+.device[data-ax="5"] .mini-chip { width: 34px; height: 26px; }
+.device[data-ax="5"] .row:not(.center) { flex-direction: column; align-items: flex-start; }
+.device[data-ax="5"] .row .time { white-space: normal; }
+.device[data-ax="5"] .row .chev { display: none; }
+.device[data-ax="5"] .rung .fate { white-space: normal; }
+.device[data-ax="5"] .rung { flex-wrap: wrap; }
+.device[data-ax="5"] .line-bar { height: 32px; font-size: 22px; line-height: 28px; }
+.device[data-ax="5"] .rung .kind { width: 44px; height: 44px; }
+
+/* Rehearsal at the largest text: list in place of bands */
+.alist { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-4); }
+.alist h3 { margin: var(--space-3) 0 0; font-size: var(--t-head); line-height: var(--l-head); }
+.alist .item { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3); border-radius: var(--radius); background: var(--raised); width: 100%; }
+.alist .item .top { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+
+/* Sheet */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 7; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 78%; background: var(--raised); border-radius: 16px 16px 0 0; z-index: 8; display: flex; flex-direction: column; padding-bottom: calc(var(--home-h) + env(safe-area-inset-bottom, 0px)); box-shadow: 0 -8px 30px rgba(0, 0, 0, 0.2); }
+.sheet.medium { height: 56%; }
+.device[data-ax="5"] .sheet.medium { height: 78%; }
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-2) auto 0; flex: none; }
+.sheet .navbar .title { font-size: var(--t-head); }
+.sheet .scroll { padding: 0 var(--space-4) var(--space-4); }
+.sheet .group { margin: 0; }
+.right-pane { display: flex; flex-direction: column; gap: var(--space-4); padding-bottom: var(--space-6); }
+
+/* Toast for presses that would leave the screen */
+.toast { position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(var(--home-h) + 84px); z-index: 9; background: var(--text); color: var(--surface); border-radius: var(--radius); padding: var(--space-3) var(--space-4); font-size: var(--t-sub); line-height: var(--l-sub); }
+
+@media (prefers-reduced-motion: reduce) { .toggle::after { transition: none; } }
+@media (forced-colors: active) {
+  .toggle { border: 1px solid CanvasText; }
+  .segmented button[aria-checked="true"], .tabbar button[aria-selected="true"], .seg-web button[aria-pressed="true"] { outline: 2px solid Highlight; }
+  .line-bar::before, .line-bar::after, .quiet-line::before, .quiet-line::after { border-color: CanvasText; }
+}
+@media (max-width: 520px) {
+  .concepts { padding: var(--space-4) 0; }
+  .frames { padding: 0 var(--space-4); }
+  .concept-head { padding: 0 var(--space-4); }
+}
+</style>
+</head>
+<body>
+<svg width="0" height="0" style="position:absolute" aria-hidden="true">
+  <defs>
+    <symbol id="g-lost" viewBox="0 0 24 24"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/><path d="M17 2.5v2M19.8 3.6l-1.3 1.4"/></symbol>
+    <symbol id="g-sync" viewBox="0 0 24 24"><path d="M4 9a8 8 0 0 1 14-3l2 2"/><path d="M20 4v4h-4"/><path d="M20 15a8 8 0 0 1-14 3l-2-2"/><path d="M4 20v-4h4"/></symbol>
+    <symbol id="g-late" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5l3.5 2"/></symbol>
+    <symbol id="g-minor" viewBox="0 0 24 24"><circle cx="12" cy="12" r="8.5"/><path d="M12 9v3"/></symbol>
+    <symbol id="g-unknown" viewBox="0 0 24 24"><path d="M9.5 9a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7"/><path d="M12 17h.01"/></symbol>
+    <symbol id="g-note" viewBox="0 0 24 24"><rect x="4" y="5" width="16" height="14" rx="2"/><path d="M8 10h8M8 14h5"/></symbol>
+    <symbol id="g-bell" viewBox="0 0 24 24"><path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z"/><path d="M10 20.5a2 2 0 0 0 4 0"/></symbol>
+    <symbol id="g-rules" viewBox="0 0 24 24"><path d="M4 7h10M18 7h2M4 17h4M12 17h8"/><circle cx="16" cy="7" r="2"/><circle cx="10" cy="17" r="2"/></symbol>
+    <symbol id="g-chev" viewBox="0 0 24 24"><path d="M9 5l7 7-7 7"/></symbol>
+    <symbol id="g-back" viewBox="0 0 24 24"><path d="M15 5l-7 7 7 7"/></symbol>
+    <symbol id="g-down" viewBox="0 0 24 24"><path d="M6 9l6 6 6-6"/></symbol>
+    <symbol id="g-up" viewBox="0 0 24 24"><path d="M6 15l6-6 6 6"/></symbol>
+    <symbol id="g-moon" viewBox="0 0 24 24"><path d="M19 14.5A7.5 7.5 0 0 1 9.5 5a7.5 7.5 0 1 0 9.5 9.5z"/></symbol>
+    <symbol id="g-speak" viewBox="0 0 24 24"><path d="M4 10v4h3l5 4V6L7 10z"/><path d="M16 9a4 4 0 0 1 0 6"/></symbol>
+  </defs>
+</svg>
+
+<div class="sample" role="note">Sample: no figure, name or date on this page is real.</div>
+
+<header class="chrome">
+  <h1>Quiet alerts</h1>
+  <p>Designer kind: blind. Designer quiet-alerts-blind-1. Two concepts for one job: "Tell me what I would regret not knowing, and nothing else." Everything drawn here is new, so each concept carries one dashed "New" tag.</p>
+  <div class="controls" id="controls">
+    <div class="ctl"><span id="lbl-d">Device</span>
+      <div class="seg-web" role="group" aria-labelledby="lbl-d">
+        <button data-set="d" data-v="folded">Duo folded</button>
+        <button data-set="d" data-v="open">Duo open</button>
+        <button data-set="d" data-v="phone">Large phone</button>
+      </div></div>
+    <div class="ctl"><span id="lbl-t">Theme</span>
+      <div class="seg-web" role="group" aria-labelledby="lbl-t">
+        <button data-set="t" data-v="auto">Auto</button>
+        <button data-set="t" data-v="light">Light</button>
+        <button data-set="t" data-v="dark">Dark</button>
+      </div></div>
+    <div class="ctl"><span id="lbl-ax">Text size</span>
+      <div class="seg-web" role="group" aria-labelledby="lbl-ax">
+        <button data-set="ax" data-v="0">Default</button>
+        <button data-set="ax" data-v="5" id="ax5-btn">Largest (AX5)</button>
+      </div></div>
+    <div class="ctl"><span id="lbl-s">State</span>
+      <div class="seg-web" role="group" aria-labelledby="lbl-s">
+        <button data-set="s" data-v="loaded">Alerts to show</button>
+        <button data-set="s" data-v="calm">All is well</button>
+        <button data-set="s" data-v="unknown">Not sure</button>
+        <button data-set="s" data-v="silent">Everything silenced</button>
+        <button data-set="s" data-v="failed">Read failed</button>
+        <button data-set="s" data-v="empty">No orders yet</button>
+      </div></div>
+    <button class="restore" id="restore" hidden data-act="restore">Show hidden concepts</button>
+  </div>
+</header>
+
+<main class="concepts">
+  <section class="concept" id="concept-quiet-line" aria-labelledby="h-ql">
+    <div class="concept-head">
+      <div class="stack" style="gap:var(--space-1)">
+        <h2 id="h-ql">Quiet line</h2>
+        <p>An alert list cut in two. Above the line: what spoke. Below: what was kept quiet, and why. Tune from the alert itself, or set each kind in Rules.</p>
+        <span class="tag">New: the whole screen</span>
+      </div>
+      <button class="hide-btn" data-act="hide" data-c="quiet-line">Hide</button>
+    </div>
+    <div class="frames">
+      <div class="device" data-device="iphone-duo-folded" data-c="quiet-line"><div class="screen" data-pane="single"></div></div>
+      <div class="device" data-device="iphone-duo-unfolded" data-c="quiet-line"><div class="screen" data-pane="left"></div><div class="hinge" aria-hidden="true"></div><div class="screen" data-pane="right"></div></div>
+      <div class="device" data-device="iphone-large" data-c="quiet-line"><div class="screen" data-pane="single"></div></div>
+    </div>
+    <span class="device-cap" data-cap="quiet-line"></span>
+  </section>
+
+  <section class="concept" id="concept-rehearsal" aria-labelledby="h-rh">
+    <div class="concept-head">
+      <div class="stack" style="gap:var(--space-1)">
+        <h2 id="h-rh">Rehearsal week</h2>
+        <p>No settings list. The first screen is your week on a clock: what you heard, and what you will hear. Move the quiet line on the ladder and watch next week change.</p>
+        <span class="tag">New: the whole screen</span>
+      </div>
+      <button class="hide-btn" data-act="hide" data-c="rehearsal">Hide</button>
+    </div>
+    <div class="frames">
+      <div class="device" data-device="iphone-duo-folded" data-c="rehearsal"><div class="screen" data-pane="single"></div></div>
+      <div class="device" data-device="iphone-duo-unfolded" data-c="rehearsal"><div class="screen" data-pane="left"></div><div class="hinge" aria-hidden="true"></div><div class="screen" data-pane="right"></div></div>
+      <div class="device" data-device="iphone-large" data-c="rehearsal"><div class="screen" data-pane="single"></div></div>
+    </div>
+    <span class="device-cap" data-cap="rehearsal"></span>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Sample data: kinds and alerts (reason, time, the thing it is about) ---------- */
+  var KINDS = {
+    lost:  { name: "Likely lost mail",   why: "Missing it can cost the whole order." },
+    sync:  { name: "Sync did not agree", why: "Missing it can lose what you recorded." },
+    late:  { name: "Overdue order",      why: "Worth a nudge to the seller." },
+    minor: { name: "Small delay",        why: "Usually arrives on its own." }
+  };
+  var RUNGS = ["lost", "sync", "late", "minor"];
+  var DAYS = ["Wed 18", "Thu 19", "Fri 20", "Today", "Sun 22", "Mon 23", "Tue 24", "Wed 25", "Thu 26", "Fri 27"];
+  var TODAY = 3, NOW = 9 + 41 / 60;
+
+  // day is an index into DAYS; hour is 0-24. Past alerts are history and do not change.
+  var ALERTS = [
+    { id: "a1", kind: "lost", about: "Northgate Games, 3 items", reason: "Shipped 19 days ago. Every other order shipped that week arrived by day 9.",
+      day: 3, hour: 7 + 40 / 60, past: true, heard: "now", late: 19,
+      facts: [["Shipped", "Nov 2"], ["Expected by", "Nov 12"], ["Same-week orders", "6 of 6 arrived"]] },
+    { id: "a2", kind: "sync", about: "Your phone and your other device", reason: "4 orders show as arrived here but still open on the other device.",
+      day: 2, hour: 19 + 12 / 60, past: true, heard: "now",
+      facts: [["Items that differ", "4"], ["Other device last seen", "Fri 19:05"]] },
+    { id: "a3", kind: "late", about: "Pike & Pine, 1 item", reason: "Expected by Nov 18. Now 3 days late.",
+      day: 3, hour: 8, past: true, heard: "note", late: 3,
+      facts: [["Expected by", "Nov 18"], ["Days late", "3"], ["This seller, usual delay", "0 to 1 days"]] },
+    { id: "a4", kind: "minor", about: "Little Owl Goods, 2 items", reason: "1 day late. This seller is often 1 to 2 days late.",
+      day: 1, hour: 8, past: true, heard: "quiet", late: 1, quietWhy: "Kept quiet: 1 day late, under the 3-day line.",
+      facts: [["Expected by", "Nov 18"], ["Days late", "1"], ["This seller, usual delay", "1 to 2 days"]] },
+    { id: "f1", kind: "lost", about: "Bramble Post, 1 item", reason: "Shipped Nov 8. If it has not come by Sunday, it counts as likely lost.",
+      day: 4, hour: 9, late: 14, facts: [["Shipped", "Nov 8"], ["Counts as lost on", "Sun 22"]] },
+    { id: "f2", kind: "late", about: "Riverbend, 4 items", reason: "Expected by Monday. Late from Tuesday if it has not come.",
+      day: 6, hour: 8, late: 3, facts: [["Expected by", "Mon 23"], ["Late from", "Tue 24"]] },
+    { id: "f3", kind: "minor", about: "Copper Kettle, 1 item", reason: "Expected by Tuesday. A day late would be normal for this seller.",
+      day: 7, hour: 8, late: 1, facts: [["Expected by", "Tue 24"], ["This seller, usual delay", "1 day"]] },
+    { id: "f4", kind: "lost", about: "Harbor Lane, 2 items", reason: "Shipped Nov 12. Counts as likely lost early Thursday if it has not come.",
+      day: 8, hour: 6.5, late: 14, facts: [["Shipped", "Nov 12"], ["Counts as lost on", "Thu 26, 6:30"]] }
+  ];
+  function byId(id) { for (var i = 0; i < ALERTS.length; i++) if (ALERTS[i].id === id) return ALERTS[i]; return null; }
+
+  /* ---------- State, with deep links in the hash ---------- */
+  var DEFAULT_RULES = function () {
+    return { lost: { when: "now", days: 14 }, sync: { when: "now", hours: 1 }, late: { when: "note", days: 3 } };
+  };
+  var S = {
+    d: "folded", t: "auto", s: "loaded", ax: "0", hide: [],
+    q: "alerts", qsel: "a1", qopen: false, rules: DEFAULT_RULES(), qans: null,
+    r: "week", rsel: null, line: 2, rest: "note", noteH: 8, qFrom: 21, qTo: 7, wake: true, rans: null,
+    toast: null, busy: null
+  };
+  function readHash() {
+    var h = new URLSearchParams(location.hash.slice(1));
+    if (h.get("d")) S.d = h.get("d");
+    if (h.get("t")) S.t = h.get("t");
+    if (h.get("s")) S.s = h.get("s");
+    if (h.get("ax")) S.ax = h.get("ax");
+    S.hide = (h.get("hide") || "").split(",").filter(Boolean);
+    if (h.get("q")) S.q = h.get("q");
+    if (h.get("r")) S.r = h.get("r");
+    // One sel serves both concepts. Quiet line lists only alerts already heard.
+    if (h.get("sel")) { var sa = byId(h.get("sel")); S.rsel = h.get("sel"); S.qsel = sa && sa.past ? sa.id : "a1"; }
+    if (S.r === "sheet" && !S.rsel) S.rsel = "f1";
+    S.rnote = h.get("note");
+    applyStateSideEffects();
+  }
+  function writeHash() {
+    var p = new URLSearchParams();
+    p.set("d", S.d); p.set("t", S.t); p.set("s", S.s);
+    if (S.ax !== "0") p.set("ax", S.ax);
+    if (S.hide.length) p.set("hide", S.hide.join(","));
+    if (S.q !== "alerts") p.set("q", S.q);
+    if (S.r !== "week") p.set("r", S.r);
+    var sel = S.r === "sheet" || (S.d === "open" && S.rsel) ? S.rsel : S.qsel;
+    if (sel && sel !== "a1") p.set("sel", sel);
+    if (S.rnote !== null && S.rnote !== undefined) p.set("note", S.rnote);
+    history.replaceState(null, "", "#" + p.toString());
+  }
+  function applyStateSideEffects() {
+    if (S.s === "silent") {
+      S.rules = { lost: { when: "never", days: 14 }, sync: { when: "never", hours: 1 }, late: { when: "never", days: 3 } };
+      S.line = 0; S.rest = "none";
+    } else if (allNever() || S.line === 0) {
+      S.rules = DEFAULT_RULES(); S.line = 2; S.rest = "note";
+    }
+    if (S.d !== "folded") S.ax = "0";
+  }
+  function allNever() { return S.rules.lost.when === "never" && S.rules.sync.when === "never" && S.rules.late.when === "never"; }
+
+  /* ---------- Helpers ---------- */
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function g(name, extra) { return '<svg class="g' + (extra ? " " + extra : "") + '" aria-hidden="true"><use href="#g-' + name + '"/></svg>'; }
+  function kindBadge(kind, label) { return '<span class="kind ' + kind + '" role="img" aria-label="' + esc(label || KINDS[kind].name) + '">' + g(kind) + "</span>"; }
+  function hhmm(h) { h = ((h % 24) + 24) % 24; var m = Math.round((h - Math.floor(h)) * 60); var hh = Math.floor(h); if (m === 60) { hh += 1; m = 0; } return hh + ":" + (m < 10 ? "0" : "") + m; }
+  function dayWord(d) { return d === TODAY ? "today" : d === TODAY - 1 ? "yesterday" : d === TODAY + 1 ? "tomorrow" : DAYS[d]; }
+  function inQuiet(h) { return S.qFrom > S.qTo ? (h >= S.qFrom || h < S.qTo) : (h >= S.qFrom && h < S.qTo); }
+  function statusBar() { return '<div class="status" aria-hidden="true"><span>9:41</span><span class="dots"><i></i><i></i><i></i></span></div><div class="home-ind" aria-hidden="true"></div>'; }
+  var ax = function () { return S.ax === "5" && S.d === "folded"; };
+
+  /* ===================================================================
+     Concept 1: Quiet line
+     =================================================================== */
+  // Where an alert landed under the current rules: "now", "note" or "quiet" (with a reason).
+  function qFate(a) {
+    // What already reached the person is history: a rule change acts on later alerts only.
+    if (a.past) return a.heard === "quiet" ? { f: "quiet", why: a.quietWhy } : { f: a.heard };
+    if (a.kind === "minor") {
+      var r = S.rules.late;
+      if (r.when === "never") return { f: "quiet", why: "Overdue orders are set to Never." };
+      if (a.late >= r.days) return { f: r.when };
+      return { f: "quiet", why: "Kept quiet: " + a.late + " day late, under your " + r.days + "-day line." };
+    }
+    var rule = S.rules[a.kind];
+    if (rule.when === "never") return { f: "quiet", why: "Kept quiet: " + KINDS[a.kind].name.toLowerCase() + " is set to Never." };
+    if (a.kind === "lost" && a.late < rule.days) return { f: "quiet", why: "Kept quiet: " + a.late + " days, under your " + rule.days + "-day line." };
+    if (a.kind === "late" && a.late < rule.days) return { f: "quiet", why: "Kept quiet: " + a.late + " days late, under your " + rule.days + "-day line." };
+    return { f: rule.when };
+  }
+  function qPast() { return ALERTS.filter(function (a) { return a.past; }); }
+  function qWhen(a) {
+    var d = dayWord(a.day); d = d.charAt(0).toUpperCase() + d.slice(1);
+    return d + " " + hhmm(a.hour);
+  }
+  function qRow(a, fate, current) {
+    var cls = "row" + (fate.f === "quiet" ? " quiet" : "");
+    var time = fate.f === "note" ? '<span class="note-tag">' + g("note") + hhmm(S.noteH) + " note</span>" : esc(qWhen(a));
+    return '<button class="' + cls + '" data-act="q-open" data-id="' + a.id + '"' + (current ? ' aria-current="true"' : "") + ">" +
+      kindBadge(a.kind) +
+      '<span class="main"><span class="about">' + esc(a.about) + '</span><span class="reason">' + esc(fate.f === "quiet" ? fate.why : a.reason) + "</span></span>" +
+      '<span class="time">' + time + "</span>" + g("chev", "chev") + "</button>";
+  }
+  function qStateCard() {
+    if (S.s === "empty") return '<div class="state"><p>Alerts start once there are orders to watch.</p><button class="btn filled" data-act="fill">Add your orders</button></div>';
+    if (S.s === "failed") return '<div class="state"><p>Could not read your orders, so no alert can be trusted right now.</p><button class="btn filled" data-act="retry">' + (S.busy === "retry" ? "Trying again…" : "Try again") + "</button></div>";
+    if (S.s === "calm") return '<div class="state calm"><p>All is well.</p></div>';
+    return "";
+  }
+  function qList(isOpen) {
+    var h = '<div class="app"><div class="scroll"><h1 class="large-title">Alerts</h1>';
+    var card = qStateCard();
+    if (card) return h + card + '<div class="tab-space"></div></div>' + qTabbar() + "</div>";
+    if (S.s === "unknown") {
+      h += '<div class="group" style="margin-bottom:var(--space-3)"><div class="row">' + kindBadge("unknown", "Not sure") +
+        '<span class="main"><span class="about">Sync: not sure</span><span class="reason">The other device last synced Tue 17, so a sync problem could be hiding.</span></span></div>' +
+        '<div class="seg-wrap"><button class="btn tinted wide" data-act="fill">' + (S.busy === "fill" ? "Checking…" : "Check now") + "</button></div></div>";
+    }
+    if (allNever()) {
+      h += '<div class="group" style="margin-bottom:var(--space-3)"><div class="seg-wrap stack"><p class="body-text">Every kind is set to Never. You will hear nothing, lost mail included.</p>' +
+        '<button class="btn filled wide" data-act="q-unsilence">Tell me about lost mail</button></div></div>';
+    }
+    var spoke = [], quiet = [];
+    qPast().forEach(function (a) { var f = qFate(a); (f.f === "quiet" ? quiet : spoke).push([a, f]); });
+    if (spoke.length) {
+      h += '<div class="group">' + spoke.map(function (x) { return qRow(x[0], x[1], isOpen && S.qsel === x[0].id); }).join("") + "</div>";
+    } else if (!allNever()) {
+      h += '<div class="state calm"><p>All is well.</p></div>';
+    }
+    if (quiet.length) {
+      h += '<div class="quiet-line"><button data-act="q-quiet" aria-expanded="' + S.qopen + '">' + quiet.length + " kept quiet " + g(S.qopen ? "up" : "down") + "</button></div>";
+      if (S.qopen) h += '<div class="group">' + quiet.map(function (x) { return qRow(x[0], x[1], isOpen && S.qsel === x[0].id); }).join("") + "</div>";
+    }
+    h += '<div class="tab-space"></div></div>' + qTabbar() + "</div>";
+    return h;
+  }
+  function qTabbar() {
+    var lostNow = qPast().filter(function (a) { return a.kind === "lost" && qFate(a).f === "now"; }).length;
+    var showBadge = lostNow && (S.s === "loaded" || S.s === "unknown");
+    return '<div class="tabbar" role="tablist">' +
+      '<button role="tab" data-act="q-tab" data-v="alerts" aria-selected="' + (S.q !== "rules") + '">' + g("bell") + "Alerts" +
+      (showBadge ? '<span class="badge" aria-label="' + lostNow + ' likely lost">' + lostNow + "</span>" : "") + "</button>" +
+      '<button role="tab" data-act="q-tab" data-v="rules" aria-selected="' + (S.q === "rules") + '">' + g("rules") + "Rules</button></div>";
+  }
+  function lessEffect(kind) {
+    if (kind === "lost") return { text: "Lost mail now waits " + (S.rules.lost.days + 7) + " days, not " + S.rules.lost.days + ".", apply: function () { S.rules.lost.days += 7; } };
+    if (kind === "sync") return { text: "Sync problems now go in the " + hhmm(S.noteH) + " note.", apply: function () { S.rules.sync.when = "note"; } };
+    if (kind === "late") return { text: "Overdue orders now wait " + (S.rules.late.days + 2) + " days late, not " + S.rules.late.days + ".", apply: function () { S.rules.late.days += 2; } };
+    return { text: "Small delays are already kept quiet.", apply: function () {} };
+  }
+  function qDetail(id, withBack) {
+    var a = byId(id); if (!a) return '<div class="app"><div class="state"><p>Pick an alert on the left to see why it spoke.</p></div></div>';
+    var fate = qFate(a);
+    var h = '<div class="app">';
+    h += '<div class="navbar">' + (withBack ? '<button class="navbtn" data-act="q-back">' + g("back") + "Alerts</button>" : "<span></span>") + "<span></span></div>";
+    h += '<div class="scroll"><div class="pad stack-6" style="padding-bottom:var(--space-8)">';
+    h += '<div class="stack"><div class="kind-line">' + kindBadge(a.kind, "") + "<span>" + esc(KINDS[a.kind].name) + "</span></div>";
+    h += '<h2 class="detail-title">' + esc(a.about) + "</h2>";
+    h += '<p class="body-text">' + esc(a.reason) + "</p>";
+    var told = fate.f === "now" ? "Told you " + qWhen(a).toLowerCase().replace(/^([a-z])/, function (c) { return c; }) : fate.f === "note" ? "In the " + hhmm(S.noteH) + " note, " + dayWord(a.day) : fate.why;
+    h += '<p class="hint">' + esc(told) + "</p></div>";
+    h += '<div class="group" style="margin:0">' + a.facts.map(function (f) { return '<div class="fact"><span class="k">' + esc(f[0]) + '</span><span class="v">' + esc(f[1]) + "</span></div>"; }).join("") + "</div>";
+    h += '<button class="btn filled wide" data-act="toast" data-msg="Opens this order in the order list.">Open the order</button>';
+    h += '<div class="stack">';
+    if (fate.f === "quiet") {
+      h += '<p class="q-ask">Want to hear about ones like this?</p>';
+      h += '<button class="btn tinted wide" data-act="q-more" data-id="' + a.id + '">Tell me about these</button>';
+    } else {
+      h += '<p class="q-ask">Worth hearing?</p>';
+      h += '<div class="btn-row"><button class="btn tinted" data-act="q-yes" data-id="' + a.id + '">Yes</button><button class="btn tinted" data-act="q-less" data-id="' + a.id + '">Tell me less</button></div>';
+    }
+    if (S.qans && S.qans.id === a.id) h += '<div class="answer" role="status"><span style="flex:1 1 12rem">' + esc(S.qans.text) + "</span>" + (S.qans.undo ? '<button class="btn plain" data-act="q-undo">Undo</button>' : "") + "</div>";
+    h += "</div></div></div></div>";
+    return h;
+  }
+  function seg(kind, cur) {
+    var opts = [["now", "Right away"], ["note", hhmm(S.noteH) + " note"], ["never", "Never"]];
+    return '<div class="segmented" role="radiogroup" aria-label="When to tell me">' + opts.map(function (o) {
+      return '<button role="radio" aria-checked="' + (cur === o[0]) + '" data-act="q-when" data-kind="' + kind + '" data-v="' + o[0] + '">' + o[1] + "</button>";
+    }).join("") + "</div>";
+  }
+  function stepper(act, kind, minus, plus) {
+    return '<span class="stepper"><button data-act="' + act + '" data-kind="' + kind + '" data-v="-1" aria-label="Less"' + (minus ? "" : " disabled title=\"This is the lowest value.\"") + '>−</button><button data-act="' + act + '" data-kind="' + kind + '" data-v="1" aria-label="More"' + (plus ? "" : " disabled title=\"This is the highest value.\"") + ">+</button></span>";
+  }
+  function heardCount(kind) {
+    // Sample consequence line: how often this rule would have spoken in the last 30 days.
+    var r = S.rules[kind];
+    if (r.when === "never") return "Last 30 days: would have stayed silent.";
+    var base = kind === "lost" ? Math.max(0, 5 - Math.floor((r.days - 7) / 4)) : kind === "sync" ? Math.max(1, 4 - r.hours) : Math.max(0, 14 - r.days * 2);
+    return "Last 30 days: " + (r.when === "now" ? "would have spoken " : "would have gone in the note ") + base + (base === 1 ? " time." : " times.");
+  }
+  function qKinds() {
+    var h = "";
+    ["lost", "sync", "late"].forEach(function (k) {
+      var r = S.rules[k];
+      h += '<div class="group-head">' + kindBadge(k, "") + "<span>" + esc(KINDS[k].name) + "</span></div>";
+      h += '<div class="group"><div class="seg-wrap">' + seg(k, r.when) + "</div>";
+      if (r.when !== "never") {
+        if (k === "lost") h += '<div class="set-row"><span class="label">Count as lost after <span class="value">' + r.days + ' days</span></span>' + stepper("q-step", k, r.days > 7, r.days < 35) + "</div>";
+        if (k === "sync") h += '<div class="set-row"><span class="label">Only if still wrong after <span class="value">' + r.hours + (r.hours === 1 ? " hour" : " hours") + "</span></span>" + stepper("q-step", k, r.hours > 1, r.hours < 12) + "</div>";
+        if (k === "late") h += '<div class="set-row"><span class="label">Count as late after <span class="value">' + r.days + (r.days === 1 ? " day" : " days") + "</span></span>" + stepper("q-step", k, r.days > 1, r.days < 14) + "</div>";
+      }
+      h += "</div>";
+      h += '<p class="group-foot">' + esc(KINDS[k].why) + " " + esc(heardCount(k)) + "</p>";
+    });
+    return h;
+  }
+  function qTiming() {
+    var h = '<div class="group-head"><span>When notes and quiet hours fall</span></div><div class="group">';
+    h += '<div class="set-row"><span class="label">Morning note at <span class="value">' + hhmm(S.noteH) + "</span></span>" + stepper("t-note", "", S.noteH > 5, S.noteH < 12) + "</div>";
+    h += '<div class="set-row"><span class="label">Quiet from <span class="value">' + hhmm(S.qFrom) + "</span></span>" + stepper("t-from", "", S.qFrom > 18, S.qFrom < 23.5) + "</div>";
+    h += '<div class="set-row"><span class="label">Quiet until <span class="value">' + hhmm(S.qTo) + "</span></span>" + stepper("t-to", "", S.qTo > 5, S.qTo < 10) + "</div>";
+    h += '<div class="set-row"><span class="label">Lost mail may break quiet hours</span><span class="toggle-hit"><button class="toggle" role="switch" aria-checked="' + S.wake + '" aria-label="Lost mail may break quiet hours" data-act="t-wake"></button></span></div>';
+    h += "</div>";
+    return h;
+  }
+  function qRules(part) {
+    var h = '<div class="app"><div class="scroll"><h1 class="large-title">Rules</h1>';
+    if (S.s === "failed" || S.s === "empty") {
+      // Rules still work without data; only the 30-day lines need data.
+    }
+    if (part !== "timing") h += qKinds();
+    if (part !== "kinds") h += qTiming();
+    h += '<div class="tab-space"></div></div>' + (part === "timing" ? "" : qTabbar()) + "</div>";
+    return h;
+  }
+  function renderQuiet(panes) {
+    if (panes.length === 2) {
+      if (S.q === "rules") {
+        panes[0].innerHTML = statusBar() + qRules("kinds");
+        panes[1].innerHTML = statusBar() + qRules("timing").replace('<h1 class="large-title">Rules</h1>', '<h1 class="large-title">Timing</h1>');
+      } else {
+        panes[0].innerHTML = statusBar() + qList(true);
+        var card = qStateCard();
+        panes[1].innerHTML = statusBar() + (card ? '<div class="app"></div>' : qDetail(S.qsel, false));
+      }
+    } else {
+      var body = S.q === "rules" ? qRules("all") : S.q === "detail" ? qDetail(S.qsel, true) : qList(false);
+      panes[0].innerHTML = statusBar() + body;
+    }
+  }
+
+  /* ===================================================================
+     Concept 2: Rehearsal week
+     =================================================================== */
+  function rungOf(a) { return RUNGS.indexOf(a.kind); }
+  // Where a future alert lands with the current ladder and timing.
+  function rFate(a) {
+    if (a.past) return { f: a.heard, day: a.day, hour: a.heard === "note" ? S.noteH : a.hour };
+    if (rungOf(a) < S.line) {
+      var h = a.hour, d = a.day, held = false;
+      if (inQuiet(h) && !(a.kind === "lost" && S.wake)) { held = true; if (h >= S.qFrom) d += 1; h = S.qTo; }
+      return { f: "now", day: d, hour: h, held: held };
+    }
+    if (S.rest === "note") { var nd = a.hour <= S.noteH ? a.day : a.day + 1; return { f: "note", day: nd, hour: S.noteH }; }
+    return { f: "quiet", day: a.day, hour: a.hour };
+  }
+  function rCounts() {
+    var n = { now: 0, note: 0, quiet: 0 };
+    ALERTS.forEach(function (a) { if (!a.past && S.s !== "calm") n[rFate(a).f] += 1; });
+    return n;
+  }
+  function plural(n, one, many) { return n + " " + (n === 1 ? one : many); }
+  function rHero() {
+    if (S.s === "calm") return '<div class="hero"><p class="big">All is well.</p></div>';
+    if (S.line === 0 && S.rest === "none") {
+      return '<div class="hero"><p class="big">You will hear nothing, lost mail included.</p><button class="btn filled" data-act="r-unsilence">Tell me about lost mail</button></div>';
+    }
+    var c = rCounts();
+    var big = c.now === 0 ? "Next 7 days: no interruptions." : "Next 7 days: " + plural(c.now, "interruption", "interruptions") + ".";
+    var small = c.note ? plural(c.note, "more waits", "more wait") + " for the " + hhmm(S.noteH) + " note." : c.quiet ? plural(c.quiet, "is", "are") + " kept quiet." : "Nothing waits for the note.";
+    if (c.note && c.quiet) small += " " + plural(c.quiet, "is", "are") + " kept quiet.";
+    return '<div class="hero" role="status"><p class="big">' + big + '</p><p class="small">' + small + "</p></div>";
+  }
+  // A 44 pt hit target spans about 3 hours of a 24-hour band, so marks closer than that are
+  // drawn apart. The label keeps the true time; only the drawn place moves.
+  var MARK_GAP_H = 3;
+  function rMarks(dayIdx) {
+    var items = [];
+    var notes = {};
+    ALERTS.forEach(function (a) {
+      if (S.s === "calm") return;
+      var f = rFate(a);
+      if (f.day !== dayIdx) return;
+      var cur = S.rsel === a.id ? ' aria-current="true"' : "";
+      if (f.f === "note") { (notes[f.hour] = notes[f.hour] || []).push(a); return; }
+      var label = KINDS[a.kind].name + ", " + a.about + ", " + (f.f === "now" ? (a.past ? "spoke at " : "will speak at ") + hhmm(f.hour) : "kept quiet");
+      if (f.f === "now") {
+        var unk = S.s === "unknown" && a.kind === "sync";
+        items.push({ h: f.hour, html: '<button class="mark' + (unk ? " unknown" : "") + '" style="left:@" data-act="r-open" data-id="' + a.id + '" aria-label="' + esc(label) + '"' + cur + '><span class="dot ' + a.kind + '">' + (unk ? "" : g(a.kind)) + "</span></button>" });
+      } else {
+        items.push({ h: f.hour, html: '<button class="mark" style="left:@" data-act="r-open" data-id="' + a.id + '" aria-label="' + esc(label) + '"' + cur + '><span class="hollow"></span></button>' });
+      }
+    });
+    Object.keys(notes).forEach(function (h) {
+      var list = notes[h];
+      var cur = list.some(function (a) { return a.id === S.rsel; }) ? ' aria-current="true"' : "";
+      items.push({ h: +h, html: '<button class="mark" style="left:@" data-act="r-open" data-id="' + list[0].id + '" data-note="' + dayIdx + '" aria-label="' + esc(hhmm(+h) + " note, " + plural(list.length, "item", "items")) + '"' + cur + '><span class="chip">' + g("note") + list.length + "</span></button>" });
+    });
+    items.sort(function (x, y) { return x.h - y.h; });
+    var prev = -99;
+    items.forEach(function (it) { it.x = Math.max(it.h, prev + MARK_GAP_H, 1.5); prev = it.x; });
+    // Centre each run of pushed marks on its true times, so no mark drifts far from its hour.
+    var run = [];
+    items.concat([null]).forEach(function (it, i) {
+      if (it && run.length && it.x - run[run.length - 1].x <= MARK_GAP_H + 0.001) { run.push(it); return; }
+      if (run.length > 1) {
+        var shift = run.reduce(function (s, r) { return s + r.h - r.x; }, 0) / run.length;
+        var lo = 1.5 - run[0].x;
+        run.forEach(function (r) { r.x += Math.max(shift, lo); });
+      }
+      run = it ? [it] : [];
+    });
+    var over = items.length ? items[items.length - 1].x - 22.5 : 0;
+    if (over > 0) items.forEach(function (it) { it.x -= over; });
+    return items.map(function (it) { return it.html.replace("left:@", "left:" + (it.x / 24 * 100).toFixed(2) + "%"); }).join("");
+  }
+  function rWeek() {
+    var h = '<div class="axis" aria-hidden="true"><span>0</span><span>6</span><span>12</span><span>18</span><span>24</span></div><div class="week" role="list">';
+    DAYS.forEach(function (name, i) {
+      if (i === TODAY) h += '</div><div class="nowrule" aria-hidden="true">Now ' + hhmm(NOW) + '</div><div class="week" role="list">';
+      var qs = S.qFrom > S.qTo
+        ? '<span class="q" style="left:0;width:' + (S.qTo / 24 * 100) + '%"></span><span class="q" style="left:' + (S.qFrom / 24 * 100) + '%;right:0"></span>'
+        : '<span class="q" style="left:' + (S.qFrom / 24 * 100) + "%;width:" + ((S.qTo - S.qFrom) / 24 * 100) + '%"></span>';
+      var tick = '<span class="tick" style="left:' + (S.noteH / 24 * 100) + '%"></span>';
+      var now = i === TODAY ? '<span class="now" style="left:' + (NOW / 24 * 100) + '%"></span>' : "";
+      h += '<div class="day' + (i < TODAY ? " past" : "") + (i === TODAY ? " today" : "") + '" role="listitem"><span class="dname">' + name + '</span><span class="band">' + qs + tick + now + rMarks(i) + "</span></div>";
+    });
+    h += "</div>";
+    h += '<div class="legend"><span><i class="dot"></i>Interrupts</span><span><i class="chip"></i>In the ' + hhmm(S.noteH) + ' note</span><span><i class="hollow"></i>Kept quiet</span><span><i class="chip" style="border:0;background:var(--shade)"></i>Quiet hours</span></div>';
+    return h;
+  }
+  function rList() {
+    // The largest text cannot fit hour bands; the same marks read as a list by day.
+    var h = '<div class="alist">';
+    DAYS.forEach(function (name, i) {
+      var items = ALERTS.filter(function (a) { return S.s !== "calm" && rFate(a).day === i; });
+      if (!items.length) return;
+      if (i === TODAY) h += '<div class="nowrule" style="padding:var(--space-3) 0 0">Now ' + hhmm(NOW) + "</div>";
+      h += "<h3>" + name + "</h3>";
+      items.forEach(function (a) {
+        var f = rFate(a);
+        var when = f.f === "now" ? hhmm(f.hour) : f.f === "note" ? hhmm(S.noteH) + " note" : "Kept quiet";
+        h += '<button class="item" data-act="r-open" data-id="' + a.id + '"' + (S.rsel === a.id ? ' aria-current="true"' : "") + '><span class="top">' + kindBadge(f.f === "quiet" ? "minor" : a.kind) + "<span>" + when + '</span></span><span class="about" style="font-size:var(--t-head);line-height:var(--l-head);font-weight:600">' + esc(a.about) + "</span></button>";
+      });
+    });
+    return h + "</div>";
+  }
+  function rLadder(inline) {
+    var h = '<div class="ladder' + (inline ? " inline" : "") + '" role="group" aria-label="The ladder: what interrupts you">';
+    h += '<div class="ladder-head"><span>Most to regret at the top. Above the line interrupts you; below it ' + (S.rest === "note" ? "waits for the " + hhmm(S.noteH) + " note" : "stays quiet") + '. Tap a rung to move the line.</span></div>';
+    RUNGS.forEach(function (k, i) {
+      if (i === S.line) h += '<div class="line-bar" aria-hidden="true">quiet line</div>';
+      var above = i < S.line;
+      // The fate shows by the legend's own shapes; its words live once, in the ladder head.
+      var fate = above ? '<i class="mini-dot ' + k + '"></i>' : S.rest === "note" ? '<i class="mini-chip"></i>' : '<i class="mini-hollow"></i>';
+      h += '<button class="rung ' + (above ? "above" : "below") + '" data-act="r-rung" data-i="' + i + '" aria-label="' + esc(KINDS[k].name + ": " + (above ? "interrupts" : S.rest === "note" ? "waits for the note" : "kept quiet") + ". Tap to move the line.") + '">' +
+        kindBadge(k, "") + '<span class="name">' + esc(KINDS[k].name) + (inline ? '<span class="why">' + esc(KINDS[k].why) + "</span>" : "") + '</span><span class="fate">' + fate + "</span></button>";
+    });
+    if (S.line === RUNGS.length) h += '<div class="line-bar" aria-hidden="true">quiet line</div>';
+    if (S.rans) h += '<div class="answer" role="status" style="margin-top:var(--space-2)"><span style="flex:1 1 10rem">' + esc(S.rans.text) + '</span><button class="btn plain" data-act="r-undo">Undo</button></div>';
+    return h + "</div>";
+  }
+  function rTimingBody() {
+    var h = '<div class="group">';
+    h += '<div class="seg-wrap stack" style="gap:var(--space-2)"><span class="label">Below the line</span><div class="segmented" role="radiogroup" aria-label="Below the line">' +
+      '<button role="radio" aria-checked="' + (S.rest === "note") + '" data-act="r-rest" data-v="note">Wait for the note</button>' +
+      '<button role="radio" aria-checked="' + (S.rest === "none") + '" data-act="r-rest" data-v="none">Keep quiet</button></div></div>';
+    h += '<div class="set-row"><span class="label">Note at <span class="value">' + hhmm(S.noteH) + "</span></span>" + stepper("t-note", "", S.noteH > 5, S.noteH < 12) + "</div>";
+    h += '<div class="set-row"><span class="label">Quiet from <span class="value">' + hhmm(S.qFrom) + "</span></span>" + stepper("t-from", "", S.qFrom > 18, S.qFrom < 23.5) + "</div>";
+    h += '<div class="set-row"><span class="label">Quiet until <span class="value">' + hhmm(S.qTo) + "</span></span>" + stepper("t-to", "", S.qTo > 5, S.qTo < 10) + "</div>";
+    h += '<div class="set-row"><span class="label">Lost mail may break quiet hours</span><span class="toggle-hit"><button class="toggle" role="switch" aria-checked="' + S.wake + '" aria-label="Lost mail may break quiet hours" data-act="t-wake"></button></span></div>';
+    return h + "</div>";
+  }
+  function rDetailBody(id, note) {
+    var a = byId(id); if (!a) return "";
+    var f = rFate(a), h = "";
+    if (note !== undefined && note !== null) {
+      var items = ALERTS.filter(function (x) { var ff = rFate(x); return ff.f === "note" && ff.day === +note; });
+      h += '<p class="q-ask">' + esc(hhmm(S.noteH) + " note, " + dayWord(+note)) + "</p>";
+      h += '<div class="group">' + items.map(function (x) {
+        return '<button class="row" data-act="r-open" data-id="' + x.id + '">' + kindBadge(x.kind) + '<span class="main"><span class="about">' + esc(x.about) + '</span><span class="reason">' + esc(x.reason) + "</span></span>" + g("chev", "chev") + "</button>";
+      }).join("") + "</div>";
+      return h;
+    }
+    var when;
+    if (a.past) when = f.f === "now" ? "Interrupted you " + dayWord(f.day) + " at " + hhmm(f.hour) + "." : f.f === "note" ? "Was in the " + hhmm(S.noteH) + " note " + dayWord(f.day) + "." : "Was kept quiet.";
+    else when = f.f === "now" ? "Will interrupt you " + dayWord(f.day) + " at " + hhmm(f.hour) + (f.held ? ", held until quiet hours end." : ".") : f.f === "note" ? "Will wait for the " + hhmm(S.noteH) + " note " + dayWord(f.day) + "." : "Will be kept quiet.";
+    h += '<div class="stack"><div class="kind-line">' + kindBadge(a.kind) + '<h2 class="detail-title" style="font-size:var(--t-title3);line-height:var(--l-title3)">' + esc(a.about) + '</h2></div><p class="body-text">' + esc(a.reason) + '</p><p class="hint">' + esc(when) + "</p></div>";
+    h += '<button class="btn filled wide" data-act="toast" data-msg="Opens this order in the order list.">Open the order</button>';
+    if (!a.past && S.s !== "calm") {
+      var i = rungOf(a);
+      if (f.f === "now") h += '<button class="btn tinted wide" data-act="r-rung" data-i="' + i + '">Wait for the note for ' + esc(KINDS[a.kind].name.toLowerCase()) + "</button>";
+      else h += '<button class="btn tinted wide" data-act="r-rung" data-i="' + i + '">Interrupt me for ' + esc(KINDS[a.kind].name.toLowerCase()) + "</button>";
+    }
+    return h;
+  }
+  function rStateCard() {
+    if (S.s === "empty") return '<div class="state"><p>Your week fills once there are orders to watch.</p><button class="btn filled" data-act="fill">Add your orders</button></div>';
+    if (S.s === "failed") return '<div class="state"><p>Could not read your orders, so this week cannot be drawn. Alerts are paused until they load.</p><button class="btn filled" data-act="retry">' + (S.busy === "retry" ? "Trying again…" : "Try again") + "</button></div>";
+    return "";
+  }
+  function rUnknown() {
+    if (S.s !== "unknown") return "";
+    return '<div class="group" style="margin-bottom:var(--space-2)"><div class="row">' + kindBadge("unknown", "Not sure") + '<span class="main"><span class="about">Sync: not sure</span><span class="reason">The other device last synced Tue 17. Hatched marks may be wrong.</span></span></div><div class="seg-wrap"><button class="btn tinted wide" data-act="fill">' + (S.busy === "fill" ? "Checking…" : "Check now") + "</button></div></div>";
+  }
+  function rNav() {
+    return '<div class="navbar"><span style="min-width:44px"></span><span class="title">Your week</span><button class="navbtn" data-act="r-timing" aria-label="Timing: note and quiet hours">' + g("moon") + "</button></div>";
+  }
+  function rMain(withLadder) {
+    var card = rStateCard();
+    var h = '<div class="app">' + rNav();
+    if (card) return h + '<div class="scroll">' + card + "</div></div>";
+    // At the largest text a pinned ladder would leave no room for the week, so it joins the scroll.
+    h += '<div class="scroll">' + rHero() + rUnknown() + (ax() ? rList() + (withLadder ? '<div style="height:var(--space-4)"></div>' + rLadder(true) + '<div style="height:var(--space-6)"></div>' : "") : rWeek()) + "</div>";
+    if (withLadder && !ax()) h += rLadder(false);
+    return h + "</div>";
+  }
+  function rSheet() {
+    if (S.r === "timing") {
+      return '<div class="scrim" data-act="r-close"></div><div class="sheet" role="dialog" aria-label="Timing"><div class="grabber"></div><div class="navbar"><button class="navbtn" data-act="r-close">Close</button><span class="title">Timing</span><span style="min-width:44px"></span></div><div class="scroll">' + rTimingBody() + "</div></div>";
+    }
+    if (S.r === "sheet" && S.rsel) {
+      return '<div class="scrim" data-act="r-close"></div><div class="sheet medium" role="dialog" aria-label="Alert"><div class="grabber"></div><div class="navbar"><button class="navbtn" data-act="r-close">Close</button><span></span></div><div class="scroll stack" style="gap:var(--space-4)">' + rDetailBody(S.rsel, S.rnote) + "</div></div>";
+    }
+    return "";
+  }
+  function renderRehearsal(panes) {
+    if (panes.length === 2) {
+      panes[0].innerHTML = statusBar() + rMain(false);
+      var card = rStateCard();
+      var right = '<div class="app"><div class="navbar"><span></span><span class="title">Ladder</span><span></span></div><div class="scroll"><div class="right-pane">';
+      if (!card) {
+        right += rLadder(true);
+        right += '<div class="pad stack">' + (S.rsel ? rDetailBody(S.rsel, S.rnote) : '<p class="hint">Tap a mark on the week to see what it says and why.</p>') + "</div>";
+      }
+      right += '<div class="pad stack"><p class="q-ask">Timing</p>' + rTimingBody() + "</div>";
+      right += "</div></div></div>";
+      panes[1].innerHTML = statusBar() + right;
+      if (S.r === "timing") S.r = "week";
+    } else {
+      panes[0].innerHTML = statusBar() + rMain(!rStateCard()) + rSheet();
+    }
+  }
+
+  /* ---------- Render ---------- */
+  function render() {
+    var root = document.documentElement;
+    if (S.t === "auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", S.t);
+    document.querySelectorAll("[data-set]").forEach(function (b) { b.setAttribute("aria-pressed", String(S[b.dataset.set] === b.dataset.v)); });
+    var axBtn = document.getElementById("ax5-btn");
+    axBtn.disabled = S.d !== "folded";
+    axBtn.title = S.d !== "folded" ? "The largest text is drawn on the folded pose only." : "";
+    var map = { folded: "iphone-duo-folded", open: "iphone-duo-unfolded", phone: "iphone-large" };
+    var caps = { folded: "Duo folded, 466 x 678 pt", open: "Duo open, 951 x 669 pt, hinge from x 455.5 to 495.5", phone: "Large phone: stand-in size 466 x 678 pt (no size written); drag the corner to resize" };
+    ["quiet-line", "rehearsal"].forEach(function (c) {
+      var sec = document.getElementById("concept-" + c);
+      sec.hidden = S.hide.indexOf(c) >= 0;
+      sec.querySelectorAll(".device").forEach(function (dv) {
+        var on = dv.dataset.device === map[S.d];
+        dv.hidden = !on;
+        if (!on) { dv.querySelectorAll(".screen").forEach(function (s) { s.innerHTML = ""; }); return; }
+        dv.setAttribute("data-ax", ax() ? "5" : "0");
+        var panes = Array.prototype.slice.call(dv.querySelectorAll(".screen"));
+        if (c === "quiet-line") renderQuiet(panes); else renderRehearsal(panes);
+        if (S.toast && S.toast.c === c) {
+          var host = panes[panes.length - 1];
+          host.insertAdjacentHTML("beforeend", '<div class="toast" role="status">' + esc(S.toast.msg) + "</div>");
+        }
+      });
+      sec.querySelector("[data-cap]").textContent = caps[S.d] + (ax() ? ", largest text (AX5)" : "");
+    });
+    var restore = document.getElementById("restore");
+    restore.hidden = !S.hide.length;
+    writeHash();
+  }
+
+  /* ---------- Events ---------- */
+  var toastTimer = null;
+  document.addEventListener("click", function (e) {
+    var set = e.target.closest("[data-set]");
+    if (set) {
+      S[set.dataset.set] = set.dataset.v;
+      if (set.dataset.set === "s") { S.qans = null; S.rans = null; S.busy = null; applyStateSideEffects(); }
+      if (set.dataset.set === "d" && S.d !== "folded") S.ax = "0";
+      render(); return;
+    }
+    var el = e.target.closest("[data-act]"); if (!el) return;
+    var act = el.dataset.act;
+    var concept = el.closest(".concept") ? el.closest(".concept").id.replace("concept-", "") : null;
+    var id = el.dataset.id;
+    switch (act) {
+      case "hide": S.hide.push(el.dataset.c); break;
+      case "restore": S.hide = []; break;
+      case "fill": case "retry":
+        S.busy = act; render();
+        setTimeout(function () { S.busy = null; S.s = "loaded"; applyStateSideEffects(); render(); }, 700);
+        return;
+      case "toast":
+        S.toast = { c: concept, msg: el.dataset.msg }; clearTimeout(toastTimer);
+        toastTimer = setTimeout(function () { S.toast = null; render(); }, 1800); break;
+      /* Quiet line */
+      case "q-tab": S.q = el.dataset.v; S.qans = null; break;
+      case "q-open": S.qsel = id; S.qans = null; if (S.d !== "open") S.q = "detail"; break;
+      case "q-back": S.q = "alerts"; S.qans = null; break;
+      case "q-quiet": S.qopen = !S.qopen; break;
+      case "q-yes": S.qans = { id: id, text: "Kept as is. You will hear about ones like this." }; break;
+      case "q-less": {
+        var a = byId(id), k = a.kind === "minor" ? "late" : a.kind;
+        var before = JSON.parse(JSON.stringify(S.rules)); var eff = lessEffect(a.kind); eff.apply();
+        S.qans = { id: id, text: eff.text, undo: before, k: k }; break;
+      }
+      case "q-more": {
+        var before2 = JSON.parse(JSON.stringify(S.rules)); var b = byId(id);
+        if (b.kind === "minor" || b.kind === "late") { S.rules.late.days = Math.min(S.rules.late.days, b.late); if (S.rules.late.when === "never") S.rules.late.when = "note"; }
+        else S.rules[b.kind].when = "note";
+        S.qans = { id: id, text: "You will now hear about these in the " + hhmm(S.noteH) + " note.", undo: before2 }; break;
+      }
+      case "q-undo": if (S.qans && S.qans.undo) S.rules = S.qans.undo; S.qans = null; break;
+      case "q-unsilence": S.rules.lost.when = "now"; if (S.s === "silent") S.s = "loaded"; break;
+      case "q-when": S.rules[el.dataset.kind].when = el.dataset.v; if (S.s === "silent" && !allNever()) S.s = "loaded"; break;
+      case "q-step": {
+        var r = S.rules[el.dataset.kind], v = +el.dataset.v;
+        if (el.dataset.kind === "sync") r.hours = Math.max(1, Math.min(12, r.hours + v));
+        else if (el.dataset.kind === "lost") r.days = Math.max(7, Math.min(35, r.days + v * 7));
+        else r.days = Math.max(1, Math.min(14, r.days + v));
+        break;
+      }
+      /* Shared timing */
+      case "t-note": S.noteH = Math.max(5, Math.min(12, S.noteH + 0.5 * el.dataset.v)); break;
+      case "t-from": S.qFrom = Math.max(18, Math.min(23.5, S.qFrom + 0.5 * el.dataset.v)); break;
+      case "t-to": S.qTo = Math.max(5, Math.min(10, S.qTo + 0.5 * el.dataset.v)); break;
+      case "t-wake": S.wake = !S.wake; break;
+      /* Rehearsal */
+      case "r-open": S.rsel = id; S.rnote = el.dataset.note !== undefined ? el.dataset.note : null; if (S.d !== "open") S.r = "sheet"; break;
+      case "r-close": S.r = "week"; S.rnote = null; break;
+      case "r-timing": S.r = "timing"; break;
+      case "r-rung": {
+        var i = +el.dataset.i, old = S.line, oldInt = rCounts().now;
+        S.line = i < S.line ? i : i + 1;
+        if (S.s === "silent") { S.s = "loaded"; S.rest = "note"; }
+        var n = rCounts().now, d = oldInt - n;
+        S.rans = { from: old, text: d > 0 ? "Next 7 days: " + plural(d, "fewer interruption", "fewer interruptions") + "." : d < 0 ? "Next 7 days: " + plural(-d, "more interruption", "more interruptions") + "." : "No change to the next 7 days." };
+        break;
+      }
+      case "r-undo": if (S.rans) S.line = S.rans.from; S.rans = null; break;
+      case "r-rest": S.rest = el.dataset.v; break;
+      case "r-unsilence": S.line = 1; S.rest = "note"; S.s = "loaded"; break;
+    }
+    render();
+  });
+  window.addEventListener("hashchange", function () { readHash(); render(); });
+  readHash();
+  render();
+})();
+</script>
+</body>
+</html>

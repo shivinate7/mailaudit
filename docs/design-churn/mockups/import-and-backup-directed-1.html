@@ -1,0 +1,737 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Import Preview First</title>
+<style>
+/* Tokens: shared/tokens.json, light set (design-parchment-ledger). The web app and the native client ship light only, so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the UI test floor that duo-hand-held-box uses (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom, 0px);
+}
+* { box-sizing:border-box; }
+html { background:var(--paper); }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1180px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+.who { display:flex; flex-direction:column; gap:4px; }
+.who h1 { font-family:var(--cochin); font-size:26px; margin:0; font-weight:400; }
+.who p { margin:0; color:var(--inkSoft); max-width:76ch; }
+.who b { color:var(--ink); }
+.ctl { display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:8px 0; }
+.ctl .row { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ctl .lab { font:12px var(--mono); color:var(--inkSoft); min-width:72px; }
+.ctl button, .ctl a { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl [aria-pressed="true"], .ctl [aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.ctl button.hide { border-style:dashed; color:var(--inkSoft); }
+.ctl button[disabled] { opacity:.45; cursor:not-allowed; }
+button:focus-visible, a:focus-visible, input:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.intro { max-width:80ch; margin:0; }
+.stage { display:flex; flex-wrap:wrap; gap:32px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure[hidden] { display:none; }
+figcaption { font:12px var(--mono); color:var(--inkSoft); max-width:466px; }
+figcaption b { font-family:var(--sys); font-size:14px; color:var(--ink); }
+.fit { max-width:100%; overflow-x:auto; }
+
+/* ---------- device frames: 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:14px; overflow:hidden; flex:none;
+  --fb:17px; --fh:17px; --ff:13px; --fc:12px; --ft:22px; }
+/* AX5 (largest accessibility size), Large (default) to AX5 from the HIG typography tables, read 2026-11-21:
+   Body 17 -> 53, Headline 17 -> 53, Footnote 13 -> 44, Caption 1 12 -> 43, Title 2 22 -> 56. */
+.dev.ax5 { --fb:53px; --fh:53px; --ff:44px; --fc:43px; --ft:56px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font:600 12px var(--sys); z-index:9; background:var(--paper); }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.one .page { left:0; right:0; }
+.two .page.l { left:0; width:455.5px; } .two .page.r { left:495.5px; width:455.5px; }
+.hinge { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, transparent); z-index:8; }
+.hinge span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.scroll { position:absolute; top:var(--sat); left:0; right:0; bottom:0; overflow-y:auto; overflow-x:hidden; padding:12px 16px 160px;
+  display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); font-size:var(--fb); line-height:1.3; }
+.scroll.sheet { padding-bottom:176px; }
+.scroll > * { flex-shrink:0; }
+
+/* ---------- app type: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---------- */
+.num, .mono { font-family:var(--mono); font-size:.88em; }
+.micro { font:var(--fc)/1.25 var(--mono); color:var(--inkSoft); letter-spacing:.02em; }
+.foot { font-size:var(--ff); color:var(--inkSoft); }
+.letterhead { display:flex; flex-wrap:wrap; gap:0 12px; justify-content:space-between; align-items:baseline; border-bottom:2px solid var(--ink); padding-bottom:6px; }
+.letterhead b { font-family:var(--cochin); font-size:var(--ft); letter-spacing:.14em; font-weight:400; }
+.stack { display:flex; flex-direction:column; gap:8px; }
+.group { display:flex; flex-direction:column; }
+.group > .micro { padding:0 0 4px; }
+.cells { background:var(--card); border:1px solid var(--line); border-radius:8px; display:flex; flex-direction:column; }
+.cell { display:flex; justify-content:space-between; align-items:center; gap:12px; min-height:48px; padding:6px 12px; border-top:1px solid var(--line);
+  font:inherit; color:inherit; background:none; border-left:0; border-right:0; border-bottom:0; text-align:left; width:100%; cursor:pointer; }
+.cell:first-child { border-top:0; }
+.cell .v { color:var(--inkSoft); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px; text-align:right; }
+.cell.open .v { color:var(--accent); }
+.ax5 .cell { flex-direction:column; align-items:flex-start; gap:0; }
+.ax5 .cell .v { text-align:left; }
+.reset { color:var(--red); }
+
+/* toolbar of a sheet: Cancel on the leading edge (HIG sheets) */
+.tool { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; }
+.tool .t { font:600 var(--fh) var(--sys); }
+.tbtn { font:var(--fb) var(--sys); color:var(--accent); background:none; border:0; min-height:44px; min-width:44px; padding:0 4px; cursor:pointer; }
+.filel { display:flex; flex-wrap:wrap; gap:4px 8px; align-items:baseline; }
+
+/* the promise and the carbon table */
+.promise { display:flex; gap:10px; align-items:flex-start; padding:10px 12px; border-radius:8px; background:var(--greenSoft); color:var(--green); font-size:var(--fb); }
+.promise.warn { background:var(--redSoft); color:var(--red); }
+.promise svg { flex:none; width:1em; height:1em; margin-top:.15em; }
+.big { font-size:var(--ft); line-height:1.15; }
+.ct { display:grid; grid-template-columns:1fr auto auto; column-gap:16px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 12px; }
+.ct > div { padding:6px 0; border-top:1px solid var(--line); }
+.ct > .h { border-top:0; font:var(--fc) var(--mono); color:var(--inkSoft); }
+.ct .n { font-family:var(--mono); font-size:calc(var(--fb) * .88); text-align:right; }
+.ct .after { font-weight:700; }
+.ct .d { display:block; font:var(--fc) var(--mono); }
+.up { color:var(--green); } .down { color:var(--red); } .same { color:var(--inkSoft); }
+.ax5 .ct { display:flex; flex-direction:column; }
+.ax5 .ct > .h { display:none; }
+.ax5 .ct .n { text-align:left; border-top:0; padding-top:0; }
+.ax5 .ct .n::before { content:attr(data-k) " "; font-family:var(--cochin); color:var(--inkSoft); }
+
+/* filter chips: each count filters the list */
+.chips { display:flex; flex-wrap:wrap; gap:8px; }
+.chip { font:var(--ff) var(--cochin); min-height:44px; padding:0 12px; border-radius:22px; border:1px solid var(--line); background:var(--card); color:var(--ink);
+  display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+.chip .num { font-size:1em; }
+.chip[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); background:color-mix(in srgb, var(--accent) 8%, var(--card)); }
+
+/* diff rows: the margin mark carries the kind, by shape and colour */
+.dl { display:flex; flex-direction:column; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.dr { display:grid; grid-template-columns:28px 1fr; gap:0 8px; padding:8px 12px 8px 8px; border-top:1px solid var(--line); }
+.dr:first-child { border-top:0; }
+.dr > div { min-width:0; overflow-wrap:anywhere; }
+/* the open spread: both pages start their rows at the same height and scroll together, so a row lines up across the hinge */
+.two .sp-head { height:200px; flex:none; display:flex; flex-direction:column; gap:10px; overflow:hidden; }
+.mk { font:700 var(--fb) var(--mono); text-align:center; line-height:1.3; }
+.mk.new { color:var(--green); } .mk.chg { color:var(--manilaInk); } .mk.gone { color:var(--red); } .mk.skip { color:var(--inkSoft); }
+.dr .t1 { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.dr .t2 { font-size:var(--ff); color:var(--inkSoft); }
+.was { text-decoration:line-through; color:var(--inkSoft); }
+.to { color:var(--ink); }
+.two .sync .dr { height:96px; overflow:hidden; }
+.two .sync .dr .t2 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.dr.ghost { background:repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--line) 35%, transparent) 8px 9px); }
+.dr.ghost .t1 { color:var(--inkSoft); font-style:italic; }
+.pagehead { display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid var(--ink); padding-bottom:4px; }
+.pagehead b { font-family:var(--cochin); font-size:var(--ft); font-weight:400; }
+
+/* bottom actions: in the thumb zone, where the bar was */
+.dock { position:absolute; left:16px; right:16px; bottom:calc(12px + var(--sab)); z-index:7; display:flex; flex-direction:column; gap:8px;
+  padding:12px; border-radius:20px; border:1px solid var(--line);
+  background:color-mix(in srgb, var(--paper) 90%, transparent); -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4);
+  font-family:var(--cochin); }
+.dock .row2 { display:flex; gap:8px; }
+.btn { font:700 var(--fh) var(--cochin); min-height:52px; padding:0 16px; border-radius:12px; border:1px solid var(--ink); background:var(--ink); color:var(--card);
+  cursor:pointer; flex:1 1 auto; display:inline-flex; align-items:center; justify-content:center; text-align:center; }
+.btn[disabled] { opacity:.4; cursor:not-allowed; }
+.btn.q { background:var(--card); color:var(--ink); border-color:var(--line); font-weight:400; }
+.btn.danger { background:var(--card); color:var(--red); border-color:var(--red); }
+.btn.armed { background:var(--red); color:var(--card); border-color:var(--red); }
+.slot { flex:0 0 112px; display:flex; }
+.slot .btn { width:100%; }
+.slot.empty { visibility:hidden; }
+.ax5 .dock .row2 { flex-direction:column; }
+.ax5 .dock .foot { display:none; }
+.ax5 .tool { flex-wrap:wrap; justify-content:flex-start; }
+.ax5 .tool .t { order:-1; width:100%; }
+.ax5 .tool > span:last-child:empty { display:none; }
+.ax5 .slot { flex-basis:auto; }
+
+/* the web bar, variant D (phone-nav-is-bottom-bar) */
+.bar { position:absolute; left:24px; right:24px; bottom:calc(12px + var(--sab)); height:64px; z-index:7; display:flex; padding:4px; border-radius:32px;
+  border:1px solid var(--line); background:color-mix(in srgb, var(--paper) 62%, transparent);
+  -webkit-backdrop-filter:blur(16px) saturate(1.4); backdrop-filter:blur(16px) saturate(1.4); box-shadow:0 4px 16px rgba(28,43,36,0.06); }
+.bar button { flex:1; min-width:44px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border:0; background:none; border-radius:28px;
+  font:11px var(--cochin); color:var(--inkSoft); cursor:pointer; }
+.bar button[aria-current="page"] { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+.bar svg { width:22px; height:22px; }
+
+/* upload zone and the sample-file stand-in for the system picker */
+.zone { border:2px dashed var(--inkSoft); border-radius:12px; background:var(--card); padding:20px 16px; display:flex; flex-direction:column; gap:8px; align-items:center; text-align:center; }
+.zone .h { font-weight:700; }
+.picker { display:flex; flex-direction:column; gap:6px; width:100%; border-top:1px dashed var(--line); padding-top:8px; }
+.pf { font:var(--ff) var(--mono); min-height:44px; padding:0 12px; border:1px dashed var(--accent); border-radius:8px; background:none; color:var(--accent); cursor:pointer; text-align:left; overflow-wrap:anywhere; }
+.err { color:var(--red); }
+.receipt { background:var(--greenSoft); border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+.receipt.restored { background:var(--card); }
+.lead { font:700 var(--fb) var(--cochin); }
+textarea.note { resize:none; line-height:1.3; font-family:var(--cochin); }
+.link { font:inherit; color:var(--accent); background:none; border:0; padding:0; min-height:44px; text-align:left; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
+
+/* package cards */
+.pk { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; gap:4px; position:relative; }
+.pk .h1 { display:flex; justify-content:space-between; gap:8px; }
+.pk .meta { font-size:var(--ff); color:var(--inkSoft); }
+.pk.held { border:1.5px dashed var(--manilaInk); background:color-mix(in srgb, var(--manila) 35%, var(--card)); }
+.pk.goes { border-color:var(--red); }
+.pk.goes .h1 b { text-decoration:line-through; text-decoration-color:var(--red); }
+.tag { font:var(--fc) var(--mono); padding:1px 6px; border-radius:4px; align-self:flex-start; }
+.tag.held { background:var(--manila); color:var(--manilaInk); } .tag.goes { background:var(--redSoft); color:var(--red); }
+.ln { display:flex; align-items:center; gap:8px; font-size:var(--ff); min-height:28px; }
+.box { width:18px; height:18px; flex:none; border:1.5px solid var(--inkSoft); border-radius:4px; display:grid; place-items:center; color:var(--green); font:700 13px var(--mono); }
+.box.on { border-color:var(--green); background:var(--greenSoft); }
+.box svg { width:12px; height:12px; }
+.box.hollow { border-style:dashed; border-color:var(--red); color:var(--red); }
+.band { align-self:flex-start; transform:rotate(-1.5deg); background:var(--manila); color:var(--manilaInk); border:1.5px solid var(--manilaInk); border-radius:4px;
+  padding:4px 10px; font:italic var(--ff) var(--cochin); }
+.band b { font:700 var(--fc) var(--mono); font-style:normal; letter-spacing:.06em; margin-right:6px; }
+.band.staged { border-style:dashed; transform:none; background:color-mix(in srgb, var(--manila) 45%, var(--card)); }
+
+/* the tray strip (Held tray) */
+.tray { position:absolute; left:16px; right:16px; bottom:calc(84px + var(--sab)); z-index:7; border-radius:16px; border:1.5px dashed var(--manilaInk);
+  background:color-mix(in srgb, var(--manila) 88%, transparent); -webkit-backdrop-filter:blur(12px); backdrop-filter:blur(12px);
+  padding:10px 12px; display:flex; flex-direction:column; gap:8px; font-family:var(--cochin); color:var(--manilaInk); }
+.tray .ink { color:var(--ink); }
+.tray .row2 { display:flex; gap:8px; }
+.tray .btn { min-height:44px; font-size:var(--fb); }
+/* Put back keeps one width, so arming the other button moves nothing under the thumb */
+.tray .row2 > .btn.q { flex:0 0 112px; }
+.tray { font-size:var(--ff); }
+.ax5 .tray .row2 > .btn.q { flex-basis:auto; }
+body.marks .tray, body.marks .dock { position:absolute; }
+.ax5 .scroll > .tray, .ax5 .scroll > .dock, body.marks .ax5 .scroll > .tray { position:static; }
+.ax5 .scroll.sheet, .ax5 .scroll { padding-bottom:24px; }
+.ax5 .tray .row2 { flex-direction:column; }
+
+/* stamp editor */
+.ed { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:10px; }
+.kinds { display:grid; grid-template-columns:1fr 1fr; gap:10px 8px; }
+.ax5 .kinds { grid-template-columns:1fr; }
+.kd { font:var(--ff) var(--cochin); min-height:44px; border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--ink); cursor:pointer; padding:0 8px; }
+.kd[aria-pressed="true"] { border-color:var(--manilaInk); background:var(--manila); color:var(--manilaInk); font-weight:700; }
+.note { font:16px var(--cochin); min-height:44px; border:1px solid var(--line); border-radius:8px; padding:8px; background:var(--paper); color:var(--ink); width:100%; }
+.na { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.na > div { border:1px solid var(--line); border-radius:8px; padding:8px; display:flex; flex-direction:column; gap:6px; min-height:72px; }
+.ax5 .na { grid-template-columns:1fr; }
+
+/* month picker cells */
+.opts { display:grid; grid-template-columns:repeat(4, 1fr); gap:8px; }
+.ax5 .opts { grid-template-columns:1fr; }
+.op { font:var(--ff) var(--cochin); min-height:56px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; padding:4px; }
+.op .num { font-size:var(--fc); color:var(--inkSoft); }
+.op[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); }
+.op.staged { border:1.5px dashed var(--accent); }
+
+/* Today and New marks */
+body.marks [data-today], body.marks [data-new] { outline:1.5px dashed var(--inkSoft); outline-offset:2px; position:relative; }
+body.marks [data-new] { outline-color:var(--accent); }
+body.marks [data-today]::after, body.marks [data-new]::after { position:absolute; top:-8px; right:6px; z-index:4; font:10px/14px var(--mono); padding:0 4px;
+  background:var(--paper); border:1px dashed currentColor; border-radius:3px; pointer-events:none; white-space:nowrap; font-style:normal; font-weight:400; letter-spacing:0; }
+body.marks [data-today]::after { content:"Today: " attr(data-today); color:var(--inkSoft); }
+body.marks [data-new]::after { content:"New: " attr(data-new); color:var(--accent); }
+.ax5 [data-today]::after, .ax5 [data-new]::after { display:none; }
+@media (prefers-reduced-motion: no-preference) {
+  .band.land { animation:land 380ms cubic-bezier(.2,.9,.3,1.2) both; }
+  @keyframes land { from { transform:rotate(-6deg) scale(1.25); opacity:0; } to { transform:rotate(-1.5deg) scale(1); opacity:1; } }
+}
+</style>
+</head>
+<body class="marks">
+<main>
+  <div class="banner" role="note">Sample. No figure, seller, order or file on this page is real.</div>
+  <div class="who">
+    <h1>Import and backup, preview first</h1>
+    <p>Designer kind: <b>directed</b>. Direction: <b>preview-first: nothing changes until you confirm a clear before/after.</b></p>
+    <p>Two concepts, each a whole way of working: <b>Carbon copy</b> shows the change as a separate proof, Now beside After, and on the open Duo the hinge splits them. <b>Held tray</b> holds the change inside the real screens, marked in place, with a manila tray to add or put back.</p>
+  </div>
+
+  <div class="ctl" id="ctl"></div>
+  <div class="stage" id="stage">
+    <!-- One frame per pose, folded first. The script fills each frame. -->
+    <figure data-fig="folded"><figcaption></figcaption><div class="fit"><div class="dev one" data-device="iphone-duo-folded" style="width:466px;height:678px"></div></div></figure>
+    <figure data-fig="open"><figcaption></figcaption><div class="fit"><div class="dev two" data-device="iphone-duo-unfolded" style="width:951px;height:669px"></div></div></figure>
+    <figure data-fig="phone"><figcaption></figcaption><div class="fit"><div class="dev one" data-device="iphone-regular" style="width:375px;height:678px"></div></div></figure>
+    <figure data-fig="ax5"><figcaption></figcaption><div class="fit"><div class="dev one ax5" data-device="iphone-duo-folded" style="width:466px;height:678px"></div></div></figure>
+  </div>
+</main>
+
+<script>
+/* ---------------- sample data (all invented) ---------------- */
+const NOW = { lines:412, orders:96, cards:448, got:371, out:"48.20", env:3, stamps:5 };
+const AFTER = { lines:435, orders:102, cards:474, got:371, out:"61.10" };
+const BACK = { lines:398, orders:93, got:340, env:1, stamps:4, out:"44.90" };
+const NEWS = [
+  { s:"Rookery Cards", d:"Nov 20", id:"R7C2-0441", l:3, c:3, v:"1.75", n:["Brainstorm","Ponder","Opt"] },
+  { s:"Quillfeather Collectibles", d:"Nov 20", id:"Q1F8-2093", l:4, c:5, v:"2.75", n:["Swords to Plowshares","Path to Exile","Mana Leak","Duress"] },
+  { s:"Pemberton TCG", d:"Nov 19", id:"P4M0-7712", l:2, c:2, v:"1.10", n:["Llanowar Elves","Giant Growth"] },
+  { s:"Marsh & Vane", d:"Nov 19", id:"M9V3-5530", l:6, c:7, v:"2.80", n:["Dark Ritual","Shock","Negate","Divination","Cancel","Duress"] },
+  { s:"Hollow Oak Games", d:"Nov 18", id:"H2O6-0187", l:3, c:3, v:"1.95", n:["Thoughtseize","Fatal Push","Opt"] },
+  { s:"Copperline Cards", d:"Nov 18", id:"C5L1-9904", l:5, c:6, v:"3.40", n:["Counterspell","Lightning Bolt","Ponder","Preordain","Spell Pierce"] },
+];
+const CHG = [
+  { s:"Larkspur Games", d:"Nov 14", k:"track", l:3, f:"without tracking", t:"with tracking", g:"2 of 3 checked in" },
+  { s:"Thistle & Co", d:"Nov 12", k:"track", l:4, f:"without tracking", t:"with tracking", g:"4 of 4 checked in" },
+  { s:"Bramblewood", d:"Nov 9", k:"cancel", l:2, f:"without tracking", t:"canceled", g:"0 of 2 checked in", v:"0.85" },
+  { s:"Vesper Cards", d:"Oct 30", k:"rename", l:1, f:"Ornn - Fire Below the Mountain (Overnumbered)", t:"Ornn, Fire Below the Mountain (Overnumbered)", g:"1 of 1 checked in" },
+  { s:"Gannet Games", d:"Oct 22", k:"rename", l:1, f:"Atraxa - Grand Unifier (Showcase)", t:"Atraxa, Grand Unifier (Showcase)", g:"0 of 1 checked in" },
+];
+const LOST = [
+  { s:"Larkspur Games", d:"Nov 14", l:3, why:"ordered after the backup" },
+  { s:"Thistle & Co", d:"Nov 12", l:4, why:"ordered after the backup" },
+  { s:"Sable Row Games", d:"Nov 5", l:7, why:"ordered after the backup" },
+];
+const RANGES = [["all","All time",112],["30","30 days",14],["45","45 days",23],["60","60 days",31],["90","90 days",47],["days","Last…",null],["custom","By month",null]];
+const MONTHS = [["2026-11","Nov 2026",9],["2026-10","Oct 2026",18],["2026-09","Sep 2026",16],["2026-08","Aug 2026",21]];
+const KINDS = [["claim","Claim filed"],["refunded","Refunded"],["contacted","Seller contacted"],["reshipped","Reshipped"],["partial","Partial refund"],["other","Other"]];
+
+const STATES = [
+  ["ledger","Ledger tab"],["pick","Choose a file"],["import-preview","Import: check"],["import-none","Import: nothing new"],["import-error","Import: wrong file"],["import-done","Import: added"],
+  ["restore-preview","Restore: check"],["restore-armed","Restore: armed"],["restore-done","Restore: done"],
+  ["backup","Backup: check"],["backup-done","Backup: saved"],["packages","Packages"],["stamp","Stamp: edit"],["stamp-done","Stamp: saved"],["range","Orders from"],
+];
+const DEVICES = [
+  { id:"folded", name:"Duo, folded", w:466, h:678, pose:"one", data:"iphone-duo-folded", cap:"466 × 678 pt, portrait, one hand (brief)" },
+  { id:"open", name:"Duo, open", w:951, h:669, pose:"two", data:"iphone-duo-unfolded", cap:"951 × 669 pt, hinge x 455.5 to 495.5 (brief)" },
+  { id:"phone", name:"Large phone", w:375, h:678, pose:"one", data:"iphone-regular", cap:"375 pt wide (the repo's screens-check phone width); height borrowed from the folded Duo. The brief gives no size." },
+  { id:"ax5", name:"Duo, folded, AX5", w:466, h:678, pose:"one", data:"iphone-duo-folded", ax5:true, cap:"466 × 678 pt at AX5, the largest accessibility text size" },
+];
+const CONCEPTS = [["carbon","Carbon copy"],["tray","Held tray"]];
+
+/* ---------------- state, with a deep link for each ---------------- */
+const S = { c:"carbon", s:"import-preview", d:"all", f:"all", kind:"refunded", range:"all", staged:null, trayOpen:false, hidden:{}, marks:true };
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (p.get("c") && CONCEPTS.some(c => c[0] === p.get("c"))) S.c = p.get("c");
+  if (p.get("s") && STATES.some(x => x[0] === p.get("s"))) S.s = p.get("s");
+  if (p.get("d")) S.d = p.get("d");
+  if (p.get("f")) S.f = p.get("f");
+  if (p.get("t") === "light") document.documentElement.dataset.theme = "light";
+}
+function writeHash() { history.replaceState(null, "", `#c=${S.c}&s=${S.s}&d=${S.d}` + (S.f !== "all" ? `&f=${S.f}` : "")); }
+
+/* ---------------- small helpers ---------------- */
+const esc = (x) => String(x).replace(/&/g, "&amp;").replace(/</g, "&lt;");
+const A = (act, arg) => `data-act="${act}"` + (arg != null ? ` data-arg="${arg}"` : "");
+const tick = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+const warnI = `<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2l6.5 11.5h-13z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 6.5v3.2M8 11.6v.4" stroke="currentColor" stroke-width="1.6" stroke-linecap="round"/></svg>`;
+const ICONS = {
+  ledger:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 3v3M12 18v3M3 12h3M18 12h3M5.6 5.6l2.1 2.1M16.3 16.3l2.1 2.1M5.6 18.4l2.1-2.1M16.3 7.7l2.1-2.1"/></svg>`,
+  orphaned:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="12" rx="1.5"/><path d="M3 7l9 6 9-6"/></svg>`,
+  tally:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 4L7 20M17 4l-2 16M4 9h16M3 15h16"/></svg>`,
+  packages:`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5L12 12l9-4.5M12 12v9"/></svg>`,
+};
+function bar(cur) {
+  return `<nav class="bar" aria-label="Views">` + [["ledger","Ledger"],["orphaned","Orphaned"],["tally","Tally"],["packages","Packages"]]
+    .map(([k, l]) => `<button ${k === cur ? 'aria-current="page"' : ""} ${A("tab", k)}>${ICONS[k]}<span>${l}</span></button>`).join("") + `</nav>`;
+}
+const lh = (right) => `<div class="letterhead"><b>MANIFEST</b><span class="micro">${right}</span></div>`;
+
+/* ---------------- shared pieces ---------------- */
+function ledgerTab(opt = {}) {
+  const st = S.s;
+  const pickOpen = ["pick","import-error"].includes(st);
+  const rangeVal = (RANGES.find(r => r[0] === S.range) || MONTHS.find(m => m[0] === S.range) || RANGES[0])[1];
+  let html = lh("Ledger") + `
+  <div class="group"><div class="micro">View</div><div class="cells">
+    <button class="cell"><span>Showing</span><span class="v">● Unreceived</span></button>
+    <button class="cell"><span>Sorted by</span><span class="v">Newest order</span></button>
+    <button class="cell ${st === "range" ? "open" : ""}" ${A("go","range")} aria-expanded="${st === "range"}" data-today="Orders from row"><span>Orders from</span><span class="v">${rangeVal}</span></button>
+  </div></div>`;
+  if (st === "range" && !opt.noPanel) html += rangePanel();
+  html += `
+  <div class="group"><div class="micro">Data</div><div class="cells">
+    <button class="cell"><span>Sync</span><span class="v">Saved 00:30</span></button>
+    <button class="cell"><span>History</span><span class="v">14 versions</span></button>
+    <button class="cell ${pickOpen ? "open" : ""}" ${A("go", pickOpen ? "ledger" : "pick")} aria-expanded="${pickOpen}" data-today="Re-import CSV row"><span>Re-import CSV</span><span class="v">Merges</span></button>
+    <button class="cell ${st.startsWith("backup") ? "open" : ""}" ${A("go","backup")} aria-expanded="${st.startsWith("backup")}" data-new="size and last date on the row"><span>Backup</span><span class="v">${st === "backup-done" ? "Today 00:31" : "Nov 2"} <span class="num">186 KB</span></span></button>
+  </div></div>`;
+  if (!opt.noPanel) {
+    if (pickOpen) html += zone();
+    if (st === "import-done") html += importReceipt();
+    if (st === "restore-done") html += restoreReceipt();
+    if (st.startsWith("backup")) html += backupPanel();
+  }
+  html += `<div class="cells"><button class="cell reset"><span>Reset</span><span></span></button></div>`;
+  return html;
+}
+
+function zone() {
+  const e = S.s === "import-error";
+  return `<div class="zone" data-today="upload zone">
+    <div class="h">Drop your OrderWand CSV here</div>
+    <div class="foot">CSV imports merge with what’s here; a .json backup restores everything.</div>
+    <div class="foot" data-new="the promise" style="color:var(--green)">Nothing changes until you check what the file will do.</div>
+    <button class="btn" style="flex:none;min-height:44px;width:100%">Choose a file</button>
+    ${e ? `<div class="err" role="alert">That file isn’t a Mail Day backup. Use a backup downloaded from the Backup button, or an OrderWand CSV. Nothing changed.</div>` : ""}
+    <div class="picker"><div class="micro">Sample: what the system file picker returns</div>
+      <button class="pf" ${A("pick","csv")}>orderwand-2026-11-20.csv</button>
+      <button class="pf" ${A("pick","same")}>orderwand-2026-11-19.csv (already imported)</button>
+      <button class="pf" ${A("pick","json")}>mailday-backup-2026-11-02.json</button>
+      <button class="pf" ${A("pick","pdf")}>receipt-nov.pdf</button>
+    </div>
+  </div>`;
+}
+
+function importReceipt() {
+  return `<div class="receipt" role="status" data-new="receipt at the row">
+    <div>Added <span class="num">23</span> lines in <span class="num">6</span> orders. Check-ins untouched: <span class="num">371</span> kept.</div>
+    <div class="foot">Updated the shipping status on <span class="num">9</span> lines; <span class="num">2</span> are now canceled. Renamed <span class="num">2</span> lines to the new name.</div>
+    <div class="foot">Saved before import, <span class="num">00:31</span>.</div>
+    <button class="link" ${A("noop")}>Open History</button>
+  </div>`;
+}
+function restoreReceipt() {
+  return `<div class="receipt restored" role="status">
+    <div>Backup restored — <span class="num">398</span> lines and your check-ins are back. <span class="num">2</span> envelopes were replaced.</div>
+    <div class="foot">Saved before restore, <span class="num">00:32</span>. The server got it a few seconds later.</div>
+    <button class="link" ${A("noop")}>Open History</button>
+  </div>`;
+}
+
+function backupPanel() {
+  const done = S.s === "backup-done";
+  return `<div class="ed" data-new="backup preview">
+    <div class="lead">What the backup holds</div>
+    <div class="ct" style="grid-template-columns:1fr auto">
+      <div class="h">Part</div><div class="h n">Count</div>
+      <div>Lines</div><div class="n" data-k="Lines">412</div>
+      <div>Check-ins</div><div class="n" data-k="Check-ins">371</div>
+      <div>Envelopes</div><div class="n" data-k="Envelopes">3</div>
+      <div>Stamps</div><div class="n" data-k="Stamps">5</div>
+    </div>
+    <div class="foot">File size <span class="num">186 KB</span>. Photos are not in it. Backup + photos holds them too: <span class="num">4.2 MB</span>.</div>
+    ${done
+      ? `<div class="receipt" role="status"><div>Saved <span class="mono">mailday-backup-2026-11-21.json</span>, <span class="num">186 KB</span>.</div><div class="foot">Keep it somewhere off this phone, such as Files or iCloud Drive.</div></div>`
+      : `<div class="row2" style="display:flex;gap:8px;flex-wrap:wrap"><button class="btn" ${A("go","backup-done")}>Download backup</button><button class="btn q">Backup + photos</button></div>`}
+    <div class="foot">Last backup: ${done ? "today, 00:31" : "Nov 2, 21:14, 19 days ago"}.</div>
+  </div>`;
+}
+
+function rangePanel() {
+  const carbon = S.c === "carbon";
+  const sel = carbon ? (S.staged || S.range) : S.range;
+  const cnt = (RANGES.find(r => r[0] === sel) || RANGES[0])[2];
+  const cur = (RANGES.find(r => r[0] === S.range) || MONTHS.find(m => m[0] === S.range) || RANGES[0])[2];
+  let h = `<div class="ed" data-new="${carbon ? "pick stages, button applies" : "count on each choice"}">
+    <div class="lead">Orders from</div><div class="opts">` +
+    RANGES.map(([v, l, n]) => `<button class="op ${carbon && S.staged === v && S.staged !== S.range ? "staged" : ""}" aria-pressed="${v === sel}" ${A("range", v)}><span>${l}</span>${n != null ? `<span class="num">${n}</span>` : ""}</button>`).join("") +
+    `</div>` + (sel === "custom" || /^\d{4}-/.test(sel) ? `<div class="lead">Months with orders, newest first</div><div class="opts">` +
+    MONTHS.map(([v, l, n]) => `<button class="op ${carbon && S.staged === v && S.staged !== S.range ? "staged" : ""}" aria-pressed="${v === sel}" ${A("range", v)}><span>${l}</span><span class="num">${n}</span></button>`).join("") + `</div>` : "");
+  if (carbon) {
+    const open = sel === "custom" || sel === "days";
+    const ch = S.staged && S.staged !== S.range && !open;
+    const ncnt = cnt != null ? cnt : (MONTHS.find(m => m[0] === sel) || [0,0,0])[2];
+    if (sel === "days") h += `<label class="foot" style="display:flex;gap:8px;align-items:center">Last <input class="note" style="width:96px" inputmode="numeric" placeholder="days"> days</label>`;
+    h += `<div class="foot">Showing <span class="num">${cur}</span> packages${ch ? ` → <b class="num">${ncnt}</b>` : ""}. Nothing is hidden from the ledger, only from view.</div>
+      <div style="display:flex;gap:8px"><button class="btn q" ${A("rangeCancel")}>Cancel</button><button class="btn" ${ch ? "" : `disabled title="${open ? (sel === "days" ? "Type a number of days first" : "Pick a month first") : "Pick another range first"}"`} ${A("rangeApply")}>${ch ? `Show ${ncnt} packages` : sel === "custom" ? "Pick a month" : "Show packages"}</button></div>`;
+  } else {
+    h += `<div class="foot">Each count is the packages that range shows. A tap applies it.</div>`;
+  }
+  return h + `</div>`;
+}
+
+/* ---------------- Carbon copy ---------------- */
+function carbonTable(kind, id) {
+  const rows = kind === "import"
+    ? [["Lines", NOW.lines, AFTER.lines, "+23", "up"], ["Orders", NOW.orders, AFTER.orders, "+6", "up"], ["Checked in", NOW.got, AFTER.got, "kept", "same"], ["Outstanding", "$" + NOW.out, "$" + AFTER.out, "+$12.90", "up"]]
+    : [["Lines", NOW.lines, BACK.lines, "−14", "down"], ["Checked in", NOW.got, BACK.got, "−31", "down"], ["Envelopes", NOW.env, BACK.env, "−2", "down"], ["Stamps", NOW.stamps, BACK.stamps, "−1", "down"]];
+  const hd = kind === "import" ? ["", "Now", "After"] : ["", "Now", "Backup"];
+  return `<div class="ct" ${id ? `id="${id}"` : ""} data-new="Now and After, side by side">
+    <div class="h">${hd[0]}</div><div class="h n">${hd[1]}</div><div class="h n">${hd[2]}</div>` +
+    rows.map(([k, a, b, d, cl]) => `<div>${k}</div><div class="n" data-k="${hd[1]}">${a}</div><div class="n after" data-k="${hd[2]}">${b}<span class="d ${cl}">${d}</span></div>`).join("") + `</div>`;
+}
+function chips() {
+  const C = [["all","All",null],["new","New",23],["chg","Changed",11],["here","Already here",397],["out","Left out",7]];
+  return `<div class="chips" role="group" aria-label="Filter the changes">` + C.map(([k, l, n]) =>
+    `<button class="chip" aria-pressed="${S.f === k}" ${A("f", k)}>${l}${n != null ? ` <span class="num">${n}</span>` : ""}</button>`).join("") + `</div>`;
+}
+function diffRows(side) {
+  /* side: one | now | after. The same rows in the same order on both pages, so a row lines up across the hinge. */
+  const f = S.f; let out = [];
+  if (f === "all" || f === "new") NEWS.forEach(r => {
+    if (side === "now") out.push(`<div class="dr ghost"><span class="mk new"></span><div><div class="t1"><span>Not in the ledger yet</span></div><div class="t2">${esc(r.s)} would go here</div></div></div>`);
+    else out.push(`<div class="dr"><span class="mk new" aria-label="New">+</span><div><div class="t1"><b>${esc(r.s)}</b><span class="num">${r.d}</span></div>
+      <div class="t2"><span class="num">${r.l}</span> lines, <span class="num">${r.c}</span> cards, <span class="num">$${r.v}</span></div><div class="t2">${r.n.map(esc).join(", ")}</div></div></div>`);
+  });
+  if (f === "all" || f === "chg") CHG.forEach(r => {
+    const label = r.k === "rename" ? "Name" : "Shipping";
+    const val = side === "now" ? `<span>${esc(r.f)}</span>` : side === "after" ? `<span class="to">${esc(r.t)}</span>` : `<span class="was">${esc(r.f)}</span> <span class="to">→ ${esc(r.t)}</span>`;
+    out.push(`<div class="dr"><span class="mk chg" aria-label="Changed">${side === "now" ? "" : "~"}</span><div><div class="t1"><b>${esc(r.s)}</b><span class="num">${r.d}</span></div>
+      <div class="t2">${label}, <span class="num">${r.l}</span> line${r.l > 1 ? "s" : ""}: ${val}</div>
+      <div class="t2">${r.g}${side !== "now" ? " — kept" : ""}${r.k === "cancel" && side !== "now" ? `. Leaves the Value: <span class="num">$${r.v}</span>` : ""}</div></div></div>`);
+  });
+  if (f === "all" || f === "here") out.push(`<div class="dr"><span class="mk skip" aria-label="Unchanged">=</span><div><div class="t1"><span>Already here, unchanged</span><span class="num">397</span></div><div class="t2">Lines in 90 orders. Their check-ins stay as they are.</div></div></div>`);
+  if (f === "all" || f === "out") out.push(`<div class="dr"><span class="mk skip" aria-label="Left out">·</span><div><div class="t1"><span>Left out</span><span class="num">7</span></div><div class="t2">Rows that are not TCGplayer card purchases. The ledger does not keep them.</div></div></div>`);
+  return `<div class="dl">${out.join("")}</div>`;
+}
+function fileLine(name, meta) { return `<div class="filel"><span class="mono" style="overflow-wrap:anywhere">${name}</span><span class="micro">${meta}</span></div>`; }
+
+function carbonImport(dev) {
+  const id = dev.id === "folded" ? "carbon-proof" : "";
+  if (S.s === "import-none") return { body: `<div class="tool"><button class="tbtn" ${A("go","pick")}>Cancel</button><span class="t">Check before adding</span><span style="width:44px"></span></div>
+    ${fileLine("orderwand-2026-11-19.csv", "431 lines read")}
+    <div class="promise">${tick}<span>Nothing new in this file. Every one of its <span class="num">431</span> lines is already here, unchanged.</span></div>`,
+    dock: `<button class="btn" ${A("go","ledger")}>Done</button>` };
+  const body = `<div class="tool"><button class="tbtn" ${A("go","pick")}>Cancel</button><span class="t">Check before adding</span><span style="width:44px"></span></div>
+    ${fileLine("orderwand-2026-11-20.csv", "438 rows read")}
+    <div class="promise">${tick}<span><span class="big">Adds <span class="num">23</span> lines. Removes nothing.</span><br>Your <span class="num">371</span> check-ins stay. Nothing changes until you add.</span></div>
+    ${chips()}
+    ${diffRows("one")}
+    <div class="lead">The whole ledger, before and after</div>
+    ${carbonTable("import", id)}`;
+  return { body, dock: `<button class="btn" ${A("go","import-done")} data-new="the one confirm">Add 23 lines</button><div class="foot" style="text-align:center">A saved version goes to History first.</div>` };
+}
+function carbonImportTwo() {
+  const left = `<div class="sp-head"><div class="tool"><button class="tbtn" ${A("go","pick")}>Cancel</button><span class="t">Check before adding</span><span style="width:44px"></span></div>
+    <div class="pagehead"><b>Now</b><span class="micro"><span class="num">412</span> lines, <span class="num">371</span> checked in, <span class="num">$48.20</span> out</span></div>
+    ${chips()}</div>${diffRows("now")}`;
+  const right = `<div class="sp-head"><div class="tool">${fileLine("orderwand-2026-11-20.csv", "438 rows read")}</div>
+    <div class="pagehead" id="carbon-spread" data-new="the hinge splits Now from After"><b>After</b><span class="micro"><span class="num">435</span> lines, <span class="num">371</span> checked in, <span class="num">$61.10</span> out</span></div>
+    <div class="promise">${tick}<span>Adds <span class="num">23</span> lines. Removes nothing. Your check-ins stay.</span></div></div>
+    ${diffRows("after")}`;
+  return { left: { body:left, sheet:true, sync:true },
+           right:{ body:right, dock:`<button class="btn" ${A("go","import-done")}>Add 23 lines</button><div class="foot" style="text-align:center">A saved version goes to History first.</div>`, sheet:true } };
+}
+function lostRows(side) {
+  const r = [];
+  LOST.forEach(x => r.push(side === "after"
+    ? `<div class="dr ghost"><span class="mk gone"></span><div><div class="t1"><span>Not in the backup</span></div><div class="t2">${esc(x.s)} goes</div></div></div>`
+    : `<div class="dr"><span class="mk gone" aria-label="Goes">−</span><div><div class="t1"><b>${esc(x.s)}</b><span class="num">${x.d}</span></div><div class="t2"><span class="num">${x.l}</span> lines, ${x.why}</div></div></div>`));
+  r.push(side === "after"
+    ? `<div class="dr"><span class="mk chg">~</span><div><div class="t1"><span>Check-ins as of Nov 2</span><span class="num">340</span></div><div class="t2">31 later check-ins on 12 packages are gone</div></div></div>`
+    : `<div class="dr"><span class="mk gone" aria-label="Goes">−</span><div><div class="t1"><span>Check-ins made after Nov 2</span><span class="num">31</span></div><div class="t2">On 12 packages. They come off.</div></div></div>`);
+  r.push(side === "after"
+    ? `<div class="dr ghost"><span class="mk gone"></span><div><div class="t1"><span>Envelopes as of Nov 2</span></div><div class="t2">1 envelope: no return address</div></div></div>`
+    : `<div class="dr"><span class="mk gone" aria-label="Goes">−</span><div><div class="t1"><span>Envelopes</span><span class="num">2</span></div><div class="t2">Blue bubble mailer; white envelope, Ohio</div></div></div>`);
+  r.push(side === "after"
+    ? `<div class="dr ghost"><span class="mk gone"></span><div><div class="t1"><span>No stamp here</span></div><div class="t2">Hollow Oak Games, unstamped</div></div></div>`
+    : `<div class="dr"><span class="mk gone" aria-label="Goes">−</span><div><div class="t1"><span>Stamp</span><span class="num">1</span></div><div class="t2">Claim filed, Hollow Oak Games, Nov 9</div></div></div>`);
+  return `<div class="dl">${r.join("")}</div>`;
+}
+function restoreDock() {
+  const armed = S.s === "restore-armed";
+  return `<div class="row2"><button class="btn ${armed ? "armed" : "danger"}" ${A(armed ? "go" : "go", armed ? "restore-done" : "restore-armed")} data-today="two-tap restore">${armed ? "Tap again to replace 448 cards" : "Replace with this backup"}</button>
+    <span class="slot ${armed ? "" : "empty"}" aria-hidden="${!armed}"><button class="btn q" ${armed ? "autofocus" : 'tabindex="-1"'} ${A("go","restore-preview")}>Cancel</button></span></div>
+    <div class="foot" style="text-align:center">A saved version goes to History first.</div>`;
+}
+function carbonRestore(dev) {
+  const id = dev.id === "folded" ? "carbon-proof" : "";
+  return { body: `<div class="tool"><button class="tbtn" ${A("go","pick")}>Cancel</button><span class="t">Check before replacing</span><span style="width:44px"></span></div>
+    ${fileLine("mailday-backup-2026-11-02.json", "184 KB, saved Nov 2, 21:14")}
+    <div class="promise warn">${warnI}<span>This is a backup, not an order list. It replaces everything on this device, and the server copy a few seconds later.</span></div>
+    ${carbonTable("restore", id)}
+    <div class="lead">What you lose: everything done after Nov 2</div>
+    ${lostRows("now")}`, dock: restoreDock() };
+}
+function carbonRestoreTwo() {
+  return {
+    left: { body: `<div class="sp-head"><div class="tool"><button class="tbtn" ${A("go","pick")}>Cancel</button><span class="t">Check before replacing</span><span style="width:44px"></span></div>
+      <div class="pagehead"><b>Now</b><span class="micro"><span class="num">412</span> lines, <span class="num">371</span> checked in</span></div>
+      <div class="promise warn">${warnI}<span>These go when the backup replaces this device.</span></div></div>${lostRows("now")}`, sheet:true, sync:true },
+    right: { body: `<div class="sp-head"><div class="tool">${fileLine("mailday-backup-2026-11-02.json", "184 KB, saved Nov 2, 21:14")}</div>
+      <div class="pagehead" id="carbon-spread"><b>Backup</b><span class="micro"><span class="num">398</span> lines, <span class="num">340</span> checked in</span></div>
+      <div class="promise warn">${warnI}<span>Replaces everything here, and the server copy a few seconds later.</span></div></div>${lostRows("after")}`, dock: restoreDock(), sheet:true, sync:true },
+  };
+}
+function pkgCard(o) {
+  return `<div class="pk ${o.cls || ""}" ${o.attr || ""}>
+    ${o.tag ? `<span class="tag ${o.tagc}">${o.tag}</span>` : ""}
+    <div class="h1"><b>${esc(o.s)}</b><span class="num">${o.got}</span></div>
+    <div class="meta">${o.meta}</div>
+    ${o.band || ""}
+    ${(o.lines || []).map(([n, st]) => `<div class="ln"><span class="box ${st}">${st === "on" || st === "hollow" ? tick : ""}</span><span ${st === "hollow" ? 'class="was"' : ""}>${esc(n)}</span></div>`).join("")}
+    ${o.extra || ""}
+  </div>`;
+}
+function stampEditor(carbon) {
+  const label = (KINDS.find(k => k[0] === S.kind) || KINDS[1])[1];
+  const refund = S.kind === "refunded" || S.kind === "partial";
+  return `<div class="ed" aria-label="Stamp">
+    <div class="lead">Stamp</div>
+    <div class="kinds">${KINDS.map(([k, l]) => `<button class="kd" aria-pressed="${k === S.kind}" ${A("kind", k)}>${l}</button>`).join("")}</div>
+    <textarea class="note" rows="2" aria-label="Note" placeholder="Note (optional)">${S.kind === "other" ? "Arrived water damaged" : ""}</textarea>
+    ${carbon ? `<div class="na" data-new="Now and After Save">
+      <div><span class="micro">Now</span><span class="foot">No stamp</span></div>
+      <div><span class="micro">After Save</span><span class="band staged"><b>${label.toUpperCase()}</b>Nov 21</span></div></div>` : ""}
+    <div class="foot" ${refund ? 'style="color:var(--ink)"' : ""} data-new="the effect, before Save">${refund
+      ? `This package leaves every count: Outstanding <span class="num">$48.20</span> → <b class="num">$46.05</b>, <span class="num">3</span> cards leave the Tally.`
+      : `Counts stay the same. The lost-mail flag on this package goes away.`}</div>
+    <div style="display:flex;gap:8px"><button class="btn q" ${A("go","packages")}>Cancel</button><button class="btn" ${A("go","stamp-done")}>Save</button></div>
+  </div>`;
+}
+function stampScreen(carbon, opt = {}) {
+  const done = S.s === "stamp-done";
+  const label = (KINDS.find(k => k[0] === S.kind) || KINDS[1])[1];
+  if (S.s === "packages") opt = { ...opt, noEditor:true };
+  const band = S.s === "packages" ? `<button class="btn q" style="flex:none;min-height:44px;align-self:flex-start" ${A("go","stamp")} data-today="Stamp button">Stamp</button>` : done ? `<span class="band land" data-today="stamp band"><b>${label.toUpperCase()}</b>Nov 21 ›</span>`
+    : (!carbon ? `<span class="band staged" data-new="band held in place until Save"><b>${label.toUpperCase()}</b>Held until Save</span>` : "");
+  const card = pkgCard({ s:"Beacon Hill Cards", got:"0 of 3", meta:`Ordered <span class="num">Oct 6</span>, <span class="num">46</span> days ago, <span class="num">$2.15</span> outstanding`, band,
+    lines:[["Fatal Push",""],["Opt",""],["Duress",""]] });
+  let body = lh("Packages") + card;
+  if (!done && !opt.noEditor) body += stampEditor(carbon);
+  if (done) body += `<div class="receipt" role="status"><div>Stamped ${label}, Nov 21.</div></div>`;
+  body += pkgCard({ s:"Larkspur Games", got:"2 of 3", meta:`Ordered <span class="num">Nov 14</span>`, lines:[["Brainstorm","on"],["Ponder","on"],["Opt",""]] });
+  return body;
+}
+
+/* ---------------- Held tray ---------------- */
+function trayStrip(dev, kind) {
+  const id = dev.id === "folded" ? 'id="tray-strip"' : "";
+  if (kind === "import") return `<div class="tray" ${id} data-new="the tray">
+    <div><span class="ink">Held from</span> <span class="mono">orderwand-2026-11-20.csv</span></div>
+    <div class="ink"><b class="num">23</b> new, <b class="num">11</b> changed, <b class="num">0</b> removed. <span class="num">371</span> check-ins stay.</div>
+    <div class="row2"><button class="btn q" ${A("go","pick")}>Put back</button><button class="btn" ${A("go","import-done")}>Add 23 lines</button></div>
+  </div>`;
+  const armed = S.s === "restore-armed";
+  return `<div class="tray" ${id} style="border-color:var(--red);background:color-mix(in srgb, var(--redSoft) 92%, transparent);color:var(--red)">
+    <div><span class="ink">Held:</span> <span class="mono">mailday-backup-2026-11-02.json</span></div>
+    <div class="ink"><b class="num">14</b> lines, <b class="num">31</b> check-ins, <b class="num">2</b> envelopes and <b class="num">1</b> stamp go. Marked in the list.</div>
+    <div class="row2"><button class="btn q" ${A("go","pick")}>Put back</button><button class="btn ${armed ? "armed" : "danger"}" ${A("go", armed ? "restore-done" : "restore-armed")}>${armed ? "Tap again to replace 448 cards" : "Replace"}</button></div>
+  </div>`;
+}
+function trayPackages(kind) {
+  let b = lh("Packages");
+  if (kind === "import") {
+    NEWS.forEach(r => b += pkgCard({ s:r.s, got:`0 of ${r.c}`, meta:`Ordered <span class="num">${r.d}</span>, <span class="num">$${r.v}</span>. ${r.n.map(esc).join(", ")}`, cls:"held", tag:"Held: new", tagc:"held" }));
+    b += pkgCard({ s:"Larkspur Games", got:"2 of 3", meta:`Ordered <span class="num">Nov 14</span>. Shipping: <span class="was">without tracking</span> → with tracking`, cls:"held", tag:"Held: change", tagc:"held",
+      lines:[["Brainstorm","on"],["Ponder","on"],["Opt",""]] });
+    b += pkgCard({ s:"Bramblewood", got:"0 of 2", meta:`Ordered <span class="num">Nov 9</span>. Shipping: <span class="was">without tracking</span> → canceled. Leaves the Value.`, cls:"held", tag:"Held: change", tagc:"held",
+      lines:[["Mana Leak",""],["Negate",""]] });
+    b += pkgCard({ s:"Sable Row Games", got:"5 of 7", meta:`Ordered <span class="num">Nov 5</span>. No change.`, lines:[["Duress","on"],["Shock","on"]] });
+  } else {
+    b += pkgCard({ s:"Larkspur Games", got:"2 of 3", meta:`Ordered <span class="num">Nov 14</span>, after the backup`, cls:"goes", tag:"Goes", tagc:"goes", lines:[["Brainstorm","hollow"],["Ponder","hollow"],["Opt",""]] });
+    b += pkgCard({ s:"Thistle & Co", got:"4 of 4", meta:`Ordered <span class="num">Nov 12</span>, after the backup`, cls:"goes", tag:"Goes", tagc:"goes", lines:[["Counterspell","hollow"],["Lightning Bolt","hollow"]] });
+    b += pkgCard({ s:"Hollow Oak Games", got:"3 of 3 → 1 of 3", meta:`Ordered <span class="num">Oct 28</span>. Two check-ins after Nov 2 come off. The Claim filed stamp goes.`, tag:"Changes", tagc:"goes",
+      lines:[["Thoughtseize","on"],["Fatal Push","hollow"],["Opt","hollow"]] });
+    b += pkgCard({ s:"Sable Row Games", got:"5 of 7", meta:`Ordered <span class="num">Nov 5</span>, after the backup`, cls:"goes", tag:"Goes", tagc:"goes", lines:[["Duress","hollow"],["Shock","hollow"]] });
+  }
+  return b;
+}
+function trayDetail(kind) {
+  if (kind === "import") return `${lh("Tray")}<div class="pagehead"><b>Held</b><span class="micro">nothing added yet</span></div>
+    ${fileLine("orderwand-2026-11-20.csv", "438 rows read")}
+    <div class="promise">${tick}<span>Your <span class="num">371</span> check-ins stay. Removes nothing.</span></div>
+    ${carbonTable("import")}${chips()}${diffRows("one")}`;
+  return `${lh("Tray")}<div class="pagehead"><b>Held</b><span class="micro">nothing replaced yet</span></div>
+    ${fileLine("mailday-backup-2026-11-02.json", "184 KB, saved Nov 2, 21:14")}
+    <div class="promise warn">${warnI}<span>A backup replaces everything here, and the server copy a few seconds later.</span></div>
+    ${carbonTable("restore")}${lostRows("now")}`;
+}
+
+/* ---------------- screens per device ---------------- */
+function screenOne(dev) {
+  const st = S.s, c = S.c;
+  if (st === "import-preview" || st === "import-none") {
+    if (c === "carbon" || st === "import-none") { const r = carbonImport(dev); return { body:r.body, dock:r.dock, sheet:true }; }
+    return { body: trayPackages("import"), strip: trayStrip(dev, "import"), tab:"packages" };
+  }
+  if (st === "restore-preview" || st === "restore-armed") {
+    if (c === "carbon") { const r = carbonRestore(dev); return { body:r.body, dock:r.dock, sheet:true }; }
+    return { body: trayPackages("restore"), strip: trayStrip(dev, "restore"), tab:"packages" };
+  }
+  if (st === "stamp" || st === "stamp-done" || st === "packages") return { body: stampScreen(c === "carbon"), tab:"packages" };
+  return { body: ledgerTab(), tab:"ledger" };
+}
+function screenTwo(dev) {
+  const st = S.s, c = S.c;
+  if (st === "import-preview" && c === "carbon") return carbonImportTwo();
+  if ((st === "restore-preview" || st === "restore-armed") && c === "carbon") return carbonRestoreTwo();
+  if (st === "import-preview" && c === "tray") return {
+    left: { body: trayDetail("import"), dock: `<button class="btn" ${A("go","import-done")}>Add 23 lines</button><button class="btn q" ${A("go","pick")}>Put back</button>`, sheet:true },
+    right:{ body: trayPackages("import"), tab:"packages" } };
+  if ((st === "restore-preview" || st === "restore-armed") && c === "tray") return {
+    left: { body: trayDetail("restore"), dock: restoreDock(), sheet:true },
+    right:{ body: trayPackages("restore"), tab:"packages" } };
+  if (st === "import-none") { const r = carbonImport(dev); return { left:{ body: ledgerTab({ noPanel:true }), tab:"ledger" }, right:{ body:r.body, dock:r.dock, sheet:true } }; }
+  if (st === "packages") return { left:{ body: stampScreen(c === "carbon"), tab:"packages" }, right:{ body: lh("Stamp") + `<div class="foot">Tap Stamp on a package. The editor opens on this page.</div>` } };
+  if (st === "stamp" || st === "stamp-done") {
+    const right = st === "stamp" ? `${lh("Stamp")}` + stampEditor(c === "carbon") : `${lh("Stamp")}<div class="receipt" role="status"><div>Stamped, Nov 21.</div></div>`;
+    return { left:{ body: stampScreen(c === "carbon", { noEditor:true }), tab:"packages" }, right:{ body:right } };
+  }
+  /* list beside detail: the Ledger tab on the left page, the open panel on the right */
+  let detail = "";
+  if (["pick","import-error"].includes(st)) detail = zone();
+  else if (st === "import-done") detail = importReceipt();
+  else if (st === "restore-done") detail = restoreReceipt();
+  else if (st.startsWith("backup")) detail = backupPanel();
+  else if (st === "range") detail = rangePanel();
+  else detail = `<div class="foot">Pick a row on the left. Its panel opens on this page.</div>`;
+  return { left:{ body: ledgerTab({ noPanel:true }), tab:"ledger" }, right:{ body: lh("Ledger") + detail } };
+}
+function pageHTML(p, side, dev) {
+  const cls = (p.sheet ? "scroll sheet" : "scroll") + (p.sync ? " sync" : "");
+  /* At AX5 a floating dock or tray would cover half the screen, so it joins the end of the page instead. */
+  const inflow = dev.ax5 && (p.dock || p.strip);
+  /* The tray leads the page there, since it names the change before the list shows it; the dock ends the proof. */
+  let h = `<div class="page ${side}"><div class="${cls}">${inflow && p.strip ? p.strip : ""}${p.body}${inflow && !p.strip ? `<div class="dock">${p.dock}</div>` : ""}</div>`;
+  if (inflow) return h + `</div>`;
+  if (p.strip) h += p.strip;
+  if (p.dock) h += `<div class="dock">${p.dock}</div>`;
+  else if (p.tab && !(dev.ax5 && p.strip)) h += bar(p.tab);
+  return h + `</div>`;
+}
+function frame(dev) {
+  let inner = `<div class="status"><span>00:31</span><span></span></div>`;
+  if (dev.pose === "two") {
+    const t = screenTwo(dev);
+    inner += pageHTML(t.left, "l", dev) + `<div class="hinge" aria-hidden="true"><span>hinge: nothing crosses</span></div>` + pageHTML(t.right, "r", dev);
+  } else inner += pageHTML(screenOne(dev), "", dev);
+  const fig = document.querySelector(`figure[data-fig="${dev.id}"]`);
+  fig.hidden = S.d !== "all" && S.d !== dev.id;
+  fig.querySelector("figcaption").innerHTML = `<b>${dev.name}</b><br>${dev.cap}`;
+  fig.querySelector(".dev").innerHTML = inner;
+}
+
+/* ---------------- page controls ---------------- */
+function controls() {
+  const vis = CONCEPTS.filter(([k]) => !S.hidden[k]);
+  return `<div class="row"><span class="lab">Concept</span>` + CONCEPTS.map(([k, l]) =>
+      `<button aria-pressed="${S.c === k}" ${S.hidden[k] ? "disabled title=\"Hidden. Show all brings it back.\"" : ""} ${A("c", k)}>${l}</button><button class="hide" ${S.hidden[k] || vis.length < 2 ? "disabled title=\"The last concept stays\"" : ""} ${A("hide", k)} aria-label="Hide ${l}">Hide ${l}</button>`).join("") +
+      (Object.keys(S.hidden).length ? `<button ${A("unhide")}>Show all</button>` : "") + `</div>
+    <div class="row"><span class="lab">State</span>${STATES.map(([k, l]) => `<a href="#c=${S.c}&s=${k}&d=${S.d}" aria-current="${S.s === k}">${l}</a>`).join("")}</div>
+    <div class="row"><span class="lab">Device</span>${[["all","All four"]].concat(DEVICES.map(d => [d.id, d.name])).map(([k, l]) => `<a href="#c=${S.c}&s=${S.s}&d=${k}" aria-current="${S.d === k}">${l}</a>`).join("")}
+      <button aria-pressed="${S.marks}" ${A("marks")}>Today and New marks</button></div>`;
+}
+function render() {
+  document.body.classList.toggle("marks", S.marks);
+  document.getElementById("ctl").innerHTML = controls();
+  DEVICES.forEach(frame);
+  writeHash();
+}
+
+/* ---------------- every press works ---------------- */
+document.addEventListener("click", (e) => {
+  const el = e.target.closest("[data-act]"); if (!el) return;
+  const act = el.dataset.act, arg = el.dataset.arg;
+  if (act === "go") { S.s = arg; if (arg === "pick" || arg === "ledger") S.f = "all"; }
+  else if (act === "pick") S.s = { csv:"import-preview", same:"import-none", json:"restore-preview", pdf:"import-error" }[arg];
+  else if (act === "f") S.f = arg;
+  else if (act === "kind") S.kind = arg;
+  else if (act === "range") { if (S.c === "carbon") S.staged = arg; else S.range = arg; }
+  else if (act === "rangeApply") { if (S.staged) S.range = S.staged; S.staged = null; }
+  else if (act === "rangeCancel") { S.staged = null; S.s = "ledger"; }
+  else if (act === "c") { S.c = arg; S.staged = null; }
+  else if (act === "hide") { S.hidden[arg] = true; if (S.c === arg) S.c = CONCEPTS.find(([k]) => !S.hidden[k])[0]; }
+  else if (act === "unhide") S.hidden = {};
+  else if (act === "marks") S.marks = !S.marks;
+  else if (act === "tab") { S.s = arg === "packages" ? "packages" : "ledger"; }
+  else return;
+  render();
+});
+/* the two pages of the open spread scroll as one, so Now and After stay row for row */
+let syncing = false;
+document.addEventListener("scroll", (e) => {
+  const sc = e.target; if (!(sc instanceof Element) || !sc.classList.contains("sync") || syncing) return;
+  const other = [...sc.closest(".dev").querySelectorAll(".scroll.sync")].find(x => x !== sc);
+  if (other) { syncing = true; other.scrollTop = sc.scrollTop; requestAnimationFrame(() => { syncing = false; }); }
+}, true);
+window.addEventListener("hashchange", () => { readHash(); render(); });
+readHash(); render();
+</script>
+</body>
+</html>

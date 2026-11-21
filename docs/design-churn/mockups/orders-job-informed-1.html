@@ -1,0 +1,645 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Orders Status</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle),
+   so this page draws one theme. The dark keys in tokens.json belong to the extension only. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --amber:#846008; --wax:#A8443C; --waxDeep:#66231D;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Mockup-only label colours (not app colours): dashed Today and New outlines. */
+  --today:#A8443C; --new:#2E7A5E;
+  /* Dynamic Type multipliers per text style. Default size: all 1. AX5 values are set on .ax5 below,
+     from the HIG typography page's iOS tables (Large default vs AX5), read 2026-11-21. */
+  --k-t1:1; --k-t3:1; --k-body:1; --k-callout:1; --k-sub:1; --k-foot:1; --k-c1:1; --k-c2:1;
+}
+* { box-sizing:border-box; }
+html { -webkit-text-size-adjust:100%; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1200px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+.intro { display:flex; flex-direction:column; gap:4px; }
+.intro h1 { font-family:var(--cochin); font-size:26px; margin:0; font-weight:700; }
+.intro p { margin:0; color:var(--inkSoft); max-width:72ch; }
+.bar { display:flex; flex-direction:column; gap:8px; }
+.cluster { display:flex; flex-wrap:wrap; align-items:center; gap:8px; }
+.cluster > .lab { font-size:13px; color:var(--inkSoft); min-width:72px; }
+.chip { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; gap:6px; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer; }
+.chip[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; box-shadow:inset 0 0 0 1px var(--accent); }
+.chip .x { min-width:28px; min-height:28px; display:inline-grid; place-items:center; border-radius:6px; color:var(--inkSoft); border:0; background:transparent; font:inherit; cursor:pointer; }
+.chip .x:hover { background:var(--paper); }
+.chip:focus-visible, .x:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.optgroup { display:inline-flex; flex-wrap:wrap; max-width:100%; gap:4px; align-items:center; padding:4px 4px 4px 10px; border:1px dashed var(--line); border-radius:8px; }
+.optgroup > span { font-size:13px; color:var(--inkSoft); }
+.optgroup[hidden] { display:none; }
+.kindline { font-size:13px; color:var(--inkSoft); }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; max-width:100%; min-width:0; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:466px; }
+figcaption b { font-family:var(--cochin); font-size:17px; color:var(--ink); }
+.fit { max-width:100%; overflow:auto; }
+
+/* ---------- device frames: 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; font-family:var(--sys); color:var(--ink); flex:none; }
+.dev.fold, .dev.ax5 { width:466px; height:678px; --sat:max(env(safe-area-inset-top), 20px); --sab:max(env(safe-area-inset-bottom), 20px); }
+.dev.phone { width:402px; height:874px; border-radius:40px; --sat:max(env(safe-area-inset-top), 54px); --sab:max(env(safe-area-inset-bottom), 34px); }
+.dev.open { width:951px; height:669px; --sat:max(env(safe-area-inset-top), 20px); --sab:max(env(safe-area-inset-bottom), 20px); }
+/* AX5: each style's AX5 size over its default size (HIG typography, iOS tables). The tab bar keeps 10 pt (duo-card-in-hand, Tab bar text). */
+.ax5 { --k-t1:2.071; --k-t3:2.75; --k-body:3.118; --k-callout:3.188; --k-sub:3.267; --k-foot:3.385; --k-c1:3.583; --k-c2:3.636; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center; padding:0 20px; font-size:12px; font-weight:600; z-index:5; pointer-events:none; }
+.phone .status { align-items:flex-end; padding:0 32px 10px; font-size:15px; }
+.island { position:absolute; top:11px; left:50%; transform:translateX(-50%); width:124px; height:36px; border-radius:20px; background:var(--ink); z-index:6; }
+.homebar { position:absolute; bottom:8px; left:50%; transform:translateX(-50%); width:134px; height:5px; border-radius:3px; background:var(--ink); opacity:.85; z-index:6; pointer-events:none; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; }
+.scroll::-webkit-scrollbar { width:0; }
+.inner { padding:8px 16px calc(var(--sab) + 104px); display:flex; flex-direction:column; gap:16px; }
+/* open pose */
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.fold-gap { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:4; }
+.fold-gap span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+.page.l .inner { padding-bottom:calc(var(--sab) + 16px); }
+
+/* tab bar: the system bar, iOS 26 glass capsule. Height drawn at 64 (the web bar's ruled height); the native bar's is unmeasured. */
+.tabbar { position:absolute; left:24px; right:24px; bottom:calc(var(--sab) - 8px); height:64px; border-radius:32px; display:grid; grid-template-columns:repeat(4,1fr);
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(16px) saturate(1.6); -webkit-backdrop-filter:blur(16px) saturate(1.6);
+  border:1px solid var(--line); box-shadow:0 6px 20px rgba(28,43,36,0.06); z-index:8; padding:4px; }
+.tabbar button { border:0; background:transparent; font:600 10px var(--sys); color:var(--ink); display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; border-radius:28px; min-height:44px; cursor:pointer; position:relative; }
+.tabbar button[aria-current="page"] { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+.tabbar svg { width:22px; height:22px; }
+.tabbar .badge { position:absolute; top:4px; left:calc(50% + 4px); min-width:18px; height:18px; border-radius:9px; background:var(--red); color:var(--card); font:600 11px var(--sys); display:grid; place-items:center; padding:0 4px; }
+
+/* ---------- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---------- */
+.mast { display:flex; flex-direction:column; align-items:center; gap:4px; padding:4px 0 0; }
+.seal { width:34px; height:34px; border-radius:50%; background:radial-gradient(circle at 35% 35%, #C86A5F, var(--wax) 55%, var(--waxDeep)); }
+.word { font-family:var(--cochin); letter-spacing:4px; font-size:22px; }
+.mast .rule { align-self:stretch; height:1px; background:var(--gold); }
+.title { font:calc(12px * var(--k-c1)) var(--mono); letter-spacing:3.6px; text-transform:uppercase; color:var(--inkSoft); text-align:center; }
+.glab { font:calc(11px * var(--k-c1)) var(--mono); letter-spacing:2.2px; text-transform:uppercase; color:var(--inkSoft); padding-left:4px; }
+.group { display:flex; flex-direction:column; gap:8px; }
+.cardbox { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.lrow { position:relative; display:flex; align-items:center; gap:12px; min-height:52px; padding:8px 16px; width:100%; border:0; background:transparent; text-align:left; cursor:pointer; color:inherit; font:inherit; }
+.lrow + .lrow, .lrow + .panel + .lrow, .panel + .lrow { border-top:1px solid var(--line); }
+.lrow .tt { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.lrow .t { font:calc(20px * var(--k-t3))/1.2 var(--cochin); }
+.lrow .s { font:calc(13.5px * var(--k-foot))/1.25 var(--cochin); color:var(--inkSoft); }
+.lrow .v { font:calc(14px * var(--k-callout))/1.2 var(--mono); color:var(--ink); text-align:right; white-space:nowrap; }
+.lrow .v.fix { color:var(--manilaInk); }
+.lrow .v.news { color:var(--accent); }
+.lrow .chev { font:calc(22px * var(--k-t3)) var(--cochin); color:var(--inkSoft); transition:none; width:12px; text-align:center; }
+.lrow[aria-expanded="true"] .chev { transform:rotate(90deg); }
+.lrow.picked { box-shadow:inset 0 0 0 2px var(--accent); border-radius:8px; }
+.ax5 .lrow { flex-wrap:wrap; }
+.ax5 .lrow .tt { flex-basis:100%; }
+.ax5 .lrow .v { text-align:left; white-space:normal; }
+.panel { border-top:1px solid var(--line); padding:12px 12px 16px; display:flex; flex-direction:column; gap:12px; }
+.pairs { display:grid; grid-template-columns:auto 1fr; column-gap:12px; row-gap:6px; align-items:baseline; }
+.ax5 .pairs { grid-template-columns:1fr; row-gap:2px; }
+.ax5 .pairs .pv { margin-bottom:8px; }
+.pl { font:calc(10px * var(--k-c2)) var(--cochin); letter-spacing:1.6px; text-transform:uppercase; color:var(--inkSoft); white-space:nowrap; }
+.pv { font:calc(11px * var(--k-c1))/1.5 var(--mono); color:var(--ink); }
+.adv { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+.adv.red { background:var(--redSoft); color:var(--red); }
+.adv .al { font:600 calc(15px * var(--k-sub))/1.3 var(--cochin); }
+.adv .af { font:calc(13.5px * var(--k-foot))/1.35 var(--cochin); }
+.adv .ctl { align-self:flex-start; }
+.disc { display:flex; flex-direction:column; gap:4px; }
+.disc button { border:0; background:transparent; padding:0; min-height:44px; text-align:left; font:calc(13.5px * var(--k-foot)) var(--cochin); color:var(--inkSoft); text-decoration:underline; text-underline-offset:3px; cursor:pointer; }
+.disc pre { margin:0; font:calc(11px * var(--k-c1))/1.5 var(--mono); color:var(--inkSoft); background:var(--paper); border-radius:4px; padding:6px 8px; white-space:pre-wrap; }
+.help { font:calc(13.5px * var(--k-foot))/1.35 var(--cochin); color:var(--inkSoft); margin:0; }
+
+/* the start control: one box whatever the state, answer slot always drawn (no-layout-shift-under-pointer) */
+.ask { display:flex; flex-direction:column; gap:4px; }
+.btn { font:600 calc(17px * var(--k-body))/1.2 var(--cochin); min-height:50px; width:100%; padding:8px 16px; border-radius:8px; border:1px solid var(--accent); background:var(--accent); color:var(--card); cursor:pointer; }
+.btn[aria-disabled="true"] { background:var(--card); color:var(--inkSoft); border-color:var(--line); cursor:default; }
+.btn.quiet { background:var(--card); color:var(--accent); }
+.btn.quiet[aria-disabled="true"] { color:var(--inkSoft); border-color:var(--line); }
+.adv .btn.quiet { width:auto; }
+.ansrow { display:flex; align-items:center; gap:8px; min-height:44px; }
+.ans { flex:1; min-width:0; font:calc(11px * var(--k-c1))/1.5 var(--mono); color:var(--inkSoft); }
+.stop { flex:none; min-height:44px; min-width:80px; padding:0 12px; border:1px solid var(--red); border-radius:8px; background:var(--card); color:var(--red); font:600 calc(15px * var(--k-sub)) var(--cochin); cursor:pointer; }
+.stop[hidden] { display:block; visibility:hidden; }
+.ax5 .ansrow { flex-wrap:wrap; }
+.ans.ok { color:var(--green); } .ans.bad { color:var(--red); }
+
+/* labels (mockup only) */
+.lbl { position:relative; outline:1.5px dashed var(--today); outline-offset:2px; border-radius:8px; }
+.lbl.new { outline-color:var(--new); }
+.lbl::after { content:attr(data-lbl); position:absolute; top:-9px; right:8px; font:600 10px var(--sys); background:var(--paper); color:var(--today); padding:0 4px; letter-spacing:.3px; z-index:3; pointer-events:none; }
+.lbl.new::after { color:var(--new); }
+.cardbox .lbl { outline-offset:-2px; border-radius:0; }
+.cardbox .lbl::after { top:2px; }
+.nolabels .lbl { outline:0; } .nolabels .lbl::after { display:none; }
+.stub { border:1px solid var(--line); background:var(--card); border-radius:8px; padding:12px 16px; color:var(--inkSoft); font:calc(13.5px * var(--k-foot))/1.35 var(--cochin); }
+.stub.tall { min-height:96px; }
+
+/* working-screen advisory line (ruled-head-one-advisory-entrance) */
+.advline { width:100%; border:0; text-align:left; cursor:pointer; background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:10px 12px; min-height:44px; font:calc(14px * var(--k-sub))/1.3 var(--cochin); }
+
+/* ---------- Postmark concept ---------- */
+.nav { display:flex; align-items:center; min-height:44px; }
+.nav button { border:0; background:transparent; color:var(--accent); font:calc(17px * var(--k-body)) var(--sys); min-height:44px; min-width:44px; padding:0 4px; display:inline-flex; align-items:center; gap:2px; cursor:pointer; }
+.ltitle { font:700 calc(34px * var(--k-t1))/1.2 var(--sys); margin:0; }
+.ax5 .ltitle { font-size:60px; }
+.pmwrap { display:flex; justify-content:center; padding:4px 0; }
+.pm { width:236px; height:150px; transform:rotate(-3deg); }
+.pm.land { animation:land 320ms cubic-bezier(.2,.8,.2,1) both; }
+@keyframes land { from { opacity:0; transform:rotate(-7deg) scale(1.12); } to { opacity:1; transform:rotate(-3deg) scale(1); } }
+@media (prefers-reduced-motion: reduce) { .pm.land { animation:none; } }
+.verdict { display:flex; flex-direction:column; gap:6px; }
+.verdict h2 { margin:0; font:700 calc(28px * var(--k-t1))/1.15 var(--cochin); }
+.verdict p { margin:0; font:calc(17px * var(--k-body))/1.4 var(--cochin); color:var(--inkSoft); }
+.reg { display:flex; flex-direction:column; }
+.reg .rr { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:baseline; padding:10px 16px; border-top:1px solid var(--line); min-height:44px; }
+.reg .rr:first-child { border-top:0; }
+.reg .rw { font:calc(11px * var(--k-c1))/1.4 var(--mono); color:var(--inkSoft); }
+.reg .rv { font:calc(15px * var(--k-sub))/1.3 var(--cochin); text-align:right; }
+.reg .rv.news { color:var(--accent); } .reg .rv.bad { color:var(--red); } .reg .rv.warn { color:var(--amber); }
+.ax5 .reg .rr { grid-template-columns:1fr; }
+.ax5 .reg .rv { text-align:left; }
+.found { display:flex; flex-direction:column; }
+.found button { display:grid; grid-template-columns:minmax(0,1fr) auto; gap:12px; align-items:baseline; width:100%; border:0; border-top:1px solid var(--line); background:transparent; text-align:left; padding:10px 16px; min-height:52px; font:inherit; color:inherit; cursor:pointer; }
+.found button:first-child { border-top:0; }
+.found .fs { font:calc(17px * var(--k-body))/1.25 var(--cochin); }
+.found .fn { font:calc(12px * var(--k-c1))/1.3 var(--mono); color:var(--inkSoft); text-align:right; }
+.ax5 .found button { grid-template-columns:1fr; }
+.ax5 .found .fn { text-align:left; }
+.dock { position:absolute; left:0; right:0; bottom:calc(var(--sab) + 60px); padding:8px 16px 4px; background:var(--paper); border-top:1px solid var(--line); z-index:7; }
+.page.l .dock { bottom:var(--sab); }
+.ax5 .dock { position:static; padding:0; background:none; }
+.hidden-frame { display:none !important; }
+@media (max-width:520px) { main { padding:16px; } }
+</style>
+</head>
+<body>
+<main id="top">
+  <div class="banner" role="note">Sample: no figure on this page is real. Order counts, sellers, times and errors are made up.</div>
+  <header class="intro">
+    <h1>Orders status: did the new orders come in?</h1>
+    <p class="kindline">Designer kind: informed. Designer: orders-job-informed-1. Screen: the app's orders status (unbuilt, debt <code>orders-job-unbuilt</code>).</p>
+    <p>The extension on the computer pulls TCGplayer orders into the ledger. These two concepts show, on the phone, whether it ran, when, what it found, whether it failed and why, and a way to start it. Every frame below works: tap rows, the start control, Stop, the tab bar and the advisory line.</p>
+  </header>
+
+  <section class="bar" aria-label="Mockup controls">
+    <div class="cluster" role="group" aria-label="Concept">
+      <span class="lab">Concept</span>
+      <span class="optgroup" id="c-row"><button class="chip" data-set="c" data-v="row">Ledger row (quiet)</button><button class="x" aria-label="Hide the Ledger row concept" data-hide="c:row">×</button></span>
+      <span class="optgroup" id="c-postmark"><button class="chip" data-set="c" data-v="postmark">Postmark (bold)</button><button class="x" aria-label="Hide the Postmark concept" data-hide="c:postmark">×</button></span>
+    </div>
+    <div class="cluster" role="group" aria-label="State" id="states"></div>
+    <div class="cluster" role="group" aria-label="Options">
+      <span class="lab">Options</span>
+      <span class="optgroup" id="og-start"><span>Start from the phone</span>
+        <button class="chip" data-set="start" data-v="ask">Ask the computer</button>
+        <button class="chip" data-set="start" data-v="none">No start control</button>
+        <button class="x" aria-label="Hide the start option" data-hide="og:start">×</button></span>
+      <span class="optgroup" id="og-line"><span>Advisory line on working tabs</span>
+        <button class="chip" data-set="line" data-v="on">Orders can raise it</button>
+        <button class="chip" data-set="line" data-v="off">Sync only, as today</button>
+        <button class="x" aria-label="Hide the advisory line option" data-hide="og:line">×</button></span>
+      <span class="optgroup" id="og-open"><span>Open Duo</span>
+        <button class="chip" data-set="open" data-v="pages">Two pages</button>
+        <button class="chip" data-set="open" data-v="full">Full width, as Ledger is today</button>
+        <button class="x" aria-label="Hide the open Duo option" data-hide="og:open">×</button></span>
+      <button class="chip" data-set="labels" data-v="toggle" id="labels-chip">Today and New labels</button>
+    </div>
+  </section>
+
+  <div class="frames" id="frames">
+    <figure data-frame="fold"><div class="fit"><div class="dev fold" data-device="iphone-duo-folded" id="f-fold"></div></div>
+      <figcaption><b>iPhone Duo, folded.</b> 466 by 678 pt, the brief's size. Default text size.</figcaption></figure>
+    <figure data-frame="open"><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" id="f-open"></div></div>
+      <figcaption><b>iPhone Duo, open.</b> 951 by 669 pt. The fold runs from x 455.5 to 495.5; nothing sits across it. The tab bar sits under the right page (<code>duo-card-in-hand</code>, item 23).</figcaption></figure>
+    <figure data-frame="phone"><div class="fit"><div class="dev phone" data-device="iphone-large" id="f-phone"></div></div>
+      <figcaption><b>Large iPhone.</b> No size is written for it; drawn at 402 by 874 pt (see notes). The column is fluid, so it draws the same from 375 pt.</figcaption></figure>
+    <figure data-frame="ax5"><div class="fit"><div class="dev ax5" data-device="iphone-duo-folded" data-type="AX5" id="f-ax5"></div></div>
+      <figcaption><b>iPhone Duo, folded, largest accessibility text (AX5).</b> Scroll inside the frame. Rows and pairs stack.</figcaption></figure>
+  </div>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  // ---------------- sample data ----------------
+  // Every figure is made up (Sample banner). Times read as the owner's local time, in SyncPanel.lastSyncText's form.
+  var STATES = [
+    ["ok", "12 new"], ["zero", "None new"], ["unreadable", "Some left out"], ["asked", "Asked"], ["running", "Pulling"],
+    ["stopped", "Stopped"], ["noanswer", "No answer"], ["signedout", "Signed out"], ["failed", "Failed"],
+    ["stale", "Quiet 2 days"], ["never", "Never ran"], ["unknown", "Unknown"], ["loading", "Checking"]
+  ];
+  var FOUND = [["Starlit Cards", "4 lines, $3.12"], ["Mana Mill", "5 lines, $4.80"], ["Penny Sleeve Co", "3 lines, $1.05"]];
+  var REG_BASE = [
+    ["Fri, Nov 20, 8:02 PM", "None new", ""],
+    ["Fri, Nov 20, 7:15 AM", "Failed: no answer", "bad"],
+    ["Thu, Nov 19, 8:40 PM", "4 new lines", "news"],
+    ["Thu, Nov 19, 7:30 AM", "None new", ""]
+  ];
+  // For each state: Ledger row value, sub line, panel pairs, advisory, Postmark verdict, postmark marks.
+  var D = {
+    ok:        { v:"12 new", vc:"news", sub:"Pulled today, 9:14 AM",
+                 pairs:[["Last pull","Sat, Nov 21, 9:14 AM"],["Found","41 orders read, 12 new lines"],["Next","after 9:14 PM, when a store page loads on your computer"]],
+                 h:"12 new lines came in.", p:"Your computer pulled 41 orders at 9:14 this morning. 12 lines were new to the ledger.",
+                 pm:{ink:"accent", mid:"NOV 21", bot:"9:14 AM"}, reg:["Sat, Nov 21, 9:14 AM","12 new lines","news"], found:true, line:null },
+    zero:      { v:"None new", vc:"", sub:"Pulled today, 9:14 AM",
+                 pairs:[["Last pull","Sat, Nov 21, 9:14 AM"],["Found","41 orders read, nothing new"],["Next","after 9:14 PM, when a store page loads on your computer"]],
+                 h:"No new orders.", p:"Your computer pulled at 9:14 this morning. All 41 orders were already in the ledger.",
+                 pm:{ink:"inkSoft", mid:"NOV 21", bot:"9:14 AM"}, reg:["Sat, Nov 21, 9:14 AM","None new",""], line:null },
+    unreadable:{ v:"9 new", vc:"news", sub:"Pulled today, 9:14 AM. 3 lines left out",
+                 pairs:[["Last pull","Sat, Nov 21, 9:14 AM"],["Found","41 orders read, 9 new lines"],["Next","after 9:14 PM, when a store page loads on your computer"]],
+                 adv:{l:"3 lines could not be read and were left out", f:"The other lines were added. Nothing was guessed. If a card you bought is missing, add it from a CSV.", c:null, kind:"unreadable, count 3"},
+                 h:"9 new lines came in. 3 were left out.", p:"Your computer pulled 41 orders at 9:14 this morning. 3 lines in them could not be read.",
+                 pm:{ink:"accent", mid:"NOV 21", bot:"9:14 AM", over:"3 LEFT OUT", oc:"amber"}, reg:["Sat, Nov 21, 9:14 AM","9 new, 3 left out","warn"], found:true, line:null },
+    asked:     { v:"Asked", vc:"", sub:"Asked your computer at 9:20 AM",
+                 pairs:[["Asked","Sat, Nov 21, 9:20 AM"],["Last pull","Sat, Nov 21, 9:14 AM, 12 new lines"]],
+                 h:"Asked your computer to pull.", p:"Chrome on your computer checks for an ask once a minute. It pulls in an open TCGplayer tab, or opens one.",
+                 pm:{ink:"inkSoft", mid:"ASKED", bot:"9:20 AM", dash:true}, reg:null, line:null },
+    running:   { v:"Pulling", vc:"", sub:"Your computer is reading order page 3",
+                 pairs:[["Started","Sat, Nov 21, 9:21 AM"],["Reading","order page 3"],["Last pull","Sat, Nov 21, 9:14 AM, 12 new lines"]],
+                 h:"Your computer is pulling.", p:"It is reading order page 3. Nothing is added until every page is read.",
+                 pm:{ink:"accent", mid:"PAGE 3", bot:"PULLING", dash:true}, reg:null, line:null },
+    stopped:   { v:"Stopped", vc:"", sub:"Stopped at order page 3. Nothing was added",
+                 pairs:[["Stopped","Sat, Nov 21, 9:22 AM, at order page 3"],["Last pull","Sat, Nov 21, 9:14 AM, 12 new lines"]],
+                 h:"Stopped at page 3.", p:"You stopped the pull. Nothing was added, so the ledger is as it was after 9:14 AM.",
+                 pm:{ink:"inkSoft", mid:"STOPPED", bot:"9:22 AM"}, reg:["Sat, Nov 21, 9:22 AM","Stopped, nothing added",""], line:null },
+    noanswer:  { v:"No answer", vc:"fix", sub:"Asked at 9:02 AM. Your computer did not pick it up",
+                 pairs:[["Asked","Sat, Nov 21, 9:02 AM"],["Last pull","Fri, Nov 20, 8:02 PM, nothing new"]],
+                 adv:{l:"Your computer has not answered in 10 minutes", f:"Chrome may be closed, or the computer asleep. Open Chrome there; the ask stays until 9:32 AM.", c:"again", kind:"ask not taken, 10 min"},
+                 h:"Your computer has not answered.", p:"Asked at 9:02 AM. Chrome may be closed, or the computer asleep.",
+                 pm:{ink:"amber", mid:"NO ANSWER", bot:"9:02 AM", dash:true}, reg:null, line:"Your computer did not pull the orders — tap to see why" },
+    signedout: { v:"Signed out", vc:"fix", sub:"Failed at 9:14 AM",
+                 pairs:[["Failed","Sat, Nov 21, 9:14 AM"],["Last pull","Fri, Nov 20, 8:02 PM, nothing new"]],
+                 adv:{l:"TCGplayer signed you out on your computer", f:"On your computer, sign in to TCGplayer. The next store page you load pulls again.", c:"signed", kind:"signed-out"},
+                 h:"TCGplayer signed you out.", p:"The 9:14 AM pull stopped at the sign-in page. Nothing was added. Sign in on your computer.",
+                 pm:{ink:"amber", mid:"NOV 21", bot:"9:14 AM", over:"SIGN IN", oc:"amber"}, reg:["Sat, Nov 21, 9:14 AM","Signed out","warn"], line:"Orders stopped: TCGplayer signed you out — tap to fix" },
+    failed:    { v:"Failed", vc:"fix", sub:"Failed at 9:14 AM",
+                 pairs:[["Failed","Sat, Nov 21, 9:14 AM"],["Last pull","Fri, Nov 20, 8:02 PM, nothing new"]],
+                 adv:{l:"TCGplayer did not answer the order page", f:"TCGplayer may be down or busy. Nothing was added. Pull again in a few minutes.", c:"again", kind:"fetch"},
+                 h:"The last pull failed.", p:"At 9:14 AM TCGplayer did not answer the order page. Nothing was added.",
+                 pm:{ink:"red", mid:"NOV 21", bot:"9:14 AM", over:"FAILED", oc:"red"}, reg:["Sat, Nov 21, 9:14 AM","Failed: no answer","bad"], line:"The last order pull failed — tap to see why" },
+    stale:     { v:"Thu", vc:"fix", sub:"No pull since Thu, Nov 19, 8:40 PM",
+                 pairs:[["Last pull","Thu, Nov 19, 8:40 PM, 4 new lines"],["Next","when a store page loads on your computer"]],
+                 adv:{l:"No pull for 2 days", f:"Pulls run when you open TCGplayer on your computer. Nothing has failed.", c:"again", kind:"none: last success 2 d ago"},
+                 h:"No pull since Thursday.", p:"Nothing failed. Pulls run when you open TCGplayer on your computer, and you have not since Thu, Nov 19.",
+                 pm:{ink:"inkSoft", mid:"NOV 19", bot:"8:40 PM", faded:true}, reg:"stale", line:"No order pull since Thu — tap to see why" },
+    never:     { v:"Not yet", vc:"", sub:"The extension has not pulled yet",
+                 pairs:[["Last pull","Never"],["Next","when a store page loads on your computer, once the extension has its key"]],
+                 h:"No pull yet.", p:"The first pull runs when you open TCGplayer on a computer that has the extension and its device key.",
+                 pm:{ink:"line", mid:"NO PULL", bot:"YET", dash:true}, reg:"never", line:null },
+    unknown:   { v:"Unknown", vc:"fix", sub:"Could not read the last pull",
+                 pairs:[["Last pull","Unknown"]],
+                 adv:{l:"The ledger server did not answer", f:"So the last pull is unknown, not missing. Check again when you are online.", c:"check", kind:"GET /orders/status: network"},
+                 h:"Could not check.", p:"The ledger server did not answer, so this phone cannot say whether the orders came in.",
+                 pm:{ink:"inkSoft", mid:"UNKNOWN", bot:"", dash:true}, reg:"unknown", line:null },
+    loading:   { v:"…", vc:"", sub:"Reading the last pull",
+                 pairs:[["Last pull","…"]],
+                 h:"Checking…", p:"Reading the last pull from the ledger server.",
+                 pm:{ink:"line", mid:"…", bot:"", dash:true}, reg:"loading", line:null }
+  };
+
+  // ---------------- state ----------------
+  var S = { c:"row", s:"ok", start:"ask", line:"on", open:"pages", labels:true,
+            panel:true, pushed:{}, tab:{}, disc:false, pick:"orders", ans:"", ansc:"", land:false, hide:{} };
+  var timers = [];
+  function clearTimers() { timers.forEach(function (t) { clearTimeout(t); clearInterval(t); }); timers = []; }
+
+  function readHash() {
+    var h = location.hash.replace(/^#/, "");
+    h.split("&").forEach(function (kv) {
+      var p = kv.split("="); var k = p[0], v = decodeURIComponent(p[1] || "");
+      if (k === "c" && (v === "row" || v === "postmark")) S.c = v;
+      if (k === "s" && D[v]) S.s = v;
+      if (k === "start" && (v === "ask" || v === "none")) S.start = v;
+      if (k === "line" && (v === "on" || v === "off")) S.line = v;
+      if (k === "open" && (v === "pages" || v === "full")) S.open = v;
+      if (k === "labels") S.labels = v !== "off";
+      if (k === "page" && v === "orders") ["fold","phone","ax5","open"].forEach(function (f) { S.pushed[f] = true; });
+      if (k === "panel") S.panel = v !== "closed";
+      if (k === "disc") S.disc = v === "open";
+      if (k === "tab" && v) ["fold","phone","ax5","open"].forEach(function (f) { S.tab[f] = v; });
+      if (k === "hide" && v) v.split(",").forEach(function (x) { S.hide[x] = true; });
+    });
+  }
+  function writeHash() {
+    var parts = ["c=" + S.c, "s=" + S.s, "start=" + S.start, "line=" + S.line, "open=" + S.open];
+    if (!S.labels) parts.push("labels=off");
+    if (S.c === "postmark" && S.pushed.fold) parts.push("page=orders");
+    if (S.c === "row" && !S.panel) parts.push("panel=closed");
+    var hid = Object.keys(S.hide).filter(function (k) { return S.hide[k]; });
+    if (hid.length) parts.push("hide=" + hid.join(","));
+    history.replaceState(null, "", "#" + parts.join("&"));
+  }
+
+  // ---------------- small parts ----------------
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[c]; }); }
+  function L(kind, text, inner, cls) {
+    return '<div class="lbl ' + (kind === "new" ? "new" : "") + ' ' + (cls || "") + '" data-lbl="' + (kind === "new" ? "New: " : "Today: ") + esc(text) + '">' + inner + "</div>";
+  }
+  var ICON = {
+    ledger:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>',
+    orphaned:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+    tally:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3L7 21M17 3l-2 18M4 8.5h17M3 15.5h17"/></svg>',
+    packages:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M12 2.8l8.5 4.4v9.6L12 21.2l-8.5-4.4V7.2z"/><path d="M3.5 7.2L12 11.6l8.5-4.4M12 11.6v9.6"/></svg>'
+  };
+  function tabbar(f) {
+    var cur = S.tab[f] || "ledger";
+    var tabs = [["ledger","Ledger"],["orphaned","Orphaned"],["tally","Tally"],["packages","Packages"]];
+    return '<nav class="tabbar" aria-label="Views">' + tabs.map(function (t) {
+      return '<button data-act="tab" data-f="' + f + '" data-v="' + t[0] + '"' + (cur === t[0] ? ' aria-current="page"' : "") + '>' +
+        ICON[t[0]] + '<span>' + t[1] + '</span>' + (t[0] === "orphaned" ? '<span class="badge" aria-label="2 pending">2</span>' : "") + "</button>";
+    }).join("") + "</nav>";
+  }
+  function masthead() {
+    return L("today", "masthead", '<div class="mast"><div class="seal" aria-hidden="true"></div><div class="word">MANIFEST</div><div class="rule"></div></div>');
+  }
+  // The postmark: a hand cancellation in the state's ink. Postal caps are the subject's own vernacular.
+  var pmN = 0;
+  function postmark(d, land) {
+    var id = "pm" + (++pmN), ink = "var(--" + d.pm.ink + ")";
+    var dash = d.pm.dash ? ' stroke-dasharray="5 5"' : "";
+    var waves = "";
+    for (var i = 0; i < 5; i++) { var y = 45 + i * 15; waves += '<path d="M146 ' + y + ' q10 -6 20 0 t20 0 t20 0 t20 0" fill="none" stroke="currentColor" stroke-width="2"/>'; }
+    var over = "";
+    if (d.pm.over) {
+      var oc = "var(--" + d.pm.oc + ")";
+      over = '<g transform="rotate(-9 166 112)" color="' + oc + '"><rect x="102" y="96" width="128" height="32" rx="3" fill="var(--paper)" fill-opacity=".9" stroke="currentColor" stroke-width="2.5"/>' +
+        '<text x="166" y="118" text-anchor="middle" font-family="Menlo, monospace" font-size="15" font-weight="700" letter-spacing="2" fill="currentColor">' + esc(d.pm.over) + "</text></g>";
+    }
+    return '<svg class="pm' + (land ? " land" : "") + '" viewBox="0 0 236 150" role="img" aria-label="Postmark: ' + esc((d.pm.mid + " " + d.pm.bot).trim()) + '"' +
+      ' style="color:' + ink + (d.pm.faded ? ";opacity:.6" : "") + '">' +
+      '<defs><path id="' + id + 't" d="M 22 75 A 53 53 0 0 1 128 75"/><path id="' + id + 'b" d="M 26 75 A 49 49 0 0 0 124 75"/></defs>' +
+      '<circle cx="75" cy="75" r="66" fill="none" stroke="currentColor" stroke-width="2.5"' + dash + '/>' +
+      '<circle cx="75" cy="75" r="42" fill="none" stroke="currentColor" stroke-width="1.5"' + dash + '/>' +
+      '<text font-family="Menlo, monospace" font-size="10.5" letter-spacing="2.4" fill="currentColor"><textPath href="#' + id + 't" startOffset="50%" text-anchor="middle">MANIFEST ORDERS</textPath></text>' +
+      '<text font-family="Menlo, monospace" font-size="10.5" letter-spacing="2.4" fill="currentColor"><textPath href="#' + id + 'b" startOffset="50%" text-anchor="middle">TCGPLAYER</textPath></text>' +
+      '<text x="75" y="' + (d.pm.bot ? 76 : 81) + '" text-anchor="middle" font-family="Menlo, monospace" font-weight="700" font-size="' + (d.pm.mid.length > 6 ? 12 : 17) + '" fill="currentColor">' + esc(d.pm.mid) + "</text>" +
+      (d.pm.bot ? '<text x="75" y="93" text-anchor="middle" font-family="Menlo, monospace" font-size="10.5" fill="currentColor">' + esc(d.pm.bot) + "</text>" : "") +
+      waves + over + "</svg>";
+  }
+
+  // The start control and its answer slot. Same box in every state: a press moves nothing (no-layout-shift-under-pointer).
+  function startControl(f) {
+    var s = S.s;
+    if (S.start === "none") {
+      return L("new", "how pulls start", '<p class="help">Pulls start on your computer: when a TCGplayer store page loads and the last pull is over 12 hours old, or from Pull now in the extension.</p>');
+    }
+    var busy = s === "asked" || s === "running", loading = s === "loading";
+    var why = busy ? (s === "asked" ? "Waiting for your computer. Cancel the ask with Stop." : "Your computer is pulling.") : (loading ? "Reading the last pull first." : "");
+    var ans = S.ans || why;
+    var stopLabel = s === "asked" ? "Cancel" : "Stop";
+    // Stop sits in the answer row, beside the answer (ux-answer-at-press, ux-long-run-stops). The row is 44 pt in every state.
+    var inner = '<div class="ask" id="' + f + '-ask">' +
+      // Ledger row: a quiet button, so the status, not the action, leads a healthy Ledger tab. Postmark: the docked main action.
+      '<button class="btn' + (S.c === "row" ? " quiet" : "") + '" id="' + f + '-ask-ctl" data-act="ask"' + (busy || loading ? ' aria-disabled="true"' : "") + ' aria-describedby="' + f + '-ans">Ask my computer to pull</button>' +
+      '<div class="ansrow"><div class="ans ' + (S.ansc || "") + '" id="' + f + '-ans" aria-live="polite">' + esc(ans) + "</div>" +
+      '<button class="stop" data-act="stop"' + (busy ? "" : " hidden") + '>' + stopLabel + "</button></div></div>";
+    return L("new", "start control", inner);
+  }
+  function advBlock(d, noHead) {
+    if (!d.adv) return "";
+    // One act, one name (ux-one-plain-name): the start control is already on screen, so the block adds no second one.
+    // Only the unknown read gets its own control, because checking again is a different act.
+    var c = "";
+    if (d.adv.c === "check") c = '<button class="btn quiet ctl" data-act="check">Check again</button>';
+    // In the Postmark concept the verdict above is the heading, so the block drops its own (ux-label-once).
+    // Manila for every kind, as the options page's Last failure block (photoMsg); the red lives in the postmark's ink.
+    return '<div class="adv">' + (noHead ? "" : '<div class="al">' + esc(d.adv.l) + "</div>") + '<div class="af">' + esc(d.adv.f) + "</div>" + c +
+      '<div class="disc"><button data-act="disc" aria-expanded="' + S.disc + '">What the extension recorded</button>' +
+      (S.disc ? "<pre>kind: " + esc(d.adv.kind) + "</pre>" : "") + "</div></div>";
+  }
+  function pairs(d) {
+    return '<div class="pairs">' + d.pairs.map(function (p) { return '<span class="pl">' + esc(p[0]) + '</span><span class="pv">' + esc(p[1]) + "</span>"; }).join("") + "</div>";
+  }
+
+  // ---------------- Ledger row concept ----------------
+  function ordersRow(f, asPick) {
+    var d = D[S.s], open = asPick ? S.pick === "orders" : S.panel;
+    return '<button class="lrow' + (asPick && S.pick === "orders" ? " picked" : "") + '" data-act="' + (asPick ? "pick" : "panel") + '" data-v="orders" id="' + f + '-orders" aria-expanded="' + open + '">' +
+      '<span class="tt"><span class="t">Orders</span><span class="s">' + esc(d.sub) + '</span></span>' +
+      '<span class="v ' + d.vc + '">' + esc(d.v) + '</span><span class="chev" aria-hidden="true">›</span></button>';
+  }
+  function ordersPanel(f) {
+    var d = D[S.s];
+    return '<div class="panel">' + startControl(f) + advBlock(d) + pairs(d) + "</div>";
+  }
+  function dataGroup(f, asPick) {
+    var sync = '<button class="lrow' + (asPick && S.pick === "sync" ? " picked" : "") + '" data-act="' + (asPick ? "pick" : "noop") + '" data-v="sync"><span class="tt"><span class="t">Sync</span><span class="s">Backed up 2026-11-21</span></span><span class="v">On</span><span class="chev" aria-hidden="true">›</span></button>';
+    var rest = '<button class="lrow" data-act="noop"><span class="tt"><span class="t">History</span></span><span class="v">Saved versions</span><span class="chev" aria-hidden="true">›</span></button>' +
+      '<button class="lrow" data-act="noop"><span class="tt"><span class="t">Backup</span></span></button>';
+    var orders = L("new", "Orders row", ordersRow(f, asPick) + (!asPick && S.panel ? ordersPanel(f) : ""));
+    return '<div class="group"><div class="glab">Data</div><div class="cardbox">' + L("today", "Sync", sync) + orders + L("today", "History, Backup", rest) + "</div></div>";
+  }
+  function ledgerScreenRow(f) {
+    return masthead() + '<div class="title">Ledger</div>' + dataGroup(f, false) +
+      L("today", "Reset", '<div class="stub" style="color:var(--red);font-size:calc(20px * var(--k-t3))">Reset</div>');
+  }
+
+  // ---------------- Postmark concept ----------------
+  function regRows() {
+    var d = D[S.s], rows = REG_BASE.slice();
+    if (d.reg === "never") return '<div class="stub">No pulls yet. The first one shows here.</div>';
+    if (d.reg === "unknown") return '<div class="stub">Unknown until the ledger server answers.</div>';
+    if (d.reg === "loading") return '<div class="stub" aria-busy="true">…</div>';
+    if (d.reg === "stale") rows = REG_BASE.slice(2);
+    else if (d.reg) rows = [d.reg].concat(REG_BASE.slice(0, 3));
+    else rows = [["Sat, Nov 21, 9:14 AM","12 new lines","news"]].concat(REG_BASE.slice(0, 3));
+    return '<div class="cardbox reg">' + rows.map(function (r) { return '<div class="rr"><span class="rw">' + esc(r[0]) + '</span><span class="rv ' + r[2] + '">' + esc(r[1]) + "</span></div>"; }).join("") + "</div>";
+  }
+  function foundList(f) {
+    var d = D[S.s];
+    if (!d.found) return "";
+    return '<div class="group"><div class="glab">New in the last pull</div><div class="cardbox found">' + FOUND.map(function (x, i) {
+      return '<button data-act="goto" data-f="' + f + '" data-v="' + i + '"><span class="fs">' + esc(x[0]) + '</span><span class="fn">' + esc(x[1]) + "</span></button>";
+    }).join("") + "</div></div>";
+  }
+  function verdict(d) {
+    return '<div class="verdict" id="verdict"><h2>' + esc(d.h) + "</h2><p>" + esc(d.p) + "</p></div>";
+  }
+  function postmarkTop(f, withBack) {
+    var d = D[S.s];
+    return (withBack ? '<div class="nav"><button data-act="back" data-f="' + f + '" aria-label="Back to Ledger">‹ Ledger</button></div>' : "") +
+      '<h1 class="ltitle">Orders</h1>' + L("new", "postmark", '<div class="pmwrap">' + postmark(d, S.land) + "</div>") + verdict(d) + advBlock(d, true);
+  }
+  function postmarkPage(f, ax) {
+    // One page: the stamp and the verdict, the start control in the thumb zone above the tab bar, the register below.
+    return postmarkTop(f, true) + foundList(f) +
+      '<div class="group"><div class="glab">Last pulls</div>' + L("new", "register", regRows()) + "</div>" +
+      (ax ? startControl(f) : "");
+  }
+  function ledgerScreenPm(f) {
+    var d = D[S.s];
+    var row = '<button class="lrow" data-act="push" data-f="' + f + '" id="' + f + '-orders"><span class="tt"><span class="t">Orders</span><span class="s">' + esc(d.sub) + '</span></span><span class="v ' + d.vc + '">' + esc(d.v) + '</span><span class="chev" aria-hidden="true">›</span></button>';
+    var sync = '<button class="lrow" data-act="noop"><span class="tt"><span class="t">Sync</span><span class="s">Backed up 2026-11-21</span></span><span class="v">On</span><span class="chev" aria-hidden="true">›</span></button>';
+    var rest = '<button class="lrow" data-act="noop"><span class="tt"><span class="t">History</span></span><span class="v">Saved versions</span><span class="chev" aria-hidden="true">›</span></button><button class="lrow" data-act="noop"><span class="tt"><span class="t">Backup</span></span></button>';
+    return masthead() + '<div class="title">Ledger</div><div class="group"><div class="glab">Data</div><div class="cardbox">' + L("today", "Sync", sync) + L("new", "Orders row, opens the page", row) + L("today", "History, Backup", rest) + "</div></div>" +
+      L("today", "Reset", '<div class="stub" style="color:var(--red);font-size:calc(20px * var(--k-t3))">Reset</div>');
+  }
+
+  // ---------------- working tabs ----------------
+  function advisoryLine(f) {
+    var d = D[S.s];
+    if (S.line !== "on" || !d.line) return "";
+    return L("new", "orders case of the one line", '<button class="advline" id="' + f + '-advline" data-act="line" data-f="' + f + '">' + esc(d.line) + "</button>");
+  }
+  function workingTab(f, tab) {
+    var names = { orphaned:"Orphaned", tally:"Tally", packages:"Packages" };
+    var line = advisoryLine(f);
+    var body = tab === "packages" && S.goto != null && S.gotoF === f ?
+      L("today", "Packages, scrolled to the order", '<div class="stub tall">Packages opens on the ' + esc(FOUND[S.goto][0]) + ' order, its card open.</div>') :
+      L("today", names[tab] + " cards", '<div class="stub tall">' + names[tab] + ' view as built today.</div>');
+    return masthead() + (line || (S.line === "on" ? "" : "")) + body;
+  }
+
+  // ---------------- frames ----------------
+  function single(f) {
+    var tab = S.tab[f] || "ledger", ax = f === "ax5", html;
+    if (tab !== "ledger") html = workingTab(f, tab);
+    else if (S.c === "row") html = ledgerScreenRow(f);
+    else html = S.pushed[f] ? postmarkPage(f, ax) : ledgerScreenPm(f);
+    var dock = (tab === "ledger" && S.c === "postmark" && S.pushed[f] && !ax) ? '<div class="dock">' + startControl(f) + "</div>" : "";
+    var pad = dock ? ' style="padding-bottom:calc(var(--sab) + 196px)"' : "";
+    return chrome(f) + '<div class="scroll"><div class="inner"' + pad + ">" + html + "</div></div>" + dock + tabbar(f) + '<div class="homebar"></div>';
+  }
+  function chrome(f) {
+    return '<div class="status" aria-hidden="true"><span>9:41</span><span>' + (f === "phone" ? "" : "") + "●●● 100%</span></div>" + (f === "phone" ? '<div class="island" aria-hidden="true"></div>' : "");
+  }
+  function openFrame() {
+    var f = "open", tab = S.tab[f] || "ledger", left, right, dockL = "";
+    if (S.open === "full" && tab === "ledger") {
+      // Today's Ledger at full width: drawn only to show what crosses the fold.
+      var body = S.c === "row" ? ledgerScreenRow(f) : (S.pushed[f] ? postmarkPage(f, true) : ledgerScreenPm(f));
+      return chrome(f) + '<div class="scroll" style="right:0"><div class="inner" style="padding-bottom:110px;max-width:951px">' + body + "</div></div>" +
+        '<div class="fold-gap" style="background:color-mix(in srgb, var(--red) 18%, transparent)"><span>CONTENT CROSSES THE FOLD</span></div>' + barRight(f);
+    }
+    if (tab !== "ledger") {
+      left = masthead() + advisoryLine(f) + L("today", "left page", '<div class="stub tall">' + tab.charAt(0).toUpperCase() + tab.slice(1) + ", left page, as built.</div>");
+      right = L("today", "right page", '<div class="stub tall">' + tab.charAt(0).toUpperCase() + tab.slice(1) + ", right page, as built.</div>");
+    } else if (S.c === "row") {
+      left = masthead() + '<div class="title">Ledger</div>' + dataGroup(f, true) + L("today", "Reset", '<div class="stub" style="color:var(--red);font-size:20px">Reset</div>');
+      right = S.pick === "orders" ?
+        '<h1 class="ltitle" style="font-family:var(--cochin);font-weight:400;font-size:28px">Orders</h1>' + L("new", "Orders, as the right page", '<div class="cardbox"><div class="panel" style="border-top:0">' + startControl(f) + advBlock(D[S.s]) + pairs(D[S.s]) + "</div></div>") :
+        L("today", "Sync panel", '<div class="stub tall">Sync: Server and Last sync, as built.</div>');
+    } else {
+      left = postmarkTop(f, false);
+      dockL = '<div class="dock">' + startControl(f) + "</div>";
+      right = '<div style="height:44px"></div>' + foundList(f) + '<div class="group"><div class="glab">Last pulls</div>' + L("new", "register", regRows()) + "</div>";
+    }
+    return chrome(f) +
+      '<div class="page l"><div class="scroll"><div class="inner"' + (dockL ? ' style="padding-bottom:calc(var(--sab) + 110px)"' : "") + ">" + left + "</div></div>" + dockL + "</div>" +
+      '<div class="fold-gap" aria-hidden="true"><span>FOLD, x 455.5 to 495.5</span></div>' +
+      '<div class="page r"><div class="scroll"><div class="inner">' + right + "</div></div>" + barRight(f) + "</div>";
+  }
+  function barRight(f) { return tabbar(f).replace('class="tabbar"', 'class="tabbar" style="left:16px;right:16px"'); }
+
+  // ---------------- render ----------------
+  function render() {
+    pmN = 0;
+    ["fold", "phone", "ax5"].forEach(function (f) {
+      var el = document.getElementById("f-" + f), sc = el.querySelector(".scroll"), top = sc ? sc.scrollTop : 0;
+      el.innerHTML = single(f);
+      var ns = el.querySelector(".scroll"); if (ns) ns.scrollTop = top;
+    });
+    var o = document.getElementById("f-open");
+    var tops = Array.prototype.map.call(o.querySelectorAll(".scroll"), function (x) { return x.scrollTop; });
+    o.innerHTML = openFrame();
+    Array.prototype.forEach.call(o.querySelectorAll(".scroll"), function (x, i) { x.scrollTop = tops[i] || 0; });
+    document.getElementById("frames").classList.toggle("nolabels", !S.labels);
+    // chips
+    Array.prototype.forEach.call(document.querySelectorAll("[data-set]"), function (b) {
+      var k = b.getAttribute("data-set"), v = b.getAttribute("data-v");
+      b.setAttribute("aria-pressed", k === "labels" ? String(S.labels) : String(S[k] === v));
+    });
+    document.getElementById("c-row").hidden = !!S.hide["c:row"];
+    document.getElementById("c-postmark").hidden = !!S.hide["c:postmark"];
+    ["start", "line", "open"].forEach(function (k) { document.getElementById("og-" + k).hidden = !!S.hide["og:" + k]; });
+    Array.prototype.forEach.call(document.querySelectorAll("#states .chip"), function (b) { b.setAttribute("aria-pressed", String(b.getAttribute("data-v") === S.s)); });
+    S.land = false;
+    writeHash();
+  }
+  function stateChips() {
+    var host = document.getElementById("states");
+    host.innerHTML = '<span class="lab">State</span>' + STATES.map(function (s) {
+      return '<button class="chip" data-state="' + s[0] + '">' + esc(s[1]) + "</button>";
+    }).join("");
+  }
+
+  // ---------------- the computer, simulated ----------------
+  function setState(s, ans, ansc) { S.s = s; S.ans = ans || ""; S.ansc = ansc || ""; S.disc = false; render(); }
+  function ask() {
+    if (S.start !== "ask" || S.s === "asked" || S.s === "running" || S.s === "loading") return;
+    clearTimers();
+    setState("asked", "Asked at 9:20 AM.");
+    timers.push(setTimeout(function () {
+      var page = 1;
+      D.running.pairs[1][1] = "order page 1"; D.running.sub = "Your computer is reading order page 1";
+      D.running.p = "It is reading order page 1. Nothing is added until every page is read."; D.running.pm.mid = "PAGE 1";
+      setState("running", "");
+      var iv = setInterval(function () {
+        page += 1;
+        D.running.pairs[1][1] = "order page " + page; D.running.sub = "Your computer is reading order page " + page;
+        D.running.p = "It is reading order page " + page + ". Nothing is added until every page is read."; D.running.pm.mid = "PAGE " + page;
+        if (page > 5) { clearTimers(); S.land = true; setState("ok", "Pulled at 9:21 AM: 12 new lines.", "ok"); return; }
+        render();
+      }, 1000);
+      timers.push(iv);
+    }, 2400));
+  }
+  function stop() {
+    var was = S.s; clearTimers();
+    if (was === "asked") setState("ok", "Ask cancelled. Nothing ran.");
+    else if (was === "running") {
+      var pg = D.running.pm.mid.replace("PAGE ", "");
+      D.stopped.h = "Stopped at page " + pg + ".";
+      D.stopped.sub = "Stopped at order page " + pg + ". Nothing was added";
+      D.stopped.pairs[0][1] = "Sat, Nov 21, 9:22 AM, at order page " + pg;
+      S.land = true; setState("stopped", "Stopped. Nothing was added.", "bad");
+    }
+  }
+
+  // ---------------- events ----------------
+  document.addEventListener("click", function (e) {
+    var x = e.target.closest("[data-hide]");
+    if (x) { e.stopPropagation(); S.hide[x.getAttribute("data-hide")] = true;
+      var h = x.getAttribute("data-hide");
+      if (h === "c:row" && S.c === "row") S.c = "postmark";
+      if (h === "c:postmark" && S.c === "postmark") S.c = "row";
+      render(); return; }
+    var st = e.target.closest("[data-state]");
+    if (st) { clearTimers(); S.land = true; setState(st.getAttribute("data-state")); return; }
+    var set = e.target.closest("[data-set]");
+    if (set) { var k = set.getAttribute("data-set"), v = set.getAttribute("data-v");
+      if (k === "labels") S.labels = !S.labels; else S[k] = v;
+      if (k === "c") { S.pushed = {}; }
+      render(); return; }
+    var a = e.target.closest("[data-act]");
+    if (!a) return;
+    var act = a.getAttribute("data-act"), f = a.getAttribute("data-f"), v = a.getAttribute("data-v");
+    if (act === "tab") { S.tab[f] = v; if (v !== "packages") S.goto = null; render(); }
+    else if (act === "panel") { S.panel = !S.panel; render(); }
+    else if (act === "pick") { S.pick = v; render(); }
+    else if (act === "push") { S.pushed[f] = true; S.land = true; render(); }
+    else if (act === "back") { S.pushed[f] = false; render(); }
+    else if (act === "ask") { if (a.getAttribute("aria-disabled") === "true") return; ask(); }
+    else if (act === "stop") stop();
+    else if (act === "disc") { S.disc = !S.disc; render(); }
+    else if (act === "check") { clearTimers(); setState("loading"); timers.push(setTimeout(function () { S.land = true; setState("ok", "Read at 9:23 AM.", "ok"); }, 1500)); }
+    else if (act === "line") { S.tab[f] = "ledger"; S.panel = true; S.pick = "orders"; S.pushed[f] = true; S.land = true; render(); }
+    else if (act === "goto") { S.tab[f] = "packages"; S.goto = +v; S.gotoF = f; render(); }
+  });
+  document.addEventListener("keydown", function (e) {
+    if ((e.key === "Enter" || e.key === " ") && e.target.matches("[data-hide]")) { e.preventDefault(); e.target.click(); }
+  });
+  window.addEventListener("hashchange", function () { readHash(); render(); });
+
+  readHash(); stateChips(); render();
+})();
+</script>
+</body>
+</html>

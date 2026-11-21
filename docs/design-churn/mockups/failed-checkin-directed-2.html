@@ -1,0 +1,643 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Check-in Ribbon</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light, so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6; --gold:#C9A961;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on every frame here. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1440px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
+.kind { margin:0; color:var(--inkSoft); }
+.kind b { color:var(--ink); }
+.sub { color:var(--inkSoft); margin:0; max-width:80ch; }
+nav { display:flex; flex-direction:column; gap:8px; }
+.devlist { margin:0; padding-left:20px; color:var(--inkSoft); font-size:13px; display:flex; flex-direction:column; gap:2px; }
+.cluster { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.cluster > span { color:var(--inkSoft); font-size:13px; min-width:72px; }
+nav a, nav button, .demo button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; gap:6px;
+  border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav button[aria-pressed="true"] { border-style:dashed; color:var(--inkSoft); }
+.demo { display:flex; flex-wrap:wrap; gap:8px; align-items:center; padding:8px 12px; border:1px dashed var(--accent); border-radius:8px; }
+.demo p { margin:0; font-size:13px; color:var(--inkSoft); flex:1 1 280px; }
+.demo button[aria-pressed="true"] { border-color:var(--red); color:var(--red); font-weight:600; }
+section.state { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:16px; }
+section.state[hidden], figure[hidden] { display:none; }
+section.state > h2 { font-family:var(--cochin); font-size:22px; margin:0; }
+section.state > p { margin:0; color:var(--inkSoft); max-width:90ch; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figcaption { max-width:90ch; }
+figcaption b { font-family:var(--cochin); font-size:18px; }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+.fit { max-width:100%; overflow:hidden; }
+.cap { font:12px var(--mono); color:var(--inkSoft); margin-top:4px; width:0; min-width:100%; }
+
+/* ---- device frames: 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; font-family:var(--sys); color:var(--ink); }
+.dev.folded { width:466px; height:678px; }
+.dev.phone { width:402px; height:874px; }
+.dev.open { width:951px; height:669px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 20px; font-size:12px; font-weight:600; z-index:30; pointer-events:none; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 70%, var(--paper)); z-index:25; pointer-events:none; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+
+/* the scroll view of a tab */
+.scr { position:absolute; left:0; right:0; top:0; bottom:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; }
+.scr::-webkit-scrollbar { display:none; }
+.col { display:flex; flex-direction:column; gap:0; padding:var(--sat) 0 0; font-family:var(--cochin); }
+.folded .col, .phone .col { padding-inline:24px; }
+.open .col { padding-inline:24px; }
+.pad-foot { flex:0 0 auto; }
+
+/* masthead: drawn as context, not changed here */
+.mast { display:flex; flex-direction:column; gap:4px; padding:12px 0 8px; border-bottom:1px solid var(--line); }
+.mast .lh { display:flex; align-items:center; gap:8px; }
+.seal { width:26px; height:26px; border-radius:50%; background:radial-gradient(circle at 35% 30%, #C86A5F, #A8443C 60%, #66231D); flex:0 0 auto; }
+.mast .mh { font-size:26px; letter-spacing:4px; font-variant:small-caps; text-transform:lowercase; font-weight:600; }
+.mast .cl { font:12px/16px var(--mono); color:var(--inkSoft); display:flex; justify-content:space-between; gap:8px; }
+.mast .slot { min-width:13ch; text-align:right; }
+.mast .slot.bad { color:var(--red); }
+.mast .slot.ok { color:var(--green); }
+.rh-slot { height:47px; flex:0 0 47px; }
+.ruled { height:44px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid var(--line); font-size:15px; }
+.ruled u { text-underline-offset:3px; text-decoration-color:var(--line); }
+.ruled .num { font:12px var(--mono); color:var(--inkSoft); }
+
+/* package card and lines */
+.cards { display:flex; flex-direction:column; gap:8px; padding-top:12px; }
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; box-shadow:0 1px 2px var(--shadow); }
+.card .hd { display:flex; align-items:baseline; justify-content:space-between; gap:8px; padding:10px 12px 8px; border-bottom:1px solid var(--line); }
+.card .hd b { font-size:17px; }
+.card .hd span { font:11px var(--mono); color:var(--inkSoft); }
+.line { position:relative; display:flex; gap:8px; min-height:56px; padding-left:4px; border-top:1px solid var(--line); background:var(--card); }
+.line:first-of-type { border-top:0; }
+.line .box { flex:0 0 48px; min-height:48px; display:grid; place-items:center; background:none; border:0; padding:0; cursor:pointer; }
+.line .box i { width:28px; height:28px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; position:relative; background:var(--card); }
+.line .t { flex:1; padding:9px 12px 9px 0; min-width:0; }
+.line .t b { font-size:15px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
+.line .t b .num { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.line .t small { font-size:12.5px; color:var(--inkSoft); display:block; }
+.line .t small .num { font:11.5px var(--mono); }
+.line.done { background:var(--greenSoft); }
+.line.done .box i { background:var(--green); border-color:var(--green); }
+.line.done .box i::after { content:""; position:absolute; left:8px; top:3px; width:8px; height:14px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+/* New: a line whose check-in did not save. It keeps its saved look, and gains a red gutter rule and the not-saved mark.
+   Nothing changes height or moves sideways: the rule sits in the 4 pt gutter, the mark in the box. */
+.line.held::before { content:""; position:absolute; left:0; top:0; bottom:0; width:4px; background:var(--red); }
+.line.held .box i { border:2px dashed var(--red); background:var(--redSoft); }
+.line.held .box i::after { content:""; position:absolute; left:50%; top:50%; width:22px; height:2px; background:var(--red); transform:translate(-50%,-50%) rotate(-45deg); border:0; }
+.line.held.done .box i { background:var(--redSoft); }
+
+/* the not-saved glyph: one shape, one meaning, on the line and in the ribbon */
+.glyph { width:18px; height:18px; border:2px dashed currentColor; border-radius:4px; position:relative; flex:0 0 auto; }
+.glyph::after { content:""; position:absolute; left:50%; top:50%; width:16px; height:2px; background:currentColor; transform:translate(-50%,-50%) rotate(-45deg); }
+.tick { width:18px; height:18px; position:relative; flex:0 0 auto; }
+.tick::after { content:""; position:absolute; left:5px; top:0; width:6px; height:13px; border:solid currentColor; border-width:0 2.5px 2.5px 0; transform:rotate(45deg); }
+
+/* ---- the system tab bar (folded Duo, phone) and the open Duo's own pill bar ---- */
+.tabbar { position:absolute; left:0; right:0; bottom:0; height:83px; padding:0 20px calc(var(--sab) + 20px); display:flex; align-items:flex-start; z-index:20; }
+.tabbar .glass { flex:1; height:56px; margin-top:4px; border-radius:28px; display:flex; gap:4px; padding:4px; border:1px solid var(--line);
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); box-shadow:0 4px 16px var(--shadow); }
+.tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font:10px var(--cochin); color:var(--inkSoft); border-radius:24px; }
+.tab.on { color:var(--accent); background:color-mix(in srgb, var(--card) 90%, transparent); }
+.tab svg { width:22px; height:22px; }
+.duobar { position:absolute; left:519.5px; width:407.5px; bottom:12px; height:64px; border-radius:32px; display:flex; gap:4px; padding:4px; border:1px solid var(--line);
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); box-shadow:0 4px 16px var(--shadow); z-index:20; }
+.duobar .tab { font-size:12px; border-radius:28px; }
+
+/* ---- the ribbon: one component, two homes (foot, head) ---- */
+.ribbon { position:absolute; display:flex; align-items:center; gap:8px; padding:4px 4px 4px 16px; z-index:22; font-family:var(--cochin); }
+.ribbon .sum { flex:1; min-width:0; display:flex; align-items:center; gap:8px; min-height:44px; background:none; border:0; padding:0; font:inherit; color:inherit; text-align:left; cursor:pointer; }
+.ribbon .sum .w { font-size:17px; line-height:22px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ribbon .sum .num { font:700 17px var(--mono); }
+.ribbon .sum .chev { width:10px; height:10px; border:solid currentColor; border-width:2px 2px 0 0; transform:rotate(-45deg); margin-left:2px; flex:0 0 auto; transition:transform .16s ease-out; }
+.ribbon.down .sum .chev { transform:rotate(135deg); }
+.ribbon.down.isopen .sum .chev { transform:rotate(-45deg); }
+.ribbon.isopen .sum .chev { transform:rotate(135deg); }
+.ribbon .act { flex:0 0 auto; width:104px; min-height:44px; border-radius:22px; border:0; font:600 15px var(--cochin); cursor:pointer; background:var(--card); color:var(--red); }
+.ribbon .act[disabled] { color:var(--inkSoft); cursor:default; }
+.ribbon .act[hidden] { display:block; visibility:hidden; }
+.ribbon.fail { background:var(--red); color:var(--card); box-shadow:0 4px 16px var(--shadow); }
+.ribbon.rest { background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid var(--line); color:var(--inkSoft); }
+.ribbon.rest .sum { cursor:default; }
+.ribbon.rest .sum .w { font-size:15px; }
+.ribbon.rest .tick { color:var(--green); }
+.ribbon.good { background:var(--card); border:1px solid var(--green); color:var(--green); }
+.ribbon.good .sum { cursor:default; }
+.ribbon.busy { background:color-mix(in srgb, var(--red) 82%, var(--ink)); color:var(--card); }
+/* foot: a capsule above the tab bar, as the system's tab bar accessory */
+.ribbon.foot { border-radius:26px; }
+.folded .ribbon.foot, .phone .ribbon.foot { left:20px; right:20px; height:52px; }
+.folded .ribbon.foot { bottom:91px; }
+.phone .ribbon.foot { bottom:91px; }
+/* open Duo, keys down: the left page's foot, the bar's twin across the fold (64 pt pill, 24 pt in, 12 pt up) */
+.open .ribbon.foot { left:24px; width:407.5px; bottom:12px; height:64px; border-radius:32px; padding-left:20px; padding-right:10px; }
+/* Card in Hand, keys up: the left page's 53 pt slot on the keys' drawn top, twin of the Post bar on the right page */
+.hand .ribbon.foot { left:16px; width:423.5px; top:352px; height:53px; border-radius:8px; padding:4px 4px 4px 12px; }
+/* head: in the 47 pt running-head slot, sticky under the status bar */
+.rh-slot { position:sticky; top:var(--sat); z-index:21; }
+.ribbon.head { position:relative; height:47px; border-radius:0 0 8px 8px; margin-inline:-24px; padding-left:24px; padding-right:20px; }
+.open .ribbon.head { width:455.5px; margin-inline:-24px 0; border-radius:0 0 8px 0; }
+.hand .ribbon.head { position:absolute; margin:0; left:8px; width:439.5px; top:calc(var(--sat) + 8px); height:52px; border-radius:8px; padding-left:12px; padding-right:4px; }
+.ribbon.head .act { height:44px; }
+.ribbon .act.shut { width:auto; padding:0 14px; background:transparent; color:var(--card); border:1px solid color-mix(in srgb, var(--card) 60%, transparent); }
+.ax5 .panel.up { bottom:159px; }
+.ribbon.head .sum { min-height:44px; }
+
+/* motion: the ribbon is drawn on like a ruled line, once (motion-stationery-not-software: no overshoot, no loop) */
+@keyframes rule-on { from { clip-path:inset(0 100% 0 0 round 26px); } to { clip-path:inset(0 0 0 0 round 26px); } }
+.ribbon.arrive { animation:rule-on .24s cubic-bezier(.2,.6,.3,1) both; }
+@media (prefers-reduced-motion: reduce) { .ribbon.arrive { animation:none; } .ribbon .sum .chev { transition:none; } }
+
+/* the list that the ribbon opens: paper fill (head-panels-carry-paper-fill), overlays the rows, never moves the ribbon */
+.panel { position:absolute; z-index:21; background:var(--paper); border:1px solid var(--line); box-shadow:0 8px 24px var(--shadow);
+  display:flex; flex-direction:column; font-family:var(--cochin); overflow:hidden; }
+.panel .ph { padding:12px 16px 8px; font-size:15px; color:var(--inkSoft); border-bottom:1px solid var(--line); }
+.panel .rows { overflow-y:auto; flex:1; scrollbar-width:none; }
+.panel .row { display:flex; align-items:center; gap:12px; min-height:64px; padding:8px 8px 8px 16px; border-bottom:1px solid var(--line); }
+.panel .row .glyph { color:var(--red); }
+.panel .row .tx { flex:1; min-width:0; display:flex; flex-direction:column; }
+.panel .row b { font-size:17px; line-height:22px; font-weight:600; }
+.panel .row small { font-size:13px; line-height:18px; color:var(--inkSoft); }
+.panel .row small .num { font:12px var(--mono); }
+.panel .row button { min-height:44px; min-width:76px; border-radius:22px; border:1px solid var(--red); background:var(--card); color:var(--red); font:600 15px var(--cochin); cursor:pointer; }
+.panel details { padding:8px 16px 12px; font-size:13px; color:var(--inkSoft); }
+.panel summary { min-height:44px; display:flex; align-items:center; cursor:pointer; text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px; }
+.panel details code { font:12px/16px var(--mono); display:block; padding:8px; background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.folded .panel.up, .phone .panel.up { left:20px; right:20px; border-radius:16px 16px 8px 8px; }
+.folded .panel.up { bottom:151px; max-height:360px; }
+.phone .panel.up { bottom:151px; max-height:480px; }
+.open .panel.up { left:24px; width:407.5px; bottom:84px; max-height:420px; border-radius:16px 16px 8px 8px; }
+.hand .panel.up { left:16px; width:423.5px; bottom:calc(669px - 348px); max-height:300px; border-radius:8px; }
+.panel.down { border-radius:0 0 8px 8px; }
+.folded .panel.down, .phone .panel.down { left:12px; right:12px; }
+.folded .panel.down { max-height:400px; }
+.phone .panel.down { max-height:520px; }
+.open .panel.down { left:12px; width:431.5px; max-height:440px; }
+.hand .panel.down { left:12px; width:431.5px; top:calc(var(--sat) + 64px); max-height:280px; }
+
+/* Card in Hand (open Duo, keys up) */
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; font-family:var(--cochin); }
+.page.l { left:0; } .page.r { left:495.5px; }
+.hcol { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 12px); display:flex; flex-direction:column; gap:12px; }
+.rowx { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; }
+.rowx .ttl { font-weight:700; font-size:17px; }
+.rowx .soft { color:var(--inkSoft); font-size:15px; }
+.pill { font:15px var(--cochin); border:1px solid var(--line); background:var(--card); border-radius:22px; min-height:44px; padding:0 14px; display:inline-flex; align-items:center; color:var(--ink); }
+.count { font:12px var(--mono); color:var(--inkSoft); }
+.field { height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:17px; }
+.field::after { content:""; width:2px; height:20px; background:var(--accent); margin-left:1px; }
+.micro { font:10.5px/13px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.match { min-height:44px; display:flex; align-items:center; font-size:15px; padding-left:10px; }
+.match.on { font-weight:700; box-shadow:inset 3px 0 0 var(--accent); }
+.shead { position:absolute; left:0; right:0; top:var(--sat); padding:12px 16px 8px; display:flex; flex-direction:column; gap:2px; border-bottom:1px solid var(--line); background:var(--paper); z-index:3; }
+.shead b { font-size:22px; line-height:27px; }
+.shead .meta { font:11px var(--mono); color:var(--inkSoft); }
+.rscr { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 86px); bottom:calc(669px - 352px); overflow-y:auto; scrollbar-width:none; padding-top:8px; }
+.postbar { position:absolute; left:16px; right:16px; top:352px; height:53px; border-top:1px solid var(--line); padding:4px 0; }
+.postbar span { display:flex; height:44px; border-radius:8px; background:var(--accent); color:var(--card); align-items:center; justify-content:center; font:600 15px var(--cochin); }
+.keys { position:absolute; left:0; right:0; top:405px; bottom:0; background:#D2D0D6; z-index:26; padding:8px 6px; font-family:var(--sys); }
+/* The system keyboard: iOS chrome, not an app colour, so these greys sit outside the tokens. */
+.keys .kr { display:flex; gap:6px; margin-bottom:8px; justify-content:center; }
+.keys .k { height:42px; flex:0 0 42px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font-size:18px; color:#111; }
+.keys .k.w { flex-basis:300px; font-size:14px; }
+
+/* today's bars, as built */
+.today-bar { position:absolute; left:0; right:0; padding:12px; font:13px/18px var(--sys); text-align:center; background:rgba(242,242,247,.86); backdrop-filter:blur(20px); -webkit-backdrop-filter:blur(20px); z-index:19; }
+.today-hand { position:absolute; left:495.5px; width:455.5px; top:var(--sat); padding:12px; font:13px/18px var(--cochin); color:var(--red); background:var(--paper); border-bottom:1px solid var(--line); z-index:4; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { outline-offset:2px; }
+.tag-new { outline:2px dashed var(--new); }
+.tag-today { outline:2px dashed var(--today); }
+.tagnote { position:absolute; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper); z-index:40; white-space:nowrap; pointer-events:none; }
+.tagnote.new { color:var(--new); } .tagnote.today { color:var(--today); }
+
+/* largest accessibility text, folded: app text at AX5 sizes; the ribbon capped at xxxLarge (body 23 pt) */
+.ax5 .line .t b { font-size:44px; line-height:52px; flex-direction:column; gap:0; }
+.ax5 .line .t b .num { font-size:36px; }
+.ax5 .line .t small { font-size:36px; line-height:44px; }
+.ax5 .line .box { flex-basis:64px; }
+.ax5 .line .box i { width:44px; height:44px; }
+.ax5 .card .hd b { font-size:44px; line-height:52px; }
+.ax5 .mast { display:none; }
+.ax5 .ruled { display:none; }
+.ax5 .ribbon .sum .w, .ax5 .ribbon .sum .num { font-size:23px; line-height:29px; }
+.ax5 .ribbon .act { font-size:21px; width:132px; }
+.ax5 .ribbon.foot { height:60px; border-radius:30px; }
+.ax5 .ribbon.head { height:60px; }
+.ax5 .rh-slot { height:60px; flex-basis:60px; }
+.ax5 .panel .row { flex-wrap:wrap; }
+.ax5 .panel .row .tx { flex-basis:calc(100% - 40px); }
+.ax5 .panel .row button { margin-left:30px; }
+.ax5 .panel .row small .num, .ax5 .line .t small .num { font-size:36px; }
+.ax5 .panel details, .ax5 .panel summary { font-size:44px; line-height:52px; min-height:52px; }
+.ax5 .panel .ph { display:none; }
+.folded.ax5 .panel.up { max-height:500px; }
+.folded.ax5 .panel.down { max-height:540px; }
+.ax5 .panel .row b { font-size:53px; line-height:62px; }
+.ax5 .panel .row small { font-size:44px; line-height:52px; }
+.ax5 .panel .row button { font-size:23px; }
+.ax5 .panel .ph { font-size:44px; line-height:52px; }
+.ax5 .tab { font-size:10px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No figure, seller, card, count, time or error text on this page is real. Heights marked unmeasured are estimates from the code.</div>
+<h1>The check-in ribbon</h1>
+<p class="kind">Designer kind: <b>directed</b>. Direction: <b>one ribbon: a single persistent strip with a count and retry all.</b></p>
+<p class="sub">Every check-in that does not save joins one red strip. It holds the count until each one saves. A later good tap, a tab change or the stamped toggle never clears it. Two homes for the strip are drawn: the Foot ribbon above the tab bar, and the Head ribbon in the running-head slot. iPhone Duo folded (466 x 678 pt) first, then open (951 x 669 pt, fold at x 455.5 to 495.5), then a large phone (402 x 874 pt, a size no record gives). Light theme only: the native app is held to light.</p>
+
+<ul class="devlist" aria-label="Devices, in drawing order">
+  <li data-device="iphone-duo-folded">Duo folded, 466 x 678 pt (duo-fold-and-keyboard). System tab bar from y 595, 83 pt.</li>
+  <li data-device="iphone-regular">Large phone, 402 x 874 pt. No record or brief gives this size; the tab bar is drawn at the Duo's 83 pt.</li>
+  <li data-device="iphone-duo-unfolded">Duo open, 951 x 669 pt, fold 455.5 to 495.5. Pill bar 64 pt, 24 pt in, 12 pt up, under the right page. Keys draw from y 405.</li>
+</ul>
+
+<nav aria-label="Mockup controls">
+  <div class="cluster" id="state-links"><span>State</span></div>
+  <div class="cluster"><span>Concept</span>
+    <a href="#c=foot" data-c="foot">Foot ribbon only</a>
+    <a href="#c=head" data-c="head">Head ribbon only</a>
+    <button type="button" data-hide="foot" aria-pressed="false">Hide Foot ribbon</button>
+    <button type="button" data-hide="head" aria-pressed="false">Hide Head ribbon</button>
+  </div>
+  <div class="cluster"><span>Options</span>
+    <button type="button" data-hide="rest" aria-pressed="false">Hide the resting strip</button>
+    <button type="button" data-hide="carry" aria-pressed="false">Hide carry on the next save</button>
+  </div>
+</nav>
+
+<div class="demo" role="group" aria-label="Demo">
+  <button type="button" id="failing" aria-pressed="true">Saving fails: on</button>
+  <button type="button" id="reset">Reset every frame</button>
+  <p>Every frame is live. Tap a line's box to check it in. While "Saving fails" is on, each check-in fails and joins the ribbon. Turn it off, then press Retry all, or tap another line to see the carry.</p>
+</div>
+
+<div id="states"></div>
+</main>
+
+<script>
+// ---------- sample data: no figure is real ----------
+const PKGS = [
+  { gk:'g', seller:'Gamma Cards', date:'2026-07-01', lines:[
+    { k:'g1', n:'Lightning Bolt', set:'Sample Set · NM', p:'0.42', q:1 },
+    { k:'g2', n:'Path to Exile', set:'Sample Set · NM', p:'0.31', q:1 },
+    { k:'g3', n:'Swords to Plowshares', set:'Sample Set · LP', p:'0.55', q:4 } ] },
+  { gk:'d', seller:'Delta Hobby', date:'2026-07-03', lines:[
+    { k:'d1', n:'Ponder', set:'Sample Set · NM', p:'0.18', q:1 },
+    { k:'d2', n:'Preordain', set:'Sample Set · NM', p:'0.20', q:1 },
+    { k:'d3', n:'Brainstorm', set:'Sample Set · NM', p:'0.25', q:2 } ] },
+  { gk:'k', seller:'Kappa Games', date:'2026-07-05', lines:[
+    { k:'k1', n:'Counterspell', set:'Sample Set · NM', p:'0.35', q:1 },
+    { k:'k2', n:'Opt', set:'Sample Set · NM', p:'0.12', q:1 },
+    { k:'k3', n:'Consider', set:'Sample Set · NM', p:'0.15', q:1 } ] },
+];
+const LINE = {}; PKGS.forEach(p => p.lines.forEach(l => { LINE[l.k] = { ...l, seller:p.seller }; }));
+const TIMES = ['12:02', '12:03', '12:03', '12:04', '12:04', '12:05'];
+const ERR = 'The file “ledger.json” couldn’t be saved.';
+let failing = true;
+const hidden = new Set();
+
+// ---------- one frame = one live instance ----------
+function seed(state) {
+  const s = { received:{ g1:1, d1:1 }, held:new Map(), phase:'idle', open:false, last:{ k:'d1' }, n:0, arrive:false, carried:0, tick:0, scrolled:false };
+  const hold = (...ks) => ks.forEach((k, i) => s.held.set(k, { intent:LINE[k].q, at:TIMES[i + 2] }));
+  if (state === 'fail') hold('g2');
+  if (['many','list','retrying','still','hand','ax5','ax5-list'].includes(state)) hold('g2', 'd2', 'k1');
+  if (state === 'list' || state === 'still' || state === 'ax5-list') s.open = true;
+  if (state === 'retrying') s.phase = 'retrying';
+  if (state === 'still') s.phase = 'still';
+  if (state === 'saved') { Object.assign(s.received, { g2:1, d2:1, k1:1 }); s.phase = 'saved'; s.n = 3; }
+  if (state === 'carry') { Object.assign(s.received, { g2:1, d2:1, k2:1 }); s.phase = 'carry'; s.carried = 2; s.last = { k:'k2' }; }
+  if (state === 'many' || state === 'list' || state === 'retrying' || state === 'still') s.scrolled = true;
+  return s;
+}
+
+const plural = (n, one, many) => n === 1 ? one : many;
+
+function ribbonHTML(inst, concept) {
+  const s = inst.s, n = s.held.size, ax = inst.ax;
+  const id = inst.focusId ? ` id="${inst.focusId}"` : '';
+  const home = concept === 'foot' ? 'foot' : 'head down';
+  const arrive = s.arrive ? ' arrive' : '';
+  const tag = ' data-tagged="1"';
+  if (s.phase === 'retrying') {
+    return `<div class="ribbon ${home} busy"${id} role="status"><span class="sum"><span class="glyph"></span><span class="w">Saving <span class="num">${n}</span>…</span></span><button class="act" disabled>Retry all</button></div>`;
+  }
+  if (s.phase === 'saved' && n === 0) {
+    return `<div class="ribbon ${home} good"${id} role="status"><span class="sum"><span class="tick"></span><span class="w"><span class="num">${s.n}</span> ${plural(s.n,'check-in','check-ins')} saved</span></span><button class="act" hidden tabindex="-1">Retry all</button></div>`;
+  }
+  if (s.phase === 'carry' && n === 0 && !hidden.has('carry')) {
+    const l = LINE[s.last.k];
+    return `<div class="ribbon ${home} good"${id} role="status"><span class="sum"><span class="tick"></span><span class="w"><span class="num">${s.carried}</span> more saved with ${l.n}</span></span><button class="act" hidden tabindex="-1">Retry all</button></div>`;
+  }
+  if (n > 0) {
+    const words = s.phase === 'still'
+      ? (ax || inst.narrow ? `Still <span class="num">${n}</span> not saved` : `Still not saved: <span class="num">${n}</span>`)
+      : (ax || inst.narrow ? `<span class="num">${n}</span> not saved` : `<span class="num">${n}</span> ${plural(n,'check-in','check-ins')} not saved`);
+    const close = inst.hand && concept === 'head' ? '<button class="act shut" data-do="none">Close</button>' : '';
+    return `<div class="ribbon ${home} fail${s.open ? ' isopen' : ''}${arrive}"${id}><button class="sum" data-do="toggle" aria-expanded="${s.open}" aria-label="${n} ${plural(n,'check-in','check-ins')} not saved. Show which."><span class="glyph"></span><span class="w">${words}</span><span class="chev"></span></button><button class="act" data-do="retry">${n === 1 ? 'Retry' : 'Retry all'}</button>${close}</div>`;
+  }
+  if (concept === 'foot' && !hidden.has('rest') && s.last) {
+    const l = LINE[s.last.k], got = s.received[s.last.k] || 0;
+    return `<div class="ribbon foot rest"${id} role="status"><span class="sum"><span class="tick"></span><span class="w">Saved: ${l.n}, <span class="num" style="font-weight:400;font-size:13px">${got} of ${l.q}</span></span></span></div>`;
+  }
+  return '';
+}
+
+function panelHTML(inst, concept) {
+  const s = inst.s;
+  if (!s.open || s.held.size === 0) return '';
+  const dir = concept === 'foot' ? 'up' : 'down';
+  const top = concept === 'head' && !inst.hand ? ` style="top:calc(var(--sat) + ${inst.ax ? 60 : 47}px)"` : '';
+  const rows = [...s.held].map(([k, h]) => {
+    const l = LINE[k];
+    return `<div class="row"><span class="glyph"></span><span class="tx"><b>${l.n}</b><small>${l.seller}, set to <span class="num">${h.intent} of ${l.q}</span> at <span class="num">${h.at}</span></small></span><button data-do="retry1" data-k="${k}">Retry</button></div>`;
+  }).join('');
+  return `<div class="panel ${dir}"${top} role="region" aria-label="Check-ins not saved"><div class="ph">Each line keeps its old count until it saves.</div><div class="rows">${rows}</div>
+    <details${s.phase === 'still' ? ' open' : ''}><summary>What the phone said</summary><code>${ERR}</code></details></div>`;
+}
+
+function lineHTML(inst, l) {
+  // Today the failed line shows nothing of its own: it just keeps its old look.
+  const s = inst.s, got = s.received[l.k] || 0, done = got >= l.q, held = inst.concept !== 'today' && s.held.has(l.k);
+  const qty = l.q > 1 ? ` · <span class="num">${got} of ${l.q}</span>` : '';
+  return `<div class="line${done ? ' done' : ''}${held ? ' held' : ''}" data-k="${l.k}"><button class="box" data-do="tap" data-k="${l.k}" aria-label="${l.n}${held ? ', not saved' : ''}"><i></i></button><span class="t"><b>${l.n}<span class="num">$${l.p}</span></b><small>${l.set}${qty}</small></span></div>`;
+}
+
+const ICON = {
+  box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>',
+  list:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 6h13M8 12h13M8 18h13"/><circle cx="4" cy="6" r="1"/><circle cx="4" cy="12" r="1"/><circle cx="4" cy="18" r="1"/></svg>',
+  env:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  book:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M4 4h11a3 3 0 013 3v13H7a3 3 0 01-3-3z"/><path d="M4 17a3 3 0 013-3h11"/></svg>' };
+const tabs = cls => `<div class="${cls}">` + [['Packages','box',1],['Tally','list'],['Orphaned','env'],['Ledger','book']]
+  .map(([t, i, on]) => `<span class="tab${on ? ' on' : ''}">${ICON[i]}<span>${t}</span></span>`).join('') + '</div>';
+
+function mastHTML(inst) {
+  // Today the slot reads the last write only. In both concepts it reads "couldn't save" while the ribbon holds any check-in.
+  const s = inst.s, failed = inst.concept === 'today' ? s.lastFailed : s.held.size > 0;
+  // A status shows once (ux-label-once): where the ribbon says it, the slot stands idle (its non-breaking space).
+  const ribbonSays = inst.concept === 'foot' ? !hidden.has('rest') || s.held.size > 0 || ['saved','carry','retrying'].includes(s.phase)
+    : inst.concept === 'head' && (s.held.size > 0 || ['saved','carry','retrying'].includes(s.phase));
+  let slot = s.phase === 'retrying' ? 'saving…' : (failed ? 'couldn’t save' : 'saved ✓');
+  if (ribbonSays) slot = ' ';
+  const cls = slot === 'couldn’t save' ? 'bad' : (slot === 'saved ✓' ? 'ok' : '');
+  return `<div class="mast"><div class="lh"><span class="seal"></span><span class="mh">Manifest</span></div>
+    <div class="cl"><span>212 packages · autosaves</span></div>
+    <div class="cl"><span>58 still missing · $91.40</span><span class="slot ${cls}">${slot}</span></div></div>`;
+}
+
+function packagesHTML(inst) {
+  const c = inst.concept, s = inst.s;
+  const slot = c === 'head' ? `<div class="rh-slot">${ribbonHTML(inst, 'head')}</div>` : `<div class="rh-slot" style="position:static"></div>`;
+  const cards = PKGS.map(p => `<div class="card"><div class="hd"><b>${p.seller}</b><span>${p.date}</span></div>${p.lines.map(l => lineHTML(inst, l)).join('')}</div>`).join('');
+  const footPad = inst.dev === 'open' ? 88 : 151;
+  return `<div class="scr"><div class="col">${mastHTML(inst)}${slot}
+    <div class="ruled"><span><u>Stamped</u></span><span class="num">0</span></div>
+    <div class="cards">${cards}</div><div class="pad-foot" style="height:${footPad}px"></div></div></div>`;
+}
+
+function keysHTML() {
+  return `<div class="keys" aria-hidden="true"><div class="kr">${'qwertyuiop'.split('').map(k => `<span class="k">${k}</span>`).join('')}</div>
+    <div class="kr">${'asdfghjkl'.split('').map(k => `<span class="k">${k}</span>`).join('')}</div>
+    <div class="kr">${'zxcvbnm'.split('').map(k => `<span class="k">${k}</span>`).join('')}</div>
+    <div class="kr"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div></div>`;
+}
+
+function handHTML(inst) {
+  const c = inst.concept, s = inst.s, n = s.held.size;
+  const headRibbon = c === 'head' && n > 0;
+  // The Head ribbon takes the header row's own box, so nothing under it moves when it lands.
+  const left = `<div class="page l"><div class="hcol">
+      ${headRibbon ? '<div class="rowx" aria-hidden="true"></div>' : `<div class="rowx"><span class="ttl">Mail day</span><span class="count">41 in · 23 out</span><span class="pill">Close</span></div>`}
+      <div class="field">Light</div>
+      <div class="rowx"><span class="soft">This envelope</span><span class="pill">New envelope</span></div>
+      <span class="micro">Matches</span>
+      <div class="match on">Lightning Bolt</div><div class="match">Lightning Helix</div>
+    </div></div>`;
+  const g = PKGS[0];
+  const right = `<div class="page r"><div class="shead"><span class="micro">It came from</span><b>${g.seller}</b><span class="meta">ordered ${g.date}</span></div>
+      <div class="rscr"><div class="card">${g.lines.map(l => lineHTML(inst, l)).join('')}</div></div>
+      <div class="postbar"><span>Post 2 cards here</span></div></div>`;
+  return left + right;
+}
+
+function frameHTML(inst) {
+  const { dev, concept } = inst;
+  let body = '';
+  const status = `<div class="status"><span>9:41</span><span>100%</span></div>`;
+  if (inst.hand) {
+    body = handHTML(inst) + `<div class="fold"><span>FOLD</span></div>` + keysHTML();
+    if (concept === 'foot') body += ribbonHTML(inst, 'foot') + panelHTML(inst, 'foot');
+    if (concept === 'head') body += ribbonHTML(inst, 'head') + panelHTML(inst, 'head');
+    if (concept === 'today' && inst.s.held.size) body += `<div class="today-hand">Could not save the check-in. ${ERR}</div>`;
+  } else {
+    body = packagesHTML(inst);
+    if (dev === 'open') body += `<div class="fold"><span>FOLD</span></div>` + tabs('duobar');
+    else body += `<div class="tabbar">${tabs('glass')}</div>`;
+    if (concept === 'foot') body += ribbonHTML(inst, 'foot') + panelHTML(inst, 'foot');
+    if (concept === 'head') body += panelHTML(inst, 'head');
+    if (concept === 'today' && inst.s.held.size) {
+      const b = dev === 'open' ? 'bottom:0' : 'bottom:83px';
+      body += `<div class="today-bar" style="${b}">Could not save the check-in. ${ERR}</div>`;
+    }
+  }
+  return status + body;
+}
+
+// ---------- instances ----------
+const INST = [];
+function mount(el, opts) {
+  const inst = { el, ...opts, s:seed(opts.state) };
+  inst.s.lastFailed = inst.s.held.size > 0 && !['saved','carry'].includes(inst.s.phase);
+  INST.push(inst);
+  draw(inst, true);
+  el.addEventListener('click', e => act(inst, e));
+  return inst;
+}
+function draw(inst, first) {
+  const scr = inst.el.querySelector('.scr'), top = scr ? scr.scrollTop : 0;
+  inst.el.innerHTML = frameHTML(inst);
+  const ns = inst.el.querySelector('.scr');
+  if (ns) {
+    if (first && inst.s.scrolled && inst.concept === 'head') ns.scrollTop = 150;
+    else if (first && inst.ax) ns.scrollTop = 0;
+    else ns.scrollTop = top;
+  }
+  inst.s.arrive = false;
+  tagFrame(inst);
+}
+function act(inst, e) {
+  const b = e.target.closest('[data-do]'); if (!b) return;
+  const s = inst.s, d = b.dataset.do;
+  if (d === 'tap') {
+    const k = b.dataset.k, l = LINE[k];
+    const now = s.held.has(k) ? s.held.get(k).intent : (s.received[k] || 0);
+    const intent = now >= l.q ? 0 : l.q;   // the bundle's toggleCount: none to all, all to none
+    if (failing) {
+      if (s.held.size === 0) s.arrive = true;
+      if (intent === (s.received[k] || 0)) s.held.delete(k);   // tapped back to what is saved: nothing is left to save
+      else s.held.set(k, { intent, at:TIMES[(s.tick++) % TIMES.length] });
+      s.phase = 'idle'; s.lastFailed = true;
+    } else {
+      s.received[k] = intent; s.held.delete(k); s.last = { k }; s.lastFailed = false;
+      if (inst.concept === 'today') s.held.clear();   // today: any good save clears checkInError, and the failure is forgotten
+      if (s.held.size && !hidden.has('carry')) {   // carry: the held check-ins ride the same good save
+        s.carried = s.held.size; s.held.forEach((h, hk) => { s.received[hk] = h.intent; }); s.held.clear(); s.phase = 'carry'; s.open = false;
+      } else s.phase = 'idle';
+    }
+  } else if (d === 'toggle') { s.open = !s.open; }
+  else if (d === 'retry' || d === 'retry1') {
+    const only = d === 'retry1' ? b.dataset.k : null;
+    s.phase = 'retrying'; draw(inst);
+    setTimeout(() => {
+      if (failing) { s.phase = 'still'; s.lastFailed = true; }
+      else {
+        const ks = only ? [only] : [...s.held.keys()];
+        ks.forEach(k => { s.received[k] = s.held.get(k).intent; s.held.delete(k); });
+        s.n = ks.length; s.lastFailed = false;
+        s.phase = s.held.size ? 'idle' : 'saved'; if (!s.held.size) s.open = false;
+      }
+      draw(inst);
+    }, 700);
+    return;
+  }
+  draw(inst);
+}
+
+// dashed tags: a dashed outline on each tagged part, named in the frame's caption line
+function tagFrame(inst) {
+  const parts = [], cap = inst.el.parentElement && inst.el.parentElement.querySelector('.cap');
+  if (inst.concept === 'today') {
+    inst.el.querySelectorAll('.today-bar, .today-hand').forEach(t => t.classList.add('tag-today'));
+    if (inst.el.querySelector('.today-bar, .today-hand')) parts.push('Today: the error line, one message at a time');
+  } else {
+    const r = inst.el.querySelector('.ribbon'); if (r) { r.classList.add('tag-new'); parts.push('New: the ribbon'); }
+    const h = inst.el.querySelectorAll('.line.held'); h.forEach(x => x.classList.add('tag-new')); if (h.length) parts.push('New: the not-saved mark');
+    const p = inst.el.querySelector('.panel'); if (p) { p.classList.add('tag-new'); parts.push('New: the list'); }
+  }
+  if (cap) {
+    let t = cap.querySelector('.tags'); if (!t) { t = document.createElement('span'); t.className = 'tags'; cap.append(t); }
+    t.textContent = parts.length ? ' · dashed: ' + parts.join(', ') : '';
+  }
+  // The Head list drops from the ribbon: opening it pins the ribbon first, so the list hangs from it.
+  if (inst.concept === 'head' && !inst.hand && inst.s.open) {
+    const scr = inst.el.querySelector('.scr'), m = inst.el.querySelector('.mast');
+    if (scr && m && m.offsetParent && scr.scrollTop < m.offsetHeight) scr.scrollTop = m.offsetHeight + 12;
+  }
+}
+
+// ---------- the page: states x concepts x devices ----------
+const STATES = [
+  ['today', 'Today', 'As built. Packages and Tally show one sans line on material at the tab foot; Card in Hand shows one Cochin line over the top rows. Each holds one message. The next good check-in on any line clears it (PackagesModel.checkIn sets checkInError to nil), and the masthead slot then reads "saved ✓". So with fast ticks the failure is gone a second later, and the failed line looks unticked, as it was.'],
+  ['rest', 'At rest', 'Nothing failed. The Foot ribbon rests as a quiet glass strip that names the last check-in that saved, so each tick is confirmed where the thumb is. The Head ribbon draws nothing: the running-head slot stays empty, as today.'],
+  ['fail', 'One check-in fails', 'The tap on Path to Exile did not save. The line keeps its saved look (unticked) and gains the red gutter rule and the not-saved mark. The ribbon draws itself on once, with an error haptic. Retry sits at the trailing end.'],
+  ['many', 'Three fail while ticking fast', 'Three taps failed in a row, on three cards. Later taps that saved did not clear the count. In the Head ribbon the list has been scrolled: the ribbon pins under the status bar in the running head\'s place.'],
+  ['list', 'The list opens', 'A tap on the count opens the list of what did not save: card, seller, the count it was set to, and when. Each row retries alone. The ribbon itself never moves, so Retry all stays under the thumb. A second tap on the count closes it.'],
+  ['retrying', 'Retry all, saving', 'One press re-saves every held check-in in one write (LedgerStore.commitReceived with a map of counts, the bulk path). The button keeps its box; the words change to the count being saved.'],
+  ['saved', 'Saved', 'Every held check-in saved. A green receipt holds the strip until the next check-in, the same rule as the Post receipt.'],
+  ['still', 'Still not saved', 'The retry failed too. The ribbon says so and keeps Retry all. The list shows "What the phone said", closed by default, with the system\'s own words.'],
+  ['carry', 'Carried on the next good save', 'Option: saving works again, and the owner taps the next card. The held check-ins ride the same save. The receipt says how many went with it. Hide it with "Hide carry on the next save".'],
+  ['hand', 'Card in Hand, keys up', 'Open Duo with the keys up: the Foot ribbon takes the left page\'s 53 pt slot on the keys\' drawn top, the twin of the Post bar on the right page. The Head ribbon takes the left page\'s header row while a check-in is held.'],
+  ['ax5', 'Largest text, folded', 'Accessibility XXXL (AX5). App text at its AX5 sizes. The ribbon text is capped at xxxLarge (body 23 pt) and uses the short words, as the Post bar is capped (duo-card-in-hand, item 104 a). The list is not capped: it scrolls.'],
+];
+const DEVS = { folded:[466, 678, 'iphone-duo-folded', 'Duo folded, 466 x 678 pt'], phone:[402, 874, 'iphone-regular', 'Large phone, 402 x 874 pt (size not in any record)'], open:[951, 669, 'iphone-duo-unfolded', 'Duo open, 951 x 669 pt'] };
+
+function build() {
+  const host = document.getElementById('states'), links = document.getElementById('state-links');
+  STATES.forEach(([key, title, text]) => {
+    const a = document.createElement('a'); a.href = '#s=' + key; a.textContent = title; a.dataset.s = key; links.append(a);
+    const sec = document.createElement('section'); sec.className = 'state'; sec.dataset.state = key;
+    sec.innerHTML = `<h2>${title}</h2><p>${text}</p>`;
+    host.append(sec);  // in the page before any frame mounts, so a seeded scroll position takes
+    const concepts = key === 'today' ? ['today'] : ['foot', 'head'];
+    concepts.forEach(c => {
+      if (key === 'rest' && c === 'head') return;
+      const fig = document.createElement('figure'); fig.dataset.c = c; if (key === 'carry') fig.dataset.opt = 'carry'; if (key === 'rest') fig.dataset.opt = 'rest';
+      const name = c === 'foot' ? 'Foot ribbon' : c === 'head' ? 'Head ribbon' : 'Today';
+      fig.innerHTML = `<figcaption><b>${name}.</b> ${caption(key, c)}</figcaption><div class="frames"></div>`;
+      const fr = fig.querySelector('.frames');
+      sec.append(fig);
+      let devs = ['folded', 'phone', 'open'];
+      if (key === 'hand') devs = ['hand'];
+      if (key === 'ax5') devs = ['ax5', 'ax5-list'];
+      if (key === 'today') devs = ['folded', 'open', 'hand'];
+      devs.forEach(d => {
+        const real = d === 'hand' ? 'open' : (d.startsWith('ax5') ? 'folded' : d);
+        const [w, h, dd, label] = DEVS[real];
+        const wrap = document.createElement('div'); wrap.className = 'fit';
+        const el = document.createElement('div');
+        el.className = `dev ${real}${d === 'hand' ? ' hand' : ''}${d.startsWith('ax5') ? ' ax5' : ''}`;
+        el.dataset.device = dd;
+        if (d === 'hand') el.setAttribute('aria-label', 'Card in Hand, open Duo, keys up');
+        wrap.append(el);
+        const cap = document.createElement('div'); cap.className = 'cap';
+        cap.textContent = d === 'hand' ? 'Duo open, Card in Hand, keys from y 405 pt' : d === 'ax5' ? 'Duo folded, AX5 text' : d === 'ax5-list' ? 'Duo folded, AX5 text, list open' : label;
+        wrap.append(cap);
+        fr.append(wrap);
+        const focusId = key === 'many' && d === 'folded' && c !== 'today' ? `${c}-ribbon` : (key === 'rest' && d === 'folded' ? 'foot-rest' : (key === 'carry' && d === 'folded' ? `${c}-carry` : null));
+        mount(el, { state: d === 'ax5-list' ? 'ax5-list' : (key === 'today' ? 'fail' : key), concept:c, dev:real, hand:d === 'hand', ax:d.startsWith('ax5'), narrow:false, focusId, w });
+      });
+    });
+  });
+}
+function caption(key, c) {
+  const C = {
+    foot: { rest:'A glass strip above the tab bar, the place of the system\'s tab-bar accessory. Not a control: it only says.', fail:'Red capsule above the tab bar. On the open Duo it sits under the left page, the pill bar\'s twin, so it never meets the bar or the fold.', many:'Thumb reach on every frame. The scroll view keeps a bottom margin of the ribbon\'s height, so the last line still scrolls clear.', list:'The list rises from the ribbon over the rows, paper filled.', retrying:'', saved:'', still:'', carry:'', hand:'Left page foot, y 352 to 405 pt, beside the Post bar at the same height. The matches list keeps 53 pt of margin.', ax5:'Capped at 60 pt tall.' },
+    head: { fail:'At the top of the list, the ribbon fills the 47 pt running-head slot that sits empty today. No row moves: the slot is already reserved.', many:'Scrolled: the slot is sticky, so the ribbon pins under the status bar in place of the running head. On the open Duo it spans the left page only.', list:'The list drops from the ribbon over the rows.', retrying:'', saved:'', still:'', carry:'', hand:'The header row (Mail day and the count) gives way to the ribbon while a check-in is held. Close stays at the row\'s trailing end, in the ribbon.', ax5:'The running-head slot grows to 60 pt at the cap.' },
+    today: { today:'Folded: the material bar at the tab foot (its place over the tab bar is unmeasured). Open: the same bar runs full width, and its right half sits under the pill bar (debt duo-checkin-error-under-bar). Card in Hand: the top line covers the first rows.' } };
+  return (C[c] && C[c][key]) || '';
+}
+
+// ---------- routing: #s=<state>&c=<concept>; hide buttons remove one option ----------
+function route() {
+  const h = location.hash, s = (h.match(/s=([\w-]+)/) || [])[1], c = (h.match(/c=(\w+)/) || [])[1];
+  document.querySelectorAll('section.state').forEach(sec => {
+    sec.hidden = !!s && sec.dataset.state !== s;
+    sec.querySelectorAll('figure').forEach(f => { f.hidden = (c && f.dataset.c !== c && f.dataset.c !== 'today') || hidden.has(f.dataset.c) || hidden.has(f.dataset.opt); });
+    if (!sec.hidden && ![...sec.querySelectorAll('figure')].some(f => !f.hidden)) sec.hidden = true;
+  });
+  document.querySelectorAll('nav a').forEach(a => a.setAttribute('aria-current', String((a.dataset.s && a.dataset.s === s) || (a.dataset.c && a.dataset.c === c))));
+  fit();
+}
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => {
+    const d = w.firstElementChild; d.style.zoom = 1;
+    const avail = Math.min(w.parentElement.clientWidth, document.documentElement.clientWidth - 32);
+    const s = Math.min(1, avail / d.offsetWidth); d.style.zoom = s;
+  });
+}
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  b.setAttribute('aria-pressed', String(hidden.has(o)));
+  b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + b.textContent.replace(/^(Show|Hide) /, '');
+  INST.forEach(i => draw(i)); route();
+}));
+document.getElementById('failing').addEventListener('click', e => {
+  failing = !failing; e.currentTarget.setAttribute('aria-pressed', String(failing)); e.currentTarget.textContent = 'Saving fails: ' + (failing ? 'on' : 'off');
+});
+document.getElementById('reset').addEventListener('click', () => { INST.forEach(i => { i.s = seed(i.state); i.s.lastFailed = i.s.held.size > 0 && !['saved','carry'].includes(i.s.phase); draw(i, true); }); });
+build();
+addEventListener('hashchange', route); addEventListener('resize', fit); route();
+</script>
+</body>
+</html>

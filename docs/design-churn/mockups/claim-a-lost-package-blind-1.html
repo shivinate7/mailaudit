@@ -1,0 +1,1109 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Claim a lost package</title>
+<style>
+/* Tokens. Spacing on the 4 px house step; radius 8 px (house tokens).
+   Type sizes are the iOS Dynamic Type text styles at the default size (Large),
+   and at AX5 for the .ax5 frame, from the HIG typography page read 2026-11-21.
+   1 CSS px stands for 1 pt. Colours are this designer's own, by role. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-11: 44px;
+  --radius: 8px;
+  --hit: 44px;
+  --font-ui: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  /* The system serif (New York on Apple platforms), for the letter content only. */
+  --font-letter: -apple-system-ui-serif, ui-serif, Georgia, serif;
+
+  --fs-lt: 34px; --lh-lt: 41px;
+  --fs-t2: 22px; --lh-t2: 28px;
+  --fs-t3: 20px; --lh-t3: 25px;
+  --fs-hl: 17px; --lh-hl: 22px;
+  --fs-body: 17px; --lh-body: 22px;
+  --fs-callout: 16px; --lh-callout: 21px;
+  --fs-sub: 15px; --lh-sub: 20px;
+  --fs-foot: 13px; --lh-foot: 18px;
+  --fs-c1: 12px; --lh-c1: 16px;
+  --fs-c2: 11px; --lh-c2: 13px;
+
+  /* Simulated insets. No Apple page gives a Duo inset; these are drawn sizes, not measured ones. */
+  --sa-top: 28px; --sa-bottom: 20px;
+  /* Large phone: no size is written for it. Assumed, and labelled so on the page. */
+  --phone-w: 430px; --phone-h: 932px;
+
+  color-scheme: light;
+  --canvas: #DCE0EA;
+  --canvas-text: #141829;
+  --bezel: #2A2F40;
+  --bg: #EEF0F5;
+  --surface: #FFFFFF;
+  --surface-2: #E4E7EF;
+  --text: #141829;
+  --text-2: #4F5670;
+  --text-3: #626A87;
+  --line: #D3D8E4;
+  --accent: #2B45C2;
+  --on-accent: #FFFFFF;
+  --accent-soft: #E3E8FB;
+  --warn: #8A5300;
+  --warn-soft: #FCEFD6;
+  --danger: #A8231B;
+  --danger-soft: #FBE3E0;
+  --ok: #1C6E43;
+  --ok-soft: #DDF1E5;
+  --paper: #FFFFFF;
+  --scrim: rgba(20, 24, 41, 0.32);
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --canvas: #1A1E2C; --canvas-text: #E9ECF5; --bezel: #3A4058;
+  --bg: #0F1220; --surface: #191D2E; --surface-2: #242940;
+  --text: #E9ECF5; --text-2: #AEB4CC; --text-3: #959CB7; --line: #323852;
+  --accent: #93A4FF; --on-accent: #0F1220; --accent-soft: #252C55;
+  --warn: #F0B964; --warn-soft: #3A2B12;
+  --danger: #FF9A8F; --danger-soft: #3E1A17;
+  --ok: #7ED6A3; --ok-soft: #163222;
+  --paper: #1E2336; --scrim: rgba(0, 0, 0, 0.5);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --canvas: #1A1E2C; --canvas-text: #E9ECF5; --bezel: #3A4058;
+    --bg: #0F1220; --surface: #191D2E; --surface-2: #242940;
+    --text: #E9ECF5; --text-2: #AEB4CC; --text-3: #959CB7; --line: #323852;
+    --accent: #93A4FF; --on-accent: #0F1220; --accent-soft: #252C55;
+    --warn: #F0B964; --warn-soft: #3A2B12;
+    --danger: #FF9A8F; --danger-soft: #3E1A17;
+    --ok: #7ED6A3; --ok-soft: #163222;
+    --paper: #1E2336; --scrim: rgba(0, 0, 0, 0.5);
+  }
+}
+.ax5 {
+  --fs-lt: 60px; --lh-lt: 70px;
+  --fs-t2: 56px; --lh-t2: 66px;
+  --fs-t3: 55px; --lh-t3: 65px;
+  --fs-hl: 53px; --lh-hl: 62px;
+  --fs-body: 53px; --lh-body: 62px;
+  --fs-callout: 51px; --lh-callout: 60px;
+  --fs-sub: 49px; --lh-sub: 58px;
+  --fs-foot: 44px; --lh-foot: 52px;
+  --fs-c1: 43px; --lh-c1: 51px;
+  --fs-c2: 40px; --lh-c2: 48px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--canvas);
+  color: var(--canvas-text);
+  font-family: var(--font-ui);
+  font-size: 15px;
+  line-height: 1.45;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Mockup page chrome (not part of the app) ---------- */
+.page { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-6) var(--space-4) var(--space-8); }
+.page-head { display: flex; flex-direction: column; gap: var(--space-3); max-width: 72rem; }
+.sample {
+  border: 2px solid var(--warn); background: var(--warn-soft); color: var(--text);
+  border-radius: var(--radius); padding: var(--space-2) var(--space-3);
+}
+.page-head h1 { font-size: 28px; line-height: 34px; margin: 0; }
+.page-head p { margin: 0; max-width: 70ch; }
+.ctl { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--bezel); border-radius: var(--radius); overflow: hidden; }
+.seg button { border: 0; background: transparent; min-height: 36px; padding: 0 var(--space-3); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--bezel); color: #fff; }
+.states { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.states a {
+  color: inherit; text-decoration: none; border: 1px solid var(--bezel); border-radius: 999px;
+  padding: var(--space-1) var(--space-3); font-size: 13px;
+}
+.states a[aria-current="true"] { background: var(--bezel); color: #fff; }
+.restore { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.restore button, .hide-btn {
+  border: 1px solid var(--bezel); background: transparent; border-radius: var(--radius);
+  min-height: 36px; padding: 0 var(--space-3); cursor: pointer;
+}
+.option { display: flex; flex-direction: column; gap: var(--space-4); }
+.option[hidden] { display: none; }
+.opt-head { display: flex; flex-direction: column; gap: var(--space-2); max-width: 72rem; }
+.opt-title { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; }
+.opt-title h2 { margin: 0; font-size: 22px; line-height: 28px; }
+.tags { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tag-new { border: 1.5px dashed currentColor; border-radius: var(--radius); padding: 2px var(--space-2); font-size: 13px; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+.frame { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.frame figcaption { font-size: 13px; max-width: 466px; }
+
+/* ---------- Devices ---------- */
+.device {
+  width: var(--w); height: var(--h);
+  border-radius: 14px; overflow: hidden; position: relative;
+  outline: 10px solid var(--bezel); background: var(--bg);
+}
+.device.open { display: grid; grid-template-columns: 455.5px 40px 455.5px; background: var(--bezel); }
+.hinge { background: repeating-linear-gradient(90deg, var(--bezel) 0 6px, #363C52 6px 7px); }
+.screen {
+  position: relative; height: 100%; overflow: hidden;
+  display: flex; flex-direction: column;
+  background: var(--bg); color: var(--text);
+  font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(--lh-body);
+  container-type: inline-size;
+  padding-top: max(var(--sa-top), env(safe-area-inset-top));
+  padding-bottom: max(var(--sa-bottom), env(safe-area-inset-bottom));
+  padding-left: env(safe-area-inset-left);
+  padding-right: env(safe-area-inset-right);
+}
+.sb {
+  position: absolute; top: 0; left: 0; right: 0; height: var(--sa-top);
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 var(--space-5); font-size: 13px; font-weight: 600; line-height: 1;
+}
+.sb-r { display: flex; gap: var(--space-1); align-items: center; }
+.sb-r i { display: block; background: currentColor; border-radius: 2px; }
+.sb-r .sig { width: 14px; height: 9px; clip-path: polygon(0 100%, 100% 0, 100% 100%); }
+.sb-r .bat { width: 22px; height: 10px; border-radius: 3px; }
+.home-ind {
+  position: absolute; bottom: 7px; left: 50%; width: 120px; height: 5px; margin-left: -60px;
+  border-radius: 3px; background: var(--text); opacity: 0.8; pointer-events: none;
+}
+
+/* Navigation bar */
+.nav {
+  flex: none; min-height: var(--hit); display: grid; grid-template-columns: 1fr auto 1fr;
+  align-items: center; gap: var(--space-2); padding: 0 var(--space-2);
+  border-bottom: 1px solid transparent; background: var(--bg);
+}
+.screen.scrolled .nav { border-bottom-color: var(--line); }
+.nav-title {
+  grid-column: 2; font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600;
+  text-align: center; opacity: 0; transition: opacity 120ms; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; max-width: 46cqi;
+}
+.screen.scrolled .nav-title, .nav-title.always { opacity: 1; }
+.nav-lead { grid-column: 1; justify-self: start; }
+.nav-trail { grid-column: 3; justify-self: end; }
+.tbtn {
+  min-height: var(--hit); min-width: var(--hit); padding: 0 var(--space-2);
+  border: 0; background: transparent; color: var(--accent); cursor: pointer;
+  font-size: var(--fs-body); line-height: var(--lh-body);
+  display: inline-flex; align-items: center; gap: var(--space-1); white-space: nowrap;
+}
+.tbtn svg { width: 0.75em; height: 1.1em; }
+
+.scroll { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+.content { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-1) var(--space-4) var(--space-8); }
+.lt { font-size: var(--fs-lt); line-height: var(--lh-lt); font-weight: 700; margin: 0; overflow-wrap: anywhere; }
+.summary { margin: 0; color: var(--text-2); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.head-stack { display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* Grouped list */
+.group { display: flex; flex-direction: column; gap: var(--space-2); }
+.group-h { margin: 0; padding: 0 var(--space-4); font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); font-weight: 400; }
+.list { display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+.list > * + * { border-top: 1px solid var(--line); }
+.row {
+  display: flex; align-items: center; gap: var(--space-3);
+  min-height: var(--hit); padding: var(--space-3) var(--space-4);
+  border: 0; background: transparent; text-align: left; width: 100%; cursor: pointer;
+}
+.row.sel { background: var(--accent-soft); }
+.row-main { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row-t { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; overflow-wrap: anywhere; }
+.row-s { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-2); overflow-wrap: anywhere; }
+.row-end { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.amt { font-variant-numeric: tabular-nums; font-size: var(--fs-body); }
+.chev { flex: none; width: 8px; height: 14px; color: var(--text-3); }
+.ax5 .row { flex-wrap: wrap; }
+.ax5 .row-end { align-items: flex-start; flex-basis: 100%; }
+.ax5 .chev { display: none; }
+
+/* Days-left badge: the number is the claim's days left. Colour and shape carry the tone. */
+.due {
+  flex: none; width: 52px; min-height: 52px; border-radius: var(--radius);
+  display: flex; flex-direction: column; align-items: center; justify-content: center;
+  background: var(--surface-2); color: var(--text);
+}
+.due b { font-size: var(--fs-t2); line-height: var(--lh-t2); font-variant-numeric: tabular-nums; }
+.due small { font-size: var(--fs-c2); line-height: var(--lh-c2); }
+.due.warn { background: var(--warn-soft); color: var(--warn); box-shadow: inset 0 0 0 2px var(--warn); }
+.due.closed { background: var(--danger-soft); color: var(--danger); }
+.due.done { background: var(--ok-soft); color: var(--ok); }
+.due svg { width: 22px; height: 22px; }
+.ax5 .due { width: auto; min-width: 52px; padding: var(--space-2); }
+
+/* Facts list */
+.kv { display: grid; grid-template-columns: minmax(6.5em, auto) 1fr; gap: var(--space-1) var(--space-4); padding: var(--space-3) var(--space-4); align-items: baseline; }
+.kv dt { color: var(--text-2); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.kv dd { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; overflow-wrap: anywhere; }
+.ax5 .kv { grid-template-columns: 1fr; }
+.mono-num { font-variant-numeric: tabular-nums; }
+.fine { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+.inline-btn {
+  min-height: var(--hit); border: 1px solid var(--accent); color: var(--accent); background: transparent;
+  border-radius: var(--radius); padding: 0 var(--space-4); cursor: pointer; font-size: var(--fs-callout);
+}
+details.raw { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+details.raw summary { min-height: var(--hit); display: flex; align-items: center; cursor: pointer; color: var(--accent); }
+details.raw code { display: block; white-space: pre-wrap; overflow-wrap: anywhere; background: var(--surface-2); padding: var(--space-2); border-radius: var(--radius); }
+
+.countdown { display: flex; flex-direction: column; gap: var(--space-1); }
+.countdown .big { font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 600; margin: 0; }
+.countdown .big.warn { color: var(--warn); }
+.countdown .big.closed { color: var(--danger); }
+.seller-h { margin: 0; font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; overflow-wrap: anywhere; }
+
+.banner { display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; padding: var(--space-3) var(--space-4); border-radius: var(--radius); font-size: var(--fs-callout); line-height: var(--lh-callout); }
+.banner.closed { background: var(--danger-soft); color: var(--text); border-left: 4px solid var(--danger); }
+.banner.ok { background: var(--ok-soft); border-left: 4px solid var(--ok); }
+.banner p { margin: 0; }
+
+.card-line { display: flex; gap: var(--space-3); justify-content: space-between; padding: var(--space-2) var(--space-4); min-height: var(--hit); align-items: center; }
+.card-line .q { color: var(--text-2); }
+.card-line.total { font-weight: 600; }
+.ax5 .card-line { flex-wrap: wrap; }
+.more { color: var(--accent); background: transparent; border: 0; min-height: var(--hit); text-align: left; padding: 0 var(--space-4); cursor: pointer; width: 100%; font-size: var(--fs-body); }
+
+.msg {
+  width: 100%; min-height: 15em; resize: vertical; border: 0; background: var(--surface); color: var(--text);
+  font: inherit; font-size: var(--fs-body); line-height: var(--lh-body); padding: var(--space-3) var(--space-4);
+  border-radius: var(--radius); display: block;
+}
+.ax5 .msg { min-height: 9em; }
+.edited { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; padding: 0 var(--space-4); }
+.plain-btn { min-height: var(--hit); border: 0; background: transparent; color: var(--accent); cursor: pointer; padding: 0 var(--space-4); text-align: left; font-size: var(--fs-body); }
+
+/* Bottom action bar */
+.bar {
+  flex: none; display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4) var(--space-3); background: var(--bg);
+  border-top: 1px solid var(--line); position: relative;
+}
+.bar-note { display: inline-flex; align-items: center; gap: var(--space-1); color: var(--text-2); font-size: var(--fs-sub); line-height: var(--lh-sub); min-height: var(--hit); }
+.bar-note.ok { color: var(--ok); }
+.bar-note svg { width: 1em; height: 1em; }
+.primary, .secondary {
+  min-height: 50px; border-radius: var(--radius); padding: var(--space-2) var(--space-4); cursor: pointer;
+  font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; flex: 1 1 0; min-width: 0;
+}
+.primary { background: var(--accent); color: var(--on-accent); border: 0; }
+.secondary { background: var(--surface); color: var(--accent); border: 1px solid var(--line); }
+.icon-btn {
+  flex: none; width: 50px; height: 50px; border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--surface); color: var(--accent); cursor: pointer; display: grid; place-items: center;
+}
+.icon-btn svg { width: 22px; height: 22px; }
+.ax5 .primary, .ax5 .secondary { flex: 1 1 0; min-width: 0; }
+.ax5 .bk-label { display: none; }
+.ax5 .sheet-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--space-2); padding: 0 var(--space-4); }
+.ax5 .sheet-head b { text-align: left; }
+.sheet .ev h3 { display: none; }
+
+/* Toast, inside the page whose press it answers */
+.toast {
+  position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(100% + var(--space-2));
+  display: flex; align-items: center; gap: var(--space-3); justify-content: space-between;
+  background: var(--text); color: var(--bg); border-radius: var(--radius); padding: var(--space-1) var(--space-1) var(--space-1) var(--space-4);
+  font-size: var(--fs-sub); line-height: var(--lh-sub); flex-wrap: wrap;
+}
+.toast button { min-height: var(--hit); min-width: var(--hit); border: 0; background: transparent; color: inherit; font-weight: 600; text-decoration: underline; cursor: pointer; padding: 0 var(--space-3); }
+
+/* Sheet */
+.scrim { position: absolute; inset: 0; background: var(--scrim); border: 0; padding: 0; width: 100%; cursor: pointer; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; max-height: 78%;
+  background: var(--surface); border-radius: 12px 12px 0 0; display: flex; flex-direction: column;
+  padding-bottom: max(var(--sa-bottom), env(safe-area-inset-bottom));
+}
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--line); align-self: center; margin-top: 6px; }
+.sheet-head { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 var(--space-2); min-height: var(--hit); border-bottom: 1px solid var(--line); }
+.sheet-head b { grid-column: 2; font-size: var(--fs-hl); line-height: var(--lh-hl); text-align: center; }
+.sheet-body { overflow-y: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+.share-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(84px, 1fr)); gap: var(--space-3); }
+.share-t { display: flex; flex-direction: column; align-items: center; gap: var(--space-1); border: 0; background: transparent; cursor: pointer; min-height: 76px; font-size: var(--fs-c1); line-height: var(--lh-c1); }
+.share-t span.ic { width: 52px; height: 52px; border-radius: 12px; background: var(--surface-2); display: grid; place-items: center; color: var(--accent); }
+.share-t svg { width: 24px; height: 24px; }
+.share-preview { margin: 0; white-space: pre-wrap; font-family: var(--font-letter); font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); background: var(--bg); border-radius: var(--radius); padding: var(--space-3); max-height: 7.5em; overflow: hidden; }
+
+/* Empty, loading */
+.empty { display: flex; flex-direction: column; gap: var(--space-4); align-items: flex-start; padding: var(--space-6) var(--space-4); }
+.empty p { margin: 0; }
+.sk { background: var(--surface-2); border-radius: var(--radius); }
+.sk-row { display: flex; gap: var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); min-height: 76px; }
+.sk-line { height: 0.9em; border-radius: 4px; background: var(--surface-2); }
+@media (prefers-reduced-motion: no-preference) {
+  .sk, .sk-line { animation: pulse 1.4s ease-in-out infinite; }
+}
+@keyframes pulse { 50% { opacity: 0.55; } }
+
+/* ---------- The letter (bold concept) ---------- */
+.pager { flex: none; display: grid; grid-template-columns: var(--hit) 1fr var(--hit); align-items: center; padding: 0 var(--space-2); gap: var(--space-1); touch-action: pan-y; }
+.pager .mid { text-align: center; display: flex; flex-direction: column; min-width: 0; }
+.pager .who { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; overflow-wrap: anywhere; }
+.pager .n { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+.pager button[disabled] { color: var(--text-3); opacity: 0.4; cursor: default; }
+.dots { flex: none; display: flex; justify-content: center; gap: 0; }
+.dot { width: var(--hit); height: 28px; border: 0; background: transparent; display: grid; place-items: center; cursor: pointer; padding: 0; }
+.dot i { width: 10px; height: 10px; border-radius: 50%; border: 2px solid var(--text-3); display: block; }
+.dot.cur i { width: 22px; border-radius: 5px; border-color: var(--accent); background: var(--accent); }
+.dot.sent i { background: var(--ok); border-color: var(--ok); }
+.dot.closed i { border-color: var(--danger); border-style: dashed; }
+
+.fuse { flex: none; display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-4) var(--space-3); }
+.fuse-track { position: relative; height: 6px; border-radius: 3px; background: var(--surface-2); overflow: hidden; }
+.fuse-left { position: absolute; top: 0; bottom: 0; right: 0; background: var(--accent); border-radius: 3px; }
+.fuse.warn .fuse-left { background: var(--warn); }
+.fuse.closed .fuse-track { background: repeating-linear-gradient(135deg, var(--danger) 0 6px, transparent 6px 10px); opacity: 0.7; }
+.fuse p { margin: 0; font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-2); }
+.fuse.warn p { color: var(--warn); font-weight: 600; }
+.fuse.closed p { color: var(--danger); font-weight: 600; }
+
+.letter {
+  position: relative; background: var(--paper); border-radius: var(--radius);
+  padding: var(--space-6) var(--space-5) var(--space-6) var(--space-6);
+  font-family: var(--font-letter); font-size: var(--fs-body); line-height: calc(var(--lh-body) + 10px);
+  box-shadow: 0 0 0 1px var(--line);
+  overflow-wrap: anywhere;
+}
+/* Airmail edge: the one loud thing in this concept. */
+.letter::before {
+  content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 8px; border-radius: var(--radius) 0 0 var(--radius);
+  background: repeating-linear-gradient(-45deg, var(--accent) 0 8px, var(--paper) 8px 12px, var(--danger) 12px 20px, var(--paper) 20px 24px);
+}
+.letter p { margin: 0 0 0.7em; }
+.letter p:last-child { margin: 0; }
+.letter .lines { display: flex; flex-direction: column; margin: 0 0 0.7em; }
+.tok {
+  font: inherit; line-height: 1.3; color: inherit; border: 0; padding: 1px 0; margin: 0; cursor: pointer;
+  background: transparent; border-bottom: 2px solid color-mix(in srgb, var(--accent) 55%, transparent); border-radius: 0;
+  text-align: left;
+}
+/* The card lines are one fact; a dotted mark keeps the list readable as a list. */
+.tok[data-k="cards"] { border-bottom-style: dotted; }
+.tok.unknown { background: transparent; border-bottom: 2px dashed var(--text-3); color: var(--text-2); }
+.tok.lit { background: var(--accent); color: var(--on-accent); }
+.letter.closed .tok { border-bottom-color: var(--danger); }
+.stamp {
+  /* Sits beside the short greeting line, so it covers no words of the letter. */
+  position: absolute; right: var(--space-2); top: var(--space-1); width: 64px; height: 64px; border-radius: 50%;
+  border: 3px double var(--ok); color: var(--ok); display: grid; place-items: center; text-align: center;
+  font-family: var(--font-ui); font-weight: 700; font-size: var(--fs-c1); line-height: var(--lh-c1); transform: rotate(-12deg);
+  background: color-mix(in srgb, var(--paper) 70%, transparent); pointer-events: none;
+}
+@media (prefers-reduced-motion: no-preference) {
+  .stamp.fresh { animation: stamp 240ms cubic-bezier(.2,.9,.3,1.2); }
+}
+@keyframes stamp { from { transform: rotate(-12deg) scale(1.5); opacity: 0; } to { transform: rotate(-12deg) scale(1); opacity: 1; } }
+.ax5 .stamp { position: static; transform: none; width: auto; height: auto; border-radius: var(--radius); padding: var(--space-2); font-size: var(--fs-foot); line-height: var(--lh-foot); margin-bottom: var(--space-3); }
+
+.frow { display: flex; align-items: center; gap: var(--space-3); min-height: var(--hit); padding: var(--space-2) var(--space-4); border: 0; background: transparent; width: 100%; text-align: left; cursor: pointer; }
+.frow .k { flex: none; width: 6.5em; color: var(--text-2); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.frow .v { flex: 1 1 auto; min-width: 0; overflow-wrap: anywhere; }
+.frow .v.out { color: var(--text-3); font-style: italic; }
+.ax5 .frow { flex-wrap: wrap; }
+.ax5 .frow .k { width: auto; flex-basis: 100%; }
+
+.ev { display: flex; flex-direction: column; gap: var(--space-2); scroll-margin-top: var(--space-4); border-radius: var(--radius); }
+.ev.lit { box-shadow: 0 0 0 3px var(--accent); }
+.ev h3 { margin: 0; padding: 0 var(--space-4); font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); font-weight: 400; }
+.ev .list { padding: 0; }
+.ev-body { padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.ev-body p { margin: 0; }
+.timeline { list-style: none; margin: 0; padding: 0 var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.timeline li { display: grid; grid-template-columns: 14px 1fr; gap: var(--space-3); align-items: start; }
+.timeline li::before { content: ""; width: 10px; height: 10px; border-radius: 50%; background: var(--text-3); margin-top: 6px; }
+.timeline li.gap::before { background: transparent; border: 2px dashed var(--warn); }
+.timeline .when { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+.switch-row { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-height: var(--hit); padding: var(--space-1) var(--space-4); }
+.switch { flex: none; width: 52px; height: 32px; border-radius: 16px; border: 0; background: var(--surface-2); position: relative; cursor: pointer; box-shadow: inset 0 0 0 1px var(--line); }
+.switch::after { content: ""; position: absolute; top: 3px; left: 3px; width: 26px; height: 26px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(0,0,0,.3); transition: left 120ms; }
+.switch[aria-checked="true"] { background: var(--ok); }
+.switch[aria-checked="true"]::after { left: 23px; }
+.window-bar { display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-2); align-items: center; font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+.ax5 .window-bar { grid-template-columns: 1fr; }
+
+@media (forced-colors: active) {
+  .tok, .due, .primary, .secondary, .icon-btn, .switch, .dot i { border: 2px solid CanvasText; }
+  .fuse-left { background: Highlight; }
+}
+</style>
+</head>
+<body>
+<div class="page">
+  <header class="page-head">
+    <div class="sample" role="note"><b>Sample.</b> No seller, card, date, price or tracking number on this page is real.</div>
+    <h1>Claim a lost package</h1>
+    <p>Designer kind: blind. Designer: claim-a-lost-package-blind-1. Two options, each drawn on the Duo folded, the Duo open, a large phone, and the Duo folded at the largest accessibility text size. Every button in the frames works. The frames share each option's state, so a press in one frame shows in the others.</p>
+    <div class="ctl">
+      <div class="seg" role="group" aria-label="Theme">
+        <button type="button" data-theme-set="system">System</button>
+        <button type="button" data-theme-set="light">Light</button>
+        <button type="button" data-theme-set="dark">Dark</button>
+      </div>
+      <nav class="states" aria-label="States" id="state-links"></nav>
+      <div class="restore" id="restore"></div>
+    </div>
+  </header>
+
+  <section class="option" id="opt-claim-desk" data-concept="desk" aria-labelledby="h-desk">
+    <div class="opt-head">
+      <div class="opt-title">
+        <h2 id="h-desk">Claim desk</h2>
+        <button type="button" class="hide-btn" data-hide="desk">Hide Claim desk</button>
+      </div>
+      <p>A list of late orders, soonest deadline first. One tap opens a claim page that holds every fact and the drafted message on one scroll, with Copy at the thumb. On the open Duo the list sits on the left page and the claim on the right.</p>
+      <div class="tags"><span class="tag-new">New: late-order list</span><span class="tag-new">New: claim page with drafted message</span></div>
+    </div>
+    <div class="frames">
+      <figure class="frame"><figcaption>Duo, folded. 466 × 678 pt.</figcaption>
+        <div class="device" data-device="iphone-duo-folded" style="--w:466px;--h:678px"><div class="screen" data-slot="folded"></div></div></figure>
+      <figure class="frame"><figcaption>Duo, open. 951 × 669 pt. Hinge from x 455.5 to x 495.5; nothing crosses it.</figcaption>
+        <div class="device open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"><div class="screen" data-slot="left"></div><div class="hinge" aria-hidden="true"></div><div class="screen" data-slot="right"></div></div></figure>
+      <figure class="frame"><figcaption>Large phone. Assumed size, 430 × 932 pt: no size is written for it.</figcaption>
+        <div class="device" data-device="iphone-regular" style="--w:var(--phone-w);--h:var(--phone-h)"><div class="screen" data-slot="phone"></div></div></figure>
+      <figure class="frame"><figcaption>Duo, folded, largest accessibility text (AX5). 466 × 678 pt.</figcaption>
+        <div class="device" data-device="iphone-duo-folded" data-text-size="AX5" style="--w:466px;--h:678px"><div class="screen ax5" data-slot="folded"></div></div></figure>
+    </div>
+  </section>
+
+  <section class="option" id="opt-the-letter" data-concept="letter" aria-labelledby="h-letter">
+    <div class="opt-head">
+      <div class="opt-title">
+        <h2 id="h-letter">The letter</h2>
+        <button type="button" class="hide-btn" data-hide="letter">Hide The letter</button>
+      </div>
+      <p>The first screen is the message itself. Each fact sits inside the letter as a marked phrase; tap one to see where it came from or leave it out. Swipe, or use the arrows, to move between letters, one per late order. A fuse above the letter burns down to the claim deadline. On the open Duo the letter is on the left page and its evidence on the right.</p>
+      <div class="tags"><span class="tag-new">New: letter pager with deadline fuse</span><span class="tag-new">New: facts inside the letter</span><span class="tag-new">New: evidence page</span></div>
+    </div>
+    <div class="frames">
+      <figure class="frame"><figcaption>Duo, folded. 466 × 678 pt.</figcaption>
+        <div class="device" data-device="iphone-duo-folded" style="--w:466px;--h:678px"><div class="screen" data-slot="folded"></div></div></figure>
+      <figure class="frame"><figcaption>Duo, open. 951 × 669 pt. Hinge from x 455.5 to x 495.5; nothing crosses it.</figcaption>
+        <div class="device open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"><div class="screen" data-slot="left"></div><div class="hinge" aria-hidden="true"></div><div class="screen" data-slot="right"></div></div></figure>
+      <figure class="frame"><figcaption>Large phone. Assumed size, 430 × 932 pt: no size is written for it.</figcaption>
+        <div class="device" data-device="iphone-regular" style="--w:var(--phone-w);--h:var(--phone-h)"><div class="screen" data-slot="phone"></div></div></figure>
+      <figure class="frame"><figcaption>Duo, folded, largest accessibility text (AX5). 466 × 678 pt.</figcaption>
+        <div class="device" data-device="iphone-duo-folded" data-text-size="AX5" style="--w:466px;--h:678px"><div class="screen ax5" data-slot="folded"></div></div></figure>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+  // ---------- Sample data (not real) ----------
+  var TODAY = '2026-11-21';
+  var ORDERS = [
+    { id: 'p', seller: 'Penny Sleeve Co.', ordered: '2026-10-30', opened: '2026-11-14', deadline: '2026-11-24',
+      tracking: '9400 0000 0000 0000 0000 01', carrier: { kind: 'stalled', scans: [
+        { d: '2026-10-31', t: 'Label made' }, { d: '2026-11-01', t: 'Accepted at the post office' },
+        { d: '2026-11-03', t: 'In transit, at a sorting center' } ] },
+      shipping: 1.31, cards: [
+        { n: 'Ember Wyrm', q: 1, p: 0.49 }, { n: 'Tidecaller Adept', q: 2, p: 0.25 }, { n: 'Glass Lantern', q: 1, p: 0.35 },
+        { n: 'Hollow Oak Sentry', q: 1, p: 0.18 }, { n: 'Saltmarsh Witch', q: 1, p: 1.20 }, { n: 'Copper Gearhound', q: 1, p: 0.22 },
+        { n: 'Moonlit Ferry', q: 1, p: 0.40 }, { n: 'Rook of Ashes', q: 1, p: 0.75 }, { n: 'Quiet Archive', q: 1, p: 0.30 },
+        { n: 'Bramble Courier', q: 1, p: 0.15 }, { n: 'Stormglass Idol', q: 1, p: 1.85 }, { n: 'Lanternfish Swarm', q: 1, p: 0.20 } ] },
+    { id: 'h', seller: 'Harbor Lane Games', ordered: '2026-11-02', opened: '2026-11-18', deadline: '2026-12-02',
+      tracking: null, carrier: { kind: 'none' }, shipping: 0.99, cards: [
+        { n: 'Velvet Cartographer', q: 1, p: 0.60 }, { n: 'Thornback Ram', q: 3, p: 0.12 }, { n: 'Pale Signal', q: 1, p: 2.40 },
+        { n: 'Cinder Acolyte', q: 1, p: 0.33 }, { n: 'Mirror Pond', q: 1, p: 0.27 } ] },
+    { id: 'o', seller: 'Oddfellow Collectibles', ordered: '2026-11-05', opened: '2026-11-20', deadline: '2026-12-05',
+      tracking: '9400 0000 0000 0000 0000 02', carrier: { kind: 'failed',
+        server: 'GET /track/9400000000000000000002 -> 503 Service Unavailable\nretry-after: 120' },
+      fixed: [ { d: '2026-11-06', t: 'Label made' }, { d: '2026-11-07', t: 'Accepted at the post office' },
+        { d: '2026-11-09', t: 'In transit, departed a regional facility' } ],
+      shipping: 0.99, cards: [
+        { n: 'Gilded Heron', q: 1, p: 3.10 }, { n: 'Night Market Fence', q: 1, p: 0.45 }, { n: 'Ironroot Totem', q: 2, p: 0.20 } ] },
+    { id: 'g', seller: 'Gray Fox Cards', ordered: '2026-10-12', opened: '2026-11-01', deadline: '2026-11-19',
+      tracking: '9400 0000 0000 0000 0000 03', carrier: { kind: 'stalled', scans: [
+        { d: '2026-10-13', t: 'Label made' }, { d: '2026-10-14', t: 'Accepted at the post office' } ] },
+      shipping: 0.99, cards: [ { n: 'Lamplighter Owl', q: 1, p: 0.80 }, { n: 'Sunken Bell', q: 1, p: 1.10 } ] }
+  ];
+  var BY_ID = {}; ORDERS.forEach(function (o) { BY_ID[o.id] = o; });
+
+  // ---------- Helpers ----------
+  function dt(s) { return new Date(s + 'T12:00:00'); }
+  function daysBetween(a, b) { return Math.round((dt(b) - dt(a)) / 864e5); }
+  function fmt(s, year) { var o = { month: 'long', day: 'numeric' }; if (year) o.year = 'numeric'; return dt(s).toLocaleDateString('en-US', o); }
+  function fmtS(s) { return dt(s).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }); }
+  function money(n) { return '$' + n.toFixed(2); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+  function since(o) { return daysBetween(o.ordered, TODAY); }
+  function left(o) { return daysBetween(TODAY, o.deadline); }
+  function itemsSum(o) { return o.cards.reduce(function (a, c) { return a + c.q * c.p; }, 0); }
+  function total(o) { return itemsSum(o) + o.shipping; }
+  function cardCount(o) { return o.cards.reduce(function (a, c) { return a + c.q; }, 0); }
+  function plural(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+
+  var IC = {
+    chev: '<svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    back: '<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    fwd: '<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M2 2l8 8-8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    share: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3v12M7 8l5-5 5 5M5 12v7a2 2 0 002 2h10a2 2 0 002-2v-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    check: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 12.5l5 5L20 6.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    cross: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    lost: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="4" y="7" width="16" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4 9l8 5 8-5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 3l18 18" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    mail: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M3 7l9 6 9-6" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+    bubble: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 5h16v11H9l-5 4z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    note: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h9l4 4v14H6z M14 3v5h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+    copy: '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3" fill="none" stroke="currentColor" stroke-width="2"/></svg>'
+  };
+
+  // ---------- State ----------
+  function fresh() {
+    return { phase: 'loaded', view: 'list', sel: 'p', cur: 'p', copied: {}, sent: {}, lost: {}, arrived: {},
+      drafts: {}, allCards: {}, sheet: null, toast: null, fixed: {}, retrying: {}, exclude: {}, editing: false,
+      focus: null, stampFresh: null, sharedVia: {} };
+  }
+  var S = { desk: fresh(), letter: fresh() };
+  var hidden = {};
+  var theme = 'system';
+  var preset = 'late';
+
+  function carrierOf(st, o) {
+    if (o.carrier.kind === 'failed' && st.fixed[o.id]) return { kind: 'stalled', scans: o.fixed };
+    if (o.carrier.kind === 'failed' && st.retrying[o.id]) return { kind: 'reading' };
+    return o.carrier;
+  }
+  function lastScan(c) { return c.scans[c.scans.length - 1]; }
+  function carrierShort(st, o) {
+    var c = carrierOf(st, o);
+    if (c.kind === 'stalled') return 'No scan since ' + fmtS(lastScan(c).d);
+    if (c.kind === 'none') return 'No tracking number';
+    if (c.kind === 'reading') return 'Reading the carrier…';
+    return 'Carrier not read';
+  }
+  function statusOf(st, o) {
+    if (st.sent[o.id]) return 'sent';
+    if (st.lost[o.id]) return 'lost';
+    if (left(o) < 0) return 'closed';
+    return 'open';
+  }
+  function visible(st) { return ORDERS.filter(function (o) { return !st.arrived[o.id]; }); }
+  // Fixed order for the letter pager: open by deadline, then closed. Never re-sorted by an act.
+  var PAGER_ORDER = ORDERS.slice().sort(function (a, b) {
+    var ca = left(a) < 0, cb = left(b) < 0;
+    if (ca !== cb) return ca ? 1 : -1;
+    return a.deadline < b.deadline ? -1 : 1;
+  });
+  function letters(st) { return PAGER_ORDER.filter(function (o) { return !st.arrived[o.id]; }); }
+
+  // ---------- The drafted message, as segments ----------
+  function segs(st, o) {
+    var ex = st.exclude[o.id] || {}, out = [], c = carrierOf(st, o);
+    function T(t) { out.push({ t: t }); }
+    function F(k, t, extra) { out.push({ k: k, t: t, x: extra || '' }); }
+    T('Hello '); F('seller', o.seller); T(',');
+    T('\n\n'); T('My order placed on '); F('date', fmt(o.ordered, true)); T(' has not arrived. It has been ');
+    F('days', since(o) + ' days'); T(' since I ordered.');
+    if (!ex.carrier) {
+      T('\n\n');
+      if (c.kind === 'stalled') {
+        var l = lastScan(c);
+        T('Tracking number '); F('carrier', o.tracking); T(' last moved on '); F('carrier', fmt(l.d));
+        T(' (' + l.t.toLowerCase() + ') and has not moved since.');
+      } else if (c.kind === 'none') {
+        F('carrier', 'The order came with no tracking number'); T(', so I cannot follow it.');
+      } else {
+        T('Tracking number '); F('carrier', o.tracking, 'unknown'); T('.');
+      }
+    }
+    if (!ex.cards) {
+      T('\n\nThe order held:');
+      o.cards.forEach(function (cd) { T('\n'); F('cards', (cd.q > 1 ? cd.q + ' × ' : '') + cd.n + ', ' + money(cd.q * cd.p)); });
+      T('\nShipping, ' + money(o.shipping) + '.');
+    }
+    T('\n\n'); T('Total paid: '); F('total', money(total(o))); T('.');
+    T('\n\n'); T('Please refund this order. Thank you.');
+    return out;
+  }
+  function plain(st, o) { return segs(st, o).map(function (s) { return s.t; }).join(''); }
+  function messageText(st, o) { return st.drafts[o.id] != null ? st.drafts[o.id] : plain(st, o); }
+
+  // ---------- Shared pieces ----------
+  function statusBar() { return '<div class="sb" aria-hidden="true"><span>1:24</span><span class="sb-r"><i class="sig"></i><i class="bat"></i></span></div>'; }
+  function homeInd() { return '<div class="home-ind" aria-hidden="true"></div>'; }
+  function toastHtml(st) {
+    if (!st.toast) return '';
+    return '<div class="toast" role="status"><span>' + esc(st.toast.text) + '</span>' +
+      (st.toast.undo ? '<button type="button" data-act="undo">Undo</button>' : '') + '</div>';
+  }
+  function dueBadge(st, o) {
+    var s = statusOf(st, o);
+    if (s === 'sent') return '<span class="due done" aria-label="Sent">' + IC.check + '</span>';
+    if (s === 'lost') return '<span class="due closed" aria-label="Marked lost">' + IC.lost + '</span>';
+    if (s === 'closed') return '<span class="due closed" aria-label="Claim window closed">' + IC.cross + '</span>';
+    var n = left(o);
+    return '<span class="due' + (n <= 3 ? ' warn' : '') + '" aria-label="' + plural(n, 'day') + ' left to claim"><b>' + n + '</b><small>' + (n === 1 ? 'day' : 'days') + '</small></span>';
+  }
+  function skeletonRows(n) {
+    var r = '';
+    for (var i = 0; i < n; i++) r += '<div class="sk-row"><span class="sk" style="width:52px;height:52px"></span><span style="flex:1;display:flex;flex-direction:column;gap:8px"><span class="sk-line" style="width:60%"></span><span class="sk-line" style="width:40%"></span></span></div>';
+    return '<div class="list" aria-busy="true" aria-label="Loading late orders">' + r + '</div>';
+  }
+  function shareSheet(st, o, what) {
+    var text = what === 'letter' ? plain(st, o) : messageText(st, o);
+    var targets = [['Mail', IC.mail], ['Messages', IC.bubble], ['Notes', IC.note], ['Copy', IC.copy]];
+    return '<button type="button" class="scrim" data-act="closeSheet" aria-label="Close"></button>' +
+      '<div class="sheet" role="dialog" aria-label="Share"><span class="grabber" aria-hidden="true"></span>' +
+      '<div class="sheet-head"><button type="button" class="tbtn" data-act="closeSheet">Cancel</button><b>Share</b></div>' +
+      '<div class="sheet-body"><pre class="share-preview">' + esc(text) + '</pre><div class="share-grid">' +
+      targets.map(function (t) { return '<button type="button" class="share-t" data-act="shareTo" data-to="' + t[0] + '"><span class="ic">' + t[1] + '</span>' + t[0] + '</button>'; }).join('') +
+      '</div></div></div>';
+  }
+
+  // ---------- Claim desk ----------
+  function deskList(st, slot) {
+    var split = slot === 'left';
+    var body;
+    if (st.phase === 'loading') {
+      body = '<div class="head-stack"><h1 class="lt">Late orders</h1><p class="summary"><span class="sk-line" style="display:inline-block;width:12em"></span></p></div>' + skeletonRows(3);
+    } else if (st.phase === 'empty' || visible(st).length === 0) {
+      body = '<div class="head-stack"><h1 class="lt">Late orders</h1><p class="summary">All is well.</p></div>' +
+        '<div class="list"><div class="empty"><p>Nothing is late. An order shows here once its claim window opens.</p>' +
+        '<button type="button" class="inline-btn" data-act="emptyGo">Show orders on the way</button></div></div>';
+    } else {
+      var vis = visible(st);
+      var groups = { open: [], closed: [], lost: [], sent: [] };
+      vis.forEach(function (o) { groups[statusOf(st, o)].push(o); });
+      groups.open.sort(function (a, b) { return a.deadline < b.deadline ? -1 : 1; });
+      var soon = groups.open.filter(function (o) { return left(o) <= 3; });
+      var sum = groups.open.length === 0 ? 'No claim is open.' :
+        plural(groups.open.length, 'order') + ' can be claimed.' + (soon.length ? ' ' + (soon.length === 1 ? 'One closes' : soon.length + ' close') + ' in ' + plural(left(soon[0]), 'day') + '.' : '');
+      body = '<div class="head-stack"><h1 class="lt">Late orders</h1><p class="summary">' + sum + '</p></div>';
+      var names = { open: 'Soonest deadline first', closed: 'Claim window closed', lost: 'Marked lost', sent: 'Sent to the seller' };
+      ['open', 'closed', 'lost', 'sent'].forEach(function (g) {
+        if (!groups[g].length) return;
+        body += '<div class="group"><h2 class="group-h">' + names[g] + '</h2><div class="list">' + groups[g].map(function (o) {
+          var sel = split && st.sel === o.id;
+          return '<button type="button" class="row' + (sel ? ' sel' : '') + '" data-act="open" data-id="' + o.id + '"' + (sel ? ' aria-current="true"' : '') + '>' +
+            dueBadge(st, o) +
+            '<span class="row-main"><span class="row-t">' + esc(o.seller) + '</span><span class="row-s">' + carrierShort(st, o) + '</span></span>' +
+            '<span class="row-end"><span class="amt">' + money(total(o)) + '</span><span class="row-s">' + since(o) + ' days</span></span>' +
+            (split ? '' : IC.chev) + '</button>';
+        }).join('') + '</div></div>';
+      });
+    }
+    var showToast = slot !== 'left' && st.view === 'list';
+    return statusBar() +
+      '<div class="nav"><div class="nav-title">Late orders</div></div>' +
+      '<div class="scroll" data-lt><div class="content">' + body + '</div></div>' +
+      (showToast && st.toast ? '<div class="bar" style="border:0;padding:0;min-height:0">' + toastHtml(st) + '</div>' : '') +
+      homeInd();
+  }
+
+  function carrierFacts(st, o) {
+    var c = carrierOf(st, o);
+    if (c.kind === 'stalled') {
+      var l = lastScan(c);
+      return '<span>' + esc(l.t) + ' on ' + fmt(l.d) + '. No scan in ' + plural(daysBetween(l.d, TODAY), 'day') + '.</span>' +
+        '<span class="fine mono-num">Tracking ' + esc(o.tracking) + '</span>';
+    }
+    if (c.kind === 'none') return '<span>No tracking number came with this order.</span>';
+    if (c.kind === 'reading') return '<span aria-live="polite">Reading the carrier…</span>';
+    return '<span>Could not read the carrier.</span><span class="fine mono-num">Tracking ' + esc(o.tracking) + '</span>' +
+      '<button type="button" class="inline-btn" data-act="retry" data-id="' + o.id + '">Try again</button>' +
+      '<details class="raw"><summary>What the server said</summary><code>' + esc(o.carrier.server) + '</code></details>';
+  }
+
+  function deskClaim(st, slot) {
+    var o = BY_ID[st.sel];
+    var split = slot === 'right';
+    if (st.phase === 'loading') {
+      return statusBar() + '<div class="nav"></div><div class="scroll"><div class="content" aria-busy="true"><span class="sk-line" style="width:70%;height:28px"></span><span class="sk" style="height:140px"></span><span class="sk" style="height:220px"></span></div></div>' + homeInd();
+    }
+    if (st.phase === 'empty' || !o || st.arrived[o.id]) {
+      return statusBar() + '<div class="nav"></div><div class="scroll"></div>' + homeInd();
+    }
+    var s = statusOf(st, o), n = left(o);
+    var head = '<div class="head-stack"><h1 class="seller-h">' + esc(o.seller) + '</h1>';
+    if (s === 'open') head += '<div class="countdown"><p class="big' + (n <= 3 ? ' warn' : '') + '">' + plural(n, 'day') + ' left to claim</p><span class="fine">The seller refuses a claim after ' + fmt(o.deadline) + '.</span></div>';
+    head += '</div>';
+    var banner = '';
+    if (s === 'closed') banner = '<div class="banner closed"><p>The claim window closed on ' + fmt(o.deadline) + ', ' + plural(-n, 'day') + ' ago. The seller may refuse, but you can still write.</p><button type="button" class="inline-btn" data-act="lost" data-id="' + o.id + '">Mark as lost</button></div>';
+    if (s === 'lost') banner = '<div class="banner closed"><p>Marked lost on ' + fmt(TODAY) + '.</p></div>';
+    if (s === 'sent') banner = '<div class="banner ok"><p>Sent on ' + fmt(TODAY) + (st.sharedVia[o.id] ? ' through ' + st.sharedVia[o.id] : '') + '. Waiting on the seller.</p></div>';
+    var facts = '<div class="list"><dl class="kv">' +
+      '<dt>Ordered</dt><dd><span>' + fmt(o.ordered, true) + '</span></dd>' +
+      '<dt>Waited</dt><dd><span>' + since(o) + ' days</span></dd>' +
+      '<dt>Carrier</dt><dd>' + carrierFacts(st, o) + '</dd>' +
+      '<dt>Paid</dt><dd><span class="mono-num">' + money(total(o)) + ' for ' + plural(cardCount(o), 'card') + '</span></dd>' +
+      '</dl></div>';
+    var edited = st.drafts[o.id] != null && st.drafts[o.id] !== plain(st, o);
+    var msg = '<div class="group"><h2 class="group-h"><label for="m-' + slot + '-' + o.id + '">Message to the seller</label></h2>' +
+      '<textarea class="msg" id="m-' + slot + '-' + o.id + '" data-draft="' + o.id + '" spellcheck="true">' + esc(messageText(st, o)) + '</textarea>' +
+      (edited ? '<div class="edited"><span class="fine">You changed this message.</span><button type="button" class="plain-btn" data-act="resetDraft" data-id="' + o.id + '">Use the drafted text</button></div>' : '') +
+      '</div>';
+    var all = st.allCards[o.id], shown = all ? o.cards : o.cards.slice(0, 5);
+    var cards = '<div class="group"><h2 class="group-h">' + plural(cardCount(o), 'card') + '</h2><div class="list">' +
+      shown.map(function (c) { return '<div class="card-line"><span>' + esc(c.n) + (c.q > 1 ? ' <span class="q">× ' + c.q + '</span>' : '') + '</span><span class="mono-num">' + money(c.q * c.p) + '</span></div>'; }).join('') +
+      (o.cards.length > 5 ? '<button type="button" class="more" data-act="allCards" data-id="' + o.id + '">' + (all ? 'Show fewer' : 'Show all ' + o.cards.length + ' lines') + '</button>' : '') +
+      '<div class="card-line"><span class="q">Shipping</span><span class="mono-num">' + money(o.shipping) + '</span></div>' +
+      '<div class="card-line total"><span>Total</span><span class="mono-num">' + money(total(o)) + '</span></div></div></div>';
+    var arrived = '<div class="list"><button type="button" class="plain-btn" data-act="arrived" data-id="' + o.id + '">It arrived</button></div>';
+
+    var bar;
+    if (s === 'sent') bar = '<span class="bar-note ok">' + IC.check + 'Sent</span><button type="button" class="secondary" data-act="copy" data-id="' + o.id + '">Copy message</button>';
+    else if (st.copied[o.id]) bar = '<span class="bar-note ok">' + IC.check + 'Copied</span><button type="button" class="primary" data-act="sent" data-id="' + o.id + '">Mark as sent</button><button type="button" class="icon-btn" data-act="share" aria-label="Share message">' + IC.share + '</button>';
+    else bar = '<button type="button" class="primary" data-act="copy" data-id="' + o.id + '">Copy message</button><button type="button" class="icon-btn" data-act="share" aria-label="Share message">' + IC.share + '</button>';
+    var showToast = split || st.view === 'claim';
+
+    return statusBar() +
+      '<div class="nav">' + (split ? '' : '<div class="nav-lead"><button type="button" class="tbtn" data-act="back" aria-label="Late orders">' + IC.back + '<span class="bk-label">Late orders</span></button></div>') +
+      '<div class="nav-title">' + esc(o.seller) + '</div></div>' +
+      '<div class="scroll" data-lt><div class="content">' + head + banner + facts + msg + cards + arrived + '</div></div>' +
+      '<div class="bar">' + (showToast ? toastHtml(st) : '') + bar + '</div>' +
+      (st.sheet && st.sheet.type === 'share' ? shareSheet(st, o, 'desk') : '') +
+      homeInd();
+  }
+
+  function renderDesk(st, slot) {
+    if (slot === 'left') return deskList(st, slot);
+    if (slot === 'right') return deskClaim(st, slot);
+    return st.view === 'claim' ? deskClaim(st, slot) : deskList(st, slot);
+  }
+
+  // ---------- The letter ----------
+  var FACT_NAME = { seller: 'Seller', date: 'Ordered', days: 'Waited', carrier: 'Carrier', cards: 'Cards', total: 'Total' };
+  var FACT_SECTION = { seller: 'order', date: 'order', days: 'wait', carrier: 'carrier', cards: 'cards', total: 'cards' };
+
+  function letterHtml(st, o) {
+    var ss = segs(st, o), html = '', para = '', inLines = false, lines = '';
+    function flushPara() { if (para) { html += '<p>' + para + '</p>'; para = ''; } }
+    ss.forEach(function (s) {
+      var text = s.k ? '<button type="button" class="tok' + (s.x ? ' ' + s.x : '') + (st.focus === s.k ? ' lit' : '') + '" data-act="fact" data-k="' + s.k + '">' + esc(s.t) + '</button>' : esc(s.t);
+      // Split on paragraph breaks; single breaks inside the card list become lines.
+      var parts = text.split('\n\n');
+      parts.forEach(function (part, i) {
+        if (i > 0) { flushPara(); }
+        para += part.replace(/\n/g, '<br>');
+      });
+    });
+    flushPara();
+    var s = statusOf(st, o);
+    var stamp = s === 'sent' ? '<div class="stamp' + (st.stampFresh === o.id ? ' fresh' : '') + '" aria-label="Sent ' + fmt(TODAY) + '">Sent<br>' + fmtS(TODAY) + '</div>' :
+      s === 'lost' ? '<div class="stamp" style="border-color:var(--danger);color:var(--danger)">Lost<br>' + fmtS(TODAY) + '</div>' : '';
+    return '<article class="letter' + (s === 'closed' ? ' closed' : '') + '" aria-label="Letter to ' + esc(o.seller) + '">' + stamp + html + '</article>';
+  }
+
+  function fuse(o, st) {
+    var s = statusOf(st, o), n = left(o);
+    var span = daysBetween(o.opened, o.deadline), pct = Math.max(0, Math.min(100, (n / span) * 100));
+    var tone = n < 0 ? 'closed' : (n <= 3 ? 'warn' : '');
+    var text = n < 0 ? 'Claim window closed ' + fmt(o.deadline) + '. The seller may refuse.' :
+      plural(n, 'day') + ' left to claim. Closes ' + fmt(o.deadline) + '.';
+    if (s === 'sent') { tone = ''; text = 'Sent ' + fmt(TODAY) + '. The claim window closes ' + fmt(o.deadline) + '.'; }
+    return '<div class="fuse ' + tone + '"><div class="fuse-track" role="img" aria-label="' + esc(text) + '"><span class="fuse-left" style="width:' + (n < 0 ? 0 : pct) + '%"></span></div><p>' + text + '</p></div>';
+  }
+
+  function factValue(st, o, k) {
+    var ex = st.exclude[o.id] || {};
+    if ((k === 'carrier' || k === 'cards') && ex[k]) return null;
+    if (k === 'seller') return esc(o.seller);
+    if (k === 'date') return fmt(o.ordered, true);
+    if (k === 'days') return since(o) + ' days';
+    if (k === 'carrier') return carrierShort(st, o);
+    if (k === 'cards') return plural(cardCount(o), 'card');
+    if (k === 'total') return money(total(o));
+  }
+
+  function evidence(st, o, sec, lit) {
+    var c = carrierOf(st, o), ex = st.exclude[o.id] || {};
+    var h, body;
+    if (sec === 'order') {
+      h = 'Order';
+      body = '<div class="list"><dl class="kv"><dt>Seller</dt><dd><span>' + esc(o.seller) + '</span></dd><dt>Ordered</dt><dd><span>' + fmt(o.ordered, true) + '</span></dd></dl></div>';
+    } else if (sec === 'wait') {
+      h = 'Waiting';
+      body = '<div class="list"><div class="ev-body"><p>' + since(o) + ' days since the order.</p>' +
+        '<div class="window-bar"><span>Window opened ' + fmtS(o.opened) + '</span><span class="fuse-track" aria-hidden="true"><span class="fuse-left" style="width:' + Math.max(0, Math.min(100, left(o) / daysBetween(o.opened, o.deadline) * 100)) + '%"></span></span><span>Closes ' + fmtS(o.deadline) + '</span></div></div></div>';
+    } else if (sec === 'carrier') {
+      h = 'Carrier';
+      var inner;
+      if (c.kind === 'stalled') {
+        var l = lastScan(c);
+        inner = '<ol class="timeline">' + c.scans.map(function (x) { return '<li><span><span>' + esc(x.t) + '</span><br><span class="when">' + fmt(x.d) + '</span></span></li>'; }).join('') +
+          '<li class="gap"><span><span>No scan since</span><br><span class="when">' + plural(daysBetween(l.d, TODAY), 'day') + ', to ' + fmt(TODAY) + '</span></span></li></ol>' +
+          '<div class="ev-body"><span class="fine mono-num">Tracking ' + esc(o.tracking) + '</span></div>';
+      } else if (c.kind === 'none') {
+        inner = '<div class="ev-body"><p>No tracking number came with this order, so there is no carrier record. The letter says so.</p></div>';
+      } else if (c.kind === 'reading') {
+        inner = '<div class="ev-body"><p aria-live="polite">Reading the carrier…</p></div>';
+      } else {
+        inner = '<div class="ev-body"><p>Could not read the carrier. The letter gives the tracking number and says nothing about where the package is.</p>' +
+          '<button type="button" class="inline-btn" data-act="retry" data-id="' + o.id + '">Try again</button>' +
+          '<details class="raw"><summary>What the server said</summary><code>' + esc(o.carrier.server) + '</code></details></div>';
+      }
+      body = '<div class="list">' + inner + '<div class="switch-row"><span>In the letter</span><button type="button" class="switch" role="switch" aria-label="Carrier in the letter" aria-checked="' + (!ex.carrier) + '" data-act="ex" data-k="carrier"></button></div></div>';
+    } else {
+      h = plural(cardCount(o), 'card');
+      body = '<div class="list">' + o.cards.map(function (cd) { return '<div class="card-line"><span>' + esc(cd.n) + (cd.q > 1 ? ' <span class="q">× ' + cd.q + '</span>' : '') + '</span><span class="mono-num">' + money(cd.q * cd.p) + '</span></div>'; }).join('') +
+        '<div class="card-line"><span class="q">Shipping</span><span class="mono-num">' + money(o.shipping) + '</span></div>' +
+        '<div class="card-line total"><span>Total</span><span class="mono-num">' + money(total(o)) + '</span></div>' +
+        '<div class="switch-row"><span>List the cards in the letter</span><button type="button" class="switch" role="switch" aria-label="Card list in the letter" aria-checked="' + (!ex.cards) + '" data-act="ex" data-k="cards"></button></div></div>';
+    }
+    return '<section class="ev' + (lit ? ' lit' : '') + '" id="ev-' + sec + '" data-sec="' + sec + '"><h3>' + h + '</h3>' + body + '</section>';
+  }
+
+  function letterPage(st, slot, ax) {
+    var split = slot === 'left';
+    var list = letters(st);
+    var nav = '<div class="nav"><div class="nav-title always">Claim letters</div>';
+    if (st.phase === 'loading') {
+      return statusBar() + nav + '</div><div class="scroll"><div class="content" aria-busy="true"><span class="sk" style="height:6px"></span><span class="sk" style="height:380px"></span></div></div>' + homeInd();
+    }
+    if (st.phase === 'empty' || list.length === 0) {
+      return statusBar() + nav + '</div><div class="scroll"><div class="content"><div class="list"><div class="empty"><p>Nothing is late. A letter shows here once an order’s claim window opens.</p>' +
+        '<button type="button" class="inline-btn" data-act="emptyGo">Show orders on the way</button></div></div></div></div>' +
+        (st.toast ? '<div class="bar" style="border:0;padding:0;min-height:0">' + toastHtml(st) + '</div>' : '') + homeInd();
+    }
+    var o = BY_ID[st.cur]; if (!o || st.arrived[o.id]) { o = list[0]; st.cur = o.id; }
+    var i = list.indexOf(o), s = statusOf(st, o);
+    nav += '<div class="nav-trail"><button type="button" class="tbtn" data-act="edit">' + (st.editing ? 'Done' : 'Edit') + '</button></div></div>';
+    var pager = '<div class="pager" data-swipe>' +
+      '<button type="button" class="tbtn" data-act="prev" aria-label="Previous letter"' + (i === 0 ? ' disabled title="This is the first letter"' : '') + '>' + IC.back + '</button>' +
+      '<div class="mid"><span class="who">' + esc(o.seller) + '</span><span class="n">' + (i + 1) + ' of ' + list.length + '</span></div>' +
+      '<button type="button" class="tbtn" data-act="next" aria-label="Next letter"' + (i === list.length - 1 ? ' disabled title="This is the last letter"' : '') + '>' + IC.fwd + '</button></div>' +
+      '<div class="dots" role="group" aria-label="Letters">' + list.map(function (x, j) {
+        var cls = 'dot' + (j === i ? ' cur' : '') + (statusOf(st, x) === 'sent' ? ' sent' : '') + (statusOf(st, x) === 'closed' ? ' closed' : '');
+        return '<button type="button" class="' + cls + '" data-act="go" data-id="' + x.id + '" aria-label="' + esc(x.seller) + ({ sent: ', sent', closed: ', window closed', lost: ', marked lost', open: '' })[statusOf(st, x)] + '"' + (j === i ? ' aria-current="true"' : '') + '><i></i></button>';
+      }).join('') + '</div>';
+    var main = st.editing ?
+      '<label class="fine" for="lt-' + slot + o.id + '" style="padding:0 var(--space-4)">Edit the letter. Your words stay when you move between letters.</label><textarea class="msg" id="lt-' + slot + o.id + '" data-draft="' + o.id + '" style="font-family:var(--font-letter);min-height:22em">' + esc(messageText(st, o)) + '</textarea>' :
+      letterHtml(st, o);
+    if (!st.editing && st.drafts[o.id] != null && st.drafts[o.id] !== plain(st, o)) {
+      main = '<div class="banner ok"><p>You edited this letter. Copy sends your words.</p><button type="button" class="inline-btn" data-act="resetDraft" data-id="' + o.id + '">Use the drafted text</button></div>' +
+        '<article class="letter"><p style="white-space:pre-wrap">' + esc(st.drafts[o.id]) + '</p></article>';
+    }
+    var rows = '';
+    if (!split) {
+      rows = '<div class="group"><h2 class="group-h">What the letter says</h2><div class="list">' +
+        ['seller', 'date', 'days', 'carrier', 'cards', 'total'].map(function (k) {
+          var v = factValue(st, o, k);
+          return '<button type="button" class="frow" data-act="fact" data-k="' + k + '"><span class="k">' + FACT_NAME[k] + '</span><span class="v' + (v == null ? ' out' : '') + '">' + (v == null ? 'Left out' : v) + '</span>' + IC.chev + '</button>';
+        }).join('') + '</div></div>';
+    }
+    var arrived = '<div class="list"><button type="button" class="plain-btn" data-act="arrived" data-id="' + o.id + '">It arrived</button></div>';
+    var bar;
+    if (s === 'sent') bar = '<span class="bar-note ok">' + IC.check + 'Sent</span><button type="button" class="secondary" data-act="copy" data-id="' + o.id + '">Copy letter</button>';
+    else if (s === 'lost') bar = '<span class="bar-note">Marked lost</span><button type="button" class="secondary" data-act="copy" data-id="' + o.id + '">Copy letter</button>';
+    else if (st.copied[o.id]) bar = '<span class="bar-note ok">' + IC.check + 'Copied</span><button type="button" class="primary" data-act="sent" data-id="' + o.id + '">Mark as sent</button><button type="button" class="icon-btn" data-act="share" aria-label="Share letter">' + IC.share + '</button>';
+    else bar = '<button type="button" class="primary" data-act="copy" data-id="' + o.id + '">Copy letter</button>' +
+      (s === 'closed' ? '<button type="button" class="secondary" data-act="lost" data-id="' + o.id + '">Mark as lost</button>' : '') +
+      '<button type="button" class="icon-btn" data-act="share" aria-label="Share letter">' + IC.share + '</button>';
+    var sheet = '';
+    if (!split && st.sheet && st.sheet.type === 'fact') {
+      var sec = FACT_SECTION[st.sheet.k];
+      sheet = '<button type="button" class="scrim" data-act="closeSheet" aria-label="Close"></button><div class="sheet" role="dialog" aria-label="' + FACT_NAME[st.sheet.k] + '"><span class="grabber" aria-hidden="true"></span>' +
+        '<div class="sheet-head"><b>' + FACT_NAME[st.sheet.k] + '</b><button type="button" class="tbtn" style="grid-column:3;justify-self:end;font-weight:600" data-act="closeSheet">Done</button></div>' +
+        '<div class="sheet-body" style="padding:var(--space-4) 0">' + evidence(st, o, sec, false) + '</div></div>';
+    }
+    if (st.sheet && st.sheet.type === 'share') sheet = shareSheet(st, o, 'letter');
+    // At the largest text sizes the pager and fuse scroll with the letter, so the letter keeps the screen.
+    var head = pager + fuse(o, st);
+    return statusBar() + nav + (ax ? '' : head) +
+      '<div class="scroll"><div class="content">' + (ax ? '<div class="head-stack">' + head + '</div>' : '') + main + rows + arrived + '</div></div>' +
+      '<div class="bar">' + toastHtml(st) + bar + '</div>' + sheet + homeInd();
+  }
+
+  function letterEvidencePage(st) {
+    var list = letters(st);
+    if (st.phase === 'loading') return statusBar() + '<div class="nav"></div><div class="scroll"><div class="content" aria-busy="true"><span class="sk" style="height:120px"></span><span class="sk" style="height:200px"></span></div></div>' + homeInd();
+    if (st.phase === 'empty' || list.length === 0) return statusBar() + '<div class="nav"></div><div class="scroll"></div>' + homeInd();
+    var o = BY_ID[st.cur]; if (!o || st.arrived[o.id]) o = list[0];
+    var lit = st.focus ? FACT_SECTION[st.focus] : null;
+    return statusBar() + '<div class="nav"><div class="nav-title">Behind the letter</div></div>' +
+      '<div class="scroll" data-lt><div class="content"><div class="head-stack"><h1 class="lt">Behind the letter</h1><p class="summary">Tap a marked phrase in the letter to find it here.</p></div>' +
+      ['order', 'wait', 'carrier', 'cards'].map(function (sec) { return evidence(st, o, sec, lit === sec); }).join('') +
+      '</div></div>' + homeInd();
+  }
+
+  function renderLetter(st, slot, ax) {
+    if (slot === 'right') return letterEvidencePage(st);
+    return letterPage(st, slot, ax);
+  }
+
+  // ---------- Render ----------
+  function renderConcept(c) {
+    var sec = document.querySelector('[data-concept="' + c + '"]');
+    var st = S[c];
+    sec.querySelectorAll('.screen[data-slot]').forEach(function (el) {
+      var slot = el.dataset.slot;
+      var key = (c === 'desk' && slot !== 'left' && slot !== 'right') ? st.view + st.sel : (c === 'letter' ? st.cur : '');
+      var sc = el.querySelector('.scroll'), keep = sc && el.dataset.key === key ? sc.scrollTop : 0;
+      el.innerHTML = c === 'desk' ? renderDesk(st, slot) : renderLetter(st, slot, el.classList.contains('ax5'));
+      el.dataset.key = key;
+      var ns = el.querySelector('.scroll');
+      if (ns) {
+        ns.scrollTop = keep;
+        el.classList.toggle('scrolled', ns.hasAttribute('data-lt') && ns.scrollTop > 30);
+        if (ns.hasAttribute('data-lt')) ns.addEventListener('scroll', function () { el.classList.toggle('scrolled', ns.scrollTop > 30); }, { passive: true });
+      }
+      if (c === 'letter' && slot === 'right' && st.focus) {
+        var t = el.querySelector('.ev.lit'); if (t && ns) ns.scrollTop = Math.max(0, ns.scrollTop + t.getBoundingClientRect().top - ns.getBoundingClientRect().top - 16);
+      }
+    });
+    st.stampFresh = null;
+  }
+  function renderAll() { renderConcept('desk'); renderConcept('letter'); renderChrome(); }
+
+  // ---------- Presets and the hash ----------
+  var PRESETS = [
+    ['late', 'First screen'], ['claim', 'Claim open'], ['copied', 'Copied'], ['share', 'Share sheet'], ['evidence', 'Fact tapped'],
+    ['sent', 'Marked as sent'], ['notrack', 'No tracking'], ['failed', 'Carrier not read'], ['expired', 'Window closed'],
+    ['edited', 'Message edited'], ['empty', 'Nothing late'], ['loading', 'Loading']
+  ];
+  function applyPreset(p) {
+    preset = p;
+    ['desk', 'letter'].forEach(function (c) {
+      var st = S[c] = fresh();
+      var claim = function (id) { st.view = 'claim'; st.sel = id; st.cur = id; };
+      switch (p) {
+        case 'claim': claim('p'); break;
+        case 'copied': claim('p'); st.copied.p = true; break;
+        case 'share': claim('p'); st.sheet = { type: 'share' }; break;
+        case 'evidence': claim('p'); st.sheet = { type: 'fact', k: 'carrier' }; st.focus = 'carrier'; break;
+        case 'sent': st.sent.p = true; st.copied.p = true; st.sel = 'p'; st.cur = 'p'; break;
+        case 'notrack': claim('h'); break;
+        case 'failed': claim('o'); st.focus = 'carrier'; break;
+        case 'expired': claim('g'); break;
+        case 'edited': claim('p'); st.drafts.p = plain(st, BY_ID.p).replace('Please refund this order. Thank you.', 'Please refund this order, or resend the cards if you still have them. Thanks for your help.'); break;
+        case 'empty': st.phase = 'empty'; break;
+        case 'loading': st.phase = 'loading'; break;
+      }
+    });
+  }
+  function readHash() {
+    var h = {}; location.hash.replace(/^#/, '').split('&').forEach(function (kv) { var a = kv.split('='); if (a[0]) h[a[0]] = decodeURIComponent(a[1] || ''); });
+    return h;
+  }
+  function hashFor(over) {
+    var h = { s: preset, t: theme === 'system' ? '' : theme, h: Object.keys(hidden).filter(function (k) { return hidden[k]; }).join(',') };
+    for (var k in over) h[k] = over[k];
+    return '#' + Object.keys(h).filter(function (k) { return h[k]; }).map(function (k) { return k + '=' + encodeURIComponent(h[k]); }).join('&');
+  }
+  function fromHash() {
+    var h = readHash();
+    theme = h.t === 'light' || h.t === 'dark' ? h.t : 'system';
+    if (theme === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', theme);
+    hidden = {}; (h.h || '').split(',').forEach(function (k) { if (k) hidden[k] = true; });
+    var p = PRESETS.some(function (x) { return x[0] === h.s; }) ? h.s : 'late';
+    applyPreset(p);
+    renderAll();
+  }
+  function renderChrome() {
+    document.querySelectorAll('[data-theme-set]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.dataset.themeSet === theme)); });
+    document.getElementById('state-links').innerHTML = PRESETS.map(function (p) {
+      return '<a href="' + hashFor({ s: p[0] }) + '"' + (p[0] === preset ? ' aria-current="true"' : '') + '>' + p[1] + '</a>';
+    }).join('');
+    var names = { desk: 'Claim desk', letter: 'The letter' };
+    document.querySelectorAll('.option').forEach(function (sec) { sec.hidden = !!hidden[sec.dataset.concept]; });
+    document.getElementById('restore').innerHTML = Object.keys(hidden).filter(function (k) { return hidden[k]; }).map(function (k) {
+      return '<button type="button" data-unhide="' + k + '">Show ' + names[k] + '</button>';
+    }).join('');
+  }
+  function pushHash() { history.replaceState(null, '', hashFor({})); renderChrome(); }
+
+  // ---------- Acts ----------
+  function act(c, a, el) {
+    var st = S[c], id = el.dataset.id;
+    var cur = c === 'desk' ? st.sel : st.cur;
+    switch (a) {
+      case 'open': st.view = 'claim'; st.sel = id; st.sheet = null; st.toast = null; break;
+      case 'back': st.view = 'list'; st.sheet = null; break;
+      case 'copy':
+        // A second copy has no new mark to show, so it answers with a toast.
+        st.toast = st.copied[id] ? { text: 'Copied again.' } : null;
+        st.copied[id] = true;
+        try { navigator.clipboard && navigator.clipboard.writeText(c === 'desk' ? messageText(st, BY_ID[id]) : messageText(st, BY_ID[id])).catch(function () {}); } catch (e) {}
+        break;
+      case 'share': st.sheet = { type: 'share' }; break;
+      case 'shareTo': st.sheet = null; st.copied[cur] = true; st.sharedVia[cur] = el.dataset.to === 'Copy' ? '' : el.dataset.to; break;
+      case 'closeSheet': st.sheet = null; break;
+      case 'sent': st.sent[id] = true; st.stampFresh = id; st.toast = { text: c === 'desk' ? 'Moved to Sent to the seller.' : 'Letter marked as sent.', undo: ['sent', id] }; break;
+      case 'lost': st.lost[id] = true; st.toast = { text: 'Marked lost.', undo: ['lost', id] }; break;
+      case 'arrived':
+        st.arrived[id] = true; st.toast = { text: 'Marked as received.', undo: ['arrived', id] }; st.sheet = null;
+        if (c === 'desk') {
+          st.view = 'list';
+          var nx = visible(st).filter(function (o) { return statusOf(st, o) === 'open'; })[0] || visible(st)[0];
+          st.sel = nx ? nx.id : null;
+        } else {
+          var L = PAGER_ORDER.filter(function (o) { return !st.arrived[o.id] || o.id === id; });
+          var at = L.indexOf(BY_ID[id]); var rest = letters(st);
+          st.cur = rest.length ? (rest[Math.min(at, rest.length - 1)].id) : null;
+        }
+        break;
+      case 'undo':
+        if (st.toast && st.toast.undo) {
+          var u = st.toast.undo; delete st[u[0]][u[1]];
+          if (u[0] === 'arrived') { if (c === 'desk') st.sel = u[1]; else st.cur = u[1]; }
+        }
+        st.toast = null; break;
+      case 'allCards': st.allCards[id] = !st.allCards[id]; break;
+      case 'retry':
+        st.retrying[id] = true;
+        setTimeout(function () { st.retrying[id] = false; st.fixed[id] = true; renderConcept(c); }, 900);
+        break;
+      case 'emptyGo': st.toast = { text: 'Opens orders on the way. That screen is not drawn here.' }; break;
+      case 'resetDraft': delete st.drafts[id]; break;
+      case 'prev': case 'next': case 'go':
+        var list = letters(st), i = list.indexOf(BY_ID[st.cur]);
+        if (a === 'go') st.cur = id; else { i += a === 'next' ? 1 : -1; if (i >= 0 && i < list.length) st.cur = list[i].id; }
+        st.sheet = null; st.focus = null; st.toast = null; break;
+      case 'fact': st.sheet = { type: 'fact', k: el.dataset.k }; st.focus = el.dataset.k; break;
+      case 'ex':
+        var ex = st.exclude[cur] = st.exclude[cur] || {}; ex[el.dataset.k] = !ex[el.dataset.k]; break;
+      case 'edit': st.editing = !st.editing; break;
+      default: return;
+    }
+    renderConcept(c);
+  }
+
+  document.addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]');
+    if (t) {
+      if (t.disabled) return;
+      var sec = t.closest('[data-concept]');
+      if (sec) {
+        // The open pose shows the letter's evidence on the right page, not in a sheet.
+        var slot = t.closest('[data-slot]').dataset.slot;
+        if (sec.dataset.concept === 'letter' && t.dataset.act === 'fact' && slot === 'left') { var st = S.letter; st.focus = t.dataset.k; st.sheet = null; renderConcept('letter'); return; }
+        act(sec.dataset.concept, t.dataset.act, t);
+      }
+      return;
+    }
+    var th = e.target.closest('[data-theme-set]');
+    if (th) { theme = th.dataset.themeSet; if (theme === 'system') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', theme); pushHash(); return; }
+    var hb = e.target.closest('[data-hide]');
+    if (hb) { hidden[hb.dataset.hide] = true; pushHash(); return; }
+    var ub = e.target.closest('[data-unhide]');
+    if (ub) { delete hidden[ub.dataset.unhide]; pushHash(); }
+  });
+  document.addEventListener('input', function (e) {
+    var t = e.target.closest('[data-draft]'); if (!t) return;
+    var c = t.closest('[data-concept]').dataset.concept;
+    S[c].drafts[t.dataset.draft] = t.value;
+    // Mirror the words into the other frames without a re-render, so the caret stays put.
+    t.closest('[data-concept]').querySelectorAll('[data-draft="' + t.dataset.draft + '"]').forEach(function (o) { if (o !== t) o.value = t.value; });
+  });
+  // Swipe between letters.
+  var sx = null;
+  document.addEventListener('pointerdown', function (e) { var p = e.target.closest('[data-concept="letter"] .screen'); sx = p ? { x: e.clientX, y: e.clientY } : null; });
+  document.addEventListener('pointerup', function (e) {
+    if (!sx) return; var dx = e.clientX - sx.x, dy = e.clientY - sx.y; sx = null;
+    if (Math.abs(dx) > 60 && Math.abs(dx) > Math.abs(dy) * 1.5) {
+      var fake = document.createElement('i'); act('letter', dx < 0 ? 'next' : 'prev', fake);
+    }
+  });
+  window.addEventListener('hashchange', fromHash);
+  fromHash();
+})();
+</script>
+</body>
+</html>

@@ -1,0 +1,1047 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Envelope Photo Glance</title>
+<style>
+/* Tokens. Blind designer: values from the house tokens file (4 px step, 8 px radius, colour by role,
+   system font) and my own choices where it gives none. Type sizes are Apple Dynamic Type text styles
+   at the default size (Large) and at AX5, read 2026-11-21. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px; --space-12: 48px;
+  --radius: 8px;
+  /* Placeholders: no Apple page read gives a Duo safe-area inset. */
+  --inset-top: var(--space-6);
+  --inset-bottom: var(--space-5);
+
+  --surface: #EEF1F4;
+  --raised: #FFFFFF;
+  --ink: #17212B;
+  --ink-2: #55616D;
+  --line: #CBD2D9;
+  --accent: #1E56C8;
+  --on-accent: #FFFFFF;
+  --accent-soft: #DCE6FA;
+  --unknown: #9A4D00;
+  --unknown-soft: #FBEBD9;
+  --stage: #1C2229;
+  --on-stage: #F2F5F8;
+  --on-stage-2: #B4BEC8;
+  --stage-raised: #2A323B;
+  --unknown-on-stage: #F2AE5C;
+  --accent-on-stage: #A9C2FF;
+  --scrim: rgb(10 14 18 / 0.45);
+  --label: #7A3FB8;
+  --bezel: #2B2F35;
+  --page-bg: #E3E7EB;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #0F1419; --raised: #1B232C; --ink: #E7ECF1; --ink-2: #9DA9B5; --line: #2E3945;
+    --accent: #8AB0FF; --on-accent: #0F1419; --accent-soft: #1D2B47;
+    --unknown: #F2AE5C; --unknown-soft: #3A2A16;
+    --stage: #05080B; --on-stage: #F2F5F8; --on-stage-2: #A9B4BF; --stage-raised: #161C23;
+    --scrim: rgb(0 0 0 / 0.6); --label: #C9A2F5; --bezel: #000000; --page-bg: #151A20;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #0F1419; --raised: #1B232C; --ink: #E7ECF1; --ink-2: #9DA9B5; --line: #2E3945;
+  --accent: #8AB0FF; --on-accent: #0F1419; --accent-soft: #1D2B47;
+  --unknown: #F2AE5C; --unknown-soft: #3A2A16;
+  --stage: #05080B; --on-stage: #F2F5F8; --on-stage-2: #A9B4BF; --stage-raised: #161C23;
+  --scrim: rgb(0 0 0 / 0.6); --label: #C9A2F5; --bezel: #000000; --page-bg: #151A20;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page-bg); color: var(--ink);
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: 17px; line-height: 22px;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+
+/* ---------- Page chrome (outside the device frames) ---------- */
+.banner {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--ink); color: var(--surface);
+  padding: var(--space-2) var(--space-4); font-size: 15px; line-height: 20px; font-weight: 600;
+}
+.head { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) var(--space-4) var(--space-4); max-width: 128rem; margin-inline: auto; line-height: 24px; }
+.concept-head p { line-height: 24px; }
+.head h1 { margin: 0; font-size: 28px; line-height: 34px; }
+.head p { margin: 0; color: var(--ink-2); max-width: 64ch; }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: end; }
+.controls label { display: flex; flex-direction: column; gap: var(--space-1); font-size: 13px; line-height: 18px; color: var(--ink-2); }
+.controls select, .controls .seg button, .controls .chip {
+  min-height: 44px; border-radius: var(--radius); border: 1px solid var(--line);
+  background: var(--raised); color: var(--ink); padding: 0 var(--space-3); font-size: 15px;
+}
+.seg { display: flex; }
+.seg button { border-radius: 0; }
+.seg button:first-child { border-radius: var(--radius) 0 0 var(--radius); }
+.seg button:last-child { border-radius: 0 var(--radius) var(--radius) 0; border-left: 0; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.restore { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+
+main { display: flex; flex-direction: column; gap: var(--space-12); padding: var(--space-4) var(--space-4) var(--space-12); max-width: 128rem; margin-inline: auto; }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; justify-content: space-between; border-top: 2px solid var(--ink); padding-top: var(--space-3); }
+.concept-head h2 { margin: 0; font-size: 22px; line-height: 28px; }
+.concept-head p { margin: 0; color: var(--ink-2); flex: 1 1 28rem; }
+.concept-head .bold-tag { font-size: 13px; line-height: 18px; font-weight: 600; color: var(--label); border: 1.5px solid var(--label); border-radius: var(--radius); padding: 0 var(--space-2); }
+.hide-btn { min-height: 44px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); font-size: 15px; }
+
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+.dev { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); max-width: 100%; }
+.dev[hidden] { display: none; }
+.dev figcaption { font-size: 13px; line-height: 18px; color: var(--ink-2); }
+.fit { position: relative; }
+.fit > .screen { transform-origin: 0 0; }
+
+/* ---------- Device screens ---------- */
+.screen {
+  position: relative; overflow: hidden; width: 466px; height: 678px;
+  border: 8px solid var(--bezel); border-radius: calc(var(--radius) * 2);
+  background: var(--surface); color: var(--ink);
+  font-family: -apple-system, system-ui, sans-serif;
+  box-sizing: content-box;
+  --fs-large: 34px; --lh-large: 41px;
+  --fs-t1: 28px; --lh-t1: 34px;
+  --fs-t2: 22px; --lh-t2: 28px;
+  --fs-t3: 20px; --lh-t3: 25px;
+  --fs-head: 17px; --lh-head: 22px;
+  --fs-body: 17px; --lh-body: 22px;
+  --fs-sub: 15px; --lh-sub: 20px;
+  --fs-foot: 13px; --lh-foot: 18px;
+  --fs-cap: 12px; --lh-cap: 16px;
+  --fs-cap2: 11px; --lh-cap2: 13px;
+  --hit: 44px;
+  font-size: var(--fs-body); line-height: var(--lh-body);
+}
+.screen.ax5 {
+  --fs-large: 60px; --lh-large: 70px;
+  --fs-t1: 58px; --lh-t1: 68px;
+  --fs-t2: 56px; --lh-t2: 66px;
+  --fs-t3: 55px; --lh-t3: 65px;
+  --fs-head: 53px; --lh-head: 62px;
+  --fs-body: 53px; --lh-body: 62px;
+  --fs-sub: 49px; --lh-sub: 58px;
+  --fs-foot: 44px; --lh-foot: 52px;
+  --fs-cap: 43px; --lh-cap: 51px;
+  --fs-cap2: 40px; --lh-cap2: 48px;
+  --hit: 64px;
+}
+.screen.open { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.screen.phone { resize: both; min-width: 320px; min-height: 480px; max-width: 100%; }
+.hinge { background: var(--bezel); display: grid; place-items: center; }
+.hinge span { writing-mode: vertical-rl; font-size: 11px; color: #8A939C; letter-spacing: 0.05em; }
+
+.page {
+  position: relative; overflow: hidden; height: 100%; min-width: 0;
+  display: flex; flex-direction: column;
+  padding-top: max(env(safe-area-inset-top), var(--inset-top));
+  padding-bottom: max(env(safe-area-inset-bottom), var(--inset-bottom));
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+}
+
+.t-large { font-size: var(--fs-large); line-height: var(--lh-large); font-weight: 700; }
+.t-t1 { font-size: var(--fs-t1); line-height: var(--lh-t1); font-weight: 700; }
+.t-t2 { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; }
+.t-t3 { font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 600; }
+.t-head { font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; }
+.t-body { font-size: var(--fs-body); line-height: var(--lh-body); }
+.t-sub { font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.t-foot { font-size: var(--fs-foot); line-height: var(--lh-foot); }
+.t-cap { font-size: var(--fs-cap); line-height: var(--lh-cap); }
+.t-cap2 { font-size: var(--fs-cap2); line-height: var(--lh-cap2); }
+.muted { color: var(--ink-2); }
+.one-line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; min-width: 0; }
+.ax5 .one-line { white-space: normal; }
+.unknown-name { color: var(--unknown); display: inline-flex; gap: var(--space-2); align-items: center; }
+.unknown-name svg { flex: none; width: 1em; height: 1em; }
+
+.btn-icon { min-width: var(--hit); min-height: var(--hit); display: inline-grid; place-items: center; border-radius: var(--radius); color: var(--accent); flex: none; }
+.btn-icon svg { width: 24px; height: 24px; }
+.ax5 .btn-icon svg { width: 36px; height: 36px; }
+.btn-icon[aria-disabled="true"] { color: var(--ink-2); opacity: 0.5; }
+.btn-text { min-height: var(--hit); display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); color: var(--accent); border-radius: var(--radius); font-size: var(--fs-body); line-height: var(--lh-body); }
+.btn-fill { min-height: var(--hit); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); padding: 0 var(--space-4); background: var(--accent); color: var(--on-accent); border-radius: var(--radius); font-weight: 600; font-size: var(--fs-body); line-height: var(--lh-body); }
+.on-stage .btn-icon, .btn-icon.on-stage { color: var(--on-stage); }
+
+/* Photo box: sized to the photo's own 4:3 so the image fills it exactly. */
+.photo-fit { flex: 1 1 auto; min-height: 0; display: grid; place-items: center; overflow: hidden; position: relative; container-type: size; }
+.photo-box { position: relative; aspect-ratio: 4 / 3; width: min(100cqw, 100cqh * 4 / 3); touch-action: none; }
+.photo-box img { display: block; width: 100%; height: 100%; user-select: none; -webkit-user-drag: none; pointer-events: none; transition: transform 160ms ease-out; }
+.photo-box.panning img { transition: none; }
+.photo-fail, .photo-wait { position: absolute; inset: 0; display: flex; flex-direction: column; gap: var(--space-3); align-items: center; justify-content: center; text-align: center; padding: var(--space-4); background: var(--stage-raised); color: var(--on-stage); border-radius: var(--radius); }
+.photo-wait { background: color-mix(in srgb, var(--stage-raised) 70%, var(--on-stage-2)); }
+.photo-wait span { opacity: 0.8; }
+
+/* Loupe (Sorting dial) */
+.loupe { position: absolute; width: 168px; height: 168px; border-radius: 50%; border: 3px solid var(--on-stage); box-shadow: 0 6px 18px rgb(0 0 0 / 0.45); pointer-events: none; background-repeat: no-repeat; background-color: var(--stage); z-index: 4; }
+
+/* Sheet: stays inside its page, so it never crosses the hinge. */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 8; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 72%; z-index: 9; background: var(--raised); color: var(--ink); border-radius: calc(var(--radius) * 2) calc(var(--radius) * 2) 0 0; display: flex; flex-direction: column; padding-bottom: max(env(safe-area-inset-bottom), var(--inset-bottom)); }
+.ax5 .sheet { max-height: 92%; }
+.sheet-bar { display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) 0; }
+.sheet-bar .t-head { text-align: center; }
+.sheet-bar .spacer { min-width: var(--hit); }
+.sheet-sub { padding: 0 var(--space-4) var(--space-2); text-align: center; }
+.sheet .list { overflow: auto; }
+
+.list { list-style: none; margin: 0; padding: 0 var(--space-4); display: flex; flex-direction: column; }
+.list li { display: flex; gap: var(--space-3); justify-content: space-between; align-items: baseline; min-height: var(--hit); padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+.list li:last-child { border-bottom: 0; }
+.list .qty { color: var(--ink-2); font-variant-numeric: tabular-nums; flex: none; }
+
+.state-block { flex: 1 1 auto; display: flex; flex-direction: column; gap: var(--space-4); align-items: flex-start; justify-content: center; padding: var(--space-6); }
+.state-block p { margin: 0; max-width: 30ch; }
+.state-block details { color: var(--ink-2); }
+.state-block summary { min-height: var(--hit); display: flex; align-items: center; cursor: pointer; }
+.state-block .press-note { color: var(--ink-2); }
+.skel { background: color-mix(in srgb, var(--line) 70%, transparent); border-radius: var(--radius); }
+
+/* "New:" labels. Blind: every part is new to this designer, so no "Today:" label is drawn. */
+.labels [data-new] { outline: 1.5px dashed var(--label); outline-offset: -3px; }
+.labels [data-new]::after {
+  content: "New: " attr(data-new); position: absolute; z-index: 12; top: 2px; right: 2px;
+  background: var(--label); color: #fff; font: 600 11px/14px -apple-system, system-ui, sans-serif;
+  padding: 1px 4px; border-radius: 4px; pointer-events: none; white-space: nowrap;
+}
+.ax5.screen [data-new]::after { font-size: 11px; }
+
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+@media (forced-colors: active) {
+  .btn-icon, .btn-text, .btn-fill, .notch .tick { border: 1px solid ButtonText; }
+  .dot span { border: 1px solid CanvasText; }
+  .dot[aria-current="true"] span { background: Highlight; border-color: Highlight; }
+  .band.cur { outline: 2px solid Highlight; outline-offset: -2px; }
+}
+/* A disabled control says why on focus as well as on hover. */
+[data-reason] { position: relative; }
+[data-reason]:focus-visible::before {
+  content: attr(data-reason); position: absolute; z-index: 13; bottom: calc(100% + 4px); left: 0;
+  background: var(--ink); color: var(--surface); font: 400 13px/18px -apple-system, system-ui, sans-serif;
+  padding: 4px 8px; border-radius: var(--radius); white-space: nowrap; pointer-events: none;
+}
+
+/* ---------- Lightbox ---------- */
+.lb { background: var(--stage); color: var(--on-stage); }
+.lb .unknown-name { color: var(--unknown-on-stage); }
+.lb-top { display: flex; justify-content: space-between; align-items: center; min-height: var(--hit); padding: 0 var(--space-2) 0 var(--space-4); color: var(--on-stage-2); flex: none; }
+.lb-top .btn-icon { color: var(--on-stage); }
+.lb-stage { padding: var(--space-2) 0; }
+.lb-dock { flex: none; padding: 0 var(--space-2); display: flex; flex-direction: column; min-height: 0; }
+.lb-plate { position: relative; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-1); padding: var(--space-2) var(--space-1); background: var(--stage-raised); border-radius: calc(var(--radius) * 2); }
+.lb-plate .btn-icon { color: var(--on-stage); }
+.lb-plate .btn-icon[aria-disabled="true"] { color: var(--on-stage-2); }
+.lb-id { display: flex; flex-direction: column; gap: var(--space-1); text-align: left; min-width: 0; min-height: var(--hit); padding: var(--space-1) var(--space-1); color: var(--on-stage); border-radius: var(--radius); }
+.lb-meta { display: flex; flex-wrap: wrap; column-gap: var(--space-3); color: var(--on-stage-2); }
+.lb-sum { color: var(--accent-on-stage); }
+.ax5 .lb-dock { max-height: 60%; }
+.ax5 .lb-plate { grid-template-columns: 1fr 1fr; overflow: auto; }
+.ax5 .lb-plate > [data-act="prev"] { grid-column: 1; grid-row: 1; justify-self: start; }
+.ax5 .lb-plate > [data-act="next"] { grid-column: 2; grid-row: 1; justify-self: end; }
+.ax5 .lb-plate > .lb-id { grid-column: 1 / -1; grid-row: 2; }
+.ax5 .lb-sum { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.lb-side { background: var(--surface); }
+.lb-side-scroll { flex: 1 1 auto; overflow: auto; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-4) var(--space-4) var(--space-4); position: relative; }
+.lb-side-id { display: flex; flex-direction: column; gap: var(--space-1); position: relative; }
+.lb-side .list { padding: 0; }
+.thumbs { display: flex; gap: var(--space-3); }
+.thumb { width: 104px; aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden; border: 3px solid transparent; padding: 0; }
+.thumb img { width: 100%; height: 100%; display: block; }
+.thumb[aria-current="true"] { border-color: var(--accent); }
+.section-title { margin: 0; }
+.toolbar { flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) 0; border-top: 1px solid var(--line); background: var(--surface); }
+.toolbar > :first-child { justify-self: start; }
+.toolbar > :last-child { justify-self: end; }
+.toolbar .btn-text svg { width: 20px; height: 20px; }
+/* At AX5 the toolbar keeps its arrows and the count; the words stay as the buttons' spoken names. */
+.ax5 .toolbar .btn-text { min-width: var(--hit); justify-content: center; }
+.ax5 .toolbar .btn-text span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.ax5 .toolbar .btn-text svg { width: 36px; height: 36px; }
+.ax5 .toolbar .t-foot { white-space: nowrap; }
+
+/* ---------- Mail log ---------- */
+.log, .log-detail { background: var(--surface); }
+.log-scroll { flex: 1 1 auto; overflow: auto; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-2) var(--space-4) var(--space-6); position: relative; }
+.log-title { margin: 0; }
+.log-day { display: flex; flex-direction: column; gap: var(--space-2); }
+.log-dayhead { margin: 0; color: var(--ink-2); position: sticky; top: calc(-1 * var(--space-2)); background: var(--surface); padding: var(--space-1) 0; z-index: 2; }
+.log-rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-3); }
+.log-row { position: relative; width: 100%; display: flex; flex-direction: column; gap: var(--space-2); text-align: left; background: var(--raised); border-radius: calc(var(--radius) * 1.5); padding: var(--space-2); outline: 2px solid transparent; outline-offset: -2px; }
+.log-row[aria-current="true"] { outline-color: var(--accent); }
+.crop { display: block; width: 100%; aspect-ratio: 3 / 1; border-radius: var(--radius); background-color: var(--stage); background-repeat: no-repeat; background-size: 230% auto; background-position: 21% 25%; }
+.crop-fail { display: flex; align-items: center; justify-content: center; gap: var(--space-3); padding: var(--space-3); color: var(--on-stage); background: var(--stage-raised); }
+.log-row-text { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-1); min-width: 0; }
+.log-row-meta { display: flex; flex-wrap: wrap; column-gap: var(--space-3); }
+.side .log-row { display: grid; grid-template-columns: 120px minmax(0, 1fr); align-items: center; gap: var(--space-3); }
+.side .crop { aspect-ratio: 4 / 3; background-size: 300% auto; background-position: 21% 30%; }
+.nav { flex: none; display: grid; grid-template-columns: 1fr minmax(0, 2fr) 1fr; align-items: center; min-height: var(--hit); padding: 0 var(--space-2); }
+.nav-title { text-align: center; }
+.nav > :last-child { justify-self: end; }
+.nav .btn-text { padding-left: 0; }
+.ax5 .nav { grid-template-columns: auto minmax(0, 1fr) auto; }
+.ax5 .nav .back-label { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); }
+.ax5 .nav-title { text-align: left; }
+.detail-scroll { flex: 1 1 auto; overflow: auto; display: flex; flex-direction: column; gap: var(--space-3); padding: 0 var(--space-4) var(--space-4); }
+.detail-photo { flex: none; position: relative; background: var(--stage); border-radius: var(--radius); overflow: hidden; }
+.detail-photo .photo-box { width: 100%; }
+.dots { display: flex; justify-content: center; }
+.dot { width: var(--hit); height: var(--hit); display: grid; place-items: center; }
+.dot span { width: 8px; height: 8px; border-radius: 50%; background: var(--line); }
+.ax5 .dot span { width: 16px; height: 16px; }
+.dot[aria-current="true"] span { background: var(--accent); }
+.detail-id { display: flex; flex-direction: column; gap: var(--space-1); }
+.log-detail .list { padding: 0; }
+
+/* ---------- Sorting dial ---------- */
+.dial-page { background: var(--stage); }
+.dial-page:has(.dial-dock) { padding-bottom: 0; }
+.dial-page .dial-dock { padding-bottom: max(env(safe-area-inset-bottom), var(--inset-bottom)); }
+.dial-page:has(.state-block) { background: var(--surface); }
+.dial-index > *, .lb-id > *, .log-row-text > *, .detail-id > * { flex: none; }
+.dial-stage { background: var(--stage); }
+.dial-stage .photo-box { touch-action: none; user-select: none; }
+.loupe-btn { position: absolute; top: var(--space-1); right: var(--space-1); z-index: 5; color: var(--on-stage); background: rgb(0 0 0 / 0.35); }
+.loupe-btn[aria-pressed="true"] { background: var(--on-stage); color: var(--stage); }
+.dial-dock { flex: none; position: relative; display: flex; flex-direction: column; gap: var(--space-2); background: var(--raised); padding: var(--space-3) var(--space-2) 0; min-height: 0; }
+.dial-index { position: relative; display: flex; flex-direction: column; align-items: center; gap: var(--space-1); text-align: center; padding: 0 var(--space-2); min-width: 0; }
+.dial-index > * { max-width: 100%; }
+.meta-row { display: flex; flex-wrap: wrap; justify-content: center; column-gap: var(--space-3); color: var(--ink-2); }
+.cards-link { color: var(--accent); min-height: var(--hit); padding: 0 var(--space-2); border-radius: var(--radius); }
+.dial-row { flex: none; display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: var(--space-1); }
+.dial { position: relative; height: 92px; overflow: hidden; touch-action: none; user-select: none; border-radius: var(--radius); background: var(--surface); cursor: grab;
+  -webkit-mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); mask-image: linear-gradient(90deg, transparent, #000 18%, #000 82%, transparent); }
+.dial-track { position: absolute; top: 0; bottom: 0; left: 50%; transition: transform 180ms ease-out; }
+.band { position: absolute; top: var(--space-1); height: 64px; border-radius: var(--radius); background: color-mix(in srgb, var(--line) 55%, transparent); }
+.band.alt { background: color-mix(in srgb, var(--line) 30%, transparent); }
+.band.cur { background: var(--accent-soft); box-shadow: inset 0 0 0 2px var(--accent); }
+.band-label { display: block; padding: 3px 6px 0; color: var(--ink-2); }
+.band.cur .band-label { color: var(--ink); font-weight: 600; }
+.band-label.unknown { color: var(--unknown); }
+.notch { position: absolute; top: 26px; width: 44px; height: 44px; display: grid; place-items: center; }
+.notch .tick { width: 3px; height: 22px; border-radius: 2px; background: var(--ink-2); }
+.notch.cur .tick { width: 5px; height: 34px; background: var(--accent); }
+.daymark { position: absolute; top: 0; bottom: 0; width: 0; border-left: 2px solid var(--ink); }
+.daymark span { position: absolute; bottom: 4px; left: 5px; white-space: nowrap; color: var(--ink); font-weight: 600; }
+.needle { position: absolute; left: 50%; top: 22px; bottom: 20px; width: 2px; margin-left: -1px; background: var(--accent); pointer-events: none; }
+.needle::before { content: ""; position: absolute; top: 0; left: -6px; border: 7px solid transparent; border-top-color: var(--accent); }
+.ax5 .band-label, .ax5 .daymark span { display: none; }
+.ax5 .dial-dock { max-height: 64%; }
+.ax5 .dial-index { overflow: auto; }
+.dial-side { background: var(--raised); }
+.dial-side .dial-index { align-items: flex-start; text-align: left; flex: 1 1 auto; overflow: auto; gap: var(--space-2); padding: var(--space-4) var(--space-4) var(--space-2); }
+.dial-side .meta-row { justify-content: flex-start; }
+.dial-side .list { padding: 0; width: 100%; }
+.dial-side .dial-row { padding: var(--space-2) var(--space-2) 0; border-top: 1px solid var(--line); }
+
+/* CONCEPT-CSS */
+</style>
+</head>
+<body class="labels">
+<div class="banner" role="note">Sample. No figure, name, address or photo on this page is real.</div>
+
+<header class="head">
+  <h1>Envelope photos: whose is this?</h1>
+  <p>Designer kind: blind. Designer photo-glance-blind-2, drawn 21 Nov 2026. Three concepts for one job: look at one envelope photo large enough to read, step to the next, and know whose envelope it is and which cards came in it.</p>
+  <div class="controls">
+    <label>Option
+      <select id="ctl-c">
+        <option value="all">All options</option>
+        <option value="lightbox">Lightbox</option>
+        <option value="log">Mail log</option>
+        <option value="dial">Sorting dial</option>
+      </select>
+    </label>
+    <label>State
+      <select id="ctl-s">
+        <option value="loaded">Loaded</option>
+        <option value="pair">Two photos of one envelope</option>
+        <option value="unknown">Sender unknown</option>
+        <option value="end">Last photo</option>
+        <option value="photofail">One photo did not load</option>
+        <option value="loading">Loading</option>
+        <option value="failed">Could not read photos</option>
+        <option value="empty">No photos yet</option>
+      </select>
+    </label>
+    <label>Device
+      <select id="ctl-d">
+        <option value="all">All devices</option>
+        <option value="folded">Duo folded</option>
+        <option value="open">Duo open</option>
+        <option value="phone">Large phone</option>
+        <option value="ax5">Duo folded, largest text</option>
+      </select>
+    </label>
+    <label>Theme
+      <span class="seg" id="ctl-t">
+        <button type="button" data-theme-pick="light" aria-pressed="false">Light</button>
+        <button type="button" data-theme-pick="dark" aria-pressed="false">Dark</button>
+      </span>
+    </label>
+    <label>Part labels
+      <button type="button" class="chip" id="ctl-labels" aria-pressed="true">Showing</button>
+    </label>
+  </div>
+  <div class="restore" id="restore" aria-live="polite"></div>
+</header>
+
+<main>
+<section class="concept" data-concept="lightbox" aria-labelledby="h-lightbox">
+  <div class="concept-head">
+    <h2 id="h-lightbox">Lightbox</h2>
+    <p>The photo is the whole screen. Swipe or press an arrow to step. A plate under the thumb names the sender, the day and the cards, so nothing needs a tap to know whose it is.</p>
+    <button class="hide-btn" data-hide="lightbox">Hide this option</button>
+  </div>
+  <div class="frames">
+    <figure class="dev" data-pose="folded"><figcaption>Duo folded, 466 × 678 pt</figcaption>
+      <div class="fit"><div class="screen" id="choice-lightbox" data-frame="folded" data-device="iphone-duo-folded"></div></div></figure>
+    <figure class="dev" data-pose="open"><figcaption>Duo open, 951 × 669 pt. Hinge gap from x 455.5 to 495.5.</figcaption>
+      <div class="fit"><div class="screen open" data-frame="open" data-device="iphone-duo-unfolded"></div></div></figure>
+    <figure class="dev" data-pose="phone"><figcaption>Large phone. No size is written for it, so it is drawn at 466 × 678. Drag its corner to resize.</figcaption>
+      <div class="fit"><div class="screen phone" data-frame="phone" data-device="phone-large"></div></div></figure>
+    <figure class="dev" data-pose="ax5"><figcaption>Duo folded at the largest text size (AX5)</figcaption>
+      <div class="fit"><div class="screen ax5" data-frame="folded" data-device="iphone-duo-folded" data-text="ax5"></div></div></figure>
+  </div>
+</section>
+<section class="concept" data-concept="log" aria-labelledby="h-log">
+  <div class="concept-head">
+    <h2 id="h-log">Mail log</h2>
+    <p>The first screen is a list by day. Each row shows the envelope cut down to its return address, so the sender's own writing is readable before any tap. Tap a row to open the photo; Previous and Next step from there.</p>
+    <button class="hide-btn" data-hide="log">Hide this option</button>
+  </div>
+  <div class="frames">
+    <figure class="dev" data-pose="folded"><figcaption>Duo folded, 466 × 678 pt</figcaption>
+      <div class="fit"><div class="screen" id="choice-log" data-frame="folded" data-device="iphone-duo-folded"></div></div></figure>
+    <figure class="dev" data-pose="open"><figcaption>Duo open, 951 × 669 pt. Hinge gap from x 455.5 to 495.5.</figcaption>
+      <div class="fit"><div class="screen open" data-frame="open" data-device="iphone-duo-unfolded"></div></div></figure>
+    <figure class="dev" data-pose="phone"><figcaption>Large phone. No size is written for it, so it is drawn at 466 × 678. Drag its corner to resize.</figcaption>
+      <div class="fit"><div class="screen phone" data-frame="phone" data-device="phone-large"></div></div></figure>
+    <figure class="dev" data-pose="ax5"><figcaption>Duo folded at the largest text size (AX5)</figcaption>
+      <div class="fit"><div class="screen ax5" data-frame="folded" data-device="iphone-duo-folded" data-text="ax5"></div></div></figure>
+  </div>
+</section>
+<section class="concept" data-concept="dial" aria-labelledby="h-dial">
+  <div class="concept-head">
+    <h2 id="h-dial">Sorting dial</h2>
+    <span class="bold-tag">Bold option</span>
+    <p>A ruler of the mail sits under the thumb: one notch per photo, notches of one envelope grouped in a band, days cut by a tall line. Drag it, or tap a notch. The sender's name stands over the needle. Press and hold the photo, or turn on the loupe, to read the writing without losing your place.</p>
+    <button class="hide-btn" data-hide="dial">Hide this option</button>
+  </div>
+  <div class="frames">
+    <figure class="dev" data-pose="folded"><figcaption>Duo folded, 466 × 678 pt</figcaption>
+      <div class="fit"><div class="screen" id="choice-dial" data-frame="folded" data-device="iphone-duo-folded"></div></div></figure>
+    <figure class="dev" data-pose="open"><figcaption>Duo open, 951 × 669 pt. Hinge gap from x 455.5 to 495.5.</figcaption>
+      <div class="fit"><div class="screen open" data-frame="open" data-device="iphone-duo-unfolded"></div></div></figure>
+    <figure class="dev" data-pose="phone"><figcaption>Large phone. No size is written for it, so it is drawn at 466 × 678. Drag its corner to resize.</figcaption>
+      <div class="fit"><div class="screen phone" data-frame="phone" data-device="phone-large"></div></div></figure>
+    <figure class="dev" data-pose="ax5"><figcaption>Duo folded at the largest text size (AX5)</figcaption>
+      <div class="fit"><div class="screen ax5" data-frame="folded" data-device="iphone-duo-folded" data-text="ax5"></div></div></figure>
+  </div>
+</section>
+</main>
+
+<script>
+"use strict";
+/* ---------- Sample data (invented; see banner) ---------- */
+const DAYS = [
+  { long: "Thursday 19 November", short: "Thu 19 Nov", dial: "19 Nov", mark: "19 NOV", mat: "#56606B" },
+  { long: "Wednesday 18 November", short: "Wed 18 Nov", dial: "18 Nov", mark: "18 NOV", mat: "#6E5F4E" },
+  { long: "Tuesday 17 November", short: "Tue 17 Nov", dial: "17 Nov", mark: "17 NOV", mat: "#4B5A4E" },
+];
+const ENVS = [
+  { day: 0, sender: "kestrel_tcg", paper: "#F7F5EF", ink: "#1F2F5C", kind: "hand", photos: 2, rot: -3,
+    cards: [["Ember Wyrm", 1], ["Tidecaller Adept", 2], ["Gloomfen Totem", 1]] },
+  { day: 0, sender: null, paper: "#E9D6AC", ink: "#3A2E22", kind: "hand", photos: 1, rot: 2,
+    cards: [["Hollow Lantern", 1], ["Brass Courier", 1]] },
+  { day: 0, sender: "Otterbrook Cards", paper: "#FFFFFF", ink: "#202020", kind: "label", photos: 1, rot: -1.5,
+    cards: [["Saltmarsh Heron", 1], ["Vellum Archive", 1], ["Copperleaf Druid", 2], ["Stormglass Sentry", 1], ["Thornback Ram", 1], ["Quiet Harbor", 4]] },
+  { day: 1, sender: "maple.singles", paper: "#F3EDE1", ink: "#14213D", kind: "hand", photos: 1, rot: 3,
+    cards: [["Cinder Familiar", 1], ["Wayfarer's Map", 1], ["Moonlit Ferry", 3]] },
+  { day: 1, sender: "Fennwick Games", paper: "#F2E7A8", ink: "#202020", kind: "label", photos: 1, rot: -2.5,
+    cards: [["Lantern Moth", 1]] },
+  { day: 2, sender: "quietpine", paper: "#F8F8F4", ink: "#2B3A1F", kind: "hand", photos: 2, rot: 1.5,
+    cards: [["Bramble Warden", 1], ["Glass Orchard", 2], ["Pale Courier", 1], ["Ashen Bellows", 1]] },
+  { day: 2, sender: "Tumbleweed Card Co", paper: "#DCC9A0", ink: "#202020", kind: "label", photos: 1, rot: -1,
+    cards: [["Ridge Strider", 1], ["Sunken Bell", 2]] },
+];
+const PHOTOS = [];
+ENVS.forEach((e, ei) => { for (let k = 0; k < e.photos; k++) PHOTOS.push({ e: ei, k }); });
+const N = PHOTOS.length;
+const FAIL_I = PHOTOS.findIndex(p => p.e === 4);
+const STATE_P = { loaded: 0, pair: 1, unknown: PHOTOS.findIndex(p => ENVS[p.e].sender === null), end: N - 1, photofail: FAIL_I };
+
+/* ---------- Envelope photo art (SVG). Handwriting is small on purpose, so zoom has work to do. ---------- */
+const HAND = "Segoe Print, Bradley Hand, Chalkboard SE, Comic Sans MS, cursive";
+const MONO = "Menlo, Consolas, monospace";
+function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+function photoSVG(pi) {
+  const p = PHOTOS[pi], e = ENVS[p.e], d = DAYS[e.day];
+  let s = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1200 900">`;
+  s += `<rect width="1200" height="900" fill="${d.mat}"/>`;
+  if (e.day === 2) for (let x = 60; x < 1200; x += 60) s += `<path d="M${x} 0V900M0 ${x}H1200" stroke="#ffffff" stroke-opacity="0.08"/>`;
+  s += `<g transform="rotate(${e.rot} 600 450)">`;
+  s += `<rect x="162" y="186" width="900" height="560" rx="10" fill="#000" opacity="0.28"/>`;
+  s += `<rect x="150" y="170" width="900" height="560" rx="10" fill="${e.paper}"/>`;
+  if (e.kind === "label" && e.paper === "#F2E7A8") s += `<rect x="150" y="170" width="900" height="560" rx="10" fill="url(#bub)" opacity="0.35"/>`;
+  if (p.k === 0) {
+    if (e.sender && e.kind === "hand") {
+      s += `<g font-family="${HAND}" font-size="28" fill="${e.ink}">`;
+      s += `<text x="196" y="240">${esc(e.sender)}</text><text x="196" y="276">PO Box 00</text><text x="196" y="312">Sampleton, ST 00000</text></g>`;
+    } else if (e.sender) {
+      s += `<rect x="186" y="204" width="400" height="128" fill="#fff" stroke="#bbb"/>`;
+      s += `<g font-family="${MONO}" font-size="21" fill="#222"><text x="204" y="240">FROM: ${esc(e.sender.toUpperCase())}</text><text x="204" y="272">00 SAMPLE PARK RD</text><text x="204" y="304">SAMPLETON ST 00000</text></g>`;
+    } else {
+      s += `<path d="M200 250c40-14 70 10 110-4s60 6 90-6" stroke="${e.ink}" stroke-width="5" fill="none" opacity="0.35"/>`;
+      s += `<ellipse cx="300" cy="270" rx="120" ry="44" fill="#6b5a40" opacity="0.18"/>`;
+    }
+    s += `<g font-family="${HAND}" font-size="40" fill="${e.ink}"><text x="440" y="470">Card Buyer</text><text x="440" y="526">1 Example Way</text><text x="440" y="582">Anytown, ST 00000</text></g>`;
+    s += `<rect x="930" y="196" width="94" height="114" fill="#fff"/><rect x="938" y="204" width="78" height="98" fill="#3E6E9E"/><circle cx="977" cy="246" r="22" fill="#F0C75E"/><path d="M944 296l24-30 18 18 16-22 14 34z" fill="#2B4E73"/>`;
+    s += `<g stroke="#2a2a2a" fill="none" opacity="0.6" stroke-width="3"><circle cx="880" cy="262" r="56"/><path d="M944 236c30-10 60 10 90 0M944 262c30-10 60 10 90 0M944 288c30-10 60 10 90 0"/></g>`;
+    s += `<g font-family="${MONO}" font-size="15" fill="#2a2a2a" opacity="0.7" text-anchor="middle"><text x="880" y="252">SAMPLE</text><text x="880" y="276">${d.mark}</text></g>`;
+  } else {
+    s += `<path d="M150 170L600 470L1050 170" stroke="#000" stroke-opacity="0.18" stroke-width="4" fill="none"/><path d="M150 730L520 430M1050 730L680 430" stroke="#000" stroke-opacity="0.12" stroke-width="3"/>`;
+    s += `<rect x="520" y="440" width="160" height="40" fill="#E8E2C8" opacity="0.8" transform="rotate(-6 600 460)"/>`;
+    s += `<g transform="rotate(-4 380 560)"><rect x="250" y="480" width="300" height="210" fill="#FBE98A"/>`;
+    s += `<g font-family="${HAND}" font-size="26" fill="${e.ink}"><text x="270" y="530">Thanks for</text><text x="270" y="566">your order!</text><text x="270" y="612">${cardsN(e)}, sleeved</text><text x="300" y="660">– ${esc(e.sender || "")}</text></g></g>`;
+  }
+  s += `</g><defs><pattern id="bub" width="24" height="24" patternUnits="userSpaceOnUse"><circle cx="12" cy="12" r="7" fill="#fff"/></pattern></defs></svg>`;
+  return s;
+}
+const URL_CACHE = {};
+function photoURL(pi) { return URL_CACHE[pi] || (URL_CACHE[pi] = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(photoSVG(pi))); }
+
+/* ---------- Icons ---------- */
+const I = {
+  prev: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l-8 8 8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  next: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 4l8 8-8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  first: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 12a8 8 0 1 1-2.6-5.9M20 4v5h-5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  zoom: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5L21 21M10.5 7.5v6M7.5 10.5h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  unzoom: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M15.5 15.5L21 21M7.5 10.5h6" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/></svg>',
+  loupe: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="10" r="7" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M12 17v5" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="10" r="2.5" fill="currentColor"/></svg>',
+  unknown: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="none" stroke="currentColor" stroke-width="2.2"/><path d="M9.2 9.2a2.9 2.9 0 1 1 3.8 2.8c-.7.3-1 .8-1 1.6v.6" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="12" cy="17.6" r="1.3" fill="currentColor"/></svg>',
+  broken: '<svg viewBox="0 0 24 24" width="40" height="40" aria-hidden="true"><path d="M3 5h18v14H3zM3 15l5-5 4 4 3-3 6 6M14 5l-3 6 3 2-2 6" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+  back: '<svg viewBox="0 0 24 24" width="22" height="22" aria-hidden="true"><path d="M15 4l-8 8 8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+};
+
+/* ---------- Shared pieces (one home each) ---------- */
+function env(pi) { return ENVS[PHOTOS[pi].e]; }
+function senderHTML(e, cls) {
+  return e.sender ? `<span class="${cls}">${esc(e.sender)}</span>`
+    : `<span class="${cls} unknown-name">${I.unknown}<span>Sender unknown</span></span>`;
+}
+function cardCount(e) { return e.cards.reduce((n, c) => n + c[1], 0); }
+function cardsN(e) { const n = cardCount(e); return n === 1 ? "1 card" : `${n} cards`; }
+function cardSummary(e) { return e.cards.map(c => c[1] > 1 ? `${c[0]} ×${c[1]}` : c[0]).join(", "); }
+function photoOfEnv(pi) { const p = PHOTOS[pi]; return env(pi).photos > 1 ? `Photo ${p.k + 1} of ${env(pi).photos}` : "One photo"; }
+function senderPlain(e) { return e.sender || "sender unknown"; }
+function cardsList(e) { return `<ul class="list">${e.cards.map(c => `<li><span>${esc(c[0])}</span><span class="qty">×${c[1]}</span></li>`).join("")}</ul>`; }
+function cardsSheet(pi) {
+  const e = env(pi);
+  return `<div class="scrim" data-act="close"></div>
+  <div class="sheet" role="dialog" aria-label="Cards in this envelope">
+    <div class="sheet-bar"><button class="btn-text" data-act="close">Close</button><span class="t-head">${cardsN(e)}</span><span class="spacer"></span></div>
+    <div class="sheet-sub t-foot muted">${e.sender ? esc(e.sender) : "Sender unknown"}, ${DAYS[e.day].short}</div>
+    ${cardsList(e)}
+  </div>`;
+}
+/* The photo itself, or its own failed state. `z` is the zoom of Lightbox; the dial passes 1. */
+function photoBox(pi, cs, opts) {
+  const e = env(pi);
+  if (G.s === "photofail" && pi === FAIL_I && !cs.retried) {
+    return `<div class="photo-box" data-i="${pi}"><div class="photo-fail" role="status">${I.broken}<span class="t-sub">This photo did not load.</span><button class="btn-fill" data-act="retry-photo">Try again</button></div></div>`;
+  }
+  if (cs.waitPhoto) {
+    return `<div class="photo-box" data-i="${pi}"><div class="photo-wait" role="status" aria-busy="true"><span class="t-sub">Loading this photo</span></div></div>`;
+  }
+  const z = opts && opts.z || 1;
+  const tf = z > 1 ? `style="transform:scale(${z});transform-origin:${cs.ox * 100}% ${cs.oy * 100}%"` : "";
+  return `<div class="photo-box${opts && opts.cls ? " " + opts.cls : ""}" data-i="${pi}" data-gesture="${opts && opts.g || ""}">
+    <img src="${photoURL(pi)}" alt="Photo of the envelope from ${esc(senderPlain(e))}, ${DAYS[e.day].short}, ${photoOfEnv(pi).toLowerCase()}" ${tf}>
+    ${opts && opts.extra || ""}</div>`;
+}
+function stateBlock(c, ctx, onStage) {
+  const s = G.s;
+  if (s === "loading") {
+    return `<div class="state-block" role="status" aria-busy="true"><span class="vh">Loading photos</span>
+      <div class="skel" style="width:100%;aspect-ratio:4/3"></div><div class="skel" style="width:60%;height:var(--lh-t3)"></div><div class="skel" style="width:85%;height:var(--lh-sub)"></div></div>`;
+  }
+  if (s === "failed") {
+    return `<div class="state-block" role="alert"><p class="t-t3">Could not read your envelope photos.</p>
+      <p class="t-sub muted">Check the connection, then try again.</p>
+      <button class="btn-fill" data-act="retry">Try again</button>
+      <details class="t-foot"><summary>What the server said</summary><span>503 Service Unavailable (sample)</span></details></div>`;
+  }
+  if (s === "empty") {
+    return `<div class="state-block"><p class="t-t3">Each envelope you photograph shows here, with its sender.</p>
+      <button class="btn-fill" data-act="add">Photograph an envelope</button>
+      <span class="t-foot press-note" data-note="add" aria-live="polite">${G.addPressed ? "Opens the camera. The camera is not drawn here." : ""}</span></div>`;
+  }
+  return null;
+}
+
+/* ---------- Concept renderers ---------- */
+const R = {};
+/* Previous and Next, one home for every concept. At the last photo, Next goes back to the newest. */
+function prevBtn(cs, cls) {
+  return cs.p === 0
+    ? `<button class="${cls}" data-act="prev" aria-disabled="true" aria-label="Previous photo. This is the newest photo." title="This is the newest photo" data-reason="This is the newest photo">${I.prev}</button>`
+    : `<button class="${cls}" data-act="prev" aria-label="Previous photo">${I.prev}</button>`;
+}
+function nextBtn(cs, cls) {
+  const last = cs.p === N - 1;
+  return `<button class="${cls}" data-act="next" aria-label="${last ? "Back to the newest photo" : "Next photo"}" title="${last ? "Last photo. Press to go back to the newest." : "Next photo"}">${last ? I.first : I.next}</button>`;
+}
+function countText(cs) { return cs.p === N - 1 ? `${N} of ${N}, the last` : `${cs.p + 1} of ${N}`; }
+function textBar(cs) {
+  const last = cs.p === N - 1;
+  return `<div class="toolbar">
+    <button class="btn-text" data-act="prev" ${cs.p === 0 ? 'aria-disabled="true" title="This is the newest photo" data-reason="This is the newest photo" style="opacity:.45"' : ""}>${I.prev}<span>Previous</span></button>
+    <span class="t-foot muted">${countText(cs)}</span>
+    <button class="btn-text" data-act="next">${last ? `<span>Newest</span>${I.first}` : `<span>Next</span>${I.next}`}</button></div>`;
+}
+function envThumbs(cs) {
+  const e = env(cs.p); if (e.photos < 2) return "";
+  const first = PHOTOS.findIndex(p => p.e === PHOTOS[cs.p].e);
+  let h = `<div class="thumbs" role="group" aria-label="Photos of this envelope">`;
+  for (let k = 0; k < e.photos; k++) {
+    const i = first + k;
+    h += `<button class="thumb" data-act="go" data-i="${i}" aria-current="${i === cs.p}" aria-label="Photo ${k + 1} of ${e.photos}"><img src="${photoURL(i)}" alt=""></button>`;
+  }
+  return h + `</div>`;
+}
+function blankPage(cls) { return `<div class="page ${cls || ""}"></div>`; }
+function hinge() { return `<div class="hinge" aria-hidden="true"><span>hinge</span></div>`; }
+
+R.lightbox = (ctx, cs) => {
+  const sb = stateBlock("lightbox", ctx);
+  if (sb) return ctx.pose === "open" ? `<div class="page">${sb}</div>${hinge()}${blankPage()}` : `<div class="page">${sb}</div>`;
+  const e = env(cs.p);
+  const zoomBtn = `<button class="btn-icon" data-act="zoom" aria-pressed="${cs.z > 1}" aria-label="${cs.z > 1 ? "Zoom out" : "Zoom in"}">${cs.z > 1 ? I.unzoom : I.zoom}</button>`;
+  const stage = `<div class="photo-fit lb-stage" data-new="swipe and zoom">${photoBox(cs.p, cs, { z: cs.z, g: "lb" })}</div>`;
+  if (ctx.pose === "open") {
+    return `<div class="page lb">
+      <div class="lb-top"><span></span>${zoomBtn}</div>${stage}</div>${hinge()}
+      <div class="page lb-side">
+        <div class="lb-side-scroll" data-keep-scroll="side">
+          <div class="lb-side-id" data-new="envelope page">
+            ${senderHTML(e, "t-large")}
+            <span class="t-t3 muted">${DAYS[e.day].long}</span>
+          </div>
+          ${envThumbs(cs)}
+          <h3 class="t-head section-title">${cardsN(e)} in this envelope</h3>
+          ${cardsList(e)}
+        </div>
+        ${textBar(cs)}
+      </div>`;
+  }
+  return `<div class="page lb">
+    <div class="lb-top"><span class="t-foot">${countText(cs)}</span>${zoomBtn}</div>
+    ${stage}
+    <div class="lb-dock">
+      <div class="lb-plate" data-new="identity plate">
+        ${prevBtn(cs, "btn-icon")}
+        <button class="lb-id" data-act="cards" aria-label="${esc(senderPlain(e))}, ${DAYS[e.day].short}. Show the ${cardsN(e)}">
+          ${senderHTML(e, "t-t3 one-line")}
+          <span class="lb-meta t-foot"><span>${DAYS[e.day].short}</span><span>${photoOfEnv(cs.p)}</span></span>
+          <span class="t-sub one-line lb-sum">${cardsN(e)}: ${esc(cardSummary(e))}</span>
+        </button>
+        ${nextBtn(cs, "btn-icon")}
+      </div>
+    </div>
+    ${cs.sheet ? cardsSheet(cs.p) : ""}
+  </div>`;
+};
+function logList(cs, mode) {
+  let first = true;
+  const rows = ei => {
+    const e = ENVS[ei], fi = PHOTOS.findIndex(p => p.e === ei);
+    const cur = PHOTOS[cs.p].e === ei;
+    const lab = first ? ` data-new="crop on the writing"` : ""; first = false;
+    return `<li><button class="log-row" data-act="go" data-i="${fi}" aria-current="${cur}"${lab}>
+      ${G.s === "photofail" && fi === FAIL_I && !cs.retried
+        ? `<span class="crop crop-fail t-foot">${I.broken}<span>This photo did not load. Open it to try again.</span></span>`
+        : `<span class="crop" style="background-image:url(&quot;${photoURL(fi)}&quot;)" role="img" aria-label="Return address on the envelope"></span>`}
+      <span class="log-row-text">
+        ${senderHTML(e, "t-head one-line")}
+        <span class="log-row-meta t-foot muted"><span>${cardsN(e)}</span>${e.photos > 1 ? `<span>${e.photos} photos</span>` : ""}</span>
+        <span class="t-sub muted one-line">${esc(cardSummary(e))}</span>
+      </span></button></li>`;
+  };
+  return `<div class="log-scroll ${mode}" data-keep-scroll="list" data-scroll-sel>
+    <h2 class="t-large log-title">Envelopes</h2>
+    ${DAYS.map((d, di) => `<section class="log-day"><h3 class="t-head log-dayhead">${d.long}</h3>
+      <ul class="log-rows">${ENVS.map((e, ei) => e.day === di ? rows(ei) : "").join("")}</ul></section>`).join("")}
+  </div>`;
+}
+function logDetail(cs, withBack) {
+  const e = env(cs.p), pk = PHOTOS[cs.p].k;
+  const first = PHOTOS.findIndex(p => p.e === PHOTOS[cs.p].e);
+  const dots = e.photos > 1 ? `<div class="dots" role="group" aria-label="Photos of this envelope">${Array.from({ length: e.photos }, (_, k) =>
+    `<button class="dot" data-act="go" data-i="${first + k}" aria-current="${k === pk}" aria-label="Photo ${k + 1} of ${e.photos}"><span></span></button>`).join("")}</div>` : "";
+  return `<div class="nav">
+      ${withBack ? `<button class="btn-text" data-act="back" aria-label="Back to envelopes">${I.back}<span class="back-label">Envelopes</span></button>` : "<span></span>"}
+      ${senderHTML(e, "t-head one-line nav-title")}
+      <button class="btn-icon" data-act="zoom" aria-pressed="${cs.z > 1}" aria-label="${cs.z > 1 ? "Zoom out" : "Zoom in"}">${cs.z > 1 ? I.unzoom : I.zoom}</button>
+    </div>
+    <div class="detail-scroll" data-keep-scroll="detail">
+      <div class="detail-photo" data-new="photo, then its cards">${photoBox(cs.p, cs, { z: cs.z, g: "lb" })}</div>
+      ${dots}
+      <div class="detail-id"><span class="t-t3">${DAYS[e.day].long}</span><span class="t-sub muted">${photoOfEnv(cs.p)}</span></div>
+      <h3 class="t-head section-title">${cardsN(e)} in this envelope</h3>
+      ${cardsList(e)}
+    </div>
+    ${textBar(cs)}`;
+}
+R.log = (ctx, cs) => {
+  const sb = stateBlock("log", ctx);
+  const title = `<div class="log-scroll" style="flex:none"><h2 class="t-large log-title">Envelopes</h2></div>`;
+  if (sb) return ctx.pose === "open" ? `<div class="page log">${title}${sb}</div>${hinge()}${blankPage("log")}` : `<div class="page log">${title}${sb}</div>`;
+  if (ctx.pose === "open") return `<div class="page log">${logList(cs, "side")}</div>${hinge()}<div class="page log-detail">${logDetail(cs, false)}</div>`;
+  return cs.open ? `<div class="page log-detail">${logDetail(cs, true)}</div>` : `<div class="page log">${logList(cs, "full")}</div>`;
+};
+/* The dial's geometry: one 64 pt slot per photo, a small gap between envelopes, a wide gap at each day. */
+const DIAL = (() => {
+  const slots = [], bands = [], days = [];
+  let x = 0, pe = -1, pd = -1;
+  PHOTOS.forEach((p, i) => {
+    const e = ENVS[p.e];
+    if (i > 0 && e.day !== pd) x += 28; else if (i > 0 && p.e !== pe) x += 10;
+    if (e.day !== pd) days.push({ d: e.day, x: i === 0 ? -14 : x - 14 });
+    if (p.e !== pe) bands.push({ e: p.e, x0: x, x1: x });
+    slots.push(x + 32); x += 64; bands[bands.length - 1].x1 = x;
+    pe = p.e; pd = e.day;
+  });
+  return { slots, bands, days };
+})();
+function nearestSlot(x) { let b = 0; DIAL.slots.forEach((s, i) => { if (Math.abs(s - x) < Math.abs(DIAL.slots[b] - x)) b = i; }); return b; }
+function dialStrip(cs) {
+  const cur = PHOTOS[cs.p].e, e = env(cs.p);
+  let t = "";
+  DIAL.bands.forEach((b, bi) => {
+    const be = ENVS[b.e];
+    t += `<div class="band${bi % 2 ? " alt" : ""}${b.e === cur ? " cur" : ""}" style="left:${b.x0}px;width:${b.x1 - b.x0}px"><span class="band-label t-cap2 one-line${be.sender ? "" : " unknown"}">${be.sender ? esc(be.sender) : "Unknown"}</span></div>`;
+  });
+  DIAL.days.forEach(d => { t += `<div class="daymark" style="left:${d.x}px"><span class="t-cap2">${DAYS[d.d].dial}</span></div>`; });
+  DIAL.slots.forEach((s, i) => {
+    const pe = env(i);
+    t += `<button class="notch${i === cs.p ? " cur" : ""}" data-act="go" data-i="${i}" tabindex="-1" style="left:${s - 22}px" aria-label="Photo ${i + 1}: ${esc(senderPlain(pe))}, ${DAYS[pe.day].short}"><span class="tick"></span></button>`;
+  });
+  return `<div class="dial-row">
+    ${prevBtn(cs, "btn-icon")}
+    <div class="dial" data-gesture="dial" data-new="sorting dial" role="slider" tabindex="0" aria-label="Envelope photos" aria-valuemin="1" aria-valuemax="${N}" aria-valuenow="${cs.p + 1}" aria-valuetext="${esc(senderPlain(e))}, ${DAYS[e.day].short}, ${countText(cs)}">
+      <div class="dial-track" style="transform:translateX(${-DIAL.slots[cs.p]}px)">${t}</div>
+      <div class="needle" aria-hidden="true"></div>
+    </div>
+    ${nextBtn(cs, "btn-icon")}
+  </div>`;
+}
+function dialIndexInner(pi, big) {
+  const e = env(pi);
+  const head = `${senderHTML(e, big ? "t-large" : "t-t1 one-line")}
+    <div class="meta-row t-foot"><span>${DAYS[e.day].short}</span><span>${photoOfEnv(pi)}</span><span>${countText({ p: pi })}</span></div>`;
+  return big ? `${head}<h3 class="t-head section-title">${cardsN(e)} in this envelope</h3>${cardsList(e)}`
+    : `${head}<button class="cards-link t-sub one-line" data-act="cards">${cardsN(e)}: ${esc(cardSummary(e))}</button>`;
+}
+function dialStage(cs) {
+  const lp = `<div class="loupe" aria-hidden="true" ${cs.lp ? "" : "hidden"}></div>`;
+  return `<div class="photo-fit dial-stage" data-new="hold for loupe">
+    ${photoBox(cs.p, cs, { g: "loupe", extra: lp })}
+    <button class="btn-icon loupe-btn" data-act="loupe" aria-pressed="${cs.loupe}" aria-label="${cs.loupe ? "Put the loupe away" : "Loupe: drag over the photo to read it"}">${I.loupe}</button>
+  </div>`;
+}
+R.dial = (ctx, cs) => {
+  const sb = stateBlock("dial", ctx);
+  if (sb) return ctx.pose === "open" ? `<div class="page dial-page">${sb}</div>${hinge()}${blankPage()}` : `<div class="page dial-page">${sb}</div>`;
+  if (ctx.pose === "open") {
+    return `<div class="page dial-page dial-stage">${dialStage(cs)}</div>${hinge()}
+      <div class="page dial-side">
+        <div class="dial-index" data-live-index="big" data-new="index card" data-keep-scroll="idx">${dialIndexInner(cs.p, true)}</div>
+        ${dialStrip(cs)}
+      </div>`;
+  }
+  return `<div class="page dial-page">
+    ${dialStage(cs)}
+    <div class="dial-dock">
+      <div class="dial-index" data-live-index="small" data-new="index tab">${dialIndexInner(cs.p, false)}</div>
+      ${dialStrip(cs)}
+    </div>
+    ${cs.sheet ? cardsSheet(cs.p) : ""}
+  </div>`;
+};
+/* CONCEPT-JS */
+
+/* ---------- Global state, hash, render ---------- */
+const CONCEPTS = ["lightbox", "log", "dial"];
+const G = { c: "all", s: "loaded", t: null, d: "all", labels: true, hidden: new Set(), addPressed: false };
+const CS = {};
+function freshCS(p) { return { p, sheet: false, z: 1, ox: 0.5, oy: 0.5, open: false, loupe: false, lp: null, retried: false, waitPhoto: false }; }
+CONCEPTS.forEach(c => CS[c] = freshCS(0));
+
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get("c") && (h.get("c") === "all" || CONCEPTS.includes(h.get("c")))) G.c = h.get("c");
+  if (h.get("s") && (h.get("s") in STATE_P || ["loading", "failed", "empty"].includes(h.get("s")))) G.s = h.get("s");
+  if (h.get("t") === "light" || h.get("t") === "dark") G.t = h.get("t");
+  if (["all", "folded", "open", "phone", "ax5"].includes(h.get("d"))) G.d = h.get("d");
+  if (h.get("labels") === "off") G.labels = false;
+  const p = G.s in STATE_P ? STATE_P[G.s] : 0;
+  const hp = parseInt(h.get("p"), 10);
+  CONCEPTS.forEach(c => { CS[c] = freshCS(Number.isInteger(hp) && hp >= 0 && hp < N ? hp : p); });
+  if (h.get("v") === "detail" || G.s === "pair") CS.log.open = true;
+  if (h.get("sheet") === "1") CONCEPTS.forEach(c => CS[c].sheet = true);
+  if (h.get("loupe") === "1") { CS.dial.loupe = true; CS.dial.lp = { x: 0.25, y: 0.3 }; }
+  if (h.get("zoom") === "1") CONCEPTS.forEach(c => { CS[c].z = 2.5; CS[c].ox = 0.25; CS[c].oy = 0.3; });
+}
+function writeHash() {
+  const h = new URLSearchParams();
+  h.set("c", G.c); h.set("s", G.s);
+  if (G.t) h.set("t", G.t);
+  if (G.d !== "all") h.set("d", G.d);
+  if (!G.labels) h.set("labels", "off");
+  history.replaceState(null, "", "#" + h.toString());
+}
+function applyChrome() {
+  if (G.t) document.documentElement.setAttribute("data-theme", G.t); else document.documentElement.removeAttribute("data-theme");
+  const dark = G.t ? G.t === "dark" : matchMedia("(prefers-color-scheme: dark)").matches;
+  document.querySelectorAll("[data-theme-pick]").forEach(b => b.setAttribute("aria-pressed", String((b.dataset.themePick === "dark") === dark)));
+  document.body.classList.toggle("labels", G.labels);
+  const lb = document.getElementById("ctl-labels");
+  lb.setAttribute("aria-pressed", String(G.labels)); lb.textContent = G.labels ? "Showing" : "Hidden";
+  document.getElementById("ctl-c").value = G.c;
+  document.getElementById("ctl-s").value = G.s;
+  document.getElementById("ctl-d").value = G.d;
+  document.querySelectorAll(".concept").forEach(sec => {
+    const c = sec.dataset.concept;
+    sec.hidden = G.hidden.has(c) || (G.c !== "all" && G.c !== c);
+  });
+  document.querySelectorAll(".dev").forEach(f => { f.hidden = G.d !== "all" && G.d !== f.dataset.pose; });
+  const r = document.getElementById("restore");
+  r.innerHTML = [...G.hidden].map(c => `<button class="chip hide-btn" data-show="${c}">Show ${NAMES[c]} again</button>`).join("");
+}
+const NAMES = { lightbox: "Lightbox", log: "Mail log", dial: "Sorting dial" };
+
+function render(c) {
+  const sec = document.querySelector(`.concept[data-concept="${c}"]`);
+  if (!sec || !R[c]) return;
+  sec.querySelectorAll("[data-frame]").forEach(fr => {
+    const keep = {};
+    fr.querySelectorAll("[data-keep-scroll]").forEach(el => keep[el.dataset.keepScroll] = el.scrollTop);
+    const ctx = { pose: fr.dataset.frame, ax5: fr.classList.contains("ax5") };
+    fr.innerHTML = R[c](ctx, CS[c]);
+    fr.querySelectorAll("[data-keep-scroll]").forEach(el => { if (el.dataset.keepScroll in keep) el.scrollTop = keep[el.dataset.keepScroll]; });
+  });
+  if (c === "dial") placeLoupes();
+  sec.querySelectorAll("[data-scroll-sel]").forEach(el => {
+    const sel = el.querySelector('[aria-current="true"]');
+    if (sel && (sel.offsetTop < el.scrollTop || sel.offsetTop + sel.offsetHeight > el.scrollTop + el.clientHeight)) el.scrollTop = sel.offsetTop - 60;
+  });
+}
+function renderAll() { applyChrome(); CONCEPTS.forEach(render); fitFrames(); writeHash(); }
+
+/* Scale the fixed-size frames down on a narrow window, so the page never scrolls sideways. */
+function fitFrames() {
+  document.querySelectorAll(".fit").forEach(w => {
+    const scr = w.querySelector(".screen");
+    if (scr.classList.contains("phone")) { scr.style.transform = ""; w.style.height = ""; w.dataset.scale = 1; return; }
+    const fullW = scr.offsetWidth, fullH = scr.offsetHeight;
+    const avail = w.parentElement.parentElement.clientWidth;
+    const k = Math.min(1, avail / fullW);
+    scr.style.transform = k < 1 ? `scale(${k})` : "";
+    w.style.height = (fullH * k) + "px"; w.style.width = (fullW * k) + "px";
+    w.dataset.scale = k;
+  });
+}
+function scaleOf(el) { const w = el.closest(".fit"); return w ? parseFloat(w.dataset.scale || "1") : 1; }
+
+/* ---------- Acts ---------- */
+function go(c, i) {
+  const cs = CS[c];
+  cs.p = Math.max(0, Math.min(N - 1, i)); cs.sheet = false; cs.z = 1; cs.ox = cs.oy = 0.5; if (!cs.loupe) cs.lp = null;
+  render(c);
+}
+function act(c, a, el) {
+  const cs = CS[c];
+  switch (a) {
+    case "prev": if (cs.p > 0) go(c, cs.p - 1); break;
+    case "next": if (cs.p < N - 1) go(c, cs.p + 1); else go(c, 0); break;
+    case "go": go(c, parseInt(el.dataset.i, 10)); if (c === "log") { CS.log.open = true; render("log"); } break;
+    case "cards": cs.sheet = true; render(c); break;
+    case "close": cs.sheet = false; render(c); break;
+    case "zoom": if (cs.z > 1) { cs.z = 1; } else { cs.z = 2.5; cs.ox = 0.25; cs.oy = 0.3; } render(c); break;
+    case "loupe": cs.loupe = !cs.loupe; cs.lp = cs.loupe ? { x: 0.25, y: 0.3 } : null; render(c); break;
+    case "back": cs.open = false; render(c); break;
+    case "retry": G.s = "loaded"; CONCEPTS.forEach(k => CS[k] = freshCS(0)); renderAll(); break;
+    case "retry-photo":
+      cs.waitPhoto = true; render(c);
+      setTimeout(() => { cs.waitPhoto = false; cs.retried = true; render(c); }, 700); break;
+    case "add": G.addPressed = true; CONCEPTS.forEach(render); break;
+  }
+}
+document.addEventListener("click", ev => {
+  const show = ev.target.closest("[data-show]");
+  if (show) { G.hidden.delete(show.dataset.show); renderAll(); return; }
+  const hide = ev.target.closest("[data-hide]");
+  if (hide) { G.hidden.add(hide.dataset.hide); renderAll(); return; }
+  const tp = ev.target.closest("[data-theme-pick]");
+  if (tp) { G.t = tp.dataset.themePick; renderAll(); return; }
+  if (ev.target.closest("#ctl-labels")) { G.labels = !G.labels; renderAll(); return; }
+  const b = ev.target.closest("[data-act]");
+  if (!b || suppressClick) return;
+  const sec = b.closest(".concept");
+  if (sec) act(sec.dataset.concept, b.dataset.act, b);
+});
+document.getElementById("ctl-c").addEventListener("change", e => { G.c = e.target.value; renderAll(); });
+document.getElementById("ctl-d").addEventListener("change", e => { G.d = e.target.value; renderAll(); });
+document.getElementById("ctl-s").addEventListener("change", e => {
+  G.s = e.target.value; G.addPressed = false;
+  const p = G.s in STATE_P ? STATE_P[G.s] : 0;
+  CONCEPTS.forEach(c => CS[c] = freshCS(p));
+  if (G.s === "pair") CS.log.open = true;
+  renderAll();
+});
+document.addEventListener("keydown", ev => {
+  if (ev.key !== "ArrowLeft" && ev.key !== "ArrowRight") return;
+  const sec = document.activeElement && document.activeElement.closest(".concept");
+  if (!sec || ["SELECT", "INPUT"].includes(document.activeElement.tagName)) return;
+  ev.preventDefault();
+  act(sec.dataset.concept, ev.key === "ArrowLeft" ? "prev" : "next");
+});
+
+/* ---------- Gestures: swipe and pan (Lightbox), drag (dial), hold for loupe (dial) ---------- */
+let suppressClick = false;
+let drag = null;
+document.addEventListener("pointerdown", ev => {
+  const g = ev.target.closest("[data-gesture]");
+  if (!g || !g.dataset.gesture) return;
+  const sec = g.closest(".concept"); if (!sec) return;
+  drag = { g, kind: g.dataset.gesture, c: sec.dataset.concept, x0: ev.clientX, y0: ev.clientY, moved: false, k: scaleOf(g), t0: Date.now(), timer: null, id: ev.pointerId };
+  if (GESTURE[drag.kind] && GESTURE[drag.kind].down) GESTURE[drag.kind].down(drag, ev);
+});
+document.addEventListener("pointermove", ev => {
+  if (!drag || ev.pointerId !== drag.id) return;
+  const dx = (ev.clientX - drag.x0) / drag.k, dy = (ev.clientY - drag.y0) / drag.k;
+  if (!drag.moved && Math.hypot(dx, dy) > 6) { drag.moved = true; try { drag.g.setPointerCapture(drag.id); } catch (e) {} }
+  if (GESTURE[drag.kind] && GESTURE[drag.kind].move) GESTURE[drag.kind].move(drag, ev, dx, dy);
+});
+function endDrag(ev) {
+  if (!drag || ev.pointerId !== drag.id) return;
+  const dx = (ev.clientX - drag.x0) / drag.k, dy = (ev.clientY - drag.y0) / drag.k;
+  clearTimeout(drag.timer);
+  const d = drag; drag = null;
+  if (d.moved) { suppressClick = true; setTimeout(() => suppressClick = false, 0); }
+  if (GESTURE[d.kind] && GESTURE[d.kind].up) GESTURE[d.kind].up(d, ev, dx, dy);
+}
+document.addEventListener("pointerup", endDrag);
+document.addEventListener("pointercancel", endDrag);
+const GESTURE = {};
+/* Photo stage: swipe to step at normal size, drag to pan when zoomed, double-tap to zoom at the point. */
+let lastTap = null;
+function clamp01(v) { return Math.max(0, Math.min(1, v)); }
+GESTURE.lb = {
+  down(d) { d.w = d.g.offsetWidth; d.h = d.g.offsetHeight; d.ox = CS[d.c].ox; d.oy = CS[d.c].oy; d.img = d.g.querySelector("img"); },
+  move(d, ev, dx, dy) {
+    if (!d.moved || !d.img) return;
+    const cs = CS[d.c];
+    d.g.classList.add("panning");
+    if (cs.z > 1) {
+      cs.ox = clamp01(d.ox - dx / (d.w * (cs.z - 1)));
+      cs.oy = clamp01(d.oy - dy / (d.h * (cs.z - 1)));
+      d.img.style.transformOrigin = `${cs.ox * 100}% ${cs.oy * 100}%`;
+    } else {
+      d.img.style.transform = `translateX(${dx}px)`;
+    }
+  },
+  up(d, ev, dx) {
+    const cs = CS[d.c];
+    if (!d.moved) {
+      const now = Date.now();
+      if (lastTap && now - lastTap.t < 320 && lastTap.c === d.c) {
+        lastTap = null;
+        if (cs.z > 1) cs.z = 1;
+        else { const r = d.g.getBoundingClientRect(); cs.ox = clamp01((ev.clientX - r.left) / r.width); cs.oy = clamp01((ev.clientY - r.top) / r.height); cs.z = 2.5; }
+        render(d.c);
+      } else lastTap = { t: now, c: d.c };
+      return;
+    }
+    if (cs.z > 1) { render(d.c); return; }
+    if (dx < -50) act(d.c, "next"); else if (dx > 50) act(d.c, "prev"); else render(d.c);
+  },
+};
+/* Dial: drag scrubs; the index above the needle follows live; release snaps to the nearest notch. */
+GESTURE.dial = {
+  down(d) { d.base = DIAL.slots[CS[d.c].p]; d.track = d.g.querySelector(".dial-track"); d.live = CS[d.c].p; },
+  move(d, ev, dx) {
+    if (!d.moved) return;
+    const x = Math.max(DIAL.slots[0], Math.min(DIAL.slots[N - 1], d.base - dx));
+    d.x = x; d.track.style.transition = "none"; d.track.style.transform = `translateX(${-x}px)`;
+    const i = nearestSlot(x);
+    if (i !== d.live) {
+      d.live = i;
+      d.g.closest(".concept").querySelectorAll("[data-live-index]").forEach(el => { el.innerHTML = dialIndexInner(i, el.dataset.liveIndex === "big"); });
+    }
+  },
+  up(d) { if (d.moved) go(d.c, nearestSlot(d.x != null ? d.x : d.base)); },
+};
+/* Photo under the dial: press and hold shows the loupe; with the loupe on, a press places it. A quick swipe steps. */
+function fracOf(box, ev) { const r = box.getBoundingClientRect(); return { x: clamp01((ev.clientX - r.left) / r.width), y: clamp01((ev.clientY - r.top) / r.height) }; }
+GESTURE.loupe = {
+  down(d, ev) {
+    const cs = CS[d.c];
+    d.loupeEl = d.g.querySelector(".loupe");
+    if (cs.loupe) { cs.lp = fracOf(d.g, ev); placeLoupe(d.loupeEl, cs.lp); d.held = true; return; }
+    d.timer = setTimeout(() => { d.held = true; cs.lp = fracOf(d.g, ev); placeLoupe(d.loupeEl, cs.lp); }, 350);
+  },
+  move(d, ev) {
+    const cs = CS[d.c];
+    if (d.held) { cs.lp = fracOf(d.g, ev); placeLoupe(d.loupeEl, cs.lp); }
+    else if (d.moved) clearTimeout(d.timer);
+  },
+  up(d, ev, dx) {
+    const cs = CS[d.c];
+    if (d.held && !cs.loupe) { cs.lp = null; render(d.c); return; }
+    if (d.held) { render(d.c); return; }
+    if (d.moved && dx < -50) act(d.c, "next"); else if (d.moved && dx > 50) act(d.c, "prev");
+  },
+};
+/* GESTURE-JS */
+
+/* The loupe shows the photo at 3x under the finger, lifted above it so the finger does not hide it.
+   It lives inside its page, so it never crosses the hinge. */
+function placeLoupe(el, lp) {
+  if (!el) return;
+  if (!lp) { el.hidden = true; return; }
+  const box = el.parentElement, W = box.offsetWidth, H = box.offsetHeight, L = 168, M = 3;
+  const img = box.querySelector("img"); if (!img) { el.hidden = true; return; }
+  el.hidden = false;
+  let top = lp.y * H - L / 2 - 96;
+  if (top < -L / 3) top = lp.y * H + 40;
+  el.style.left = (lp.x * W - L / 2) + "px";
+  el.style.top = top + "px";
+  el.style.backgroundImage = `url("${img.getAttribute("src")}")`;
+  el.style.backgroundSize = `${W * M}px ${H * M}px`;
+  el.style.backgroundPosition = `${-(lp.x * W * M - L / 2)}px ${-(lp.y * H * M - L / 2)}px`;
+}
+function placeLoupes() { document.querySelectorAll('.concept[data-concept="dial"] .loupe').forEach(el => placeLoupe(el, CS.dial.lp)); }
+
+window.addEventListener("resize", fitFrames);
+window.addEventListener("hashchange", () => { readHash(); renderAll(); });
+matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyChrome);
+readHash();
+renderAll();
+</script>
+</body>
+</html>
