@@ -2,9 +2,9 @@ import ManifestKit
 import SwiftUI
 
 // Card in Hand on the open iPhone Duo (duo-card-in-hand, new-envelope-ends-an-envelope; mockup poses 1, 2 and 4 of
-// docs/design/duo-card-in-hand on origin/design/duo-round2). The query and the held cards sit on the left page, the
-// envelope the card came from on the right. Typing and holding save nothing: a card checks in by the line's own tap, or
-// by Post for held cards (orphaned-mail-never-decides).
+// docs/design/duo-card-in-hand on origin/archive/design/duo-round2). The query and the held cards sit on the left page,
+// the envelope the card came from on the right. Typing and holding save nothing: a card checks in by the line's own
+// tap, or by Post for held cards (orphaned-mail-never-decides).
 //
 // Default, not owner: the mockup makes Card in Hand the Packages tab itself. Here Packages keeps its one-page layout and a
 // `hand-open` control opens this screen over both pages; `hand-close` goes back. The owner is being asked.
