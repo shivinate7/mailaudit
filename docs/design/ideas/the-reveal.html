@@ -1,0 +1,445 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>The Reveal</title>
+<style>
+/* Tokens: own neutral choices for an idea mockup. Type sizes are the iOS Dynamic Type
+   styles at the default (Large) size, read from the HIG typography page on 2026-11-21. */
+:root{
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#767369;
+  --line:#dcd9d1; --accent:#a8402a; --accent-faint:#f8ece7; --ok:#256b41; --ok-bg:#e3f0e7; --ok-ink:#17462a;
+  --warn:#8a5200; --warn-bg:#f8ecd6; --tag-new:#2c5aa8; --tag-today:#5c5a55;
+  --foil:linear-gradient(115deg,rgba(255,214,140,.55),rgba(170,220,255,.5) 40%,rgba(230,180,255,.5) 70%,rgba(255,214,140,.55));
+  --chrome:#ffffff; --chrome-line:#d6d3cb; --scrim:rgba(20,18,15,.32); --hinge:#2a2926; --bezel:#151412; --toast:#2b2a27; --toast-ink:#f5f4f0;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+    --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+    --warn:#e6aa52; --warn-bg:#3b2c13; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+    --foil:linear-gradient(115deg,rgba(255,200,110,.22),rgba(120,190,255,.22) 40%,rgba(210,150,255,.22) 70%,rgba(255,200,110,.22));
+    --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+  --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+  --warn:#e6aa52; --warn-bg:#3b2c13; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+  --foil:linear-gradient(115deg,rgba(255,200,110,.22),rgba(120,190,255,.22) 40%,rgba(210,150,255,.22) 70%,rgba(255,200,110,.22));
+  --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27; --toast:#e9e6df; --toast-ink:#1d1c1a;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+a{color:inherit}
+:focus-visible{outline:3px solid var(--tag-new);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+
+/* Page chrome */
+.sample{background:var(--warn-bg);color:var(--warn);font-size:13px;line-height:18px;padding:8px 12px;border-radius:10px;margin:0 0 12px;max-width:1100px}
+header.page{max-width:1100px;margin:0 0 8px}
+header.page h1{font-size:28px;line-height:34px;margin:0;font-weight:700;letter-spacing:-.01em}
+header.page .meta{font-size:15px;line-height:20px;color:var(--ink2);margin:4px 0 0}
+header.page .meta b{color:var(--accent);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:12px 0 0;max-width:1100px}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg a,.seg button{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);
+  font-size:15px;text-decoration:none;color:var(--ink)}
+.seg a[aria-current="true"],.seg button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.ctl-label{font-size:13px;color:var(--ink3);min-width:44px}
+.note{font-size:13px;line-height:18px;color:var(--ink3);max-width:1100px;margin:16px 0 0}
+.caption{font-size:15px;line-height:20px;color:var(--ink2);max-width:760px;margin:14px 0 0;min-height:40px}
+.stage{display:flex;gap:32px;align-items:flex-start;overflow-x:auto;padding:8px 2px 12px;margin-top:8px}
+
+/* Phone frames: illustrative size; the device list writes no Duo size */
+.phone{flex:none;background:var(--bezel);border-radius:46px;padding:10px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.phone[hidden]{display:none}
+.screen{position:relative;width:375px;height:780px;border-radius:36px;overflow:hidden;background:var(--screen);display:flex;flex-direction:column;
+  --sat:calc(env(safe-area-inset-top,0px) + 50px); --sab:calc(env(safe-area-inset-bottom,0px) + 30px)}
+.duo{display:flex}
+.duo .screen{width:360px;border-radius:30px}
+.duo .screen.left{border-top-right-radius:6px;border-bottom-right-radius:6px}
+.duo .screen.right{border-top-left-radius:6px;border-bottom-left-radius:6px}
+.hinge{width:14px;background:var(--hinge);margin:30px 0;border-radius:3px}
+.status{flex:none;height:var(--sat);padding:16px 30px 0;display:flex;justify-content:space-between;font-size:15px;font-weight:600}
+.status i{display:block;width:22px;height:11px;border-radius:3px;border:1.5px solid currentColor;opacity:.85;margin-top:5px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:110px;height:32px;border-radius:16px;background:#000}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.8;z-index:30}
+
+.nav{flex:none;padding:0 16px 6px}
+.nav-top{height:44px;display:flex;justify-content:flex-end}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;margin:0}
+.navbtn{min-width:44px;min-height:44px;font-size:17px;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.navbtn .pill{min-width:22px;height:22px;padding:0 6px;border-radius:11px;background:var(--accent);color:var(--surface);font-size:13px;line-height:22px;font-weight:600;text-align:center}
+.scroll{flex:1;overflow:hidden;padding:4px 16px calc(var(--sab) + 64px)}
+
+/* Package groups */
+.grp-h{display:flex;align-items:center;justify-content:space-between;min-height:44px;margin:0 0 2px 4px}
+.grp-h .sect{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:0}
+.grp-h .allin{min-height:44px;font-size:15px;color:var(--accent);padding:0 4px}
+.grp-h .allin[disabled]{color:var(--ink3);cursor:default}
+.list{background:var(--surface);border-radius:14px;margin:0 0 10px}
+.list > :first-child,.list > :first-child .crow{border-top-left-radius:14px;border-top-right-radius:14px}
+.list > :last-child,.list > :last-child .crow{border-bottom-left-radius:14px;border-bottom-right-radius:14px}
+.flipper{border-radius:inherit}
+
+/* The flip: a fixed box. Only transform and opacity change, so no neighbour moves. */
+.crow{display:block;width:100%;height:64px;position:relative;perspective:700px;border-top:.5px solid var(--line)}
+.list > .crow:first-child,.list > .lbl:first-child .crow,.list > .lbl:first-child{border-top:0}
+.flipper{position:absolute;inset:0;transform-style:preserve-3d;transition:transform 250ms cubic-bezier(.3,.7,.25,1)}
+.face{position:absolute;inset:0;display:flex;align-items:center;gap:10px;padding:0 10px 0 14px;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:inherit}
+.back{transform:rotateX(180deg);background:var(--ok-bg);color:var(--ok-ink)}
+.crow.got .flipper{transform:rotateX(180deg)}
+.crow.frozen .flipper{transition:none;transform:rotateX(70deg)}
+.crow.still .flipper,.crow.still .face{transition:none!important}
+.face .main{flex:1;min-width:0}
+.face .t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.face .s{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.back .s{color:var(--ok-ink);opacity:.85}
+.face .circ{width:26px;height:26px;border-radius:13px;border:2px solid var(--ink3);flex:none;display:grid;place-items:center}
+.back .circ{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.foiltag{display:inline-block;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;background:var(--foil);color:var(--ink);margin-left:6px;vertical-align:2px}
+.badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;background:var(--warn-bg);color:var(--warn)}
+
+/* Reduced motion: the flip becomes a fade inside the same box */
+:root[data-motion="reduce"] .flipper{transition:none;transform:none!important}
+:root[data-motion="reduce"] .face{transition:opacity 200ms linear}
+:root[data-motion="reduce"] .back{transform:none;opacity:0}
+:root[data-motion="reduce"] .crow.got .back{opacity:1}
+:root[data-motion="reduce"] .crow.got .front{opacity:0}
+:root[data-motion="reduce"] .crow.frozen .back,:root[data-motion="reduce"] .crow.frozen .front{opacity:.5}
+@media (prefers-reduced-motion:reduce){
+  :root:not([data-motion="full"]) .flipper{transition:none;transform:none!important}
+  :root:not([data-motion="full"]) .face{transition:opacity 200ms linear}
+  :root:not([data-motion="full"]) .back{transform:none;opacity:0}
+  :root:not([data-motion="full"]) .crow.got .back{opacity:1}
+  :root:not([data-motion="full"]) .crow.got .front{opacity:0}
+  :root:not([data-motion="full"]) .crow.frozen .back,:root:not([data-motion="full"]) .crow.frozen .front{opacity:.5}
+  :root:not([data-motion="full"]) .tile.new{animation:none}
+}
+
+/* Tab bar */
+.tabbar{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) - 8px);height:58px;border-radius:29px;background:var(--chrome);border:.5px solid var(--chrome-line);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);display:grid;grid-template-columns:repeat(3,1fr);align-items:center;z-index:5}
+.tab{min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:13px;color:var(--ink2);gap:2px}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent)}
+
+/* Sheet and tray */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:10}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:96px;background:var(--screen);border-radius:24px 24px 0 0;z-index:11;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:6px auto 0}
+.sheet-bar{height:52px;display:grid;grid-template-columns:84px 1fr 84px;align-items:center;padding:0 8px;flex:none}
+.sheet-bar h3,.pane-bar h3{margin:0;text-align:center;font-size:17px;line-height:22px;font-weight:600}
+.sheet-bar .done{justify-self:end;font-weight:600}
+.sheet-bar .undo{justify-self:start}
+.navbtn[disabled]{color:var(--ink3);cursor:default}
+.tray{padding:4px 16px 24px;overflow:hidden;flex:1;position:relative}
+.lead{font-size:15px;line-height:20px;color:var(--ink2);margin:0 4px 12px}
+.lead b{color:var(--ink);font-weight:600}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:0 0 12px}
+.tile{position:relative;height:100px;border-radius:12px;background:var(--surface);border:.5px solid var(--line);padding:10px 12px;overflow:hidden}
+.tile.foil::before{content:"";position:absolute;inset:0;background:var(--foil);pointer-events:none}
+.tile > *{position:relative}
+.tile .n{font-size:17px;line-height:22px;font-weight:600}
+.tile .q{font-size:15px;line-height:20px;color:var(--ink2)}
+.tile .m{font-size:12px;line-height:16px;color:var(--ink2);position:absolute;left:12px;bottom:8px}
+.tile.new{animation:tilein .28s ease-out}
+@keyframes tilein{from{opacity:0;transform:scale(.96)}to{opacity:1;transform:none}}
+.tile.empty{background:none;border:1.5px dashed var(--line)}
+.postmark{position:absolute;right:8px;bottom:8px;border:2px solid var(--accent);color:var(--accent);border-radius:6px;padding:3px 7px;transform:rotate(-5deg);
+  font-size:11px;line-height:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;text-align:center;background:var(--surface)}
+.postmark::before{content:"";position:absolute;left:-30px;top:50%;width:26px;height:9px;margin-top:-5px;
+  background:repeating-linear-gradient(180deg,var(--accent) 0 1.5px,transparent 1.5px 4px);opacity:.7}
+.cellrow{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 6px 0 14px;background:var(--surface);border-radius:12px;margin:0 0 8px;width:100%}
+.cellrow .lab{font-size:17px}
+.cellrow .val{font-size:17px;color:var(--ink2);display:flex;align-items:center;gap:6px;min-height:44px;min-width:44px;justify-content:flex-end}
+.cellrow.act .lab{color:var(--accent)}
+.photo{height:124px;border-radius:12px;margin:0 0 8px;position:relative;overflow:hidden;background:linear-gradient(160deg,#8b6a4a,#5e4532)}
+.photo i{position:absolute;width:52px;height:72px;border-radius:5px;background:#f3eee4;box-shadow:0 2px 6px rgba(0,0,0,.35);border:3px solid #2b2a27}
+.photo i:nth-child(1){left:70px;top:30px;transform:rotate(-14deg)}
+.photo i:nth-child(2){left:110px;top:24px;transform:rotate(-3deg);background:linear-gradient(115deg,#ffe0a0,#bfe4ff 50%,#e9c6ff)}
+.photo i:nth-child(3){left:150px;top:28px;transform:rotate(8deg)}
+.photo i:nth-child(4){left:190px;top:36px;transform:rotate(17deg)}
+.photo span{position:absolute;left:10px;bottom:8px;font-size:12px;line-height:16px;color:#fff;background:rgba(0,0,0,.45);padding:2px 6px;border-radius:6px}
+.toast{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) + 8px);background:var(--toast);color:var(--toast-ink);border-radius:14px;padding:12px 14px;font-size:15px;line-height:20px;z-index:20;box-shadow:0 8px 20px rgba(0,0,0,.2)}
+
+/* Dashed labels */
+.lbl{position:relative;outline:1.5px dashed var(--tag-new);outline-offset:3px}
+.lbl[data-k="today"]{outline-color:var(--tag-today)}
+.lbl::after{content:attr(data-lbl);position:absolute;top:-11px;right:10px;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;
+  background:var(--tag-new);color:var(--surface);white-space:nowrap;z-index:4;pointer-events:none}
+.lbl[data-k="today"]::after{background:var(--tag-today)}
+span.lbl{display:inline-block}
+:root[data-labels="off"] .lbl{outline:none}
+:root[data-labels="off"] .lbl::after{display:none}
+.pane-bar{height:44px;display:grid;grid-template-columns:84px 1fr 84px;align-items:center;padding:0 8px;flex:none}
+</style>
+</head>
+<body>
+<p class="sample" role="note"><b>Sample.</b> Every seller, card, date and price on this page is invented. No figure is real.</p>
+<header class="page">
+  <h1>The Reveal</h1>
+  <p class="meta"><b>Idea mockup, not built.</b> Checking in a card turns it over like a pull from a pack, and the day's haul gathers in one tray.</p>
+  <nav class="controls" aria-label="Screen states">
+    <span class="ctl-label">State</span>
+    <div class="seg" id="states"></div>
+  </nav>
+  <div class="controls">
+    <span class="ctl-label">Theme</span>
+    <div class="seg" id="themes"></div>
+    <span class="ctl-label">Motion</span>
+    <div class="seg" id="motions"></div>
+    <span class="ctl-label">Labels</span>
+    <div class="seg"><button type="button" id="lblBtn" aria-pressed="true">Today / New</button></div>
+  </div>
+</header>
+
+<p class="caption" id="caption" aria-live="polite"></p>
+
+<div class="stage">
+  <div class="phone" data-device="iphone-duo-folded" id="folded">
+    <div class="screen" id="fscreen"></div>
+  </div>
+  <div class="phone duo" data-device="iphone-duo-unfolded" id="unfolded" hidden>
+    <div class="screen left" id="uleft"></div>
+    <div class="hinge" aria-hidden="true"></div>
+    <div class="screen right" id="uright"></div>
+  </div>
+</div>
+
+<p class="note">Frames: the folded pose is the iPhone frame; the unfolded pose is the two-screen fold. The device list writes no size for either pose, so both are drawn at an illustrative size. Type uses the iOS Dynamic Type styles at the default size; tap targets are at least 44 by 44 pt; Reduce Motion swaps the flip for a fade (Apple HIG Typography and Accessibility pages, read 2026-11-21). Motion "System" follows the reader's reduced-motion setting. Haptics and sound cannot be shown on a page; sound is off by default. Card faces are text: no artwork source is known.</p>
+
+<script>
+(function(){
+"use strict";
+var CARDS=[
+  {id:"lw",name:"Lantern Wyrm",qty:1,foil:true,set:"Emberfall · 041",cost:3.20,pkg:"A"},
+  {id:"ta",name:"Tidecaller Apprentice",qty:4,foil:false,set:"Saltmarch · 112",cost:1.80,pkg:"A"},
+  {id:"as",name:"Ashgrove Sentry",qty:2,foil:false,set:"Emberfall · 077",cost:1.70,pkg:"B"},
+  {id:"mt",name:"Mirelight Totem",qty:1,foil:false,set:"Saltmarch · 203",cost:2.75,pkg:"B"},
+  {id:"qh",name:"Quiet Harbor",qty:1,foil:false,set:"Saltmarch · 250",cost:1.95,pkg:"C"}
+];
+var PKG={A:{seller:"Seller A",lost:false},B:{seller:"Seller B",lost:false},C:{seller:"Seller C",lost:true,days:23}};
+var ORDER=["lw","ta","as","mt","qh"];
+var STATES=[
+  {k:"idle",n:"Mail arrives",cap:"The working list, unchanged. Tap any card row to check it in: its face turns over once, in its own box."},
+  {k:"midflip",n:"Mid-flip",cap:"Tidecaller Apprentice ×4 caught half-turned. Its box keeps its height, so the rows above and below do not move. With reduced motion, the two faces cross-fade instead."},
+  {k:"received",n:"Received",cap:"Two cards turned to received. A check-in is still one tap; only the look of the tick changed."},
+  {k:"bulk",n:"All in this package",cap:"\"All in this package\" for Seller B ticks both rows at once with no motion, then one soft haptic. The full reveal waits in the tray."},
+  {k:"tray",n:"Pulls tray",cap:"After the last tick, the tray opens: today's received cards in tick order. The day's spend stays folded shut until opened on purpose."},
+  {k:"photo",n:"Pull photo",cap:"\"Add photo of the pull\" attached the package photo the app already keeps. It sits below the grid, so nothing above it moves."},
+  {k:"found",n:"Found its way home",cap:"Seller C's package carried the lost-mail warning. Its card gets a one-time postmark. It is derived, not a new stamp, and it clears no claim stamp."},
+  {k:"undo",n:"Undo",cap:"Undo reverses the newest tick through the recent-checks log. The last tile leaves from the end of the grid, so no other tile slides; the card flips back in the list."},
+  {k:"orphan",n:"Orphaned reveal",cap:"An orphaned arrival reveals too, with no seller on its face."},
+  {k:"fold",n:"Two-screen fold",cap:"Unfolded: the list ticking on the left, the tray filling live on the right. Tap rows on the left to watch tiles append."}
+];
+var S={s:"idle",t:"auto",m:"system",labels:true,got:[],frozen:"",spend:false,photo:false,toast:"",orph:{o2:1},anim:""};
+
+function money(v){return "$"+v.toFixed(2)}
+function L(k,text,inner,cls,tag){tag=tag||"div";return "<"+tag+' class="lbl '+(cls||"")+'" data-k="'+k+'" data-lbl="'+(k==="today"?"Today: ":"New: ")+text+'">'+inner+"</"+tag+">"}
+function card(id){return CARDS.filter(function(c){return c.id===id})[0]}
+function has(id){return S.got.indexOf(id)>-1}
+
+function preset(k){
+  S.got=[];S.frozen="";S.spend=false;S.photo=false;S.toast="";S.orph={o2:1};S.anim="";
+  if(k==="midflip"){S.got=["lw"];S.frozen="ta"}
+  if(k==="received")S.got=["lw","ta"];
+  if(k==="bulk")S.got=["lw","ta","as","mt"];
+  if(k==="tray"||k==="photo"||k==="found")S.got=ORDER.slice();
+  if(k==="photo")S.photo=true;
+  if(k==="undo"){S.got=ORDER.slice(0,4);S.toast="Quiet Harbor is back to not received."}
+  if(k==="fold")S.got=["lw","ta","as"];
+}
+
+var ICON={
+  check:'<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7.5l2.6 2.6L11 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chev:'<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M4 2l4 4-4 4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  down:'<svg width="12" height="12" viewBox="0 0 12 12" aria-hidden="true"><path d="M2 4l4 4 4-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  undo:'<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><path d="M6 4L2.5 7.5 6 11M3 7.5h7.5a4.5 4.5 0 0 1 0 9H8" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  box:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  sum:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M5 12h14M5 19h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  q:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 10.5a2 2 0 1 1 2.5 1.9V14M12 16v.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
+};
+function status(){return '<div class="island" aria-hidden="true"></div><div class="status" aria-hidden="true"><span class="num">9:41</span><i></i></div>'}
+function tabbar(cur){
+  function t(n,ic){return '<div class="tab"'+(cur===n?' aria-current="page"':'')+'>'+ic+n+'</div>'}
+  return L("today","tab bar",t("Packages",ICON.box)+t("Tally",ICON.sum)+t("Orphaned",ICON.q),"tabbar","nav")+'<div class="homebar" aria-hidden="true"></div>';
+}
+
+function crow(c){
+  var got=has(c.id), p=PKG[c.pkg];
+  var cls="crow"+(got?" got":"")+(S.frozen===c.id?" frozen":"")+(S.anim==="still"?" still":"");
+  var foil=c.foil?'<span class="foiltag">Foil</span>':'';
+  var front='<div class="face front"><div class="main"><div class="t">'+c.name+' ×'+c.qty+foil+'</div><div class="s">'+p.seller+' · '+c.set+'</div></div><span class="circ"></span></div>';
+  var back='<div class="face back"><div class="main"><div class="t">'+c.name+' ×'+c.qty+foil+'</div><div class="s">Received 9:41 · '+p.seller+'</div></div><span class="circ">'+ICON.check+'</span></div>';
+  return '<button type="button" class="'+cls+'" data-act="tick" data-id="'+c.id+'" aria-pressed="'+got+'" aria-label="'+c.name+' times '+c.qty+', '+p.seller+(got?", received":", not received")+'"><div class="flipper">'+front+back+'</div></button>';
+}
+function groups(){
+  return ["A","B","C"].map(function(k){
+    var p=PKG[k], cs=CARDS.filter(function(c){return c.pkg===k}), all=cs.every(function(c){return has(c.id)});
+    var warn=p.lost&&!cs.some(function(c){return has(c.id)})?L("today","lost warning",'<span class="badge">May be lost</span>',"","span"):"";
+    var rows=cs.map(function(c,i){var r=crow(c);return (k==="A"&&i===1)?L("new","flip, fixed box",r):r}).join("");
+    return '<div class="grp-h"><p class="sect">'+p.seller+' · '+cs.length+' row'+(cs.length>1?"s":"")+'</p>'+warn+'<button type="button" class="allin" data-act="allin" data-p="'+k+'"'+(all?" disabled":"")+'>'+(all?"All in":"All in this package")+'</button></div>'+
+      '<div class="list">'+rows+'</div>';
+  }).join("");
+}
+function counts(){
+  var cards=0,env={},cost=0;
+  S.got.forEach(function(id){var c=card(id);cards+=c.qty;env[c.pkg]=1;cost+=c.cost});
+  return {cards:cards,env:Object.keys(env).length,cost:cost};
+}
+function tile(id,isNew){
+  var c=card(id),p=PKG[c.pkg];
+  var found=p.lost&&(S.s==="found"||S.s==="fold");
+  var inner='<div class="n">'+c.name+'</div><div class="q num">×'+c.qty+(c.foil?" · foil":"")+'</div><div class="m">'+p.seller+'</div>'+
+    (found?'<div class="postmark">Found its way home<br>23 days</div>':'');
+  var t='<div class="tile'+(c.foil?" foil":"")+(isNew?" new":"")+'">'+inner+'</div>';
+  return found?L("new","found postmark",t):t;
+}
+function trayBody(paneMode){
+  var n=counts();
+  var lead=S.got.length?'<p class="lead num">Today, <b>'+n.cards+' card'+(n.cards===1?"":"s")+'</b> from '+n.env+' envelope'+(n.env===1?"":"s")+'</p>':'<p class="lead">Nothing received yet today.</p>';
+  var tiles=S.got.map(function(id,i){return tile(id,S.anim==="append"&&i===S.got.length-1)}).join("");
+  if(paneMode){for(var i=S.got.length;i<ORDER.length;i++)tiles+='<div class="tile empty" aria-hidden="true"></div>'}
+  var photo=S.photo?L("today","package photo",'<div class="photo" role="img" aria-label="Photo of the pull"><i></i><i></i><i></i><i></i><span>Package photo · 9:44</span></div>')
+                   :L("new","photo button",'<button type="button" class="cellrow act" data-act="photo"><span class="lab">Add photo of the pull</span><span class="val">'+ICON.chev+'</span></button>');
+  var spend='<button type="button" class="cellrow" data-act="spend" aria-expanded="'+S.spend+'"><span class="lab">Spend today</span><span class="val num">'+(S.spend?money(n.cost)+" "+ICON.down:ICON.chev)+'</span></button>';
+  return lead+L("new","today's pulls",'<div class="grid">'+tiles+'</div>')+photo+spend;
+}
+function sheetBar(){
+  return '<div class="sheet-bar"><button type="button" class="navbtn undo" data-act="undo"'+(S.got.length?"":" disabled")+' aria-label="Undo last check-in">'+ICON.undo+'Undo</button><h3>Today</h3><button type="button" class="navbtn done" data-act="close">Done</button></div>';
+}
+function packagesScreen(withToday){
+  var n=S.got.length;
+  return status()+'<div class="nav"><div class="nav-top">'+(withToday?'<button type="button" class="navbtn" data-act="tray">Today'+(n?'<span class="pill num">'+counts().cards+'</span>':'')+'</button>':'')+'</div><h1 class="largetitle">Packages</h1></div><div class="scroll">'+groups()+'</div>'+tabbar("Packages");
+}
+function orphanScreen(){
+  var rows=[{id:"o1",t:"Unmarked envelope",s:"Arrived today, no return address"},{id:"o2",t:"Padded mailer",s:"Arrived Nov 17, no return address"}];
+  var list=rows.map(function(r){
+    var got=!!S.orph[r.id];
+    var front='<div class="face front"><div class="main"><div class="t">'+r.t+'</div><div class="s">'+r.s+'</div></div><span class="circ"></span></div>';
+    var back='<div class="face back"><div class="main"><div class="t">'+r.t+' · logged</div><div class="s">Received 9:41 · no seller</div></div><span class="circ">'+ICON.check+'</span></div>';
+    var b='<button type="button" class="crow'+(got?" got":"")+'" data-act="orph" data-id="'+r.id+'" aria-pressed="'+got+'" aria-label="'+r.t+(got?", logged":", not logged")+'"><div class="flipper">'+front+back+'</div></button>';
+    return r.id==="o1"?L("new","reveal, no seller",b):b;
+  }).join("");
+  return status()+'<div class="nav"><div class="nav-top"></div><h1 class="largetitle">Orphaned</h1></div><div class="scroll"><div class="grp-h"><p class="sect">No sender known</p></div><div class="list">'+list+'</div>'+
+    '<p class="lead" style="font-size:13px;line-height:18px">Orphaned mail never decides anything. It reveals, but matches no order.</p></div>'+tabbar("Orphaned");
+}
+
+function renderFolded(){
+  var trayStates={tray:1,photo:1,found:1,undo:1};
+  var html;
+  if(S.s==="orphan")html=orphanScreen();
+  else{
+    html=packagesScreen(true);
+    if(trayStates[S.s])html+='<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="Today\'s pulls"><div class="grabber" aria-hidden="true"></div>'+sheetBar()+'<div class="tray">'+trayBody(false)+'</div></div>';
+  }
+  if(S.toast)html+='<div class="toast" role="status">'+S.toast+'</div>';
+  document.getElementById("fscreen").innerHTML=html;
+}
+function renderUnfolded(){
+  document.getElementById("uleft").innerHTML=packagesScreen(false);
+  document.getElementById("uright").innerHTML=status()+'<div class="pane-bar"><button type="button" class="navbtn undo" data-act="undo"'+(S.got.length?"":" disabled")+' aria-label="Undo last check-in">'+ICON.undo+'Undo</button><h3>Today</h3><span></span></div><div class="tray">'+trayBody(true)+'</div>'+
+    (S.toast?'<div class="toast" role="status">'+S.toast+'</div>':'')+'<div class="homebar" aria-hidden="true"></div>';
+}
+
+function link(s,t,m){return "#s="+s+(t!=="auto"?"&t="+t:"")+(m!=="system"?"&m="+m:"")}
+function render(){
+  var r=document.documentElement;
+  if(S.t==="auto")r.removeAttribute("data-theme");else r.setAttribute("data-theme",S.t);
+  if(S.m==="system")r.removeAttribute("data-motion");else r.setAttribute("data-motion",S.m);
+  r.setAttribute("data-labels",S.labels?"on":"off");
+  var fold=S.s==="fold";
+  document.getElementById("folded").hidden=fold;
+  document.getElementById("unfolded").hidden=!fold;
+  if(fold)renderUnfolded();else renderFolded();
+  document.getElementById("caption").textContent=STATES.filter(function(x){return x.k===S.s})[0].cap;
+  document.getElementById("states").innerHTML=STATES.map(function(x){return '<a href="'+link(x.k,S.t,S.m)+'" aria-current="'+(x.k===S.s)+'">'+x.n+'</a>'}).join("");
+  document.getElementById("themes").innerHTML=["auto","light","dark"].map(function(t){return '<a href="'+link(S.s,t,S.m)+'" aria-current="'+(t===S.t)+'">'+t.charAt(0).toUpperCase()+t.slice(1)+'</a>'}).join("");
+  document.getElementById("motions").innerHTML=[["system","System"],["reduce","Reduce"],["full","Full"]].map(function(m){return '<a href="'+link(S.s,S.t,m[0])+'" aria-current="'+(m[0]===S.m)+'">'+m[1]+'</a>'}).join("");
+  document.getElementById("lblBtn").setAttribute("aria-pressed",String(S.labels));
+}
+function setHash(){history.replaceState(null,"",link(S.s,S.t,S.m))}
+function readHash(){
+  var h={};location.hash.replace(/^#/,"").split("&").forEach(function(kv){var p=kv.split("=");if(p[0])h[p[0]]=decodeURIComponent(p[1]||"")});
+  var prevS=S.s,prevT=S.t,prevM=S.m;
+  S.s=STATES.some(function(x){return x.k===h.s})?h.s:"idle";
+  S.t=/^(light|dark)$/.test(h.t||"")?h.t:"auto";
+  S.m=/^(reduce|full)$/.test(h.m||"")?h.m:"system";
+  if(S.s!==prevS||(prevT===S.t&&prevM===S.m))preset(S.s);
+  render();
+}
+function scope(){return document.getElementById(S.s==="fold"?"unfolded":"folded")}
+
+/* A tick flips the one row in place: toggle its class, never re-render the list. */
+function flipRow(id,on){
+  var b=scope().querySelector('.crow[data-id="'+id+'"]');
+  if(!b)return;
+  b.classList.remove("frozen","still");
+  b.classList.toggle("got",on);
+  b.setAttribute("aria-pressed",String(on));
+}
+function refreshSide(){
+  if(S.s==="fold"){
+    var right=document.getElementById("uright");
+    right.innerHTML=status()+'<div class="pane-bar"><button type="button" class="navbtn undo" data-act="undo"'+(S.got.length?"":" disabled")+' aria-label="Undo last check-in">'+ICON.undo+'Undo</button><h3>Today</h3><span></span></div><div class="tray">'+trayBody(true)+'</div>'+(S.toast?'<div class="toast" role="status">'+S.toast+'</div>':'')+'<div class="homebar" aria-hidden="true"></div>';
+  }
+  var pill=scope().querySelector('[data-act="tray"]');
+  if(pill)pill.innerHTML="Today"+(S.got.length?'<span class="pill num">'+counts().cards+'</span>':'');
+  scope().querySelectorAll(".allin").forEach(function(btn){
+    var k=btn.getAttribute("data-p"),all=CARDS.filter(function(c){return c.pkg===k}).every(function(c){return has(c.id)});
+    btn.disabled=all;btn.textContent=all?"All in":"All in this package";
+  });
+  S.anim="";
+}
+
+document.addEventListener("click",function(e){
+  var b=e.target.closest("[data-act]");if(!b||b.disabled)return;
+  var a=b.getAttribute("data-act");
+  if(a==="tick"){
+    var id=b.getAttribute("data-id"),on=!has(id);
+    if(on)S.got.push(id);else S.got.splice(S.got.indexOf(id),1);
+    S.toast="";S.anim=on?"append":"";
+    flipRow(id,on);refreshSide();return;
+  }
+  if(a==="orph"){
+    var oid=b.getAttribute("data-id");
+    if(S.orph[oid])delete S.orph[oid];else S.orph[oid]=1;
+    b.classList.toggle("got",!!S.orph[oid]);b.setAttribute("aria-pressed",String(!!S.orph[oid]));return;
+  }
+  if(a==="allin"){
+    var k=b.getAttribute("data-p");
+    CARDS.filter(function(c){return c.pkg===k&&!has(c.id)}).forEach(function(c){
+      S.got.push(c.id);
+      var row=scope().querySelector('.crow[data-id="'+c.id+'"]');
+      if(row){row.classList.add("still");row.classList.add("got");row.setAttribute("aria-pressed","true")}
+    });
+    refreshSide();return;
+  }
+  if(a==="tray"){S.s=S.got.length===ORDER.length?"found":"tray";S.toast="";render();setHash();focusIn(".sheet .done");return}
+  if(a==="close"){S.s=S.got.length?"received":"idle";S.toast="";S.frozen="";render();setHash();focusIn('[data-act="tray"]');return}
+  if(a==="spend"){S.spend=!S.spend;render();focusIn('[data-act="spend"]');return}
+  if(a==="photo"){S.photo=true;if(S.s!=="fold")S.s="photo";render();setHash();return}
+  if(a==="undo"){
+    var last=S.got.pop();if(!last)return;
+    S.toast=card(last).name+" is back to not received.";
+    if(S.s!=="fold")S.s="undo";
+    render();setHash();focusIn('[data-act="undo"]');return;
+  }
+});
+function focusIn(sel){var el=scope().querySelector(sel);if(el&&!el.disabled)el.focus()}
+document.getElementById("lblBtn").addEventListener("click",function(){S.labels=!S.labels;render()});
+window.addEventListener("hashchange",readHash);
+readHash();
+})();
+</script>
+</body>
+</html>
