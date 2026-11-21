@@ -1703,16 +1703,15 @@ const ITEM_SORTS = [
   ["name", "Name A–Z"],
 ];
 
-/* No fill. With `background: C.card` this painted a beige rectangle ruled top
-   and bottom whose left and right edges simply stopped, square-cornered and
-   full-bleed to the column, in an app where every other filled surface is a
-   rounded inset card. The fill was the only thing creating an edge to resolve —
-   and the region's whole thesis is hairlines, no boxes and no fills. The option
-   grid still reads: optGrid paints C.line and each optCell paints C.card over
-   it, so the cells sit slightly raised against the page. */
+/* Paper fill: a panel overlays the list (motion-disclosure-panels-arrive), and
+   an unfilled overlay shows the rows through it. `paper` is opaque. It is not
+   `card`, which painted a beige rectangle with square, full-bleed edges. The
+   option grid still reads: optGrid paints C.line and each optCell paints
+   C.card over it, so the cells sit slightly raised against the panel. */
 const panelWrap = {
   padding: "4px 8px 12px",
   borderTop: `1px solid ${C.line}`,
+  background: C.paper,
 };
 /* the 1px gap over a `line` background IS the grid — cells paint `card` over it */
 const optGrid = (cols) => ({

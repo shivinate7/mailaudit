@@ -72,7 +72,7 @@ The control region is the masthead's own vocabulary continued. Read these before
 - `ruled-head-resume-is-reopening` — A resume counts as reopening.
 - `ruled-head-masthead-vocabulary` — The ruled head continues the masthead.
 - `ruled-head-one-advisory-entrance` — One advisory line leads to the Sync group.
-- `head-panels-carry-paper-fill` — Owner confirmed the paper fill for Sorted by and History (page item 63 a, 2026-11-18 21:56 CST). Other overlay panels carry it as the default, not owner-confirmed. Not yet built (debt `panel-paper-fill-unbuilt`).
+- `head-panels-carry-paper-fill` — Owner confirmed the paper fill for Sorted by and History (page item 63 a, 2026-11-18 21:56 CST). Other overlay panels carry it as the default, not owner-confirmed. Built: `panelWrap` sets `background: C.paper`.
 - `ruled-head-showing-unreceived` — Showing starts on unreceived every load.
 - `ruled-head-hand-elapsed-forward` — Retired 2026-10-14: the peek check it fed left the app. The lesson stands.
 - `ruled-head-range-picked` — The custom date range is picked, not typed.

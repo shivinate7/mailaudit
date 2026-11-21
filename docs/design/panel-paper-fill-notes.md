@@ -1,6 +1,6 @@
 # Panel paper fill: an overlay panel with and without the paper colour
 
-Mockup: `panel-paper-fill.html`. Waiting item 63, `panel-paper-fill`. Decision: `head-panels-carry-paper-fill` (an orchestrator default; the owner confirmed it for Sorted by and History only, item 63 a, 2026-11-18 21:56 CST; other panels carry it as the default, not owner-confirmed). Debt: `panel-paper-fill-unbuilt`. The overlay it depends on: `motion-disclosure-panels-arrive`, debt `panels-overlay-unbuilt`. Invariant: `no-layout-shift-under-pointer`.
+Mockup: `panel-paper-fill.html`. Waiting item 63, `panel-paper-fill`. Decision: `head-panels-carry-paper-fill` (an orchestrator default; the owner confirmed it for Sorted by and History only, item 63 a, 2026-11-18 21:56 CST; other panels carry it as the default, not owner-confirmed). Built: `panelWrap` in `src/app.jsx` sets `background: C.paper`. The overlay it depends on: `motion-disclosure-panels-arrive`, debt `panels-overlay-unbuilt`. Invariant: `no-layout-shift-under-pointer`.
 Lane kind: informed (the brief names no kind).
 
 Deep links: `#p=sort` or `#p=history` for the panel, `w=375` or `w=760` for the width, `t=light` for the theme, `o=paper`, `o=none`, `o=rule` or `o=built` for one frame. Example: `#o=paper&p=history&w=760&t=light`. No `o` shows every frame side by side. The Hide buttons take one frame off the page each.
