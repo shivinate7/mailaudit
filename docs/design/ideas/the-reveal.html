@@ -8,7 +8,7 @@
 /* Tokens: own neutral choices for an idea mockup. Type sizes are the iOS Dynamic Type
    styles at the default (Large) size, read from the HIG typography page on 2026-11-21. */
 :root{
-  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#767369;
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#6b685f;
   --line:#dcd9d1; --accent:#a8402a; --accent-faint:#f8ece7; --ok:#256b41; --ok-bg:#e3f0e7; --ok-ink:#17462a;
   --warn:#8a5200; --warn-bg:#f8ecd6; --tag-new:#2c5aa8; --tag-today:#5c5a55;
   --foil:linear-gradient(115deg,rgba(255,214,140,.55),rgba(170,220,255,.5) 40%,rgba(230,180,255,.5) 70%,rgba(255,214,140,.55));
@@ -97,7 +97,7 @@ header.page .meta b{color:var(--accent);font-weight:600}
 .face{position:absolute;inset:0;display:flex;align-items:center;gap:10px;padding:0 10px 0 14px;backface-visibility:hidden;-webkit-backface-visibility:hidden;border-radius:inherit}
 .back{transform:rotateX(180deg);background:var(--ok-bg);color:var(--ok-ink)}
 .crow.got .flipper{transform:rotateX(180deg)}
-.crow.frozen .flipper{transition:none;transform:rotateX(70deg)}
+.crow.frozen .flipper{transition:none;transform:rotateX(58deg)}
 .crow.still .flipper,.crow.still .face{transition:none!important}
 .face .main{flex:1;min-width:0}
 .face .t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -156,8 +156,7 @@ header.page .meta b{color:var(--accent);font-weight:600}
 .tile.empty{background:none;border:1.5px dashed var(--line)}
 .postmark{position:absolute;right:8px;bottom:8px;border:2px solid var(--accent);color:var(--accent);border-radius:6px;padding:3px 7px;transform:rotate(-5deg);
   font-size:11px;line-height:13px;font-weight:700;letter-spacing:.04em;text-transform:uppercase;text-align:center;background:var(--surface)}
-.postmark::before{content:"";position:absolute;left:-30px;top:50%;width:26px;height:9px;margin-top:-5px;
-  background:repeating-linear-gradient(180deg,var(--accent) 0 1.5px,transparent 1.5px 4px);opacity:.7}
+.span2{grid-column:1/-1}
 .cellrow{display:flex;align-items:center;justify-content:space-between;min-height:48px;padding:0 6px 0 14px;background:var(--surface);border-radius:12px;margin:0 0 8px;width:100%}
 .cellrow .lab{font-size:17px}
 .cellrow .val{font-size:17px;color:var(--ink2);display:flex;align-items:center;gap:6px;min-height:44px;min-width:44px;justify-content:flex-end}
@@ -278,16 +277,15 @@ function crow(c){
   var got=has(c.id), p=PKG[c.pkg];
   var cls="crow"+(got?" got":"")+(S.frozen===c.id?" frozen":"")+(S.anim==="still"?" still":"");
   var foil=c.foil?'<span class="foiltag">Foil</span>':'';
-  var front='<div class="face front"><div class="main"><div class="t">'+c.name+' ×'+c.qty+foil+'</div><div class="s">'+p.seller+' · '+c.set+'</div></div><span class="circ"></span></div>';
+  var front='<div class="face front"><div class="main"><div class="t">'+c.name+' ×'+c.qty+foil+'</div><div class="s">'+p.seller+' · '+c.set+'</div></div>'+(p.lost?L("today","lost warning",'<span class="badge">May be lost</span>',"","span"):'')+'<span class="circ"></span></div>';
   var back='<div class="face back"><div class="main"><div class="t">'+c.name+' ×'+c.qty+foil+'</div><div class="s">Received 9:41 · '+p.seller+'</div></div><span class="circ">'+ICON.check+'</span></div>';
   return '<button type="button" class="'+cls+'" data-act="tick" data-id="'+c.id+'" aria-pressed="'+got+'" aria-label="'+c.name+' times '+c.qty+', '+p.seller+(got?", received":", not received")+'"><div class="flipper">'+front+back+'</div></button>';
 }
 function groups(){
   return ["A","B","C"].map(function(k){
     var p=PKG[k], cs=CARDS.filter(function(c){return c.pkg===k}), all=cs.every(function(c){return has(c.id)});
-    var warn=p.lost&&!cs.some(function(c){return has(c.id)})?L("today","lost warning",'<span class="badge">May be lost</span>',"","span"):"";
     var rows=cs.map(function(c,i){var r=crow(c);return (k==="A"&&i===1)?L("new","flip, fixed box",r):r}).join("");
-    return '<div class="grp-h"><p class="sect">'+p.seller+' · '+cs.length+' row'+(cs.length>1?"s":"")+'</p>'+warn+'<button type="button" class="allin" data-act="allin" data-p="'+k+'"'+(all?" disabled":"")+'>'+(all?"All in":"All in this package")+'</button></div>'+
+    return '<div class="grp-h"><p class="sect">'+p.seller+' · '+cs.length+' row'+(cs.length>1?"s":"")+'</p><button type="button" class="allin" data-act="allin" data-p="'+k+'"'+(all?" disabled":"")+'>'+(all?"All in":"All in this package")+'</button></div>'+
       '<div class="list">'+rows+'</div>';
   }).join("");
 }
@@ -302,7 +300,7 @@ function tile(id,isNew){
   var inner='<div class="n">'+c.name+'</div><div class="q num">×'+c.qty+(c.foil?" · foil":"")+'</div><div class="m">'+p.seller+'</div>'+
     (found?'<div class="postmark">Found its way home<br>23 days</div>':'');
   var t='<div class="tile'+(c.foil?" foil":"")+(isNew?" new":"")+'">'+inner+'</div>';
-  return found?L("new","found postmark",t):t;
+  return found?L("new","found postmark",t,S.s==="found"?"span2":""):t;
 }
 function trayBody(paneMode){
   var n=counts();

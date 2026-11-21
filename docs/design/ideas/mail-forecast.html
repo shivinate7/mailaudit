@@ -8,7 +8,7 @@
 /* Tokens: own neutral choices for an idea mockup. Type sizes are the iOS Dynamic Type
    styles at the default (Large) size, read from the HIG typography page on 2026-11-21. */
 :root{
-  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#767369;
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#6b685f;
   --line:#dcd9d1; --accent:#a8402a; --accent-soft:#f3dcd4; --accent-faint:#f8ece7; --on-accent:#ffffff;
   --ok:#256b41; --warn:#8a5200; --warn-bg:#f8ecd6; --tag-new:#2c5aa8; --tag-today:#5c5a55;
   --chrome:#ffffff; --chrome-line:#d6d3cb; --scrim:rgba(20,18,15,.32); --hinge:#2a2926; --bezel:#151412;
@@ -106,7 +106,7 @@ header.page .meta b{color:var(--accent);font-weight:600}
 .day .ct.drop{animation:drop .32s ease-out}
 @keyframes drop{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:none}}
 .band-f{height:44px;display:flex;align-items:center;justify-content:space-between;padding-right:6px;flex:none}
-.band-f .sum{font-size:15px;line-height:20px;color:var(--ink2)}
+.band-f .sum{font-size:15px;line-height:20px;color:var(--ink2);white-space:nowrap}
 .band-f .sum b{color:var(--ink);font-weight:600}
 .chip{min-height:44px;display:inline-flex;align-items:center;gap:6px;padding:0 4px 0 8px;font-size:15px;color:var(--warn)}
 .chip .dot{width:8px;height:8px;border-radius:4px;background:var(--warn)}
@@ -160,6 +160,7 @@ header.page .meta b{color:var(--accent);font-weight:600}
   background:var(--tag-new);color:var(--surface);white-space:nowrap;z-index:4;pointer-events:none}
 .lbl[data-k="today"]::after{background:var(--tag-today)}
 span.lbl{display:inline-block}
+.side span.lbl[data-k="new"]::after{top:auto;bottom:-14px;right:-4px}
 :root[data-labels="off"] .lbl{outline:none}
 :root[data-labels="off"] .lbl::after{display:none}
 
@@ -282,7 +283,7 @@ function band(opts){
       return '<button type="button" class="day num '+x.cls+(opts.selWed&&x.d==="Wed"?" sel":"")+'" data-act="day" data-d="'+x.d+'" aria-label="'+x.lab+'"><span class="wd">'+(x.today?"Today":x.d)+'</span><span class="ct'+(x.range?" range":"")+(S.dropped===x.d?" drop":"")+'">'+x.ct+'</span><span class="ex">'+x.ex+'</span></button>';
     }).join("");
     var sumHtml=!o.length?"<b>All in</b>":(todayDone?"<b>"+summary+"</b>":"<b>"+cards+" cards</b> on the way, "+money(cost));
-    var chip=opts.noChip?'':L("new","late shelf",'<button type="button" class="chip" data-act="late"><span class="dot"></span>2 running late'+ICON.right+'</button>',"","span");
+    var chip=opts.noChip?'':L("new","late shelf",'<button type="button" class="chip" data-act="late"><span class="dot"></span>2 late'+ICON.right+'</button>',"","span");
     body='<div class="days">'+cells+'</div><div class="band-f"><span class="sum num">'+sumHtml+'</span>'+chip+'</div>';
   }
   return L("new","forecast band",'<div class="band-h">'+head+'</div>'+body,"band"+(collapsed?" collapsed":""));
@@ -299,7 +300,7 @@ function lateRows(){
     return '<div class="row top"><div class="main"><div class="t">'+r.seller+', '+r.cards+' card'+(r.cards>1?"s":"")+'</div><div class="s num">Expected '+r.range+'</div>'+
       (r.stamp?'<span class="stamp">'+r.stamp+'</span>':'')+'</div><div class="side">'+
       (r.lost?L("today","lost warning",'<span class="badge warn">May be lost</span>',"","span"):'')+
-      L("new","soft step",'<span class="badge soft num">'+r.late+'</span>',"","span")+'</div></div>';
+      (r.lost?'<span class="badge soft num">'+r.late+'</span>':L("new","soft step",'<span class="badge soft num">'+r.late+'</span>',"","span"))+'</div></div>';
   }).join("");
 }
 function wed(){return PK.filter(function(p){return p.day==="Wed"})}
