@@ -4,6 +4,11 @@
   "home": "decision native-ships-via-testflight",
   "id": "testflight-dispatch-now",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-21T22:52:00Z",
+    "choice": "b",
+    "note": "just give me the prompt and ill have a local sesh install it for now (chat, 16:52 CST, passed by the coordinator)"
+  },
   "n": 112,
   "options": [
     {
@@ -26,6 +31,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "decision native-ships-via-testflight; record cloud-session-reach",
+  "replied": "2026-11-21T16:54:00-06:00",
+  "reply": "Recorded: no TestFlight dispatch now. You run a local Mac session and install the phone app with ios-ship install; the coordinator gives you the prompt. This item stays open, and I close it when you say the install is done.",
   "repo": "shivinate7/mailaudit",
   "short": "Dispatch TestFlight now?",
   "shown": [
