@@ -38,3 +38,63 @@
 - **Owner decides:** keep raw files forever, or for N months? May a replay ever change a past cost, or only add?
 
 Strongest: Import dialects with an overlap proof — the browser extension is the most fragile thing the tool depends on, and this change turns its failure from a full stop into a 5-minute column mapping with proof that the new source agrees.
+
+## Phase 2: Box mode (fleshed out)
+
+**Idea.** Today every check-in is assumed to come in its own seller's envelope. Box mode adds an optional shipment layer for a box that holds cards from many sellers. The layer stays dormant: it writes nothing until the collector opens a first box, and existing check-ins never change. Card matching reuses *card speaks for itself*. Logging the box at the door reuses *doorstep pass then bench pass*. *Original receipts* spots a shipment column if the export ever adds one. *Claim clock* owns claim deadlines.
+
+### Flow
+1. **Door.** A box arrives. Through the doorstep pass the collector logs it as one item, "Box B-07, Nov 21", and leaves it closed.
+2. **Bench.** On Packages, the collector picks "Open a box" from the view's overflow menu. A box session panel opens over the list and shows the box label, today's date, and a tick counter at 0.
+3. **Match.** The collector types part of a card name, for example "lightn". Results list every *outstanding* line from every seller: `Lightning Imp · Hollowpine Cards · TX-48213 · $0.27`.
+4. **Tick.** A tap checks that line in, stamps the box's date, and adds it to the recent-checks log. The ticked row stays where it is, dimmed with a check, so nothing moves under the pointer. Rows only reflow when the search text changes.
+5. **Repeat** until the box is empty. The counter reads "48 ticked · 19 sellers · $22.85".
+6. **Close.** The summary shows what came in, any surplus cards, and, when the box has a known expected list, "3 expected cards still outstanding from 2 sellers". Closing writes one "Box B-07 closed" log entry with "Undo box".
+7. **After.** Each seller's package shows partly or fully received as it does today, with a small "via B-07" tag. Tally is unchanged except for an optional "arrived in" column.
+
+### Screen states
+- **Empty, no outstanding cards:** "Nothing is outstanding, so there is nothing to match." Open is disabled with that reason shown inline.
+- **Empty, box just opened:** "Type a card name from the box." The counter is at 0. Closing at 0 discards the box and writes nothing.
+- **Normal:** search field, result rows, tick, live counter. Ticked rows stay in place until the next keystroke.
+- **Edge, one name with two sellers outstanding:** the row expands inline into two choices. The older order is preselected. One tap confirms, another switches. No native dialog.
+- **Edge, quantity split:** an order of 4x `Moss Wyrm` with 3 in the box. Ticks count up as "3 of 4", and the 4th stays outstanding with its lost-mail clock still running.
+- **Edge, already received:** "Checked in Nov 12 (Hollowpine). Duplicate purchase?" Offers "Count as surplus". It never ticks a second time.
+- **Edge, matches no order:** "Not on any order." Offers "Set aside as surplus", which lists the card in the box summary only. It attaches to no order and decides nothing.
+- **Edge, seller split across box and envelope:** a seller's 5 cards, 3 in B-07 and 2 by envelope next week. The package shows "3 via B-07, 2 outstanding".
+- **Error, save fails** (storage blocked, quota): an inline banner says "Not saved. Your 12 ticks are held here." with Retry. The session cannot close until a save succeeds.
+- **Error, sync conflict** (the same box edited on phone and web): ticks merge as a union. A tick undone on one device and kept on the other shows inline as "B-07: 1 tick differs", with both versions listed.
+- **Error, interrupted** (app killed mid-session): the box stays open. The next launch shows "B-07 is still open, 17 ticked: Resume / Close".
+
+### Data
+| Field | Where | Rule it touches |
+|---|---|---|
+| `boxId` (optional) on a check-in | the existing check-in record | `saved-state-shape` (needs an owner ruling) |
+| `boxes[]`: `id`, `label`, `openedOn`, `closedOn`, `surplus[]`, optional `expected[]`, optional `tracking` | inside the existing saved-state object | `saved-state-shape` (ruling); `storage-keys-are-frozen` (no new key: nest inside the existing state) |
+| `expected[]` from a future shipment column in the CSV | `boxes[]` | `imports-merge-never-replace`: an import may add expected lines, but never overwrites a hand-set date or tick |
+
+- **Migration: none.** A check-in without `boxId` reads as "own envelope", as it does today. No rewrite and no backfill. Nothing is written until the first box is opened, which is what keeps the layer dormant in the data.
+- **Old clients:** a phone app built before this change may drop unknown fields when it saves (unknown; it must be tested). So the first release only *preserves* unknown fields, and writing them is turned on in a later release.
+- **Orphaned:** untouched. Surplus cards are not orphans, because their sender (the box) is known. They never check off an order (`orphaned-mail-never-decides` stays intact).
+- **Parser:** untouched in slices 1 and 2 (`parser-filters`). Slice 3 reads a shipment column only if *original receipts* detects one.
+- **Lost-mail warning:** still runs per order. A box never clears the warning for a card it did not contain.
+- **Device key:** not touched.
+
+### Smallest first slice (ships alone, needs no ruling)
+**Batch check-in.** The session panel searches outstanding lines across all sellers, ticks them with one shared arrival date, keeps ticked rows in place, and ends with a summary. Each tick is an ordinary check-in plus an ordinary log entry, so it writes **only existing fields**. The box exists only for the length of the session. The slice proves the matcher works on a real mixed box before any change to the saved data is asked for. Its check: on a 50-card mixed fixture, every tick lands on the right order, the saved state is byte-identical in shape to before, and undo reverses each tick.
+
+The later slices, in order: **Slice 2**, boxes saved (`boxId`, `boxes[]`, Undo box, the "via B-07" tag), after the ruling. **Slice 3**, expected list from the CSV and the "still outstanding" line.
+
+### Risks
+- An old client strips the new fields on save, so box links are lost without any sign. The preserve-first release order above prevents this.
+- A wrong tick on the ambiguous-match default credits the wrong seller and hides a real loss. The choice is shown inline, and undo covers it.
+- Rows dimming in place may hide progress on a small phone. The live counter carries progress, not the list.
+- A box with no expected list can't say what is missing. The summary says "expected unknown" rather than implying the box is complete.
+- If consolidation never comes, slices 2 and 3 are wasted. Slice 1 still pays off for any big mail day.
+
+### Owner decisions
+1. **Approve `boxId` and `boxes[]` in the saved state?** Recommend: yes, but only after slice 1 has handled one real box.
+2. **Ambiguous match default?** Recommend: the older order, preselected inline and changeable.
+3. **Where do surplus cards go?** Recommend: the box summary only, not Orphaned, and never attached to an order.
+4. **Undo granularity?** Recommend: per tick, as today, plus one "Undo box" entry that reverses every tick in the session.
+5. **How visible while dormant?** Recommend: an overflow-menu entry on Packages always. It moves to the header only while a box is open.
+6. **Seller split across box and envelope: one lost-mail clock or two?** Recommend: one per order, unchanged. The box never resets it.
