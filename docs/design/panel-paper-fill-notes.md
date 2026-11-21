@@ -7,7 +7,7 @@ Deep links: `#p=sort` or `#p=history` for the panel, `w=375` or `w=760` for the 
 
 ## Sizes and sources
 
-- Every frame is a headless Chromium screenshot of the committed `index.html` (built from `src/`), device scale 2. The page was seeded with `shared/fixtures/ledger.json` under the storage key `STORE_KEY` in `test/screens.mjs`, as `openSeeded` does. The capture script is `shots/panel-paper-fill/capture.mjs`. A second run gave the same readings for all 16 frames.
+- Every frame is a headless Chromium screenshot of `index.html` (built from `src/`), device scale 2. The four `inflow` frames show the state before the build (no fill, card-coloured panel); the others are overlay frames drawn by the capture script. The page was seeded with `shared/fixtures/ledger.json` under the storage key `STORE_KEY` in `test/screens.mjs`, as `openSeeded` does. The capture script is `shots/panel-paper-fill/capture.mjs`. A second run gave the same readings for all 16 frames.
 - Sample data: the fixture's counts and dollar figures are not real. The px readings are real measurements of the built page.
 - `layout.py devices` gives `unknown` for this repo. Widths 375 and 760 px at height 812 come from `WIDTHS` and `openSeeded` in `test/screens.mjs`.
 - One theme, light. `shared/tokens.json` holds one palette and `src/app.jsx` has no dark rule. The brief named light and dark tokens; there are no dark tokens.
@@ -38,7 +38,7 @@ Deep links: `#p=sort` or `#p=history` for the panel, `w=375` or `w=760` for the 
    - Lose: one more line of style. The panel's height grows 1 px (131 to 132); it is out of flow, so nothing moves.
    - Pick: yes. Owner grant: yes (it adds a part the item did not name).
 
-4. **As built today** (`#o=built`). Not an option: the page on main, where the panel pushes the rows down and nothing shows through. Drawn so the owner sees why the question exists only once the overlay lands. Owner grant: no.
+4. **Before the build** (`#o=built`). Not an option: the page before the build, where the panel pushed the rows down and nothing shows through. Drawn so the owner sees why the question exists only once the overlay lands. Owner grant: no.
 
 Departs from: `panelWrap` in `src/app.jsx` before the build (no background); the build gives it the paper fill, as items 1 and 3 draw. Not blocking.
 
