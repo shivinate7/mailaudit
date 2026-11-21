@@ -1,3 +1,918 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><title>Cost basis</title></head>
-<body><p>Sample. Draft skeleton of the cost basis mockup.</p></body></html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cost basis mockup</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle), so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --wax:#A8443C; --waxLit:#C86A5F; --waxDeep:#66231D; --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot on the Duo screens: unmeasured. Drawn at the 20 pt floor the Duo UI tests use (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1100px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:28px; line-height:1.2; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:80ch; }
+.kind { font-size:14px; color:var(--inkSoft); margin:0; }
+.kind b { color:var(--ink); }
+.navs { display:flex; flex-direction:column; gap:8px; }
+.navrow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.navrow > span { font-size:13px; color:var(--inkSoft); min-width:64px; }
+.navrow a, .navrow button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.navrow a[aria-current="true"], .navrow button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+a:focus-visible, button:focus-visible, input:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.opts { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:8px 12px; display:flex; flex-direction:column; gap:4px; }
+.opts h2 { font-family:var(--cochin); font-size:18px; margin:0; }
+.opt { display:flex; align-items:center; justify-content:space-between; gap:12px; min-height:44px; border-top:1px solid var(--line); font-size:14px; }
+.opt:first-of-type { border-top:0; }
+.opt .grant { font-size:12px; color:var(--manilaInk); font-weight:600; margin-left:8px; }
+.opt button { font:inherit; font-size:13px; min-height:44px; min-width:88px; border:1px solid var(--line); background:var(--paper); border-radius:8px; cursor:pointer; color:var(--ink); }
+.opt.off { color:var(--inkSoft); text-decoration:line-through; }
+.figs { display:flex; flex-direction:column; gap:24px; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure[hidden] { display:none; }
+figcaption { max-width:80ch; font-size:14px; }
+figcaption b { font-family:var(--cochin); font-size:18px; }
+.fit { width:100%; overflow-x:auto; padding:12px 4px; }
+
+/* ---------- device frames: 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; font-family:-apple-system, system-ui, sans-serif;
+  --kh:1; --kc:1; --kf:1; --kb:1; --kt2:1; --kl:1; --ks:1; }
+/* AX5 over the default size, per text style (HIG typography, iOS Dynamic Type sizes): headline 53/17, caption 1 43/12, footnote 44/13, body 53/17, title 2 56/22, large title 60/34, subhead 49/15 */
+.dev.ax { --kh:calc(53/17); --kc:calc(43/12); --kf:calc(44/13); --kb:calc(53/17); --kt2:calc(56/22); --kl:calc(60/34); --ks:calc(49/15); }
+.one { width:466px; height:678px; }
+.duo { width:951px; height:669px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center; padding:0 16px;
+  font:600 12px -apple-system, system-ui, sans-serif; z-index:8; background:var(--paper); }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; padding:0 16px calc(var(--sab) + 96px); }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:9; }
+.fold span { position:absolute; top:240px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+/* Tab bar: the 64 pt glass capsule, 24 pt in, 12 pt up (phone-nav-is-bottom-bar; DuoSpine.DuoBar sits under the right page) */
+.tabbar { position:absolute; left:24px; right:24px; bottom:calc(var(--sab) + 12px); height:64px; border:1px solid var(--line); border-radius:32px; z-index:7;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(12px) saturate(1.4); -webkit-backdrop-filter:blur(12px) saturate(1.4);
+  box-shadow:0 4px 16px var(--shadow); display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px; }
+.tabbar button { all:unset; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px; border-radius:28px; font:12px var(--cochin);
+  color:var(--inkSoft); cursor:pointer; min-height:44px; }
+.tabbar button::before { content:""; width:20px; height:20px; border:1.5px solid currentColor; border-radius:5px; }
+.tabbar button.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+.ax .tabbar button { font-size:0; } /* duo-bar-dynamic-type-clips: icons only at AX sizes is today's open debt; drawn icons only */
+
+/* ---------- content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---------- */
+.stack { display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.stack.tight { gap:8px; }
+.mono { font-family:var(--mono); }
+/* masthead letterhead */
+.mh { display:flex; flex-direction:column; align-items:center; gap:4px; padding-top:8px; }
+.mh .rules { display:flex; align-items:center; gap:12px; width:100%; }
+.mh .rules i { flex:1; height:1px; background:var(--gold); }
+.seal { width:34px; height:34px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--waxLit), var(--wax) 55%, var(--waxDeep)); flex:none; }
+.mh .title { font-size:calc(31px * var(--kl)); letter-spacing:4px; font-variant:small-caps; line-height:1.1; }
+.mh .house { font-size:calc(10px * var(--kc)); color:var(--inkSoft); letter-spacing:1.5px; }
+.thirds { display:flex; width:100%; border-top:1px solid var(--line); margin-top:4px; }
+.thirds > div { flex:1; padding:6px 6px 4px; display:flex; flex-direction:column; align-items:center; }
+.thirds > div + div { border-left:1px solid var(--line); }
+.thirds > .wide { flex:1.7; }
+.thirds .k { font:calc(10px * var(--kc)) var(--mono); color:var(--inkSoft); letter-spacing:1px; }
+.thirds .f { font:calc(13px * var(--kf)) var(--mono); }
+.thirds .f b { color:var(--ink); } .thirds .f span { color:var(--inkSoft); }
+.ax .thirds { flex-direction:column; }
+.ax .thirds > div + div { border-left:0; border-top:1px solid var(--line); }
+.mbar { width:100%; height:4px; background:var(--line); border-radius:2px; overflow:hidden; }
+.mbar i { display:block; height:100%; background:var(--accent); }
+.foot { width:100%; display:flex; flex-wrap:wrap; justify-content:space-between; gap:4px 8px; font:calc(10.5px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.foot .miss { color:var(--red); font-weight:700; }
+.foot .slot { display:inline-block; min-width:13ch; text-align:right; }
+.ax .foot { flex-direction:column; }
+/* controls */
+.field { min-height:44px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; gap:8px; }
+.field input { all:unset; flex:1; font:calc(16px * var(--kb)) var(--cochin); color:var(--ink); min-width:0; }
+.field input::placeholder { color:var(--inkSoft); }
+.rowx { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:44px; font-size:calc(15px * var(--kb)); }
+.rowx .soft { color:var(--inkSoft); }
+.linkish { all:unset; cursor:pointer; font:calc(11.5px * var(--kc)) var(--mono); color:var(--accent); min-height:44px; display:inline-flex; align-items:center; }
+.toggle { all:unset; cursor:pointer; width:51px; height:31px; border-radius:16px; background:var(--line); position:relative; flex:none; }
+.toggle::after { content:""; position:absolute; top:2px; left:2px; width:27px; height:27px; border-radius:50%; background:var(--card); box-shadow:0 1px 2px var(--shadow); }
+.toggle[aria-checked="true"] { background:var(--green); } .toggle[aria-checked="true"]::after { left:22px; }
+.seg { display:flex; background:color-mix(in srgb, var(--line) 60%, transparent); border-radius:9px; padding:2px; gap:2px; min-height:44px; }
+.seg button { all:unset; cursor:pointer; flex:1; text-align:center; border-radius:7px; font:calc(13px * var(--kf)) var(--sys); color:var(--ink); display:flex; align-items:center; justify-content:center; padding:0 8px; }
+.seg button[aria-pressed="true"] { background:var(--card); font-weight:600; box-shadow:0 1px 2px var(--shadow); }
+.ax .seg { flex-direction:column; }
+.ax .seg button { min-height:44px; flex:none; padding:8px 12px; }
+/* AX sizes: the toolbar keeps Cancel and Share on one row and drops the title to its own row below */
+.ax .sheet .bar { grid-template-columns:1fr 1fr; gap:0 8px; }
+.ax .sheet .bar .tl { grid-row:2; grid-column:1 / -1; text-align:left; padding:0 8px 8px; }
+.ax .sheet .bar button:first-child { grid-column:1; } .ax .sheet .bar button.r { grid-column:2; }
+/* Tally card (today's TallyRowView) */
+.tcard { position:relative; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 2px var(--shadow); }
+.tcard.done { border-color:var(--green); }
+.tcard.picked::before { content:""; position:absolute; left:-1px; top:8px; bottom:8px; width:3px; background:var(--accent); border-radius:2px; }
+.tcard .edge { position:absolute; left:0; right:0; top:0; height:3px; background:var(--line); border-radius:8px 8px 0 0; overflow:hidden; }
+.tcard .edge i { display:block; height:100%; background:var(--accent); }
+.thead { all:unset; box-sizing:border-box; width:100%; cursor:pointer; display:flex; align-items:center; gap:8px; padding:12px; min-height:44px; }
+.thead .tri { font:calc(10px * var(--kc)) var(--mono); color:var(--inkSoft); transition:transform 200ms cubic-bezier(.16,1,.3,1); flex:none; }
+.thead .tri.o { transform:rotate(90deg); }
+.thead .nm { flex:1; min-width:0; display:flex; flex-direction:column; }
+.thead .nm b { font:700 calc(15px * var(--kh)) var(--cochin); line-height:1.3; }
+.thead .nm span { font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.thead .fig { flex:none; display:flex; flex-direction:column; align-items:flex-end; }
+.thead .fig b { font:700 calc(15px * var(--kh)) var(--mono); }
+.thead .fig b.g { color:var(--green); }
+.thead .fig span { font:calc(11.5px * var(--kc)) var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.thead .fig em { font:700 calc(12px * var(--kc)) var(--cochin); font-style:normal; color:var(--red); white-space:nowrap; }
+.thead .fig em.hid { visibility:hidden; }
+.ax .thead { flex-wrap:wrap; }
+.ax .thead .nm { flex-basis:calc(100% - 40px); }
+.ax .thead .fig { flex-basis:100%; align-items:flex-start; padding-left:28px; }
+.ax .thead .nm span { white-space:normal; }
+.across { padding:0 12px 4px; font:calc(10.5px * var(--kc)) var(--mono); color:var(--inkSoft); }
+/* New: the received line. Always mounted once the row is open; its height never changes on a check-in (no-layout-shift-under-pointer). */
+.recv { padding:0 12px 8px; font:calc(10.5px * var(--kc)) var(--mono); color:var(--ink); min-height:calc(10.5px * var(--kc) * 1.4 + 8px); }
+.recv b { color:var(--green); }
+.bulk { display:flex; gap:8px; padding:0 12px 8px; justify-content:flex-end; flex-wrap:wrap; }
+.mini { all:unset; cursor:pointer; font:calc(11.5px * var(--kc)) var(--mono); border:1px solid var(--line); background:var(--card); border-radius:5px; padding:0 12px; min-height:44px; display:inline-flex; align-items:center; color:var(--ink); }
+.line { display:flex; gap:8px; min-height:64px; border-top:1px solid var(--line); background:var(--card); font-family:var(--cochin); }
+.line:last-child { border-radius:0 0 8px 8px; }
+.line.done { background:var(--greenSoft); }
+.line.refunded { background:color-mix(in srgb, var(--manila) 45%, var(--card)); }
+.line .box { all:unset; cursor:pointer; flex:0 0 48px; min-height:48px; display:grid; place-items:center; }
+.line .box i { width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; display:block; position:relative; }
+.line.done .box i { background:var(--green); border-color:var(--green); }
+.line.done .box i::after { content:""; position:absolute; left:8px; top:3px; width:8px; height:14px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.line.partial .box i { background:var(--manila); border-color:var(--manilaInk); }
+.line.partial .box i::after { content:"\2013"; position:absolute; inset:0; display:grid; place-items:center; color:var(--manilaInk); font-size:16px; line-height:26px; }
+.line.refunded .box i { border-style:dashed; border-color:var(--manilaInk); }
+.line .t { flex:1; padding:12px 12px 12px 0; display:flex; flex-direction:column; gap:2px; min-width:0; }
+.line .t b { font-size:calc(14px * var(--kb)); font-weight:600; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.line .t b span { font:calc(12px * var(--kb)) var(--mono); color:var(--inkSoft); font-weight:400; }
+.line .t small { font-size:calc(11.5px * var(--kb)); color:var(--inkSoft); }
+.line .t .oid { font:calc(10.5px * var(--kb)) var(--mono); color:var(--inkSoft); }
+.line .t .rf { font:600 calc(11.5px * var(--kb)) var(--cochin); color:var(--manilaInk); }
+.step { display:flex; align-items:center; gap:4px; }
+.step button { all:unset; cursor:pointer; width:44px; height:44px; display:grid; place-items:center; }
+.step button i { width:34px; height:34px; border:1px solid var(--line); border-radius:8px; background:var(--card); display:grid; place-items:center; font-style:normal; font-family:var(--sys); }
+.step .c { font:700 calc(13px * var(--kb)) var(--mono); color:var(--manilaInk); min-width:44px; text-align:center; }
+.dtitle { font:700 calc(20px * var(--kt2)) var(--cochin); padding:12px 12px 4px; margin:0; }
+.detail { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.note { font-size:calc(13px * var(--kf)); color:var(--inkSoft); margin:0; }
+.empty { display:flex; flex-direction:column; gap:12px; align-items:flex-start; padding:24px 0; font-size:calc(17px * var(--kb)); }
+.btn { all:unset; cursor:pointer; min-height:44px; padding:0 16px; border-radius:8px; display:inline-flex; align-items:center; font:600 calc(15px * var(--kb)) var(--sys); }
+.btn.fill { background:var(--accent); color:var(--card); }
+.btn.line2 { border:1px solid var(--line); background:var(--card); color:var(--ink); }
+.err { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; font-size:calc(15px * var(--kb)); }
+.unk { font-family:var(--mono); color:var(--inkSoft); }
+/* sort menu: a native Menu, drawn as its popover */
+.menu { position:absolute; z-index:12; right:16px; width:240px; background:var(--card); border:1px solid var(--line); border-radius:12px; box-shadow:0 8px 24px rgba(28,43,36,0.18); overflow:hidden; }
+.menu button { all:unset; box-sizing:border-box; cursor:pointer; width:100%; min-height:44px; padding:0 16px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--line); font:calc(17px * var(--kb)) var(--sys); }
+.menu button:first-child { border-top:0; }
+
+/* ---------- Ledger tab (received line concept: the summary's entrance) ---------- */
+.cells { background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.cell { all:unset; box-sizing:border-box; width:100%; cursor:pointer; display:flex; justify-content:space-between; align-items:center; gap:12px; min-height:52px; padding:8px 12px; border-top:1px solid var(--line); font:calc(15px * var(--kb)) var(--cochin); }
+.cell:first-child { border-top:0; }
+.cell .v { font:calc(12px * var(--kc)) var(--mono); color:var(--accent); text-decoration:underline; text-underline-offset:3px; }
+.cell .lab { display:flex; flex-direction:column; }
+.cell .lab small { font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.ax .cell { flex-direction:column; align-items:flex-start; }
+.sect { font:calc(11px * var(--kc)) var(--mono); letter-spacing:1px; color:var(--inkSoft); }
+
+/* ---------- sheet (summary) and the system share sheet ---------- */
+.scrim { position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 34%, transparent); z-index:20; }
+.sheet { position:absolute; left:0; right:0; bottom:0; top:calc(var(--sat) + 12px); background:var(--paper); border-radius:12px 12px 0 0; z-index:21; display:flex; flex-direction:column; }
+.sheet .grab { width:36px; height:5px; border-radius:3px; background:var(--line); margin:6px auto 0; flex:none; }
+.sheet .bar { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; min-height:44px; padding:0 8px; flex:none; }
+.sheet .bar .tl { font:600 calc(17px * var(--kh)) var(--sys); text-align:center; }
+.sheet .bar button { all:unset; cursor:pointer; min-height:44px; min-width:44px; padding:0 8px; font:calc(17px * var(--kb)) var(--sys); color:var(--accent); display:inline-flex; align-items:center; gap:6px; }
+.sheet .bar button.r { justify-self:end; font-weight:600; }
+.sheet .body { flex:1; overflow-y:auto; padding:8px 16px calc(var(--sab) + 24px); display:flex; flex-direction:column; gap:16px; font-family:var(--cochin); }
+.sheet .body > * { flex-shrink:0; }
+.answer { min-height:44px; display:flex; align-items:center; gap:8px; font:calc(13px * var(--kf)) var(--mono); color:var(--green); }
+.answer.blank { display:none; }
+/* the reckoning: the three ruled figures, footed like a ledger column */
+.reck { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:4px 12px; }
+.reck .r { display:grid; grid-template-columns:1fr auto; align-items:baseline; gap:4px 12px; min-height:44px; padding:8px 0; border-top:1px solid var(--line); }
+.reck .r:first-child { border-top:0; }
+.reck .r .l { font-size:calc(15px * var(--kb)); }
+.reck .r .l small { display:block; font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.reck .r .n { font:700 calc(17px * var(--kh)) var(--mono); text-align:right; }
+.reck .r.miss .n, .reck .r.miss .l { color:var(--red); }
+.reck .r.total { border-top:3px double var(--ink); }
+.reck .r.total .n { font-size:calc(20px * var(--kt2)); color:var(--green); }
+.ax .reck .r { grid-template-columns:1fr; }
+.ax .reck .r .n { text-align:left; }
+.refund { font-size:calc(13px * var(--kf)); color:var(--manilaInk); background:color-mix(in srgb, var(--manila) 45%, transparent); border-radius:8px; padding:8px 12px; display:flex; flex-direction:column; gap:4px; }
+.refund .rowx { font-size:calc(13px * var(--kf)); min-height:44px; }
+.tbl { background:var(--card); border:1px solid var(--line); border-radius:8px; }
+.tbl .d { display:grid; grid-template-columns:1fr 48px auto; gap:8px; padding:0 12px; align-items:center; min-height:44px; border-top:1px solid var(--line); font-size:calc(14px * var(--kb)); }
+.tbl .d:first-child { border-top:0; }
+.tbl .d span:not(:first-child) { text-align:right; font-family:var(--mono); font-size:calc(12px * var(--kc)); color:var(--inkSoft); }
+.tbl .d .of b { color:var(--ink); }
+.tbl .more { min-height:44px; display:flex; align-items:center; padding:0 12px; border-top:1px solid var(--line); font:calc(12px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.ax .tbl .d { grid-template-columns:1fr; padding:8px 12px; gap:2px; }
+.ax .tbl .d span:not(:first-child) { text-align:left; }
+details.holds { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:0 12px; }
+details.holds summary { min-height:44px; display:flex; align-items:center; cursor:pointer; font-size:calc(15px * var(--kb)); }
+details.holds pre { font:calc(11px * var(--kc)) var(--mono); white-space:pre-wrap; color:var(--inkSoft); margin:0 0 12px; }
+/* The system share sheet is iOS chrome, not an app colour, so its greys sit outside the tokens (as the keyboard does in duo-hand-gaps). */
+.share { position:absolute; left:0; right:0; bottom:0; z-index:31; background:#F2F2F7; border-radius:12px 12px 0 0; padding:12px 16px calc(var(--sab) + 16px); display:flex; flex-direction:column; gap:12px; font-family:-apple-system, system-ui, sans-serif; color:#111; }
+.share .hd { display:flex; gap:12px; align-items:center; min-height:56px; }
+.share .hd i { width:40px; height:48px; border-radius:6px; background:#FFFFFF; border:1px solid #D1D1D6; flex:none; }
+.share .hd b { display:block; font-size:calc(15px * var(--kb)); } .share .hd small { color:#6C6C70; font-size:calc(13px * var(--kf)); }
+.share .hd button { all:unset; margin-left:auto; cursor:pointer; width:44px; height:44px; display:grid; place-items:center; font-size:20px; color:#6C6C70; }
+.share .apps { display:flex; gap:16px; }
+.share .apps span { display:flex; flex-direction:column; align-items:center; gap:4px; font-size:calc(11px * var(--kc)); width:60px; }
+.share .apps span::before { content:""; width:56px; height:56px; border-radius:13px; background:#D1D1D6; }
+.share .acts { background:#FFFFFF; border-radius:10px; }
+.share .acts button { all:unset; box-sizing:border-box; cursor:pointer; width:100%; min-height:44px; padding:0 16px; display:flex; align-items:center; border-top:1px solid #E5E5EA; font-size:calc(17px * var(--kb)); }
+.share .acts button:first-child { border-top:0; }
+.ax .share .apps { display:none; }
+
+/* ---------- Statement concept ---------- */
+/* One account page: the footing, the column heads and every card line share one sheet and one money column.
+   A violet double rule (the ledger's ink, the accent token) runs down the page left of the money, unbroken from footing to last line. */
+.acct { --col:96px; --money:calc(2 * var(--col)); position:relative; background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; box-shadow:0 1px 2px var(--shadow);
+  background-image:linear-gradient(to right, transparent calc(100% - var(--money) - 3px), var(--accent) calc(100% - var(--money) - 3px), var(--accent) calc(100% - var(--money) - 2px), transparent calc(100% - var(--money) - 2px), transparent calc(100% - var(--money)), var(--accent) calc(100% - var(--money)), var(--accent) calc(100% - var(--money) + 1px), transparent calc(100% - var(--money) + 1px)); }
+.acct .ahead { display:flex; justify-content:space-between; align-items:center; gap:8px; padding:4px 12px 0; min-height:44px; }
+.acct .ahead b { font:calc(20px * var(--kt2)) var(--cochin); font-variant:small-caps; letter-spacing:1.5px; font-weight:400; }
+.acct .ahead button { all:unset; cursor:pointer; min-height:44px; display:inline-flex; align-items:center; gap:6px; font:calc(15px * var(--kb)) var(--sys); color:var(--accent); }
+/* bands that hold no figure cross the rule on their own fill, so the rule stands only where money stands */
+.acct .pad { padding:0 12px 8px; background:var(--card); position:relative; }
+/* The footing stands in the two money columns: cost basis and still missing in the cost basis column, the received sum in the
+   received column. So the footing names the columns, and the lines below need no column heads. */
+.acct .ft { display:grid; grid-template-columns:1fr var(--col) var(--col); min-height:48px; align-items:center; }
+.acct .ft .n.c2 { grid-column:2; } .acct .ft .n.c3 { grid-column:3; border-left:1px solid var(--line); align-self:stretch; display:flex; align-items:center; justify-content:flex-end; }
+.acct .ft .n { padding:6px 8px; }
+.acct .ft.sum .n.c2 { grid-row:1; }
+.acct .ft .l { padding:6px 12px; font-size:calc(15px * var(--kb)); }
+.acct .ft .l small { display:block; font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.acct .ft .n { padding:6px 8px; font:700 calc(15px * var(--kh)) var(--mono); text-align:right; white-space:nowrap; }
+.acct .ft.miss .l, .acct .ft.miss .n { color:var(--red); }
+.acct .ft.sum { border-top:3px double var(--ink); }
+.acct .ft.sum .n { font-size:calc(17px * var(--kh)); color:var(--green); }
+.acct .ft + .ft:not(.sum) { border-top:1px solid var(--line); }
+/* the controls cross the rule on their own fill: they belong to the lines below, not to a column */
+.acct .ctl { padding:4px 12px; background:var(--card); border-top:1px solid var(--line); }
+.acct .colh { display:grid; grid-template-columns:1fr 88px 88px; min-height:32px; align-items:end; font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); border-bottom:1px solid var(--ink); border-top:1px solid var(--line); }
+.acct .colh span { padding:0 12px 4px; } .acct .colh span:not(:first-child) { text-align:right; padding:0 8px 4px; }
+.sline { all:unset; box-sizing:border-box; cursor:pointer; width:100%; display:grid; grid-template-columns:1fr var(--col) var(--col); min-height:56px; border-top:1px solid var(--line); align-items:stretch; position:relative; }
+.colh + .sline { border-top:0; }
+.sline > span { padding:8px 12px; }
+.sline > span.a, .sline > span.b { padding:8px; text-align:right; }
+.sline > span.b { border-left:1px solid var(--line); }
+.sline.picked { background:color-mix(in srgb, var(--accent) 8%, transparent); }
+.sline.picked::before { content:""; position:absolute; left:0; top:8px; bottom:8px; width:3px; background:var(--accent); }
+.sline .nm { font:700 calc(15px * var(--kh)) var(--cochin); line-height:1.3; }
+.sline .nm small { display:block; font:400 calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.sline .nm small em { font-style:normal; color:var(--red); font-weight:700; }
+.sline .a { font:700 calc(14px * var(--kh)) var(--mono); color:var(--ink); }
+.sline .a.g { color:var(--green); }
+.sline .b { font:calc(12px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.acct .tail { padding:8px 12px; margin-right:calc(var(--money) + 4px); }
+.ax .acct { background-image:none; }
+.ax .acct .pad, .ax .acct .ctl, .ax .acct .tail { margin-right:0; }
+.acct .ctl + .sline { border-top:1px solid var(--ink); }
+.ax .acct .ft { grid-template-columns:1fr; } .ax .acct .ft .n { text-align:left; grid-column:1; grid-row:auto; border-left:0; justify-content:flex-start; }
+/* At AX sizes the answer leads: Received moves to the top of the footing, so it shows without a scroll past three tall rows. */
+.ax [id^="statement-footing"], .ax .reck { display:flex; flex-direction:column; }
+.ax .acct .ft.sum, .ax .reck .r.total { order:-1; border-top:0; border-bottom:3px double var(--ink); }
+.ax .acct .ft.sum + .ft, .ax .reck .r.total + .r { border-top:0; }
+.ax .acct .colh { display:none; }
+.ax .sline { grid-template-columns:1fr; }
+.ax .sline > span.a, .ax .sline > span.b { text-align:left; border-left:0; padding:0 12px 4px; }
+.ax .sline .a::before { content:"received "; font-weight:400; } .ax .sline .b::before { content:"cost basis "; }
+.ax .sline .nm small { white-space:normal; }
+.foot-wrap { position:relative; }
+/* The closed seal: ornament only (palette-gold-is-ornament-only, the seal's wax ramp). It lands with mdl-press, once. */
+.closed { position:absolute; right:12px; top:-14px; width:64px; height:64px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--waxLit), var(--wax) 55%, var(--waxDeep));
+  display:grid; place-items:center; transform:rotate(-8deg); box-shadow:0 2px 4px rgba(28,43,36,0.2); z-index:2; }
+.closed span { font:700 10px var(--mono); letter-spacing:1px; color:var(--card); text-align:center; line-height:1.2; }
+.closed.press { animation:mdl-press 600ms cubic-bezier(.16,1,.3,1) both; }
+@keyframes mdl-press { 0% { transform:scale(1.2) rotate(-8deg); opacity:0; } 58% { transform:scale(1.06) rotate(-5.5deg); opacity:1; } 100% { transform:scale(1) rotate(-8deg); } }
+@media (prefers-reduced-motion: reduce) { .closed.press { animation:none; } .thead .tri { transition:none; } }
+.back { all:unset; cursor:pointer; min-height:44px; display:inline-flex; align-items:center; gap:4px; font:calc(17px * var(--kb)) var(--sys); color:var(--accent); }
+.chip { font:600 calc(11px * var(--kc)) var(--mono); padding:2px 8px; border-radius:8px; white-space:nowrap; }
+.chip.ok { color:var(--green); background:var(--greenSoft); } .chip.miss { color:var(--red); background:var(--redSoft); } .chip.rf { color:var(--manilaInk); background:var(--manila); }
+.cline { display:grid; grid-template-columns:1fr auto; gap:2px 12px; padding:8px 12px; min-height:56px; border-top:1px solid var(--line); align-items:center; }
+.cline b { font-size:calc(14px * var(--kb)); } .cline small { font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); grid-column:1; }
+.cline .p { font:calc(12px * var(--kc)) var(--mono); text-align:right; }
+.cline.rf b, .cline.rf .p { text-decoration:line-through; color:var(--inkSoft); }
+.ax .cline { grid-template-columns:1fr; }
+.letter { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.letter .lh { display:flex; align-items:center; gap:12px; }
+.letter .lh b { font:calc(20px * var(--kt2)) var(--cochin); font-variant:small-caps; letter-spacing:2px; }
+.letter p { margin:0; font-size:calc(15px * var(--kb)); line-height:1.5; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+.tags-on [data-tk] { outline:2px dashed var(--new); outline-offset:2px; position:relative; }
+.tags-on [data-tk="today"] { outline-color:var(--today); }
+.tags-on [data-tk]::after { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 11px/14px -apple-system, system-ui, sans-serif; padding:0 4px; background:var(--paper); color:var(--new); white-space:nowrap; z-index:6; pointer-events:none; text-decoration:none; letter-spacing:0; text-transform:none; }
+.tags-on [data-tk="today"]::after { color:var(--today); }
+.tags-on .closed[data-tk] { position:absolute; outline-offset:4px; border-radius:50%; }
+/* one-line tags: the outline hugs the line and the label sits inside it at the right, so neither crosses the text */
+.tags-on .across[data-tk], .tags-on .recv[data-tk], .tags-on .k[data-tk] { outline-offset:-1px; }
+.tags-on .across[data-tk]::after, .tags-on .recv[data-tk]::after { top:50%; transform:translateY(-50%); }
+.tags-on .k[data-tk]::after { top:-1px; right:auto; left:calc(100% + 4px); }
+.legend { font-size:13px; color:var(--inkSoft); }
+</style>
+</head>
+<body>
+<main id="root" class="tags-on">
+<div class="banner">Sample. No card, seller, order, date, count or price on this page is real.</div>
+<h1>Cost basis: what was paid for what arrived</h1>
+<p class="kind">Designer kind: <b>informed</b>. Designer cost-basis-informed-1. Two concepts: <b>Received line</b> keeps today's Tally and adds a summary you can share; <b>Statement</b> is the bold one, a second mode of the Tally that reads like an account book.</p>
+<p class="sub">Devices: iPhone Duo folded (466 x 678 pt), Duo open (951 x 669 pt, fold 455.5 to 495.5 pt), the large phone (no written size: drawn at the folded size, 466 x 678 pt), and the folded pose at AX5, the biggest accessibility text size. Light theme only: the native app is held to light. Every frame is live: tap rows, boxes, steppers, Sorted by, the year control, Share. A dashed red outline marks a part that exists today. A dashed green one marks what the concept adds.</p>
+
+<div class="navs">
+  <div class="navrow" id="nav-c"><span>Concept</span></div>
+  <div class="navrow" id="nav-s"><span>State</span></div>
+  <div class="navrow" id="nav-d"><span>Device</span></div>
+  <div class="navrow"><span>Page</span><button type="button" id="tagbtn" aria-pressed="true">Tags shown</button><button type="button" id="reset">Reset the sample</button></div>
+</div>
+
+<section class="opts" aria-labelledby="opts-h">
+  <h2 id="opts-h">Options in this concept</h2>
+  <div id="optlist"></div>
+  <div class="navrow"><button type="button" id="restore">Show hidden options</button></div>
+</section>
+
+<!-- Folded first, then open (skill ios-apps, Mockups). The script draws each frame's screen. -->
+<div class="figs" id="figs">
+  <figure data-fig="folded"><div class="fit"><div class="dev one" data-device="iphone-duo-folded" data-frame="folded"></div></div><figcaption></figcaption></figure>
+  <figure data-fig="open"><div class="fit"><div class="dev duo" data-device="iphone-duo-unfolded" data-frame="open"></div></div><figcaption></figcaption></figure>
+  <figure data-fig="phone"><div class="fit"><div class="dev one" data-device="iphone-regular" data-frame="phone"></div></div><figcaption></figcaption></figure>
+  <figure data-fig="ax"><div class="fit"><div class="dev one ax" data-device="iphone-duo-folded" data-frame="ax"></div></div><figcaption></figcaption></figure>
+</div>
+<p class="legend">Notes: docs/design/cost-basis-informed-1-notes.md. Each option above has a numbered item there.</p>
+</main>
+
+<script>
+"use strict";
+/* ================= sample data ================= */
+// One line per copy group as the ledger holds it: order id, seller, date, set, price, qty. got is the check-in count.
+const BASE = [
+  ["lb1","Lightning Bolt","Kestrel Card Co.","2026-1014-A","2026-10-14","Magic 2011","NM",1.12,2,2],
+  ["lb2","Lightning Bolt","Harbor Hobby","2026-1020-C","2026-10-20","Magic 2011","LP",1.05,1,1],
+  ["lb3","Lightning Bolt","Two Moons Games","2026-1102-B","2026-11-02","Double Masters 2022","NM",0.98,1,0],
+  ["lb4","Lightning Bolt","Harbor Hobby","2025-1118-H","2025-11-18","Magic 2010","NM",1.20,1,1],
+  ["cs1","Counterspell","Northgate Cards","2026-1014-N","2026-10-14","Dominaria Remastered","NM",0.48,2,2],
+  ["cs2","Counterspell","Lantern TCG","2026-1109-L","2026-11-09","Modern Horizons 2","NM",0.52,1,0],
+  ["cs3","Counterspell","Lantern TCG","2025-1202-L","2025-12-02","Masters 25","LP",0.55,1,1],
+  ["sr1","Sol Ring","Harbor Hobby","2026-1020-C","2026-10-20","Commander Masters","NM",1.89,1,1],
+  ["sr2","Sol Ring","Kestrel Card Co.","2026-1102-K","2026-11-02","Commander 2021","NM",1.75,1,1],
+  ["le1","Llanowar Elves","Two Moons Games","2026-1102-B","2026-11-02","Dominaria United","NM",0.15,4,4],
+  ["sw1","Swords to Plowshares","Lantern TCG","2026-1109-L","2026-11-09","Strixhaven Archive","NM",2.40,1,0],
+  ["sw2","Swords to Plowshares","Northgate Cards","2026-1014-N","2026-10-14","Double Masters 2022","NM",2.10,1,1],
+  ["dr1","Dark Ritual","Kestrel Card Co.","2026-0928-K","2026-09-28","Strixhaven Archive","NM",0.70,2,2],
+  ["bs1","Brainstorm","Harbor Hobby","2026-0928-H","2026-09-28","Strixhaven Archive","NM",0.89,1,1],
+  ["ts1","Thoughtseize","Marlowe Singles","2026-1003-R","2026-10-03","Double Masters 2022","NM",9.80,1,0],
+  ["ts2","Thoughtseize","Kestrel Card Co.","2026-1102-K","2026-11-02","Theros Beyond Death","LP",10.40,1,1],
+  ["pe1","Path to Exile","Marlowe Singles","2026-1003-R","2026-10-03","Double Masters 2022","NM",2.20,2,2],
+  ["pe2","Path to Exile","Kestrel Card Co.","2026-1102-K","2026-11-02","Modern Masters","LP",1.95,1,0],
+  ["bp1","Birds of Paradise","Fjord Games","2026-1020-F","2026-10-20","Ravnica Remastered","NM",6.50,1,0],
+  ["op1","Opt","Two Moons Games","2026-1102-B","2026-11-02","Dominaria","NM",0.12,4,3],
+  ["as1","Arcane Signet","Northgate Cards","2026-1014-N","2026-10-14","Commander Legends","NM",0.65,2,2],
+  ["ct1","Command Tower","Kestrel Card Co.","2025-1202-K","2025-12-02","Commander 2021","NM",0.30,3,3],
+  ["fp1","Fatal Push","Northgate Cards","2025-1118-N","2025-11-18","Aether Revolt","NM",1.45,2,2],
+].map(([key,name,seller,order,date,set,cond,price,qty,got]) => ({key,name,seller,order,date,set,cond,price,qty,got}));
+// One stamp per package, keyed orderId::seller (saved-state-shape). Marlowe sent the Paths and not the Thoughtseize, then refunded the Thoughtseize.
+const STAMPS = { "2026-1003-R::Marlowe Singles":"partial", "2026-1020-F::Fjord Games":"refunded" };
+const STAMP_WORD = { partial:"Partial refund", refunded:"Refunded" };
+// Shipping and tax per order: not in the ledger today (parseItems drops both columns). Sample figures only.
+const SHIP = { "2026-1014-A":[1.31,0.42],"2026-1020-C":[0.99,0.31],"2026-1102-B":[1.31,0.18],"2026-1014-N":[0.99,0.38],"2026-1109-L":[1.31,0.25],
+  "2026-1102-K":[0.99,0.30],"2026-0928-K":[0.99,0.11],"2026-0928-H":[0.99,0.07],"2025-1118-H":[0.99,0.10],"2025-1202-L":[0.99,0.04],"2025-1202-K":[0.99,0.07],"2025-1118-N":[0.99,0.23] };
+
+/* ================= the options ================= */
+const OPTIONS = {
+  "received-line": [
+    ["recvline","Received line in an open row","1",false,"received-line"],
+    ["valuelabel","Masthead third says received, not value","2",true,"value-label"],
+    ["entrance","Year-end summary cell on the Ledger tab","3",false,"summary-cell"],
+    ["year","Year control in the summary (native has no date filter)","4",true,"year-control"],
+    ["refundline","Refunded packages named, not counted","5",true,"refund-line"],
+    ["partialkeeps","A partial refund keeps the copies that came","6",true,"partial-keeps"],
+    ["shiptax","Shipping and tax as their own lines in the file","7",true,"ship-tax"],
+  ],
+  "statement": [
+    ["mode","Check in or Statement switch on the Tally","8",true,"mode-switch"],
+    ["valuelabel","Masthead third says received, not value","2",true,"value-label"],
+    ["footing","The footing: cost basis, less still missing, equals received","9",false,"statement-footing"],
+    ["year","Year control on the Statement (native has no date filter)","4",true,"year-control"],
+    ["seal","Closed seal on a year with nothing missing","10",true,"closed-seal"],
+    ["letter","Open Duo: the year's letter on the right page when no card is picked","11",true,"statement-letter"],
+    ["refundline","Refunded packages named, not counted","5",true,"refund-line"],
+    ["partialkeeps","A partial refund keeps the copies that came","6",true,"partial-keeps"],
+    ["shiptax","Shipping and tax as their own lines in the file","7",true,"ship-tax"],
+  ],
+};
+const STATES = {
+  "received-line": [["default","Tally"],["open","A row open"],["refund","Partial refund"],["ledger","Ledger tab"],["summary","Summary sheet"],["share","Share sheet"],["shared","Saved"],["empty","No ledger"],["nomatch","Search empties"],["failed","Figures unreadable"]],
+  "statement": [["default","Statement"],["checkin","Check in mode"],["open","A card picked"],["refund","Partial refund"],["closed","Closed year"],["share","Share sheet"],["shared","Saved"],["empty","No ledger"],["nomatch","Search empties"],["failed","Figures unreadable"]],
+};
+const DEVICES = [["all","All four"],["folded","Folded"],["open","Open"],["phone","Large phone"],["ax","Folded, AX5 text"]];
+const SORTS = [["missing","Most missing"],["basis","Cost basis"],["ordered","Most ordered"],["value","$ remaining"],["rate","Unit rate"],["name","Name A–Z"]];
+
+/* ================= state ================= */
+const S = { c:"received-line", s:"default", d:"all", hidden:new Set(), got:{}, q:"", sort:"missing", hideDone:false, year:"2026",
+  open:null, picked:null, detail:null, sheet:null, share:false, saved:null, mode:"statement", menu:null, order:null, sealJust:false, tags:true };
+const on = (id) => !S.hidden.has(id);
+function loadState() {
+  S.got = Object.fromEntries(BASE.map((c) => [c.key, c.got]));
+  Object.assign(S, { q:"", sort:"missing", hideDone:false, year:"2026", open:null, picked:null, detail:null, sheet:null, share:false, saved:null,
+    mode:"statement", menu:null, order:null, sealJust:false, tab:"tally", empty:false, failed:false });
+  const st = S.s;
+  if (S.c === "received-line") {
+    if (st === "open") { S.open = "Lightning Bolt"; S.picked = "Lightning Bolt"; }
+    if (st === "refund") { S.open = "Thoughtseize"; S.picked = "Thoughtseize"; }
+    if (st === "ledger") S.tab = "ledger";
+    if (st === "summary") { S.tab = "ledger"; S.sheet = "summary"; }
+    if (st === "share") { S.tab = "ledger"; S.sheet = "summary"; S.share = true; }
+    if (st === "shared") { S.tab = "ledger"; S.sheet = "summary"; S.saved = "manifest-cost-basis-2026.csv"; }
+  } else {
+    if (st === "checkin") S.mode = "checkin";
+    if (st === "open") { S.detail = "Lightning Bolt"; S.picked = "Lightning Bolt"; }
+    if (st === "refund") { S.detail = "Thoughtseize"; S.picked = "Thoughtseize"; }
+    if (st === "closed") { S.year = "2025"; S.sealJust = true; }
+    if (st === "share") S.share = true;
+    if (st === "shared") S.saved = "manifest-cost-basis-2026.csv";
+  }
+  if (st === "empty") S.empty = true;
+  if (st === "failed") S.failed = true;
+  if (st === "nomatch") S.q = "zzz";
+}
+
+/* ================= rules (the sample's copy of view-rules: tallyGroups, outstandingOf) ================= */
+const money = (n) => "$" + n.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ",");
+const compact = (n) => n < 1000 ? "$" + Math.round(n) : "$" + (n / 1000).toFixed(2).replace(/\.?0+$/, "") + "k";
+const gk = (c) => c.order + "::" + c.seller;
+const yearOf = (c) => c.date.slice(0, 4);
+const copiesW = (n) => `${n} cop${n === 1 ? "y" : "ies"}`;
+const plural = (n, w) => `${n} ${w}${n === 1 ? "" : "s"}`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (ch) => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[ch]));
+
+// What a copy counts for. Today a refund stamp drops the whole package (a-refund-leaves-every-count).
+// With "partial keeps", a Partial refund package keeps the copies checked in, and drops only the rest.
+function counted(c) {
+  const st = STAMPS[gk(c)];
+  const got = Math.min(c.qty, S.got[c.key] || 0);
+  if (!st) return { qty:c.qty, got, refundQty:0 };
+  if (st === "partial" && on("partialkeeps")) return { qty:got, got, refundQty:c.qty - got };
+  return { qty:0, got:0, refundQty:c.qty };
+}
+function inScope(c, year) { return year === "all" || yearOf(c) === year; }
+function groups(year) {
+  const m = new Map();
+  for (const c of BASE) {
+    if (!inScope(c, year)) continue;
+    const k = counted(c);
+    if (!m.has(c.name)) m.set(c.name, { name:c.name, copies:[], gone:[], qty:0, got:0, basis:0, recv:0, refundVal:0 });
+    const g = m.get(c.name);
+    if (k.qty > 0) { g.copies.push(c); g.qty += k.qty; g.got += k.got; g.basis += c.price * k.qty; g.recv += c.price * k.got; }
+    if (k.refundQty > 0) { g.gone.push(c); g.refundVal += c.price * k.refundQty; }
+  }
+  const arr = [...m.values()].filter((g) => g.qty > 0 || g.gone.length);
+  for (const g of arr) {
+    g.left = g.qty - g.got; g.miss = g.basis - g.recv; g.avg = g.qty ? g.basis / g.qty : 0;
+    g.sellers = new Set(g.copies.map((c) => c.seller)).size; g.orders = new Set(g.copies.map((c) => c.order)).size;
+    g.sets = [...new Set(g.copies.map((c) => c.set))];
+    g.copies.sort((a, b) => b.date.localeCompare(a.date) || a.seller.localeCompare(b.seller));
+  }
+  return arr;
+}
+function totals(gs) {
+  const t = { qty:0, got:0, basis:0, recv:0, refundVal:0, refundPk:new Set(), names:0 };
+  for (const g of gs) { t.qty += g.qty; t.got += g.got; t.basis += g.basis; t.recv += g.recv; t.refundVal += g.refundVal; for (const c of g.gone) t.refundPk.add(gk(c)); if (g.qty) t.names++; }
+  t.left = t.qty - t.got; t.miss = t.basis - t.recv; return t;
+}
+function sorted(gs) {
+  const key = S.sort, by = {
+    missing:(a, b) => b.left - a.left, basis:(a, b) => b.basis - a.basis, ordered:(a, b) => b.qty - a.qty,
+    value:(a, b) => b.miss - a.miss, rate:(a, b) => b.avg - a.avg, name:() => 0 }[key];
+  return [...gs].sort((a, b) => by(a, b) || a.name.localeCompare(b.name));
+}
+// The order is taken once and frozen while cards are checked in (no-layout-shift-under-pointer). A sort, search, year or state change takes it again.
+function view(gs, scope = "all") {
+  const live = gs.filter((g) => g.qty > 0);
+  if (!S.order) S.order = {};
+  if (!S.order[scope]) S.order[scope] = { names:sorted(live).map((g) => g.name), done:new Set(live.filter((g) => g.left === 0).map((g) => g.name)) };
+  const snap = S.order[scope];
+  const by = new Map(live.map((g) => [g.name, g]));
+  const q = S.q.trim().toLowerCase();
+  return snap.names.map((n) => by.get(n)).filter(Boolean)
+    .filter((g) => !q || g.name.toLowerCase().includes(q) || g.copies.some((c) => (c.seller + " " + c.set + " " + c.order).toLowerCase().includes(q)))
+    .filter((g) => !S.hideDone || !snap.done.has(g.name));
+}
+function packages() {
+  const m = new Map();
+  for (const c of BASE) { const k = counted(c); if (!k.qty) continue; const id = gk(c); if (!m.has(id)) m.set(id, true); if (k.got < k.qty) m.set(id, false); }
+  return { total:m.size, done:[...m.values()].filter(Boolean).length };
+}
+
+/* ================= pieces ================= */
+const tag = (kind, label) => S.tags ? ` data-tk="${kind}" data-tag="${esc((kind === "new" ? "New: " : "Today: ") + label)}"` : "";
+
+function masthead() {
+  const all = totals(groups("all")), p = packages();
+  const fig = (b, r) => S.failed ? `<b class="unk">—</b>` : `<b>${b}</b><span>/${r}</span>`;
+  const label = on("valuelabel") ? "received" : "value";
+  const lt = on("valuelabel") ? tag("new", "label") : "";
+  const miss = S.failed ? `<span class="miss unk">figures unreadable</span>`
+    : all.left === 0 ? `<span class="miss" style="color:var(--green)">ALL ACCOUNTED FOR ✓</span>` : `<span class="miss">${all.left} still missing · ${money(all.miss)}</span>`;
+  return `<header class="mh">
+    <div class="rules"><i></i><span class="seal" aria-hidden="true"></span><i></i></div>
+    <div class="title">Manifest</div><div class="house">C.H Postal Company</div>
+    ${S.empty ? "" : `<div class="thirds">
+      <div><span class="k">cards</span><span class="f">${fig(all.got, all.qty)}</span></div>
+      <div><span class="k">packages</span><span class="f">${fig(p.done, p.total)}</span></div>
+      <div class="wide"><span class="k" id="value-label"${lt}>${label}</span><span class="f">${fig(compact(all.recv), compact(all.basis))}</span></div>
+    </div>
+    <div class="mbar"><i style="width:${all.qty ? (all.got / all.qty) * 100 : 0}%"></i></div>
+    <div class="foot"><span>${plural(all.names, "unique item")} · autosaves</span>${miss}<span class="slot">Saved</span></div>`}
+  </header>`;
+}
+function controls(frame) {
+  const lab = SORTS.find((s) => s[0] === S.sort)[1];
+  return `<div class="stack tight">
+    <label class="field"><span class="sr" style="position:absolute;left:-9999px">Search</span><input data-in="q" data-frame="${frame}" placeholder="Find card, set, seller, order" value="${esc(S.q)}"></label>
+    <div class="rowx"><span class="soft">Sorted by</span><button class="linkish" data-act="menu" data-frame="${frame}">${lab}</button></div>
+    <div class="rowx"><span>Hide received</span><button class="toggle" role="switch" aria-checked="${S.hideDone}" aria-label="Hide received" data-act="hide"></button></div>
+  </div>`;
+}
+function sortMenu(frame) {
+  if (S.menu !== frame) return "";
+  return `<div class="menu" style="top:${frame === "open" ? 300 : 330}px">${SORTS.map(([k, l]) =>
+    `<button data-act="sort" data-v="${k}">${l}<span>${k === S.sort ? "✓" : ""}</span></button>`).join("")}</div>`;
+}
+function emptyState() {
+  return `<div class="empty"><span>No orders yet. Orders arrive from the web app's CSV import or the extension, then sync here.</span><button class="btn fill" data-act="noop">Open Sync</button></div>`;
+}
+function failedState() {
+  return `<div class="err" role="alert"><span>Could not work out the figures. Your check-ins are saved.</span><span class="note">The figures show a dash until they can be read. No figure here is a zero.</span><button class="btn line2" data-act="retry">Try again</button></div>`;
+}
+function noMatch(g) {
+  return `<div class="empty"><span>No card matches this search. The figures above still cover every card.</span><button class="btn line2" data-act="clearq">Clear search</button></div>`;
+}
+function tallyRow(g, mode) { // mode: inline | cell
+  const isOpen = mode === "inline" && S.open === g.name, picked = mode === "cell" && S.picked === g.name, done = g.left === 0;
+  const setLab = g.sets.length === 1 ? g.sets[0] : `${g.sets[0]} +${g.sets.length - 1} more`;
+  const meta = [plural(g.sellers, "seller"), plural(g.orders, "order"), setLab].join(" · ");
+  return `<div class="tcard${done ? " done" : ""}${picked ? " picked" : ""}">
+    ${g.got > 0 && !done ? `<div class="edge"><i style="width:${(g.got / g.qty) * 100}%"></i></div>` : ""}
+    <button class="thead" data-act="${mode === "cell" ? "pick" : "toggle"}" data-v="${esc(g.name)}" aria-expanded="${isOpen}">
+      <span class="tri${isOpen ? " o" : ""}" aria-hidden="true">▶</span>
+      <span class="nm"><b>${esc(g.name)}</b><span>${esc(meta)}</span></span>
+      <span class="fig"><b class="${done ? "g" : ""}">${g.got}/${g.qty}${done ? " ✓" : ""}</b><span>${money(g.avg)} / copy</span><em class="${done ? "hid" : ""}" aria-hidden="${done}">${g.left} left · ${money(g.miss)}</em></span>
+    </button>
+    ${isOpen ? rowBody(g) : ""}
+  </div>`;
+}
+function rowBody(g) {
+  const recv = S.c === "received-line" && on("recvline");
+  return `<div class="across"${tag("today", "across line")}>${money(g.basis)} across ${copiesW(g.qty)} · ${money(g.avg)} avg</div>
+    ${recv ? `<div class="recv" id="received-line"${tag("new", "received line")}><b>${money(g.recv)} received</b> · ${g.got} of ${copiesW(g.qty)}</div>` : ""}
+    <div class="bulk">${g.left ? `<button class="mini" data-act="bulk" data-v="${esc(g.name)}" data-on="1">Mark all received</button>` : ""}${g.got ? `<button class="mini" data-act="bulk" data-v="${esc(g.name)}" data-on="0">Clear check-ins</button>` : ""}</div>
+    <div>${g.copies.map(copyLine).join("")}${refundLines(g)}</div>`;
+}
+function copyLine(c) {
+  const k = counted(c), got = Math.min(c.qty, S.got[c.key] || 0), st = got >= c.qty ? "done" : got > 0 ? "partial" : "";
+  const meta = [c.qty > 1 ? "×" + c.qty : "", c.date, c.set, c.cond].filter(Boolean).join(" · ");
+  const kept = STAMPS[gk(c)] ? `<span class="rf" id="partial-keeps"${tag("new", "kept from a partial refund")}>${STAMP_WORD[STAMPS[gk(c)]]} · the ${got} that came stay counted</span>` : "";
+  return `<div class="line ${st}">
+    <button class="box" data-act="tap" data-v="${c.key}" aria-label="${got >= c.qty ? "Received" : "Not received"}: ${esc(c.name)} from ${esc(c.seller)}"><i></i></button>
+    <span class="t"><b>${esc(c.seller)}<span>${money(c.price)}</span></b><small>${esc(meta)}</small><span class="oid">${c.order}</span>${kept}
+    ${c.qty > 1 ? `<span class="step"><button data-act="step" data-v="${c.key}" data-d="-1" aria-label="One fewer"><i>–</i></button><span class="c">${got}/${c.qty}</span><button data-act="step" data-v="${c.key}" data-d="1" aria-label="One more"><i>+</i></button></span>` : ""}</span>
+  </div>`;
+}
+function refundLines(g) {
+  if (!on("refundline") || !g.gone.length) return "";
+  return g.gone.map((c) => {
+    const k = counted(c), word = STAMP_WORD[STAMPS[gk(c)]];
+    return `<div class="line refunded" id="refund-line"${tag("new", "refunded, not counted")}><span class="box" aria-hidden="true"><i></i></span>
+      <span class="t"><b>${esc(c.seller)}<span>${money(c.price)}</span></b><small>${k.refundQty > 1 ? "×" + k.refundQty + " · " : ""}${c.date} · ${esc(c.set)}</small><span class="oid">${c.order}</span>
+      <span class="rf">${word} · not in the figures</span></span></div>`;
+  }).join("");
+}
+function detailPage(g) {
+  if (!g) return `<p class="note">Pick a card on the left page.</p>`;
+  return `<div class="detail"><h3 class="dtitle">${esc(g.name)}</h3>${rowBody(g)}</div>`;
+}
+
+/* ---------- Received line concept: the Tally screen ---------- */
+function tallyList(frame, mode) {
+  if (S.empty) return masthead() + emptyState();
+  if (S.failed) return masthead() + failedState();
+  const vs = view(groups("all"));
+  return `${masthead()}${controls(frame)}<div class="stack">${vs.length ? vs.map((g) => tallyRow(g, mode)).join("") : noMatch()}</div>`;
+}
+function ledgerTab() {
+  const t = totals(groups(on("year") ? S.year : "all"));
+  return `${masthead()}<div class="stack tight">
+    <span class="sect">LEDGER</span>
+    <div class="cells">
+      <button class="cell" data-act="noop"><span class="lab">Sync<small>Backed up today</small></span><span class="v">Open</span></button>
+      <button class="cell" data-act="noop"><span class="lab">Backup<small>a file of the whole ledger</small></span><span class="v">Make</span></button>
+      <button class="cell" data-act="noop"><span class="lab">History<small>saved versions</small></span><span class="v">Open</span></button>
+      ${on("entrance") ? `<button class="cell" id="summary-cell" data-act="sheet"${tag("new", "summary cell")}><span class="lab">Year-end summary<small>cost basis and received, to share</small></span><span class="v">${S.empty || S.failed ? "Open" : on("year") ? S.year : "All years"}</span></button>` : ""}
+    </div>
+    ${on("entrance") ? "" : `<p class="note">With this cell hidden the summary has no way in on this concept.</p>`}
+  </div>`;
+}
+function yearSeg() {
+  if (!on("year")) return "";
+  return `<div class="seg" id="year-control" role="group" aria-label="Year"${tag("new", "year control")}>${[["2025","2025"],["2026","2026"],["all","All years"]].map(([v, l]) =>
+    `<button data-act="year" data-v="${v}" aria-pressed="${S.year === v}">${l}</button>`).join("")}</div>`;
+}
+function reckoning(t, id) {
+  return `<div class="reck"${id ? ` id="${id}"` : ""}${id ? tag("new", "footing") : ""}>
+    <div class="r"><span class="l">Cost basis<small>${copiesW(t.qty)} · price × qty, no shipping or tax</small></span><span class="n">${money(t.basis)}</span></div>
+    <div class="r${t.left ? " miss" : ""}"><span class="l">less still missing<small>${t.left ? copiesW(t.left) : "nothing missing"}</small></span><span class="n">${t.left ? "−" : ""}${money(t.miss)}</span></div>
+    <div class="r total"><span class="l">Received<small>${copiesW(t.got)} in hand</small></span><span class="n">${money(t.recv)}</span></div>
+  </div>`;
+}
+function refundNote(t) {
+  if (!on("refundline") || !t.refundPk.size) return "";
+  return `<div class="refund" id="refund-line"${tag("new", "refunded, named")}><span>${plural(t.refundPk.size, "refunded package")}, ${money(t.refundVal)}, ${t.refundPk.size === 1 ? "is" : "are"} not in these figures.</span>
+    ${on("partialkeeps") ? `<span id="partial-keeps"${tag("new", "partial keeps")}>A partial refund keeps the copies that came. Only the copies that never came leave.</span>` : `<span>A partial refund takes its whole package out, the copies that came too.</span>`}</div>`;
+}
+function shipNote(year) {
+  if (!on("shiptax")) return "";
+  let sh = 0, tx = 0; for (const [o, [s, t]] of Object.entries(SHIP)) if (year === "all" || o.startsWith(year)) { sh += s; tx += t; }
+  return `<div class="refund" id="ship-tax"${tag("new", "shipping and tax")}><div class="rowx"><span>Shipping ${money(sh)} · tax ${money(tx)}</span></div>
+    <span>In the file as their own lines, one pair per order. Never added into cost basis.</span></div>`;
+}
+function fileName() { return `manifest-cost-basis-${on("year") ? S.year === "all" ? "all-years" : S.year : "all-years"}.csv`; }
+function byCard(gs) {
+  const top = [...gs].filter((g) => g.qty).sort((a, b) => b.basis - a.basis || a.name.localeCompare(b.name));
+  // No column heads: the footing above names both figures, and each row reads "received of cost basis" in words.
+  return `<div class="tbl">
+    ${top.slice(0, 5).map((g) => `<div class="d"><span>${esc(g.name)}</span><span>${g.got}/${g.qty}</span><span class="of"><b>${money(g.recv)}</b> of ${money(g.basis)}</span></div>`).join("")}
+    ${top.length > 5 ? `<div class="more">and ${plural(top.length - 5, "more card")} in the file</div>` : ""}</div>`;
+}
+function holds() {
+  return `<details class="holds"><summary>What the file holds</summary><pre>${fileName()}
+card, copies ordered, copies received, cost basis, received, still missing, sellers, orders, sets${on("refundline") ? ", refunded (not counted)" : ""}
+one row per card name, then a totals row${on("shiptax") ? "\nthen one shipping row and one tax row per order" : ""}</pre></details>`;
+}
+function summarySheet() {
+  const yr = on("year") ? S.year : "all";
+  if (S.failed) return sheetFrame(`<div class="body">${failedState()}</div>`, false);
+  const gs = groups(yr), t = totals(gs);
+  const title = yr === "all" ? "All years" : yr;
+  const body = !t.qty && !t.refundPk.size ? `<div class="empty"><span>No orders in ${title}.</span><button class="btn line2" data-act="year" data-v="all">Show all years</button></div>`
+    : `${yearSeg()}${reckoning(t, "summary-reckoning")}${refundNote(t)}${shipNote(yr)}<span class="sect">BY CARD, MOST PAID FIRST</span>${byCard(gs)}${holds()}`;
+  return sheetFrame(`<div class="body">
+    <div class="answer${S.saved ? "" : " blank"}" role="status">${S.saved ? `Saved to Files: ${S.saved}` : " "}</div>${body}</div>`, true);
+}
+function sheetFrame(inner, canShare) {
+  return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="Year-end summary">
+    <div class="grab"></div><div class="bar"><button data-act="close">Cancel</button><span class="tl">Year-end summary</span>
+    ${canShare ? `<button class="r" data-act="share" aria-label="Share">${shareGlyph()}Share</button>` : `<span></span>`}</div>${inner}</div>`;
+}
+function shareGlyph() { return `<svg width="16" height="20" viewBox="0 0 16 20" aria-hidden="true"><path d="M8 1v12M4 5l4-4 4 4M3 9H1v10h14V9h-2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>`; }
+function shareSheet() {
+  if (!S.share) return "";
+  const gs = groups(on("year") ? S.year : "all");
+  return `<div class="scrim" style="z-index:30" data-act="unshare"></div><div class="share" role="dialog" aria-label="Share">
+    <div class="hd"><i></i><span><b>${fileName()}</b><small>CSV · ${plural(totals(gs).names, "card")} · and a summary in the message</small></span><button data-act="unshare" aria-label="Close">✕</button></div>
+    <div class="apps"><span>Mail</span><span>Messages</span><span>Notes</span><span>Files</span></div>
+    <div class="acts"><button data-act="saved">Save to Files</button><button data-act="saved">Copy</button><button data-act="saved">Print</button></div></div>`;
+}
+
+/* ---------- Statement concept ---------- */
+function modeSwitch() {
+  if (!on("mode")) return "";
+  return `<div class="seg" id="mode-switch" role="group" aria-label="Tally mode"${tag("new", "mode switch")}>
+    <button data-act="mode" data-v="checkin" aria-pressed="${S.mode === "checkin"}">Check in</button>
+    <button data-act="mode" data-v="statement" aria-pressed="${S.mode === "statement"}">Statement</button></div>`;
+}
+function footing(t) {
+  return `<div id="statement-footing"${tag("new", "footing")}>
+    <div class="ft"><span class="l">Cost basis<small>${copiesW(t.qty)}, price × qty</small></span><span class="n c3">${money(t.basis)}</span></div>
+    <div class="ft${t.left ? " miss" : ""}"><span class="l">less still missing<small>${t.left ? copiesW(t.left) : "nothing missing"}</small></span><span class="n c3">${t.left ? "−" : ""}${money(t.miss)}</span></div>
+    <div class="ft sum"><span class="l">Received<small>${copiesW(t.got)} in hand</small></span><span class="n c2">${money(t.recv)}</span></div>
+  </div>`;
+}
+function statementHead(t, frame) {
+  const closed = on("seal") && t.qty > 0 && t.left === 0;
+  const press = closed && S.sealJust ? " press" : "";
+  const when = S.year === "all" || !on("year") ? "all years" : S.year;
+  return `<div class="ahead"><b>${on("year") ? "Statement" : "Statement, all years"}</b><button data-act="share">${shareGlyph()}Share</button></div>
+    ${on("year") ? `<div class="pad">${yearSeg()}</div>` : ""}
+    ${closed ? `<span class="closed${press}" id="closed-seal" style="top:${on("year") ? 108 : 56}px;right:calc(var(--money) + 16px)" aria-label="Closed: nothing missing in ${when}"${tag("new", "seal")}><span>CLOSED<br>${S.year === "all" ? "" : S.year}</span></span>` : ""}
+    ${on("footing") ? footing(t) : `<div class="ft"><span class="l">Cost basis</span><span class="n">${money(t.basis)}</span></div>`}
+    ${refundNote(t) || shipNote(S.year) ? `<div class="pad stack tight" style="padding-top:8px">${refundNote(t)}${shipNote(S.year)}</div>` : ""}`;
+}
+function stmtLine(g, frame) {
+  const picked = frame === "open" && S.picked === g.name;
+  const sub = g.left ? `${g.got} of ${g.qty} · <em>${g.left} left · ${money(g.miss)}</em>` : `${g.got} of ${g.qty} · all in`;
+  return `<button class="sline${picked ? " picked" : ""}" data-act="detail" data-v="${esc(g.name)}">
+    <span class="nm">${esc(g.name)}<small>${sub}</small></span><span class="a${g.left ? "" : " g"}">${money(g.recv)}</span><span class="b">${money(g.basis)}</span></button>`;
+}
+function statementList(frame) {
+  if (S.empty) return masthead() + emptyState();
+  const top = masthead() + modeSwitch();
+  if (S.mode === "checkin" && on("mode")) return top + (S.failed ? failedState() : `${controls(frame)}<div class="stack">${(() => { const vs = view(groups("all")); return vs.length ? vs.map((g) => tallyRow(g, frame === "open" ? "cell" : "inline")).join("") : noMatch(); })()}</div>`);
+  if (S.failed) return top + failedState();
+  const yr = on("year") ? S.year : "all";
+  const gs = groups(yr), t = totals(gs), vs = view(gs, "y" + yr);
+  return `${top}<section class="acct" aria-label="Statement">${statementHead(t, frame)}
+    <div class="ctl">${controls(frame)}</div>
+    ${vs.length ? vs.map((g) => stmtLine(g, frame)).join("") : `<div class="tail">${noMatch()}</div>`}
+    <p class="note tail">The search and Hide received narrow the lines. The footing always covers every card in ${yr === "all" ? "all years" : yr}.</p></section>`;
+}
+function stmtDetail(g, frame) {
+  if (!g) return "";
+  const back = frame === "open" ? "" : `<button class="back" data-act="undetail">‹ Statement</button>`;
+  const lines = g.copies.map((c) => { const got = Math.min(c.qty, S.got[c.key] || 0), k = counted(c), miss = k.qty - k.got;
+    const keptTag = STAMPS[gk(c)] === "partial" ? tag("new", "kept from a partial refund") : "";
+    return `<div class="cline"${keptTag ? ` id="partial-keeps"${keptTag}` : ""}><b>${esc(c.seller)}</b><span class="p">${c.qty > 1 ? c.qty + " × " : ""}${money(c.price)}</span>
+      <small>${c.date} · ${esc(c.set)} · ${c.order}${STAMPS[gk(c)] ? " · " + STAMP_WORD[STAMPS[gk(c)]].toLowerCase() : ""}</small>
+      <span>${miss ? `<span class="chip miss">${miss} missing</span>` : `<span class="chip ok">${got === 1 ? "received" : got + " received"}</span>`}</span></div>`; }).join("");
+  const gone = on("refundline") ? g.gone.map((c) => { const k = counted(c);
+    return `<div class="cline rf" id="refund-line"${tag("new", "refunded, not counted")}><b>${esc(c.seller)}</b><span class="p">${k.refundQty > 1 ? k.refundQty + " × " : ""}${money(c.price)}</span>
+      <small>${c.date} · ${c.order}</small><span><span class="chip rf">${STAMP_WORD[STAMPS[gk(c)]].toLowerCase()} · not counted</span></span></div>`; }).join("") : "";
+  return `${back}<div class="detail"><h3 class="dtitle">${esc(g.name)}</h3>
+    <div style="padding:0 12px 12px">${reckoning(g)}</div>
+    <div>${lines}${gone}</div></div>
+    <p class="note">A statement only reads. Check in from Check in${on("mode") ? "" : " (the Tally)"}.</p>`;
+}
+function letter() {
+  const yr = on("year") ? S.year : "all", t = totals(groups(yr));
+  const when = yr === "all" ? "all years" : yr;
+  return `<div class="letter" id="statement-letter"${tag("new", "the year's letter")}>
+    <div class="lh"><span class="seal" aria-hidden="true"></span><b>Statement, ${when}</b></div>
+    <p>For ${when}, the cost basis of ${copiesW(t.qty)} is ${money(t.basis)}. Of that, ${money(t.recv)} paid for the ${t.got} copies that came. ${t.left ? `${money(t.miss)} is still missing, ${copiesW(t.left)}.` : "Nothing is missing."}</p>
+    ${on("refundline") && t.refundPk.size ? `<p>${plural(t.refundPk.size, "refunded package")}, ${money(t.refundVal)}, ${t.refundPk.size === 1 ? "is" : "are"} left out.</p>` : ""}
+    <p class="note">Shipping and tax are not in the cost basis.</p>
+    <div><button class="btn fill" data-act="share">${shareGlyph()}&nbsp;Share ${fileName()}</button></div>
+    <div class="answer${S.saved ? "" : " blank"}" role="status">${S.saved ? `Saved to Files: ${S.saved}` : " "}</div>
+  </div>`;
+}
+
+/* ================= frames ================= */
+const TABS = ["Ledger","Orphaned","Tally","Packages"];
+// A tab this concept does not change draws a one-line stub, so every tab tap goes somewhere.
+function stubTab() {
+  const name = S.tab[0].toUpperCase() + S.tab.slice(1);
+  return `${masthead()}<p class="note" style="padding-top:12px">${name} is today's screen. This concept leaves it as it is.</p><button class="btn line2" data-act="tab" data-v="Tally">Back to the Tally</button>`;
+}
+function tabbar() { const cur = S.tab[0].toUpperCase() + S.tab.slice(1);
+  return `<nav class="tabbar" aria-label="Views">${TABS.map((t) => `<button data-act="tab" data-v="${t}" class="${t === cur ? "on" : ""}" aria-current="${t === cur}">${t}</button>`).join("")}</nav>`; }
+function status() { return `<div class="status"><span>9:41</span><span>100%</span></div>`; }
+function oneScreen(frame) {
+  let body, over = "";
+  if (isStub()) body = stubTab();
+  else if (S.c === "received-line") {
+    body = S.tab === "ledger" ? ledgerTab() : tallyList(frame, "inline");
+    if (S.sheet === "summary") over = summarySheet();
+  } else {
+    const g = S.detail && groups(on("year") ? S.year : "all").find((x) => x.name === S.detail);
+    body = g && !S.empty && !S.failed && (S.mode === "statement" || !on("mode")) ? stmtDetail(g, frame) : statementList(frame);
+    if (S.saved && !g) body += `<div class="answer" role="status">Saved to Files: ${S.saved}</div>`;
+  }
+  return `${status()}<div class="scroll" data-scroll="${frame}"><div class="stack">${body}</div></div>${tabbar()}${sortMenu(frame)}${over}${shareSheet()}`;
+}
+const isStub = () => S.tab !== "tally" && !(S.c === "received-line" && S.tab === "ledger");
+function openScreen() {
+  let left, right, over = "";
+  if (isStub()) { left = stubTab(); right = ""; }
+  else if (S.c === "received-line") {
+    if (S.tab === "ledger") { left = ledgerTab(); right = `<p class="note" style="padding-top:16px">The Ledger tab keeps one page today. The summary opens on this page.</p>`; if (S.sheet === "summary") over = summarySheet(); }
+    else {
+      left = tallyList("open", "cell");
+      const vs = S.empty || S.failed ? [] : view(groups("all"));
+      const g = vs.find((x) => x.name === S.picked) || vs[0]; // pickedOrFirst, TallyView.swift
+      right = S.empty || S.failed ? "" : detailPage(g);
+    }
+  } else {
+    left = statementList("open");
+    const gs = groups(on("year") ? S.year : "all");
+    if (S.mode === "checkin" && on("mode")) { const vs = S.empty || S.failed ? [] : view(groups("all")); right = S.empty || S.failed ? "" : detailPage(vs.find((x) => x.name === S.picked) || vs[0]); }
+    else {
+      const g = gs.find((x) => x.name === S.detail);
+      right = S.empty || S.failed ? "" : g ? stmtDetail(g, "open") + (on("letter") ? `<button class="back" data-act="undetail">Show the year's letter</button>` : "")
+        : on("letter") ? letter() : stmtDetail(gs.filter((x) => x.qty)[0], "open");
+    }
+  }
+  return `${status()}
+    <div class="page l"><div class="scroll" data-scroll="open-l" style="padding-bottom:24px"><div class="stack">${left}</div></div></div>
+    <div class="fold"><span>FOLD</span></div>
+    <div class="page r"><div class="scroll" data-scroll="open-r"><div class="stack" style="padding-top:12px">${right}</div></div>${tabbar()}${over}${shareSheet()}</div>
+    ${sortMenu("open")}`;
+}
+const FRAMES = {
+  folded:{ dev:"iphone-duo-folded", cls:"one", cap:"Duo folded, 466 x 678 pt. One page, carried in one hand." },
+  open:{ dev:"iphone-duo-unfolded", cls:"duo", cap:"Duo open, 951 x 669 pt. Two pages; nothing crosses the fold (455.5 to 495.5 pt). Sheets open on the right page." },
+  phone:{ dev:"iphone-regular", cls:"one", cap:"Large phone. No size is written for it in the device list, so it is drawn at the brief's folded size, 466 x 678 pt." },
+  ax:{ dev:"iphone-duo-folded", cls:"one ax", cap:"Duo folded at AX5. Each size is scaled by its text style's AX5 over default size. Figures stack under names and stay whole." },
+};
+
+/* ================= render ================= */
+function render() {
+  const root = document.getElementById("root");
+  root.classList.toggle("tags-on", S.tags);
+  // nav
+  const hid = S.hidden.size ? `&h=${[...S.hidden].join(",")}` : "";
+  const link = (k, v, l, cur) => `<a href="#c=${k === "c" ? v : S.c}&s=${k === "s" ? v : k === "c" ? "default" : S.s}&d=${k === "d" ? v : S.d}${hid}" aria-current="${cur}">${l}</a>`;
+  document.getElementById("nav-c").innerHTML = `<span>Concept</span>` + [["received-line","Received line"],["statement","Statement (bold)"]].map(([v, l]) => link("c", v, l, S.c === v)).join("");
+  document.getElementById("nav-s").innerHTML = `<span>State</span>` + STATES[S.c].map(([v, l]) => link("s", v, l, S.s === v)).join("");
+  document.getElementById("nav-d").innerHTML = `<span>Device</span>` + DEVICES.map(([v, l]) => link("d", v, l, S.d === v)).join("");
+  document.getElementById("optlist").innerHTML = OPTIONS[S.c].map(([id, l, n, grant, el]) =>
+    `<div class="opt${on(id) ? "" : " off"}"><span>${n}. ${l}${grant ? `<span class="grant">Owner grant: yes</span>` : ""}</span><button type="button" data-hide="${id}" aria-pressed="${!on(id)}" aria-label="${on(id) ? "Hide" : "Show"}: ${l}">${on(id) ? "Hide" : "Show"}</button></div>`).join("");
+  // keep each scroller's place and the focused field across the redraw
+  const keep = {}; document.querySelectorAll("[data-scroll]").forEach((el) => keep[el.dataset.scroll] = el.scrollTop);
+  const act = document.activeElement, focusFrame = act && act.dataset && act.dataset.in ? act.dataset.frame : null, caret = focusFrame ? act.selectionStart : 0;
+  const ds = S.d === "all" ? ["folded","open","phone","ax"] : [S.d];
+  document.querySelectorAll("#figs figure").forEach((fig) => { const d = fig.dataset.fig, f = FRAMES[d];
+    fig.hidden = !ds.includes(d); if (fig.hidden) { fig.querySelector(".dev").innerHTML = ""; return; }
+    fig.querySelector(".dev").innerHTML = d === "open" ? openScreen() : oneScreen(d);
+    fig.querySelector("figcaption").innerHTML = `<b>${d === "ax" ? "Folded, AX5" : d === "open" ? "Open" : d === "phone" ? "Large phone" : "Folded"}.</b> ${f.cap}`; });
+  // One id per page: the first frame keeps the bare id (the waiting page's focus), later copies get the frame's name.
+  const seen = new Set();
+  document.querySelectorAll("#figs [id]").forEach((el) => { let id = el.id;
+    if (seen.has(id)) { const fr = el.closest("[data-frame]").dataset.frame; let n = 2; id = `${el.id}-${fr}`; while (seen.has(id)) id = `${el.id}-${fr}-${n++}`; el.id = id; }
+    seen.add(id); });
+  document.querySelectorAll("[data-scroll]").forEach((el) => { if (keep[el.dataset.scroll] != null) el.scrollTop = keep[el.dataset.scroll]; });
+  if (focusFrame) { const el = document.querySelector(`input[data-frame="${focusFrame}"]`); if (el) { el.focus(); el.setSelectionRange(caret, caret); } }
+  S.sealJust = false;
+}
+function fromHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const c = h.get("c"), s = h.get("s"), d = h.get("d");
+  S.c = OPTIONS[c] ? c : "received-line";
+  S.s = STATES[S.c].some((x) => x[0] === s) ? s : "default";
+  S.d = DEVICES.some((x) => x[0] === d) ? d : "all";
+  // h=<option,...> hides those options, so each option has one deep link with it shown and one with it hidden
+  const known = new Set(OPTIONS[S.c].map((o) => o[0]));
+  S.hidden = new Set((h.get("h") || "").split(",").filter((x) => known.has(x)));
+  loadState(); render(); scrollToFocus();
+}
+// The element each state is about. On a deep link every frame scrolls it into view, so the AX5 frame shows it below its tall masthead.
+const FOCUS = {
+  "received-line": { open:"received-line", refund:"refund-line", ledger:"summary-cell" },
+  "statement": { default:"statement-footing", checkin:"mode-switch", refund:"refund-line", closed:"closed-seal", nomatch:"statement-footing" },
+};
+function scrollToFocus() {
+  const id = FOCUS[S.c][S.s]; if (!id) return;
+  document.querySelectorAll("[data-frame]").forEach((fr) => {
+    const el = fr.querySelector(`#${id}, [id^="${id}-"]`); if (!el) return;
+    const sc = el.closest("[data-scroll]"); if (!sc) return;
+    const top = el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop;
+    if (top + el.offsetHeight > sc.clientHeight - 100) sc.scrollTop = Math.max(0, top - 72);
+  });
+}
+window.addEventListener("hashchange", fromHash);
+document.addEventListener("click", (e) => {
+  const h = e.target.closest("[data-hide]");
+  const keepHash = () => history.replaceState(null, "", `#c=${S.c}&s=${S.s}&d=${S.d}${S.hidden.size ? "&h=" + [...S.hidden].join(",") : ""}`);
+  if (h) { const id = h.dataset.hide; S.hidden.has(id) ? S.hidden.delete(id) : S.hidden.add(id); S.order = null; keepHash(); render(); return; }
+  if (e.target.id === "restore") { S.hidden.clear(); S.order = null; keepHash(); render(); return; }
+  if (e.target.id === "reset") { loadState(); render(); return; }
+  if (e.target.id === "tagbtn") { S.tags = !S.tags; e.target.setAttribute("aria-pressed", S.tags); e.target.textContent = S.tags ? "Tags shown" : "Tags hidden"; render(); return; }
+  const a = e.target.closest("[data-act]"); if (!a) return;
+  const v = a.dataset.v, act = a.dataset.act, frame = a.closest("[data-frame]")?.dataset.frame;
+  if (act !== "menu" && act !== "sort") S.menu = null;
+  const gsAll = () => groups("all");
+  switch (act) {
+    case "toggle": S.open = S.open === v ? null : v; break;
+    case "pick": S.picked = v; break;
+    case "tap": { const c = BASE.find((x) => x.key === v); S.got[v] = (S.got[v] || 0) >= c.qty ? 0 : c.qty; break; }
+    case "step": { const c = BASE.find((x) => x.key === v); S.got[v] = Math.max(0, Math.min(c.qty, (S.got[v] || 0) + Number(a.dataset.d))); break; }
+    case "bulk": { const g = gsAll().find((x) => x.name === v); for (const c of g.copies) S.got[c.key] = a.dataset.on === "1" ? c.qty : 0; break; }
+    case "menu": S.menu = S.menu === frame ? null : frame; break;
+    case "sort": S.sort = v; S.order = null; S.menu = null; break;
+    case "hide": S.hideDone = !S.hideDone; S.order = null; break;
+    case "clearq": S.q = ""; S.order = null; break;
+    case "retry": S.failed = false; break;
+    case "tab": S.tab = v.toLowerCase(); S.sheet = null; S.share = false; break;
+    case "sheet": S.sheet = "summary"; S.saved = null; break;
+    case "close": S.sheet = null; S.share = false; break;
+    case "share": S.share = true; break;
+    case "unshare": S.share = false; break;
+    case "saved": S.share = false; S.saved = fileName(); break;
+    case "year": S.year = v; S.order = null; S.saved = null; S.sealJust = true; break;
+    case "mode": S.mode = v; S.order = null; break;
+    case "detail": S.detail = v; S.picked = v; break;
+    case "undetail": S.detail = null; S.picked = null; break;
+    case "noop": return;
+  }
+  render();
+});
+document.addEventListener("input", (e) => { if (e.target.dataset.in === "q") { S.q = e.target.value; S.order = null; render(); } });
+document.addEventListener("keydown", (e) => { if (e.key === "Escape" && (S.menu || S.share || S.sheet)) { S.menu = null; if (S.share) S.share = false; else S.sheet = null; render(); } });
+fromHash();
+</script>
+</body>
+</html>

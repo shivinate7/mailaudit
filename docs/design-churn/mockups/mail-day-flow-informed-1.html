@@ -188,6 +188,7 @@ section.concept[hidden] { display:none; }
 .prow { display:flex; align-items:center; justify-content:space-between; gap:8px; min-height:56px; padding:4px 4px 4px 12px; background:var(--card); border:1px solid var(--line); border-radius:8px; }
 .prow > span { font:calc(15px * var(--kb)) var(--cochin); }
 .step { display:flex; align-items:center; gap:4px; }
+.mini { min-width:44px; }
 .step b { font:700 calc(20px * var(--kbx)) var(--mono); min-width:44px; text-align:center; }
 .bigpile { display:flex; flex-wrap:wrap; gap:16px; align-content:flex-start; }
 .bigpile .bundle { gap:6px; }
@@ -206,7 +207,7 @@ section.concept[hidden] { display:none; }
   background:radial-gradient(circle at 38% 32%, var(--waxRaised) 0, var(--waxLit) 18%, var(--wax) 46%, var(--waxDeep) 100%);
   box-shadow:0 2px 0 var(--waxCut), 0 6px 14px rgba(28,43,36,.18); transform:rotate(-4deg); }
 .seal::before { content:""; position:absolute; inset:14px; border-radius:50%; border:2px solid color-mix(in srgb, var(--waxDeep) 70%, transparent); box-shadow:inset 0 1px 0 color-mix(in srgb, var(--waxRaised) 60%, transparent); }
-.seal span { font:700 15px/1.1 var(--cochin); letter-spacing:2px; color:var(--card); text-align:center; text-shadow:0 1px 0 var(--waxCut); }
+.seal span { font:700 14px/1.1 var(--cochin); letter-spacing:.5px; color:var(--card); text-align:center; text-shadow:0 1px 0 var(--waxCut); }
 .seal span b { display:block; font:700 30px/1.1 var(--mono); letter-spacing:0; }
 .seal.lands { animation:land .42s cubic-bezier(.2,.8,.3,1.2); }
 @keyframes land { 0% { transform:scale(1.5) rotate(-12deg); opacity:0; } 60% { opacity:1; } 100% { transform:scale(1) rotate(-4deg); } }
@@ -249,11 +250,12 @@ section.concept[hidden] { display:none; }
 .tags-on [data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:2px; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper); color:var(--new); z-index:9; white-space:nowrap; pointer-events:none; }
 .tags-on [data-tag^="Today"]::after { color:var(--today); }
 .tags-on .mini[data-tag]::after { content:none; }  /* a button's tag would cover its label: the outline stays, the name is in its tooltip */
-.tags-on [data-tagpos="b"]::after { top:auto; bottom:2px; }
+.tags-on [data-tagpos="tl"]::after { right:auto; left:16px; }
 /* AX5: the head and the answer scroll as one; the Post bar and the dock stay pinned over the foot. */
 .dev.ax5 .main { overflow-y:auto; }
 .dev.ax5 .main > .ans { flex:none; overflow:visible; }
 .dev.ax5 .main > .dock { position:sticky; bottom:0; z-index:3; margin-top:auto; }
+.dev.ax5 .main > .postbar { position:sticky; bottom:var(--dockh, 0px); z-index:3; }
 .dev.ax5 .envrow .what span, .dev.ax5 .pilenote { font-size:calc(14px * var(--kbx)); }
 
 @media (prefers-reduced-motion: reduce) { .seal.lands, .env.just { animation:none; } .env { transition:none; } }
@@ -266,6 +268,7 @@ section.concept[hidden] { display:none; }
   <header style="display:flex;flex-direction:column;gap:8px">
     <h1>Mail day, from the pile to done</h1>
     <p class="sub"><span class="kind">Designer kind: informed.</span> Designer mail-day-flow-informed-1. Two concepts, each drawn on the folded Duo, the open Duo, a large phone and the folded Duo at AX5. In each concept the four frames share one state: a tap in any frame moves all four, so folding or unfolding keeps your place. Light theme only, as the native app ships. Notes: <code>mail-day-flow-informed-1-notes.md</code>.</p>
+    <p class="sub">Tags: a red dashed outline marks what exists today ("Today: ..."); a green one marks what the concept adds ("New: ..."). On a button the name is in its tooltip. Every tap works; type with your own keys, the drawn keys, or the "Type a card" buttons. "Leave the app and come back" and a page reload both keep your place.</p>
     <div class="row">
       <a class="ctl" href="#c=hand">Hand on every screen</a>
       <a class="ctl" href="#c=pile">The pile</a>
@@ -289,7 +292,12 @@ section.concept[hidden] { display:none; }
       </div>
       <div class="row"><span class="lbl">Place</span><button class="ctl" data-leave>Leave the app and come back</button><button class="ctl x" data-reset>Start over</button></div>
     </div>
-    <div class="frames" data-frames></div>
+    <div class="frames" data-frames>
+      <figure id="hand-folded"><div class="scroller"><div class="dev folded" data-device="iphone-duo-folded" data-dev="folded" role="group" aria-label="Duo, folded"></div></div><figcaption><b>Duo, folded.</b> Outer screen, 466 x 678 pt (duo-fold-and-keyboard). One page, in one hand.</figcaption></figure>
+      <figure id="hand-open"><div class="scroller"><div class="dev open" data-device="iphone-duo-unfolded" data-dev="open" role="group" aria-label="Duo, open"></div></div><figcaption><b>Duo, open.</b> Inner screen, 951 x 669 pt. Query on the left page, the answer on the right. Nothing sits across x 455.5 to 495.5 but the system keys.</figcaption></figure>
+      <figure id="hand-phone"><div class="scroller"><div class="dev phone" data-device="iphone-regular" data-dev="phone" role="group" aria-label="Large phone"></div></div><figcaption><b>Large phone.</b> No size is written for it: drawn at the folded size as a stand-in. Drag the corner to resize; the layout follows.</figcaption></figure>
+      <figure id="hand-ax5"><div class="scroller"><div class="dev folded ax5" data-device="iphone-duo-folded" data-dev="ax5" role="group" aria-label="Duo, folded, AX5"></div></div><figcaption><b>Duo, folded, AX5.</b> The largest accessibility size. Words scale with their text style; the Post bar and the dock buttons stop at xxxLarge, as the Post bar ruling does.</figcaption></figure>
+    </div>
   </section>
 
   <section class="concept" id="concept-pile" data-c="pile">
@@ -307,7 +315,12 @@ section.concept[hidden] { display:none; }
       </div>
       <div class="row"><span class="lbl">Place</span><button class="ctl" data-leave>Leave the app and come back</button><button class="ctl x" data-reset>Start over</button></div>
     </div>
-    <div class="frames" data-frames></div>
+    <div class="frames" data-frames>
+      <figure id="pile-folded"><div class="scroller"><div class="dev folded" data-device="iphone-duo-folded" data-dev="folded" role="group" aria-label="Duo, folded"></div></div><figcaption><b>Duo, folded.</b> Outer screen, 466 x 678 pt (duo-fold-and-keyboard). One page, in one hand.</figcaption></figure>
+      <figure id="pile-open"><div class="scroller"><div class="dev open" data-device="iphone-duo-unfolded" data-dev="open" role="group" aria-label="Duo, open"></div></div><figcaption><b>Duo, open.</b> Inner screen, 951 x 669 pt. Query on the left page, the answer on the right. Nothing sits across x 455.5 to 495.5 but the system keys.</figcaption></figure>
+      <figure id="pile-phone"><div class="scroller"><div class="dev phone" data-device="iphone-regular" data-dev="phone" role="group" aria-label="Large phone"></div></div><figcaption><b>Large phone.</b> No size is written for it: drawn at the folded size as a stand-in. Drag the corner to resize; the layout follows.</figcaption></figure>
+      <figure id="pile-ax5"><div class="scroller"><div class="dev folded ax5" data-device="iphone-duo-folded" data-dev="ax5" role="group" aria-label="Duo, folded, AX5"></div></div><figcaption><b>Duo, folded, AX5.</b> The largest accessibility size. Words scale with their text style; the Post bar and the dock buttons stop at xxxLarge, as the Post bar ruling does.</figcaption></figure>
+    </div>
   </section>
 </main>
 
@@ -433,7 +446,7 @@ function endEnvelope(S, kind) {
       const done = S.pileIdx + 1;
       S.pileIdx = S.countBy === "one" ? S.piles.length : S.pileIdx + 1; S.doneInPile = 0;
       if (S.pileIdx >= S.piles.length) { S.phase = "end"; S.justEnded = true; S.keys = false; }
-      else S.receipt = { pile:done, line:`Pile ${done} done · ${plural(size, "envelope")}` };
+      else S.receipt = { pile:done, line:`${plural(size, "envelope")} · ${leftCount(S)} to go` };
     }
   }
 }
@@ -464,7 +477,8 @@ const PRESETS = {
     transit: S => { S.open = true; S.sub = "transit"; S.back = null; },
   },
   pile: {
-    count: S => {},
+    start: S => {},
+    count: S => { S.open = true; },
     work: S => { S.phase = "work"; S.open = true; typeIn(S, "Sol Ring"); tapName(S, "Sol Ring"); tapName(S, "Command Tower"); },
     tie: S => { S.phase = "work"; S.open = true; typeIn(S, "Arcane Signet"); },
     post: S => { S.phase = "work"; S.open = true; typeIn(S, "Arcane Signet"); typeIn(S, "Sol Ring"); },
@@ -558,9 +572,11 @@ function answer(S, withAside) {
   if (!S.matchNames.length) return `<p class="hint">No open envelope holds “${esc(q)}”.</p>${withAside ? asideCta(S, "A card no open order holds.") : ""}`;
   return `<p class="hint">Pick the card from the matches, or type more of its name.</p>`;
 }
-function matches(S) {
+function matches(S, compact) {
   const names = S.holdList || S.matchNames;
   if (!names.length || !S.query.trim()) return "";
+  /* On one page, a lone match that is already the typed name adds nothing, and its 60 pt is the lines' room. */
+  if (compact && !S.holdList && names.length === 1 && norm(names[0]) === norm(S.query)) return "";
   return `<div class="micro" style="flex:none">Matches</div><div class="matches" role="list">${names.map(n => `<button role="listitem" class="match ${S.chosen === n ? "on" : S.chosen ? "soft" : ""}" data-act="match" data-arg="${esc(n)}" ${S.chosen === n ? 'aria-selected="true"' : ""}>${esc(n)}</button>`).join("")}</div>`;
 }
 function field(S, pose, ph) {
@@ -583,7 +599,7 @@ function boxes(S) {
 function postbar(S) {
   if (S.offer && S.shown === S.offer.gk) return `<div class="postbar" data-tag="Today: Post bar"><button class="mini fill wide" data-act="post" aria-describedby="">Post 2 cards here, 1 held</button></div>`;
   if (S.receipt && S.receipt.gk && S.receipt.gk === S.shown) return `<div class="postbar"><div class="rc"><span>Posted.</span><span>${esc(S.receipt.line)}</span></div></div>`;
-  if (S.receipt && S.receipt.pile) return `<div class="postbar" data-tag="New: pile receipt"><div class="rc"><span>Done.</span><span>${esc(S.receipt.line)}</span></div></div>`;
+  if (S.receipt && S.receipt.pile) return `<div class="postbar" data-tag="New: pile receipt"><div class="rc"><span>Pile ${S.receipt.pile} done.</span><span>${esc(S.receipt.line)}</span></div></div>`;
   return "";
 }
 function transitBox(S) {
@@ -640,8 +656,13 @@ function packagesScreen(S, compact) {
   return { mast, ctl, cards, back };
 }
 function dockHand(S, pose) {
-  return `<div class="dock">${matches(S)}${field(S, pose, "Type the card in hand")}${envRow(S, `<button class="mini" data-act="newenv">New Envelope</button>`)}</div>`;
+  return `<div class="dock">${matches(S, true)}${field(S, pose, "Type the card in hand")}${envRow(S, `<button class="mini" data-act="newenv">New Envelope</button>`)}</div>`;
 }
+function envG(cls, just) {
+  return `<span class="env ${cls || ""} ${just ? "just" : ""}" aria-hidden="true"><svg viewBox="0 0 34 24"><rect x="1" y="1" width="32" height="22" rx="2"/><path class="flap" d="M2 2.5 17 13 32 2.5"/>`
+    + `<path class="mk tick" d="M11 17.5l4 3.5 8-8"/><path class="mk gap" d="M24 17h6"/><path class="mk band" d="M2 17h30"/></svg></span>`;
+}
+const envCls = e => e.kind === "aside" ? "aside" : e.kind === "in" && e.short.length ? "short" : "done";
 function stripPile(S) {
   const total = totalPile(S); const lc = leftCount(S);
   let k = 0; const bundles = [];
@@ -651,24 +672,27 @@ function stripPile(S) {
       let h = "";
       for (let j = 0; j < piles[b]; j++, k++) {
         const e = S.log[k]; let cls = "";
-        if (e) cls = e.kind === "aside" ? "aside" : e.kind === "in" && e.short.length ? "short" : "done";
+        if (e) cls = envCls(e);
         else if (k === S.log.length && S.phase === "work") cls = "now";
-        h += `<span class="env ${cls} ${k === S.justFiled ? "just" : ""}"></span>`;
+        h += envG(cls, k === S.justFiled);
       }
       bundles.push(`<span class="bundle">${h}</span>`);
     }
   } else {
-    bundles.push(`<span class="bundle">${S.log.map((e, ix) => `<span class="env ${e.kind === "aside" ? "aside" : e.kind === "in" && e.short.length ? "short" : "done"} ${ix === S.justFiled ? "just" : ""}"></span>`).join("")}<span class="env now"></span></span>`);
+    bundles.push(`<span class="bundle">${S.log.map((e, ix) => envG(envCls(e), ix === S.justFiled)).join("")}${envG("now")}</span>`);
   }
   const label = S.counted ? `${plural(lc, "envelope")} left of ${total}. ${S.log.length} done.` : `${S.log.length} done. Not counted.`;
-  return `<div class="strip" data-tag="New: the pile" role="img" aria-label="${label}"><div class="envs">${bundles.join("")}</div>
+  return `<div class="strip" data-tag="New: the pile" data-tagpos="tl" role="img" aria-label="${label}"><div class="envs">${bundles.join("")}</div>
     <div class="leftfig"><b>${S.counted ? lc : "?"}</b><span>${S.counted ? `left of ${total}` : "not counted"}</span></div></div>`;
 }
-function pileNote(S) {
-  if (!S.counted) return `<div class="pilenote">Pile not counted · ${S.log.length} done</div>`;
-  if (S.countBy === "one") return `<div class="pilenote">Envelope ${Math.min(S.log.length + 1, totalPile(S))} of ${totalPile(S)}</div>`;
-  const size = S.piles[S.pileIdx] || 0;
-  return `<div class="pilenote">Pile ${S.pileIdx + 1} of ${S.piles.length} · envelope ${Math.min(S.doneInPile + 1, size)} of ${size}</div>`;
+function pileNote(S, compact) {
+  let where;
+  if (!S.counted) where = `Pile not counted · ${S.log.length} done`;
+  else if (S.countBy === "one") where = `Envelope ${Math.min(S.log.length + 1, totalPile(S))} of ${totalPile(S)}`;
+  else { const size = S.piles[S.pileIdx] || 0; where = `Pile ${S.pileIdx + 1} of ${S.piles.length} · envelope ${Math.min(S.doneInPile + 1, size)} of ${size}`; }
+  if (!compact) return `<div class="pilenote">${where}</div>`;
+  const ns = Object.entries(S.cur.names).map(([n, c]) => c > 1 ? `${n} ×${c}` : n);
+  return `<div class="pilenote" data-tag="New: its cards so far" style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${where}${ns.length ? ` · <span style="color:var(--ink)">${esc(ns.join(", "))}</span>` : ""}</div>`;
 }
 function pileActions(S) {
   const p = S.shown && pkgOf(S.shown); const whole = p && p.items.every(i => got(S, i) >= i.qty);
@@ -676,7 +700,8 @@ function pileActions(S) {
   return `<div class="acts" data-tag="New: one way to end it"><button class="mini wide" data-act="aside">Set Aside</button>${next}</div>`;
 }
 function dockPile(S, pose) {
-  return `<div class="dock">${matches(S)}${field(S, pose, "Type a card from this envelope")}${envRow(S, "")}${pileActions(S)}${!S.counted ? `<button class="mini" data-act="endpile">End the Pile</button>` : ""}</div>`;
+  /* On one page the envelope's cards so far ride on the pile note above, so the lines keep 44 pt more room. */
+  return `<div class="dock">${matches(S, true)}${field(S, pose, "Type a card from this envelope")}${pileActions(S)}${!S.counted ? `<button class="mini" data-act="endpile">End the Pile</button>` : ""}</div>`;
 }
 function countForm(S) {
   const rows = S.countBy === "one"
@@ -687,10 +712,10 @@ function countForm(S) {
 }
 function bigPile(S) {
   const piles = S.countBy === "one" ? [totalPile(S)] : S.piles;
-  return `<div class="bigpile" aria-hidden="true">${piles.map(n => `<span class="bundle">${"<span class=\"env\"></span>".repeat(n)}</span>`).join("")}</div>`;
+  return `<div class="bigpile" aria-hidden="true">${piles.map(n => `<span class="bundle">${envG("").repeat(n)}</span>`).join("")}</div>`;
 }
 function endPile(S) {
-  return `<div class="end"><div class="seal ${S.justEnded ? "lands" : ""}" data-tag="New: the seal" role="img" aria-label="The pile is done"><span>PILE<b>${S.log.length}</b>DONE</span></div>
+  return `<div class="end"><div class="seal ${S.justEnded ? "lands" : ""}" data-tag="New: the seal" role="img" aria-label="Wax seal"><span><b>${S.log.length}</b>${S.log.length === 1 ? "envelope" : "envelopes"}</span></div>
     <h4 class="endh">The pile is done.</h4><p class="ends">${dayFigures(S)}</p></div>`;
 }
 
@@ -708,7 +733,7 @@ function render(S, pose) {
     } else if (sc === "hand") {
       const ans = (S.endBy === "empty" && !S.query.trim() && S.log.length) ? `<div class="micro">Today's pile</div>${todaysPile(S)}<div class="micro">Not normal today</div>${forLater(S)}${acrossAll(S)}` : (answer(S, true) || `<p class="hint">Type the card in hand. The envelope it came from shows here.</p>${transitBox(S)}`);
       main = `<div class="nav" data-tag="New: Card in Hand on one page"><h3>Mail Day</h3>${S.endBy === "control" ? `<button class="mini" data-act="dayend" data-tag="New: Day's End">Day's End</button>` : ""}<button class="mini" data-act="close">Close</button></div>
-        <div class="today" data-tag="New: today's count">Today <b>${plural(S.log.length, "envelope")}</b> · <b>${S.inToday}</b> cards in</div>
+        <div class="today" data-tag="New: today's count">Today <b>${plural(S.log.length, "envelope")} done</b> · <b>${S.inToday}</b> cards in</div>
         ${S.shown && S.hits.length < 2 ? head(S, pkgOf(S.shown)) : ""}<div class="ans">${ans}${S.held || S.strays.length ? boxes(S) : ""}</div>${postbar(S)}${dockHand(S, pose)}`;
     } else if (sc === "end") {
       main = `<div class="nav"><h3>Day's End</h3><button class="mini" data-act="dayback">Back</button></div><div class="today">${dayFigures(S)}</div>
@@ -718,7 +743,7 @@ function render(S, pose) {
       main = `<div class="nav"><h3>Today's Post</h3><button class="mini" data-act="close">Close</button></div><div class="ans">${countForm(S)}${bigPile(S)}</div>
         <div class="dock"><button class="mini fill wide" data-act="start">Start</button><button class="mini" data-act="skipcount">Skip the Count</button></div>`;
     } else if (sc === "work") {
-      main = `<div class="nav"><h3>Today's Post</h3><button class="mini" data-act="close">Close</button></div>${stripPile(S)}${pileNote(S)}
+      main = `<div class="nav"><h3>Today's Post</h3><button class="mini" data-act="close">Close</button></div>${stripPile(S)}${pileNote(S, true)}
         ${S.shown && S.hits.length < 2 ? head(S, pkgOf(S.shown)) : ""}<div class="ans">${answer(S, false) || `<p class="hint">Take the next envelope. Type any card from it.</p>${transitBox(S)}`}${S.held || S.strays.length ? boxes(S) : ""}</div>${postbar(S)}${dockPile(S, pose)}`;
     } else if (sc === "end") {
       main = "";
@@ -749,7 +774,7 @@ function openPose(S, sc, kup) {
   if (sc === "hand") {
     const emptyEnd = S.endBy === "empty" && !S.query.trim() && S.log.length;
     const left = `<div class="nav"><h3>Mail Day</h3>${S.endBy === "control" ? `<button class="mini" data-act="dayend" data-tag="New: Day's End">Day's End</button>` : ""}<button class="mini" data-act="close">Close</button></div>
-      <div class="today" data-tag="New: today's count">Today <b>${plural(S.log.length, "envelope")}</b> · <b>${S.inToday}</b> cards in</div>
+      <div class="today" data-tag="New: today's count">Today <b>${plural(S.log.length, "envelope")} done</b> · <b>${S.inToday}</b> cards in</div>
       <div class="ans">${field(S, "open", "Type the card in hand")}${envRow(S, `<button class="mini" data-act="newenv">New Envelope</button>`)}${matches(S)}${boxes(S)}${emptyEnd ? `<div class="micro">Today's pile</div>${todaysPile(S)}` : ""}</div>`;
     const right = `${S.shown && S.hits.length < 2 ? head(S, pkgOf(S.shown)) : ""}<div class="ans">${emptyEnd ? `<div class="micro">Not normal today</div>${forLater(S)}${acrossAll(S)}` : (answer(S, true) || `<p class="hint">Type the card in hand. The envelope it came from shows here.</p>`)}${emptyEnd ? "" : transitBox(S)}</div>${postbar(S)}`;
     return L(left) + R(right) + bar;
@@ -783,12 +808,12 @@ function openPose(S, sc, kup) {
 function ledgerRow(S, k) {
   const e = S.log[k];
   if (!e) return k === S.log.length && S.phase === "work"
-    ? `<div class="lrow now"><span class="env now" aria-hidden="true"></span><span>Envelope ${k + 1} · now</span><span class="g">${Object.values(S.cur.names).reduce((a, b) => a + b, 0)} in</span></div>`
-    : `<div class="lrow blank"><span class="env" aria-hidden="true"></span><span>Envelope ${k + 1}</span></div>`;
-  if (e.kind === "aside") return `<div class="lrow"><span class="env aside" aria-hidden="true"></span><span>Set aside · ${esc(e.names.join(", "))}</span><span class="g" style="color:var(--manilaInk)">Orphaned</span></div>`;
-  if (e.kind === "empty") return `<div class="lrow"><span class="env done" aria-hidden="true"></span><span>Envelope ${k + 1}</span><span class="g">nothing in</span></div>`;
+    ? `<div class="lrow now">${envG("now")}<span>Envelope ${k + 1} · now</span><span class="g">${Object.values(S.cur.names).reduce((a, b) => a + b, 0)} in</span></div>`
+    : `<div class="lrow blank">${envG("")}<span>Envelope ${k + 1}</span></div>`;
+  if (e.kind === "aside") return `<div class="lrow">${envG("aside")}<span>Set aside · ${esc(e.names.join(", "))}</span><span class="g" style="color:var(--manilaInk)">Orphaned</span></div>`;
+  if (e.kind === "empty") return `<div class="lrow">${envG("done")}<span>Envelope ${k + 1}</span><span class="g">nothing in</span></div>`;
   const ok = !e.short.length;
-  return `<div class="lrow"><span class="env ${ok ? "done" : "short"}" aria-hidden="true"></span><span>${esc(e.seller)}</span><span class="g ${ok ? "ok" : "short"}">${ok ? `${e.qty}/${e.qty}` : `${e.short.length} short`}</span></div>`;
+  return `<div class="lrow">${envG(ok ? "done" : "short")}<span>${esc(e.seller)}</span><span class="g ${ok ? "ok" : "short"}">${ok ? `${e.qty}/${e.qty}` : `${e.short.length} short`}</span></div>`;
 }
 function orphanCards(S) {
   return [...S.asides.map(a => ({ ...a, today:true })), ...OLD_ENVELOPES].map(a => `<div class="orph" ${a.today ? 'data-tag="New: set aside today"' : ""}><b>${esc(a.names.join(", "))}</b><small>recorded ${a.created}</small><p>No outstanding package accounts for any of these. It’ll start matching if a later import brings in the order.</p></div>`).join("");
@@ -818,7 +843,7 @@ const POSES = [
   ["phone", "dev phone", "iphone-regular", "Large phone", "No size is written for it: drawn at the folded size as a stand-in. Drag the corner to resize; the layout follows."],
   ["ax5", "dev folded ax5", "iphone-duo-folded", "Duo, folded, AX5", "The largest accessibility size. Words scale with their text style; the Post bar and the dock buttons stop at xxxLarge, as the Post bar ruling does."],
 ];
-const STATES = { hand:["start","typing","envelope","tie","post","nomatch","end","well","orphaned","transit"], pile:["count","work","tie","post","pile-done","nomatch","no-count","end","well","resume"] };
+const STATES = { hand:["start","typing","envelope","tie","post","nomatch","end","well","orphaned","transit"], pile:["start","count","work","tie","post","pile-done","nomatch","no-count","end","well","resume"] };
 const ST = {};
 function build(c, preset, keysUp) {
   const S = fresh(c);
@@ -833,6 +858,8 @@ function paint(c) {
   const active = document.activeElement; const ap = active && active.dataset && active.dataset.pose && sec.contains(active) ? active.dataset.pose : null;
   const caret = ap ? active.selectionStart : null;
   for (const [pose] of POSES) sec.querySelector(`[data-dev="${pose}"]`).innerHTML = render(S, pose);
+  sec.querySelectorAll(".mini[data-tag]").forEach(b => b.title = b.dataset.tag);
+  sec.querySelectorAll(".dev.ax5 .main").forEach(m => { const d = m.querySelector(":scope > .dock"); m.style.setProperty("--dockh", `${d ? d.offsetHeight : 0}px`); });
   sec.querySelectorAll("[data-optset]").forEach(b => b.setAttribute("aria-pressed", String(S[b.dataset.optset] === b.dataset.val)));
   const fp = ap || (S.keys ? S.focusPose : null);
   if (fp) { const inp = sec.querySelector(`input[data-pose="${fp}"]`); if (inp && document.activeElement !== inp && ap) { inp.focus({ preventScroll:true }); const p = caret ?? inp.value.length; inp.setSelectionRange(p, p); } }
@@ -875,8 +902,6 @@ function setup(c) {
   const sec = document.getElementById(`concept-${c}`);
   sec.querySelector("[data-states]").innerHTML = STATES[c].map(s => `<a class="ctl" href="#c=${c}&s=${s}">${s.replace("-", " ")}</a>`).join("") + `<a class="ctl" href="#c=${c}&s=${c === "hand" ? "typing" : "work"}&k=1">keys up</a>`;
   sec.querySelector("[data-types]").innerHTML = TYPES.map(t => `<button class="ctl" data-type="${esc(t)}">${esc(t)}</button>`).join("");
-  sec.querySelector("[data-frames]").innerHTML = POSES.map(([pose, cls, dev, name, cap]) =>
-    `<figure id="${c}-${pose}"><div class="scroller"><div class="${cls}" data-device="${dev}" data-dev="${pose}" role="group" aria-label="${name}"></div></div><figcaption><b>${name}.</b> ${cap}</figcaption></figure>`).join("");
   sec.addEventListener("click", e => {
     const S = ST[c];
     const t = e.target.closest("[data-act],[data-type],[data-optset],[data-leave],[data-reset],input[data-pose]");

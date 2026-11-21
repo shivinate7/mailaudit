@@ -1,0 +1,948 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Cost Basis Statement</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The app and the native client ship light only,
+   so this page has one theme. The dark* keys belong to the orders extension and are not drawn. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --wax:#A8443C; --waxLit:#C86A5F; --waxDeep:#66231D;
+  --shadow:rgba(28,43,36,0.06); --scrim:rgba(28,43,36,0.92);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the UI test floor of 20 pt (DuoHandUITests.statusBarFloor), as the earlier Duo mockups do. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+}
+:root[data-theme="light"] { color-scheme: light; }
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1960px; margin:0 auto; padding:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; max-width:110ch; }
+h1 { font-family:var(--cochin); font-weight:400; font-size:30px; letter-spacing:.04em; margin:16px 0 4px; }
+.kind { font:13px/1.5 var(--mono); color:var(--ink); margin:0 0 8px; }
+.kind b { font-weight:700; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:92ch; }
+.controls { display:flex; flex-direction:column; gap:4px; margin:12px 0 16px; }
+.controls nav { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.controls .lab { font:12px/1.4 var(--mono); color:var(--inkSoft); min-width:120px; }
+.controls a, .controls button { font:14px/1.3 var(--sys); min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.controls a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.controls a[data-gone] { display:none; }
+.controls button[aria-pressed="true"] { color:var(--inkSoft); text-decoration:line-through; }
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+.frames { display:flex; flex-wrap:wrap; gap:32px 40px; align-items:flex-start; }
+figure.f { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure.f[hidden] { display:none; }
+figure.f figcaption { font-size:14px; color:var(--inkSoft); max-width:60ch; }
+figure.f figcaption b { font-family:var(--cochin); font-size:19px; color:var(--ink); font-weight:400; }
+.legend { margin:32px 0 8px; max-width:100ch; }
+.legend h2 { font-family:var(--cochin); font-weight:400; font-size:22px; margin:0 0 8px; }
+.legend ul { margin:0; padding-left:20px; }
+.legend li { margin:0 0 4px; }
+.tag { display:inline-block; font:12px/1.4 var(--mono); color:var(--ink); border:1px dashed var(--inkSoft); border-radius:4px; padding:2px 6px; }
+.tag.today { border-color:var(--red); } .tag.new { border-color:var(--green); }
+
+/* ---------- the device frames: 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:16px; overflow:hidden; font-family:var(--sys); color:var(--ink); }
+.dev[data-device="iphone-duo-folded"] { width:466px; height:678px; }
+.dev[data-device="iphone-duo-unfolded"] { width:951px; height:669px; }
+.dev[data-device="iphone-regular"] { width:375px; height:678px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 20px; font:600 12px var(--sys); z-index:30; pointer-events:none; }
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; }
+.dev[data-device="iphone-duo-folded"] .pg, .dev[data-device="iphone-regular"] .pg { left:0; right:0; }
+.dev[data-device="iphone-duo-unfolded"] .pg.l { left:0; width:455.5px; }
+.dev[data-device="iphone-duo-unfolded"] .pg.r { left:495.5px; width:455.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:40; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:thin; }
+.scroll.withbar { bottom:0; padding-bottom:96px; }
+/* System tab bar. Folded Duo: starts at y 595 pt, 83 pt tall with the inset (duo-fold-and-keyboard).
+   The large phone has no measured bar; it is drawn at the same 83 pt. */
+.tabbar { position:absolute; left:0; right:0; bottom:0; height:83px; z-index:20; display:grid; grid-template-columns:repeat(4,1fr); padding:8px 16px 0;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(16px) saturate(1.4); border-top:1px solid var(--line); }
+/* Open Duo: the DuoBar pill under the right page (duo-card-in-hand, item 23 a): 64 pt, 24 pt in, 12 pt up. */
+.dev[data-device="iphone-duo-unfolded"] .tabbar { left:519.5px; right:auto; width:407.5px; bottom:12px; height:64px; border:1px solid var(--line); border-radius:32px; padding:4px; gap:4px; box-shadow:0 4px 16px var(--shadow); }
+.tabbar span { display:flex; flex-direction:column; align-items:center; justify-content:flex-start; gap:4px; font:500 11px var(--sys); color:var(--inkSoft); padding-top:4px; border-radius:28px; }
+.dev[data-device="iphone-duo-unfolded"] .tabbar span { justify-content:center; padding-top:0; font-size:12px; font-family:var(--cochin); }
+.tabbar span.on { color:var(--accent); }
+.dev[data-device="iphone-duo-unfolded"] .tabbar span.on { background:color-mix(in srgb, var(--card) 90%, transparent); }
+.tabbar svg { width:24px; height:24px; }
+
+/* ---------- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---------- */
+.app { font-family:var(--cochin); padding:12px 16px 0; display:flex; flex-direction:column; gap:12px; }
+.mono { font-family:var(--mono); }
+.micro { font:11px/14px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--inkSoft); }
+/* the letterhead (masthead-is-one-letterhead), drawn compact */
+.mast { display:flex; flex-direction:column; align-items:center; gap:4px; padding-top:4px; }
+.mast .rule { display:flex; align-items:center; gap:12px; width:100%; }
+.mast .rule i { flex:1; height:1px; background:var(--gold); }
+.seal { width:36px; height:36px; border-radius:50%; background:radial-gradient(circle at 35% 30%, var(--waxLit), var(--wax) 55%, var(--waxDeep)); box-shadow:0 1px 2px var(--shadow); }
+.mast h2 { margin:0; font:400 26px/1 var(--cochin); letter-spacing:.18em; text-transform:uppercase; }
+.mast .house { font:13px var(--cochin); color:var(--inkSoft); font-style:italic; }
+.thirds { display:flex; width:100%; border-top:1px solid var(--line); border-bottom:1px solid var(--line); margin-top:4px; }
+.thirds > div { flex:1; padding:6px 8px; display:flex; flex-direction:column; gap:2px; }
+.thirds > div + div { border-left:1px solid var(--line); }
+.thirds > .wide { flex:1.7; }
+.thirds .fig { font:15px var(--mono); white-space:nowrap; }
+.thirds .fig b { font-weight:700; } .thirds .fig span { color:var(--inkSoft); }
+.bar { height:4px; width:100%; background:var(--silver); border-radius:2px; overflow:hidden; }
+.bar i { display:block; height:100%; background:var(--accent); }
+.mfoot { display:flex; flex-wrap:wrap; justify-content:space-between; width:100%; font:12px var(--mono); color:var(--inkSoft); gap:0 12px; }
+.mfoot > * { white-space:nowrap; }
+.mfoot b { color:var(--red); }
+
+/* ---------- concept: Statement in Tally ---------- */
+.shead { display:flex; flex-direction:column; gap:0; border-top:1px solid var(--line); padding-top:4px; }
+.shead .top { display:flex; align-items:center; gap:8px; }
+.shead .top h3 { margin-right:auto; }
+.shead h3 { margin:0; font:400 21px/1.2 var(--cochin); }
+.shead .period { font:14px var(--cochin); color:var(--ink); background:transparent; border:0; padding:0; min-height:44px; display:inline-flex; align-items:center; gap:6px; cursor:pointer; }
+.shead .period u { text-decoration-color:var(--inkSoft); text-underline-offset:3px; }
+.iconbtn { width:44px; height:44px; display:grid; place-items:center; border:0; background:transparent; color:var(--accent); cursor:pointer; border-radius:22px; flex:0 0 44px; }
+.iconbtn svg { width:22px; height:22px; }
+.receipt { min-height:16px; font:12px/16px var(--mono); color:var(--inkSoft); }
+.receipt.ok { color:var(--green); }
+.chips { display:flex; gap:8px; flex-wrap:wrap; }
+.chip { font:13px var(--mono); min-height:32px; padding:0 12px; border:1px solid var(--line); border-radius:16px; background:var(--card); color:var(--ink); cursor:pointer; position:relative; }
+.chip::after { content:""; position:absolute; left:0; right:0; top:-6px; bottom:-6px; }
+.chip[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:700; }
+
+/* the column head and the statement line. Widths are in ch so a figure never moves its column. */
+.cols, .sline .figs { display:grid; grid-template-columns: 7ch 10ch 10ch 10ch; column-gap:8px; justify-items:end; font-family:var(--mono); }
+.colhead { position:sticky; top:0; z-index:5; background:var(--paper); display:grid; grid-template-columns:1fr auto; gap:8px; align-items:end; padding:8px 0 4px; border-bottom:1px solid var(--ink); }
+.colhead .cols span { font:11px/14px var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--inkSoft); }
+.lines { display:flex; flex-direction:column; }
+.sline { border-bottom:1px solid var(--line); }
+.sline > button { width:100%; background:transparent; border:0; padding:8px 0; text-align:left; cursor:pointer; color:inherit; font:inherit;
+  display:grid; grid-template-columns:1fr auto; gap:4px 8px; align-items:baseline; min-height:52px; }
+.sline .nm { font:700 15px/1.3 var(--cochin); display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.sline .meta { font:11px/14px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; grid-column:1; }
+.sline .figs { font-size:12px; line-height:20px; grid-row:1 / span 2; grid-column:2; align-self:center; }
+.figs .q { color:var(--ink); }
+.figs .q.done { color:var(--green); font-weight:700; }
+.figs .rc { color:var(--ink); }
+.figs .ms { color:var(--red); font-weight:700; }
+.figs .ms.zero { color:var(--inkSoft); font-weight:400; }
+.figs .bs { color:var(--ink); font-weight:700; }
+.sline.open > button { background:color-mix(in srgb, var(--card) 70%, transparent); }
+.sline.sel > button { box-shadow:inset 3px 0 0 var(--accent); }
+/* narrow: the phone. The name takes the line, the figures sit on their own tier. */
+.narrow .sline > button { grid-template-columns:1fr; }
+.narrow .sline .figs { grid-row:auto; grid-column:1; justify-self:end; }
+.narrow .colhead { grid-template-columns:1fr; }
+.narrow .colhead .cols { justify-self:end; }
+.narrow .colhead .lab1 { display:none; }
+
+/* the copies under an open line (tally-row-lists-its-copies) */
+.copies { display:flex; flex-direction:column; padding:0 0 8px; background:color-mix(in srgb, var(--card) 70%, transparent); }
+.across { font:11px/16px var(--mono); color:var(--inkSoft); padding:0 0 4px 0; }
+.copy { display:grid; grid-template-columns:44px 1fr auto; gap:8px; align-items:center; min-height:56px; border-top:1px dashed var(--line); }
+.box { width:44px; height:44px; display:grid; place-items:center; border:0; background:transparent; cursor:pointer; padding:0; }
+.box i { width:26px; height:26px; border:2px solid var(--inkSoft); border-radius:6px; display:block; position:relative; background:var(--card); }
+.box.got i { background:var(--green); border-color:var(--green); }
+.box.got i::after { content:""; position:absolute; left:7px; top:2px; width:7px; height:13px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+.box.part i { background:var(--manila); border-color:var(--manilaInk); }
+.box.part i::after { content:"\2013"; position:absolute; inset:0; display:grid; place-items:center; color:var(--manilaInk); font:700 14px var(--mono); }
+.copy .who { font:14px/1.3 var(--cochin); }
+.copy .who small { display:block; font:11px/14px var(--mono); color:var(--inkSoft); }
+.copy .px { font:12px var(--mono); text-align:right; white-space:nowrap; }
+.copy .px small { display:block; color:var(--inkSoft); font-size:11px; }
+.step { display:flex; align-items:center; }
+.step button { width:44px; height:44px; border:0; background:transparent; cursor:pointer; display:grid; place-items:center; padding:0; }
+.step button i { width:30px; height:30px; border:1px solid var(--line); border-radius:8px; background:var(--card); display:grid; place-items:center; font:700 15px var(--mono); font-style:normal; color:var(--ink); }
+.step b { font:700 12px var(--mono); min-width:5ch; text-align:center; color:var(--manilaInk); }
+.bulk { display:flex; justify-content:flex-end; gap:8px; padding-top:8px; }
+.mini { font:13px var(--cochin); min-height:44px; padding:0 12px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer; }
+.mini[hidden] { visibility:hidden; display:inline-block; }
+
+/* the totals at the foot of the statement: a sum set as a sum */
+.totals { display:flex; flex-direction:column; gap:0; border-top:3px double var(--ink); padding:8px 0 0; }
+.sum { display:grid; grid-template-columns:1fr auto; gap:8px; align-items:baseline; min-height:28px; font:15px/1.3 var(--cochin); }
+.sum .v { font:13px var(--mono); white-space:nowrap; }
+.sum.minus .v { color:var(--red); }
+.sum.net { border-top:1px solid var(--ink); padding-top:4px; font-weight:700; }
+.sum.net .v { font-weight:700; font-size:15px; }
+.memo { font:12px/18px var(--mono); color:var(--inkSoft); display:flex; flex-direction:column; gap:2px; padding-top:8px; }
+.memo p { margin:0; }
+.memo b { color:var(--ink); font-weight:400; }
+.empty { padding:24px 0; display:flex; flex-direction:column; gap:12px; align-items:flex-start; }
+.empty p { margin:0; font:17px/1.4 var(--cochin); }
+.btn { font:600 15px var(--sys); min-height:44px; padding:0 16px; border:0; border-radius:22px; background:var(--accent); color:var(--card); cursor:pointer; }
+.btn.plain { background:transparent; color:var(--accent); border:1px solid var(--line); }
+
+/* Right page of the open Duo, Statement in Tally */
+.rp { padding:16px 24px 0; display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.rp h3 { margin:0; font:400 26px/1.15 var(--cochin); }
+.rp .lede { margin:0; font:14px/1.4 var(--cochin); color:var(--inkSoft); }
+
+/* ---------- system menus and the share sheet (iOS chrome, drawn with tokens) ---------- */
+.scrim { position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 18%, transparent); z-index:50; }
+.menu { position:absolute; z-index:60; width:260px; background:color-mix(in srgb, var(--card) 96%, transparent); border:1px solid var(--line); border-radius:14px;
+  box-shadow:0 12px 40px color-mix(in srgb, var(--ink) 22%, transparent); overflow:hidden; font-family:var(--sys); }
+.menu button { width:100%; min-height:48px; display:flex; justify-content:space-between; align-items:center; gap:12px; padding:0 16px; border:0; background:transparent;
+  font:17px var(--sys); color:var(--ink); text-align:left; cursor:pointer; }
+.menu button + button { border-top:1px solid var(--line); }
+.menu button small { display:block; font:13px var(--sys); color:var(--inkSoft); }
+.menu button svg { width:20px; height:20px; flex:0 0 20px; color:var(--ink); }
+.menu button[aria-checked="true"]::before { content:"\2713"; font-weight:700; margin-right:-4px; }
+.menu .head { font:13px var(--sys); color:var(--inkSoft); padding:10px 16px 6px; }
+.sheet { position:absolute; left:8px; right:8px; bottom:8px; z-index:60; background:var(--card); border-radius:24px; border:1px solid var(--line);
+  box-shadow:0 -8px 40px color-mix(in srgb, var(--ink) 22%, transparent); padding:16px; display:flex; flex-direction:column; gap:12px; font-family:var(--sys); }
+.sheet .file { display:grid; grid-template-columns:40px 1fr 44px; gap:12px; align-items:center; }
+.sheet .file .ic { width:40px; height:48px; border:1px solid var(--line); border-radius:4px; background:var(--paper); display:grid; place-items:center; font:700 11px var(--mono); color:var(--inkSoft); }
+.sheet .file b { display:block; font:600 15px var(--sys); }
+.sheet .file small { color:var(--inkSoft); font-size:13px; }
+.sheet .x { width:44px; height:44px; border-radius:22px; border:0; background:color-mix(in srgb, var(--line) 60%, transparent); cursor:pointer; font:600 17px var(--sys); color:var(--inkSoft); }
+.sheet .apps { display:flex; gap:12px; overflow:hidden; }
+.sheet .apps span { flex:0 0 60px; display:flex; flex-direction:column; align-items:center; gap:4px; font:11px var(--sys); color:var(--ink); }
+.sheet .apps span i { width:56px; height:56px; border-radius:14px; background:color-mix(in srgb, var(--line) 70%, transparent); display:block; }
+.sheet .acts { border-radius:12px; background:var(--paper); overflow:hidden; }
+.sheet .acts button { width:100%; min-height:48px; display:flex; justify-content:space-between; align-items:center; padding:0 16px; border:0; background:transparent; font:17px var(--sys); color:var(--ink); cursor:pointer; text-align:left; }
+.sheet .acts button + button { border-top:1px solid var(--line); }
+.sheet .acts svg { width:20px; height:20px; }
+.sheet .note { font:12px var(--sys); color:var(--inkSoft); margin:0; }
+
+/* ---------- concept: Statement document ---------- */
+.navbar { position:absolute; left:0; right:0; top:var(--sat); height:44px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 4px; z-index:10; font-family:var(--sys); }
+.navbar .back { justify-self:start; display:inline-flex; align-items:center; gap:2px; min-height:44px; padding:0 8px; border:0; background:transparent; color:var(--accent); font:17px var(--sys); cursor:pointer; }
+.navbar .ttl { font:600 17px var(--sys); }
+.navbar .tr { justify-self:end; display:flex; }
+.toolbar { position:absolute; left:0; right:0; bottom:0; height:83px; padding:4px 8px 0; display:grid; grid-template-columns:auto 1fr auto; align-items:start; gap:8px; z-index:20;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(16px) saturate(1.4); border-top:1px solid var(--line); font-family:var(--sys); }
+.toolbar .tb { min-height:44px; padding:0 10px; border:0; background:transparent; color:var(--accent); font:17px var(--sys); cursor:pointer; display:inline-flex; align-items:center; gap:4px; white-space:nowrap; }
+.toolbar .pager { justify-self:center; display:flex; align-items:center; }
+.toolbar .pager span { font:13px var(--mono); color:var(--ink); min-width:10ch; text-align:center; }
+.tb[disabled] { color:var(--silver); cursor:default; }
+.seg { display:inline-grid; grid-template-columns:1fr 1fr; background:color-mix(in srgb, var(--line) 55%, transparent); border-radius:9px; padding:2px; }
+.seg button { min-height:40px; min-width:72px; border:0; background:transparent; border-radius:7px; font:600 13px var(--sys); color:var(--ink); cursor:pointer; }
+.seg button[aria-pressed="true"] { background:var(--card); box-shadow:0 1px 3px color-mix(in srgb, var(--ink) 15%, transparent); }
+.docarea { position:absolute; left:0; right:0; top:calc(var(--sat) + 44px); bottom:83px; overflow:auto; overscroll-behavior:contain; background:color-mix(in srgb, var(--line) 40%, var(--paper)); }
+.docarea .fit { padding:16px; display:flex; justify-content:center; }
+.sheetwrap { position:relative; flex:0 0 auto; box-shadow:0 2px 12px color-mix(in srgb, var(--ink) 18%, transparent); cursor:zoom-in; }
+.sheetwrap.zoomed { cursor:zoom-out; }
+.zoomhint { position:sticky; top:8px; margin:0 auto; width:max-content; font:12px var(--sys); background:var(--card); border:1px solid var(--line); border-radius:12px; padding:4px 10px; color:var(--inkSoft); z-index:3; }
+
+/* The printed page: US Letter, 612 x 792 pt, drawn at full size and scaled into the frame. */
+.ppage { width:612px; height:792px; background:transparent; color:var(--ink); padding:48px 48px 40px; display:flex; flex-direction:column; font-family:var(--cochin); position:relative; transform-origin:0 0; }
+.ppage.tint { background:var(--card); }
+.ppage.plain { background:var(--card); }  /* on screen the sheet must read as paper; in print it paints nothing (see @media print) */
+.ppage .lh { display:grid; grid-template-columns:1fr auto; align-items:end; gap:16px; padding-bottom:8px; border-bottom:1px solid var(--ink); }
+.ppage .lh .brand { display:flex; flex-direction:column; gap:2px; }
+.ppage .lh .brand b { font:400 22px/1 var(--cochin); letter-spacing:.2em; text-transform:uppercase; }
+.ppage .lh .brand span { font:italic 11px var(--cochin); color:var(--inkSoft); }
+.ppage .lh .rt { text-align:right; font:9.5px/1.5 var(--mono); color:var(--inkSoft); }
+.ppage .lh .rt b { font:400 15px/1.3 var(--cochin); color:var(--ink); display:block; }
+.ppage .orn { height:1px; background:var(--gold); margin-top:2px; }
+.ppage .runhead { display:flex; justify-content:space-between; font:9.5px var(--mono); color:var(--inkSoft); padding-bottom:6px; border-bottom:1px solid var(--ink); }
+.ppage .acct { display:grid; grid-template-columns:1fr 1fr; gap:16px; padding:12px 0; border-bottom:1px solid var(--line); }
+.ppage .acct .sum { min-height:18px; font-size:11px; }
+.ppage .acct .sum .v { font-size:10px; }
+.ppage .acct .sum.net .v { font-size:11px; }
+.ppage .acct .memo { font-size:9px; line-height:13px; padding-top:0; }
+.ppage table { width:100%; border-collapse:collapse; margin-top:8px; }
+.ppage th { font:8.5px var(--mono); letter-spacing:.06em; text-transform:uppercase; color:var(--inkSoft); text-align:right; padding:0 0 3px 8px; border-bottom:1px solid var(--ink); font-weight:400; }
+.ppage th:first-child { text-align:left; padding-left:0; }
+.ppage td { font:9.5px/1.25 var(--mono); text-align:right; padding:2.5px 0 2.5px 8px; border-bottom:.5px solid var(--line); white-space:nowrap; vertical-align:baseline; }
+.ppage td:first-child { text-align:left; padding-left:0; font:10px/1.25 var(--cochin); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; max-width:300px; }
+.ppage td.ms { color:var(--red); }
+.ppage td.z { color:var(--inkSoft); }
+.ppage tr.fwd td { font-style:italic; color:var(--inkSoft); border-bottom:1px solid var(--ink); }
+.ppage tr.fwd td:first-child { font:italic 10px var(--cochin); }
+.ppage tr.cf td { border-top:1px solid var(--ink); border-bottom:0; font-weight:700; color:var(--ink); }
+.ppage tr.cf td:first-child { font:italic 700 10px var(--cochin); }
+.ppage tr.tot td { border-top:3px double var(--ink); border-bottom:0; font-weight:700; font-size:10px; padding-top:4px; }
+.ppage .close { margin-top:12px; display:grid; grid-template-columns:1fr 1fr; gap:16px; }
+.ppage .close .sum { min-height:18px; font-size:11px; }
+.ppage .close .sum .v { font-size:10px; }
+.ppage .close .memo { font-size:9px; line-height:13px; }
+.ppage .pfoot { margin-top:auto; display:flex; justify-content:space-between; font:8.5px var(--mono); color:var(--inkSoft); padding-top:6px; border-top:1px solid var(--line); }
+
+/* left page of the open Duo, Statement document */
+.lp { padding:12px 24px 0; display:flex; flex-direction:column; gap:16px; font-family:var(--cochin); }
+.lp h3 { margin:0; font:400 26px/1.15 var(--cochin); }
+.group { display:flex; flex-direction:column; }
+.group .gl { font:11px/14px var(--mono); letter-spacing:.08em; text-transform:uppercase; color:var(--inkSoft); padding-bottom:4px; }
+.rrow { min-height:44px; display:grid; grid-template-columns:1fr auto; gap:8px; align-items:center; border:0; border-top:1px solid var(--line); background:transparent; padding:0; text-align:left; cursor:pointer; font:15px var(--cochin); color:var(--ink); width:100%; }
+.rrow:last-child { border-bottom:1px solid var(--line); }
+.rrow small { font:12px var(--mono); color:var(--inkSoft); }
+.rrow[aria-current="true"] { color:var(--accent); font-weight:700; }
+.rrow[aria-current="true"] small { color:var(--accent); }
+
+/* Lines view (Statement document): the page's lines reflowed for large text */
+.reflow { padding:12px 16px 24px; font-family:var(--cochin); display:flex; flex-direction:column; }
+
+/* ---------- the largest accessibility text size (AX5), folded ----------
+   Native text scales with Font.custom(relativeTo:). Factors from the HIG Dynamic Type tables, AX5 over Large:
+   Body 53/17, Caption 1 43/12, Footnote 44/13. Names are 15 pt relative to Body; figures 12 pt relative to Caption 1. */
+.ax .app { gap:16px; }
+/* one word cannot wrap: the title scales down to fit its line, as minimumScaleFactor does */
+.ax .mast h2 { font-size:56px; letter-spacing:.04em; }
+.ax .shead .top { flex-wrap:wrap; }
+.ax .shead .top h3 { flex-basis:100%; }
+.ax .mast .house { font-size:calc(13px * 44 / 13); }
+.ax .thirds { flex-direction:column; }
+.ax .thirds > div + div { border-left:0; border-top:1px solid var(--line); }
+.ax .thirds .fig { font-size:calc(15px * 53 / 17); white-space:normal; }
+.ax .micro, .ax .colhead .cols span { font-size:calc(11px * 43 / 12); line-height:1.2; }
+.ax .mfoot { flex-direction:column; font-size:calc(12px * 43 / 12); }
+.ax .shead h3 { font-size:calc(21px * 53 / 17); }
+.ax .shead .period { font-size:calc(14px * 53 / 17); }
+.ax .receipt { font-size:calc(12px * 43 / 12); line-height:1.2; }
+.ax .colhead { display:none; }
+.ax .sline > button { grid-template-columns:1fr; }
+.ax .sline .nm { font-size:calc(15px * 53 / 17); -webkit-line-clamp:unset; }
+.ax .sline .meta { font-size:calc(11px * 43 / 12); white-space:normal; line-height:1.2; }
+.ax .sline .figs { grid-row:auto; grid-column:1; justify-self:stretch; display:flex; flex-direction:column; align-items:stretch; font-size:calc(12px * 43 / 12); line-height:1.25; }
+.ax .figs > span { display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.ax .figs > span::before { content:attr(data-k); color:var(--inkSoft); font-weight:400; }
+.ax .sum { grid-template-columns:1fr; font-size:calc(15px * 53 / 17); }
+.ax .sum .v { font-size:calc(13px * 43 / 12); }
+.ax .sum.net .v { font-size:calc(15px * 43 / 12); }
+.ax .memo { font-size:calc(12px * 43 / 12); line-height:1.25; }
+.ax .copy { grid-template-columns:44px 1fr; }
+.ax .copy .px { grid-column:2; text-align:left; font-size:calc(12px * 43 / 12); }
+.ax .copy .who { font-size:calc(14px * 53 / 17); }
+.ax .copy .who small, .ax .across { font-size:calc(11px * 43 / 12); line-height:1.2; }
+.ax .mini { font-size:calc(13px * 53 / 17); }
+.ax .bulk { flex-direction:column; align-items:stretch; }
+.ax .reflow .sline .nm { font-size:calc(15px * 53 / 17); }
+
+/* ---------- Today / New labels ---------- */
+.lbl [data-tag] { outline:1.5px dashed var(--green); outline-offset:-1px; }
+.lbl [data-tag]:not(.tabbar):not(.navbar):not(.toolbar):not(.sheet):not(.menu):not(.colhead):not(.docarea) { position:relative; }
+.lbl [data-tag^="Today"] { outline-color:var(--red); }
+.lbl [data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:0; transform:translateY(-50%); z-index:8; font:600 10px/1.3 var(--sys); padding:1px 4px; border-radius:3px;
+  background:var(--card); color:var(--ink); border:1px dashed var(--green); pointer-events:none; white-space:nowrap; }
+.lbl [data-tag^="Today"]::after { border-color:var(--red); }
+
+/* the full statement for printing this page (Print from the share sheet) */
+#printdoc { display:none; }
+@page { size: letter; margin: 0; }
+@media print {
+  body { background:transparent; }
+  main { display:none; }
+  #printdoc { display:block; }
+  #printdoc .ppage { break-after:page; transform:none !important; }
+  #printdoc .ppage.plain { background:transparent; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .sheet, .menu { animation: rise 220ms cubic-bezier(.16,1,.3,1); }
+  @keyframes rise { from { transform:translateY(8px); opacity:0; } to { transform:none; opacity:1; } }
+}
+</style>
+</head>
+<body>
+<main>
+<div class="banner" role="note">Sample. No figure on this page is real. The ledger is made up on load from a fixed seed: 820 orders, about 3,600 card lines, about 330 card names and 64 sellers, so the totals add up, but they are not the owner's data. Names of cards, sets and shops are stand-ins.</div>
+<h1>Cost basis statement</h1>
+<p class="kind"><b>Designer kind:</b> directed &nbsp; <b>Direction:</b> statement: a ledger-style statement you can export and print</p>
+<p class="sub">What did I actually pay for what I actually got? Two concepts answer it as a statement of account. In <b>Statement in Tally</b>, the Tally view itself is set as the statement: one line per card name with what arrived, what is still missing and the basis, and a sum at the foot. In <b>Statement document</b>, Tally keeps today's rows, and a new screen shows the printed statement page by page, with totals carried forward from page to page. Both share one way out: a Share button that hands a PDF or a CSV to the iOS share sheet. Every tap on the frames works. A check-in in any frame changes every figure in every frame.</p>
+
+<div class="controls">
+  <nav aria-label="Concept"><span class="lab">Concept</span>
+    <a href="#c=intally" data-k="c" data-v="intally">Statement in Tally</a>
+    <a href="#c=document" data-k="c" data-v="document">Statement document</a>
+  </nav>
+  <nav aria-label="State" id="statenav"><span class="lab">State</span></nav>
+  <nav aria-label="Device"><span class="lab">Device</span>
+    <a href="#d=all" data-k="d" data-v="all">All</a>
+    <a href="#d=folded" data-k="d" data-v="folded">Duo folded</a>
+    <a href="#d=open" data-k="d" data-v="open">Duo open</a>
+    <a href="#d=phone" data-k="d" data-v="phone">Large phone</a>
+    <a href="#d=ax5" data-k="d" data-v="ax5">Folded, largest text</a>
+  </nav>
+  <nav aria-label="Masthead value cell"><span class="lab">Masthead cell</span>
+    <a href="#m=value" data-k="m" data-v="value">Named value, as today</a>
+    <a href="#m=basis" data-k="m" data-v="basis">Named basis</a>
+  </nav>
+  <nav aria-label="Printed page"><span class="lab">Printed page</span>
+    <a href="#pp=plain" data-k="pp" data-v="plain">Plain paper</a>
+    <a href="#pp=tint" data-k="pp" data-v="tint">Parchment tint</a>
+  </nav>
+  <nav aria-label="Theme"><span class="lab">Theme</span>
+    <a href="#t=light" data-k="t" data-v="light" aria-current="true">Light, the only theme</a>
+  </nav>
+  <nav aria-label="Hide an option"><span class="lab">Hide an option</span>
+    <button type="button" data-hide="c:intally" aria-pressed="false">Statement in Tally</button>
+    <button type="button" data-hide="c:document" aria-pressed="false">Statement document</button>
+    <button type="button" data-hide="m:value" aria-pressed="false">Named value</button>
+    <button type="button" data-hide="m:basis" aria-pressed="false">Named basis</button>
+    <button type="button" data-hide="pp:plain" aria-pressed="false">Plain paper</button>
+    <button type="button" data-hide="pp:tint" aria-pressed="false">Parchment tint</button>
+  </nav>
+  <nav aria-label="Labels"><span class="lab">Labels</span>
+    <button type="button" id="lblbtn" aria-pressed="false">Today and New labels on</button>
+  </nav>
+</div>
+
+<div class="frames" id="frames"></div>
+
+<section class="legend">
+  <h2>How to read the frames</h2>
+  <ul>
+    <li><span class="tag today">Today: part</span> marks a part that exists now, drawn as built. <span class="tag new">New: part</span> marks what the concept adds. The Labels button turns them off.</li>
+    <li>Frames: the Duo folded (466 by 678 pt), the Duo open (951 by 669 pt, the hinge strip at 455.5 to 495.5 pt holds nothing), a large phone (375 by 678 pt, a stand-in size, see the notes), and the folded Duo at the largest accessibility text size (AX5).</li>
+    <li>Tap a card line to open it. Tap a box to check a copy in, or use minus and plus on a copy of two or more. Tap the Share button, then a file, then Save to Files: the CSV downloads for real, and Print opens this browser's print dialog with the full statement.</li>
+    <li>The period is today's Orders from range. The year chips set it to By month, January to December. Nothing new is saved.</li>
+  </ul>
+</section>
+</main>
+<div id="printdoc" aria-hidden="true"></div>
+<script>
+(function () {
+"use strict";
+/* ---------- formats: copies of money() and compact() in src/view-rules.mjs ---------- */
+const money = (n) => {
+  const [m, e = 0] = String(Math.abs(n)).split("e");
+  const cents = Math.round(Number(`${m}e${+e + 2}`));
+  return `$${n < 0 ? "-" : ""}${(cents / 100).toLocaleString("en-US", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+};
+const compact = (n) => {
+  const a = Math.abs(n), trim = (x) => String(Math.round(x * 100) / 100);
+  if (a >= 1e6) return `${trim(n / 1e6)}M`;
+  if (a >= 1e3) return `${trim(n / 1e3)}k`;
+  return String(Math.round(n));
+};
+const int = (n) => n.toLocaleString("en-US");
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const plural = (n, w) => `${int(n)} ${w}${n === 1 ? "" : "s"}`;
+const copiesW = (n) => `${int(n)} cop${n === 1 ? "y" : "ies"}`;
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const day = (iso) => { const [y, m, d] = iso.split("-"); return `${MONTHS[+m - 1]} ${+d}, ${y}`; };
+
+/* ---------- the sample ledger, made from a fixed seed ---------- */
+function mulberry(a) { return function () { a |= 0; a = (a + 0x6d2b79f5) | 0; let t = Math.imul(a ^ (a >>> 15), 1 | a); t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; }; }
+const R = mulberry(20261121);
+const pick = (arr) => arr[Math.floor(R() * arr.length)];
+const STAPLES = ["Sol Ring", "Arcane Signet", "Command Tower", "Lightning Bolt", "Counterspell", "Swords to Plowshares", "Llanowar Elves", "Cultivate", "Kodama's Reach", "Rampant Growth",
+  "Dark Ritual", "Path to Exile", "Brainstorm", "Ponder", "Thought Vessel", "Mind Stone", "Fellwar Stone", "Evolving Wilds", "Terramorphic Expanse", "Exotic Orchard", "Beast Within", "Chaos Warp",
+  "Generous Gift", "Negate", "Disenchant", "Wrath of God", "Farseek", "Nature's Lore", "Three Visits", "Sakura-Tribe Elder", "Wood Elves", "Eternal Witness", "Reclamation Sage", "Solemn Simulacrum",
+  "Burnished Hart", "Commander's Sphere", "Swiftfoot Boots", "Lightning Greaves", "Heroic Intervention", "Tragic Slip", "Fatal Push", "Opt", "Consider", "Preordain", "Faithless Looting",
+  "Blasphemous Act", "Vandalblast", "Krosan Grip", "Feed the Swarm", "Infernal Grasp", "Go for the Throat", "Assassin's Trophy", "Island (0274)", "Forest (0280)", "Swamp (0276)"];
+const ADJ = ["Ashen", "Gilded", "Hollow", "Verdant", "Sunken", "Glimmer", "Ironbark", "Moonlit", "Ember", "Thorn", "Silent", "Wandering", "Crimson", "Pale", "Stormcall", "Briar", "Duskwood", "Tidal", "Grave", "Lantern"];
+const NOUN = ["Warden", "Archivist", "Sentinel", "Courier", "Familiar", "Herald", "Oracle", "Scavenger", "Wurm", "Sprite", "Colossus", "Chorister", "Lamplighter", "Ferryman", "Tactician", "Postmaster"];
+const GEN = [];
+for (const a of ADJ) for (const n of NOUN) if (R() < 0.86) GEN.push(`${a} ${n}`);
+GEN.push("Ashen Warden of the Sunken Archive (Extended Art)", "Postmaster of the Hollow Road (Borderless) (Foil Etched)");
+const SETS = ["Foundations", "Bloomburrow", "Duskmourn: House of Horror", "Commander Masters", "Modern Horizons 3", "Aetherdrift", "Tarkir: Dragonstorm", "Edge of Eternities", "Dominaria United"];
+const SA = ["Gilded Oak", "Back Room", "North Shore", "Owlbear", "Lantern", "Copper Kettle", "Maple Street", "Third Coast", "Red Barn", "Two Rivers", "Old Mill", "Blue Heron", "Iron Gate", "Foxglove", "Harbor", "Prairie"];
+const SB = ["Games", "Cards", "Hobbies", "Collectibles"];
+const SELLERS = []; for (const a of SA) for (const b of SB) SELLERS.push(`${a} ${b}`);
+SELLERS[5] = "Back Room Hobbies & Games";
+const nameSet = {};
+const nameOf = (n) => { if (!nameSet[n]) nameSet[n] = pick(SETS); return n; };
+const hex = (k) => Array.from({ length: k }, () => "0123456789ABCDEF"[Math.floor(R() * 16)]).join("");
+const TODAY = Date.parse("2026-11-21T12:00:00");
+const ORDERS = [], ITEMS = [], RECEIVED = {};
+const start25 = Date.parse("2025-01-03"), start26 = Date.parse("2026-01-02"), end = Date.parse("2026-11-20");
+for (let i = 0; i < 820; i++) {
+  const t = R() < 0.64 ? start26 + R() * (end - start26) : start25 + R() * (start26 - start25 - 86400000 * 3);
+  const date = new Date(t).toISOString().slice(0, 10);
+  const o = { id: `${hex(8)}-${hex(6)}-${hex(5)}`, seller: pick(SELLERS), date, stamp: null, canceled: false };
+  ORDERS.push(o);
+  const n = 1 + Math.floor(Math.pow(R(), 2) * 9);
+  const seen = {};
+  for (let j = 0; j < n; j++) {
+    const name = nameOf(R() < 0.42 ? pick(STAPLES) : pick(GEN));
+    const r = R(), qty = r < 0.72 ? 1 : r < 0.86 ? 2 : r < 0.93 ? 3 : 4;
+    if (seen[name]) { seen[name].qty += qty; continue; }
+    const price = Math.round((0.1 + Math.pow(R(), 3) * 9 + (R() < 0.03 ? R() * 38 : 0)) * 100) / 100;
+    const it = { key: `${o.id}#${j}`, name, set: R() < 0.8 ? nameSet[name] : pick(SETS), seller: o.seller, orderId: o.id, date, price, qty, cond: pick(["Near Mint", "Near Mint", "Lightly Played"]), finish: R() < 0.12 ? "Foil" : "Normal" };
+    seen[name] = it; ITEMS.push(it);
+  }
+}
+for (const it of ITEMS) {
+  const age = (TODAY - Date.parse(it.date)) / 86400000, r = R();
+  if (age > 30) RECEIVED[it.key] = r < 0.985 ? it.qty : 0;
+  else if (age > 14) RECEIVED[it.key] = r < 0.88 ? it.qty : 0;
+  else RECEIVED[it.key] = r < 0.35 ? it.qty : r < 0.5 && it.qty > 1 ? Math.floor(it.qty / 2) : 0;
+}
+{ const old = ORDERS.filter((o) => (TODAY - Date.parse(o.date)) / 86400000 > 25);
+  for (let k = 0; k < 7; k++) old[Math.floor(R() * old.length)].stamp = k < 5 ? "Refunded" : "Partial refund";
+  for (let k = 0; k < 4; k++) old[Math.floor(R() * old.length)].canceled = true; }
+const ORDER = Object.fromEntries(ORDERS.map((o) => [o.id, o]));
+
+/* ---------- the view state ---------- */
+const STATES = {
+  intally: [["lines", "Lines"], ["open", "A line open"], ["period", "Period menu"], ["share", "Share menu"], ["sheet", "Share sheet"], ["empty", "No orders in range"]],
+  document: [["page", "First page"], ["last", "Last page"], ["lines", "Lines view"], ["period", "Period menu"], ["share", "Share menu"], ["sheet", "Share sheet"], ["empty", "No orders in range"]],
+};
+const S = { c: "intally", s: "lines", d: "all", m: "value", pp: "plain", p: "2026", open: null, page: 1, zoom: false, view: "page", menu: null, file: null, receipt: null, labels: true, hidden: new Set() };
+const DEFAULT_OPEN = "Lightning Bolt";
+
+/* ---------- the rules, as today: liveItems drops refunded and canceled; Tally pools on the exact name ---------- */
+const gotOf = (it) => Math.min(it.qty, RECEIVED[it.key] || 0);
+const inRange = (it) => S.p === "all" || it.date.startsWith(S.p);
+function model() {
+  const live = ITEMS.filter((it) => !ORDER[it.orderId].stamp && !ORDER[it.orderId].canceled);
+  const ranged = live.filter(inRange);
+  const map = new Map();
+  for (const it of ranged) { if (!map.has(it.name)) map.set(it.name, { name: it.name, items: [] }); map.get(it.name).items.push(it); }
+  const groups = [...map.values()];
+  for (const g of groups) {
+    g.items.sort((a, b) => Date.parse(b.date) - Date.parse(a.date) || a.seller.localeCompare(b.seller));
+    g.qty = g.items.reduce((s, it) => s + it.qty, 0);
+    g.got = g.items.reduce((s, it) => s + gotOf(it), 0);
+    g.basis = g.items.reduce((s, it) => s + it.price * it.qty, 0);
+    g.missing = g.items.reduce((s, it) => s + it.price * (it.qty - gotOf(it)), 0); /* outstandingOf */
+    g.received = g.basis - g.missing;
+    g.avg = g.qty ? g.basis / g.qty : 0;
+    g.sets = [...new Set(g.items.map((it) => it.set))];
+    g.sellerCount = new Set(g.items.map((it) => it.seller)).size;
+    g.orderCount = new Set(g.items.map((it) => it.orderId)).size;
+  }
+  groups.sort((a, b) => a.name.localeCompare(b.name)); /* Sorted by: Name A–Z */
+  const T = { qty: 0, got: 0, basis: 0, missing: 0 };
+  for (const g of groups) { T.qty += g.qty; T.got += g.got; T.basis += g.basis; T.missing += g.missing; }
+  T.received = T.basis - T.missing; /* the masthead's totals.val - totals.missingVal */
+  const orders = new Set(ranged.map((it) => it.orderId));
+  const pkgsDone = [...orders].filter((id) => ranged.filter((it) => it.orderId === id).every((it) => gotOf(it) >= it.qty)).length;
+  const inP = ORDERS.filter((o) => S.p === "all" || o.date.startsWith(S.p));
+  const ref = inP.filter((o) => o.stamp && !o.canceled);
+  const refVal = ITEMS.filter((it) => ref.some((o) => o.id === it.orderId)).reduce((s, it) => s + it.price * it.qty, 0);
+  const can = inP.filter((o) => o.canceled);
+  const canLines = ITEMS.filter((it) => can.some((o) => o.id === it.orderId)).length;
+  return { groups, T, lines: ranged.length, orders: orders.size, pkgsDone, sellers: new Set(ranged.map((it) => it.seller)).size,
+    ref: ref.length, refPartial: ref.filter((o) => o.stamp === "Partial refund").length, refVal, can: can.length, canLines };
+}
+const periodLabel = () => (S.p === "all" ? "All time" : S.p);
+const periodLong = () => (S.p === "all" ? "all time" : `Jan 1 to Dec 31, ${S.p}`);
+const fileBase = () => (S.p === "all" ? "all time" : S.p);
+
+/* ---------- icons ---------- */
+const ICON = {
+  share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11H5a1 1 0 0 0-1 1v8a1 1 0 0 0 1 1h14a1 1 0 0 0 1-1v-8a1 1 0 0 0-1-1h-1"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 15h6M9 18h4"/></svg>',
+  table: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="4" y="5" width="16" height="14" rx="1"/><path d="M4 10h16M4 14.5h16M10 5v14"/></svg>',
+  print: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M7 9V3h10v6"/><rect x="3" y="9" width="18" height="8" rx="1"/><path d="M7 14h10v7H7z"/></svg>',
+  folder: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 6h6l2 2h10v11H3z"/></svg>',
+  copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 0 0-1-1H5a1 1 0 0 0-1 1v10a1 1 0 0 0 1 1h3"/></svg>',
+  chev: '<svg viewBox="0 0 12 12" width="10" height="10" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 4.5l3 3 3-3"/></svg>',
+  back: '<svg viewBox="0 0 12 20" width="12" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M10 2L2 10l8 8"/></svg>',
+  gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>',
+  env: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="1"/><path d="M3 7l9 6 9-6"/></svg>',
+  num: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M9 4L7 20M17 4l-2 16M4 9h16M3 15h16"/></svg>',
+  box: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>',
+};
+const tag = (t) => (t ? ` data-tag="${esc(t)}"` : "");
+const status = () => '<div class="status" aria-hidden="true"><span>9:41</span><span>100%</span></div>';
+const tabbar = () => `<div class="tabbar" aria-label="Tabs"${tag("Today: tab bar")}><span>${ICON.gear}Ledger</span><span>${ICON.env}Orphaned</span><span class="on">${ICON.num}Tally</span><span>${ICON.box}Packages</span></div>`;
+
+/* ---------- shared parts ---------- */
+function masthead(M, first) {
+  const named = S.m === "basis" ? "basis" : "value";
+  const id = first ? ` id="focus-mast-${named}"` : "";
+  const remaining = M.T.qty - M.T.got;
+  return `<div class="mast"${tag("Today: letterhead")}>
+    <div class="rule" aria-hidden="true"><i></i><div class="seal"></div><i></i></div>
+    <h2>Manifest</h2><div class="house">C.H Postal Company</div>
+    <div class="thirds">
+      <div><div class="micro">cards</div><div class="fig"><b>${int(M.T.got)}</b><span>/${int(M.T.qty)}</span></div></div>
+      <div><div class="micro">packages</div><div class="fig"><b>${int(M.pkgsDone)}</b><span>/${int(M.orders)}</span></div></div>
+      <div class="wide"${id}${tag(S.m === "basis" ? "New: named basis" : "")}><div class="micro">${named}</div><div class="fig"><b>$${compact(M.T.received)}</b><span>/$${compact(M.T.basis)}</span></div></div>
+    </div>
+    <div class="bar"><i style="width:${M.T.qty ? (M.T.got / M.T.qty) * 100 : 0}%"></i></div>
+    <div class="mfoot"><span>${plural(M.groups.length, "unique item")}${S.p === "all" ? "" : " in range"} · autosaves</span><b>${remaining === 0 ? "ALL ACCOUNTED FOR ✓" : `${int(remaining)} still missing · ${money(M.T.missing)}`}</b></div>
+  </div>`;
+}
+function figs(g) {
+  return `<span class="figs"><span class="q${g.got >= g.qty ? " done" : ""}" data-k="Copies">${g.got}/${g.qty}</span><span class="rc" data-k="Received">${money(g.received)}</span>${
+    g.missing < 0.005 ? '<span class="ms zero" data-k="Missing">—</span>' : `<span class="ms" data-k="Missing">${money(g.missing)}</span>`}<span class="bs" data-k="Basis">${money(g.basis)}</span></span>`;
+}
+function metaLine(g) {
+  const setLabel = g.sets.length === 1 ? g.sets[0] : `${g.sets[0]} +${g.sets.length - 1} more`;
+  return [plural(g.sellerCount, "seller"), plural(g.orderCount, "order"), setLabel].join(" · ");
+}
+function colhead() {
+  return `<div class="colhead"${tag("New: column head")}><span class="micro lab1">Item</span><div class="cols"><span>Copies</span><span>Received</span><span>Missing</span><span>Basis</span></div></div>`;
+}
+function copiesBlock(g) {
+  const rows = g.items.map((it) => {
+    const got = gotOf(it), o = ORDER[it.orderId];
+    const box = `<button class="box${got >= it.qty ? " got" : got > 0 ? " part" : ""}" data-act="check" data-key="${esc(it.key)}" aria-label="${got >= it.qty ? "Received" : "Not received"}: ${esc(it.seller)}"><i></i></button>`;
+    const px = it.qty > 1
+      ? `<span class="px"><span class="step"><button data-act="step" data-key="${esc(it.key)}" data-d="-1" aria-label="One fewer received"><i>−</i></button><b>${got}/${it.qty}</b><button data-act="step" data-key="${esc(it.key)}" data-d="1" aria-label="One more received"><i>+</i></button></span><small>${money(it.price)} each</small></span>`
+      : `<span class="px">${money(it.price)}<small>${got ? "received" : "not yet"}</small></span>`;
+    return `<div class="copy">${box}<span class="who">${esc(it.seller)}<small>${day(it.date)} · ${esc(it.set)} · ${o.id}</small></span>${px}</div>`;
+  }).join("");
+  return `<div class="copies"${tag("Today: copies")}><div class="across">${money(g.basis)} across ${copiesW(g.qty)} · ${money(g.avg)} avg</div>${rows}
+    <div class="bulk"><button class="mini" data-act="bulk" data-name="${esc(g.name)}" data-v="1"${g.got >= g.qty ? " hidden" : ""}>Mark all received</button><button class="mini" data-act="bulk" data-name="${esc(g.name)}" data-v="0"${g.got === 0 ? " hidden" : ""}>Clear check-ins</button></div></div>`;
+}
+function totalsBlock(M) {
+  const T = M.T, left = T.qty - T.got;
+  return `<div class="totals"${tag("New: totals")}>
+    <div class="sum"><span>Basis, ${copiesW(T.qty)} of ${plural(M.groups.length, "unique item")}</span><span class="v">${money(T.basis)}</span></div>
+    <div class="sum minus"><span>Less still missing, ${copiesW(left)}</span><span class="v">−${money(T.missing)}</span></div>
+    <div class="sum net"><span>Received, ${copiesW(T.got)}</span><span class="v">${money(T.received)}</span></div>
+    <div class="memo">${memoLines(M)}</div>
+  </div>`;
+}
+function memoLines(M) {
+  const out = [];
+  if (M.ref) out.push(`<p>Not counted: <b>${plural(M.ref, "refunded package")}</b>${M.refPartial ? `, ${M.refPartial} of them partial` : ""}, ${money(M.refVal)} of cards.</p>`);
+  if (M.can) out.push(`<p>Not counted: <b>${plural(M.can, "canceled order")}</b>, ${plural(M.canLines, "line")}.</p>`);
+  out.push("<p>Basis is price × quantity of each copy. Shipping and tax are not in it.</p>");
+  return out.join("");
+}
+function emptyBlock() {
+  return `<div class="empty"${tag("New: empty state")}><p>No orders from ${periodLabel()}. Pick another period to see its statement.</p><button class="btn" data-act="period-set" data-v="all">Show all time</button></div>`;
+}
+function receiptLine(M) {
+  if (S.receipt) return `<div class="receipt ok" role="status">${esc(S.receipt)}</div>`;
+  return `<div class="receipt" role="status">From ${plural(M.lines, "line")} in ${plural(M.orders, "order")}, sorted by name</div>`;
+}
+function shead(M, first) {
+  const id = first ? ' id="focus-intally"' : "";
+  const share = M.groups.length ? `<button class="iconbtn" data-act="menu" data-v="share" data-anchor="share" aria-label="Share statement" aria-haspopup="menu" aria-expanded="${S.menu === "share"}">${ICON.share}</button>` : "";
+  return `<div class="shead"${id}${tag("New: statement head")}>
+    <div class="top"><h3>Statement</h3><button class="period" data-act="menu" data-v="period" data-anchor="period" aria-haspopup="menu" aria-expanded="${S.menu === "period"}">Orders from <u>${periodLabel()}</u> ${ICON.chev}</button>${share}</div>
+    ${receiptLine(M)}
+  </div>`;
+}
+function linesList(M, mode) {
+  /* mode: inline (folded and phone: a line opens in place), select (open Duo: the right page shows it), read (the document's Lines view) */
+  return `<div class="lines">${M.groups.map((g) => {
+    const open = mode === "inline" && S.open === g.name, sel = mode === "select" && S.open === g.name;
+    const act = mode === "read" ? "" : ` data-act="toggle" data-name="${esc(g.name)}" aria-expanded="${open || sel}"`;
+    return `<div class="sline${open ? " open" : ""}${sel ? " sel" : ""}"><button${act}${mode === "read" ? ' tabindex="-1"' : ""}><span class="nm">${esc(g.name)}</span>${figs(g)}<span class="meta">${esc(metaLine(g))}</span></button>${open ? copiesBlock(g) : ""}</div>`;
+  }).join("")}</div>`;
+}
+
+/* ---------- menus and the share sheet ---------- */
+function menuHTML(M) {
+  if (S.menu === "share") {
+    const pages = paginate(M).length;
+    return `<div class="scrim" data-act="close"></div><div class="menu" role="menu" data-for="share"${tag("New: share menu")}>
+      <div class="head">Orders from ${periodLabel()}</div>
+      <button role="menuitem" data-act="file" data-v="pdf"><span>Statement (PDF)<small>${plural(pages, "page")}, sorted by name</small></span>${ICON.doc}</button>
+      <button role="menuitem" data-act="file" data-v="csv"><span>Spreadsheet (CSV)<small>${plural(M.groups.length, "row")}, one per unique item</small></span>${ICON.table}</button></div>`;
+  }
+  if (S.menu === "period") {
+    const opt = (v, l) => `<button role="menuitemradio" aria-checked="${S.p === v}" data-act="period-set" data-v="${v}"><span>${l}</span></button>`;
+    return `<div class="scrim" data-act="close"></div><div class="menu" role="menu" data-for="period"${tag("New: period menu")}>
+      <div class="head">Orders from</div>${opt("2026", "2026")}${opt("2025", "2025")}${opt("all", "All time")}
+      <button role="menuitem" data-act="ledger"><span>By month…<small>Opens Orders from on the Ledger tab</small></span></button></div>`;
+  }
+  return "";
+}
+function sheetHTML(M) {
+  if (!S.file) return "";
+  const pdf = S.file === "pdf";
+  const name = pdf ? `Cost basis ${fileBase()}.pdf` : `cost-basis-${fileBase().replace(" ", "-")}.csv`;
+  const sub = pdf ? `PDF document · ${plural(paginate(M).length, "page")}` : `CSV · ${plural(M.groups.length + 1, "row")} with the header`;
+  return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="Share ${esc(name)}"${tag("Today: iOS share sheet")}>
+    <div class="file"><span class="ic">${pdf ? "PDF" : "CSV"}</span><span><b>${esc(name)}</b><small>${sub}</small></span><button class="x" data-act="close" aria-label="Close">✕</button></div>
+    <div class="apps" aria-hidden="true"><span><i></i>Messages</span><span><i></i>Mail</span><span><i></i>Notes</span><span><i></i>Files</span><span><i></i>Numbers</span></div>
+    <div class="acts">
+      <button data-act="sys" data-v="copy">Copy ${ICON.copy}</button>
+      ${pdf ? `<button data-act="sys" data-v="print">Print ${ICON.print}</button>` : ""}
+      <button data-act="sys" data-v="save">Save to Files ${ICON.folder}</button>
+    </div>
+    <p class="note">The system draws this sheet. In this mockup, Save to Files downloads the CSV, and Print opens this browser's print dialog with the whole statement.</p>
+  </div>`;
+}
+const overlays = (M) => menuHTML(M) + sheetHTML(M);
+
+/* ---------- Statement in Tally ---------- */
+function intallySingle(M, dev, first, ax) {
+  const narrow = dev === "iphone-regular" ? " narrow" : "";
+  const body = M.groups.length ? `${colhead()}${linesList(M, "inline")}${totalsBlock(M)}` : emptyBlock();
+  return `${status()}<div class="pg"><div class="scroll withbar" data-key="main"><div class="app${narrow}">${masthead(M, first)}${shead(M, first)}${body}</div></div>${overlays(M)}</div>${tabbar()}`;
+}
+function intallyOpen(M) {
+  const g = M.groups.find((x) => x.name === S.open);
+  const right = g
+    ? `<div class="rp"${tag("New: the line, on its own page")}>
+        <div class="top" style="display:flex;justify-content:space-between;align-items:center;gap:8px"><h3>${esc(g.name)}</h3><button class="iconbtn" data-act="toggle" data-name="${esc(g.name)}" aria-label="Close this line, back to the totals">✕</button></div>
+        <p class="lede mono" style="font-size:12px">${esc(metaLine(g))}</p>
+        <div class="totals" style="border-top:1px solid var(--ink)">
+          <div class="sum"><span>Basis, ${copiesW(g.qty)}</span><span class="v">${money(g.basis)}</span></div>
+          <div class="sum minus"><span>Less still missing, ${copiesW(g.qty - g.got)}</span><span class="v">${g.missing < 0.005 ? "—" : "−" + money(g.missing)}</span></div>
+          <div class="sum net"><span>Received, ${copiesW(g.got)}</span><span class="v">${money(g.received)}</span></div>
+        </div>${copiesBlock(g)}</div>`
+    : `<div class="rp">${M.groups.length ? `<p class="lede">One line per unique item, every seller pooled on the exact name. Tap a line to see its copies here.</p>${totalsBlock(M)}` : emptyBlock()}</div>`;
+  const left = `<div class="app">${masthead(M, false)}${M.groups.length ? colhead() + linesList(M, "select") : ""}</div>`;
+  return `${status()}<div class="pg l"><div class="scroll" data-key="left" style="padding-bottom:24px">${left}</div></div>
+    <div class="pg r"><div class="scroll withbar" data-key="right"><div class="app" style="padding-top:12px">${shead(M, false)}</div>${right}</div>${overlays(M)}</div>
+    <div class="fold" aria-hidden="true"><span>hinge 455.5 to 495.5 pt</span></div>${tabbar()}`;
+}
+
+/* ---------- Statement document: pages with totals carried forward ---------- */
+const ROWS_FIRST = 25, ROWS_PAGE = 33, ROWS_LAST_RESERVE = 9;
+function paginate(M) {
+  const g = M.groups, pages = [];
+  let i = 0;
+  while (i < g.length || pages.length === 0) {
+    const cap = pages.length === 0 ? ROWS_FIRST : ROWS_PAGE;
+    pages.push(g.slice(i, i + cap)); i += cap;
+  }
+  /* the last page also holds the totals and the close; move lines over if it cannot */
+  const lastCap = (pages.length === 1 ? ROWS_FIRST : ROWS_PAGE) - ROWS_LAST_RESERVE;
+  if (pages[pages.length - 1].length > lastCap) pages.push(pages[pages.length - 1].splice(lastCap));
+  return pages;
+}
+function sums(rows, acc) {
+  const a = { ...acc };
+  for (const g of rows) { a.qty += g.qty; a.got += g.got; a.basis += g.basis; a.missing += g.missing; }
+  a.received = a.basis - a.missing; return a;
+}
+const cells = (a) => `<td>${int(a.got)}/${int(a.qty)}</td><td>${money(a.received)}</td><td class="${a.missing < 0.005 ? "z" : "ms"}">${a.missing < 0.005 ? "—" : money(a.missing)}</td><td>${money(a.basis)}</td>`;
+function pageHTML(M, n, opts = {}) {
+  const pages = paginate(M), N = pages.length, rows = pages[n - 1] || [];
+  let acc = { qty: 0, got: 0, basis: 0, missing: 0, received: 0 };
+  for (let k = 0; k < n - 1; k++) acc = sums(pages[k], acc);
+  const brought = acc, carried = sums(rows, acc), last = n === N;
+  const tint = S.pp === "tint" ? "tint" : "plain";
+  const id = opts.id ? ` id="${opts.id}"` : "";
+  const head = n === 1
+    ? `<div class="lh"><div class="brand"><b>Manifest</b><span>C.H Postal Company</span></div><div class="rt"><b>Statement of cost basis</b>Orders from ${periodLong()}<br>Prepared ${day("2026-11-21")}</div></div><div class="orn"></div>
+       <div class="acct"><div>${sumRows(M.T, M)}</div><div class="memo">
+         <p><b>${plural(M.groups.length, "unique item")}</b>, ${copiesW(M.T.qty)}, ${plural(M.sellers, "seller")}, ${plural(M.orders, "order")}.</p>${memoLines(M)}</div></div>`
+    : `<div class="runhead"><span>MANIFEST · Statement of cost basis · Orders from ${periodLabel()}</span><span>Page ${n} of ${N}</span></div>`;
+  const body = rows.map((g) => `<tr><td title="${esc(g.name)}">${esc(g.name)}</td>${cells(g)}</tr>`).join("");
+  const fwd = n > 1 ? `<tr class="fwd"><td>Brought forward from page ${n - 1}</td>${cells(brought)}</tr>` : "";
+  const foot = last ? `<tr class="tot"><td>Totals</td>${cells(carried)}</tr>` : `<tr class="cf"><td>Carried forward to page ${n + 1}</td>${cells(carried)}</tr>`;
+  const close = last && N > 1 ? `<div class="close"><div>${sumRows(M.T, M)}</div><div class="memo">${memoLines(M)}</div></div>` : "";
+  return `<div class="ppage ${tint}"${id}${opts.style ? ` style="${opts.style}"` : ""}>${head}
+    <table><thead><tr><th>Item</th><th>Copies</th><th>Received</th><th>Missing</th><th>Basis</th></tr></thead><tbody>${fwd}${body}${foot}</tbody></table>${close}
+    <div class="pfoot"><span>Basis is price × quantity of each copy. Shipping and tax are not included.</span><span>Page ${n} of ${N}</span></div></div>`;
+}
+function sumRows(T, M) {
+  return `<div class="sum"><span>Basis, ${copiesW(T.qty)}</span><span class="v">${money(T.basis)}</span></div>
+    <div class="sum minus"><span>Less still missing, ${copiesW(T.qty - T.got)}</span><span class="v">−${money(T.missing)}</span></div>
+    <div class="sum net"><span>Received, ${copiesW(T.got)}</span><span class="v">${money(T.received)}</span></div>`;
+}
+function pageView(M, availW, availH, first) {
+  const N = paginate(M).length, n = Math.min(S.page, N);
+  const fit = Math.min(availW / 612, availH ? availH / 792 : 9);
+  const s = S.zoom ? 1 : fit;
+  const ids = first ? { id: `focus-page-${S.pp}` } : {};
+  return `<div class="fit"><div class="sheetwrap${S.zoom ? " zoomed" : ""}"${first ? ' id="focus-document"' : ""} data-act="zoom" role="button" tabindex="0" aria-label="Page ${n} of ${N}. ${S.zoom ? "Tap to fit the page" : "Tap to zoom to full size"}" style="width:${612 * s}px;height:${792 * s}px"${tag("New: printed page")}>
+    ${pageHTML(M, n, { ...ids, style: `transform:scale(${s})` })}</div></div>`;
+}
+function readView(M) {
+  /* the same lines, reflowed: no check-in here; the statement is read-only */
+  return `<div class="reflow"${tag("New: Lines view")}>${colhead()}${linesList(M, "read")}${totalsBlock(M)}</div>`;
+}
+function docNavbar(withBack, withSeg, withShare) {
+  return `<div class="navbar"${tag("New: Statement screen")}>
+    ${withBack ? `<button class="back" data-act="noop" aria-label="Back to Tally">${ICON.back} Tally</button>` : "<span></span>"}
+    ${withSeg ? `<div class="seg" role="group" aria-label="Show"><button aria-pressed="${S.view === "page"}" data-act="view" data-v="page">Page</button><button aria-pressed="${S.view === "lines"}" data-act="view" data-v="lines">Lines</button></div>` : '<span class="ttl">Statement</span>'}
+    <span class="tr">${withShare ? `<button class="iconbtn" data-act="menu" data-v="share" data-anchor="share" aria-label="Share statement" aria-haspopup="menu" aria-expanded="${S.menu === "share"}">${ICON.share}</button>` : ""}</span></div>`;
+}
+function pager(M) {
+  const N = paginate(M).length, n = Math.min(S.page, N);
+  return `<span class="pager"><button class="tb" data-act="page" data-v="-1" aria-label="Previous page"${n <= 1 ? " disabled" : ""}>‹</button><span>${n} of ${N}</span><button class="tb" data-act="page" data-v="1" aria-label="Next page"${n >= N ? " disabled" : ""}>›</button></span>`;
+}
+function documentSingle(M, dev, first, ax) {
+  const W = dev === "iphone-regular" ? 375 : 466;
+  const has = M.groups.length > 0;
+  const lines = S.view === "lines" || ax;
+  const area = !has ? `<div class="app">${emptyBlock()}</div>` : lines ? readView(M) : pageView(M, W - 32, 0, first);
+  return `${status()}<div class="pg">${docNavbar(true, has, has)}
+    <div class="docarea" data-key="doc"${lines || !has ? ' style="background:var(--paper)"' : ""}>${area}</div>
+    <div class="toolbar"${tag("New: period and pages")}><button class="tb" data-act="menu" data-v="period" data-anchor="period" aria-haspopup="menu">${periodLabel()} ${ICON.chev}</button>${has && !lines ? pager(M) : "<span></span>"}<span></span></div>
+    ${overlays(M)}</div>`;
+}
+function documentOpen(M) {
+  const pages = paginate(M), N = pages.length, has = M.groups.length > 0;
+  const prow = pages.map((rows, k) => rows.length ? `<button class="rrow" data-act="goto" data-v="${k + 1}" aria-current="${S.page === k + 1}"><span>Page ${k + 1}</span><small>${esc(rows[0].name.slice(0, 18))} – ${esc(rows[rows.length - 1].name.slice(0, 18))}</small></button>`
+    : `<button class="rrow" data-act="goto" data-v="${k + 1}" aria-current="${S.page === k + 1}"><span>Page ${k + 1}</span><small>Totals</small></button>`).join("");
+  const per = (v, l) => { const keep = S.p; S.p = v; const m = model(); S.p = keep;
+    return `<button class="rrow" data-act="period-set" data-v="${v}" aria-current="${S.p === v}"><span>${l}</span><small>${m.groups.length ? `${money(m.T.basis)} · ${plural(paginate(m).length, "page")}` : "no orders"}</small></button>`; };
+  const left = `<div class="lp"${tag("New: statement settings")}>
+    <h3>Statement</h3>
+    <div class="group"><div class="gl">Orders from</div>${per("2026", "2026")}${per("2025", "2025")}${per("all", "All time")}<button class="rrow" data-act="ledger"><span>By month…</span><small>Ledger tab</small></button></div>
+    ${has ? `<div class="group"><div class="gl">Totals</div>${sumRows(M.T, M)}<div class="memo">${memoLines(M)}</div></div>
+    <div class="group"><div class="gl">Pages</div>${prow}</div>` : ""}
+  </div>`;
+  const H = 669 - 20 - 44 - 83 - 32;
+  const right = !has ? `<div class="app">${emptyBlock()}</div>` : S.view === "lines" ? readView(M) : pageView(M, 455.5 - 32, H, false);
+  return `${status()}<div class="pg l">${docNavbar(true, false, false)}<div class="scroll" data-key="left" style="top:calc(var(--sat) + 44px);padding-bottom:24px">${left}</div></div>
+    <div class="pg r">${docNavbar(false, has, has)}<div class="docarea" data-key="doc"${S.view === "lines" || !has ? ' style="background:var(--paper)"' : ""}>${right}</div>
+      <div class="toolbar"${tag("New: pages")}><span></span>${has && S.view !== "lines" ? pager(M) : "<span></span>"}<span></span></div>${overlays(M)}</div>
+    <div class="fold" aria-hidden="true"><span>hinge 455.5 to 495.5 pt</span></div>`;
+}
+
+/* ---------- frames ---------- */
+const DEVICES = [
+  { k: "folded", dev: "iphone-duo-folded", cap: "Duo, folded", size: "466 × 678 pt, one screen" },
+  { k: "open", dev: "iphone-duo-unfolded", cap: "Duo, open", size: "951 × 669 pt, two pages; nothing sits on the hinge" },
+  { k: "phone", dev: "iphone-regular", cap: "Large phone", size: "375 × 678 pt, a stand-in size (see the notes)" },
+  { k: "ax5", dev: "iphone-duo-folded", cap: "Duo, folded, largest text (AX5)", size: "466 × 678 pt, Dynamic Type AX5", ax: true },
+];
+function frame(d, M, first) {
+  const ax = !!d.ax;
+  const inner = S.c === "intally"
+    ? d.k === "open" ? intallyOpen(M) : intallySingle(M, d.dev, first, ax)
+    : d.k === "open" ? documentOpen(M) : documentSingle(M, d.dev, first, ax);
+  const note = S.c === "document" && ax ? " At an accessibility size the Statement opens on Lines: the page itself cannot grow its text." : "";
+  return `<figure class="f" data-f="${d.k}"><figcaption><b>${d.cap}</b><br>${d.size}.${note}</figcaption>
+    <div class="dev${ax ? " ax" : ""}${S.labels ? " lbl" : ""}" data-device="${d.dev}" data-f="${d.k}">${inner}</div></figure>`;
+}
+
+/* ---------- hash and controls ---------- */
+const KEYS = ["c", "s", "d", "m", "pp", "t"];
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  if (h.get("c") && STATES[h.get("c")]) S.c = h.get("c");
+  const s = h.get("s"); S.s = s && STATES[S.c].some(([v]) => v === s) ? s : STATES[S.c][0][0];
+  if (h.get("d")) S.d = h.get("d");
+  if (h.get("m") === "basis" || h.get("m") === "value") S.m = h.get("m");
+  if (h.get("pp") === "tint" || h.get("pp") === "plain") S.pp = h.get("pp");
+  applyState();
+}
+function applyState() {
+  /* a state is a starting picture; taps then move on from it */
+  S.menu = null; S.file = null; S.zoom = false; S.receipt = null;
+  S.p = "2026"; S.open = null; S.page = 1; S.view = "page";
+  const st = S.s;
+  if (st === "empty") S.p = "2024";
+  if (st === "open") S.open = DEFAULT_OPEN;
+  if (st === "period") S.menu = "period";
+  if (st === "share") S.menu = "share";
+  if (st === "sheet") S.file = "pdf";
+  if (st === "last") S.page = 99;
+  if (st === "lines") S.view = S.c === "document" ? "lines" : "page";
+}
+function writeHash() {
+  const h = new URLSearchParams();
+  h.set("c", S.c); h.set("s", S.s); h.set("d", S.d); h.set("m", S.m); h.set("pp", S.pp); h.set("t", "light");
+  history.replaceState(null, "", "#" + h.toString());
+}
+function syncNav() {
+  const sn = document.getElementById("statenav");
+  sn.innerHTML = '<span class="lab">State</span>' + STATES[S.c].map(([v, l]) => `<a href="#c=${S.c}&s=${v}" data-k="s" data-v="${v}">${l}</a>`).join("");
+  document.querySelectorAll(".controls a[data-k]").forEach((a) => {
+    const k = a.dataset.k, v = a.dataset.v;
+    if (k === "t") return;
+    a.setAttribute("aria-current", String(S[k] === v));
+    a.toggleAttribute("data-gone", S.hidden.has(`${k}:${v}`));
+  });
+  document.querySelectorAll(".controls button[data-hide]").forEach((b) => b.setAttribute("aria-pressed", String(S.hidden.has(b.dataset.hide))));
+  const lb = document.getElementById("lblbtn");
+  lb.textContent = S.labels ? "Today and New labels on" : "Today and New labels off";
+  lb.setAttribute("aria-pressed", String(!S.labels));
+}
+function saveScroll() {
+  const out = {};
+  document.querySelectorAll("#frames .dev").forEach((dv) => dv.querySelectorAll("[data-key]").forEach((el) => { out[dv.dataset.f + ":" + el.dataset.key] = [el.scrollTop, el.scrollLeft]; }));
+  return out;
+}
+function render(keepScroll) {
+  const sc = keepScroll ? saveScroll() : {};
+  const M = model();
+  const N = paginate(M).length; if (S.page > N) S.page = N;
+  const list = DEVICES.filter((d) => S.d === "all" || S.d === d.k);
+  document.getElementById("frames").innerHTML = list.map((d, i) => frame(d, M, i === 0)).join("");
+  document.querySelectorAll("#frames .dev").forEach((dv) => {
+    dv.querySelectorAll("[data-key]").forEach((el) => { const v = sc[dv.dataset.f + ":" + el.dataset.key]; if (v) { el.scrollTop = v[0]; el.scrollLeft = v[1]; } });
+    placeMenus(dv);
+  });
+  syncNav(); writeHash();
+}
+function placeMenus(dv) {
+  dv.querySelectorAll(".menu").forEach((m) => {
+    const pg = m.parentElement, a = pg.querySelector(`[data-anchor="${m.dataset.for}"]`);
+    const pr = pg.getBoundingClientRect();
+    if (!a) { m.style.top = "80px"; m.style.right = "16px"; return; }
+    const r = a.getBoundingClientRect();
+    const below = r.bottom - pr.top + 4, h = m.offsetHeight;
+    m.style.top = (below + h > pr.height - 8 ? Math.max(8, r.top - pr.top - h - 4) : below) + "px";
+    if (m.dataset.for === "share") m.style.right = Math.max(8, pr.right - r.right) + "px";
+    else m.style.left = Math.max(8, Math.min(r.left - pr.left, pr.width - m.offsetWidth - 8)) + "px";
+  });
+}
+
+/* ---------- files ---------- */
+function csvText(M) {
+  const q = (s) => (/[",\n]/.test(s) ? `"${String(s).replace(/"/g, '""')}"` : s);
+  const n2 = (x) => (Math.round(x * 100) / 100).toFixed(2);
+  const rows = [["Item", "Copies ordered", "Copies received", "Received", "Missing", "Basis", "Sellers", "Orders", "Sets"].join(",")];
+  for (const g of M.groups) rows.push([q(g.name), g.qty, g.got, n2(g.received), n2(g.missing), n2(g.basis), g.sellerCount, g.orderCount, q(g.sets.join("; "))].join(","));
+  return rows.join("\n") + "\n";
+}
+function download(name, text) {
+  const blob = new Blob([text], { type: "text/csv" });
+  const a = document.createElement("a"); a.href = URL.createObjectURL(blob); a.download = name;
+  document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 500);
+}
+function printAll(M) {
+  const N = paginate(M).length;
+  document.getElementById("printdoc").innerHTML = Array.from({ length: N }, (_, k) => pageHTML(M, k + 1)).join("");
+  window.print();
+}
+
+/* ---------- taps ---------- */
+document.getElementById("frames").addEventListener("click", (e) => {
+  const t = e.target.closest("[data-act]"); if (!t) return;
+  const act = t.dataset.act, v = t.dataset.v;
+  const M = model();
+  if (act === "toggle") { S.open = S.open === t.dataset.name ? null : t.dataset.name; }
+  else if (act === "check") { const it = ITEMS.find((x) => x.key === t.dataset.key); RECEIVED[it.key] = gotOf(it) >= it.qty ? 0 : it.qty; }
+  else if (act === "step") { const it = ITEMS.find((x) => x.key === t.dataset.key); RECEIVED[it.key] = Math.max(0, Math.min(it.qty, gotOf(it) + Number(t.dataset.d))); }
+  else if (act === "bulk") { const g = M.groups.find((x) => x.name === t.dataset.name); for (const it of g.items) RECEIVED[it.key] = v === "1" ? it.qty : 0; }
+  else if (act === "menu") { S.menu = S.menu === v ? null : v; S.file = null; }
+  else if (act === "close") { S.menu = null; S.file = null; }
+  else if (act === "file") { S.menu = null; S.file = v; }
+  else if (act === "period-set") { S.p = v; S.menu = null; S.page = 1; S.open = null; S.receipt = null; }
+  else if (act === "ledger") { S.menu = null; S.receipt = "By month opens Orders from on the Ledger tab."; }
+  else if (act === "sys") {
+    const pdf = S.file === "pdf";
+    const name = pdf ? `Cost basis ${fileBase()}.pdf` : `cost-basis-${fileBase().replace(" ", "-")}.csv`;
+    S.file = null;
+    if (v === "save" && !pdf) { download(name, csvText(M)); S.receipt = `Saved ${name} to Files`; }
+    else if (v === "copy") { try { navigator.clipboard && navigator.clipboard.writeText(pdf ? "" : csvText(M)); } catch (_) {} S.receipt = `Copied ${name}`; }
+    else { S.receipt = v === "print" ? `Sent ${name} to Print` : `Saved ${name} to Files`; render(true); printAll(M); return; }
+  }
+  else if (act === "view") { S.view = v; }
+  else if (act === "page") { S.page = Math.max(1, S.page + Number(v)); }
+  else if (act === "goto") { S.page = Number(v); S.view = "page"; }
+  else if (act === "zoom") { S.zoom = !S.zoom; }
+  else return;
+  render(true);
+});
+document.getElementById("frames").addEventListener("keydown", (e) => {
+  if ((e.key === "Enter" || e.key === " ") && e.target.matches('[role="button"][data-act]')) { e.preventDefault(); e.target.click(); }
+  if (e.key === "Escape" && (S.menu || S.file)) { S.menu = null; S.file = null; render(true); }
+});
+document.querySelector(".controls").addEventListener("click", (e) => {
+  const a = e.target.closest("a[data-k]");
+  if (a) {
+    e.preventDefault(); const k = a.dataset.k, v = a.dataset.v;
+    if (k === "t") return;
+    S[k] = v;
+    if (k === "c") S.s = STATES[v][0][0];
+    if (k === "c" || k === "s") applyState();
+    render(false); return;
+  }
+  const b = e.target.closest("button[data-hide]");
+  if (b) {
+    const h = b.dataset.hide, [k, v] = h.split(":");
+    if (S.hidden.has(h)) S.hidden.delete(h);
+    else {
+      const sib = [...document.querySelectorAll(`.controls a[data-k="${k}"]`)].map((x) => x.dataset.v).filter((x) => x !== v && !S.hidden.has(`${k}:${x}`));
+      if (!sib.length) return; /* one option of a pair stays */
+      S.hidden.add(h);
+      if (S[k] === v) { S[k] = sib[0]; if (k === "c") { S.s = STATES[S[k]][0][0]; applyState(); } }
+    }
+    render(false); return;
+  }
+  if (e.target.closest("#lblbtn")) { S.labels = !S.labels; render(true); }
+});
+window.addEventListener("hashchange", () => { readHash(); render(false); });
+readHash(); render(false);
+})();
+</script>
+</body>
+</html>

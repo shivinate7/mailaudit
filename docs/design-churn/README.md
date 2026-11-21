@@ -6,7 +6,14 @@ Planner round 1: [ideas/](ideas/). Planner round 2: [ideas-r2/](ideas-r2/) (plan
 
 | Screen | Kind | Mockup | Notes |
 |---|---|---|---|
+| cost-basis | blind | [cost-basis-blind-1](mockups/cost-basis-blind-1.html) | [notes](mockups/cost-basis-blind-1-notes.md) |
+| cost-basis | blind | [cost-basis-blind-2](mockups/cost-basis-blind-2.html) | [notes](mockups/cost-basis-blind-2-notes.md) |
+| cost-basis | directed | [cost-basis-directed-1](mockups/cost-basis-directed-1.html) |  |
+| cost-basis | directed | [cost-basis-directed-2](mockups/cost-basis-directed-2.html) | [notes](mockups/cost-basis-directed-2-notes.md) |
 | cost-basis | informed | [cost-basis-informed-1](mockups/cost-basis-informed-1.html) | [notes](mockups/cost-basis-informed-1-notes.md) |
+| date-and-stamp-editing | blind | [date-and-stamp-editing-blind-1](mockups/date-and-stamp-editing-blind-1.html) | [notes](mockups/date-and-stamp-editing-blind-1-notes.md) |
+| date-and-stamp-editing | blind | [date-and-stamp-editing-blind-2](mockups/date-and-stamp-editing-blind-2.html) | [notes](mockups/date-and-stamp-editing-blind-2-notes.md) |
+| date-and-stamp-editing | informed | [date-and-stamp-editing-informed-1](mockups/date-and-stamp-editing-informed-1.html) | [notes](mockups/date-and-stamp-editing-informed-1-notes.md) |
 | duo-poses | blind | [duo-poses-blind-1](mockups/duo-poses-blind-1.html) | [notes](mockups/duo-poses-blind-1-notes.md) |
 | duo-poses | blind | [duo-poses-blind-2](mockups/duo-poses-blind-2.html) | [notes](mockups/duo-poses-blind-2-notes.md) |
 | duo-poses | directed | [duo-poses-directed-1](mockups/duo-poses-directed-1.html) | [notes](mockups/duo-poses-directed-1-notes.md) |
@@ -27,11 +34,15 @@ Planner round 1: [ideas/](ideas/). Planner round 2: [ideas-r2/](ideas-r2/) (plan
 | find-package | directed | [find-package-directed-1](mockups/find-package-directed-1.html) | [notes](mockups/find-package-directed-1-notes.md) |
 | find-package | directed | [find-package-directed-2](mockups/find-package-directed-2.html) | [notes](mockups/find-package-directed-2-notes.md) |
 | find-package | informed | [find-package-informed-1](mockups/find-package-informed-1.html) | [notes](mockups/find-package-informed-1-notes.md) |
+| first-run | blind | [first-run-blind-1](mockups/first-run-blind-1.html) | [notes](mockups/first-run-blind-1-notes.md) |
+| first-run | blind | [first-run-blind-2](mockups/first-run-blind-2.html) | [notes](mockups/first-run-blind-2-notes.md) |
+| first-run | directed | [first-run-directed-1](mockups/first-run-directed-1.html) | [notes](mockups/first-run-directed-1-notes.md) |
+| first-run | directed | [first-run-directed-2](mockups/first-run-directed-2.html) | [notes](mockups/first-run-directed-2-notes.md) |
 | first-run | informed | [first-run-informed-1](mockups/first-run-informed-1.html) | [notes](mockups/first-run-informed-1-notes.md) |
 | import-and-backup | blind | [import-and-backup-blind-1](mockups/import-and-backup-blind-1.html) | [notes](mockups/import-and-backup-blind-1-notes.md) |
 | import-and-backup | blind | [import-and-backup-blind-2](mockups/import-and-backup-blind-2.html) | [notes](mockups/import-and-backup-blind-2-notes.md) |
 | import-and-backup | directed | [import-and-backup-directed-1](mockups/import-and-backup-directed-1.html) | [notes](mockups/import-and-backup-directed-1-notes.md) |
-| import-and-backup | directed | [import-and-backup-directed-2](mockups/import-and-backup-directed-2.html) |  |
+| import-and-backup | directed | [import-and-backup-directed-2](mockups/import-and-backup-directed-2.html) | [notes](mockups/import-and-backup-directed-2-notes.md) |
 | import-and-backup | informed | [import-and-backup-informed-1](mockups/import-and-backup-informed-1.html) | [notes](mockups/import-and-backup-informed-1-notes.md) |
 | large-text | blind | [large-text-blind-1](mockups/large-text-blind-1.html) | [notes](mockups/large-text-blind-1-notes.md) |
 | large-text | blind | [large-text-blind-2](mockups/large-text-blind-2.html) | [notes](mockups/large-text-blind-2-notes.md) |
@@ -43,21 +54,26 @@ Planner round 1: [ideas/](ideas/). Planner round 2: [ideas-r2/](ideas-r2/) (plan
 | lost-mail-warning | directed | [lost-mail-warning-directed-1](mockups/lost-mail-warning-directed-1.html) | [notes](mockups/lost-mail-warning-directed-1-notes.md) |
 | lost-mail-warning | directed | [lost-mail-warning-directed-2](mockups/lost-mail-warning-directed-2.html) | [notes](mockups/lost-mail-warning-directed-2-notes.md) |
 | lost-mail-warning | informed | [lost-mail-warning-informed-1](mockups/lost-mail-warning-informed-1.html) | [notes](mockups/lost-mail-warning-informed-1-notes.md) |
-| mail-day-flow | informed | [mail-day-flow-informed-1](mockups/mail-day-flow-informed-1.html) |  |
+| mail-day-flow | blind | [mail-day-flow-blind-1](mockups/mail-day-flow-blind-1.html) | [notes](mockups/mail-day-flow-blind-1-notes.md) |
+| mail-day-flow | blind | [mail-day-flow-blind-2](mockups/mail-day-flow-blind-2.html) | [notes](mockups/mail-day-flow-blind-2-notes.md) |
+| mail-day-flow | informed | [mail-day-flow-informed-1](mockups/mail-day-flow-informed-1.html) | [notes](mockups/mail-day-flow-informed-1-notes.md) |
 | order-ids | blind | [order-ids-blind-1](mockups/order-ids-blind-1.html) | [notes](mockups/order-ids-blind-1-notes.md) |
 | order-ids | blind | [order-ids-blind-2](mockups/order-ids-blind-2.html) | [notes](mockups/order-ids-blind-2-notes.md) |
 | order-ids | directed | [order-ids-directed-1](mockups/order-ids-directed-1.html) | [notes](mockups/order-ids-directed-1-notes.md) |
 | order-ids | directed | [order-ids-directed-2](mockups/order-ids-directed-2.html) | [notes](mockups/order-ids-directed-2-notes.md) |
 | order-ids | informed | [order-ids-informed-1](mockups/order-ids-informed-1.html) | [notes](mockups/order-ids-informed-1-notes.md) |
 | orders-job | blind | [orders-job-blind-1](mockups/orders-job-blind-1.html) | [notes](mockups/orders-job-blind-1-notes.md) |
-| orders-job | informed | [orders-job-informed-1](mockups/orders-job-informed-1.html) |  |
+| orders-job | blind | [orders-job-blind-2](mockups/orders-job-blind-2.html) | [notes](mockups/orders-job-blind-2-notes.md) |
+| orders-job | directed | [orders-job-directed-1](mockups/orders-job-directed-1.html) |  |
+| orders-job | directed | [orders-job-directed-2](mockups/orders-job-directed-2.html) |  |
+| orders-job | informed | [orders-job-informed-1](mockups/orders-job-informed-1.html) | [notes](mockups/orders-job-informed-1-notes.md) |
 | panels-overlay | blind | [panels-overlay-blind-1](mockups/panels-overlay-blind-1.html) | [notes](mockups/panels-overlay-blind-1-notes.md) |
 | panels-overlay | blind | [panels-overlay-blind-2](mockups/panels-overlay-blind-2.html) | [notes](mockups/panels-overlay-blind-2-notes.md) |
 | panels-overlay | directed | [panels-overlay-directed-1](mockups/panels-overlay-directed-1.html) | [notes](mockups/panels-overlay-directed-1-notes.md) |
 | panels-overlay | directed | [panels-overlay-directed-2](mockups/panels-overlay-directed-2.html) | [notes](mockups/panels-overlay-directed-2-notes.md) |
 | panels-overlay | informed | [panels-overlay-informed-1](mockups/panels-overlay-informed-1.html) | [notes](mockups/panels-overlay-informed-1-notes.md) |
 | record-envelope | blind | [record-envelope-blind-1](mockups/record-envelope-blind-1.html) | [notes](mockups/record-envelope-blind-1-notes.md) |
-| record-envelope | blind | [record-envelope-blind-2](mockups/record-envelope-blind-2.html) |  |
+| record-envelope | blind | [record-envelope-blind-2](mockups/record-envelope-blind-2.html) | [notes](mockups/record-envelope-blind-2-notes.md) |
 | record-envelope | directed | [record-envelope-directed-1](mockups/record-envelope-directed-1.html) | [notes](mockups/record-envelope-directed-1-notes.md) |
 | record-envelope | directed | [record-envelope-directed-2](mockups/record-envelope-directed-2.html) | [notes](mockups/record-envelope-directed-2-notes.md) |
 | record-envelope | informed | [record-envelope-informed-1](mockups/record-envelope-informed-1.html) | [notes](mockups/record-envelope-informed-1-notes.md) |
@@ -67,9 +83,12 @@ Planner round 1: [ideas/](ideas/). Planner round 2: [ideas-r2/](ideas-r2/) (plan
 | sync-trust | directed | [sync-trust-directed-1](mockups/sync-trust-directed-1.html) | [notes](mockups/sync-trust-directed-1-notes.md) |
 | sync-trust | directed | [sync-trust-directed-2](mockups/sync-trust-directed-2.html) | [notes](mockups/sync-trust-directed-2-notes.md) |
 | sync-trust | informed | [sync-trust-informed-1](mockups/sync-trust-informed-1.html) | [notes](mockups/sync-trust-informed-1-notes.md) |
-| tracking-checker | informed | [tracking-checker-informed-1](mockups/tracking-checker-informed-1.html) |  |
+| tracking-checker | blind | [tracking-checker-blind-1](mockups/tracking-checker-blind-1.html) | [notes](mockups/tracking-checker-blind-1-notes.md) |
+| tracking-checker | blind | [tracking-checker-blind-2](mockups/tracking-checker-blind-2.html) | [notes](mockups/tracking-checker-blind-2-notes.md) |
+| tracking-checker | directed | [tracking-checker-directed-1](mockups/tracking-checker-directed-1.html) |  |
+| tracking-checker | informed | [tracking-checker-informed-1](mockups/tracking-checker-informed-1.html) | [notes](mockups/tracking-checker-informed-1-notes.md) |
 | undo-recent | blind | [undo-recent-blind-1](mockups/undo-recent-blind-1.html) | [notes](mockups/undo-recent-blind-1-notes.md) |
 | undo-recent | blind | [undo-recent-blind-2](mockups/undo-recent-blind-2.html) | [notes](mockups/undo-recent-blind-2-notes.md) |
 | undo-recent | directed | [undo-recent-directed-1](mockups/undo-recent-directed-1.html) | [notes](mockups/undo-recent-directed-1-notes.md) |
-| undo-recent | directed | [undo-recent-directed-2](mockups/undo-recent-directed-2.html) |  |
+| undo-recent | directed | [undo-recent-directed-2](mockups/undo-recent-directed-2.html) | [notes](mockups/undo-recent-directed-2-notes.md) |
 | undo-recent | informed | [undo-recent-informed-1](mockups/undo-recent-informed-1.html) | [notes](mockups/undo-recent-informed-1-notes.md) |

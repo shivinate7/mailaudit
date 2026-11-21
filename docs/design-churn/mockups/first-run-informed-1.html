@@ -155,8 +155,11 @@ h2 { font-family:var(--cochin); font-size:22px; margin:0; }
 @keyframes land { from { transform:rotate(-6deg) scale(1.5); opacity:0; } to { transform:rotate(-6deg) scale(1); opacity:1; } }
 
 /* reserved slot: fixed height, so a change of text moves nothing (no-layout-shift-under-pointer) */
-.slot { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:10px 12px; min-height:calc(13px * var(--rf) * 1.25 * 3 + 20px);
-  font-size:calc(13px * var(--rf)); display:flex; align-items:center; }
+/* Every message of a slot is laid in one grid cell, the others hidden, so the slot takes its tallest message's height at
+   every text size, and a new message never grows it. */
+.slot { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:10px 12px; font-size:calc(13px * var(--rf)); display:grid; }
+.slot > span { grid-area:1 / 1; align-self:center; }
+.slot > span.ghost-msg { visibility:hidden; }
 .slot.plain { background:transparent; border:1px dashed var(--line); color:var(--inkSoft); }
 .slot.good { background:var(--greenSoft); color:var(--green); }
 .notice { border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
@@ -345,7 +348,7 @@ ol.how { margin:0; padding-left:calc(24px * var(--rb)); display:flex; flex-direc
         <span class="pill ${done ? 'got' : ''} ${opts.stamp && done ? 'stamped' : ''}"><span class="ghost">${widest}</span><span class="face">${opts.stamp && done ? `<span class="stamp ${opts.landed ? 'lands' : ''}">RECEIVED</span>` : pill}</span></span></div>
       ${lines}</article>`;
   }
-  const summaryRow = (p, sel, c = 'steps') => `<button class="listrow ${sel ? 'sel' : ''}" ${c === 'steps' ? 'data-c="steps" data-go="pkgs"' : ''}><span class="w"><b>${p.seller}</b><span>${p.order} · ordered ${p.date}</span></span><span class="p">${p.left != null ? `${p.left} left · ${money(p.val)}` : `${leftOf(p, {})} left · ${money(valOf(p, {}))}`}</span></button>`;
+  const summaryRow = (p, sel, got = {}) => `<button class="listrow ${sel ? 'sel' : ''}" aria-current="${sel}"><span class="w"><b>${p.seller}</b><span>${p.order} · ordered ${p.date}</span></span><span class="p">${p.left != null ? `${p.left} left · ${money(p.val)}` : `${leftOf(p, got)} left · ${money(valOf(p, got))}`}</span></button>`;
   const words = (tagged) => {
     const inner = `<div class="words"><span class="micro">Three words</span><dl>
       <div><dt><span class="glyph" style="border:1.5px solid var(--ink)"></span>Package</dt><dd>What one seller sends for one order. It lists the cards in it.</dd></div>
@@ -426,13 +429,11 @@ ol.how { margin:0; padding-left:calc(24px * var(--rb)); display:flex; flex-direc
   function stepsPackages(o, pose) {
     const got = o.got || {};
     const first = REAL[0];
-    const hint = o.s === 'ticked'
-      ? `<div class="slot good" id="hint-slot">First card in. Tap it again to take the tick back.</div>`
-      : `<div class="slot" id="hint-slot">Hold an envelope? Tick each card in it as you take it out.</div>`;
+    const hint = slot(HINT, o.s === 'ticked' ? 1 : 0, o.s === 'ticked', 'hint-slot');
     if (o.s === 'later') {
       return `${letter(LOADED_TALLY)}<div class="stack">${[...REAL, ...MORE].map(p => summaryRow(p, false)).join('')}</div>`;
     }
-    if (pose === 'list') return `${letter(LOADED_TALLY)}<div class="stack">${REAL.map((p, i) => summaryRow(p, i === 0)).join('')}${MORE.slice(0,4).map(p => summaryRow(p,false)).join('')}</div>`;
+    if (pose === 'list') return `${letter(LOADED_TALLY)}<div class="stack">${REAL.map((p, i) => summaryRow(p, i === 0, got)).join('')}${MORE.slice(0,4).map(p => summaryRow(p,false)).join('')}</div>`;
     if (pose === 'detail') return `<div class="stack-12">${mark('new', 'first-day hint, reserved slot', hint)}${pkgCard('steps', first, got, { just:o.just, id:'first-package' })}</div>`;
     return `${letter(LOADED_TALLY)}${mark('new', 'first-day hint, reserved slot', hint)}
       ${pkgCard('steps', first, got, { just:o.just, id:'first-package' })}
@@ -464,7 +465,16 @@ ol.how { margin:0; padding-left:calc(24px * var(--rb)); display:flex; flex-direc
     } else { L = otherTab(o.tab); R = `<p class="body soft">The first mail day steps live on the Ledger tab.</p>`; }
     return openFrame('steps', o.tab, L, R);
   }
-  function otherTab(tab) {
+  function otherTab(tab, o) {
+    if (tab === 'ledger') {
+      // Practice package's Ledger tab: today's Data rows, and the practice package kept under Help once orders are in.
+      const loaded = ['summary','hand','ticked','later'].includes(o.s);
+      return `${letter(loaded ? LOADED_TALLY : '')}${mark('today', 'Ledger tab Data rows', `<div class="stack"><span class="micro">Data</span><div class="ruled">
+        <button class="row" disabled><span class="txt"><span class="ti">Sync</span><span class="su">${loaded ? 'Not synced yet' : 'This device has no sync key'}</span></span><span class="val ${loaded ? '' : 'fix'}">${loaded ? 'On' : 'Set up'}</span></button>
+        <button class="row" disabled><span class="txt"><span class="ti">History</span></span><span class="val off">Saved versions</span></button>
+        <button class="row" disabled><span class="txt"><span class="ti">Backup</span></span><span class="val off">&rsaquo;</span></button></div></div>`)}
+        ${loaded ? mark('new', 'practice kept under Help', `<div class="ruled"><button class="row" data-c="practice" data-go="practice"><span class="txt"><span class="ti">Help</span><span class="su">Practice package</span></span><span class="val">Open</span></button></div>`) : ''}`;
+    }
     const line = tab === 'orphaned' ? 'Nothing waiting: record a package here when you can’t tell who sent it.' : 'Nothing to show.';
     return `${letter('')}${mark('today', tab === 'orphaned' ? 'Orphaned empty line' : 'Tally empty line', `<p class="body soft" style="text-align:center;padding:32px 8px">${line}</p>`)}`;
   }
@@ -477,13 +487,19 @@ ol.how { margin:0; padding-left:calc(24px * var(--rb)); display:flex; flex-direc
   /* ---------- concept: Practice package ---------- */
   function practiceSlot(o) {
     const n = PRACTICE.cards.filter(x => o.got[x.k]).length;
-    const say = [
+    return slot([
       'Each line is a card. Tap the box beside one.',
       'That card is in. Tap it again to take the tick back.',
       'Every tick saves itself. There is no Save button.',
-      'Package received. The mail it came in is an envelope. An envelope with no sender goes to Orphaned.'][n];
-    return `<div class="slot ${n === 3 ? 'good' : ''}" id="practice-slot" aria-live="polite">${say}</div>`;
+      'Package received. The mail it came in is an envelope. An envelope with no sender goes to Orphaned.'], n, n === 3, 'practice-slot');
   }
+  function slot(msgs, idx, good, id) {
+    return `<div class="slot ${good ? 'good' : ''}" ${id ? `id="${id}"` : ''} aria-live="polite">${msgs.map((m, i) =>
+      `<span ${i === idx ? '' : 'class="ghost-msg" aria-hidden="true"'}>${m}</span>`).join('')}</div>`;
+  }
+  const HINT = ['Hold an envelope? Tick each card in it as you take it out.', 'First card in. Tap it again to take the tick back.'];
+  const HAND_HINT = ['One package holds Lightning Bolt. Tick it when it is out of the envelope.', 'First card in. Tap it again to take the tick back.'];
+  const HAND_OPEN_HINT = ['Type the first card you take out of the envelope. Its package shows on the right.', 'First card in. The next card from this envelope goes in the same field.'];
   function practiceIntro(o) {
     return mark('new', 'practice package, never saved', `<div class="stack-12" id="practice-root">
       <div class="stack-4"><p class="t2">This is a package</p><p class="foot soft">What one seller sends for one order. Tick a card as if it were in your hand.</p></div>
@@ -524,7 +540,7 @@ ol.how { margin:0; padding-left:calc(24px * var(--rb)); display:flex; flex-direc
     const ticked = o.s === 'ticked';
     return `${letter(LOADED_TALLY)}
       ${mark('today', 'Find pill as a field', `<div class="field big" id="hand-field">Lightning Bo<span class="caret"></span></div>`)}
-      ${mark('new', 'first-day hint, reserved slot', `<div class="slot ${ticked ? 'good' : ''}" id="hand-slot">${ticked ? 'First card in. Tap it again to take the tick back.' : 'One package holds Lightning Bolt. Tick it when it is out of the envelope.'}</div>`)}
+      ${mark('new', 'first-day hint, reserved slot', slot(HAND_HINT, ticked ? 1 : 0, ticked, 'hand-slot'))}
       ${pkgCard('practice', REAL[0], got, { just:o.just, id:'hand-package', only:['a1'] })}`;
   }
   function handOpen(o) {
@@ -534,7 +550,7 @@ ol.how { margin:0; padding-left:calc(24px * var(--rb)); display:flex; flex-direc
         <div class="field big" id="hand-field">Lightning Bo<span class="caret"></span></div>
         <div style="display:flex;align-items:center;gap:8px"><span class="foot soft" style="margin-right:auto">This envelope</span><button class="mini">New envelope</button></div>
         <div class="listrow sel" style="cursor:default"><span class="w"><b>Lightning Bolt</b><span>Sample Seller A</span></span></div></div>`)}
-      ${mark('new', 'first-day hint', `<div class="slot ${ticked ? 'good' : ''}">${ticked ? 'First card in. The next card from this envelope goes in the same field.' : 'Type the first card you take out of the envelope. Its package shows on the right.'}</div>`)}`;
+      ${mark('new', 'first-day hint', slot(HAND_OPEN_HINT, ticked ? 1 : 0, ticked))}`;
     const R = `${mark('today', 'Mail day, right page', `<div class="stack-12" id="hand-answer">
         <p class="t2">Sample Seller A</p><span class="meta" style="font:calc(11px * var(--rc)) var(--mono);color:var(--inkSoft)">ordered 2026-11-12 · ${ticked ? 4 : 5} cards out</span>
         ${ticked ? `<div class="notice ok"><b>Posted: 1 card in.</b><p>Lightning Bolt is checked in.</p></div>`
@@ -544,18 +560,18 @@ ol.how { margin:0; padding-left:calc(24px * var(--rb)); display:flex; flex-direc
   }
   function practiceCompact(o) {
     let content, dock = '', sheet = '';
-    if (o.tab !== 'packages') content = otherTab(o.tab);
+    if (o.tab !== 'packages') content = otherTab(o.tab, o);
     else if (['practice','practice-done','picking','reading','badfile'].includes(o.s)) { content = `${letter('')}${practiceIntro(o)}`; dock = bringIn(o); }
     else if (o.s === 'summary') { content = `${letter(LOADED_TALLY)}${REAL.map(p => pkgCard('practice', p, {}, { collapsed:true })).join('')}`; dock = bringIn(o); }
     else if (o.s === 'hand' || o.s === 'ticked') content = handCompact(o);
-    else content = `${letter(LOADED_TALLY)}<div class="stack">${[...REAL, ...MORE].map(p => summaryRow(p, false, 'practice')).join('')}</div>`;
+    else content = `${letter(LOADED_TALLY)}<div class="stack">${[...REAL, ...MORE].map(p => summaryRow(p, false)).join('')}</div>`;
     if (o.s === 'picking') sheet = picker();
     return `${status()}<div class="scroll"><div class="pad">${content}${dock}</div></div>${bar('practice', o.tab)}${sheet}`;
   }
   function practiceOpen(o) {
-    if (o.tab !== 'packages') return openFrame('practice', o.tab, otherTab(o.tab), '<p class="body soft">Packages holds the practice package.</p>');
+    if (o.tab !== 'packages') return openFrame('practice', o.tab, otherTab(o.tab, o), '<p class="body soft">Packages holds the practice package.</p>');
     if (o.s === 'hand' || o.s === 'ticked') return handOpen(o);
-    if (o.s === 'later') return openFrame('practice', 'packages', `${letter(LOADED_TALLY)}<div class="stack">${[...REAL, ...MORE].map(p => summaryRow(p, false, 'practice')).join('')}</div>`, '<p class="body soft">Pick a package to see its cards.</p>');
+    if (o.s === 'later') return openFrame('practice', 'packages', `${letter(LOADED_TALLY)}<div class="stack">${[...REAL, ...MORE].map(p => summaryRow(p, false)).join('')}</div>`, '<p class="body soft">Pick a package to see its cards.</p>');
     if (o.s === 'summary') return openFrame('practice', 'packages', `${letter(LOADED_TALLY)}${REAL.map(p => pkgCard('practice', p, {}, { collapsed:true })).join('')}`, `<div class="stack-12">${bringIn(o, true)}</div>`);
     const L = `${letter('')}${practiceIntro(o)}`;
     const R = `<div class="stack-12">${words(true)}${bringIn(o, true)}</div>`;

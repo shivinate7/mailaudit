@@ -122,8 +122,8 @@ button:focus-visible, a:focus-visible { outline:2px solid var(--accent); outline
 .carrier .t { color:var(--inkSoft); font:var(--t-cap) var(--mono); }
 .carrier .chev { margin-left:auto; color:var(--inkSoft); font-family:var(--sys); }
 .band { border-top:1px solid var(--line); padding:8px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px; min-height:44px; font-size:var(--t-foot); color:var(--inkSoft); background:color-mix(in srgb, var(--manila) 45%, transparent); border-radius:0 0 8px 8px; flex-wrap:wrap; }
-.tone-red { color:var(--red); } .tone-amber { color:var(--amber); } .tone-green { color:var(--green); } .tone-soft { color:var(--inkSoft); } .tone-manila { color:var(--manilaInk); } .tone-accent { color:var(--accent); }
-.bg-red { background:var(--red); } .bg-amber { background:var(--amber); } .bg-green { background:var(--green); } .bg-soft { background:var(--inkSoft); } .bg-manila { background:var(--manilaInk); } .bg-accent { background:var(--accent); }
+.tone-ink { color:var(--ink); } .tone-red { color:var(--red); } .tone-amber { color:var(--amber); } .tone-green { color:var(--green); } .tone-soft { color:var(--inkSoft); } .tone-manila { color:var(--manilaInk); } .tone-accent { color:var(--accent); }
+.bg-ink { background:transparent; border:2px solid var(--ink); } .bg-red { background:var(--red); } .bg-amber { background:var(--amber); } .bg-green { background:var(--green); } .bg-soft { background:var(--inkSoft); } .bg-manila { background:var(--manilaInk); } .bg-accent { background:var(--accent); }
 
 /* notice (global run states) */
 .notice { border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; font-size:var(--t-foot); background:color-mix(in srgb, var(--manila) 60%, transparent); color:var(--manilaInk); }
@@ -349,9 +349,9 @@ function verdict(st, p) {
   const stale = st.g === "failed" ? " (as of " + p.ago + " ago; the last check failed)" : "";
   switch (p.v) {
     case "delivered":
-      if (isIn(st, p)) return { key:"in", word:"Delivered", tone:"green", say:p.carrier + " says it was left " + p.at.toLowerCase() + ". It is checked in." };
-      return { key:"door", word:"Delivered", tone: p.hrs >= 24 ? "red" : "manila", late: p.hrs >= 24,
-        say:p.carrier + " says it was left " + lc(p.at) + ". It is not checked in." + stale };
+      if (isIn(st, p)) return { key:"in", word:"Delivered", tone:"green", say:p.carrier + " says it was left " + lc(p.at) + ". It is checked in." };
+      return { key:"door", word:"Delivered", tone: p.hrs >= 24 ? "red" : "ink", late: p.hrs >= 24,
+        say:p.carrier + " says it was left " + lc(p.at) + "." + stale };
     case "stuck": return { key:"stuck", word:"Stuck", tone:"amber", say:"No new scan from " + p.carrier + " for " + p.ago + ". Its last scan: " + p.status.toLowerCase() + "." + stale };
     case "returned": return { key:"returned", word:"Returned", tone:"red", say:p.carrier + " is sending it back to the seller." + stale };
     case "moving": return { key:"moving", word:"On its way", tone:"accent", say:p.carrier + ": " + p.status.toLowerCase() + ", " + lc(p.at) + "." + stale };
@@ -359,7 +359,8 @@ function verdict(st, p) {
     case "nonumber": return { key:"nonumber", word:"No number yet", tone:"manila", say:"The order says it ships with tracking, but no number is in." };
   }
 }
-const lc = s => s.charAt(0).toLowerCase() + s.slice(1);
+// "Yesterday, 2:14 PM" reads "yesterday, 2:14 PM" mid-sentence; a weekday keeps its capital and gets "on".
+const lc = s => /^(Today|Yesterday)/.test(s) ? s.charAt(0).toLowerCase() + s.slice(1) : "on " + s;
 const NEEDS = ["door","stuck","returned"];
 function needs(st, p) { const v = verdict(st, p); return NEEDS.includes(v.key) && !st.stamp[p.id]; }
 
@@ -406,7 +407,7 @@ function detail(c, st, p, inSheet) {
   const claim = (v.key === "door" || v.key === "stuck" || v.key === "returned") ? `<div class="r"><span class="k">Claim by</span><span class="v">${p.claim} <span class="meta">(order date + 30 days)</span></span></div>` : "";
   return `<div class="stack" id="${c}-detail">
     ${back}
-    <div class="stack tight"><div class="lt" style="font-size:var(--t-head)">${esc(p.seller)}</div><span class="meta">${p.date} · ${p.order} · ${p.lines.length} card${p.lines.length === 1 ? "" : "s"} · ${p.out} out</span></div>
+    <div class="stack tight">${inSheet === "sheet" ? "" :`<div class="lt" style="font-size:var(--t-head)">${esc(p.seller)}</div>`}<span class="meta">${p.date} · ${p.order} · ${p.lines.length} card${p.lines.length === 1 ? "" : "s"} · ${p.out} out</span></div>
     <div class="verdict tag-new" data-tag="New: the verdict"><span class="vw tone-${v.tone}">${v.word}${v.key === "door" ? `<span style="font-weight:400;color:var(--ink)">, not checked in</span>` : ""}</span><p>${esc(v.say)}</p></div>
     ${stamped ? `<div class="band" style="border-radius:8px;border:1px solid var(--line)"><span>Stamped <b>${stampLabel(stamped)}</b>, Nov 21. The warning is off.</span><button class="hit" data-act="unstamp" data-p="${p.id}"><span class="pill">Undo</span></button></div>` : ""}
     <div class="kv">
@@ -427,13 +428,13 @@ function detail(c, st, p, inSheet) {
 function addNumber(c, st, p, inSheet) {
   const guess = /^\s*1Z/i.test(st.draft) ? "UPS" : st.draft.replace(/\s/g, "").length >= 20 ? "USPS" : null;
   const ok = !!guess;
-  const head = inSheet ? "" : `<div class="dnav"><button class="hit" data-act="back" style="justify-content:flex-start">‹ ${c === "door" ? "Tracking" : "Back"}</button><button class="hit" data-act="save" data-p="${p.id}" ${ok ? "" : "disabled"} style="font-weight:600;${ok ? "" : "color:var(--silver)"}">Save</button></div>`;
+  const head = inSheet === "sheet" ? "" : `<div class="dnav"><button class="hit" data-act="back" style="justify-content:flex-start">${inSheet === "page" ? "Cancel" : "‹ Tracking"}</button><button class="hit" data-act="save" data-p="${p.id}" ${ok ? "" : "disabled"} style="font-weight:600;${ok ? "" : "color:var(--silver)"}">Save</button></div>`;
   return `<div class="stack" id="${c}-add">
     ${head}
     <div class="stack tight"><div class="lt" style="font-size:var(--t-head)">${esc(p.seller)}</div><span class="meta">${p.date} · ${p.order} · ships with tracking</span></div>
     <p style="margin:0;font-size:var(--t-body)">No tracking number is in for this order yet. Paste it from the order page or the seller's message.</p>
-    <label class="stack tight tag-new" data-tag="New: number field"><span class="lede">Tracking number</span>
-      <input class="field" data-act="draft" data-p="${p.id}" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Paste the number" value="${esc(st.draft)}"></label>
+    <label class="stack tight tag-new" data-tag="New: number field">${inSheet === "sheet" ? "" :`<span class="lede">Tracking number</span>`}
+      <input class="field" aria-label="Tracking number" data-act="draft" data-p="${p.id}" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" placeholder="Paste the number" value="${esc(st.draft)}"></label>
     <div class="rowx"><span class="meta">${guess ? "Looks like " + guess : st.draft ? "Not a number this app knows yet" : " "}</span>
       <button class="hit" data-act="paste" data-p="${p.id}"><span class="pill">Paste</span></button></div>
     <p class="lede">What you type stays here if you leave and come back.</p>
@@ -441,15 +442,15 @@ function addNumber(c, st, p, inSheet) {
 }
 
 /* ---------- check-in view (Doorstep, "It's here") ---------- */
-function checkin(c, st, p, push) {
+function checkin(c, st, p, push, asked) {
   const got = gotOf(st, p);
   const all = got.every(Boolean);
   const n = got.filter(Boolean).length;
   return `<div class="stack" id="door-checkin">
     ${push ? `<div class="dnav"><button class="hit" data-act="back" style="justify-content:flex-start">‹ Tracking</button></div>` : ""}
-    <div class="stack tight"><span class="micro">It's here</span><div class="lt">${esc(p.seller)}</div><span class="meta">${p.date} · ${p.order} · ${p.carrier} left it ${lc(p.at)}</span></div>
-    <p style="margin:0;font-size:var(--t-body)">Open it and tick each card you find.</p>
-    <div class="lines tag-today" data-tag="Today: the card's lines">${p.lines.map((l, i) => `<button class="ln${got[i] ? " done" : ""}" data-act="tick" data-p="${p.id}" data-i="${i}" aria-pressed="${got[i]}"><span class="box"><i></i></span><span class="nm">${l[0]}</span><span class="pr">${l[1]}</span></button>`).join("")}</div>
+    <div class="stack tight"><div class="lt">${esc(p.seller)}</div><span class="meta">${p.date} · ${p.order} · ${p.carrier} left it ${lc(p.at)}</span></div>
+    <p style="margin:0;font-size:var(--t-body)">${asked ? "Open it and tick each card you find." : "If it came, tick each card as you open it. These are the cards it should hold."}</p>
+    <div class="tag-today" data-tag="Today: the card's lines, as Packages ticks them"><div class="lines">${p.lines.map((l, i) => `<button class="ln${got[i] ? " done" : ""}" data-act="tick" data-p="${p.id}" data-i="${i}" aria-pressed="${got[i]}"><span class="box"><i></i></span><span class="nm">${l[0]}</span><span class="pr">${l[1]}</span></button>`).join("")}</div></div>
     <div class="rowx" style="min-height:48px">
       ${all ? `<span class="tone-green" style="font-size:var(--t-body)">All ${p.lines.length} in. It leaves the slips.</span>` : `<span class="meta">${n} of ${p.lines.length} in</span>`}
       ${all ? `<button class="hit" data-act="untickall" data-p="${p.id}"><span class="pill">Undo</span></button>` : `<button class="hit" data-act="tickall" data-p="${p.id}"><span class="pill primary">Mark all received</span></button>`}
@@ -466,14 +467,14 @@ function lineCard(st, p, first, selId) {
   const slot = inAll ? `<span class="stampd">RECEIVED</span>` : `<span class="pillr">${p.out}</span>`;
   const today = st.g === "today";
   const dot = v.tone === "manila" ? "manila" : v.tone;
-  const tail = v.key === "door" ? `<span class="w tone-${v.tone}">${v.word}</span><span>, not checked in</span>` : `<span class="w tone-${v.tone}">${v.word}</span>`;
-  const when = p.v === "nonumber" ? "Add it" : (p.ago ? p.ago + " ago" : "");
+  const tail = v.key === "door" ? `<span><span class="w tone-${v.tone}">${v.word}</span>, not checked in</span>` : `<span class="w tone-${v.tone}">${v.word}</span>`;
+  const when = p.v === "nonumber" ? "Add it" : v.key === "unchecked" ? "" : v.key === "stuck" ? "no scan for " + p.ago : (p.ago ? p.ago + " ago" : "");
   const carrier = today ? "" : `<button class="carrier${first ? " tag-new" : ""}" ${first ? 'data-tag="New: carrier line" id="line-carrier"' : ""} data-act="open" data-p="${p.id}" aria-label="${p.carrier || "Tracking"}: ${v.word}">
-      <span class="dot bg-${dot}"></span>${tail}<span class="t">${p.carrier ? p.carrier + " · " : ""}${when}</span><span class="chev">›</span></button>`;
+      <span class="dot bg-${dot}"></span>${tail}<span class="t">${[p.carrier, when].filter(Boolean).join(" · ")}</span><span class="chev">›</span></button>`;
   return `<article class="card${inAll ? " done" : ""}${selId === p.id ? " sel" : ""}">
     <div class="ch"><div class="txt"><div class="who">${esc(p.seller)}</div>
-      <div class="meta">${p.date} · <span class="tone-green">●</span> tracked</div>
-      ${carrier}</div><div class="slot">${slot}</div></div>
+      <div class="meta">${p.date}${today ? ` · <span class="tone-green">●</span> tracked` : ""}</div></div><div class="slot">${slot}</div></div>
+    ${carrier}
     ${stamped ? `<div class="band"><span>Stamped ${stampLabel(stamped)}, Nov 21</span><button class="hit" data-act="unstamp" data-p="${p.id}"><span class="pill">Undo</span></button></div>` : ""}
   </article>`;
 }
@@ -519,13 +520,13 @@ function renderLine(dev, v, st) {
     return `<div class="status"><span>9:41</span><span>●●● 100%</span></div>
       <div class="page l"><div class="scroll" data-k="l">${lineList(st, selId)}</div></div>
       <div class="fold"><span>hinge · nothing crosses</span></div>
-      <div class="page r"><div class="scroll" data-k="r">${detail("line", st, p, false)}</div></div>
+      <div class="page r"><div class="scroll" data-k="r">${detail("line", st, p, "page")}</div></div>
       ${tabbar("line", st)}`;
   }
   const p = st.sel && list.find(x => x.id === st.sel);
   const sheet = p ? `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="${esc(p.seller)}"><div class="grab"></div>
-      <div class="tb">${p.v === "nonumber" && !st.added[p.id] ? `<button data-act="close">Cancel</button><span class="ttl">Tracking number</span><button class="strong" data-act="save" data-p="${p.id}" ${verdictDraftOk(st) ? "" : "disabled"}>Save</button>` : `<span style="min-width:60px"></span><span class="ttl">Tracking</span><button class="strong" data-act="close">Done</button>`}</div>
-      <div class="body" data-k="sheet">${detail("line", st, p, true)}</div></div>` : "";
+      <div class="tb">${p.v === "nonumber" && !st.added[p.id] ? `<button data-act="close">Cancel</button><span class="ttl">Tracking number</span><button class="strong" data-act="save" data-p="${p.id}" ${verdictDraftOk(st) ? "" : "disabled"}>Save</button>` : `<span style="min-width:60px"></span><span class="ttl">${esc(p.seller)}</span><button class="strong" data-act="close">Done</button>`}</div>
+      <div class="body" data-k="sheet">${detail("line", st, p, "sheet")}</div></div>` : "";
   return `<div class="status"><span>9:41</span><span>●●● 100%</span></div><div class="scroll" data-k="m">${lineList(st, null)}</div>${tabbar("line", st)}${sheet}`;
 }
 const verdictDraftOk = st => /^\s*1Z/i.test(st.draft) || st.draft.replace(/\s/g, "").length >= 20;
@@ -537,23 +538,27 @@ function slip(st, p, selId) {
   const stamped = st.stamp[p.id];
   let acts;
   if (stamped) acts = `<span class="q">Stamped <b>${stampLabel(stamped)}</b>, Nov 21. Claim by ${p.claim}.</span><button class="hit" data-act="unstamp" data-p="${p.id}" style="margin-left:auto"><span class="pill">Undo</span></button>`;
-  else if (a === "nothere") acts = `<span class="q" style="flex-basis:100%">Not here. Start a claim by ${p.claim}:</span>${stampBtns(p, true)}<button class="hit" data-act="unask" data-p="${p.id}" style="margin-left:auto"><span class="pill">Back</span></button>`;
+  // One row, the height of the two big buttons, so the slip and the rows under it hold still (no-layout-shift-under-pointer).
+  else if (a === "nothere") acts = `<span class="q">Not here:</span>${stampBtns(p, true)}<button class="hit" data-act="unask" data-p="${p.id}" style="margin-left:auto"><span class="pill">Back</span></button>`;
   else acts = `<button class="big yes" data-act="here" data-p="${p.id}">It's here</button><button class="big" data-act="nothere" data-p="${p.id}">Not here</button>`;
   return `<div class="slip${v.late && !stamped ? " late" : ""}${selId === p.id ? " sel" : ""}">
-    <div class="rowx"><span class="sw">${esc(p.seller)}</span><span class="meta">${p.lines.length} card${p.lines.length === 1 ? "" : "s"} · ${p.out}</span></div>
-    <div class="says"><span class="w">${p.carrier} left it ${lc(p.at)}</span>${v.late && !stamped ? `<span class="tone-red">, ${p.ago} ago and not checked in</span>` : ""}. <button data-act="open" data-p="${p.id}" style="text-decoration:underline;text-underline-offset:3px;min-height:24px">Details</button></div>
+    <button class="rowx" data-act="open" data-p="${p.id}" style="min-height:44px;width:100%" aria-label="${esc(p.seller)}, details"><span class="sw">${esc(p.seller)}</span><span class="meta">${p.lines.length} card${p.lines.length === 1 ? "" : "s"} · ${p.out} <span style="font-family:var(--sys);font-size:17px">›</span></span></button>
+    <div class="says"><span class="w">${p.carrier} left it ${lc(p.at)}</span>${v.late && !stamped ? `<span class="tone-red">, ${p.ago} ago, and it is not checked in</span>` : ""}.</div>
     <div class="acts">${acts}</div>
   </div>`;
 }
 function trow(st, p, selId) {
   const v = verdict(st, p);
-  const right = p.v === "nonumber" ? `<span class="pill">Add</span>` : `<span class="ago tone-${v.tone}">${p.ago}</span>`;
-  const line = p.v === "nonumber" ? "Ships with tracking; no number in" : esc(p.status) + (p.carrier ? " · " + p.carrier : "");
+  // The age sits in the sentence, not alone in a column, so "6 d" never reads as the order's age.
+  const right = p.v === "nonumber" ? `<span class="pill">Add</span>` : "";
+  const line = p.v === "nonumber" ? "Ships with tracking; no number in"
+    : v.key === "unchecked" ? p.carrier
+    : `${esc(p.status)} · ${p.carrier} · <span class="ago tone-${v.tone}">${v.key === "stuck" ? "no scan for " + p.ago : p.ago + " ago"}</span>`;
   return `<button class="trow${selId === p.id ? " sel" : ""}" data-act="open" data-p="${p.id}"><span class="txt"><span class="who">${esc(p.seller)}</span><span class="st">${line}</span></span>${right}</button>`;
 }
 function doorBoard(st, selId) {
   const list = pkgs(st);
-  const head = `<div class="stack tight"><h2 class="lt" style="font-size:calc(var(--t-title) + 6px)">Tracking</h2><div class="rowx">${runLine(st)}</div></div>`;
+  const head = `<div class="stack tight"><h2 class="lt" style="font-size:calc(var(--t-title) + 6px)">Tracking</h2>${st.g === "empty" ? "" : `<div class="rowx">${runLine(st)}</div>`}</div>`;
   if (st.g === "empty") return `<div class="stack">${head}<div class="notice plain"><b>No tracked orders yet.</b><span>An order that ships with tracking shows here once its number is in. Import your newest orders to fill it.</span><button class="hit" style="justify-content:flex-start" data-act="ledger"><span class="pill">Import orders in Ledger</span></button></div><div class="toast">${st.opened === "ledger" ? "Opens the Ledger tab's import." : ""}</div></div>`;
   const by = k => list.filter(p => verdict(st, p).key === k);
   // a slip keeps its slot while its package is stamped or asked, so no other slip moves under the finger
@@ -575,7 +580,7 @@ function doorBoard(st, selId) {
 }
 function renderDoor(dev, v, st) {
   const list = pkgs(st);
-  const notif = st.notify && v !== "open" ? `<button class="notif" data-act="notifopen" aria-label="Notification"><span class="ic">M</span><span class="tx"><b><span>MANIFEST</span><span>now</span></b><span style="font-weight:600">Delivered, not checked in</span><br>Sample Card Shop: USPS left it Wed at 11:03 AM. Is it here?</span></button>` : "";
+  const notif = st.notify && v !== "open" ? `<button class="notif tag-new" data-tag="New: one notification per delivery" data-act="notifopen" aria-label="Notification"><span class="ic">M</span><span class="tx"><b><span>MANIFEST</span><span>Fri 2:31 PM</span></b><span style="font-weight:600">Delivered, not checked in</span><br>Sample Seller One: USPS left it at 2:14 PM. Is it here?</span></button>` : "";
   if (v === "open") {
     const door = list.find(p => verdict(st, p).key === "door" && !st.stamp[p.id]);
     const selId = st.sel || (door && door.id) || (list.find(p => needs(st, p)) || {}).id;
@@ -583,7 +588,7 @@ function renderDoor(dev, v, st) {
     const mode = st.sel ? st.mode : (door ? "checkin" : "detail");
     let right;
     if (st.g === "empty" || !p) right = `<p class="placeholder">${st.g === "allwell" ? "Nothing needs you. Tap a package to see its carrier's latest word here." : "Tracked packages show here."}</p>`;
-    else right = mode === "checkin" ? checkin("door", st, p, false) : detail("door", st, p, true);
+    else right = mode === "checkin" ? checkin("door", st, p, false, !!st.sel) : detail("door", st, p, "page");
     return `<div class="status"><span>9:41</span><span>●●● 100%</span></div>
       <div class="page l"><div class="scroll" data-k="l">${doorBoard(st, selId)}</div></div>
       <div class="fold"><span>hinge · nothing crosses</span></div>
@@ -592,7 +597,7 @@ function renderDoor(dev, v, st) {
   }
   const p = st.sel && list.find(x => x.id === st.sel);
   let body;
-  if (p) body = st.mode === "checkin" ? checkin("door", st, p, true) : detail("door", st, p, false);
+  if (p) body = st.mode === "checkin" ? checkin("door", st, p, true, true) : detail("door", st, p, false);
   else body = doorBoard(st, null);
   return `<div class="status"><span>9:41</span><span>●●● 100%</span></div><div class="scroll" data-k="m${p ? "-" + st.mode + p.id : ""}">${body}</div>${tabbar("door", st)}${notif}`;
 }

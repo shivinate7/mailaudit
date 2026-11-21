@@ -1,0 +1,1058 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Date and stamp fixes</title>
+<style>
+:root {
+  color-scheme: light;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --radius: 8px;
+  --font: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+
+  --page: #E4E8EC;
+  --bezel: #2B3138;
+  --surface: #F2F4F6;
+  --raised: #FFFFFF;
+  --text: #17202A;
+  --text-2: #55606C;
+  --line: #CBD2D9;
+  --accent: #1F55C2;
+  --on-accent: #FFFFFF;
+  --draft: #7038B0;
+  --draft-wash: #F3ECFB;
+  --struck: #B3261E;
+  --added: #1B7343;
+  --stamp-received: #1B7343;
+  --stamp-waiting: #55606C;
+  --stamp-missing: #9A5300;
+  --paper: #FBFAF7;
+  --rule: #E3E0D8;
+  --glass: rgba(255,255,255,0.94);
+  --select: rgba(31,85,194,0.12);
+  --scrim: rgba(23,32,42,0.32);
+  --anno: #0B6E7A;
+  --banner: #FFF4CC;
+  --banner-text: #4A3B00;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #0C1014;
+    --bezel: #3A424C;
+    --surface: #161B21;
+    --raised: #212831;
+    --text: #E9EDF2;
+    --text-2: #A5AFBB;
+    --line: #38424E;
+    --accent: #86ABFF;
+    --on-accent: #0C1A3A;
+    --draft: #C9A2F5;
+    --draft-wash: #2A2038;
+    --struck: #FF8E85;
+    --added: #74D6A0;
+    --stamp-received: #74D6A0;
+    --stamp-waiting: #A5AFBB;
+    --stamp-missing: #F2B35E;
+    --paper: #1C1F23;
+    --rule: #2E3238;
+    --glass: rgba(33,40,49,0.95);
+  --select: rgba(134,171,255,0.16);
+    --scrim: rgba(0,0,0,0.5);
+    --anno: #6FD2DE;
+    --banner: #3A3000;
+    --banner-text: #FFE9A0;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #0C1014;
+  --bezel: #3A424C;
+  --surface: #161B21;
+  --raised: #212831;
+  --text: #E9EDF2;
+  --text-2: #A5AFBB;
+  --line: #38424E;
+  --accent: #86ABFF;
+  --on-accent: #0C1A3A;
+  --draft: #C9A2F5;
+  --draft-wash: #2A2038;
+  --struck: #FF8E85;
+  --added: #74D6A0;
+  --stamp-received: #74D6A0;
+  --stamp-waiting: #A5AFBB;
+  --stamp-missing: #F2B35E;
+  --paper: #1C1F23;
+  --rule: #2E3238;
+  --glass: rgba(33,40,49,0.95);
+  --select: rgba(134,171,255,0.16);
+  --scrim: rgba(0,0,0,0.5);
+  --anno: #6FD2DE;
+  --banner: #3A3000;
+  --banner-text: #FFE9A0;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--text); font-family: var(--font); font-size: 15px; line-height: 20px; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Page chrome (not part of the drawn screens) */
+.banner { background: var(--banner); color: var(--banner-text); padding: var(--space-3) var(--space-4); display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); align-items: center; }
+.banner strong { font-weight: 700; }
+.chrome { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); max-inline-size: 100%; }
+.chrome-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.pill { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); cursor: pointer; }
+.pill[aria-pressed="true"] { border-color: var(--accent); outline: 2px solid var(--accent); outline-offset: -2px; }
+.concept { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); border-top: 1px solid var(--line); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 72ch; }
+.concept-head h2 { margin: 0; font-size: 22px; line-height: 28px; }
+.concept-head p { margin: 0; color: var(--text-2); }
+.links { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.links a { color: var(--accent); min-height: 32px; display: inline-flex; align-items: center; padding: 0 var(--space-2); border: 1px solid var(--line); border-radius: var(--radius); text-decoration: none; background: var(--raised); }
+.stage { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+.frame-wrap[hidden] { display: none; }
+.frame-wrap { display: flex; flex-direction: column; gap: var(--space-2); }
+.frame-cap { font-size: 13px; line-height: 18px; color: var(--text-2); }
+body.only .banner, body.only .chrome, body.only .concept-head, body.only .frame-cap { display: none; }
+body.only .concept { border: 0; padding: 0; }
+
+/* Devices: 1 CSS px = 1 pt */
+.dev { background: var(--bezel); border-radius: 30px; padding: 10px; }
+.scr { position: relative; overflow: hidden; border-radius: 20px; background: var(--surface);
+  --sim-top: 28px; --sim-bottom: 20px; }
+.scr.folded, .scr.ax { width: 466px; height: 678px; }
+.scr.phone { width: 440px; height: 956px; border-radius: 44px; --sim-top: 54px; --sim-bottom: 34px; }
+.scr.open { width: 951px; height: 669px; background: var(--bezel); }
+.page { position: absolute; top: 0; bottom: 0; width: 455.5px; overflow: hidden; background: var(--surface); }
+.page.l { left: 0; border-radius: 20px 4px 4px 20px; }
+.page.r { left: 495.5px; border-radius: 4px 20px 20px 4px; }
+.hinge { position: absolute; top: 0; bottom: 0; left: 455.5px; width: 40px; background: var(--bezel); }
+.hinge::after { content: ""; position: absolute; top: 0; bottom: 0; left: 19px; width: 2px; background: rgba(255,255,255,0.08); }
+
+/* Type: Dynamic Type styles, default size (HIG typography, read 2026-11-21) */
+.scr { --t-large: 34px; --l-large: 41px; --t-title3: 20px; --l-title3: 25px; --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px; --t-sub: 15px; --l-sub: 20px; --t-foot: 13px; --l-foot: 18px; --t-cap: 12px; --l-cap: 16px;
+  --row-min: 56px; --icon: 18px; font-size: var(--t-body); line-height: var(--l-body); }
+/* AX5, the largest accessibility size (same page) */
+.scr.ax { --t-large: 60px; --l-large: 70px; --t-title3: 55px; --l-title3: 65px; --t-head: 53px; --l-head: 62px;
+  --t-body: 53px; --l-body: 62px; --t-sub: 49px; --l-sub: 58px; --t-foot: 44px; --l-foot: 52px; --t-cap: 43px; --l-cap: 51px;
+  --row-min: 88px; --icon: 40px; }
+
+/* App frame */
+.app { position: absolute; inset: 0; display: flex; flex-direction: column;
+  padding-top: max(var(--sim-top), env(safe-area-inset-top)); padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.status { position: absolute; top: 0; left: 0; right: 0; height: var(--sim-top); display: flex; align-items: flex-end; justify-content: space-between; padding: 0 var(--space-6) var(--space-1); font-size: 13px; line-height: 18px; font-weight: 600; }
+.scr.phone .status { align-items: center; padding-top: 14px; }
+.homebar { position: absolute; bottom: 8px; left: 50%; width: 134px; margin-left: -67px; height: 5px; border-radius: 3px; background: var(--text); opacity: 0.5; z-index: 30; }
+.nav { min-height: 44px; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-2); }
+.nav .grow { flex: 1; text-align: center; font-weight: 600; font-size: var(--t-head); line-height: var(--l-head); min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navbtn { min-height: 44px; min-width: 44px; padding: 0 var(--space-2); border: 0; background: none; color: var(--accent); font-size: var(--t-body); display: inline-flex; align-items: center; gap: var(--space-1); cursor: pointer; }
+.navbtn[disabled] { color: var(--text-2); opacity: 0.5; }
+.large { font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; margin: 0; padding: 0 var(--space-4); overflow-wrap: anywhere; }
+.scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-2) var(--space-4) calc(var(--sim-bottom) + 148px); }
+.scroll.nobar { padding-bottom: calc(var(--sim-bottom) + 24px); }
+.group { display: flex; flex-direction: column; gap: var(--space-1); }
+.ghead { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); padding: 0 var(--space-4); margin: 0; font-weight: 400; }
+.card { background: var(--raised); border-radius: var(--radius); display: flex; flex-direction: column; }
+.card > * + * { border-top: 1px solid var(--line); }
+.foot { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); padding: 0 var(--space-4); margin: 0; }
+
+.row { min-height: var(--row-min); width: 100%; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); background: none; border: 0; text-align: left; cursor: pointer; }
+.row .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.row .t { font-size: var(--t-body); line-height: var(--l-body); overflow-wrap: anywhere; }
+.row .s { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); overflow-wrap: anywhere; }
+.row .end { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); text-align: right; flex: none; }
+.scr.ax .row { flex-wrap: wrap; }
+.scr.ax .row .end { text-align: left; flex-basis: 100%; padding-left: calc(var(--icon) + var(--space-3)); }
+.row.draft { outline: 2px dashed var(--draft); outline-offset: -2px; background: var(--draft-wash); border-radius: var(--radius); }
+.chev { color: var(--text-2); flex: none; }
+
+.ic { width: var(--icon); height: var(--icon); flex: none; }
+.ic.received { color: var(--stamp-received); }
+.ic.waiting { color: var(--stamp-waiting); }
+.ic.missing { color: var(--stamp-missing); }
+
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); padding: 0 var(--space-4); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.legend span { display: inline-flex; align-items: center; gap: var(--space-1); }
+.legend .ic { width: calc(var(--icon) * 0.8); height: calc(var(--icon) * 0.8); }
+
+.rangebtn { width: 100%; min-height: 52px; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); text-align: left; cursor: pointer; }
+.rangebtn .main { flex: 1; display: flex; flex-direction: column; min-width: 0; }
+.rangebtn .t { font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600; overflow-wrap: anywhere; }
+.rangebtn .s { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.linkbtn { min-height: 44px; border: 0; background: none; color: var(--accent); font-size: var(--t-sub); line-height: var(--l-sub); padding: 0 var(--space-4); text-align: left; cursor: pointer; }
+
+.seg { display: flex; gap: var(--space-1); padding: var(--space-1); background: var(--line); border-radius: var(--radius); }
+.seg button { flex: 1; min-height: 48px; border: 0; border-radius: 6px; background: transparent; display: flex; align-items: center; justify-content: center; gap: var(--space-2); font-size: var(--t-sub); line-height: var(--l-sub); cursor: pointer; padding: var(--space-1) var(--space-2); }
+.seg button[aria-pressed="true"] { background: var(--raised); font-weight: 600; }
+.seg button.draft[aria-pressed="true"] { outline: 2px dashed var(--draft); outline-offset: -2px; }
+.scr.ax .seg { flex-direction: column; }
+
+.daterow { display: flex; align-items: stretch; }
+.daterow .row { flex: 1; }
+.daterow .rm { min-width: 56px; border: 0; background: none; color: var(--struck); cursor: pointer; display: flex; align-items: center; justify-content: center; }
+.scr.ax .daterow { flex-direction: column; }
+.scr.ax .daterow .rm { min-height: 88px; justify-content: flex-start; padding-left: var(--space-4); }
+.was { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--draft); }
+s, .gone { text-decoration: line-through; text-decoration-color: var(--struck); text-decoration-thickness: 2px; color: var(--struck); }
+ins { text-decoration: underline; text-decoration-color: var(--added); text-decoration-thickness: 2px; text-underline-offset: 3px; color: var(--added); font-weight: 600; }
+.daterow.removed .t { text-decoration: line-through; text-decoration-color: var(--struck); text-decoration-thickness: 2px; color: var(--struck); }
+.daterow.draft, .stampbox.draft { outline: 2px dashed var(--draft); outline-offset: -2px; background: var(--draft-wash); }
+.stampbox { padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+
+/* Floating bars */
+.tabbar { position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(var(--sim-bottom) + 4px); height: 60px; border-radius: 30px; background: var(--glass); border: 1px solid var(--line); display: flex; padding: var(--space-1); gap: var(--space-1); z-index: 10; }
+.tabbar button { flex: 1; border: 0; border-radius: 26px; background: none; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; line-height: 13px; color: var(--text-2); cursor: pointer; }
+.tabbar button[aria-current="page"] { color: var(--accent); background: var(--select); }
+.tabbar svg { width: 24px; height: 24px; }
+.tray { position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(var(--sim-bottom) + 72px); min-height: 60px; border-radius: var(--radius); background: var(--raised); border: 2px dashed var(--draft); display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); z-index: 11; }
+.tray.done { border-style: solid; border-color: var(--line); }
+.tray .msg { flex: 1; font-size: var(--t-sub); line-height: var(--l-sub); min-width: 0; }
+.tray.nobar-below { bottom: calc(var(--sim-bottom) + 12px); }
+.scr.ax .tray { flex-wrap: wrap; }
+.primary { min-height: 44px; padding: 0 var(--space-4); border: 0; border-radius: var(--radius); background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: var(--t-sub); line-height: var(--l-sub); cursor: pointer; }
+.primary.big { min-height: 52px; width: 100%; font-size: var(--t-body); line-height: var(--l-body); }
+.secondary { min-height: 44px; padding: 0 var(--space-4); border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); color: var(--accent); font-size: var(--t-sub); line-height: var(--l-sub); cursor: pointer; }
+.secondary.big { min-height: 52px; width: 100%; font-size: var(--t-body); line-height: var(--l-body); }
+.danger { color: var(--struck); }
+
+/* Sheets: confined to the box they open in */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 20; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: calc(var(--sim-top) + 10px); background: var(--surface); border-radius: 14px 14px 0 0; z-index: 21; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: 6px auto 0; flex: none; }
+.sheet .scroll { padding-bottom: calc(var(--sim-bottom) + 24px); }
+.sheet .bottom { padding: var(--space-3) var(--space-4) calc(var(--sim-bottom) + var(--space-3)); display: flex; flex-direction: column; gap: var(--space-2); border-top: 1px solid var(--line); background: var(--surface); }
+
+/* Calendar (one home for both concepts) */
+.cal { display: flex; flex-direction: column; gap: var(--space-2); background: var(--raised); border-radius: var(--radius); padding: var(--space-2); }
+.cal-head { display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; }
+.cal-head > span:last-child { display: flex; }
+.scroll > *, .deskscroll > *, .sheet > * { flex-shrink: 0; }
+.sheet > .scroll { flex-shrink: 1; }
+.scr.ax .sheet .nav .grow { visibility: hidden; }
+.scr.ax .bookhead .s { display: none; }
+.tabbar { -webkit-backdrop-filter: blur(16px); backdrop-filter: blur(16px); }
+.cal-head .m { font-weight: 600; font-size: var(--t-head); line-height: var(--l-head); padding-left: var(--space-2); }
+.cal-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 2px; }
+.cal-grid .wd { text-align: center; font-size: var(--t-cap); line-height: var(--l-cap); color: var(--text-2); padding: var(--space-1) 0; }
+.day { min-height: 44px; border: 0; border-radius: 22px; background: none; font-size: var(--t-body); cursor: pointer; position: relative; display: flex; align-items: center; justify-content: center; }
+.day[disabled] { color: var(--text-2); opacity: 0.38; cursor: default; }
+.day.inr { background: var(--select); border-radius: 0; }
+.day.edge { background: var(--accent); color: var(--on-accent); font-weight: 700; border-radius: 22px; }
+.day.was { outline: 2px solid var(--struck); outline-offset: -4px; color: var(--struck); text-decoration: line-through; text-decoration-thickness: 2px; }
+.day.pick { background: var(--added); color: var(--raised); font-weight: 700; }
+.day.other::after { content: ""; position: absolute; bottom: 5px; left: 50%; width: 5px; height: 5px; margin-left: -2.5px; border-radius: 50%; background: var(--stamp-received); }
+.day.today { font-weight: 700; color: var(--accent); }
+.day.today.edge { color: var(--on-accent); }
+.day.today.pick { color: var(--raised); }
+.daylist { display: flex; flex-direction: column; }
+.daylist .row[aria-pressed="true"] { outline: 3px solid var(--added); outline-offset: -3px; }
+.preset { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.endpts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.scr.ax .endpts { grid-template-columns: 1fr; }
+.endpt { min-height: 64px; border: 2px solid var(--line); border-radius: var(--radius); background: var(--raised); display: flex; flex-direction: column; align-items: flex-start; justify-content: center; padding: var(--space-2) var(--space-3); cursor: pointer; text-align: left; }
+.endpt[aria-pressed="true"] { border-color: var(--accent); }
+.endpt .k { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.endpt .v { font-size: var(--t-body); line-height: var(--l-body); font-weight: 600; }
+
+.lines { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: var(--space-2); }
+.lines li { font-size: var(--t-sub); line-height: var(--l-sub); padding-left: var(--space-4); border-left: 3px solid var(--draft); }
+.lines li.also { border-left-style: dotted; color: var(--text-2); }
+.review-card { background: var(--raised); border-radius: var(--radius); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); border: 2px dashed var(--draft); }
+.review-card .name { font-weight: 600; font-size: var(--t-head); line-height: var(--l-head); }
+.review-card .act { align-self: flex-start; }
+.notice { border-radius: var(--radius); padding: var(--space-3) var(--space-4); border: 2px solid var(--struck); background: var(--raised); display: flex; flex-direction: column; gap: var(--space-2); font-size: var(--t-sub); line-height: var(--l-sub); }
+.empty { padding: var(--space-6) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; font-size: var(--t-body); line-height: var(--l-body); }
+.skel { height: var(--row-min); border-radius: var(--radius); background: var(--raised); border: 1px dashed var(--line); }
+.loading-msg { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); padding: 0 var(--space-4); }
+.hist { background: var(--raised); border-radius: var(--radius); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.hist.undone .lines li { opacity: 0.6; }
+.hist .when { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.placeholder { flex: 1; display: flex; align-items: center; justify-content: center; padding: var(--space-8); color: var(--text-2); text-align: center; }
+
+/* Day book */
+.book { background: var(--paper); }
+.book .scroll { gap: 0; padding: 0 0 var(--space-6); }
+.bookhead { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-2); border-bottom: 2px solid var(--text); flex-wrap: wrap; }
+.bookhead h1 { font-size: var(--t-large); line-height: var(--l-large); margin: 0; font-weight: 700; }
+.bookhead .s { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.daysec { display: grid; grid-template-columns: 76px 1fr; border-bottom: 1px solid var(--rule); }
+.scr.ax .daysec { grid-template-columns: 1fr; }
+.daysec .dl { padding: var(--space-3) var(--space-2) var(--space-3) var(--space-4); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); border-right: 1px solid var(--rule); }
+.scr.ax .daysec .dl { border-right: 0; padding-bottom: 0; }
+.daysec .dl b { display: block; font-size: var(--t-title3); line-height: var(--l-title3); color: var(--text); }
+.daysec .ents { display: flex; flex-direction: column; padding: var(--space-1) 0; }
+.daysec.today .dl b { color: var(--accent); }
+.ent { min-height: 52px; width: 100%; display: flex; align-items: flex-start; gap: var(--space-2); padding: var(--space-2) var(--space-3); border: 0; background: none; text-align: left; cursor: pointer; position: relative; }
+.scr.ax .ent { min-height: 88px; }
+.ent .ic { margin-top: 2px; }
+.ent .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ent .t { font-size: var(--t-body); line-height: var(--l-body); overflow-wrap: anywhere; }
+.ent .s { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); overflow-wrap: anywhere; }
+.ent.lifted { outline: 3px solid var(--accent); outline-offset: -3px; border-radius: var(--radius); background: var(--raised); }
+.ent.strike .t { text-decoration: line-through; text-decoration-color: var(--struck); text-decoration-thickness: 3px; }
+.ent .pen { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--struck); font-style: italic; }
+.ent.ghost { outline: 2px dashed var(--draft); outline-offset: -2px; background: var(--draft-wash); border-radius: var(--radius); cursor: default; }
+.ent.ghost .pen { color: var(--draft); }
+.ent.trace { cursor: default; opacity: 0.85; }
+.ent.trace .t { text-decoration: line-through; text-decoration-color: var(--struck); text-decoration-thickness: 2px; color: var(--text-2); }
+.corr { padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); border-left: 3px solid var(--struck); margin: var(--space-1) var(--space-3); }
+.corr.undone { border-left-color: var(--line); }
+.corr .who { font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600; }
+.corr .lines li { border-left: 0; padding-left: 0; font-size: var(--t-foot); line-height: var(--l-foot); }
+.corr.undone .lines li { text-decoration: line-through; color: var(--text-2); }
+.corr .rowacts { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; }
+.corr .rowacts .note { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.desk { flex: none; height: 260px; border-top: 2px solid var(--text); background: var(--surface); display: flex; flex-direction: column; padding-bottom: var(--sim-bottom); }
+.scr.phone .desk { height: 300px; }
+.scr.ax .desk.mini { height: auto; max-height: 260px; }
+.scr.ax .desk.full { position: absolute; left: 0; right: 0; bottom: 0; top: var(--sim-top); height: auto; z-index: 15; }
+.page .desk { height: auto; flex: 1; border-top: 0; }
+.desk .deskscroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.desk .deskacts { display: flex; gap: var(--space-2); padding: var(--space-2) var(--space-4); flex: none; }
+.desk .deskacts > * { flex: 1; }
+.scr.ax .desk .deskacts { flex-direction: column; }
+.desk .say { font-size: var(--t-sub); line-height: var(--l-sub); margin: 0; }
+.desk .say b { font-weight: 600; }
+.tools { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.tool { min-height: 44px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--t-sub); line-height: var(--l-sub); cursor: pointer; }
+.tool[aria-pressed="true"] { border: 2px solid var(--accent); font-weight: 600; }
+.scr.ax .tool { min-height: 88px; width: 100%; justify-content: flex-start; text-align: left; }
+.ax-only { display: none; }
+.scr.ax .ax-only { display: block; }
+.scr.ax .nav .grow.not-ax { visibility: hidden; }
+.scr.ax .desk.mini .deskscroll { padding: var(--space-2) var(--space-4); }
+.strip { display: flex; gap: var(--space-1); overflow-x: auto; padding-bottom: var(--space-1); overscroll-behavior-x: contain; }
+.sday { flex: none; width: 48px; min-height: 60px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer; padding: 0; }
+.scr.ax .sday { width: 120px; min-height: 120px; }
+.sday .w { font-size: var(--t-cap); line-height: var(--l-cap); color: var(--text-2); }
+.sday .n { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
+.sday[disabled] { opacity: 0.35; cursor: default; }
+.sday.was { border: 2px solid var(--struck); }
+.sday.was .n { text-decoration: line-through; color: var(--struck); }
+.sday.pick { background: var(--added); border-color: var(--added); }
+.sday.pick .n, .sday.pick .w { color: var(--raised); }
+.sday.inr { background: var(--select); }
+.sday.edge { background: var(--accent); border-color: var(--accent); }
+.sday.edge .n, .sday.edge .w { color: var(--on-accent); }
+.sday.mon1 { margin-left: var(--space-2); }
+.handles { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.scr.ax .handles { grid-template-columns: 1fr; }
+
+.anno { display: inline-block; border: 1.5px dashed var(--anno); color: var(--anno); font-size: 11px; line-height: 14px; padding: 1px 6px; border-radius: 4px; background: var(--raised); font-weight: 600; white-space: nowrap; }
+.anno-wrap { padding: 0 var(--space-4); }
+body.no-anno .anno, body.no-anno .anno-wrap { display: none; }
+.flash { animation: flash 1.2s ease-out 1; }
+@keyframes flash { from { background: var(--draft-wash); } to { background: transparent; } }
+@media (prefers-reduced-motion: reduce) { .flash { animation: none; } }
+@media (forced-colors: active) { .row.draft, .ent.ghost, .tray, .review-card { border: 2px dashed CanvasText; } }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+</head>
+<body>
+<div class="banner" role="note">
+  <span><strong>Sample.</strong> No name, date, count or time on this page is real.</span>
+  <span>Designer kind: blind</span>
+  <span>date-and-stamp-editing-blind-2</span>
+</div>
+<div class="chrome">
+  <div class="chrome-row" id="concept-pick" aria-label="Concepts"></div>
+  <div class="chrome-row">
+    <span>Theme</span>
+    <button type="button" class="pill" data-theme-set="auto">Auto</button>
+    <button type="button" class="pill" data-theme-set="light">Light</button>
+    <button type="button" class="pill" data-theme-set="dark">Dark</button>
+    <button type="button" class="pill" id="anno-toggle" aria-pressed="true">Show New labels</button>
+  </div>
+</div>
+<main id="concepts">
+  <section class="concept" id="concept-tray" data-concept-sec="tray">
+    <div class="concept-head"></div>
+    <div class="stage">
+    <div class="frame-wrap" data-frame="folded"><span class="frame-cap"></span><div class="dev"><div class="scr folded" data-device="iphone-duo-folded" data-layout="folded" data-concept="tray"></div></div></div>
+    <div class="frame-wrap" data-frame="open"><span class="frame-cap"></span><div class="dev"><div class="scr open" data-device="iphone-duo-unfolded" data-layout="open" data-concept="tray"></div></div></div>
+    <div class="frame-wrap" data-frame="phone"><span class="frame-cap"></span><div class="dev"><div class="scr phone" data-device="iphone-large" data-layout="phone" data-concept="tray"></div></div></div>
+    <div class="frame-wrap" data-frame="ax"><span class="frame-cap"></span><div class="dev"><div class="scr ax" data-device="iphone-duo-folded-ax5" data-layout="ax" data-concept="tray"></div></div></div>
+    </div>
+  </section>
+  <section class="concept" id="concept-book" data-concept-sec="book">
+    <div class="concept-head"></div>
+    <div class="stage">
+    <div class="frame-wrap" data-frame="folded"><span class="frame-cap"></span><div class="dev"><div class="scr folded" data-device="iphone-duo-folded" data-layout="folded" data-concept="book"></div></div></div>
+    <div class="frame-wrap" data-frame="open"><span class="frame-cap"></span><div class="dev"><div class="scr open" data-device="iphone-duo-unfolded" data-layout="open" data-concept="book"></div></div></div>
+    <div class="frame-wrap" data-frame="phone"><span class="frame-cap"></span><div class="dev"><div class="scr phone" data-device="iphone-large" data-layout="phone" data-concept="book"></div></div></div>
+    <div class="frame-wrap" data-frame="ax"><span class="frame-cap"></span><div class="dev"><div class="scr ax" data-device="iphone-duo-folded-ax5" data-layout="ax" data-concept="book"></div></div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+"use strict";
+/* ---------- dates ---------- */
+const DAY = 86400000;
+const WD = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+const MO = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+const MONTH = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"];
+const ud = (y, m, d) => new Date(Date.UTC(y, m - 1, d));
+const key = dt => dt.toISOString().slice(0, 10);
+const fromKey = k => { const [y, m, d] = k.split("-").map(Number); return ud(y, m, d); };
+const addDays = (k, n) => key(new Date(fromKey(k).getTime() + n * DAY));
+const fmt = k => { const x = fromKey(k); return WD[x.getUTCDay()] + " " + x.getUTCDate() + " " + MO[x.getUTCMonth()]; };
+const TODAY = "2026-11-21";
+const DEFAULT_RANGE = { start: "2026-10-25", end: TODAY };
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+const clone = x => JSON.parse(JSON.stringify(x));
+
+/* ---------- sample data (invented) ---------- */
+const SEED = [
+  { id: "p1", from: "Northfield Supply", items: 4, ordered: "2026-10-26", rec: [{ id: "r1", date: "2026-11-17" }], stamp: "received" },
+  { id: "p2", from: "Harrow and Pike", items: 1, ordered: "2026-10-28", rec: [{ id: "r2", date: "2026-11-12" }, { id: "r3", date: "2026-11-16" }], stamp: "received" },
+  { id: "p3", from: "Quarry Lane Goods", items: 2, ordered: "2026-10-30", rec: [], stamp: "waiting" },
+  { id: "p4", from: "Oxbow Trading", items: 6, ordered: "2026-11-02", rec: [{ id: "r4", date: "2026-11-18" }], stamp: "received" },
+  { id: "p5", from: "Wexley Goods", items: 1, ordered: "2026-11-03", rec: [], stamp: "missing" },
+  { id: "p6", from: "Brightwater Co.", items: 3, ordered: "2026-11-05", rec: [{ id: "r5", date: "2026-11-20" }], stamp: "received" },
+  { id: "p7", from: "Fennick Brothers", items: 2, ordered: "2026-11-08", rec: [], stamp: "waiting" },
+  { id: "p8", from: "Lowmoor Supply", items: 5, ordered: "2026-11-11", rec: [{ id: "r6", date: "2026-11-19" }], stamp: "received" },
+  { id: "p9", from: "Cobble and Daughter", items: 1, ordered: "2026-11-14", rec: [], stamp: "waiting" },
+  { id: "p10", from: "Ainsley Works", items: 2, ordered: "2026-10-18", rec: [{ id: "r7", date: "2026-11-02" }], stamp: "received" },
+];
+const STAMP = { waiting: "Waiting", received: "Received", missing: "Missing" };
+const STAMPS = ["waiting", "received", "missing"];
+
+/* ---------- the one model: rules shared by both concepts ---------- */
+let uid = 100;
+const byDate = (a, b) => a.date < b.date ? -1 : a.date > b.date ? 1 : 0;
+const M = {
+  setStamp(p, s) { if (s === p.stamp) return; if (s === "received") { if (!p.rec.length) p.rec.push({ id: "r" + (uid++), date: TODAY }); } else p.rec = []; p.stamp = s; },
+  removeRec(p, rid) { p.rec = p.rec.filter(r => r.id !== rid); if (!p.rec.length && p.stamp === "received") p.stamp = "waiting"; },
+  addRec(p, date) { p.rec.push({ id: "r" + (uid++), date }); p.rec.sort(byDate); p.stamp = "received"; },
+  moveRec(p, rid, date) { const r = p.rec.find(x => x.id === rid); if (r) r.date = date; p.rec.sort(byDate); },
+  diff(a, b, userStamp) {
+    const am = new Map(a.rec.map(r => [r.id, r.date])), bm = new Map(b.rec.map(r => [r.id, r.date]));
+    const rec = [];
+    for (const [id, dt] of am) { if (!bm.has(id)) rec.push({ k: "removed", a: dt }); else if (bm.get(id) !== dt) rec.push({ k: "moved", a: dt, b: bm.get(id) }); }
+    for (const [id, dt] of bm) if (!am.has(id)) rec.push({ k: "added", b: dt });
+    const st = a.stamp !== b.stamp ? [{ k: "stamp", a: a.stamp, b: b.stamp }] : [];
+    if (st.length && rec.length) {
+      if (userStamp) { rec.forEach(l => l.also = true); return [...st, ...rec]; }
+      st[0].also = true; return [...rec, ...st];
+    }
+    return [...st, ...rec];
+  },
+  sentence(l) {
+    const pre = l.also ? "And so it also " : "";
+    const v = w => l.also ? w.toLowerCase() : w;
+    if (l.k === "moved") return `${pre}${v("Moves")} a received date from <s>${fmt(l.a)}</s> to <ins>${fmt(l.b)}</ins>.`;
+    if (l.k === "removed") return `${pre}${v("Removes")} the received date <s>${fmt(l.a)}</s>.`;
+    if (l.k === "added") return `${pre}${v("Adds")} the received date <ins>${fmt(l.b)}</ins>.`;
+    return `${pre}${v("Changes")} the stamp from <s>${STAMP[l.a]}</s> to <ins>${STAMP[l.b]}</ins>.`;
+  },
+  inRange(p, r) { return !r || (p.ordered >= r.start && p.ordered <= r.end); },
+  rangeText(r) { return r ? `${fmt(r.start)} to ${fmt(r.end)}` : "All dates"; },
+};
+
+/* ---------- small parts (one home each) ---------- */
+const ICON = {
+  received: '<svg class="ic received" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="currentColor"/><path d="M5.5 10.5l3 3 6-7" fill="none" stroke="var(--raised)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  waiting: '<svg class="ic waiting" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/></svg>',
+  missing: '<svg class="ic missing" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="none" stroke="currentColor" stroke-width="2"/><path d="M4.5 15.5l11-11" stroke="currentColor" stroke-width="2.2"/></svg>',
+  order: '<svg class="ic waiting" viewBox="0 0 20 20" aria-hidden="true"><rect x="3" y="5" width="14" height="11" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M3 8.5h14" stroke="currentColor" stroke-width="1.8"/></svg>',
+};
+const CHEV = '<svg class="chev" width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2"/></svg>';
+const BACK = '<svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>';
+const MINUS = '<svg width="24" height="24" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="currentColor"/><path d="M7 12h10" stroke="var(--raised)" stroke-width="2.4"/></svg>';
+const A = (act, arg) => `data-act="${act}"${arg != null ? ` data-arg="${esc(arg)}"` : ""}`;
+const anno = t => `<span class="anno" aria-hidden="true">New: ${esc(t)}</span>`;
+const stampWord = s => `${ICON[s]}<span>${STAMP[s]}</span>`;
+const legend = () => `<div class="legend">${STAMPS.map(s => `<span>${ICON[s]}${STAMP[s]}</span>`).join("")}</div>`;
+const status = () => `<div class="status" aria-hidden="true"><span>1:06</span><span>100%</span></div>`;
+
+function monthOf(k) { return k.slice(0, 7); }
+function shiftMonth(m, n) { let [y, mo] = m.split("-").map(Number); mo += n; while (mo > 12) { mo -= 12; y++; } while (mo < 1) { mo += 12; y--; } return `${y}-${String(mo).padStart(2, "0")}`; }
+function monthName(m) { const [y, mo] = m.split("-").map(Number); return `${MONTH[mo - 1]} ${y}`; }
+
+/* A month grid, or at the largest text sizes a list of days (the grid cannot fit). */
+function calendar(o) {
+  const { month, ax, disabled, cls, act, monthAct, minMonth, maxMonth, label } = o;
+  const prevOk = !minMonth || month > minMonth, nextOk = !maxMonth || month < maxMonth;
+  const head = `<div class="cal-head"><span class="m">${monthName(month)}</span><span>
+    <button type="button" class="navbtn" ${A(monthAct, -1)} ${prevOk ? "" : "disabled"} aria-label="Earlier month">${BACK}</button>
+    <button type="button" class="navbtn" ${A(monthAct, 1)} ${nextOk ? "" : "disabled"} aria-label="Later month" style="transform:scaleX(-1)">${BACK}</button></span></div>`;
+  const [y, mo] = month.split("-").map(Number);
+  const first = ud(y, mo, 1), days = new Date(Date.UTC(y, mo, 0)).getUTCDate();
+  if (ax) {
+    const rows = [];
+    for (let d = days; d >= 1; d--) {
+      const k = key(ud(y, mo, d));
+      if (disabled(k)) continue;
+      const c = cls(k);
+      rows.push(`<button type="button" class="row" ${A(act, k)} aria-pressed="${/pick|edge/.test(c)}"><span class="main"><span class="t ${/was/.test(c) ? "gone" : ""}">${fmt(k)}</span></span></button>`);
+    }
+    return `<div class="cal" aria-label="${esc(label)}">${head}<div class="daylist card">${rows.join("") || '<p class="foot">No day in this month can be picked.</p>'}</div></div>`;
+  }
+  let cells = ["S", "M", "T", "W", "T", "F", "S"].map(w => `<span class="wd" aria-hidden="true">${w}</span>`).join("");
+  for (let i = 0; i < first.getUTCDay(); i++) cells += "<span></span>";
+  for (let d = 1; d <= days; d++) {
+    const k = key(ud(y, mo, d)), off = disabled(k);
+    cells += `<button type="button" class="day ${cls(k)} ${k === TODAY ? "today" : ""}" ${A(act, k)} ${off ? "disabled" : ""} aria-label="${fmt(k)}">${d}</button>`;
+  }
+  return `<div class="cal" aria-label="${esc(label)}">${head}<div class="cal-grid">${cells}</div></div>`;
+}
+
+/* A strip of days for the thumb (Day book desk). */
+function strip(o) {
+  const { from, to, disabled, cls, act } = o;
+  let out = "", k = to;
+  const ks = [];
+  while (k >= from) { ks.push(k); k = addDays(k, -1); }
+  ks.reverse();
+  for (const k of ks) {
+    const x = fromKey(k);
+    out += `<button type="button" class="sday ${cls(k)}" ${A(act, k)} ${disabled(k) ? "disabled" : ""} aria-label="${fmt(k)}"><span class="w">${x.getUTCDate() === 1 ? MO[x.getUTCMonth()] : WD[x.getUTCDay()]}</span><span class="n">${x.getUTCDate()}</span></button>`;
+  }
+  return `<div class="strip" data-scroll="strip" data-strip-end="1">${out}</div>`;
+}
+
+const LAYOUTS = [
+  { id: "folded", device: "iphone-duo-folded", cap: "Duo, folded: 466 x 678 pt" },
+  { id: "open", device: "iphone-duo-unfolded", cap: "Duo, open: 951 x 669 pt, hinge at x 455.5 to 495.5" },
+  { id: "phone", device: "iphone-large", cap: "Large phone: 440 x 956 pt (size is my pick, see notes)" },
+  { id: "ax", device: "iphone-duo-folded-ax5", cap: "Duo, folded, largest accessibility text (AX5)" },
+];
+</script>
+<script>
+"use strict";
+/* =================== Concept: Change tray =================== */
+const Tray = {
+  id: "tray", name: "Change tray",
+  idea: "A package list with a range at the top. Every edit waits in a tray as a draft. Review shows each change, old struck and new underlined, before Apply. Every applied set sits in History with Undo.",
+  states: [["list", "Package list"], ["range", "Pick the order dates"], ["detail", "One package"], ["picker", "Pick a received date"], ["draft", "Edits in the tray"], ["review", "Review before apply"], ["failed", "Apply failed"], ["applied", "Applied, with Undo"], ["history", "History"], ["empty", "Range has no orders"], ["loading", "Still reading"]],
+  init(preset) {
+    const s = { pk: clone(SEED), draft: {}, tab: "packages", screen: "list", sel: null, sheet: null, picker: null, range: { ...DEFAULT_RANGE }, prevRange: undefined, re: null, bar: null, history: [], failNext: false, failed: false, loading: false };
+    const draftP4 = () => { s.sel = "p4"; s.screen = "detail"; this.edit(s, "p4", p => M.moveRec(p, "r4", "2026-11-17")); this.edit(s, "p6", p => M.setStamp(p, "waiting"), true); };
+    switch (preset) {
+      case "range": s.sheet = "range"; s.re = { ...s.range, which: "start", month: "2026-11" }; break;
+      case "detail": s.sel = "p4"; s.screen = "detail"; break;
+      case "picker": s.sel = "p4"; s.screen = "detail"; s.sheet = "picker"; s.picker = { pid: "p4", rid: "r4", date: "2026-11-17", month: "2026-11" }; break;
+      case "draft": draftP4(); break;
+      case "review": draftP4(); s.sheet = "review"; break;
+      case "failed": draftP4(); s.sheet = "review"; s.failed = true; break;
+      case "applied": draftP4(); this.apply(s); break;
+      case "history": draftP4(); this.apply(s); s.tab = "history"; break;
+      case "empty": s.range = { start: "2026-10-19", end: "2026-10-24" }; s.prevRange = { ...DEFAULT_RANGE }; break;
+      case "loading": s.loading = true; break;
+    }
+    return s;
+  },
+  view(s, pid) { return s.draft[pid] ? s.draft[pid].p : s.pk.find(p => p.id === pid); },
+  base(s, pid) { return s.pk.find(p => p.id === pid); },
+  edit(s, pid, fn, userStamp) {
+    const cur = s.draft[pid] || { p: clone(this.base(s, pid)), userStamp: false };
+    fn(cur.p);
+    if (userStamp) cur.userStamp = true;
+    const lines = M.diff(this.base(s, pid), cur.p, cur.userStamp);
+    if (lines.length) s.draft[pid] = cur; else delete s.draft[pid];
+    s.bar = null; s.failed = false;
+  },
+  count(s) { return Object.keys(s.draft).reduce((n, pid) => n + M.diff(this.base(s, pid), s.draft[pid].p, s.draft[pid].userStamp).length, 0); },
+  apply(s) {
+    const before = {}, after = {}, lines = [];
+    for (const pid of Object.keys(s.draft)) {
+      before[pid] = clone(this.base(s, pid)); after[pid] = clone(s.draft[pid].p);
+      lines.push({ pid, from: before[pid].from, lines: M.diff(before[pid], after[pid], s.draft[pid].userStamp) });
+    }
+    const id = "h" + (s.history.length + 1);
+    s.history.unshift({ id, when: "Today, 1:06", before, after, lines, undone: false });
+    s.pk = s.pk.map(p => after[p.id] ? clone(after[p.id]) : p);
+    s.draft = {}; s.sheet = null; s.failed = false;
+    s.bar = { kind: "applied", hid: id, n: lines.reduce((n, x) => n + x.lines.length, 0) };
+  },
+  act(s, act, arg, layout) {
+    switch (act) {
+      case "tab": s.tab = arg; if (arg === "packages" && layout !== "open") s.screen = s.screen; break;
+      case "open": s.sel = arg; s.screen = "detail"; s.tab = "packages"; break;
+      case "back": s.screen = "list"; break;
+      case "stamp": { const [pid, st] = arg.split("|"); this.edit(s, pid, p => M.setStamp(p, st), true); break; }
+      case "recRemove": { const [pid, rid] = arg.split("|"); this.edit(s, pid, p => M.removeRec(p, rid)); break; }
+      case "recRestore": { delete s.draft[arg]; break; }
+      case "recEdit": { const [pid, rid] = arg.split("|"); const p = this.view(s, pid); const r = p.rec.find(x => x.id === rid); s.sheet = "picker"; s.picker = { pid, rid, date: r.date, month: monthOf(r.date) }; break; }
+      case "recAdd": { s.sheet = "picker"; s.picker = { pid: arg, rid: null, date: null, month: monthOf(TODAY) }; break; }
+      case "pickDay": s.picker.date = arg; break;
+      case "pickMonth": s.picker.month = shiftMonth(s.picker.month, +arg); break;
+      case "pickDone": {
+        const { pid, rid, date } = s.picker;
+        if (date) this.edit(s, pid, p => rid ? M.moveRec(p, rid, date) : M.addRec(p, date));
+        s.sheet = null; s.picker = null; break;
+      }
+      case "sheetCancel": s.sheet = null; s.picker = null; s.re = null; s.failed = false; break;
+      case "review": s.sheet = "review"; s.failed = false; break;
+      case "drop": delete s.draft[arg]; if (!Object.keys(s.draft).length) s.sheet = null; break;
+      case "discard": s.bar = { kind: "discarded", draft: clone(s.draft) }; s.draft = {}; s.sheet = null; break;
+      case "restore": s.draft = s.bar.draft; s.bar = null; break;
+      case "apply": if (s.failNext) { s.failed = true; s.failNext = false; } else this.apply(s); break;
+      case "undo": case "redo": {
+        const h = s.history.find(x => x.id === arg);
+        const src = act === "undo" ? h.before : h.after;
+        s.pk = s.pk.map(p => src[p.id] ? clone(src[p.id]) : p);
+        h.undone = act === "undo";
+        for (const pid of Object.keys(src)) delete s.draft[pid];
+        s.bar = { kind: act === "undo" ? "undone" : "applied", hid: h.id, n: h.lines.reduce((n, x) => n + x.lines.length, 0) };
+        break;
+      }
+      case "range": s.sheet = "range"; s.re = { ...(s.range || { start: "2026-10-01", end: TODAY }), all: !s.range, which: "start", month: monthOf((s.range || DEFAULT_RANGE).end) }; break;
+      case "reWhich": s.re.which = arg; s.re.month = monthOf(s.re[arg]); break;
+      case "reDay": {
+        const re = s.re; re.all = false;
+        if (re.which === "start") { re.start = arg; if (arg > re.end) re.end = arg; re.which = "end"; }
+        else { if (arg < re.start) re.start = arg; else re.end = arg; }
+        break;
+      }
+      case "reMonth": s.re.month = shiftMonth(s.re.month, +arg); break;
+      case "rePreset": {
+        if (arg === "all") { s.re.all = true; break; }
+        s.re.all = false; s.re.end = TODAY; s.re.start = addDays(TODAY, -(+arg - 1)); s.re.month = monthOf(TODAY); break;
+      }
+      case "reDone": { const nr = s.re.all ? null : { start: s.re.start, end: s.re.end }; s.prevRange = s.range; s.range = nr; s.sheet = null; s.re = null; break; }
+      case "rangeBack": { const t = s.range; s.range = s.prevRange; s.prevRange = t; break; }
+      case "rangeAll": s.prevRange = s.range; s.range = null; break;
+      case "retry": this.apply(s); break;
+      case "failNext": s.failNext = !s.failNext; break;
+      case "loadDone": s.loading = false; break;
+    }
+  },
+
+  /* ---------- drawing ---------- */
+  rows(s) {
+    const list = s.pk.filter(p => M.inRange(p, s.range)).sort((a, b) => a.ordered < b.ordered ? 1 : -1);
+    return list;
+  },
+  rangeBlock(s) {
+    const n = this.rows(s).length;
+    return `<div class="group">
+      <button type="button" class="rangebtn" ${A("range")} aria-label="Order dates: ${esc(M.rangeText(s.range))}. Change">
+        <svg width="22" height="22" viewBox="0 0 22 22" aria-hidden="true"><rect x="2" y="4" width="18" height="16" rx="3" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M2 9h18M7 2v4M15 2v4" stroke="currentColor" stroke-width="1.8"/></svg>
+        <span class="main"><span class="t">Ordered ${esc(M.rangeText(s.range))}</span><span class="s">${s.loading ? "Counting…" : `${n} package${n === 1 ? "" : "s"}`}</span></span>${CHEV}
+      </button>
+      ${s.prevRange !== undefined ? `<button type="button" class="linkbtn" ${A("rangeBack")}>Back to ${esc(M.rangeText(s.prevRange))}</button>` : ""}
+    </div>`;
+  },
+  listRow(s, p) {
+    const v = this.view(s, p.id), d = !!s.draft[p.id];
+    const recs = v.rec.length ? v.rec.map(r => fmt(r.date)).join(", ") : "No date";
+    return `<button type="button" class="row ${d ? "draft" : ""} ${s.sel === p.id ? "sel" : ""}" ${A("open", p.id)} aria-label="${esc(p.from)}, ${STAMP[v.stamp]}${d ? ", edited, not applied" : ""}">
+      ${ICON[v.stamp]}<span class="main"><span class="t">${esc(p.from)}</span><span class="s">${p.items} item${p.items > 1 ? "s" : ""}, ordered ${fmt(p.ordered)}${d ? " · edited" : ""}</span></span>
+      <span class="end">${recs}</span>${CHEV}</button>`;
+  },
+  listScreen(s, L, withNav) {
+    let body;
+    if (s.loading) body = `<p class="loading-msg">Reading your packages. Nothing is shown as empty until this ends.</p>${'<div class="skel"></div>'.repeat(4)}<button type="button" class="secondary" ${A("loadDone")}>Finish reading (mockup only)</button>`;
+    else {
+      const rows = this.rows(s);
+      body = `${this.rangeBlock(s)}${rows.length ? `${legend()}<div class="card">${rows.map(p => this.listRow(s, p)).join("")}</div>`
+        : `<div class="empty"><span>No package was ordered from ${esc(M.rangeText(s.range))}.</span><button type="button" class="secondary" ${A("rangeAll")}>Show all dates</button></div>`}`;
+    }
+    return `<div class="nav"></div><h1 class="large">Packages</h1>
+      <div class="scroll" data-scroll="list">${body}<div class="anno-wrap">${anno("range at the top of the list")}</div></div>`;
+  },
+  detailScreen(s, L, showBack) {
+    const p = this.view(s, s.sel), base = this.base(s, s.sel), d = s.draft[s.sel];
+    const stampChanged = p.stamp !== base.stamp;
+    const ids = new Map(p.rec.map(r => [r.id, r.date]));
+    const rows = [];
+    for (const r of base.rec) {
+      if (!ids.has(r.id)) rows.push(`<div class="daterow removed draft"><div class="row" style="cursor:default"><span class="main"><span class="t">${fmt(r.date)}</span><span class="was">Will be removed</span></span></div><button type="button" class="linkbtn" ${A("recRestore", p.id)}>Put back</button></div>`);
+      else {
+        const moved = ids.get(r.id) !== r.date;
+        rows.push(this.dateRow(p, { id: r.id, date: ids.get(r.id) }, moved ? r.date : null));
+      }
+    }
+    for (const r of p.rec) if (!base.rec.find(b => b.id === r.id)) rows.push(this.dateRow(p, r, null, true));
+    const lines = d ? M.diff(base, p, d.userStamp) : [];
+    return `<div class="nav">${showBack ? `<button type="button" class="navbtn" ${A("back")}>${BACK}<span>Packages</span></button>` : `<span style="width:44px"></span>`}<span class="grow not-ax">${esc(p.from)}</span><span style="width:44px"></span></div>
+      <div class="scroll" data-scroll="detail"><h1 class="large ax-only" style="padding:0">${esc(p.from)}</h1>
+        <div class="group"><h2 class="ghead">Order</h2><div class="card"><div class="row" style="cursor:default"><span class="main"><span class="t">${fmt(p.ordered)}</span><span class="s">${p.items} item${p.items > 1 ? "s" : ""}. The order date comes with the order and stays fixed.</span></span></div></div></div>
+        <div class="group"><h2 class="ghead">Stamp</h2><div class="card stampbox ${stampChanged ? "draft" : ""}">
+          <div class="seg" role="group" aria-label="Stamp">${STAMPS.map(st => `<button type="button" class="${stampChanged && p.stamp === st ? "draft" : ""}" ${A("stamp", p.id + "|" + st)} aria-pressed="${p.stamp === st}">${stampWord(st)}</button>`).join("")}</div>
+          ${stampChanged ? `<span class="was">Was ${STAMP[base.stamp]}. Not applied yet.</span>` : ""}
+        </div></div>
+        <div class="group"><h2 class="ghead">Received dates</h2><div class="card">${rows.join("") || `<div class="row" style="cursor:default"><span class="main"><span class="s">No received date yet.</span></span></div>`}
+          <button type="button" class="row" ${A("recAdd", p.id)}><span class="main"><span class="t" style="color:var(--accent)">Add a received date</span></span></button></div>
+          <p class="foot">A second date is for a package that came in parts. Removing the last date sets the stamp back to Waiting.</p></div>
+        ${lines.length ? `<div class="group"><h2 class="ghead">What will change here</h2><div class="review-card"><ul class="lines">${lines.map(l => `<li class="${l.also ? "also" : ""}">${M.sentence(l)}</li>`).join("")}</ul></div></div>` : ""}
+        <div class="anno-wrap">${anno("draft edits, shown before they apply")}</div>
+      </div>`;
+  },
+  dateRow(p, r, wasDate, isNew) {
+    const dr = wasDate || isNew;
+    return `<div class="daterow ${dr ? "draft" : ""}"><button type="button" class="row" ${A("recEdit", p.id + "|" + r.id)} aria-label="Received ${fmt(r.date)}. Change date">
+      <span class="main"><span class="t">${fmt(r.date)}</span>${wasDate ? `<span class="was">Was <s>${fmt(wasDate)}</s>. Not applied yet.</span>` : isNew ? `<span class="was">New date. Not applied yet.</span>` : ""}</span>${CHEV}</button>
+      <button type="button" class="rm" ${A("recRemove", p.id + "|" + r.id)} aria-label="Remove ${fmt(r.date)}">${MINUS}</button></div>`;
+  },
+  historyScreen(s) {
+    const body = s.history.length ? s.history.map(h => `<div class="hist ${h.undone ? "undone" : ""}"><span class="when">${h.when}${h.undone ? ", undone" : ""}</span>
+        ${h.lines.map(x => `<div><b>${esc(x.from)}</b><ul class="lines">${x.lines.map(l => `<li class="${l.also ? "also" : ""}">${M.sentence(l)}</li>`).join("")}</ul></div>`).join("")}
+        <button type="button" class="secondary" ${A(h.undone ? "redo" : "undo", h.id)}>${h.undone ? "Redo" : "Undo"}</button></div>`).join("")
+      : `<div class="empty"><span>Each set of changes you apply shows here, with Undo.</span><button type="button" class="secondary" ${A("tab", "packages")}>Go to packages</button></div>`;
+    return `<div class="nav"></div><h1 class="large">History</h1><div class="scroll" data-scroll="hist">${body}<div class="anno-wrap">${anno("history of applied sets")}</div></div>`;
+  },
+  tabbar(s) {
+    const t = (id, label, svg) => `<button type="button" ${A("tab", id)} ${s.tab === id ? 'aria-current="page"' : ""}>${svg}<span>${label}</span></button>`;
+    return `<nav class="tabbar" aria-label="Sections">${t("packages", "Packages", '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7l8-4 8 4v10l-8 4-8-4z M4 7l8 4 8-4 M12 11v10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>')}
+      ${t("history", "History", '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7v5l3.5 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>')}</nav>`;
+  },
+  tray(s, extraCls) {
+    const n = this.count(s);
+    if (n) return `<div class="tray ${extraCls || ""}" role="status"><span class="msg">${n} change${n > 1 ? "s" : ""} waiting. Nothing is changed until you apply.</span><button type="button" class="primary" ${A("review")}>Review</button></div>`;
+    if (!s.bar) return "";
+    if (s.bar.kind === "applied") return `<div class="tray done ${extraCls || ""}" role="status"><span class="msg">${s.bar.n} change${s.bar.n > 1 ? "s" : ""} applied.</span><button type="button" class="secondary" ${A("undo", s.bar.hid)}>Undo</button></div>`;
+    if (s.bar.kind === "undone") return `<div class="tray done ${extraCls || ""}" role="status"><span class="msg">Undone. The dates and stamps are back as they were.</span><button type="button" class="secondary" ${A("redo", s.bar.hid)}>Redo</button></div>`;
+    if (s.bar.kind === "discarded") return `<div class="tray done ${extraCls || ""}" role="status"><span class="msg">Edits thrown away.</span><button type="button" class="secondary" ${A("restore")}>Bring back</button></div>`;
+    return "";
+  },
+  pickerSheet(s, L) {
+    const pk = s.picker, p = this.view(s, pk.pid), base = this.base(s, pk.pid);
+    const cur = pk.rid ? (p.rec.find(r => r.id === pk.rid) || {}).date : null;
+    const others = new Set(p.rec.filter(r => r.id !== pk.rid).map(r => r.date));
+    const cal = calendar({
+      month: pk.month, ax: L === "ax", label: "Received date",
+      disabled: k => k < p.ordered || k > TODAY,
+      cls: k => [k === pk.date && k !== cur ? "pick" : "", k === cur && pk.date !== cur ? "was" : "", k === cur && pk.date === cur ? "edge" : "", others.has(k) ? "other" : ""].join(" "),
+      act: "pickDay", monthAct: "pickMonth", minMonth: monthOf(p.ordered), maxMonth: monthOf(TODAY),
+    });
+    const say = !pk.date ? "Pick the day it came." : pk.rid ? (pk.date === cur ? `Now ${fmt(cur)}. Pick the day it really came.` : `Moves from <s>${fmt(cur)}</s> to <ins>${fmt(pk.date)}</ins>. It goes to the tray; nothing changes yet.`) : `Adds <ins>${fmt(pk.date)}</ins>. It goes to the tray; nothing changes yet.`;
+    return `<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Received date"><div class="grabber"></div>
+      <div class="nav"><button type="button" class="navbtn" ${A("sheetCancel")}>Cancel</button><span class="grow">${esc(p.from)}</span><button type="button" class="navbtn" ${A("pickDone")} ${pk.date && pk.date !== cur ? "" : "disabled"} style="font-weight:600" title="${pk.date && pk.date !== cur ? "" : "Pick a different day first"}">Done</button></div>
+      <div class="scroll" data-scroll="picker">${L === "ax" ? `<div class="review-card"><span>${say}</span></div>` : ""}${cal}
+        <p class="foot">Days before the order date (${fmt(p.ordered)}) and after today cannot be picked.${L === "ax" ? "" : " A dot marks the package's other received date."}</p>
+        ${L === "ax" ? "" : `<div class="review-card"><span>${say}</span></div>`}</div></div>`;
+  },
+  rangeSheet(s, L) {
+    const re = s.re;
+    const cnt = s.pk.filter(p => M.inRange(p, re.all ? null : re)).length;
+    const cal = calendar({
+      month: re.month, ax: L === "ax", label: "Order dates",
+      disabled: k => k > TODAY,
+      cls: k => re.all ? "" : (k === re.start || k === re.end) ? "edge" : (k > re.start && k < re.end) ? "inr" : "",
+      act: "reDay", monthAct: "reMonth", minMonth: "2026-09", maxMonth: monthOf(TODAY),
+    });
+    const ep = (w, label) => `<button type="button" class="endpt" ${A("reWhich", w)} aria-pressed="${!re.all && re.which === w}"><span class="k">${label}</span><span class="v">${re.all ? "Any" : fmt(re[w])}</span></button>`;
+    return `<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Order dates"><div class="grabber"></div>
+      <div class="nav"><button type="button" class="navbtn" ${A("sheetCancel")}>Cancel</button><span class="grow">Order dates</span><button type="button" class="navbtn" ${A("reDone")} style="font-weight:600">Done</button></div>
+      <div class="scroll" data-scroll="range">
+        <div class="endpts">${ep("start", "From")}${ep("end", "To")}</div>
+        <div class="preset"><button type="button" class="tool" ${A("rePreset", 7)}>Last 7 days</button><button type="button" class="tool" ${A("rePreset", 30)}>Last 30 days</button><button type="button" class="tool" ${A("rePreset", "all")} aria-pressed="${!!re.all}">All dates</button></div>
+        ${cal}
+        <div class="review-card"><span>${cnt} package${cnt === 1 ? "" : "s"} ordered ${re.all ? "on any date" : `from ${fmt(re.start)} to ${fmt(re.end)}`}. Done shows them, and a Back link then returns to the range you had.</span></div>
+      </div></div>`;
+  },
+  reviewSheet(s) {
+    const cards = Object.keys(s.draft).map(pid => {
+      const b = this.base(s, pid), a = s.draft[pid].p;
+      return `<div class="review-card"><span class="name">${esc(b.from)}</span><ul class="lines">${M.diff(b, a, s.draft[pid].userStamp).map(l => `<li class="${l.also ? "also" : ""}">${M.sentence(l)}</li>`).join("")}</ul>
+        <button type="button" class="linkbtn act" ${A("drop", pid)} style="padding-left:0">Drop this package's edits</button></div>`;
+    }).join("");
+    const n = this.count(s);
+    return `<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Review"><div class="grabber"></div>
+      <div class="nav"><button type="button" class="navbtn" ${A("sheetCancel")}>Keep editing</button><span class="grow">Review</span><span style="width:44px"></span></div>
+      <div class="scroll" data-scroll="review">${cards}
+        <label class="foot" style="display:flex;gap:8px;align-items:center"><input type="checkbox" ${s.failNext ? "checked" : ""} data-act="failNext"> Mockup only: make the next apply fail</label></div>
+      <div class="bottom">${s.failed ? `<div class="notice" role="alert"><span>Not applied. Nothing changed; your edits are still here.</span><button type="button" class="secondary" ${A("retry")}>Try again</button></div>` : ""}
+        <button type="button" class="primary big" ${A("apply")}>Apply ${n} change${n > 1 ? "s" : ""}</button>
+        <button type="button" class="secondary big danger" ${A("discard")}>Throw away all edits</button></div></div>`;
+  },
+  render(s, L) {
+    if (L === "open") {
+      const left = s.tab === "history" ? this.historyScreen(s) : this.listScreen(s, L);
+      const right = s.sel ? this.detailScreen(s, L, false) : `<div class="nav"></div><div class="placeholder">Pick a package on the left to see and fix its dates and stamp.</div>`;
+      const lsheet = s.sheet === "range" ? this.rangeSheet(s, L) : "";
+      const rsheet = s.sheet === "picker" ? this.pickerSheet(s, L) : s.sheet === "review" ? this.reviewSheet(s) : "";
+      return `<div class="page l"><div class="app">${status()}${left}${this.tabbar(s)}${lsheet}</div></div><div class="hinge" aria-hidden="true"></div>
+        <div class="page r"><div class="app">${status()}${right}${this.tray(s, "nobar-below")}${rsheet}</div><div class="homebar"></div></div>`;
+    }
+    let main;
+    if (s.tab === "history") main = this.historyScreen(s);
+    else if (s.screen === "detail" && s.sel) main = this.detailScreen(s, L, true);
+    else main = this.listScreen(s, L);
+    const sheet = s.sheet === "range" ? this.rangeSheet(s, L) : s.sheet === "picker" ? this.pickerSheet(s, L) : s.sheet === "review" ? this.reviewSheet(s) : "";
+    return `<div class="app">${status()}${main}${this.tray(s)}${this.tabbar(s)}${sheet}</div><div class="homebar"></div>`;
+  },
+};
+</script>
+<script>
+"use strict";
+/* =================== Concept: Day book =================== */
+const Book = {
+  id: "book", name: "Day book",
+  idea: "No package list and no edit form. The first screen is a book of days, newest first: what was ordered and what came in, on the day it happened. You fix a wrong day by lifting the line and laying it on the right day. The old line stays struck in red pen, the correction is written in the book, and Undo sits on that written line.",
+  states: [["book", "The book"], ["range", "Set the order dates"], ["lifted", "A line lifted"], ["preview", "Move shown before it is written"], ["restamp", "Stamp fix with its knock-on"], ["add", "Mark an outstanding package"], ["written", "Correction written, with Undo"], ["failed", "Write failed"], ["empty", "Range has no orders"], ["loading", "Still reading"]],
+  init(preset) {
+    const s = { pk: clone(SEED), range: { ...DEFAULT_RANGE }, prevRange: undefined, handle: null, lift: null, pend: null, written: [], failNext: false, failed: false, loading: false, month: "2026-11", flash: null };
+    switch (preset) {
+      case "range": s.handle = "start"; s.month = monthOf(s.range.start); break;
+      case "lifted": s.lift = { pid: "p4", rid: "r4", tool: "move" }; break;
+      case "preview": s.lift = { pid: "p4", rid: "r4", tool: "move" }; this.act(s, "day", "2026-11-17"); break;
+      case "restamp": s.lift = { pid: "p6", rid: "r5", tool: "move" }; this.act(s, "stamp", "waiting"); break;
+      case "add": s.lift = { pid: "p3", rid: null, tool: "add" }; this.act(s, "day", "2026-11-19"); break;
+      case "written": s.lift = { pid: "p4", rid: "r4", tool: "move" }; this.act(s, "day", "2026-11-17"); this.act(s, "write"); break;
+      case "failed": s.lift = { pid: "p4", rid: "r4", tool: "move" }; this.act(s, "day", "2026-11-17"); s.failed = true; break;
+      case "empty": s.range = { start: "2026-10-19", end: "2026-10-24" }; s.prevRange = { ...DEFAULT_RANGE }; break;
+      case "loading": s.loading = true; break;
+    }
+    return s;
+  },
+  pkg(s, pid) { return s.pk.find(p => p.id === pid); },
+  stage(s, fn, userStamp, viaDay) {
+    const before = this.pkg(s, s.lift.pid), after = clone(before);
+    fn(after);
+    const lines = M.diff(before, after, userStamp);
+    s.pend = lines.length ? { pid: before.id, after, lines, userStamp, viaDay: !!viaDay } : null;
+    s.failed = false;
+  },
+  act(s, act, arg) {
+    switch (act) {
+      case "lift": { const [pid, rid] = arg.split("|"); const p = this.pkg(s, pid); s.handle = null; s.pend = null; s.failed = false; s.flash = null;
+        s.lift = { pid, rid: rid || null, tool: rid ? "move" : "add" }; s.month = monthOf(rid ? p.rec.find(r => r.id === rid).date : TODAY); break; }
+      case "putdown": s.lift = null; s.pend = null; s.failed = false; break;
+      case "putback": s.pend = null; s.failed = false; break;
+      case "tool": s.lift.tool = arg; s.pend = null; break;
+      case "day":
+        if (s.handle) { this.setRangeEnd(s, arg); break; }
+        if (!s.lift) break;
+        if (s.lift.tool === "move" && s.lift.rid) this.stage(s, p => M.moveRec(p, s.lift.rid, arg), false, true);
+        else this.stage(s, p => M.addRec(p, arg), false, true);
+        break;
+      case "strike": this.stage(s, p => M.removeRec(p, s.lift.rid)); break;
+      case "stamp": this.stage(s, p => M.setStamp(p, arg), true); break;
+      case "write":
+        if (s.failNext) { s.failed = true; s.failNext = false; break; }
+        { const before = clone(this.pkg(s, s.pend.pid)), id = "w" + (s.written.length + 1);
+          s.written.unshift({ id, pid: before.id, from: before.from, before, after: clone(s.pend.after), lines: s.pend.lines, undone: false });
+          s.pk = s.pk.map(p => p.id === before.id ? clone(s.pend.after) : p);
+          s.lift = null; s.pend = null; s.failed = false; s.flash = id; }
+        break;
+      case "retry": s.failed = false; this.act(s, "write"); break;
+      case "undo": case "redo": {
+        const w = s.written.find(x => x.id === arg), src = act === "undo" ? w.before : w.after;
+        s.pk = s.pk.map(p => p.id === w.pid ? clone(src) : p); w.undone = act === "undo"; s.flash = w.id; s.lift = null; s.pend = null; break;
+      }
+      case "handle": s.handle = s.handle === arg ? null : arg; s.lift = null; s.pend = null; if (s.handle) s.month = monthOf(s.range ? s.range[arg] : TODAY); break;
+      case "rangeAll": s.prevRange = s.range; s.range = null; s.handle = null; break;
+      case "rangeBack": { const t = s.range; s.range = s.prevRange; s.prevRange = t; break; }
+      case "month": s.month = shiftMonth(s.month, +arg); break;
+      case "failNext": s.failNext = !s.failNext; break;
+      case "loadDone": s.loading = false; break;
+    }
+  },
+  setRangeEnd(s, k) {
+    const r = s.range ? { ...s.range } : { start: "2026-10-01", end: TODAY };
+    const old = s.range ? { ...s.range } : null;
+    if (s.handle === "start") { r.start = k; if (k > r.end) r.end = k; s.handle = "end"; }
+    else { if (k < r.start) r.start = k; else r.end = k; s.handle = null; }
+    s.prevRange = old; s.range = r;
+  },
+  /* entries per day */
+  entries(s) {
+    const days = new Map();
+    const put = (d, e) => { if (!days.has(d)) days.set(d, []); days.get(d).push(e); };
+    const pend = s.pend;
+    for (const p of s.pk) {
+      if (!M.inRange(p, s.range)) continue;
+      put(p.ordered, { kind: "order", p });
+      const after = pend && pend.pid === p.id ? pend.after : null;
+      const amap = after ? new Map(after.rec.map(r => [r.id, r.date])) : null;
+      for (const r of p.rec) {
+        let note = null, strike = false;
+        if (amap) { if (!amap.has(r.id)) { strike = true; note = "Will be struck out"; } else if (amap.get(r.id) !== r.date) { strike = true; note = `Will move to ${fmt(amap.get(r.id))}`; } }
+        put(r.date, { kind: "rec", p, r, strike, note });
+      }
+      if (after) for (const r of after.rec) {
+        const old = p.rec.find(x => x.id === r.id);
+        if (!old || old.date !== r.date) put(r.date, { kind: "ghost", p, r, note: old ? `Will be written here, from ${fmt(old.date)}` : "Will be written here" });
+      }
+    }
+    for (const w of s.written) {
+      if (w.undone) continue;
+      const p = this.pkg(s, w.pid);
+      if (!M.inRange(p, s.range)) continue;
+      for (const l of w.lines) {
+        if (l.k === "moved") put(l.a, { kind: "trace", p, note: `Moved to ${fmt(l.b)}` });
+        if (l.k === "removed") put(l.a, { kind: "trace", p, note: "Struck out" });
+      }
+    }
+    if (!days.has(TODAY) && s.written.length) days.set(TODAY, []);
+    return [...days.entries()].sort((a, b) => a[0] < b[0] ? 1 : -1);
+  },
+  entry(s, e) {
+    const p = e.p, items = `${p.items} item${p.items > 1 ? "s" : ""}`;
+    if (e.kind === "order") {
+      const lifted = s.lift && s.lift.pid === p.id && !s.lift.rid;
+      const st = s.pend && s.pend.pid === p.id ? s.pend.after.stamp : p.stamp;
+      const outNote = st !== "received" ? (st === "missing" ? "ordered; flagged as never came" : "ordered; not in yet") : "ordered";
+      return `<button type="button" class="ent ${lifted ? "lifted" : ""}" ${A("lift", p.id + "|")} aria-label="${esc(p.from)}, ordered. Lift to fix">${st === "received" ? ICON.order : ICON[st]}
+        <span class="main"><span class="t">${esc(p.from)}</span><span class="s">${items}, ${outNote}</span></span></button>`;
+    }
+    if (e.kind === "rec") {
+      const lifted = s.lift && s.lift.rid === e.r.id;
+      const parts = p.rec.length > 1 ? `, part ${p.rec.indexOf(e.r) + 1} of ${p.rec.length}` : "";
+      return `<button type="button" class="ent ${lifted ? "lifted" : ""} ${e.strike ? "strike" : ""}" ${A("lift", p.id + "|" + e.r.id)} aria-label="${esc(p.from)}, came in ${fmt(e.r.date)}. Lift to fix">${ICON.received}
+        <span class="main"><span class="t">${esc(p.from)}</span><span class="s">${items} came in${parts}</span>${e.note ? `<span class="pen">${e.note}</span>` : ""}</span></button>`;
+    }
+    if (e.kind === "ghost") return `<div class="ent ghost">${ICON.received}<span class="main"><span class="t">${esc(p.from)}</span><span class="pen">${e.note}</span></span></div>`;
+    return `<div class="ent trace">${ICON.received}<span class="main"><span class="t">${esc(p.from)}</span><span class="pen">${e.note}</span></span></div>`;
+  },
+  correction(s, w) {
+    return `<div class="corr ${w.undone ? "undone" : ""} ${s.flash === w.id ? "flash" : ""}" role="status"><span class="who">Correction to ${esc(w.from)}</span>
+      <ul class="lines">${w.lines.map(l => `<li>${M.sentence(l)}</li>`).join("")}</ul>
+      <span class="rowacts"><button type="button" class="secondary" ${A(w.undone ? "redo" : "undo", w.id)}>${w.undone ? "Redo" : "Undo"}</button><span class="note">${w.undone ? "Undone; the line is back where it was." : "Written in red pen. The old line stays struck."}</span></span></div>`;
+  },
+  bookPane(s, L) {
+    let body;
+    if (s.loading) body = `<div style="padding:16px;display:flex;flex-direction:column;gap:8px"><p class="loading-msg" style="padding:0">Reading the book. Nothing is shown as empty until this ends.</p>${'<div class="skel"></div>'.repeat(4)}<button type="button" class="secondary" ${A("loadDone")}>Finish reading (mockup only)</button></div>`;
+    else {
+      const days = this.entries(s);
+      const any = s.pk.some(p => M.inRange(p, s.range));
+      body = any ? days.map(([d, es]) => {
+        const isToday = d === TODAY;
+        const corr = isToday ? s.written.map(w => this.correction(s, w)).join("") : "";
+        const x = fromKey(d);
+        return `<section class="daysec ${isToday ? "today" : ""}" aria-label="${fmt(d)}"><div class="dl"><b>${x.getUTCDate()}</b>${WD[x.getUTCDay()]} ${MO[x.getUTCMonth()]}${isToday ? "<br>today" : ""}</div>
+          <div class="ents">${es.map(e => this.entry(s, e)).join("")}${corr}${!es.length && !corr ? `<p class="foot" style="padding:12px">Nothing yet today.</p>` : ""}</div></section>`;
+      }).join("") : `<div class="empty"><span>No package was ordered from ${esc(M.rangeText(s.range))}.</span><button type="button" class="secondary" ${A("rangeAll")}>Show all dates</button></div>`;
+    }
+    const axRange = L === "ax" && !s.loading ? `<p class="foot ax-only" style="padding:12px 16px">Orders ${s.range ? `from ${fmt(s.range.start)} to ${fmt(s.range.end)}` : "on any date"}.</p>` : "";
+    return `<div class="bookhead"><h1>Day book</h1><span class="s">Newest day first. Tap a line to fix it.</span></div>
+      <div class="scroll" data-scroll="book">${axRange}${body}<div class="anno-wrap" style="padding:12px 16px">${anno("book of days; corrections in red pen")}</div></div>`;
+  },
+  dayPicker(s, L, big) {
+    const lift = s.lift, p = lift ? this.pkg(s, lift.pid) : null;
+    const cur = lift && lift.rid ? (p.rec.find(r => r.id === lift.rid) || {}).date : null;
+    const target = s.pend && s.lift ? (s.pend.lines.find(l => l.k === "moved" || l.k === "added") || {}).b : null;
+    const r = s.range;
+    const disabled = k => s.handle ? k > TODAY : (k < p.ordered || k > TODAY);
+    const cls = k => {
+      if (s.handle) return !r ? "" : (k === r.start || k === r.end) ? "edge" : (k > r.start && k < r.end) ? "inr" : "";
+      return [k === cur && target ? "was" : k === cur ? "edge" : "", k === target ? "pick" : ""].join(" ");
+    };
+    if (big || L === "ax") return calendar({ month: s.month, ax: L === "ax", label: s.handle ? "Order dates" : "Day", disabled, cls, act: "day", monthAct: "month", minMonth: "2026-09", maxMonth: monthOf(TODAY) });
+    const from = s.handle ? "2026-09-27" : addDays(p.ordered, 0);
+    return strip({ from, to: TODAY, disabled, cls, act: "day" });
+  },
+  desk(s, L, big) {
+    const ax = L === "ax";
+    let say = "", body = "", acts = "", full = false;
+    const legendBox = `<div style="display:flex;flex-wrap:wrap;gap:4px 16px" class="legend">${["received", "waiting", "missing"].map(st => `<span>${ICON[st]}${STAMP[st]}</span>`).join("")}<span>${ICON.order}Ordered</span></div>`;
+    if (s.loading) { say = "The desk opens when the book is read."; }
+    else if (s.pend) {
+      full = true;
+      const p = this.pkg(s, s.pend.pid);
+      say = `<b>${esc(p.from)}</b>: this is exactly what will be written.`;
+      body = `<ul class="lines">${s.pend.lines.map(l => `<li class="${l.also ? "also" : ""}">${M.sentence(l)}</li>`).join("")}</ul>
+        ${s.failed ? `<div class="notice" role="alert"><span>Not written. The book is unchanged and your fix is still here.</span><button type="button" class="secondary" ${A("retry")}>Try again</button></div>` : ""}
+        ${s.pend.viaDay ? `<p class="foot" style="padding:0">Wrong day? Tap another.</p>${this.dayPicker(s, L, big)}` : ""}
+        <label class="foot" style="display:flex;gap:8px;align-items:center;padding:0"><input type="checkbox" ${s.failNext ? "checked" : ""} data-act="failNext"> Mockup only: make the next write fail</label>`;
+      acts = `<button type="button" class="secondary" ${A("putback")}>Put back</button><button type="button" class="primary" ${A("write")}>Write correction</button>`;
+    } else if (s.lift) {
+      full = true;
+      const p = this.pkg(s, s.lift.pid), r = s.lift.rid ? p.rec.find(x => x.id === s.lift.rid) : null;
+      say = r ? `<b>${esc(p.from)}</b> came in on <b>${fmt(r.date)}</b>. Tap the day it really came.` : `<b>${esc(p.from)}</b>, ordered ${fmt(p.ordered)}. Tap the day it came, or fix the stamp.`;
+      const stampBtns = STAMPS.filter(st => st !== p.stamp && st !== "received").map(st => `<button type="button" class="tool" ${A("stamp", st)}>${ICON[st]}Stamp as ${STAMP[st]}</button>`).join("");
+      body = `<div class="tools">${r ? `<button type="button" class="tool" ${A("tool", "move")} aria-pressed="${s.lift.tool === "move"}">Move this date</button><button type="button" class="tool" ${A("tool", "add")} aria-pressed="${s.lift.tool === "add"}">Add a second date</button><button type="button" class="tool danger" ${A("strike")}>Strike this date</button>` : ""}${stampBtns}</div>
+        ${this.dayPicker(s, L, big)}`;
+      acts = `<button type="button" class="secondary" ${A("putdown")}>Put the line down</button>`;
+    } else if (ax && !s.handle) {
+      const r = s.range;
+      say = "";
+      body = `<button type="button" class="tool" ${A("handle", "start")}>Change order dates</button>`;
+    } else {
+      full = !!s.handle;
+      const r = s.range;
+      say = s.handle ? `Tap the ${s.handle === "start" ? "first" : "last"} order day to show.` : `Showing packages ordered ${r ? `from <b>${fmt(r.start)}</b> to <b>${fmt(r.end)}</b>` : "<b>on any date</b>"}.`;
+      body = `<div class="handles"><button type="button" class="endpt" ${A("handle", "start")} aria-pressed="${s.handle === "start"}"><span class="k">From</span><span class="v">${r ? fmt(r.start) : "Any"}</span></button>
+        <button type="button" class="endpt" ${A("handle", "end")} aria-pressed="${s.handle === "end"}"><span class="k">To</span><span class="v">${r ? fmt(r.end) : "Any"}</span></button></div>
+        ${s.handle ? this.dayPicker(s, L, big) : ""}
+        <div class="tools">${r ? `<button type="button" class="tool" ${A("rangeAll")}>All dates</button>` : ""}${s.prevRange !== undefined ? `<button type="button" class="tool" ${A("rangeBack")}>Back to ${esc(M.rangeText(s.prevRange))}</button>` : ""}${ax ? `<button type="button" class="tool" ${A("handle", s.handle)}>Close</button>` : ""}</div>
+        ${s.handle ? "" : legendBox}`;
+    }
+    return `<div class="desk ${full ? "full" : "mini"}" aria-label="Desk"><div class="deskscroll" data-scroll="desk">${say ? `<p class="say">${say}</p>` : ""}${body}${big ? `<div>${anno("desk: the day you lay a line on")}</div>` : ""}</div>${acts ? `<div class="deskacts">${acts}</div>` : ""}</div>`;
+  },
+  render(s, L) {
+    if (L === "open") {
+      return `<div class="page l book"><div class="app">${status()}${this.bookPane(s, L)}</div></div><div class="hinge" aria-hidden="true"></div>
+        <div class="page r"><div class="app">${status()}<div class="nav"><span class="grow">Desk</span></div>${this.desk(s, L, true)}</div><div class="homebar"></div></div>`;
+    }
+    return `<div class="app book">${status()}${this.bookPane(s, L)}${this.desk(s, L, false)}</div><div class="homebar"></div>`;
+  },
+};
+</script>
+<script>
+"use strict";
+/* =================== page runner =================== */
+const CONCEPT_LIST = [Tray, Book];
+const STATE = {};
+let hidden = new Set();
+function readHash() { const h = new URLSearchParams(location.hash.slice(1)); return { c: h.get("c"), s: h.get("s"), t: h.get("t"), only: h.get("only") }; }
+function setTheme(t) { const r = document.documentElement; if (t === "light" || t === "dark") r.dataset.theme = t; else delete r.dataset.theme;
+  document.querySelectorAll("[data-theme-set]").forEach(b => b.setAttribute("aria-pressed", String((t || "auto") === b.dataset.themeSet))); }
+function linkFor(c, st) { const h = readHash(); const p = new URLSearchParams(); p.set("c", c); p.set("s", st); if (h.t) p.set("t", h.t); return "#" + p.toString(); }
+
+function build() {
+  const h = readHash();
+  setTheme(h.t);
+  document.body.classList.toggle("only", !!h.only);
+  const pick = document.getElementById("concept-pick");
+  pick.innerHTML = '<span>Concepts</span>' + CONCEPT_LIST.map(C => `<button type="button" class="pill" data-hide="${C.id}" aria-pressed="${!hidden.has(C.id)}">${hidden.has(C.id) ? "Show" : "Hide"} ${C.name}</button>`).join("");
+  for (const C of CONCEPT_LIST) {
+    const sec = document.getElementById("concept-" + C.id);
+    sec.hidden = hidden.has(C.id) || (!!h.c && h.c !== C.id && !!h.only);
+    sec.querySelector(".concept-head").innerHTML = `<h2>${C.name}</h2><p>${C.idea}</p>
+      <div class="links">${C.states.map(([k, label]) => `<a href="${linkFor(C.id, k)}">${label}</a>`).join("")}</div>`;
+    for (const L of LAYOUTS) {
+      const fw = sec.querySelector(`[data-frame="${L.id}"]`);
+      fw.hidden = !!h.only && h.only !== L.id;
+      fw.querySelector(".frame-cap").textContent = L.cap;
+      fw.querySelector(".scr").innerHTML = "";
+    }
+    STATE[C.id] = C.init(h.c === C.id ? h.s : null);
+    draw(C);
+  }
+  if (h.c && !h.only) { const el = document.getElementById("concept-" + h.c); if (el) el.scrollIntoView(); }
+}
+for (const C of CONCEPT_LIST) document.getElementById("concept-" + C.id).addEventListener("click", ev => onAct(C, ev));
+function draw(C) {
+  const s = STATE[C.id];
+  document.querySelectorAll(`.scr[data-concept="${C.id}"]`).forEach(scr => {
+    const keep = {};
+    scr.querySelectorAll("[data-scroll]").forEach(el => keep[el.dataset.scroll] = [el.scrollTop, el.scrollLeft]);
+    const hadStrip = !!keep.strip;
+    scr.innerHTML = C.render(s, scr.dataset.layout);
+    scr.querySelectorAll("[data-scroll]").forEach(el => {
+      const k = keep[el.dataset.scroll];
+      if (k) { el.scrollTop = k[0]; el.scrollLeft = k[1]; }
+      else if (el.dataset.stripEnd) { const p = el.querySelector(".pick, .was, .edge"); el.scrollLeft = p ? p.offsetLeft - el.clientWidth / 2 : el.scrollWidth; }
+    });
+  });
+}
+function onAct(C, ev) {
+  const b = ev.target.closest("[data-act]");
+  if (!b || b.disabled) return;
+  const scr = b.closest(".scr");
+  if (!scr) return;
+  C.act(STATE[C.id], b.dataset.act, b.dataset.arg, scr.dataset.layout);
+  draw(C);
+}
+document.addEventListener("click", ev => {
+  const t = ev.target.closest("[data-theme-set]");
+  if (t) { const h = new URLSearchParams(location.hash.slice(1)); if (t.dataset.themeSet === "auto") h.delete("t"); else h.set("t", t.dataset.themeSet); history.replaceState(null, "", "#" + h.toString()); setTheme(h.get("t")); return; }
+  const hd = ev.target.closest("[data-hide]");
+  if (hd) { const id = hd.dataset.hide; hidden.has(id) ? hidden.delete(id) : hidden.add(id); build(); return; }
+  if (ev.target.id === "anno-toggle") { const on = document.body.classList.toggle("no-anno"); ev.target.setAttribute("aria-pressed", String(!on)); }
+});
+window.addEventListener("hashchange", build);
+build();
+</script>
+</body>
+</html>

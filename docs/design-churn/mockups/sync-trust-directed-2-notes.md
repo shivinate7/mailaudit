@@ -21,7 +21,7 @@ The person's question: "Did my phone and my laptop actually agree?" Both concept
 - Theme: one. The native app is held to light (`design-parchment-ledger`).
 - Data shapes: the merge sentence is `mergeSummary` (`src/merge-rules.mjs`), word for word. Stats are its seven counts. Rows are Recent entries (`src/recent-rules.mjs`: kind, key, before, after, at). The kept-copy sentence is `LedgerNotice.damagedLine`. The Sync row and panel copy is `SyncPanel` (ManifestKit).
 - Apple pages read 2026-11-21, each answered 200: Layout (safe areas, size classes), Typography (Dynamic Type tables), Accessibility (44 x 44 pt controls, 11 pt minimum text, text to 200 percent), Buttons (44 pt hit region), Sheets, Lists and tables, Tab bars, Toolbars.
-- Measured in headless Chrome on this page: 59 frames, 354 scripted taps, no script error. No element crosses the fold. Every button is at least 44 x 44 pt at the default size.
+- Measured in headless Chrome on this page: 59 frames, 354 scripted taps, no script error. No element crosses the fold, the share sheet open included. Every button is at least 44 x 44 pt at the default size.
 
 ## Items
 
@@ -45,7 +45,7 @@ The person's question: "Did my phone and my laptop actually agree?" Both concept
 
 6. **Counts are whole; rows may not be** (`#s=uncounted`). A sync's counts come from the server's `stats`. Recent may name fewer changes: it keeps 14 days and 200 rows, an older build writes none, and applies and restores write none. The receipt and the rule show the server's counts, and a manila line says how many changes have no row. Gain: the feed never under-reports (`ux-statements-are-true`). Loss: one more line in that case. Owner grant: no.
 
-7. **The agreement slot.** A fixed 44 pt slot at the top of Recent (120 pt at AX5, short words) reads `workerSyncedAt`: "Both devices agreed with the server at 14:32". Stale: manila, "Last agreed with the server Nov 16, 9:12 AM". The slot's height never changes, so a change of words moves no row. "Both devices" is true only when the other device's latest change has come in; the server holds both, so the last agreement after the other device's last POST makes it true. Unmeasured whether the client can tell that; if not, the words become "This phone agreed with the server at 14:32". Owner grant: no.
+7. **The agreement slot.** A fixed 44 pt slot at the top of Recent (120 pt at AX5, short words) reads `workerSyncedAt`: "This phone agreed with the server at 14:32". Stale: manila, "Last agreed with the server Nov 16, 9:12 AM". The slot's height never changes, so a change of words moves no row. It speaks for this phone only: the clock is device-local and not in the merge (`ruled-head-stale-clock-agreement`), so one device cannot prove the other has nothing unsent. The other device's side is the time on the newest receipt or rule. Owner grant: no.
 
 8. **Frozen at open** (`#s=frozen`). A sync that lands while Recent is open adds no row, as Recent freezes its rows (`no-layout-shift-under-pointer`). The slot changes its words to "Another sync landed at 14:35" and offers Show it, the one act that adds the rows. Gain: nothing slides under the thumb, and the person still learns that the screen is behind. Loss: one tap to see it. Owner grant: no.
 
@@ -87,6 +87,8 @@ The person's question: "Did my phone and my laptop actually agree?" Both concept
 
 Heuristics, 0 to 4: status 4, real-world match 3, control and freedom 3, consistency 3, error prevention 3, recognition 3, efficiency 2, minimalism 3, error recovery 4, help n/a (no help surface). Total 28/36.
 
+- Fixed: the slot said "Both devices agreed", a claim one device cannot prove; it now speaks for this phone (item 7).
+- Fixed: on the open Duo the share sheet spanned the fold; it now opens on the page that holds Share.
 - Fixed: the sync rules repeated "Agreed" under the slot's "agreed" on every rule; rules now read "Sync 14:32", and only the stale rule reads "Last agreed".
 - Fixed: the amber "only here" label wrapped in a folded column and cut the seller line; the label stays, and the amber edge and VoiceOver label carry the state.
 - Fixed: the kept row sat above a later sync; rows now run by time.
@@ -99,4 +101,4 @@ Heuristics, 0 to 4: status 4, real-world match 3, control and freedom 3, consist
 
 - The Owner grant items: 3, 4, 5, 14, 15.
 - The large phone has no written size. Which size should the next pass use?
-- Critique questions: Should Recent's top slot say "Both devices" only when the client can prove the other device's last change came in (item 7)? Is the hybrid (receipts folded, facing pages open) worth its two layouts (item 2)?
+- Critique question: Is the hybrid (receipts folded, facing pages open) worth its two layouts (item 2)?

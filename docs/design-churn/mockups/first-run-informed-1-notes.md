@@ -109,6 +109,31 @@ the file goes in on a computer.
   the check reads app content type as chrome type. Chrome (status bar, sheets, file picker) uses
   `-apple-system`.
 
+- Self-applied design-review structure verdict: Ruled steps keeps today's tabs and first screen
+  (`same`); Practice package changes the first screen and the way orders enter (`new`).
+- Click-through (headless Chrome): both concepts run end to end in the folded frame; a tick moves no
+  visible element at default size or at AX5.
+
+## Critique (impeccable, native method: design review only)
+
+Fixed in this mockup:
+
+1. P1: the sticky bring-in block covered the practice slot, the one place the words are taught. It now
+   sits in the flow under the slot.
+2. P1: at AX5 a hint slot grew when its text changed, a shift under the finger. Each slot now holds all
+   its messages in one cell, so it takes the tallest one's height at every size.
+3. P2: at AX5 the step value and the package pill sat over the title. Rows and heads now wrap.
+4. P2: the RECEIVED stamp floated over an empty pill box. It now lands in the pill's slot.
+5. P2: the open Duo list kept "5 left" after a tick. The list now reads the ticks.
+6. P2: Practice package's Ledger tab drew the Tally empty line. It now draws the Data rows and the
+   Help row that keeps the practice package.
+
+Left open:
+
+7. P2: on the folded Duo, Ruled steps shows "Set up" twice in one view (step 1 and the Sync row).
+   See item 14.
+8. P3: the reserved hint slot holds two lines of manila for a one-line message at default size.
+
 ## Input needed
 
 - Item 4, web phone code: Owner grant: yes.
@@ -116,3 +141,7 @@ the file goes in on a computer.
 - Item 6, open on Packages while empty: Owner grant: yes.
 - How a new person, not the owner, gets a device key at all. No in-app flow issues one today
   (`nothing-recovers-without-the-key`). Both concepts assume the key already sits on the computer.
+- Critique questions: Should the three words stay on screen after the first day, or move to Help
+  with the steps? Is a practice package that is never saved worth a second code path, or should the
+  first real package carry the teaching instead? Should the web app, not the phone, be where the
+  first-run steps live, since the file is there?

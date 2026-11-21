@@ -1,0 +1,1061 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>First Run Concepts</title>
+<style>
+/* Tokens. Spacing is the house 4 px step (tokens.md). Colour, type sizes and leading are the
+   designer's own choice where tokens.md gives no value; type sizes are the iOS Dynamic Type
+   "Large (default)" and "AX5" tables from the Apple typography page (read 2026-11-21). */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --radius: 8px;
+  --tap: 44px;
+
+  --t-large: 34px; --l-large: 41px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap: 12px; --l-cap: 16px;
+  --stamp: 44px;
+
+  --surface: #EEF1F5;
+  --surface-raised: #FFFFFF;
+  --surface-sunk: #E2E7EE;
+  --ink: #18202C;
+  --ink-muted: #556173;
+  --line: #CDD5DF;
+  --accent: #3A3E9C;
+  --accent-ink: #FFFFFF;
+  --accent-soft: #E3E4F6;
+  --overdue: #9A4A0C;
+  --overdue-soft: #F7E7D8;
+  --envelope: #6B5A2E;
+  --envelope-soft: #EFE8D6;
+  --tab-glass: rgba(255,255,255,0.86);
+  --scrim: rgba(24,32,44,0.36);
+  --page: #D9DEE6;
+  --page-ink: #18202C;
+  --label: #B0167A;
+  --hinge: #20262F;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #131820; --surface-raised: #1C232E; --surface-sunk: #0E1218;
+    --ink: #E6EAF0; --ink-muted: #9AA5B4; --line: #2E3846;
+    --accent: #A6ABFF; --accent-ink: #141832; --accent-soft: #2A2E5A;
+    --overdue: #F2A866; --overdue-soft: #3B2715;
+    --envelope: #D9C48C; --envelope-soft: #332B17;
+    --tab-glass: rgba(28,35,46,0.88); --scrim: rgba(0,0,0,0.5);
+    --page: #0B0E13; --page-ink: #E6EAF0; --label: #FF7AD0; --hinge: #000000;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #131820; --surface-raised: #1C232E; --surface-sunk: #0E1218;
+  --ink: #E6EAF0; --ink-muted: #9AA5B4; --line: #2E3846;
+  --accent: #A6ABFF; --accent-ink: #141832; --accent-soft: #2A2E5A;
+  --overdue: #F2A866; --overdue-soft: #3B2715;
+  --envelope: #D9C48C; --envelope-soft: #332B17;
+  --tab-glass: rgba(28,35,46,0.88); --scrim: rgba(0,0,0,0.5);
+  --page: #0B0E13; --page-ink: #E6EAF0; --label: #FF7AD0; --hinge: #000000;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--page-ink);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--t-body); line-height: var(--l-body);
+  -webkit-font-smoothing: antialiased;
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Review page chrome (not part of any screen). */
+.sample {
+  background: var(--overdue); color: var(--surface-raised);
+  padding: var(--space-2) var(--space-4); text-align: center;
+  font-size: var(--t-sub); line-height: var(--l-sub); font-weight: 600;
+}
+.review { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-6) var(--space-4) var(--space-12); max-width: 2200px; margin-inline: auto; }
+.intro { display: flex; flex-direction: column; gap: var(--space-3); max-width: 70ch; }
+.intro h1 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); }
+.intro p { margin: 0; color: var(--page-ink); opacity: .85; }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.controls .group { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; padding: var(--space-1); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface); }
+.controls .group > span { padding-inline: var(--space-2); font-size: var(--t-foot); color: var(--ink-muted); }
+.chip { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid transparent; background: transparent; color: var(--ink); font-size: var(--t-foot); }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.hidden-list { display: flex; gap: var(--space-2); flex-wrap: wrap; align-items: center; font-size: var(--t-foot); }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; justify-content: space-between; border-top: 2px solid var(--line); padding-top: var(--space-4); }
+.concept-head h2 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); }
+.concept-head p { margin: 0; max-width: 72ch; }
+.concept-head .kind { font-size: var(--t-foot); color: var(--page-ink); opacity: .75; }
+.hide-btn { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); color: var(--ink); font-size: var(--t-foot); }
+.stage { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+figcaption { font-size: var(--t-foot); line-height: var(--l-foot); max-width: 466px; }
+
+/* Device frames. 1 CSS px = 1 pt. */
+.device {
+  position: relative; overflow: hidden; background: var(--surface); color: var(--ink);
+  box-sizing: content-box;
+  font-size: var(--t-body); line-height: var(--l-body);
+  border: 1px solid var(--line); border-radius: 18px;
+  box-shadow: 0 0 0 6px var(--hinge);
+}
+.duo-folded { width: 466px; height: 678px; }
+.duo-open { width: 951px; height: 669px; display: flex; background: var(--hinge); }
+.duo-open > .pg { position: relative; overflow: hidden; width: 455.5px; height: 100%; background: var(--surface); flex: none; }
+.duo-open > .hinge { width: 40px; flex: none; background: var(--hinge); }
+.phone { width: 440px; height: 900px; resize: both; min-width: 320px; min-height: 560px; max-width: 700px; }
+.device .screen, .duo-open > .pg { display: flex; flex-direction: column; }
+.device .screen { position: absolute; inset: 0; }
+
+/* Biggest accessibility size: AX5 from the Apple table. */
+.ax5 {
+  --t-large: 60px; --l-large: 70px;
+  --t-title2: 56px; --l-title2: 66px;
+  --t-title3: 55px; --l-title3: 65px;
+  --t-head: 53px; --l-head: 62px;
+  --t-body: 53px; --l-body: 62px;
+  --t-callout: 51px; --l-callout: 60px;
+  --t-sub: 49px; --l-sub: 58px;
+  --t-foot: 44px; --l-foot: 52px;
+  --t-cap: 43px; --l-cap: 51px;
+  --stamp: 72px;
+}
+
+/* Screen parts. */
+.bar { flex: none; display: flex; flex-direction: column; gap: var(--space-2);
+  padding: calc(env(safe-area-inset-top, 0px) + var(--space-6)) var(--space-4) var(--space-2); }
+.bar-row { display: flex; align-items: center; gap: var(--space-2); justify-content: space-between; min-height: var(--tap); }
+.large-title { margin: 0; font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; overflow-wrap: anywhere; }
+.std-title { margin: 0; font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; text-align: center; flex: 1; overflow-wrap: anywhere; }
+.icon-btn { min-width: var(--tap); min-height: var(--tap); border: 0; background: transparent; color: var(--accent); border-radius: 22px; display: grid; place-items: center; padding: 0 var(--space-2); font-size: var(--t-body); }
+.text-btn { min-height: var(--tap); min-width: var(--tap); border: 0; background: transparent; color: var(--accent); padding: 0 var(--space-2); font-size: var(--t-body); line-height: var(--l-body); text-align: left; }
+.scroll { flex: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; }
+.content { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom, 0px) + 112px); }
+.content.short-pad { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-6)); }
+.search { display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); padding: 0 var(--space-3); border-radius: 12px; background: var(--surface-sunk); }
+.search input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; font-size: var(--t-body); line-height: var(--l-body); min-height: var(--tap); }
+.search input::placeholder { color: var(--ink-muted); }
+.muted { color: var(--ink-muted); }
+.sub { font-size: var(--t-sub); line-height: var(--l-sub); }
+.foot { font-size: var(--t-foot); line-height: var(--l-foot); }
+.cap { font-size: var(--t-cap); line-height: var(--l-cap); }
+.head { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
+.title3 { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 600; margin: 0; }
+.num { font-variant-numeric: tabular-nums; }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-1 { display: flex; flex-direction: column; gap: var(--space-1); }
+.stack-2 { display: flex; flex-direction: column; gap: var(--space-2); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.group-list { display: flex; flex-direction: column; border-radius: 12px; background: var(--surface-raised); overflow: hidden; }
+.group-list > * + * { border-top: 1px solid var(--line); }
+.sec-head { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--ink-muted); padding-inline: var(--space-4); margin: 0; font-weight: 600; }
+.sec-head.overdue { color: var(--overdue); }
+.btn { min-height: 50px; border-radius: 12px; border: 0; padding: var(--space-3) var(--space-4); background: var(--accent); color: var(--accent-ink); font-weight: 600; font-size: var(--t-body); line-height: var(--l-body); width: 100%; }
+.btn.secondary { background: var(--accent-soft); color: var(--accent); }
+.btn.quiet { background: transparent; color: var(--accent); }
+.btn:disabled { opacity: .45; cursor: not-allowed; }
+.para { margin: 0; overflow-wrap: anywhere; }
+
+/* Package row and card row. */
+.pkg { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); min-height: 64px; width: 100%; border: 0; background: transparent; text-align: left; }
+.pkg[aria-current="true"] { background: var(--accent-soft); }
+.pkg .who { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.pkg .who b { font-weight: 600; overflow-wrap: anywhere; }
+.pkg .meta { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); }
+.pkg .count { flex: none; display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.dots { display: flex; gap: 3px; flex-wrap: wrap; justify-content: flex-end; max-width: 88px; }
+.dot { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--ink-muted); }
+.dot.on { background: var(--accent); border-color: var(--accent); }
+.lost-mark { width: 4px; align-self: stretch; border-radius: 2px; background: var(--overdue); flex: none; }
+.card-row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); min-height: 60px; }
+.card-row .what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.card-row .what b { font-weight: 500; overflow-wrap: anywhere; }
+.card-row.hl { background: var(--envelope-soft); }
+.ax5 .pkg, .ax5 .card-row { flex-wrap: wrap; }
+.ax5 .pkg .count { align-items: flex-start; }
+.ax5 .card-row .what, .ax5 .pkg .who, .ax5 .line .body > .what { flex-basis: 100%; }
+.ax5 .card-row { justify-content: flex-end; }
+.ax5 .card-row .what b, .ax5 .pkg .who b { overflow-wrap: normal; word-break: normal; hyphens: auto; }
+.ax5 .dot { width: 14px; height: 14px; }
+.ax5 .dots { max-width: none; justify-content: flex-start; }
+
+/* The stamp: received is drawn as a postmark, never a word. */
+.stamp { width: var(--stamp); height: var(--stamp); min-width: var(--tap); min-height: var(--tap); flex: none; border-radius: 50%; border: 2px dashed var(--ink-muted); background: transparent; display: grid; place-items: center; padding: 0; color: var(--ink-muted); }
+.stamp svg { width: 60%; height: 60%; }
+.stamp.on { border: 3px double var(--accent); color: var(--accent); background: var(--accent-soft); transform: rotate(-8deg); }
+.stamp .d { font-size: 10px; line-height: 11px; font-weight: 700; text-align: center; }
+.ax5 .stamp .d { font-size: 15px; line-height: 16px; }
+.undo { min-height: var(--tap); border: 0; background: transparent; color: var(--accent); font-weight: 600; padding: 0 var(--space-2); font-size: var(--t-sub); }
+@media (prefers-reduced-motion: no-preference) { .stamp.on.fresh { animation: thunk 260ms ease-out; } }
+@keyframes thunk { 0% { transform: scale(1.35) rotate(-14deg); opacity: .3; } 100% { transform: rotate(-8deg); opacity: 1; } }
+
+/* Tab bar: floats above content at the bottom (Apple tab bars page). */
+.tabbar { position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-4)); display: flex; gap: var(--space-1); padding: var(--space-1); border-radius: 32px; background: var(--tab-glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--line); z-index: 5; }
+.tabbar button { flex: 1; min-height: 52px; border: 0; background: transparent; border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 10px; line-height: 12px; color: var(--ink-muted); }
+.tabbar button svg { width: 22px; height: 22px; }
+.tabbar button[aria-selected="true"] { color: var(--accent); background: var(--accent-soft); }
+.ax5 .tabbar button { font-size: 0; }
+.ax5 .tabbar button svg { width: 34px; height: 34px; }
+
+/* Sheets. Each sheet lives inside one screen or one page, never across the hinge. */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 10; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-height: 92%; z-index: 11; background: var(--surface); border-radius: 16px 16px 0 0; display: flex; flex-direction: column; box-shadow: 0 -8px 30px rgba(0,0,0,.2); }
+.sheet-bar { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) 0; min-height: 56px; }
+.sheet-bar .std-title { flex: 1; }
+.sheet-bar .spacer { min-width: 72px; }
+.sheet .content { padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--space-6)); }
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-2) auto 0; flex: none; }
+
+.choice { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); min-height: 64px; width: 100%; text-align: left; border: 0; background: transparent; }
+.choice .what { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.choice .what b { font-weight: 600; overflow-wrap: anywhere; }
+.glyph { width: 36px; height: 36px; border-radius: 10px; display: grid; place-items: center; background: var(--accent-soft); color: var(--accent); flex: none; }
+.glyph svg { width: 20px; height: 20px; }
+.ax5 .glyph { width: 60px; height: 60px; }
+.ax5 .glyph svg { width: 34px; height: 34px; }
+.chev { color: var(--ink-muted); flex: none; }
+
+/* The three words. Drawn, not only written. */
+.words { display: flex; flex-direction: column; gap: var(--space-2); }
+.word { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3); border-radius: 12px; background: var(--surface-raised); }
+.word .pic { width: 52px; height: 40px; flex: none; color: var(--ink); }
+.word .pic svg { width: 100%; height: 100%; }
+.ax5 .word { flex-direction: column; }
+.ax5 .word .pic { width: 104px; height: 80px; }
+.word p { margin: 0; overflow-wrap: anywhere; }
+
+.notice { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: 12px; background: var(--surface-raised); }
+.notice.warn { background: var(--overdue-soft); }
+.notice.env { background: var(--envelope-soft); }
+.progress { height: 6px; border-radius: 3px; background: var(--surface-sunk); overflow: hidden; }
+.progress > i { display: block; height: 100%; background: var(--accent); }
+details summary { min-height: var(--tap); display: flex; align-items: center; color: var(--accent); cursor: pointer; list-style: none; }
+details summary::-webkit-details-marker { display: none; }
+.machine { margin: 0; padding: var(--space-3); border-radius: var(--radius); background: var(--surface-sunk); font-size: var(--t-foot); line-height: var(--l-foot); overflow-wrap: anywhere; white-space: pre-wrap; }
+
+.steps { display: flex; flex-direction: column; gap: 0; border-radius: 12px; background: var(--surface-raised); overflow: hidden; }
+.step { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); min-height: 56px; }
+.step + .step { border-top: 1px solid var(--line); }
+.step .n { width: 28px; height: 28px; border-radius: 50%; border: 2px solid var(--ink-muted); display: grid; place-items: center; font-size: var(--t-foot); font-weight: 700; flex: none; color: var(--ink-muted); }
+.step.done .n { border-color: var(--accent); background: var(--accent); color: var(--accent-ink); }
+.step.now .n { border-color: var(--accent); color: var(--accent); }
+.step .what { flex: 1; min-width: 0; }
+.step.done .what { color: var(--ink-muted); }
+.ax5 .step .n { width: 56px; height: 56px; }
+
+.empty { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6) var(--space-4); }
+.empty .para { font-size: var(--t-title3); line-height: var(--l-title3); }
+.tip { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-2) var(--space-3); margin: 0 var(--space-4) var(--space-2); border-radius: var(--radius); background: var(--accent-soft); color: var(--ink); font-size: var(--t-sub); line-height: var(--l-sub); }
+
+/* Tape concept. */
+.summary { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pill { min-height: var(--tap); display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border-radius: 22px; border: 1px solid var(--line); background: var(--surface-raised); font-size: var(--t-sub); line-height: var(--l-sub); color: var(--ink); }
+.pill.overdue { border-color: var(--overdue); color: var(--overdue); background: var(--overdue-soft); }
+.tape { display: flex; flex-direction: column; gap: 0; padding: var(--space-2) var(--space-4) var(--space-4); }
+.line { position: relative; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) 0 var(--space-3) var(--space-6); }
+.line::before { content: ""; position: absolute; left: 7px; top: 0; bottom: 0; border-left: 2px dotted var(--line); }
+.line::after { content: ""; position: absolute; left: 2px; top: var(--space-4); width: 12px; height: 12px; border-radius: 50%; background: var(--surface); border: 2px solid var(--ink-muted); }
+.line.k-tick::after { border-color: var(--accent); background: var(--accent); }
+.line.k-env::after { border-color: var(--envelope); background: var(--envelope); border-radius: 2px; }
+.line.k-warn::after { border-color: var(--overdue); }
+.line .when { font-size: var(--t-cap); line-height: var(--l-cap); color: var(--ink-muted); }
+.line .body { display: flex; gap: var(--space-3); align-items: center; }
+.line .body > .what { flex: 1; min-width: 0; overflow-wrap: anywhere; }
+.ax5 .line .body { flex-wrap: wrap; }
+.composer { flex: none; position: relative; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom, 0px) + var(--space-4)); background: var(--surface); border-top: 1px solid var(--line); z-index: 4; }
+.composer .row { display: flex; gap: var(--space-2); align-items: center; }
+.composer .search { flex: 1; min-width: 0; }
+.ax5 .composer .row { flex-direction: column; align-items: stretch; }
+.summary-inline { display: none; }
+.ax5 .bar .summary { display: none; }
+.ax5 .summary-inline { display: flex; padding: var(--space-2) 0; }
+.ax5 .matches { max-height: 70%; }
+.env-btn { min-height: var(--tap); min-width: var(--tap); border-radius: 12px; border: 1px solid var(--envelope); background: var(--envelope-soft); color: var(--envelope); display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-3); font-size: var(--t-sub); }
+.matches { flex: none; max-height: 52%; overflow-y: auto; border-top: 1px solid var(--line); background: var(--surface-raised); display: flex; flex-direction: column; }
+.matches > * + * { border-top: 1px solid var(--line); }
+.strip { display: flex; flex-direction: column; background: var(--surface-raised); }
+.strip-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); }
+.strip-head .what { flex: 1; min-width: 0; }
+
+/* Sample labels: dashed "New:" outlines. */
+.labels [data-new] { outline: 2px dashed var(--label); outline-offset: -2px; position: relative; }
+.labels [data-new]::before { content: "New: " attr(data-new); position: absolute; top: 2px; right: 4px; z-index: 3; font-size: 10px; line-height: 13px; font-weight: 600; padding: 1px 5px; border-radius: 4px; background: var(--label); color: #fff; pointer-events: none; white-space: nowrap; max-width: calc(100% - 8px); overflow: hidden; text-overflow: ellipsis; }
+.ax5.labels [data-new]::before, .labels .ax5 [data-new]::before { display: none; }
+
+@media (max-width: 520px) {
+  .review { padding-inline: var(--space-4); }
+  .stage { gap: var(--space-6); }
+}
+</style>
+</head>
+<body class="labels">
+<div class="sample" role="note">Sample. No figure, seller, card or order on this page is real.</div>
+<main class="review">
+  <div class="intro">
+    <h1>First run: two concepts</h1>
+    <p>Designer kind: blind. Designer first-run-blind-1. Each concept is drawn on the Duo folded, the Duo open, a large phone, and the Duo folded at the biggest accessibility text size. Every tap works. The state buttons jump all frames to one moment; pressing inside a frame moves on from there.</p>
+    <div class="controls">
+      <div class="group" role="group" aria-label="State"><span>State</span><span id="state-btns" class="cluster"></span></div>
+      <div class="group" role="group" aria-label="Theme"><span>Theme</span>
+        <button class="chip" data-theme-btn="auto">System</button>
+        <button class="chip" data-theme-btn="light">Light</button>
+        <button class="chip" data-theme-btn="dark">Dark</button>
+      </div>
+      <div class="group"><button class="chip" id="labels-btn" aria-pressed="true">Show New labels</button></div>
+    </div>
+    <div class="hidden-list" id="hidden-list" hidden></div>
+  </div>
+  <div id="concepts" class="stack" style="gap:var(--space-12)">
+  <section class="concept" id="concept-checklist" data-concept="checklist">
+    <div class="concept-head"><div class="stack-1"><h2>Guided checklist</h2><p>A list you work down. The first screen holds one sentence and one button. After the file comes in, three numbered steps sit on top of the real list and tick off as you go, so the person learns the tool by using it. Tabs: Waiting, In hand, Envelopes.</p><span class="kind">Designer kind: blind</span></div>
+    <button class="hide-btn" data-hide="checklist">Hide this option</button></div>
+    <div class="stage">
+      <figure><figcaption>Duo, folded: 466 by 678 pt, one screen in one hand.</figcaption>
+        <div class="device duo-folded" data-device="iphone-duo-folded" data-frame="checklist-folded" data-concept="checklist" id="choice-checklist"><div class="screen"><noscript><p class="para" style="padding:var(--space-4)">This mockup needs JavaScript to draw its screens.</p></noscript></div></div></figure>
+      <figure><figcaption>Duo, open: 951 by 669 pt. Two pages; nothing crosses the hinge (x 455.5 to 495.5).</figcaption>
+        <div class="device duo-open" data-device="iphone-duo-unfolded" data-frame="checklist-open" data-concept="checklist"><div class="pg" data-page="left"></div><div class="hinge" aria-hidden="true"></div><div class="pg" data-page="right"></div></div></figure>
+      <figure><figcaption>Large phone. No size is written for it; this frame starts at 440 by 900 and you can drag its corner to resize.</figcaption>
+        <div class="device phone" data-device="iphone-large" data-frame="checklist-phone" data-concept="checklist"><div class="screen"></div></div></figure>
+      <figure><figcaption>Duo, folded, at the biggest accessibility text size (AX5: body 53 pt).</figcaption>
+        <div class="device duo-folded ax5" data-device="iphone-duo-folded-ax5" data-frame="checklist-ax5" data-concept="checklist"><div class="screen"></div></div></figure>
+    </div>
+  </section>
+  <section class="concept" id="concept-tape" data-concept="tape">
+    <div class="concept-head"><div class="stack-1"><h2>Mail tape</h2><p>Bold. No tabs and no list as home. Home is a tape of every step taken, newest at the bottom, with one field in thumb reach that asks who the mail in your hand is from. Every stamp, import and envelope prints a line, so nothing is ever wiped and each step can be undone in place.</p><span class="kind">Designer kind: blind</span></div>
+    <button class="hide-btn" data-hide="tape">Hide this option</button></div>
+    <div class="stage">
+      <figure><figcaption>Duo, folded: 466 by 678 pt, one screen in one hand.</figcaption>
+        <div class="device duo-folded" data-device="iphone-duo-folded" data-frame="tape-folded" data-concept="tape" id="choice-tape"><div class="screen"><noscript><p class="para" style="padding:var(--space-4)">This mockup needs JavaScript to draw its screens.</p></noscript></div></div></figure>
+      <figure><figcaption>Duo, open: 951 by 669 pt. Two pages; nothing crosses the hinge (x 455.5 to 495.5).</figcaption>
+        <div class="device duo-open" data-device="iphone-duo-unfolded" data-frame="tape-open" data-concept="tape"><div class="pg" data-page="left"></div><div class="hinge" aria-hidden="true"></div><div class="pg" data-page="right"></div></div></figure>
+      <figure><figcaption>Large phone. No size is written for it; this frame starts at 440 by 900 and you can drag its corner to resize.</figcaption>
+        <div class="device phone" data-device="iphone-large" data-frame="tape-phone" data-concept="tape"><div class="screen"></div></div></figure>
+      <figure><figcaption>Duo, folded, at the biggest accessibility text size (AX5: body 53 pt).</figcaption>
+        <div class="device duo-folded ax5" data-device="iphone-duo-folded-ax5" data-frame="tape-ax5" data-concept="tape"><div class="screen"></div></div></figure>
+    </div>
+  </section>
+  </div>
+</main>
+
+<script>
+(function () {
+"use strict";
+
+/* ---------- Sample data ---------- */
+const TODAY = new Date(2026, 10, 21);
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fmtDate(d) { return d.getDate() + " " + MON[d.getMonth()]; }
+function money(c) { return "$" + (c / 100).toFixed(2); }
+function rng(seed) { return function () { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; }; }
+const SA = ["Northgate","Copper Kettle","Blue Heron","Ridgeline","Tinderbox","Old Mill","Lantern Row","Saltmarsh","Juniper","Brass Owl","Fennel Street","Harbor Light","Quarry Hill","Thistle","Wren and Ash"];
+const SB = ["Cards","Games","Collectibles","Card Shop","Hobby"];
+const SELLERS = [];
+for (let i = 0; SELLERS.length < 63; i++) { const n = SA[i % SA.length] + " " + SB[Math.floor(i / SA.length) % SB.length]; if (!SELLERS.includes(n)) SELLERS.push(n); }
+const CA = ["Ember","Tidal","Hollow","Gilded","Briar","Storm","Ashen","Verdant","Silent","Crimson","Frost","Iron"];
+const CB = ["Drake","Sage","Warden","Familiar","Pact","Herald","Rootling","Oracle","Courier","Sentinel"];
+const CARDS = [];
+CA.forEach(a => CB.forEach(b => CARDS.push(a + " " + b)));
+
+function makePackages(n, seed, startId, minAge, maxAge) {
+  const r = rng(seed); const out = [];
+  for (let i = 0; i < n; i++) {
+    const age = minAge + Math.floor(r() * (maxAge - minAge + 1));
+    const d = new Date(TODAY); d.setDate(d.getDate() - age);
+    const k = 1 + Math.floor(r() * r() * 9);
+    const cards = [];
+    for (let j = 0; j < k; j++) {
+      cards.push({ id: "c" + (startId + i) + "-" + j, name: CARDS[Math.floor(r() * CARDS.length)], qty: r() < .15 ? 2 : 1, price: 10 + Math.floor(r() * r() * 440) });
+    }
+    out.push({ id: "p" + (startId + i), seller: SELLERS[Math.floor(r() * SELLERS.length)], date: d, age: age, cards: cards });
+  }
+  return out;
+}
+const BASE = makePackages(214, 7, 1, 1, 40);
+const MORE = makePackages(9, 99, 400, 0, 1);
+const ALL_CARDS = pk => pk.reduce((s, p) => s + p.cards.length, 0);
+const SELLER_COUNT = pk => new Set(pk.map(p => p.seller)).size;
+const LOST_DAYS = 21;
+
+/* "A day later": old packages stamped by the person, three left untouched, recent ones partly in. */
+function dayLaterTicks(pkgs) {
+  const t = {}; let keptLost = 0; const r = rng(3);
+  pkgs.forEach(p => {
+    if (p.age >= LOST_DAYS) {
+      if (keptLost < 3 && p.age >= 26) { keptLost++; return; }
+      p.cards.forEach(c => t[c.id] = { at: new Date(TODAY.getTime() - 86400000), bulk: true });
+    } else if (p.age >= 6 && r() < .55) {
+      p.cards.forEach((c, i) => { if (i === 0 || r() < .7) t[c.id] = { at: new Date(TODAY.getTime() - 86400000) }; });
+    }
+  });
+  return t;
+}
+
+/* ---------- State ---------- */
+const STATES = [
+  ["empty", "First screen"], ["add", "Add file"], ["importing", "Bringing in"], ["failed", "Wrong file"],
+  ["imported", "Just imported"], ["ticked", "First card"], ["loaded", "A day later"], ["envelope", "Envelope"], ["merge", "Second import"]
+];
+function fresh() {
+  return { phase: "empty", pkgs: [], ticks: {}, sheet: null, tab: "waiting", open: null, query: "", last: null, fresh: null,
+    progress: 0, oldAsked: false, stepsDone: false, words: false, envs: [], envDraft: "", hl: null, tape: [], merged: null, drawer: false, help: false };
+}
+const S = { checklist: fresh(), tape: fresh() };
+
+function oldestOpen(st) {
+  return st.pkgs.filter(p => p.cards.some(c => !st.ticks[c.id])).sort((a, b) => b.age - a.age || a.id.localeCompare(b.id))[0];
+}
+function applyState(name) {
+  ["checklist", "tape"].forEach(c => {
+    const st = fresh(); S[c] = st;
+    if (name === "empty") {
+      st.tape = [{ k: "start" }];
+    }
+    if (name === "add") { st.sheet = "add"; st.tape = [{ k: "start" }]; }
+    if (name === "importing") { st.phase = "importing"; st.progress = 62; st.tape = [{ k: "start" }]; }
+    if (name === "failed") { st.phase = "failed"; st.tape = [{ k: "start" }, { k: "failed" }]; }
+    if (["imported", "ticked", "loaded", "envelope", "merge"].includes(name)) {
+      st.phase = "loaded"; st.pkgs = BASE.slice();
+      st.tape = [{ k: "imported", n: st.pkgs.length }];
+    }
+    if (name === "imported") { st.sheet = c === "checklist" ? "result" : null; }
+    if (name === "ticked") {
+      st.oldAsked = true;
+      st.tape.push({ k: "old", choice: "keep" });
+      const p = oldestOpen(st); const card = p.cards[0];
+      st.openLost = isLost(st, p);
+      st.ticks[card.id] = { at: TODAY }; st.last = card.id; st.open = p.id;
+      st.tape.push({ k: "tick", card: card.id, pkg: p.id, at: TODAY });
+    }
+    if (["loaded", "envelope", "merge"].includes(name)) {
+      st.oldAsked = true; st.stepsDone = true; st.ticks = dayLaterTicks(st.pkgs);
+      st.tape = [{ k: "imported", n: st.pkgs.length, at: "Yesterday" }, { k: "old", choice: "stamp", at: "Yesterday" }];
+      const recent = st.pkgs.filter(p => p.age < LOST_DAYS && p.cards.some(x => st.ticks[x.id])).slice(0, 3);
+      recent.forEach(p => st.tape.push({ k: "tick", card: p.cards[0].id, pkg: p.id, at: "Yesterday" }));
+    }
+    if (name === "envelope") {
+      const e = makeEnvelope(st, envSampleNames(st)[0]);
+      st.envs.push(e); st.tape.push({ k: "env", env: e.id });
+      if (c === "checklist") st.tab = "envelopes";
+    }
+    if (name === "merge") {
+      st.pkgs = st.pkgs.concat(MORE); st.merged = { pk: MORE.length, cards: ALL_CARDS(MORE), kept: ALL_CARDS(BASE) };
+      st.tape.push({ k: "merged", pk: MORE.length, cards: ALL_CARDS(MORE), kept: ALL_CARDS(BASE) });
+      if (c === "checklist") st.sheet = "merged";
+    }
+  });
+  render();
+  document.querySelectorAll('[data-concept="checklist"] .scroll .pkg[aria-expanded="true"]').forEach(el => {
+    const sc = el.closest(".scroll"); sc.scrollTop = Math.max(0, el.getBoundingClientRect().top - sc.getBoundingClientRect().top + sc.scrollTop - 24);
+  });
+}
+
+/* Two card names that waiting packages hold, so the sample envelope has candidates. */
+function envSampleNames(st) {
+  const n = [];
+  st.pkgs.slice().sort((a, b) => a.age - b.age).forEach(p => p.cards.forEach(c => { if (!st.ticks[c.id] && !n.includes(c.name) && n.length < 2) n.push(c.name); }));
+  return n.length ? n : ["Ember Drake", "Frost Oracle"];
+}
+function makeEnvelope(st, text) {
+  const words = text.toLowerCase().split(/[,\n]/).map(s => s.trim()).filter(Boolean);
+  const cands = [];
+  st.pkgs.forEach(p => p.cards.forEach(c => {
+    if (!st.ticks[c.id] && words.some(w => c.name.toLowerCase().includes(w))) cands.push({ pkg: p.id, card: c.id });
+  }));
+  return { id: "e" + (st.envs.length + 1), text: text, at: TODAY, cands: cands.slice(0, 4), more: Math.max(0, cands.length - 4) };
+}
+
+/* ---------- Helpers ---------- */
+const esc = s => String(s).replace(/[&<>"']/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[ch]));
+const pkgById = (st, id) => st.pkgs.find(p => p.id === id);
+const cardById = (st, id) => { for (const p of st.pkgs) for (const c of p.cards) if (c.id === id) return { p, c }; return null; };
+const inCount = (st, p) => p.cards.filter(c => st.ticks[c.id]).length;
+/* Until the person answers the old-orders question, no package is called lost: that state is unknown. */
+const isLost = (st, p) => st.oldAsked && p.age >= LOST_DAYS && inCount(st, p) === 0;
+const isDone = (st, p) => inCount(st, p) === p.cards.length;
+const total = p => p.cards.reduce((s, c) => s + c.price * c.qty, 0);
+
+const ICON = {
+  plus: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>',
+  box: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7.5 12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5 12 12l9-4.5M12 12v9"/></svg>',
+  inhand: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><circle cx="12" cy="12" r="8.5" stroke-dasharray="3 2"/><path d="m8 12.5 2.6 2.6L16.5 9" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  env: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="1.5"/><path d="m3.5 7 8.5 6 8.5-6"/></svg>',
+  file: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 12h6M9 16h6"/></svg>',
+  laptop: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><rect x="5" y="5" width="14" height="10" rx="1"/><path d="M2.5 19h19"/></svg>',
+  search: '<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="6.5"/><path d="m16 16 4 4" stroke-linecap="round"/></svg>',
+  chev: '<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m9 6 6 6-6 6"/></svg>',
+  back: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="m15 6-6 6 6 6"/></svg>',
+  card: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="6" y="3" width="12" height="18" rx="1.5"/><rect x="8.5" y="5.5" width="7" height="6" rx=".5"/></svg>'
+};
+const PIC = {
+  pkg: '<svg viewBox="0 0 52 40" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="9" width="30" height="24" rx="2"/><path d="M3 15h30"/><rect x="38" y="6" width="10" height="14" rx="1"/><rect x="40" y="22" width="10" height="14" rx="1"/><path d="M33 21h3"/></svg>',
+  card: '<svg viewBox="0 0 52 40" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="18" y="3" width="17" height="34" rx="2"/><rect x="21" y="7" width="11" height="12" rx="1"/><path d="M21 24h11M21 28h8"/></svg>',
+  env: '<svg viewBox="0 0 52 40" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="4" y="8" width="44" height="26" rx="2"/><path d="m5 10 21 14 21-14"/><text x="26" y="37.5" font-size="0"></text><circle cx="40" cy="15" r="4" stroke-dasharray="2 2"/></svg>'
+};
+
+function stampBtn(c, st, cardId, extraAttr) {
+  const t = st.ticks[cardId];
+  if (t) {
+    const d = t.at instanceof Date ? fmtDate(t.at) : "";
+    return `<button class="stamp on${st.fresh === cardId ? " fresh" : ""}" data-c="${c}" data-act="tick" data-arg="${cardId}" aria-pressed="true" aria-label="In hand ${esc(d)}. Press to take the stamp off" ${extraAttr || ""}><span class="d">${esc(d.replace(" ", "\n"))}</span></button>`;
+  }
+  return `<button class="stamp" data-c="${c}" data-act="tick" data-arg="${cardId}" aria-pressed="false" aria-label="Stamp as in hand" ${extraAttr || ""}>${ICON.inhand}</button>`;
+}
+function cardRow(c, st, p, card, opts) {
+  opts = opts || {};
+  const hl = st.hl === card.id ? " hl" : "";
+  const undo = st.last === card.id && st.ticks[card.id] ? `<button class="undo" data-c="${c}" data-act="undo">Undo</button>` : "";
+  return `<div class="card-row${hl}" ${opts.newAttr || ""}>
+    <div class="what"><b>${esc(card.name)}${card.qty > 1 ? " <span class='muted'>x" + card.qty + "</span>" : ""}</b><span class="sub muted num">${money(card.price * card.qty)}</span></div>
+    ${undo}${stampBtn(c, st, card.id, opts.stampAttr)}</div>`;
+}
+function dots(st, p) {
+  if (p.cards.length > 8) return `<span class="foot muted num">${inCount(st, p)} of ${p.cards.length}</span>`;
+  return `<span class="dots" aria-label="${inCount(st, p)} of ${p.cards.length} cards in hand">${p.cards.map(c => `<i class="dot${st.ticks[c.id] ? " on" : ""}"></i>`).join("")}</span>`;
+}
+function wordsBlock(newAttr) {
+  return `<div class="words" ${newAttr || ""}>
+    <div class="word"><span class="pic">${PIC.pkg}</span><p><b>A package</b> is one order from one seller. It may hold many cards.</p></div>
+    <div class="word"><span class="pic">${PIC.card}</span><p><b>A card</b> is one line of an order. Stamp it when it is in your hand.</p></div>
+    <div class="word"><span class="pic">${PIC.env}</span><p><b>An envelope</b> is mail you opened but cannot match to a seller. Log it; it never stamps a card by itself.</p></div>
+  </div>`;
+}
+
+/* ---------- Shared sheets (both concepts) ---------- */
+function sheetWrap(c, title, body, opts) {
+  opts = opts || {};
+  const lead = opts.back ? `<button class="text-btn" data-c="${c}" data-act="${opts.back}">${ICON.back.replace('width="22"', 'width="18"')} Back</button>` : `<button class="text-btn" data-c="${c}" data-act="sheet-close">${opts.leadLabel || "Cancel"}</button>`;
+  const trail = opts.done ? `<button class="text-btn" style="font-weight:600" data-c="${c}" data-act="${opts.done[1]}" ${opts.done[2] ? "disabled" : ""}>${opts.done[0]}</button>` : `<span class="spacer"></span>`;
+  return `<div class="scrim" data-c="${c}" data-act="${opts.noScrimClose ? "noop" : "sheet-close"}"></div>
+  <div class="sheet" role="dialog" aria-label="${esc(title)}"><div class="grabber"></div>
+    <div class="sheet-bar">${lead}<h3 class="std-title">${esc(title)}</h3>${trail}</div>
+    <div class="scroll"><div class="content">${body}</div></div></div>`;
+}
+function addSheet(c, st) {
+  const merging = st.pkgs.length > 0;
+  return sheetWrap(c, "Add order file", `
+    <p class="para">${merging ? "Adding a file again only adds orders that are new. Every stamp stays." : "The file you exported from your order-history helper. Nothing on this phone is changed until it is read."}</p>
+    <div class="group-list">
+      <button class="choice" data-c="${c}" data-act="pick-files"><span class="glyph">${ICON.file}</span><span class="what"><b>Choose from Files</b><span class="sub muted">For a file in iCloud Drive, or one you sent here with AirDrop</span></span><span class="chev">${ICON.chev}</span></button>
+      <button class="choice" data-c="${c}" data-act="send" data-new="send from computer"><span class="glyph">${ICON.laptop}</span><span class="what"><b>Send it from your computer</b><span class="sub muted">Open an address on the computer and drop the file there</span></span><span class="chev">${ICON.chev}</span></button>
+    </div>
+    <details ${st.help ? "open" : ""} data-c="${c}" data-toggle="help"><summary>The file is on my computer. How do I get it here?</summary>
+      <div class="stack-2 sub"><p class="para">On a Mac: right-click the file, choose Share, then AirDrop, and pick this phone. Then choose it in Files.</p>
+      <p class="para">On Windows: email the file to yourself. On the phone, open the attachment, press Share, and choose Save to Files.</p></div></details>`);
+}
+function filesSheet(c) {
+  return sheetWrap(c, "Recents", `
+    <p class="sub muted para">The phone's own file picker. Drawn here only so the mockup can be clicked through.</p>
+    <div class="group-list">
+      <button class="choice" data-c="${c}" data-act="pick-file" data-arg="ok"><span class="glyph">${ICON.file}</span><span class="what"><b>order-history-export.csv</b><span class="sub muted">Downloads, 2 min ago</span></span></button>
+      <button class="choice" data-c="${c}" data-act="pick-file" data-arg="bad"><span class="glyph">${ICON.file}</span><span class="what"><b>card-wishlist.csv</b><span class="sub muted">Documents, last week</span></span></button>
+    </div>`, { back: "add-open" });
+}
+function sendSheet(c) {
+  return sheetWrap(c, "Send from computer", `
+    <div class="notice env" data-new="needs a drop address"><p class="para sub"><b>Owner choice.</b> This needs a way for a computer to hand a file to this phone. Drawn so it can be judged; the tool may not have it.</p></div>
+    <p class="para">On your computer, open this address:</p>
+    <p class="title3 num" style="overflow-wrap:anywhere">sample.invalid/drop</p>
+    <p class="para">Enter this code there, then drop the file on the page:</p>
+    <p class="title3 num">Sample 000 000</p>
+    <p class="sub muted para">The file lands here and is read the same way as one from Files.</p>
+    <button class="btn secondary" data-c="${c}" data-act="pick-file" data-arg="ok">Pretend the file arrived</button>`, { back: "add-open" });
+}
+function importingBlock(c, st) {
+  return `<div class="notice" role="status">
+    <div class="head">Reading order-history-export.csv</div>
+    <div class="progress" aria-hidden="true"><i style="width:${st.progress}%"></i></div>
+    <p class="sub muted para num">${Math.round(st.progress * 2.14)} of 214 orders read. Nothing is added until the whole file is read.</p>
+    <button class="btn secondary" data-c="${c}" data-act="import-stop">Stop</button></div>`;
+}
+function failedBlock(c, dismiss) {
+  return `<div class="notice warn" role="alert">
+    <div class="head">That file has no orders in it</div>
+    <p class="para sub">Pick the file you exported from your order-history helper. Nothing here changed.</p>
+    <button class="btn" data-c="${c}" data-act="pick-files">Choose another file</button>
+    ${dismiss ? `<button class="btn quiet" data-c="${c}" data-act="err-close">Keep what is here</button>` : ""}
+    <details><summary>What the file held</summary><pre class="machine">card-wishlist.csv: 1 header row, 38 rows
+no column for order number, seller or price
+first row: "Name,Want,Notes"</pre></details></div>`;
+}
+function oldQuestion(c, st) {
+  const old = st.pkgs.filter(p => p.age >= LOST_DAYS && inCount(st, p) === 0);
+  if (st.oldAsked || !old.length) return "";
+  return `<div class="notice warn" data-new="old orders question">
+    <div class="head">${old.length} packages were ordered over 3 weeks ago</div>
+    <p class="para sub">If they came already, stamp them all now. You can take any stamp off later. Left waiting, they show as may be lost.</p>
+    <div class="stack-2"><button class="btn" data-c="${c}" data-act="old" data-arg="stamp">Stamp them as in hand</button>
+    <button class="btn quiet" data-c="${c}" data-act="old" data-arg="keep">Keep them waiting</button></div></div>`;
+}
+function envSheet(c, st) {
+  const ok = st.envDraft.trim().length > 0;
+  return sheetWrap(c, "Log an envelope", `
+    <p class="para">What cards are inside? Type their names. The tool shows which packages they could be from; you choose.</p>
+    <label class="search" style="align-items:flex-start;padding-block:var(--space-2)"><textarea data-c="${c}" data-key="env" data-input="env" rows="3" placeholder="Card names, one per line" style="flex:1;border:0;background:transparent;outline:none;resize:none;font-size:var(--t-body);line-height:var(--l-body)">${esc(st.envDraft)}</textarea></label>
+    <div class="cluster"><span class="sub muted">Try:</span>${envSampleNames(st).map(n => `<button class="pill" data-c="${c}" data-act="env-fill" data-arg="${esc(n)}">${esc(n)}</button>`).join("")}</div>`,
+    { done: ["Log", "env-save", !ok], noScrimClose: true });
+}
+function envCard(c, st, e) {
+  return `<div class="notice env">
+    <div class="cluster" style="justify-content:space-between"><span class="head">${ICON.env.replace("<svg", '<svg width="20" height="20" style="vertical-align:-4px"')} ${esc(e.text)}</span><span class="foot muted">${fmtDate(e.at)}</span></div>
+    ${e.cands.length ? `<p class="para sub">Could be from one of these. Open it and stamp the card if it fits:</p>
+      <div class="group-list">${e.cands.map(k => { const r = cardById(st, k.card); return `<button class="choice" data-c="${c}" data-act="env-cand" data-arg="${k.card}"><span class="what"><b>${esc(r.p.seller)}</b><span class="sub muted">Ordered ${fmtDate(r.p.date)}</span></span><span class="chev">${ICON.chev}</span></button>`; }).join("")}</div>
+      ${e.more ? `<p class="foot muted para">${e.more} more packages hold that card.</p>` : ""}`
+      : `<p class="para sub">No waiting package holds that card. It stays logged here.</p>`}</div>`;
+}
+
+/* ---------- Concept: Checklist ---------- */
+const CL = "checklist";
+function clList(st, pose) {
+  const q = st.query.trim().toLowerCase();
+  let pk = st.pkgs;
+  if (st.tab === "received") pk = pk.filter(p => inCount(st, p) > 0);
+  else pk = pk.filter(p => !isDone(st, p) || st.open === p.id || p.cards.some(c => st.last === c.id));
+  if (q) pk = pk.filter(p => p.seller.toLowerCase().includes(q) || p.cards.some(c => c.name.toLowerCase().includes(q)));
+  /* The open package stays in the section it was opened in, so a stamp never moves it from under the finger. */
+  const inLost = p => p.id === st.open ? st.openLost : isLost(st, p);
+  const lost = st.tab === "waiting" ? pk.filter(inLost).sort((a, b) => b.age - a.age) : [];
+  const rest = pk.filter(p => !lost.includes(p)).sort((a, b) => b.age - a.age || a.id.localeCompare(b.id));
+  const shown = rest.slice(0, 40);
+  let pooled = "";
+  if (q) {
+    const names = {};
+    st.pkgs.forEach(p => p.cards.forEach(c => { if (c.name.toLowerCase().includes(q)) { const n = names[c.name] || (names[c.name] = { all: 0, in: 0, pk: new Set() }); n.all += c.qty; if (st.ticks[c.id]) n.in += c.qty; n.pk.add(p.id); } }));
+    const keys = Object.keys(names).slice(0, 3);
+    if (keys.length) pooled = `<div class="stack-1"><h3 class="sec-head">Across sellers</h3><div class="group-list" data-new="pooled card count">${keys.map(k => `<div class="choice"><span class="glyph">${ICON.card}</span><span class="what"><b>${esc(k)}</b><span class="sub muted num">${names[k].in} of ${names[k].all} in hand, from ${names[k].pk.size} packages</span></span></div>`).join("")}</div></div>`;
+  }
+  const row = p => {
+    const open = st.open === p.id;
+    const body = `<button class="pkg" data-c="${CL}" data-act="pkg" data-arg="${p.id}" aria-expanded="${open}" ${pose === "open" && open ? 'aria-current="true"' : ""}>
+      ${isLost(st, p) ? '<span class="lost-mark" aria-hidden="true"></span>' : ""}
+      <span class="who"><b>${esc(p.seller)}</b><span class="meta sub muted num"><span>Ordered ${fmtDate(p.date)}</span><span>${money(total(p))}</span></span></span>
+      <span class="count">${dots(st, p)}</span></button>`;
+    const inline = pose !== "open" && open ? `<div style="background:var(--surface)">${p.cards.map((card, i) => cardRow(CL, st, p, card, i === 0 && !st.stepsDone ? { newAttr: "" } : {})).join("")}</div>` : "";
+    return `<div>${body}${inline}</div>`;
+  };
+  let html = pooled;
+  if (lost.length) html += `<div class="stack-1"><h3 class="sec-head overdue">May be lost: nothing in after 3 weeks</h3><div class="group-list">${lost.map(row).join("")}</div></div>`;
+  if (rest.length) html += `<div class="stack-1"><h3 class="sec-head">${st.tab === "received" ? "Newest first by order date" : "Oldest order first"}</h3><div class="group-list">${shown.map(row).join("")}</div>${rest.length > shown.length ? `<p class="foot muted para" style="padding-inline:var(--space-4)">${rest.length - shown.length} more below. Scroll, or search a seller.</p>` : ""}</div>`;
+  if (!lost.length && !rest.length) {
+    html += q ? `<div class="empty"><p class="para">Nothing matches "${esc(st.query)}".</p><button class="btn secondary" data-c="${CL}" data-act="clear-q">Clear search</button></div>`
+              : `<div class="empty"><p class="para">${st.tab === "received" ? "Cards you stamp show here." : "Every card is in hand. All is well."}</p></div>`;
+  }
+  return html;
+}
+function clSteps(st) {
+  if (st.stepsDone || !st.pkgs.length) return "";
+  const ticked = Object.keys(st.ticks).some(k => !st.ticks[k].bulk);
+  return `<div class="steps" data-new="first-run steps">
+    <div class="step done"><span class="n">1</span><span class="what">Bring in your order file</span></div>
+    <div class="step ${st.words ? "done" : "now"}"><span class="n">2</span><span class="what"><button class="text-btn" style="padding:0" data-c="${CL}" data-act="words">${st.words ? "Package, card, envelope" : "Learn the three words"}</button></span></div>
+    ${st.words ? `<div style="padding:0 var(--space-4) var(--space-3)">${wordsBlock()}</div>` : ""}
+    <div class="step ${ticked ? "done" : "now"}"><span class="n">3</span><span class="what">${ticked ? "First card stamped. That is all." : "Open a package and stamp a card"}</span>${ticked ? `<button class="text-btn" data-c="${CL}" data-act="steps-done">Done</button>` : ""}</div>
+  </div>`;
+}
+function clMain(st, pose) {
+  const c = CL;
+  if (!st.pkgs.length) {
+    let body = "";
+    if (st.phase === "importing") body = importingBlock(c, st);
+    else if (st.phase === "failed") body = failedBlock(c);
+    else body = `<div class="empty" data-new="empty state"><p class="para">Your orders fill this list. Start with the order file you exported.</p>
+      <button class="btn" data-c="${c}" data-act="add-open">Add order file</button></div>`;
+    return `<div class="bar"><div class="bar-row"><h1 class="large-title">Waiting</h1></div></div>
+      <div class="scroll"><div class="content short-pad">${body}</div></div>`;
+  }
+  const lostN = st.pkgs.filter(p => isLost(st, p)).length;
+  const title = st.tab === "received" ? "In hand" : st.tab === "envelopes" ? "Envelopes" : "Waiting";
+  let body;
+  if (st.tab === "envelopes") {
+    body = st.envs.length ? `<button class="btn secondary" data-c="${c}" data-act="env-open">Log an envelope</button>${st.envs.slice().reverse().map(e => envCard(c, st, e)).join("")}`
+      : `<div class="empty"><p class="para">Mail you cannot match to a seller is logged here.</p><button class="btn" data-c="${c}" data-act="env-open">Log an envelope</button></div>`;
+  } else {
+    const inN = Object.keys(st.ticks).length, allN = ALL_CARDS(st.pkgs);
+    const spent = st.pkgs.reduce((s, p) => s + p.cards.reduce((a, x) => a + (st.ticks[x.id] ? x.price * x.qty : 0), 0), 0);
+    const all = st.pkgs.reduce((s, p) => s + total(p), 0);
+    const summary = st.tab === "received" ? `<p class="sub muted para num" style="padding-inline:var(--space-1)">${inN} of ${allN} cards, ${money(spent)} of ${money(all)}</p>`
+      : (lostN || !st.oldAsked ? "" : `<p class="sub muted para" style="padding-inline:var(--space-1)">All is well.</p>`);
+    const fileNote = st.phase === "importing" ? importingBlock(c, st) : st.importError ? failedBlock(c, true) : "";
+    body = `${fileNote}${st.sheet === "result" ? "" : oldQuestion(c, st)}${clSteps(st)}${summary}
+      <label class="search">${ICON.search}<input data-c="${c}" data-key="q" data-input="q" value="${esc(st.query)}" placeholder="Seller or card" aria-label="Search sellers and cards"></label>
+      <div class="stack" data-region="list">${clList(st, pose)}</div>`;
+  }
+  return `<div class="bar"><div class="bar-row"><h1 class="large-title">${title}</h1>
+      <button class="icon-btn" data-c="${c}" data-act="add-open" aria-label="Add order file">${ICON.plus}</button></div></div>
+    <div class="scroll"><div class="content">${body}</div></div>
+    <nav class="tabbar" role="tablist" aria-label="Sections">
+      ${[["waiting", "Waiting", ICON.box], ["received", "In hand", ICON.inhand], ["envelopes", "Envelopes", ICON.env]].map(t =>
+        `<button role="tab" aria-selected="${st.tab === t[0]}" data-c="${c}" data-act="tab" data-arg="${t[0]}" aria-label="${t[1]}">${t[2]}<span>${t[1]}</span></button>`).join("")}
+    </nav>`;
+}
+function clDetail(st) {
+  const p = st.open && pkgById(st, st.open);
+  if (!p) {
+    return `<div class="bar"><div class="bar-row"><span></span></div></div><div class="scroll"><div class="content short-pad">
+      ${st.pkgs.length ? `<div class="empty"><p class="para">Pick a package on the left to see its cards.</p></div>${!st.words && !st.stepsDone && st.sheet !== "result" ? wordsBlock('data-new="three words, always in view"') : ""}`
+        : `<div class="stack" style="padding-top:var(--space-12)"><h2 class="title3">What this tool does</h2><p class="para">You stamp each card as the mail brings it. Packages left with nothing in after 3 weeks show as may be lost.</p>${wordsBlock('data-new="three words, before any data"')}</div>`}
+    </div></div>`;
+  }
+  return `<div class="bar"><div class="bar-row"><h2 class="std-title" style="text-align:left">${esc(p.seller)}</h2></div>
+      <p class="sub muted para num">Ordered ${fmtDate(p.date)}, ${p.cards.length} cards, ${money(total(p))}</p></div>
+    <div class="scroll"><div class="content short-pad">
+      ${!st.stepsDone && !Object.keys(st.ticks).some(k => !st.ticks[k].bulk) ? `<div class="tip" style="margin:0" data-new="first stamp hint">Is one of these in your hand? Press its circle.</div>` : ""}
+      <div class="group-list">${p.cards.map(card => cardRow(CL, st, p, card)).join("")}</div>
+    </div></div>`;
+}
+function clSheet(st, pose) {
+  const c = CL;
+  if (st.sheet === "add") return addSheet(c, st);
+  if (st.sheet === "files") return filesSheet(c);
+  if (st.sheet === "send") return sendSheet(c);
+  if (st.sheet === "env") return envSheet(c, st);
+  if (st.sheet === "result") {
+    return sheetWrap(c, "Orders added", `
+      <div class="stack-1"><p class="title3 num para">${ALL_CARDS(st.pkgs)} cards in ${st.pkgs.length} packages from ${SELLER_COUNT(st.pkgs)} sellers</p>
+      <p class="sub muted para">5 rows were not cards, such as shipping fees, and stayed out.</p></div>
+      ${wordsBlock('data-new="three words"')}
+      ${oldQuestion(c, st)}
+      <p class="sub para">Adding this file again later only adds what is new. Nothing is ever taken out.</p>
+      <button class="btn${st.oldAsked ? "" : " secondary"}" data-c="${c}" data-act="sheet-close">Show my packages</button>`, { leadLabel: "Close" });
+  }
+  if (st.sheet === "merged") {
+    return sheetWrap(c, "Orders added", `
+      <p class="title3 num para">${st.merged.cards} new cards in ${st.merged.pk} packages</p>
+      <p class="para">The ${st.merged.kept} cards already here were kept, with their stamps.</p>
+      <button class="btn" data-c="${c}" data-act="sheet-close">Show my packages</button>`, { leadLabel: "Close" });
+  }
+  return "";
+}
+function renderChecklist(kind) {
+  const st = S[CL];
+  if (kind === "open") {
+    const sheet = clSheet(st, "open");
+    return { left: clMain(st, "open"), right: clDetail(st) + sheet };
+  }
+  return { one: clMain(st, kind) + clSheet(st, kind) };
+}
+
+/* ---------- Concept: Tape ---------- */
+const TP = "tape";
+function tapeLine(st, e, i) {
+  const c = TP;
+  const when = e.at ? (e.at instanceof Date ? "Today" : e.at) : "Today";
+  if (e.k === "start") {
+    return `<div class="line"><span class="when">Start</span><div class="stack-2"><p class="para title3">This tape keeps every step you take with your mail.</p>
+      <p class="para">Nothing on it is ever wiped; a step can be undone by a new one. First, bring in the order file you exported.</p></div></div>`;
+  }
+  if (e.k === "failed") return `<div class="line k-warn"><span class="when">${when}</span>${failedBlock(c)}</div>`;
+  if (e.k === "stopped") return `<div class="line k-warn"><span class="when">${when}</span><p class="para">Stopped reading the file. Nothing was added.</p></div>`;
+  if (e.k === "imported") {
+    const pk = BASE;
+    const anchor = !e.at && !st.tape.some(x => x.k === "tick" || x.k === "env") ? " data-anchor" : "";
+    return `<div class="line"${anchor}><span class="when">${when}</span><div class="stack-2"><p class="para title3 num">Added ${ALL_CARDS(pk)} cards in ${pk.length} packages from ${SELLER_COUNT(pk)} sellers</p>
+      <details><summary>5 rows were not cards and stayed out</summary><pre class="machine">shipping fee x3, sales tax x2</pre></details>
+      ${e.at ? "" : wordsBlock('data-new="three words on the tape"')}</div></div>`;
+  }
+  if (e.k === "old") {
+    return `<div class="line"><span class="when">${when}</span>${e.choice === "stamp" ? `<p class="para">Stamped the orders over 3 weeks old as in hand.</p><button class="text-btn" style="padding:0;align-self:flex-start" data-c="${c}" data-act="old-undo">Take those stamps off</button>` : `<p class="para">Kept the old orders waiting.</p>`}</div>`;
+  }
+  if (e.k === "tick" || e.k === "untick") {
+    const r = cardById(st, e.card); if (!r) return "";
+    const on = e.k === "tick";
+    const isLast = on && st.last === e.card && st.ticks[e.card] && !st.open;
+    return `<div class="line ${on ? "k-tick" : ""}"><span class="when">${when}</span><div class="body"><span class="what"><b>${esc(r.c.name)}</b> <span class="muted">${on ? "from" : "back to waiting, from"} ${esc(r.p.seller)}</span></span>
+      ${isLast ? `<button class="undo" data-c="${c}" data-act="undo">Undo</button>` : ""}</div></div>`;
+  }
+  if (e.k === "env") {
+    const env = st.envs.find(x => x.id === e.env);
+    return `<div class="line k-env"><span class="when">${when}</span>${envCard(c, st, env)}</div>`;
+  }
+  if (e.k === "merged") {
+    return `<div class="line"><span class="when">${when}</span><p class="para"><b class="num">Added ${e.cards} new cards in ${e.pk} packages.</b> The ${e.kept} cards already here kept their stamps.</p></div>`;
+  }
+  return "";
+}
+function tapeTry(st) {
+  if (!st.pkgs.length || Object.keys(st.ticks).some(k => !st.ticks[k].bulk) || st.query) return "";
+  const p = oldestOpen(st); if (!p) return "";
+  const recent = st.pkgs.filter(x => x.age <= 7 && inCount(st, x) === 0).sort((a, b) => b.age - a.age)[0];
+  const pick = recent || p;
+  return `<div class="line"><span class="when">Now</span><div class="stack-2" data-new="first stamp prompt"><p class="para">Mail in hand? Type the seller's name from the label below. Or try one that is due:</p>
+    <button class="pill" data-c="${TP}" data-act="pick" data-arg="${pick.id}">${esc(pick.seller)}, ordered ${fmtDate(pick.date)}</button></div></div>`;
+}
+function tapeMatches(st) {
+  const c = TP;
+  if (st.open) {
+    const p = pkgById(st, st.open);
+    return `<div class="matches" data-new="package strip"><div class="strip"><div class="strip-head"><span class="what"><b>${esc(p.seller)}</b><br><span class="sub muted num">Ordered ${fmtDate(p.date)}, ${money(total(p))}</span></span>
+      <button class="text-btn" data-c="${c}" data-act="pick-close">Close</button></div>
+      ${p.cards.map(card => cardRow(c, st, p, card)).join("")}</div></div>`;
+  }
+  const q = st.query.trim().toLowerCase();
+  if (!q) return "";
+  const pk = st.pkgs.filter(p => !isDone(st, p) && (p.seller.toLowerCase().includes(q) || p.cards.some(x => x.name.toLowerCase().includes(q)))).sort((a, b) => b.age - a.age).slice(0, 8);
+  if (!pk.length) return `<div class="matches"><div class="empty"><p class="para">No waiting package matches "${esc(st.query)}".</p><button class="btn secondary" data-c="${c}" data-act="clear-q">Clear</button></div></div>`;
+  return `<div class="matches">${pk.map(p => `<button class="pkg" data-c="${c}" data-act="pick" data-arg="${p.id}">${isLost(st, p) ? '<span class="lost-mark"></span>' : ""}<span class="who"><b>${esc(p.seller)}</b><span class="meta sub muted num"><span>Ordered ${fmtDate(p.date)}</span><span>${p.cards.length} cards</span></span></span><span class="count">${dots(st, p)}</span></button>`).join("")}</div>`;
+}
+function tapeSummary(st, withOut) {
+  if (!st.pkgs.length) return "";
+  const lost = st.pkgs.filter(p => isLost(st, p)).length;
+  const out = st.pkgs.reduce((s, p) => s + p.cards.filter(x => !st.ticks[x.id]).length, 0);
+  const status = !st.oldAsked ? "" : lost ? (withOut ? `<button class="pill overdue" data-c="${TP}" data-act="drawer" data-arg="lost">${lost} may be lost</button>` : `<span class="pill overdue">${lost} may be lost</span>`) : `<span class="pill">All is well.</span>`;
+  return `<div class="summary">${status}
+    ${withOut ? `<button class="pill num" data-c="${TP}" data-act="drawer" data-arg="out">${out} cards still out</button>` : ""}</div>`;
+}
+function tapeOut(st) {
+  const c = TP;
+  const lost = st.pkgs.filter(p => isLost(st, p)).sort((a, b) => b.age - a.age);
+  const rest = st.pkgs.filter(p => !isDone(st, p) && !lost.includes(p)).sort((a, b) => b.age - a.age);
+  const row = p => `<button class="pkg" data-c="${c}" data-act="pick" data-arg="${p.id}" ${st.open === p.id ? 'aria-current="true"' : ""}>${isLost(st, p) ? '<span class="lost-mark"></span>' : ""}<span class="who"><b>${esc(p.seller)}</b><span class="meta sub muted num"><span>Ordered ${fmtDate(p.date)}</span><span>${money(total(p))}</span></span></span><span class="count">${dots(st, p)}</span></button>`;
+  return `${lost.length ? `<div class="stack-1"><h3 class="sec-head overdue">May be lost: nothing in after 3 weeks</h3><div class="group-list">${lost.map(row).join("")}</div></div>` : ""}
+    <div class="stack-1"><h3 class="sec-head">Oldest order first</h3><div class="group-list">${rest.slice(0, 30).map(row).join("")}</div>
+    ${rest.length > 30 ? `<p class="foot muted para" style="padding-inline:var(--space-4)">${rest.length - 30} more below.</p>` : ""}</div>`;
+}
+function tapeComposer(st) {
+  const c = TP;
+  if (st.phase === "importing") return `<div class="composer">${importingBlock(c, st)}</div>`;
+  if (!st.pkgs.length) {
+    return `<div class="composer" data-new="one action, in thumb reach"><button class="btn" data-c="${c}" data-act="add-open">Add order file</button></div>`;
+  }
+  return `<div class="composer" data-new="mail-in-hand field"><div class="row">
+      <label class="search">${ICON.search}<input data-c="${c}" data-key="q" data-input="q" value="${esc(st.query)}" placeholder="Who is it from? Seller or card" aria-label="Who is the mail from"></label>
+      <button class="env-btn" data-c="${c}" data-act="env-open" aria-label="Sender unknown: log an envelope">${ICON.env.replace("<svg", '<svg width="20" height="20"')}<span>Envelope</span></button></div></div>`;
+}
+function tapeMain(st, pose) {
+  const c = TP;
+  const oq = st.pkgs.length && !st.oldAsked ? `<div class="line k-warn"><span class="when">Now</span>${oldQuestion(c, st)}</div>` : "";
+  /* A day word shows once, on the first line of its day. */
+  let lastWhen = null;
+  const lines = (st.tape.map((e, i) => tapeLine(st, e, i)).join("") + oq + tapeTry(st))
+    .replace(/<span class="when">([^<]*)<\/span>/g, (m, w) => { if (w === lastWhen) return ""; lastWhen = w; return m; });
+  return `<div class="bar"><div class="bar-row"><h1 class="large-title">Mail</h1>${st.pkgs.length ? `<button class="icon-btn" data-c="${c}" data-act="add-open" aria-label="Add order file">${ICON.plus}</button>` : ""}</div>
+      ${tapeSummary(st, pose !== "open")}</div>
+    <div class="scroll" data-tape-scroll><div class="tape" data-new="the tape: every step, newest last"><div class="summary-inline">${tapeSummary(st, true)}</div>${lines}</div></div>
+    ${pose === "open" ? "" : tapeMatches(st)}
+    ${tapeComposer(st)}`;
+}
+function tapeRight(st) {
+  const c = TP;
+  if (!st.pkgs.length) {
+    return `<div class="bar"><div class="bar-row"><span></span></div></div><div class="scroll"><div class="content short-pad"><div class="stack" style="padding-top:var(--space-12)">
+      <h2 class="title3">Three words this tool uses</h2>${wordsBlock('data-new="three words, before any data"')}</div></div></div>`;
+  }
+  const p = st.open && pkgById(st, st.open);
+  return `<div class="bar"><div class="bar-row"><h2 class="std-title" style="text-align:left">${p ? esc(p.seller) : "Still out"}</h2>${p ? `<button class="text-btn" data-c="${c}" data-act="pick-close">All</button>` : ""}</div>${p ? `<p class="sub muted para num">Ordered ${fmtDate(p.date)}, ${p.cards.length} cards, ${money(total(p))}</p>` : tapeSummary(st, false)}</div>
+    <div class="scroll"><div class="content short-pad">${p ? `<div class="group-list">${p.cards.map(card => cardRow(c, st, p, card)).join("")}</div>` : tapeOut(st)}</div></div>`;
+}
+function tapeSheet(st) {
+  const c = TP;
+  if (st.sheet === "add") return addSheet(c, st);
+  if (st.sheet === "files") return filesSheet(c);
+  if (st.sheet === "send") return sendSheet(c);
+  if (st.sheet === "env") return envSheet(c, st);
+  if (st.sheet === "drawer") {
+    return sheetWrap(c, "Still out", `${tapeOut(st)}`, { leadLabel: "Close" });
+  }
+  return "";
+}
+function renderTape(kind) {
+  const st = S[TP];
+  if (kind === "open") {
+    const sh = tapeSheet(st);
+    const leftSheet = st.sheet === "drawer" ? "" : sh;
+    return { left: tapeMain(st, "open") + leftSheet, right: tapeRight(st) };
+  }
+  return { one: tapeMain(st, kind) + tapeSheet(st) };
+}
+
+/* ---------- Page shell ---------- */
+const CONCEPTS = [
+  { id: CL, name: "Guided checklist", render: renderChecklist,
+    idea: "A list you work down. The first screen holds one sentence and one button. After the file comes in, three numbered steps sit on top of the real list and tick off as you go, so the person learns the tool by using it. Tabs: Waiting, In hand, Envelopes." },
+  { id: TP, name: "Mail tape", render: renderTape,
+    idea: "Bold. No tabs and no list as home. Home is a tape of every step taken, newest at the bottom, with one field in thumb reach that asks who the mail in your hand is from. Every stamp, import and envelope prints a line, so nothing is ever wiped and each step can be undone in place." }
+];
+const FRAMES = [
+  { kind: "folded", cls: "duo-folded", dev: "iphone-duo-folded", cap: "Duo, folded: 466 by 678 pt, one screen in one hand." },
+  { kind: "open", cls: "duo-open", dev: "iphone-duo-unfolded", cap: "Duo, open: 951 by 669 pt. Two pages; nothing crosses the hinge (x 455.5 to 495.5)." },
+  { kind: "phone", cls: "phone", dev: "iphone-large", cap: "Large phone. No size is written for it; this frame starts at 440 by 900 and you can drag its corner to resize." },
+  { kind: "ax5", cls: "duo-folded ax5", dev: "iphone-duo-folded-ax5", cap: "Duo, folded, at the biggest accessibility text size (AX5: body 53 pt)." }
+];
+let hidden = [];
+function render() {
+  const a = document.activeElement;
+  const keep = a && a.dataset && a.dataset.key ? { key: a.dataset.key, frame: a.closest("[data-frame]") && a.closest("[data-frame]").dataset.frame, page: a.closest("[data-page]") && a.closest("[data-page]").dataset.page, s: a.selectionStart, e: a.selectionEnd } : null;
+  const scrolls = {};
+  const sKey = el => { const f = el.closest("[data-frame]"), p = el.closest("[data-page]"); return f.dataset.frame + (p ? p.dataset.page : "") + (el.closest(".sheet") ? "s" : el.closest(".matches") ? "m" : "b"); };
+  document.querySelectorAll("[data-frame] .scroll").forEach(el => { scrolls[sKey(el)] = el.scrollTop; });
+  CONCEPTS.forEach(k => {
+    FRAMES.forEach(f => {
+      const el = document.querySelector(`[data-frame="${k.id}-${f.kind}"]`); if (!el) return;
+      const out = k.render(f.kind);
+      if (f.kind === "open") { el.querySelector('[data-page="left"]').innerHTML = out.left; el.querySelector('[data-page="right"]').innerHTML = out.right; }
+      else el.querySelector(".screen").innerHTML = out.one;
+    });
+  });
+  document.querySelectorAll("[data-frame] .scroll").forEach(el => { const k = sKey(el); if (scrolls[k] != null) el.scrollTop = scrolls[k]; });
+  document.querySelectorAll("[data-tape-scroll]").forEach(el => {
+    const a = el.querySelector("[data-anchor]");
+    el.scrollTop = a ? a.offsetTop - el.offsetTop - 8 : el.scrollHeight;
+  });
+  S.checklist.fresh = null; S.tape.fresh = null;
+  if (keep) {
+    const fr = document.querySelector(`[data-frame="${keep.frame}"]`);
+    const sel = (keep.page ? `[data-page="${keep.page}"] ` : "") + `[data-key="${keep.key}"]`;
+    const el = fr && fr.querySelector(sel);
+    if (el) { el.focus(); try { el.setSelectionRange(keep.s, keep.e); } catch (x) {} }
+  }
+}
+
+/* ---------- Acts ---------- */
+let timer = null;
+function startImport(c, merging) {
+  const st = S[c]; const prevPhase = st.phase;
+  st.sheet = null; st.phase = "importing"; st.progress = 0; st.prev = prevPhase; render();
+  clearInterval(timer);
+  timer = setInterval(() => {
+    const s = S[c]; if (s.phase !== "importing") { clearInterval(timer); return; }
+    s.progress = Math.min(100, s.progress + 9);
+    if (s.progress >= 100) {
+      clearInterval(timer);
+      s.phase = "loaded";
+      if (merging) {
+        const ids = new Set(s.pkgs.map(p => p.id));
+        const add = MORE.filter(p => !ids.has(p.id));
+        const kept = ALL_CARDS(s.pkgs);
+        s.pkgs = s.pkgs.concat(add); s.merged = { pk: add.length, cards: ALL_CARDS(add), kept: kept };
+        s.tape.push({ k: "merged", pk: add.length, cards: ALL_CARDS(add), kept: kept, at: TODAY });
+        if (c === CL) s.sheet = "merged";
+      } else {
+        s.pkgs = BASE.slice(); s.tape = s.tape.filter(e => e.k !== "failed" && e.k !== "stopped");
+        s.tape.push({ k: "imported", n: s.pkgs.length });
+        if (c === CL) s.sheet = "result";
+      }
+    }
+    render();
+  }, 120);
+}
+function act(c, a, arg) {
+  const st = S[c];
+  switch (a) {
+    case "noop": return;
+    case "add-open": st.sheet = "add"; break;
+    case "sheet-close": st.sheet = null; break;
+    case "pick-files": st.sheet = "files"; break;
+    case "send": st.sheet = "send"; break;
+    case "pick-file":
+      if (arg === "bad") { st.sheet = null; st.phase = st.pkgs.length ? "loaded" : "failed"; st.importError = st.pkgs.length > 0; st.tape.push({ k: "failed", at: TODAY }); break; }
+      st.importError = false; startImport(c, st.pkgs.length > 0); return;
+    case "err-close": st.importError = false; break;
+    case "import-stop": clearInterval(timer); st.phase = st.pkgs.length ? "loaded" : "empty"; st.tape.push({ k: "stopped", at: TODAY }); break;
+    case "old":
+      st.oldAsked = true;
+      if (arg === "stamp") st.pkgs.forEach(p => { if (p.age >= LOST_DAYS && inCount(st, p) === 0) p.cards.forEach(x => st.ticks[x.id] = { at: TODAY, bulk: true }); });
+      st.tape.push({ k: "old", choice: arg, at: TODAY }); break;
+    case "old-undo":
+      Object.keys(st.ticks).forEach(k => { if (st.ticks[k].bulk) delete st.ticks[k]; });
+      st.tape.push({ k: "untick-bulk", at: TODAY }); st.tape[st.tape.length - 1] = { k: "old", choice: "keep", at: TODAY }; break;
+    case "tab": st.tab = arg; st.open = null; break;
+    case "pkg": st.open = st.open === arg ? null : arg; st.hl = null; st.openLost = st.open ? isLost(st, pkgById(st, arg)) : false; break;
+    case "pick": st.open = arg; st.sheet = null; st.hl = null; break;
+    case "pick-close": st.open = null; st.query = ""; st.hl = null; break;
+    case "tick": {
+      const r = cardById(st, arg);
+      if (st.ticks[arg]) { delete st.ticks[arg]; if (st.last === arg) st.last = null; st.tape.push({ k: "untick", card: arg, pkg: r.p.id, at: TODAY }); }
+      else { st.ticks[arg] = { at: TODAY }; st.last = arg; st.fresh = arg; st.tape.push({ k: "tick", card: arg, pkg: r.p.id, at: TODAY }); }
+      break;
+    }
+    case "undo": if (st.last) { const r = cardById(st, st.last); delete st.ticks[st.last]; st.tape.push({ k: "untick", card: st.last, pkg: r.p.id, at: TODAY }); st.last = null; } break;
+    case "words": st.words = !st.words; break;
+    case "steps-done": st.stepsDone = true; break;
+    case "clear-q": st.query = ""; break;
+    case "env-open": st.sheet = "env"; st.envDraft = ""; break;
+    case "env-fill": st.envDraft = arg; break;
+    case "env-save": { const e = makeEnvelope(st, st.envDraft.trim()); st.envs.push(e); st.tape.push({ k: "env", env: e.id, at: TODAY }); st.sheet = null; if (c === CL) st.tab = "envelopes"; break; }
+    case "env-cand": { const r = cardById(st, arg); st.open = r.p.id; st.openLost = isLost(st, r.p); st.hl = arg; st.query = ""; if (c === CL) st.tab = "waiting"; break; }
+    case "drawer": st.sheet = "drawer"; break;
+  }
+  render();
+}
+document.addEventListener("click", ev => {
+  const h = ev.target.closest("[data-hide]");
+  if (h) { hidden.push(h.dataset.hide); syncHidden(); return; }
+  const sh = ev.target.closest("[data-show]");
+  if (sh) { hidden = hidden.filter(x => x !== sh.dataset.show); syncHidden(); return; }
+  const t = ev.target.closest("[data-act]");
+  if (!t || t.disabled) return;
+  if (t.tagName === "SUMMARY") return;
+  ev.preventDefault();
+  act(t.dataset.c, t.dataset.act, t.dataset.arg);
+});
+document.addEventListener("toggle", ev => {
+  const d = ev.target; if (d.dataset && d.dataset.toggle === "help") S[d.dataset.c].help = d.open;
+}, true);
+document.addEventListener("input", ev => {
+  const t = ev.target; if (!t.dataset || !t.dataset.input) return;
+  const st = S[t.dataset.c];
+  if (t.dataset.input === "q") { st.query = t.value; st.open = null; }
+  if (t.dataset.input === "env") st.envDraft = t.value;
+  render();
+});
+function syncHidden() {
+  CONCEPTS.forEach(k => { document.getElementById("concept-" + k.id).hidden = hidden.includes(k.id); });
+  const hl = document.getElementById("hidden-list");
+  hl.hidden = !hidden.length;
+  hl.innerHTML = hidden.length ? "Hidden: " + hidden.map(id => `<button class="chip" data-show="${id}">Show ${CONCEPTS.find(k => k.id === id).name}</button>`).join("") : "";
+}
+
+/* ---------- Review controls and deep links ---------- */
+let cur = { s: "empty", t: "auto", c: null };
+function setTheme(t) {
+  cur.t = t;
+  if (t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", t);
+  document.querySelectorAll("[data-theme-btn]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.themeBtn === t)));
+}
+function writeHash() {
+  const parts = ["s=" + cur.s]; if (cur.t !== "auto") parts.push("t=" + cur.t); if (cur.c) parts.push("c=" + cur.c);
+  history.replaceState(null, "", "#" + parts.join("&"));
+}
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const s = h.get("s"); cur.s = STATES.some(x => x[0] === s) ? s : "empty";
+  const t = h.get("t"); setTheme(t === "dark" || t === "light" ? t : "auto");
+  cur.c = h.get("c");
+  applyState(cur.s); syncStateBtns();
+  if (cur.c) { const el = document.getElementById("choice-" + cur.c); if (el) { el.scrollIntoView({ block: "center" }); el.setAttribute("tabindex", "-1"); el.focus({ preventScroll: true }); } }
+}
+function syncStateBtns() {
+  document.querySelectorAll("[data-state-btn]").forEach(b => b.setAttribute("aria-pressed", String(b.dataset.stateBtn === cur.s)));
+}
+document.getElementById("state-btns").innerHTML = STATES.map(s => `<button class="chip" data-state-btn="${s[0]}">${s[1]}</button>`).join("");
+document.getElementById("state-btns").addEventListener("click", ev => {
+  const b = ev.target.closest("[data-state-btn]"); if (!b) return;
+  cur.s = b.dataset.stateBtn; applyState(cur.s); syncStateBtns(); writeHash();
+});
+document.querySelectorAll("[data-theme-btn]").forEach(b => b.addEventListener("click", () => { setTheme(b.dataset.themeBtn); writeHash(); }));
+document.getElementById("labels-btn").addEventListener("click", ev => {
+  const on = !document.body.classList.contains("labels");
+  document.body.classList.toggle("labels", on); ev.currentTarget.setAttribute("aria-pressed", String(on));
+});
+window.addEventListener("hashchange", readHash);
+readHash();
+})();
+</script>
+</body>
+</html>

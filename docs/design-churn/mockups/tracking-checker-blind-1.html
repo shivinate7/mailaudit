@@ -1,0 +1,841 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tracking checker, blind 1</title>
+<style>
+/* House steps: 4 px space step, 8 px radius (tokens.md). Colours are this designer's own (blind). */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px; --space-12: 48px; --space-14: 56px;
+  --radius: 8px;
+  --hit: 44px; /* HIG accessibility: default control size 44x44 pt */
+
+  /* Dynamic Type, Large (default), HIG typography, read 2026-11-21 */
+  --t-large: 34px; --l-large: 41px;
+  --t-title1: 28px; --l-title1: 34px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap1: 12px; --l-cap1: 16px;
+  --t-cap2: 11px; --l-cap2: 13px;
+
+  --font: -apple-system, system-ui, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+
+  /* Light set, by role */
+  --page: #D9E0E7;
+  --bg: #EEF1F5;
+  --surface: #FFFFFF;
+  --surface-2: #E3E8EE;
+  --text: #14202C;
+  --muted: #4F5D6B;
+  --line: #CFD7E0;
+  --accent: #1D5FB0;
+  --on-accent: #FFFFFF;
+  --bezel: #1B242D;
+  --scrim: rgba(20, 32, 44, 0.32);
+  --v-door: #9C4700;
+  --v-stuck: #B3261E;
+  --v-back: #6A3FB5;
+  --v-move: #00706A;
+  --v-here: #2C7A3D;
+  --v-unknown: #5F6B76;
+  --note: #6A3FB5;
+  --today: #7A5B00;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #05090D; --bg: #0D141B; --surface: #16202A; --surface-2: #213040;
+    --text: #E6ECF2; --muted: #A3B0BD; --line: #2B3A49; --accent: #78AEF0; --on-accent: #0B1622;
+    --bezel: #2C3946; --scrim: rgba(0, 0, 0, 0.5);
+    --v-door: #F2A65A; --v-stuck: #FF8A80; --v-back: #C3A6F5; --v-move: #5CCFC4; --v-here: #7CCB8B; --v-unknown: #A3B0BD;
+    --note: #C3A6F5; --today: #E7C35A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #05090D; --bg: #0D141B; --surface: #16202A; --surface-2: #213040;
+  --text: #E6ECF2; --muted: #A3B0BD; --line: #2B3A49; --accent: #78AEF0; --on-accent: #0B1622;
+  --bezel: #2C3946; --scrim: rgba(0, 0, 0, 0.5);
+  --v-door: #F2A65A; --v-stuck: #FF8A80; --v-back: #C3A6F5; --v-move: #5CCFC4; --v-here: #7CCB8B; --v-unknown: #A3B0BD;
+  --note: #C3A6F5; --today: #E7C35A;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--text); font-family: var(--font); font-size: var(--t-body); line-height: var(--l-body); }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- page chrome (outside the devices) ---------- */
+.sample { position: sticky; top: 0; z-index: 50; background: var(--today); color: var(--bg); padding: var(--space-2) var(--space-4); font-weight: 600; font-size: var(--t-sub); line-height: var(--l-sub); text-align: center; }
+.wrap { max-inline-size: 72rem; margin-inline: auto; padding: var(--space-6) var(--space-4) var(--space-14); display: flex; flex-direction: column; gap: var(--space-10); }
+.intro { display: flex; flex-direction: column; gap: var(--space-3); max-inline-size: 44rem; }
+.intro h1 { margin: 0; font-size: var(--t-title1); line-height: var(--l-title1); }
+.intro p { margin: 0; color: var(--muted); }
+.kind { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.pill { min-height: var(--hit); padding: 0 var(--space-4); border-radius: 999px; border: 1px solid var(--line); background: var(--surface); cursor: pointer; }
+.pill[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.opts { display: flex; flex-direction: column; gap: var(--space-2); background: var(--surface); border-radius: var(--radius); padding: var(--space-4); }
+.opts h2 { margin: 0; font-size: var(--t-head); line-height: var(--l-head); }
+.opt { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; min-height: var(--hit); }
+.opt span { flex: 1 1 16rem; }
+.opt button { min-width: 7.5rem; }
+.hidden-note { color: var(--muted); font-size: var(--t-foot); }
+
+.concept { display: flex; flex-direction: column; gap: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-direction: column; gap: var(--space-2); }
+.concept-head h2 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); }
+.concept-head p { margin: 0; max-inline-size: 44rem; color: var(--muted); }
+.frames { display: flex; gap: var(--space-8); overflow-x: auto; padding: var(--space-2) var(--space-1) var(--space-4); align-items: flex-start; }
+.frame-box { display: flex; flex-direction: column; gap: var(--space-2); flex: none; }
+.frame-cap { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); max-inline-size: 30rem; }
+.frame-box.focused .dev { outline: 4px solid var(--accent); outline-offset: 4px; }
+
+.tag { display: inline-block; border: 1.5px dashed currentColor; border-radius: var(--radius); padding: 0 var(--space-1); font-size: var(--t-cap1); line-height: var(--l-cap1); font-weight: 600; }
+.tag.new { color: var(--note); }
+.tag.old { color: var(--today); }
+
+/* ---------- devices ---------- */
+.dev { position: relative; overflow: hidden; background: var(--bezel); border-radius: 28px; padding: 0; flex: none;
+       box-shadow: 0 0 0 6px var(--bezel); }
+.dev.folded, .dev.ax5 { inline-size: 466px; block-size: 678px; }
+.dev.open { inline-size: 951px; block-size: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.dev.phone { inline-size: 26rem; block-size: 56rem; resize: both; min-inline-size: 20rem; min-block-size: 36rem; }
+.hinge { background: var(--bezel); position: relative; }
+.hinge::after { content: ""; position: absolute; inset: 0 18px; background: linear-gradient(90deg, transparent, rgba(255,255,255,0.08), transparent); }
+.pg { position: relative; overflow: hidden; background: var(--bg); block-size: 100%; display: flex; flex-direction: column;
+      padding-top: max(env(safe-area-inset-top), var(--space-12));
+      padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.dev.open .pg:first-child { border-radius: 28px 0 0 28px; }
+.dev.open .pg:last-child { border-radius: 0 28px 28px 0; }
+.dev.folded .pg, .dev.ax5 .pg, .dev.phone .pg { border-radius: 28px; }
+.statusbar { position: absolute; top: 0; left: 0; right: 0; block-size: var(--space-12); display: flex; align-items: center; justify-content: center; }
+.statusbar::before { content: ""; inline-size: 30%; block-size: 6px; border-radius: 3px; background: var(--line); }
+.homebar { position: absolute; bottom: var(--space-2); left: 50%; transform: translateX(-50%); inline-size: 34%; block-size: 5px; border-radius: 3px; background: var(--text); opacity: .7; z-index: 5; }
+
+/* AX5, HIG typography Dynamic Type AX5 table, read 2026-11-21 */
+.ax5 { --t-large: 60px; --l-large: 70px; --t-title1: 58px; --l-title1: 68px; --t-title2: 56px; --l-title2: 66px; --t-title3: 55px; --l-title3: 65px;
+       --t-head: 53px; --l-head: 62px; --t-body: 53px; --l-body: 62px; --t-callout: 51px; --l-callout: 60px; --t-sub: 49px; --l-sub: 58px;
+       --t-foot: 44px; --l-foot: 52px; --t-cap1: 43px; --l-cap1: 51px; --t-cap2: 40px; --l-cap2: 48px; }
+
+/* ---------- app parts ---------- */
+.nav { display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-4); min-block-size: var(--hit); }
+.nav .grow { flex: 1; min-inline-size: 0; }
+.nav .ttl { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tb { min-inline-size: var(--hit); min-block-size: var(--hit); border-radius: 999px; border: 0; background: var(--surface); display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); padding: 0 var(--space-3); cursor: pointer; color: var(--accent); font-size: var(--t-body); }
+.tb svg { inline-size: 22px; block-size: 22px; }
+.large { padding: var(--space-1) var(--space-4) var(--space-2); display: flex; flex-direction: column; gap: var(--space-1); }
+.large h3 { margin: 0; font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; }
+.sub { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+.scroll { flex: 1; overflow-y: auto; overflow-x: hidden; padding: var(--space-2) var(--space-4) calc(var(--space-14) + var(--space-12)); display: flex; flex-direction: column; gap: var(--space-5); overscroll-behavior: contain; }
+.scroll.noTab { padding-bottom: max(env(safe-area-inset-bottom), var(--space-8)); }
+.grp { display: flex; flex-direction: column; gap: var(--space-2); }
+.ghead { display: flex; align-items: center; gap: var(--space-2); font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; min-block-size: var(--space-8); }
+.ghead .n { color: var(--muted); font-weight: 400; }
+.gtoggle { inline-size: 100%; border: 0; background: transparent; padding: 0; cursor: pointer; text-align: left; min-block-size: var(--hit); }
+.gtoggle .chev { margin-inline-start: auto; color: var(--muted); transition: transform .2s; }
+.gtoggle[aria-expanded="true"] .chev { transform: rotate(90deg); }
+.card { background: var(--surface); border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; }
+.row { display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-3) var(--space-4); min-block-size: var(--hit); border: 0; background: transparent; inline-size: 100%; text-align: left; cursor: pointer; }
+.row + .row { border-top: 1px solid var(--line); }
+.row .txt { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.row .who { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
+.row .said { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); }
+.row .when { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+.row .chev { color: var(--muted); align-self: center; }
+.row.sel { background: color-mix(in srgb, var(--accent) 12%, var(--surface)); }
+.row.dim .who, .row.dim .said { opacity: .62; }
+.rnote { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--note); font-weight: 600; }
+.ax5 .row { flex-wrap: wrap; }
+.ax5 .row .txt { flex-basis: 100%; }
+
+.glyph { inline-size: 28px; block-size: 28px; flex: none; color: var(--gc); }
+.glyph.big { inline-size: 44px; block-size: 44px; }
+.glyph.huge { inline-size: 56px; block-size: 56px; }
+.ax5 .glyph { inline-size: 53px; block-size: 53px; }
+.g-door { --gc: var(--v-door); } .g-stuck { --gc: var(--v-stuck); } .g-back { --gc: var(--v-back); }
+.g-move { --gc: var(--v-move); } .g-here { --gc: var(--v-here); } .g-unknown { --gc: var(--v-unknown); }
+
+/* claim-window runway */
+.runway { display: flex; flex-direction: column; gap: var(--space-1); }
+.runway .track { position: relative; block-size: 8px; border-radius: 4px; background: var(--surface-2); overflow: visible; }
+.runway .fill { position: absolute; inset: 0 auto 0 0; inline-size: calc(var(--p) * 100%); border-radius: 4px; background: var(--gc); }
+.runway .end { position: absolute; right: 0; top: -4px; bottom: -4px; inline-size: 3px; border-radius: 2px; background: var(--text); }
+.runway .rt { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.runway .rt b { color: var(--text); font-weight: 600; }
+.runway.compact { flex-direction: row; align-items: center; gap: var(--space-3); }
+.runway.compact .track { flex: 1; }
+.runway.compact .rt { flex: none; }
+.ax5 .runway.compact { flex-direction: column; align-items: stretch; }
+.hide-runway .runway { display: none; }
+.hide-threshold .opt-threshold { display: none; }
+
+/* buttons */
+.acts { display: flex; gap: var(--space-3); }
+.acts > .btn { flex: 1 1 0; }
+.ax5 .acts { flex-direction: column; }
+.btn { min-block-size: var(--space-12); border-radius: var(--radius); border: 0; padding: var(--space-2) var(--space-4); font-weight: 600; font-size: var(--t-body); line-height: var(--l-body); cursor: pointer; }
+.btn.pri { background: var(--accent); color: var(--on-accent); }
+.btn.sec { background: color-mix(in srgb, var(--accent) 14%, var(--surface)); color: var(--accent); }
+.btn.plain { background: transparent; color: var(--accent); min-block-size: var(--hit); }
+.answer { min-block-size: var(--l-foot); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--note); font-weight: 600; }
+.dock { padding: var(--space-2) var(--space-4) max(env(safe-area-inset-bottom), var(--space-6)); background: var(--bg); border-top: 1px solid var(--line); display: flex; flex-direction: column; gap: var(--space-2); }
+/* a dock on a page with the floating tab bar sits above the bar */
+.pg:has(.tabbar) .dock { padding-bottom: calc(var(--space-12) + var(--space-10) + var(--space-2)); }
+/* largest text: the whole page scrolls, actions included, and buttons take their text height */
+.ax5 .pg { overflow-y: auto; }
+.ax5 .pg > .scroll { flex: none; overflow: visible; }
+.ax5 .acts > .btn { flex: none; }
+.ax5 .tabbar { position: sticky; margin: 0 var(--space-4); left: auto; right: auto; flex: none; }
+.ax5 .pg:has(.tabbar) .dock { padding-bottom: var(--space-4); }
+
+/* detail */
+.verdict { display: flex; gap: var(--space-3); align-items: flex-start; }
+.ax5 .verdict { flex-direction: column; }
+.verdict p { margin: 0; font-size: var(--t-body); line-height: var(--l-body); }
+.kv { display: flex; flex-direction: column; }
+.kv .r { display: flex; gap: var(--space-3); align-items: center; padding: var(--space-3) var(--space-4); min-block-size: var(--hit); flex-wrap: wrap; }
+.kv .r + .r { border-top: 1px solid var(--line); }
+.kv .k { color: var(--muted); font-size: var(--t-sub); line-height: var(--l-sub); flex: 1 1 8rem; }
+.kv .v { font-size: var(--t-body); line-height: var(--l-body); font-variant-numeric: tabular-nums; flex: 2 1 12rem; }
+.kv .r.num { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-3); }
+.kv .r.num .k { grid-column: 1 / -1; }
+.kv .r.link { border: 0; background: transparent; inline-size: 100%; text-align: left; color: var(--accent); cursor: pointer; font-size: var(--t-body); }
+.kv .r.link + .r, .kv .r + .r.link { border-top: 1px solid var(--line); }
+.events { list-style: none; margin: 0; padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.events li { display: grid; grid-template-columns: 12px 1fr; gap: var(--space-3); }
+.events .dot { inline-size: 10px; block-size: 10px; border-radius: 50%; background: var(--line); margin-top: 6px; }
+.events li:first-child .dot { background: var(--gc, var(--accent)); }
+.events .e { display: flex; flex-direction: column; }
+.events .e span:last-child { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+.ax5 .events li { grid-template-columns: 1fr; }
+.ax5 .events .dot { display: none; }
+details.raw summary { cursor: pointer; min-block-size: var(--hit); display: flex; align-items: center; padding: 0 var(--space-4); color: var(--accent); font-size: var(--t-sub); }
+details.raw pre { margin: 0; padding: 0 var(--space-4) var(--space-3); font-size: var(--t-foot); white-space: pre-wrap; color: var(--muted); }
+.sectionLabel { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); padding: 0 var(--space-4); }
+
+/* calm, empty, loading, failed */
+.calm { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-4); background: var(--surface); border-radius: var(--radius); }
+.calm b { font-size: var(--t-title3); line-height: var(--l-title3); }
+.empty { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: var(--space-4); padding: var(--space-6) var(--space-4); }
+.empty p { margin: 0; font-size: var(--t-body); }
+/* still placeholders: the progress line above them carries the "working" signal, so nothing loops */
+.skel { block-size: 72px; border-radius: var(--radius); background: var(--surface); opacity: .7; }
+@media (prefers-reduced-motion: reduce) { .gtoggle .chev, .switch::after { transition: none; } }
+/* bar buttons stay at a fixed size at the largest text size; Title 1 at the default size */
+.ax5 .nav .tb { font-size: 28px; }
+.ax5 .skel { block-size: 180px; }
+.progress { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); background: var(--surface); border-radius: var(--radius); flex-wrap: wrap; }
+.progress span { flex: 1 1 10rem; font-size: var(--t-sub); line-height: var(--l-sub); }
+.banner { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: color-mix(in srgb, var(--v-unknown) 16%, var(--surface)); }
+.banner p { margin: 0; font-size: var(--t-sub); line-height: var(--l-sub); }
+.stale { font-size: var(--t-foot); color: var(--v-unknown); font-style: italic; }
+
+/* tab bar (floats, HIG tab bars) */
+.tabbar { position: absolute; left: var(--space-4); right: var(--space-4); bottom: max(env(safe-area-inset-bottom), var(--space-5)); display: flex; gap: var(--space-1); padding: var(--space-1); border-radius: 999px;
+          background: color-mix(in srgb, var(--surface) 86%, transparent); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); border: 1px solid var(--line); z-index: 4; }
+.tab { flex: 1; min-block-size: var(--space-12); border-radius: 999px; border: 0; background: transparent; display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: var(--t-cap2); line-height: var(--l-cap2); cursor: pointer; color: var(--muted); }
+.tab svg { inline-size: 22px; block-size: 22px; }
+.tab.on { background: color-mix(in srgb, var(--accent) 14%, transparent); color: var(--accent); font-weight: 600; }
+.tab.ph { border: 1.5px dashed var(--today); color: var(--today); cursor: default; }
+.ax5 .tab .lbl { display: none; }
+
+/* sheet (HIG sheets: Cancel leading, Done trailing) */
+.scrimv { position: absolute; inset: 0; background: var(--scrim); z-index: 20; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; max-block-size: 88%; background: var(--surface); border-radius: 16px 16px 0 0; z-index: 21; display: flex; flex-direction: column; }
+.sheet.medium { block-size: 62%; }
+.ax5 .sheet, .ax5 .sheet.medium { block-size: 92%; max-block-size: 92%; }
+.grabber { align-self: center; inline-size: 36px; block-size: 5px; border-radius: 3px; background: var(--line); margin-top: var(--space-2); }
+.sheet .nav { padding-top: var(--space-1); }
+.sheet .scroll { padding-bottom: max(env(safe-area-inset-bottom), var(--space-8)); }
+.srow { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-4); min-block-size: var(--hit); border: 0; background: transparent; inline-size: 100%; text-align: left; cursor: pointer; font-size: var(--t-body); line-height: var(--l-body); flex-wrap: wrap; }
+.srow + .srow { border-top: 1px solid var(--line); }
+.srow .t { flex: 1 1 12rem; }
+.srow .s { font-size: var(--t-foot); color: var(--note); font-weight: 600; }
+.switch { inline-size: 51px; block-size: 31px; border-radius: 999px; background: var(--surface-2); position: relative; flex: none; border: 0; cursor: pointer; }
+.switch::after { content: ""; position: absolute; top: 2px; left: 2px; inline-size: 27px; block-size: 27px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+.switch[aria-checked="true"] { background: var(--v-here); }
+.switch[aria-checked="true"]::after { transform: translateX(20px); }
+.stepper { display: inline-flex; align-items: center; gap: var(--space-1); background: var(--surface-2); border-radius: var(--radius); }
+.stepper button { inline-size: var(--hit); block-size: var(--hit); border: 0; background: transparent; font-size: var(--t-title3); cursor: pointer; color: var(--text); }
+.stepper output { min-inline-size: 5.5em; text-align: center; font-variant-numeric: tabular-nums; }
+.field { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4); }
+.field input { font: inherit; min-block-size: var(--hit); border-radius: var(--radius); border: 1px solid var(--line); background: var(--bg); color: var(--text); padding: 0 var(--space-3); }
+
+/* mail call */
+.qcard { background: var(--surface); border-radius: var(--radius); padding: var(--space-5) var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); border-top: 6px solid var(--gc); }
+.qcard h4 { margin: 0; font-size: var(--t-title1); line-height: var(--l-title1); font-weight: 700; }
+.qcard p { margin: 0; }
+.qmeta { display: flex; gap: var(--space-2); align-items: center; flex-wrap: wrap; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); font-variant-numeric: tabular-nums; }
+.steps { display: flex; gap: var(--space-1); flex: 1 1 8rem; }
+.steps i { flex: 1; block-size: 6px; border-radius: 3px; background: var(--surface-2); }
+.steps i.done { background: var(--v-here); }
+.steps i.cur { background: var(--accent); }
+.follow { display: flex; flex-direction: column; gap: var(--space-2); }
+.follow p { margin: 0; font-size: var(--t-sub); line-height: var(--l-sub); }
+.follow .btn { inline-size: 100%; text-align: left; }
+.toast { min-block-size: var(--l-foot); }
+
+/* phone full-screen on a real phone */
+body.fullphone .sample, body.fullphone .intro, body.fullphone .opts, body.fullphone .concept-head, body.fullphone .frame-cap, body.fullphone .frame-box:not(.full), body.fullphone .concept:not(.full) { display: none; }
+body.fullphone .wrap, body.fullphone .frames { padding: 0; gap: 0; }
+body.fullphone .frame-box.full .dev { inline-size: 100vw; block-size: 100svh; border-radius: 0; box-shadow: none; resize: none; }
+body.fullphone .frame-box.full .pg { border-radius: 0; }
+@media (forced-colors: active) { .btn, .tb, .tab, .switch, .row, .pill { border: 1px solid ButtonText; } }
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample. No figure, seller, number or date on this page is real.</div>
+<main class="wrap">
+  <section class="intro">
+    <h1>Tracking checker</h1>
+    <p>Two concepts for one job: see what the carrier says, get a plain verdict, and hear early when a package needs you. Every tap works. Each concept draws the Duo folded, the Duo open, a large phone, and the folded Duo at the largest text size.</p>
+    <div class="kind">Designer kind: blind. Designer: tracking-checker-blind-1. Sample today: Saturday, November 21.</div>
+    <div class="cluster" role="group" aria-label="Theme">
+      <button class="pill" data-theme-btn="system" aria-pressed="true">System</button>
+      <button class="pill" data-theme-btn="light" aria-pressed="false">Light</button>
+      <button class="pill" data-theme-btn="dark" aria-pressed="false">Dark</button>
+    </div>
+    <div class="cluster"><span class="tag new">New: everything about tracking</span><span class="tag old">Today (assumed): a way to mark an order received</span></div>
+  </section>
+
+  <section class="opts" aria-labelledby="opts-h">
+    <h2 id="opts-h">Options on this page</h2>
+    <div class="opt"><span><b>Watch list</b>: a list sorted by what needs you, with a detail page.</span><button class="pill" data-hide="watch" aria-pressed="false">Hide</button></div>
+    <div class="opt"><span><b>Mail call</b>: a daily roll call that asks you about each package, one at a time.</span><button class="pill" data-hide="call" aria-pressed="false">Hide</button></div>
+    <div class="opt"><span><b>Claim-window runway</b>: a bar on each package that needs you, which shows how many days are left to claim.</span><button class="pill" data-hide="runway" aria-pressed="false">Hide</button></div>
+    <div class="opt"><span><b>Stuck after N days</b>: a setting for how many days with no scan count as stuck (Watch list, Alerts).</span><button class="pill" data-hide="threshold" aria-pressed="false">Hide</button></div>
+    <div class="hidden-note" id="hidden-note" aria-live="polite"></div>
+  </section>
+
+  <section class="concept" id="concept-watch" data-concept="watch">
+    <div class="concept-head">
+      <h2>Watch list</h2>
+      <p>The first screen is a list grouped by what needs you. Packages that need you sit on top. Packages that are fine fold into two closed groups. Tap a package to see the carrier's scans and act on it.</p>
+      <div class="cluster" role="group" aria-label="Watch list state" data-state-for="watch"></div>
+    </div>
+    <div class="frames" data-frames="watch">
+      <div class="frame-box" data-d="folded"><div class="frame-cap">Duo folded, 466 x 678 pt (brief size). Touch, one hand.</div><div class="dev folded" id="watch-folded" data-device="iphone-duo-folded" role="region" aria-label="Watch list, Duo folded"></div></div>
+      <div class="frame-box" data-d="open"><div class="frame-cap">Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief size). Nothing crosses the hinge.</div><div class="dev open" id="watch-open" data-device="iphone-duo-unfolded" role="region" aria-label="Watch list, Duo open"></div></div>
+      <div class="frame-box" data-d="phone"><div class="frame-cap">Large phone. Size not written: placeholder frame, drag its corner to resize. On a phone, open with #d=phone to fill the screen.</div><div class="dev phone" id="watch-phone" data-device="iphone-regular" role="region" aria-label="Watch list, large phone"></div></div>
+      <div class="frame-box" data-d="ax5"><div class="frame-cap">Duo folded at the largest text size (AX5: body 53 pt).</div><div class="dev ax5 folded" id="watch-ax5" data-device="iphone-duo-folded" role="region" aria-label="Watch list, Duo folded, largest text"></div></div>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-call" data-concept="call">
+    <div class="concept-head">
+      <h2>Mail call</h2>
+      <p>The bold one. No list comes first. The app asks one question per package that needs you: "Is it here?" You answer each one with your thumb. When it has no more questions, it says so. The full list sits behind one button.</p>
+      <div class="cluster" role="group" aria-label="Mail call state" data-state-for="call"></div>
+    </div>
+    <div class="frames" data-frames="call">
+      <div class="frame-box" data-d="folded"><div class="frame-cap">Duo folded, 466 x 678 pt (brief size). Touch, one hand.</div><div class="dev folded" id="call-folded" data-device="iphone-duo-folded" role="region" aria-label="Mail call, Duo folded"></div></div>
+      <div class="frame-box" data-d="open"><div class="frame-cap">Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief size). Nothing crosses the hinge.</div><div class="dev open" id="call-open" data-device="iphone-duo-unfolded" role="region" aria-label="Mail call, Duo open"></div></div>
+      <div class="frame-box" data-d="phone"><div class="frame-cap">Large phone. Size not written: placeholder frame, drag its corner to resize. On a phone, open with #d=phone to fill the screen.</div><div class="dev phone" id="call-phone" data-device="iphone-regular" role="region" aria-label="Mail call, large phone"></div></div>
+      <div class="frame-box" data-d="ax5"><div class="frame-cap">Duo folded at the largest text size (AX5: body 53 pt).</div><div class="dev ax5 folded" id="call-ax5" data-device="iphone-duo-folded" role="region" aria-label="Mail call, Duo folded, largest text"></div></div>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+'use strict';
+var ICON = {
+  door: '<path d="M3.5 11 12 3.8l8.5 7.2V21h-17z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M9.5 21v-6.5h5V21" fill="none" stroke="currentColor" stroke-width="2"/><circle cx="17.5" cy="7" r="3" fill="currentColor"/>',
+  stuck: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><rect x="8.6" y="7.5" width="2.4" height="9" rx="1" fill="currentColor"/><rect x="13" y="7.5" width="2.4" height="9" rx="1" fill="currentColor"/>',
+  back: '<path d="M9 14 4.5 9.5 9 5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M5 9.5h9a5.5 5.5 0 0 1 0 11h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>',
+  move: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M8 12h8m-3.5-3.5L16 12l-3.5 3.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  here: '<circle cx="12" cy="12" r="9" fill="currentColor"/><path d="m7.8 12.3 2.8 2.8 5.6-5.8" fill="none" stroke="var(--surface)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+  unknown: '<circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2" stroke-dasharray="3 2.6"/><path d="M9.6 9.5a2.5 2.5 0 1 1 3.6 2.2c-.8.4-1.2.9-1.2 1.8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="16.8" r="1.2" fill="currentColor"/>',
+  chev: '<path d="m9 5 7 7-7 7" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>',
+  backchev: '<path d="m15 5-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/>',
+  bell: '<path d="M6 16V11a6 6 0 0 1 12 0v5l1.5 2h-15z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M10 20.5a2 2 0 0 0 4 0" fill="none" stroke="currentColor" stroke-width="2"/>',
+  refresh: '<path d="M19 12a7 7 0 1 1-2.1-5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><path d="M19 4v4h-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>',
+  list: '<path d="M8 6h12M8 12h12M8 18h12" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="4" cy="6" r="1.4" fill="currentColor"/><circle cx="4" cy="12" r="1.4" fill="currentColor"/><circle cx="4" cy="18" r="1.4" fill="currentColor"/>',
+  box: '<path d="M3.5 7.5 12 3l8.5 4.5v9L12 21l-8.5-4.5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M3.5 7.5 12 12l8.5-4.5M12 12v9" fill="none" stroke="currentColor" stroke-width="2"/>',
+  dots: '<circle cx="5" cy="12" r="2" fill="currentColor"/><circle cx="12" cy="12" r="2" fill="currentColor"/><circle cx="19" cy="12" r="2" fill="currentColor"/>'
+};
+var VNAME = { door: 'Check your door', stuck: 'Stuck', back: 'Returned to seller', unknown: "Can't read", move: 'On its way', here: 'Here' };
+function svg(name, cls, label) {
+  var a = label ? ' role="img" aria-label="' + esc(label) + '"' : ' aria-hidden="true"';
+  return '<svg class="' + (cls || '') + '" viewBox="0 0 24 24"' + a + '>' + ICON[name] + '</svg>';
+}
+function glyph(v, size) { return svg(v, 'glyph g-' + v + (size ? ' ' + size : ''), VNAME[v]); }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+
+/* Sample data. Shape per tracked order: carrier, number, latest status, time (brief). Claim date is derived and marked "est." */
+var ORDERS = [
+  { id: 'n1', seller: 'Northgate Cards', carrier: 'USPS', number: '9400 0000 0000 0000 1042 17', status: 'Delivered, In/At Mailbox', when: 'Yesterday, 2:14 PM', v: 'door', claim: 'Dec 2', left: 11, p: 0.42,
+    say: 'USPS says it was delivered yesterday at 2:14 PM, in or at the mailbox. It is not marked here yet.', q: 'Is the Northgate Cards package here?',
+    events: [['Delivered, In/At Mailbox', 'Yesterday, 2:14 PM'], ['Out for Delivery', 'Yesterday, 7:58 AM'], ['Arrived at Post Office', 'Thu Nov 19, 10:31 PM'], ['Accepted at USPS Origin Facility', 'Tue Nov 17, 6:02 PM']], code: 'event: 01  DELIVERED\nfacility: 0000 (sample)' },
+  { id: 'h1', seller: 'Harbor Singles', carrier: 'USPS', number: '9400 0000 0000 0000 2210 58', status: 'Delivered, Front Door/Porch', when: 'Today, 11:02 AM', v: 'door', claim: 'Dec 5', left: 14, p: 0.3,
+    say: 'USPS says it was left at the front door or porch today at 11:02 AM. It is not marked here yet.', q: 'Is the Harbor Singles package here?',
+    events: [['Delivered, Front Door/Porch', 'Today, 11:02 AM'], ['Out for Delivery', 'Today, 6:40 AM'], ['Departed USPS Regional Facility', 'Fri Nov 20, 2:15 AM']], code: 'event: 01  DELIVERED\nfacility: 0000 (sample)' },
+  { id: 't1', seller: 'Two Owls TCG', carrier: 'UPS', number: '1Z00 0000 0000 0000 77', status: 'Arrived at Facility, Memphis TN', when: 'Sun Nov 15, 4:47 AM', v: 'stuck', claim: 'Dec 1', left: 10, p: 0.55, days: 6,
+    say: 'No new scan from UPS for 6 days. The last one was Sunday, Nov 15: Arrived at Facility, Memphis TN.', q: 'The Two Owls TCG package has not moved in 6 days.',
+    events: [['Arrived at Facility, Memphis TN', 'Sun Nov 15, 4:47 AM'], ['Departed from Facility', 'Sat Nov 14, 9:20 PM'], ['Shipper created a label', 'Fri Nov 13, 3:05 PM']], code: 'status: I  IN TRANSIT\nactivity: AR' },
+  { id: 'k1', seller: 'Kestrel Collectibles', carrier: 'FedEx', number: '0000 0000 3317', status: 'Returning package to shipper', when: 'Thu Nov 19, 3:20 PM', v: 'back', claim: 'Nov 30', left: 9, p: 0.6,
+    say: 'FedEx is sending this back to the seller. That started Thursday, Nov 19.', q: 'The Kestrel Collectibles package is going back to the seller.',
+    events: [['Returning package to shipper', 'Thu Nov 19, 3:20 PM'], ['Delivery exception: incorrect address', 'Thu Nov 19, 9:02 AM'], ['Picked up', 'Mon Nov 16, 5:41 PM']], code: 'status: RS  RETURN TO SHIPPER' },
+  { id: 'r1', seller: 'Ridgeback Games', carrier: 'UPS', number: '1Z00 0000 0000 0000 31', status: 'Out For Delivery Today', when: 'Today, 8:40 AM', v: 'move', eta: 'today',
+    say: 'UPS expects to deliver it today.', events: [['Out For Delivery Today', 'Today, 8:40 AM'], ['Arrived at Facility', 'Today, 3:12 AM']], code: 'status: I  OUT FOR DELIVERY' },
+  { id: 'm1', seller: 'Mox & Mint', carrier: 'USPS', number: '9400 0000 0000 0000 6631 02', status: 'In Transit to Next Facility', when: 'Fri Nov 20, 9:12 PM', v: 'move', eta: 'Mon Nov 23',
+    say: 'USPS expects to deliver it Monday, Nov 23.', events: [['In Transit to Next Facility', 'Fri Nov 20, 9:12 PM'], ['Accepted at USPS Origin Facility', 'Thu Nov 19, 4:50 PM']], code: 'event: 10  IN TRANSIT' },
+  { id: 'l1', seller: 'Lantern Card Co', carrier: 'USPS', number: '9400 0000 0000 0000 7714 90', status: 'Departed USPS Regional Facility', when: 'Fri Nov 20, 1:05 AM', v: 'move', eta: 'Tue Nov 24',
+    say: 'USPS expects to deliver it Tuesday, Nov 24.', events: [['Departed USPS Regional Facility', 'Fri Nov 20, 1:05 AM']], code: 'event: 10  IN TRANSIT' },
+  { id: 'b1', seller: "Basil's Binder", carrier: 'USPS', number: '9400 0000 0000 0000 0198 44', status: 'Delivered, In/At Mailbox', when: 'Wed Nov 18, 1:40 PM', v: 'here', marked: true,
+    say: 'USPS delivered it Wednesday, Nov 18. You marked it here.', events: [['Delivered, In/At Mailbox', 'Wed Nov 18, 1:40 PM']], code: 'event: 01  DELIVERED' },
+  { id: 'p1', seller: 'Pinecrest Hobby', carrier: 'UPS', number: '1Z00 0000 0000 0000 52', status: null, when: null, v: 'unknown', failedOnly: true,
+    say: 'UPS has not answered for this number. The app cannot tell where it is.', q: 'UPS has not answered for the Pinecrest Hobby number.', events: [], code: 'HTTP 503 from carrier (sample)' }
+];
+var NEED = ['door', 'stuck', 'back', 'unknown'];
+var QUIET = ['move', 'here'];
+var STATES = [['loaded', 'Needs you'], ['calm', 'All is well'], ['empty', 'No tracked orders'], ['loading', 'Loading'], ['failed', "A carrier can't be read"]];
+var DEVICES = ['folded', 'open', 'phone', 'ax5'];
+
+function verdictOf(inst, o) {
+  var st = inst.st[o.id];
+  if (st === 'here') return 'here';
+  if (st === 'nothere') return 'door';
+  if (inst.s === 'calm' && o.v !== 'move' && o.v !== 'here') return o.v === 'door' ? 'here' : null;
+  return o.v;
+}
+function orders(inst) {
+  if (inst.s === 'empty' || inst.s === 'loading') return [];
+  return ORDERS.concat(inst.added || []).filter(function (o) {
+    if (o.failedOnly && inst.s !== 'failed') return false;
+    if (inst.s === 'failed' && o.id === 'p1' && inst.st.p1 === 'retried') return false;
+    return verdictOf(inst, o) !== null;
+  });
+}
+function byId(id, inst) { var all = ORDERS.concat((inst && inst.added) || []); for (var i = 0; i < all.length; i++) if (all[i].id === id) return all[i]; return null; }
+function stale(inst, o) { return inst.s === 'failed' && o.carrier === 'UPS' && o.id !== 'p1' && !inst.retried; }
+
+function runway(o, v, compact) {
+  if (!o.claim || NEED.indexOf(v) < 0 || v === 'unknown') return '';
+  if (compact) return '<div class="runway compact g-' + v + '" style="--p:' + o.p + '"><div class="track" aria-hidden="true"><span class="fill"></span><span class="end"></span></div>' +
+    '<span class="rt"><span><b>' + o.left + ' days</b> to claim</span></span></div>';
+  return '<div class="runway g-' + v + '" style="--p:' + o.p + '"><div class="track" aria-hidden="true"><span class="fill"></span><span class="end"></span></div>' +
+    '<div class="rt"><span><b>' + o.left + ' days</b> left to claim</span><span>Claim by ' + o.claim + ' (est.)</span></div></div>';
+}
+
+/* ---------------- Watch list ---------------- */
+function watchRow(inst, o, v) {
+  var note = inst.note[o.id + ':row'] || '';
+  var said = o.status ? '“' + esc(o.status) + '”' : 'No answer from ' + o.carrier;
+  return '<button class="row' + (inst.sel === o.id && inst.dev === 'open' ? ' sel' : '') + (inst.st[o.id] === 'noted' ? ' dim' : '') + '" data-act="open" data-id="' + o.id + '">' +
+    glyph(v) + '<span class="txt"><span class="who">' + esc(o.seller) + '</span><span class="said">' + o.carrier + ': ' + said + '</span>' +
+    (o.when ? '<span class="when">' + o.when + (stale(inst, o) ? ' <span class="stale">(old, UPS not answering)</span>' : '') + '</span>' : '') +
+    (note ? '<span class="rnote">' + esc(note) + '</span>' : '') + runway(o, v, true) + '</span>' + svg('chev', 'chev glyph') + '</button>';
+}
+function watchList(inst) {
+  var h = '<div class="nav"><span class="grow"></span>' +
+    (inst.s === 'loading' ? '' : '<button class="tb" data-act="refresh" aria-label="Check carriers now">' + svg('refresh') + '</button>') +
+    '<button class="tb" data-act="sheet" data-sheet="alerts" aria-label="Alerts">' + svg('bell') + '</button></div>' +
+    '<div class="large"><h3>Tracking</h3><span class="sub" aria-live="polite">' + (inst.s === 'loading' ? 'Asking carriers…' : (inst.note.refresh || 'Carriers checked at 9:05 AM')) + '</span></div>';
+  h += '<div class="scroll">';
+  if (inst.s === 'loading') {
+    h += '<div class="progress"><span>Asking 3 carriers. 1 of 3 answered.</span><button class="btn sec" data-act="stop">Stop</button></div>' +
+      '<div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div>';
+    return h + '</div>';
+  }
+  if (inst.s === 'empty') return h.replace(/<div class="scroll">$/, '') + emptyBlock();
+  if (inst.s === 'failed') h += failBanner(inst);
+  var list = orders(inst), needs = {}, nNeed = 0;
+  list.forEach(function (o) { var v = verdictOf(inst, o); (needs[v] = needs[v] || []).push(o); if (NEED.indexOf(v) >= 0) nNeed++; });
+  if (!nNeed) h += '<div class="calm"><b>All is well.</b><span>Nothing needs you today.</span></div>';
+  NEED.forEach(function (v) {
+    if (!needs[v]) return;
+    h += '<div class="grp"><div class="ghead">' + VNAME[v] + ' <span class="n">' + needs[v].length + '</span></div><div class="card">' +
+      needs[v].map(function (o) { return watchRow(inst, o, v); }).join('') + '</div></div>';
+  });
+  QUIET.forEach(function (v) {
+    if (!needs[v]) return;
+    var openG = !!inst.open[v];
+    h += '<div class="grp"><button class="gtoggle" data-act="group" data-g="' + v + '" aria-expanded="' + openG + '"><span class="ghead">' + VNAME[v] + ' <span class="n">' + needs[v].length + '</span>' + svg('chev', 'chev glyph') + '</span></button>' +
+      (openG ? '<div class="card">' + needs[v].map(function (o) { return watchRow(inst, o, v); }).join('') + '</div>' : '') + '</div>';
+  });
+  return h + '</div>';
+}
+function failBanner(inst) {
+  if (inst.retried) return '<div class="banner" aria-live="polite"><p>UPS answered at 9:12 AM.</p></div>';
+  return '<div class="banner"><p>UPS did not answer. Its packages show what UPS last said, at 6:10 AM.</p><div class="acts"><button class="btn sec" data-act="retry">Try UPS again</button></div></div>';
+}
+function emptyBlock() {
+  return '<div class="empty"><p>Orders with a tracking number show here.</p><button class="btn pri" data-act="sheet" data-sheet="add">Add a tracking number</button></div>';
+}
+function detailActs(inst, o, v) {
+  var st = inst.st[o.id];
+  if (st === 'here') return '<div class="acts"><button class="btn sec" data-act="unhere" data-id="' + o.id + '">Undo, not here yet</button></div>';
+  if (v === 'door' || v === 'move') return '<div class="acts"><button class="btn pri" data-act="here" data-id="' + o.id + '">It’s here</button>' +
+    (v === 'door' ? '<button class="btn sec" data-act="sheet" data-sheet="nothere" data-id="' + o.id + '">Not here</button>' : '') + '</div>';
+  if (v === 'stuck') return '<div class="acts"><button class="btn pri" data-act="msg" data-id="' + o.id + '">Message the seller</button><button class="btn sec" data-act="snooze" data-id="' + o.id + '">Give it 2 days</button></div>';
+  if (v === 'back') return '<div class="acts"><button class="btn pri" data-act="msg" data-id="' + o.id + '">Message the seller</button><button class="btn sec" data-act="noted" data-id="' + o.id + '">Noted</button></div>';
+  if (v === 'unknown') return '<div class="acts"><button class="btn pri" data-act="retry1" data-id="' + o.id + '">Try again</button><button class="btn sec" data-act="sheet" data-sheet="add" data-id="' + o.id + '">Check the number</button></div>';
+  if (v === 'here') return '<div class="acts"><button class="btn sec" data-act="unhere" data-id="' + o.id + '">Undo, not here yet</button></div>';
+  return '';
+}
+function evidence(inst, o, v) {
+  var h = '<div class="grp"><div class="sectionLabel">Carrier</div><div class="card kv">' +
+    '<div class="r num"><span class="k">' + o.carrier + ' number</span><span class="v">' + o.number + '</span><button class="tb" data-act="copy" data-id="' + o.id + '">' + (inst.note[o.id + ':copy'] || 'Copy') + '</button></div>' +
+    '<button class="r link" data-act="site" data-id="' + o.id + '">' + (inst.note[o.id + ':site'] || 'Open on the ' + o.carrier + ' site') + '</button></div></div>';
+  if (o.events.length) {
+    h += '<div class="grp"><div class="sectionLabel">Scans, newest first</div><div class="card g-' + v + '"><ol class="events">' +
+      o.events.map(function (e) { return '<li><span class="dot"></span><span class="e"><span>' + esc(e[0]) + '</span><span>' + e[1] + '</span></span></li>'; }).join('') +
+      '</ol><details class="raw"><summary>What the carrier sent</summary><pre>' + esc(o.code) + '</pre></details></div></div>';
+  } else {
+    h += '<div class="grp"><div class="card"><details class="raw"><summary>What the carrier sent</summary><pre>' + esc(o.code) + '</pre></details></div></div>';
+  }
+  return h;
+}
+function watchDetail(inst, o, withBack) {
+  var v = verdictOf(inst, o) || o.v;
+  var say = o.say;
+  if (v === 'here' && o.v !== 'here') say = 'Marked here. ' + o.carrier + ' last said: ' + o.status + '.';
+  if (v === 'door' && o.v !== 'door') say = o.carrier + ' says it was delivered ' + o.when + '. It is not marked here.';
+  var h = '<div class="nav">' + (withBack ? '<button class="tb" data-act="back" aria-label="Back to Tracking">' + svg('backchev') + '</button>' : '<span class="tb" style="visibility:hidden"></span>') +
+    '<span class="grow ttl">' + esc(o.seller) + '</span><span class="tb" style="visibility:hidden"></span></div>';
+  h += '<div class="scroll noTab"><div class="verdict">' + glyph(v, 'big') + '<p>' + esc(say) + (stale(inst, o) ? ' <span class="stale">This is old: UPS is not answering.</span>' : '') + '</p></div>' + runway(o, v) +
+    (inst.note[o.id] ? '' : '') + evidence(inst, o, v) + '</div>';
+  var acts = detailActs(inst, o, v);
+  if (acts) h += '<div class="dock"><span class="answer" aria-live="polite">' + esc(inst.note[o.id] || '') + '</span>' + acts + '</div>';
+  return h;
+}
+function tabbar(active) {
+  return '<nav class="tabbar" aria-label="Sections"><button class="tab on" aria-current="page">' + svg('box') + '<span class="lbl">' + active + '</span></button>' +
+    '<span class="tab ph" aria-label="Today: the app’s other tabs, not known to this designer">' + svg('dots') + '<span class="lbl">Today: other tabs</span></span></nav>';
+}
+
+/* ---------------- Mail call ---------------- */
+function queue(inst) {
+  var q = [];
+  orders(inst).forEach(function (o) { if (NEED.indexOf(o.v) >= 0 && verdictOf(inst, o) === o.v) q.push(o); });
+  return q;
+}
+function callAnswered(inst, o) { return inst.ans[o.id]; }
+function callCard(inst) {
+  var q = inst.q || (inst.q = queue(inst).map(function (o) { return o.id; }));
+  var h = '<div class="nav"><span class="grow"></span>' + (inst.s === 'empty' || inst.s === 'loading' ? '<span class="tb" style="visibility:hidden"></span>' : '<button class="tb" data-act="sheet" data-sheet="ledger">' + svg('list') + '<span>All</span></button>') + '</div>' +
+    '<div class="large"><h3>Mail call</h3></div>';
+  if (inst.s === 'loading') return h + '<div class="scroll noTab"><div class="progress"><span>Asking 3 carriers. 1 of 3 answered.</span><button class="btn sec" data-act="stop">Stop</button></div><div class="skel" style="block-size:260px"></div></div>';
+  if (inst.s === 'empty') return h + emptyBlock();
+  var i = inst.idx;
+  if (!q.length || i >= q.length) return h + callEnd(inst, q);
+  var o = byId(q[i]);
+  var a = callAnswered(inst, o);
+  h += '<div class="scroll noTab"><div class="qmeta"><span>' + (i + 1) + ' of ' + q.length + '</span><span class="steps" aria-hidden="true">' +
+    q.map(function (id, k) { return '<i class="' + (k < i ? 'done' : (k === i ? 'cur' : '')) + '"></i>'; }).join('') + '</span>' +
+    (a ? '' : '<button class="tb" data-act="later">Ask later</button>') + '</div>';
+  if (inst.s === 'failed') h += failBanner(inst);
+  h += '<article class="qcard g-' + o.v + '" id="' + inst.cid + '-q">' + glyph(o.v, 'big') + '<h4>' + esc(o.q) + '</h4><p>' + esc(o.say) + (stale(inst, o) ? ' <span class="stale">This is old: UPS is not answering.</span>' : '') + '</p>' + runway(o, o.v) + (a === 'nothere' ? followUp(inst, o) : '') +
+    '<div class="qmeta"><span>' + o.carrier + ' ' + o.number + '</span>' + (inst.dev !== 'open' ? '<button class="tb" data-act="evidence" data-id="' + o.id + '">Scans</button>' : '') + '</div></article></div>';
+  h += '<div class="dock"><span class="answer" aria-live="polite">' + esc(inst.note[o.id] || '') + '</span>' + callActs(inst, o, a) + '</div>';
+  return h;
+}
+function callActs(inst, o, a) {
+  var nx = '<button class="btn pri" data-act="next">Next question</button>';
+  if (a === 'here') return '<div class="acts">' + nx + '<button class="btn sec" data-act="undo" data-id="' + o.id + '">Undo</button></div>';
+  if (a === 'nothere' || a === 'done') return '<div class="acts">' + nx + '<button class="btn plain" data-act="undo" data-id="' + o.id + '">Undo</button></div>';
+  if (o.v === 'door') return '<div class="acts"><button class="btn pri" data-act="callhere" data-id="' + o.id + '">It’s here</button><button class="btn sec" data-act="callnot" data-id="' + o.id + '">Not here</button></div>';
+  if (o.v === 'stuck') return '<div class="acts"><button class="btn pri" data-act="msg" data-id="' + o.id + '" data-then="done">Message the seller</button><button class="btn sec" data-act="snooze" data-id="' + o.id + '" data-then="done">Give it 2 days</button></div>';
+  if (o.v === 'back') return '<div class="acts"><button class="btn pri" data-act="msg" data-id="' + o.id + '" data-then="done">Message the seller</button><button class="btn sec" data-act="noted" data-id="' + o.id + '" data-then="done">Noted</button></div>';
+  if (o.v === 'unknown') return '<div class="acts"><button class="btn pri" data-act="retry1" data-id="' + o.id + '" data-then="done">Try again</button><button class="btn sec" data-act="sheet" data-sheet="add" data-id="' + o.id + '">Check the number</button></div>';
+  return '';
+}
+function followUp(inst, o) {
+  var on = !!inst.flag[o.id + ':remind'];
+  return '<div class="follow" id="' + inst.cid + '-follow"><p>First look in the mailbox, on the porch and in any parcel locker. Then pick one, or more.</p>' +
+    '<button class="btn sec" data-act="remind" data-id="' + o.id + '" aria-pressed="' + on + '">' + (on ? 'Asking again tomorrow, 9 AM' : 'Ask me again tomorrow') + '</button>' +
+    '<button class="btn sec" data-act="msg" data-id="' + o.id + '" data-in="card">' + (inst.note[o.id + ':msg'] || 'Message the seller') + '</button>' +
+    '<button class="btn sec" data-act="claim" data-id="' + o.id + '" data-in="card">' + (inst.note[o.id + ':claim'] || 'Start a claim, by ' + o.claim + ' (est.)') + '</button></div>';
+}
+function callEnd(inst, q) {
+  var later = q.filter(function (id) { return inst.ans[id] === 'later'; });
+  var moving = orders(inst).filter(function (o) { return verdictOf(inst, o) === 'move'; });
+  var h = '<div class="scroll noTab"><div class="calm" id="' + inst.cid + '-q">' + glyph('here', 'huge') + '<b>All is well.</b><span>' +
+    (q.length ? 'You answered every question for today.' : 'Nothing to ask you today.') + '</span>' +
+    (later.length ? '<button class="btn sec" data-act="redo">' + later.length + ' left for later. Ask now</button>' : '') + '</div>';
+  if (inst.dev !== 'open') h += quietLists(inst, moving, q);
+  return h + '</div>';
+}
+function quietLists(inst, moving, q) {
+  var h = '';
+  if (q.length) h += '<div class="grp"><div class="ghead">Answered today</div><div class="card">' + q.map(function (id) {
+    var o = byId(id); var a = inst.ans[id] || 'later';
+    var t = { here: 'Marked here', nothere: 'Not here: ' + (inst.flag[id + ':remind'] ? 'asking again tomorrow' : 'follow-up picked'), done: inst.note[id] || 'Answered', later: 'Left for later' }[a];
+    return '<button class="row" data-act="jump" data-id="' + id + '">' + glyph(o.v) + '<span class="txt"><span class="who">' + esc(o.seller) + '</span><span class="said">' + esc(t) + '</span></span>' + svg('chev', 'chev glyph') + '</button>';
+  }).join('') + '</div></div>';
+  if (moving.length) h += '<div class="grp"><div class="ghead">' + VNAME.move + ' <span class="n">' + moving.length + '</span></div><div class="card">' + moving.map(function (o) {
+    return '<div class="row" style="cursor:default">' + glyph('move') + '<span class="txt"><span class="who">' + esc(o.seller) + '</span><span class="said">' + o.carrier + ' expects it ' + o.eta + '</span></span></div>';
+  }).join('') + '</div></div>';
+  return h;
+}
+function callRight(inst) {
+  var q = inst.q || queue(inst).map(function (o) { return o.id; });
+  var i = inst.idx;
+  var ev = inst.evid ? byId(inst.evid, inst) : null;
+  if (ev) return callEvidence(inst, ev);
+  if (inst.s === 'loading' || inst.s === 'empty') return '<div class="large"><h3 style="font-size:var(--t-title2);line-height:var(--l-title2)">Scans</h3><span class="sub">Shows the scans for the package in question.</span></div>';
+  if (!q.length || i >= q.length) {
+    var moving = orders(inst).filter(function (o) { return verdictOf(inst, o) === 'move'; });
+    return '<div class="nav"></div><div class="scroll noTab">' + quietLists(inst, moving, q) + '</div>';
+  }
+  var o = byId(q[i]);
+  var h = '<div class="nav"><span class="grow ttl">' + esc(o.seller) + '</span></div><div class="scroll noTab">' + evidence(inst, o, o.v);
+  var rest = q.slice(i + 1);
+  if (rest.length) h += '<div class="grp"><div class="sectionLabel">Still to ask</div><div class="card">' + rest.map(function (id) {
+    var r = byId(id); return '<button class="row" data-act="jump" data-id="' + id + '">' + glyph(r.v) + '<span class="txt"><span class="who">' + esc(r.seller) + '</span><span class="said">' + r.carrier + ': “' + esc(r.status || 'no answer') + '”</span></span>' + svg('chev', 'chev glyph') + '</button>';
+  }).join('') + '</div></div>';
+  return h + '</div>';
+}
+function callEvidence(inst, o) {
+  return '<div class="nav"><button class="tb" data-act="back" aria-label="Back to Mail call">' + svg('backchev') + '</button><span class="grow ttl">' + esc(o.seller) + '</span><span class="tb" style="visibility:hidden"></span></div>' +
+    '<div class="scroll noTab">' + evidence(inst, o, o.v) + '</div>';
+}
+
+/* ---------------- sheets ---------------- */
+function sheetHTML(inst) {
+  var s = inst.sheet; if (!s) return '';
+  var o = inst.sheetId ? byId(inst.sheetId, inst) : null;
+  var head = function (title, done) {
+    return '<div class="grabber" aria-hidden="true"></div><div class="nav"><button class="tb" data-act="close">Cancel</button><span class="grow ttl">' + title + '</span><button class="tb" data-act="' + (done || 'close') + '" style="font-weight:600">' + (done === 'addgo' ? 'Add' : 'Done') + '</button></div>';
+  };
+  var body = '';
+  if (s === 'nothere') {
+    body = head('Not here') + '<div class="scroll"><p style="margin:0">First look in the mailbox, on the porch and in any parcel locker. Then pick one, or more.</p><div class="card">' +
+      srow(inst, 'remind', o, 'Ask me again tomorrow at 9 AM') +
+      srow(inst, 'msg', o, 'Message the seller') + srow(inst, 'claim', o, 'Start a claim, by ' + o.claim + ' (est.)') + '</div></div>';
+  } else if (s === 'alerts') {
+    body = head('Alerts') + '<div class="scroll"><div class="sectionLabel">Warn me when</div><div class="card">' +
+      '<div class="srow"><span class="t">A package shows delivered but is not marked here</span><button class="switch" role="switch" data-act="sw" data-k="door" aria-checked="' + (inst.flag.swdoor !== false) + '" aria-label="Delivered but not marked here"></button></div>' +
+      '<button class="srow" data-act="asktime"><span class="t">Ask me at</span><span>' + ['12 PM', '6 PM', '9 PM'][inst.askAt] + ' that day</span></button>' +
+      '<div class="srow"><span class="t">A package goes back to the seller</span><button class="switch" role="switch" data-act="sw" data-k="back" aria-checked="' + (inst.flag.swback !== false) + '" aria-label="Going back to the seller"></button></div>' +
+      '<div class="srow opt-threshold" id="' + inst.cid + '-threshold"><span class="t">Call it stuck after no scan for</span><span class="stepper"><button data-act="th" data-d="-1" aria-label="One day fewer">−</button><output aria-live="polite">' + inst.th + ' days</output><button data-act="th" data-d="1" aria-label="One day more">+</button></span></div>' +
+      '</div><span class="sub">Warnings come as notifications, at the time above. <span class="tag new">New: notifications</span></span></div>';
+  } else if (s === 'add') {
+    body = head(o ? 'Check the number' : 'Add a tracking number', 'addgo') + '<div class="scroll"><div class="card"><label class="field"><span class="sub">Tracking number</span><input value="' + (o ? o.number : '') + '" placeholder="Paste or type it" inputmode="text" autocomplete="off"></label></div>' +
+      '<span class="sub">The carrier is found from the number. <span class="tag new">New: add a number by hand</span></span></div>';
+  } else if (s === 'ledger') {
+    var list = orders(inst), g = {};
+    list.forEach(function (x) { var v = verdictOf(inst, x); (g[v] = g[v] || []).push(x); });
+    body = head('All packages') + '<div class="scroll">' + (list.length ? NEED.concat(QUIET).filter(function (v) { return g[v]; }).map(function (v) {
+      return '<div class="grp"><div class="ghead">' + VNAME[v] + ' <span class="n">' + g[v].length + '</span></div><div class="card">' + g[v].map(function (x) {
+        return '<button class="row" data-act="ledgerpick" data-id="' + x.id + '">' + glyph(v) + '<span class="txt"><span class="who">' + esc(x.seller) + '</span><span class="said">' + x.carrier + ': “' + esc(x.status || 'no answer') + '”</span>' + (x.when ? '<span class="when">' + x.when + '</span>' : '') + '</span></button>';
+      }).join('') + '</div></div>';
+    }).join('') : '<p style="margin:0">Orders with a tracking number show here.</p>') + '</div>';
+  }
+  return '<div class="scrimv" data-act="close"></div><div class="sheet' + (s === 'nothere' ? ' medium' : '') + '" role="dialog" aria-modal="true">' + body + '</div>';
+}
+function srow(inst, act, o, label) {
+  var ans = inst.note[o.id + ':' + act] || '';
+  return '<button class="srow" data-act="' + act + '" data-id="' + o.id + '" data-in="sheet"><span class="t">' + esc(label) + '</span><span class="s" aria-live="polite">' + esc(ans) + '</span></button>';
+}
+
+/* ---------------- instances ---------------- */
+var insts = [];
+function mk(concept, dev, s) {
+  return { cid: concept + '-' + dev, concept: concept, dev: dev, s: s, sel: dev === 'open' && concept === 'watch' ? 'n1' : null, st: {}, note: {}, flag: {}, open: {}, ans: {}, idx: 0, q: null,
+    sheet: null, sheetId: null, sheetPage: 'left', th: 4, askAt: 1, retried: false, evid: null, added: [] };
+}
+function render(inst) {
+  var el = inst.el;
+  var dev = inst.dev;
+  var html;
+  if (dev === 'open') {
+    var left, right;
+    if (inst.concept === 'watch') {
+      left = watchList(inst) + tabbar('Tracking');
+      var o = inst.sel ? byId(inst.sel, inst) : null;
+      if (o && orders(inst).indexOf(o) < 0) o = null;
+      right = o ? watchDetail(inst, o, false) : '<div class="empty"><p>' + (inst.s === 'loading' ? 'Scans show here once the carriers answer.' : 'Pick a package to see its scans.') + '</p></div>';
+    } else {
+      left = callCard(inst) + tabbar('Mail call');
+      right = callRight(inst);
+    }
+    var sh = sheetHTML(inst);
+    html = '<div class="pg">' + '<div class="statusbar" aria-hidden="true"></div>' + left + (inst.sheetPage === 'left' ? sh : '') + '</div><div class="hinge" aria-hidden="true"></div>' +
+      '<div class="pg"><div class="statusbar" aria-hidden="true"></div>' + right + (inst.sheetPage === 'right' ? sh : '') + '<span class="homebar" aria-hidden="true"></span></div>';
+  } else {
+    var body;
+    if (inst.concept === 'watch') {
+      var so = inst.sel ? byId(inst.sel, inst) : null;
+      body = so ? watchDetail(inst, so, true) : watchList(inst) + tabbar('Tracking');
+    } else {
+      var eo = inst.evid ? byId(inst.evid, inst) : null;
+      body = eo ? callEvidence(inst, eo) : callCard(inst) + tabbar('Mail call');
+    }
+    html = '<div class="pg"><div class="statusbar" aria-hidden="true"></div>' + body + sheetHTML(inst) + '<span class="homebar" aria-hidden="true"></span></div>';
+  }
+  el.innerHTML = html;
+  var rw = el.querySelector('.runway');
+  if (rw) rw.id = inst.cid + '-runway';
+}
+function pageOf(target) {
+  var pg = target.closest('.pg'); var dev = target.closest('.dev');
+  if (!dev.classList.contains('open')) return 'left';
+  return pg === dev.querySelector('.pg') ? 'left' : 'right';
+}
+function act(inst, b, e) {
+  var a = b.getAttribute('data-act'), id = b.getAttribute('data-id'), then = b.getAttribute('data-then');
+  var o = id ? byId(id, inst) : null;
+  switch (a) {
+    case 'open': inst.sel = id; break;
+    case 'back': inst.sel = null; inst.evid = null; break;
+    case 'group': inst.open[b.getAttribute('data-g')] = !inst.open[b.getAttribute('data-g')]; break;
+    case 'refresh': inst.note.refresh = 'Carriers checked just now'; break;
+    case 'stop': inst.s = 'loaded'; inst.note.refresh = 'Stopped. Showing what carriers said at 9:05 AM'; inst.q = null; break;
+    case 'retry': inst.retried = true; inst.note.retry = ''; break;
+    case 'retry1': inst.note[id] = 'Asked UPS again. Still no answer.'; if (then) inst.ans[id] = 'done'; break;
+    case 'here': inst.st[id] = 'here'; inst.note[id] = 'Marked here.'; inst.note[id + ':row'] = ''; break;
+    case 'unhere': inst.st[id] = 'nothere'; inst.note[id] = 'Not marked here.'; break;
+    case 'msg': inst.note[b.getAttribute('data-in') ? id + ':msg' : id] = 'Opens the order’s message page.'; if (then) inst.ans[id] = 'done'; break;
+    case 'claim': inst.note[b.getAttribute('data-in') ? id + ':claim' : id] = 'Opens the claim page for this order.'; break;
+    case 'remind':
+      inst.flag[id + ':remind'] = !inst.flag[id + ':remind'];
+      inst.note[id + ':remind'] = inst.flag[id + ':remind'] ? 'Set' : '';
+      inst.note[id + ':row'] = inst.flag[id + ':remind'] ? 'Asking again tomorrow, 9 AM' : '';
+      break;
+    case 'snooze': inst.note[id] = 'I’ll ask again Monday, Nov 23.'; inst.note[id + ':row'] = 'Asking again Mon Nov 23'; if (then) inst.ans[id] = 'done'; break;
+    case 'noted': inst.st[id] = 'noted'; inst.note[id] = 'Noted. It stays in this group until it reaches the seller.'; inst.note[id + ':row'] = 'Noted'; if (then) inst.ans[id] = 'done'; break;
+    case 'copy': inst.note[id + ':copy'] = 'Copied'; break;
+    case 'site': inst.note[id + ':site'] = 'Opens ' + o.carrier + ' tracking in Safari'; break;
+    case 'sheet':
+      inst.sheet = b.getAttribute('data-sheet'); inst.sheetId = id || null; inst.sheetPage = pageOf(b); break;
+    case 'close': inst.sheet = null; break;
+    case 'addgo':
+      inst.sheet = null;
+      if (inst.s === 'empty') { inst.s = 'loaded'; inst.q = null; }
+      if (inst.sheetId) inst.note[inst.sheetId] = 'Number saved. Asking UPS again.';
+      break;
+    case 'sw': var k = 'sw' + b.getAttribute('data-k'); inst.flag[k] = inst.flag[k] === false; break;
+    case 'asktime': inst.askAt = (inst.askAt + 1) % 3; break;
+    case 'th': inst.th = Math.min(14, Math.max(2, inst.th + Number(b.getAttribute('data-d')))); if (navigator.vibrate) { try { navigator.vibrate(8); } catch (x) {} } break;
+    case 'callhere': inst.ans[id] = 'here'; inst.st[id] = 'here'; inst.note[id] = 'Marked here.'; break;
+    case 'callnot': inst.ans[id] = 'nothere'; inst.note[id] = ''; break;
+    case 'undo': delete inst.ans[id]; delete inst.st[id]; inst.note[id] = ''; inst.flag[id + ':remind'] = false; break;
+    case 'next': inst.idx++; break;
+    case 'later': var cur = inst.q[inst.idx]; inst.ans[cur] = 'later'; inst.idx++; break;
+    case 'redo': inst.q = inst.q.filter(function (x) { return inst.ans[x] === 'later'; }).concat([]); inst.q.forEach(function (x) { delete inst.ans[x]; }); inst.idx = 0; break;
+    case 'jump': if (inst.q) { var j = inst.q.indexOf(id); if (j >= 0) inst.idx = j; } break;
+    case 'evidence': inst.evid = id; break;
+    case 'ledgerpick':
+      inst.sheet = null;
+      if (inst.q && inst.q.indexOf(id) >= 0) { inst.idx = inst.q.indexOf(id); inst.evid = null; }
+      else inst.evid = id;
+      break;
+  }
+  render(inst);
+  if (a === 'callnot') {
+    var f = inst.el.querySelector('.follow'); var sc = f && f.closest('.scroll');
+    if (sc) sc.scrollTop = Math.max(0, f.offsetTop - sc.offsetTop - 16);
+  }
+}
+function buildConcept(concept) {
+  DEVICES.forEach(function (d) {
+    var dev = document.getElementById(concept + '-' + d);
+    var inst = mk(concept, d, 'loaded'); inst.el = dev; insts.push(inst);
+    dev.addEventListener('click', function (e) {
+      var b = e.target.closest('[data-act]');
+      if (!b || !dev.contains(b)) return;
+      if (b.tagName === 'SUMMARY') return;
+      act(inst, b, e);
+    });
+  });
+  var sc = document.querySelector('[data-state-for="' + concept + '"]');
+  sc.innerHTML = STATES.map(function (s) { return '<button class="pill" data-s="' + s[0] + '" aria-pressed="false">' + s[1] + '</button>'; }).join('');
+  sc.addEventListener('click', function (e) { var b = e.target.closest('[data-s]'); if (b) { setState(concept, b.getAttribute('data-s')); writeHash({ c: concept, s: b.getAttribute('data-s') }); } });
+}
+function setState(concept, s) {
+  insts.forEach(function (inst) {
+    if (inst.concept !== concept) return;
+    var fresh = mk(concept, inst.dev, s); fresh.el = inst.el;
+    for (var k in fresh) inst[k] = fresh[k];
+    if (s === 'loading' || s === 'empty') inst.sel = null;
+    render(inst);
+  });
+  document.querySelectorAll('[data-state-for="' + concept + '"] [data-s]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-s') === s)); });
+}
+
+/* theme, options, hash */
+function setTheme(t) {
+  if (t === 'light' || t === 'dark') document.documentElement.setAttribute('data-theme', t); else document.documentElement.removeAttribute('data-theme');
+  document.querySelectorAll('[data-theme-btn]').forEach(function (b) { b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-btn') === (t || 'system'))); });
+}
+var hidden = {};
+function applyHidden() {
+  document.getElementById('concept-watch').hidden = !!hidden.watch;
+  document.getElementById('concept-call').hidden = !!hidden.call;
+  document.body.classList.toggle('hide-runway', !!hidden.runway);
+  document.body.classList.toggle('hide-threshold', !!hidden.threshold);
+  document.querySelectorAll('[data-hide]').forEach(function (b) { var k = b.getAttribute('data-hide'); b.setAttribute('aria-pressed', String(!!hidden[k])); b.textContent = hidden[k] ? 'Show' : 'Hide'; });
+  var n = Object.keys(hidden).filter(function (k) { return hidden[k]; }).length;
+  document.getElementById('hidden-note').textContent = n ? n + ' hidden. Press Show to bring one back.' : '';
+}
+function parseHash() {
+  var o = {}; location.hash.replace(/^#/, '').split('&').forEach(function (p) { var kv = p.split('='); if (kv[0]) o[kv[0]] = decodeURIComponent(kv[1] || ''); }); return o;
+}
+var current = {};
+function writeHash(patch) {
+  for (var k in patch) current[k] = patch[k];
+  var s = Object.keys(current).filter(function (k) { return current[k]; }).map(function (k) { return k + '=' + current[k]; }).join('&');
+  history.replaceState(null, '', '#' + s);
+}
+function applyHash() {
+  var h = parseHash(); current = h;
+  setTheme(h.t);
+  hidden = {}; (h.h || '').split(',').forEach(function (k) { if (k) hidden[k] = true; }); applyHidden();
+  var cs = h.c ? [h.c] : ['watch', 'call'];
+  cs.forEach(function (c) { setState(c, h.s || 'loaded'); });
+  ['watch', 'call'].forEach(function (c) { if (cs.indexOf(c) < 0) setState(c, 'loaded'); });
+  if (h.sel || h.sheet) insts.forEach(function (inst) {
+    if (cs.indexOf(inst.concept) < 0) return;
+    if (h.sel && byId(h.sel, inst)) {
+      if (inst.concept === 'watch') inst.sel = h.sel;
+      else { var qq = inst.q || (inst.q = queue(inst).map(function (o) { return o.id; })); var j = qq.indexOf(h.sel); if (j >= 0) inst.idx = j; else inst.evid = h.sel; }
+    }
+    var okSheet = inst.concept === 'watch' ? ['alerts', 'nothere', 'add'] : ['ledger', 'add'];
+    if (h.sheet && okSheet.indexOf(h.sheet) >= 0) {
+      inst.sheet = h.sheet; inst.sheetId = h.sheet === 'nothere' ? (h.sel || 'n1') : null;
+      inst.sheetPage = inst.dev === 'open' && h.sheet === 'nothere' ? 'right' : 'left';
+      if (h.sheet === 'nothere') inst.sel = inst.sheetId;
+    }
+    render(inst);
+  });
+  document.querySelectorAll('.frame-box').forEach(function (b) { b.classList.remove('focused', 'full'); });
+  document.querySelectorAll('.concept').forEach(function (c) { c.classList.remove('full'); });
+  document.body.classList.remove('fullphone');
+  if (h.d) {
+    var c = h.c || 'watch';
+    var box = document.querySelector('[data-frames="' + c + '"] [data-d="' + h.d + '"]');
+    if (box) {
+      if (h.d === 'phone' && matchMedia('(max-width: 500px)').matches) {
+        document.body.classList.add('fullphone'); box.classList.add('full'); document.getElementById('concept-' + c).classList.add('full');
+      } else {
+        box.classList.add('focused');
+        setTimeout(function () { box.scrollIntoView({ block: 'center', inline: 'center' }); }, 0);
+      }
+    }
+  } else if (h.c) {
+    setTimeout(function () { document.getElementById('concept-' + h.c).scrollIntoView(); }, 0);
+  }
+}
+document.querySelectorAll('[data-theme-btn]').forEach(function (b) { b.addEventListener('click', function () { var t = b.getAttribute('data-theme-btn'); setTheme(t === 'system' ? '' : t); writeHash({ t: t === 'system' ? '' : t }); }); });
+document.querySelectorAll('[data-hide]').forEach(function (b) { b.addEventListener('click', function () { var k = b.getAttribute('data-hide'); hidden[k] = !hidden[k]; applyHidden(); writeHash({ h: Object.keys(hidden).filter(function (x) { return hidden[x]; }).join(',') }); }); });
+buildConcept('watch');
+buildConcept('call');
+applyHash();
+window.addEventListener('hashchange', applyHash);
+})();
+</script>
+</body>
+</html>

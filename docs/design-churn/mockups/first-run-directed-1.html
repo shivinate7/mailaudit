@@ -1,0 +1,538 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>First Run Directed</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The app and the native client ship light only,
+   so this page draws one theme. The extension's dark set is not an app theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --gold:#C9A961; --wax:#A8443C; --waxDeep:#66231D;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px;
+  /* Status bar and home indicator: no Apple page read gives a Duo figure. Drawn at the 20 pt floor the
+     Duo UI tests use, unmeasured. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  /* Tab bar: drawn at the web bar's 64 pt (phone-nav-is-bottom-bar). The native system bar is unmeasured. */
+  --bar: 64px;
+  --t: 1;          /* text scale: 1 at the default size; AX5 sets body 53/17 (HIG typography, AX5 table) */
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+html { -webkit-text-size-adjust:100%; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:12px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:26px; line-height:1.15; margin:4px 0 0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+.kind { font-weight:600; margin:0; }
+.bar-nav { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.bar-nav > span { font-size:13px; color:var(--inkSoft); min-width:64px; }
+.bar-nav button, .chip { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; gap:6px;
+  border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer; }
+.bar-nav button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.bar-nav button:focus-visible, .chip:focus-visible, .dev button:focus-visible, .dev [role=button]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.chip input { width:18px; height:18px; accent-color:var(--accent); }
+.hidden-note { color:var(--inkSoft); font-size:14px; }
+.frames { display:flex; flex-direction:column; gap:24px; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figcaption { font-size:14px; color:var(--inkSoft); }
+figcaption b { font-family:var(--cochin); font-size:18px; color:var(--ink); font-weight:700; }
+.fit { width:100%; overflow:hidden; }
+.fit > .dev { transform-origin:0 0; }
+
+/* ---------- device frames, 1 CSS px = 1 pt ---------- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:14px; overflow:hidden; flex:none;
+  font-family:-apple-system, system-ui, sans-serif; color:var(--ink); }
+.dev[data-device="iphone-duo-folded"] { width:466px; height:678px; }
+.dev[data-device="iphone-duo-unfolded"] { width:951px; height:669px; }
+.dev[data-device="iphone-regular"] { width:375px; height:812px; }
+.dev.ax5 { --t:3.118; }
+.ax5 .sheet { flex:none; justify-content:flex-start; }
+.ax5 .sheet .go { flex-direction:column; }
+/* open pose, before data: the left page is the ledger's title page */
+.titlepage { flex:1; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:12px; text-align:center; font-family:var(--cochin); }
+.titlepage .lh { border-bottom:0; }
+.titlepage .lh .mast b { font-size:40px; }
+.titlepage .rule { width:120px; height:1px; background:var(--gold); }
+.pkg.sel { border-color:var(--accent); box-shadow:inset 3px 0 0 var(--accent); }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:20; }
+.home { position:absolute; left:50%; bottom:6px; width:120px; height:5px; margin-left:-60px; background:var(--ink); border-radius:3px; z-index:21; opacity:.8; }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.page.one { left:0; right:0; }
+.page.l { left:0; width:455.5px; } .page.r { left:495.5px; width:455.5px; }
+.hinge { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, transparent); z-index:19; }
+.hinge span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; white-space:nowrap; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; padding:12px 16px calc(var(--bar) + var(--sab) + 16px); display:flex; flex-direction:column; gap:12px; overflow:hidden; }
+.page.l .scroll { padding-bottom:calc(var(--sab) + 16px); }
+
+/* letterhead: Cochin caps, one object (masthead-is-one-letterhead) */
+.lh { display:flex; flex-direction:column; gap:4px; align-items:center; text-align:center; padding-bottom:8px; border-bottom:1px solid var(--line); flex:none; }
+.lh .co { font:10.5px/13px var(--mono); letter-spacing:2px; color:var(--inkSoft); text-transform:uppercase; }
+.lh .mast { display:flex; align-items:center; gap:10px; }
+.lh .mast b { font-family:var(--cochin); font-size:calc(30px * min(var(--t), 1.6)); letter-spacing:4px; font-weight:700; }
+.seal { width:28px; height:28px; border-radius:50%; background:radial-gradient(circle at 40% 35%, #C86A5F, var(--wax) 55%, var(--waxDeep)); flex:none; }
+.tallies { display:grid; grid-template-columns:1fr 1.15fr 1.3fr; gap:8px; width:100%; }
+.tallies div { display:flex; flex-direction:column; gap:2px; align-items:center; }
+.tallies small { font:10.5px var(--mono); letter-spacing:1px; color:var(--inkSoft); text-transform:uppercase; }
+.tallies span { font:600 calc(14px * min(var(--t),1.4)) var(--mono); }
+.missing { font:12px var(--mono); color:var(--inkSoft); }
+
+/* ---------- concept: Blank Page, the sheet is the control ---------- */
+.sheet { all:unset; box-sizing:border-box; cursor:pointer; flex:1 1 auto; min-height:240px; width:100%; border-radius:8px; border:1px solid var(--line);
+  background:var(--card) repeating-linear-gradient(to bottom, transparent 0 31px, color-mix(in srgb, var(--line) 70%, transparent) 31px 32px);
+  display:flex; flex-direction:column; justify-content:center; align-items:center; gap:12px; padding:24px; text-align:center; font-family:var(--cochin); }
+.sheet:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.sheet .go { font-size:calc(24px * var(--t)); line-height:1.2; font-weight:700; color:var(--accent); display:flex; align-items:center; gap:10px; }
+.sheet .go svg { width:calc(26px * min(var(--t),2)); height:calc(26px * min(var(--t),2)); flex:none; }
+.sheet .what { font-size:calc(15px * var(--t)); color:var(--inkSoft); line-height:1.3; }
+.sheet .slot-line { min-height:calc(40px * var(--t)); font-size:calc(14px * var(--t)); color:var(--manilaInk); line-height:1.35; max-width:30ch; }
+.sheet.err .slot-line { color:var(--red); }
+.sheet .slot-line:not(:empty) { background:var(--card); padding:4px 8px; border-radius:4px; }
+.sheet.wait { cursor:progress; }
+
+/* receipt: takes the sheet's slot at the press, stays the session (no dismiss, so no row moves) */
+.receipt { flex:none; border:1px solid var(--line); background:color-mix(in srgb, var(--manila) 55%, transparent); border-radius:8px; padding:12px;
+  display:flex; flex-direction:column; gap:6px; font-family:var(--cochin); }
+.receipt b { font-size:calc(16px * var(--t)); line-height:1.25; }
+.receipt p { margin:0; font-size:calc(13.5px * var(--t)); line-height:1.35; color:var(--manilaInk); }
+.receipt .lead { all:unset; cursor:pointer; min-height:44px; display:inline-flex; align-items:center; font:600 calc(14px * var(--t)) var(--cochin); color:var(--accent);
+  text-decoration:underline; text-underline-offset:3px; }
+
+/* ---------- concept: Mail Slot ---------- */
+.slotbox { flex:1 1 auto; min-height:220px; display:flex; flex-direction:column; justify-content:center; align-items:center; gap:16px; text-align:center; font-family:var(--cochin); }
+.mailslot { width:min(320px, 86%); height:56px; border-radius:8px; background:var(--card); border:1px solid var(--line); position:relative;
+  box-shadow: inset 0 0 0 6px var(--paper); display:flex; align-items:center; justify-content:center; }
+.mailslot i { display:block; width:80%; height:10px; border-radius:5px; background:var(--ink); opacity:.85; }
+.mailslot .file { position:absolute; left:50%; top:-48px; width:120px; margin-left:-60px; height:64px; background:var(--card); border:1px solid var(--line);
+  border-radius:4px; font:10.5px var(--mono); color:var(--inkSoft); display:flex; align-items:flex-start; justify-content:center; padding-top:6px; }
+.slotbox .say { font-size:calc(19px * var(--t)); line-height:1.3; max-width:24ch; }
+.choose { all:unset; cursor:pointer; min-height:44px; padding:0 16px; border-radius:8px; border:1px solid var(--accent); color:var(--accent);
+  font:600 calc(15px * var(--t)) var(--cochin); display:inline-flex; align-items:center; }
+.choose:focus-visible { outline:2px solid var(--accent); outline-offset:3px; }
+.slip { flex:none; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; font-family:var(--cochin); }
+.slip .head { display:flex; justify-content:space-between; align-items:baseline; gap:8px; border-bottom:1px dashed var(--line); padding-bottom:6px; }
+.slip .head b { font-size:calc(16px * var(--t)); }
+.slip .head small { font:11px var(--mono); color:var(--inkSoft); }
+.slip dl { margin:0; display:grid; grid-template-columns:auto 1fr; gap:6px 12px; align-items:baseline; }
+.slip dt { font:600 calc(15px * var(--t)) var(--mono); text-align:right; }
+.slip dd { margin:0; font-size:calc(14px * var(--t)); line-height:1.3; display:flex; flex-direction:column; }
+.slip dd em { font-style:normal; font-weight:700; }
+.slip dd .soft { color:var(--inkSoft); }
+.slip .lead { all:unset; cursor:pointer; min-height:44px; display:inline-flex; align-items:center; font:600 calc(14px * var(--t)) var(--cochin); color:var(--accent);
+  text-decoration:underline; text-underline-offset:3px; }
+
+/* ---------- package cards (Packages view) ---------- */
+.list { display:flex; flex-direction:column; gap:8px; }
+.pkg { border:1px solid var(--line); background:var(--card); border-radius:8px; overflow:hidden; flex:none; }
+.pkg .ph { display:flex; flex-direction:column; gap:2px; padding:10px 12px; min-height:56px; }
+.pkg .micro { font:10.5px/14px var(--mono); letter-spacing:1px; color:var(--inkSoft); text-transform:uppercase; height:14px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.pkg .micro.teach { color:var(--accent); }
+.pkg .who { font:700 calc(17px * var(--t))/1.25 var(--cochin); display:flex; justify-content:space-between; gap:8px; }
+.pkg .who span { font:400 12px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.pkg.closed .ph { flex-direction:row; align-items:center; justify-content:space-between; }
+.line { display:flex; gap:8px; min-height:64px; border-top:1px solid var(--line); background:var(--card); align-items:center; }
+.line .box { all:unset; cursor:pointer; flex:0 0 48px; align-self:stretch; display:grid; place-items:center; }
+.line .box i { width:30px; height:30px; border:1.5px solid var(--inkSoft); border-radius:6px; display:block; position:relative; }
+.line .box:focus-visible i { outline:2px solid var(--accent); outline-offset:2px; }
+.line .tx { flex:1; padding:10px 12px 10px 0; display:flex; flex-direction:column; gap:2px; min-width:0; }
+.line .tx b { font:600 calc(14.5px * var(--t))/1.25 var(--cochin); display:flex; justify-content:space-between; gap:8px; }
+.line .tx b span { font:400 12px var(--mono); color:var(--inkSoft); }
+.line .tx small { font:calc(12px * var(--t))/1.3 var(--cochin); color:var(--inkSoft); min-height:calc(16px * var(--t)); }
+.line .tx small.teach { color:var(--accent); }
+.line .tx small.said { color:var(--green); }
+.line.done { background:var(--greenSoft); }
+.line.done .box i { background:var(--green); border-color:var(--green); }
+.line.done .box i::after { content:""; position:absolute; left:9px; top:4px; width:8px; height:14px; border:solid var(--card); border-width:0 3px 3px 0; transform:rotate(45deg); }
+
+/* ---------- system chrome (iOS): tab bar, document picker, AirDrop sheet ---------- */
+.tabbar { position:absolute; left:16px; right:16px; bottom:calc(var(--sab) - 8px); height:var(--bar); border-radius:32px; z-index:15;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); backdrop-filter:blur(18px) saturate(1.8); -webkit-backdrop-filter:blur(18px) saturate(1.8);
+  border:1px solid var(--line); display:grid; grid-template-columns:repeat(4, 1fr); padding:4px; gap:2px; }
+.tabbar button { all:unset; cursor:pointer; border-radius:28px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  font-size:10px; color:var(--inkSoft); min-height:44px; position:relative; }
+.tabbar button[aria-current="page"] { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); }
+.tabbar button:focus-visible { outline:2px solid var(--accent); }
+.tabbar svg { width:22px; height:22px; }
+.tabbar .badge { position:absolute; top:4px; left:calc(50% + 6px); min-width:16px; height:16px; border-radius:8px; background:var(--red); color:var(--card); font:600 10px/16px var(--mono); text-align:center; padding:0 4px; }
+.scrim { position:absolute; inset:0; background:color-mix(in srgb, var(--ink) 30%, transparent); z-index:30; }
+.syssheet { position:absolute; left:0; right:0; bottom:0; top:calc(var(--sat) + 24px); background:#F2F2F7; border-radius:12px 12px 0 0; z-index:31;
+  font-family:-apple-system, system-ui, sans-serif; color:#000; display:flex; flex-direction:column; }
+.syssheet .top { display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:8px 8px 4px; }
+.syssheet .top button { all:unset; cursor:pointer; color:#007AFF; font-size:17px; min-height:44px; padding:0 8px; display:inline-flex; align-items:center; }
+.syssheet .top b { font-size:17px; font-weight:600; }
+.syssheet .search { margin:4px 16px 12px; height:36px; border-radius:10px; background:#E3E3E8; color:#8A8A8E; font-size:17px; display:flex; align-items:center; padding:0 10px; }
+.syssheet ul { list-style:none; margin:0 16px; padding:0; background:#FFF; border-radius:10px; overflow:hidden; }
+.syssheet li button { all:unset; cursor:pointer; display:flex; gap:12px; align-items:center; width:100%; box-sizing:border-box; min-height:60px; padding:8px 12px; border-top:0.5px solid #C6C6C8; }
+.syssheet li:first-child button { border-top:0; }
+.syssheet li button:focus-visible { outline:2px solid #007AFF; outline-offset:-2px; }
+.syssheet .doc { width:30px; height:38px; border:1px solid #C6C6C8; border-radius:3px; background:#FFF; font:600 8px var(--mono); color:#555; display:grid; place-items:end center; padding-bottom:3px; flex:none; }
+.syssheet .nm { display:flex; flex-direction:column; font-size:15px; }
+.syssheet .nm small { color:#8A8A8E; font-size:13px; }
+.syssheet li.off button { opacity:.4; cursor:not-allowed; }
+.syssheet .sysnote { margin:8px 16px; font:12px var(--mono); color:#6E6E73; }
+
+/* Ledger tab (today) */
+.lrow { min-height:52px; display:flex; justify-content:space-between; align-items:center; border-top:1px solid var(--line); padding:0 12px; font:calc(16px * var(--t)) var(--cochin); }
+.lrow:first-child { border-top:0; }
+.lrow span { font:12px var(--mono); color:var(--inkSoft); }
+.lcard { border:1px solid var(--line); background:var(--card); border-radius:8px; overflow:hidden; }
+.group { font:11px var(--mono); letter-spacing:2.2px; text-transform:uppercase; color:var(--inkSoft); }
+.zone { border:2px dashed var(--inkSoft); border-radius:12px; background:var(--card); padding:40px 24px; text-align:center; font-family:var(--cochin); display:flex; flex-direction:column; gap:6px; align-items:center; }
+.zone .em { font-size:34px; }
+.zone b { font-size:16px; } .zone p { margin:0 0 10px; font-size:13px; color:var(--inkSoft); }
+.zone .btn { background:var(--ink); color:var(--card); border-radius:8px; padding:10px 16px; font-weight:700; font-size:14px; }
+.empty-line { font:calc(14px * var(--t))/1.35 var(--cochin); color:var(--inkSoft); text-align:center; padding:24px 8px 8px; }
+.empty-ctl { align-self:center; }
+.blankspace { flex:1; border:1px dashed var(--line); border-radius:8px; display:grid; place-items:center; color:var(--inkSoft); font:12px var(--mono); }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+.syssheet[data-tag] { position:absolute; }
+[data-tag]::before { content:attr(data-tag); position:absolute; right:6px; top:-8px; font:600 10.5px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:12; white-space:nowrap; pointer-events:none; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+body.notags [data-tag] { outline:none; } body.notags [data-tag]::before { display:none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .mailslot .file.drop { animation:drop 520ms cubic-bezier(.3,.7,.2,1) both; }
+  @keyframes drop { from { transform:translateY(-40px); opacity:0; } 70% { opacity:1; } to { transform:translateY(34px); opacity:0; } }
+}
+@media (forced-colors: active) { .sheet, .pkg, .tabbar, .receipt, .slip, .choose { border:1px solid CanvasText; } }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner">Sample. No figure, seller, card, file name or count on this page is real. Sizes marked unmeasured are drawn, not read.</div>
+  <h1>First run: one gesture gets the orders in</h1>
+  <p class="kind" id="kindline">Designer kind: directed. Direction: one-gesture start: a single action gets data in; teach nothing up front.</p>
+  <p class="sub">Two concepts, each drawn on the iPhone Duo folded (466 x 678 pt, the brief's size), the Duo open (951 x 669 pt, hinge x 455.5 to 495.5), a phone (375 x 812, the web screens check's viewport; no large-phone size is written), and the Duo folded at the AX5 text size. Light theme only: the app ships light. Every button in a frame works: press through.</p>
+
+  <div class="bar-nav" role="group" aria-label="Concept"><span>Concept</span><span id="concepts" style="display:contents"></span></div>
+  <div class="bar-nav" role="group" aria-label="State"><span>State</span><span id="states" style="display:contents"></span></div>
+  <div class="bar-nav" role="group" aria-label="Options shown"><span>Options</span><span id="opts" style="display:contents"></span>
+    <label class="chip"><input type="checkbox" id="tagsbox" checked> Today / New tags</label></div>
+  <p class="hidden-note" id="hiddennote" hidden></p>
+  <p class="sub" id="statenote" aria-live="polite"></p>
+
+  <section class="frames" id="frames" aria-label="Frames">
+    <figure><div class="fit"><div class="dev" data-device="iphone-duo-folded" data-frame="0"></div></div>
+      <figcaption><b>iPhone Duo, folded</b> · 466 x 678 pt, the brief’s size. Default text size.</figcaption></figure>
+    <figure><div class="fit"><div class="dev" data-device="iphone-duo-unfolded" data-frame="1"></div></div>
+      <figcaption><b>iPhone Duo, open</b> · 951 x 669 pt. Two pages; hinge 455.5 to 495.5 pt. Tab bar under the right page.</figcaption></figure>
+    <figure><div class="fit"><div class="dev" data-device="iphone-regular" data-frame="2"></div></div>
+      <figcaption><b>Phone</b> · 375 x 812, the web screens check’s viewport. No large-phone size is written; unmeasured.</figcaption></figure>
+    <figure><div class="fit"><div class="dev ax5" data-device="iphone-duo-folded" data-frame="3"></div></div>
+      <figcaption><b>iPhone Duo, folded, AX5 text</b> · 466 x 678 pt. Body at 53 pt (HIG AX5). Tab labels stop at the default size (duo-card-in-hand). System sheets drawn at the default size.</figcaption></figure>
+  </section>
+</main>
+
+<script>
+/* ------------------------------------------------------------------ data (sample shapes only) */
+const PKGS = [
+  { seller:"Northgate Cards", order:"3F9A1C-0B", date:"Nov 12", lines:[
+      ["Counterspell","Dominaria Remastered","0.42"], ["Sol Ring","Commander Masters","1.10"], ["Path to Exile","Double Masters","2.35"] ] },
+  { seller:"Kestrel Games", order:"77D2E0-4A", date:"Nov 13", lines:[["Llanowar Elves","Dominaria","0.25"],["Counterspell","Masters 25","0.39"]] },
+  { seller:"Pine Hollow TCG", order:"A10B55-9C", date:"Nov 13", lines:[["Swords to Plowshares","Commander Legends","0.88"]] },
+  { seller:"Blue Fen Collectibles", order:"C4E712-21", date:"Nov 14", lines:[["Brainstorm","Mystery Booster","0.31"],["Ponder","Magic 2012","0.47"]] },
+  { seller:"Harrow & Vale", order:"0D33A8-7F", date:"Nov 15", lines:[["Dark Ritual","Masters 25","0.29"]] },
+  { seller:"Sevenpine Cards", order:"91BB02-3E", date:"Nov 15", lines:[["Lightning Bolt","Magic 2011","0.95"]] },
+];
+const RECEIPT = { cards:412, packages:63, sellers:41, value:"214.60" };
+
+/* ------------------------------------------------------------------ concepts and states */
+const CONCEPTS = {
+  blank: { name:"Blank Page", focus:"blank-page-start",
+    states:["empty","picker","cancelled","wrongfile","checking","landed","ticked","envelope","again","daylater","nogrant"] },
+  slot: { name:"Mail Slot", focus:"mail-slot-start",
+    states:["empty","arrive","picker","landed","ticked","envelope","again","daylater","nogrant"] },
+  today: { name:"Today", focus:null, states:["today","today-packages"] },
+};
+const STATE_NAMES = {
+  empty:"First launch", picker:"Files open", cancelled:"Picker closed", wrongfile:"Wrong file", checking:"Key, checking",
+  landed:"Orders in", ticked:"First tick", envelope:"Orphaned, first look", again:"Same file again", daylater:"A day later",
+  nogrant:"Native, no import", arrive:"File arrives", today:"Today: opening tab", "today-packages":"Today: empty Packages",
+};
+const STATE_NOTES = {
+  empty:"One control fills the screen. No tour, no how-to. Press it.",
+  picker:"The system document picker. CSV and backup files can be picked; other files are dimmed. Pick the export, or Cancel.",
+  cancelled:"Cancel closed the picker. The tip appears in the sheet's reserved line, at the press. Nothing else moved.",
+  wrongfile:"A CSV that is not an OrderWand export. Today's error text, at the press, and the sheet stays the control.",
+  checking:"Native with a saved key: the first pull is out. Not empty, not loaded: the sheet waits and claims nothing.",
+  landed:"The import merged. The receipt took the sheet's place. The first package is open, its parts named in place.",
+  ticked:"One tick. The named line now says how to undo it. No row moved. The labels leave at the next launch.",
+  envelope:"Orphaned on first look: one sentence names an envelope, one control records one.",
+  again:"The same file picked again: nothing new, nothing removed. Today's copy.",
+  daylater:"Hundreds of orders. No first-run mark is left: no receipt, no named lines.",
+  nogrant:"Native if the owner keeps import web-only. The sentence must not say there are no orders.",
+  arrive:"AirDrop from the computer. iOS asks which app opens the file; Manifest imports at once.",
+  today:"Native opens on the Ledger tab (RootView.startTab). The phone frame shows the web: Packages with the upload zone.",
+  "today-packages":"Native Packages on an empty ledger: the masthead and an empty list, with no sentence and no control.",
+};
+const OPTIONS = [
+  { id:"inplace", name:"Named in place", concept:"blank" },
+  { id:"envline", name:"Envelope line", concept:"blank" },
+  { id:"spread", name:"Open pose: list beside package", concept:"both" },
+  { id:"slip", name:"Manifest slip", concept:"slot" },
+  { id:"files", name:"Choose in Files", concept:"slot" },
+];
+
+/* ------------------------------------------------------------------ hash state */
+const st = { c:"blank", s:"empty", hide:new Set(), hideC:new Set(), ticks:new Set() };
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (CONCEPTS[p.get("c")]) st.c = p.get("c");
+  const s = p.get("s"); st.s = CONCEPTS[st.c].states.includes(s) ? s : CONCEPTS[st.c].states[0];
+  st.hide = new Set((p.get("hide")||"").split(",").filter(Boolean));
+  st.hideC = new Set((p.get("drop")||"").split(",").filter(Boolean));
+  if (st.hideC.has(st.c)) { const left = Object.keys(CONCEPTS).find(k => !st.hideC.has(k)); if (left) { st.c = left; st.s = CONCEPTS[left].states[0]; } }
+  st.ticks = new Set(st.s === "ticked" ? ["0:0"] : []);
+}
+function writeHash() {
+  const p = new URLSearchParams({ c:st.c, s:st.s });
+  if (st.hide.size) p.set("hide", [...st.hide].join(","));
+  if (st.hideC.size) p.set("drop", [...st.hideC].join(","));
+  history.replaceState(null, "", "#" + p.toString().replace(/%2C/g, ","));
+}
+function go(s, c) { if (c) st.c = c; st.s = s; st.ticks = new Set(s === "ticked" ? ["0:0"] : []); writeHash(); draw(); }
+const on = id => !st.hide.has(id);
+
+/* ------------------------------------------------------------------ small parts */
+const esc = s => String(s).replace(/[&<>"]/g, m => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[m]));
+const ICON = {
+  ledger:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M2.8 12h2.6M18.6 12h2.6M5.5 5.5l1.8 1.8M16.7 16.7l1.8 1.8M5.5 18.5l1.8-1.8M16.7 7.3l1.8-1.8"/></svg>',
+  orphaned:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>',
+  tally:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 4L7 20M17 4l-2 16M4 9h16M3 15h16"/></svg>',
+  packages:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7.5L12 3l9 4.5v9L12 21l-9-4.5z"/><path d="M3 7.5L12 12l9-4.5M12 12v9"/></svg>',
+  file:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h8l4 4v14H6z"/><path d="M14 3v4h4M9 13h6M9 17h6"/></svg>',
+};
+function tabbar(active, badge) {
+  const tabs = [["ledger","Ledger"],["orphaned","Orphaned"],["tally","Tally"],["packages","Packages"]];
+  return `<nav class="tabbar" aria-label="Views">${tabs.map(([k,l]) =>
+    `<button data-tab="${k}" ${k===active?'aria-current="page"':''}>${ICON[k]}<span>${l}</span>${k==="orphaned"&&badge?`<b class="badge">${badge}</b>`:""}</button>`).join("")}</nav>`;
+}
+function letterhead(tallies, tag) {
+  const t = tallies ? `<div class="tallies"><div><small>cards</small><span>${tallies.cards}</span></div><div><small>packages</small><span>${tallies.pk}</span></div><div><small>value</small><span>${tallies.val}</span></div></div><div class="missing">${tallies.miss}</div>` : "";
+  return `<header class="lh" ${tag||""}><div class="co">C.H Postal Company</div><div class="mast"><span class="seal" aria-hidden="true"></span><b>MANIFEST</b></div>${t}</header>`;
+}
+function talliesFor(s) {
+  const got = s === "ticked" ? 1 : 0;
+  if (s === "daylater") return { cards:"138/412", pk:"17/63", val:"$71/$215", miss:"274 still missing · $143.60" };
+  return { cards:`${got}/${RECEIPT.cards}`, pk:`0/${RECEIPT.packages}`, val:`$${got?"0.42":"0"}/$215`, miss:`${RECEIPT.cards-got} still missing · $${got?"214.18":RECEIPT.value}` };
+}
+
+/* Blank Page start control: the sheet itself */
+function sheet(s) {
+  let line = "", cls = "sheet", lab = "Open your order file", what = "The CSV you saved from OrderWand";
+  if (s === "cancelled") line = "Is the file still on your computer? Send it to this phone by AirDrop, mail or iCloud Drive, then open it here.";
+  if (s === "wrongfile") { cls += " err"; line = "No card rows found. This doesn’t look like an OrderWand CSV — expected columns like “Product Name” and “Order Id”."; }
+  if (s === "checking") { cls += " wait"; lab = "Looking for your ledger…"; what = "This phone has a sync key. Its orders are on their way."; }
+  const tagname = s === "cancelled" || s === "wrongfile" ? "New: the answer at the press" : "New: the whole sheet is the control";
+  return `<button class="${cls}" id="blank-page-start" data-act="${s==="checking"?"none":"pick"}" ${s==="checking"?'aria-disabled="true"':""} data-tag="${tagname}">
+    <span class="go">${s==="checking"?"":ICON.file}${esc(lab)}</span><span class="what">${esc(what)}</span>
+    <span class="slot-line" aria-live="polite">${esc(line)}</span></button>`;
+}
+function receipt(s) {
+  const again = s === "again";
+  const head = again ? "No new lines — everything in that file was already being tracked." :
+    `${RECEIPT.cards} cards came in, in ${RECEIPT.packages} packages from ${RECEIPT.sellers} sellers.`;
+  const env = on("envline") && !again ? `<p>Mail with no seller you can name is an <b>envelope</b>. Record it in Orphaned.</p><button class="lead" data-act="envelope">Record an envelope</button>` : "";
+  return `<div class="receipt" role="status" data-tag="New: receipt in the sheet's slot"><b>${esc(head)}</b><p>Nothing here was removed. Tick each card as it arrives.</p>${env}</div>`;
+}
+function titlePage() {
+  return `<div class="titlepage">${letterhead(null)}<span class="rule" aria-hidden="true"></span></div>`;
+}
+function pkgCard(p, i, open, teach, sel) {
+  if (!open) return `<div class="pkg closed ${sel?"sel":""}"><div class="ph"><div><div class="micro">Order ${p.order} · ${p.date}</div><div class="who">${esc(p.seller)}</div></div><span class="micro">${p.lines.length} card${p.lines.length>1?"s":""}</span></div></div>`;
+  const anyTick = [...st.ticks].some(k => k.startsWith(i + ":"));
+  const micro = teach ? `<div class="micro teach">Package · one order, one seller</div>` : `<div class="micro">Order ${p.order} · ${p.date}</div>`;
+  const rows = p.lines.map((l, j) => {
+    const done = st.ticks.has(`${i}:${j}`);
+    let sub = `<small>${esc(l[1])}</small>`;
+    if (teach && j === 0) sub = done ? `<small class="said">Ticked. Tap the box again to undo.</small>` : `<small class="teach">Card — tap the box when it’s in your hand.</small>`;
+    return `<div class="line ${done?"done":""}"><button class="box" data-tick="${i}:${j}" aria-pressed="${done}" aria-label="${esc(l[0])}, received"><i></i></button><div class="tx"><b>${esc(l[0])}<span>$${l[2]}</span></b>${sub}</div></div>`;
+  }).join("");
+  return `<div class="pkg" ${teach?'data-tag="New: named in place"':""}><div class="ph">${micro}<div class="who">${esc(p.seller)}<span>${p.lines.length} cards</span></div></div>${rows}</div>`;
+}
+function picker() {
+  return `<div class="scrim"></div><div class="syssheet" role="dialog" aria-label="Choose a file" data-tag="Today: the system document picker">
+    <div class="top"><button data-act="cancel">Cancel</button><b>Recents</b><span></span></div>
+    <div class="search">Search</div>
+    <ul>
+      <li><button data-act="import"><span class="doc">CSV</span><span class="nm">OrderWand export 2026-11-20<small>Today · 188 KB</small></span></button></li>
+      <li><button data-act="wrong"><span class="doc">CSV</span><span class="nm">card-budget<small>Yesterday · 4 KB</small></span></button></li>
+      <li class="off"><button aria-disabled="true"><span class="doc">PDF</span><span class="nm">Invoice 4471<small>Nov 18</small></span></button></li>
+    </ul>
+    <p class="sysnote">Sample files. A .json backup can be picked too, as today: on an empty ledger it replaces nothing.</p></div>`;
+}
+function airdrop() {
+  return `<div class="scrim"></div><div class="syssheet" style="top:auto;height:300px" role="dialog" aria-label="AirDrop" data-tag="Today: iOS asks which app opens it (unverified)">
+    <div class="top"><span></span><b>AirDrop</b><span></span></div>
+    <p class="sysnote" style="font:15px -apple-system,system-ui;color:#000;text-align:center">“OrderWand export 2026-11-20.csv” from your Mac</p>
+    <ul><li><button data-act="import"><span class="doc">M</span><span class="nm">Open with Manifest<small>Imports into your ledger</small></span></button></li>
+        <li><button data-act="none"><span class="doc">F</span><span class="nm">Save to Files</span></button></li></ul></div>`;
+}
+function slotEmpty(s) {
+  const say = s === "nogrant" ? "" : "Send your OrderWand file to this phone. It lands here.";
+  return `<div class="slotbox" data-tag="New: the slot waits for the file"><div class="mailslot"><i></i>${s==="arrive"?'<span class="file drop">.csv</span>':""}</div>
+    <div class="say">${esc(say)}</div>
+    ${on("files") ? `<button class="choose" id="mail-slot-start" data-act="pick" data-tag="New: or choose it in Files">Choose it in Files</button>` : `<span id="mail-slot-start" class="choose" style="visibility:hidden">Choose it in Files</span>`}</div>`;
+}
+function slip(s) {
+  if (!on("slip")) return `<div class="receipt" role="status"><b>${RECEIPT.cards} cards came in, in ${RECEIPT.packages} packages.</b><p>Nothing here was removed.</p></div>`;
+  const again = s === "again";
+  /* the slip stands in for the masthead tallies for the first session, so its figures are live and no label shows twice */
+  const got = st.ticks.size;
+  return `<div class="slip" role="status" data-tag="New: the slip is the tally row this session">
+    <div class="head"><b>${again ? "Nothing new in that file" : "Your manifest"}</b><small>${again ? "nothing removed" : "Nov 20 · nothing removed"}</small></div>
+    <dl><dt>0/${RECEIPT.packages}</dt><dd><em>packages</em><span class="soft">each is one order from one seller</span></dd>
+        <dt>${got}/${RECEIPT.cards}</dt><dd><em>cards</em><span class="soft">tick each one as it arrives</span></dd>
+        <dt>0</dt><dd><em>envelopes</em><span class="soft">mail you can’t trace to a seller</span></dd></dl>
+    <button class="lead" data-act="envelope">Record an envelope</button></div>`;
+}
+function slipHead(s) {
+  if (s === "daylater") return letterhead(talliesFor(s));
+  if (!on("slip")) return `${letterhead(talliesFor(s))}${slip(s)}`;
+  return `${letterhead(null)}${slip(s)}`;
+}
+function nograntBody() {
+  return `<p class="empty-line" data-tag="New: needs-the-key sentence">This phone has no sync key yet, so it can’t load your orders. Import the file in the web app, then link this phone.</p>
+    <button class="choose empty-ctl" data-act="none">Open the web app</button>`;
+}
+function orphanedEmpty() {
+  return `<p class="empty-line" data-tag="New: names the envelope (today: ‘record a package’)">No envelopes waiting. An envelope is mail you can’t trace to a seller; record one here.</p>
+    <button class="choose empty-ctl" data-act="none">Record an envelope</button>`;
+}
+
+/* ------------------------------------------------------------------ one page of content */
+function compactBody(c, s) {
+  const daylater = s === "daylater";
+  if (c === "today") {
+    return s === "today"
+      ? `${letterhead(null,'data-tag="Today: masthead, no tallies"')}<div class="group">Ledger</div><div class="lcard" data-tag="Today: Ledger tab opens first"><div class="lrow">Sync <span>No sync key on this device</span></div><div class="lrow">History</div><div class="lrow">Backup</div></div><div class="group">Data</div><div class="lcard"><div class="lrow">Reset</div></div><p class="empty-line">Rows sketched from LedgerTab.swift; values left out.</p>`
+      : `${letterhead(null)}<div class="blankspace" data-tag="Today: empty list, no sentence">(nothing drawn)</div>`;
+  }
+  if (s === "envelope") return `${letterhead(talliesFor("landed"))}${orphanedEmpty()}`;
+  if (s === "nogrant") return `${letterhead(null)}${nograntBody()}`;
+  if (c === "blank") {
+    if (["empty","picker","cancelled","wrongfile","checking"].includes(s)) return `${letterhead(null)}${sheet(s)}`;
+    const teach = on("inplace") && !daylater && s !== "again";
+    return `${letterhead(talliesFor(s))}${daylater ? "" : receipt(s)}<div class="list">${PKGS.slice(0,4).map((p,i)=>pkgCard(p,i,i===0&&!daylater,teach)).join("")}</div>`;
+  }
+  /* slot */
+  if (["empty","arrive","picker"].includes(s)) return `${letterhead(null)}${slotEmpty(s)}`;
+  return `${slipHead(s)}<div class="list">${PKGS.slice(0,4).map((p,i)=>pkgCard(p,i,i===0&&!daylater,false)).join("")}</div>`;
+}
+function activeTab(c, s) {
+  if (c === "today") return s === "today" ? "ledger" : "packages";
+  return s === "envelope" ? "orphaned" : "packages";
+}
+function overlay(c, s) { return s === "picker" ? picker() : s === "arrive" ? airdrop() : ""; }
+
+function render(dev, c, s) {
+  const status = `<div class="status"><span>9:41</span><span>●●●</span></div><div class="home"></div>`;
+  if (dev === "iphone-regular" && c === "today") {
+    /* the web app on a phone today: Packages, the letterhead and UploadZone (src/app.jsx), and the glass bar */
+    return `${status}<div class="page one"><div class="scroll">${letterhead(null)}<div class="zone" data-tag="Today: web UploadZone on Packages"><span class="em" aria-hidden="true">\u{1F4EC}</span><b>Drop your OrderWand CSV here</b>
+      <p>In OrderWand: pick “OrderWand CSV” from the drop list, click File, then bring it here.</p><span class="btn">Choose file</span></div></div>${tabbar("packages", 0)}</div>`;
+  }
+  if (dev !== "iphone-duo-unfolded") {
+    return `${status}<div class="page one"><div class="scroll">${compactBody(c, s)}</div>${tabbar(activeTab(c,s), 0)}${overlay(c,s)}</div>`;
+  }
+  /* open pose: each page its own layout; nothing sits across the hinge; the tab bar sits under the right page */
+  let L = "", R = "";
+  const daylater = s === "daylater";
+  if (c === "today") {
+    L = s === "today" ? `${letterhead(null)}<div class="blankspace">left page: masthead only</div>` : `${letterhead(null)}`;
+    R = compactBody(c, s).replace(letterhead(null), "");
+  } else if (s === "envelope") {
+    L = `${letterhead(talliesFor("landed"))}<div class="blankspace">left page: the envelope composer opens here</div>`; R = orphanedEmpty();
+  } else if (s === "nogrant") {
+    L = letterhead(null); R = nograntBody();
+  } else if (c === "blank") {
+    if (["empty","picker","cancelled","wrongfile","checking"].includes(s)) { L = titlePage(); R = sheet(s); }
+    else {
+      const teach = on("inplace") && !daylater && s !== "again";
+      if (on("spread")) {
+        L = `${letterhead(talliesFor(s))}<div class="list" data-tag="New: list on the left page">${PKGS.map((p,i)=>pkgCard(p,i,false,false,i===0&&!daylater)).join("")}</div>`;
+        R = `${daylater ? "" : receipt(s)}${pkgCard(PKGS[0],0,!daylater,teach)}${daylater?`<div class="list">${PKGS.slice(1,4).map((p,i)=>pkgCard(p,i+1,false,false)).join("")}</div>`:""}`;
+      } else {
+        L = `${letterhead(talliesFor(s))}${daylater ? "" : receipt(s)}`;
+        R = `<div class="list">${PKGS.slice(0,4).map((p,i)=>pkgCard(p,i,i===0&&!daylater,teach)).join("")}</div>`;
+      }
+    }
+  } else {
+    if (["empty","arrive","picker"].includes(s)) { L = titlePage(); R = slotEmpty(s); }
+    else if (on("spread")) {
+      L = `${slipHead(s)}<div class="list" data-tag="New: list on the left page">${PKGS.slice(1).map((p,i)=>pkgCard(p,i+1,false,false)).join("")}</div>`;
+      R = `${pkgCard(PKGS[0],0,!daylater,false)}`;
+    } else {
+      L = `${slipHead(s)}`;
+      R = `<div class="list">${PKGS.slice(0,4).map((p,i)=>pkgCard(p,i,i===0&&!daylater,false)).join("")}</div>`;
+    }
+  }
+  return `${status}<div class="page l"><div class="scroll">${L}</div></div><div class="hinge"><span>HINGE 455.5–495.5</span></div>
+    <div class="page r"><div class="scroll">${R}</div>${tabbar(activeTab(c,s),0)}${overlay(c,s)}</div>`;
+}
+
+/* ------------------------------------------------------------------ page chrome */
+function draw() {
+  const C = CONCEPTS[st.c];
+  document.getElementById("concepts").innerHTML = Object.entries(CONCEPTS).filter(([k]) => !st.hideC.has(k)).map(([k,v]) =>
+    `<button data-concept="${k}" aria-pressed="${k===st.c}">${v.name}</button>`).join("") + (st.c!=="today"?`<button data-dropc="${st.c}">Hide this concept</button>`:"");
+  document.getElementById("states").innerHTML = C.states.map(s => `<button data-state="${s}" aria-pressed="${s===st.s}">${STATE_NAMES[s]}</button>`).join("");
+  document.getElementById("opts").innerHTML = OPTIONS.filter(o => o.concept === st.c || (o.concept === "both" && st.c !== "today")).map(o =>
+    `<label class="chip"><input type="checkbox" data-opt="${o.id}" ${on(o.id)?"checked":""}> ${o.name}</label>`).join("");
+  const hn = document.getElementById("hiddennote");
+  const hidden = [...st.hideC].map(k => CONCEPTS[k].name).concat([...st.hide].map(id => OPTIONS.find(o=>o.id===id)?.name).filter(Boolean));
+  hn.hidden = !hidden.length; hn.innerHTML = hidden.length ? `Hidden: ${hidden.join(", ")}. <button class="chip" data-reset="1">Show all</button>` : "";
+  const note = st.c === "slot" && st.s === "ticked" ? "One tick. The slip's card count reads 1/412. No row moved." :
+    st.c === "slot" && st.s === "landed" ? "The file landed. The slip names the parts and stands in for the tally row this session." : STATE_NOTES[st.s];
+  document.getElementById("statenote").textContent = `${C.name} · ${STATE_NAMES[st.s]}: ${note}`;
+  document.querySelectorAll("#frames .dev").forEach(d => { d.innerHTML = render(d.dataset.device, st.c, st.s); });
+  fit();
+}
+function fit() {
+  document.querySelectorAll(".fit").forEach(f => {
+    const d = f.firstElementChild; d.style.transform = "";
+    const w = d.offsetWidth, h = d.offsetHeight, k = Math.min(1, f.clientWidth / w);
+    d.style.transform = k < 1 ? `scale(${k})` : ""; f.style.height = (h * k) + "px";
+  });
+}
+document.addEventListener("click", e => {
+  const t = e.target.closest("button, [data-reset]"); if (!t) return;
+  if (t.dataset.concept) { st.c = t.dataset.concept; return go(CONCEPTS[st.c].states[0]); }
+  if (t.dataset.dropc) { st.hideC.add(t.dataset.dropc); const left = Object.keys(CONCEPTS).find(k => !st.hideC.has(k)); st.c = left; return go(CONCEPTS[left].states[0]); }
+  if (t.dataset.state) return go(t.dataset.state);
+  if (t.dataset.reset) { st.hide.clear(); st.hideC.clear(); writeHash(); return draw(); }
+  if (t.dataset.tick) {
+    st.ticks.has(t.dataset.tick) ? st.ticks.delete(t.dataset.tick) : st.ticks.add(t.dataset.tick);
+    st.s = st.ticks.size ? "ticked" : "landed"; writeHash();
+    const keep = t.dataset.tick, frame = t.closest(".dev")?.dataset.frame; draw();
+    document.querySelector(`.dev[data-frame="${frame}"] [data-tick="${keep}"]`)?.focus(); return;
+  }
+  if (t.dataset.tab) { if (t.dataset.tab === "orphaned" && st.c !== "today") return go("envelope"); if (t.dataset.tab === "packages" && st.s === "envelope") return go("landed"); return; }
+  const a = t.dataset.act;
+  if (a === "pick") return go("picker");
+  if (a === "cancel") return go(st.c === "blank" ? "cancelled" : "empty");
+  if (a === "import") return go(["landed","ticked","again","daylater"].includes(st.s) ? "again" : "landed");
+  if (a === "wrong") return go("wrongfile");
+  if (a === "envelope") return go("envelope");
+});
+document.addEventListener("change", e => {
+  if (e.target.dataset.opt) { e.target.checked ? st.hide.delete(e.target.dataset.opt) : st.hide.add(e.target.dataset.opt); writeHash(); draw(); }
+  if (e.target.id === "tagsbox") document.body.classList.toggle("notags", !e.target.checked);
+});
+addEventListener("hashchange", () => { readHash(); draw(); });
+addEventListener("resize", fit);
+readHash(); draw();
+</script>
+</body>
+</html>

@@ -10,7 +10,6 @@
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
   --space-6: 24px; --space-8: 32px; --space-11: 44px; --space-12: 48px; --space-16: 64px;
   --radius: 8px;
-  --font: -apple-system, system-ui, "Helvetica Neue", sans-serif;
 
   --shell: #F4F5F8; --bg: #E8EBF0; --surface: #FFFFFF; --surface-2: #F2F4F7; --sunk: #E2E6EC;
   --text: #14171D; --text-2: #4A5160; --line: #D3D8E0; --line-strong: #8C95A5;
@@ -51,8 +50,9 @@
 }
 
 * { box-sizing: border-box; }
+[hidden] { display: none !important; }
 html, body { margin: 0; }
-body { background: var(--shell); color: var(--text); font: 15px/20px var(--font); }
+body { background: var(--shell); color: var(--text); font: 15px/20px -apple-system, system-ui, sans-serif; }
 button, input { font: inherit; color: inherit; }
 button { cursor: pointer; }
 :focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
@@ -74,6 +74,7 @@ button { cursor: pointer; }
 .seg .opt .x { border-inline-start: 1px solid var(--line); color: var(--text-2); padding: 0 var(--space-2); }
 .frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; overflow-x: auto; padding-block: var(--space-2) var(--space-6); }
 .fig { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+.fig[hidden] { display: none; }
 .fig figcaption { color: var(--text-2); font-size: 13px; line-height: 18px; max-inline-size: 466px; }
 .about { display: grid; gap: var(--space-4); grid-template-columns: repeat(auto-fill, minmax(min(18rem, 100%), 1fr)); }
 .about article { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
@@ -84,16 +85,16 @@ button { cursor: pointer; }
 /* ---------- Device frames ---------- */
 .device {
   /* Dynamic Type, Large (default), from the HIG typography page. */
-  --f-large: 700 34px/41px var(--font);
-  --f-t1: 700 28px/34px var(--font);
-  --f-t2: 700 22px/28px var(--font);
-  --f-t3: 600 20px/25px var(--font);
-  --f-head: 600 17px/22px var(--font);
-  --f-body: 400 17px/22px var(--font);
-  --f-callout: 400 16px/21px var(--font);
-  --f-sub: 400 15px/20px var(--font);
-  --f-foot: 400 13px/18px var(--font);
-  --f-cap: 400 12px/16px var(--font);
+  --f-large: 700 34px/41px -apple-system, system-ui, sans-serif;
+  --f-t1: 700 28px/34px -apple-system, system-ui, sans-serif;
+  --f-t2: 700 22px/28px -apple-system, system-ui, sans-serif;
+  --f-t3: 600 20px/25px -apple-system, system-ui, sans-serif;
+  --f-head: 600 17px/22px -apple-system, system-ui, sans-serif;
+  --f-body: 400 17px/22px -apple-system, system-ui, sans-serif;
+  --f-callout: 400 16px/21px -apple-system, system-ui, sans-serif;
+  --f-sub: 400 15px/20px -apple-system, system-ui, sans-serif;
+  --f-foot: 400 13px/18px -apple-system, system-ui, sans-serif;
+  --f-cap: 400 12px/16px -apple-system, system-ui, sans-serif;
   --pm: 44px;          /* postmark number, display size of the bold concept */
   --rail: 56px;
   --sb: 24px;          /* status bar height: not given by any page read, so a drawn guess */
@@ -103,16 +104,16 @@ button { cursor: pointer; }
 }
 .device.ax5 {
   /* Dynamic Type, AX5, the largest accessibility size, from the HIG typography page. */
-  --f-large: 700 60px/70px var(--font);
-  --f-t1: 700 58px/68px var(--font);
-  --f-t2: 700 56px/66px var(--font);
-  --f-t3: 600 55px/65px var(--font);
-  --f-head: 600 53px/62px var(--font);
-  --f-body: 400 53px/62px var(--font);
-  --f-callout: 400 51px/60px var(--font);
-  --f-sub: 400 49px/58px var(--font);
-  --f-foot: 400 44px/52px var(--font);
-  --f-cap: 400 43px/51px var(--font);
+  --f-large: 700 60px/70px -apple-system, system-ui, sans-serif;
+  --f-t1: 700 58px/68px -apple-system, system-ui, sans-serif;
+  --f-t2: 700 56px/66px -apple-system, system-ui, sans-serif;
+  --f-t3: 600 55px/65px -apple-system, system-ui, sans-serif;
+  --f-head: 600 53px/62px -apple-system, system-ui, sans-serif;
+  --f-body: 400 53px/62px -apple-system, system-ui, sans-serif;
+  --f-callout: 400 51px/60px -apple-system, system-ui, sans-serif;
+  --f-sub: 400 49px/58px -apple-system, system-ui, sans-serif;
+  --f-foot: 400 44px/52px -apple-system, system-ui, sans-serif;
+  --f-cap: 400 43px/51px -apple-system, system-ui, sans-serif;
   --pm: 60px;
   --rail: 72px;
 }
@@ -127,7 +128,7 @@ button { cursor: pointer; }
   padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
   position: relative;
 }
-.sbar { position: absolute; top: 0; left: 0; right: 0; height: var(--sb); display: flex; align-items: center; justify-content: center; font: 600 12px/16px var(--font); color: var(--text-2); pointer-events: none; }
+.sbar { position: absolute; top: 0; left: 0; right: 0; height: var(--sb); display: flex; align-items: center; justify-content: center; font: 600 12px/16px -apple-system, system-ui, sans-serif; color: var(--text-2); pointer-events: none; }
 .scroll { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; }
 .homepad { flex: none; height: var(--home); }
 .screen.has-kbd .homepad { display: none; }
@@ -180,12 +181,12 @@ button { cursor: pointer; }
 /* Bars stop growing at xxxLarge, the largest size before the accessibility sizes, as iOS bars do;
    the list, the field and the lines below still grow to AX5. */
 .ax5 .env-head, .ax5 .tray, .ax5 .nav, .ax5 .env-top, .ax5 .envelope .act-stack {
-  --f-large: 700 40px/48px var(--font); --f-t1: 700 34px/41px var(--font); --f-t2: 700 28px/34px var(--font);
-  --f-t3: 600 26px/32px var(--font); --f-head: 600 23px/29px var(--font); --f-body: 400 23px/29px var(--font);
-  --f-sub: 400 21px/28px var(--font); --f-foot: 400 19px/24px var(--font); --f-cap: 400 18px/23px var(--font);
+  --f-large: 700 40px/48px -apple-system, system-ui, sans-serif; --f-t1: 700 34px/41px -apple-system, system-ui, sans-serif; --f-t2: 700 28px/34px -apple-system, system-ui, sans-serif;
+  --f-t3: 600 26px/32px -apple-system, system-ui, sans-serif; --f-head: 600 23px/29px -apple-system, system-ui, sans-serif; --f-body: 400 23px/29px -apple-system, system-ui, sans-serif;
+  --f-sub: 400 21px/28px -apple-system, system-ui, sans-serif; --f-foot: 400 19px/24px -apple-system, system-ui, sans-serif; --f-cap: 400 18px/23px -apple-system, system-ui, sans-serif;
   --pm: 40px;
 }
-.ax5 .nav .back { font: 400 23px/29px var(--font); }
+.ax5 .nav .back { font: 400 23px/29px -apple-system, system-ui, sans-serif; }
 .is-off { visibility: hidden; }
 .meter { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); font: var(--f-sub); }
 .dots { display: flex; flex-wrap: wrap; gap: var(--space-1); }
@@ -227,10 +228,10 @@ button { cursor: pointer; }
 /* Simulated keys: drawn, not measured */
 .kbd { flex: 0 0 40%; background: var(--keyboard); display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-1) var(--space-4); }
 .kbd-row { display: flex; gap: var(--space-1); justify-content: center; flex: 1 1 0; }
-.kbd button { display: flex; align-items: center; justify-content: center; flex: 1 1 0; max-width: 44px; border: 0; border-radius: 6px; background: var(--key); color: var(--key-ink); font: 400 20px/24px var(--font); box-shadow: 0 1px 0 var(--key-2); }
-.kbd .wide { max-width: 64px; background: var(--key-2); font: 500 15px/20px var(--font); }
-.kbd .space { max-width: none; flex: 4 1 0; font: 400 15px/20px var(--font); }
-.kbd .ret { max-width: 96px; flex: 2 1 0; background: var(--accent); color: var(--on-accent); font: 600 15px/20px var(--font); }
+.kbd button { display: flex; align-items: center; justify-content: center; flex: 1 1 0; max-width: 44px; border: 0; border-radius: 6px; background: var(--key); color: var(--key-ink); font: 400 20px/24px -apple-system, system-ui, sans-serif; box-shadow: 0 1px 0 var(--key-2); }
+.kbd .wide { max-width: 64px; background: var(--key-2); font: 500 15px/20px -apple-system, system-ui, sans-serif; }
+.kbd .space { max-width: none; flex: 4 1 0; font: 400 15px/20px -apple-system, system-ui, sans-serif; }
+.kbd .ret { max-width: 96px; flex: 2 1 0; background: var(--accent); color: var(--on-accent); font: 600 15px/20px -apple-system, system-ui, sans-serif; }
 
 /* Lists of envelopes and lines */
 .list { list-style: none; margin: 0; padding: 0 var(--space-4); display: flex; flex-direction: column; }
@@ -277,8 +278,8 @@ button { cursor: pointer; }
 .env-top { display: flex; align-items: flex-start; gap: var(--space-3); }
 .ret { flex: 1 1 auto; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
 .postmark { flex: none; width: calc(var(--pm) * 1.9); height: calc(var(--pm) * 1.9); border-radius: 50%; border: 3px solid var(--envelope-ink); display: flex; flex-direction: column; align-items: center; justify-content: center; transform: rotate(-8deg); }
-.postmark .pm-num { font: 800 var(--pm)/1 var(--font); }
-.postmark .pm-word { font: 600 11px/13px var(--font); }
+.postmark .pm-num { font: 800 var(--pm)/1 -apple-system, system-ui, sans-serif; }
+.postmark .pm-word { font: 600 11px/13px -apple-system, system-ui, sans-serif; }
 .ax5 .postmark .pm-word { display: none; }
 .envelope .chips { flex-wrap: wrap; overflow: visible; }
 .envelope .chip { border-color: var(--envelope-ink-2); color: var(--envelope-ink); }
@@ -297,7 +298,7 @@ button { cursor: pointer; }
 
 /* Labels: dashed New: marks */
 .labels .ann { outline: 2px dashed var(--ann); outline-offset: -2px; }
-.labels .ann::after { content: attr(data-ann); position: absolute; top: 2px; right: 4px; font: 600 11px/14px var(--font); color: var(--ann); background: var(--surface); padding: 0 4px; border-radius: 4px; pointer-events: none; z-index: 2; }
+.labels .ann::after { content: attr(data-ann); position: absolute; top: 2px; right: 4px; font: 600 11px/14px -apple-system, system-ui, sans-serif; color: var(--ann); background: var(--surface); padding: 0 4px; border-radius: 4px; pointer-events: none; z-index: 2; }
 .labels .envelope.ann::after { top: auto; bottom: 2px; }
 
 /* Bare mode: the phone frame fills a real phone */
@@ -332,7 +333,13 @@ body.bare .device.phone { height: 100vh; height: 100svh; border-radius: 0; resiz
     <div class="ctl"><span>Marks</span><div class="seg" id="ctl-labels"></div></div>
   </div>
 
-  <main class="frames" id="frames"></main>
+  <main class="frames" id="frames">
+    <figure class="fig" data-kind="folded"><div class="device folded" data-device="iphone-duo-folded" data-frame="folded"><div class="screen"><div class="empty"><p>This mockup draws its screens with JavaScript. Turn it on to see them.</p></div></div></div><figcaption></figcaption></figure>
+    <figure class="fig" data-kind="open"><div class="device open" data-device="iphone-duo-unfolded" data-frame="open"></div><figcaption></figcaption></figure>
+    <figure class="fig" data-kind="phone"><div class="device phone" data-device="iphone-large" data-frame="phone"></div><figcaption></figcaption></figure>
+    <figure class="fig" data-kind="ax5"><div class="device folded ax5" data-device="iphone-duo-folded" data-text="ax5" data-frame="ax5"></div><figcaption></figcaption></figure>
+    <div class="empty" id="all-hidden" hidden><p>Every concept is hidden.</p><button class="btn" data-act="unhide">Show hidden</button></div>
+  </main>
 
   <section class="about" id="about" aria-label="The concepts"></section>
 </div>
@@ -471,7 +478,7 @@ function actionStack(holdStyle) {
   const thrower = holdStyle
     ? `<button class="btn hold" data-hold data-act="hold-key" style="--p:${M.hold}" aria-describedby="holdtip"><span>Hold to throw away</span></button>`
     : `<button class="btn btn-plain danger" data-act="discard">Throw away</button>`;
-  const ask = n ? `${plural(n, "name", "names")} gone for good.` : "Nothing to keep.";
+  const ask = n ? `Lose ${plural(n, "name", "names")} for good?` : `Close envelope ${M.num}?`;
   // Same box, same height: Keep lands where Throw away was, so a double tap keeps the draft.
   return `<div class="act-stack">
     <div class="act-row${M.confirm ? " is-off" : ""}">${holdStyle ? "" : meter()}${thrower}${holdStyle ? `<span style="margin-inline-start:auto"></span>` : ""}${saveBtn()}</div>
@@ -503,7 +510,7 @@ function keyboard() {
 function lineDetail(l) { return `${esc(l.seller)}, ${esc(l.set)}, ${esc(l.cond)}, ${money(l.price)}`; }
 function pickRows(list, onId, act) {
   return list.map(l => `<button class="pick-row${l.id === onId ? " is-on" : ""}" data-act="${act}" data-id="${l.id}">
-      <span class="mark${l.id === onId ? "" : ""}" aria-hidden="true" style="${l.id === onId ? "border:0;background:var(--ready)" : ""}"></span>
+      <span class="mark" aria-hidden="true" style="${l.id === onId ? "border:0;background:var(--ready)" : "border-color:transparent"}"></span>
       <span class="pr-main"><span class="f-body">${esc(l.name)}</span><span class="f-foot muted">${esc(l.seller)}, ordered ${esc(l.ordered)}. ${esc(l.set)}, ${esc(l.cond)}</span></span>
       <span class="price">${money(l.price)}</span></button>`).join("");
 }
@@ -668,11 +675,12 @@ function envelopeCard(f, tall) {
   const write = M.status === "draft" ? `<div class="env-write">
       <input class="field" data-role="q" data-frame="${f}" value="${esc(M.query)}" placeholder="Write a card name" aria-label="Write a card name" autocomplete="off" autocapitalize="words" enterkeyhint="done">
       <button class="btn btn-prom${M.query.trim() ? "" : " is-off"}" data-act="add">Add</button></div>` : "";
-  const showChips = tall || !M.keys;
+  // At AX5 on one screen the chips would push the lines off; the drawer steps through names instead.
+  const showChips = tall || (!M.keys && f !== "ax5");
   return `<section class="envelope ann"${idIf(f, "envelope-front")} data-ann="New: the envelope is the draft" style="${tall ? "flex:1 1 auto" : ""}">
     <div class="env-top"><div class="ret"><span class="f-cap muted">From</span>${from}${M.status === "draft" ? meter() : ""}</div>
       <div class="postmark" aria-label="Envelope ${M.num}"><span class="pm-word">Envelope</span><span class="pm-num">${M.num}</span></div></div>
-    ${M.status === "saved" ? `<div class="env-scroll">${savedBody()}</div>` : (showChips ? `<div class="env-scroll" data-sk="${f}:chips">${chips}</div>` : "") + write + (showChips || M.confirm ? actionStack(true) : "")}
+    ${M.status === "saved" ? `<div class="env-scroll">${savedBody()}</div>` : (showChips ? `<div class="env-scroll" data-sk="${f}:chips">${chips}</div>` : "") + write + (!M.keys || tall || M.confirm ? actionStack(true) : "")}
     <p id="holdtip" class="why" hidden>Press and hold for one second. With a keyboard or a screen reader, press it once and answer the question.</p>
   </section>`;
 }
@@ -696,7 +704,7 @@ function drawer(f) {
   const i = active();
   if (i == null) return `<div class="drawer" data-sk="${f}:drawer">${sayAt("list")}<p class="f-sub muted drawer-h">${M.names.length ? "Every name has a line. Save when the envelope is empty." : "Lines for each name show here."}</p></div>`;
   const n = M.names[i];
-  return `<div class="drawer" data-sk="${f}:drawer">${sayAt("list")}<div class="cluster drawer-h"><h3 class="f-head" style="flex:1 1 auto">Lines named “${esc(n.text)}”</h3><button class="btn btn-plain danger" data-act="remove" data-i="${i}">Remove</button></div>${picker(i).replace('class="picker"', 'class="picker" style="margin:0"')}</div>`;
+  return `<div class="drawer" data-sk="${f}:drawer">${sayAt("list")}<div class="cluster drawer-h"><h3 class="f-head" style="flex:1 1 auto">Lines named “${esc(n.text)}”</h3>${M.names.length > 1 ? `<button class="btn btn-plain" data-act="next-name">Next name</button>` : ""}<button class="btn btn-plain danger" data-act="remove" data-i="${i}">Remove</button></div>${picker(i).replace('class="picker"', 'class="picker" style="margin:0"')}</div>`;
 }
 function envCompact(f) {
   return screen(`<div class="c3">${rail(f)}<div class="c3-main">${envelopeCard(f, false)}${drawer(f)}</div></div>${keyboard()}`, M.keys && M.status === "draft");
@@ -742,9 +750,13 @@ function render() {
   // keep scroll positions across a render
   const sc = {}; document.querySelectorAll("[data-sk]").forEach(el => sc[el.dataset.sk] = el.scrollTop);
   const kinds = S.d === "all" ? ["folded", "open", "phone", "ax5"] : [S.d];
-  const fr = document.getElementById("frames");
-  if (!shown.length) { fr.innerHTML = `<div class="empty"><p>Every concept is hidden.</p><button class="btn" data-act="unhide">Show hidden</button></div>`; }
-  else fr.innerHTML = kinds.map(k => `<figure class="fig"><div class="device ${FRAME_META[k].cls}" data-device="${FRAME_META[k].dev}" data-frame="${k}" data-concept="${S.c}">${frameHTML(k)}</div><figcaption>${FRAME_META[k].cap}</figcaption></figure>`).join("");
+  document.getElementById("all-hidden").hidden = shown.length > 0;
+  document.querySelectorAll("#frames .fig").forEach(fig => {
+    const k = fig.dataset.kind, on = shown.length > 0 && kinds.includes(k);
+    fig.hidden = !on; if (!on) { fig.querySelector(".device").innerHTML = ""; return; }
+    const dev = fig.querySelector(".device"); dev.dataset.concept = S.c;
+    dev.innerHTML = frameHTML(k); fig.querySelector("figcaption").textContent = FRAME_META[k].cap;
+  });
   document.querySelectorAll("[data-sk]").forEach(el => { if (sc[el.dataset.sk] != null) el.scrollTop = sc[el.dataset.sk]; });
   document.querySelectorAll("[data-scroll-me]").forEach(el => {
     const box = el.closest(".scroll, .drawer"); if (!box) return;
@@ -819,6 +831,7 @@ function act(a, el) {
       else M.pick = i;
       break;
     case "unpick": M.pick = null; M.query = ""; break;
+    case "next-name": { const a0 = active() ?? -1; M.pick = (a0 + 1) % M.names.length; break; }
     case "remove": M.names.splice(i, 1); M.pick = null; if (S.c === "lines") M.query = ""; break;
     case "fix": M.query = M.names[i].text; M.names.splice(i, 1); M.pick = null; M.keys = true; focusWant = { role: "q" }; break;
     case "keep": M.names[i].none = false; M.pick = null; break;

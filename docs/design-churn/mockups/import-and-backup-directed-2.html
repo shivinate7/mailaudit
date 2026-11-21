@@ -219,7 +219,12 @@ body.notags .tg::after { display:none; }
     <button class="chipb" id="tagbtn" aria-pressed="true">Today and New labels</button>
     <button class="chipb" id="showall">Show hidden options</button>
   </div>
-  <div class="frames" id="frames"></div>
+  <div class="frames" id="frames">
+    <!-- The script draws each frame into these on load; the static frames keep the pose order in the markup. -->
+    <div class="dev" data-device="iphone-duo-folded" style="width:466px;height:678px"></div>
+    <div class="dev" data-device="iphone-duo-unfolded" style="width:951px;height:669px"></div>
+    <div class="dev" data-device="iphone-regular" style="width:375px;height:678px"></div>
+  </div>
 </div>
 
 <script>
@@ -293,7 +298,7 @@ function entries() {
   return e;
 }
 function selectedId() {
-  return { log:"e4", imported:"e5", detail:"e5", armed:"e5", undone: st.u === "reverse" ? "e6" : "e5", stamp:"e5", range:"e5", stamped:"e7", backup:"e8", restore:"e8", restored:"e9" }[st.s];
+  return { log:null, imported:"e5", detail:"e5", armed:"e5", undone: st.u === "reverse" ? "e6" : "e5", stamp:"e5", range:"e5", stamped:"e7", backup:"e8", restore:"e8", restored:"e9" }[st.s];
 }
 
 /* the open detail of one entry: before and after, and its one undo */
@@ -454,7 +459,7 @@ function journalSingle(primary, w, ax) {
   const empty = st.s === "empty" || st.s === "error";
   const sh = sheetFor(primary);
   const body = empty
-    ? `<div class="grow"><p class="say">Nothing on this device’s journal yet. Your first file goes here.</p>${zone(st.s === "error")}</div>`
+    ? `<div class="grow end" style="gap:12px"><p class="say">Nothing on this device’s journal yet. Your first file goes here.</p>${zone(st.s === "error")}</div>`
     : `<div class="fade">Earlier entries above</div>
        <div class="grow ${ax ? "" : "end"}"><div ${T("jr","new","journal, newest at the bottom")}>${journalList(primary, true, ax)}</div></div>
        ${dock(primary)}`;
@@ -471,9 +476,10 @@ function journalOpen(primary) {
     ? `<div class="grow"><p class="say">Nothing on this device’s journal yet. Your first file goes here.</p></div>`
     : `<div class="fade">Earlier entries above</div><div class="grow end"><div ${T("jr","new","journal, left page")}>${journalList(false, false)}</div></div>${dock(false)}`;
   const right = empty
-    ? `<div class="grow">${zone(st.s === "error")}</div>`
+    ? `<div class="grow end">${zone(st.s === "error")}</div>`
     : sel ? `<h3 class="act" style="margin:0">${esc(sel.act)}</h3><p class="fig" style="margin:0">${sel.day} ${sel.at}. ${esc(sel.fig)}</p>${entryDetail(sel, false, true)}
-      ${sel.kind === "import" && !sel.struck && st.s !== "armed" ? `<div class="grow">${whatCameIn(false).replace(/<button class="btn tg"[^]*$/, "")}</div>` : ""}` : "";
+      ${sel.kind === "import" && !sel.struck && st.s !== "armed" ? `<div class="grow">${whatCameIn(false).replace(/<button class="btn tg"[^]*$/, "")}</div>` : ""}`
+    : `<p class="say">Pick a step on the left to see what it changed and to undo it.</p>`;
   return `<div class="pg l">${statusBar(455.5)}<div class="scr nobar"><h2 class="ttl">Ledger</h2><p class="sub">Journal of this device. Each step can be undone.</p>${left}</div></div>
     <div class="hinge" aria-hidden="true"></div>
     <div class="pg r">${statusBar(455.5)}<div class="scr" style="gap:16px">${right}</div>
@@ -507,7 +513,14 @@ function ribbonCard(primary) {
     return `<div ${T("gone","new","you went back; now is kept")} ${primary ? 'id="choice-ribbon"' : ""}>
       <b>You went back to ${what}.</b>
       <span class="say" style="color:inherit">The ledger as it stood at 00:52 is kept as the Now page. ${s === "undone" ? "142 lines and 18 changes are set aside. 512 check-ins are the same." : "142 lines, 1 stamp and 1 envelope are set aside."}</span>
-      <button class="btn ink" data-go="imported" ${primary ? 'id="return-now"' : ""}>Return to now</button></div>`;
+      <button class="btn ink" data-go="imported" ${primary ? 'id="return-now"' : ""}>Return to now</button></div>
+      <p class="cap" style="margin:0">Set aside until you return to now</p>
+      <div class="lst" aria-label="Set aside">
+        ${(s === "undone"
+          ? [["Imported orders-2026-11-20.csv", "142 lines in 38 orders"], ["Shipping status and names", "18 lines go back to how they were"]]
+          : [["Imported orders-2026-11-20.csv", "142 lines in 38 orders"], ["Stamped Refunded", "Lantern Row Games"], ["Envelope recorded 19 Nov", "1 hand-typed envelope"]]
+        ).map(([a, b]) => `<div class="li"><span class="a">${a}</span><span class="b">${b}</span></div>`).join("")}
+      </div>`;
   }
   if (sel === "now") {
     return `<div ${T("asof","new","the ledger as of the page the ribbon marks")}><h2>Now</h2>
@@ -537,7 +550,7 @@ function ribbonSingle(primary, w) {
   const showStrip = !["empty","error"].includes(s);
   return `<div class="pg full">${statusBar(w)}
     <div class="scr"><h2 class="ttl">Ledger</h2><p class="sub">Pages of this device. Go back to any one.</p>
-      <div class="grow">${ribbonCard(primary)}</div>${showStrip ? strip(primary, false) : ""}</div>
+      <div class="grow ${showStrip ? "" : "end"}" style="gap:12px">${ribbonCard(primary)}</div>${showStrip ? strip(primary, false) : ""}</div>
     ${tabbar()}${sh ? `<div class="scrimx"></div>${sheetHtml(sh, false)}` : ""}</div>`;
 }
 function ribbonOpen() {

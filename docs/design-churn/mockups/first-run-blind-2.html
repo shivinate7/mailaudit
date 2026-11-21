@@ -1,0 +1,978 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>First Run Concepts</title>
+<style>
+/* Tokens: house rules only (4 px step, 8 px radius, colour by role, system font).
+   Hues are this designer's own choice. Type sizes are Apple Dynamic Type, Large (default) and AX5. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px;
+  --radius: 8px;
+  --sa-top: 48px;      /* drawing assumption: no Apple page read gives a status bar height */
+  --sa-bottom: 28px;   /* drawing assumption: home indicator area */
+  --phone-w: 400px; --phone-h: 868px;
+
+  --bg: #eef0f4;
+  --surface: #ffffff;
+  --surface-2: #f6f7fa;
+  --text: #191c23;
+  --text-2: #586071;
+  --line: #d6dae2;
+  --accent: #2647a8;
+  --accent-on: #ffffff;
+  --accent-soft: #e3e9fa;
+  --done: #1d7349;
+  --done-soft: #ddf1e6;
+  --warn: #9a520a;
+  --warn-soft: #fbecd9;
+  --envelope: #e4c992;
+  --envelope-2: #d4b475;
+  --envelope-ink: #4f3a12;
+  --hinge: #2b2e36;
+  --page-bg: #dfe2e8;
+  --page-text: #1b1e25;
+  --page-text-2: #5a6070;
+  --frame: #15171c;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #14161b; --surface: #1f2229; --surface-2: #262a32; --text: #eceef2; --text-2: #a3a9b6;
+    --line: #353a45; --accent: #8ea8ff; --accent-on: #0e1733; --accent-soft: #232d4d;
+    --done: #63d39c; --done-soft: #183427; --warn: #f2aa5c; --warn-soft: #3a2a17;
+    --envelope: #6e5528; --envelope-2: #5c4620; --envelope-ink: #f7e6c2;
+    --hinge: #050608; --page-bg: #0d0e11; --page-text: #e6e8ec; --page-text-2: #a0a6b2; --frame: #000000;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #14161b; --surface: #1f2229; --surface-2: #262a32; --text: #eceef2; --text-2: #a3a9b6;
+  --line: #353a45; --accent: #8ea8ff; --accent-on: #0e1733; --accent-soft: #232d4d;
+  --done: #63d39c; --done-soft: #183427; --warn: #f2aa5c; --warn-soft: #3a2a17;
+  --envelope: #6e5528; --envelope-2: #5c4620; --envelope-ink: #f7e6c2;
+  --hinge: #050608; --page-bg: #0d0e11; --page-text: #e6e8ec; --page-text-2: #a0a6b2; --frame: #000000;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+[hidden] { display: none !important; }
+html, body { margin: 0; }
+body {
+  background: var(--page-bg); color: var(--page-text);
+  font-family: -apple-system, system-ui, "SF Pro Text", "Helvetica Neue", sans-serif;
+  font-size: 15px; line-height: 1.4;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Mockup chrome (not the app) ---------- */
+.banner { background: var(--warn-soft); color: var(--text); border-bottom: 2px dashed var(--warn);
+  padding: var(--space-3) var(--space-4); font-weight: 600; }
+.wrap { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-6) var(--space-4) var(--space-12); max-inline-size: 2100px; }
+.head { display: flex; flex-direction: column; gap: var(--space-2); }
+.head h1 { margin: 0; font-size: 28px; line-height: 1.2; }
+.head p { margin: 0; color: var(--page-text-2); max-inline-size: 70ch; }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+.ctl { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+.ctl > span { color: var(--page-text-2); padding-inline-end: var(--space-1); }
+.ctl button, .hide-btn, .show-btn { border: 1px solid var(--line); background: var(--surface); color: var(--text);
+  border-radius: var(--radius); padding: var(--space-1) var(--space-3); min-height: 32px; cursor: pointer; }
+.ctl button[aria-pressed="true"] { background: var(--accent); color: var(--accent-on); border-color: var(--accent); }
+.ctl input[type=range] { inline-size: 140px; }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; }
+.concept-head h2 { margin: 0; font-size: 22px; }
+.concept-head p { margin: 0; color: var(--page-text-2); flex-basis: 100%; max-inline-size: 80ch; }
+.tag-new { border: 2px dashed var(--accent); color: var(--page-text); border-radius: var(--radius);
+  padding: 0 var(--space-2); font-size: 13px; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+.frame-box { display: flex; flex-direction: column; gap: var(--space-2); }
+.frame-box[hidden] { display: none; }
+.frame-box > .cap { font-size: 13px; color: var(--page-text-2); max-inline-size: 466px; }
+.hidden-list { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+
+/* ---------- Devices ---------- */
+.device { background: var(--frame); border-radius: 28px; padding: 10px; flex: none; }
+.device.folded, .device.ax5 { width: calc(466px + 20px); height: calc(678px + 20px); }
+.device.open { width: calc(951px + 20px); height: calc(669px + 20px); }
+.device.phone { width: calc(var(--phone-w) + 20px); height: calc(var(--phone-h) + 20px); border-radius: 44px; }
+.device > .screen, .device > .pages { width: 100%; height: 100%; border-radius: 20px; overflow: hidden; }
+.device.phone > .screen { border-radius: 36px; }
+.pages { display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.hinge { background: var(--hinge); }
+
+/* ---------- App screen ---------- */
+.screen {
+  --fs-large: 34px; --lh-large: 41px; --fs-t2: 22px; --lh-t2: 28px; --fs-t3: 20px; --lh-t3: 25px;
+  --fs-head: 17px; --lh-head: 22px; --fs-body: 17px; --lh-body: 22px; --fs-callout: 16px; --lh-callout: 21px;
+  --fs-sub: 15px; --lh-sub: 20px; --fs-foot: 13px; --lh-foot: 18px; --fs-cap: 12px; --lh-cap: 16px;
+  --tick: 28px;
+  position: relative; display: flex; flex-direction: column; background: var(--bg); color: var(--text);
+  font-family: -apple-system, system-ui, "SF Pro Text", sans-serif;
+  font-size: var(--fs-body); line-height: var(--lh-body);
+  padding-top: max(env(safe-area-inset-top), var(--sa-top));
+  padding-bottom: max(env(safe-area-inset-bottom), var(--sa-bottom));
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+  overflow: hidden; min-width: 0;
+}
+.ax5 .screen {
+  --fs-large: 60px; --lh-large: 70px; --fs-t2: 56px; --lh-t2: 66px; --fs-t3: 55px; --lh-t3: 65px;
+  --fs-head: 53px; --lh-head: 62px; --fs-body: 53px; --lh-body: 62px; --fs-callout: 51px; --lh-callout: 60px;
+  --fs-sub: 49px; --lh-sub: 58px; --fs-foot: 44px; --lh-foot: 52px; --fs-cap: 43px; --lh-cap: 51px;
+  --tick: 56px;
+}
+.status { position: absolute; inset: 0 0 auto 0; height: var(--sa-top); display: flex; align-items: center;
+  justify-content: space-between; padding: 0 var(--space-6); font-size: 15px; font-weight: 600; }
+.status .dots { letter-spacing: 2px; }
+.home-ind { position: absolute; inset: auto 0 8px 0; display: flex; justify-content: center; pointer-events: none; }
+.home-ind::after { content: ""; width: 134px; height: 5px; border-radius: 3px; background: var(--text); opacity: .85; }
+.scroll { flex: 1; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; min-height: 0; }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-lg { display: flex; flex-direction: column; gap: var(--space-6); }
+.pad { padding: var(--space-2) var(--space-4) var(--space-6); }
+.cluster { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+
+.nav { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1) var(--space-4) var(--space-2); }
+.nav-bar { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); min-height: 44px; }
+.nav-bar .center { font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; text-align: center; flex: 1; min-width: 0; }
+.large-title { font-size: var(--fs-large); line-height: var(--lh-large); font-weight: 700; margin: 0; overflow-wrap: anywhere; }
+.subtitle { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-2); margin: 0; overflow-wrap: anywhere; }
+.tool { min-width: 44px; min-height: 44px; display: inline-flex; align-items: center; justify-content: center;
+  gap: var(--space-1); border: 0; background: none; color: var(--accent); font-size: var(--fs-body); cursor: pointer; padding: 0 var(--space-1); }
+.tool svg { width: 24px; height: 24px; }
+.ax5 .tool svg { width: 44px; height: 44px; }
+.tool.text { font-size: var(--fs-body); }
+
+.btn { min-height: 50px; border-radius: var(--radius); border: 0; padding: var(--space-3) var(--space-4);
+  font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; cursor: pointer; width: 100%;
+  display: flex; align-items: center; justify-content: center; gap: var(--space-2); text-align: center; }
+.btn.primary { background: var(--accent); color: var(--accent-on); }
+.btn.plain { background: var(--surface); color: var(--accent); }
+.btn.quiet { background: none; color: var(--accent); min-height: 44px; }
+.btn svg { width: 22px; height: 22px; flex: none; }
+.ax5 .btn svg { width: 44px; height: 44px; }
+.bottom { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-2); }
+
+.group { background: var(--surface); border-radius: var(--radius); overflow: hidden; }
+.sec-head { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-2); align-items: baseline;
+  padding: 0 var(--space-4); font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+.sec-head b { font-weight: 600; color: var(--text); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.row { display: flex; align-items: center; gap: var(--space-3); min-height: 52px; padding: var(--space-2) var(--space-4);
+  width: 100%; background: none; border: 0; text-align: left; position: relative; color: var(--text); }
+.row + .row::before { content: ""; position: absolute; top: 0; left: var(--space-4); right: 0; border-top: 1px solid var(--line); }
+button.row { cursor: pointer; }
+.row-main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.row-title { font-size: var(--fs-body); line-height: var(--lh-body); overflow-wrap: anywhere; }
+.row-sub { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-2); overflow-wrap: anywhere; }
+.row .count { font-size: var(--fs-sub); color: var(--text-2); white-space: nowrap; font-variant-numeric: tabular-nums; }
+.row .count.all { color: var(--done); font-weight: 600; }
+.row .count.done-mark { color: var(--surface); }
+.done-mark { display: inline-flex; width: 24px; height: 24px; border-radius: 50%; background: var(--done); color: var(--surface); align-items: center; justify-content: center; flex: none; }
+.done-mark svg { width: 16px; height: 16px; }
+.ax5 .done-mark { width: 48px; height: 48px; }
+.ax5 .done-mark svg { width: 32px; height: 32px; }
+.chev { width: 10px; height: 16px; flex: none; color: var(--text-2); }
+.ax5 .chev { width: 20px; height: 32px; }
+.ax5 .row { flex-wrap: wrap; }
+.ax5 .row .count { white-space: normal; }
+.late { color: var(--warn); display: inline-flex; flex: none; }
+.late svg { width: 18px; height: 18px; }
+.ax5 .late svg { width: 40px; height: 40px; }
+
+.tick { flex: none; width: 44px; height: 44px; display: inline-flex; align-items: center; justify-content: center;
+  border: 0; background: none; cursor: pointer; padding: 0; }
+.ax5 .tick { width: 64px; height: 64px; }
+.tick .ring { width: var(--tick); height: var(--tick); border-radius: 50%; border: 2px solid var(--text-2);
+  display: inline-flex; align-items: center; justify-content: center; }
+.tick[aria-pressed="true"] .ring { background: var(--done); border-color: var(--done); color: var(--surface); }
+.tick .ring svg { width: 60%; height: 60%; opacity: 0; }
+.tick[aria-pressed="true"] .ring svg { opacity: 1; }
+.undo { border: 0; background: var(--done-soft); color: var(--done); border-radius: var(--radius); min-height: 44px;
+  padding: 0 var(--space-3); font-size: var(--fs-sub); font-weight: 600; cursor: pointer; flex: none; }
+.row.is-here .row-title { color: var(--text-2); }
+
+.search { display: flex; align-items: center; gap: var(--space-2); background: var(--surface-2); border-radius: var(--radius);
+  min-height: 44px; padding: 0 var(--space-3); border: 1px solid var(--line); }
+.search svg { width: 18px; height: 18px; color: var(--text-2); flex: none; }
+.ax5 .search svg { width: 40px; height: 40px; }
+.search input { flex: 1; min-width: 0; border: 0; background: none; font: inherit; font-size: var(--fs-body); color: var(--text); padding: var(--space-2) 0; }
+.search input::placeholder { color: var(--text-2); }
+
+.summary { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-sub); line-height: var(--lh-sub);
+  padding: var(--space-2) var(--space-4); border-radius: var(--radius); }
+.summary svg { width: 18px; height: 18px; flex: none; }
+.ax5 .summary svg { width: 40px; height: 40px; }
+.summary.ok { color: var(--done); background: var(--done-soft); }
+.summary.bad { color: var(--warn); background: var(--warn-soft); border: 0; cursor: pointer; width: 100%; text-align: left; min-height: 44px; }
+.summary.bad[aria-pressed="true"] { outline: 2px solid var(--warn); }
+
+.empty { flex: 1; display: flex; flex-direction: column; justify-content: center; align-items: center; gap: var(--space-4);
+  padding: var(--space-6); text-align: center; }
+.empty p { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); color: var(--text-2); max-inline-size: 30ch; }
+.empty svg.big { width: 72px; height: 72px; color: var(--text-2); }
+.ax5 .empty svg.big { display: none; }
+
+/* Tab bar: floats above content (HIG tab bars). */
+.tabbar { display: flex; justify-content: space-around; gap: var(--space-2); margin: 0 var(--space-6) var(--space-1);
+  padding: var(--space-1); border-radius: 999px; background: color-mix(in srgb, var(--surface) 88%, transparent);
+  border: 1px solid var(--line); box-shadow: 0 6px 20px color-mix(in srgb, var(--text) 14%, transparent); }
+.tabbar button { flex: 1; min-height: 48px; border: 0; background: none; border-radius: 999px; display: flex; flex-direction: column;
+  align-items: center; justify-content: center; gap: 2px; font-size: 10px; color: var(--text-2); cursor: pointer; }
+.tabbar button svg { width: 24px; height: 24px; }
+.tabbar button[aria-selected="true"] { color: var(--accent); background: var(--accent-soft); }
+.ax5 .tabbar button span { display: none; }
+.ax5 .tabbar button svg { width: 40px; height: 40px; }
+
+/* Sheet */
+.sheet-veil { position: absolute; inset: 0; background: color-mix(in srgb, #000 35%, transparent); display: flex; flex-direction: column; justify-content: flex-end; z-index: 5; }
+.sheet { background: var(--bg); border-radius: 14px 14px 0 0; max-height: calc(100% - var(--sa-top) - 8px); display: flex; flex-direction: column;
+  padding-bottom: max(env(safe-area-inset-bottom), var(--sa-bottom)); min-height: 0; }
+.sheet.full { height: calc(100% - var(--sa-top) - 8px); }
+.sheet-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-3) 0; min-height: 52px; }
+.sheet-bar .t { font-weight: 600; font-size: var(--fs-head); line-height: var(--lh-head); text-align: center; }
+.sheet-bar .l { justify-self: start; } .sheet-bar .r { justify-self: end; }
+.ax5 .sheet-bar { grid-template-columns: 1fr; }
+.ax5 .sheet-bar .t { text-align: left; order: -1; }
+.lede { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
+.fine { margin: 0; font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+details.help { background: var(--surface); border-radius: var(--radius); padding: var(--space-3) var(--space-4); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+details.help summary { cursor: pointer; color: var(--accent); min-height: 32px; display: flex; align-items: center; }
+details.help ol, details.help p { margin: var(--space-2) 0 0; padding-inline-start: var(--space-5); }
+details.help p { padding: 0; }
+.figures { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.figures > div { background: var(--surface); border-radius: var(--radius); padding: var(--space-3); display: flex; flex-direction: column; }
+.figures b { font-size: var(--fs-t2); line-height: var(--lh-t2); font-variant-numeric: tabular-nums; }
+.figures span { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+.ax5 .figures { grid-template-columns: 1fr; }
+.safe-line { display: flex; gap: var(--space-2); align-items: flex-start; padding: var(--space-3) var(--space-4); background: var(--done-soft);
+  color: var(--text); border-radius: var(--radius); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.safe-line svg { width: 20px; height: 20px; color: var(--done); flex: none; margin-top: 2px; }
+.ax5 .safe-line { flex-direction: column; }
+.ax5 .safe-line svg { width: 44px; height: 44px; }
+.progress { height: 6px; background: var(--line); border-radius: 3px; overflow: hidden; }
+.progress > i { display: block; height: 100%; width: 62%; background: var(--accent); }
+.file-row .ficon { width: 32px; height: 40px; border-radius: 4px; background: var(--surface-2); border: 1px solid var(--line); flex: none;
+  display: flex; align-items: flex-end; justify-content: center; font-size: 9px; font-weight: 700; color: var(--text-2); padding-bottom: 3px; }
+.ax5 .file-row .ficon { display: none; }
+.sys-note { font-size: var(--fs-cap); line-height: var(--lh-cap); color: var(--text-2); text-align: center; padding: var(--space-1) var(--space-4); }
+
+/* Three words guide (shared) */
+.words { background: var(--surface); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.words h2 { margin: 0; font-size: var(--fs-t3); line-height: var(--lh-t3); }
+.word { display: grid; grid-template-columns: 36px 1fr; gap: var(--space-3); align-items: start; }
+.word svg { width: 36px; height: 36px; }
+.word .w { font-weight: 600; }
+.word p { margin: 0; font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-2); }
+.ax5 .word { grid-template-columns: 1fr; }
+.ax5 .word svg { width: 56px; height: 56px; }
+.ic-env { color: var(--envelope-2); } .ic-pkg { color: var(--accent); } .ic-card { color: var(--done); }
+.try { border: 2px dashed var(--accent); border-radius: var(--radius); display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) 0; background: var(--surface); }
+.try .try-head { padding: 0 var(--space-4); font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+.try .try-head b { color: var(--text); }
+
+/* Week concept */
+.wk-sum { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-4); }
+.meter { display: flex; height: 6px; border-radius: 3px; overflow: hidden; background: var(--line); }
+.meter > i { background: var(--done); }
+.right-empty { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-6) var(--space-4); }
+
+.offer-box { display: flex; flex-direction: column; gap: var(--space-3); background: var(--warn-soft); border-radius: var(--radius); padding: var(--space-3) var(--space-4); }
+.offer-box p { margin: 0; font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.btn.small { width: auto; min-height: 44px; font-size: var(--fs-sub); line-height: var(--lh-sub); padding: var(--space-2) var(--space-3); }
+.summary.offer { justify-content: space-between; flex-wrap: wrap; }
+
+/* Envelope concept */
+.ledger { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 52px; border: 0; cursor: pointer; text-align: left;
+  background: var(--surface); color: var(--text); border-radius: var(--radius); padding: var(--space-2) var(--space-4); }
+.ledger .row-main b { font-weight: 600; }
+.ax5 .ledger { flex-wrap: wrap; }
+.desk { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-3) var(--space-4) var(--space-6); }
+.envelope { position: relative; background: var(--envelope); color: var(--envelope-ink); border-radius: 6px; aspect-ratio: 1.62;
+  display: flex; flex-direction: column; justify-content: flex-end; gap: var(--space-1); padding: var(--space-5) var(--space-6);
+  box-shadow: 0 1px 0 color-mix(in srgb, var(--envelope-ink) 25%, transparent), 0 10px 24px color-mix(in srgb, var(--envelope-ink) 18%, transparent); overflow: hidden; }
+.envelope::before { content: ""; position: absolute; inset: 0 0 auto 0; height: 52%; background: var(--envelope-2);
+  clip-path: polygon(0 0, 100% 0, 50% 100%); transform-origin: top; }
+.envelope .stamp { position: absolute; top: var(--space-4); right: var(--space-4); width: 44px; height: 52px; border: 2px dashed var(--envelope-ink);
+  border-radius: 3px; opacity: .55; z-index: 1; }
+.envelope .addr { position: relative; z-index: 1; display: flex; flex-direction: column; }
+.envelope .from { font-size: var(--fs-foot); line-height: var(--lh-foot); }
+.envelope .who { font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 700; overflow-wrap: anywhere; }
+.envelope.ghost { background: none; border: 2px dashed var(--line); box-shadow: none; color: var(--text-2); justify-content: center; align-items: center; text-align: center; }
+.envelope.ghost::before { background: none; border-bottom: 0; clip-path: none; height: 0; }
+.envelope.is-open::before { transform: scaleY(-1); transform-origin: top; top: 0; }
+.envelope.strip { aspect-ratio: auto; padding: var(--space-3) var(--space-4); min-height: 76px; }
+.envelope.strip::before { height: 100%; width: 72px; left: auto; right: 0; clip-path: polygon(100% 0, 100% 100%, 0 50%); }
+.ax5 .envelope { aspect-ratio: auto; min-height: 240px; padding: var(--space-4); }
+.ax5 .envelope .stamp { display: none; }
+.callout { display: flex; gap: var(--space-3); align-items: flex-start; font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.callout svg { width: 28px; height: 28px; flex: none; }
+.ax5 .callout { flex-direction: column; }
+.ax5 .callout svg { width: 56px; height: 56px; }
+.callout b { font-weight: 600; }
+.env-open-btn { position: relative; z-index: 1; align-self: flex-start; }
+.slips { display: flex; flex-direction: column; gap: var(--space-2); }
+.slip { display: flex; align-items: center; gap: var(--space-3); border: 0; cursor: pointer; text-align: left; width: 100%;
+  background: var(--surface); color: var(--text); border-radius: var(--radius); min-height: 60px; padding: var(--space-2) var(--space-4) var(--space-2) 0; overflow: hidden; }
+.slip::before { content: ""; align-self: stretch; width: 8px; background: var(--envelope); flex: none; }
+.ax5 .slip { flex-wrap: wrap; padding-left: var(--space-4); }
+.ax5 .slip::before { display: none; }
+.hand { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-2); }
+.hand .cluster { justify-content: space-between; }
+.ax5-only { display: none; }
+.ax5 .ax5-only { display: flex; }
+.ax5 .hand .cluster { display: none; }
+.scroll.col { display: flex; flex-direction: column; }
+.scroll.col > .empty, .scroll.col > .desk { flex: 1 0 auto; }
+.empty { justify-content: safe center; }
+.label-k { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+.note-field { background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-3); font: inherit; font-size: var(--fs-body); color: var(--text); width: 100%; min-height: 96px; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .tick .ring { transition: background-color .15s, border-color .15s; }
+  .envelope::before { transition: transform .35s ease-out; }
+}
+</style>
+</head>
+<body>
+<div class="banner" role="note">Sample. No figure, seller, card or file on this page is real.</div>
+<div class="wrap">
+  <header class="head">
+    <h1>First run: from no data to the first ticked card</h1>
+    <p>Blind designer, first-run-blind-2. Drawn from the job alone: no current screen, spec or token file was read. Every frame on this page works: tap through it. All frames of one concept share one state, so a tap in the folded pose also shows in the open pose.</p>
+    <div class="controls" id="controls">
+      <div class="ctl" role="group" aria-label="State"><span>State</span></div>
+      <div class="ctl" role="group" aria-label="Theme"><span>Theme</span>
+        <button data-theme-set="auto" aria-pressed="true">Auto</button><button data-theme-set="light" aria-pressed="false">Light</button><button data-theme-set="dark" aria-pressed="false">Dark</button>
+      </div>
+      <div class="ctl" role="group" aria-label="Frames"><span>Frames</span>
+        <button data-frame-set="" aria-pressed="true">All</button><button data-frame-set="folded" aria-pressed="false">Folded</button><button data-frame-set="open" aria-pressed="false">Open</button><button data-frame-set="phone" aria-pressed="false">Phone</button><button data-frame-set="ax5" aria-pressed="false">AX5</button>
+      </div>
+      <label class="ctl"><span>Large phone width (size not written)</span><input type="range" id="phoneW" min="360" max="460" step="4" value="400"><output id="phoneWOut">400</output></label>
+      <div class="hidden-list" id="hiddenList"></div>
+    </div>
+  </header>
+
+  <section class="concept" data-concept="week" id="concept-week" aria-labelledby="h-week">
+    <div class="concept-head">
+      <h2 id="h-week">Checklist by week</h2>
+      <span class="tag-new">New: whole first run</span>
+      <button class="hide-btn" data-hide="week">Hide this option</button>
+      <p>One checklist, grouped by the week you ordered, because mail comes in roughly the order you bought it. The three words are taught on your own first package, and you tick your first card inside the lesson. A second tab, Imports, keeps every file you brought in and what it added, so you can see nothing was lost.</p>
+    </div>
+    <div class="frames">
+      <div class="frame-box"><div class="cap">Duo, folded, 466 x 678</div>
+        <div class="device folded" data-device="iphone-duo-folded" id="opt-week"><div class="screen" data-frame="week:folded"></div></div></div>
+      <div class="frame-box"><div class="cap">Duo, open, 951 x 669, hinge 455.5 to 495.5</div>
+        <div class="device open" data-device="iphone-duo-unfolded"><div class="pages"><div class="screen" data-frame="week:left"></div><div class="hinge" aria-hidden="true"></div><div class="screen" data-frame="week:right"></div></div></div></div>
+      <div class="frame-box"><div class="cap phone-cap">Large phone, size not written</div>
+        <div class="device phone" data-device="iphone-regular"><div class="screen" data-frame="week:phone"></div></div></div>
+      <div class="frame-box"><div class="cap">Duo, folded, largest accessibility text (AX5)</div>
+        <div class="device ax5" data-device="iphone-duo-folded-ax5"><div class="screen" data-frame="week:ax5"></div></div></div>
+    </div>
+  </section>
+
+  <section class="concept" data-concept="envelope" id="concept-envelope" aria-labelledby="h-envelope">
+    <div class="concept-head">
+      <h2 id="h-envelope">Envelope in hand</h2>
+      <span class="tag-new">New: whole first run</span>
+      <button class="hide-btn" data-hide="envelope">Hide this option</button>
+      <p>Bold structure: no list and no tab bar on the first screen. The app starts from the thing you hold. One box at the thumb asks for the name on the envelope; the match opens like the envelope does, and the cards inside are the checklist. The three words are taught by opening a drawn envelope from your own file. Everything still coming sits one tap away, never in the way.</p>
+    </div>
+    <div class="frames">
+      <div class="frame-box"><div class="cap">Duo, folded, 466 x 678</div>
+        <div class="device folded" data-device="iphone-duo-folded" id="opt-envelope"><div class="screen" data-frame="envelope:folded"></div></div></div>
+      <div class="frame-box"><div class="cap">Duo, open, 951 x 669, hinge 455.5 to 495.5</div>
+        <div class="device open" data-device="iphone-duo-unfolded"><div class="pages"><div class="screen" data-frame="envelope:left"></div><div class="hinge" aria-hidden="true"></div><div class="screen" data-frame="envelope:right"></div></div></div></div>
+      <div class="frame-box"><div class="cap">Large phone, size not written</div>
+        <div class="device phone" data-device="iphone-regular"><div class="screen" data-frame="envelope:phone"></div></div></div>
+      <div class="frame-box"><div class="cap">Duo, folded, largest accessibility text (AX5)</div>
+        <div class="device ax5" data-device="iphone-duo-folded-ax5"><div class="screen" data-frame="envelope:ax5"></div></div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+'use strict';
+// ---------- Icons ----------
+const I = {
+  env: '<svg viewBox="0 0 36 36" aria-hidden="true"><rect x="3" y="8" width="30" height="21" rx="2" fill="currentColor" opacity=".35"/><path d="M3 10l15 10 15-10" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="3" y="8" width="30" height="21" rx="2" fill="none" stroke="currentColor" stroke-width="2.4"/></svg>',
+  pkg: '<svg viewBox="0 0 36 36" aria-hidden="true"><path d="M5 11l13-6 13 6v15l-13 6-13-6z" fill="currentColor" opacity=".2"/><path d="M5 11l13-6 13 6v15l-13 6-13-6zM5 11l13 6 13-6M18 17v15" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linejoin="round"/></svg>',
+  card: '<svg viewBox="0 0 36 36" aria-hidden="true"><rect x="9" y="4" width="18" height="28" rx="2.5" fill="currentColor" opacity=".25"/><rect x="9" y="4" width="18" height="28" rx="2.5" fill="none" stroke="currentColor" stroke-width="2.4"/><rect x="12.5" y="8" width="11" height="10" rx="1" fill="currentColor"/></svg>',
+  check: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chev: '<svg class="chev" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  back: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 4l-8 8 8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  plus: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2.4" stroke-linecap="round"/></svg>',
+  search: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  clock: '<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="7.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M10 5.5V10l3 2" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  shield: '<svg viewBox="0 0 20 20" aria-hidden="true"><path d="M10 2l6.5 2.5v5c0 4-3 7-6.5 8.5C6.5 16.5 3.5 13.5 3.5 9.5v-5z" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/><path d="M7 10l2 2 4-4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  list: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.6" fill="currentColor"/><circle cx="4.5" cy="12" r="1.6" fill="currentColor"/><circle cx="4.5" cy="18" r="1.6" fill="currentColor"/></svg>',
+  tray: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 13l3-8h12l3 8v6H3z M3 13h5l1.5 2.5h5L16 13h5" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"/></svg>',
+  doc: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l4 4v14H6z M14 3v4h4 M12 10v7 M9 14l3 3 3-3" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" stroke-linecap="round"/></svg>',
+  q: '<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9" fill="none" stroke="currentColor" stroke-width="2"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5V14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/><circle cx="12" cy="17" r="1.2" fill="currentColor"/></svg>',
+};
+
+// ---------- Sample data (seeded, so every load is the same) ----------
+let seed = 20261121;
+const rnd = () => { seed = (seed * 1103515245 + 12345) % 2147483648; return seed / 2147483648; };
+const pick = (a) => a[Math.floor(rnd() * a.length)];
+const P1 = ['Harbor','Copper','Lantern','Maple','Granite','Juniper','Falcon','Orchard','Saltmarsh','Bramble','Cinder','Willow','Northgate','Kestrel','Ridgeline','Tamarack','Pebble','Foxglove','Ironbark','Meadow','Quarry'];
+const P2 = ['Cards','Games','Collectibles','Card Co.','Hobby','Singles','Vault','Trading Post','Card Shop'];
+const SELLERS = [];
+for (const a of P1) for (const b of P2) SELLERS.push(a + ' ' + b);
+for (let i = SELLERS.length - 1; i > 0; i--) { const j = Math.floor(rnd() * (i + 1)); [SELLERS[i], SELLERS[j]] = [SELLERS[j], SELLERS[i]]; }
+const C1 = ['Ashen','Tidecaller','Gilded','Hollow','Verdant','Storm','Quiet','Ember','Frost','Thorn','Sable','Lumen'];
+const C2 = ['Wyrm','Sigil','Sentinel','Archive','Familiar','Bastion','Oracle','Wanderer','Totem','Herald'];
+const SETS = ['Shattered Tides','Low Lanterns','Copper Age','Ninefold Court'];
+const CONDS = ['Near Mint','Near Mint','Near Mint','Lightly Played'];
+const MONTHS = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const DAY = 86400000;
+const TODAY = Date.UTC(2026, 10, 21);
+const START = Date.UTC(2026, 8, 12);
+const fmtDate = (t) => { const d = new Date(t); return d.getUTCDate() + ' ' + MONTHS[d.getUTCMonth()]; };
+const money = (c) => '$' + (c / 100).toFixed(2);
+const n = (x) => x.toLocaleString('en-US');
+const hex = () => Math.floor(rnd() * 65536).toString(16).toUpperCase().padStart(4, '0');
+
+function makePackage(i, t, sellerIdx) {
+  const count = 1 + Math.floor(Math.pow(rnd(), 1.6) * 11);
+  const cards = [];
+  for (let k = 0; k < count; k++) {
+    const qty = rnd() < 0.12 ? 4 : 1;
+    cards.push({ id: 'p' + i + 'c' + k, name: pick(C1) + ' ' + pick(C2), set: pick(SETS), cond: pick(CONDS), qty, cents: (10 + Math.floor(rnd() * 290)) * qty });
+  }
+  return { id: 'p' + i, seller: SELLERS[sellerIdx % SELLERS.length], order: hex() + '-' + hex(), date: t, cards, ship: rnd() < 0.5 ? 99 : 0 };
+}
+const PKGS = [];
+for (let i = 0; i < 214; i++) {
+  const t = START + Math.floor(Math.pow(rnd(), 0.8) * 68) * DAY;
+  PKGS.push(makePackage(i, t, Math.floor(rnd() * 167)));
+}
+PKGS.sort((a, b) => a.date - b.date || a.seller.localeCompare(b.seller));
+const NEWPKGS = [];
+for (let i = 0; i < 12; i++) NEWPKGS.push(makePackage(300 + i, Date.UTC(2026, 10, 19) + (i % 2) * DAY, 170 + i));
+const ALLPKGS = PKGS.concat(NEWPKGS);
+const PKG = Object.fromEntries(ALLPKGS.map(p => [p.id, p]));
+const CARD = {};
+for (const p of ALLPKGS) for (const c of p.cards) CARD[c.id] = { card: c, pkg: p };
+// The lesson package: an early order with three cards.
+const LESSON = PKGS.find(p => p.cards.length === 3) || PKGS[0];
+
+function stats(list) {
+  const sellers = new Set(list.map(p => p.seller));
+  let cards = 0, cents = 0;
+  for (const p of list) { cards += p.cards.length; cents += p.ship; for (const c of p.cards) cents += c.cents; }
+  return { pkgs: list.length, cards, sellers: sellers.size, cents, from: list[0] && list[0].date, to: list[list.length - 1] && list[list.length - 1].date };
+}
+const S1 = stats(PKGS);
+const SNEW = stats(NEWPKGS);
+
+// Day-two ticks: older orders mostly here, a few look late, newer ones not yet.
+function day2Ticks() {
+  const s = new Set(); seed = 77;
+  for (const p of PKGS) {
+    const age = (TODAY - p.date) / DAY;
+    let share = age > 35 ? 1 : age > 20 ? 0.8 : age > 10 ? 0.35 : 0;
+    if (rnd() < 0.06 && age > 22) share = 0;
+    if (rnd() < share) {
+      const partial = rnd() < 0.12 && p.cards.length > 1;
+      p.cards.forEach((c, k) => { if (!partial || k < p.cards.length - 1) s.add(c.id); });
+    }
+  }
+  return s;
+}
+const DAY2 = day2Ticks();
+
+// ---------- State ----------
+const STATES = [
+  ['empty', 'No data'], ['import', 'Bring in'], ['pick', 'Files'], ['reading', 'Reading'], ['preview', 'Preview'],
+  ['error', 'Wrong file'], ['first', 'First look'], ['ticked', 'First tick'], ['day2', 'A day later'], ['reimport', 'Second file'],
+];
+function preset(s) {
+  const st = { s, data: false, extra: false, sheet: null, ticked: new Set(), undo: null, guide: false, open: null, tab: 'list', q: '', lateOnly: false, aside: [], imports: [], lessonStep: 0, expanded: new Set(), oldOffer: false, oldUndo: null, opened: [], note: '' };
+  if (['first', 'ticked'].includes(s)) st.oldOffer = true;
+  st.envOpen = s === 'ticked' ? LESSON.id : null;
+  if (s === 'day2' || s === 'reimport') st.opened = PKGS.filter(p => (TODAY - p.date) / DAY < 14 && p.cards.every(c => DAY2.has(c.id))).slice(0, 3).map(p => p.id);
+  if (s === 'import') st.sheet = 'import';
+  if (s === 'pick') st.sheet = 'pick';
+  if (s === 'reading') st.sheet = 'reading';
+  if (s === 'preview') st.sheet = 'preview';
+  if (s === 'error') st.sheet = 'error';
+  if (['first', 'ticked', 'day2', 'reimport'].includes(s)) { st.data = true; st.imports = [{ file: 'orders-2026-11-20.csv', when: '20 Nov', pkgs: S1.pkgs, cards: S1.cards }]; }
+  if (s === 'first') { st.guide = true; }
+  if (s === 'ticked') { st.guide = true; st.ticked.add(LESSON.cards[0].id); st.undo = LESSON.cards[0].id; st.lessonStep = 1; }
+  if (s === 'day2' || s === 'reimport') { st.ticked = new Set(DAY2); }
+  if (s === 'reimport') st.sheet = 'preview2';
+  return st;
+}
+const ST = { week: preset('empty'), envelope: preset('empty') };
+let timer = null;
+
+// ---------- Shared helpers ----------
+const esc = (x) => String(x).replace(/[&<>"]/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const pkgs = (st) => st.data ? (st.extra ? ALLPKGS : PKGS) : [];
+const hereCount = (st, p) => p.cards.filter(c => st.ticked.has(c.id)).length;
+const isLate = (st, p) => !st.oldOffer && (TODAY - p.date) / DAY > 24 && hereCount(st, p) < p.cards.length;
+const oldOnes = (st) => pkgs(st).filter(p => (TODAY - p.date) / DAY > 24 && hereCount(st, p) === 0);
+// First run only: orders that may have come before the person started. One press ticks them; Undo sits on the same spot.
+function oldBlock(st) {
+  if (st.oldUndo) return `<div class="summary ok offer old-offer" role="status"><span>Ticked ${n(st.oldUndo.pkgs)} older packages as in hand.</span><button class="undo" data-act="old-undo">Undo</button></div>`;
+  if (!st.oldOffer) return '';
+  const old = oldOnes(st);
+  if (!old.length) return '';
+  return `<div class="offer-box old-offer"><p>${n(old.length)} packages were ordered more than three weeks ago. If they came before today, tick them in one go.</p>
+    <div class="cluster"><button class="btn primary small" data-act="old-tick">Tick ${n(old.length)} as in hand</button><button class="btn quiet small" data-act="old-keep">Leave them open</button></div></div>`;
+}
+const statusBar = () => '<div class="status" aria-hidden="true"><span>9:41</span><span class="dots">&#9679;&#9679;&#9679;</span></div><div class="home-ind" aria-hidden="true"></div>';
+const cardSub = (c) => [c.set, c.cond, c.qty > 1 ? c.qty + ' copies' : '1 copy', money(c.cents)].join(', ');
+
+function tickRow(st, c) {
+  const on = st.ticked.has(c.id);
+  return `<div class="row${on ? ' is-here' : ''}">
+    <button class="tick" data-act="tick" data-id="${c.id}" aria-pressed="${on}" aria-label="${esc(c.name)}${on ? ', in hand' : ', not yet'}"><span class="ring">${I.check}</span></button>
+    <div class="row-main"><span class="row-title">${esc(c.name)}</span><span class="row-sub">${esc(cardSub(c))}</span></div>
+    ${st.undo === c.id ? `<button class="undo" data-act="undo" data-id="${c.id}">Undo</button>` : ''}
+  </div>`;
+}
+function wordsBlock(st, opts) {
+  const p = LESSON; const here = hereCount(st, p);
+  const tried = st.lessonStep > 0;
+  return `<div class="words" aria-label="Three words">
+    <h2>${tried ? 'That is the whole job' : 'Three words, then you are set'}</h2>
+    <div class="word"><span class="ic-env">${I.env}</span><div><span class="w">Envelope</span><p>The mail in your hand, with the seller's name on it.</p></div></div>
+    <div class="word"><span class="ic-pkg">${I.pkg}</span><div><span class="w">Package</span><p>What one seller sent for one order.</p></div></div>
+    <div class="word"><span class="ic-card">${I.card}</span><div><span class="w">Card</span><p>One line in a package. Tick it when it is in your hand.</p></div></div>
+    ${opts && opts.noTry ? '' : `<div class="try"><div class="try-head"><b>${esc(p.seller)}</b>, order ${p.order}: ${here} of ${p.cards.length} cards in hand</div>
+      ${p.cards.map(c => tickRow(st, c)).join('')}</div>`}
+    <p class="fine">${tried ? 'Tap a tick again to take it back. Nothing you do here deletes an order.' : 'Try it: tick one card above. You can take it back.'}</p>
+    ${tried ? '<button class="btn plain" data-act="guide-done">Got it</button>' : ''}
+  </div>`;
+}
+
+// Import flow, shared by both concepts. Returns the sheet body.
+function importSheet(st, wide) {
+  const head = (title, left, right) => `<div class="sheet-bar"><span class="l">${left || ''}</span><span class="t">${title}</span><span class="r">${right || ''}</span></div>`;
+  const cancel = '<button class="tool text" data-act="sheet-close">Cancel</button>';
+  if (st.sheet === 'import') return head('Bring in order file', cancel) + `<div class="scroll"><div class="pad stack-lg">
+    <p class="lede">Choose the CSV file your order-history helper saved. It lists each card you bought, and who sold it.</p>
+    <div class="safe-line">${I.shield}<span>Bringing in a file only adds orders. It never removes one, and never undoes a tick.</span></div>
+    <details class="help"><summary>The file is on my computer</summary><ol><li>On the computer, send the file to this phone with AirDrop, or save it to iCloud Drive.</li><li>Come back here and tap Choose file.</li></ol></details>
+  </div></div><div class="bottom"><button class="btn primary" data-act="choose">${I.doc}Choose file</button></div>`;
+  if (st.sheet === 'pick') return head('Recents', cancel) + `<div class="sys-note">System file picker, simplified</div><div class="scroll"><div class="pad stack">
+    <div class="group">
+      <button class="row file-row" data-act="pick-csv"><span class="ficon">CSV</span><span class="row-main"><span class="row-title">orders-2026-11-20.csv</span><span class="row-sub">Downloads, 212 KB, today</span></span></button>
+      <button class="row file-row" data-act="pick-txt"><span class="ficon">TXT</span><span class="row-main"><span class="row-title">shopping-list.txt</span><span class="row-sub">Downloads, 2 KB, yesterday</span></span></button>
+    </div></div></div>`;
+  if (st.sheet === 'reading') return head('Reading file', '') + `<div class="scroll"><div class="pad stack-lg">
+    <p class="lede">Reading orders-2026-11-20.csv</p>
+    <div class="progress" role="progressbar" aria-label="Reading file" aria-valuenow="62" aria-valuemin="0" aria-valuemax="100"><i></i></div>
+    <p class="fine">Nothing is added until you say so on the next step.</p>
+  </div></div><div class="bottom"><button class="btn plain" data-act="sheet-close">Stop</button></div>`;
+  if (st.sheet === 'error') return head('Not an order file', cancel) + `<div class="scroll"><div class="pad stack-lg">
+    <p class="lede">shopping-list.txt has no orders in it. Choose the CSV file your order-history helper saved.</p>
+    <p class="fine">Nothing was added and nothing changed.</p>
+    <details class="help"><summary>What the file held</summary><p>First line: "milk, eggs, sleeves". No order, seller or card columns.</p></details>
+  </div></div><div class="bottom"><button class="btn primary" data-act="choose">${I.doc}Choose another file</button></div>`;
+  if (st.sheet === 'preview' || st.sheet === 'preview2') {
+    const second = st.sheet === 'preview2';
+    const s = second ? SNEW : S1;
+    const file = second ? 'orders-2026-11-21.csv' : 'orders-2026-11-20.csv';
+    const back = '<button class="tool text" data-act="sheet-close">Cancel</button>';
+    return head('Check before adding', back) + `<div class="scroll"><div class="pad stack-lg">
+      <p class="lede">${file} holds orders from ${fmtDate(second ? NEWPKGS[0].date : s.from)} to ${fmtDate(s.to)}.</p>
+      <div class="figures"><div><b>${n(s.pkgs)}</b><span>packages</span></div><div><b>${n(s.cards)}</b><span>cards</span></div><div><b>${n(s.sellers)}</b><span>sellers</span></div></div>
+      <div class="safe-line">${I.shield}<span>${second ? `Adds ${n(s.pkgs)} new packages. The ${n(S1.pkgs)} already here stay as they are, ticks and all. Removes nothing.` : 'Adds them all. Nothing is here yet, so nothing is replaced.'}</span></div>
+      <p class="fine">You paid ${money(s.cents)} for these, shipping included.</p>
+    </div></div><div class="bottom"><button class="btn primary" data-act="${second ? 'add2' : 'add'}">Add ${n(s.pkgs)} packages</button></div>`;
+  }
+  return '';
+}
+function sheetWrap(st, wide) {
+  if (!st.sheet || !['import','pick','reading','preview','preview2','error'].includes(st.sheet)) return '';
+  const full = st.sheet === 'import' || st.sheet === 'preview' || st.sheet === 'preview2' || st.sheet === 'error';
+  return `<div class="sheet-veil"><div class="sheet${full ? ' full' : ''}" role="dialog" aria-modal="true" aria-label="Bring in order file">${importSheet(st, wide)}</div></div>`;
+}
+
+// ---------- Concept: Checklist by week ----------
+function weekKey(t) { const d = new Date(t); const dow = (d.getUTCDay() + 6) % 7; return t - dow * DAY; }
+function weekGroups(st, list) {
+  const g = new Map();
+  for (const p of list) { const k = weekKey(p.date); if (!g.has(k)) g.set(k, []); g.get(k).push(p); }
+  return [...g.entries()];
+}
+function pkgRow(st, p, act) {
+  const h = hereCount(st, p), all = h === p.cards.length;
+  return `<button class="row" data-act="${act || 'open'}" data-id="${p.id}" ${st.open === p.id ? 'aria-current="true"' : ''}>
+    <span class="row-main"><span class="row-title">${esc(p.seller)}</span><span class="row-sub">${p.cards.length} card${p.cards.length > 1 ? 's' : ''}, ordered ${fmtDate(p.date)}</span></span>
+    ${isLate(st, p) ? `<span class="late" role="img" aria-label="Looks late">${I.clock}</span>` : ''}
+    ${all ? `<span class="count all done-mark" role="img" aria-label="All in">${I.check}</span>` : `<span class="count">${h} of ${p.cards.length}</span>`}${I.chev}</button>`;
+}
+function weekList(st, wide) {
+  const g = st.guide && !wide;
+  let list = pkgs(st);
+  const q = st.q.trim().toLowerCase();
+  const late = list.filter(p => isLate(st, p));
+  let body = '';
+  if (q) {
+    list = list.filter(p => p.seller.toLowerCase().includes(q) || p.order.toLowerCase().includes(q) || p.cards.some(c => c.name.toLowerCase().includes(q)));
+  } else if (st.lateOnly) list = late;
+  const sum = (st.oldOffer || st.oldUndo) ? oldBlock(st) : late.length
+    ?`<button class="summary bad" data-act="late" aria-pressed="${st.lateOnly}">${I.clock}<span>${late.length} packages look late${st.lateOnly ? '. Showing only those; tap to show all.' : '. Tap to show only those.'}</span></button>`
+    : '<div class="summary ok">All is well.</div>';
+  const aside = st.aside.length ? `<div class="stack"><div class="sec-head"><b>Set aside</b><span>${st.aside.length} envelope${st.aside.length > 1 ? 's' : ''} with no name</span></div><div class="group">${st.aside.map((a, i) => `<div class="row"><span class="ic-env" style="width:28px">${I.env}</span><span class="row-main"><span class="row-title">Envelope ${i + 1}, ${a.when}</span><span class="row-sub">Changes no package. Match it later from its cards.</span></span></div>`).join('')}</div></div>` : '';
+  if (!list.length) {
+    body = `<div class="empty"><p>${q ? 'Nothing matches "' + esc(st.q) + '".' : 'No package looks late.'}</p><button class="btn plain" data-act="${q ? 'clear-q' : 'late'}">${q ? 'Clear search' : 'Show all packages'}</button></div>`;
+  } else if (q) {
+    body = `<div class="group">${list.map(p => pkgRow(st, p)).join('')}</div>`;
+  } else {
+    body = weekGroups(st, list).map(([k, ps]) => {
+      const total = ps.length, done = ps.filter(p => hereCount(st, p) === p.cards.length).length;
+      // A week that is all in folds to one row, so open packages rise without a re-sort.
+      if (done === total && !st.expanded.has(k)) return `<div class="group"><button class="row" data-act="expand" data-id="${k}" aria-expanded="false">
+        <span class="row-main"><span class="row-title">Week of ${fmtDate(k)}</span><span class="row-sub">All ${total} package${total > 1 ? 's' : ''} in</span></span><span class="count all done-mark" aria-hidden="true">${I.check}</span>${I.chev}</button></div>`;
+      return `<div class="stack"><div class="sec-head"><b>Week of ${fmtDate(k)}</b><span>${done} of ${total} in</span>${done === total ? `<button class="tool text" data-act="expand" data-id="${k}" aria-expanded="true">Fold</button>` : ''}</div><div class="group">${ps.map(p => pkgRow(st, p)).join('')}</div></div>`;
+    }).join('');
+  }
+  return `<div class="stack-lg">
+    <div class="pad stack" style="padding-bottom:0"${g ? ' hidden' : ''}>
+      <label class="search">${I.search}<input name="q" type="search" placeholder="Seller, order or card" value="${esc(st.q)}" aria-label="Search packages"></label>
+      ${st.guide ? '' : sum}
+    </div>
+    ${g ? `<div style="padding:0 var(--space-4)">${wordsBlock(st)}</div>` : ''}
+    ${aside}
+    <div class="stack-lg" style="padding:0 var(--space-4) var(--space-6)">${body}</div>
+  </div>`;
+}
+function weekDetail(st, p, wide) {
+  const h = hereCount(st, p);
+  const back = wide ? '' : '<button class="tool" data-act="back" aria-label="Back to Checklist">' + I.back + '<span>Checklist</span></button>';
+  const allIn = h === p.cards.length;
+  return `<div class="nav"><div class="nav-bar">${back}<span></span></div>
+      <h1 class="large-title">${esc(p.seller)}</h1>
+      <p class="subtitle">Order ${p.order}, ordered ${fmtDate(p.date)}, ${h} of ${p.cards.length} cards in hand</p></div>
+    <div class="scroll"><div class="pad stack-lg">
+      <div class="group">${p.cards.map(c => tickRow(st, c)).join('')}</div>
+      <p class="fine">Paid ${money(p.cards.reduce((a, c) => a + c.cents, 0) + p.ship)}, shipping included.</p>
+    </div></div>
+    <div class="bottom">${allIn ? '' : `<button class="btn plain" data-act="tick-all" data-id="${p.id}">Tick all ${p.cards.length - h} left</button>`}</div>`;
+}
+function weekImports(st) {
+  return `<div class="nav"><div class="nav-bar"><span></span><button class="tool" data-act="import-open" aria-label="Bring in another file">${I.plus}</button></div><h1 class="large-title">Imports</h1></div>
+    <div class="scroll"><div class="pad stack-lg">
+      <div class="group">${st.imports.map(im => `<div class="row"><span class="row-main"><span class="row-title">${im.file}</span><span class="row-sub">Brought in ${im.when}. Added ${n(im.pkgs)} packages, ${n(im.cards)} cards. Removed nothing.</span></span></div>`).join('')}</div>
+      <button class="btn plain" data-act="import-open">${I.doc}Bring in another file</button>
+      ${wordsBlock(st, { noTry: true })}
+    </div></div>`;
+}
+function weekTabs(st) {
+  return `<div class="tabbar" role="tablist">
+    <button role="tab" aria-selected="${st.tab === 'list'}" data-act="tab" data-id="list">${I.list}<span>Checklist</span></button>
+    <button role="tab" aria-selected="${st.tab === 'imports'}" data-act="tab" data-id="imports">${I.tray}<span>Imports</span></button></div>`;
+}
+function weekEmpty() {
+  return `<div class="scroll col"><div class="nav"><div class="nav-bar"></div><h1 class="large-title">Checklist</h1></div>
+    <div class="empty">${I.card.replace('<svg', '<svg class="big"')}<p>Your card orders show up here once you bring in your order file.</p></div></div>
+    <div class="bottom"><button class="btn primary" data-act="import-open">${I.doc}Bring in order file</button></div>`;
+}
+function weekListScreen(st, wide) {
+  return `<div class="nav" style="padding-bottom:0"><div class="nav-bar"><span></span><button class="tool text" data-act="aside" aria-label="Set aside an envelope with no name">${I.env.replace('<svg', '<svg width="26" height="26"')}<span>No name on it</span></button></div></div>
+    <div class="scroll"><div class="nav"><h1 class="large-title">Checklist</h1>
+    <p class="subtitle">${n(pkgs(st).reduce((a, p) => a + hereCount(st, p), 0))} of ${n(pkgs(st).reduce((a, p) => a + p.cards.length, 0))} cards in hand</p></div>
+    ${weekList(st, wide)}</div>`;
+}
+function renderWeekCompact(st) {
+  let main;
+  if (!st.data) main = weekEmpty();
+  else if (st.tab === 'imports') main = weekImports(st) + weekTabs(st);
+  else if (st.open) main = weekDetail(st, PKG[st.open], false);
+  else main = weekListScreen(st) + weekTabs(st);
+  return statusBar() + main + sheetWrap(st, false);
+}
+function renderWeekWide(st) {
+  let left, right;
+  if (!st.data) {
+    left = weekEmpty();
+    right = `<div class="nav"><div class="nav-bar"></div><h1 class="large-title">What you will see</h1></div><div class="scroll"><div class="pad">${wordsBlock(st, { noTry: true })}</div></div>`;
+  } else {
+    left = (st.tab === 'imports' ? weekImports(st) : weekListScreen(st, true)) + weekTabs(st);
+    if (st.open) right = weekDetail(st, PKG[st.open], true);
+    else if (st.guide) right = `<div class="nav"><div class="nav-bar"></div><h1 class="large-title">Start here</h1></div><div class="scroll"><div class="pad">${wordsBlock(st)}</div></div>`;
+    else {
+      const late = pkgs(st).filter(p => isLate(st, p));
+      right = `<div class="nav"><div class="nav-bar"></div><h1 class="large-title">Looks late</h1><p class="subtitle">Ordered over three weeks ago, not all in</p></div>
+        <div class="scroll"><div class="pad stack">${late.length ? `<div class="group">${late.map(p => pkgRow(st, p)).join('')}</div>` : '<div class="summary ok">All is well.</div>'}</div></div>`;
+    }
+  }
+  return { left: statusBar() + left, right: statusBar() + right + sheetWrap(st, true) };
+}
+
+// ---------- Concept registry ----------
+const CONCEPTS = {
+  week: { compact: renderWeekCompact, wide: renderWeekWide },
+};
+window.__registerConcept = (key, def) => { CONCEPTS[key] = def; };
+
+// ---------- Acts ----------
+function act(key, a, id, el) {
+  const st = ST[key];
+  const c = CONCEPTS[key];
+  if (c.act && c.act(st, a, id, el) === true) return;
+  switch (a) {
+    case 'import-open': st.sheet = 'import'; break;
+    case 'sheet-close': st.sheet = null; clearTimeout(timer); break;
+    case 'choose': st.sheet = 'pick'; break;
+    case 'pick-txt': st.sheet = 'error'; break;
+    case 'pick-csv':
+      st.sheet = 'reading'; clearTimeout(timer);
+      timer = setTimeout(() => { if (ST[key].sheet === 'reading') { ST[key].sheet = 'preview'; render(key); } }, 1100);
+      break;
+    case 'add': st.data = true; st.sheet = null; st.guide = true; st.oldOffer = true; st.tab = 'list'; st.imports = [{ file: 'orders-2026-11-20.csv', when: '20 Nov', pkgs: S1.pkgs, cards: S1.cards }]; break;
+    case 'add2': st.extra = true; st.sheet = null; st.imports = st.imports.concat([{ file: 'orders-2026-11-21.csv', when: '21 Nov', pkgs: SNEW.pkgs, cards: SNEW.cards }]); break;
+    case 'tick': {
+      if (st.ticked.has(id)) { st.ticked.delete(id); st.undo = null; }
+      else { st.ticked.add(id); st.undo = id; }
+      if (CARD[id] && CARD[id].pkg === LESSON) st.lessonStep = 1;
+      break;
+    }
+    case 'undo': st.ticked.delete(id); st.undo = null; break;
+    case 'tick-all': { const p = PKG[id]; p.cards.forEach(cd => st.ticked.add(cd.id)); st.undo = null; break; }
+    case 'open': st.open = id; st.undo = null; break;
+    case 'back': st.open = null; st.undo = null; break;
+    case 'tab': st.tab = id; st.open = null; break;
+    case 'guide-done': st.guide = false; st.undo = null; break;
+    case 'late': st.lateOnly = !st.lateOnly; break;
+    case 'clear-q': st.q = ''; st.lateOnly = false; break;
+    case 'aside': st.aside.push({ when: '21 Nov' }); break;
+    case 'old-tick': {
+      const old = oldOnes(st); const ids = [];
+      old.forEach(p => p.cards.forEach(cd => { if (!st.ticked.has(cd.id)) { st.ticked.add(cd.id); ids.push(cd.id); } }));
+      st.oldUndo = { ids, pkgs: old.length }; st.oldOffer = false; st.undo = null; break;
+    }
+    case 'old-undo': st.oldUndo.ids.forEach(x => st.ticked.delete(x)); st.oldUndo = null; st.oldOffer = true; break;
+    case 'old-keep': st.oldOffer = false; break;
+    case 'expand': { const k = Number(id); if (st.expanded.has(k)) st.expanded.delete(k); else st.expanded.add(k); break; }
+  }
+}
+
+// ---------- Render ----------
+function render(key) {
+  const st = ST[key], c = CONCEPTS[key];
+  const active = document.activeElement;
+  let restore = null;
+  if (active && active.name === 'q') { const fr = active.closest('[data-frame]'); restore = { frame: fr && fr.dataset.frame, pos: active.selectionStart }; }
+  for (const el of document.querySelectorAll(`[data-frame^="${key}:"]`)) {
+    const pose = el.dataset.frame.split(':')[1];
+    if (pose === 'left' || pose === 'right') continue;
+    el.innerHTML = c.compact(st, pose);
+  }
+  const wide = c.wide(st);
+  const l = document.querySelector(`[data-frame="${key}:left"]`), r = document.querySelector(`[data-frame="${key}:right"]`);
+  if (l) l.innerHTML = wide.left; if (r) r.innerHTML = wide.right;
+  if (restore && restore.frame) {
+    const inp = document.querySelector(`[data-frame="${restore.frame}"] input[name="q"]`);
+    if (inp) { inp.focus(); try { inp.setSelectionRange(restore.pos, restore.pos); } catch (e) {} }
+  }
+}
+function renderAll() { for (const k of Object.keys(CONCEPTS)) render(k); }
+
+document.addEventListener('click', (e) => {
+  const b = e.target.closest('[data-act]');
+  if (!b) return;
+  const sec = b.closest('[data-concept]');
+  if (!sec) return;
+  e.preventDefault();
+  act(sec.dataset.concept, b.dataset.act, b.dataset.id, b);
+  render(sec.dataset.concept);
+});
+document.addEventListener('input', (e) => {
+  const sec = e.target.closest('[data-concept]');
+  if (!sec) return;
+  if (e.target.name === 'note') { ST[sec.dataset.concept].note = e.target.value; return; }
+  if (e.target.name !== 'q') return;
+  ST[sec.dataset.concept].q = e.target.value;
+  render(sec.dataset.concept);
+});
+
+// ---------- Hash and page controls ----------
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  return { s: h.get('s') || 'empty', t: h.get('t') || 'auto', c: h.get('c') || '', f: h.get('f') || '', hide: (h.get('hide') || '').split(',').filter(Boolean) };
+}
+function writeHash(p) {
+  const h = new URLSearchParams();
+  h.set('s', p.s); if (p.t !== 'auto') h.set('t', p.t); if (p.c) h.set('c', p.c); if (p.f) h.set('f', p.f); if (p.hide.length) h.set('hide', p.hide.join(','));
+  history.replaceState(null, '', '#' + h.toString());
+}
+let P = readHash();
+function applyPage() {
+  if (P.t === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', P.t);
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeSet === P.t)));
+  document.querySelectorAll('[data-state-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.stateSet === P.s)));
+  const hidden = new Set(P.hide);
+  if (P.c) for (const k of Object.keys(CONCEPTS)) if (k !== P.c) hidden.add(k);
+  document.querySelectorAll('[data-concept]').forEach(sec => { sec.hidden = hidden.has(sec.dataset.concept); });
+  document.querySelectorAll('.frame-box').forEach(fb => { fb.hidden = !!P.f && !fb.querySelector('.device.' + P.f); });
+  document.querySelectorAll('[data-frame-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.frameSet === P.f)));
+  const hl = document.getElementById('hiddenList');
+  hl.innerHTML = [...hidden].map(k => `<button class="show-btn" data-show="${k}">Show ${esc(document.getElementById('h-' + k) ? document.getElementById('h-' + k).textContent : k)}</button>`).join('');
+}
+function setState(s) { P.s = s; for (const k of Object.keys(CONCEPTS)) ST[k] = preset(s); clearTimeout(timer); writeHash(P); applyPage(); renderAll(); }
+
+function boot() {
+  const g = document.querySelector('[aria-label="State"]');
+  g.insertAdjacentHTML('beforeend', STATES.map(([k, label]) => `<button data-state-set="${k}" aria-pressed="false">${label}</button>`).join(''));
+  document.getElementById('controls').addEventListener('click', (e) => {
+    const s = e.target.closest('[data-state-set]'); if (s) return setState(s.dataset.stateSet);
+    const t = e.target.closest('[data-theme-set]'); if (t) { P.t = t.dataset.themeSet; writeHash(P); applyPage(); return; }
+    const fs = e.target.closest('[data-frame-set]'); if (fs) { P.f = fs.dataset.frameSet; writeHash(P); applyPage(); return; }
+    const sh = e.target.closest('[data-show]'); if (sh) { P.hide = P.hide.filter(x => x !== sh.dataset.show); if (P.c === sh.dataset.show || P.c) P.c = ''; writeHash(P); applyPage(); }
+  });
+  document.addEventListener('click', (e) => {
+    const h = e.target.closest('[data-hide]'); if (!h) return;
+    if (!P.hide.includes(h.dataset.hide)) P.hide.push(h.dataset.hide); if (P.c === h.dataset.hide) P.c = ''; writeHash(P); applyPage();
+  });
+  const w = document.getElementById('phoneW'), wo = document.getElementById('phoneWOut');
+  w.addEventListener('input', () => { document.documentElement.style.setProperty('--phone-w', w.value + 'px'); wo.textContent = w.value; });
+  window.addEventListener('hashchange', () => { const nP = readHash(); const changed = nP.s !== P.s; P = nP; if (changed) setState(P.s); else { applyPage(); } });
+  for (const k of Object.keys(CONCEPTS)) ST[k] = preset(P.s);
+  applyPage(); renderAll();
+}
+window.__boot = boot;
+window.__shared = { I, esc, n, money, fmtDate, PKGS, ALLPKGS, PKG, CARD, LESSON, S1, SNEW, TODAY, DAY, pkgs, hereCount, isLate, statusBar, tickRow, wordsBlock, sheetWrap, cardSub, oldBlock, oldOnes, act };
+})();
+</script>
+<script>
+(() => {
+'use strict';
+const { I, esc, n, money, fmtDate, PKG, LESSON, pkgs, hereCount, isLate, statusBar, tickRow, wordsBlock, sheetWrap, oldBlock } = window.__shared;
+
+const open = (st) => pkgs(st).filter(p => hereCount(st, p) < p.cards.length);
+function ledger(st) {
+  const o = open(st), late = o.filter(p => isLate(st, p)).length;
+  const cards = o.reduce((a, p) => a + p.cards.length - hereCount(st, p), 0);
+  return `<button class="ledger" data-act="out-open" aria-label="Still coming: ${o.length} packages">
+    <span class="row-main"><span class="row-title"><b>Still coming</b></span><span class="row-sub">${n(o.length)} packages, ${n(cards)} cards${late ? `, <span style="color:var(--warn)">${late} look late</span>` : ''}</span></span>
+    ${st.aside.length ? `<span class="count">${st.aside.length} set aside</span>` : ''}${I.chev}</button>`;
+}
+function envelopeArt(p, opts) {
+  opts = opts || {};
+  return `<div class="envelope${opts.open ? ' is-open' : ''}${opts.strip ? ' strip' : ''}">
+    ${opts.strip ? '' : '<span class="stamp" aria-hidden="true"></span>'}
+    <div class="addr"><span class="from">From</span><span class="who">${esc(p.seller)}</span>${opts.strip ? `<span class="from">Order ${p.order}, ordered ${fmtDate(p.date)}</span>` : ''}</div>
+    ${opts.button || ''}</div>`;
+}
+function slip(st, p, why) {
+  const h = hereCount(st, p);
+  return `<button class="slip" data-act="env-open" data-id="${p.id}">
+    <span class="row-main"><span class="row-title">${esc(p.seller)}</span><span class="row-sub">${why ? esc(why) + ', ' : ''}${h === p.cards.length ? (why ? 'all ' : 'All ') + (p.cards.length === 1 ? '1 card' : p.cards.length + ' cards') + ' in hand' : (h === 0 ? (p.cards.length === 1 ? '1 card' : p.cards.length + ' cards') : (p.cards.length - h) + ' of ' + p.cards.length + ' cards') + ' still coming'}, ordered ${fmtDate(p.date)}</span></span>
+    ${isLate(st, p) ? `<span class="late" role="img" aria-label="Looks late">${I.clock}</span>` : ''}${I.chev}</button>`;
+}
+function matches(st) {
+  const q = st.q.trim().toLowerCase();
+  const o = open(st);
+  const bySeller = o.filter(p => p.seller.toLowerCase().includes(q) || p.order.toLowerCase().includes(q));
+  const byCard = o.filter(p => !bySeller.includes(p) && p.cards.some(c => c.name.toLowerCase().includes(q) && !st.ticked.has(c.id)));
+  if (!bySeller.length && !byCard.length) return `<div class="empty"><p>No package still coming matches "${esc(st.q)}".</p><button class="btn plain" data-act="clear-q">Clear the name</button></div>`;
+  return `<div class="stack">
+    ${bySeller.length ? `<div class="sec-head"><b>Which one is in your hand?</b><span>${bySeller.length}</span></div><div class="slips">${bySeller.slice(0, 30).map(p => slip(st, p)).join('')}</div>` : ''}
+    ${byCard.length ? `<div class="sec-head"><b>Holds a card with that name</b><span>${byCard.length}</span></div><div class="slips">${byCard.slice(0, 30).map(p => slip(st, p, p.cards.find(c => c.name.toLowerCase().includes(q)).name)).join('')}</div>` : ''}
+  </div>`;
+}
+function deskBody(st) {
+  if (!st.data) return `<div class="desk"><div class="envelope ghost"><div class="addr"><span class="who">No mail yet</span></div></div>
+      <p class="lede" style="color:var(--text-2)">Bring in your order file. Then, each time mail comes, type the name on the envelope.</p></div>`;
+  if (st.q.trim()) return `<div class="desk">${matches(st)}</div>`;
+  if (st.guide) return `<div class="desk">
+      <div class="callout"><span class="ic-env">${I.env}</span><span><b>This is an envelope:</b> the mail in your hand. Here is one from your own file. Open it.</span></div>
+      ${st.envOpen === LESSON.id ? envelopeArt(LESSON, { open: true, button: '<span class="from env-open-btn">Open. Its cards are on the right page.</span>' })
+        : envelopeArt(LESSON, { button: `<button class="btn primary small env-open-btn" data-act="env-open" data-id="${LESSON.id}">Open it</button>` })}
+      <p class="fine">When real mail comes, type the name on it in the box below.</p></div>`;
+  const today = st.opened.map(id => PKG[id]);
+  return `<div class="desk">
+      ${oldBlock(st)}
+      ${today.length ? `<div class="sec-head"><b>Opened today</b><span>${today.length}</span></div><div class="slips">${today.map(p => slip(st, p)).join('')}</div>`
+        : `<div class="envelope ghost"><div class="addr"><span class="who">What is in your hand?</span><span class="from">Type the name on the envelope below</span></div></div>`}
+    </div>`;
+}
+function handSlot(st) {
+  if (!st.data) return `<div class="bottom"><button class="btn primary" data-act="import-open">${I.doc}Bring in order file</button></div>`;
+  return `<div class="hand"><label class="search">${I.search}<input name="q" type="search" placeholder="Name on the envelope" value="${esc(st.q)}" aria-label="Name on the envelope" autocomplete="off"></label>
+    <div class="cluster"><button class="btn quiet small" data-act="aside-open">No name on it</button><button class="btn quiet small" data-act="import-open">Bring in a file</button></div></div>`;
+}
+// At AX5 the two quiet acts leave the pinned slot and sit at the end of the scroll, so the box keeps its room.
+function axActions(st) {
+  if (!st.data) return '';
+  return `<div class="ax5-only stack" style="padding:0 var(--space-4) var(--space-4)"><button class="btn plain" data-act="aside-open">No name on it</button><button class="btn plain" data-act="import-open">Bring in a file</button></div>`;
+}
+function openedView(st, p, wide) {
+  const h = hereCount(st, p);
+  const lesson = st.guide && p === LESSON;
+  return `<div class="nav"><div class="nav-bar">${wide ? '<span></span>' : `<button class="tool" data-act="env-close" aria-label="Close envelope">${I.back}<span>Close</span></button>`}<span class="center"></span><span style="min-width:44px"></span></div></div>
+    <div class="scroll"><div class="desk">
+      ${envelopeArt(p, { open: true, strip: true })}
+      ${lesson ? `<div class="callout"><span class="ic-pkg">${I.pkg}</span><span><b>Inside is a package:</b> what one seller sent for one order.</span></div>
+                  <div class="callout"><span class="ic-card">${I.card}</span><span><b>Each line is a card.</b> Tick the ones in your hand.</span></div>` : ''}
+      <div class="sec-head"><b>${h} of ${p.cards.length} cards in hand</b><span>${money(p.cards.reduce((a, c) => a + c.cents, 0) + p.ship)} paid</span></div>
+      <div class="group">${p.cards.map(c => tickRow(st, c)).join('')}</div>
+      ${h < p.cards.length ? `<button class="btn plain" data-act="tick-all" data-id="${p.id}">Tick all ${p.cards.length - h} left</button>` : ''}
+      ${lesson && st.lessonStep ? '<p class="fine">Tap a tick again to take it back. Nothing here deletes an order.</p>' : ''}
+    </div></div>
+    <div class="bottom"><button class="btn primary" data-act="env-done">Done with this envelope</button></div>`;
+}
+function outList(st) {
+  const o = open(st);
+  return `<div class="slips">${o.map(p => slip(st, p)).join('')}</div>`;
+}
+function extraSheet(st) {
+  if (st.sheet === 'out') return `<div class="sheet-veil"><div class="sheet full" role="dialog" aria-modal="true" aria-label="Still coming">
+      <div class="sheet-bar"><span class="l"><button class="tool text" data-act="sheet-close">Close</button></span><span class="t">Still coming</span><span class="r"></span></div>
+      <div class="scroll"><div class="desk">${oldBlock(st)}${outList(st)}</div></div></div></div>`;
+  if (st.sheet === 'aside') return `<div class="sheet-veil"><div class="sheet" role="dialog" aria-modal="true" aria-label="Envelope with no name">
+      <div class="sheet-bar"><span class="l"><button class="tool text" data-act="sheet-close">Cancel</button></span><span class="t">No name on it</span><span class="r"><button class="tool text" data-act="aside-save"><b>Set aside</b></button></span></div>
+      <div class="desk"><p class="lede">Write what you can see, such as a town or postmark. Setting it aside changes no package.</p>
+      <textarea class="note-field" name="note" aria-label="What the envelope shows" placeholder="Postmark, town, what is inside">${esc(st.note)}</textarea></div></div></div>`;
+  return '';
+}
+function compact(st) {
+  let body;
+  if (st.data && st.envOpen) body = openedView(st, PKG[st.envOpen], false);
+  else body = `<div class="scroll col"><div class="nav" style="padding-top:var(--space-2)">${st.data ? ledger(st) : '<h1 class="large-title">Mail</h1>'}</div>${deskBody(st)}${axActions(st)}</div>${handSlot(st)}`;
+  return statusBar() + body + sheetWrap(st, false) + extraSheet(st);
+}
+function wide(st) {
+  // When the right page already lists what is still coming, the left page drops the ledger so the label shows once.
+  const listOnRight = st.data && !st.envOpen && !st.guide;
+  const o = open(st), late = o.filter(p => isLate(st, p)).length;
+  const outSub = `${n(o.length)} packages, ${n(o.reduce((a, p) => a + p.cards.length - hereCount(st, p), 0))} cards${late ? `, <span style="color:var(--warn)">${late} look late</span>` : ''}`;
+  const left = `<div class="nav" style="padding-top:var(--space-2)">${!st.data ? '<h1 class="large-title">Mail</h1>' : listOnRight ? '<h1 class="large-title">In your hand</h1>' : ledger(st)}</div><div class="scroll">${deskBody(st)}</div>${handSlot(st)}`;
+  let right;
+  if (!st.data) right = `<div class="nav"><div class="nav-bar"></div><h1 class="large-title">What you will see</h1></div><div class="scroll"><div class="pad">${wordsBlock(st, { noTry: true })}</div></div>`;
+  else if (st.envOpen) right = openedView(st, PKG[st.envOpen], true);
+  else if (st.guide) right = `<div class="nav"><div class="nav-bar"></div><h1 class="large-title">Start here</h1></div><div class="scroll"><div class="pad">${wordsBlock(st, { noTry: true })}</div></div>`;
+  else right = `<div class="nav"><div class="nav-bar"></div><h1 class="large-title">Still coming</h1><p class="subtitle">${outSub}${st.aside.length ? `, ${st.aside.length} set aside` : ''}</p></div><div class="scroll"><div class="desk">${outList(st)}</div></div>`;
+  return { left: statusBar() + left + extraSheet(st), right: statusBar() + right + sheetWrap(st, true) };
+}
+function act(st, a, id) {
+  switch (a) {
+    case 'env-open': st.envOpen = id; st.sheet = null; st.undo = null; return true;
+    case 'env-close': st.envOpen = null; st.undo = null; return true;
+    case 'env-done':
+      if (!st.opened.includes(st.envOpen)) st.opened.unshift(st.envOpen);
+      if (st.envOpen === LESSON.id) st.guide = false;
+      st.envOpen = null; st.q = ''; st.undo = null; return true;
+    case 'out-open': st.sheet = 'out'; return true;
+    case 'aside-open': st.sheet = 'aside'; return true;
+    case 'aside-save': st.aside.push({ when: '21 Nov', note: st.note }); st.note = ''; st.sheet = null; return true;
+  }
+  return false;
+}
+window.__registerConcept('envelope', { compact, wide, act });
+})();
+</script>
+<script>window.__boot();</script>
+</body>
+</html>
