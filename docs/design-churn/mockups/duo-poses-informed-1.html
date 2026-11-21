@@ -184,9 +184,9 @@ figcaption b { font-size:17px; }
 .slot .n.r { font-family:var(--cochin); color:var(--red); }
 .slot .hint { font-family:var(--cochin); font-size:calc(13px * min(var(--kf), calc(19/13))); color:var(--inkSoft); }
 /* Desk board: the slot holds the typed card's own line, the same row and act as the line on the answer page */
-.slot.line-slot { padding:4px 8px; }
-.slot.line-slot .line { border:1px solid var(--line); border-radius:8px; min-height:44px; }
-.slot.line-slot .line .box { height:44px; }
+.slot.line-slot { padding:4px 8px; height:53px; }
+.slot.line-slot .line { border:1px solid var(--line); border-radius:8px; min-height:0; height:44px; overflow:hidden; }
+.slot.line-slot .line .box { height:42px; }
 .slot.line-slot .line .t { padding:6px 12px 6px 0; flex-direction:row; align-items:center; }
 .slot.line-slot .line .t small { display:none; }
 .slot.line-slot .line .t b { flex:1; flex-wrap:nowrap; align-items:center; font-size:calc(14px * min(var(--kb), calc(23/17))); }
@@ -205,6 +205,9 @@ figcaption b { font-size:17px; }
 .board .mday .ttl { font-size:calc(20px * var(--kt3)); }
 .board .mday .count { font-size:calc(16px * var(--kt3)); color:var(--ink); }
 .board .head .who { font-size:calc(34px * var(--klt)); }
+/* The board drops "It came from": the large seller says it, and the head's VoiceOver label keeps it (as item 105 a's slim head does). */
+.board .head .micro { display:none; }
+.board .head { gap:4px; padding-top:8px; }
 .board .head .meta { font-size:calc(14px * var(--kc)); }
 .board .line { min-height:56px; }
 .board .line .box { flex-basis:56px; height:56px; }
@@ -242,6 +245,7 @@ figcaption b { font-size:17px; }
 .board .miss, .board .cline { font-size:calc(15px * var(--kc)); }
 .opener { display:flex; justify-content:flex-end; padding:8px 16px 0; }
 .plist { flex:1 1 auto; min-height:0; overflow-y:auto; overscroll-behavior:contain; padding:8px 16px 16px; display:flex; flex-direction:column; gap:8px; }
+.plist > *, .mid > * { flex:none; }
 .pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
 .pkg > button { width:100%; text-align:left; font:inherit; color:inherit; background:none; border:0; padding:12px; min-height:44px; display:flex; flex-direction:column; gap:4px; cursor:pointer; }
 .pkg .s { font-family:var(--cochin); font-weight:700; font-size:calc(15px * var(--kb)); display:flex; justify-content:space-between; gap:8px; align-items:baseline; }
@@ -285,7 +289,7 @@ figcaption b { font-size:17px; }
   <nav aria-label="State">
     <span class="lab">State</span>
     <a data-s="packages" href="#s=packages">Packages</a><a data-s="empty" href="#s=empty">Card in Hand, empty</a><a data-s="tie" href="#s=tie">Shared name held</a>
-    <a data-s="envelope" href="#s=envelope">One envelope</a><a data-s="held" href="#s=held">Post offered</a><a data-s="posted" href="#s=posted">After Post</a>
+    <a data-s="envelope" href="#s=envelope">One envelope</a><a data-s="held" href="#s=held">Post offered</a><a data-s="posted" href="#s=posted">After Post</a><a data-s="released" href="#s=released">Released</a>
     <a data-s="keysdown" href="#s=keysdown">Keys down</a><a data-s="transit" href="#s=transit">Past 14 days</a><a data-s="nomatch" href="#s=nomatch">No match</a><a data-s="tally" href="#s=tally">Tally</a>
   </nav>
   <nav aria-label="Text size and theme">
@@ -302,6 +306,8 @@ figcaption b { font-size:17px; }
     <span class="lab">Hide</span>
     <button type="button" data-hide="turned">Hide Turned book</button>
     <button type="button" data-hide="desk">Hide Desk board</button>
+    <button type="button" data-hide="typedline">Hide the typed card's line</button>
+    <button type="button" data-hide="board">Hide the laptop board type</button>
     <button type="button" data-hide="onepage">Hide one-page Card in Hand</button>
     <button type="button" data-hide="tags">Hide Today/New tags</button>
   </nav>
@@ -397,7 +403,7 @@ const STACKED = p => p === 'laptop' || p === 'tall';
 // ---------- one stage per concept ----------
 function fresh(concept) {
   return { concept, pose:'laptop', tab:'packages', hand:false, q:'', keys:false, held:null, shown:null, chosen:null, heldNames:null,
-    receipt:null, transit:false, recv:{ ...START_RECV }, open:new Set(['1001::Gamma Cards']), tallyPick:'Lightning Bolt' };
+    receipt:null, transit:false, strays:[], recv:{ ...START_RECV }, open:new Set(['1001::Gamma Cards']), tallyPick:'Lightning Bolt' };
 }
 const ST = { turned:fresh('turned'), desk:fresh('desk'), today:fresh('today') };
 const G = { z:'l', t:'', k:289, c:'', hidden:new Set() };
@@ -458,7 +464,7 @@ function setQuery(st, q) { st.q = q; if (q !== st.chosen) { st.heldNames = null;
 // ---------- acts ----------
 const ACT = {
   openHand(st) { st.hand = true; st.keys = true; },
-  close(st) { Object.assign(st, { hand:false, keys:false, q:'', held:null, shown:null, chosen:null, heldNames:null, receipt:null, transit:false }); },
+  close(st) { Object.assign(st, { hand:false, keys:false, q:'', held:null, strays:[], shown:null, chosen:null, heldNames:null, receipt:null, transit:false }); },
   field(st) { st.keys = true; },
   key(st, k) {
     if (k === 'done') { st.keys = false; return; }
@@ -466,7 +472,9 @@ const ACT = {
     setQuery(st, st.q + (k === 'space' ? ' ' : k));
   },
   match(st, name) { const names = st.heldNames || hitNames(st); st.heldNames = names; st.chosen = name; st.q = name; settle(st); },
-  newEnvelope(st) { Object.assign(st, { q:'', shown:null, held:null, chosen:null, heldNames:null, receipt:null }); },
+  newEnvelope(st) { // a held card the envelope did not decide is released, not checked in (new-envelope-ends-an-envelope)
+    if (st.held) st.strays = [...st.strays, st.held];
+    Object.assign(st, { q:'', shown:null, held:null, chosen:null, heldNames:null, receipt:null }); },
   line(st, key) { // the check-in tap: all copies in, or back out (one act, wherever the line is drawn)
     const it = PK.flatMap(p => p.items).find(i => i.key === key);
     st.recv[key] = got(st, it) < it.qty ? it.qty : 0;
@@ -506,7 +514,8 @@ function keys(h, note) {
     <div class="row"><button type="button" class="w" data-a="key" data-v="space">space</button><button type="button" class="f" data-a="key" data-v="done">done</button></div></div>`;
 }
 function fieldRow(st, withClose) {
-  const chip = st.held ? `<span class="chip" aria-label="Held: ${esc(st.held)}. Not checked in.">1 held</span>` : '';
+  const parts = [st.held ? '1 held' : '', st.strays.length ? `${st.strays.length} released` : ''].filter(Boolean);
+  const chip = parts.length ? `<span class="chip" aria-label="${st.held ? 'Held: ' + esc(st.held) + '. ' : ''}${st.strays.length ? 'Released: ' + esc(st.strays.join(', ')) + '. ' : ''}Not checked in.">${parts.join(' · ')}</span>` : '';
   const text = st.q ? `<span class="q">${esc(st.q)}</span>` : (st.keys ? '' : `<span class="ph">Type the card in hand</span>`);
   return `<div class="rowx" style="min-height:48px">
     <div class="field" role="textbox" tabindex="0" aria-label="Type the card in hand" data-a="field" data-m="field">${text}${st.keys ? '<span class="caret"></span>' : ''}${!st.q && st.keys ? '<span class="ph">Type the card in hand</span>' : ''}${chip}</div>
@@ -532,7 +541,8 @@ function matchStrip(st) {
     <button type="button" class="mini" data-a="newEnvelope" data-m="New envelope">New envelope</button></div>`;
 }
 function boxes(st) {
-  return st.held ? `<div class="notice" role="note"><span class="micro" style="color:inherit">Suspense</span><b>${esc(st.held)}</b><small>Not checked in.</small></div>` : '';
+  return (st.held ? `<div class="notice" role="note"><span class="micro" style="color:inherit">Suspense</span><b>${esc(st.held)}</b><small>Not checked in.</small></div>` : '')
+    + (st.strays.length ? `<div class="notice" role="note"><span class="micro" style="color:inherit">Released, not checked in</span><b>${esc(st.strays.join(', '))}</b><small>${st.strays.length === 1 ? 'It no longer decides an envelope.' : 'They no longer decide an envelope.'}</small></div>` : '');
 }
 function lineHTML(st, it, extra = '') {
   const g = got(st, it), cls = g >= it.qty ? 'done' : g > 0 ? 'part' : '';
@@ -572,7 +582,7 @@ function answer(st, opts = {}) {
   } else if (!q) {
     body = `<p class="p14">Type the card in hand. The envelope it came from shows here.</p>`;
   } else {
-    body = `<p class="p14">No open envelope holds “${esc(q)}”.</p><button type="button" class="mini" data-a="newEnvelope" style="align-self:flex-start">New envelope</button>`;
+    body = `<p class="p14">No open envelope holds “${esc(q)}”.</p>`;
   }
   return `${p ? head(st, p) : ''}<div class="mid">${body}${opts.noTransit ? '' : transitBox(st)}</div>`;
 }
@@ -587,7 +597,7 @@ function postSlot(st, always) {
 function deskSlot(st) {
   const s = postSlot(st, null); if (s) return s.replace('class="slot"', 'class="slot tag-new" data-tag="New: one slot"');
   const ti = typedItem(st);
-  if (ti) return `<div class="slot line-slot tag-new" data-tag="New: the typed card's line" data-m="typed line">${lineHTML(st, ti)}</div>`;
+  if (ti && !G.hidden.has('typedline')) return `<div class="slot line-slot tag-new" data-tag="New: the typed card's line" data-m="typed line">${lineHTML(st, ti)}</div>`;
   if (st.held) return `<div class="slot tag-new" data-tag="New: one slot" data-m="slot"><span class="hint">${esc(st.held)} is held. Type the next card from its envelope.</span></div>`;
   return `<div class="slot tag-new" data-tag="New: one slot" data-m="slot"><span class="hint">${st.q.trim() ? 'Pick a match, or keep typing.' : 'The card you type shows here, to check it in.'}</span></div>`;
 }
@@ -637,7 +647,7 @@ function frame(st) {
   const pose = st.concept === 'today' ? 'laptop' : st.pose, g = GEO[pose], W = g.W, H = g.H;
   const keysH = STACKED(pose) ? G.k : g.keys;
   const keysTop = pose === 'open' ? 405 : H - keysH;
-  const big = st.concept === 'desk' && pose === 'laptop';
+  const big = st.concept === 'desk' && pose === 'laptop' && !G.hidden.has('board');
   const deskOne = st.concept === 'desk' && !G.hidden.has('onepage');
   let html = `<div class="status" style="height:${g.sat}px"><span>9:41</span><span>●●● 100%</span><em>top inset ${g.sat} pt${pose === 'open' ? '' : ', unmeasured'}</em></div>`;
   // Card in Hand opens on two pages (as built), stacked (both concepts), and on one page only in Desk board's one-page option.
@@ -819,6 +829,7 @@ const PRESET = {
   posted:  st => { PRESET.held(st); ACT.post(st); },
   keysdown:st => { PRESET.envelope(st); st.keys = false; },
   transit: st => { ACT.openHand(st); st.keys = false; st.transit = true; },
+  released:st => { PRESET.tie(st); ACT.newEnvelope(st); },
   nomatch: st => { ACT.openHand(st); setQuery(st, 'Thoughtcast'); },
   tally:   st => { st.tab = 'tally'; },
 };
@@ -852,6 +863,8 @@ document.addEventListener('click', e => {
   const id = fig.querySelector('.stage').dataset.concept, st = ST[id], a = b.dataset.a;
   if (!ACT[a]) return;
   ACT[a](st, b.dataset.v); draw(id);
+  // Each redraw replaces the field, so focus goes back to it while the keys are up: a hardware keyboard keeps typing.
+  if (ST[id].keys) fig.querySelector('.stage .field')?.focus({ preventScroll:true });
 });
 document.addEventListener('keydown', e => {
   const el = document.activeElement;
@@ -864,7 +877,7 @@ document.addEventListener('keydown', e => {
   else if (e.key === 'Backspace') { e.preventDefault(); ACT.key(st, 'del'); }
   else if (e.key === 'Escape') { ACT.key(st, 'done'); }
   else return;
-  draw(id); fig.querySelector('.field')?.focus();
+  draw(id); fig.querySelector('.stage .field')?.focus({ preventScroll:true });
 });
 document.querySelectorAll('[data-hide]').forEach(b => {
   const label = b.textContent.replace(/^Hide /, '');

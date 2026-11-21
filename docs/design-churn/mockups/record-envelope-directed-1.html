@@ -100,7 +100,13 @@ ul.tags li + li { margin-top:4px; }
 .btn.save[aria-disabled="true"] { background:var(--card); color:var(--inkSoft); border-color:var(--line); font-weight:400; cursor:default; }
 .btn.throw { color:var(--red); border-color:var(--redSoft); }
 .btn.lit { background:var(--red); color:var(--card); border-color:var(--red); font-weight:700; }
-.btn.keep { font-weight:700; }
+/* The arm control holds both labels in one cell, so arming never changes its box (no-layout-shift-under-pointer). */
+.btn .two { display:grid; }
+.btn .two > span { grid-area:1 / 1; }
+.btn .two .k { font-weight:700; }
+.btn .two .off { visibility:hidden; }
+.btn.keep { color:var(--ink); border-color:var(--ink); }
+.btn[aria-disabled="true"]:not(.save) { color:var(--inkSoft); border-style:dashed; cursor:default; }
 .btn.confirm { background:var(--red); color:var(--card); border-color:var(--red); font-weight:700; }
 .lines { flex:1 1 auto; overflow:auto; overscroll-behavior:contain; touch-action:pan-y; display:flex; flex-direction:column; }
 .line { display:flex; align-items:center; gap:8px; padding:4px 0 4px 16px; border-bottom:1px solid var(--line); min-height:52px; flex-wrap:wrap; }
@@ -150,18 +156,17 @@ ul.tags li + li { margin-top:4px; }
 /* ---------------- concept: Thumb dock ---------------- */
 .dhead { flex:0 0 auto; display:flex; align-items:center; gap:12px; padding:8px 16px; min-height:56px; border-bottom:1px solid var(--ink);
   background:var(--paper); }
-.dhead .glyph { flex:0 0 auto; width:28px; height:20px; border:1.5px solid var(--ink); border-radius:3px; position:relative; overflow:hidden; }
-.dhead .glyph::before { content:""; position:absolute; left:-2px; right:-2px; top:-12px; height:22px; border:1.5px solid var(--ink); transform:rotate(0deg);
-  clip-path:polygon(0 0, 100% 0, 50% 100%); background:var(--paper); }
 .dhead .id { flex:1; min-width:0; display:flex; flex-direction:column; }
 .dhead .id strong { font:700 calc(19px * var(--mc)) / 1.15 var(--cochin); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .dhead .cnt { font:calc(13px * var(--mc)) var(--mono); white-space:nowrap; padding:4px 8px; border-radius:8px; background:var(--card); border:1px solid var(--line); }
-.dhead .cnt.ready { border-color:var(--green); color:var(--green); }
+.dhead .cnt.ready { border-color:var(--ink); } /* not green: green means received (orphaned-colours-by-meaning) */
 .dock { flex:0 0 auto; position:relative; display:flex; flex-direction:column; gap:8px; padding:8px 16px 0; background:var(--paper); }
 /* The matches overlay the lines inside the middle band only, so at any text size they stop under the head. */
 .mid { flex:1 1 auto; min-height:0; position:relative; display:flex; flex-direction:column; }
 .mid .sugg { position:absolute; left:16px; right:16px; bottom:0; max-height:calc(100% - 8px); overflow:auto; z-index:5; }
-.strip { flex:0 0 53px; display:flex; align-items:center; gap:8px; padding:4px 16px; border-top:1px solid var(--line); background:var(--paper); position:relative; }
+/* A toolbar above the keys takes the glass material (HIG Virtual keyboards), like the shelf band. */
+.strip { flex:0 0 53px; display:flex; align-items:center; gap:8px; padding:4px 16px; border-top:1px solid var(--line); position:relative;
+  background:color-mix(in srgb, var(--paper) 78%, transparent); backdrop-filter:blur(18px) saturate(1.6); -webkit-backdrop-filter:blur(18px) saturate(1.6); }
 .dev.ax .strip { flex-basis:auto; }
 .strip .btn.save { flex:1 1 auto; }
 .strip.left { flex-direction:row-reverse; }
@@ -195,17 +200,19 @@ ul.tags li + li { margin-top:4px; }
 .chip.typed { background:var(--manila); border-color:var(--manila); color:var(--manilaInk); }
 .chip.typed .ct { color:var(--manilaInk); }
 .shelf .hint { font:calc(12px * var(--mc)) / 1.3 var(--cochin); color:var(--inkSoft); }
-.bar { display:grid; grid-template-columns:auto auto 1fr 1.3fr; gap:8px; padding:4px 16px 8px; align-items:center; }
+.bar { display:grid; grid-template-columns:auto 1fr 1.3fr; gap:8px; padding:4px 16px 8px; align-items:center; }
+.bar .lead { display:flex; gap:8px; align-items:center; position:relative; }
 .bar .num { font-size:calc(12px * var(--mc)); white-space:nowrap; }
-.bar.armed .confirm { grid-column:1 / span 2; }
+.bar.armed .lead > :not(.over) { visibility:hidden; }
+.bar .over { position:absolute; inset:0; min-width:0; white-space:normal; padding:0 8px; }
 /* At AX sizes the count leaves the bar for the running head, and Save takes a full row under the two small presses. */
 .rhead .axcount { display:none; font:calc(12px * var(--mc)) var(--mono); white-space:nowrap; }
 .dev.ax .rhead .axcount { display:inline; }
 .dev.ax .rhead .kick { display:none; }
 .dev.ax .bar { grid-template-columns:1fr 1fr; }
 .dev.ax .bar .num { display:none; }
+.dev.ax .bar .lead .btn { flex:1; }
 .dev.ax .bar .save { grid-column:1 / -1; }
-.dev.ax .bar.armed .confirm { grid-column:1 / 2; }
 .pill { flex:0 0 auto; margin:8px 16px; }
 
 /* ---------------- today ---------------- */
@@ -468,6 +475,12 @@ function headTitle(st) {
   const e = st.pile.find((x) => x.id === st.target); return { kick: "Editing", title: `Envelope of ${e ? e.date : ""}` };
 }
 
+/* One button, two stacked labels: the box is the widest label's in both states. */
+function armLabel(armed, keepAct) {
+  return `<button type="button" class="btn ${armed ? "keep" : "throw"}" data-role="arm" data-act="${armed ? keepAct : "arm"}" data-focus="${armed ? "keep" : "arm"}">
+    <span class="two"><span class="${armed ? "off" : ""}">Throw away</span><span class="k${armed ? "" : " off"}">Keep</span></span></button>`;
+}
+
 /* ---------- concept: Thumb dock ---------- */
 function dockInput(f, side) {
   const st = f.st; const n = cards(st.entries); const isNew = st.target === "new";
@@ -479,13 +492,13 @@ function dockInput(f, side) {
       <p>${isNew ? "Throw away this draft? It will not come back." : "Throw away these edits? The saved envelope stays."}</p>
       <button type="button" class="btn confirm" data-act="confirm">Throw away ${cardsOf(n)}</button></div>` : "";
   const strip = `<div class="strip${HAND === "left" ? " left" : ""} tag-new" data-tag="New: thumb strip" ${f.first ? 'id="dock-strip"' : ""}>
-      <button type="button" class="btn ${st.armed ? "keep" : "throw"}" data-act="arm" data-focus="${st.armed ? "keep" : "arm"}">${st.armed ? "Keep" : "Throw away"}</button>
+      ${armLabel(st.armed, "arm")}
       <button type="button" class="btn" data-act="cancel" ${st.armed ? 'aria-disabled="true"' : ""}>Cancel</button>${save}${ask}</div>`;
   return { sugg, tail: `<div class="dock">${field}</div>${strip}` };
 }
 function dockHead(f) {
   const st = f.st; const n = cards(st.entries); const h = headTitle(st);
-  return `<div class="dhead tag-new" data-tag="New: pinned head" ${f.first ? 'id="dock-head"' : ""}><span class="glyph" aria-hidden="true"></span>
+  return `<div class="dhead tag-new" data-tag="New: pinned head" ${f.first ? 'id="dock-head"' : ""}>
     <div class="id"><span class="kick">${h.kick}</span><strong>${esc(h.title)}</strong></div>
     <span class="cnt${n ? " ready" : ""}" ${f.first ? 'id="composer-count"' : ""} aria-label="${cardsOf(n)} in this envelope">${cardsOf(n)}</span></div>`;
 }
@@ -510,7 +523,7 @@ function renderDock(f, g) {
       + page(R, g.top, g.bottomTab, `<div class="pile"></div>${receiptLine(st)}<div class="fab tag-new" data-tag="New: record from the thumb"><button type="button" class="btn" data-act="record">+ Record an envelope${st.kept ? `<small>Draft kept · ${cardsOf(st.kept)}</small>` : ""}</button></div>`);
     const io = dockInput(f);
     const headPage = page(other, g.top, g.bottom, dockHead(f) + dockLines(f, true));
-    const inPage = page(thumb, g.top, g.bottom, `<div class="mid"><div class="lines" data-drag="1" style="justify-content:flex-end"><div class="empty">Matches show here, nearest your thumb.</div></div>${io.sugg}</div>` + io.tail);
+    const inPage = page(thumb, g.top, g.bottom, `<div class="mid"><div class="lines" data-drag="1" style="justify-content:flex-end"><div class="empty">Matches from cards still out show here as you type.</div></div>${io.sugg}</div>` + io.tail);
     return headPage + inPage;
   }
   if (!st.open) return page({ x: 0, w: d.W }, g.top, g.bottomTab, dockClosed(f));
@@ -528,13 +541,12 @@ function pinnedBand(f) {
   if (typed) chips += `<button type="button" class="chip typed" data-act="typed"><span class="nm">Add “${esc(st.input.trim())}”</span><span class="ct">as typed</span></button>`;
   if (!chips) chips = `<span class="hint">Matches from cards still out show here as you type.</span>`;
   const save = `<button type="button" class="btn save" data-act="save" ${n && !st.armed ? "" : 'aria-disabled="true"'}>${isNew ? "Save envelope" : "Save changes"}</button>`;
-  const bar = st.armed
-    ? `<div class="bar armed tag-new" data-tag="New: arms in the bar" role="group" aria-label="Throw away this draft?">
-        <button type="button" class="btn confirm" data-act="confirm">Throw away ${cardsOf(n)}</button>
-        <button type="button" class="btn keep" data-act="keep" data-focus="keep">Keep</button>${save}</div>`
-    : `<div class="bar" ${f.first ? 'id="pinned-bar"' : ""}><span class="num" ${f.first ? 'id="composer-count-p"' : ""}>${cardsOf(n)}</span>
-        <button type="button" class="btn" data-act="cancel">Cancel</button>
-        <button type="button" class="btn throw" data-act="arm" data-focus="arm">Throw away</button>${save}</div>`;
+  /* The count and Cancel stay in flow while armed (hidden), and the confirm overlays their area, so no track moves. */
+  const bar = `<div class="bar${st.armed ? " armed tag-new" : ""}" ${st.armed ? 'data-tag="New: arms in the bar"' : ""} ${f.first ? 'id="pinned-bar"' : ""}>
+      <div class="lead"><span class="num" ${f.first ? 'id="composer-count-p"' : ""}>${cardsOf(n)}</span>
+        <button type="button" class="btn" data-act="cancel" ${st.armed ? 'aria-disabled="true" tabindex="-1"' : ""}>Cancel</button>
+        ${st.armed ? `<button type="button" class="btn confirm over" data-act="confirm">Throw away ${cardsOf(n)}</button>` : ""}</div>
+      ${armLabel(st.armed, "keep")}${save}</div>`;
   return `<div class="band tag-new" data-tag="New: shelf and bar"><div class="shelf" role="listbox" aria-label="Matches">${chips}</div>${bar}</div>`;
 }
 function pinnedHead(f) {

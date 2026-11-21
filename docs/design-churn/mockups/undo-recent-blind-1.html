@@ -1,0 +1,732 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Undo Recent Ticks</title>
+<style>
+/* Tokens by role. House steps: 4 px space step, 8 px radius. Colours are this designer's own. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-11: 44px; --space-16: 64px;
+  --radius: 8px;
+  --bg: #e9ece6; --surface: #fbfcf9; --surface-2: #dfe3dc; --text: #1a1d1b; --text-2: #4f5651;
+  --line: #c6ccc4; --accent: #1f4f97; --accent-ink: #ffffff; --accent-weak: #d9e3f2;
+  --ok: #2b6a3c; --warn: #8a4a0c; --warn-weak: #f4e4cf; --mark-today: #6b6f6b; --mark-new: #a1307a;
+  --banner-bg: #f3e29a; --banner-ink: #362b00; --hinge: #6f756f; --device: #2d312e;
+  --sb-h: 44px; --home-h: 20px; --tab-h: 64px;
+  color-scheme: light;
+  font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #111412; --surface: #1b1f1c; --surface-2: #272c28; --text: #e8ebe7; --text-2: #a7afa9;
+    --line: #3a403b; --accent: #93b2ea; --accent-ink: #0d1a2e; --accent-weak: #223350;
+    --ok: #82c79a; --warn: #e6a868; --warn-weak: #3a2a19; --mark-today: #a7afa9; --mark-new: #e89acb;
+    --banner-bg: #4a3f12; --banner-ink: #f8eab0; --hinge: #050605; --device: #000000;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #111412; --surface: #1b1f1c; --surface-2: #272c28; --text: #e8ebe7; --text-2: #a7afa9;
+  --line: #3a403b; --accent: #93b2ea; --accent-ink: #0d1a2e; --accent-weak: #223350;
+  --ok: #82c79a; --warn: #e6a868; --warn-weak: #3a2a19; --mark-today: #a7afa9; --mark-new: #e89acb;
+  --banner-bg: #4a3f12; --banner-ink: #f8eab0; --hinge: #050605; --device: #000000;
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: -apple-system, system-ui, "Helvetica Neue", sans-serif; font-size: 15px; line-height: 20px; }
+button { font: inherit; color: inherit; }
+button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Mockup chrome, outside the devices */
+.sample { position: sticky; top: 0; z-index: 50; background: var(--banner-bg); color: var(--banner-ink); padding: var(--space-2) var(--space-4); font-weight: 600; }
+.chrome { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); max-width: 1400px; }
+.chrome h1 { font-size: 22px; line-height: 28px; margin: 0; }
+.chrome p { margin: 0; color: var(--text-2); max-width: 70ch; }
+.ctl-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ctl-row > span { color: var(--text-2); min-width: 9rem; }
+.chip { display: inline-flex; align-items: center; gap: var(--space-1); min-height: 36px; padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: 18px; background: var(--surface); cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.opt { display: inline-flex; align-items: stretch; border-radius: 18px; }
+.opt .chip { border-radius: 18px 0 0 18px; }
+.opt .hide { border-radius: 0 18px 18px 0; border-left: 0; padding: 0 var(--space-2); color: var(--text-2); }
+.opt .chip[aria-pressed="true"] + .hide { color: var(--text); }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); padding: var(--space-4); align-items: flex-start; }
+.frame-wrap { display: flex; flex-direction: column; gap: var(--space-2); }
+.frame-wrap > h2 { font-size: 15px; line-height: 20px; margin: 0; font-weight: 600; }
+.frame-wrap > h2 small { font-weight: 400; color: var(--text-2); }
+.frame-wrap[hidden] { display: none; }
+
+/* Device frames: 1 CSS px = 1 pt */
+.f { position: relative; overflow: hidden; background: var(--bg); border: 6px solid var(--device); border-radius: 28px; box-sizing: content-box;
+  --t-large: 34px; --l-large: 41px; --t-t2: 22px; --l-t2: 28px; --t-t3: 20px; --l-t3: 25px;
+  --t-head: 17px; --l-head: 22px; --t-body: 17px; --l-body: 22px; --t-call: 16px; --l-call: 21px;
+  --t-sub: 15px; --l-sub: 20px; --t-foot: 13px; --l-foot: 18px; --t-cap: 12px; --l-cap: 16px; }
+.f.ax5 { --t-large: 60px; --l-large: 70px; --t-t2: 56px; --l-t2: 66px; --t-t3: 55px; --l-t3: 65px;
+  --t-head: 53px; --l-head: 62px; --t-body: 53px; --l-body: 62px; --t-call: 51px; --l-call: 60px;
+  --t-sub: 49px; --l-sub: 58px; --t-foot: 44px; --l-foot: 52px; --t-cap: 43px; --l-cap: 51px; }
+.f[data-pose="folded"], .f[data-pose="ax5"] { width: 466px; height: 678px; }
+.f[data-pose="open"] { width: 951px; height: 669px; }
+.f[data-pose="phone"] { width: 430px; height: 932px; }
+.pages { position: absolute; inset: 0; display: grid; grid-template-columns: 455.5px 40px 455.5px; grid-template-rows: 100%; }
+.pages.one { grid-template-columns: 1fr; }
+.hinge { background: var(--hinge); }
+.page { position: relative; overflow: hidden; background: var(--bg); }
+.sb { position: absolute; top: 0; left: 0; right: 0; height: var(--sb-h); padding-top: env(safe-area-inset-top, 0px); display: flex; align-items: center; justify-content: space-between; padding-inline: var(--space-6); font-size: 15px; font-weight: 600; z-index: 5; }
+.screen { position: absolute; top: var(--sb-h); left: 0; right: 0; bottom: 0; padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px); display: flex; flex-direction: column; }
+.home { position: absolute; left: 50%; bottom: 6px; width: 134px; height: 5px; margin-left: -67px; border-radius: 3px; background: var(--text); opacity: .7; z-index: 30; padding-bottom: env(safe-area-inset-bottom, 0px); }
+.scroll { overflow-y: auto; overscroll-behavior: contain; flex: 1 1 auto; min-height: 0; }
+.pad-bottom { padding-bottom: calc(var(--tab-h) + var(--home-h) + var(--space-6)); }
+
+/* Type roles */
+.large { font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; margin: 0; }
+.t2 { font-size: var(--t-t2); line-height: var(--l-t2); font-weight: 700; margin: 0; }
+.t3 { font-size: var(--t-t3); line-height: var(--l-t3); font-weight: 600; margin: 0; }
+.head { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; }
+.body { font-size: var(--t-body); line-height: var(--l-body); }
+.sub { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); }
+.foot { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.cap { font-size: var(--t-cap); line-height: var(--l-cap); color: var(--text-2); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Stacks */
+.stack { display: flex; flex-direction: column; gap: var(--space-2); }
+.stack-1 { display: flex; flex-direction: column; gap: 2px; }
+.stack-3 { display: flex; flex-direction: column; gap: var(--space-3); }
+.inset { padding-inline: var(--space-4); }
+.navbar { display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-2); min-height: 52px; }
+.navback { display: flex; align-items: center; gap: var(--space-1); min-height: 44px; padding: 0 var(--space-2) 0 0; border: 0; background: none; color: var(--accent); font-size: var(--t-body); cursor: pointer; }
+
+/* Stand-in checklist (Today) */
+.order { display: flex; flex-direction: column; gap: 1px; background: var(--line); border-radius: var(--radius); overflow: hidden; }
+.order-h { background: var(--surface-2); padding: var(--space-2) var(--space-4); display: flex; flex-direction: column; }
+.card-row { display: grid; grid-template-columns: 1fr 44px; gap: var(--space-3); align-items: center; background: var(--surface); padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4); min-height: 52px; }
+.tickbox { width: 44px; height: 44px; border-radius: 22px; border: 0; background: none; display: grid; place-items: center; cursor: pointer; }
+.tickbox svg { width: 28px; height: 28px; }
+.card-row.got .cname { color: var(--text-2); }
+.f.ax5 .card-row { grid-template-columns: 1fr; }
+.f.ax5 .tickbox { width: 100%; height: 64px; justify-content: start; }
+.f.ax5 .tickbox svg { width: 48px; height: 48px; }
+
+/* Tab bar stand-in, floating */
+.tabbar { position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(var(--home-h) + var(--space-2)); height: var(--tab-h); border-radius: 32px; background: color-mix(in srgb, var(--surface) 88%, transparent); border: 1px solid var(--line); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px); display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; padding: var(--space-1); z-index: 20; }
+.tabbar.with-acc { right: calc(var(--space-4) + var(--tab-h) + var(--space-2)); }
+.tab { border: 0; background: none; border-radius: 28px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; line-height: 13px; color: var(--text-2); cursor: pointer; min-height: 44px; }
+.tab svg { width: 24px; height: 24px; }
+.tab[aria-current="page"] { color: var(--accent); background: var(--accent-weak); }
+.f.ax5 .tab span { display: none; }
+.f.ax5 .tab svg { width: 32px; height: 32px; }
+.acc { position: absolute; right: var(--space-4); bottom: calc(var(--home-h) + var(--space-2)); width: var(--tab-h); height: var(--tab-h); border-radius: 32px; border: 1px solid var(--line); background: var(--accent); color: var(--accent-ink); display: grid; place-items: center; z-index: 20; cursor: pointer; padding: 0; }
+.acc svg { width: 28px; height: 28px; }
+.badge { position: absolute; top: -2px; right: -2px; min-width: 22px; height: 22px; border-radius: 11px; background: var(--text); color: var(--bg); font-size: 13px; line-height: 22px; font-weight: 700; text-align: center; padding: 0 6px; }
+
+/* Undo rows */
+.rows { display: flex; flex-direction: column; gap: var(--space-2); }
+.urow { display: grid; grid-template-columns: 1fr auto; gap: var(--space-3); align-items: center; background: var(--surface); border-radius: var(--radius); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); min-height: 76px; border: 1px solid transparent; }
+.urow.timed { grid-template-columns: 52px 1fr auto; }
+.urow.undone { background: transparent; border-color: var(--line); border-style: dashed; }
+.urow.undone .uname { text-decoration: line-through; color: var(--text-2); }
+.urow.sel { border-color: var(--accent); border-style: solid; }
+.urow .tapbody { all: unset; display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-height: 44px; justify-content: center; }
+.urow .tapbody:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.uname { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; overflow-wrap: anywhere; }
+.reason { color: var(--warn); }
+.tcol { display: flex; flex-direction: column; align-items: flex-start; }
+.ubtn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); min-height: 44px; border-radius: var(--radius); border: 1.5px solid var(--accent); background: var(--surface); color: var(--accent); font-weight: 600; font-size: var(--t-body); cursor: pointer; padding: 0; }
+.ubtn.glyph { width: 56px; height: 56px; }
+.ubtn.word { width: 96px; height: 48px; }
+.ubtn svg { width: 26px; height: 26px; flex: none; }
+.ubtn.redo { background: var(--accent-weak); border-style: dashed; }
+.ubtn[aria-disabled="true"] { border-color: var(--line); color: var(--text-2); background: transparent; cursor: not-allowed; }
+.f.ax5 .urow, .f.ax5 .urow.timed { grid-template-columns: 1fr; }
+.f.ax5 .ubtn.glyph, .f.ax5 .ubtn.word { width: 100%; height: 72px; }
+.f.ax5 .ubtn svg { width: 44px; height: 44px; }
+.f.ax5 .tcol { flex-direction: row; gap: var(--space-3); align-items: baseline; }
+
+/* The reserved slot above a list: legend, or a held "new ticks" pill. Same height either way. */
+.slot { min-height: 44px; display: flex; align-items: center; }
+.slot .legend { display: flex; align-items: center; gap: var(--space-2); }
+.slot .legend svg { width: 18px; height: 18px; flex: none; }
+.pill { min-height: 44px; width: 100%; border-radius: 22px; border: 1.5px solid var(--accent); background: var(--accent-weak); color: var(--text); font-weight: 600; cursor: pointer; font-size: var(--t-sub); }
+.note { background: var(--warn-weak); color: var(--text); border-radius: var(--radius); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); align-items: flex-start; }
+.empty { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) var(--space-4); }
+.btn { min-height: 44px; padding: 0 var(--space-4); border-radius: var(--radius); border: 1.5px solid var(--accent); background: var(--accent); color: var(--accent-ink); font-weight: 600; cursor: pointer; font-size: var(--t-body); }
+.btn.quiet { background: var(--surface); color: var(--accent); }
+.grouph { padding: var(--space-3) var(--space-1) 0; }
+
+/* Sheet */
+.scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .28); z-index: 40; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: var(--space-3); background: var(--bg); border-radius: 16px 16px 0 0; z-index: 41; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.grabber { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-2) auto 0; flex: none; }
+.sheet-h { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); }
+.done { border: 0; background: none; color: var(--accent); font-weight: 600; min-height: 44px; min-width: 44px; font-size: var(--t-body); cursor: pointer; }
+
+/* Segmented filter */
+.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; background: var(--surface-2); border-radius: var(--radius); padding: 2px; }
+.seg button { min-height: 40px; border: 0; background: none; border-radius: 6px; font-size: var(--t-sub); cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--surface); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .18); }
+.f.ax5 .seg { grid-auto-flow: row; }
+
+/* Fix bench */
+.bench { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3) calc(var(--tab-h) + var(--home-h) + var(--space-4)); background: var(--surface-2); border-top: 1px solid var(--line); }
+.page.full .bench { flex: 1 1 auto; min-height: 0; padding-bottom: calc(var(--home-h) + var(--space-3)); }
+.spool { display: flex; flex-direction: column-reverse; gap: var(--space-1); overflow-y: auto; overscroll-behavior: contain; height: 124px; }
+.page.full .spool { flex: 1 1 auto; height: auto; min-height: 0; }
+.rec { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: center; background: var(--surface); border-radius: var(--radius); padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2); min-height: 60px; flex: none; border: 1px solid transparent; }
+.rec.trail { grid-template-columns: 1fr auto; padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3); }
+.rec.trail .ubtn { order: 2; }
+.rec.undone { background: transparent; border: 1px dashed var(--line); }
+.rec.undone .uname { text-decoration: line-through; color: var(--text-2); }
+.rec.sel { border: 1.5px solid var(--accent); }
+.rec .ubtn.glyph { width: 48px; height: 48px; }
+.rec .ubtn.word { width: 88px; height: 44px; }
+.rec .uname { font-size: var(--t-sub); line-height: var(--l-sub); }
+.panel { flex: none; background: var(--surface); border-radius: var(--radius); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); height: 188px; border: 1.5px solid var(--accent); }
+.panel-top { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: center; }
+.panel-top.trail { grid-template-columns: 1fr auto; }
+.panel-top.trail .ubtn { order: 2; }
+.panel .ubtn.glyph { width: 64px; height: 64px; }
+.panel .ubtn.word { width: 104px; height: 56px; }
+.swaps { display: flex; gap: var(--space-2); overflow-x: auto; padding-bottom: 2px; }
+.swap { flex: none; min-height: 44px; padding: 0 var(--space-3); border-radius: 22px; border: 1.5px solid var(--ok); background: var(--surface); color: var(--text); font-weight: 600; cursor: pointer; font-size: var(--t-sub); display: inline-flex; align-items: center; gap: var(--space-1); }
+.swap svg { width: 18px; height: 18px; color: var(--ok); }
+.panel-h { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-2); min-height: 32px; }
+.newer { min-height: 32px; border-radius: 16px; border: 1.5px solid var(--accent); background: var(--accent-weak); padding: 0 var(--space-3); font-size: var(--t-foot); font-weight: 600; cursor: pointer; color: var(--text); }
+.newer[hidden] { display: inline-block; visibility: hidden; }
+.f.ax5 .panel { height: auto; }
+.f.ax5 .panel-top, .f.ax5 .panel-top.trail { grid-template-columns: 1fr; }
+.f.ax5 .rec, .f.ax5 .rec.trail { grid-template-columns: 1fr; }
+.f.ax5 .rec .ubtn.glyph, .f.ax5 .rec .ubtn.word, .f.ax5 .panel .ubtn.glyph, .f.ax5 .panel .ubtn.word { width: 100%; height: 72px; }
+.f.ax5 .swaps { flex-direction: column; overflow: visible; }
+.f.ax5 .swap { min-height: 72px; border-radius: var(--radius); }
+
+/* Today / New marks: an outline and a tag that take no layout space */
+.marks .mk { position: relative; outline: 2px dashed var(--mark-today); outline-offset: -2px; }
+.marks .mk.new { outline-color: var(--mark-new); }
+.marks .mk::after { content: attr(data-mark); position: absolute; top: 2px; right: 4px; font-size: 11px; line-height: 14px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--mark-today); color: var(--bg); pointer-events: none; z-index: 60; white-space: nowrap; }
+.marks .mk.new::after { background: var(--mark-new); }
+.marks .tabbar.mk::after, .marks .acc.mk::after { top: -18px; }
+.marks .acc.mk::after { right: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .urow, .rec, .ubtn { transition: background-color .15s, border-color .15s; }
+}
+@media (forced-colors: active) {
+  .ubtn, .tickbox, .swap, .pill, .btn, .newer { border: 2px solid ButtonText; }
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample. No card, order, seller, time or price on this page is real.</div>
+
+<div class="chrome">
+  <h1>Undo recent ticks</h1>
+  <p>Designer kind: blind. Designer: undo-recent-blind-1. Three concepts. Each one is clickable: tick a card, undo, redo, swap, and add a tick from another device to see that nothing moves under your thumb.</p>
+  <div class="ctl-row" id="ctl-concept"><span>Concept</span></div>
+  <div class="ctl-row" id="ctl-state"><span>State</span></div>
+  <div class="ctl-row" id="ctl-device"><span>Show</span></div>
+  <div class="ctl-row" id="ctl-theme"><span>Theme</span></div>
+  <div class="ctl-row" id="ctl-v-btn"><span>Undo button</span></div>
+  <div class="ctl-row" id="ctl-v-hold"><span>New ticks while a list is open</span></div>
+  <div class="ctl-row" id="ctl-v-edge"><span>Fix bench: undo edge</span></div>
+  <div class="ctl-row" id="ctl-sim"><span>Try</span>
+    <button class="chip" id="sim-remote" type="button">Add a tick from Laptop</button>
+    <button class="chip" id="sim-reset" type="button">Reset sample</button>
+    <button class="chip" id="sim-marks" type="button" aria-pressed="true">Today / New marks</button>
+  </div>
+</div>
+
+<main class="frames" id="frames">
+  <section class="frame-wrap" data-pose="folded"><h2>Duo, folded <small>466 x 678 pt, from the brief</small></h2>
+    <div class="f" data-device="iphone-duo-folded" data-pose="folded" data-me="duo" id="f-folded"></div></section>
+  <section class="frame-wrap" data-pose="open"><h2>Duo, open <small>951 x 669 pt, hinge x 455.5 to 495.5, from the brief</small></h2>
+    <div class="f" data-device="iphone-duo-unfolded" data-pose="open" data-me="duo" id="f-open"></div></section>
+  <section class="frame-wrap" data-pose="phone"><h2>Large phone <small>430 x 932, a stand-in size: no size is written for this device</small></h2>
+    <div class="f" data-device="iphone-regular" data-pose="phone" data-me="phone" id="f-phone"></div></section>
+  <section class="frame-wrap" data-pose="ax5"><h2>Duo, folded, largest accessibility text <small>466 x 678 pt; text sizes from Apple's largest Dynamic Type table</small></h2>
+    <div class="f ax5" data-device="iphone-duo-folded" data-pose="ax5" data-me="duo" id="f-ax5"></div></section>
+</main>
+
+<script>
+(function () {
+  'use strict';
+  /* ---------- Icons ---------- */
+  var I = {
+    undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7 4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12h-2" transform="translate(0 -6)"/></svg>',
+    redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 7 5 5-5 5"/><path d="M20 12H10a6 6 0 0 0 0 12h2" transform="translate(0 -6)"/></svg>',
+    tickOn: '<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="var(--ok)"/><path d="m8.5 14.5 3.5 3.5 7.5-8" fill="none" stroke="var(--surface)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    tickOff: '<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="var(--text-2)" stroke-width="2"/></svg>',
+    clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/></svg>',
+    list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.2" fill="currentColor"/><circle cx="4.5" cy="12" r="1.2" fill="currentColor"/><circle cx="4.5" cy="18" r="1.2" fill="currentColor"/></svg>',
+    sum: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M17 5H7l6 7-6 7h10"/></svg>',
+    gear: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>',
+    back: '<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 5-7 7 7 7"/></svg>',
+    swap: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>'
+  };
+
+  /* ---------- Sample data (not real) ---------- */
+  var ORDERS = {
+    'o1': { no: '7C19-A2', seller: 'Harbor Cards' },
+    'o2': { no: '3B88-04', seller: 'Lantern Row Games' },
+    'o3': { no: '51DE-7F', seller: 'Northfield Cards' },
+    'o4': { no: '9A20-11', seller: 'Copperleaf' }
+  };
+  var CARDS0 = [
+    ['c1', 'Verdant Wyrm', 'o1', '$0.35', true], ['c2', 'Verdant Wyvern', 'o1', '$0.25', false],
+    ['c3', 'Gloam Sentry', 'o1', '$0.10', false], ['c4', 'Hollow Crown', 'o1', '$1.20', true],
+    ['c5', 'Ashen Courier', 'o2', '$0.15', true], ['c6', 'Brass Lantern', 'o2', '$0.40', false],
+    ['c7', 'Ember Familiar', 'o2', '$0.20', false],
+    ['c8', 'Tidecaller Adept', 'o3', '$0.30', true], ['c9', 'Tidecaller Adept, foil', 'o3', '$0.90', false],
+    ['c10', 'Saltmarsh Heron', 'o3', '$0.12', true],
+    ['c11', 'Quiet Orchard', 'o4', '$0.18', false], ['c12', 'Ninefold Key', 'o4', '$2.10', false]
+  ];
+  var DEVICES = { duo: 'Duo', phone: 'Phone', laptop: 'Laptop' };
+  var NOW = 20 * 60 + 46; /* sample clock, 8:46 */
+  var LOG0 = [
+    /* id, card, kind (1 tick, 0 untick), minutes ago, device, undone */
+    ['a1', 'c1', 1, 1, 'duo', false],
+    ['a0', 'c11', 0, 2, 'laptop', false],
+    ['a2', 'c5', 1, 3, 'duo', false],
+    ['a3', 'c8', 1, 4, 'laptop', false],
+    ['a4', 'c3', 0, 6, 'phone', false],
+    ['a5', 'c6', 1, 9, 'duo', true],
+    ['a6', 'c11', 1, 12, 'duo', false],
+    ['a7', 'c10', 1, 18, 'phone', false]
+  ];
+
+  var S; /* all sample state, shared by every frame */
+  var seq = 100;
+  function reset() {
+    var cards = {}; CARDS0.forEach(function (c) { cards[c[0]] = { id: c[0], name: c[1], order: c[2], price: c[3], got: c[4] }; });
+    var log = LOG0.map(function (a) { return { id: a[0], card: a[1], tick: !!a[2], ago: a[3], dev: a[4], undone: a[5] }; });
+    S = { cards: cards, log: log, pending: [], read: 'ok', ui: {} };
+    applyState();
+  }
+  function applyState() {
+    if (V.state === 'empty') { S.log = []; S.pending = []; }
+    if (V.state === 'many') {
+      var ids = Object.keys(S.cards), devs = ['duo', 'duo', 'laptop', 'phone'];
+      for (var i = 0; i < 18; i++) {
+        S.log.push({ id: 'm' + i, card: ids[(i * 5) % ids.length], tick: i % 4 !== 2, ago: 22 + i * 6, dev: devs[i % 4], undone: i % 7 === 3 });
+      }
+    }
+    S.read = V.state === 'unknown' ? 'failed' : 'ok';
+  }
+
+  /* ---------- View settings, in the URL hash ---------- */
+  var V = { c: 'sheet', state: 'loaded', d: 'all', t: 'system', btn: 'glyph', hold: 'hold', edge: 'lead', marks: true };
+  var HIDDEN = {};
+  var OPTS = {
+    c: [['sheet', 'Recent sheet'], ['tab', 'Recent tab'], ['bench', 'Fix bench (bold)']],
+    btn: [['glyph', 'Arrow, label once'], ['word', 'Word on each row']],
+    hold: [['hold', 'Hold behind a pill'], ['insert', 'Insert at once']],
+    edge: [['lead', 'Leading edge'], ['trail', 'Trailing edge']]
+  };
+  function readHash() {
+    var h = location.hash.replace(/^#/, '');
+    h.split('&').forEach(function (kv) {
+      var p = kv.split('='); if (!p[0]) return;
+      var k = p[0], v = decodeURIComponent(p[1] || '');
+      if (k === 'c' && /^(sheet|tab|bench)$/.test(v)) V.c = v;
+      if (k === 's' && /^(loaded|empty|unknown|many)$/.test(v)) V.state = v;
+      if (k === 'd' && /^(all|folded|open|phone|ax5)$/.test(v)) V.d = v;
+      if (k === 't' && /^(light|dark|system)$/.test(v)) V.t = v;
+      if (k === 'btn' && /^(glyph|word)$/.test(v)) V.btn = v;
+      if (k === 'hold' && /^(hold|insert)$/.test(v)) V.hold = v;
+      if (k === 'edge' && /^(lead|trail)$/.test(v)) V.edge = v;
+    });
+  }
+  function writeHash() {
+    var h = 'c=' + V.c + '&s=' + V.state + '&t=' + V.t;
+    if (V.d !== 'all') h += '&d=' + V.d;
+    if (V.btn !== 'glyph') h += '&btn=' + V.btn;
+    if (V.hold !== 'hold') h += '&hold=' + V.hold;
+    if (V.edge !== 'lead') h += '&edge=' + V.edge;
+    history.replaceState(null, '', '#' + h);
+  }
+
+  /* ---------- Model helpers ---------- */
+  function card(id) { return S.cards[id]; }
+  function order(id) { return ORDERS[id]; }
+  function visibleLog(me) {
+    return S.log.filter(function (a) { return S.read === 'ok' || a.dev === me; });
+  }
+  function laterChange(a) {
+    for (var i = 0; i < S.log.length; i++) {
+      var b = S.log[i];
+      if (b === a) return null;
+      if (b.card === a.card && !b.undone) return b;
+    }
+    return null;
+  }
+  function when(m) {
+    if (m <= 0) return 'just now';
+    if (m < 60) return m + ' min ago';
+    var h = Math.floor(m / 60), r = m % 60; return h + ' h ' + (r ? r + ' min ' : '') + 'ago';
+  }
+  function clock(m) { var t = NOW - m, h = Math.floor(t / 60) % 12 || 12, mm = t % 60; return h + ':' + (mm < 10 ? '0' : '') + mm; }
+  function devName(d, me) { return d === me ? 'this ' + DEVICES[d] : DEVICES[d]; }
+  function verb(a) { return a.tick ? 'Ticked' : 'Unticked'; }
+  function find(id) { for (var i = 0; i < S.log.length; i++) if (S.log[i].id === id) return S.log[i]; return null; }
+
+  function doUndo(id) {
+    var a = find(id); if (!a || laterChange(a)) return;
+    a.undone = !a.undone;
+    var c = card(a.card); c.got = a.undone ? !a.tick : a.tick;
+    render();
+  }
+  function tickCard(cid, me) {
+    var c = card(cid); c.got = !c.got;
+    var a = { id: 'n' + (seq++), card: cid, tick: c.got, ago: 0, dev: me, undone: false };
+    S.log.unshift(a);
+    return a;
+  }
+  function swap(id, cid, me, fid) {
+    var a = find(id); if (!a || laterChange(a) || a.undone) return;
+    a.undone = true; card(a.card).got = !a.tick;
+    var n = tickCard(cid, me); n.swapOf = a.id;
+    ui(fid).sel = n.id;
+    render();
+  }
+  function remoteTick() {
+    if (V.state === 'empty') { V.state = 'loaded'; }
+    var free = Object.keys(S.cards).filter(function (k) { return !S.cards[k].got; });
+    if (!free.length) return;
+    var cid = free[(seq * 7) % free.length];
+    S.cards[cid].got = true;
+    var a = { id: 'r' + (seq++), card: cid, tick: true, ago: 0, dev: 'laptop', undone: false };
+    if (V.hold === 'hold') S.pending.unshift(a); else S.log.unshift(a);
+    render();
+  }
+  function showPending() { S.log = S.pending.concat(S.log); S.pending = []; render(); }
+
+  function ui(fid) { return S.ui[fid] || (S.ui[fid] = { sheet: false, tab: V.c === 'tab' ? 'recent' : 'check', detail: null, sel: null, filter: 'all' }); }
+
+  /* ---------- Pieces ---------- */
+  function mk(kind, label) { return ' mk' + (kind === 'new' ? ' new' : '') + '" data-mark="' + label; }
+
+  function undoBtn(a, me, extra) {
+    var blocked = laterChange(a);
+    var c = card(a.card);
+    var word = V.btn === 'word';
+    var cls = 'ubtn ' + (word ? 'word' : 'glyph') + (a.undone ? ' redo' : '');
+    var label = (a.undone ? 'Redo: ' : 'Undo: ') + verb(a).toLowerCase() + ' ' + c.name;
+    if (blocked) {
+      return '<button type="button" class="' + cls + '" aria-disabled="true" aria-label="Undo is off for ' + c.name + '" ' + (extra || '') + '>' + I.undo + (word ? '<span>Undo</span>' : '') + '</button>';
+    }
+    return '<button type="button" class="' + cls + '" data-act="undo" data-id="' + a.id + '" aria-label="' + label + '" ' + (extra || '') + '>' +
+      (a.undone ? I.redo : I.undo) + (word ? '<span>' + (a.undone ? 'Redo' : 'Undo') + '</span>' : '') + '</button>';
+  }
+  function metaLine(a, me) {
+    var blocked = laterChange(a);
+    var s = a.undone ? 'Put back. ' + verb(a) + ' ' + when(a.ago) + ' on ' + devName(a.dev, me)
+                     : verb(a) + ' ' + when(a.ago) + ' on ' + devName(a.dev, me);
+    if (a.swapOf) s += ', in place of ' + card(find(a.swapOf).card).name;
+    var out = '<span class="foot num">' + s + '</span>';
+    if (blocked) out += '<span class="foot reason">Changed again on ' + devName(blocked.dev, me) + ' ' + when(blocked.ago) + ', so this undo is off.</span>';
+    return out;
+  }
+  function orderLine(a) { var c = card(a.card), o = order(c.order); return '<span class="sub">Order ' + o.no + ', ' + o.seller + '</span>'; }
+  function legend() {
+    if (V.btn === 'word') return '<span class="foot">Newest first. Each row undoes one tick.</span>';
+    return '<span class="legend foot">' + I.undo + '<span>undoes that tick.</span>' + I.redo + '<span>puts it back.</span></span>';
+  }
+  function slot(fid) {
+    var n = S.pending.length;
+    if (n) return '<div class="slot"><button type="button" class="pill" data-act="pending">' + n + (n === 1 ? ' new tick' : ' new ticks') + ' from Laptop. Show</button></div>';
+    return '<div class="slot">' + legend() + '</div>';
+  }
+  function failNote(me) {
+    if (S.read !== 'failed') return '';
+    return '<div class="note"><span class="sub" style="color:var(--text)">Ticks from your other devices did not load. Only ticks from ' + devName(me, me) + ' show.</span><button type="button" class="btn quiet" data-act="retry">Try again</button></div>';
+  }
+  function emptyBlock(ctl) {
+    return '<div class="empty"><span class="body">No ticks in the last two hours. Each card you tick shows here.</span>' + ctl + '</div>';
+  }
+
+  function checklist(fid, me) {
+    var by = {};
+    Object.keys(S.cards).forEach(function (k) { var c = S.cards[k]; (by[c.order] = by[c.order] || []).push(c); });
+    var h = '<div class="stack-3 inset' + mk('today', 'Today: checklist (stand-in, not seen)') + '">';
+    Object.keys(ORDERS).forEach(function (oid) {
+      var o = ORDERS[oid];
+      h += '<div class="order"><div class="order-h"><span class="head">Order ' + o.no + '</span><span class="foot">' + o.seller + '</span></div>';
+      by[oid].forEach(function (c) {
+        h += '<div class="card-row' + (c.got ? ' got' : '') + '"><div class="stack-1"><span class="body cname">' + c.name + '</span><span class="foot num">' + c.price + '</span></div>' +
+          '<button type="button" class="tickbox" data-act="tick" data-card="' + c.id + '" aria-pressed="' + c.got + '" aria-label="' + (c.got ? 'Untick ' : 'Tick ') + c.name + '">' + (c.got ? I.tickOn : I.tickOff) + '</button></div>';
+      });
+      h += '</div>';
+    });
+    return h + '</div>';
+  }
+  function tabbar(fid, current, withRecent, withAcc) {
+    var tabs = [['check', 'Checklist', I.list], ['sum', 'Totals', I.sum]];
+    if (withRecent) tabs.push(['recent', 'Recent', I.clock]);
+    tabs.push(['set', 'Settings', I.gear]);
+    var h = '<nav class="tabbar' + (withAcc ? ' with-acc' : '') + mk(withRecent ? 'new' : 'today', withRecent ? 'New: Recent tab' : 'Today: tabs (stand-in, not seen)') + '" aria-label="Sections">';
+    tabs.forEach(function (t) {
+      var on = t[0] === current;
+      var act = (t[0] === 'check' || t[0] === 'recent') ? ' data-act="tab" data-tab="' + t[0] + '"' : ' disabled';
+      h += '<button type="button" class="tab"' + act + (on ? ' aria-current="page"' : '') + '>' + t[2] + '<span>' + t[1] + '</span></button>';
+    });
+    return h + '</nav>';
+  }
+  function statusbar(left) { return '<div class="sb" aria-hidden="true"><span class="num">' + (left === false ? '' : '8:46') + '</span><span>' + (left === true ? '' : '&#9679;&#9679;&#9679;') + '</span></div>'; }
+
+  /* Row used by the sheet and by the open pose's right page */
+  function urow(a, me, opts) {
+    opts = opts || {};
+    var c = card(a.card);
+    var cls = 'urow' + (a.undone ? ' undone' : '') + (opts.timed ? ' timed' : '') + (opts.sel ? ' sel' : '');
+    var body = '<span class="uname">' + c.name + '</span>' + orderLine(a) + metaLine(a, me);
+    var bodyEl = opts.tap ? '<button type="button" class="tapbody" data-act="detail" data-id="' + a.id + '" aria-label="Show order for ' + c.name + '">' + body + '</button>'
+                          : '<div class="stack-1">' + body + '</div>';
+    var tcol = opts.timed ? '<div class="tcol"><span class="head num">' + clock(a.ago) + '</span><span class="cap num">' + (a.ago ? a.ago + ' min' : 'now') + '</span></div>' : '';
+    return '<div class="' + cls + '">' + tcol + bodyEl + undoBtn(a, me, opts.idAttr) + '</div>';
+  }
+  function rowsList(fid, me, opts) {
+    var log = visibleLog(me);
+    if (opts && opts.filter === 'me') log = log.filter(function (a) { return a.dev === me; });
+    return log;
+  }
+
+  /* ---------- Concept 1: Recent sheet ---------- */
+  function recentList(fid, me, isMain) {
+    var log = rowsList(fid, me);
+    var h = '<div class="stack inset">' + failNote(me) + slot(fid);
+    if (!log.length) h += emptyBlock(isMain ? '<span class="foot">Tick a card on the left page.</span>' : '<button type="button" class="btn" data-act="close">Back to the checklist</button>');
+    else {
+      h += '<div class="rows">';
+      log.forEach(function (a, i) { h += urow(a, me, { idAttr: (fid === 'f-folded' && i === 0 && V.c === 'sheet') ? 'id="choice-sheet"' : '' }); });
+      h += '</div>';
+    }
+    return h + '</div>';
+  }
+  function c1(fid, me, pose) {
+    var u = ui(fid);
+    var recentCount = visibleLog(me).filter(function (a) { return a.ago <= 10 && !a.undone; }).length + S.pending.length;
+    if (pose === 'open') {
+      return pages(
+        statusbar(true) + '<div class="screen"><div class="navbar"><h2 class="large">Checklist</h2></div><div class="scroll pad-bottom" data-key="l">' + checklist(fid, me) + '</div></div>' + tabbar(fid, 'check', false, false),
+        statusbar(false) + '<div class="screen' + mk('new', 'New: Recent ticks page') + '"><div class="navbar"><h2 class="large">Recent ticks</h2></div><div class="scroll" data-key="r" style="padding-bottom:var(--space-8)">' + recentList(fid, me, true) + '</div></div>'
+      );
+    }
+    var h = statusbar() + '<div class="screen"><div class="navbar"><h2 class="large">Checklist</h2></div><div class="scroll pad-bottom" data-key="l">' + checklist(fid, me) + '</div></div>' +
+      tabbar(fid, 'check', false, true) +
+      '<button type="button" class="acc' + mk('new', 'New: Recent') + '" data-act="sheet" aria-label="Recent ticks, ' + recentCount + ' in the last 10 minutes">' + I.clock + (recentCount ? '<span class="badge num">' + recentCount + '</span>' : '') + '</button>';
+    if (u.sheet) {
+      h += '<div class="scrim" data-act="close"></div><section class="sheet" role="dialog" aria-label="Recent ticks"><div class="grabber"></div>' +
+        '<div class="sheet-h"><h2 class="t3">Recent ticks</h2><button type="button" class="done" data-act="close">Done</button></div>' +
+        '<div class="scroll" data-key="s" style="padding-bottom:calc(var(--home-h) + var(--space-6))">' + recentList(fid, me, false) + '</div></section>';
+    }
+    return pages(h);
+  }
+
+  /* ---------- Concept 2: Recent tab ---------- */
+  function tabList(fid, me) {
+    var u = ui(fid);
+    var all = visibleLog(me);
+    var log = u.filter === 'me' ? all.filter(function (a) { return a.dev === me; }) : all;
+    var h = '<div class="stack inset" ' + (fid === 'f-folded' && V.c === 'tab' ? 'id="choice-tab"' : '') + '>' + failNote(me);
+    if (all.length) {
+      h += '<div class="seg" role="group" aria-label="Device"><button type="button" data-act="filter" data-v="all" aria-pressed="' + (u.filter === 'all') + '">All devices</button><button type="button" data-act="filter" data-v="me" aria-pressed="' + (u.filter === 'me') + '">' + devName(me, me).replace('this', 'This') + '</button></div>';
+    }
+    h += slot(fid);
+    if (!all.length) return h + emptyBlock('<button type="button" class="btn" data-act="tab" data-tab="check">Go to the checklist</button>') + '</div>';
+    if (!log.length) return h + '<div class="empty"><span class="body">No ticks from ' + devName(me, me) + ' in the last two hours.</span><button type="button" class="btn" data-act="filter" data-v="all">Show all devices</button></div></div>';
+    var groups = [['In the last 10 minutes', function (a) { return a.ago <= 10; }], ['Earlier', function (a) { return a.ago > 10; }]];
+    groups.forEach(function (g) {
+      var rows = log.filter(g[1]); if (!rows.length) return;
+      h += '<h3 class="foot grouph">' + g[0] + '</h3><div class="rows">';
+      rows.forEach(function (a) { h += urow(a, me, { timed: true, tap: true, sel: u.detail === a.id }); });
+      h += '</div>';
+    });
+    return h + '</div>';
+  }
+  function detail(fid, me, a, withBack) {
+    if (!a) return '<div class="empty"><span class="body">Pick a tick on the left to see its order.</span></div>';
+    var c = card(a.card), o = order(c.order);
+    var h = '<div class="navbar">' + (withBack ? '<button type="button" class="navback" data-act="back">' + I.back + 'Recent</button>' : '<span></span>') + '</div>';
+    h += '<div class="scroll" data-key="d" style="padding-bottom:calc(var(--tab-h) + var(--home-h) + var(--space-6))"><div class="stack-3 inset">';
+    h += '<h2 class="t2">' + c.name + '</h2>';
+    h += urow(a, me, {});
+    h += '<span class="foot">Wrong card? Tick the one you meant below. Its order holds:</span>';
+    h += '<div class="order"><div class="order-h"><span class="head">Order ' + o.no + '</span><span class="foot">' + o.seller + '</span></div>';
+    Object.keys(S.cards).forEach(function (k) {
+      var x = S.cards[k]; if (x.order !== c.order) return;
+      h += '<div class="card-row' + (x.got ? ' got' : '') + '"><div class="stack-1"><span class="body cname">' + x.name + (x.id === c.id ? ' <span class="foot">(this tick)</span>' : '') + '</span><span class="foot num">' + x.price + '</span></div>' +
+        '<button type="button" class="tickbox" data-act="tick" data-card="' + x.id + '" aria-pressed="' + x.got + '" aria-label="' + (x.got ? 'Untick ' : 'Tick ') + x.name + '">' + (x.got ? I.tickOn : I.tickOff) + '</button></div>';
+    });
+    h += '</div></div></div>';
+    return h;
+  }
+  function c2(fid, me, pose) {
+    var u = ui(fid);
+    if (pose === 'open') {
+      if (u.tab === 'check') {
+        return pages(statusbar(true) + '<div class="screen"><div class="navbar"><h2 class="large">Checklist</h2></div><div class="scroll pad-bottom" data-key="l">' + checklist(fid, me) + '</div></div>' + tabbar(fid, 'check', true, false),
+          statusbar(false) + '<div class="screen"><div class="empty"><span class="body">Pick Recent on the left to undo a tick.</span><button type="button" class="btn" data-act="tab" data-tab="recent">Show recent ticks</button></div></div>');
+      }
+      var log = visibleLog(me);
+      if (!u.detail && log.length) u.detail = log[0].id;
+      return pages(
+        statusbar(true) + '<div class="screen"><div class="navbar"><h2 class="large">Recent</h2></div><div class="scroll pad-bottom" data-key="l">' + tabList(fid, me) + '</div></div>' + tabbar(fid, 'recent', true, false),
+        statusbar(false) + '<div class="screen' + mk('new', 'New: order beside the tick') + '">' + detail(fid, me, find(u.detail), false) + '</div>'
+      );
+    }
+    if (u.tab === 'check') {
+      return pages(statusbar() + '<div class="screen"><div class="navbar"><h2 class="large">Checklist</h2></div><div class="scroll pad-bottom" data-key="l">' + checklist(fid, me) + '</div></div>' + tabbar(fid, 'check', true, false));
+    }
+    if (u.detail && find(u.detail)) {
+      return pages(statusbar() + '<div class="screen' + mk('new', 'New: order of one tick') + '">' + detail(fid, me, find(u.detail), true) + '</div>' + tabbar(fid, 'recent', true, false));
+    }
+    return pages(statusbar() + '<div class="screen' + mk('new', 'New: Recent page') + '"><div class="navbar"><h2 class="large">Recent</h2></div><div class="scroll pad-bottom" data-key="r">' + tabList(fid, me) + '</div></div>' + tabbar(fid, 'recent', true, false));
+  }
+
+  /* ---------- Concept 3: Fix bench (bold) ---------- */
+  function receipt(a, me, sel) {
+    var c = card(a.card);
+    var cls = 'rec' + (V.edge === 'trail' ? ' trail' : '') + (a.undone ? ' undone' : '') + (sel ? ' sel' : '');
+    return '<div class="' + cls + '">' + undoBtn(a, me) +
+      '<button type="button" class="tapbody" data-act="pick" data-id="' + a.id + '" aria-label="Open ' + c.name + ' on the bench"><span class="uname">' + c.name + '</span><span class="foot num">' + verb(a) + ' ' + when(a.ago) + ', ' + devName(a.dev, me) + '</span></button></div>';
+  }
+  function panel(fid, me, a, log) {
+    var newer = S.pending.length;
+    var h = '<section class="panel" aria-label="Bench" ' + (fid === 'f-folded' && V.c === 'bench' ? 'id="choice-bench"' : '') + '>';
+    if (!a) {
+      return h + '<span class="body">No ticks in the last two hours. Tick a card and it lands here, ready to undo or swap.</span></section>';
+    }
+    var c = card(a.card), o = order(c.order);
+    var blocked = laterChange(a);
+    h += '<div class="panel-h"><span class="foot num">' + (a === log[0] ? 'Last tick' : 'Picked tick') + ', Order ' + o.no + '</span>' +
+      '<button type="button" class="newer" data-act="pending"' + (newer ? '' : ' hidden') + '>' + newer + ' newer</button></div>';
+    h += '<div class="panel-top' + (V.edge === 'trail' ? ' trail' : '') + '">' + undoBtn(a, me) + '<div class="stack-1"><span class="uname">' + c.name + '</span>' + metaLine(a, me) + '</div></div>';
+    var sibs = Object.keys(S.cards).map(function (k) { return S.cards[k]; }).filter(function (x) { return x.order === c.order && x.id !== c.id && !x.got; });
+    if (a.tick && !a.undone && !blocked && sibs.length) {
+      h += '<div class="swaps" role="group" aria-label="Meant another card from this order?">';
+      sibs.forEach(function (x) { h += '<button type="button" class="swap" data-act="swap" data-id="' + a.id + '" data-card="' + x.id + '" aria-label="Swap: untick ' + c.name + ' and tick ' + x.name + '">' + I.swap + x.name + '</button>'; });
+      h += '</div>';
+    } else if (a.tick && !a.undone && !blocked) {
+      h += '<span class="foot">Every other card in this order is ticked.</span>';
+    } else if (a.undone) {
+      h += '<span class="foot">Undone. The arrow puts it back.</span>';
+    }
+    return h + '</section>';
+  }
+  function c3(fid, me, pose) {
+    var u = ui(fid);
+    var log = visibleLog(me);
+    if (u.sel && !find(u.sel)) u.sel = null;
+    var a = u.sel ? find(u.sel) : log[0];
+    var older = log.filter(function (x) { return x !== a; }).slice(0, 30);
+    var spool = '<div class="spool" data-key="sp" aria-label="Older ticks, newest at the bottom">';
+    older.forEach(function (x) { spool += receipt(x, me, false); });
+    if (!older.length && log.length) spool += '<span class="foot" style="padding:var(--space-2)">Older ticks stack here.</span>';
+    spool += '</div>';
+    var bench = '<div class="bench' + mk('new', 'New: fix bench') + '">' + failNote(me) + (log.length ? spool : '') + panel(fid, me, a, log) + '</div>';
+    if (pose === 'open') {
+      return pages(
+        statusbar(true) + '<div class="screen"><div class="navbar"><h2 class="large">Checklist</h2></div><div class="scroll pad-bottom" data-key="l">' + checklist(fid, me) + '</div></div>' + tabbar(fid, 'check', false, false),
+        statusbar(false) + '<div class="screen full-host"><div class="navbar"><h2 class="large">Fix a tick</h2></div><div class="page full" style="flex:1;display:flex;flex-direction:column;min-height:0;background:transparent">' + bench + '</div></div>'
+      );
+    }
+    return pages(statusbar() + '<div class="screen"><div class="navbar"><h2 class="large">Checklist</h2></div><div class="scroll" data-key="l" style="padding-bottom:var(--space-4)">' + checklist(fid, me) + '</div>' + bench + '</div>' + tabbar(fid, 'check', false, false));
+  }
+
+  function pages(left, right) {
+    if (right === undefined) return '<div class="pages one"><div class="page">' + left + '<div class="home"></div></div></div>';
+    return '<div class="pages"><div class="page">' + left + '</div><div class="hinge" aria-hidden="true"></div><div class="page">' + right + '<div class="home"></div></div></div>';
+  }
+
+  /* ---------- Render ---------- */
+  var FRAMES = ['f-folded', 'f-open', 'f-phone', 'f-ax5'];
+  function render() {
+    document.documentElement.setAttribute('data-theme', V.t === 'system' ? '' : V.t);
+    if (V.t === 'system') document.documentElement.removeAttribute('data-theme');
+    FRAMES.forEach(function (fid) {
+      var el = document.getElementById(fid);
+      var keep = {};
+      el.querySelectorAll('[data-key]').forEach(function (s) { keep[s.getAttribute('data-key')] = s.scrollTop; });
+      var me = el.getAttribute('data-me'), pose = el.getAttribute('data-pose');
+      var p = pose === 'open' ? 'open' : 'folded';
+      el.innerHTML = (V.c === 'sheet' ? c1 : V.c === 'tab' ? c2 : c3)(fid, me, p);
+      el.classList.toggle('marks', V.marks);
+      el.querySelectorAll('[data-key]').forEach(function (s) { var k = s.getAttribute('data-key'); if (k in keep) s.scrollTop = keep[k]; });
+    });
+    document.querySelectorAll('.frame-wrap').forEach(function (w) { w.hidden = V.d !== 'all' && w.getAttribute('data-pose') !== V.d; });
+    controls();
+    writeHash();
+  }
+
+  function optGroup(hostId, key, list, onPick) {
+    var host = document.getElementById(hostId);
+    host.querySelectorAll('.opt').forEach(function (n) { n.remove(); });
+    list.forEach(function (o) {
+      if (HIDDEN[key + ':' + o[0]]) return;
+      var w = document.createElement('span'); w.className = 'opt';
+      w.innerHTML = '<button type="button" class="chip" aria-pressed="' + (V[key] === o[0]) + '">' + o[1] + '</button><button type="button" class="chip hide" aria-label="Hide option: ' + o[1] + '" title="Hide this option">&#x2715;</button>';
+      w.firstChild.onclick = function () { onPick(o[0]); };
+      w.lastChild.onclick = function () {
+        var left = list.filter(function (x) { return !HIDDEN[key + ':' + x[0]] && x[0] !== o[0]; });
+        if (!left.length) return;
+        HIDDEN[key + ':' + o[0]] = true;
+        if (V[key] === o[0]) V[key] = left[0][0];
+        render();
+      };
+      host.appendChild(w);
+    });
+  }
+  function plainGroup(hostId, key, list) {
+    var host = document.getElementById(hostId);
+    host.querySelectorAll('.chip').forEach(function (n) { n.remove(); });
+    list.forEach(function (o) {
+      var b = document.createElement('button'); b.type = 'button'; b.className = 'chip'; b.textContent = o[1];
+      b.setAttribute('aria-pressed', String(V[key] === o[0]));
+      b.onclick = function () { V[key] = o[0]; if (key === 'state') { S.ui = {}; reset(); } render(); };
+      host.appendChild(b);
+    });
+  }
+  function controls() {
+    optGroup('ctl-concept', 'c', OPTS.c, function (v) { V.c = v; S.ui = {}; render(); });
+    optGroup('ctl-v-btn', 'btn', OPTS.btn, function (v) { V.btn = v; render(); });
+    optGroup('ctl-v-hold', 'hold', OPTS.hold, function (v) { V.hold = v; if (v === 'insert' && S.pending.length) showPending(); else render(); });
+    optGroup('ctl-v-edge', 'edge', OPTS.edge, function (v) { V.edge = v; render(); });
+    document.getElementById('ctl-v-edge').hidden = V.c !== 'bench';
+    plainGroup('ctl-state', 'state', [['loaded', 'Loaded'], ['many', 'Two hours of ticks'], ['empty', 'Empty'], ['unknown', 'Other devices failed to load']]);
+    plainGroup('ctl-device', 'd', [['all', 'All four'], ['folded', 'Duo folded'], ['open', 'Duo open'], ['phone', 'Large phone'], ['ax5', 'Largest text']]);
+    plainGroup('ctl-theme', 't', [['system', 'Follow system'], ['light', 'Light'], ['dark', 'Dark']]);
+    document.getElementById('sim-marks').setAttribute('aria-pressed', String(V.marks));
+  }
+
+  document.getElementById('frames').addEventListener('click', function (e) {
+    var t = e.target.closest('[data-act]'); if (!t) return;
+    var f = t.closest('.f'); var fid = f.id, me = f.getAttribute('data-me'); var u = ui(fid);
+    var act = t.getAttribute('data-act');
+    if (t.getAttribute('aria-disabled') === 'true') return;
+    if (act === 'tick') { var n = tickCard(t.getAttribute('data-card'), me); if (V.c === 'bench') u.sel = null; render(); }
+    else if (act === 'undo') doUndo(t.getAttribute('data-id'));
+    else if (act === 'swap') swap(t.getAttribute('data-id'), t.getAttribute('data-card'), me, fid);
+    else if (act === 'sheet') { u.sheet = true; render(); }
+    else if (act === 'close') { u.sheet = false; render(); }
+    else if (act === 'pending') showPending();
+    else if (act === 'retry') { S.read = 'ok'; V.state = 'loaded'; render(); }
+    else if (act === 'tab') { u.tab = t.getAttribute('data-tab'); u.detail = null; render(); }
+    else if (act === 'detail') { u.detail = t.getAttribute('data-id'); render(); }
+    else if (act === 'back') { u.detail = null; render(); }
+    else if (act === 'filter') { u.filter = t.getAttribute('data-v'); render(); }
+    else if (act === 'pick') { u.sel = t.getAttribute('data-id'); render(); }
+  });
+  document.getElementById('sim-remote').onclick = remoteTick;
+  document.getElementById('sim-reset').onclick = function () { S.ui = {}; reset(); render(); };
+  document.getElementById('sim-marks').onclick = function () { V.marks = !V.marks; render(); };
+  window.addEventListener('hashchange', function () { readHash(); reset(); render(); });
+
+  readHash();
+  reset();
+  render();
+})();
+</script>
+</body>
+</html>

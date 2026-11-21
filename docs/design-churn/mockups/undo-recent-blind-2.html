@@ -1,0 +1,775 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Undo recent ticks</title>
+<style>
+/* House tokens: 4 px step, 8 px radius, colour by role. Colours are this designer's own picks. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px; --space-12: 48px; --space-14: 56px;
+  --radius: 8px;
+  --radius-device: 36px;
+
+  /* Dynamic Type, Large (default), from Apple's typography page, read 2026-11-21 */
+  --t-ltitle: 34px; --l-ltitle: 41px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px;   --l-head: 22px;
+  --t-body: 17px;   --l-body: 22px;
+  --t-sub: 15px;    --l-sub: 20px;
+  --t-foot: 13px;   --l-foot: 18px;
+  --t-cap: 12px;    --l-cap: 16px;
+  --t-cap2: 11px;   --l-cap2: 13px;
+
+  --canvas: #dde2e8;
+  --screen: #f6f7f9;
+  --raised: #ffffff;
+  --text: #17202c;
+  --text-2: #4f5b6a;
+  --line: #d3d9e0;
+  --tick: #1d6b58;
+  --tick-soft: #e3f1ec;
+  --undo: #6a3d9e;
+  --undo-soft: #f0e9f8;
+  --warn: #8a4f00;
+  --warn-soft: #fbefdc;
+  --glass: rgba(255, 255, 255, 0.84);
+  --scrim: rgba(23, 32, 44, 0.32);
+  --label-new: #0b62a8;
+  --sample: #fff3c4;
+  --sample-ink: #4a3b00;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #0c0f13; --screen: #141920; --raised: #1d242d; --text: #e8edf3; --text-2: #a3aebb;
+    --line: #2d3541; --tick: #5cc6a8; --tick-soft: #17302a; --undo: #c0a3f2; --undo-soft: #2b2340;
+    --warn: #f0b552; --warn-soft: #33270f; --glass: rgba(33, 41, 51, 0.86); --scrim: rgba(0, 0, 0, 0.5);
+    --label-new: #6cb6f5; --sample: #3a3210; --sample-ink: #f6e7a6; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --canvas: #0c0f13; --screen: #141920; --raised: #1d242d; --text: #e8edf3; --text-2: #a3aebb;
+  --line: #2d3541; --tick: #5cc6a8; --tick-soft: #17302a; --undo: #c0a3f2; --undo-soft: #2b2340;
+  --warn: #f0b552; --warn-soft: #33270f; --glass: rgba(33, 41, 51, 0.86); --scrim: rgba(0, 0, 0, 0.5);
+  --label-new: #6cb6f5; --sample: #3a3210; --sample-ink: #f6e7a6; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--canvas); color: var(--text);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: var(--t-body); line-height: var(--l-body);
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--label-new); outline-offset: 2px; }
+
+/* ---------- Page shell (not the app) ---------- */
+.sample {
+  background: var(--sample); color: var(--sample-ink);
+  padding: var(--space-3) var(--space-4); font-weight: 600; text-align: center;
+  border-bottom: 2px dashed currentColor;
+}
+.shell { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-6) var(--space-4) var(--space-12); }
+.intro { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 70ch; }
+.intro h1 { margin: 0; font-size: 28px; line-height: 34px; }
+.intro p { margin: 0; color: var(--text-2); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; }
+.seg { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+.seg-name { color: var(--text-2); font-size: var(--t-foot); margin-inline-end: var(--space-2); }
+.seg button {
+  min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--raised); cursor: pointer; font-size: var(--t-sub);
+}
+.seg button[aria-pressed="true"] { background: var(--text); color: var(--screen); border-color: var(--text); }
+.concept-nav { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.concept-nav .chip {
+  display: flex; align-items: center; gap: var(--space-1);
+  border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised);
+  padding-inline-start: var(--space-3);
+}
+.concept-nav a { color: var(--text); text-decoration: none; font-weight: 600; }
+.concept-nav .hide, .concept-head .hide {
+  min-width: 44px; min-height: 36px; border: 0; background: transparent; cursor: pointer; color: var(--text-2);
+}
+.restore { display: none; }
+.restore.on { display: inline-flex; }
+
+.concept { display: flex; flex-direction: column; gap: var(--space-4); scroll-margin-top: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept:target .concept-head h2, .concept.focus .concept-head h2 { text-decoration: underline 3px var(--label-new); text-underline-offset: 6px; }
+.concept-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4); }
+.concept-head h2 { margin: 0; font-size: 24px; line-height: 30px; }
+.concept-head p { margin: 0; color: var(--text-2); max-inline-size: 72ch; flex: 1 1 30ch; }
+.concept-head .bold-tag { font-size: var(--t-foot); border: 1px dashed var(--label-new); color: var(--label-new); padding: 0 var(--space-2); border-radius: var(--radius); }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+figcaption { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); max-inline-size: 466px; }
+
+/* ---------- Device frames ---------- */
+.device {
+  width: var(--w); height: var(--h); position: relative; overflow: hidden;
+  border-radius: var(--radius-device); background: var(--screen);
+  outline: 10px solid #2a2f36; outline-offset: 0; margin: 10px;
+}
+.duo-open { display: grid; grid-template-columns: 455.5px 40px 455.5px; background: #2a2f36; border-radius: var(--radius-device); }
+.duo-open .page { position: relative; overflow: hidden; background: var(--screen); }
+.duo-open .page:first-child { border-radius: var(--radius-device) 0 0 var(--radius-device); }
+.duo-open .page:last-child { border-radius: 0 var(--radius-device) var(--radius-device) 0; }
+.hinge { background: linear-gradient(90deg, #2a2f36, #3a4048 50%, #2a2f36); }
+
+/* One app screen. Rows: status, nav, content, dock, tab bar, home indicator. */
+.scr {
+  position: absolute; inset: 0; display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto auto auto;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  color: var(--text); background: var(--screen);
+}
+.status { height: var(--space-10); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-6); font-size: var(--t-sub); font-weight: 600; }
+.status span:last-child { letter-spacing: 1px; }
+.homebar { height: var(--space-5); display: grid; place-items: center; }
+.homebar::after { content: ""; width: 134px; height: 5px; border-radius: 3px; background: var(--text); opacity: 0.85; }
+.nav { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-4) var(--space-2); }
+.nav-top { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: var(--space-11); }
+.nav-top > :nth-child(2) { text-align: center; }
+.nav h3 { margin: 0; font-size: var(--t-ltitle); line-height: var(--l-ltitle); font-weight: 700; }
+.nav .small-title { font-size: var(--t-head); font-weight: 600; }
+.nav-btn { min-height: 44px; min-width: 44px; border: 0; background: transparent; color: var(--tick); font-size: var(--t-body); cursor: pointer; padding: 0 var(--space-2); }
+.content { overflow-y: auto; overscroll-behavior: contain; padding: 0 var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.hint { margin: 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); display: flex; align-items: center; gap: var(--space-2); }
+.hint svg { flex: none; }
+
+.tabbar-wrap { padding: var(--space-2) var(--space-4) 0; display: flex; justify-content: center; }
+.tabbar {
+  display: flex; gap: var(--space-1); padding: var(--space-1);
+  background: var(--glass); border: 1px solid var(--line); border-radius: 999px;
+  backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);
+}
+.tab {
+  min-width: 96px; min-height: 52px; border-radius: 999px; border: 0; background: transparent; cursor: pointer;
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  font-size: var(--t-cap2); line-height: var(--l-cap2); color: var(--text-2);
+}
+.tab[aria-current="page"] { color: var(--tick); background: var(--tick-soft); font-weight: 600; }
+
+/* Rows */
+.list { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; padding: 0; list-style: none; }
+.row {
+  display: grid; grid-template-columns: minmax(0, 1fr) var(--space-4) 64px; align-items: center;
+  background: var(--raised); border-radius: var(--radius); border: 1px solid var(--line);
+  min-height: 68px;
+}
+.row-body {
+  grid-column: 1; display: flex; flex-direction: column; gap: 2px; text-align: start;
+  padding: var(--space-2) var(--space-3); border: 0; background: transparent; cursor: pointer; min-height: 64px; justify-content: center;
+}
+.row-body[aria-current="true"] { box-shadow: inset 4px 0 0 var(--tick); }
+.row-name { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; overflow-wrap: anywhere; }
+.row-meta { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); display: flex; flex-wrap: wrap; gap: 0 var(--space-3); }
+.row-meta .dev { display: inline-flex; align-items: center; gap: var(--space-1); }
+.row.undone .row-name { text-decoration: line-through; text-decoration-thickness: 2px; color: var(--text-2); }
+.row.undone { background: var(--undo-soft); border-style: dashed; border-color: var(--undo); }
+.status-word { color: var(--undo); font-weight: 600; }
+
+/* The undo control. Its own column, a 16 pt dead strip before it, a 64 x 52 box that never changes size. */
+.undo-btn {
+  grid-column: 3; justify-self: end; margin-inline-end: var(--space-2);
+  width: 56px; height: 52px; border-radius: var(--radius); cursor: pointer;
+  display: grid; place-items: center;
+  border: 2px solid var(--undo); background: var(--raised); color: var(--undo);
+}
+.undo-btn.redo { border-color: var(--tick); color: var(--tick); background: var(--tick-soft); }
+.undo-btn:active { transform: scale(0.96); }
+
+/* Sheets (folded): cover the screen, never reflow it */
+.sheet-scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 5; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; top: 18%; z-index: 6;
+  background: var(--raised); border-radius: 16px 16px 0 0; display: grid;
+  grid-template-rows: auto auto minmax(0, 1fr) auto;
+}
+.grabber { display: grid; place-items: center; height: var(--space-5); }
+.grabber::after { content: ""; width: 36px; height: 5px; border-radius: 3px; background: var(--line); }
+.sheet-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 0 var(--space-2); min-height: 44px; }
+.sheet-bar h4 { margin: 0; font-size: var(--t-head); text-align: center; }
+.sheet-bar .done { justify-self: end; font-weight: 600; }
+.sheet .content { padding-top: var(--space-2); }
+
+/* Detail */
+.facts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: 0; font-size: var(--t-sub); line-height: var(--l-sub); }
+.facts dt { color: var(--text-2); }
+.facts dd { margin: 0; font-weight: 600; }
+.sec-title { margin: 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); font-weight: 600; }
+.card-line {
+  display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: var(--space-3); align-items: center;
+  min-height: 52px; padding: var(--space-1) var(--space-3); background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius);
+}
+.card-line.this { border-color: var(--undo); border-style: dashed; }
+.card-line .nm { font-size: var(--t-body); }
+.card-line .got { color: var(--tick); font-weight: 600; font-size: var(--t-sub); display: inline-flex; gap: var(--space-1); align-items: center; }
+.pill-btn {
+  min-height: 44px; min-width: 88px; padding: 0 var(--space-3); border-radius: var(--radius); cursor: pointer;
+  border: 2px solid var(--tick); color: var(--tick); background: transparent; font-weight: 600; font-size: var(--t-sub);
+}
+
+/* States */
+.state-box { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-4) 0; }
+.state-box p { margin: 0; }
+.state-box .err { color: var(--warn); font-weight: 600; }
+.state-box details { font-size: var(--t-foot); color: var(--text-2); }
+.state-box summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+.solid-btn {
+  min-height: 48px; padding: 0 var(--space-5); border-radius: var(--radius); border: 0; cursor: pointer;
+  background: var(--tick); color: var(--screen); font-weight: 600; font-size: var(--t-body);
+}
+.skel { height: 68px; border-radius: var(--radius); background: var(--raised); border: 1px solid var(--line); position: relative; overflow: hidden; }
+.skel::after { content: ""; position: absolute; left: var(--space-3); top: var(--space-4); width: 55%; height: 12px; border-radius: 6px; background: var(--line); box-shadow: 0 22px 0 -2px var(--line); }
+@media (prefers-reduced-motion: no-preference) {
+  .skel { animation: pulse 1.4s ease-in-out infinite; }
+  @keyframes pulse { 50% { opacity: 0.55; } }
+}
+
+/* "New:" labels */
+.new-mark { outline: 2px dashed var(--label-new); outline-offset: 2px; position: relative; }
+.new-tag {
+  position: absolute; z-index: 9; right: var(--space-2); top: -11px;
+  font-size: 11px; line-height: 16px; padding: 0 var(--space-1); border-radius: 4px;
+  background: var(--screen); color: var(--label-new); border: 1px dashed var(--label-new); pointer-events: none;
+}
+body.no-labels .new-mark { outline: none; }
+body.no-labels .new-tag { display: none; }
+
+/* ---------- Shelf concept ---------- */
+.check-row {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr); align-items: center; gap: var(--space-2);
+  min-height: 56px; background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); padding-inline-end: var(--space-3);
+}
+.tickbox {
+  width: 52px; height: 52px; border: 0; background: transparent; cursor: pointer; display: grid; place-items: center;
+}
+.tickbox span { width: 28px; height: 28px; border-radius: 6px; border: 2px solid var(--text-2); display: grid; place-items: center; }
+.tickbox[aria-pressed="true"] span { background: var(--tick); border-color: var(--tick); color: var(--screen); }
+.check-row .nm { font-size: var(--t-body); }
+.order-head { display: flex; flex-direction: column; gap: 0; }
+.order-head b { font-size: var(--t-title3); line-height: var(--l-title3); }
+.order-head span { font-size: var(--t-foot); color: var(--text-2); }
+
+.shelf {
+  margin: 0 var(--space-3); padding: var(--space-2); display: flex; flex-direction: column; gap: var(--space-1);
+  background: var(--raised); border: 1px solid var(--line); border-radius: 14px;
+}
+.shelf-head { display: flex; justify-content: space-between; align-items: center; padding-inline-start: var(--space-2); }
+.shelf-head b { font-size: var(--t-foot); color: var(--text-2); }
+.shelf-head .nav-btn { font-size: var(--t-sub); }
+.slots { display: flex; flex-direction: column; gap: var(--space-1); }
+.slot { display: grid; grid-template-columns: minmax(0, 1fr) var(--space-4) 64px; align-items: center; min-height: 56px; border-radius: var(--radius); }
+.slot .row-body { min-height: 52px; padding: var(--space-1) var(--space-2); }
+.slot.undone { background: var(--undo-soft); }
+.slot.undone .row-name { text-decoration: line-through; color: var(--text-2); }
+.slot.empty { grid-template-columns: 1fr; padding: 0 var(--space-2); color: var(--text-2); font-size: var(--t-sub); }
+
+/* ---------- Replay concept ---------- */
+.stage { display: flex; flex-direction: column; gap: var(--space-2); }
+.snap {
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius);
+  padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2);
+}
+.snap-cap { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.snap-row {
+  position: relative; display: grid; grid-template-columns: 36px minmax(0, 1fr) auto; gap: var(--space-2); align-items: center;
+  min-height: 52px; padding: 0 var(--space-2); border-radius: var(--radius); background: var(--screen);
+}
+.snap-row .box { width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--text-2); display: grid; place-items: center; }
+.snap-row.ticked .box { background: var(--tick); border-color: var(--tick); color: var(--screen); }
+.snap-row.tapped { background: var(--undo-soft); outline: 2px solid var(--undo); }
+.snap-row.tapped.undone { outline-style: dashed; }
+.snap-row.tapped.undone .nm { text-decoration: line-through; }
+.ring {
+  position: absolute; left: 6px; top: 50%; width: 40px; height: 40px; margin-top: -20px; border-radius: 50%;
+  border: 3px solid var(--undo); pointer-events: none;
+}
+.snap-row .note { font-size: var(--t-cap); color: var(--undo); font-weight: 600; }
+.move-btn { min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); cursor: pointer; font-size: var(--t-sub); color: var(--text); }
+.dock { padding: var(--space-2) var(--space-4) 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.big-undo {
+  min-height: 56px; border-radius: var(--radius); border: 2px solid var(--undo); background: var(--undo); color: var(--raised);
+  font-weight: 600; font-size: var(--t-body); cursor: pointer; display: flex; align-items: center; justify-content: center; gap: var(--space-2);
+}
+.big-undo.redo { background: var(--tick-soft); color: var(--tick); border-color: var(--tick); }
+.pager { display: grid; grid-template-columns: 96px minmax(0, 1fr) 96px; gap: var(--space-2); align-items: center; }
+.pager button { min-height: 48px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); cursor: pointer; font-size: var(--t-sub); }
+.pager button:disabled { opacity: 0.45; cursor: not-allowed; }
+.pager .where { text-align: center; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.pager .where b { display: block; color: var(--text); font-size: var(--t-sub); }
+.strip { display: flex; flex-direction: column; gap: var(--space-1); }
+.strip button {
+  display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: var(--space-2); align-items: center; text-align: start;
+  min-height: 56px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); cursor: pointer; padding: var(--space-1) var(--space-2);
+}
+.strip button[aria-current="true"] { border: 2px solid var(--undo); }
+.strip .tm { font-size: var(--t-foot); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.strip .nm { font-size: var(--t-sub); font-weight: 600; }
+.strip .undone .nm, .strip button.undone .nm { text-decoration: line-through; color: var(--text-2); }
+
+/* ---------- Largest text (AX5): sizes from Apple's AX5 table ---------- */
+.ax {
+  --t-ltitle: 60px; --l-ltitle: 70px; --t-title3: 55px; --l-title3: 65px;
+  --t-head: 53px; --l-head: 62px; --t-body: 53px; --l-body: 62px; --t-sub: 49px; --l-sub: 58px;
+  --t-foot: 44px; --l-foot: 52px; --t-cap: 43px; --l-cap: 51px; --t-cap2: 40px; --l-cap2: 48px;
+}
+.ax .row { grid-template-columns: 1fr; }
+.ax .row .undo-btn { grid-column: 1; justify-self: stretch; width: auto; height: auto; min-height: 72px; margin: 0 var(--space-3) var(--space-3); }
+.ax .tab { min-width: 0; padding: 0 var(--space-4); }
+.ax .tab .tl { display: none; }
+.ax .pager { grid-template-columns: 1fr 1fr; }
+.ax .pager .where { grid-column: 1 / -1; grid-row: 1; }
+.ax .status { font-size: 15px; }
+.ax .snap-row { grid-template-columns: 1fr; padding: var(--space-2); }
+.ax .snap-row .box { display: none; }
+.ax .ring { display: none; }
+.ax .check-row { grid-template-columns: 72px minmax(0, 1fr); }
+.ax .tickbox { width: 72px; height: 72px; }
+.ax .tickbox span { width: 48px; height: 48px; }
+.ax .facts { grid-template-columns: 1fr; }
+.ax .row-meta .tm-rel { display: none; }
+/* AX5: the full-width undo button carries its word, the filter and the long hint step aside */
+.btn-word { display: none; }
+.ax .btn-word { display: inline; font-size: var(--t-head); font-weight: 600; }
+.ax .undo-btn { display: flex; gap: var(--space-3); align-items: center; justify-content: center; }
+.ax .nav .seg, .ax .hint.long, .ax .snap-cap .long, .ax .pager .tm, .ax .shelf-head { display: none; }
+.snap-cap .short { display: none; }
+.ax .snap-cap .short { display: inline; }
+.ax .slot { grid-template-columns: minmax(0, 1fr) 88px; }
+.ax .slot .row-body { cursor: pointer; }
+.ax .slot .row-name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.ax .slot .row-meta { display: none; }
+.ax .slot .undo-btn { grid-column: 2; width: 80px; min-height: 80px; margin: 0; }
+.ax .slot .undo-btn .btn-word { display: none; }
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample. Every card, order, time and device on this page is made up. No figure here is real.</div>
+
+<div class="shell">
+  <header class="intro">
+    <h1>Undo recent ticks</h1>
+    <p>Designer kind: blind. Designer: undo-recent-blind-2. Three concepts for one job: see the last several ticks and undo any of them with one tap, minutes later, without hitting the wrong control.</p>
+  </header>
+
+  <div class="controls" aria-label="Mockup controls">
+    <div class="seg" role="group" aria-label="State">
+      <span class="seg-name">State</span>
+      <button data-state="loaded">Loaded</button>
+      <button data-state="undone">Just undone</button>
+      <button data-state="empty">Empty</button>
+      <button data-state="loading">Loading</button>
+      <button data-state="failed">Failed read</button>
+    </div>
+    <div class="seg" role="group" aria-label="Theme">
+      <span class="seg-name">Theme</span>
+      <button data-theme-set="system">System</button>
+      <button data-theme-set="light">Light</button>
+      <button data-theme-set="dark">Dark</button>
+    </div>
+    <div class="seg" role="group" aria-label="Labels">
+      <span class="seg-name">Labels</span>
+      <button id="labels-toggle" aria-pressed="true">Show New labels</button>
+    </div>
+  </div>
+
+  <nav class="concept-nav" aria-label="Concepts">
+    <span class="chip" data-chip="shelf"><a href="#c=shelf">Shelf</a><button class="hide" data-hide="shelf" aria-label="Hide the Shelf concept">Hide</button></span>
+    <span class="chip" data-chip="recent"><a href="#c=recent">Recent tab</a><button class="hide" data-hide="recent" aria-label="Hide the Recent tab concept">Hide</button></span>
+    <span class="chip" data-chip="replay"><a href="#c=replay">Replay</a><button class="hide" data-hide="replay" aria-label="Hide the Replay concept">Hide</button></span>
+    <button class="restore seg-name" id="restore" style="min-height:36px;border:1px dashed var(--line);border-radius:8px;background:transparent;cursor:pointer;padding:0 12px">Show hidden concepts</button>
+  </nav>
+
+  <section class="concept" id="concept-shelf" data-concept="shelf">
+    <div class="concept-head">
+      <h2>Shelf</h2>
+      <p>The last three ticks sit on a fixed shelf above the tab bar, on the screen where the person ticks. No new screen. See all opens the full list.</p>
+      <button class="hide" data-hide="shelf" aria-label="Hide the Shelf concept">Hide</button>
+    </div>
+    <div class="frames">
+      <figure><figcaption>Duo folded, 466 x 678 pt. Drawn first.</figcaption><div class="device" id="shelf-folded" data-pose="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></figure>
+      <figure><figcaption>Duo open, 951 x 669 pt. Two pages, hinge gap x 455.5 to 495.5. Nothing crosses it.</figcaption><div class="device duo-open" id="shelf-open" data-pose="open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"></div></figure>
+      <figure><figcaption>Large phone, 440 x 956 pt. Size not written in the brief or the device list: a stand-in, not a sourced size.</figcaption><div class="device" id="shelf-phone" data-pose="phone" data-device="iphone-large" style="--w:440px;--h:956px"></div></figure>
+      <figure><figcaption>Duo folded at the largest accessibility text size (AX5).</figcaption><div class="device ax" id="shelf-ax" data-pose="ax" data-device="iphone-duo-folded-ax5" style="--w:466px;--h:678px"></div></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-recent" data-concept="recent">
+    <div class="concept-head">
+      <h2>Recent tab</h2>
+      <p>A screen of its own, one tab away. Every tick of the day, newest first. Undo sits in its own column at the thumb edge. On the open Duo the right page shows the order, so the person can tick the right card.</p>
+      <button class="hide" data-hide="recent" aria-label="Hide the Recent tab concept">Hide</button>
+    </div>
+    <div class="frames">
+      <figure><figcaption>Duo folded, 466 x 678 pt. Drawn first.</figcaption><div class="device" id="recent-folded" data-pose="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></figure>
+      <figure><figcaption>Duo open, 951 x 669 pt. Two pages, hinge gap x 455.5 to 495.5. Nothing crosses it.</figcaption><div class="device duo-open" id="recent-open" data-pose="open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"></div></figure>
+      <figure><figcaption>Large phone, 440 x 956 pt. Size not written in the brief or the device list: a stand-in, not a sourced size.</figcaption><div class="device" id="recent-phone" data-pose="phone" data-device="iphone-large" style="--w:440px;--h:956px"></div></figure>
+      <figure><figcaption>Duo folded at the largest accessibility text size (AX5).</figcaption><div class="device ax" id="recent-ax" data-pose="ax" data-device="iphone-duo-folded-ax5" style="--w:466px;--h:678px"></div></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-replay" data-concept="replay">
+    <div class="concept-head">
+      <h2>Replay</h2><span class="bold-tag">Bold concept</span>
+      <p>Each tick replays the list as it looked at the moment of the tap, with a ring where the finger landed. A mis-tap is almost always the row next door, so the fix is right there: undo, or move the tick to the row you meant. Step back through taps with Earlier and Later.</p>
+      <button class="hide" data-hide="replay" aria-label="Hide the Replay concept">Hide</button>
+    </div>
+    <div class="frames">
+      <figure><figcaption>Duo folded, 466 x 678 pt. Drawn first.</figcaption><div class="device" id="replay-folded" data-pose="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></figure>
+      <figure><figcaption>Duo open, 951 x 669 pt. Two pages, hinge gap x 455.5 to 495.5. Nothing crosses it.</figcaption><div class="device duo-open" id="replay-open" data-pose="open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"></div></figure>
+      <figure><figcaption>Large phone, 440 x 956 pt. Size not written in the brief or the device list: a stand-in, not a sourced size.</figcaption><div class="device" id="replay-phone" data-pose="phone" data-device="iphone-large" style="--w:440px;--h:956px"></div></figure>
+      <figure><figcaption>Duo folded at the largest accessibility text size (AX5).</figcaption><div class="device ax" id="replay-ax" data-pose="ax" data-device="iphone-duo-folded-ax5" style="--w:466px;--h:678px"></div></figure>
+    </div>
+  </section>
+</div>
+
+<script>
+(() => {
+  // ---------- Sample data (all made up) ----------
+  const ORDERS = {
+    "4471": { seller: "Harbor & Pine", cards: ["Ashen Vow", "Glasswing Heron", "Glasswing Herald", "Ember Tithe", "Mossback Warden", "Rivet Saint", "Tidecaller Oath"] },
+    "3902": { seller: "Lantern Row", cards: ["Quiet Orbit", "Quiet Orchard", "Saltmarsh Lantern", "Hollow Bell"] },
+    "5120": { seller: "Copper Fox", cards: ["Cinder Ledger", "Ninefold Key", "Pale Courier", "Pale Currier", "Vesper Coil"] },
+  };
+  const DEV = { phone: "This phone", tablet: "Tablet", laptop: "Laptop" };
+  const BASE = [
+    { card: "Glasswing Herald", order: "4471", t: "2:41 pm", ago: "1 min ago", dev: "phone" },
+    { card: "Ember Tithe", order: "4471", t: "2:40 pm", ago: "2 min ago", dev: "phone" },
+    { card: "Mossback Warden", order: "4471", t: "2:40 pm", ago: "2 min ago", dev: "phone" },
+    { card: "Quiet Orbit", order: "3902", t: "2:33 pm", ago: "9 min ago", dev: "tablet" },
+    { card: "Saltmarsh Lantern", order: "3902", t: "2:32 pm", ago: "10 min ago", dev: "tablet" },
+    { card: "Ninefold Key", order: "5120", t: "1:58 pm", ago: "44 min ago", dev: "laptop" },
+    { card: "Pale Currier", order: "5120", t: "1:57 pm", ago: "45 min ago", dev: "phone" },
+    { card: "Cinder Ledger", order: "5120", t: "1:57 pm", ago: "45 min ago", dev: "phone" },
+  ];
+  // Where the finger landed, for Replay: the card the person meant sat next door.
+  const MEANT = { "Glasswing Herald": "Glasswing Heron", "Pale Currier": "Pale Courier" };
+
+
+  // ---------- Icons ----------
+  const ICON = {
+    undo: '<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
+    redo: '<svg width="26" height="26" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg>',
+    check: '<svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5 10 17.5 19 7"/></svg>',
+    phone: '<svg width="12" height="14" viewBox="0 0 12 16" aria-hidden="true"><rect x="1" y="1" width="10" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+    tablet: '<svg width="14" height="14" viewBox="0 0 16 16" aria-hidden="true"><rect x="1" y="1.5" width="14" height="13" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+    laptop: '<svg width="16" height="14" viewBox="0 0 18 14" aria-hidden="true"><rect x="3" y="1" width="12" height="9" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M1 12.5h16" stroke="currentColor" stroke-width="1.6"/></svg>',
+    cards: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="3" width="13" height="17" rx="2"/><path d="M8 21h11V7"/></svg>',
+    clock: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+    replay: '<svg width="22" height="22" viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3.5"/><circle cx="12" cy="12" r="8.5" stroke-dasharray="3 3"/></svg>',
+  };
+
+  // ---------- Page state ----------
+  const page = { state: "loaded", theme: "system", concept: null, hidden: new Set() };
+  try { JSON.parse(localStorage.getItem("undo-recent-blind-2-hidden") || "[]").forEach((c) => page.hidden.add(c)); } catch (e) {}
+  const frames = []; // { el, concept, pose, st }
+
+  function freshActs() {
+    if (page.state === "empty") return [];
+    const acts = BASE.map((a, i) => ({ ...a, id: i + 1, undone: false, undoneAt: null }));
+    if (page.state === "undone") { acts[0].undone = true; acts[0].undoneAt = "2:42 pm"; }
+    return acts;
+  }
+  function freshSt() {
+    return { acts: freshActs(), phase: page.state === "loading" || page.state === "failed" ? page.state : "loaded", sel: 0, sheet: false, tab: null, filter: "all", nextId: 100 };
+  }
+
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  const isTicked = (st, card) => st.acts.some((a) => a.card === card && !a.undone);
+  const newTag = (txt) => `<span class="new-tag">New: ${esc(txt)}</span>`;
+
+  // ---------- Shared bits ----------
+  function statusBar() { return '<div class="status" aria-hidden="true"><span>9:41</span><span>&#9679;&#9679;&#9679;</span></div>'; }
+  function homeBar() { return '<div class="homebar" aria-hidden="true"></div>'; }
+  function tabBar(tabs, current) {
+    return `<div class="tabbar-wrap"><div class="tabbar" role="tablist">${tabs.map((t) =>
+      `<button class="tab" role="tab" data-act="tab" data-tab="${t.key}" ${t.key === current ? 'aria-current="page"' : ""}>${ICON[t.icon]}<span class="tl">${esc(t.label)}</span></button>`).join("")}</div></div>`;
+  }
+  function devLabel(a) { return `<span class="dev">${ICON[a.dev]}${esc(DEV[a.dev])}</span>`; }
+  function meta(a) {
+    return `<span class="row-meta"><span>Order ${esc(a.order)}, ${esc(ORDERS[a.order].seller)}</span><span>${esc(a.t)} <span class="tm-rel">(${esc(a.ago)})</span></span>${devLabel(a)}${a.undone ? `<span class="status-word">Undone ${esc(a.undoneAt)}</span>` : ""}</span>`;
+  }
+  function undoBtn(a) {
+    return a.undone
+      ? `<button class="undo-btn redo" data-act="redo" data-id="${a.id}" aria-label="Tick ${esc(a.card)} again">${ICON.redo}<span class="btn-word">Tick again</span></button>`
+      : `<button class="undo-btn" data-act="undo" data-id="${a.id}" aria-label="Undo the tick on ${esc(a.card)}">${ICON.undo}<span class="btn-word">Undo</span></button>`;
+  }
+  function hint(txt) { return `<p class="hint">${txt}</p>`; }
+  const UNDO_HINT = `<span style="color:var(--undo)">${ICON.undo}</span><span>Tap the arrow to undo a tick. Tap it again to put the tick back. Nothing else on a row changes a tick.</span>`;
+
+  function loadingBox() {
+    return `<div class="state-box" aria-busy="true"><p class="hint">Reading recent ticks.</p></div><div class="list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>`;
+  }
+  function failedBox() {
+    return `<div class="state-box" role="alert"><p class="err">Recent ticks did not load.</p><p>Your list of ticks is not known right now, so nothing here is shown as empty.</p><button class="solid-btn" data-act="retry">Try again</button><details><summary>What the server said</summary><span>Sample: request timed out after 10 s.</span></details></div>`;
+  }
+  function emptyBox(ctrl) {
+    return `<div class="state-box"><p>No ticks yet today. Each card you tick shows here, ready to undo.</p>${ctrl}</div>`;
+  }
+
+  function detail(st, a, where) {
+    if (!a) return `<div class="content">${emptyBox("")}</div>`;
+    const o = ORDERS[a.order];
+    return `<div class="content">
+      <dl class="facts"><dt>Card</dt><dd>${esc(a.card)}</dd><dt>Order</dt><dd>${esc(a.order)}, ${esc(o.seller)}</dd><dt>Ticked</dt><dd>${esc(a.t)}</dd><dt>By</dt><dd>${esc(DEV[a.dev])}</dd>${a.undone ? `<dt>Undone</dt><dd class="status-word">${esc(a.undoneAt)}</dd>` : ""}</dl>
+      <p class="sec-title">Tapped the wrong card? Tick the right one here.</p>
+      <div class="list">${o.cards.map((c) => {
+        const got = isTicked(st, c);
+        return `<div class="card-line ${c === a.card ? "this" : ""}"><span class="nm">${esc(c)}</span>${got
+          ? `<span class="got" role="img" aria-label="Ticked">${ICON.check}</span>`
+          : `<button class="pill-btn" data-act="tick-card" data-card="${esc(c)}" data-order="${a.order}" aria-label="Tick ${esc(c)}">Tick</button>`}</div>`;
+      }).join("")}</div>
+    </div>`;
+  }
+
+  // ---------- Concept: Shelf ----------
+  function shelfChecklist(st, order) {
+    const o = ORDERS[order];
+    return `<div class="order-head"><b>Order ${order}</b><span>${esc(o.seller)}</span></div>
+      <div class="list">${o.cards.map((c) => {
+        const on = isTicked(st, c);
+        return `<div class="check-row"><button class="tickbox" data-act="toggle-card" data-card="${esc(c)}" data-order="${order}" aria-pressed="${on}" aria-label="${on ? "Received" : "Not received"}: ${esc(c)}"><span>${on ? ICON.check : ""}</span></button><span class="nm">${esc(c)}</span></div>`;
+      }).join("")}</div>`;
+  }
+  function shelfDock(st, ax) {
+    const n = ax ? 1 : 3;
+    let body;
+    if (st.phase === "loading") body = `<div class="slot empty">Reading recent ticks.</div>`;
+    else if (st.phase === "failed") body = `<div class="slot empty"><span>Recent ticks did not load. <button class="nav-btn" data-act="retry">Try again</button></span></div>`;
+    else if (!st.acts.length) body = `<div class="slot empty">Your next tick shows here, ready to undo.</div>`;
+    else body = st.acts.slice(0, n).map((a) => `<div class="slot ${a.undone ? "undone" : ""}"><button class="row-body" data-act="sheet-open" aria-label="${esc(a.card)}. Show all ticks"><span class="row-name">${esc(a.card)}</span><span class="row-meta"><span>${esc(a.t)}</span>${devLabel(a)}${a.undone ? '<span class="status-word">Undone</span>' : ""}</span></button>${undoBtn(a)}</div>`).join("");
+    // The shelf holds n slot heights in every state, so nothing above or below it moves when a tick lands or loads.
+    const minH = ax ? 0 : n * 56 + (n - 1) * 4;
+    return `<div class="dock" style="padding-left:0;padding-right:0"><div class="shelf new-mark" id="shelf-dock">${newTag("shelf")}
+      <div class="shelf-head"><b>Last ticks</b><button class="nav-btn" data-act="sheet-open">See all</button></div>
+      <div class="slots" style="min-height:${minH}px">${body}</div></div></div>`;
+  }
+  function allRecentList(st, withDetailSel) {
+    if (st.phase === "loading") return loadingBox();
+    if (st.phase === "failed") return failedBox();
+    const acts = st.filter === "phone" ? st.acts.filter((a) => a.dev === "phone") : st.acts;
+    if (!st.acts.length) return emptyBox("");
+    return `<p class="hint long">${UNDO_HINT}</p><ul class="list" id="${withDetailSel ? "recent-list" : ""}">${acts.map((a) => {
+      const i = st.acts.indexOf(a);
+      return `<li class="row ${a.undone ? "undone" : ""}"><button class="row-body" data-act="select" data-i="${i}" ${withDetailSel && st.sel === i ? 'aria-current="true"' : ""}><span class="row-name">${esc(a.card)}</span>${meta(a)}</button>${undoBtn(a)}</li>`;
+    }).join("")}</ul>`;
+  }
+  function filterSeg(st) {
+    return `<div class="seg" role="group" aria-label="Whose ticks"><button data-act="filter" data-f="all" aria-pressed="${st.filter === "all"}">All devices</button><button data-act="filter" data-f="phone" aria-pressed="${st.filter === "phone"}">This phone</button></div>`;
+  }
+  function renderShelf(f) {
+    const { st, pose } = f; const ax = pose === "ax";
+    const tabs = [{ key: "cards", label: "Cards", icon: "cards" }, { key: "orders", label: "Orders", icon: "clock" }];
+    const checklistScreen = (withShelf) => `<div class="scr">${statusBar()}
+      <div class="nav"><div class="nav-top"><span></span><span class="small-title">Cards</span></div></div>
+      <div class="content">${shelfChecklist(st, "4471")}</div>
+      ${withShelf ? shelfDock(st, ax) : "<div></div>"}
+      ${tabBar(tabs, "cards")}${homeBar()}</div>`;
+    if (pose === "open") {
+      return `<div class="page">${checklistScreen(false)}</div><div class="hinge" aria-hidden="true"></div>
+        <div class="page"><div class="scr">${statusBar()}<div class="nav"><h3 class="new-mark" style="align-self:flex-start">Last ticks${newTag("page")}</h3>${filterSeg(st)}</div>
+        <div class="content" id="shelf-open-list">${allRecentList(st, false)}</div><div></div><div></div>${homeBar()}</div></div>`;
+    }
+    let out = checklistScreen(true);
+    if (st.sheet) {
+      out += `<div class="sheet-scrim" data-act="sheet-close"></div><div class="sheet" role="dialog" aria-label="Last ticks">
+        <div class="grabber"></div><div class="sheet-bar"><span></span><h4>Last ticks</h4><button class="nav-btn done" data-act="sheet-close">Done</button></div>
+        <div class="content">${filterSeg(st)}${allRecentList(st, false)}</div>${homeBar()}</div>`;
+    }
+    return out;
+  }
+
+  // ---------- Concept: Recent tab ----------
+  function renderRecent(f) {
+    const { st, pose } = f; const ax = pose === "ax";
+    const tabs = [{ key: "cards", label: "Cards", icon: "cards" }, { key: "recent", label: "Recent", icon: "clock" }];
+    const listScreen = (sel) => `<div class="scr">${statusBar()}
+      <div class="nav"><h3 class="new-mark" style="align-self:flex-start">Recent${newTag("Recent tab")}</h3>${st.phase === "loaded" && st.acts.length ? filterSeg(st) : ""}</div>
+      <div class="content">${
+        st.phase === "loading" ? loadingBox() : st.phase === "failed" ? failedBox()
+        : !st.acts.length ? emptyBox('<button class="solid-btn" data-act="tab" data-tab="cards">Go to cards</button>')
+        : allRecentList(st, sel)}</div>
+      <div></div>${tabBar(tabs, "recent")}${homeBar()}</div>`;
+    if (pose === "open") {
+      const a = st.phase === "loaded" ? st.acts[st.sel] : null;
+      return `<div class="page">${listScreen(true)}</div><div class="hinge" aria-hidden="true"></div>
+        <div class="page"><div class="scr">${statusBar()}<div class="nav"><div class="nav-top"><span></span><span class="small-title">${a ? esc(a.card) : "Detail"}</span></div></div>
+        ${a ? detail(st, a) : '<div class="content"><p class="hint">Pick a tick on the left to see its order.</p></div>'}<div></div><div></div>${homeBar()}</div></div>`;
+    }
+    let out = listScreen(false);
+    if (st.sheet && st.phase === "loaded" && st.acts[st.sel]) {
+      const a = st.acts[st.sel];
+      out += `<div class="sheet-scrim" data-act="sheet-close"></div><div class="sheet" role="dialog" aria-label="${esc(a.card)}">
+        <div class="grabber"></div><div class="sheet-bar"><span></span><h4>${esc(a.card)}</h4><button class="nav-btn done" data-act="sheet-close">Done</button></div>
+        ${detail(st, a)}${homeBar()}</div>`;
+    }
+    return out;
+  }
+
+  // ---------- Concept: Replay ----------
+  function snapshot(st, a) {
+    const o = ORDERS[a.order];
+    const i = o.cards.indexOf(a.card);
+    const lo = Math.max(0, Math.min(i - 2, o.cards.length - 5));
+    const rows = o.cards.slice(lo, lo + 5);
+    return `<div class="snap" id="replay-stage"><span class="snap-cap"><span class="long">Order ${esc(a.order)}, ${esc(o.seller)}, as the list looked at ${esc(a.t)} on ${esc(DEV[a.dev]).toLowerCase()}</span><span class="short">At ${esc(a.t)}</span></span>
+      ${rows.map((c) => {
+        const tapped = c === a.card;
+        const on = tapped ? !a.undone : isTicked(st, c);
+        return `<div class="snap-row ${on ? "ticked" : ""} ${tapped ? "tapped" : ""} ${tapped && a.undone ? "undone" : ""}">
+          <span class="box">${on ? ICON.check : ""}</span>
+          <span class="nm">${esc(c)}${tapped ? `<br><span class="note">${a.undone ? "Tick undone" : "Your tap landed here"}</span>` : ""}</span>
+          ${tapped ? "" : on ? "<span></span>" : `<button class="move-btn" data-act="move" data-card="${esc(c)}" aria-label="Move the tick to ${esc(c)}">Move tick here</button>`}
+          ${tapped && !a.undone ? '<span class="ring" aria-hidden="true"></span>' : ""}
+        </div>`;
+      }).join("")}</div>`;
+  }
+  function replayDock(st) {
+    if (st.phase !== "loaded" || !st.acts.length) return "<div></div>";
+    const a = st.acts[st.sel]; const n = st.acts.length;
+    return `<div class="dock new-mark" style="outline-offset:-2px">${newTag("undo dock")}
+      ${a.undone
+        ? `<button class="big-undo redo" data-act="redo" data-id="${a.id}">${ICON.redo}<span>Tick ${esc(a.card)} again</span></button>`
+        : `<button class="big-undo" data-act="undo" data-id="${a.id}" id="replay-undo">${ICON.undo}<span>Undo this tick</span></button>`}
+      <div class="pager"><button data-act="older" ${st.sel >= n - 1 ? 'disabled aria-disabled="true" title="This is the oldest tick today"' : ""}>Earlier</button>
+        <span class="where"><b>Tap ${st.sel + 1} of ${n}</b><span class="tm">${esc(a.t)}</span></span>
+        <button data-act="newer" ${st.sel <= 0 ? 'disabled aria-disabled="true" title="This is the newest tick"' : ""}>Later</button></div></div>`;
+  }
+  function replayBody(st) {
+    if (st.phase === "loading") return loadingBox();
+    if (st.phase === "failed") return failedBox();
+    if (!st.acts.length) return emptyBox('<button class="solid-btn" data-act="tab" data-tab="cards">Go to cards</button>');
+    return `<div class="stage">${snapshot(st, st.acts[st.sel])}</div>`;
+  }
+  function renderReplay(f) {
+    const { st, pose } = f;
+    const tabs = [{ key: "cards", label: "Cards", icon: "cards" }, { key: "replay", label: "Replay", icon: "replay" }];
+    if (pose === "open") {
+      const strip = st.phase !== "loaded" ? (st.phase === "loading" ? loadingBox() : failedBox())
+        : !st.acts.length ? emptyBox("")
+        : `<div class="strip" role="list">${st.acts.map((a, i) => `<button role="listitem" class="${a.undone ? "undone" : ""}" data-act="select" data-i="${i}" ${i === st.sel ? 'aria-current="true"' : ""}><span class="tm">${esc(a.t)}</span><span><span class="nm">${esc(a.card)}</span><br><span class="row-meta">${devLabel(a)}</span></span></button>`).join("")}</div>`;
+      return `<div class="page"><div class="scr">${statusBar()}<div class="nav"><h3>Taps</h3></div><div class="content">${strip}</div><div></div>${tabBar(tabs, "replay")}${homeBar()}</div></div>
+        <div class="hinge" aria-hidden="true"></div>
+        <div class="page"><div class="scr">${statusBar()}<div class="nav"><div class="nav-top"><span></span><span class="small-title">Replay</span></div></div>
+        <div class="content">${st.phase === "loaded" && st.acts.length ? `<div class="stage">${snapshot(st, st.acts[st.sel])}</div>` : '<p class="hint">The replay shows here.</p>'}</div>${replayDock(st)}<div style="height:16px"></div>${homeBar()}</div></div>`;
+    }
+    return `<div class="scr">${statusBar()}<div class="nav"><h3>Replay</h3></div>
+      <div class="content">${replayBody(st)}</div>${replayDock(st)}${tabBar(tabs, "replay")}${homeBar()}</div>`;
+  }
+
+  const RENDER = { shelf: renderShelf, recent: renderRecent, replay: renderReplay };
+
+  function paint(f) {
+    const keep = [...f.el.querySelectorAll(".content")].map((c) => c.scrollTop);
+    f.el.innerHTML = RENDER[f.concept](f);
+    [...f.el.querySelectorAll(".content")].forEach((c, i) => { if (keep[i]) c.scrollTop = keep[i]; });
+  }
+
+  function nowLabel() { return "2:43 pm"; }
+
+  function act(f, btn) {
+    const st = f.st; const a = btn.dataset.act; const id = Number(btn.dataset.id);
+    const byId = st.acts.find((x) => x.id === id);
+    switch (a) {
+      case "undo": if (byId) { byId.undone = true; byId.undoneAt = nowLabel(); } break;
+      case "redo": if (byId) { byId.undone = false; byId.undoneAt = null; } break;
+      case "select": st.sel = Number(btn.dataset.i); if (f.pose !== "open") st.sheet = f.concept === "recent"; break;
+      case "sheet-open": st.sheet = true; break;
+      case "sheet-close": st.sheet = false; break;
+      case "filter": st.filter = btn.dataset.f; break;
+      case "retry": st.phase = "loaded"; if (!st.acts.length && page.state !== "empty") st.acts = freshActs(); break;
+      case "older": st.sel = Math.min(st.sel + 1, st.acts.length - 1); break;
+      case "newer": st.sel = Math.max(st.sel - 1, 0); break;
+      case "tab": break; // tabs are drawn; only this concept's screen is mocked
+      case "tick-card":
+      case "toggle-card": {
+        const card = btn.dataset.card; const order = btn.dataset.order;
+        const live = st.acts.find((x) => x.card === card && !x.undone);
+        if (live && a === "toggle-card") { live.undone = true; live.undoneAt = nowLabel(); }
+        else if (!live) { st.acts.unshift({ card, order, t: nowLabel(), ago: "just now", dev: "phone", id: st.nextId++, undone: false, undoneAt: null }); if (f.concept === "recent") st.sel = 0; }
+        if (st.phase !== "loaded") st.phase = "loaded";
+        break;
+      }
+      case "move": {
+        const cur = st.acts[st.sel];
+        if (!cur.undone) { cur.undone = true; cur.undoneAt = nowLabel(); }
+        const card = btn.dataset.card;
+        st.acts.unshift({ card, order: cur.order, t: nowLabel(), ago: "just now", dev: "phone", id: st.nextId++, undone: false, undoneAt: null });
+        st.sel = 0;
+        break;
+      }
+      default: return;
+    }
+    paint(f);
+    const again = f.el.querySelector(`[data-act="${a === "undo" ? "redo" : a === "redo" ? "undo" : "_"}"][data-id="${id}"]`);
+    if (again) again.focus({ preventScroll: true });
+  }
+
+  // ---------- Build frames (the frames are in the markup; this fills them) ----------
+  document.querySelectorAll(".concept").forEach((sec) => {
+    const concept = sec.dataset.concept;
+    sec.querySelectorAll(".device").forEach((el) => {
+      const f = { el, concept, pose: el.dataset.pose, st: freshSt() };
+      frames.push(f);
+      el.addEventListener("click", (e) => { const b = e.target.closest("[data-act]"); if (b && el.contains(b) && !b.disabled) act(f, b); });
+    });
+  });
+
+  // ---------- Hash, theme, hide ----------
+  function readHash() {
+    const h = new URLSearchParams(location.hash.replace(/^#/, ""));
+    const s = h.get("s"); if (["loaded", "undone", "empty", "loading", "failed"].includes(s)) page.state = s;
+    const t = h.get("t"); if (["light", "dark", "system"].includes(t)) page.theme = t;
+    page.concept = h.get("c");
+  }
+  function writeHash() {
+    const h = new URLSearchParams();
+    if (page.concept) h.set("c", page.concept);
+    if (page.state !== "loaded") h.set("s", page.state);
+    if (page.theme !== "system") h.set("t", page.theme);
+    history.replaceState(null, "", "#" + h.toString());
+  }
+  function applyAll(resetFrames) {
+    if (page.theme === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", page.theme);
+    document.querySelectorAll("[data-state]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.state === page.state)));
+    document.querySelectorAll("[data-theme-set]").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.themeSet === page.theme)));
+    if (resetFrames) frames.forEach((f) => { f.st = freshSt(); paint(f); });
+    document.querySelectorAll(".concept").forEach((sec) => {
+      const c = sec.dataset.concept;
+      sec.hidden = page.hidden.has(c);
+      sec.classList.toggle("focus", page.concept === c);
+      document.querySelector(`[data-chip="${c}"]`).hidden = page.hidden.has(c);
+    });
+    document.getElementById("restore").classList.toggle("on", page.hidden.size > 0);
+  }
+  document.querySelectorAll("[data-state]").forEach((b) => b.addEventListener("click", () => { page.state = b.dataset.state; writeHash(); applyAll(true); }));
+  document.querySelectorAll("[data-theme-set]").forEach((b) => b.addEventListener("click", () => { page.theme = b.dataset.themeSet; writeHash(); applyAll(false); }));
+  document.querySelectorAll("[data-hide]").forEach((b) => b.addEventListener("click", () => {
+    page.hidden.add(b.dataset.hide);
+    try { localStorage.setItem("undo-recent-blind-2-hidden", JSON.stringify([...page.hidden])); } catch (e) {}
+    applyAll(false);
+  }));
+  document.getElementById("restore").addEventListener("click", () => {
+    page.hidden.clear(); try { localStorage.removeItem("undo-recent-blind-2-hidden"); } catch (e) {} applyAll(false);
+  });
+  const lt = document.getElementById("labels-toggle");
+  lt.addEventListener("click", () => { const on = lt.getAttribute("aria-pressed") !== "true"; lt.setAttribute("aria-pressed", String(on)); document.body.classList.toggle("no-labels", !on); });
+  document.querySelectorAll(".concept-nav a").forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault(); page.concept = a.getAttribute("href").split("=")[1]; writeHash(); applyAll(false);
+    document.getElementById("concept-" + page.concept).scrollIntoView({ block: "start" });
+  }));
+  window.addEventListener("hashchange", () => { readHash(); applyAll(true); });
+
+  readHash(); applyAll(true);
+  if (page.concept && document.getElementById("concept-" + page.concept)) document.getElementById("concept-" + page.concept).scrollIntoView({ block: "start" });
+})();
+</script>
+</body>
+</html>

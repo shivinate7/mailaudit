@@ -200,7 +200,7 @@ figcaption b { font-size:15px; }
   background:var(--paper); z-index:4; white-space:nowrap; pointer-events:none; }
 .tags .tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .tags .tag-new::before { color:var(--new); }
 .tags .tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .tags .tag-today::before { color:var(--today); }
-.tags .dock[data-tag]::before, .tags .facing[data-tag]::before, .tags .panel.laid[data-tag]::before { top:4px; }
+.tags .dock[data-tag]::before, .tags .facing[data-tag]::before, .tags .panel.laid[data-tag]::before, .tags .mast[data-tag]::before { top:4px; }
 </style>
 </head>
 <body>
@@ -424,6 +424,9 @@ figcaption b { font-size:15px; }
     f.el.querySelectorAll("[class-tag]").forEach((e) => { e.classList.add(e.getAttribute("class-tag")); e.removeAttribute("class-tag"); });
     f.el.querySelectorAll(".scroll").forEach((e, i) => { if (scrolls[i] != null) e.scrollTop = scrolls[i]; });
     placeLaid(f);
+    // Behind a laid sheet or the dock, the rows sleep for the keyboard too; the open row stays, as it closes the panel.
+    if (f.st.open && (f.concept === "laid" || (f.concept === "dock" && f.dev !== "open")))
+      f.el.querySelectorAll(".lrow").forEach((r) => { if (r.dataset.row !== f.st.open) r.inert = true; });
     const pa = f.el.querySelector(".dbody, .panel.laid");
     if (pa && !f.st.just) pa.scrollTop = pScroll;
     if (before && f.lastTap) {

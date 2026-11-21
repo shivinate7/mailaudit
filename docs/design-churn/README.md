@@ -4,9 +4,11 @@ Branch design-churn. Mockups only. Open each .html; the -notes.md beside it says
 
 | Screen | Kind | Mockup | Notes |
 |---|---|---|---|
+| duo-poses | blind | [duo-poses-blind-1](mockups/duo-poses-blind-1.html) |  |
 | duo-poses | directed | [duo-poses-directed-1](mockups/duo-poses-directed-1.html) | [notes](mockups/duo-poses-directed-1-notes.md) |
-| duo-poses | informed | [duo-poses-informed-1](mockups/duo-poses-informed-1.html) |  |
-| envelope-photos | blind | [envelope-photos-blind-2](mockups/envelope-photos-blind-2.html) |  |
+| duo-poses | informed | [duo-poses-informed-1](mockups/duo-poses-informed-1.html) | [notes](mockups/duo-poses-informed-1-notes.md) |
+| envelope-photos | blind | [envelope-photos-blind-1](mockups/envelope-photos-blind-1.html) | [notes](mockups/envelope-photos-blind-1-notes.md) |
+| envelope-photos | blind | [envelope-photos-blind-2](mockups/envelope-photos-blind-2.html) | [notes](mockups/envelope-photos-blind-2-notes.md) |
 | envelope-photos | directed | [envelope-photos-directed-1](mockups/envelope-photos-directed-1.html) | [notes](mockups/envelope-photos-directed-1-notes.md) |
 | envelope-photos | informed | [envelope-photos-informed-1](mockups/envelope-photos-informed-1.html) | [notes](mockups/envelope-photos-informed-1-notes.md) |
 | failed-checkin | blind | [failed-checkin-blind-1](mockups/failed-checkin-blind-1.html) | [notes](mockups/failed-checkin-blind-1-notes.md) |
@@ -19,7 +21,7 @@ Branch design-churn. Mockups only. Open each .html; the -notes.md beside it says
 | find-package | directed | [find-package-directed-1](mockups/find-package-directed-1.html) | [notes](mockups/find-package-directed-1-notes.md) |
 | find-package | directed | [find-package-directed-2](mockups/find-package-directed-2.html) | [notes](mockups/find-package-directed-2-notes.md) |
 | find-package | informed | [find-package-informed-1](mockups/find-package-informed-1.html) | [notes](mockups/find-package-informed-1-notes.md) |
-| import-and-backup | directed | [import-and-backup-directed-1](mockups/import-and-backup-directed-1.html) |  |
+| import-and-backup | directed | [import-and-backup-directed-1](mockups/import-and-backup-directed-1.html) | [notes](mockups/import-and-backup-directed-1-notes.md) |
 | import-and-backup | informed | [import-and-backup-informed-1](mockups/import-and-backup-informed-1.html) | [notes](mockups/import-and-backup-informed-1-notes.md) |
 | large-text | blind | [large-text-blind-1](mockups/large-text-blind-1.html) | [notes](mockups/large-text-blind-1-notes.md) |
 | large-text | blind | [large-text-blind-2](mockups/large-text-blind-2.html) | [notes](mockups/large-text-blind-2-notes.md) |
@@ -31,12 +33,20 @@ Branch design-churn. Mockups only. Open each .html; the -notes.md beside it says
 | lost-mail-warning | directed | [lost-mail-warning-directed-1](mockups/lost-mail-warning-directed-1.html) | [notes](mockups/lost-mail-warning-directed-1-notes.md) |
 | lost-mail-warning | directed | [lost-mail-warning-directed-2](mockups/lost-mail-warning-directed-2.html) | [notes](mockups/lost-mail-warning-directed-2-notes.md) |
 | lost-mail-warning | informed | [lost-mail-warning-informed-1](mockups/lost-mail-warning-informed-1.html) | [notes](mockups/lost-mail-warning-informed-1-notes.md) |
-| order-ids | directed | [order-ids-directed-1](mockups/order-ids-directed-1.html) |  |
-| order-ids | informed | [order-ids-informed-1](mockups/order-ids-informed-1.html) |  |
-| panels-overlay | informed | [panels-overlay-informed-1](mockups/panels-overlay-informed-1.html) |  |
+| order-ids | blind | [order-ids-blind-2](mockups/order-ids-blind-2.html) |  |
+| order-ids | directed | [order-ids-directed-1](mockups/order-ids-directed-1.html) | [notes](mockups/order-ids-directed-1-notes.md) |
+| order-ids | informed | [order-ids-informed-1](mockups/order-ids-informed-1.html) | [notes](mockups/order-ids-informed-1-notes.md) |
+| panels-overlay | blind | [panels-overlay-blind-1](mockups/panels-overlay-blind-1.html) |  |
+| panels-overlay | directed | [panels-overlay-directed-1](mockups/panels-overlay-directed-1.html) | [notes](mockups/panels-overlay-directed-1-notes.md) |
+| panels-overlay | informed | [panels-overlay-informed-1](mockups/panels-overlay-informed-1.html) | [notes](mockups/panels-overlay-informed-1-notes.md) |
 | record-envelope | blind | [record-envelope-blind-1](mockups/record-envelope-blind-1.html) | [notes](mockups/record-envelope-blind-1-notes.md) |
-| record-envelope | directed | [record-envelope-directed-1](mockups/record-envelope-directed-1.html) |  |
-| record-envelope | informed | [record-envelope-informed-1](mockups/record-envelope-informed-1.html) |  |
-| sync-trust | directed | [sync-trust-directed-1](mockups/sync-trust-directed-1.html) |  |
+| record-envelope | directed | [record-envelope-directed-1](mockups/record-envelope-directed-1.html) | [notes](mockups/record-envelope-directed-1-notes.md) |
+| record-envelope | informed | [record-envelope-informed-1](mockups/record-envelope-informed-1.html) | [notes](mockups/record-envelope-informed-1-notes.md) |
+| sync-trust | blind | [sync-trust-blind-1](mockups/sync-trust-blind-1.html) | [notes](mockups/sync-trust-blind-1-notes.md) |
+| sync-trust | blind | [sync-trust-blind-2](mockups/sync-trust-blind-2.html) | [notes](mockups/sync-trust-blind-2-notes.md) |
+| sync-trust | directed | [sync-trust-directed-1](mockups/sync-trust-directed-1.html) | [notes](mockups/sync-trust-directed-1-notes.md) |
 | sync-trust | informed | [sync-trust-informed-1](mockups/sync-trust-informed-1.html) | [notes](mockups/sync-trust-informed-1-notes.md) |
+| undo-recent | blind | [undo-recent-blind-1](mockups/undo-recent-blind-1.html) |  |
+| undo-recent | blind | [undo-recent-blind-2](mockups/undo-recent-blind-2.html) |  |
+| undo-recent | directed | [undo-recent-directed-1](mockups/undo-recent-directed-1.html) |  |
 | undo-recent | informed | [undo-recent-informed-1](mockups/undo-recent-informed-1.html) | [notes](mockups/undo-recent-informed-1-notes.md) |

@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Panels over the list</title>
+<style>
+/* House tokens: 4 px step, 8 px radius, colours by role, light and dark sets. Values are this designer's own. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-14: 56px;
+  --radius: 8px;
+  --font-ui: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+
+  --c-canvas: #D8DBE1;
+  --c-shell: #ECEEF1;
+  --c-list: #F3F4F6;
+  --c-paper: #FFFFFF;
+  --c-text: #16171B;
+  --c-text-2: #565A65;
+  --c-edge: #C6CAD2;
+  --c-edge-strong: #8A8F9B;
+  --c-accent: #6B2A86;
+  --c-accent-ink: #FFFFFF;
+  --c-accent-wash: #F0E5F5;
+  --c-bezel: #24262B;
+  --c-hinge: #3A3D44;
+  --c-scrim: rgba(22, 24, 30, 0.16);
+  --c-shadow: rgba(22, 24, 30, 0.22);
+  --c-sample: #FFE27A;
+  --c-sample-ink: #2A2200;
+  --c-part: #0A7A5C;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-canvas: #08090B;
+    --c-shell: #111216;
+    --c-list: #15161A;
+    --c-paper: #272930;
+    --c-text: #EDEEF1;
+    --c-text-2: #A9ADB8;
+    --c-edge: #3B3E48;
+    --c-edge-strong: #6E7380;
+    --c-accent: #D4A6E8;
+    --c-accent-ink: #1C0F24;
+    --c-accent-wash: #3A2A46;
+    --c-bezel: #000000;
+    --c-hinge: #1E2025;
+    --c-scrim: rgba(0, 0, 0, 0.34);
+    --c-shadow: rgba(0, 0, 0, 0.6);
+    --c-sample: #5C4A00;
+    --c-sample-ink: #FFF1BF;
+    --c-part: #5FD4AE;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --c-canvas: #08090B;
+  --c-shell: #111216;
+  --c-list: #15161A;
+  --c-paper: #272930;
+  --c-text: #EDEEF1;
+  --c-text-2: #A9ADB8;
+  --c-edge: #3B3E48;
+  --c-edge-strong: #6E7380;
+  --c-accent: #D4A6E8;
+  --c-accent-ink: #1C0F24;
+  --c-accent-wash: #3A2A46;
+  --c-bezel: #000000;
+  --c-hinge: #1E2025;
+  --c-scrim: rgba(0, 0, 0, 0.34);
+  --c-shadow: rgba(0, 0, 0, 0.6);
+  --c-sample: #5C4A00;
+  --c-sample-ink: #FFF1BF;
+  --c-part: #5FD4AE;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--c-canvas); color: var(--c-text); font-family: var(--font-ui); font-size: 100%; }
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--c-accent); outline-offset: 2px; }
+
+/* ---------- Shell (mockup chrome, not the app) ---------- */
+.sample {
+  background: repeating-linear-gradient(135deg, var(--c-sample) 0 14px, transparent 14px 20px), var(--c-sample);
+  color: var(--c-sample-ink); padding: var(--space-2) var(--space-4); font-weight: 600; font-size: 0.9375rem;
+}
+.sample span { background: var(--c-sample); padding: 2px var(--space-2); border-radius: 4px; }
+.shell { background: var(--c-shell); border-bottom: 1px solid var(--c-edge); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.shell-top { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); align-items: baseline; }
+.shell h1 { font-size: 1.375rem; margin: 0; }
+.shell .kind { color: var(--c-text-2); font-size: 0.9375rem; margin: 0; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.tabs { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ctab { display: inline-flex; align-items: stretch; border: 1px solid var(--c-edge-strong); border-radius: var(--radius); overflow: hidden; background: var(--c-paper); }
+.ctab button { min-height: 44px; padding: 0 var(--space-4); }
+.ctab .pick[aria-selected="true"] { background: var(--c-accent); color: var(--c-accent-ink); font-weight: 600; }
+.ctab .hide { border-left: 1px solid var(--c-edge); padding: 0 var(--space-3); color: var(--c-text-2); }
+.ctab[hidden] { display: none; }
+.ctl-label { font-size: 0.8125rem; color: var(--c-text-2); }
+.seg { display: inline-flex; border: 1px solid var(--c-edge-strong); border-radius: var(--radius); overflow: hidden; background: var(--c-paper); }
+.seg button { min-height: 36px; padding: 0 var(--space-3); font-size: 0.875rem; }
+.seg button[aria-pressed="true"] { background: var(--c-accent-wash); font-weight: 600; }
+.shell .pitch { margin: 0; max-width: 72ch; font-size: 0.9375rem; line-height: 1.45; color: var(--c-text); }
+.restore { font-size: 0.875rem; text-decoration: underline; min-height: 36px; }
+
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-10) var(--space-8); padding: var(--space-8) var(--space-4) var(--space-12); align-items: flex-start; }
+.fw { display: flex; flex-direction: column; gap: var(--space-3); }
+.fw figcaption { font-size: 0.875rem; color: var(--c-text-2); max-width: 60ch; }
+.fw figcaption b { color: var(--c-text); font-weight: 600; }
+figure { margin: 0; }
+.fw-scale { padding: 10px; }
+
+/* ---------- Device frames ---------- */
+.device {
+  --inset-top: 24px; --inset-bottom: 20px;
+  --lt: 34px; --lt-l: 41px; --t3: 20px; --t3-l: 25px; --hd: 17px; --hd-l: 22px;
+  --bd: 17px; --bd-l: 22px; --co: 16px; --co-l: 21px; --sh: 15px; --sh-l: 20px;
+  --fn: 13px; --fn-l: 18px; --c1: 12px; --c1-l: 16px;
+  position: relative; width: var(--w); height: var(--h);
+  background: var(--c-hinge); border-radius: 14px; outline: 10px solid var(--c-bezel);
+  font-family: -apple-system, system-ui, sans-serif; color: var(--c-text);
+  overflow: hidden; font-size: var(--bd); line-height: var(--bd-l);
+  -webkit-user-select: none; user-select: none; touch-action: manipulation;
+}
+.device[data-ax="5"] {
+  /* Apple typography page, Dynamic Type AX5 column (read 2026-11-21). */
+  --lt: 60px; --lt-l: 70px; --t3: 55px; --t3-l: 65px; --hd: 53px; --hd-l: 62px;
+  --bd: 53px; --bd-l: 62px; --co: 51px; --co-l: 60px; --sh: 49px; --sh-l: 58px;
+  --fn: 44px; --fn-l: 52px; --c1: 43px; --c1-l: 51px;
+}
+.page {
+  position: absolute; top: 0; bottom: 0; left: 0; width: 100%;
+  background: var(--c-list); display: flex; flex-direction: column; overflow: hidden;
+  padding-top: max(env(safe-area-inset-top), var(--inset-top));
+  padding-bottom: max(env(safe-area-inset-bottom), var(--inset-bottom));
+  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+}
+.device[data-pose="open"] .page.pl { width: 455.5px; }
+.device[data-pose="open"] .page.pr { left: 495.5px; width: 455.5px; }
+.status { position: absolute; top: 0; left: 0; right: 0; height: var(--inset-top); display: flex; align-items: center; padding: 0 var(--space-5); font-size: 12px; font-weight: 600; }
+.homebar { position: absolute; bottom: 6px; left: 50%; width: 120px; height: 5px; margin-left: -60px; border-radius: 3px; background: var(--c-text); opacity: 0.5; }
+.body { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.head { padding: var(--space-2) var(--space-4) var(--space-2); display: flex; flex-direction: column; gap: 2px; }
+.head h2 { margin: 0; font-size: var(--lt); line-height: var(--lt-l); font-weight: 700; letter-spacing: 0.01em; }
+.head h2.small { font-size: var(--hd); line-height: var(--hd-l); font-weight: 600; }
+.count { font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); }
+.list { position: relative; flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; scrollbar-width: thin; }
+.rows { display: flex; flex-direction: column; }
+
+.row {
+  display: grid; grid-template-columns: 44px 1fr auto; align-items: center; gap: var(--space-2);
+  min-height: 60px; padding: var(--space-1) var(--space-4) var(--space-1) var(--space-2);
+  border-bottom: 1px solid var(--c-edge); position: relative;
+}
+.row .main { display: flex; flex-direction: column; min-width: 0; }
+.row .name { font-size: var(--bd); line-height: var(--bd-l); }
+.row .src, .row .date { font-size: var(--sh); line-height: var(--sh-l); color: var(--c-text-2); }
+.row .date { font-size: var(--fn); line-height: var(--fn-l); }
+.row .meta { display: flex; flex-direction: column; align-items: flex-end; }
+.row .amt { font-size: var(--bd); line-height: var(--bd-l); font-variant-numeric: tabular-nums; }
+.row.is-done .name { color: var(--c-text-2); text-decoration: line-through; text-decoration-thickness: 1px; }
+.row.compact { min-height: 44px; }
+.row.compact .main { flex-direction: row; gap: var(--space-2); align-items: baseline; }
+.row.compact .main .src { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.compact .name { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.row.compact .meta { flex-direction: row; gap: var(--space-2); align-items: baseline; }
+.row.kept::after { content: ""; position: absolute; inset: 2px; border: 2px solid var(--c-accent); border-radius: var(--radius); pointer-events: none; animation: kept 1.4s ease-out forwards; }
+@keyframes kept { 0%, 60% { opacity: 1; } 100% { opacity: 0; } }
+.device[data-ax="5"] .row { grid-template-columns: 56px 1fr; align-items: start; padding-block: var(--space-2); }
+.device[data-ax="5"] .row .meta { grid-column: 2; align-items: flex-start; }
+.device[data-ax="5"] .row.compact .main, .device[data-ax="5"] .row.compact .meta { flex-direction: column; }
+.device[data-ax="5"] .row.compact .name { white-space: normal; }
+
+.chk { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 22px; color: var(--c-text-2); }
+.chk svg { width: 26px; height: 26px; }
+.device[data-ax="5"] .chk { width: 56px; height: 56px; }
+.device[data-ax="5"] .chk svg { width: 40px; height: 40px; }
+.row.is-done .chk { color: var(--c-accent); }
+
+.empty { padding: var(--space-10) var(--space-6); display: flex; flex-direction: column; gap: var(--space-4); align-items: flex-start; }
+.empty p { margin: 0; font-size: var(--bd); line-height: var(--bd-l); }
+
+.btn { min-height: 44px; padding: 0 var(--space-4); border-radius: var(--radius); font-size: var(--bd); line-height: var(--bd-l); font-weight: 600; }
+.btn.fill { background: var(--c-accent); color: var(--c-accent-ink); }
+.btn.line { border: 1px solid var(--c-edge-strong); }
+.ib { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 22px; color: var(--c-text-2); }
+.ib svg { width: 22px; height: 22px; }
+.device[data-ax="5"] .ib { width: 64px; height: 64px; border-radius: 32px; }
+.device[data-ax="5"] .ib svg { width: 40px; height: 40px; }
+
+/* Overlay layer: sits over the list region; the list underneath never changes size. */
+.ov { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
+.ov > * { pointer-events: auto; }
+.catch { position: absolute; inset: 0; background: var(--c-scrim); }
+.paper {
+  background: var(--c-paper); color: var(--c-text); border: 1px solid var(--c-edge-strong);
+  box-shadow: 0 10px 30px var(--c-shadow), 0 1px 0 var(--c-edge); display: flex; flex-direction: column; min-height: 0;
+}
+.p-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4); min-height: 52px; touch-action: none; }
+.p-head h3 { margin: 0; flex: 1; font-size: var(--hd); line-height: var(--hd-l); font-weight: 600; }
+.p-head .note { font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); font-weight: 400; display: block; }
+.grabber { display: flex; justify-content: center; padding-top: var(--space-2); touch-action: none; }
+.grabber i { width: 36px; height: 5px; border-radius: 3px; background: var(--c-edge-strong); }
+.p-body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding: 0 0 var(--space-4); }
+.p-sec { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4) 0; }
+.p-sec h4 { margin: 0; font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); font-weight: 600; }
+.p-list { display: flex; flex-direction: column; border: 1px solid var(--c-edge); border-radius: var(--radius); overflow: hidden; }
+.opt { display: flex; align-items: center; gap: var(--space-3); min-height: 48px; padding: var(--space-1) var(--space-4); text-align: left; width: 100%; font-size: var(--bd); line-height: var(--bd-l); border-bottom: 1px solid var(--c-edge); }
+.opt:last-child { border-bottom: 0; }
+.opt .lbl { flex: 1; }
+.opt .tick { width: 22px; height: 22px; color: var(--c-accent); visibility: hidden; flex: none; }
+.opt[aria-checked="true"] .tick { visibility: visible; }
+.opt[aria-checked="true"] .lbl { font-weight: 600; }
+.box { width: 24px; height: 24px; border-radius: 6px; border: 2px solid var(--c-edge-strong); display: grid; place-items: center; flex: none; }
+.box svg { width: 16px; height: 16px; visibility: hidden; }
+.opt[aria-checked="true"] .box { background: var(--c-accent); border-color: var(--c-accent); color: var(--c-accent-ink); }
+.opt[aria-checked="true"] .box svg { visibility: visible; }
+.sw { width: 51px; height: 31px; border-radius: 16px; background: var(--c-edge); position: relative; flex: none; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; width: 27px; height: 27px; border-radius: 14px; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+.opt[aria-checked="true"] .sw { background: var(--c-accent); }
+.opt[aria-checked="true"] .sw::after { transform: translateX(20px); }
+.segc { display: grid; grid-template-columns: repeat(3, 1fr); border: 1px solid var(--c-edge-strong); border-radius: var(--radius); overflow: hidden; }
+.segc button { min-height: 44px; font-size: var(--sh); line-height: var(--sh-l); border-right: 1px solid var(--c-edge); }
+.segc button:last-child { border-right: 0; }
+.segc button[aria-pressed="true"] { background: var(--c-accent); color: var(--c-accent-ink); font-weight: 600; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip-q { min-height: 44px; padding: 0 var(--space-3); border-radius: 22px; border: 1px solid var(--c-edge-strong); font-size: var(--sh); line-height: var(--sh-l); }
+.chip-q[aria-pressed="true"] { background: var(--c-accent-wash); border-color: var(--c-accent); font-weight: 600; }
+.dates { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.dates label { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); }
+.dates input { min-height: 44px; font: inherit; font-size: var(--sh); color: var(--c-text); background: var(--c-list); border: 1px solid var(--c-edge-strong); border-radius: var(--radius); padding: 0 var(--space-2); width: 100%; }
+.device[data-ax="5"] .dates { grid-template-columns: 1fr; }
+.device[data-ax="5"] .dates input { font-size: var(--sh); min-height: 72px; }
+.p-foot { padding: var(--space-3) var(--space-4) 0; display: flex; }
+.answer { font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); padding: 0 var(--space-4); min-height: var(--fn-l); }
+.hist { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-bottom: 1px solid var(--c-edge); }
+.hist .what { font-size: var(--bd); line-height: var(--bd-l); }
+.hist .when { font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); }
+.device[data-ax="5"] .hist { grid-template-columns: 1fr; }
+.undo { min-height: 44px; padding: 0 var(--space-3); color: var(--c-accent); font-weight: 600; font-size: var(--bd); }
+.h-empty { padding: var(--space-6) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.h-empty p { margin: 0; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .enter-up { animation: up .2s cubic-bezier(.2,.8,.2,1); }
+  .enter-pop { animation: pop .16s ease-out; }
+}
+@keyframes up { from { transform: translateY(40%); opacity: .4; } to { transform: none; opacity: 1; } }
+@keyframes pop { from { transform: scale(.96); opacity: 0; } to { transform: none; opacity: 1; } }
+
+/* ---------- Concept: Tray ---------- */
+.tbar { display: grid; grid-template-columns: repeat(4, 1fr); border-top: 1px solid var(--c-edge); background: var(--c-list); position: relative; z-index: 6; }
+.tbtn { min-height: 56px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: var(--c1); line-height: var(--c1-l); color: var(--c-text-2); position: relative; }
+.tbtn svg { width: 24px; height: 24px; }
+.tbtn[aria-expanded="true"] { color: var(--c-accent); font-weight: 600; background: var(--c-paper); box-shadow: inset 0 3px 0 var(--c-accent); }
+.dot { position: absolute; width: 8px; height: 8px; border-radius: 4px; background: var(--c-accent); }
+.tbtn .dot { top: 8px; left: calc(50% + 10px); }
+.device[data-ax="5"] .tbtn { min-height: 72px; }
+.device[data-ax="5"] .tbtn .tl { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.device[data-ax="5"] .tbtn svg { width: 40px; height: 40px; }
+.tray { position: absolute; left: 0; right: 0; bottom: 0; height: 60%; border-radius: 14px 14px 0 0; border-bottom: 0; }
+.device[data-ax="5"] .tray { height: 100%; border-radius: 0; }
+.side { display: flex; flex-direction: column; min-height: 0; flex: 1; background: var(--c-paper); border-left: 1px solid var(--c-edge); }
+.side .segc { grid-template-columns: repeat(4, 1fr); margin: 0 var(--space-4) var(--space-2); }
+
+/* ---------- Concept: Spread ---------- */
+.sline { display: flex; gap: var(--space-2); overflow-x: auto; padding: var(--space-2) var(--space-3); border-top: 1px solid var(--c-edge); background: var(--c-list); scrollbar-width: none; position: relative; z-index: 6; }
+.sline::-webkit-scrollbar { display: none; }
+.schip { flex: none; min-height: 44px; display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border: 1px solid var(--c-edge-strong); border-radius: 22px; background: var(--c-paper); font-size: var(--sh); line-height: var(--sh-l); white-space: nowrap; position: relative; }
+.schip svg { width: 18px; height: 18px; color: var(--c-text-2); flex: none; }
+.schip[aria-expanded="true"] { border-color: var(--c-accent); box-shadow: 0 0 0 2px var(--c-accent); font-weight: 600; }
+.schip.set { background: var(--c-accent-wash); }
+.device[data-ax="5"] .schip svg { width: 36px; height: 36px; }
+.card { position: absolute; bottom: var(--space-3); border-radius: 14px; max-height: calc(100% - 24px); }
+.card .tail { position: absolute; bottom: -9px; width: 16px; height: 16px; background: var(--c-paper); border-right: 1px solid var(--c-edge-strong); border-bottom: 1px solid var(--c-edge-strong); transform: rotate(45deg); }
+.pagehint { font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--c-edge); }
+.folio { position: absolute; bottom: 4px; font-size: 11px; color: var(--c-text-2); }
+
+/* ---------- Concept: Ring ---------- */
+.grip { position: absolute; width: 56px; height: 56px; border-radius: 28px; background: var(--c-accent); color: var(--c-accent-ink); display: grid; place-items: center; box-shadow: 0 4px 14px var(--c-shadow); z-index: 7; touch-action: none; }
+.grip svg { width: 26px; height: 26px; }
+.grip .dot { top: 4px; right: 4px; background: var(--c-accent-ink); border: 2px solid var(--c-accent); width: 12px; height: 12px; border-radius: 6px; }
+.grip[aria-expanded="true"] { background: var(--c-paper); color: var(--c-accent); border: 2px solid var(--c-accent); }
+.device[data-ax="5"] .grip { width: 88px; height: 88px; border-radius: 44px; }
+.device[data-ax="5"] .grip svg { width: 44px; height: 44px; }
+.sector { position: absolute; width: 60px; height: 60px; margin: -30px 0 0 -30px; border-radius: 30px; background: var(--c-paper); border: 1px solid var(--c-edge-strong); box-shadow: 0 4px 14px var(--c-shadow); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0; font-size: 11px; line-height: 13px; color: var(--c-text); touch-action: none; }
+.sector svg { width: 22px; height: 22px; }
+.sector[aria-expanded="true"] { background: var(--c-accent); color: var(--c-accent-ink); border-color: var(--c-accent); }
+.rcol { position: absolute; border-radius: 14px; overflow: hidden; }
+.rcol .opt { min-height: 48px; }
+.rcol .opt.hot { background: var(--c-accent-wash); }
+.rcol h3 { margin: 0; padding: var(--space-2) var(--space-4) 0; font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); font-weight: 600; }
+.slip { position: absolute; left: var(--space-3); right: var(--space-3); border-radius: 14px; max-height: calc(100% - 100px); }
+.ringhint { position: absolute; font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); background: var(--c-paper); border: 1px solid var(--c-edge); border-radius: var(--radius); padding: var(--space-1) var(--space-2); }
+.full { position: absolute; inset: 0; border-radius: 0; border: 0; }
+
+/* Parts: dashed labels for what this option adds. */
+.parts-on [data-part] { outline: 2px dashed var(--c-part); outline-offset: -2px; }
+.parts-on [data-part]::before { content: "New: " attr(data-part); position: absolute; z-index: 30; left: 4px; top: -22px; font: 600 11px/16px -apple-system, system-ui, sans-serif; color: var(--c-part); background: var(--c-paper); border: 1px dashed var(--c-part); border-radius: 4px; padding: 0 4px; white-space: nowrap; pointer-events: none; }
+.parts-on .tray[data-part]::before, .parts-on .card[data-part]::before, .parts-on .slip[data-part]::before, .parts-on .rcol[data-part]::before { top: 4px; left: auto; right: 4px; }
+.parts-on .grip[data-part]::before { left: auto; right: 0; top: -24px; }
+
+@media (forced-colors: active) {
+  .paper, .schip, .sector, .grip, .tbtn[aria-expanded="true"] { border: 2px solid CanvasText; }
+  .opt[aria-checked="true"] .tick, .opt[aria-checked="true"] .box svg { visibility: visible; }
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note"><span>Sample: no name, figure, date or source on this page is real.</span></div>
+<header class="shell">
+  <div class="shell-top">
+    <h1>Panels over the list</h1>
+    <p class="kind">Designer kind: blind. Designer: panels-overlay-blind-1.</p>
+  </div>
+  <div class="cluster" role="tablist" aria-label="Concepts">
+    <span class="ctab" data-c="tray"><button class="pick" role="tab" id="tab-tray" data-pick="tray">Tray</button><button class="hide" data-hide="tray" aria-label="Hide Tray">Hide</button></span>
+    <span class="ctab" data-c="spread"><button class="pick" role="tab" id="tab-spread" data-pick="spread">Spread</button><button class="hide" data-hide="spread" aria-label="Hide Spread">Hide</button></span>
+    <span class="ctab" data-c="ring"><button class="pick" role="tab" id="tab-ring" data-pick="ring">Thumb ring (bold)</button><button class="hide" data-hide="ring" aria-label="Hide Thumb ring">Hide</button></span>
+    <button class="restore" id="restore" hidden>Show hidden concepts</button>
+  </div>
+  <p class="pitch" id="pitch"></p>
+  <div class="cluster">
+    <span class="ctl-label">State</span>
+    <span class="seg" id="stateSeg">
+      <button data-s="list">List</button><button data-s="sort">Sort</button><button data-s="filter">Filter</button><button data-s="dates">Dates</button><button data-s="show">Show</button><button data-s="history">History</button><button data-s="empty">Filter emptied</button><button data-s="histempty">No history</button>
+    </span>
+  </div>
+  <div class="cluster">
+    <span class="ctl-label">Theme</span>
+    <span class="seg" id="themeSeg"><button data-t="auto">Device</button><button data-t="light">Light</button><button data-t="dark">Dark</button></span>
+    <span class="ctl-label">Labels</span>
+    <span class="seg"><button id="partsBtn" aria-pressed="false">Show New: labels</button></span>
+  </div>
+</header>
+
+<main class="frames" id="frames">
+  <figure class="fw" data-fw="folded">
+    <figcaption><b>Duo, folded.</b> 466 by 678 pt, one screen, one hand.</figcaption>
+    <div class="fw-scale"><div class="device" data-device="iphone-duo-folded" data-pose="folded" style="--w:466px;--h:678px"></div></div>
+  </figure>
+  <figure class="fw" data-fw="ax5">
+    <figcaption><b>Duo, folded, largest text (AX5).</b> 466 by 678 pt.</figcaption>
+    <div class="fw-scale"><div class="device" data-device="iphone-duo-folded" data-pose="folded" data-ax="5" style="--w:466px;--h:678px"></div></div>
+  </figure>
+  <figure class="fw" data-fw="phone">
+    <figcaption><b>Large phone, portrait.</b> No size is written for it, so it is drawn at the brief's folded size. Set <code>pw</code> and <code>ph</code> in the URL hash to change it.</figcaption>
+    <div class="fw-scale"><div class="device" data-device="iphone-regular" data-pose="folded" style="--w:466px;--h:678px"></div></div>
+  </figure>
+  <figure class="fw" data-fw="open">
+    <figcaption><b>Duo, open.</b> 951 by 669 pt. Two pages; the hinge gap from x 455.5 to 495.5 holds nothing.</figcaption>
+    <div class="fw-scale"><div class="device" data-device="iphone-duo-unfolded" data-pose="open" style="--w:951px;--h:669px"></div></div>
+  </figure>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  // ---------- Icons ----------
+  const P = {
+    sort: '<path d="M7 4v16M3 16l4 4 4-4M17 20V4M13 8l4-4 4 4"/>',
+    filter: '<path d="M4 5h16l-6 7.5V18l-4 2v-7.5z"/>',
+    show: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+    history: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+    close: '<path d="M6 6l12 12M18 6L6 18"/>',
+    tick: '<path d="M5 12.5l4.5 4.5L19 7"/>',
+    ring: '<path d="M4 7h9M17 7h3M4 17h3M11 17h9"/><circle cx="15" cy="7" r="2"/><circle cx="9" cy="17" r="2"/>',
+    open: '<circle cx="12" cy="12" r="9.5"/>',
+    done: '<circle cx="12" cy="12" r="10" fill="currentColor" stroke="none"/><path d="M7.5 12.5l3 3 6-6.5" stroke="var(--c-list)"/>'
+  };
+  const ic = (k, cls) => `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"${cls ? ` class="${cls}"` : ''}>${P[k]}</svg>`;
+  const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+  // ---------- Sample data (generated, fixed seed) ----------
+  function rng(a) { return function () { a |= 0; a = a + 0x6D2B79F5 | 0; let t = Math.imul(a ^ a >>> 15, 1 | a); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+  const R = rng(41);
+  const ADJ = ["Copper", "Blue", "Slate", "Linen", "Brass", "Cedar", "Glass", "Wool", "Paper", "Iron", "Cork", "Amber", "Felt", "Tin", "Clay"];
+  const NOUN = ["washer", "folder", "hinge", "coaster", "clip", "spool", "label", "bracket", "tag", "pin", "ruler", "stamp", "latch", "cup", "brush", "knob"];
+  const SOURCES = ["North Depot", "Harbor Goods", "Fieldstone", "Kettle Lane", "Wren Supply"];
+  const TODAY = new Date("2026-11-21T12:00:00");
+  const ITEMS = [];
+  const used = new Set();
+  while (ITEMS.length < 60) {
+    const n = ADJ[Math.floor(R() * ADJ.length)] + " " + NOUN[Math.floor(R() * NOUN.length)];
+    if (used.has(n)) continue; used.add(n);
+    const d = new Date(TODAY.getTime() - Math.floor(R() * 45) * 864e5);
+    ITEMS.push({ id: "i" + ITEMS.length, name: n, source: SOURCES[Math.floor(R() * SOURCES.length)], date: d.toISOString().slice(0, 10), cents: 25 + Math.floor(R() * 36) * 25, done: R() < 0.32 });
+  }
+  const iso = d => d.toISOString().slice(0, 10);
+  const fmtDate = s => new Date(s + "T12:00:00").toLocaleDateString("en-US", { month: "short", day: "numeric" });
+  const fmtAmt = c => "$" + (c / 100).toFixed(2);
+  const SORTS = [["new", "Newest first"], ["old", "Oldest first"], ["name", "Name, A to Z"], ["amt", "Amount, high to low"], ["src", "Source, A to Z"]];
+  const STATUS = [["all", "All"], ["open", "Open"], ["done", "Done"]];
+  const SHOW = [["source", "Source"], ["date", "Date"], ["amount", "Amount"], ["compact", "Compact rows"]];
+  const PANELS = [["sort", "Sort"], ["filter", "Filter"], ["show", "Show"], ["history", "History"]];
+  const SEED_HISTORY = [["done", 3, "4 min ago"], ["done", 11, "18 min ago"], ["open", 7, "1 hr ago"]];
+
+  // ---------- Hash ----------
+  function readHash() {
+    const h = new URLSearchParams(location.hash.slice(1));
+    return { c: h.get("c") || "tray", s: h.get("s") || "list", t: h.get("t") || "auto", hide: (h.get("h") || "").split(",").filter(Boolean), parts: h.get("p") === "1", pw: +h.get("pw") || 0, ph: +h.get("ph") || 0 };
+  }
+  let H = readHash();
+  function writeHash() {
+    const p = new URLSearchParams();
+    p.set("c", H.c); if (H.s !== "list") p.set("s", H.s); if (H.t !== "auto") p.set("t", H.t);
+    if (H.hide.length) p.set("h", H.hide.join(",")); if (H.parts) p.set("p", "1");
+    if (H.pw) p.set("pw", H.pw); if (H.ph) p.set("ph", H.ph);
+    history.replaceState(null, "", "#" + p.toString().replace(/%2C/g, ","));
+  }
+
+  // ---------- One working prototype per device frame ----------
+  class Proto {
+    constructor(dev, concept, startState) {
+      this.dev = dev; this.c = concept;
+      this.pose = dev.dataset.pose; this.ax = dev.dataset.ax === "5";
+      this.items = ITEMS.map(x => Object.assign({}, x));
+      this.st = { sort: "new", status: "all", src: new Set(SOURCES), from: "", to: "", range: "any", show: { source: true, date: true, amount: true, compact: false } };
+      this.hist = SEED_HISTORY.map(([k, i, w], n) => ({ id: "h" + n, kind: k, item: this.items[i].id, when: w }));
+      this.hid = 10; this.open = null; this.side = "sort"; this.cardPage = "pr"; this.lastTouch = null;
+      this.ring = null; // {page, mode:'drag'|'tap', sector}
+      this.slip = null; this.full = false;
+      this.apply(startState);
+      this.build();
+      this.bind();
+    }
+    apply(s) {
+      if (s === "empty") { this.st.status = "done"; this.st.src = new Set(["Wren Supply"]); this.st.from = iso(new Date(TODAY.getTime() - 2 * 864e5)); this.st.to = iso(TODAY); this.st.range = "custom"; return; }
+      if (s === "histempty") { this.hist = []; s = "history"; }
+      if (s === "list") return;
+      const panel = s === "dates" ? "filter" : s;
+      if (this.c === "tray") { if (this.pose === "open") this.side = panel; else this.open = panel; this.jumpDates = s === "dates"; }
+      if (this.c === "spread") { this.open = panel; this.jumpDates = s === "dates"; }
+      if (this.c === "ring") {
+        if (this.ax) { this.full = true; this.jumpTo = s === "dates" ? "dates" : panel; return; }
+        if (this.pose === "open" && panel === "history") return; // history is the right page there
+        if (panel === "history") this.slip = { kind: "history", page: this.pose === "open" ? "pl" : "p" };
+        else if (s === "dates") this.slip = { kind: "dates", page: this.pose === "open" ? "pr" : "p" };
+        else this.ring = { page: this.pose === "open" ? "pr" : "p", mode: "tap", sector: panel };
+      }
+    }
+    // ----- derived -----
+    filterActive() { return this.st.status !== "all" || this.st.src.size !== SOURCES.length || this.st.from || this.st.to; }
+    visible() {
+      const s = this.st;
+      let v = this.items.filter(x => (s.status === "all" || (s.status === "done") === x.done) && s.src.has(x.source) && (!s.from || x.date >= s.from) && (!s.to || x.date <= s.to));
+      const by = { new: (a, b) => b.date.localeCompare(a.date) || a.name.localeCompare(b.name), old: (a, b) => a.date.localeCompare(b.date) || a.name.localeCompare(b.name), name: (a, b) => a.name.localeCompare(b.name), amt: (a, b) => b.cents - a.cents || a.name.localeCompare(b.name), src: (a, b) => a.source.localeCompare(b.source) || a.name.localeCompare(b.name) }[s.sort];
+      return v.sort(by);
+    }
+    countText() {
+      const v = this.visible(), open = this.items.filter(x => !x.done).length;
+      return this.filterActive() ? `Showing ${v.length} of ${this.items.length}` : `${this.items.length} items, ${open} open`;
+    }
+    sortLabel() { return SORTS.find(x => x[0] === this.st.sort)[1]; }
+    filterLabel() {
+      const s = this.st, bits = [];
+      if (s.status !== "all") bits.push(s.status === "open" ? "Open only" : "Done only");
+      if (s.src.size !== SOURCES.length) bits.push(s.src.size === 1 ? [...s.src][0] : `${s.src.size} sources`);
+      if (s.range === "7") bits.push("Last 7 days"); else if (s.range === "30") bits.push("Last 30 days"); else if (s.from || s.to) bits.push((s.from ? fmtDate(s.from) : "Start") + " to " + (s.to ? fmtDate(s.to) : "today"));
+      return bits.length ? bits.join(", ") : "No filter";
+    }
+    showLabel() {
+      const off = SHOW.filter(([k]) => k !== "compact" && !this.st.show[k]).map(x => x[1].toLowerCase());
+      const base = this.st.show.compact ? "Compact rows" : "Full rows";
+      return off.length ? `${base}, no ${off.join(" or ")}` : base;
+    }
+    setNonDefault(k) {
+      if (k === "sort") return this.st.sort !== "new";
+      if (k === "filter") return !!this.filterActive();
+      if (k === "show") return !this.st.show.source || !this.st.show.date || !this.st.show.amount || this.st.show.compact;
+      return false;
+    }
+
+    // ----- rows -----
+    rowsHTML() {
+      const v = this.visible(), sh = this.st.show;
+      if (!v.length) return `<div class="empty"><p>No items match these filters.</p><button class="btn fill" data-act="clear">Clear filters</button></div>`;
+      return `<div class="rows">` + v.map(x => `<div class="row${x.done ? " is-done" : ""}${sh.compact ? " compact" : ""}" data-id="${x.id}">
+        <button class="chk" data-act="mark" data-id="${x.id}" aria-pressed="${x.done}" aria-label="${x.done ? "Mark open" : "Mark done"}: ${esc(x.name)}">${ic(x.done ? "done" : "open")}</button>
+        <div class="main"><span class="name">${esc(x.name)}</span>${sh.source ? `<span class="src">${esc(x.source)}</span>` : ""}</div>
+        <div class="meta">${sh.amount ? `<span class="amt">${fmtAmt(x.cents)}</span>` : ""}${sh.date ? `<span class="date">${fmtDate(x.date)}</span>` : ""}</div>
+      </div>`).join("") + `</div>`;
+    }
+    // ----- shared panel bodies -----
+    sortBody(act) {
+      return `<div class="p-sec"><div class="p-list" role="radiogroup" aria-label="Sort">` + SORTS.map(([k, l]) => `<button class="opt" role="radio" aria-checked="${this.st.sort === k}" data-act="${act || "sort"}" data-v="${k}"><span class="lbl">${l}</span>${ic("tick", "tick")}</button>`).join("") + `</div></div>`;
+    }
+    filterBody() {
+      const s = this.st;
+      return `<div class="p-sec"><h4>Status</h4><div class="segc" role="group" aria-label="Status">` + STATUS.map(([k, l]) => `<button aria-pressed="${s.status === k}" data-act="status" data-v="${k}">${l}</button>`).join("") + `</div></div>
+        <div class="p-sec"><h4>Sources</h4><div class="p-list">` + SOURCES.map(n => `<button class="opt" role="checkbox" aria-checked="${s.src.has(n)}" data-act="src" data-v="${esc(n)}"><span class="box">${ic("tick")}</span><span class="lbl">${esc(n)}</span></button>`).join("") + `</div></div>
+        ${this.datesBody()}
+        ${this.filterActive() ? `<div class="p-foot"><button class="btn line" data-act="clear">Clear filters</button></div>` : ""}`;
+    }
+    datesBody() {
+      const s = this.st;
+      return `<div class="p-sec" data-dates><h4>Dates</h4><div class="chips">` + [["any", "Any time"], ["7", "Last 7 days"], ["30", "Last 30 days"]].map(([k, l]) => `<button class="chip-q" aria-pressed="${s.range === k}" data-act="range" data-v="${k}">${l}</button>`).join("") + `</div>
+        <div class="dates"><label>From<input type="date" data-key="from" data-act="from" value="${s.from}" min="2026-09-01" max="${iso(TODAY)}"></label><label>To<input type="date" data-key="to" data-act="to" value="${s.to}" min="2026-09-01" max="${iso(TODAY)}"></label></div></div>`;
+    }
+    showBody() {
+      return `<div class="p-sec"><div class="p-list">` + SHOW.map(([k, l]) => `<button class="opt" role="switch" aria-checked="${this.st.show[k]}" data-act="show" data-v="${k}"><span class="lbl">${l}</span><span class="sw"></span></button>`).join("") + `</div></div>`;
+    }
+    histBody() {
+      if (!this.hist.length) return `<div class="h-empty"><p>No changes yet. Each item you mark done or open shows here.</p><button class="btn line" data-act="close">Back to the list</button></div>`;
+      return `<div role="list">` + this.hist.map(h => { const it = this.items.find(x => x.id === h.item); return `<div class="hist" role="listitem"><div><div class="what">Marked ${h.kind}: ${esc(it.name)}</div><div class="when">${h.when}</div></div><button class="undo" data-act="undo" data-v="${h.id}">Undo</button></div>`; }).join("") + `</div>`;
+    }
+    body(k) { return k === "sort" ? this.sortBody() : k === "filter" ? this.filterBody() : k === "show" ? this.showBody() : this.histBody(); }
+    panelNote(k) { return k === "filter" ? `<span class="note" data-answer>${this.countText()}</span>` : k === "history" ? `<span class="note">Newest first</span>` : ""; }
+
+    // ----- build per concept -----
+    build() {
+      const d = this.dev, open = this.pose === "open";
+      const page = (cls, inner) => `<div class="page ${cls}"><div class="status" aria-hidden="true">${cls === "pr" ? "" : "9:41"}</div>${inner}<div class="homebar" aria-hidden="true"></div></div>`;
+      const head = (title, small) => `<div class="head"><h2 class="${small ? "small" : ""}">${title}</h2><span class="count" data-slot="count"></span></div>`;
+      const fid = d.dataset.fid;
+      if (this.c === "tray") {
+        if (!open) d.innerHTML = page("p", `<div class="body">${head("Items")}<div class="list" data-main></div><div class="ov" data-slot="ov"></div></div><div class="tbar" data-slot="bar" role="toolbar" aria-label="List options" ${fid ? `id="focus-tray"` : ""} data-part="toolbar in thumb reach"></div>`);
+        else d.innerHTML = page("pl", `<div class="body">${head("Items")}<div class="list" data-main></div></div>`) + page("pr", `<div class="body side" data-slot="side" data-part="panel is the right page"></div>`);
+      } else if (this.c === "spread") {
+        if (!open) d.innerHTML = page("p", `<div class="body">${head("Items")}<div class="list" data-main></div><div class="ov" data-slot="ov"></div></div><div class="sline" data-slot="bar" role="toolbar" aria-label="Current settings" ${fid ? `id="focus-spread"` : ""} data-part="chips say the current settings"></div>`);
+        else d.innerHTML = page("pl", `<div class="body" data-pg="pl">${head("Items")}<div class="list" data-main></div><div class="ov" data-slot="ov-pl"></div></div><div class="sline" data-slot="bar" role="toolbar" aria-label="Current settings"></div>`) +
+          page("pr", `<div class="body" data-pg="pr"><div class="pagehint">Continues from the left page</div><div class="list" data-cont></div><div class="ov" data-slot="ov-pr"></div></div>`);
+      } else {
+        if (!open) d.innerHTML = page("p", `<div class="body" data-pg="p">${head("Items")}<div class="list" data-main></div><div class="ov" data-slot="ov-p"></div><button class="grip" data-grip="p" aria-haspopup="true" aria-expanded="false" aria-label="List options: sort, filter, show, history" style="right:20px;bottom:12px" ${fid ? `id="focus-ring"` : ""} data-part="grip in the thumb corner">${ic("ring")}</button></div>`);
+        else d.innerHTML = page("pl", `<div class="body" data-pg="pl">${head("Items")}<div class="list" data-main></div><div class="ov" data-slot="ov-pl"></div><button class="grip" data-grip="pl" aria-haspopup="true" aria-expanded="false" aria-label="List options: sort, filter, show" style="left:20px;bottom:12px">${ic("ring")}</button></div>`) +
+          page("pr", `<div class="body side" data-pg="pr" data-slot="side"></div><div class="ov" data-slot="ov-pr" style="top:var(--inset-top);bottom:var(--inset-bottom)"></div><button class="grip" data-grip="pr" aria-haspopup="true" aria-expanded="false" aria-label="List options: sort, filter, show" style="right:20px;bottom:32px">${ic("ring")}</button>`);
+      }
+      this.renderLists(false);
+      this.renderChrome();
+      this.renderOverlay(true);
+    }
+
+    // ----- rendering with a kept place -----
+    mainList() { return this.dev.querySelector("[data-main]"); }
+    renderLists(keep) {
+      const L = this.mainList(); let anchor = null, off = 0;
+      if (keep && L) {
+        const st = L.scrollTop, rows = [...L.querySelectorAll(".row")];
+        let a = this.lastTouch && rows.find(r => r.dataset.id === this.lastTouch && r.offsetTop + r.offsetHeight > st && r.offsetTop < st + L.clientHeight);
+        if (!a) a = rows.find(r => r.offsetTop + r.offsetHeight > st + 1);
+        if (a) { anchor = a.dataset.id; off = a.offsetTop - st; this._order = rows.map(r => r.dataset.id); }
+      }
+      L.innerHTML = this.rowsHTML();
+      if (anchor) {
+        let r = L.querySelector(`.row[data-id="${anchor}"]`);
+        if (!r && this._order) { const i = this._order.indexOf(anchor); for (let j = i + 1; j < this._order.length && !r; j++) r = L.querySelector(`.row[data-id="${this._order[j]}"]`); }
+        if (r) { L.scrollTop = r.offsetTop - off; if (r.offsetTop - off !== L.scrollTop || this._moved) { /* clamp at ends */ } r.classList.add("kept"); setTimeout(() => r.classList.remove("kept"), 1500); }
+      }
+      const C = this.dev.querySelector("[data-cont]");
+      if (C) { C.innerHTML = this.rowsHTML() + `<div style="height:${L.clientHeight}px"></div>`; this.syncCont(); }
+    }
+    syncCont() {
+      const L = this.mainList(), C = this.dev.querySelector("[data-cont]"); if (!C) return;
+      this._sync = true; C.scrollTop = L.scrollTop + L.clientHeight; requestAnimationFrame(() => { this._sync = false; });
+    }
+    renderChrome() {
+      this.dev.querySelectorAll('[data-slot="count"]').forEach(e => e.textContent = this.countText());
+      const bar = this.dev.querySelector('[data-slot="bar"]');
+      if (bar && this.c === "tray") bar.innerHTML = PANELS.map(([k, l]) => `<button class="tbtn" data-act="panel" data-v="${k}" aria-expanded="${this.open === k}">${ic(k)}<span class="tl">${l}</span>${this.setNonDefault(k) ? `<i class="dot" aria-label="changed"></i>` : ""}</button>`).join("");
+      if (bar && this.c === "spread") {
+        const sl = bar.scrollLeft;
+        const chips = [["sort", this.sortLabel()], ["filter", this.filterLabel()], ["show", this.showLabel()], ["history", this.hist.length ? `${this.hist.length} changes` : "No changes"]];
+        bar.innerHTML = chips.map(([k, l]) => `<button class="schip${this.setNonDefault(k) ? " set" : ""}" data-act="card" data-v="${k}" aria-expanded="${this.open === k}" aria-label="${PANELS.find(p => p[0] === k)[1]}: ${esc(l)}">${ic(k)}<span>${esc(l)}</span></button>`).join("");
+        bar.scrollLeft = sl;
+      }
+      if (this.c === "ring") this.dev.querySelectorAll("[data-grip]").forEach(g => {
+        const on = (this.ring && this.ring.page === g.dataset.grip) || (this.full && g.dataset.grip === "p");
+        g.setAttribute("aria-expanded", on);
+        g.innerHTML = ic(on ? "close" : "ring") + (["sort", "filter", "show"].some(k => this.setNonDefault(k)) && !on ? `<i class="dot" aria-hidden="true"></i>` : "");
+      });
+      const side = this.dev.querySelector('[data-slot="side"]');
+      if (side) {
+        const sc = side.querySelector(".p-body"), top = sc ? sc.scrollTop : 0;
+        if (this.c === "tray") side.innerHTML = `<div class="p-head" style="padding-top:var(--space-2)"><h3>${PANELS.find(p => p[0] === this.side)[1]}${this.panelNote(this.side)}</h3></div>
+          <div class="segc" role="tablist" aria-label="Panel">` + PANELS.map(([k, l]) => `<button role="tab" aria-pressed="${this.side === k}" aria-selected="${this.side === k}" data-act="side" data-v="${k}">${l}</button>`).join("") + `</div><div class="p-body">${this.body(this.side)}</div>`;
+        else side.innerHTML = `<div class="head"><h2 class="small">History</h2><span class="count">Each mark you make, newest first</span></div><div class="p-body" style="padding-bottom:96px">${this.histBody()}</div>`;
+        const nsc = side.querySelector(".p-body"); if (nsc) nsc.scrollTop = top;
+        if (this.jumpDates && this.c === "tray") { const dd = side.querySelector("[data-dates]"); if (dd) nsc.scrollTop = dd.offsetTop - 8; this.jumpDates = false; }
+      }
+    }
+    renderOverlay(enter) {
+      const act = document.activeElement, key = act && this.dev.contains(act) ? (act.dataset.key || null) : null;
+      if (this.c === "tray") this.trayOverlay(enter);
+      else if (this.c === "spread") this.spreadOverlay(enter);
+      else this.ringOverlay(enter);
+      if (key) { const e = this.dev.querySelector(`[data-key="${key}"]`); if (e) e.focus(); }
+    }
+    keepScroll(slot, fn) {
+      const old = slot.querySelector(".p-body"), top = old ? old.scrollTop : 0; fn();
+      const n = slot.querySelector(".p-body"); if (n) n.scrollTop = top;
+      if (this.jumpDates && n) { const dd = n.querySelector("[data-dates]"); if (dd) n.scrollTop = dd.offsetTop - 8; this.jumpDates = false; }
+    }
+    trayOverlay(enter) {
+      const ov = this.dev.querySelector('[data-slot="ov"]'); if (!ov) return;
+      if (!this.open) { ov.innerHTML = ""; return; }
+      const k = this.open, t = PANELS.find(p => p[0] === k)[1];
+      this.keepScroll(ov, () => {
+        ov.innerHTML = `<div class="catch" data-act="close" aria-hidden="true"></div>
+        <section class="tray paper${enter ? " enter-up" : ""}" role="dialog" aria-label="${t}" data-swipe data-part="tray sits over the list">
+          <div class="grabber" data-swipe-handle><i></i></div>
+          <div class="p-head" data-swipe-handle>${this.ax ? `<button class="ib" data-act="close" aria-label="Close">${ic("close")}</button>` : ""}<h3>${t}${this.panelNote(k)}</h3>${this.ax ? "" : `<button class="ib" data-act="close" aria-label="Close">${ic("close")}</button>`}</div>
+          <div class="p-body">${this.body(k)}</div></section>`;
+      });
+    }
+    spreadOverlay(enter) {
+      const slots = this.dev.querySelectorAll('.ov[data-slot^="ov"]');
+      slots.forEach(s => s.innerHTML = "");
+      if (!this.open) return;
+      const k = this.open, t = PANELS.find(p => p[0] === k)[1];
+      const target = this.pose === "open" ? this.dev.querySelector(`[data-slot="ov-${this.cardPage}"]`) : slots[0];
+      const pg = target.parentElement;
+      const pageW = pg.clientWidth;
+      const w = this.ax || this.pose === "open" ? pageW - 24 : Math.min(pageW - 24, 360);
+      let left = 12, tail = null;
+      const chip = this.dev.querySelector(`.schip[data-v="${k}"]`);
+      if (chip && (this.pose !== "open" || this.cardPage === "pl")) {
+        const z = pg.getBoundingClientRect().width / pg.offsetWidth || 1;
+        const cr = chip.getBoundingClientRect(), pr = pg.getBoundingClientRect();
+        const cx = (cr.left + cr.width / 2 - pr.left) / z;
+        left = Math.max(12, Math.min(pageW - w - 12, cx - w / 2)); tail = cx - left - 8;
+      }
+      const where = this.pose === "open" ? `<span class="note">${this.cardPage === "pr" ? "On the right page, so the left page stays in view" : "On the left page, so the right page stays in view"}</span>` : "";
+      this.keepScroll(target, () => {
+        target.innerHTML = `<div class="catch" data-act="close" aria-hidden="true" style="background:transparent"></div>
+        <section class="card paper${enter ? " enter-pop" : ""}" role="dialog" aria-label="${t}" data-swipe style="left:${left}px;width:${w}px;transform-origin:${tail != null ? tail + 8 : w / 2}px 100%" data-part="card grows from its chip">
+          <div class="p-head" data-swipe-handle><h3>${t}${this.panelNote(k)}${where}</h3><button class="ib" data-act="close" aria-label="Close">${ic("close")}</button></div>
+          <div class="p-body">${this.body(k)}</div>${tail != null ? `<span class="tail" style="left:${tail}px"></span>` : ""}</section>`;
+      });
+    }
+    ringOverlay(enter) {
+      this.dev.querySelectorAll('.ov[data-slot^="ov"]').forEach(s => s.innerHTML = "");
+      if (this.full) {
+        const ov = this.dev.querySelector('[data-slot="ov-p"]');
+        const sec = (k, l) => `<div data-jump="${k}"><div class="p-head"><h3>${l}${this.panelNote(k)}</h3></div>${this.body(k)}</div>`;
+        this.keepScroll(ov, () => {
+          ov.innerHTML = `<section class="full paper${enter ? " enter-up" : ""}" role="dialog" aria-label="List options"><div class="p-head"><button class="ib" data-act="close" aria-label="Close">${ic("close")}</button><h3>List options</h3></div>
+          <div class="p-body">${PANELS.map(([k, l]) => sec(k, l)).join("")}</div></section>`;
+        });
+        if (this.jumpTo) { const b = ov.querySelector(".p-body"), j = this.jumpTo === "dates" ? ov.querySelector("[data-dates]") : ov.querySelector(`[data-jump="${this.jumpTo}"]`); if (b && j) b.scrollTop = j.offsetTop; this.jumpTo = null; }
+        this.renderChrome(); return;
+      }
+      if (this.slip) {
+        const ov = this.dev.querySelector(`[data-slot="ov-${this.slip.page}"]`);
+        const k = this.slip.kind, t = k === "dates" ? "Dates" : k === "sources" ? "Sources" : "History";
+        const b = k === "dates" ? this.datesBody() + `<div class="answer" style="padding-top:8px">${this.countText()}</div>` : k === "sources" ? `<div class="p-sec"><div class="p-list">` + SOURCES.map(n => `<button class="opt" role="checkbox" aria-checked="${this.st.src.has(n)}" data-act="src" data-v="${esc(n)}"><span class="box">${ic("tick")}</span><span class="lbl">${esc(n)}</span></button>`).join("") + `</div></div><div class="answer" style="padding-top:8px">${this.countText()}</div>` : this.histBody();
+        this.keepScroll(ov, () => {
+          ov.innerHTML = `<div class="catch" data-act="close" aria-hidden="true"></div><section class="slip paper${enter ? " enter-up" : ""}" role="dialog" aria-label="${t}" data-swipe style="bottom:84px" data-part="slip for dates and history">
+          <div class="grabber" data-swipe-handle><i></i></div><div class="p-head" data-swipe-handle><h3>${t}</h3><button class="ib" data-act="close" aria-label="Close">${ic("close")}</button></div><div class="p-body">${b}</div></section>`;
+        });
+        this.renderChrome(); return;
+      }
+      if (!this.ring) { this.renderChrome(); return; }
+      const pgKey = this.ring.page, ov = this.dev.querySelector(`[data-slot="ov-${pgKey}"]`);
+      const grip = this.dev.querySelector(`[data-grip="${pgKey}"]`);
+      const W = ov.clientWidth, Hh = ov.clientHeight;
+      const leftSide = pgKey === "pl";
+      const gb = parseFloat(grip.style.bottom) - (ov.offsetTop ? 0 : 0);
+      const ovTopInPage = ov.getBoundingClientRect().top, gr = grip.getBoundingClientRect();
+      const z = ov.getBoundingClientRect().height / ov.offsetHeight || 1;
+      const cy = (gr.top + gr.height / 2 - ovTopInPage) / z, cx = leftSide ? 48 : W - 48;
+      const secs = PANELS.filter(([k]) => !(this.pose === "open" && k === "history"));
+      const angles = secs.length === 4 ? [180, 150, 120, 90] : [180, 135, 90];
+      const r = 124;
+      let html = `<div class="catch" data-act="close" aria-hidden="true"></div>`;
+      secs.forEach(([k, l], i) => {
+        const a = angles[i] * Math.PI / 180, x = leftSide ? cx - r * Math.cos(a) : cx + r * Math.cos(a), y = cy - r * Math.sin(a);
+        html += `<button class="sector${enter ? " enter-pop" : ""}" data-ring-sector="${k}" aria-expanded="${this.ring.sector === k}" style="left:${x}px;top:${y}px" ${i === 0 ? `data-part="ring of four"` : ""}>${ic(k)}<span>${l}</span></button>`;
+      });
+      const k = this.ring.sector;
+      if (k && k !== "history") {
+        let opts = [];
+        if (k === "sort") opts = SORTS.map(([v, l]) => ({ act: "r-sort", v, l, on: this.st.sort === v, kind: "radio" }));
+        if (k === "filter") opts = STATUS.map(([v, l]) => ({ act: "r-status", v, l: v === "all" ? "All items" : v === "open" ? "Open only" : "Done only", on: this.st.status === v, kind: "radio" })).concat([{ act: "r-slip", v: "sources", l: "Sources", kind: "more", on: this.st.src.size !== SOURCES.length }, { act: "r-slip", v: "dates", l: "Dates", kind: "more", on: !!(this.st.from || this.st.to) }]).concat(this.filterActive() ? [{ act: "clear", v: "", l: "Clear filters", kind: "plain" }] : []);
+        if (k === "show") opts = SHOW.map(([v, l]) => ({ act: "r-show", v, l, on: this.st.show[v], kind: "switch" }));
+        const colW = Math.min(W - 230, 260);
+        const colStyle = leftSide ? `left:${cx + 166}px;` : `right:${W - cx + 166}px;`;
+        const bottom = Hh - cy - 28;
+        html += `<div class="rcol paper${enter ? "" : " enter-pop"}" role="menu" aria-label="${PANELS.find(p => p[0] === k)[1]}" style="${colStyle}width:${colW}px;bottom:${Math.max(8, bottom)}px" data-part="choices beside the ring"><h3>${PANELS.find(p => p[0] === k)[1]}</h3>` +
+          opts.map(o => `<button class="opt" role="${o.kind === "radio" ? "menuitemradio" : o.kind === "switch" ? "menuitemcheckbox" : "menuitem"}" ${o.kind !== "plain" && o.kind !== "more" ? `aria-checked="${o.on}"` : ""} data-ring-opt="1" data-act="${o.act}" data-v="${o.v}"><span class="lbl">${o.l}${o.kind === "more" && o.on ? " (set)" : ""}</span>${o.kind === "radio" ? ic("tick", "tick") : o.kind === "switch" ? `<span class="sw"></span>` : o.kind === "more" ? `<span aria-hidden="true">…</span>` : ""}</button>`).join("") +
+          `<div class="answer" style="padding-bottom:8px">${this.countText()}</div></div>`;
+      } else if (!k) {
+        html += `<div class="ringhint" style="${leftSide ? `left:${cx + 40}px` : `right:${W - cx + 40}px`};bottom:${Hh - cy + 150}px">${this.ring.mode === "drag" ? "Slide to a choice, then lift" : "Tap a choice"}</div>`;
+      }
+      ov.innerHTML = html;
+      this.renderChrome();
+    }
+
+    // ----- actions -----
+    change(fn) { fn(); this.renderLists(true); this.renderChrome(); this.renderOverlay(false); }
+    close() { this.open = null; this.ring = null; this.slip = null; this.full = false; this.renderChrome(); this.renderOverlay(false); }
+    act(a, v, el) {
+      const s = this.st;
+      switch (a) {
+        case "mark": {
+          this.lastTouch = v; const it = this.items.find(x => x.id === v);
+          this.change(() => { it.done = !it.done; this.hist.unshift({ id: "h" + (this.hid++), kind: it.done ? "done" : "open", item: it.id, when: "Just now" }); });
+          const b = this.dev.querySelector(`.chk[data-id="${v}"]`); if (b) b.focus({ preventScroll: true });
+          return;
+        }
+        case "panel": this.open = this.open === v ? null : v; this.renderChrome(); this.renderOverlay(true); return;
+        case "card": this.open = this.open === v ? null : v; this.renderChrome(); this.renderOverlay(true); return;
+        case "side": this.side = v; this.renderChrome(); return;
+        case "close": this.close(); return;
+        case "sort": this.change(() => s.sort = v); return;
+        case "status": this.change(() => s.status = v); return;
+        case "src": this.change(() => { s.src.has(v) ? s.src.delete(v) : s.src.add(v); }); return;
+        case "range": this.change(() => { s.range = v; s.to = v === "any" ? "" : iso(TODAY); s.from = v === "any" ? "" : iso(new Date(TODAY.getTime() - (+v - 1) * 864e5)); }); return;
+        case "from": case "to": this.change(() => { s[a] = el.value; s.range = (s.from || s.to) ? "custom" : "any"; }); return;
+        case "show": this.change(() => s.show[v] = !s.show[v]); return;
+        case "clear": this.change(() => { s.status = "all"; s.src = new Set(SOURCES); s.from = ""; s.to = ""; s.range = "any"; }); return;
+        case "undo": {
+          const h = this.hist.find(x => x.id === v); const it = this.items.find(x => x.id === h.item);
+          this.change(() => { it.done = h.kind !== "done"; this.hist = this.hist.filter(x => x !== h); }); return;
+        }
+        case "r-sort": this.change(() => s.sort = v); if (this.ring && this.ring.mode !== "keep") this.close(); return;
+        case "r-status": this.change(() => s.status = v); if (this.ring) this.close(); return;
+        case "r-show": this.change(() => s.show[v] = !s.show[v]); if (this.ring && this.ring.mode === "drag") this.close(); return;
+        case "r-slip": { const pg = this.ring ? this.ring.page : "p"; this.ring = null; this.slip = { kind: v, page: pg }; this.renderOverlay(true); return; }
+      }
+    }
+    // ----- events -----
+    bind() {
+      const d = this.dev;
+      d.addEventListener("click", e => {
+        const t = e.target.closest("[data-act]"); if (!t || !d.contains(t)) return;
+        if (t.tagName === "INPUT") return;
+        if (t.dataset.ringOpt && this._dragPicked) { this._dragPicked = false; return; }
+        e.preventDefault(); this.act(t.dataset.act, t.dataset.v || t.dataset.id, t);
+      });
+      d.addEventListener("change", e => { const t = e.target; if (t.matches("input[data-act]")) this.act(t.dataset.act, null, t); });
+      d.addEventListener("keydown", e => { if (e.key === "Escape" && (this.open || this.ring || this.slip || this.full)) { this.close(); e.stopPropagation(); } });
+      // Spread: the page you touch last keeps its view; the card opens on the other page.
+      d.addEventListener("pointerdown", e => { const pg = e.target.closest("[data-pg]"); if (this.c === "spread" && this.pose === "open" && pg && !e.target.closest(".sline") && !e.target.closest(".card")) this.cardPage = pg.dataset.pg === "pl" ? "pr" : "pl"; if (this.c === "spread" && this.pose === "open" && e.target.closest(".sline")) this.cardPage = "pr"; }, true);
+      const L = this.mainList(), C = d.querySelector("[data-cont]");
+      if (C) {
+        L.addEventListener("scroll", () => { if (!this._sync) this.syncCont(); });
+        C.addEventListener("scroll", () => { if (this._sync) return; this._sync = true; L.scrollTop = Math.max(0, C.scrollTop - L.clientHeight); requestAnimationFrame(() => { this._sync = false; }); });
+      }
+      // Swipe down on a panel's head closes it.
+      d.addEventListener("pointerdown", e => {
+        const h = e.target.closest("[data-swipe-handle]"); if (!h || e.target.closest("button")) return;
+        const p = h.closest("[data-swipe]"); const y0 = e.clientY; let dy = 0;
+        h.setPointerCapture(e.pointerId);
+        const mv = ev => { dy = Math.max(0, ev.clientY - y0); p.style.transform = `translateY(${dy}px)`; };
+        const up = () => { h.removeEventListener("pointermove", mv); h.removeEventListener("pointerup", up); h.removeEventListener("pointercancel", up); if (dy > 60) this.close(); else p.style.transform = ""; };
+        h.addEventListener("pointermove", mv); h.addEventListener("pointerup", up); h.addEventListener("pointercancel", up);
+      });
+      if (this.c === "ring") this.bindRing();
+    }
+    bindRing() {
+      const d = this.dev;
+      d.querySelectorAll("[data-grip]").forEach(g => {
+        g.addEventListener("pointerdown", e => {
+          e.preventDefault();
+          if (this.ax) { this.full = !this.full; this.renderOverlay(true); return; }
+          if (this.ring && this.ring.page === g.dataset.grip) { this.close(); return; }
+          this.slip = null; this.open = null;
+          const pg = g.dataset.grip; let dragging = false, hover = null, timer = null;
+          g.setPointerCapture(e.pointerId);
+          const t0 = Date.now();
+          const hold = setTimeout(() => { dragging = true; this.ring = { page: pg, mode: "drag", sector: null }; this.renderOverlay(true); }, 180);
+          const mv = ev => {
+            if (!dragging) return;
+            const el = document.elementFromPoint(ev.clientX, ev.clientY);
+            const sec = el && el.closest("[data-ring-sector]"), opt = el && el.closest("[data-ring-opt]");
+            d.querySelectorAll(".rcol .opt.hot").forEach(o => o.classList.remove("hot"));
+            if (opt) { opt.classList.add("hot"); clearTimeout(timer); hover = null; return; }
+            if (sec) {
+              const k = sec.dataset.ringSector;
+              if (k !== this.ring.sector && hover !== k) {
+                hover = k; clearTimeout(timer);
+                const go = () => { if (this.ring) { this.ring.sector = k; this.renderOverlay(false); } };
+                this.ring.sector ? (timer = setTimeout(go, 140)) : go();
+              }
+            }
+          };
+          const up = ev => {
+            clearTimeout(hold); clearTimeout(timer);
+            g.removeEventListener("pointermove", mv); g.removeEventListener("pointerup", up); g.removeEventListener("pointercancel", up);
+            if (!dragging) { this.ring = { page: pg, mode: "tap", sector: null }; this.renderOverlay(true); return; }
+            const el = document.elementFromPoint(ev.clientX, ev.clientY);
+            const opt = el && el.closest("[data-ring-opt]"), sec = el && el.closest("[data-ring-sector]");
+            if (opt) { this.act(opt.dataset.act, opt.dataset.v, opt); if (this.ring) this.close(); return; }
+            if (sec) { const k = sec.dataset.ringSector; if (k === "history") { this.ring = null; this.slip = { kind: "history", page: pg }; this.renderOverlay(true); } else { this.ring = { page: pg, mode: "tap", sector: k }; this.renderOverlay(false); } return; }
+            this.close();
+          };
+          g.addEventListener("pointermove", mv); g.addEventListener("pointerup", up); g.addEventListener("pointercancel", up);
+        });
+        g.addEventListener("keydown", e => { if (e.key === "Enter" || e.key === " ") { e.preventDefault(); if (this.ax) { this.full = !this.full; this.renderOverlay(true); return; } if (this.ring) this.close(); else { this.ring = { page: g.dataset.grip, mode: "tap", sector: null }; this.renderOverlay(true); const f = d.querySelector("[data-ring-sector]"); if (f) f.focus(); } } });
+      });
+      d.addEventListener("click", e => {
+        const sec = e.target.closest("[data-ring-sector]"); if (!sec || !this.ring) return;
+        const k = sec.dataset.ringSector;
+        if (k === "history") { const pg = this.ring.page; this.ring = null; this.slip = { kind: "history", page: pg }; this.renderOverlay(true); return; }
+        this.ring.mode = "tap"; this.ring.sector = this.ring.sector === k ? null : k; this.renderOverlay(false);
+        const f = d.querySelector(`[data-ring-sector="${k}"]`); if (f) f.focus();
+      });
+    }
+  }
+
+  // ---------- Shell ----------
+  const CONCEPTS = {
+    tray: "A row of four buttons sits in thumb reach at the bottom. Each opens one tray of solid paper over the lower part of the list; the list behind it never moves. Tap the same button, tap the list, or swipe the tray down to close. On the open Duo the panel becomes the right page and the list keeps the left page to itself.",
+    spread: "The bottom line says the current settings in words, so most of the time nothing needs opening. Tap a phrase and a card the size of its content grows from it. On the open Duo the list reads across both pages like a book, and a card opens on the page you are not looking at.",
+    ring: "No toolbar at all: one grip in the thumb corner. Hold it and a ring of four choices fans out; slide to one, then to a value, and lift. Press, slide, lift: one gesture opens, picks and closes. A quick tap opens the same ring for tap-by-tap use and for VoiceOver. Dates and history open as a slip of paper above the grip. On the open Duo there is a grip on each outer corner, and the right page keeps the change history in view."
+  };
+  let protos = [];
+  function mount() {
+    const devs = [...document.querySelectorAll(".device")];
+    protos = [];
+    devs.forEach((d, i) => { d.dataset.fid = i === 0 ? "1" : ""; if (!d.dataset.fid) delete d.dataset.fid; });
+    const ph = document.querySelector('[data-device="iphone-regular"]');
+    if (H.pw) ph.style.setProperty("--w", H.pw + "px"); if (H.ph) ph.style.setProperty("--h", H.ph + "px");
+    devs.forEach(d => { const n = d.cloneNode(false); d.replaceWith(n); protos.push(new Proto(n, H.c, H.s)); });
+    document.getElementById("pitch").textContent = CONCEPTS[H.c];
+    fit();
+  }
+  function fit() {
+    const avail = document.getElementById("frames").clientWidth - 32;
+    document.querySelectorAll(".fw-scale").forEach(w => { const d = w.querySelector(".device"); const z = Math.min(1, (avail - 20) / (parseFloat(getComputedStyle(d).width) + 20)); w.style.zoom = z; });
+  }
+  function syncShell() {
+    document.querySelectorAll("[data-pick]").forEach(b => b.setAttribute("aria-selected", b.dataset.pick === H.c));
+    document.querySelectorAll(".ctab").forEach(t => t.hidden = H.hide.includes(t.dataset.c));
+    document.getElementById("restore").hidden = !H.hide.length;
+    document.querySelectorAll("#stateSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.s === H.s));
+    document.querySelectorAll("#themeSeg button").forEach(b => b.setAttribute("aria-pressed", b.dataset.t === H.t));
+    document.getElementById("partsBtn").setAttribute("aria-pressed", H.parts);
+    document.getElementById("frames").classList.toggle("parts-on", H.parts);
+    if (H.t === "auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", H.t);
+  }
+  function go(remount) { if (H.hide.includes(H.c)) { const left = Object.keys(CONCEPTS).filter(c => !H.hide.includes(c)); H.c = left[0] || "tray"; if (!left.length) H.hide = []; } writeHash(); syncShell(); if (remount) mount(); }
+  document.addEventListener("click", e => {
+    const p = e.target.closest("[data-pick]"); if (p) { H.c = p.dataset.pick; go(true); return; }
+    const h = e.target.closest("[data-hide]"); if (h) { if (!H.hide.includes(h.dataset.hide)) H.hide.push(h.dataset.hide); go(true); return; }
+    if (e.target.closest("#restore")) { H.hide = []; go(false); return; }
+    const s = e.target.closest("#stateSeg [data-s]"); if (s) { H.s = s.dataset.s; go(true); return; }
+    const t = e.target.closest("#themeSeg [data-t]"); if (t) { H.t = t.dataset.t; go(false); return; }
+    if (e.target.closest("#partsBtn")) { H.parts = !H.parts; go(false); }
+  });
+  window.addEventListener("hashchange", () => { const n = readHash(); const re = n.c !== H.c || n.s !== H.s || n.pw !== H.pw || n.ph !== H.ph; H = n; go(re); });
+  window.addEventListener("resize", fit);
+  go(false); mount();
+})();
+</script>
+</body>
+</html>

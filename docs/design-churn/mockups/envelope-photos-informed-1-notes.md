@@ -37,6 +37,8 @@ Mockup: `envelope-photos-informed-1.html`. Designer kind: informed. Light theme 
 20. **Keys across the hinge.** The system keyboard spans both pages on the open Duo: item 22 of `duo-card-in-hand` is provisional. The brief's "nothing may sit across the hinge" holds for app content only. Pick: unchanged.
 21. **Haptics (ux-haptics-feel-substantial).** The confirmed Remove gives one haptic. The shutter's haptic is the system's own. Pick: yes.
 22. **No limit on photos per envelope.** The brief says "a few", and no record sets a limit. The Worker refuses one photo over its size limit (`PhotoSync` `tooBig`). Pick: no limit.
+23. **Envelope page with no cards yet (Envelope faces).** In place of the candidates it reads "No cards recorded yet. Add them with Edit, and the packages they could have come from show here." Gain: no false "no package accounts for these" line, and a way on. Pick: yes, with item 16.
+24. **A print with no photo shows its note, or its card names when the note is empty.** Gain: the note ("pink bubble mailer") is the owner's own memory of how the envelope looked. Pick: yes.
 
 ## Builder needs (product code, outside the design folder)
 

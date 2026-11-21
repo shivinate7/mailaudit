@@ -394,7 +394,8 @@ function newState(c, d) {
   const st = H.s;
   const first = ITEMS.find(i => i.k==="a1");
   if (st === "copied") s.copied = "a1";
-  if (st === "menu") { s.screen = "packages"; s.revealed = "A"; s.menu = "A"; }
+  // the link menu belongs to a header whose id is a link: Order slip's header has none
+  if (st === "menu") { s.screen = "packages"; s.revealed = "A"; if (c !== "slip") s.menu = "A"; }
   if (st === "jumped") { s.screen = "packages"; s.revealed = "A"; }
   if (st === "slip" && c === "slip") s.slip = "A";
   if (st === "browser") s.browser = first.orderId;

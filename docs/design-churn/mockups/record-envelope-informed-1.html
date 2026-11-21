@@ -181,7 +181,9 @@ code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
 .drow[aria-disabled="true"] { color:var(--inkSoft); border-color:var(--line); cursor:default; }
 .drow.isarmed { background:var(--paper); }
 .dock { flex:none; border-top:1px solid var(--line); background:var(--paper); padding:8px 16px; display:flex; flex-direction:column; gap:8px; }
-.dock .sugg { max-height:var(--dock-max, 140px); overflow-y:auto; }
+/* Two match rows show above the field (the rest scroll), so the slip keeps the envelope's cards in view while typing. */
+.dock .sugg { max-height:var(--dock-max, 90px); overflow-y:auto; }
+.page.r .dock .sugg, .page.r .slip .sugg { --dock-max:none; }
 /* At AX5 the dock shows one match and scrolls the rest, so the two-line field (item 57 a) still clears the keys. */
 .ax5 .dock .sugg { --dock-max:84px; }
 .ax5 .dock { padding:4px 16px; gap:4px; }
@@ -230,21 +232,54 @@ code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
   <h2>Today</h2>
   <span class="tagname today">Today: the composer as OrphanedView.swift ComposerView draws it</span>
   <p class="sub">On focus the page scrolls the Save row up (<code>scrollTo(saveRow)</code>), so the composer's head leaves the top. Nothing hides the keys, and they cover the tab bar. The armed Discard panel lines up with the envelope header and covers it. On the web, Discard leaves the envelope's draft behind.</p>
-  <div class="scroller"><div class="row" data-frames="today"></div></div>
+  <div class="scroller"><div class="row" data-frames="today">
+      <div class="cell"><div class="cap"><b>Folded, default text.</b> iPhone Duo folded, 466 × 678 pt.</div>
+      <div class="dev folded default" data-c="today" data-i="0" data-device="iphone-duo-folded"></div>
+      <div class="read"></div></div>
+      <div class="cell"><div class="cap"><b>Open, default text.</b> iPhone Duo open, 951 × 669 pt, fold 455.5 to 495.5.</div>
+      <div class="dev open default" data-c="today" data-i="1" data-device="iphone-duo-unfolded"></div>
+      <div class="read"></div></div>
+    </div></div>
 </section>
 
 <section class="concept" id="sec-pinned" data-c="pinned">
   <h2>Pinned head</h2>
   <span class="tagname new">New: the head pins at the top</span><span class="tagname new">New: the action bar pins above the keys</span><span class="tagname new">New: Discard draft, armed in place</span><span class="tagname new">New: drag the list to hide the keys</span>
   <p class="sub">The composer stays in the list, as today. Its head names the envelope and the cards ready, and pins under the status bar. Cancel, Discard draft and Save move to a 53 pt bar on the keys (the Card in Hand Post bar's shape, item 103 b). Discard draft arms in the bar's own row, so its ask can never reach the head. The bar is the composer's foot, not a second toolbar.</p>
-  <div class="scroller"><div class="row" data-frames="pinned"></div></div>
+  <div class="scroller"><div class="row" data-frames="pinned">
+      <div class="cell"><div class="cap"><b>Folded, default text.</b> iPhone Duo folded, 466 × 678 pt.</div>
+      <div class="dev folded default" data-c="pinned" data-i="0" data-device="iphone-duo-folded"></div>
+      <div class="read"></div></div>
+      <div class="cell"><div class="cap"><b>Open, default text.</b> iPhone Duo open, 951 × 669 pt, fold 455.5 to 495.5.</div>
+      <div class="dev open default" data-c="pinned" data-i="1" data-device="iphone-duo-unfolded"></div>
+      <div class="read"></div></div>
+      <div class="cell"><div class="cap"><b>Large phone, default text.</b> Large phone: no size is written; drawn at the brief's 466 × 678 pt.</div>
+      <div class="dev phone default" data-c="pinned" data-i="2" data-device="large-phone"></div>
+      <div class="read"></div></div>
+      <div class="cell"><div class="cap"><b>Folded, AX5 (largest accessibility size).</b> iPhone Duo folded, 466 × 678 pt.</div>
+      <div class="dev folded ax5" data-c="pinned" data-i="3" data-device="iphone-duo-folded"></div>
+      <div class="read"></div></div>
+    </div></div>
 </section>
 
 <section class="concept" id="sec-sheet" data-c="sheet">
   <h2>Envelope sheet <small style="font:400 14px -apple-system, system-ui, sans-serif;color:var(--inkSoft)">(the bold one)</small></h2>
   <span class="tagname new">New: the composer opens as a sheet</span><span class="tagname new">New: the sheet's toolbar is the head</span><span class="tagname new">New: the card field sits on the keys, matches rise from it</span><span class="tagname new">New: open Duo, envelope left, matches right</span>
   <p class="sub">Recording becomes its own place. The sheet's toolbar says which envelope this is, with Cancel leading and Save trailing, as iOS sheets do. The envelope's cards fill the middle like a slip. The card field sits directly on the keys, under the thumb, and the matches rise out of it, best match nearest the field. Discard draft sits at the end of the slip, far from the head, and arms in place. On the open Duo the envelope takes the left page and the matches the right.</p>
-  <div class="scroller"><div class="row" data-frames="sheet"></div></div>
+  <div class="scroller"><div class="row" data-frames="sheet">
+      <div class="cell"><div class="cap"><b>Folded, default text.</b> iPhone Duo folded, 466 × 678 pt.</div>
+      <div class="dev folded default" data-c="sheet" data-i="0" data-device="iphone-duo-folded"></div>
+      <div class="read"></div></div>
+      <div class="cell"><div class="cap"><b>Open, default text.</b> iPhone Duo open, 951 × 669 pt, fold 455.5 to 495.5.</div>
+      <div class="dev open default" data-c="sheet" data-i="1" data-device="iphone-duo-unfolded"></div>
+      <div class="read"></div></div>
+      <div class="cell"><div class="cap"><b>Large phone, default text.</b> Large phone: no size is written; drawn at the brief's 466 × 678 pt.</div>
+      <div class="dev phone default" data-c="sheet" data-i="2" data-device="large-phone"></div>
+      <div class="read"></div></div>
+      <div class="cell"><div class="cap"><b>Folded, AX5 (largest accessibility size).</b> iPhone Duo folded, 466 × 678 pt.</div>
+      <div class="dev folded ax5" data-c="sheet" data-i="3" data-device="iphone-duo-folded"></div>
+      <div class="read"></div></div>
+    </div></div>
 </section>
 
 <section class="how">
@@ -307,6 +342,14 @@ function dirty(m, t) {
   const b = base(m, t);
   return d.input !== "" || d.note !== b.note || JSON.stringify(d.entries) !== JSON.stringify(b.entries);
 }
+/* An edit's ask names a true count: cards added or taken away against the saved envelope, plus one for a changed note. */
+function changesOf(m, t) {
+  const d = m.drafts.get(t), b = base(m, t), q = {};
+  for (const e of b.entries) q[norm(e.name)] = (q[norm(e.name)] || 0) - e.qty;
+  for (const e of d.entries) q[norm(e.name)] = (q[norm(e.name)] || 0) + e.qty;
+  const n = Object.values(q).reduce((s, v) => s + Math.abs(v), 0) + (d.note !== b.note ? 1 : 0);
+  return n ? `${n} change${n === 1 ? "" : "s"}` : "what you typed";
+}
 function matches(d) {
   const q = norm(d.input); if (!q) return [];
   const toks = q.split(" ");
@@ -346,9 +389,9 @@ function act(c, a, arg) {
     // In the sheet, Discard draft sits in the slip: pressing it ends typing, so the keys go and the slip has room for the ask.
     case "armd": if (!dirty(m, t)) return; if (c === "sheet") m.keys = false; arm(c, "draft"); break;
     case "confd": {
-      const n = total(d);
+      const n = total(d), ch = changesOf(m, t);
       m.drafts.delete(t); m.composing = null; m.keys = false; m.armed = null; m.hold = null;
-      m.notice = t === "new" ? `Draft discarded · ${cardsOf(n)}. Nothing was saved.` : `Changes discarded. The envelope keeps its saved cards.`;
+      m.notice = t === "new" ? `Draft discarded · ${cardsOf(n)}. Nothing was saved.` : `Discarded ${ch}. The envelope keeps its saved cards.`;
       break;
     }
     case "disarm": m.armed = null; clearTimeout(timers[c]); break;
@@ -357,7 +400,9 @@ function act(c, a, arg) {
     case "inc": d.entries[arg].qty++; break;
     case "dec": if (d.entries[arg].qty > 1) d.entries[arg].qty--; else d.entries.splice(arg, 1); break;
     case "field": m.focus = arg; m.keys = true; break;
-    case "key": if (m.focus === "name") { d.input += arg; m.hold = null; } else d.note += arg; break;
+    case "shift": m.shift = !m.shift; break;
+    case "key": { const ch = m.shift ? arg.toUpperCase() : arg; m.shift = false;
+      if (m.focus === "name") { d.input += ch; m.hold = null; } else d.note += ch; break; }
     case "back": if (m.focus === "name") { d.input = d.input.slice(0, -1); m.hold = null; } else d.note = d.note.slice(0, -1); break;
     case "ret": if (m.focus === "name") { addName(d, d.input); m.hold = null; } else m.keys = false; break;
     case "armc": arm(c, "card:" + arg); break;
@@ -383,7 +428,7 @@ function keysHTML(g) {
   const row = s => `<div class="kr">${[...s].map(k => B("key", k, "", k)).join("")}</div>`;
   return `<div class="keys" data-m="keys" style="top:${g.keys}px"><span class="kn">system keys, frame from y ${g.keys}</span>
     ${row("qwertyuiop")}${row("asdfghjkl")}
-    <div class="kr">${B("hidekeys", undefined, "mod", "⌄", 'aria-label="Hide keys"')}${[..."zxcvbnm"].map(k => B("key", k, "", k)).join("")}${B("back", undefined, "mod", "⌫", 'aria-label="Delete"')}</div>
+    <div class="kr">${B("shift", undefined, "mod", "⇧", 'aria-label="Shift"')}${[..."zxcvbnm"].map(k => B("key", k, "", k)).join("")}${B("back", undefined, "mod", "⌫", 'aria-label="Delete"')}</div>
     <div class="kr">${B("key", " ", "sp", "space")}${B("ret", undefined, "ret", "done")}</div></div>`;
 }
 function tabbar(m, x, w, y) {
@@ -464,7 +509,7 @@ function pinnedBar(m, c) {
   const t = m.composing; const d = draft(m, t); const n = total(d);
   if (m.armed === "draft") {
     return `<div class="pbar capped tag-new" data-m="bar"><span data-m="ask" style="display:contents">${B("disarm", undefined, "mini", "Cancel", "data-first")}${
-      B("confd", undefined, "mini armed grow", t === "new" ? `Tap again to discard ${cardsOf(n)}` : "Tap again to discard changes")}</span></div>`;
+      B("confd", undefined, "mini armed grow", t === "new" ? `Tap again to discard ${cardsOf(n)}` : `Tap again to discard ${changesOf(m, t)}`)}</span></div>`;
   }
   const can = dirty(m, t);
   return `<div class="pbar capped tag-new" data-m="bar">${B("cancel", undefined, "mini", "Cancel")}${
@@ -487,10 +532,11 @@ function sheetHTML(m, c, g, top, bottom, focusId, half) {
   const can = dirty(m, t);
   const discard = m.armed === "draft"
     ? `<div class="drow isarmed tag-new" data-m="ask">${B("disarm", undefined, "mini", "Cancel", "data-first")}${
-        B("confd", undefined, "mini armed", t === "new" ? `Tap again to discard ${cardsOf(n)}` : "Tap again to discard changes")}</div>`
+        B("confd", undefined, "mini armed", t === "new" ? `Tap again to discard ${cardsOf(n)}` : `Tap again to discard ${changesOf(m, t)}`)}</div>`
     : B("armd", undefined, "drow", "Discard draft", can ? "" : 'aria-disabled="true" title="Nothing to discard yet"');
   const tool = (lead, trail) => `<div class="stool capped tag-new" data-m="head" ${focusId ? `id="${focusId}"` : ""}>${lead}<div class="ttl"><b>${esc(w.title)}</b><span>${n ? cardsOf(n) + " ready" : "no cards yet"}${w.note ? " · " + esc(w.note) : ""}</span></div>${trail}</div>`;
-  const save = B("save", undefined, "mini" + (n ? " ready" : ""), "Save", n ? "" : 'aria-disabled="true" title="Add a card first"');
+  // One name for the act on every screen (ux-one-plain-name): "Save envelope", as the list composer calls it.
+  const save = B("save", undefined, "mini" + (n ? " ready" : ""), "Save envelope", n ? "" : 'aria-disabled="true" title="Add a card first"');
   const cancel = B("cancel", undefined, "mini", "Cancel");
   const slip = `<div class="slip" data-drag>
       <div class="ledger">${entriesHTML(d)}</div>${fieldHTML(m, d, "note", "Note (optional) — tracking #, sender, mailer…")}${discard}</div>`;
@@ -546,11 +592,7 @@ function render(c) {
   const host = document.querySelector(`[data-frames="${c}"]`); if (!host) return;
   const m = M[c];
   const frames = c === "today" ? FRAMES.slice(0, 2) : FRAMES;
-  if (!host.children.length) {
-    host.innerHTML = frames.map((fr, i) => `<div class="cell"><div class="cap"><b>${fr.note}.</b> ${GEO[fr.dev].label}.</div>
-      <div class="dev ${fr.dev} ${fr.size}" data-c="${c}" data-i="${i}" data-device="${fr.dev === "open" ? "iphone-duo-unfolded" : fr.dev === "folded" ? "iphone-duo-folded" : "large-phone"}"></div>
-      <div class="read"></div></div>`).join("");
-  }
+  // The frames are static markup (folded first), so a reader of the file sees each pose without running it.
   host.querySelectorAll(".dev").forEach((dev, i) => {
     const keep = [...dev.querySelectorAll("[data-drag]")].map(s => s.scrollTop);
     dev.innerHTML = frameHTML(c, frames[i], i);
@@ -674,7 +716,6 @@ document.addEventListener("keydown", e => {
   const m = M[active]; if (!m.composing || !m.keys || m.tab !== "orphaned") return;
   if (e.key === "Backspace") { e.preventDefault(); act(active, "back"); }
   else if (e.key === "Enter") { e.preventDefault(); act(active, "ret"); }
-  else if (e.key === "Escape") act(active, "hidekeys");
   else if (e.key.length === 1 && !e.metaKey && !e.ctrlKey) { e.preventDefault(); act(active, "key", e.key); }
 });
 document.querySelectorAll("[data-hide]").forEach(b => b.addEventListener("click", () => {

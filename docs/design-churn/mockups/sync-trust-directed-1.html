@@ -115,7 +115,7 @@ h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
 .ph .st { font-family:var(--mono); font-size:calc(11px * var(--rc)); color:var(--inkSoft); min-width:6ch; text-align:right; }
 .ln { display:flex; align-items:center; gap:8px; min-height:45px; border-top:1px solid var(--line); padding:0 12px 0 4px; }
 .ln .bx { flex:0 0 44px; height:44px; display:grid; place-items:center; }
-.ln .bx i { width:28px; height:28px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; font-style:normal; color:var(--card); font-size:16px; }
+.ln .bx i { color:var(--card); width:28px; height:28px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; font-style:normal; color:var(--card); font-size:16px; }
 .ln.got .bx i { background:var(--green); border-color:var(--green); }
 .ln .nm { flex:1; min-width:0; font-size:calc(14px * var(--rb)); }
 .ln .q { font-family:var(--mono); font-size:calc(11px * var(--rc)); color:var(--inkSoft); white-space:nowrap; }
@@ -157,7 +157,7 @@ h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
 .navbar { display:grid; grid-template-columns:minmax(64px,1fr) auto minmax(64px,1fr); align-items:center; min-height:52px; padding:0 8px; flex:none;
   font-family:-apple-system, system-ui, sans-serif; }
 .navbar .nt { font-size:17px; font-weight:600; text-align:center; } /* Headline 17 pt (HIG Typography, Large) */
-.navbar button { min-height:44px; min-width:44px; padding:0 8px; font-size:17px; color:var(--accent); }
+.navbar button { min-height:44px; min-width:44px; padding:0 8px; font-size:17px; color:var(--accent); display:inline-flex; align-items:center; gap:4px; }
 .navbar .done { justify-self:end; font-weight:600; } .navbar .back { justify-self:start; }
 .dbody { flex:1; overflow-y:auto; overscroll-behavior:contain; padding:4px 16px 120px; display:flex; flex-direction:column; gap:20px; }
 .rpage { position:absolute; inset:0; background:var(--card); display:flex; flex-direction:column; padding-top:var(--sat); border-left:1px solid var(--line); }
@@ -178,7 +178,7 @@ h1 { font-family:var(--cochin); font-size:26px; margin:16px 0 4px; }
 .chg li i { font-style:normal; font-family:var(--mono); color:var(--green); text-align:center; }
 .chg li.rm i { color:var(--manilaInk); }
 .chg li small { grid-column:2; font-family:var(--mono); font-size:calc(10.5px * var(--rc)); color:var(--inkSoft); }
-.chg ul { margin:0; padding:0; }
+ul.chg { margin:0; padding:0; }
 .btn { min-height:44px; border-radius:8px; border:1px solid var(--line); background:var(--paper); padding:0 14px; font-size:calc(15px * var(--rb)); display:inline-flex;
   align-items:center; justify-content:center; font-weight:700; color:var(--ink); }
 .btn.pri { background:var(--accent); border-color:var(--accent); color:var(--card); }
@@ -288,7 +288,8 @@ const STATES = [
   ["behind","Tally check-in, then Packages"], ["stale","No agreement for a day"], ["failed","Server not reached"], ["fresh","Not synced yet"] ];
 const OPTIONS = [
   ["list","Change list in the merge detail"], ["other","Other device's last sync"], ["removal","Removal line on working screens"],
-  ["spread","Detail on the right page (open Duo)"], ["keptroute","Kept copy route"], ["reread","Packages reads again"] ];
+  ["spread","Detail on the right page (open Duo)"], ["keptroute","Kept copy route"], ["reread","Packages reads again"],
+  ["beforesync","Route to the copy before the merge"], ["staleline","Stale line on native"], ["ledgerrow","Ledger row into the detail"] ];
 const VIEWS = [ ["","Sheet closed"], ["sheet","Detail open"], ["list","Change list open"], ["history","Copy before the merge"], ["keptpage","Kept copy page"] ];
 
 const S = { c:"seal", s:"agreed", o:"", tab:"packages", fix:"new", seen:0, tc:0, hide:new Set(), arm:0, share:0, tags:1 };
@@ -332,6 +333,13 @@ function markLabel() {
 }
 
 /* ============ drawing helpers ============ */
+/* drawn glyphs: one stroke weight, as SF Symbols draws them, never a text character */
+const G = {
+  chev:(d) => `<svg viewBox="0 0 12 12" width="12" height="12" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="${{r:"M4.5 2 8.5 6 4.5 10",l:"M7.5 2 3.5 6 7.5 10",u:"M2 7.5 6 3.5 10 7.5",d:"M2 4.5 6 8.5 10 4.5"}[d]}"/></svg>`,
+  check:`<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3.5 8.5 6.5 11.5 12.5 4.5"/></svg>`,
+  dash:`<svg viewBox="0 0 16 16" width="16" height="16" aria-hidden="true" fill="none" stroke="var(--inkSoft)" stroke-width="2.2" stroke-linecap="round"><path d="M4 8h8"/></svg>`,
+};
+
 const esc = (s) => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;");
 function tag(kind, text) { return S.tags ? ` class-tag="${kind}" data-tag="${esc(text)}"` : ""; }
 /* class-tag is folded into class by fixTags() after render, so a caller can write tag() beside its own class */
@@ -376,7 +384,7 @@ function masthead(fid) {
   if (S.c === "seal") {
     seal = `<button class="seal" id="${fid === "folded" ? "mark" : "mark-" + fid}" data-act="mark" aria-label="${esc(markLabel())}"${tag("new","New: the seal is the mark")}>${sealSVG(k)}</button>`;
   } else {
-    seal = `<span class="seal" aria-label="MANIFEST seal"${S.c === "today" ? tag("today","Today: ornament") : ""}>${sealSVG("whole")}</span>`;
+    seal = `<span class="seal" data-id="mark" aria-label="MANIFEST seal"${S.c === "today" ? tag("today","Today: ornament") : ""}>${sealSVG("whole")}</span>`;
   }
   let cs = "";
   if (S.c === "countersign") {
@@ -398,7 +406,7 @@ function masthead(fid) {
 }
 
 function advisory() {
-  if (S.s === "stale") return `<button class="advis" data-act="tosync"${tag("new","New on native: the stale case (web has it)")}>Not backed up since ${STALE.day} — tap to fix</button>`;
+  if (S.s === "stale" && on("staleline")) return `<button class="advis" data-act="tosync"${tag("new","New on native: the stale case (web has it)")}>Not backed up since ${STALE.day} — tap to fix</button>`;
   if (S.s === "failed") return `<button class="advis" data-act="tosync"${tag("today","Today: the advisory line")}>The sync server could not be reached — tap to fix</button>`;
   if (S.s === "removed" && on("removal") && !S.seen) return `<button class="advis" data-act="mark"${tag("new","New: removal line (option)")}>The other device un-checked 1 card — tap to see</button>`;
   return "";
@@ -421,7 +429,7 @@ function pkgList(fid, part) {
       const full = got >= l.q;
       const staleTag = l.k === "bolt-l" && S.s === "behind" && S.tc
         ? (fixNow ? (S.fix === "fail" ? "" : tag("new","New: read again on tab show")) : tag("today","Today: old row, Tally checked it in")) : "";
-      return `<div class="ln${full ? " got" : ""}"${staleTag}><span class="bx"><i>${full ? "✓" : ""}</i></span><span class="nm">${l.name}</span><span class="q">${got}/${l.q}</span></div>`;
+      return `<div class="ln${full ? " got" : ""}"${staleTag}><span class="bx"><i>${full ? G.check : ""}</i></span><span class="nm">${l.name}</span><span class="q">${got}/${l.q}</span></div>`;
     }).join("");
     const g = p.lines.reduce((a, l) => a + Math.min(l.q, (S.s === "removed" && l.k === "cs-p") ? 0 : (l.k === "bolt-l" && S.s === "behind" && S.tc && fixNow) ? 1 : l.got), 0);
     const t = p.lines.reduce((a, l) => a + l.q, 0);
@@ -440,7 +448,7 @@ function tallyList() {
   return `${advisory()}<div class="list">` + rows.map(([n, cp, g, q, k]) => {
     const can = k === "bolt" && !S.tc && S.s === "behind";
     return `<div class="trow"><button class="bx" style="flex:0 0 44px;height:44px;display:grid;place-items:center" ${can ? 'data-act="tallycheck" aria-label="Check in one Lightning Bolt"' : 'aria-label="Check in"'}${can ? tag("today","Today: tap to check one in") : ""}>
-      <i style="width:28px;height:28px;border:1.5px solid ${g>=q?"var(--green)":"var(--inkSoft)"};background:${g>=q?"var(--green)":"transparent"};border-radius:6px;display:grid;place-items:center;font-style:normal;color:var(--card)">${g>=q?"✓":(g>0?"–":"")}</i></button>
+      <i style="width:28px;height:28px;border:1.5px solid ${g>=q?"var(--green)":"var(--inkSoft)"};background:${g>=q?"var(--green)":"transparent"};border-radius:6px;display:grid;place-items:center;font-style:normal;color:var(--card)">${g>=q?G.check:(g>0?G.dash:"")}</i></button>
       <span class="nm">${n}<span class="cp">${cp}</span></span><span class="q">${g}/${q}</span></div>`;
   }).join("") + `</div>`;
 }
@@ -451,7 +459,7 @@ function ledgerTab() {
   return `<div class="lgroup"><button class="lrow" aria-expanded="true"><span><span class="t">Sync</span><span class="s">${sub} — tap to close</span></span><span class="v${fixWord ? " fix" : ""}">${fixWord ? "Check" : "On"}</span></button>
     <div class="part"><b>Server</b><span>${S.s === "failed" ? "Could not be reached" : "Connected"}</span></div>
     <div class="part"><b>Last sync</b><span>${S.s === "stale" ? STALE.full : S.s === "fresh" ? "Not yet" : AGREED.full}</span></div>
-    <button class="part" data-act="mark" style="width:100%;min-height:44px;align-items:center"${tag("new","New: second way in to the same detail")}><b>Merges and kept copies</b><span style="color:var(--accent)">Show ›</span></button>
+    ${on("ledgerrow") ? "" : "<!--"}<button class="part" data-act="mark" style="width:100%;min-height:44px;align-items:center"${tag("new","New: second way in to the same detail")}><b>Merges and kept copies</b><span style="color:var(--accent)">Show ${G.chev("r")}</span></button>${on("ledgerrow") ? "" : "-->"}
     <div class="lrow"><span><span class="t">History</span><span class="s">Saved versions on this device</span></span><span class="v">Show</span></div>
     <div class="lrow"><span><span class="t">Backup</span><span class="s">Share the ledger as a file</span></span><span class="v">Share</span></div></div>`;
 }
@@ -488,7 +496,7 @@ function verdict() {
 function parts() {
   const last = S.s === "stale" ? STALE.full : S.s === "fresh" ? "Not yet" : AGREED.full;
   const srv = S.s === "failed" ? "Could not be reached" : S.s === "fresh" ? "No sync key on this device" : "Connected";
-  const other = on("other") && S.s !== "fresh" ? `<div class="part"${tag("new","New: needs the server to keep it")}><b>Other device last synced</b><span>${S.s === "stale" ? "Nov 20, 8:51 PM" : "Nov 20, 9:10 PM"}</span></div>` : "";
+  const other = on("other") && S.s !== "fresh" ? `<div class="part" data-id="other-sync"${tag("new","New: needs the server to keep it")}><b>Other device last synced</b><span>${S.s === "stale" ? "Nov 20, 8:51 PM" : "Nov 20, 9:10 PM"}</span></div>` : "";
   return `<div class="parts"><div class="part"${tag("today","Today: Last sync row")}><b>Last sync</b><span>${last}</span></div><div class="part"><b>Server</b><span>${srv}</span></div>${other}</div>`;
 }
 function mergeSec() {
@@ -499,17 +507,17 @@ function mergeSec() {
   const n = m.items.length;
   const open = S.o === "list";
   const list = on("list")
-    ? `<button class="disc" data-act="${open ? "sheet" : "list"}" aria-expanded="${open}"${tag("new","New: the list, from a diff on this device")}><span>${open ? "Hide" : "Show"} what changed (${n})</span><span class="chev">${open ? "⌃" : "⌄"}</span></button>`
+    ? `<button class="disc" data-act="${open ? "sheet" : "list"}" aria-expanded="${open}"${tag("new","New: the list, from a diff on this device")}><span>${open ? "Hide" : "Show"} what changed (${n})</span><span class="chev">${G.chev(open ? "u" : "d")}</span></button>`
       + (open ? `<ul class="chg">` + m.items.map(([g, a, b]) => `<li class="${g === "−" ? "rm" : ""}"><i>${g}</i><span>${a}</span><small>${b}</small></li>`).join("") + `</ul>` : "")
     : "";
-  const lost = S.s === "removed"
-    ? `<button class="disc" data-act="history"${tag("new","New: route to the before-sync version")}><span>Your copy before this merge</span><span class="chev">›</span></button>` : "";
+  const lost = S.s === "removed" && on("beforesync")
+    ? `<button class="disc" data-act="history"${tag("new","New: route to the before-sync version")}><span>Your copy before this merge</span><span class="chev">${G.chev("r")}</span></button>` : "";
   return `<div class="sec"><h3>Last merge, ${AGREED.time}</h3><p${tag("today","Today: SyncClient.mergeNotice, unshown")}>${m.sentence}</p>${list}${lost}</div>`;
 }
 function keptSec() {
   if (S.s !== "kept") return "";
   return `<div class="sec"><h3>Kept copy</h3><p>1 entry could not be read; the original is kept on this device.</p>
-    ${on("keptroute") ? `<button class="disc" data-act="kept"${tag("new","New: route to the kept copy")}><span>Open the kept copy</span><span class="chev">›</span></button>` : ""}</div>`;
+    ${on("keptroute") ? `<button class="disc" data-act="kept"${tag("new","New: route to the kept copy")}><span>Open the kept copy</span><span class="chev">${G.chev("r")}</span></button>` : ""}</div>`;
 }
 function behindSec() {
   if (!(S.s === "behind" && S.fix === "fail" && S.tc)) return "";
@@ -540,7 +548,7 @@ function detailBody() {
 }
 function detail(asPage) {
   const d = detailBody();
-  const nav = `<div class="navbar">${d.back ? `<button class="back" data-act="sheet">‹ ${d.back}</button>` : "<span></span>"}<span class="nt">${d.title}</span><button class="done" data-act="close">Done</button></div>`;
+  const nav = `<div class="navbar">${d.back ? `<button class="back" data-act="sheet">${G.chev("l")} ${d.back}</button>` : "<span></span>"}<span class="nt">${d.title}</span><button class="done" data-act="close">Done</button></div>`;
   const toast = S.share ? `<div class="toast">The share sheet opens here, as Backup's does.</div>` : "";
   if (asPage) return `<div class="rpage"${tag("new","New: detail on the right page")}>${nav}<div class="dbody">${d.body}</div>${toast}</div>`;
   return `<div class="scrim" data-act="close"></div><div class="sheet" role="dialog" aria-label="${d.title}"><div class="grab"></div>${nav}<div class="dbody">${d.body}</div>${toast}</div>`;
@@ -576,6 +584,13 @@ function draw() {
   el.innerHTML = `${statusBar}<div class="pg l"><div class="scroll">${screenContent("open", "l")}</div></div><div class="fold"><span>FOLD 40 PT</span></div>`
     + `<div class="pg r">${right}${tabbar()}</div>${open && !asPage ? `<div class="pg l" style="z-index:12">${detail(false)}</div>` : ""}`;
   document.querySelectorAll(".dev").forEach(fixTags);
+  /* focus ids for the waiting page: plain in the folded frame, suffixed in the others */
+  for (const [id, sfx] of [["f-folded",""],["f-open","-open"],["f-phone","-phone"],["f-ax5","-ax5"]]) {
+    const f = document.getElementById(id);
+    f.querySelectorAll("[data-id]").forEach((n) => { n.id = n.getAttribute("data-id") + sfx; });
+    const adv = f.querySelector(".advis"); if (adv) adv.id = "advisory-line" + sfx;
+    const det = f.querySelector(".rpage, .sheet"); if (det) det.id = "detail" + sfx;
+  }
   document.body.classList.toggle("notags", !S.tags);
   controls();
   say();

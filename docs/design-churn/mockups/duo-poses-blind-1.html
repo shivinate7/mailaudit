@@ -1,0 +1,834 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Duo Poses Blind</title>
+<style>
+/* Tokens. Space steps and the 8 px radius come from the house tokens file; colours are this
+   designer's own, by role. Type sizes are Apple's Dynamic Type text styles (Large, the default,
+   and AX5), read 2026-11-21. In a device frame 1 px stands for 1 pt. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px;
+  --radius: 8px;
+
+  --surface: #eef1f4;
+  --surface-raised: #ffffff;
+  --surface-key: #dde2e8;
+  --surface-key-press: #c9d0d9;
+  --text: #161b22;
+  --text-2: #56606c;
+  --line: #c3cad3;
+  --accent: #2f4bd8;
+  --on-accent: #ffffff;
+  --ok: #1e7a4c;
+  --wait: #8a5200;
+  --late: #b42318;
+  --late-soft: #fbe4e1;
+  --hinge: #20252c;
+  --bezel: #2a3038;
+  --page: #e4e8ed;
+  --ann: #6b3fa0;
+  --sample: #fff3c4;
+  --sample-text: #4a3b00;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #0f1216; --surface-raised: #1a1f26; --surface-key: #252b33; --surface-key-press: #333b45;
+    --text: #e6eaf0; --text-2: #9aa4b1; --line: #343c47; --accent: #8ea2ff; --on-accent: #0f1216;
+    --ok: #58c08b; --wait: #e0a84e; --late: #f08a80; --late-soft: #3a1d1b; --hinge: #000000;
+    --bezel: #05070a; --page: #171b20; --ann: #c9a6f2; --sample: #3d3410; --sample-text: #f3e6b0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #0f1216; --surface-raised: #1a1f26; --surface-key: #252b33; --surface-key-press: #333b45;
+  --text: #e6eaf0; --text-2: #9aa4b1; --line: #343c47; --accent: #8ea2ff; --on-accent: #0f1216;
+  --ok: #58c08b; --wait: #e0a84e; --late: #f08a80; --late-soft: #3a1d1b; --hinge: #000000;
+  --bezel: #05070a; --page: #171b20; --ann: #c9a6f2; --sample: #3d3410; --sample-text: #f3e6b0;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--text);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: 1rem; line-height: 1.4;
+  -webkit-font-smoothing: antialiased;
+}
+button { font: inherit; color: inherit; }
+
+/* ---------- Page chrome, outside the devices ---------- */
+.sample {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--sample); color: var(--sample-text);
+  padding: var(--space-2) var(--space-4); font-weight: 600; font-size: 0.875rem;
+  border-bottom: 1px solid var(--line);
+}
+.chrome { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); max-inline-size: 90rem; margin-inline: auto; }
+.chrome h1 { margin: 0; font-size: 1.5rem; line-height: 1.2; }
+.chrome p { margin: 0; color: var(--text-2); max-inline-size: 70ch; }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: end; }
+.ctl { display: flex; flex-direction: column; gap: var(--space-1); }
+.ctl > span { font-size: 0.8125rem; color: var(--text-2); }
+.seg { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); padding: var(--space-1); background: var(--surface-key); border-radius: var(--radius); }
+.seg button { min-height: 36px; padding: 0 var(--space-3); border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; font-size: 0.875rem; }
+.seg button[aria-pressed="true"] { background: var(--surface-raised); font-weight: 600; border-color: var(--line); }
+.hidden-list { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; font-size: 0.875rem; color: var(--text-2); }
+.hidden-list button { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface-raised); cursor: pointer; }
+
+.concepts { display: flex; flex-direction: column; gap: var(--space-10); padding: 0 var(--space-4) var(--space-10); max-inline-size: 120rem; margin-inline: auto; }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); scroll-margin-top: var(--space-10); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; justify-content: space-between; }
+.concept-head h2 { margin: 0; font-size: 1.25rem; }
+.concept-head p { margin: 0; color: var(--text-2); max-inline-size: 72ch; }
+.concept-head .hide { min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface-raised); cursor: pointer; font-size: 0.875rem; }
+.kind { font-size: 0.8125rem; color: var(--text-2); }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+.dev { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 100%; }
+.dev[hidden] { display: none; }
+.dev figcaption { font-size: 0.8125rem; color: var(--text-2); }
+.dev figcaption b { color: var(--text); font-weight: 600; }
+.fit { position: relative; overflow: hidden; border-radius: 20px; background: var(--bezel); }
+.fit > .screen { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
+figure { margin: 0; }
+
+/* ---------- Inside a device. 1 px = 1 pt. ---------- */
+.screen {
+  --fs-lt: 34px; --lh-lt: 41px; --fs-t1: 28px; --lh-t1: 34px; --fs-t2: 22px; --lh-t2: 28px;
+  --fs-t3: 20px; --lh-t3: 25px; --fs-hl: 17px; --lh-hl: 22px; --fs-body: 17px; --lh-body: 22px;
+  --fs-call: 16px; --lh-call: 21px; --fs-sub: 15px; --lh-sub: 20px; --fs-foot: 13px; --lh-foot: 18px;
+  --fs-cap: 12px; --lh-cap: 16px;
+  --key-h: 52px;
+  background: var(--hinge); color: var(--text);
+  font-family: -apple-system, system-ui, sans-serif; font-size: var(--fs-body); line-height: var(--lh-body);
+  font-variant-numeric: tabular-nums;
+  display: grid; outline: none;
+}
+.screen[data-ax="ax5"] {
+  --fs-lt: 60px; --lh-lt: 70px; --fs-t1: 58px; --lh-t1: 68px; --fs-t2: 56px; --lh-t2: 66px;
+  --fs-t3: 55px; --lh-t3: 65px; --fs-hl: 53px; --lh-hl: 62px; --fs-body: 53px; --lh-body: 62px;
+  --fs-call: 51px; --lh-call: 60px; --fs-sub: 49px; --lh-sub: 58px; --fs-foot: 44px; --lh-foot: 52px;
+  --fs-cap: 43px; --lh-cap: 51px;
+  --key-h: 72px;
+}
+.screen:focus-visible { box-shadow: 0 0 0 3px var(--accent); }
+.screen[data-pose="folded"], .screen[data-pose="phone"] { grid-template: 1fr / 1fr; }
+.screen[data-pose="book"] { grid-template: 1fr / 455.5px 40px 455.5px; }
+.screen[data-pose="laptop"] { grid-template: 455.5px 40px 455.5px / 1fr; }
+.hinge { background: var(--hinge); }
+
+.pg {
+  position: relative; overflow: hidden; background: var(--surface);
+  display: flex; flex-direction: column; min-width: 0; min-height: 0;
+}
+/* Safe areas: the env() insets come first; the fallback values are this designer's stand-ins. */
+.pg.top-safe { padding-top: max(env(safe-area-inset-top), 28px); }
+.pg.bottom-safe { padding-bottom: max(env(safe-area-inset-bottom), 20px); }
+.pg { padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right); }
+.sbar { position: absolute; top: 0; left: 0; right: 0; height: 28px; display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-5); font-size: 13px; font-weight: 600; color: var(--text); pointer-events: none; }
+.sbar i { display: block; width: 24px; height: 12px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+.sbar i::after { content: ""; position: absolute; inset: 1.5px; right: 6px; background: currentColor; border-radius: 1px; }
+.homebar { position: absolute; left: 50%; bottom: 7px; width: 120px; height: 5px; margin-left: -60px; border-radius: 3px; background: var(--text); opacity: .35; pointer-events: none; }
+
+.scroll { overflow-y: auto; overflow-x: hidden; min-height: 0; flex: 1; overscroll-behavior: contain; }
+.pad { padding-inline: var(--space-4); }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.row { display: flex; gap: var(--space-2); align-items: center; }
+
+.t-lt { font-size: var(--fs-lt); line-height: var(--lh-lt); font-weight: 700; }
+.t-t1 { font-size: var(--fs-t1); line-height: var(--lh-t1); }
+.t-t2 { font-size: var(--fs-t2); line-height: var(--lh-t2); }
+.t-t3 { font-size: var(--fs-t3); line-height: var(--lh-t3); }
+.t-hl { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; }
+.t-body { font-size: var(--fs-body); line-height: var(--lh-body); }
+.t-call { font-size: var(--fs-call); line-height: var(--lh-call); }
+.t-sub { font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.t-foot { font-size: var(--fs-foot); line-height: var(--lh-foot); }
+.t-cap { font-size: var(--fs-cap); line-height: var(--lh-cap); }
+.dim { color: var(--text-2); }
+.b { font-weight: 600; }
+.late { color: var(--late); }
+.ok { color: var(--ok); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Navigation bar */
+.nav { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-4) var(--space-2); }
+.nav-top { display: flex; align-items: center; justify-content: space-between; min-height: 44px; }
+.navbtn { min-height: 44px; min-width: 44px; padding: 0 var(--space-2); background: none; border: 1px solid transparent; color: var(--accent); font-size: var(--fs-body); line-height: var(--lh-body); cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-1); border-radius: var(--radius); }
+.navbtn:focus-visible, .key:focus-visible, .rowbtn:focus-visible, .segc button:focus-visible, .btn:focus-visible, .modek:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+.inline-title { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; text-align: center; flex: 1; }
+
+/* Summary: count and money still out */
+.sum { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); align-items: baseline; }
+.sum .fig { display: flex; flex-direction: column; }
+.sum .fig strong { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; }
+
+/* Segmented control */
+.segc { display: flex; gap: 2px; padding: 2px; background: var(--surface-key); border-radius: var(--radius); }
+.segc button { flex: 1 1 0; min-height: 40px; border: 1px solid transparent; border-radius: 6px; background: transparent; cursor: pointer; font-size: var(--fs-sub); line-height: var(--lh-sub); padding: 0 var(--space-2); }
+.segc button[aria-pressed="true"] { background: var(--surface-raised); font-weight: 600; border-color: var(--line); }
+.screen[data-ax="ax5"] .segc { flex-direction: column; }
+.screen[data-ax="ax5"] .segc button { min-height: 72px; text-align: start; padding: 0 var(--space-4); }
+
+/* List */
+.list { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius); overflow: hidden; }
+.rowbtn { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-3); align-items: center; width: 100%; text-align: start; padding: var(--space-3) var(--space-4); min-height: 56px; border: 1px solid transparent; border-bottom-color: var(--line); background: transparent; cursor: pointer; }
+.rowbtn:last-child { border-bottom-color: transparent; }
+.rowbtn[aria-current="true"] { background: color-mix(in srgb, var(--accent) 14%, transparent); border-color: var(--accent); }
+.rowbtn .who { display: flex; flex-direction: column; min-width: 0; }
+.rowbtn .who > * { overflow-wrap: anywhere; }
+.rowbtn .amt { text-align: end; display: flex; flex-direction: column; align-items: flex-end; }
+.screen[data-ax="ax5"] .rowbtn { grid-template-columns: 1fr; }
+.screen[data-ax="ax5"] .rowbtn .amt { align-items: flex-start; text-align: start; }
+.flag { display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-foot); line-height: var(--lh-foot); font-weight: 600; }
+.flag svg { width: 1em; height: 1em; flex: none; }
+
+/* Messages for empty, failed and loading */
+.msg { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) var(--space-4); }
+.msg details { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+.msg summary { cursor: pointer; min-height: 44px; display: flex; align-items: center; }
+.btn { min-height: 44px; padding: 0 var(--space-4); border-radius: var(--radius); border: 1px solid transparent; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: var(--fs-body); line-height: var(--lh-body); cursor: pointer; }
+.btn.quiet { background: var(--surface-key); color: var(--text); }
+.spin { width: 20px; height: 20px; border-radius: 50%; border: 2.5px solid var(--line); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
+
+/* Floating check-in button, desk concept, compact width */
+.fab { position: absolute; right: var(--space-4); bottom: max(calc(env(safe-area-inset-bottom) + 12px), 32px); min-height: 52px; padding: 0 var(--space-5); border-radius: 26px; border: 1px solid transparent; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: var(--fs-body); line-height: var(--lh-body); display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.fab svg { width: 20px; height: 20px; }
+.screen[data-ax="ax5"] .fab { left: var(--space-4); justify-content: center; min-height: 76px; border-radius: 38px; }
+
+/* Sheet */
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.32); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 12px 12px 0 0; display: flex; flex-direction: column; max-height: 92%; padding-bottom: max(env(safe-area-inset-bottom), 20px); }
+.sheet-bar { display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) var(--space-2) 0; }
+
+/* Key deck (desk concept) and keypad (both concepts) */
+.deck { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.display { background: var(--surface-raised); border-radius: var(--radius); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); min-height: 92px; justify-content: center; border: 1px solid var(--line); }
+.display .typed { font-size: var(--fs-t1); line-height: var(--lh-t1); font-weight: 600; letter-spacing: 0.02em; }
+.display .typed.ph { color: var(--text-2); font-weight: 400; font-size: var(--fs-body); line-height: var(--lh-body); }
+.display .acts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pad3 { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.key { min-height: var(--key-h); border: 1px solid transparent; border-radius: var(--radius); background: var(--surface-key); font-size: var(--fs-t2); line-height: var(--lh-t2); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 0 var(--space-2); touch-action: manipulation; }
+.key:active { background: var(--surface-key-press); }
+.key.small { font-size: var(--fs-call); line-height: var(--lh-call); }
+.key svg { width: 24px; height: 24px; }
+.key.go { background: var(--accent); color: var(--on-accent); font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; text-align: center; }
+.key.go small { font-weight: 400; font-size: var(--fs-foot); line-height: var(--lh-foot); opacity: .9; }
+.key.go[aria-disabled="true"] { background: var(--surface-key); color: var(--text-2); cursor: default; }
+.key.undo { font-size: var(--fs-hl); line-height: var(--lh-hl); }
+
+/* Detail */
+.facts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-4); margin: 0; }
+.facts dt { color: var(--text-2); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.facts dd { margin: 0; text-align: end; }
+.screen[data-ax="ax5"] .facts { grid-template-columns: 1fr; }
+.screen[data-ax="ax5"] .facts dd { text-align: start; }
+.cards { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius); }
+.cards div { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--line); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.cards div:last-child { border-bottom: 0; }
+
+/* ---------- Adding machine concept ---------- */
+.roll-wrap { display: flex; flex-direction: column; min-height: 0; flex: 1; gap: var(--space-2); padding: var(--space-2) var(--space-4) 0; }
+.modes { display: flex; gap: var(--space-2); flex-wrap: wrap; }
+.modek { min-height: 44px; flex: 1 1 auto; padding: 0 var(--space-3); border-radius: 22px; border: 1px solid var(--line); background: transparent; cursor: pointer; font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.modek[aria-pressed="true"] { background: var(--text); color: var(--surface); border-color: var(--text); font-weight: 600; }
+.roll {
+  flex: 1; min-height: 0; overflow-y: auto; background: var(--surface-raised); position: relative;
+  border-radius: 0 0 var(--radius) var(--radius);
+  display: flex; flex-direction: column;
+}
+.roll::before { content: ""; position: sticky; top: 0; display: block; height: 8px; flex: none; z-index: 1;
+  background: radial-gradient(circle at 6px -2px, var(--surface) 5px, transparent 5.5px) 0 0 / 12px 8px repeat-x; }
+.tape { display: flex; flex-direction: column; padding: var(--space-1) var(--space-4) var(--space-3); margin-top: auto; }
+.tline { display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-3); align-items: baseline; padding: var(--space-2) 0; border: 0; border-bottom: 1px dashed var(--line); background: transparent; text-align: start; width: 100%; cursor: pointer; min-height: 44px; }
+.tline .no { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-2); }
+.tline .nm { min-width: 0; overflow-wrap: anywhere; }
+.tline[aria-current="true"] { background: color-mix(in srgb, var(--accent) 16%, transparent); box-shadow: inset 3px 0 0 var(--accent); }
+.tline.is-late .nm::after { content: " may be lost"; color: var(--late); font-size: var(--fs-foot); font-weight: 600; }
+.screen[data-ax="ax5"] .tline { grid-template-columns: 1fr; }
+.total { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-3); padding: var(--space-2) 0 0; border-top: 3px double var(--text); margin-top: var(--space-2); }
+.total .big { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; }
+.adisp { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-4); text-align: end; align-items: flex-end; min-height: 104px; justify-content: flex-end; }
+.adisp .typed { font-size: var(--fs-lt); line-height: var(--lh-lt); font-weight: 300; letter-spacing: 0.04em; }
+.adisp .typed.ph { color: var(--text-2); }
+.adisp .acts { display: flex; gap: var(--space-2); flex-wrap: wrap; justify-content: flex-end; }
+.akeys { display: grid; grid-template-columns: repeat(3, 1fr) 1.25fr; grid-template-rows: repeat(4, var(--key-h)); gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-3); }
+.akeys .key.go { grid-column: 4; grid-row: 2 / span 3; }
+.akeys .key.undo { grid-column: 4; grid-row: 1; }
+.screen[data-ax="ax5"] .akeys { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(5, var(--key-h)); }
+.screen[data-ax="ax5"] .akeys .key.go { grid-column: 1 / span 2; grid-row: 5; }
+.screen[data-ax="ax5"] .akeys .key.undo { grid-column: 3; grid-row: 5; }
+.tot-btn { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-3); align-items: center; margin: var(--space-2) var(--space-4) 0; padding: var(--space-3) var(--space-4); background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius); text-align: start; cursor: pointer; min-height: 44px; }
+
+/* Laptop bottom page of the adding machine: a wide keyboard */
+.screen[data-pose="laptop"] .akeys { grid-template-columns: repeat(3, 1fr) 1.6fr; grid-template-rows: repeat(4, 1fr); flex: 1; padding: var(--space-4) var(--space-6) var(--space-3); }
+
+/* ---------- Today / New labels ---------- */
+:where([data-ann]) { position: relative; }
+.show-ann [data-ann]::after {
+  content: attr(data-ann); position: absolute; top: 2px; right: 2px; z-index: 5;
+  font: 600 10px/14px -apple-system, system-ui, sans-serif; letter-spacing: 0;
+  color: var(--ann); background: var(--surface); border: 1px dashed var(--ann); border-radius: 4px; padding: 0 4px;
+  pointer-events: none; white-space: nowrap;
+}
+.show-ann [data-ann] { outline: 1px dashed var(--ann); outline-offset: -1px; }
+.screen[data-ax="ax5"] [data-ann]::after { font-size: 12px; line-height: 16px; }
+
+@media (forced-colors: active) {
+  .key, .btn, .fab, .modek, .segc button, .rowbtn, .tline { border-color: ButtonText; }
+  .rowbtn[aria-current="true"], .tline[aria-current="true"] { outline: 3px solid Highlight; }
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample: every order, seller, card, number and price on this page is made up. No figure here is real.</div>
+
+<header class="chrome">
+  <div class="stack">
+    <span class="kind">Designer kind: blind. Designer: duo-poses-blind-1.</span>
+    <h1>The order checklist on a two-screen device</h1>
+    <p>Two concepts, each drawn folded, folded at the biggest accessibility text size, open as a book, open as a laptop, and on a large phone. Every key, row and button works. Type order digits on a frame's keys, or on your keyboard after you click the frame.</p>
+  </div>
+  <div class="controls">
+    <div class="ctl"><span id="lbl-state">State</span><div class="seg" role="group" aria-labelledby="lbl-state" data-ctl="s"></div></div>
+    <div class="ctl"><span id="lbl-pose">Pose</span><div class="seg" role="group" aria-labelledby="lbl-pose" data-ctl="p"></div></div>
+    <div class="ctl"><span id="lbl-theme">Theme</span><div class="seg" role="group" aria-labelledby="lbl-theme" data-ctl="t"></div></div>
+    <div class="ctl"><span id="lbl-ann">Today and New labels</span><div class="seg" role="group" aria-labelledby="lbl-ann" data-ctl="a"></div></div>
+  </div>
+  <div class="hidden-list" id="hidden-list" hidden></div>
+</header>
+
+<main class="concepts" id="concepts"></main>
+
+<script>
+(() => {
+'use strict';
+
+/* ---------- Sample data. Shapes: order number, seller, cards, cost in cents, days since ordered, state. ---------- */
+const CARD_NAMES = ['Ember Wyrm','Tidecaller Adept','Glass Orchard','Lantern Moth','Saltwind Pilgrim','Copper Golem','Hollow Bell','Mire Sprite','Ashen Vow','Thistle Knight','Rook of Dawn','Quiet Tide','Iron Bloom','Gale Fox','Hearth Spirit','Moonwell Keeper','Brackish Seer','Cinder Lane','Owl of the Stacks','Sunken Lantern'];
+const BASE = [
+  ['302814','Kestrel Cards',3,420,6,'out'],
+  ['517271','Plum Street Games',2,186,9,'out'],
+  ['640371','Northbound Singles',5,712,4,'out'],
+  ['118902','Two Rivers Cards',1,95,23,'out'],
+  ['771046','Basement Binder',4,318,12,'out'],
+  ['209571','Lantern Card Co',2,240,3,'out'],
+  ['884130','Mossy Tower',6,905,26,'out'],
+  ['356688','Halfmoon Hobby',1,64,8,'out'],
+  ['492015','Copperleaf Cards',3,377,2,'out'],
+  ['605533','Quiet Owl Games',2,158,10,'arrived','Tue'],
+  ['733409','Redfern Collectibles',4,520,11,'arrived','Tue'],
+  ['148822','Saltmarsh Cards',1,88,9,'arrived','Mon'],
+  ['921764','Kestrel Cards',2,214,13,'arrived','Mon'],
+  ['380155','Thornfield Singles',3,296,14,'arrived','Sat'],
+  ['266410','Bluegate Games',5,640,15,'arrived','Sat'],
+  ['459903','Plum Street Games',1,73,16,'arrived','Fri'],
+  ['812377','Harbor Light Cards',2,199,17,'arrived','Fri'],
+  ['570268','Wren and Rook',3,451,18,'arrived','Thu'],
+];
+const LATE_DAYS = 21;
+function freshOrders() {
+  let n = 0;
+  return BASE.map(([id, seller, cards, cents, days, st, at]) => {
+    const list = [];
+    let left = cents;
+    for (let i = 0; i < cards; i++) {
+      const c = i === cards - 1 ? left : Math.max(9, Math.round(cents / cards) + (i % 2 ? -7 : 5));
+      left -= c;
+      list.push([CARD_NAMES[n++ % CARD_NAMES.length], c]);
+    }
+    return { id, seller, cards, cents, days, st, at: at || null, list };
+  });
+}
+const money = c => '$' + (c / 100).toFixed(2);
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+const isLate = o => o.st === 'out' && o.days >= LATE_DAYS;
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[ch]));
+
+const ICON = {
+  check: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3 3 7-7" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  warn: '<svg viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.5l7 13H1z" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round"/><path d="M8 6v4M8 12v.5" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  back: '<svg viewBox="0 0 12 20" width="12" height="20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  del: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5h12v14H8l-6-7z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M11 9l6 6M17 9l-6 6" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  box: '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+};
+
+/* ---------- Concepts, poses, states ---------- */
+const CONCEPTS = [
+  { key: 'desk', name: 'Desk spread', focus: 'concept-desk',
+    blurb: 'A list first. Folded, the list fills the screen and a Check in button opens a keypad sheet. Open as a laptop, the list is the top page and the keys are the bottom page. Open as a book, the list is the left page and the chosen order with its keys is the right page.' },
+  { key: 'adder', name: 'Adding machine', focus: 'concept-adder',
+    blurb: 'The bold one: no list screen and no navigation stack. The app is a keypad with a paper roll above it, like a desk adding machine. You key the last digits of the order number, the roll answers, and one big key marks it arrived. Three keys beside the roll switch what it prints.' },
+];
+const POSES = [
+  { key: 'folded', label: 'Duo folded', dev: 'iphone-duo-folded', w: 466, h: 678, ax: 'default', note: '466 x 678 pt, one screen, portrait. Size from the brief.' },
+  { key: 'ax5', label: 'Duo folded, AX5 text', dev: 'iphone-duo-folded', w: 466, h: 678, ax: 'ax5', note: '466 x 678 pt at the biggest accessibility text size (AX5: Body 53 pt).' },
+  { key: 'book', label: 'Duo open as a book', dev: 'iphone-duo-unfolded', w: 951, h: 669, ax: 'default', note: '951 x 669 pt, two pages side by side, hinge gap x 455.5 to 495.5. Size from the brief.' },
+  { key: 'laptop', label: 'Duo open as a laptop', dev: 'iphone-duo-unfolded', w: 669, h: 951, ax: 'default', note: 'The open device turned a quarter: 669 x 951 pt, hinge gap y 455.5 to 495.5. Page on top, keys below.' },
+  { key: 'phone', label: 'Large phone', dev: 'iphone-large', w: 430, h: 932, ax: 'default', note: 'No size is written for this device. Drawn at a stand-in 430 x 932 pt; see the notes.' },
+];
+const STATES = [
+  ['loaded', 'Loaded'], ['typing', 'Typing, two matches'], ['nomatch', 'No match'], ['arrived', 'Just marked'],
+  ['empty', 'No orders'], ['failed', 'Read failed'], ['loading', 'Reading'],
+];
+const THEMES = [['auto', 'System'], ['light', 'Light'], ['dark', 'Dark']];
+const ANNS = [['on', 'Show'], ['off', 'Hide']];
+
+/* ---------- URL hash: c, p, s, t, a, hide ---------- */
+function readHash() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  return {
+    c: h.get('c') || 'all', p: h.get('p') || 'all', s: h.get('s') || 'loaded', t: h.get('t') || 'auto',
+    a: h.get('a') || 'on', hide: (h.get('hide') || '').split(',').filter(Boolean),
+  };
+}
+let view = readHash();
+function writeHash() {
+  const h = new URLSearchParams();
+  if (view.c !== 'all') h.set('c', view.c);
+  if (view.p !== 'all') h.set('p', view.p);
+  if (view.s !== 'loaded') h.set('s', view.s);
+  if (view.t !== 'auto') h.set('t', view.t);
+  if (view.a !== 'on') h.set('a', view.a);
+  if (view.hide.length) h.set('hide', view.hide.join(','));
+  const str = h.toString();
+  history.replaceState(null, '', str ? '#' + str : location.pathname + location.search);
+}
+
+/* ---------- Per-frame state ---------- */
+function initState(concept, pose, ax, s) {
+  const st = { concept, pose, ax, status: 'loaded', filter: 'out', mode: 'out', typed: '', sel: null,
+    detail: null, sheet: false, rollOpen: false, orders: freshOrders(), last: null, msg: null };
+  if (s === 'empty') { st.status = 'empty'; st.orders = []; }
+  if (s === 'failed') st.status = 'failed';
+  if (s === 'loading') st.status = 'loading';
+  if (s === 'typing') { st.typed = '71'; if (concept === 'desk' && (pose === 'folded' || pose === 'ax5' || pose === 'phone')) st.sheet = true; }
+  if (s === 'nomatch') { st.typed = '999'; if (concept === 'desk' && (pose === 'folded' || pose === 'ax5' || pose === 'phone')) st.sheet = true; }
+  if (s === 'arrived') { st.typed = '2814'; arrive(st); }
+  return st;
+}
+const compact = st => st.pose === 'folded' || st.pose === 'ax5' || st.pose === 'phone';
+
+function matches(st) {
+  if (!st.typed) return [];
+  return st.orders.filter(o => o.st === 'out' && o.id.endsWith(st.typed));
+}
+function target(st) {
+  if (st.sel) { const o = st.orders.find(x => x.id === st.sel); if (o && o.st === 'out') return o; }
+  const m = matches(st);
+  return m.length === 1 ? m[0] : null;
+}
+function arrive(st) {
+  const o = target(st);
+  if (!o) return;
+  o.st = 'arrived'; o.at = 'Today';
+  st.last = o.id; st.typed = ''; st.sel = null; st.msg = { kind: 'done', id: o.id };
+}
+function undo(st) {
+  const o = st.orders.find(x => x.id === st.last);
+  if (!o) return;
+  o.st = 'out'; o.at = null; st.msg = { kind: 'undone', id: o.id }; st.last = null;
+}
+function totals(st) {
+  const all = st.orders.length;
+  const out = st.orders.filter(o => o.st === 'out');
+  return { all, arrived: all - out.length, out: out.length, outCents: out.reduce((a, o) => a + o.cents, 0),
+    late: out.filter(isLate).length };
+}
+
+/* ---------- Shared pieces ---------- */
+function sbar() { return '<div class="sbar" aria-hidden="true"><span>10:24</span><i></i></div>'; }
+const homebar = '<div class="homebar" aria-hidden="true"></div>';
+
+function statusMsg(st) {
+  if (st.status === 'loading') return `<div class="msg" role="status"><div class="row"><div class="spin" aria-hidden="true"></div><span class="t-body">Reading your orders</span></div></div>`;
+  if (st.status === 'failed') return `<div class="msg" role="alert"><span class="t-hl">Your orders could not be read.</span><span class="t-sub dim">Nothing was changed. Your check-ins are safe.</span><button class="btn" data-act="retry">Try again</button><details><summary>What the app said</summary><span>Sample: order file could not be opened (read error 5).</span></details></div>`;
+  if (st.status === 'empty') return `<div class="msg"><span class="t-body">No orders yet. Import an order file to fill this list.</span><button class="btn" data-act="import">Import orders</button></div>`;
+  return '';
+}
+
+function rowFlag(o) {
+  if (o.st === 'arrived') return `<span class="flag ok">${ICON.check}Arrived ${esc(o.at)}</span>`;
+  if (isLate(o)) return `<span class="flag late">${ICON.warn}May be lost</span>`;
+  return '';
+}
+
+/* ---------- Concept 1: Desk spread ---------- */
+function deskSummary(st) {
+  const t = totals(st);
+  return `<div class="sum" data-ann="Today: count and money still out">
+    <div class="fig"><strong class="num">${t.arrived} of ${t.all}</strong><span class="t-foot dim">orders arrived</span></div>
+    <div class="fig"><strong class="num">${money(t.outCents)}</strong><span class="t-foot dim">still in the mail</span></div>
+    ${t.late ? `<div class="fig late"><strong class="num">${t.late}</strong><span class="t-foot">may be lost</span></div>` : ''}
+  </div>`;
+}
+function deskSeg(st) {
+  const t = totals(st);
+  const b = (k, label) => `<button data-act="filter:${k}" aria-pressed="${st.filter === k}">${label}</button>`;
+  return `<div class="segc" role="group" aria-label="Show">${b('out', 'Still out ' + t.out)}${b('arrived', 'Arrived ' + t.arrived)}${b('all', 'All ' + t.all)}</div>`;
+}
+function deskRows(st) {
+  let rows;
+  if (st.typed) rows = matches(st);
+  else rows = st.orders.filter(o => st.filter === 'all' || o.st === st.filter);
+  if (st.typed && !rows.length) {
+    return `<div class="msg"><span class="t-body">No order still out ends in ${esc(st.typed)}.</span><button class="btn quiet" data-act="clear">Clear the number</button></div>`;
+  }
+  if (!rows.length) {
+    const s = st.filter === 'out' ? 'Every order has arrived.' : 'No order has arrived yet.';
+    return `<div class="msg"><span class="t-body">${s}</span><button class="btn quiet" data-act="filter:all">Show all orders</button></div>`;
+  }
+  const cur = target(st);
+  return `<div class="list" data-ann="Today: order list">${rows.map(o => `
+    <button class="rowbtn" data-act="${compact(st) ? 'open' : 'sel'}:${o.id}" aria-current="${cur && cur.id === o.id}">
+      <span class="who"><span class="t-hl">${esc(o.seller)}</span><span class="t-sub dim">Order ${o.id}, ${plural(o.cards, 'card')}, ${o.days} days</span></span>
+      <span class="amt"><span class="t-body num">${money(o.cents)}</span>${rowFlag(o)}</span>
+    </button>`).join('')}</div>`;
+}
+function deskDisplay(st) {
+  if (st.msg && st.msg.kind === 'done') {
+    const o = st.orders.find(x => x.id === st.msg.id);
+    return `<div class="display" role="status" aria-live="polite"><span class="t-hl ok">${ICON.check.replace('<svg', '<svg width="16" height="16"')} Marked arrived</span><span class="t-sub">${esc(o.seller)}, ${plural(o.cards, 'card')}, ${money(o.cents)}</span><div class="acts"><button class="btn quiet" data-act="undo">Undo</button></div></div>`;
+  }
+  if (st.msg && st.msg.kind === 'undone') {
+    const o = st.orders.find(x => x.id === st.msg.id);
+    return `<div class="display" role="status" aria-live="polite"><span class="t-hl">Back to still out</span><span class="t-sub dim">${esc(o.seller)}, order ${o.id}</span></div>`;
+  }
+  const m = matches(st), t = target(st);
+  let line;
+  if (!st.typed && !t) line = '<span class="t-sub dim">Key the last digits of the order number from the packing slip.</span>';
+  else if (t) line = `<span class="t-hl">${esc(t.seller)}</span><span class="t-sub dim">Order ${t.id}, ${plural(t.cards, 'card')}, ${money(t.cents)}</span>`;
+  else if (m.length) line = `<span class="t-sub">${m.length} orders end in ${esc(st.typed)}. Tap the one in your hand.</span>`;
+  else line = `<span class="t-sub late">No order still out ends in ${esc(st.typed)}.</span>`;
+  const typed = st.typed ? `<span class="typed num" aria-label="Typed ${esc(st.typed)}">${esc(st.typed)}</span>` : (t ? '' : '<span class="typed ph">Order number</span>');
+  return `<div class="display" role="status" aria-live="polite">${typed}${line}</div>`;
+}
+function goKey(st, cls) {
+  const t = target(st);
+  const why = st.typed ? 'Pick one order first' : 'Key an order number first';
+  return t
+    ? `<button class="key go ${cls || ''}" data-act="arrive">Mark arrived<small>${esc(t.seller)}</small></button>`
+    : `<button class="key go ${cls || ''}" data-act="noop" aria-disabled="true" title="${why}">Mark arrived<small>${why}</small></button>`;
+}
+function keypad() {
+  const d = n => `<button class="key num" data-act="key:${n}" aria-label="${n}">${n}</button>`;
+  return `${[1,2,3,4,5,6,7,8,9].map(d).join('')}<button class="key small" data-act="clear">Clear</button>${d(0)}<button class="key" data-act="del" aria-label="Delete last digit">${ICON.del}</button>`;
+}
+function deskDeck(st, ann) {
+  return `<div class="deck" data-ann="${ann}">${deskDisplay(st)}<div class="pad3">${keypad()}</div>${goKey(st)}</div>`;
+}
+function deskDetail(st, o, withBack) {
+  if (!o) return `<div class="msg"><span class="t-body dim">Tap an order on the left, or key its number below.</span></div>`;
+  return `<div class="stack pad" style="padding-block: var(--space-3)">
+    ${withBack ? '' : ''}
+    <div class="stack" style="gap: var(--space-1)"><span class="${withBack ? 't-lt' : 't-t2 b'}">${esc(o.seller)}</span><span class="t-sub dim">Order ${o.id}</span></div>
+    <dl class="facts t-body">
+      <dt>Ordered</dt><dd>${o.days} days ago</dd>
+      <dt>Cost</dt><dd class="num">${money(o.cents)}</dd>
+      <dt>State</dt><dd>${o.st === 'arrived' ? '<span class="ok">Arrived ' + esc(o.at) + '</span>' : isLate(o) ? '<span class="late">Still out, may be lost</span>' : 'Still out'}</dd>
+    </dl>
+    <div class="cards" aria-label="Cards in this order">${o.list.map(([n, c]) => `<div><span>${esc(n)}</span><span class="num dim">${money(c)}</span></div>`).join('')}</div>
+  </div>`;
+}
+
+function deskCompact(st) {
+  if (st.status !== 'loaded' && st.status !== 'empty') {
+    return `<section class="pg top-safe bottom-safe">${sbar()}<div class="nav"><span class="t-lt">Orders</span></div>${statusMsg(st)}${homebar}</section>`;
+  }
+  if (st.detail) {
+    const o = st.orders.find(x => x.id === st.detail);
+    const act = o.st === 'out'
+      ? `<button class="btn" style="width:100%" data-act="arrive-id:${o.id}">Mark arrived</button>`
+      : `<button class="btn quiet" style="width:100%" data-act="unarrive:${o.id}">Mark still out</button>`;
+    return `<section class="pg top-safe bottom-safe">${sbar()}
+      <div class="nav"><div class="nav-top"><button class="navbtn" data-act="close-detail">${ICON.back}Orders</button></div></div>
+      <div class="scroll" data-keep="d">${deskDetail(st, o, true)}</div>
+      <div class="pad" style="padding-block: var(--space-3)">${act}</div>${homebar}</section>`;
+  }
+  const empty = st.status === 'empty';
+  let sheet = '';
+  if (st.sheet) {
+    sheet = `<div class="scrim" data-act="sheet-close"></div><div class="sheet" role="dialog" aria-label="Check in a package" data-ann="Today: input area">
+      <div class="sheet-bar"><button class="navbtn" data-act="sheet-close">Cancel</button><span class="t-hl">Check in</span><button class="navbtn b" data-act="sheet-close">Done</button></div>
+      <div class="scroll" data-keep="s" style="flex: 0 1 auto">${deskDeck(st, 'New: keys open as a sheet')}</div></div>`;
+  }
+  return `<section class="pg top-safe">${sbar()}
+    <div class="scroll" data-keep="l">
+      <div class="nav"><span class="t-lt">Orders</span></div>
+      <div class="stack pad" style="padding-bottom: 104px">
+        ${empty ? statusMsg(st) : deskSummary(st) + deskSeg(st) + deskRows(st)}
+      </div>
+    </div>
+    ${empty ? '' : `<button class="fab" data-act="sheet-open" data-ann="New: Check in button">${ICON.box}Check in</button>`}
+    ${sheet}${homebar}</section>`;
+}
+
+function deskBook(st) {
+  const left = `<section class="pg top-safe bottom-safe">${sbar()}
+    <div class="nav"><span class="t-lt">Orders</span></div>
+    ${st.status === 'loaded' ? `<div class="stack pad" style="padding-bottom: var(--space-3)">${deskSummary(st)}${deskSeg(st)}</div><div class="scroll pad" data-keep="l" style="padding-bottom: var(--space-4)">${deskRows(st)}</div>` : statusMsg(st)}
+    ${homebar}</section>`;
+  const sel = st.sel ? st.orders.find(x => x.id === st.sel) : target(st);
+  const right = `<section class="pg top-safe bottom-safe" data-ann="New: right page holds the order and the keys">${sbar()}
+    ${st.status === 'loaded'
+      ? `<div class="scroll" data-keep="r">${deskDetail(st, sel, false)}</div>${deskDeck(st, 'Today: input area')}`
+      : `<div class="msg"><span class="t-body dim">The keys come back when your orders are read.</span></div>`}
+    ${homebar}</section>`;
+  return left + '<div class="hinge" aria-hidden="true"></div>' + right;
+}
+
+function deskLaptop(st) {
+  const top = `<section class="pg top-safe" data-ann="New: top page is the answer page">${sbar()}
+    <div class="nav" style="padding-bottom:0"><div class="nav-top"><span class="inline-title">Orders</span></div></div>
+    ${st.status === 'loaded' ? `<div class="stack pad" style="padding-bottom: var(--space-3)"><div class="row" style="justify-content: space-between; flex-wrap: wrap; gap: var(--space-3)">${deskSummary(st)}</div>${deskSeg(st)}</div><div class="scroll pad" data-keep="l" style="padding-bottom: var(--space-4)">${deskRows(st)}</div>` : statusMsg(st)}
+  </section>`;
+  const bottom = `<section class="pg bottom-safe" data-ann="New: bottom page is the keys">
+    ${st.status === 'loaded'
+      ? `<div style="display:grid; grid-template-columns: 1fr 1.15fr; gap: var(--space-4); padding: var(--space-4) var(--space-6); flex: 1; min-height: 0">
+          <div class="stack" style="justify-content: space-between">${deskDisplay(st)}${goKey(st)}</div>
+          <div class="pad3" style="grid-auto-rows: 1fr">${keypad()}</div>
+        </div>`
+      : `<div class="msg"><span class="t-body dim">The keys come back when your orders are read.</span></div>`}
+    ${homebar}</section>`;
+  return top + '<div class="hinge" aria-hidden="true"></div>' + bottom;
+}
+
+/* ---------- Concept 2: Adding machine ---------- */
+function rollModes(st) {
+  const t = totals(st);
+  const b = (k, label) => `<button class="modek" data-act="mode:${k}" aria-pressed="${st.mode === k}">${label}</button>`;
+  return `<div class="modes" role="group" aria-label="Roll shows">${b('out', 'Still out')}${b('arrived', 'Arrived')}${b('late', 'May be lost' + (t.late ? ' ' + t.late : ''))}</div>`;
+}
+function rollLines(st) {
+  let rows;
+  if (st.typed) rows = matches(st);
+  else if (st.mode === 'arrived') rows = st.orders.filter(o => o.st === 'arrived');
+  else if (st.mode === 'late') rows = st.orders.filter(isLate);
+  else rows = st.orders.filter(o => o.st === 'out');
+  const cur = target(st);
+  let body;
+  if (st.typed && !rows.length) body = `<div class="msg" style="padding-inline:0"><span class="t-body">No order still out ends in ${esc(st.typed)}.</span><button class="btn quiet" data-act="clear">Clear the number</button></div>`;
+  else if (!rows.length) {
+    const s = { out: 'Every order has arrived.', arrived: 'No order has arrived yet.', late: 'No order is late. All is well.' }[st.mode];
+    body = `<div class="msg" style="padding-inline:0"><span class="t-body">${s}</span>${st.mode !== 'out' ? '<button class="btn quiet" data-act="mode:out">Print still out</button>' : ''}</div>`;
+  } else body = rows.map(o => `<button class="tline ${isLate(o) ? 'is-late' : ''}" data-act="sel:${o.id}" aria-current="${cur && cur.id === o.id}">
+      <span class="no num">${o.id}</span><span class="nm t-body">${esc(o.seller)} <span class="dim t-foot">${plural(o.cards, 'card')}${o.st === 'arrived' ? ', ' + esc(o.at) : ''}</span></span><span class="num t-body">${money(o.cents)}</span></button>`).join('');
+  const t = totals(st);
+  const tot = `<div class="total" data-ann="Today: count and money still out"><span class="t-sub">Still in the mail, ${plural(t.out, 'order')}</span><span class="big num">${money(t.outCents)}</span><span class="t-sub dim">Arrived</span><span class="t-sub num dim">${t.arrived} of ${t.all}</span></div>`;
+  return `<div class="tape">${body}${tot}</div>`;
+}
+function roll(st, ann) {
+  if (st.status !== 'loaded') return `<div class="roll-wrap"><div class="roll" style="border-radius: var(--radius)">${statusMsg(st)}</div></div>`;
+  return `<div class="roll-wrap">${rollModes(st)}<div class="roll" data-keep="roll" data-bottom="1" data-ann="${ann}" aria-label="Order roll">${rollLines(st)}</div></div>`;
+}
+function adderDisplay(st) {
+  let typed, line = '', acts = '';
+  if (st.msg && st.msg.kind === 'done') {
+    const o = st.orders.find(x => x.id === st.msg.id);
+    typed = `<span class="typed ok">${ICON.check.replace('<svg', '<svg width="28" height="28"')}</span>`;
+    line = `<span class="t-hl ok">Marked arrived</span><span class="t-sub">${esc(o.seller)}, ${plural(o.cards, 'card')}, ${money(o.cents)}</span>`;
+  } else if (st.msg && st.msg.kind === 'undone') {
+    const o = st.orders.find(x => x.id === st.msg.id);
+    typed = `<span class="typed ph">0</span>`;
+    line = `<span class="t-sub">Back to still out: ${esc(o.seller)}</span>`;
+  } else {
+    const t = target(st), m = matches(st);
+    typed = st.typed ? `<span class="typed num">${esc(st.typed)}</span>` : (t ? `<span class="typed num">${t.id}</span>` : '<span class="typed ph num">0</span>');
+    if (!st.typed && !t) line = '<span class="t-sub dim">Key the last digits of the order number.</span>';
+    else if (t) line = `<span class="t-hl">${esc(t.seller)}</span><span class="t-sub dim">${plural(t.cards, 'card')}, ${money(t.cents)}</span>`;
+    else if (m.length) line = `<span class="t-sub">${m.length} orders end in ${esc(st.typed)}. Tap yours on the roll.</span>`;
+    else line = `<span class="t-sub late">No order still out ends in ${esc(st.typed)}.</span>`;
+  }
+  return `<div class="adisp" role="status" aria-live="polite" data-ann="New: answer line">${typed}${line}${acts}</div>`;
+}
+function adderKeys(st) {
+  const off = st.status !== 'loaded';
+  if (off) return `<div class="msg"><span class="t-body dim">The keys come back when your orders are read.</span></div>`;
+  const undoKey = st.last
+    ? `<button class="key undo" data-act="undo">Undo</button>`
+    : `<button class="key undo" data-act="noop" aria-disabled="true" title="Nothing to undo yet" style="color: var(--text-2)">Undo</button>`;
+  return `<div class="akeys" data-ann="Today: input area">${keypad()}${undoKey}${goKey(st)}</div>`;
+}
+function adderCompact(st) {
+  if (st.ax === 'ax5' && !st.rollOpen) {
+    const t = totals(st);
+    const head = st.status === 'loaded'
+      ? `<button class="tot-btn" data-act="roll-open" data-ann="New: roll behind a button at AX5"><span class="t-sub">${plural(t.out, 'order')} still out<br><b class="num">${money(t.outCents)}</b></span><span class="t-sub" style="color: var(--accent)">Roll</span></button>`
+      : statusMsg(st);
+    return `<section class="pg top-safe bottom-safe">${sbar()}<div class="scroll" data-keep="a">${head}${adderDisplay(st)}${adderKeys(st)}</div>${homebar}</section>`;
+  }
+  if (st.ax === 'ax5' && st.rollOpen) {
+    return `<section class="pg top-safe bottom-safe">${sbar()}
+      <div class="sheet-bar"><span></span><button class="navbtn b" data-act="roll-close">Done</button></div>
+      ${roll(st, 'New: order roll')}${homebar}</section>`;
+  }
+  return `<section class="pg top-safe bottom-safe">${sbar()}${roll(st, 'New: order roll')}${adderDisplay(st)}${adderKeys(st)}${homebar}</section>`;
+}
+function adderBook(st) {
+  const left = `<section class="pg top-safe bottom-safe">${sbar()}${roll(st, 'New: roll fills the left page')}${homebar}</section>`;
+  const right = `<section class="pg top-safe bottom-safe" style="justify-content: flex-end">${sbar()}${adderDisplay(st)}${adderKeys(st)}${homebar}</section>`;
+  return left + '<div class="hinge" aria-hidden="true"></div>' + right;
+}
+function adderLaptop(st) {
+  const top = `<section class="pg top-safe" data-ann="New: top page is the answer page">${sbar()}${roll(st, 'New: order roll')}${adderDisplay(st)}</section>`;
+  const bottom = `<section class="pg bottom-safe">${adderKeys(st)}${homebar}</section>`;
+  return top + '<div class="hinge" aria-hidden="true"></div>' + bottom;
+}
+
+function render(frame) {
+  const st = frame._st;
+  // keep scroll positions so a press does not move the list
+  const keep = {};
+  frame.querySelectorAll('[data-keep]').forEach(el => { keep[el.dataset.keep] = el.scrollTop; });
+  let html;
+  if (st.concept === 'desk') html = compact(st) ? deskCompact(st) : st.pose === 'book' ? deskBook(st) : deskLaptop(st);
+  else html = compact(st) ? adderCompact(st) : st.pose === 'book' ? adderBook(st) : adderLaptop(st);
+  frame.innerHTML = html;
+  frame.querySelectorAll('[data-keep]').forEach(el => {
+    if (el.dataset.keep in keep) el.scrollTop = keep[el.dataset.keep];
+    else if (el.dataset.bottom) el.scrollTop = el.scrollHeight;
+  });
+}
+
+function act(frame, a) {
+  const st = frame._st;
+  const [k, v] = a.split(':');
+  const clearMsg = () => { st.msg = null; };
+  switch (k) {
+    case 'key': clearMsg(); if (st.typed.length < 6) st.typed += v; st.sel = null; break;
+    case 'del': clearMsg(); st.typed = st.typed.slice(0, -1); st.sel = null; break;
+    case 'clear': clearMsg(); st.typed = ''; st.sel = null; break;
+    case 'arrive': arrive(st); break;
+    case 'arrive-id': st.sel = v; arrive(st); break;
+    case 'unarrive': { const o = st.orders.find(x => x.id === v); o.st = 'out'; o.at = null; st.last = null; st.msg = null; break; }
+    case 'undo': undo(st); break;
+    case 'filter': st.filter = v; st.typed = ''; st.sel = null; clearMsg(); break;
+    case 'mode': st.mode = v; st.typed = ''; st.sel = null; clearMsg(); break;
+    case 'sel': clearMsg(); st.sel = st.sel === v ? null : v; break;
+    case 'open': st.detail = v; st.sheet = false; break;
+    case 'close-detail': st.detail = null; break;
+    case 'sheet-open': st.sheet = true; clearMsg(); break;
+    case 'sheet-close': st.sheet = false; break;
+    case 'roll-open': st.rollOpen = true; break;
+    case 'roll-close': st.rollOpen = false; break;
+    case 'retry': st.status = 'loading'; render(frame); setTimeout(() => { st.status = 'loaded'; render(frame); }, 700); return;
+    case 'import': st.orders = freshOrders(); st.status = 'loaded'; break;
+    default: return;
+  }
+  // In the roll's AX5 sheet, picking a line returns to the keys so the answer shows at the keys.
+  if (k === 'sel' && st.concept === 'adder' && st.ax === 'ax5') st.rollOpen = false;
+  render(frame);
+}
+
+/* ---------- Build the page ---------- */
+const frames = [];
+function build() {
+  const main = document.getElementById('concepts');
+  main.innerHTML = '';
+  frames.length = 0;
+  for (const c of CONCEPTS) {
+    const sec = document.createElement('section');
+    sec.className = 'concept';
+    sec.dataset.concept = c.key;
+    sec.innerHTML = `<div class="concept-head"><div class="stack" style="gap: var(--space-1)"><h2>${c.name}</h2><span class="kind">Designer kind: blind</span><p>${c.blurb}</p></div><button class="hide" data-hide="${c.key}">Hide ${c.name}</button></div><div class="frames" id="${c.focus}"></div>`;
+    const row = sec.querySelector('.frames');
+    for (const p of POSES) {
+      const fig = document.createElement('figure');
+      fig.className = 'dev';
+      fig.dataset.pose = p.key;
+      fig.innerHTML = `<div class="fit" style="width:${p.w}px;height:${p.h}px"><div class="screen" tabindex="0" data-device="${p.dev}" data-pose="${p.key === 'ax5' ? 'folded' : p.key}" data-ax="${p.ax}" data-pose-key="${p.key}" style="width:${p.w}px;height:${p.h}px" aria-label="${c.name}, ${p.label}"></div></div><figcaption><b>${p.label}.</b> ${p.note}</figcaption>`;
+      row.appendChild(fig);
+      const scr = fig.querySelector('.screen');
+      scr._fig = fig; scr._p = p;
+      frames.push(scr);
+    }
+    main.appendChild(sec);
+  }
+  resetFrames();
+}
+function resetFrames() {
+  for (const scr of frames) {
+    const concept = scr.closest('.concept').dataset.concept;
+    const p = scr._p;
+    scr._st = initState(concept, p.key === 'ax5' ? 'ax5' : p.key, p.ax, view.s);
+    if (p.key === 'ax5') scr._st.pose = 'ax5';
+    render(scr);
+  }
+  fit();
+}
+function fit() {
+  for (const scr of frames) {
+    const fig = scr._fig, box = fig.querySelector('.fit'), p = scr._p;
+    if (fig.hidden || fig.closest('.concept').hidden) continue;
+    const avail = fig.closest('.frames').clientWidth;
+    const s = Math.min(1, avail / p.w);
+    box.style.width = p.w * s + 'px';
+    box.style.height = p.h * s + 'px';
+    scr.style.transform = s < 1 ? `scale(${s})` : '';
+  }
+}
+
+function controls() {
+  const groups = { s: STATES, p: [['all', 'All']].concat(POSES.map(p => [p.key, p.label.replace('Duo ', '')])), t: THEMES, a: ANNS };
+  document.querySelectorAll('[data-ctl]').forEach(g => {
+    const k = g.dataset.ctl;
+    g.innerHTML = groups[k].map(([v, l]) => `<button data-set="${k}=${v}" aria-pressed="${view[k] === v}">${l}</button>`).join('');
+  });
+  document.documentElement.toggleAttribute('data-theme', view.t !== 'auto');
+  if (view.t !== 'auto') document.documentElement.dataset.theme = view.t;
+  document.body.classList.toggle('show-ann', view.a === 'on');
+  document.querySelectorAll('.concept').forEach(sec => {
+    const k = sec.dataset.concept;
+    sec.hidden = view.hide.includes(k) || (view.c !== 'all' && view.c !== k);
+  });
+  document.querySelectorAll('.dev').forEach(fig => { fig.hidden = view.p !== 'all' && view.p !== fig.dataset.pose; });
+  const hl = document.getElementById('hidden-list');
+  hl.hidden = !view.hide.length && view.c === 'all';
+  hl.innerHTML = (view.hide.length ? 'Hidden: ' + view.hide.map(k => `<button data-show="${k}">Show ${CONCEPTS.find(c => c.key === k).name}</button>`).join('') : '')
+    + (view.c !== 'all' ? ` <button data-show="*">Show both concepts</button>` : '');
+  fit();
+}
+
+document.addEventListener('click', e => {
+  const set = e.target.closest('[data-set]');
+  if (set) {
+    const [k, v] = set.dataset.set.split('=');
+    const old = view[k]; view[k] = v; writeHash(); controls();
+    if (k === 's' && old !== v) resetFrames();
+    return;
+  }
+  const hide = e.target.closest('[data-hide]');
+  if (hide) { if (!view.hide.includes(hide.dataset.hide)) view.hide.push(hide.dataset.hide); writeHash(); controls(); return; }
+  const show = e.target.closest('[data-show]');
+  if (show) { if (show.dataset.show === '*') view.c = 'all'; else view.hide = view.hide.filter(k => k !== show.dataset.show); if (view.c === show.dataset.show) view.c = 'all'; writeHash(); controls(); return; }
+  const b = e.target.closest('[data-act]');
+  if (b) {
+    const scr = b.closest('.screen');
+    if (scr && b.getAttribute('aria-disabled') !== 'true') act(scr, b.dataset.act);
+  }
+});
+document.addEventListener('keydown', e => {
+  const scr = e.target.closest && e.target.closest('.screen');
+  if (!scr || e.target.closest('details')) return;
+  if (/^[0-9]$/.test(e.key)) { act(scr, 'key:' + e.key); e.preventDefault(); }
+  else if (e.key === 'Backspace') { act(scr, 'del'); e.preventDefault(); }
+  else if (e.key === 'Escape') { act(scr, 'clear'); }
+  else if (e.key === 'Enter' && e.target === scr) { act(scr, 'arrive'); e.preventDefault(); }
+});
+window.addEventListener('hashchange', () => { const old = view.s; view = readHash(); controls(); if (view.s !== old) resetFrames(); });
+window.addEventListener('resize', fit);
+
+build();
+controls();
+if (view.c !== 'all') { const el = document.getElementById(CONCEPTS.find(c => c.key === view.c)?.focus || ''); if (el) el.scrollIntoView(); }
+})();
+</script>
+</body>
+</html>

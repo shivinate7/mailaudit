@@ -70,7 +70,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
 .mh .rule { display: flex; align-items: center; gap: 12px; width: 70%; }
 .mh .rule i { flex: 1; height: 1px; background: var(--gold); }
 .mh .seal { width: 30px; height: 30px; border-radius: 50%; background: radial-gradient(circle at 40% 35%, var(--waxLit), var(--wax) 60%, var(--waxDeep)); }
-.mh .t { font-size: var(--f-mh); letter-spacing: .14em; text-indent: .14em; line-height: 1.1; }
+.mh .t { font-size: var(--f-mh); letter-spacing: .14em; text-indent: .14em; line-height: 1.3; }
 .mh .f { font-family: var(--mono); font-size: var(--f-lab); letter-spacing: .2em; color: var(--inkSoft); text-align: center; }
 
 /* Ledger tab: LedgerTab.swift / src/app.jsx .mdl-l* */
@@ -81,7 +81,7 @@ button:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
   padding: 8px 16px; border: 0; border-top: 1px solid var(--line); background: transparent; text-align: left; cursor: pointer;
   font-family: var(--cochin); }
 .card > .lrow:first-child { border-top: 0; }
-.lrow .t { flex: 1; min-width: 0; font-size: var(--f-lt); line-height: 1.2; }
+.lrow .t { flex: 1; min-width: 0; font-size: var(--f-lt); line-height: 1.3; }
 .lrow .v { font-family: var(--mono); font-size: var(--f-lv); color: var(--accent); text-align: right; }
 .lrow .v.soft { color: var(--inkSoft); }
 .lrow .cr { font-size: calc(var(--f-lt) * 1.1); line-height: 1; color: var(--inkSoft); transition: transform 140ms ease; }
@@ -137,7 +137,7 @@ body.no-dev .rr .dv, body.no-ord .rr .od { display: none; }
 body.c-daybook .rr .fg { display: none; }
 body.c-daybook .rr .fx { display: flex; flex: 0 0 var(--fx-w); flex-direction: column; align-items: flex-end; justify-content: center;
   gap: 2px; font-family: var(--mono); }
-.fx .fig { display: flex; align-items: baseline; gap: 6px; font-size: var(--f-fx); line-height: 1.1; }
+.fx .fig { display: flex; align-items: baseline; gap: 6px; font-size: var(--f-fx); line-height: 1.3; }
 .fx .was { font-size: calc(var(--f-fx) * .75); color: var(--inkSoft); text-decoration: line-through; text-decoration-thickness: 1px; }
 .fx .now { color: var(--ink); }
 .fx .of { font-size: var(--f-lab); letter-spacing: .12em; color: var(--inkSoft); }
@@ -205,7 +205,7 @@ body.c-daybook .frame.ax-grow .rr > .r { border-top: 3px double var(--line); }
 .page-l, .page-r { position: absolute; top: 0; bottom: 0; width: 455.5px; overflow: hidden; }
 .page-l { left: 0; } .page-r { left: 495.5px; }
 .fold { position: absolute; top: 0; bottom: 0; left: 455.5px; width: 40px; z-index: 10;
-  background: repeating-linear-gradient(90deg, color-mix(in srgb, var(--ink) 14%, transparent) 0 1px, transparent 1px 8px), color-mix(in srgb, var(--line) 55%, var(--paper)); }
+  background: color-mix(in srgb, var(--line) 70%, var(--paper)); border-left: 1px solid var(--line); border-right: 1px solid var(--line); }
 
 /* ---------- reviewer marks ---------- */
 .mark { position: absolute; z-index: 11; left: 0; right: 0; height: 0; border-top: 1.5px dashed var(--red); pointer-events: none; display: none; }
@@ -347,9 +347,11 @@ function writeHash() {
 
 /* ---------- row html ---------- */
 const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
-function devWord(r, fk) { return r.dev === FRAMES[fk].dev ? (fk === "web" ? "THIS PHONE" : "THIS DUO") : r.dev.toUpperCase(); }
+/* Only another device is named; a row with no device word came from the device in hand (ux-label-once). */
+function devWord(r, fk) { return r.dev === FRAMES[fk].dev ? "" : r.dev.toUpperCase(); }
 function figure(r, st) {
-  if (r.was == null) return { plain: "", fx: `<span class="of">STAMP</span>` };
+  /* A stamp has no count; its label already names it, so the figure column stays empty. */
+  if (r.was == null) return { plain: "", fx: "" };
   const of = r.unit ? r.unit : `OF ${r.qty}`;
   const plain = r.unit ? `${r.now} ${r.unit.toLowerCase()}` : `${r.now} of ${r.qty}`;
   /* Day book: the change shown as a ledger correction. Live: the old count struck, the new inked.
@@ -379,7 +381,7 @@ function rowHTML(r, fk) {
     <div class="l">
       <div class="k"><span class="a">${esc(r.label)}</span><span class="tm">${esc(r.tm)}</span></div>
       <div class="n"><span class="nm">${esc(subj)}</span>${f.plain ? `<span class="fg">${esc(f.plain)}</span>` : ""}</div>
-      <div class="s"><span class="sl">${esc(r.sell)}${ord}</span><span class="dv${r.dev === FRAMES[fk].dev ? " here" : ""}">${devWord(r, fk)}</span></div>
+      <div class="s"><span class="sl">${esc(r.sell)}${ord}</span><span class="dv">${devWord(r, fk)}</span></div>
     </div>
     <div class="fx">${f.fx}</div>
     <div class="r">${right}</div>
@@ -464,7 +466,7 @@ function openHTML(F) {
     const showRecent = entryLive && rightPick === "recent";
     left = `<div class="scroller" id="scroller-open"><div class="pg">${masthead()}<div class="lh">LEDGER</div>${dataCard("open", { panel: false, picked: showRecent, pickHistory: rightPick === "history", historyStub: false })}${resetBox()}</div></div>`;
     right = showRecent
-      ? `<div class="book new" id="book-open" data-ann="New: Recent on the right page"><div class="bh">Recent<small>NEWEST FIRST</small></div><div class="rl" tabindex="0" aria-label="Recent actions" id="list-open">${listHTML("open")}</div></div>`
+      ? `<div class="book new" id="book-open" data-ann="New: Recent on the right page"><div class="bh" role="heading" aria-level="2">Recent</div><div class="rl" tabindex="0" aria-label="Recent actions" id="list-open">${listHTML("open")}</div></div>`
       : `<div class="book" id="book-open"><div class="bh">History</div><div class="rl"><div class="empty">Saved versions are listed here. History is not drawn in this mockup.</div></div></div>`;
   }
   return `<div class="frame" style="width:951px;height:669px" data-device="iphone-duo-unfolded" data-fk="open" id="frame-open">

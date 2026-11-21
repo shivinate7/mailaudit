@@ -1,0 +1,656 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Order Numbers Mockup</title>
+<style>
+/* Tokens. House step: 4 px. Radius: 8 px. Colours are this designer's own (blind brief). */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px;
+  --radius: 8px;
+  --status-h: 28px;      /* placeholder: no source gives the Duo status bar height */
+  --home-h: 20px;        /* placeholder: no source gives the Duo home indicator height */
+  --hit: 44px;           /* HIG accessibility page: default control size 44x44 pt */
+
+  /* Dynamic Type, Large (default), HIG typography page */
+  --fs-large: 34px; --lh-large: 41px;
+  --fs-t2: 22px;    --lh-t2: 28px;
+  --fs-t3: 20px;    --lh-t3: 25px;
+  --fs-head: 17px;  --lh-head: 22px;
+  --fs-body: 17px;  --lh-body: 22px;
+  --fs-sub: 15px;   --lh-sub: 20px;
+  --fs-foot: 13px;  --lh-foot: 18px;
+  --fs-cap: 12px;   --lh-cap: 16px;
+
+  --font-ui: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-number: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+
+  /* Light set */
+  --surface: #edf0f4;
+  --surface-raised: #ffffff;
+  --surface-sunk: #e2e7ee;
+  --ink: #17202b;
+  --ink-muted: #556070;
+  --rule: #cfd6df;
+  --accent: #2b41b0;
+  --accent-ink: #ffffff;
+  --accent-tint: #dfe4fa;
+  --done: #146b47;
+  --done-tint: #d9f0e4;
+  --frame-edge: #9aa6b5;
+  --hinge: #3a4350;
+  --page-bg: #f6f7f9;
+  --note-new: #7a4fb5;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #12161d; --surface-raised: #1c222c; --surface-sunk: #0c0f14;
+    --ink: #e7ebf1; --ink-muted: #9ca7b6; --rule: #2d3542;
+    --accent: #93a2ff; --accent-ink: #0d1330; --accent-tint: #252e57;
+    --done: #63c896; --done-tint: #17362a;
+    --frame-edge: #4a5463; --hinge: #000000; --page-bg: #0a0c10; --note-new: #c4a3f0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #12161d; --surface-raised: #1c222c; --surface-sunk: #0c0f14;
+  --ink: #e7ebf1; --ink-muted: #9ca7b6; --rule: #2d3542;
+  --accent: #93a2ff; --accent-ink: #0d1330; --accent-tint: #252e57;
+  --done: #63c896; --done-tint: #17362a;
+  --frame-edge: #4a5463; --hinge: #000000; --page-bg: #0a0c10; --note-new: #c4a3f0;
+  color-scheme: dark;
+}
+/* Largest accessibility size, AX5, HIG typography page */
+.ax5 {
+  --fs-large: 60px; --lh-large: 70px;
+  --fs-t2: 56px;    --lh-t2: 66px;
+  --fs-t3: 55px;    --lh-t3: 65px;
+  --fs-head: 53px;  --lh-head: 62px;
+  --fs-body: 53px;  --lh-body: 62px;
+  --fs-sub: 49px;   --lh-sub: 58px;
+  --fs-foot: 44px;  --lh-foot: 52px;
+  --fs-cap: 43px;   --lh-cap: 51px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page-bg); color: var(--ink);
+  font-family: var(--font-ui); font-size: var(--fs-body); line-height: var(--lh-body);
+  overflow-x: hidden;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+@media (forced-colors: active) { :focus-visible { outline-color: Highlight; } }
+
+/* ---------- Mockup chrome (not part of the app) ---------- */
+.sample {
+  display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: center;
+  padding: var(--space-3) var(--space-4); background: #5b2a86; color: #fff;
+  font-size: var(--fs-sub); line-height: var(--lh-sub);
+}
+.sample strong { font-weight: 700; }
+.chrome { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); max-inline-size: 72rem; margin-inline: auto; }
+.chrome h1 { margin: 0; font-size: var(--fs-t2); line-height: var(--lh-t2); }
+.chrome p { margin: 0; max-inline-size: 62ch; color: var(--ink-muted); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); align-items: flex-start; }
+.group { display: flex; flex-direction: column; gap: var(--space-1); }
+.group > span { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); }
+.seg { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.seg button, .optrow button {
+  min-height: var(--hit); padding: 0 var(--space-3); border: 1px solid var(--rule); border-radius: var(--radius);
+  background: var(--surface-raised); font-size: var(--fs-sub);
+}
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+.options { display: flex; flex-direction: column; gap: var(--space-2); border: 1px solid var(--rule); border-radius: var(--radius); padding: var(--space-3); background: var(--surface-raised); }
+.options h2 { margin: 0; font-size: var(--fs-head); line-height: var(--lh-head); }
+.optrow { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.optrow > span { flex: 1 1 16rem; }
+.optrow.off > span { text-decoration: line-through; color: var(--ink-muted); }
+.stage { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; padding: var(--space-4); overflow-x: auto; }
+.frame-wrap { display: flex; flex-direction: column; gap: var(--space-2); }
+.frame-wrap h3 { margin: 0; font-size: var(--fs-sub); line-height: var(--lh-sub); font-weight: 600; }
+.frame-wrap h3 small { font-weight: 400; color: var(--ink-muted); }
+.all-hidden { padding: var(--space-6); }
+
+/* ---------- Device frames ---------- */
+.device {
+  position: relative; overflow: hidden; flex: none;
+  border: 2px solid var(--frame-edge); border-radius: var(--radius);
+  background: var(--surface); color: var(--ink);
+}
+.device[data-kind="folded"], .device[data-kind="ax5"] { width: 466px; height: 678px; }
+.device[data-kind="phone"] { width: 466px; height: 678px; resize: both; min-width: 320px; min-height: 480px; }
+.device[data-kind="open"] { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.hinge { background: var(--hinge); }
+.page { position: relative; overflow: hidden; height: 100%; }
+.screen {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-h));
+  padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--home-h));
+  padding-left: env(safe-area-inset-left, 0px); padding-right: env(safe-area-inset-right, 0px);
+}
+.status { position: absolute; top: 0; left: 0; right: 0; height: var(--status-h); display: flex; align-items: center; padding-inline: var(--space-5); font-size: var(--fs-cap); line-height: var(--lh-cap); font-weight: 600; }
+.ax5 .status { font-size: 12px; }
+.homebar { position: absolute; bottom: var(--space-2); left: 50%; width: 120px; height: 4px; margin-left: -60px; border-radius: 2px; background: var(--ink); opacity: .5; }
+.scroll { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+
+/* nav */
+.navbar { display: flex; align-items: center; gap: var(--space-2); min-height: var(--hit); padding-inline: var(--space-2); }
+.navbar .title { flex: 1; text-align: center; font-weight: 600; font-size: var(--fs-head); line-height: var(--lh-head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.navbar .spacer { min-width: 88px; }
+.back { display: flex; align-items: center; gap: var(--space-1); min-height: var(--hit); min-width: 88px; padding-inline: var(--space-1); color: var(--accent); font-size: var(--fs-body); }
+.ax5 .navbar .title { white-space: normal; }
+.ax5 .navbar .spacer { display: none; }
+.large-title { margin: 0; padding: 0 var(--space-4); font-size: var(--fs-large); line-height: var(--lh-large); font-weight: 700; }
+.search { margin: var(--space-2) var(--space-4) var(--space-3); display: flex; align-items: center; gap: var(--space-2); min-height: 36px; padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--surface-sunk); color: var(--ink-muted); font-size: var(--fs-body); line-height: var(--lh-body); }
+.search svg { flex: none; }
+.head-block { display: flex; flex-direction: column; padding-top: var(--space-2); }
+
+/* lists */
+.list { list-style: none; margin: 0 var(--space-4); padding: 0; background: var(--surface-raised); border-radius: var(--radius); }
+.list > li + li { border-top: 1px solid var(--rule); }
+.section-label { margin: var(--space-4) var(--space-4) var(--space-2); font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); }
+.row { display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: var(--hit); padding: var(--space-3) var(--space-4); }
+.row .body { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row .seller { font-weight: 600; font-size: var(--fs-head); line-height: var(--lh-head); }
+.row .meta { color: var(--ink-muted); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.row .rownum { font-family: var(--font-number); font-variant-numeric: slashed-zero; font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); overflow-wrap: anywhere; }
+.row[aria-current="true"] { background: var(--accent-tint); }
+.chev { flex: none; color: var(--ink-muted); }
+
+/* the order number, set in chunks */
+.num { font-family: var(--font-number); font-variant-numeric: slashed-zero tabular-nums; letter-spacing: .04em; display: flex; flex-wrap: wrap; column-gap: .35em; user-select: text; -webkit-user-select: text; }
+.num .chunk { white-space: nowrap; }
+.num .dash { color: var(--ink-muted); }
+.num.plain { display: block; overflow-wrap: anywhere; column-gap: 0; }
+
+/* Order slip */
+.facts { margin: 0 var(--space-4); padding: 0; list-style: none; background: var(--surface-raised); border-radius: var(--radius); }
+.facts li { display: flex; flex-wrap: wrap; justify-content: space-between; gap: var(--space-1) var(--space-3); padding: var(--space-3) var(--space-4); font-size: var(--fs-body); line-height: var(--lh-body); }
+.facts li + li { border-top: 1px solid var(--rule); }
+.facts .k { color: var(--ink-muted); }
+.seller-head { padding: var(--space-2) var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-1); }
+.seller-head h2 { margin: 0; font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; }
+.seller-head span { color: var(--ink-muted); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.dock { flex: none; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-2); background: var(--surface); border-top: 1px solid var(--rule); }
+.plate {
+  position: relative; display: flex; flex-direction: column; gap: var(--space-2); width: 100%;
+  padding: var(--space-3) var(--space-4) var(--space-4); border-radius: var(--radius);
+  background: var(--surface-raised); border: 2px solid var(--accent);
+}
+.plate .top { display: flex; align-items: center; gap: var(--space-2); justify-content: space-between; font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--ink-muted); }
+.plate .slot { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); min-width: 6.5em; color: var(--accent); font-weight: 600; }
+.plate .num { font-size: var(--fs-t2); line-height: var(--lh-t2); color: var(--ink); }
+.plate.copied { border-color: var(--done); background: var(--done-tint); }
+.plate.copied .slot { color: var(--done); }
+.spell { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); }
+.spell summary { min-height: var(--hit); display: flex; align-items: center; cursor: pointer; color: var(--accent); }
+.spell p { margin: 0; }
+.btnrow { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.btn { flex: 1 1 12rem; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); min-height: 50px; padding: var(--space-2) var(--space-4); border-radius: var(--radius); font-weight: 600; font-size: var(--fs-body); line-height: var(--lh-body); text-align: center; }
+.btn.fill { background: var(--accent); color: var(--accent-ink); }
+.btn.tint { background: var(--accent-tint); color: var(--accent); }
+.btn[aria-disabled="true"] { background: var(--surface-sunk); color: var(--ink-muted); cursor: not-allowed; }
+.hint { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); margin: 0; }
+.where { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); }
+.where summary { min-height: var(--hit); display: flex; align-items: center; cursor: pointer; }
+.where code { font-family: var(--font-number); overflow-wrap: anywhere; }
+
+/* Number ledger */
+.ledger { list-style: none; margin: 0; padding: 0 var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.lrow { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); background: var(--surface-raised); border-radius: var(--radius); }
+.lrow .who { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--space-3); font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--ink-muted); }
+.lrow .who b { color: var(--ink); font-weight: 600; }
+.lrow .line { display: flex; align-items: center; gap: var(--space-2); }
+.numbtn { flex: 1; min-width: 0; min-height: var(--hit); display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); margin-left: calc(-1 * var(--space-2)); border-radius: var(--radius); }
+.numbtn .num { flex: 1; min-width: 0; font-size: var(--fs-t3); line-height: var(--lh-t3); }
+.numbtn .cslot { flex: none; display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); min-width: 5.2em; font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--accent); font-weight: 600; }
+.numbtn.copied { background: var(--done-tint); }
+.numbtn.copied .cslot { color: var(--done); }
+.iconbtn { flex: none; width: var(--hit); height: var(--hit); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius); color: var(--accent); background: var(--accent-tint); }
+.iconbtn[aria-disabled="true"] { color: var(--ink-muted); background: var(--surface-sunk); cursor: not-allowed; }
+.lrow .why { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); margin: 0; }
+.ax5 .lrow .line { flex-wrap: wrap; }
+.ax5 .numbtn .cslot { min-width: 0; }
+
+.pocket { flex: none; margin: 0 var(--space-2) var(--space-1); display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-radius: var(--radius); background: var(--surface-raised); border: 2px solid var(--accent); }
+.pocket.idle { border-style: dashed; border-color: var(--rule); color: var(--ink-muted); padding: var(--space-3) var(--space-4); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.pocket .pk { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; min-height: var(--hit); justify-content: center; }
+.pocket .pk small { font-size: var(--fs-cap); line-height: var(--lh-cap); color: var(--ink-muted); }
+.pocket .pk .num { font-size: var(--fs-head); line-height: var(--lh-head); }
+.ax5 .pocket { flex-wrap: wrap; }
+
+.sheet-scrim { position: absolute; inset: 0; background: rgba(0,0,0,.32); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: calc(var(--status-h) + var(--space-6)); display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--home-h)); }
+.grabber { align-self: center; width: 36px; height: 5px; border-radius: 3px; background: var(--rule); margin-top: var(--space-2); }
+.sheetbar { display: flex; align-items: center; gap: var(--space-2); min-height: var(--hit); padding-inline: var(--space-2); }
+.sheetbar .title { flex: 1; text-align: center; font-weight: 600; font-size: var(--fs-head); line-height: var(--lh-head); }
+.textbtn { min-height: var(--hit); min-width: var(--hit); padding-inline: var(--space-2); color: var(--accent); font-size: var(--fs-body); }
+.textbtn.strong { font-weight: 600; }
+.panel { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-2) var(--space-4) var(--space-4); }
+.panel h2 { margin: 0; font-size: var(--fs-t3); line-height: var(--lh-t3); }
+.hist { list-style: none; margin: 0; padding: 0; background: var(--surface-raised); border-radius: var(--radius); }
+.hist li + li { border-top: 1px solid var(--rule); }
+.hist .hrow { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); }
+.hist .hrow .numbtn .num { font-size: var(--fs-body); line-height: var(--lh-body); }
+.hist .hseller { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); padding: var(--space-2) var(--space-4) 0; }
+
+/* states */
+.state { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) var(--space-4); }
+.state p { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
+.skel { list-style: none; margin: 0 var(--space-4); padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.skel li { height: 88px; border-radius: var(--radius); background: var(--surface-raised); position: relative; overflow: hidden; }
+.skel li::after { content: ""; position: absolute; left: var(--space-4); top: var(--space-4); width: 55%; height: 12px; border-radius: 4px; background: var(--surface-sunk); box-shadow: 0 28px 0 var(--surface-sunk); }
+.loading-line { padding: 0 var(--space-4) var(--space-2); font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); }
+
+/* stand-in for the seller's page */
+.web { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--surface-raised); padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-h)); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--home-h)); }
+.webbar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); border-bottom: 1px solid var(--rule); }
+.addr { flex: 1; min-width: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--surface-sunk); font-size: var(--fs-sub); line-height: var(--lh-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.webbody { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); overflow-y: auto; }
+.webbody h2 { margin: 0; font-size: var(--fs-t3); line-height: var(--lh-t3); }
+.webbody .num { font-size: var(--fs-body); }
+.banner { padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--done-tint); color: var(--done); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.standin { font-size: var(--fs-cap); line-height: var(--lh-cap); color: var(--ink-muted); }
+.fakebox { min-height: 88px; border: 1px solid var(--rule); border-radius: var(--radius); padding: var(--space-3); color: var(--ink-muted); font-size: var(--fs-sub); }
+
+/* dashed "New:" labels */
+.new { outline: 2px dashed var(--note-new); outline-offset: 3px; }
+.new-tag { position: absolute; z-index: 5; pointer-events: none; padding: 0 var(--space-1); border-radius: 4px; background: var(--note-new); color: #fff; font: 600 11px/16px var(--font-ui); }
+.labels-off .new { outline: none; }
+.labels-off .new-tag { display: none; }
+
+/* hidden options */
+.hide-spell [data-opt="spell"],
+.hide-copyopen [data-opt="copyopen"],
+.hide-where [data-opt="where"],
+.hide-pocket [data-opt="pocket"] { display: none !important; }
+
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+@media (prefers-reduced-motion: no-preference) {
+  .plate, .numbtn { transition: background-color .15s ease, border-color .15s ease; }
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note">
+  <strong>Sample.</strong>
+  <span>No order, seller, number or web address on this page is real.</span>
+  <span>Designer kind: blind</span>
+  <span>Designer: order-ids-blind-2</span>
+</div>
+
+<main class="chrome">
+  <h1>Order numbers: copy and open</h1>
+  <p>Job: read an order's full number, copy it in one tap to paste into a message, and open the seller's page for that exact order. Two concepts. Each draws the Duo folded, the Duo open, a large phone, and the folded Duo at the largest text size. Every tap works.</p>
+
+  <div class="controls" aria-label="Mockup controls">
+    <div class="group"><span>Concept</span><div class="seg" id="ctl-concept"></div></div>
+    <div class="group"><span>State</span><div class="seg" id="ctl-state"></div></div>
+    <div class="group"><span>Theme</span><div class="seg" id="ctl-theme"></div></div>
+    <div class="group"><span>Labels</span><div class="seg" id="ctl-labels"></div></div>
+  </div>
+
+  <section class="options" aria-labelledby="opt-h">
+    <h2 id="opt-h">Options to cull</h2>
+    <p>One press hides one option. The notes file numbers each one.</p>
+    <div id="ctl-options" class="stack"></div>
+  </section>
+</main>
+
+<div class="stage" id="stage">
+  <section class="frame-wrap">
+    <h3>Duo, folded <small>466 x 678 pt, one screen</small></h3>
+    <div class="device" data-device="iphone-duo-folded" data-kind="folded"></div>
+  </section>
+  <section class="frame-wrap">
+    <h3>Duo, open <small>951 x 669 pt, hinge 455.5 to 495.5</small></h3>
+    <div class="device" data-device="iphone-duo-unfolded" data-kind="open"></div>
+  </section>
+  <section class="frame-wrap">
+    <h3>Large phone <small>no size written: drawn at 466 x 678, drag the corner to resize</small></h3>
+    <div class="device" data-device="iphone-large" data-kind="phone"></div>
+  </section>
+  <section class="frame-wrap">
+    <h3>Duo, folded, largest text <small>AX5</small></h3>
+    <div class="device ax5" data-device="iphone-duo-folded-ax5" data-kind="ax5"></div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  var ORDERS = [
+    { id: "o1", seller: "Brightwater Cards", number: "4C1E92A7-5D3B8F-0A6E2", date: "12 Nov", items: 3, mail: "Arrived", url: "https://orders.example/order/4C1E92A7-5D3B8F-0A6E2" },
+    { id: "o2", seller: "Owl and Anchor Games", number: "9B07D3F1-E2A64C-71C8B", date: "10 Nov", items: 1, mail: "Not here yet", url: "https://orders.example/order/9B07D3F1-E2A64C-71C8B" },
+    { id: "o3", seller: "Lantern Street Hobby", number: "27F5A0C9-3D81BE-5E04F", date: "9 Nov", items: 5, mail: "Not here yet", url: null },
+    { id: "o4", seller: "Mossgate Collectibles", number: "D8E36B12-0F9C57-A3B91", date: "7 Nov", items: 2, mail: "Arrived", url: "https://orders.example/order/D8E36B12-0F9C57-A3B91" },
+    { id: "o5", seller: "Brightwater Cards", number: "61AC4E8D-B5207F-C9D36", date: "4 Nov", items: 4, mail: "Arrived", url: "https://orders.example/order/61AC4E8D-B5207F-C9D36" },
+    { id: "o6", seller: "Kettle Pond Trading", number: "0E4B7A2C-91F6D3-48E5A", date: "2 Nov", items: 2, mail: "Not here yet", url: "https://orders.example/order/0E4B7A2C-91F6D3-48E5A" }
+  ];
+  var NOLINK = 2;
+  var CONCEPTS = [
+    { key: "slip", name: "Order slip", states: ["list", "detail", "copied", "nolink", "opened", "loading", "failed", "empty"] },
+    { key: "ledger", name: "Number ledger", states: ["list", "copied", "pocket", "nolink", "opened", "loading", "failed", "empty"] }
+  ];
+  var STATE_NAMES = { list: "First screen", detail: "Order", copied: "Copied", nolink: "No web address", opened: "Order page open", loading: "Loading", failed: "Failed", empty: "Empty", pocket: "Clipboard open" };
+  var OPTIONS = [
+    { key: "slip", label: "Concept: Order slip. A list of orders; the order screen puts the number plate and Open in the thumb zone." },
+    { key: "ledger", label: "Concept: Number ledger (bold). The number is the row; one tap copies, a clipboard pocket holds it with Open." },
+    { key: "chunks", label: "Number set in its dash groups, wrapping only between groups (hidden: one plain string)." },
+    { key: "spell", label: "“Spell it out”: the number as words, for reading it aloud." },
+    { key: "copyopen", label: "“Copy and open order”: one press copies, then opens the order page to paste into." },
+    { key: "where", label: "“Where this goes”: the web address, in a closed disclosure." },
+    { key: "numsearch", label: "Search also matches part of a number (hidden: seller only)." }
+  ];
+  var NATO = { A: "Alfa", B: "Bravo", C: "Charlie", D: "Delta", E: "Echo", F: "Foxtrot" };
+  var DIGIT = ["zero", "one", "two", "three", "four", "five", "six", "seven", "eight", "nine"];
+
+  var S = { c: "slip", s: "list", t: "auto", o: 0, copied: null, hist: [], hidden: {}, labels: true };
+
+  function esc(x) { return String(x).replace(/[&<>"]/g, function (m) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[m]; }); }
+  function conceptOf(k) { for (var i = 0; i < CONCEPTS.length; i++) if (CONCEPTS[i].key === k) return CONCEPTS[i]; return null; }
+  function visibleConcepts() { return CONCEPTS.filter(function (c) { return !S.hidden[c.key]; }); }
+  function ord() { return ORDERS[S.o] || ORDERS[0]; }
+
+  /* ---------- icons ---------- */
+  var I = {
+    chev: '<svg class="chev" width="10" height="16" viewBox="0 0 10 16" aria-hidden="true"><path d="M2 2l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    back: '<svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    copy: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><rect x="5" y="5" width="9" height="9" rx="2" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M11 5V3.5A1.5 1.5 0 0 0 9.5 2h-6A1.5 1.5 0 0 0 2 3.5v6A1.5 1.5 0 0 0 3.5 11H5" fill="none" stroke="currentColor" stroke-width="1.6"/></svg>',
+    check: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><path d="M3 8.5l3.2 3L13 4.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    open: '<svg width="20" height="20" viewBox="0 0 20 20" aria-hidden="true"><rect x="2.5" y="4.5" width="13" height="13" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M9 11l8.5-8.5M12 2.5h5.5V8" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    search: '<svg width="16" height="16" viewBox="0 0 16 16" aria-hidden="true"><circle cx="7" cy="7" r="5" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M11 11l3.5 3.5" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
+  };
+
+  /* ---------- shared parts ---------- */
+  function numHTML(n) {
+    if (S.hidden.chunks) return '<span class="num plain">' + esc(n) + '</span>';
+    var parts = n.split("-");
+    return '<span class="num" aria-label="' + esc(n) + '">' + parts.map(function (p, i) {
+      return '<span class="chunk">' + esc(p) + (i < parts.length - 1 ? '<span class="dash">-</span>' : "") + "</span>";
+    }).join("") + "</span>";
+  }
+  function spellText(n) {
+    return n.split("-").map(function (g) {
+      return g.split("").map(function (ch) { return /\d/.test(ch) ? DIGIT[+ch] : (NATO[ch] || ch); }).join(" ");
+    }).join(", dash, ");
+  }
+  function spellHTML(n) {
+    return '<details class="spell" data-opt="spell"><summary>Spell it out</summary><p>' + esc(spellText(n)) + "</p></details>";
+  }
+  function whereHTML(o) {
+    if (!o.url) return "";
+    return '<details class="where" data-opt="where"><summary>Where this goes</summary><code>' + esc(o.url) + "</code></details>";
+  }
+  function searchHTML(label) {
+    var ph = S.hidden.numsearch ? "Seller" : "Seller or part of a number";
+    return '<div class="search" role="search" aria-label="' + esc(label) + '">' + I.search + "<span>" + esc(ph) + "</span></div>";
+  }
+  function statusBar() { return '<div class="status" aria-hidden="true">9:41</div><div class="homebar" aria-hidden="true"></div>'; }
+  function tag(text) { return '<span class="new-tag" data-tag="' + esc(text) + '">New: ' + esc(text) + "</span>"; }
+
+  function stateBlock(kind, label) {
+    if (kind === "loading") return '<p class="loading-line" role="status">Reading your orders…</p><ul class="skel" aria-hidden="true"><li></li><li></li><li></li><li></li></ul>';
+    if (kind === "failed") return '<div class="state" role="alert"><p>Your orders could not be read, so no number shows yet.</p><button class="btn fill" data-act="retry">Try again</button></div>';
+    return '<div class="state"><p>Orders you add show here, each with its full number.</p><button class="btn fill" data-act="retry">Add orders</button></div>';
+  }
+
+  function webHTML(o) {
+    var copiedNote = (S.copied === o.id) ? '<div class="banner" role="status">Order number copied. Paste it into your message.</div>' : "";
+    return '<div class="web" role="dialog" aria-label="Order page in Safari">' +
+      '<div class="webbar"><button class="textbtn strong" data-act="closeweb">Done</button><div class="addr">orders.example/order/' + esc(o.number) + "</div></div>" +
+      '<div class="webbody">' + copiedNote +
+      '<p class="standin">Stand-in for the seller’s order page: it lands on this one order.</p>' +
+      "<h2>Order " + esc(o.number) + "</h2><div>" + esc(o.seller) + ", " + esc(o.date) + "</div>" +
+      '<div class="fakebox">Message to seller…</div></div></div>';
+  }
+
+  /* ---------- Order slip ---------- */
+  function slipList(withSel) {
+    var rows = ORDERS.map(function (o, i) {
+      var cur = withSel && i === S.o ? ' aria-current="true"' : "";
+      return '<li><button class="row" data-act="pick" data-i="' + i + '"' + cur + '>' +
+        '<span class="body"><span class="seller">' + esc(o.seller) + '</span>' +
+        '<span class="meta">' + esc(o.date) + ", " + o.items + (o.items === 1 ? " card" : " cards") + ", " + esc(o.mail) + "</span>" +
+        '<span class="rownum">' + esc(o.number) + "</span></span>" + I.chev + "</button></li>";
+    }).join("");
+    return '<ul class="list">' + rows + "</ul>";
+  }
+  function slipListScreen(withSel) {
+    var body;
+    if (S.s === "loading" || S.s === "failed" || S.s === "empty") body = stateBlock(S.s);
+    else body = slipList(withSel);
+    var showSearch = !(S.s === "loading" || S.s === "failed" || S.s === "empty");
+    return '<div class="screen">' + statusBar() + '<div class="scroll"><div class="head-block"><h1 class="large-title">Orders</h1>' +
+      (showSearch ? searchHTML("Search orders") : "") + "</div>" + body + "</div></div>";
+  }
+  function slipDock(o, first) {
+    var copied = S.copied === o.id;
+    var plate = '<button class="plate new' + (copied ? " copied" : "") + '"' + (first ? ' id="slip-plate"' : "") + ' data-act="copy" data-i="' + ORDERS.indexOf(o) + '" aria-label="Copy order number ' + esc(o.number) + '">' +
+      tag("number plate") +
+      '<span class="top"><span>Order number</span><span class="slot" aria-live="polite">' + (copied ? I.check + "Copied" : I.copy + "Copy") + "</span></span>" +
+      numHTML(o.number) + "</button>";
+    var btns;
+    if (o.url) {
+      btns = '<div class="btnrow">' +
+        '<button class="btn tint" data-act="open" data-i="' + ORDERS.indexOf(o) + '">' + I.open + "Open order page</button>" +
+        '<button class="btn fill new" style="position:relative" data-opt="copyopen" data-act="copyopen" data-i="' + ORDERS.indexOf(o) + '">' + tag("copy and open") + "Copy and open order</button></div>" +
+        '<p class="hint">Opens this one order in Safari, not your order list.</p>' + whereHTML(o);
+    } else {
+      btns = '<div class="btnrow"><button class="btn" aria-disabled="true" aria-describedby="why-' + o.id + '" title="No web address is saved for this order.">' + I.open + "Open order page</button></div>" +
+        '<p class="hint" id="why-' + o.id + '">No web address is saved for this order. The number above still copies.</p>';
+    }
+    return '<div class="dock">' + plate + spellHTML(o.number) + btns + "</div>";
+  }
+  function slipDetail(o, withBack, first) {
+    var nav = withBack
+      ? '<div class="navbar"><button class="back" data-act="back">' + I.back + "Orders</button><span class=\"title\"></span><span class=\"spacer\"></span></div>"
+      : '<div class="navbar"></div>';
+    return '<div class="screen">' + statusBar() + nav +
+      '<div class="scroll"><div class="seller-head"><h2>' + esc(o.seller) + "</h2><span>Ordered " + esc(o.date) + "</span></div>" +
+      '<ul class="facts"><li><span class="k">Cards</span><span>' + o.items + '</span></li><li><span class="k">Mail</span><span>' + esc(o.mail) + "</span></li></ul></div>" +
+      slipDock(o, first) +
+      (S.s === "opened" ? webHTML(o) : "") + "</div>";
+  }
+  function slipCompact(first) {
+    if (["detail", "copied", "nolink", "opened"].indexOf(S.s) >= 0) return slipDetail(ord(), true, first);
+    return slipListScreen(false);
+  }
+  function slipOpen() {
+    var left = slipListScreen(true);
+    var right;
+    if (S.s === "loading" || S.s === "failed" || S.s === "empty") {
+      right = '<div class="screen">' + statusBar() + '<div class="state"><p>An order’s number shows here once orders are read.</p></div></div>';
+    } else right = slipDetail(ord(), false, false);
+    return '<div class="page">' + left + '</div><div class="hinge" aria-hidden="true"></div><div class="page">' + right + "</div>";
+  }
+
+  /* ---------- Number ledger ---------- */
+  function ledgerRows() {
+    return ORDERS.map(function (o, i) {
+      var copied = S.copied === o.id;
+      var open = o.url
+        ? '<button class="iconbtn" data-act="open" data-i="' + i + '" aria-label="Open order page for ' + esc(o.seller) + '">' + I.open + "</button>"
+        : '<button class="iconbtn" aria-disabled="true" aria-label="Open order page: no web address saved" title="No web address is saved for this order.">' + I.open + "</button>";
+      return '<li class="lrow"><div class="who"><b>' + esc(o.seller) + "</b><span>" + esc(o.date) + ", " + esc(o.mail) + "</span></div>" +
+        '<div class="line"><button class="numbtn' + (copied ? " copied" : "") + '" data-act="copy" data-i="' + i + '" aria-label="Copy order number ' + esc(o.number) + '">' +
+        numHTML(o.number) + '<span class="cslot" aria-live="polite">' + (copied ? I.check + "Copied" : I.copy + "Copy") + "</span></button>" + open + "</div>" +
+        (o.url ? "" : '<p class="why">No web address is saved for this order.</p>') + "</li>";
+    }).join("");
+  }
+  function pocketHTML(first) {
+    var o = S.copied ? ORDERS.filter(function (x) { return x.id === S.copied; })[0] : null;
+    var id = first ? ' id="ledger-pocket"' : "";
+    if (!o) return '<div class="pocket idle new" style="position:relative" data-opt="pocket"' + id + '>' + tag("clipboard pocket") + "Tap a number to copy it. It waits here with its order page.</div>";
+    var open = o.url
+      ? '<button class="iconbtn" data-act="open" data-i="' + ORDERS.indexOf(o) + '" aria-label="Open order page">' + I.open + "</button>"
+      : '<button class="iconbtn" aria-disabled="true" aria-label="Open order page: no web address saved" title="No web address is saved for this order.">' + I.open + "</button>";
+    return '<div class="pocket new" style="position:relative" data-opt="pocket"' + id + ">" + tag("clipboard pocket") +
+      '<button class="pk" data-act="pocket" aria-label="Show clipboard and earlier copies"><small>On your clipboard, ' + esc(o.seller) + "</small>" + numHTML(o.number) + "</button>" + open + "</div>";
+  }
+  function clipboardPanel(inSheet) {
+    var o = S.copied ? ORDERS.filter(function (x) { return x.id === S.copied; })[0] : null;
+    var head;
+    if (!o) {
+      head = '<div class="state" style="padding-inline:0"><p>Tap a number ' + (inSheet ? "" : "on the left ") + "to copy it. It shows here with its order page.</p></div>";
+    } else {
+      var i = ORDERS.indexOf(o);
+      head = '<div class="plate copied" role="status"><span class="top"><span>On your clipboard</span><span class="slot">' + I.check + "Copied</span></span>" + numHTML(o.number) +
+        '<span class="hint">' + esc(o.seller) + ", " + esc(o.date) + "</span></div>" + spellHTML(o.number) +
+        (o.url
+          ? '<div class="btnrow"><button class="btn fill" data-act="open" data-i="' + i + '">' + I.open + 'Open order page</button></div><p class="hint">Opens this one order in Safari, then paste.</p>' + whereHTML(o)
+          : '<div class="btnrow"><button class="btn" aria-disabled="true" title="No web address is saved for this order.">' + I.open + 'Open order page</button></div><p class="hint">No web address is saved for this order.</p>');
+    }
+    var earlier = S.hist.filter(function (id) { return id !== S.copied; }).slice(0, 4).map(function (id) {
+      var x = ORDERS.filter(function (y) { return y.id === id; })[0]; var j = ORDERS.indexOf(x);
+      return '<li><div class="hseller">' + esc(x.seller) + '</div><div class="hrow"><button class="numbtn" data-act="copy" data-i="' + j + '" aria-label="Copy again ' + esc(x.number) + '">' + numHTML(x.number) +
+        '<span class="cslot">' + I.copy + "Copy</span></button></div></li>";
+    }).join("");
+    return '<div class="panel">' + head + (earlier ? '<h2>Copied earlier</h2><ul class="hist">' + earlier + "</ul>" : "") + "</div>";
+  }
+  function ledgerScreen(compact, first) {
+    var noData = S.s === "loading" || S.s === "failed" || S.s === "empty";
+    var body = noData ? stateBlock(S.s) : '<ul class="ledger">' + ledgerRows() + "</ul>";
+    var html = '<div class="screen">' + statusBar() + '<div class="scroll"><div class="head-block"><h1 class="large-title">Order numbers</h1>' +
+      (noData ? "" : searchHTML("Search order numbers")) + "</div>" + body + "</div>" +
+      (compact && !noData ? pocketHTML(first) : "");
+    if (compact && S.s === "pocket") {
+      html += '<div class="sheet-scrim" data-act="closesheet"></div><div class="sheet" role="dialog" aria-label="Clipboard"><span class="grabber" aria-hidden="true"></span>' +
+        '<div class="sheetbar"><span class="textbtn" aria-hidden="true"></span><span class="title">Clipboard</span><button class="textbtn strong" data-act="closesheet">Done</button></div>' +
+        '<div class="scroll">' + clipboardPanel(true) + "</div></div>";
+    }
+    if (S.s === "opened") html += webHTML(ord());
+    return html + "</div>";
+  }
+  function ledgerOpen() {
+    var noData = S.s === "loading" || S.s === "failed" || S.s === "empty";
+    var saved = S.s; if (S.s === "opened") S.s = "copied";
+    var left = ledgerScreen(false, false);
+    S.s = saved;
+    var right = '<div class="screen">' + statusBar() + '<div class="navbar"><span class="title">Clipboard</span></div><div class="scroll">' +
+      (noData ? '<div class="state"><p>A copied number shows here once orders are read.</p></div>' : '<div class="new" style="position:relative" id="ledger-pocket-open">' + tag("clipboard page") + clipboardPanel(false) + "</div>") +
+      "</div>" + (S.s === "opened" ? webHTML(ord()) : "") + "</div>";
+    return '<div class="page">' + left + '</div><div class="hinge" aria-hidden="true"></div><div class="page">' + right + "</div>";
+  }
+
+  /* ---------- render ---------- */
+  function placeTags(root) {
+    root.querySelectorAll(".new-tag").forEach(function (t) {
+      var host = t.parentElement;
+      if (getComputedStyle(host).position === "static") host.style.position = "relative";
+      t.style.top = "-10px"; t.style.left = "8px";
+    });
+  }
+  function render() {
+    var vis = visibleConcepts();
+    if (vis.length && !conceptOf(S.c)) S.c = vis[0].key;
+    if (vis.length && S.hidden[S.c]) S.c = vis[0].key;
+    var c = conceptOf(S.c);
+    if (c.states.indexOf(S.s) < 0) S.s = "list";
+
+    var root = document.documentElement;
+    if (S.t === "auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", S.t);
+    root.classList.toggle("labels-off", !S.labels);
+    OPTIONS.forEach(function (op) { root.classList.toggle("hide-" + op.key, !!S.hidden[op.key]); });
+
+    seg("ctl-concept", vis.map(function (x) { return [x.key, x.name]; }), S.c, function (v) { S.c = v; S.s = "list"; S.copied = null; S.hist = []; go(); });
+    seg("ctl-state", c.states.map(function (k) { return [k, STATE_NAMES[k]]; }), S.s, function (v) { setState(v); go(); });
+    seg("ctl-theme", [["auto", "System"], ["light", "Light"], ["dark", "Dark"]], S.t, function (v) { S.t = v; go(); });
+    seg("ctl-labels", [["on", "Show New labels"], ["off", "Hide"]], S.labels ? "on" : "off", function (v) { S.labels = v === "on"; go(); });
+
+    var oc = document.getElementById("ctl-options");
+    oc.innerHTML = OPTIONS.map(function (op) {
+      var off = !!S.hidden[op.key];
+      return '<div class="optrow' + (off ? " off" : "") + '"><span>' + esc(op.label) + '</span><button data-opt-toggle="' + op.key + '" aria-pressed="' + off + '">' + (off ? "Show again" : "Hide") + "</button></div>";
+    }).join("");
+
+    var stage = document.getElementById("stage");
+    if (!vis.length) {
+      stage.querySelectorAll(".device").forEach(function (d) { d.innerHTML = '<div class="all-hidden">Both concepts are hidden. Press Show again on one.</div>'; });
+    } else {
+      stage.querySelectorAll(".device").forEach(function (d) {
+        var k = d.getAttribute("data-kind");
+        var first = k === "folded";
+        if (S.c === "slip") d.innerHTML = k === "open" ? slipOpen() : slipCompact(first);
+        else d.innerHTML = k === "open" ? ledgerOpen() : ledgerScreen(true, first);
+        placeTags(d);
+      });
+    }
+    writeHash();
+  }
+  function seg(id, items, cur, on) {
+    var el = document.getElementById(id);
+    el.innerHTML = items.map(function (it) { return '<button data-v="' + it[0] + '" aria-pressed="' + (it[0] === cur) + '">' + esc(it[1]) + "</button>"; }).join("");
+    el.onclick = function (e) { var b = e.target.closest("button"); if (b) on(b.getAttribute("data-v")); };
+  }
+  function setState(v) {
+    S.s = v;
+    if (v === "nolink") { S.o = NOLINK; S.copied = null; }
+    else if (v === "copied") { if (S.o === NOLINK) S.o = 0; S.copied = ORDERS[S.o].id; if (S.hist.indexOf(S.copied) < 0) S.hist.unshift(S.copied); if (S.c === "ledger" && S.hist.length < 2) S.hist.push("o4"); }
+    else if (v === "pocket") { if (!S.copied) { S.copied = ORDERS[0].id; S.hist = ["o1", "o4", "o2"]; } }
+    else if (v === "opened") { if (S.o === NOLINK) S.o = 0; }
+    else if (v === "detail") { if (S.o === NOLINK) S.o = 0; S.copied = null; }
+    else if (v === "list" || v === "loading" || v === "failed" || v === "empty") { S.copied = null; S.hist = []; }
+  }
+
+  function copyNumber(i) {
+    var o = ORDERS[i];
+    try { if (navigator.clipboard) navigator.clipboard.writeText(o.number).catch(function () {}); } catch (e) {}
+    S.o = i; S.copied = o.id;
+    S.hist = [o.id].concat(S.hist.filter(function (x) { return x !== o.id; })).slice(0, 5);
+  }
+
+  document.getElementById("stage").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-act]"); if (!b) return;
+    if (b.getAttribute("aria-disabled") === "true") return;
+    var a = b.getAttribute("data-act"); var i = +b.getAttribute("data-i");
+    if (a === "pick") { S.o = i; S.s = i === NOLINK ? "nolink" : "detail"; S.copied = null; }
+    else if (a === "back") { S.s = "list"; }
+    else if (a === "copy") { copyNumber(i); S.s = (S.c === "slip" && i === NOLINK) ? "nolink" : (S.c === "ledger" && S.s === "pocket" ? "pocket" : "copied"); }
+    else if (a === "open") { S.o = i; S.s = "opened"; }
+    else if (a === "copyopen") { copyNumber(i); S.s = "opened"; }
+    else if (a === "closeweb") { S.s = S.c === "slip" ? (S.copied ? "copied" : "detail") : (S.copied ? "copied" : "list"); }
+    else if (a === "pocket") { S.s = "pocket"; }
+    else if (a === "closesheet") { S.s = S.copied ? "copied" : "list"; }
+    else if (a === "retry") { S.s = "list"; }
+    go();
+  });
+  document.getElementById("ctl-options").addEventListener("click", function (e) {
+    var b = e.target.closest("[data-opt-toggle]"); if (!b) return;
+    var k = b.getAttribute("data-opt-toggle"); S.hidden[k] = !S.hidden[k]; go();
+  });
+
+  /* ---------- deep links: #c=slip&s=copied&t=dark&o=1&h=spell,where ---------- */
+  function writeHash() {
+    var parts = ["c=" + S.c, "s=" + S.s];
+    if (S.t !== "auto") parts.push("t=" + S.t);
+    if (S.o) parts.push("o=" + S.o);
+    var h = Object.keys(S.hidden).filter(function (k) { return S.hidden[k]; });
+    if (h.length) parts.push("h=" + h.join(","));
+    if (!S.labels) parts.push("l=off");
+    var nh = "#" + parts.join("&");
+    if (location.hash !== nh) { try { history.replaceState(null, "", nh); } catch (e) { /* file: in some browsers */ } }
+  }
+  function readHash() {
+    var q = {}; location.hash.replace(/^#/, "").split("&").forEach(function (p) { var kv = p.split("="); if (kv[0]) q[kv[0]] = decodeURIComponent(kv[1] || ""); });
+    S.hidden = {}; if (q.h) q.h.split(",").forEach(function (k) { S.hidden[k] = true; });
+    S.c = conceptOf(q.c) ? q.c : "slip";
+    S.t = q.t === "dark" || q.t === "light" ? q.t : "auto";
+    S.labels = q.l !== "off";
+    S.o = q.o && ORDERS[+q.o] ? +q.o : 0;
+    S.copied = null; S.hist = [];
+    setState(q.s || "list");
+  }
+  function go() { render(); }
+  window.addEventListener("hashchange", function () { readHash(); render(); });
+  readHash(); render();
+})();
+</script>
+</body>
+</html>

@@ -77,7 +77,11 @@ button { cursor: pointer; }
 .intro p { margin: 0; max-inline-size: 70ch; color: var(--text-muted); }
 .controls { gap: var(--space-4); }
 .control { display: flex; flex-direction: column; gap: var(--space-1); font-size: 13px; color: var(--text-muted); }
-.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-raised); padding: 2px; gap: 2px; }
+.seg { display: inline-flex; flex-wrap: wrap; border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-raised); padding: var(--space-1); gap: var(--space-1); }
+.search { width: 100%; min-height: var(--target); padding: 0 var(--space-3); border: 1px solid var(--line); border-radius: var(--radius); background: var(--surface-raised); font-size: var(--t-body); line-height: var(--l-body); }
+.frame.ax5 .search { min-height: 72px; }
+.sdate { font-size: var(--t-c2); line-height: var(--l-c2); color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.frame.ax5 .sdate { display: none; }
 .seg button { min-height: 36px; padding: 0 var(--space-3); border: 0; border-radius: 6px; background: none; color: var(--text); }
 .seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
 .restore { gap: var(--space-2); }
@@ -94,6 +98,7 @@ main.center { display: flex; flex-direction: column; gap: var(--space-12); paddi
 .tag-new { align-self: flex-start; border: 1.5px dashed var(--tag); color: var(--tag); border-radius: var(--radius); padding: 2px var(--space-2); font-size: 13px; }
 .frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
 figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); min-width: 0; max-width: 100%; }
+figure[hidden] { display: none; }
 figcaption { font-size: 13px; color: var(--text-muted); max-width: 60ch; }
 .fwrap { position: relative; }
 .fwrap > .frame { position: absolute; top: 0; left: 0; transform-origin: 0 0; }
@@ -299,24 +304,51 @@ textarea.note {
   .card3d.inside .face.back { opacity: 1; pointer-events: auto; }
 }
 .outside { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4) var(--space-4); }
-.hero { position: relative; border: 0; padding: 0; width: 100%; aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden; background: var(--surface-sunk); }
+.hero { position: relative; width: 100%; aspect-ratio: 4 / 3; border-radius: var(--radius); overflow: hidden; background: var(--surface-sunk); }
+.hero .open-photo { position: absolute; inset: 0; border: 0; padding: 0; background: none; cursor: zoom-in; }
 .hero svg.art { width: 100%; height: 100%; display: block; }
-.pager { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
-.pager .pos { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.hero .arrow { position: absolute; top: 50%; margin-top: -22px; width: 44px; height: 44px; border-radius: 22px; border: 0; background: rgba(10,12,18,.62); color: #fff; display: flex; align-items: center; justify-content: center; }
+.hero .arrow svg { width: 20px; height: 20px; }
+.hero .arrow.l { left: var(--space-2); } .hero .arrow.r { right: var(--space-2); }
+.hero .pos { position: absolute; left: 50%; bottom: var(--space-2); transform: translateX(-50%); padding: 2px var(--space-2); border-radius: var(--radius); background: rgba(10,12,18,.62); color: #fff; font-size: var(--t-foot); line-height: var(--l-foot); font-variant-numeric: tabular-nums; pointer-events: none; white-space: nowrap; }
+.seg-native { flex: none; }
+.frame.ax5 .seg-native { flex-direction: column; }
+.frame.ax5 .seg-native button { flex: none; }
+.face .outside { min-height: 100%; }
+.face .hero { flex: 1 1 auto; aspect-ratio: auto; min-height: 220px; max-height: 560px; }
+/* AX5: each screen scrolls as one column; the title wraps; the flip becomes a plain swap; the stamp rail
+   and the list's main button stay pinned, while a detail screen's button follows its content. */
+.frame.ax5 .scr { overflow-y: auto; }
+.frame.ax5 .scr > * { flex: none; }
+.frame.ax5 .scr .scroll { overflow: visible; }
+.frame.ax5 .toolbar { position: sticky; bottom: 0; margin-top: auto; }
+.frame.ax5 .toolbar.flow { position: static; }
+.frame.ax5 .navbar { flex-wrap: wrap; padding-bottom: var(--space-2); }
+.frame.ax5 .navbar .ttl { flex-basis: 100%; order: 3; white-space: normal; text-align: left; padding: 0 var(--space-2); }
+.frame.ax5 .face .hero { flex: none; aspect-ratio: 4 / 3; min-height: 0; }
+.frame.ax5 .scr.env .flipper { perspective: none; }
+.frame.ax5 .scr.env .card3d, .frame.ax5 .scr.env .face { position: static; transform: none; transition: none; overflow: visible; }
+.frame.ax5 .scr.env .card3d .face.back, .frame.ax5 .scr.env .card3d.inside .face.front { display: none; }
+.frame.ax5 .scr.env .card3d.inside .face.back { display: block; opacity: 1; }
+.frame.ax5 .scr.env .rail-wrap { position: sticky; bottom: 0; margin-top: auto; }
+.frame.ax5 .rail-sum { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+.pg:has(.viewer) .statusbar, .pg:has(.camera) .statusbar { color: #fff; }
+.pg:has(.viewer) .homebar, .pg:has(.camera) .homebar { background: #fff; }
+.frame.ax5 .btn svg { width: 40px; height: 40px; }
 .inside { display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-3) var(--space-4) var(--space-6); }
 .inside-paper { background: var(--surface-raised); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); border-top: 6px solid var(--accent); }
 .rail-wrap { border-top: 1px solid var(--line); background: var(--bar); backdrop-filter: blur(18px); -webkit-backdrop-filter: blur(18px); padding: var(--space-3) 0 calc(var(--sa-bottom) + var(--space-2)); display: flex; flex-direction: column; gap: var(--space-2); }
 .rail-sum { margin: 0; padding: 0 var(--space-4); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); }
 .rail { display: flex; gap: var(--space-3); overflow-x: auto; padding: var(--space-2) var(--space-4); align-items: flex-end; scroll-padding-inline: var(--space-4); }
 .stamp {
-  flex: none; position: relative; width: 56px; height: 68px; padding: 5px; border: 0; background: var(--surface-raised);
-  /* perforated edge */
-  -webkit-mask: radial-gradient(circle at 4px 4px, transparent 2.6px, #000 3px) -4px -4px / 8px 8px;
-          mask: radial-gradient(circle at 4px 4px, transparent 2.6px, #000 3px) -4px -4px / 8px 8px;
+  flex: none; position: relative; width: 56px; height: 68px; padding: 2px; background: var(--surface-raised);
+  /* perforated edge: dots of the page colour punch the stamp's rim */
+  border: 4px dotted var(--surface); box-shadow: 0 1px 2px rgba(0,0,0,.18);
 }
+.stamp.skel { border-color: transparent; }
 .stamp .in { width: 100%; height: 100%; overflow: hidden; border-radius: 2px; display: flex; align-items: center; justify-content: center; }
 .stamp .in svg.art { width: 100%; height: 100%; display: block; }
-.stamp.none { background: transparent; }
+.stamp.none { background: transparent; box-shadow: none; }
 .stamp.none .in { border: 2px dashed var(--text-muted); color: var(--text-muted); }
 .stamp.none .in svg { width: 22px; height: 22px; }
 .stamp-slot { flex: none; display: flex; flex-direction: column; align-items: center; gap: 4px; padding-bottom: 6px; position: relative; }
@@ -377,7 +409,40 @@ textarea.note {
   <div class="cluster restore" id="restore" hidden><span>Hidden:</span></div>
 </header>
 
-<main class="center" id="concepts"></main>
+<main class="center" id="concepts">
+  <section class="concept" id="concept-shoebox" aria-labelledby="concept-shoebox-h">
+    <div class="concept-head">
+      <div class="stack">
+        <h2 id="concept-shoebox-h">Shoebox list</h2>
+        <p>A plain list of every unmatched envelope, oldest first. A photo thumbnail or a hollow envelope outline shows at a glance which ones have pictures. Tap one to see its photos, note and cards, then match it once you know the sender. Unfolded, the list sits on the left page and the envelope on the right.</p>
+        <span class="tag-new">New: the whole screen (a blind designer cannot see today's)</span>
+      </div>
+      <button class="pill-btn" data-hide="shoebox">Hide Shoebox list</button>
+    </div>
+    <div class="frames">
+      <figure><div class="fwrap"><div class="frame" data-device="iphone-duo-folded"></div></div><figcaption>Duo folded, 466 x 678 pt</figcaption></figure>
+      <figure><div class="fwrap"><div class="frame" data-device="iphone-duo-unfolded"></div></div><figcaption>Duo open, 951 x 669 pt, hinge x 455.5 to 495.5</figcaption></figure>
+      <figure><div class="fwrap"><div class="frame" data-device="iphone-large"></div></div><figcaption>Large phone. Size not written: drawn at 440 x 956 pt, unmeasured.</figcaption></figure>
+      <figure><div class="fwrap"><div class="frame ax5" data-device="iphone-duo-folded-ax5"></div></div><figcaption>Duo folded at the largest accessibility text size (AX5)</figcaption></figure>
+    </div>
+  </section>
+  <section class="concept" id="concept-envelope" aria-labelledby="concept-envelope-h">
+    <div class="concept-head">
+      <div class="stack">
+        <h2 id="concept-envelope-h">Open envelope</h2>
+        <p>One envelope at a time, treated as the object it is. Its outside is the photos; its inside is the note and the cards. Folded, a switch flips it over. Unfolded, the hinge is the envelope fold: outside on the left page, inside on the right. A row of stamps along the bottom is the whole pile: a photo stamp has a picture, a hollow stamp does not.</p>
+        <span class="tag-new">New: the whole screen (a blind designer cannot see today's)</span>
+      </div>
+      <button class="pill-btn" data-hide="envelope">Hide Open envelope</button>
+    </div>
+    <div class="frames">
+      <figure><div class="fwrap"><div class="frame" data-device="iphone-duo-folded"></div></div><figcaption>Duo folded, 466 x 678 pt</figcaption></figure>
+      <figure><div class="fwrap"><div class="frame" data-device="iphone-duo-unfolded"></div></div><figcaption>Duo open, 951 x 669 pt, hinge x 455.5 to 495.5</figcaption></figure>
+      <figure><div class="fwrap"><div class="frame" data-device="iphone-large"></div></div><figcaption>Large phone. Size not written: drawn at 440 x 956 pt, unmeasured.</figcaption></figure>
+      <figure><div class="fwrap"><div class="frame ax5" data-device="iphone-duo-folded-ax5"></div></div><figcaption>Duo folded at the largest accessibility text size (AX5)</figcaption></figure>
+    </div>
+  </section>
+</main>
 
 <svg width="0" height="0" style="position:absolute" aria-hidden="true">
   <symbol id="i-cam" viewBox="0 0 24 24"><path fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" d="M3 8.5A1.5 1.5 0 0 1 4.5 7h3l1.6-2.2h5.8L16.5 7h3A1.5 1.5 0 0 1 21 8.5v9a1.5 1.5 0 0 1-1.5 1.5h-15A1.5 1.5 0 0 1 3 17.5z"/><circle cx="12" cy="12.8" r="3.6" fill="none" stroke="currentColor" stroke-width="1.8"/></symbol>
@@ -400,10 +465,8 @@ textarea.note {
 // ---------- Sample data (every name invented) ----------
 const PHOTO_CAP = 4;
 const CONCEPTS = [
-  { key: 'shoebox', name: 'Shoebox list', id: 'concept-shoebox',
-    blurb: 'A plain list of every unmatched envelope, newest last. A photo thumbnail or a hollow envelope outline shows at a glance which ones have pictures. Tap one to see its photos, note and cards, then match it when you know the sender.' },
-  { key: 'envelope', name: 'Open envelope', id: 'concept-envelope',
-    blurb: 'One envelope at a time, treated as the object it is. Its outside is the photos; its inside is the note and the cards. Folded, a switch flips it over. Unfolded, the hinge is the envelope fold: outside on the left page, inside on the right. A row of stamps along the bottom is the whole pile: a photo stamp has a picture, a hollow stamp does not.' },
+  { key: 'shoebox', name: 'Shoebox list', id: 'concept-shoebox' },
+  { key: 'envelope', name: 'Open envelope', id: 'concept-envelope' },
 ];
 const DEVICES = [
   { key: 'folded', label: 'Duo folded, 466 x 678 pt', dev: 'iphone-duo-folded', w: 466, h: 678 },
@@ -510,6 +573,11 @@ class App {
     const f = e.target.dataset.field;
     if (f === 'note' && this.env) this.env.note = e.target.value;
     if (f === 'card') this.nav.cardDraft = e.target.value;
+    if (f === 'q') {
+      // Re-render only the order rows, so the search field keeps focus while typing.
+      this.nav.q = e.target.value;
+      const g = this.el.querySelector('[data-orders]'); if (g) g.innerHTML = this.orderRows();
+    }
   }
   onClick(e) {
     const t = e.target.closest('[data-act]'); if (!t || t.disabled) return;
@@ -564,8 +632,9 @@ class App {
         const v = (n.cardDraft || '').trim(); if (!v || !env) return;
         env.cards.push(v); n.cardDraft = ''; this.render(); const f = this.el.querySelector('[data-field="card"]'); if (f) f.focus(); return;
       }
-      case 'match': n.sheet = 'match'; n.pick = null; n.orderOrder = this.rankOrders(env).map(o => o.id); break;
+      case 'match': n.sheet = 'match'; n.pick = null; n.q = ''; n.orderOrder = this.rankOrders(env).map(o => o.id); break;
       case 'pick': n.pick = d.id; break;
+      case 'clear-q': n.q = ''; break;
       case 'match-cancel': n.sheet = null; break;
       case 'match-done': {
         const i = this.data.envelopes.indexOf(env), oi = this.data.orders.findIndex(o => o.id === n.pick);
@@ -725,12 +794,12 @@ class App {
   detail(withBack) {
     const env = this.env;
     return `<div class="scr">
-      <div class="navbar"><div class="side">${withBack ? `<button class="tbtn" data-act="back">${icon('back')}Mail</button>` : ''}</div><div class="ttl">Arrived ${esc(env.arrived)}</div><div class="side end"></div></div>
+      <div class="navbar"><div class="side">${withBack ? `<button class="tbtn" data-act="back">${icon('back')}Unmatched mail</button>` : ''}</div><div class="ttl">Arrived ${esc(env.arrived)}</div><div class="side end"></div></div>
       <div class="scroll" data-keep="detail"><div class="scroll-pad" style="padding-top:var(--space-3)">
         <div class="stack" style="gap:var(--space-2)">${this.photoStrip(env)}</div>
         ${this.noteAndCards(env)}
       </div></div>
-      <div class="toolbar"><button class="btn wide" data-act="match" ${this.data.orders.length ? '' : 'disabled'}>Match to an order</button></div>
+      <div class="toolbar flow">${this.matchBtn()}</div>
     </div>`;
   }
 
@@ -775,20 +844,27 @@ class App {
   // ----- Match sheet -----
   matchSheet() {
     const n = this.nav, env = this.env;
-    const orders = (n.orderOrder || []).map(id => this.data.orders.find(o => o.id === id)).filter(Boolean);
     return `<div class="dim" data-act="match-cancel"></div><div class="sheet" role="dialog" aria-label="Match to an order">
       <div class="grab" aria-hidden="true"></div>
       <div class="navbar"><div class="side"><button class="tbtn" data-act="match-cancel">Cancel</button></div><div class="ttl">Match to an order</div>
       <div class="side end"><button class="tbtn" data-act="match-done" ${n.pick ? '' : 'disabled'} title="${n.pick ? '' : 'Pick an order first'}" style="font-weight:600">Done</button></div></div>
       <div class="scroll"><div class="scroll-pad" style="padding-top:var(--space-3)">
+      <input class="search" type="search" data-field="q" aria-label="Search sellers and card names" placeholder="Search sellers and card names" value="${esc(n.q || '')}" autocomplete="off">
       <p class="label">Orders that list the same card names come first. Names on this envelope are underlined.</p>
-      <div class="group" role="radiogroup" aria-label="Orders">${orders.map(o => {
-        const hit = o.cards.filter(c => env.cards.includes(c)).length;
-        return `<button class="order" role="radio" aria-checked="${n.pick === o.id}" data-act="pick" data-id="${o.id}">
-          <span class="radio">${n.pick === o.id ? icon('check') : ''}</span>
-          <span class="txt"><span class="s">${esc(o.seller)}</span><span class="m">Placed ${esc(o.placed)}. ${hit} of ${o.cards.length} names on this envelope.</span>
-          <span class="names">${o.cards.map(c => env.cards.includes(c) ? `<b>${esc(c)}</b>` : esc(c)).join(', ')}</span></span></button>`;
-      }).join('')}</div></div></div></div>`;
+      <div class="group" role="radiogroup" aria-label="Orders" data-orders>${this.orderRows()}</div></div></div></div>`;
+  }
+  orderRows() {
+    const n = this.nav, env = this.env, q = (n.q || '').trim().toLowerCase();
+    const orders = (n.orderOrder || []).map(id => this.data.orders.find(o => o.id === id)).filter(Boolean)
+      .filter(o => !q || o.seller.toLowerCase().includes(q) || o.cards.some(c => c.toLowerCase().includes(q)));
+    if (!orders.length) return `<div class="state" style="padding:var(--space-4)"><p>No order has a seller or card name with "${esc(n.q.trim())}".</p><button class="btn quiet" data-act="clear-q">Clear search</button></div>`;
+    return orders.map(o => {
+      const hit = o.cards.filter(c => env.cards.includes(c)).length;
+      return `<button class="order" role="radio" aria-checked="${n.pick === o.id}" data-act="pick" data-id="${o.id}">
+        <span class="radio">${n.pick === o.id ? icon('check') : ''}</span>
+        <span class="txt"><span class="s">${esc(o.seller)}</span><span class="m">Placed ${esc(o.placed)}. ${hit} of ${o.cards.length} names on this envelope.</span>
+        <span class="names">${o.cards.map(c => env.cards.includes(c) ? `<b>${esc(c)}</b>` : esc(c)).join(', ')}</span></span></button>`;
+    }).join('');
   }
 
   // ----- Open envelope concept -----
@@ -800,7 +876,7 @@ class App {
         const cur = e.id === n.envId;
         const inner = e.photos.length ? `<span class="in">${art(e.photos[0].seed, e.photos[0].kind)}</span>` : `<span class="in">${icon('cam')}</span>`;
         return `<span class="stamp-slot ${cur ? 'cur' : ''}" role="listitem"><button class="stamp ${e.photos.length ? '' : 'none'}" data-act="open-env" data-id="${e.id}" ${cur ? 'aria-current="true"' : ''}
-          aria-label="Envelope ${i + 1}, ${esc(e.arrived)}, ${e.photos.length ? plural(e.photos.length, 'photo', 'photos') : 'no photo yet'}">${inner}</button></span>`;
+          aria-label="Envelope ${i + 1}, ${esc(e.arrived)}, ${e.photos.length ? plural(e.photos.length, 'photo', 'photos') : 'no photo yet'}">${inner}</button><span class="sdate" aria-hidden="true">${esc(e.arrived)}</span></span>`;
       }).join('')}<span class="stamp-slot" role="listitem"><button class="stamp add" data-act="camera" data-for="new" aria-label="Photograph a new envelope"><span class="in">${icon('plus')}</span></button></span></div></div>`;
   }
   outsideFace(env) {
@@ -808,15 +884,16 @@ class App {
     const undo = n.undo && n.undo.kind === 'photo' && n.undo.env === env.id ? this.undoBar() : '';
     if (!env.photos.length) return `<div class="outside">${undo}<button class="bigadd" data-act="camera" data-for="env">${icon('cam')}Photograph this envelope</button></div>`;
     const i = Math.min(n.photo, env.photos.length - 1), p = env.photos[i], full = env.photos.length >= PHOTO_CAP;
-    return `<div class="outside">${undo}<button class="hero" data-act="view" data-i="${i}" aria-label="Open photo ${i + 1} of ${env.photos.length} full screen">${art(p.seed, p.kind)}</button>
-      <div class="pager"><button class="tbtn" data-act="prev" ${i === 0 ? 'disabled' : ''}>${icon('back', 'Previous photo')}</button>
-        <span class="pos">Photo ${i + 1} of ${env.photos.length}</span>
-        <button class="tbtn" data-act="next" ${i >= env.photos.length - 1 ? 'disabled' : ''}>${icon('chev', 'Next photo')}</button></div>
+    const many = env.photos.length > 1;
+    return `<div class="outside">${undo}<div class="hero" id="${this.uid('hero')}"><button class="open-photo" data-act="view" data-i="${i}" aria-label="Open photo ${i + 1} of ${env.photos.length} full screen">${art(p.seed, p.kind)}</button>
+        ${many && i > 0 ? `<button class="arrow l" data-act="prev">${icon('back', 'Previous photo')}</button>` : ''}
+        ${many && i < env.photos.length - 1 ? `<button class="arrow r" data-act="next">${icon('chev', 'Next photo')}</button>` : ''}
+        ${many ? `<span class="pos">${i + 1} of ${env.photos.length}</span>` : ''}</div>
       ${full ? `<p class="label">Four photos is the most an envelope keeps. Delete one to add another.</p>` : `<button class="btn quiet wide" data-act="camera" data-for="env">${icon('cam')}Add a photo</button>`}</div>`;
   }
-  insideFace(env) {
-    return `<div class="inside"><div class="inside-paper">${this.noteAndCards(env)}</div>
-      <button class="btn wide" data-act="match" ${this.data.orders.length ? '' : 'disabled'}>Match to an order</button></div>`;
+  matchBtn() { return `<button class="btn wide" data-act="match" ${this.data.orders.length ? '' : 'disabled'}>Match to an order</button>`; }
+  insideFace(env, withBtn = true) {
+    return `<div class="inside"><div class="inside-paper">${this.noteAndCards(env)}</div>${withBtn ? this.matchBtn() : ''}</div>`;
   }
   envScreen(part) {
     const n = this.nav, sb = this.stateBlock(), env = this.env, envs = this.data.envelopes;
@@ -825,8 +902,8 @@ class App {
     if (part === 'inside') {
       if (sb === 'loading') return `<div class="scr"><div class="flap" aria-hidden="true"></div><div class="scroll-pad"><div class="skel" style="height:280px"></div></div></div>`;
       if (sb || !env) return `<div class="scr"><div class="flap" aria-hidden="true"></div></div>`;
-      return `<div class="scr"><div class="flap" aria-hidden="true"></div><div class="pagehead"><p class="kicker">Inside</p><h2 class="largetitle" style="padding-top:0">Arrived ${esc(env.arrived)}</h2></div>
-        <div class="scroll" data-keep="inside">${this.insideFace(env)}</div></div>`;
+      return `<div class="scr"><div class="flap" aria-hidden="true"></div><h2 class="largetitle" style="padding-top:0">Inside</h2>
+        <div class="scroll" data-keep="inside">${this.insideFace(env, false)}</div><div class="toolbar">${this.matchBtn()}</div></div>`;
     }
     let mid;
     if (sb === 'loading') mid = `<div class="scroll-pad" style="flex:1;padding-top:var(--space-3)"><div class="skel" style="aspect-ratio:4/3"></div></div><span class="vh" role="status">Loading saved envelopes</span>`;
@@ -843,10 +920,10 @@ class App {
           <div class="face back" data-keep="inside" ${inside ? '' : 'aria-hidden="true" inert'}>${this.insideFace(env)}</div></div></div>`;
     }
     const head = env && !sb
-      ? `<div class="pagehead"><p class="kicker">${part === 'outside' ? 'Outside' : `Envelope ${idx} of ${envs.length}`}</p><h2 class="largetitle" style="padding-top:0">Arrived ${esc(env.arrived)}</h2></div>`
+      ? `<div class="pagehead"><p class="kicker">Envelope ${idx} of ${envs.length}</p><h2 class="largetitle" style="padding-top:0">Arrived ${esc(env.arrived)}</h2></div>`
       : `<h2 class="largetitle">Unmatched mail</h2>`;
     const showRail = !sb && envs.length;
-    return `<div class="scr">${head}${mid}${showRail ? this.rail() : (sb === 'loading' ? `<div class="rail-wrap"><div class="rail">${[0, 1, 2, 3].map(() => '<span class="stamp-slot"><span class="stamp skel" style="mask:none;-webkit-mask:none"></span></span>').join('')}</div></div>` : '')}</div>`;
+    return `<div class="scr env">${head}${mid}${showRail ? this.rail() : (sb === 'loading' ? `<div class="rail-wrap"><div class="rail">${[0, 1, 2, 3].map(() => '<span class="stamp-slot"><span class="stamp skel" style="mask:none;-webkit-mask:none"></span></span>').join('')}</div></div>` : '')}</div>`;
   }
 }
 
@@ -867,26 +944,24 @@ function build() {
   const restore = document.getElementById('restore');
   restore.hidden = !hidden.length;
   restore.innerHTML = '<span>Hidden:</span>' + hidden.map(k => { const c = CONCEPTS.find(x => x.key === k); return c ? `<button class="pill-btn" data-show="${k}">Show ${c.name}</button>` : ''; }).join('');
-  const main = document.getElementById('concepts'); main.innerHTML = ''; apps.length = 0;
+  apps.length = 0;
+  // The sections and frames are static markup; each build swaps in a fresh frame and starts a new live app in it.
   for (const c of CONCEPTS) {
-    if (hidden.includes(c.key)) continue;
-    if (h.c && h.c !== c.key) continue;
-    const sec = document.createElement('section'); sec.className = 'concept'; sec.id = c.id; sec.setAttribute('aria-labelledby', c.id + '-h');
-    sec.innerHTML = `<div class="concept-head"><div class="stack"><h2 id="${c.id}-h">${c.name}</h2><p>${c.blurb}</p><span class="tag-new">New: the whole screen (a blind designer cannot see today's)</span></div>
-      <button class="pill-btn" data-hide="${c.key}">Hide ${c.name}</button></div><div class="frames"></div>`;
-    const frames = sec.querySelector('.frames');
+    const sec = document.getElementById(c.id);
+    sec.hidden = hidden.includes(c.key) || (h.c && h.c !== c.key);
+    if (sec.hidden) continue;
     for (const d0 of DEVICES) {
-      if (devSel !== 'all' && devSel !== d0.key) continue;
+      const old = sec.querySelector(`.frame[data-device="${d0.dev}"]`), fig = old.closest('figure');
+      fig.hidden = devSel !== 'all' && devSel !== d0.key;
+      if (fig.hidden) continue;
       const d = Object.assign({}, d0);
-      if (d.key === 'phone' && pw && ph) { d.w = pw; d.h = ph; d.label = `Large phone, drawn at ${pw} x ${ph} pt from the link.`; }
-      const fig = document.createElement('figure');
-      fig.innerHTML = `<div class="fwrap"><div class="frame ${d.ax ? 'ax5' : ''}" data-device="${d.dev}" style="width:${d.w}px;height:${d.h}px"></div></div><figcaption>${d.label}</figcaption>`;
-      frames.appendChild(fig);
-      const app = new App(fig.querySelector('.frame'), c.key, d, mode);
+      if (d.key === 'phone' && pw && ph) { d.w = pw; d.h = ph; fig.querySelector('figcaption').textContent = `Large phone, drawn at ${pw} x ${ph} pt from the link.`; }
+      const fr = old.cloneNode(false); old.replaceWith(fr);
+      fr.style.width = d.w + 'px'; fr.style.height = d.h + 'px';
+      const app = new App(fr, c.key, d, mode);
       app.fig = fig; apps.push(app);
-      if (h.scr && (!h.c || h.c === c.key)) deepScreen(app, h.scr);
+      if (h.scr) deepScreen(app, h.scr);
     }
-    main.appendChild(sec);
   }
   fit();
   if (h.focus) { const el = document.getElementById(h.focus); if (el) el.scrollIntoView(); }

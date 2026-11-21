@@ -1,0 +1,634 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Undo Shelf</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app draws light only (Theme.swift reads no dark token), so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Top inset: unmeasured on the Duo screens; drawn at the UI tests' 20 pt floor, as duo-hand-tap-shift draws it. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+  --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-6:24px;
+}
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1060px; margin:0 auto; padding:var(--space-4); padding-bottom:calc(var(--space-6) + var(--sab)); display:flex; flex-direction:column; gap:var(--space-4); }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:var(--space-2) var(--space-3); font-weight:600; }
+header { display:flex; flex-direction:column; gap:var(--space-1); }
+header h1 { font-size:26px; line-height:1.2; margin:0; font-weight:700; }
+.kind { font-family:var(--mono); font-size:12px; color:var(--inkSoft); margin:0; }
+.kind b { color:var(--ink); }
+.sub { color:var(--inkSoft); margin:0; max-width:76ch; }
+.controls { display:flex; flex-direction:column; gap:var(--space-2); }
+.group { display:flex; flex-wrap:wrap; gap:var(--space-2); align-items:center; }
+.group > span { font-size:13px; color:var(--inkSoft); min-width:64px; }
+.group a, .group button { font:inherit; font-size:14px; min-height:44px; padding:0 var(--space-3); display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.group a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.group button[aria-pressed="true"] { border-style:dashed; color:var(--inkSoft); }
+a:focus-visible, button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { display:flex; flex-direction:column; gap:var(--space-3); }
+section.concept[hidden], .pose[hidden], .option[hidden] { display:none; }
+section.concept > h2 { font-size:22px; margin:var(--space-4) 0 0; }
+.pitch { margin:0; max-width:76ch; }
+.poses { display:flex; flex-wrap:wrap; gap:var(--space-6); align-items:flex-start; }
+.pose { display:flex; flex-direction:column; gap:var(--space-2); max-width:100%; }
+.pose h3 { font-size:15px; margin:0; }
+.read { font:12px/1.5 var(--mono); color:var(--inkSoft); max-width:60ch; }
+.read .ok { color:var(--green); } .read .bad { color:var(--red); }
+.fit { overflow:hidden; max-width:100%; }
+.scaler { transform-origin:0 0; }
+
+/* ---- device frames: 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:14px; overflow:hidden; font-family:var(--sys); color:var(--ink); }
+.dev[data-pose="folded"], .dev[data-pose="ax5"] { width:466px; height:678px; }
+.dev[data-pose="phone"] { width:375px; height:812px; }
+.dev[data-pose="open"] { width:951px; height:669px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); padding:0 var(--space-4); display:flex; justify-content:space-between; align-items:center;
+  font-size:12px; font-weight:600; z-index:9; background:var(--paper); }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, transparent); z-index:8; }
+.fold span { position:absolute; top:240px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.pg { position:absolute; top:0; bottom:0; overflow:hidden; }
+.pg.full { left:0; right:0; } .pg.l { left:0; width:455.5px; } .pg.r { left:495.5px; right:0; }
+
+/* the working area of a page: it ends above the shelf or the bar, so nothing scrolls under a control */
+.work { position:absolute; left:0; right:0; top:var(--sat); overflow:hidden; }
+.work .inner { display:flex; flex-direction:column; gap:var(--space-3); padding:var(--space-2) var(--space-4) var(--space-4); }
+.work.edge::after { content:""; position:absolute; left:0; right:0; bottom:0; height:1px; background:var(--line); }
+
+/* app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) */
+.mast { display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid var(--ink); padding-bottom:var(--space-1); }
+.mast b { font-family:var(--cochin); font-size:20px; letter-spacing:2px; }
+.mast span { font:11px var(--mono); color:var(--inkSoft); }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.pkg-h { display:flex; justify-content:space-between; align-items:center; gap:var(--space-2); min-height:48px; padding:var(--space-2) var(--space-3); cursor:pointer; background:none; border:0; width:100%; text-align:left; font:inherit; color:inherit; }
+.pkg-h b { font-family:var(--cochin); font-size:17px; }
+.pkg-h span { font:12px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.ln { display:flex; align-items:center; gap:var(--space-2); min-height:45px; border-top:1px solid var(--line); padding-right:var(--space-3); }
+.ln button.box { flex:0 0 45px; height:45px; display:grid; place-items:center; background:none; border:0; cursor:pointer; padding:0; }
+.ln button.box i { width:26px; height:26px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; font-style:normal; color:var(--card); font-size:16px; }
+.ln.got button.box i { background:var(--green); border-color:var(--green); }
+.ln .nm { font-family:var(--cochin); font-size:16px; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ln .q { font:12px var(--mono); color:var(--inkSoft); }
+.ln.mark { box-shadow:inset 3px 0 0 var(--accent); }
+.ln .tagline { font:10.5px var(--mono); letter-spacing:.8px; color:var(--accent); text-transform:uppercase; }
+.plain { font-family:var(--cochin); font-size:15px; color:var(--inkSoft); }
+.field { min-height:48px; border:1px solid var(--accent); background:var(--card); border-radius:8px; padding:0 var(--space-3); display:flex; align-items:center; font-family:var(--cochin); font-size:16px; }
+
+/* ---- the system tab bar (Today) ---- */
+.bar { position:absolute; left:0; right:0; bottom:0; height:83px; z-index:6; }
+.bar .pill { position:absolute; left:var(--space-3); right:var(--space-3); top:4px; height:62px; border-radius:31px; display:flex; padding:0 var(--space-1);
+  background:color-mix(in srgb, var(--card) 82%, transparent); border:1px solid color-mix(in srgb, var(--line) 80%, transparent); box-shadow:0 4px 16px rgba(28,43,36,0.10); }
+.bar .ind { position:absolute; bottom:8px; left:50%; width:134px; height:5px; margin-left:-67px; border-radius:3px; background:var(--ink); opacity:.85; }
+.tab { flex:1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font-size:11px; color:var(--inkSoft); background:none; border:0; cursor:pointer; font-family:var(--sys); border-radius:26px; margin:var(--space-1) 0; min-width:44px; }
+.tab svg { width:22px; height:22px; }
+.tab[aria-selected="true"] { color:var(--accent); background:color-mix(in srgb, var(--accent) 12%, transparent); }
+.tab .badge { position:absolute; }
+/* open Duo: the custom pill under the right page only (DuoBarMetrics: 64 pt pill, 12 pt lift, 24 pt in) */
+.dev[data-pose="open"] .bar { left:495.5px; height:76px; }
+.dev[data-pose="open"] .bar .pill { left:24px; right:24px; top:0; height:64px; border-radius:32px; }
+.dev[data-pose="open"] .bar .ind { display:none; }
+
+/* ---- concept: the undo shelf (New) ---- */
+.shelf { position:absolute; z-index:7; background:var(--card); border:1px solid var(--line); border-radius:20px; box-shadow:0 4px 16px rgba(28,43,36,0.10); display:flex; padding:var(--space-1); gap:0; }
+.ticket { flex:1 1 0; min-width:0; display:flex; flex-direction:column; padding:0 var(--space-2) var(--space-2); }
+.ticket + .ticket { border-left:1px solid var(--line); }
+.slot { height:44px; display:flex; align-items:center; }
+.undo { min-height:44px; min-width:44px; width:100%; display:flex; align-items:center; gap:6px; background:none; border:0; padding:0; cursor:pointer; color:var(--accent);
+  font:700 13px var(--mono); letter-spacing:.4px; text-align:left; }
+.undo u { text-decoration:none; border-bottom:1px solid var(--line); padding-bottom:1px; }
+.undo svg { width:16px; height:16px; flex:none; }
+.endst { font:11px/1.25 var(--mono); color:var(--inkSoft); text-transform:uppercase; letter-spacing:.4px; }
+.micro { font:11px/14px var(--mono); letter-spacing:.6px; text-transform:uppercase; color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.subj { font-family:var(--cochin); font-size:15px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.subj.struck { text-decoration:line-through; text-decoration-color:var(--inkSoft); color:var(--inkSoft); }
+.meta { font:11px/14px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.meta .mac { color:var(--manilaInk); }
+/* one-ticket shelf: text left, the Undo cell right */
+.shelf.one .ticket { flex-direction:row; align-items:stretch; gap:var(--space-2); padding:0 0 0 var(--space-2); }
+.shelf.one .txt { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; }
+.shelf.one .slot { flex:0 0 88px; height:auto; align-items:flex-start; border-left:1px solid var(--line); padding:var(--space-1) 0 0 var(--space-3); }
+.shelf.one .slot .undo { height:44px; }
+.shelf .empty { flex:1; display:flex; align-items:center; gap:var(--space-3); padding:0 var(--space-3); font-family:var(--cochin); font-size:15px; color:var(--inkSoft); }
+.shelf .empty button { margin-left:auto; }
+.btn { min-height:44px; padding:0 var(--space-3); border:1px solid var(--line); border-radius:8px; background:var(--paper); color:var(--accent); font:600 13px var(--sys); cursor:pointer; white-space:nowrap; }
+
+/* ---- concept: the Recent tab (New) ---- */
+.navt { font:700 34px/41px var(--sys); margin:0; padding:var(--space-1) 0 0; }
+.navback { display:flex; align-items:center; gap:2px; min-height:44px; background:none; border:0; color:var(--accent); font:17px var(--sys); cursor:pointer; padding:0; }
+.navback svg { width:12px; height:20px; }
+.fresh { min-height:44px; display:flex; align-items:center; justify-content:space-between; gap:var(--space-2); border-bottom:1px solid var(--line); font:12px var(--mono); color:var(--inkSoft); }
+.fresh .btn { min-height:36px; }
+.fresh.has { color:var(--ink); }
+.dayh { height:28px; display:flex; align-items:flex-end; padding-bottom:4px; border-bottom:1px solid var(--line); font:11px var(--mono); letter-spacing:.8px; color:var(--inkSoft); }
+.rows { display:flex; flex-direction:column; }
+.row { display:grid; grid-template-columns:minmax(0,1fr) 76px; height:72px; border-bottom:1px solid var(--line); }
+.row .body { display:flex; flex-direction:column; justify-content:center; min-width:0; padding-right:var(--space-2); background:none; border:0; text-align:left; font:inherit; color:inherit; cursor:pointer; }
+.row .l1 { display:flex; justify-content:space-between; gap:var(--space-2); }
+.row .l2 { display:flex; justify-content:space-between; align-items:baseline; gap:var(--space-2); }
+.row .l2 .subj { font-size:17px; line-height:22px; }
+.row .fig { font:12px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.row .sell { font-family:var(--cochin); font-size:13px; line-height:18px; color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.row .cell { border-left:1px solid var(--line); display:flex; align-items:center; justify-content:center; }
+.row .cell .undo { width:100%; height:100%; flex-direction:column; justify-content:center; gap:2px; }
+.row .cell .endst { text-align:center; padding:0 var(--space-1); }
+.row.picked { box-shadow:inset 3px 0 0 var(--accent); }
+.row.picked .body { padding-left:var(--space-2); }
+.emptyst { display:flex; flex-direction:column; gap:var(--space-3); align-items:flex-start; padding-top:var(--space-4); font-family:var(--cochin); font-size:16px; color:var(--inkSoft); }
+
+/* ---- the biggest accessibility text size, AX5 (HIG typography, read 2026-11-21): body 53/62, footnote 44/52, caption 1 43/51, caption 2 40/48, large title 60/70 ---- */
+.dev[data-pose="ax5"] .micro, .dev[data-pose="ax5"] .meta, .dev[data-pose="ax5"] .endst { font-size:40px; line-height:48px; white-space:normal; }
+.dev[data-pose="ax5"] .subj, .dev[data-pose="ax5"] .row .l2 .subj { font-size:53px; line-height:62px; }
+.dev[data-pose="ax5"] .undo { font-size:43px; min-height:64px; gap:12px; }
+.dev[data-pose="ax5"] .undo svg { width:40px; height:40px; }
+.dev[data-pose="ax5"] .row .sell, .dev[data-pose="ax5"] .plain, .dev[data-pose="ax5"] .shelf .empty { font-size:44px; line-height:52px; }
+.dev[data-pose="ax5"] .row .fig { font-size:43px; }
+.dev[data-pose="ax5"] .navt { font-size:60px; line-height:70px; }
+.dev[data-pose="ax5"] .ln .nm { font-size:53px; line-height:62px; white-space:normal; }
+.dev[data-pose="ax5"] .ln .q, .dev[data-pose="ax5"] .pkg-h span, .dev[data-pose="ax5"] .fresh { font-size:43px; }
+.dev[data-pose="ax5"] .pkg-h b { font-size:53px; line-height:62px; }
+.dev[data-pose="ax5"] .dayh { height:auto; font-size:40px; }
+.dev[data-pose="ax5"] .mast b { font-size:44px; } .dev[data-pose="ax5"] .mast span { display:none; }
+/* At AX5 a ticket stacks: Undo on top, the name under it. A Recent row drops its fixed height and puts Undo on its own line under the text (ViewThatFits). */
+.dev[data-pose="ax5"] .shelf.one .ticket { flex-direction:column-reverse; justify-content:flex-end; padding:0 var(--space-3) var(--space-2); }
+/* AX5 shelf: Undo, then the action on one cut line, then the card. The seller moves to the button's spoken name. */
+.dev[data-pose="ax5"] .shelf.one .txt .micro { white-space:nowrap; }
+.dev[data-pose="ax5"] .shelf.one .txt .meta { display:none; }
+.dev[data-pose="ax5"] .pkg-h { flex-wrap:wrap; }
+.dev[data-pose="ax5"] .ln { flex-wrap:wrap; }
+.dev[data-pose="ax5"] .shelf.one .slot { flex:none; border-left:0; padding:0; border-bottom:1px solid var(--line); }
+.dev[data-pose="ax5"] .row { grid-template-columns:1fr; height:auto; }
+.dev[data-pose="ax5"] .row .l1, .dev[data-pose="ax5"] .row .l2 { flex-direction:column; gap:0; }
+.dev[data-pose="ax5"] .row .cell { border-left:0; border-top:1px dashed var(--line); justify-content:flex-start; min-height:72px; }
+.dev[data-pose="ax5"] .row .cell .undo { flex-direction:row; justify-content:flex-start; }
+.dev[data-pose="ax5"] .tab span { display:none; }
+
+/* the keyboard: iOS chrome, not an app colour, so these greys sit outside the tokens */
+.keys { position:absolute; left:0; right:0; bottom:0; background:#D2D0D6; z-index:10; padding:var(--space-2) 6px; display:flex; flex-direction:column; gap:var(--space-2); }
+.keys .kr { display:flex; gap:6px; justify-content:center; }
+.keys .k { height:42px; flex:0 0 36px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font-size:17px; color:#111; }
+.keys .k.w { flex-basis:220px; font-size:14px; }
+
+/* tags: dashed outline on what exists today, and on what this concept adds */
+[data-tag] { position:relative; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; }
+.tag-today { outline:2px dashed var(--today); outline-offset:-2px; }
+.tagl { position:absolute; z-index:11; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper); white-space:nowrap; pointer-events:none; border-radius:3px; }
+.tagl.new { color:var(--new); } .tagl.today { color:var(--today); }
+body.notags .tag-new, body.notags .tag-today { outline:0; } body.notags .tagl { display:none; }
+.ruler { position:absolute; left:0; right:0; height:0; border-top:1px dotted var(--accent); z-index:12; pointer-events:none; }
+.ruler span { position:absolute; right:4px; top:-15px; font:10.5px var(--mono); color:var(--accent); background:var(--paper); padding:0 3px; }
+body.notags .ruler { display:none; }
+.toast { position:absolute; left:50%; top:calc(var(--sat) + 8px); transform:translateX(-50%); z-index:13; background:var(--ink); color:var(--card); font:12px var(--sys); padding:6px 10px; border-radius:8px; pointer-events:none; opacity:0; transition:opacity .2s; }
+.toast.on { opacity:1; }
+@media (prefers-reduced-motion: reduce) { .toast { transition:none; } }
+@media (forced-colors: active) { .undo u { border-bottom-color:LinkText; } .shelf, .pkg, .bar .pill { border-color:CanvasText; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No card, seller, order, count, time or device on this page is real.</div>
+<header>
+  <h1>Undo, one tap from any tab</h1>
+  <p class="kind">Designer kind: <b>directed</b> · Direction: <b>shake-free undo: always one tap away from anywhere, no panel</b> · undo-recent-directed-1</p>
+  <p class="sub">The job: "I tapped the wrong card and now I don't know how to fix it." Two concepts. Each frame works: tick a card box, then press Undo. Every frame shares one ledger, as one synced log would. Light theme only, as the app ships. Dashed red marks what exists today, dashed green what the concept adds. The dotted line under each frame's Undo is measured live and printed under the frame.</p>
+</header>
+
+<div class="controls" aria-label="Mockup controls">
+  <div class="group" id="g-concept"><span>Concept</span>
+    <a href="#c=both" data-k="c" data-v="both">Both</a>
+    <a href="#c=shelf" data-k="c" data-v="shelf">Undo shelf</a>
+    <a href="#c=tab" data-k="c" data-v="tab">Recent tab</a>
+  </div>
+  <div class="group" id="g-pose"><span>Pose</span>
+    <a href="#p=all" data-k="p" data-v="all">All</a>
+    <a href="#p=folded" data-k="p" data-v="folded">Duo folded</a>
+    <a href="#p=open" data-k="p" data-v="open">Duo open</a>
+    <a href="#p=phone" data-k="p" data-v="phone">Large phone</a>
+    <a href="#p=ax5" data-k="p" data-v="ax5">Folded, AX5 text</a>
+  </div>
+  <div class="group" id="g-state"><span>State</span>
+    <a href="#s=rest" data-k="s" data-v="rest">After the mis-tap</a>
+    <a href="#s=undone" data-k="s" data-v="undone">Undone</a>
+    <a href="#s=opened" data-k="s" data-v="opened">A card opened</a>
+    <a href="#s=keys" data-k="s" data-v="keys">Keys up</a>
+    <a href="#s=mac" data-k="s" data-v="mac">The Mac checks a card</a>
+    <a href="#s=empty" data-k="s" data-v="empty">Nothing to undo</a>
+    <a href="#s=unknown" data-k="s" data-v="unknown">Could not read</a>
+  </div>
+  <div class="group" id="g-depth"><span>Shelf</span>
+    <a href="#d=3" data-k="d" data-v="3">Three tickets</a>
+    <a href="#d=1" data-k="d" data-v="1">One ticket</a>
+  </div>
+  <div class="group" id="g-hide"><span>Cull</span>
+    <button type="button" data-hide="shelf" aria-pressed="false">Hide Undo shelf</button>
+    <button type="button" data-hide="tab" aria-pressed="false">Hide Recent tab</button>
+    <button type="button" data-hide="d3" aria-pressed="false">Hide Three tickets</button>
+    <button type="button" data-hide="d1" aria-pressed="false">Hide One ticket</button>
+    <button type="button" id="tags" aria-pressed="false">Hide tags</button>
+    <button type="button" id="reset">Reset sample</button>
+  </div>
+</div>
+
+<section class="concept" id="concept-shelf" data-concept="shelf">
+  <h2>Undo shelf</h2>
+  <p class="pitch">A shelf sits on every tab, just above the tab bar, and holds your last taps. Each has its own Undo. It never opens, never scrolls, and never moves. The working list ends above it, so nothing slides under it. Only the Undo words act. The rest of the shelf takes a tap and does nothing, so a tap that misses Undo lands on nothing and the tab bar below it is out of reach.</p>
+  <div class="poses" data-poses="shelf"></div>
+</section>
+
+<section class="concept" id="concept-tab" data-concept="tab">
+  <h2>Recent tab</h2>
+  <p class="pitch">Recent becomes a fifth tab, so the list is one tap away from any tab. It is a page, not a panel: it covers nothing and pushes nothing. Each row has one Undo cell. A tap on the rest of a row shows its package, where you tick the card you meant. On the open Duo the package sits on the right page while the list stays on the left.</p>
+  <div class="poses" data-poses="tab"></div>
+</section>
+</main>
+
+<script>
+(() => {
+  "use strict";
+  const POSES = [
+    { id: "folded", device: "iphone-duo-folded", title: "Duo folded, 466 x 678 pt", W: 466, H: 678, barTop: 595 },
+    { id: "open", device: "iphone-duo-unfolded", title: "Duo open, 951 x 669 pt, fold at 455.5 to 495.5 pt", W: 951, H: 669, barTop: 593 },
+    { id: "phone", device: "iphone-large", title: "Large phone, drawn at 375 x 812 pt (no size written for it)", W: 375, H: 812, barTop: 729 },
+    { id: "ax5", device: "iphone-duo-folded-ax5", title: "Duo folded, biggest accessibility text (AX5)", W: 466, H: 678, barTop: 595 },
+  ];
+  const GAP = 12; // inert band between the shelf and the bar
+  const SHELF_H = { 1: 60, 3: 104, ax: 192 };
+
+  const ICON = {
+    ledger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>',
+    orphaned: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="5.5" width="18" height="13" rx="2"/><path d="M3.5 6.5l8.5 6.5 8.5-6.5"/></svg>',
+    tally: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3.5l-2 17M17 3.5l-2 17M4 9h16.5M3.5 15H20"/></svg>',
+    packages: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/></svg>',
+    recent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="8.5"/><path d="M12 7v5.5l3.5 2"/></svg>',
+    undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M9 14L4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 010 11H11"/></svg>',
+    back: '<svg viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M10 2L2 10l8 8"/></svg>',
+  };
+  const TABS4 = [["ledger", "Ledger"], ["orphaned", "Orphaned"], ["tally", "Tally"], ["packages", "Packages"]];
+  const TABS5 = TABS4.concat([["recent", "Recent"]]);
+
+  // ---------- the sample ledger and log ----------
+  let L, LOG, clock, seq;
+  function seed(state) {
+    L = {
+      A: { seller: "Alpha Cards", order: "#40213", open: true, lines: [
+        { k: "a1", name: "Counterspell", qty: 4, got: 2 }, { k: "a2", name: "Lightning Bolt", qty: 1, got: 1 },
+        { k: "a3", name: "Brainstorm", qty: 1, got: 0 }, { k: "a4", name: "Ponder", qty: 2, got: 0 }] },
+      B: { seller: "Riverside Games", order: "#40188", open: false, lines: [
+        { k: "b1", name: "Swords to Plowshares", qty: 1, got: 1 }, { k: "b2", name: "Path to Exile", qty: 1, got: 1 }, { k: "b3", name: "Thoughtseize", qty: 1, got: 1 }] },
+      C: { seller: "Northgate TCG", order: "#40102", open: false, lines: [
+        { k: "c1", name: "Fatal Push", qty: 1, got: 0 }, { k: "c2", name: "Opt", qty: 3, got: 0 }] },
+    };
+    clock = 14 * 60 + 33; seq = 20;
+    LOG = state === "empty" ? [] : [
+      { id: 1, kind: "Checked", key: "a2", pkg: "A", subj: "Lightning Bolt", seller: "Alpha Cards", day: "Today", t: "14:32", dev: "phone", before: 1 - 1, after: 1, st: "live" },
+      { id: 2, kind: "Count 1 → 2", key: "a1", pkg: "A", subj: "Counterspell", seller: "Alpha Cards", day: "Today", t: "14:31", dev: "phone", before: 1, after: 2, st: "live" },
+      { id: 3, kind: "Package checked", bulk: { b2: [0, 1], b3: [0, 1] }, pkg: "B", subj: "Riverside Games", fig: "2 cards", seller: "Order #40188", day: "Today", t: "14:20", dev: "mac", st: "live" },
+      { id: 4, kind: "Stamp · refunded", pkg: "C", subj: "Northgate TCG", seller: "Order #40102", day: "Today", t: "13:05", dev: "mac", st: "changed" },
+      { id: 5, kind: "Un-checked", key: "c2", pkg: "C", subj: "Opt", seller: "Northgate TCG", day: "Today", t: "12:40", dev: "phone", before: 1, after: 0, st: "nothing" },
+      { id: 6, kind: "Assigned", pkg: "B", subj: "Blue envelope, no return", fig: "1 card", seller: "to Riverside Games", day: "Yesterday", t: "18:02", dev: "phone", st: "undone", undoneAt: "18:05" },
+      { id: 7, kind: "Checked", key: "b1", pkg: "B", subj: "Swords to Plowshares", seller: "Riverside Games", day: "Yesterday", t: "17:50", dev: "mac", before: 0, after: 1, st: "live" },
+    ];
+    if (state === "undone") undo(1, true);
+    if (state === "opened") L.B.open = true;
+  }
+  const hhmm = () => { const m = clock++; return String(Math.floor(m / 60)).padStart(2, "0") + ":" + String(m % 60).padStart(2, "0"); };
+  const lineOf = (k) => { for (const g in L) for (const ln of L[g].lines) if (ln.k === k) return [g, ln]; return [null, null]; };
+  const devName = (d) => d === "mac" ? "Mac" : "This phone";
+  const fig = (a) => { if (a.fig) return a.fig; const [, ln] = lineOf(a.key); return ln ? (a.after + " of " + ln.qty) : ""; };
+  const ENDS = { undone: (a) => "Undone " + a.undoneAt, changed: () => "Changed since", nothing: () => "Nothing to undo" };
+
+  // A tick from this phone: the box adds one copy, a full line clears. Same-card taps in a row merge into one entry (recent-checks-can-be-undone).
+  function tick(k) {
+    const [g, ln] = lineOf(k);
+    const before = ln.got;
+    ln.got = ln.got >= ln.qty ? 0 : ln.got + 1;
+    const head = LOG[0];
+    if (head && head.key === k && head.dev === "phone" && head.st === "live") {
+      head.after = ln.got; head.t = hhmm();
+      head.kind = kindOf(head.before, head.after, ln.qty);
+      if (head.before === head.after) head.st = "nothing";
+    } else {
+      LOG.unshift({ id: seq++, kind: kindOf(before, ln.got, ln.qty), key: k, pkg: g, subj: ln.name, seller: L[g].seller, day: "Today", t: hhmm(), dev: "phone", before, after: ln.got, st: "live" });
+    }
+    ownTap();
+  }
+  function kindOf(b, a, q) { if (q === 1) return a > b ? "Checked" : "Un-checked"; if (a === 0) return "Un-checked"; return "Count " + b + " → " + a; }
+  // An undo subtracts its own delta (undo-removes-only-its-delta). The row changes in place; nothing is added to the view.
+  function undo(id, quiet) {
+    const a = LOG.find((x) => x.id === id);
+    if (!a || a.st !== "live") return;
+    if (a.bulk) { for (const k in a.bulk) { const [, ln] = lineOf(k); ln.got = a.bulk[k][0]; } }
+    else if (a.key) { const [, ln] = lineOf(a.key); ln.got = Math.max(0, Math.min(ln.qty, ln.got - (a.after - a.before))); }
+    a.st = "undone"; a.undoneAt = quiet ? "14:35" : hhmm();
+    if (!quiet) { draw(); flash(a); }
+  }
+  // The Mac's write reaches this phone. Nothing on screen moves: the shelf takes it in at your next tap or tab change, the Recent list at its next read.
+  function macArrives() {
+    const [, ln] = lineOf("c1"); ln.got = 1;
+    LOG.unshift({ id: seq++, kind: "Checked", key: "c1", pkg: "C", subj: "Fatal Push", seller: "Northgate TCG", day: "Today", t: hhmm(), dev: "mac", before: 0, after: 1, st: "live", waiting: true });
+  }
+
+  // ---------- per-frame view state ----------
+  let FR = [];
+  let shelfSnap = null; // ids the shelf shows; changes only on an own tap or a tab change
+  function snapShelf() { shelfSnap = LOG.map((a) => a.id); LOG.forEach((a) => { a.waiting = false; }); }
+  function ownTap() { snapShelf(); draw(); }
+
+  const P = { c: "both", p: "all", s: "rest", d: "3" };
+  const hidden = new Set();
+  function readHash() {
+    const h = location.hash.replace(/^#/, "");
+    for (const part of h.split("&")) { const [k, v] = part.split("="); if (k in P && v) P[k] = v; if (k === "hide" && v) v.split(",").forEach((x) => hidden.add(x)); }
+  }
+
+  function build() {
+    seed(P.s);
+    snapShelf();
+    FR = [];
+    for (const concept of ["shelf", "tab"]) {
+      const host = document.querySelector('[data-poses="' + concept + '"]');
+      host.innerHTML = "";
+      for (const pose of POSES) {
+        // AX5 has room for one ticket only, so the shelf draws one AX5 frame whatever the depth.
+        const depths = concept === "shelf" ? (pose.id === "ax5" ? ["ax"] : ["3", "1"]) : [null];
+        for (const d of depths) {
+          const fr = { concept, pose, d, tab: concept === "tab" ? "recent" : "packages", pushed: null, picked: null, snap: null, newN: 0 };
+          if (P.s === "keys") fr.tab = "orphaned";
+          if (concept === "tab" && pose.id === "open") fr.picked = 1;
+          const wrap = document.createElement("div");
+          wrap.className = "pose option";
+          wrap.dataset.pose = pose.id; if (d) wrap.dataset.depth = d;
+          const idf = concept === "shelf" ? "shelf" + d + "-" + pose.id : "recent-tab-" + pose.id;
+          wrap.innerHTML = '<h3>' + pose.title + (d ? (d === "3" ? " · three tickets" : " · one ticket") : "") + '</h3>' +
+            '<div class="fit"><div class="scaler"><div class="dev" id="' + idf + '" data-device="' + pose.device + '" data-pose="' + pose.id + '" role="group" aria-label="' + concept + " " + pose.title + '"></div></div></div><div class="read"></div>';
+          host.appendChild(wrap);
+          fr.el = wrap.querySelector(".dev"); fr.wrap = wrap; fr.read = wrap.querySelector(".read");
+          if (concept === "tab") recentSnap(fr);
+          FR.push(fr);
+        }
+      }
+    }
+    if (P.s === "mac") macArrives();
+    applyFilters();
+    draw();
+  }
+  // The Recent list reads the log when the tab is entered, and again only on Show (no-layout-shift-under-pointer).
+  function recentSnap(fr) { fr.snap = LOG.map((a) => a.id); }
+
+  // ---------- drawing ----------
+  const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+  function tagLabel(kind, text, x, y) { return '<span class="tagl ' + kind + '" style="left:' + x + 'px;top:' + y + 'px">' + (kind === "new" ? "New: " : "Today: ") + text + "</span>"; }
+
+  function bar(fr) {
+    const tabs = fr.concept === "tab" ? TABS5 : TABS4;
+    const items = tabs.map(([id, name]) => '<button type="button" class="tab" role="tab" data-act="tab" data-tab="' + id + '" aria-selected="' + (fr.tab === id) + '">' + ICON[id] + "<span>" + name + "</span></button>").join("");
+    const isNew = fr.concept === "tab";
+    return '<div class="bar"><div class="pill tag-today" role="tablist">' + items + '</div><div class="ind"></div></div>';
+  }
+
+  function ticket(a, one) {
+    const end = a.st !== "live";
+    const label = "Undo " + a.kind.toLowerCase() + " " + a.subj + ", " + a.seller;
+    const slot = end ? '<div class="endst">' + ENDS[a.st](a) + "</div>"
+      : '<button type="button" class="undo" data-act="undo" data-id="' + a.id + '" aria-label="' + esc(label) + '">' + ICON.undo + "<u>Undo</u></button>";
+    const meta = '<div class="meta">' + a.t + ' · <span class="' + (a.dev === "mac" ? "mac" : "") + '">' + devName(a.dev) + "</span></div>";
+    if (one) {
+      return '<div class="ticket"><div class="txt"><div class="micro">' + esc(a.kind) + " · " + a.t + " · " + devName(a.dev) + '</div><div class="subj' + (a.st === "undone" ? " struck" : "") + '">' + esc(a.subj) + '</div><div class="meta">' + esc(a.seller) + '</div></div><div class="slot">' + slot + "</div></div>";
+    }
+    return '<div class="ticket"><div class="slot">' + slot + '</div><div class="micro">' + esc(a.kind) + '</div><div class="subj' + (a.st === "undone" ? " struck" : "") + '">' + esc(a.subj) + "</div>" + meta + "</div>";
+  }
+
+  function shelf(fr, geo) {
+    const ax = fr.pose.id === "ax5";
+    const depth = ax ? 1 : Number(fr.d);
+    const shown = shelfSnap.map((id) => LOG.find((a) => a.id === id)).filter(Boolean).slice(0, depth);
+    let inner;
+    if (P.s === "unknown") inner = '<div class="empty"><span>Recent taps could not be read.</span><button type="button" class="btn" data-act="retry">Try again</button></div>';
+    else if (!shown.length) inner = '<div class="empty"><span>Your next tick shows here, with its Undo.</span></div>';
+    else inner = shown.map((a) => ticket(a, depth === 1)).join("");
+    const st = "left:" + geo.x + "px;width:" + geo.w + "px;top:" + geo.top + "px;height:" + geo.h + "px";
+    return '<div class="shelf tag-new' + (depth === 1 ? " one" : "") + '" id="shelf-' + fr.pose.id + "-" + fr.d + '" style="' + st + '" data-act="inert" aria-label="Last taps">' + inner + "</div>" +
+      tagLabel("new", "undo shelf", geo.x + 8, geo.top - 16);
+  }
+
+  function packagesList(fr, onlyOpenOne) {
+    return '<div class="mast"><b>MANIFEST</b><span>3 packages · 6 left</span></div>' + Object.keys(L).map((g) => pkgCard(g, L[g].open)).join("");
+  }
+  function pkgCard(g, open, markKey) {
+    const p = L[g]; const left = p.lines.reduce((s, l) => s + (l.qty - l.got), 0);
+    const rows = open ? p.lines.map((ln) => '<div class="ln' + (ln.got >= ln.qty ? " got" : "") + (markKey === ln.k ? " mark" : "") + '"><button type="button" class="box" data-act="tick" data-k="' + ln.k + '" aria-label="' + (ln.got >= ln.qty ? "Un-check " : "Check in ") + esc(ln.name) + '"><i>' + (ln.got >= ln.qty ? "✓" : "") + '</i></button><span class="nm">' + esc(ln.name) + '</span><span class="q">' + ln.got + "/" + ln.qty + "</span></div>").join("") : "";
+    return '<div class="pkg"><button type="button" class="pkg-h" data-act="fold" data-g="' + g + '" aria-expanded="' + open + '"><b>' + esc(p.seller) + "</b><span>" + p.order + " · " + (left ? left + " left" : "all in") + "</span></button>" + rows + "</div>";
+  }
+  function otherTab(fr) {
+    if (fr.tab === "orphaned") return '<div class="mast"><b>MANIFEST</b><span>Orphaned</span></div><div class="plain">An envelope with no sender. Type what is in it.</div><div class="field">blue envel</div>';
+    if (fr.tab === "tally") return '<div class="mast"><b>MANIFEST</b><span>Tally</span></div>' + ["Counterspell 2/4", "Opt 0/3", "Ponder 0/2", "Brainstorm 0/1"].map((t) => '<div class="pkg"><div class="pkg-h"><b>' + t.split(" ").slice(0, -1).join(" ") + "</b><span>" + t.split(" ").pop() + "</span></div></div>").join("");
+    if (fr.tab === "ledger") return '<div class="mast"><b>MANIFEST</b><span>Ledger</span></div><div class="plain">Sync, History, Backup and Reset, as today.</div>';
+    return packagesList(fr);
+  }
+
+  function recentPage(fr, geo) {
+    let h = '<h2 class="navt">Recent</h2>';
+    if (P.s === "unknown") return h + '<div class="emptyst"><span>Recent taps could not be read.</span><button type="button" class="btn" data-act="retry">Try again</button></div>';
+    const waiting = LOG.filter((a) => !fr.snap.includes(a.id)).length;
+    h += '<div class="fresh tag-new' + (waiting ? " has" : "") + '" id="fresh-' + fr.pose.id + '"><span>' + (waiting ? waiting + " new since you opened" : "Up to date") + "</span>" +
+      (waiting ? '<button type="button" class="btn" data-act="show">Show</button>' : "") + "</div>";
+    const rows = fr.snap.map((id) => LOG.find((a) => a.id === id)).filter(Boolean);
+    if (!rows.length) return h + '<div class="emptyst"><span>Every tick you make shows here, with its Undo.</span><button type="button" class="btn" data-act="tab" data-tab="packages">Go to Packages</button></div>';
+    let day = null;
+    for (const a of rows) {
+      if (a.day !== day) { day = a.day; h += '<div class="dayh">' + day.toUpperCase() + "</div>"; }
+      const end = a.st !== "live";
+      const label = "Undo " + a.kind.toLowerCase() + " " + a.subj + ", " + a.seller;
+      const cell = end ? '<div class="endst">' + ENDS[a.st](a) + "</div>" : '<button type="button" class="undo" data-act="undo" data-id="' + a.id + '" aria-label="' + esc(label) + '">' + ICON.undo + "<u>Undo</u></button>";
+      h += '<div class="row' + (fr.picked === a.id ? " picked" : "") + '"><button type="button" class="body" data-act="pick" data-id="' + a.id + '" aria-label="Show the package of ' + esc(a.subj) + '"><div class="l1"><span class="micro">' + esc(a.kind) + '</span><span class="meta">' + a.t + ' · <span class="' + (a.dev === "mac" ? "mac" : "") + '">' + devName(a.dev) + '</span></span></div><div class="l2"><span class="subj' + (a.st === "undone" ? " struck" : "") + '">' + esc(a.subj) + '</span><span class="fig">' + esc(fig(a)) + '</span></div><div class="sell">' + esc(a.seller) + '</div></button><div class="cell">' + cell + "</div></div>";
+    }
+    return h;
+  }
+  function packagePage(fr, id, withBack) {
+    const a = LOG.find((x) => x.id === id); if (!a) return "";
+    const back = withBack ? '<button type="button" class="navback" data-act="back">' + ICON.back + " Recent</button>" : "";
+    const note = a.st === "undone" ? "Undone. Tick the card you meant." : a.st === "live" ? "The marked line is this row's card." : "This row can no longer be undone.";
+    return back + '<h2 class="navt" style="font-size:' + (fr.pose.id === "ax5" ? 60 : 28) + 'px;line-height:1.2">' + esc(L[a.pkg].seller) + '</h2><div class="plain">' + note + "</div>" + pkgCard(a.pkg, true, a.key);
+  }
+
+  function keyboard(fr) {
+    const h = fr.pose.id === "open" ? 669 - 405 : 289; // open: drawn from y 405 (duo-fold-and-keyboard); folded: the taller of the two outer readings
+    const row = (n) => '<div class="kr">' + Array.from({ length: n }, () => '<span class="k"></span>').join("") + "</div>";
+    return '<div class="keys" style="height:' + h + 'px" aria-hidden="true">' + row(10) + row(9) + row(7) + '<div class="kr"><span class="k w">space</span></div></div>';
+  }
+
+  function render(fr) {
+    const { pose } = fr; const W = pose.W, H = pose.H;
+    const open = pose.id === "open";
+    let html = '<div class="status"><span>9:41</span><span>' + (open ? "Duo open" : "") + "</span></div>";
+    const ax = pose.id === "ax5";
+    if (fr.concept === "shelf") {
+      const h = ax ? SHELF_H.ax : SHELF_H[fr.d];
+      let geo;
+      if (open) geo = { x: 24, w: 455.5 - 48, h: fr.d === "1" ? 64 : SHELF_H[3], top: 0 };
+      else geo = { x: 12, w: W - 24, h, top: 0 };
+      geo.top = open ? 669 - 12 - geo.h : pose.barTop - GAP - geo.h;
+      const workH = geo.top - 8;
+      if (open) {
+        html += '<div class="pg l"><div class="work edge" style="height:' + (workH) + 'px"><div class="inner tag-today">' + otherTabOpenLeft(fr) + "</div></div></div>";
+        html += '<div class="pg r"><div class="work" style="height:' + (pose.barTop - 8) + 'px"><div class="inner">' + openRight(fr) + "</div></div></div>";
+        html += '<div class="fold"><span>fold, 40 pt</span></div>';
+      } else {
+        html += '<div class="pg full"><div class="work edge" style="height:' + (workH) + 'px"><div class="inner tag-today">' + otherTab(fr) + "</div></div></div>";
+      }
+      html += shelf(fr, geo);
+      html += bar(fr) + tagLabel("today", open ? "Duo bar" : "tab bar", open ? 520 : 20, (open ? 593 : pose.barTop) - 14);
+    } else {
+      const workTop = pose.barTop - GAP;
+      if (open) {
+        const left = fr.tab === "recent" ? recentPage(fr) : otherTabOpenLeft(fr);
+        const right = fr.tab === "recent" ? (fr.picked ? packagePage(fr, fr.picked, false) : '<div class="plain">Tap a row to see its package.</div>') : openRight(fr);
+        html += '<div class="pg l"><div class="work" style="height:' + (669 - 12) + 'px"><div class="inner' + (fr.tab === "recent" ? " tag-new" : "") + '">' + left + "</div></div></div>";
+        html += '<div class="pg r"><div class="work edge" style="height:' + (pose.barTop - 8 - 20) + 'px"><div class="inner">' + right + "</div></div></div>";
+        html += '<div class="fold"><span>fold, 40 pt</span></div>';
+      } else {
+        let body;
+        if (fr.tab === "recent") body = fr.pushed ? packagePage(fr, fr.pushed, true) : recentPage(fr);
+        else body = otherTab(fr);
+        html += '<div class="pg full"><div class="work edge" style="height:' + (workTop - 20) + 'px"><div class="inner' + (fr.tab === "recent" ? " tag-new" : " tag-today") + '">' + body + "</div></div></div>";
+      }
+      html += bar(fr) + tagLabel("new", "Recent tab", open ? 820 : W - 110, (open ? 593 : pose.barTop) - 14);
+    }
+    if (P.s === "keys") html += keyboard(fr);
+    html += '<div class="toast" aria-live="polite"></div>';
+    fr.el.innerHTML = html;
+    measure(fr);
+  }
+  function otherTabOpenLeft(fr) { return otherTab(Object.assign({}, fr, { tab: fr.tab === "recent" ? "packages" : fr.tab })); }
+  function openRight(fr) {
+    if (fr.tab !== "packages" && fr.tab !== "recent") return '<div class="plain">The right page of this tab, as today.</div>';
+    return '<h2 class="navt" style="font-size:28px;line-height:1.2">Alpha Cards</h2><div class="plain">Order #40213, opened on the right page.</div>' + pkgCard("A", true);
+  }
+
+  // Live geometry: the first Undo in the frame, the bar top, and the clearance between them.
+  function measure(fr) {
+    const dev = fr.el; const r0 = dev.getBoundingClientRect(); const s = r0.width / fr.pose.W || 1;
+    const undoEl = dev.querySelector(".shelf .undo, .row .undo");
+    const barEl = dev.querySelector(".bar .pill");
+    const keys = dev.querySelector(".keys");
+    let txt = "";
+    if (undoEl && barEl) {
+      const u = undoEl.getBoundingClientRect(), b = barEl.getBoundingClientRect();
+      // A row the list cuts at its edge shows only its top part; that part is what a finger can reach.
+      const work = undoEl.closest(".work"); const wb = work ? work.getBoundingClientRect().bottom : Infinity;
+      const cut = u.bottom > wb;
+      const y1 = Math.round((u.top - r0.top) / s), y2 = Math.round((Math.min(u.bottom, wb) - r0.top) / s), bt = Math.round((b.top - r0.top) / s);
+      const w = Math.round(u.width / s), h = Math.round(u.height / s);
+      const overBar = fr.pose.id === "open" ? (u.left - r0.left) / s > 495 : true;
+      const clear = bt - y2;
+      txt += "First Undo: y " + y1 + "–" + y2 + " pt, hit " + w + " x " + h + " pt. ";
+      txt += overBar ? ("Bar top y " + bt + " pt: " + (clear >= 0 ? '<span class="ok">clear by ' + clear + " pt</span>" : '<span class="bad">under the bar by ' + (-clear) + " pt</span>")) : '<span class="ok">left page: no bar under it</span>';
+      if (h < 44 || w < 44) txt += ' <span class="bad">under 44 pt</span>';
+      if (cut) txt += ". The list cuts this row at its edge; a scroll shows the rest.";
+      if (keys) txt += ". Keys up: the keys cover it, and it keeps its place.";
+      dev.querySelectorAll(".ruler").forEach((n) => n.remove());
+      const pg = undoEl.closest(".pg, .shelf"); const pr = pg ? pg.getBoundingClientRect() : r0;
+      const rl = document.createElement("div"); rl.className = "ruler"; rl.style.top = y1 + "px";
+      rl.style.left = Math.round((pr.left - r0.left) / s) + "px"; rl.style.right = "auto"; rl.style.width = Math.round(pr.width / s) + "px";
+      rl.innerHTML = "<span>Undo top " + y1 + "</span>"; dev.appendChild(rl);
+    } else if (fr.concept === "tab" && fr.tab !== "recent") {
+      txt = "Recent is one tap away: the fifth tab.";
+    } else {
+      txt = "No Undo control in this state.";
+    }
+    fr.read.innerHTML = txt;
+  }
+
+  function flash(a) {
+    for (const fr of FR) { const t = fr.el.querySelector(".toast"); if (!t) continue; t.textContent = "Undone: " + a.subj + " (" + a.seller + ")"; t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 1600); }
+  }
+
+  function draw() { for (const fr of FR) if (!fr.wrap.hidden) render(fr); scale(); }
+
+  // ---------- events ----------
+  document.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-act]"); if (!t) return;
+    const devEl = t.closest(".dev"); const fr = FR.find((f) => f.el === devEl);
+    const act = t.dataset.act;
+    if (act === "inert") return;
+    if (!fr) return;
+    if (act === "tick") { tick(t.dataset.k); }
+    else if (act === "undo") { undo(Number(t.dataset.id)); }
+    else if (act === "fold") { L[t.dataset.g].open = !L[t.dataset.g].open; draw(); }
+    else if (act === "tab") {
+      fr.tab = t.dataset.tab; fr.pushed = null;
+      if (fr.tab === "recent") recentSnap(fr);
+      snapShelf(); draw();
+    }
+    else if (act === "pick") {
+      const id = Number(t.dataset.id);
+      if (fr.pose.id === "open") fr.picked = id; else fr.pushed = id;
+      draw();
+    }
+    else if (act === "back") { fr.pushed = null; draw(); }
+    else if (act === "show") { recentSnap(fr); draw(); }
+    else if (act === "retry") { P.s = "rest"; setHash(); }
+  });
+
+  function setHash() {
+    const parts = ["c=" + P.c, "p=" + P.p, "s=" + P.s, "d=" + P.d];
+    if (hidden.size) parts.push("hide=" + [...hidden].join(","));
+    location.hash = parts.join("&");
+  }
+  document.querySelectorAll(".group a[data-k]").forEach((a) => a.addEventListener("click", (e) => {
+    e.preventDefault(); P[a.dataset.k] = a.dataset.v; setHash();
+  }));
+  document.querySelectorAll("[data-hide]").forEach((b) => b.addEventListener("click", () => {
+    const k = b.dataset.hide; hidden.has(k) ? hidden.delete(k) : hidden.add(k); setHash();
+  }));
+  document.getElementById("tags").addEventListener("click", (e) => {
+    const on = document.body.classList.toggle("notags"); e.currentTarget.setAttribute("aria-pressed", on);
+  });
+  document.getElementById("reset").addEventListener("click", () => build());
+
+  function applyFilters() {
+    document.querySelectorAll(".group a[data-k]").forEach((a) => a.setAttribute("aria-current", String(P[a.dataset.k] === a.dataset.v)));
+    document.querySelectorAll("[data-hide]").forEach((b) => b.setAttribute("aria-pressed", String(hidden.has(b.dataset.hide))));
+    document.getElementById("concept-shelf").hidden = hidden.has("shelf") || P.c === "tab";
+    document.getElementById("concept-tab").hidden = hidden.has("tab") || P.c === "shelf";
+    for (const fr of FR) {
+      let hide = P.p !== "all" && fr.pose.id !== P.p;
+      if (fr.d && fr.d !== "ax" && (hidden.has("d" + fr.d) || P.d !== fr.d)) hide = true;
+      fr.wrap.hidden = hide;
+    }
+  }
+
+  function scale() {
+    for (const fr of FR) {
+      if (fr.wrap.hidden) continue;
+      const fit = fr.wrap.querySelector(".fit"), sc = fit.firstElementChild;
+      const avail = Math.min(fr.wrap.parentElement.clientWidth, document.documentElement.clientWidth - 32);
+      const k = Math.min(1, avail / (fr.pose.W + 2));
+      sc.style.transform = k < 1 ? "scale(" + k + ")" : "";
+      fit.style.width = Math.ceil((fr.pose.W + 2) * k) + "px";
+      fit.style.height = Math.ceil((fr.pose.H + 2) * k) + "px";
+      measure(fr);
+    }
+  }
+  window.addEventListener("resize", scale);
+  window.addEventListener("hashchange", () => { const was = P.s; readHash(); if (P.s !== was) build(); else { applyFilters(); draw(); } });
+
+  readHash();
+  build();
+  // focus for the waiting page: the element that carries each option
+  const focus = P.c === "tab" ? "recent-tab-" + (P.p === "all" ? "folded" : P.p) : (P.c === "shelf" ? "shelf" + P.d + "-" + (P.p === "all" ? "folded" : P.p) : null);
+  if (focus && document.getElementById(focus)) document.getElementById(focus).scrollIntoView({ block: "center" });
+})();
+</script>
+</body>
+</html>

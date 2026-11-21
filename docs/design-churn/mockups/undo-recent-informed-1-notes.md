@@ -2,7 +2,7 @@
 
 Mockup: `undo-recent-informed-1.html` beside this file. Open it from disk. Designer kind: informed. Decision: `recent-checks-can-be-undone`. Debts: `recent-log-unbuilt` (native) and `recent-undo-under-bar` (web).
 
-Deep links (add to the file URL): `#c=bounded|daybook`, `&d=all|folded|open|ax5|web`, `&s=closed|open|undone|inert|nothing|hidden`, `&dev=on|off`, `&ord=on|off`, `&ax=grow|cap`. Example: `#c=daybook&d=folded&s=open`. Every frame shares one state. A tap on UNDO in one frame changes that row in every frame, as a synced undo does.
+Deep links (add to the file URL): `#c=bounded|daybook`, `&d=all|folded|open|ax5|web`, `&s=closed|open|undone|inert|nothing|hidden`, `&dev=on|off`, `&ord=on|off`, `&ax=grow|cap`. Example: `#c=daybook&d=folded&s=open`. Each option below gives its full hash and focus. A headless check from a scratchpad script found every focus visible, and found the two pictures of each option pair different. Every frame shares one state. A tap on UNDO in one frame changes that row in every frame, as a synced undo does.
 
 Sizes: Duo folded 466 x 678 pt and Duo open 951 x 669 pt (brief, and `measurements/duo-fold-and-keyboard`). Duo folded again at AX5. Large phone: the brief and `layout.py devices` give no size, and no 18 Pro size is written in the repo, so it is drawn at 375 x 812, the screens-check viewport (`test/screens.mjs`), as the web client. Theme: light only. The native app is held to light (`Info.plist` `UIUserInterfaceStyle`, `InterfaceStyleTests`), and `src/app.jsx` has no `prefers-color-scheme` rule.
 
@@ -16,7 +16,7 @@ Sizes: Duo folded 466 x 678 pt and Duo open 951 x 669 pt (brief, and `measuremen
 
 ## Choices
 
-1. **Concept: Bounded panel** (`#c=bounded&d=folded&s=open`, focus `panel-folded`). This is today's in-flow panel (`src/app.jsx` `RecentPanel`, `toggleRecent`), with one change. The list's height is read once, at open: the smaller of 360 pt and the room down to 8 pt above the bar's top. So no row opens under the bar.
+1. **Concept: Bounded panel** (`#c=bounded&d=folded&s=open`, focus `data-card-folded`). This is today's in-flow panel (`src/app.jsx` `RecentPanel`, `toggleRecent`), with one change. The list's height is read once, at open: the smaller of 360 pt and the room down to 8 pt above the bar's top. So no row opens under the bar.
    - Gain: it keeps every ruling and the web's built behaviour. It is the smallest change.
    - Loss: at 375 px with a seeded ledger, Recent sits near y 509, so only about 2 rows fit above y 736. After the person scrolls the page, rows still pass under the bar, as any content does. The glass bar takes the tap, so no undo fires, but a tab can change.
    - Pick: the fallback.
@@ -37,16 +37,16 @@ Sizes: Duo folded 466 x 678 pt and Duo open 951 x 669 pt (brief, and `measuremen
    - Duo folded: the bar starts at y 595 (measured).
    - Duo open: the custom bar under the right page starts at y 593 (`DuoBarMetrics`: pill 64 pt and lift 12 pt).
    - Web 375: the bar starts at y 736 (`recent-undo-under-bar`).
-   - In both concepts, no UNDO cell is drawn under a bar at open. The mockup checks this headless in each frame.
+   - A headless read, run from a scratchpad script and not part of the page, found 0 UNDO cells under a bar at open, in all four frames, in both concepts.
    - The cap: 360 pt holds a heading and four rows at the default size. At AX5 one row alone is 340 pt, so the cap never drops below a heading plus one row.
 
-5. **Open pose: nothing across the fold** (`#d=open`, focus `frame-open`). Today the Ledger tab stays full width on the open Duo (`DuoSpread.spreads(tab:)` returns false for `.ledger`), so its rows run across the fold at x 455.5 to 495.5. The brief forbids that, so both concepts change it:
+5. **Open pose: nothing across the fold** (`#c=bounded&d=open&s=open` and `#c=daybook&d=open&s=open`, focus `frame-open`). Today the Ledger tab stays full width on the open Duo (`DuoSpread.spreads(tab:)` returns false for `.ledger`), so its rows run across the fold at x 455.5 to 495.5. The brief forbids that, so both concepts change it:
    - Bounded panel: the Data card and its in-flow panel sit on the left page. No bar sits there, so the list reaches its 360 pt cap. Reset moves to the right page.
    - Day book: the left page holds the Ledger options, with an accent mark on the picked row. The right page is the Recent book: full height, ending at y 585, with UNDO on the right edge, under the right thumb. A tap on History swaps the right page.
    - The shell already has the custom bar under the right page (`DuoSpine`).
    - Departs from: `duo-card-in-hand`, Ruled, round 2 item 24 ("Ledger stays full width", owner). No option keeps both that ruling and the brief's fold rule. Not blocking. Owner grant: yes.
 
-6. **The change, shown as a ledger correction** (Day book only, focus `row-r1-folded`). A fixed figure column shows the old count struck through, beside the new count: struck 0, then `1 OF 1`. After an undo, the tap's count is struck and the old count is inked again. That reads as a later correction, which is what an undo is (`undo-removes-only-its-delta`).
+6. **The change, shown as a ledger correction** (`#c=daybook&d=folded&s=open` against `#c=bounded&d=folded&s=open`, focus `row-r1-folded`). A fixed figure column shows the old count struck through, beside the new count: struck 0, then `1 OF 1`. After an undo, the tap's count is struck and the old count is inked again. That reads as a later correction, which is what an undo is (`undo-removes-only-its-delta`).
    - Gain: the person sees what the wrong tap did before pressing UNDO.
    - Loss: the column costs 56 to 76 pt of name width. At 375 px, long names cut sooner.
    - Pick: this.
@@ -56,18 +56,18 @@ Sizes: Duo folded 466 x 678 pt and Duo open 951 x 669 pt (brief, and `measuremen
    - Targets: 72 x 72 pt at the default size, 92 x 92 at xxxLarge, and full width x 72 at AX5. All are at least 44 x 44 (Apple, Buttons and Accessibility).
    - Neighbouring UNDO cells sit one row height apart (72 pt or more), so a near-miss lands on the cell above or below, never on another control.
 
-8. **Device on the row** (`&dev=on` and `&dev=off`, focus `row-r1-folded`). The seller line ends with the device that made the tap: `THIS DUO` in ink, or another device's name, such as `MAC`, in inkSoft.
+8. **Device on the row** (`#c=daybook&d=folded&s=open&dev=on` and `&dev=off`, focus `row-r3-folded`, a row from the Mac). The seller line ends with the name of the device that made the tap, such as `MAC`, in inkSoft. A tap made on the device in hand shows no device word, so only the exception is named (`ux-label-once`: a first draft printed `THIS DUO` on five rows).
    - Gain: the brief asks for it. It also explains why a row shows up that the person does not remember making.
-   - Loss: entries carry no device today (`src/recent-rules.mjs`: `newEntryId`, `addEntry`). The log would need a field inside each `recent` entry, plus the merge tests. It is a field inside `recent`, not a new saved key, so `saved-state-shape` and `storage-keys-are-frozen` still hold. At xxxLarge it crowds the seller name.
+   - Loss: entries carry no device today (`src/recent-rules.mjs`: `newEntryId`, `addEntry`). The log would need a field inside each `recent` entry, plus the merge tests. It is a field inside `recent`, not a new saved key, so `saved-state-shape` and `storage-keys-are-frozen` still hold. A missing word means "this device", which the person must learn once. At xxxLarge the word crowds the seller name.
    - Departs from: `recent-checks-can-be-undone`, What a row shows ("A row does not say which device wrote it"). Not blocking. Owner grant: yes.
 
-9. **Order date on the seller line** (`&ord=on` and `&ord=off`). The line reads `Ridgeback TCG, order of Nov 3`.
+9. **Order date on the seller line** (`#c=daybook&d=folded&s=open&ord=on` and `&ord=off`, focus `row-r1-folded`). The line reads `Ridgeback TCG, order of Nov 3`.
    - Gain: the brief asks for the order. One seller can have two open orders.
    - Loss: the seller is cut sooner at 375 px.
    - Pick: shown.
    - Departs from: What a row shows ("A second line names the seller"). Not blocking. Owner grant: yes.
 
-10. **Largest text** (`#d=ax5&ax=grow` and `&ax=cap`, focus `row-r1-ax5`).
+10. **Largest text** (`#c=daybook&d=ax5&s=open&ax=grow` and `&ax=cap`, focus `row-r1-ax5`).
     - Grow to AX5: sizes from Apple's AX5 table (Body 53, Footnote 44, Caption 2 40, Title 3 55). The row stacks, and UNDO becomes a full-width band, 72 pt tall, under the text. A row is 340 pt, so one row shows at a time.
     - Stop at xxxLarge: the row text stops at Apple's xxxLarge sizes (Body 23, Caption 2 17). The row keeps its side-by-side form at 92 pt, and the cell offers the large content viewer. This copies owner ruling item 104 a on the post bar.
     - Pick: Grow, because Apple's Accessibility page asks for at least 200 percent.
@@ -98,6 +98,22 @@ Apple pages read 2026-11-21, through the `tutorials/data/...json` copies:
 - HIG Tab bars ("a tab bar floats above content"; navigation, not actions).
 - HIG Sheets and HIG Toolbars, read; no number used.
 
-## Critique
+## Critique (impeccable critique, single context, detector run)
 
-See the report. Findings fixed in the mockup are listed under Fixed below.
+The impeccable critique ran in a single context, because a designer cannot spawn agents. `impeccable context` and the snapshot step were skipped. PRODUCT.md and DESIGN.md do not exist in this repo.
+
+Fixed:
+- The detector flagged `repeating-gradient` stripes on the fold band. It is now a plain fill.
+- The detector flagged tight leading. The masthead title, the Ledger row titles and the figure moved to 1.3. Four hits of 1.24x remain, and their lines were not found. A browser read of the default-size frames finds nothing below 1.3 except the › glyph. The AX frames keep Apple's own leading (AX5 Body 53 on 62), which is below 1.3 on purpose.
+- `label_once` flagged `THIS DUO` on five rows. Only another device is now named (item 8).
+- The right page's `NEWEST FIRST` label was filler, and it is gone.
+- The stamp row's figure repeated `STAMP` from its label, so the figure is now empty.
+- A stray reviewer label showed through the slip, so the slip now sits above the labels.
+
+Not fixed (outside this mockup's scope):
+- The entrance is still two taps away from Packages, where the wrong tap happens: the Ledger tab, then Recent. The shape is ruled ("Inside the ledger"), and a toast after each tap is a rejected entrance.
+- `check_ios_mockup.py` faults on Cochin, the content font that `typography-cochin-and-mono` rules and `Theme.swift` `Font.cochin` uses. The merged `duo-hand-post-sender.html` faults the same way, so this may be a false alarm in the check.
+
+Questions for the owner:
+- Should a wrong tap on Packages be undoable from Packages itself, without breaking the ruled shape? One example is a long press on the Ledger tab that opens Recent.
+- Is the page lock while the slip is open acceptable? Recent closes with one tap on its own row.

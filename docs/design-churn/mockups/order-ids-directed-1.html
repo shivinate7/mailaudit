@@ -107,21 +107,16 @@ section.concept p { margin:0; }
 .chip .gl .ck { display:none; }
 /* The id: Menlo at the Subhead size, 15 pt relative to .subheadline. It breaks only after a dash, so at AX5 it reads in its three groups. */
 .chip .id { font:calc(15px * var(--ks))/1.25 var(--mono); color:var(--ink); min-width:0; }
-/* At AX5 the number keeps its row beside the glyph, at least one dash group wide, and the receipt word drops under it. */
-.dev.ax5 .chip { flex-wrap:wrap; }
+/* At AX5 the number keeps its row beside the glyph, at least one dash group wide. */
 .dev.ax5 .chip .id { flex:1 1 0; min-width:9ch; }
-.dev.ax5 .chip .slot { flex-basis:100%; }
-.dev.ax5 .chip .slot > span { text-align:left; }
 .chip .id .d { color:var(--inkSoft); }
-/* The receipt slot keeps the box of its widest word ("Selected"), so Copy to Copied moves nothing (no-layout-shift-under-pointer). */
-.chip .slot { display:grid; flex:none; font-size:calc(13px * var(--kf)); color:var(--accent); font-weight:600; font-family:var(--cochin); }
-.chip .slot > span { grid-area:1/1; visibility:hidden; text-align:right; }
-.chip[data-st="idle"] .slot .s-idle, .chip[data-st="copied"] .slot .s-copied, .chip[data-st="refused"] .slot .s-refused { visibility:visible; }
+/* The chip carries no word: the system Copy glyph says what it does (HIG context menus: same icons as the system for Copy),
+   so no label repeats down the list (ux-label-once). The receipt is the glyph turned to a tick, the green fill, and the bubble. */
 .chip[data-st="copied"] { background:var(--greenSoft); border-color:var(--green); }
-.chip[data-st="copied"] .gl, .chip[data-st="copied"] .slot { color:var(--green); }
+.chip[data-st="copied"] .gl { color:var(--green); }
 .chip[data-st="copied"] .gl .cp { display:none; } .chip[data-st="copied"] .gl .ck { display:inline; }
 .chip[data-st="refused"] { background:var(--redSoft); border-color:var(--red); cursor:text; user-select:text; -webkit-user-select:text; }
-.chip[data-st="refused"] .slot, .chip[data-st="refused"] .gl { color:var(--red); }
+.chip[data-st="refused"] .gl { color:var(--red); }
 .chip[data-st="refused"] .id { user-select:all; -webkit-user-select:all; }
 .chip.pressed { background:color-mix(in srgb, var(--line) 50%, var(--paper)); }
 @media (prefers-reduced-motion: no-preference) { .chip { transition:background-color .15s, border-color .15s; } }
@@ -144,14 +139,14 @@ section.concept p { margin:0; }
 .split.wrapped .go { border-left:0; border-top:1px solid var(--line); }
 /* The receipt bubble: out of flow, above the chip, so it moves nothing */
 /* Right-aligned over the detail line's free end, so it never covers the seller name, which is a control in this option */
-.bubble { position:absolute; right:0; bottom:calc(100% + 2px); background:var(--ink); color:var(--card); font:600 calc(13px * var(--kf))/1.3 var(--sys); padding:6px 10px; border-radius:8px; z-index:3;
+.bubble { position:absolute; right:0; bottom:calc(100% + 1px); background:var(--ink); color:var(--card); font:600 calc(12px * var(--kc))/calc(16px * var(--kc)) var(--sys); padding:1px 8px; border-radius:6px; z-index:3;
   pointer-events:none; max-width:min(320px, 100%); }
 .bubble.bad { background:var(--red); }
 /* The seller name that shows the whole order: a 44 pt tap area grows past the text, out of flow */
 .ttl-btn { font:inherit; font-weight:600; font-size:calc(14px * var(--k)); color:var(--ink); background:none; border:0; padding:0; cursor:pointer; text-align:left; position:relative;
   text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px; line-height:1.25; }
 .ttl-btn::after { content:""; position:absolute; left:-4px; right:-8px; top:50%; height:44px; transform:translateY(-50%); }
-.ttl-btn .chev { color:var(--inkSoft); font-weight:400; }
+.ttl-btn .chev { color:var(--accent); font-weight:600; }
 
 /* Concept: chip with a menu */
 .more { flex:none; width:44px; height:44px; display:grid; place-items:center; background:none; border:0; padding:0; color:var(--accent); cursor:pointer; }
@@ -240,7 +235,7 @@ body.show-hits .ttl-btn::after { outline:1px dotted var(--accent); }
     <a href="#s=copied" data-k="s" data-v="copied">Copied</a>
     <a href="#s=refused" data-k="s" data-v="refused">Copy refused (web)</a>
     <a href="#s=menu" data-k="s" data-v="menu">Menu open</a>
-    <a href="#s=order" data-k="s" data-v="order">Whole order</a>
+    <a href="#s=order" data-k="s" data-v="order">Whole order shown</a>
     <a href="#s=tcg" data-k="s" data-v="tcg">TCGplayer opened</a>
   </nav>
   <nav aria-label="Page tools">
@@ -254,7 +249,30 @@ body.show-hits .ttl-btn::after { outline:1px dotted var(--accent); }
   </nav>
 </div>
 
-<div id="sections"></div>
+<section class="concept" data-c="today"><header></header><div class="frames">
+  <div class="frame" data-d="folded"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev folded" data-device="iphone-duo-folded" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="open"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev open" data-device="iphone-duo-unfolded" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="phone"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev phone" data-device="iphone-regular" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="ax5"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev ax5" data-device="iphone-duo-folded" role="group"></div></div></div><div class="read" data-read></div></div>
+</div></section>
+<section class="concept" data-c="links"><header></header><div class="frames">
+  <div class="frame" data-d="folded"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev folded" data-device="iphone-duo-folded" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="open"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev open" data-device="iphone-duo-unfolded" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="phone"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev phone" data-device="iphone-regular" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="ax5"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev ax5" data-device="iphone-duo-folded" role="group"></div></div></div><div class="read" data-read></div></div>
+</div></section>
+<section class="concept" data-c="split"><header></header><div class="frames">
+  <div class="frame" data-d="folded"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev folded" data-device="iphone-duo-folded" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="open"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev open" data-device="iphone-duo-unfolded" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="phone"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev phone" data-device="iphone-regular" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="ax5"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev ax5" data-device="iphone-duo-folded" role="group"></div></div></div><div class="read" data-read></div></div>
+</div></section>
+<section class="concept" data-c="menu"><header></header><div class="frames">
+  <div class="frame" data-d="folded"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev folded" data-device="iphone-duo-folded" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="open"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev open" data-device="iphone-duo-unfolded" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="phone"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev phone" data-device="iphone-regular" role="group"></div></div></div><div class="read" data-read></div></div>
+  <div class="frame" data-d="ax5"><p class="cap"></p><div class="fit"><div class="fitbox"><div class="dev ax5" data-device="iphone-duo-folded" role="group"></div></div></div><div class="read" data-read></div></div>
+</div></section>
 </main>
 
 <script>
@@ -271,7 +289,7 @@ const tcgUrl = id => 'https://store.tcgplayer.com/myaccount/orderhistory?SearchS
 
 const CONCEPTS = {
   today: { title: 'Today', blurb: 'Native ItemLine sets the id as plain Menlo 10.5 with fixedSize: no tap, no link, no copy. The web Tally row underlines it as a button that opens the whole order in Packages, and ends a long id in an ellipsis. The package header id is a link to TCGplayer, and nothing copies (owner, 2026-10-21).' },
-  links: { title: 'Chip and links', blurb: 'The chip copies. Under it, two plain links: TCGplayer, and Whole order. Each act has its own word and its own place; nothing hides behind a gesture. The cost is height: each copy line grows by two 44 pt rows.' },
+  links: { title: 'Chip and links', blurb: 'The chip copies. Under it, two plain links: Open on TCGplayer, and Show whole order. Each act has its own words and its own place; nothing hides behind a gesture. The cost is height: each copy line grows by two 44 pt rows.' },
   split: { title: 'Copy-and-open chip', blurb: 'One capsule. The number copies. Its TCGplayer end copies too, then opens TCGplayer, so if the link lands on the order list the number is already on the clipboard for its search field. The seller name shows the whole order. One 44 pt row.' },
   menu: { title: 'Chip with a menu', blurb: 'The chip copies. A More button beside it, and a press and hold on the chip, open one native menu: Copy order number, Open on TCGplayer, Show whole order. The quietest row; the other two acts sit one tap deeper.' },
 };
@@ -300,12 +318,10 @@ let failCopy = false;
 function chip(st, i, id, where) {
   const s = st.copied === i ? 'copied' : st.refused === i ? 'refused' : 'idle';
   const label = s === 'copied' ? `Copied order ${id}` : `Copy order ${id}`;
-  const noSlot = st.c === 'split';
   return `<button type="button" class="chip" data-act="copy" data-i="${i}" data-st="${s}" data-key="chip-${where}-${i}" aria-label="${label}">
-    ${G.copy}<span class="id">${idHTML(id)}</span>${noSlot ? '' : `<span class="slot" aria-hidden="true"><span class="s-idle">Copy</span><span class="s-copied">Copied</span><span class="s-refused">Selected</span></span>`}</button>`;
+    ${G.copy}<span class="id">${idHTML(id)}</span></button>`;
 }
 function bubble(st, i) {
-  if (st.c !== 'split' && st.refused !== i) return '';
   if (st.copied === i && st.tcg == null) return `<span class="bubble" role="status">Copied</span>`;
   if (st.refused === i) return `<span class="bubble bad" role="status">Could not copy. The number is selected: press and hold it, then Copy.</span>`;
   return '';
@@ -319,8 +335,8 @@ function idControls(st, i, id, where, focusId) {
     return `<div${i === 0 ? ' class="tag-today" data-tag="Today: plain text"' : ''}${fid}><span class="today-id" data-today-id aria-label="Order ${id}">${id}</span></div>`;
   }
   if (st.c === 'links') {
-    const acts = `<div class="acts"><button type="button" class="act" data-act="tcg" data-i="${i}" data-key="tcg-${where}-${i}" aria-label="Open order ${id} on TCGplayer, opens Safari">TCGplayer ${G.out}</button>`
-      + (where === 'row' ? `<button type="button" class="act" data-act="order" data-i="${i}" data-key="order-${i}">Whole order</button>` : '') + `</div>`;
+    const acts = `<div class="acts"><button type="button" class="act" data-act="tcg" data-i="${i}" data-key="tcg-${where}-${i}" aria-label="Open order ${id} on TCGplayer, opens Safari">Open on TCGplayer ${G.out}</button>`
+      + (where === 'row' ? `<button type="button" class="act" data-act="order" data-i="${i}" data-key="order-${i}">Show whole order</button>` : '') + `</div>`;
     return `<div${tagNew('New: copy chip and two links')}${fid}>${bubble(st, i)}${chip(st, i, id, where)}${acts}</div>`;
   }
   if (st.c === 'split') {
@@ -334,7 +350,7 @@ function itemLine(st, i, cp, focusId) {
   const done = cp.got > 0;
   const meta = [cp.date, cp.set, cp.cond].join(' · ');
   const title = st.c === 'split'
-    ? `<button type="button" class="ttl-btn${i === 0 ? ' tag-new' : ''}" data-act="order" data-i="${i}" data-key="seller-${i}" aria-label="${cp.seller}: show the whole order">${cp.seller} <span class="chev">›</span></button>`
+    ? `<button type="button" class="ttl-btn${i === 0 ? ' tag-new' : ''}" data-act="order" data-i="${i}" data-key="seller-${i}" aria-label="${cp.seller}: show the whole order">${cp.seller}&nbsp;<span class="chev">›</span></button>`
     : `<span class="ttl">${cp.seller}</span>`;
   return `<div class="line${done ? ' done' : ''}">
     <button type="button" class="box" data-act="check" data-i="${i}" data-key="box-${i}" aria-label="${done ? 'Undo check in' : 'Check in'} ${ROW.name}"><i>${done ? '✓' : ''}</i></button>
@@ -371,7 +387,7 @@ function menuHTML(st) {
 function safariHTML(st) {
   if (st.tcg == null) return '';
   const cp = COPIES[st.tcg];
-  const copied = st.c === 'split';
+  const copied = st.c === 'split' && st.copied === st.tcg;
   return `<div class="safari" role="dialog" aria-label="Safari">
     <div class="addr">${tcgUrl(cp.id).replace('https://', '')}</div>
     <div class="body">
@@ -505,14 +521,15 @@ async function doCopy(fr, st, i, then) {
   render(fr);
   if (!ok) { const el = fr.querySelector(`.chip[data-i="${i}"] .id`); if (el) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } }
   // The receipt holds 2.4 s, then the chip returns to Copy. A deep-linked state holds still.
-  if (ok && !st.pinned) timers.set(fr, setTimeout(() => { st.copied = null; st.live = ''; render(fr); }, 2400));
+  if (ok && !st.pinned) timers.set(fr, setTimeout(() => { if (st.tcg != null) return; st.copied = null; st.live = ''; render(fr); }, 2400));
 }
 document.addEventListener('click', e => {
   const b = e.target.closest('.dev [data-act]'); if (!b) return;
   const fr = b.closest('.dev'), st = FRAMES.get(fr), i = +b.dataset.i, a = b.dataset.act;
   st.pinned = false;
   if (a === 'copy') { if (st.refused === i && !b.dataset.fromMenu) return; return doCopy(fr, st, i); }
-  if (a === 'tcg-copy') return doCopy(fr, st, i, () => { if (st.copied === i) st.tcg = i; });
+  // TCGplayer opens whether or not the copy took; Safari's clipboard line shows only when it did.
+  if (a === 'tcg-copy') return doCopy(fr, st, i, () => { st.tcg = i; st.refused = null; });
   if (a === 'tcg') { st.menu = null; st.tcg = i; }
   if (a === 'leave') { st.tcg = null; st.copied = null; }
   if (a === 'order') { st.menu = null; st.view = 'order'; st.order = i; st.copied = null; st.refused = null; }
@@ -540,20 +557,17 @@ document.addEventListener('click', e => { if (holdT === 'fired' && e.target.clos
 document.addEventListener('keydown', e => { if (e.key === 'Escape') FRAMES.forEach((st, fr) => { if (st.menu != null || st.tcg != null) { st.menu = null; st.tcg = null; render(fr); } }); });
 
 // ---------- build the page ----------
-const sections = document.getElementById('sections');
-for (const [c, info] of Object.entries(CONCEPTS)) {
-  const sec = document.createElement('section'); sec.className = 'concept'; sec.dataset.c = c;
-  sec.innerHTML = `<header><h2>${info.title}${c === 'today' ? '' : ` <button type="button" data-hide="${c}">Hide this option</button>`}</h2><p>${info.blurb}</p></header><div class="frames"></div>`;
-  const box = sec.querySelector('.frames');
-  for (const [d, cap] of Object.entries(DEVICES)) {
-    const f = document.createElement('div'); f.className = 'frame'; f.dataset.d = d;
-    const devAttr = d === 'open' ? 'iphone-duo-unfolded' : d === 'phone' ? 'iphone-regular' : 'iphone-duo-folded';
-    f.innerHTML = `<p class="cap">${cap}</p><div class="fit"><div class="fitbox"><div class="dev ${d}" data-device="${devAttr}" role="group" aria-label="${info.title}, ${cap}"></div></div></div><div class="read" data-read></div>`;
-    box.appendChild(f);
-    FRAMES.set(f.querySelector('.dev'), { c, d, copied: null, refused: null, menu: null, view: 'tally', order: 0, tcg: null, live: '' });
-  }
-  sections.appendChild(sec);
-}
+// The section and frame shells are in the HTML; this fills their words and registers each frame.
+document.querySelectorAll('section.concept').forEach(sec => {
+  const c = sec.dataset.c, info = CONCEPTS[c];
+  sec.querySelector('header').innerHTML = `<h2>${info.title}${c === 'today' ? '' : ` <button type="button" data-hide="${c}">Hide this option</button>`}</h2><p>${info.blurb}</p>`;
+  sec.querySelectorAll('.frame').forEach(f => {
+    const d = f.dataset.d, cap = DEVICES[d], dev = f.querySelector('.dev');
+    f.querySelector('.cap').textContent = cap;
+    dev.setAttribute('aria-label', `${info.title}, ${cap}`);
+    FRAMES.set(dev, { c, d, copied: null, refused: null, menu: null, view: 'tally', order: 0, tcg: null, live: '' });
+  });
+});
 
 // ---------- deep links: #c=<option>&d=<device>&s=<state>; no hash shows every option on every device at rest ----------
 const hidden = new Set();

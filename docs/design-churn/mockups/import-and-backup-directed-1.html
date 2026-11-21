@@ -58,12 +58,13 @@ figcaption b { font-family:var(--sys); font-size:14px; color:var(--ink); }
 .scroll { position:absolute; top:var(--sat); left:0; right:0; bottom:0; overflow-y:auto; overflow-x:hidden; padding:12px 16px 160px;
   display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); font-size:var(--fb); line-height:1.3; }
 .scroll.sheet { padding-bottom:176px; }
+.scroll > * { flex-shrink:0; }
 
 /* ---------- app type: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---------- */
 .num, .mono { font-family:var(--mono); font-size:.88em; }
 .micro { font:var(--fc)/1.25 var(--mono); color:var(--inkSoft); letter-spacing:.02em; }
 .foot { font-size:var(--ff); color:var(--inkSoft); }
-.letterhead { display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid var(--ink); padding-bottom:6px; }
+.letterhead { display:flex; flex-wrap:wrap; gap:0 12px; justify-content:space-between; align-items:baseline; border-bottom:2px solid var(--ink); padding-bottom:6px; }
 .letterhead b { font-family:var(--cochin); font-size:var(--ft); letter-spacing:.14em; font-weight:400; }
 .stack { display:flex; flex-direction:column; gap:8px; }
 .group { display:flex; flex-direction:column; }
@@ -74,6 +75,8 @@ figcaption b { font-family:var(--sys); font-size:14px; color:var(--ink); }
 .cell:first-child { border-top:0; }
 .cell .v { color:var(--inkSoft); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:3px; text-align:right; }
 .cell.open .v { color:var(--accent); }
+.ax5 .cell { flex-direction:column; align-items:flex-start; gap:0; }
+.ax5 .cell .v { text-align:left; }
 .reset { color:var(--red); }
 
 /* toolbar of a sheet: Cancel on the leading edge (HIG sheets) */
@@ -119,8 +122,8 @@ figcaption b { font-family:var(--sys); font-size:14px; color:var(--ink); }
 .dr .t2 { font-size:var(--ff); color:var(--inkSoft); }
 .was { text-decoration:line-through; color:var(--inkSoft); }
 .to { color:var(--ink); }
-.two .dr { height:96px; overflow:hidden; }
-.two .dr .t2 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.two .sync .dr { height:96px; overflow:hidden; }
+.two .sync .dr .t2 { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .dr.ghost { background:repeating-linear-gradient(135deg, transparent 0 8px, color-mix(in srgb, var(--line) 35%, transparent) 8px 9px); }
 .dr.ghost .t1 { color:var(--inkSoft); font-style:italic; }
 .pagehead { display:flex; justify-content:space-between; align-items:baseline; border-bottom:2px solid var(--ink); padding-bottom:4px; }
@@ -134,6 +137,7 @@ figcaption b { font-family:var(--sys); font-size:14px; color:var(--ink); }
 .dock .row2 { display:flex; gap:8px; }
 .btn { font:700 var(--fh) var(--cochin); min-height:52px; padding:0 16px; border-radius:12px; border:1px solid var(--ink); background:var(--ink); color:var(--card);
   cursor:pointer; flex:1 1 auto; display:inline-flex; align-items:center; justify-content:center; text-align:center; }
+.btn[disabled] { opacity:.4; cursor:not-allowed; }
 .btn.q { background:var(--card); color:var(--ink); border-color:var(--line); font-weight:400; }
 .btn.danger { background:var(--card); color:var(--red); border-color:var(--red); }
 .btn.armed { background:var(--red); color:var(--card); border-color:var(--red); }
@@ -162,7 +166,10 @@ figcaption b { font-family:var(--sys); font-size:14px; color:var(--ink); }
 .picker { display:flex; flex-direction:column; gap:6px; width:100%; border-top:1px dashed var(--line); padding-top:8px; }
 .pf { font:var(--ff) var(--mono); min-height:44px; padding:0 12px; border:1px dashed var(--accent); border-radius:8px; background:none; color:var(--accent); cursor:pointer; text-align:left; overflow-wrap:anywhere; }
 .err { color:var(--red); }
-.receipt { background:var(--card); border:1px solid var(--line); border-left:3px solid var(--green); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+.receipt { background:var(--greenSoft); border:1px solid var(--line); border-radius:8px; padding:10px 12px; display:flex; flex-direction:column; gap:6px; }
+.receipt.restored { background:var(--card); }
+.lead { font:700 var(--fb) var(--cochin); }
+textarea.note { resize:none; line-height:1.3; font-family:var(--cochin); }
 .link { font:inherit; color:var(--accent); background:none; border:0; padding:0; min-height:44px; text-align:left; cursor:pointer; text-decoration:underline; text-underline-offset:3px; }
 
 /* package cards */
@@ -177,6 +184,7 @@ figcaption b { font-family:var(--sys); font-size:14px; color:var(--ink); }
 .ln { display:flex; align-items:center; gap:8px; font-size:var(--ff); min-height:28px; }
 .box { width:18px; height:18px; flex:none; border:1.5px solid var(--inkSoft); border-radius:4px; display:grid; place-items:center; color:var(--green); font:700 13px var(--mono); }
 .box.on { border-color:var(--green); background:var(--greenSoft); }
+.box svg { width:12px; height:12px; }
 .box.hollow { border-style:dashed; border-color:var(--red); color:var(--red); }
 .band { align-self:flex-start; transform:rotate(-1.5deg); background:var(--manila); color:var(--manilaInk); border:1.5px solid var(--manilaInk); border-radius:4px;
   padding:4px 10px; font:italic var(--ff) var(--cochin); }
@@ -190,7 +198,13 @@ figcaption b { font-family:var(--sys); font-size:14px; color:var(--ink); }
 .tray .ink { color:var(--ink); }
 .tray .row2 { display:flex; gap:8px; }
 .tray .btn { min-height:44px; font-size:var(--fb); }
-.ax5 .tray { bottom:calc(12px + var(--sab)); }
+/* Put back keeps one width, so arming the other button moves nothing under the thumb */
+.tray .row2 > .btn.q { flex:0 0 112px; }
+.tray { font-size:var(--ff); }
+.ax5 .tray .row2 > .btn.q { flex-basis:auto; }
+body.marks .tray, body.marks .dock { position:absolute; }
+.ax5 .scroll > .tray, .ax5 .scroll > .dock, body.marks .ax5 .scroll > .tray { position:static; }
+.ax5 .scroll.sheet, .ax5 .scroll { padding-bottom:24px; }
 .ax5 .tray .row2 { flex-direction:column; }
 
 /* stamp editor */
@@ -237,7 +251,13 @@ body.marks [data-new]::after { content:"New: " attr(data-new); color:var(--accen
   </div>
 
   <div class="ctl" id="ctl"></div>
-  <div class="stage" id="stage"></div>
+  <div class="stage" id="stage">
+    <!-- One frame per pose, folded first. The script fills each frame. -->
+    <figure data-fig="folded"><figcaption></figcaption><div class="fit"><div class="dev one" data-device="iphone-duo-folded" style="width:466px;height:678px"></div></div></figure>
+    <figure data-fig="open"><figcaption></figcaption><div class="fit"><div class="dev two" data-device="iphone-duo-unfolded" style="width:951px;height:669px"></div></div></figure>
+    <figure data-fig="phone"><figcaption></figcaption><div class="fit"><div class="dev one" data-device="iphone-regular" style="width:375px;height:678px"></div></div></figure>
+    <figure data-fig="ax5"><figcaption></figcaption><div class="fit"><div class="dev one ax5" data-device="iphone-duo-folded" style="width:466px;height:678px"></div></div></figure>
+  </div>
 </main>
 
 <script>
@@ -315,7 +335,7 @@ const lh = (right) => `<div class="letterhead"><b>MANIFEST</b><span class="micro
 function ledgerTab(opt = {}) {
   const st = S.s;
   const pickOpen = ["pick","import-error"].includes(st);
-  const rangeVal = (RANGES.find(r => r[0] === S.range) || RANGES[0])[1];
+  const rangeVal = (RANGES.find(r => r[0] === S.range) || MONTHS.find(m => m[0] === S.range) || RANGES[0])[1];
   let html = lh("Ledger") + `
   <div class="group"><div class="micro">View</div><div class="cells">
     <button class="cell"><span>Showing</span><span class="v">● Unreceived</span></button>
@@ -366,7 +386,7 @@ function importReceipt() {
   </div>`;
 }
 function restoreReceipt() {
-  return `<div class="receipt" role="status" style="border-left-color:var(--accent)">
+  return `<div class="receipt restored" role="status">
     <div>Backup restored — <span class="num">398</span> lines and your check-ins are back. <span class="num">2</span> envelopes were replaced.</div>
     <div class="foot">Saved before restore, <span class="num">00:32</span>. The server got it a few seconds later.</div>
     <button class="link" ${A("noop")}>Open History</button>
@@ -376,7 +396,7 @@ function restoreReceipt() {
 function backupPanel() {
   const done = S.s === "backup-done";
   return `<div class="ed" data-new="backup preview">
-    <div class="micro">What the backup holds</div>
+    <div class="lead">What the backup holds</div>
     <div class="ct" style="grid-template-columns:1fr auto">
       <div class="h">Part</div><div class="h n">Count</div>
       <div>Lines</div><div class="n" data-k="Lines">412</div>
@@ -396,17 +416,19 @@ function rangePanel() {
   const carbon = S.c === "carbon";
   const sel = carbon ? (S.staged || S.range) : S.range;
   const cnt = (RANGES.find(r => r[0] === sel) || RANGES[0])[2];
-  const cur = (RANGES.find(r => r[0] === S.range) || RANGES[0])[2];
+  const cur = (RANGES.find(r => r[0] === S.range) || MONTHS.find(m => m[0] === S.range) || RANGES[0])[2];
   let h = `<div class="ed" data-new="${carbon ? "pick stages, button applies" : "count on each choice"}">
-    <div class="micro">Orders from</div><div class="opts">` +
+    <div class="lead">Orders from</div><div class="opts">` +
     RANGES.map(([v, l, n]) => `<button class="op ${carbon && S.staged === v && S.staged !== S.range ? "staged" : ""}" aria-pressed="${v === sel}" ${A("range", v)}><span>${l}</span>${n != null ? `<span class="num">${n}</span>` : ""}</button>`).join("") +
-    `</div><div class="micro">By month</div><div class="opts">` +
-    MONTHS.map(([v, l, n]) => `<button class="op" aria-pressed="${v === sel}" ${A("range", v)}><span>${l}</span><span class="num">${n}</span></button>`).join("") + `</div>`;
+    `</div>` + (sel === "custom" || /^\d{4}-/.test(sel) ? `<div class="lead">Months with orders, newest first</div><div class="opts">` +
+    MONTHS.map(([v, l, n]) => `<button class="op ${carbon && S.staged === v && S.staged !== S.range ? "staged" : ""}" aria-pressed="${v === sel}" ${A("range", v)}><span>${l}</span><span class="num">${n}</span></button>`).join("") + `</div>` : "");
   if (carbon) {
-    const ch = S.staged && S.staged !== S.range;
+    const open = sel === "custom" || sel === "days";
+    const ch = S.staged && S.staged !== S.range && !open;
     const ncnt = cnt != null ? cnt : (MONTHS.find(m => m[0] === sel) || [0,0,0])[2];
+    if (sel === "days") h += `<label class="foot" style="display:flex;gap:8px;align-items:center">Last <input class="note" style="width:96px" inputmode="numeric" placeholder="days"> days</label>`;
     h += `<div class="foot">Showing <span class="num">${cur}</span> packages${ch ? ` → <b class="num">${ncnt}</b>` : ""}. Nothing is hidden from the ledger, only from view.</div>
-      <div style="display:flex;gap:8px"><button class="btn q" ${A("rangeCancel")}>Cancel</button><button class="btn" ${ch ? "" : "disabled title=\"Pick another range first\""} ${A("rangeApply")}>${ch ? `Show ${ncnt} packages` : "Show packages"}</button></div>`;
+      <div style="display:flex;gap:8px"><button class="btn q" ${A("rangeCancel")}>Cancel</button><button class="btn" ${ch ? "" : `disabled title="${open ? (sel === "days" ? "Type a number of days first" : "Pick a month first") : "Pick another range first"}"`} ${A("rangeApply")}>${ch ? `Show ${ncnt} packages` : sel === "custom" ? "Pick a month" : "Show packages"}</button></div>`;
   } else {
     h += `<div class="foot">Each count is the packages that range shows. A tap applies it.</div>`;
   }
@@ -457,11 +479,11 @@ function carbonImport(dev) {
     dock: `<button class="btn" ${A("go","ledger")}>Done</button>` };
   const body = `<div class="tool"><button class="tbtn" ${A("go","pick")}>Cancel</button><span class="t">Check before adding</span><span style="width:44px"></span></div>
     ${fileLine("orderwand-2026-11-20.csv", "438 rows read")}
-    <div class="big">Adds <span class="num">23</span> lines. Removes nothing.</div>
-    <div class="promise">${tick}<span>Your <span class="num">371</span> check-ins stay. Nothing on this device changes until you add.</span></div>
-    ${carbonTable("import", id)}
+    <div class="promise">${tick}<span><span class="big">Adds <span class="num">23</span> lines. Removes nothing.</span><br>Your <span class="num">371</span> check-ins stay. Nothing changes until you add.</span></div>
     ${chips()}
-    ${diffRows("one")}`;
+    ${diffRows("one")}
+    <div class="lead">The whole ledger, before and after</div>
+    ${carbonTable("import", id)}`;
   return { body, dock: `<button class="btn" ${A("go","import-done")} data-new="the one confirm">Add 23 lines</button><div class="foot" style="text-align:center">A saved version goes to History first.</div>` };
 }
 function carbonImportTwo() {
@@ -503,7 +525,7 @@ function carbonRestore(dev) {
     ${fileLine("mailday-backup-2026-11-02.json", "184 KB, saved Nov 2, 21:14")}
     <div class="promise warn">${warnI}<span>This is a backup, not an order list. It replaces everything on this device, and the server copy a few seconds later.</span></div>
     ${carbonTable("restore", id)}
-    <div class="micro">What you lose: everything done after Nov 2</div>
+    <div class="lead">What you lose: everything done after Nov 2</div>
     ${lostRows("now")}`, dock: restoreDock() };
 }
 function carbonRestoreTwo() {
@@ -522,7 +544,7 @@ function pkgCard(o) {
     <div class="h1"><b>${esc(o.s)}</b><span class="num">${o.got}</span></div>
     <div class="meta">${o.meta}</div>
     ${o.band || ""}
-    ${(o.lines || []).map(([n, st]) => `<div class="ln"><span class="box ${st}">${st === "on" ? "✓" : st === "hollow" ? "✓" : ""}</span><span ${st === "hollow" ? 'class="was"' : ""}>${esc(n)}</span></div>`).join("")}
+    ${(o.lines || []).map(([n, st]) => `<div class="ln"><span class="box ${st}">${st === "on" || st === "hollow" ? tick : ""}</span><span ${st === "hollow" ? 'class="was"' : ""}>${esc(n)}</span></div>`).join("")}
     ${o.extra || ""}
   </div>`;
 }
@@ -530,9 +552,9 @@ function stampEditor(carbon) {
   const label = (KINDS.find(k => k[0] === S.kind) || KINDS[1])[1];
   const refund = S.kind === "refunded" || S.kind === "partial";
   return `<div class="ed" aria-label="Stamp">
-    <div class="micro">Stamp</div>
+    <div class="lead">Stamp</div>
     <div class="kinds">${KINDS.map(([k, l]) => `<button class="kd" aria-pressed="${k === S.kind}" ${A("kind", k)}>${l}</button>`).join("")}</div>
-    <input class="note" aria-label="Note" placeholder="Note (optional)" value="${S.kind === "other" ? "Arrived water damaged" : ""}">
+    <textarea class="note" rows="2" aria-label="Note" placeholder="Note (optional)">${S.kind === "other" ? "Arrived water damaged" : ""}</textarea>
     ${carbon ? `<div class="na" data-new="Now and After Save">
       <div><span class="micro">Now</span><span class="foot">No stamp</span></div>
       <div><span class="micro">After Save</span><span class="band staged"><b>${label.toUpperCase()}</b>Nov 21</span></div></div>` : ""}
@@ -575,9 +597,7 @@ function trayStrip(dev, kind) {
 function trayPackages(kind) {
   let b = lh("Packages");
   if (kind === "import") {
-    NEWS.slice(0, 3).forEach(r => b += pkgCard({ s:r.s, got:`0 of ${r.c}`, meta:`Ordered <span class="num">${r.d}</span>, <span class="num">$${r.v}</span>`, cls:"held", tag:"Held: new", tagc:"held",
-      lines: r.n.slice(0, 2).map(n => [n, ""]) }));
-    b += `<div class="foot">3 more held packages: Marsh &amp; Vane, Hollow Oak Games, Copperline Cards.</div>`;
+    NEWS.forEach(r => b += pkgCard({ s:r.s, got:`0 of ${r.c}`, meta:`Ordered <span class="num">${r.d}</span>, <span class="num">$${r.v}</span>. ${r.n.map(esc).join(", ")}`, cls:"held", tag:"Held: new", tagc:"held" }));
     b += pkgCard({ s:"Larkspur Games", got:"2 of 3", meta:`Ordered <span class="num">Nov 14</span>. Shipping: <span class="was">without tracking</span> → with tracking`, cls:"held", tag:"Held: change", tagc:"held",
       lines:[["Brainstorm","on"],["Ponder","on"],["Opt",""]] });
     b += pkgCard({ s:"Bramblewood", got:"0 of 2", meta:`Ordered <span class="num">Nov 9</span>. Shipping: <span class="was">without tracking</span> → canceled. Leaves the Value.`, cls:"held", tag:"Held: change", tagc:"held",
@@ -645,7 +665,11 @@ function screenTwo(dev) {
 }
 function pageHTML(p, side, dev) {
   const cls = (p.sheet ? "scroll sheet" : "scroll") + (p.sync ? " sync" : "");
-  let h = `<div class="page ${side}"><div class="${cls}">${p.body}</div>`;
+  /* At AX5 a floating dock or tray would cover half the screen, so it joins the end of the page instead. */
+  const inflow = dev.ax5 && (p.dock || p.strip);
+  /* The tray leads the page there, since it names the change before the list shows it; the dock ends the proof. */
+  let h = `<div class="page ${side}"><div class="${cls}">${inflow && p.strip ? p.strip : ""}${p.body}${inflow && !p.strip ? `<div class="dock">${p.dock}</div>` : ""}</div>`;
+  if (inflow) return h + `</div>`;
   if (p.strip) h += p.strip;
   if (p.dock) h += `<div class="dock">${p.dock}</div>`;
   else if (p.tab && !(dev.ax5 && p.strip)) h += bar(p.tab);
@@ -657,8 +681,10 @@ function frame(dev) {
     const t = screenTwo(dev);
     inner += pageHTML(t.left, "l", dev) + `<div class="hinge" aria-hidden="true"><span>hinge: nothing crosses</span></div>` + pageHTML(t.right, "r", dev);
   } else inner += pageHTML(screenOne(dev), "", dev);
-  return `<figure ${S.d !== "all" && S.d !== dev.id ? "hidden" : ""}><figcaption><b>${dev.name}</b><br>${dev.cap}</figcaption>
-    <div class="fit"><div class="dev ${dev.pose} ${dev.ax5 ? "ax5" : ""}" data-device="${dev.data}" style="width:${dev.w}px;height:${dev.h}px">${inner}</div></div></figure>`;
+  const fig = document.querySelector(`figure[data-fig="${dev.id}"]`);
+  fig.hidden = S.d !== "all" && S.d !== dev.id;
+  fig.querySelector("figcaption").innerHTML = `<b>${dev.name}</b><br>${dev.cap}`;
+  fig.querySelector(".dev").innerHTML = inner;
 }
 
 /* ---------------- page controls ---------------- */
@@ -674,7 +700,7 @@ function controls() {
 function render() {
   document.body.classList.toggle("marks", S.marks);
   document.getElementById("ctl").innerHTML = controls();
-  document.getElementById("stage").innerHTML = DEVICES.map(frame).join("");
+  DEVICES.forEach(frame);
   writeHash();
 }
 

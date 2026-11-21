@@ -1,6 +1,793 @@
 <!doctype html>
-<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
 <title>Record an envelope</title>
-<style>body{font-family:-apple-system,system-ui,sans-serif;padding:env(safe-area-inset-top) 16px 16px}</style></head>
-<body><p>Sample. Designer kind: blind. Work in progress.</p>
-<div data-device="iphone-duo-folded"></div><div data-device="iphone-duo-unfolded"></div></body></html>
+<style>
+/* Tokens. Spacing on the 4 px step, radius 8 px, colour by role (house tokens.md). */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --radius: 8px;
+  color-scheme: light;
+  --page: #dde2e9;
+  --surface: #f4f6f9;
+  --raised: #ffffff;
+  --sunk: #d9dee6;
+  --key: #ffffff;
+  --text: #161b26;
+  --muted: #535e72;
+  --line: #cfd6e0;
+  --accent: #2347c6;
+  --on-accent: #ffffff;
+  --ready: #17734a;
+  --danger: #a8281e;
+  --danger-bg: #fbe9e7;
+  --env: #e7d3a1;
+  --on-env: #2f2610;
+  --env-edge: #bfa46c;
+  --label: #a3206e;
+  --label-bg: #fff0f8;
+  --bezel: #262b33;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #07090c; --surface: #11151c; --raised: #1a1f29; --sunk: #232934; --key: #3a4250;
+    --text: #e7ebf2; --muted: #a0a9ba; --line: #2e3542; --accent: #93abff; --on-accent: #0c1634;
+    --ready: #5ed39b; --danger: #ff9187; --danger-bg: #3a1a17; --env: #4a3f25; --on-env: #f4e8c6;
+    --env-edge: #6e5e36; --label: #f07abf; --label-bg: #2c1023; --bezel: #000000;
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #07090c; --surface: #11151c; --raised: #1a1f29; --sunk: #232934; --key: #3a4250;
+  --text: #e7ebf2; --muted: #a0a9ba; --line: #2e3542; --accent: #93abff; --on-accent: #0c1634;
+  --ready: #5ed39b; --danger: #ff9187; --danger-bg: #3a1a17; --env: #4a3f25; --on-env: #f4e8c6;
+  --env-edge: #6e5e36; --label: #f07abf; --label-bg: #2c1023; --bezel: #000000;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; background: var(--page); color: var(--text);
+  font-family: -apple-system, system-ui, sans-serif; font-size: 1rem; line-height: 1.4;
+  padding: max(env(safe-area-inset-top), 16px) max(env(safe-area-inset-right), 16px)
+           max(env(safe-area-inset-bottom), 16px) max(env(safe-area-inset-left), 16px);
+}
+button { font-family: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Page chrome around the frames */
+.chrome { display: flex; flex-direction: column; gap: var(--space-3); max-inline-size: 72rem; }
+.sample {
+  display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center;
+  padding: var(--space-2) var(--space-3); border: 2px dashed var(--label); border-radius: var(--radius);
+  background: var(--label-bg); color: var(--text); font-weight: 600;
+}
+.chrome h1 { margin: 0; font-size: 1.5rem; line-height: 1.2; }
+.kind { margin: 0; color: var(--muted); }
+.ctls { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); align-items: center; }
+.ctl { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ctl-name { font-weight: 600; }
+.opt { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); overflow: hidden; }
+.opt button { min-height: 44px; border: 0; background: transparent; color: var(--text); padding: 0 var(--space-3); font-size: 0.9375rem; cursor: pointer; }
+.opt button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.opt .x { border-inline-start: 1px solid var(--line); padding: 0 var(--space-3); color: var(--muted); }
+.ctl select, .plain { min-height: 44px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised); color: var(--text); padding: 0 var(--space-3); font: inherit; font-size: 0.9375rem; }
+.hidden-note { color: var(--muted); }
+
+.stage { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; margin-block-start: var(--space-6); }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-3); max-inline-size: 100%; }
+.scroller { overflow-x: auto; padding: 10px; max-inline-size: 100%; }
+figcaption { color: var(--muted); font-size: 0.9375rem; max-inline-size: 36rem; }
+figcaption b { color: var(--text); }
+
+.device {
+  position: relative; overflow: hidden; border-radius: 28px;
+  box-shadow: 0 0 0 8px var(--bezel); background: var(--surface);
+}
+.device.folded { width: 466px; height: 678px; }
+.device.unfolded { width: 951px; height: 669px; border-radius: 20px; }
+.device.phone { width: 440px; height: 900px; resize: both; min-width: 320px; min-height: 560px; }
+@media (forced-colors: active) { .device { border: 2px solid CanvasText; } }
+
+/* App inside a frame. Sizes in px stand for points, 1:1. */
+.app {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  background: var(--surface); color: var(--text);
+  font-family: -apple-system, system-ui, sans-serif;
+  font-size: var(--fs-bd); line-height: var(--lh-bd);
+  padding-bottom: env(safe-area-inset-bottom);
+  /* Dynamic Type, Large (default), from Apple's typography page */
+  --fs-lt: 34px; --lh-lt: 41px; --fs-t2: 22px; --lh-t2: 28px; --fs-t3: 20px; --lh-t3: 25px;
+  --fs-hl: 17px; --lh-hl: 22px; --fs-bd: 17px; --lh-bd: 22px; --fs-sh: 15px; --lh-sh: 20px;
+  --fs-fn: 13px; --lh-fn: 18px; --fs-c1: 12px; --lh-c1: 16px;
+  --spine-w: 72px; --dspine-w: 72px;
+}
+.ax5 .app {
+  /* Dynamic Type, AX5, from Apple's typography page */
+  --fs-lt: 60px; --lh-lt: 70px; --fs-t2: 56px; --lh-t2: 66px; --fs-t3: 55px; --lh-t3: 65px;
+  --fs-hl: 53px; --lh-hl: 62px; --fs-bd: 53px; --lh-bd: 62px; --fs-sh: 49px; --lh-sh: 58px;
+  --fs-fn: 44px; --lh-fn: 52px; --fs-c1: 43px; --lh-c1: 51px;
+  --spine-w: 144px; --dspine-w: 140px;
+}
+.app.open { display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.page { position: relative; display: flex; flex-direction: column; min-width: 0; min-height: 0; overflow: hidden; background: var(--surface); }
+.hinge { background: var(--bezel); }
+.sb { flex: none; height: 32px; display: flex; justify-content: space-between; align-items: center; padding: 0 var(--space-6); font-size: 15px; font-weight: 600; }
+.sb .dots { display: flex; gap: var(--space-1); align-items: center; }
+.sb .dots i { display: block; width: 18px; height: 9px; border: 1.5px solid currentColor; border-radius: 3px; }
+.hi { flex: none; height: 20px; display: flex; align-items: center; justify-content: center; }
+.hi::before { content: ""; width: 134px; height: 5px; border-radius: 3px; background: var(--text); opacity: .8; }
+.ax5 .sb, .kb { font-size: 15px; line-height: 20px; }
+
+p { margin: 0; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.btn {
+  min-height: 44px; min-width: 44px; padding: 0 var(--space-4); border-radius: var(--radius);
+  border: 0; background: transparent; color: var(--accent);
+  font: inherit; font-weight: 600; cursor: pointer;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+}
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.danger { color: var(--danger); }
+.btn.danger.fill { background: var(--danger); color: var(--surface); }
+.btn.quiet { background: var(--raised); border: 1px solid var(--line); color: var(--text); }
+.btn[aria-disabled="true"] { background: var(--sunk); color: var(--muted); cursor: not-allowed; }
+.why { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--muted); }
+
+.lt { margin: 0; padding: var(--space-2) var(--space-4) var(--space-2); font-size: var(--fs-lt); line-height: var(--lh-lt); font-weight: 700; flex: none; }
+.body { flex: 1 1 auto; min-height: 0; overflow: auto; overscroll-behavior: contain; padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.msg { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding-block: var(--space-4); }
+.names { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.names > li { display: flex; flex-direction: column; gap: var(--space-2); }
+.row {
+  width: 100%; min-height: 44px; text-align: start; cursor: pointer;
+  display: grid; grid-template-columns: auto 1fr; gap: 0 var(--space-3); align-items: center;
+  padding: var(--space-2) var(--space-3); border-radius: var(--radius);
+  background: var(--raised); color: var(--text); border: 1px solid var(--line); font: inherit;
+}
+.row .mark { grid-row: span 2; width: 22px; height: 22px; border-radius: 50%; border: 2px dashed var(--muted); align-self: center; }
+.row.ok .mark { border: 0; background: var(--ready); display: grid; place-items: center; }
+.row.ok .mark::after { content: ""; width: 10px; height: 6px; border: solid var(--surface); border-width: 0 0 2.5px 2.5px; transform: translateY(-1px) rotate(-45deg); }
+.row.open { border-style: dashed; border-color: var(--muted); }
+.row.sel { border: 2px solid var(--accent); }
+.row .nm { font-weight: 600; overflow-wrap: anywhere; }
+.row .ln { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--muted); overflow-wrap: anywhere; }
+
+.chooser, .sugg { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2); border-radius: var(--radius); background: var(--sunk); }
+.pick { width: 100%; min-height: 44px; text-align: start; cursor: pointer; display: flex; flex-direction: column; justify-content: center; padding: var(--space-2) var(--space-3); border-radius: var(--radius); border: 1px solid transparent; background: var(--raised); color: var(--text); font: inherit; }
+.pick small { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--muted); }
+.pick.full { opacity: .6; }
+.pick.best { border-color: var(--accent); }
+.sub { font-size: var(--fs-sh); line-height: var(--lh-sh); color: var(--muted); }
+.subrow { display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+
+.dock { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4); background: var(--raised); border-top: 1px solid var(--line); }
+.inrow { display: flex; gap: var(--space-2); align-items: center; }
+.field { flex: 1 1 0; min-width: 0; min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); color: var(--text); font: inherit; }
+.acts { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between; }
+.confirm, .done { display: flex; flex-direction: column; gap: var(--space-2); }
+.confirm { padding: var(--space-3); border-radius: var(--radius); background: var(--danger-bg); }
+.confirm p { font-weight: 600; }
+
+/* Keyboard: a drawn stand-in */
+.kb { flex: none; background: var(--sunk); padding: var(--space-2) var(--space-1); display: flex; flex-direction: column; gap: var(--space-2); }
+.kr { display: flex; gap: var(--space-1); justify-content: center; }
+.key { flex: 1 1 0; max-width: 42px; height: 44px; border: 0; border-radius: 6px; background: var(--key); color: var(--text); font-size: 20px; cursor: pointer; box-shadow: 0 1px 0 var(--line); }
+.key.wide { max-width: none; flex: 1.4 1 0; font-size: 15px; }
+.key.space { max-width: none; flex: 5 1 0; font-size: 15px; }
+.key.ret { max-width: none; flex: 2 1 0; font-size: 15px; background: var(--accent); color: var(--on-accent); }
+
+/* Pinned header concept */
+.band { flex: none; display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1) var(--space-4) var(--space-3); background: var(--env); color: var(--on-env); border-bottom: 1px solid var(--env-edge); }
+.band-row { display: flex; align-items: center; gap: var(--space-1); min-width: 0; }
+.back { flex: none; min-width: 44px; min-height: 44px; margin-inline-start: calc(var(--space-2) * -1); border: 0; background: transparent; color: inherit; font: inherit; font-size: var(--fs-t2); cursor: pointer; display: grid; place-items: center; }
+.env-name { margin: 0; min-width: 0; font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.env-meta { font-size: var(--fs-sh); line-height: var(--lh-sh); }
+.ax5 .env-meta { display: none; }
+.ax5 .env-name { white-space: normal; overflow-wrap: anywhere; }
+.btn svg { width: 1em; height: 1em; }
+.meter { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; }
+.ticks { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.tick { width: 12px; height: 12px; border-radius: 3px; border: 2px solid currentColor; }
+.tick.on { background: var(--ready); border-color: var(--ready); }
+.ax5 .ticks { display: none; }
+
+.envlist { list-style: none; margin: 0; padding: 0 var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); overflow: auto; flex: 1 1 auto; min-height: 0; }
+.envrow { width: 100%; min-height: 56px; text-align: start; cursor: pointer; display: grid; grid-template-columns: 1fr auto auto; gap: var(--space-1) var(--space-3); align-items: center; padding: var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); color: var(--text); font: inherit; }
+.envrow.cur { border: 2px solid var(--accent); }
+.envrow .er-name { font-weight: 600; overflow-wrap: anywhere; }
+.envrow .er-meta { grid-column: 1; font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--muted); }
+.flag { grid-row: 1 / span 2; grid-column: 2; display: inline-flex; align-items: center; gap: var(--space-1); padding: var(--space-1) var(--space-2); border-radius: var(--radius); background: var(--env); color: var(--on-env); font-size: var(--fs-fn); line-height: var(--lh-fn); font-weight: 600; }
+.flag::before { content: ""; width: 10px; height: 10px; border-radius: 2px; background: var(--ready); }
+.chev { grid-row: 1 / span 2; grid-column: 3; color: var(--muted); font-size: var(--fs-t3); }
+.ax5 .envrow { grid-template-columns: 1fr; }
+.ax5 .flag, .ax5 .chev { grid-row: auto; grid-column: 1; justify-self: start; }
+.ax5 .chev { display: none; }
+
+/* Spine concept */
+.sp-main { flex: 1 1 auto; min-height: 0; display: grid; grid-template-columns: var(--spine-w) minmax(0, 1fr); }
+.spine { min-height: 0; overflow: hidden; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-2) 0 var(--space-2); background: var(--env); color: var(--on-env); border-inline-end: 1px solid var(--env-edge); }
+.sp-save { flex: none; width: calc(var(--spine-w) - 16px); min-height: 56px; border: 0; border-radius: var(--radius); background: var(--accent); color: var(--on-accent); cursor: pointer; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-family: inherit; font-size: 13px; line-height: 16px; font-weight: 600; }
+.sp-save svg { width: 22px; height: 22px; }
+.sp-save[aria-disabled="true"] { background: var(--sunk); color: var(--muted); cursor: not-allowed; }
+.ax5 .sp-save .t { display: none; }
+.ax5 .sp-save svg { width: 32px; height: 32px; }
+.sp-count { flex: none; text-align: center; font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 700; }
+.sp-count span { display: block; font-size: var(--fs-c1); line-height: var(--lh-c1); font-weight: 600; }
+.ax5 .sp-count span { display: none; }
+.sp-back { flex: none; width: 44px; height: 44px; border: 0; border-radius: var(--radius); background: transparent; color: inherit; cursor: pointer; display: grid; place-items: center; }
+.sp-back svg { width: 24px; height: 24px; }
+.sp-name { flex: 1 1 auto; min-height: 0; width: 100%; margin: 0; color: inherit; font: inherit; writing-mode: vertical-rl; transform: rotate(180deg); display: flex; flex-direction: row; justify-content: flex-start; align-items: center; gap: var(--space-1); padding: var(--space-2) 0; overflow: hidden; flex-direction: column; }
+.sp-name .v1 { font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 100%; }
+.sp-name .v2 { font-size: var(--fs-fn); line-height: var(--lh-fn); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-height: 100%; }
+.ax5 .sp-name .v2 { display: none; }
+.ax5 .sp-name .v1 { white-space: normal; text-overflow: clip; }
+.sp-throw { flex: none; width: 44px; height: 44px; border: 0; border-radius: var(--radius); background: transparent; color: var(--danger); cursor: pointer; display: grid; place-items: center; }
+.sp-throw svg { width: 24px; height: 24px; }
+.sp-throw[aria-expanded="true"] { background: var(--danger-bg); }
+.sp-body { min-width: 0; min-height: 0; overflow: hidden; display: flex; flex-direction: column; }
+[data-region="sugg"] { display: contents; }
+.sp-body .sugg { flex: none; max-height: 46%; overflow: auto; margin: 0 var(--space-3) var(--space-2); }
+.sp-body .dock { padding-inline: var(--space-3); }
+.sp-body .body { padding-inline: var(--space-3); }
+
+.drawer { flex: 1 1 auto; min-height: 0; display: flex; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-4); overflow-x: auto; overscroll-behavior: contain; }
+.dspine { flex: none; width: var(--dspine-w); cursor: pointer; display: flex; flex-direction: column; align-items: center; gap: var(--space-2); padding: var(--space-3) 0; border-radius: var(--radius); border: 1px solid var(--env-edge); background: var(--env); color: var(--on-env); font: inherit; }
+.dspine.cur { border: 3px solid var(--accent); }
+.dspine .vw { flex: 1 1 auto; min-height: 0; writing-mode: vertical-rl; transform: rotate(180deg); display: flex; flex-direction: column; gap: var(--space-1); overflow: hidden; }
+.dspine .v1 { font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.dspine .v2 { font-size: var(--fs-fn); line-height: var(--lh-fn); white-space: nowrap; }
+.ax5 .dspine .v2 { display: none; }
+.ax5 .dspine .v1 { white-space: normal; text-overflow: clip; }
+.dmark { flex: none; min-height: 28px; display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-2); border-radius: var(--radius); background: var(--raised); color: var(--text); font-size: 13px; font-weight: 700; }
+.dmark::before { content: ""; width: 10px; height: 10px; border-radius: 2px; background: var(--ready); }
+
+.lp-head { flex: none; padding: var(--space-2) var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); border-bottom: 1px solid var(--line); }
+.lp-head h2 { margin: 0; font-size: var(--fs-t2); line-height: var(--lh-t2); }
+.lgroup { display: flex; flex-direction: column; gap: var(--space-2); }
+.lgroup h3 { margin: 0; font-size: var(--fs-sh); line-height: var(--lh-sh); color: var(--muted); font-weight: 600; }
+.line { width: 100%; min-height: 52px; text-align: start; cursor: pointer; display: grid; grid-template-columns: 1fr auto; gap: 0 var(--space-3); align-items: center; padding: var(--space-2) var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); color: var(--text); font: inherit; }
+.line small { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--muted); }
+.line .st { grid-row: 1 / span 2; grid-column: 2; font-size: var(--fs-fn); font-weight: 600; display: inline-flex; gap: var(--space-1); align-items: center; }
+.line .st.ok { color: var(--ready); }
+.line.fit { border: 2px solid var(--accent); }
+.line.dim { opacity: .5; }
+.ph { flex: 1 1 auto; display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; justify-content: center; padding: var(--space-6); }
+
+/* Annotations: "New:" labels, toggled from the page controls */
+.labels-on .nl { outline: 2px dashed var(--label); outline-offset: -3px; position: relative; }
+.labels-on .nl::after {
+  content: attr(data-new); position: absolute; right: 4px; bottom: 4px; z-index: 5; pointer-events: none;
+  writing-mode: horizontal-tb; transform: none;
+  font: 600 11px/14px -apple-system, system-ui, sans-serif; color: var(--label);
+  background: var(--label-bg); padding: 1px 4px; border-radius: 4px; border: 1px dashed var(--label);
+  max-width: 220px; white-space: normal; text-align: start;
+}
+.labels-on .spine.nl::after { right: auto; left: 2px; top: 2px; bottom: auto; max-width: 64px; }
+.body > *, .sugg > *, .chooser > *, .drawer > * { flex-shrink: 0; }
+@media (prefers-reduced-motion: no-preference) {
+  .confirm, .sugg, .chooser { animation: rise .16s ease-out; }
+  @keyframes rise { from { opacity: 0; } to { opacity: 1; } }
+}
+</style>
+</head>
+<body>
+<div class="chrome">
+  <div class="sample" role="note">Sample: no name, card, price or order on this page is real.</div>
+  <h1>Record an envelope</h1>
+  <p class="kind">Designer kind: blind. Designer: record-envelope-blind-1. Two concepts; every tap in the frames works.</p>
+  <div class="ctls" id="ctls"></div>
+</div>
+
+<main class="stage" id="stage">
+  <figure>
+    <div class="scroller"><div class="device folded" data-device="iphone-duo-folded" data-pose="folded"></div></div>
+    <figcaption><b>Duo folded</b>, 466 x 678 pt, portrait, one hand.</figcaption>
+  </figure>
+  <figure>
+    <div class="scroller"><div class="device unfolded" data-device="iphone-duo-unfolded" data-pose="open"></div></div>
+    <figcaption><b>Duo open</b>, 951 x 669 pt. The dark band is the hinge, x 455.5 to 495.5. Each page is its own layout.</figcaption>
+  </figure>
+  <figure>
+    <div class="scroller"><div class="device phone" data-device="iphone-large" data-pose="phone"></div></div>
+    <figcaption><b>Large phone</b>, portrait, one hand. No size is written for this phone, so this frame is not a real size. Drag its corner to try sizes.</figcaption>
+  </figure>
+  <figure>
+    <div class="scroller"><div class="device folded ax5" data-device="iphone-duo-folded-ax5" data-pose="folded"></div></div>
+    <figcaption><b>Duo folded, largest text</b> (AX5). Body text is 53 pt.</figcaption>
+  </figure>
+</main>
+
+<script>
+(function () {
+  "use strict";
+
+  /* ---------- Sample data (data shapes: envelope, order line, draft of names) ---------- */
+  const ENVS = [
+    { id: "e1", from: "Hollow Pine Cards", lines: [
+      { id: "l1", order: "Order 2207", card: "Lantern Moth", set: "Duskfall", price: "$0.42", qty: 1 },
+      { id: "l2", order: "Order 2207", card: "Copper Warden", set: "Duskfall", price: "$0.18", qty: 2 },
+      { id: "l3", order: "Order 2231", card: "Glass Orchard", set: "Tidewrack", price: "$1.05", qty: 1 },
+      { id: "l4", order: "Order 2231", card: "Ember Familiar", set: "Tidewrack", price: "$0.25", qty: 1 } ] },
+    { id: "e2", from: "Saltmarsh Games", lines: [
+      { id: "l5", order: "Order 2214", card: "Thornwake Scout", set: "Duskfall", price: "$0.15", qty: 1 },
+      { id: "l6", order: "Order 2214", card: "Pale Lighthouse", set: "Greywater", price: "$2.10", qty: 1 },
+      { id: "l7", order: "Order 2214", card: "Gilded Heron", set: "Greywater", price: "$0.30", qty: 1 } ] },
+    { id: "e3", from: "Quarry Lane Collectibles", lines: [
+      { id: "l8", order: "Order 2219", card: "Moss-Back Ox", set: "Tidewrack", price: "$0.12", qty: 1 },
+      { id: "l9", order: "Order 2219", card: "Silent Bellringer", set: "Duskfall", price: "$0.55", qty: 1 },
+      { id: "l10", order: "Order 2240", card: "Vault of Echoes", set: "Greywater", price: "$3.40", qty: 1 },
+      { id: "l11", order: "Order 2240", card: "Ashen Cartographer", set: "Greywater", price: "$0.20", qty: 1 } ] },
+    { id: "e4", from: "Bright Ferry", lines: [
+      { id: "l12", order: "Order 2226", card: "Tidecaller's Oath", set: "Tidewrack", price: "$0.75", qty: 1 },
+      { id: "l13", order: "Order 2226", card: "Lantern Moth", set: "Duskfall", price: "$0.40", qty: 1 } ] },
+    { id: "e5", from: "Wren and Kettle", lines: [
+      { id: "l14", order: "Order 2233", card: "Hollow Bastion", set: "Greywater", price: "$0.22", qty: 1 },
+      { id: "l15", order: "Order 2233", card: "Ember Familiar", set: "Tidewrack", price: "$0.25", qty: 1 },
+      { id: "l16", order: "Order 2233", card: "Saltwind Drake", set: "Duskfall", price: "$1.60", qty: 1 } ] }
+  ];
+  const BASE_DRAFTS = () => ({ e1: [
+    { id: "n1", text: "Lantern Moth", line: "l1" },
+    { id: "n2", text: "Copper Warden", line: "l2" },
+    { id: "n3", text: "Copper Warden", line: "l2" },
+    { id: "n4", text: "Glas Orchard", line: null } ] });
+  let seq = 100;
+
+  /* ---------- Options and states ---------- */
+  const OPTS = {
+    concept: [["pinned", "Pinned header"], ["spine", "Spine"]],
+    throwStyle: [["confirm", "Confirm in place"], ["undo", "Undo strip"]],
+    saveMode: [["ready", "Save ready names"], ["all", "Save every name"]],
+    autoMatch: [["auto", "Exact name matches itself"], ["manual", "Every match by hand"]]
+  };
+  const STATES = [
+    ["list", "Today's mail (first screen)"], ["nomail", "No mail expected"], ["empty", "New draft, no names"],
+    ["typing", "Typing, keys up"], ["matched", "Names and lines"], ["choose", "Choosing a line"],
+    ["confirm", "Throw away pressed"], ["gone", "Draft thrown away"], ["saved", "Saved"], ["failed", "Order lines failed"]
+  ];
+  const G = { concept: "pinned", state: "matched", theme: null, throwStyle: "confirm", saveMode: "ready", labels: true, hidden: [] };
+
+  function readHash() {
+    const p = new URLSearchParams(location.hash.slice(1));
+    const pick = (k, list) => { const v = p.get(k); return list.some(o => o[0] === v) ? v : null; };
+    G.concept = pick("c", OPTS.concept) || "pinned";
+    G.state = pick("s", STATES) || "matched";
+    G.throwStyle = pick("d", OPTS.throwStyle) || "confirm";
+    G.saveMode = pick("v", OPTS.saveMode) || "ready";
+    G.autoMatch = pick("m", OPTS.autoMatch) || "auto";
+    const t = p.get("t"); G.theme = (t === "dark" || t === "light") ? t : null;
+    G.labels = p.get("l") !== "0";
+    G.hidden = (p.get("h") || "").split(",").filter(Boolean);
+  }
+  function writeHash() {
+    const p = new URLSearchParams();
+    p.set("c", G.concept); p.set("s", G.state);
+    if (G.theme) p.set("t", G.theme);
+    if (G.throwStyle !== "confirm") p.set("d", G.throwStyle);
+    if (G.saveMode !== "ready") p.set("v", G.saveMode);
+    if (G.autoMatch !== "auto") p.set("m", G.autoMatch);
+    if (!G.labels) p.set("l", "0");
+    if (G.hidden.length) p.set("h", G.hidden.join(","));
+    history.replaceState(null, "", "#" + p.toString());
+  }
+
+  function initialState(name) {
+    const st = { screen: "rec", env: "e1", drafts: BASE_DRAFTS(), qs: {}, q: "", kb: false, sel: null, chooser: null,
+      confirm: false, done: null, savedN: 0, left: 0, stash: null, failed: false, noMail: false, focus: false };
+    switch (name) {
+      case "list": st.screen = "list"; st.env = null; break;
+      case "nomail": st.screen = "list"; st.env = null; st.noMail = true; st.drafts = {}; break;
+      case "empty": st.env = "e2"; break;
+      case "typing": st.kb = true; st.q = "Emb"; break;
+      case "choose": st.chooser = "n4"; st.sel = "n4"; break;
+      case "confirm":
+        if (G.throwStyle === "confirm") st.confirm = true; else throwNow(st, true);
+        break;
+      case "gone": throwNow(st, G.throwStyle === "undo"); if (G.throwStyle === "confirm") st.stash = null; break;
+      case "saved": save(st); break;
+      case "failed": st.failed = true; st.chooser = "n4"; st.sel = "n4"; break;
+    }
+    return st;
+  }
+
+  /* ---------- Model helpers ---------- */
+  const E = id => ENVS.find(e => e.id === id);
+  const L = (env, id) => env.lines.find(l => l.id === id);
+  const names = st => st.drafts[st.env] || [];
+  const readyN = ns => ns.filter(n => n.line).length;
+  const cards = env => env.lines.reduce((s, l) => s + l.qty, 0);
+  const orders = env => new Set(env.lines.map(l => l.order)).size;
+  const meta = env => orders(env) + (orders(env) === 1 ? " order, " : " orders, ") + cards(env) + " cards";
+  const used = (st, lineId) => names(st).filter(n => n.line === lineId).length;
+  const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
+  function dist(a, b) {
+    a = a.toLowerCase(); b = b.toLowerCase();
+    const m = []; for (let i = 0; i <= a.length; i++) { m[i] = [i]; }
+    for (let j = 1; j <= b.length; j++) m[0][j] = j;
+    for (let i = 1; i <= a.length; i++) for (let j = 1; j <= b.length; j++)
+      m[i][j] = Math.min(m[i - 1][j] + 1, m[i][j - 1] + 1, m[i - 1][j - 1] + (a[i - 1] === b[j - 1] ? 0 : 1));
+    return m[a.length][b.length];
+  }
+  function ranked(st, text) {
+    const env = E(st.env), t = (text || "").trim().toLowerCase();
+    return env.lines.map(l => {
+      const c = l.card.toLowerCase();
+      const score = !t ? 0 : c.startsWith(t) ? -2 : c.includes(t) ? -1 : dist(t, c.slice(0, Math.max(t.length, 1)));
+      return { l, score };
+    }).sort((a, b) => a.score - b.score).map(x => x.l);
+  }
+  function fits(text, l) {
+    const t = (text || "").trim().toLowerCase(); if (!t) return false;
+    const c = l.card.toLowerCase();
+    return c.includes(t) || dist(t, c.slice(0, t.length)) <= 2;
+  }
+  function addName(st, text, lineId) {
+    const t = text.trim(); if (!t) return;
+    const env = E(st.env);
+    if (!lineId && G.autoMatch === "auto") { const exact = env.lines.find(l => l.card.toLowerCase() === t.toLowerCase() && used(st, l.id) < l.qty); if (exact) lineId = exact.id; }
+    if (!st.drafts[st.env]) st.drafts[st.env] = [];
+    st.drafts[st.env].push({ id: "n" + (seq++), text: t, line: lineId || null });
+    st.q = ""; st.done = null; st.stash = null;
+  }
+  function throwNow(st, keepUndo) {
+    st.stash = keepUndo ? names(st).slice() : null;
+    delete st.drafts[st.env];                    /* gone from the model, not hidden */
+    delete st.qs[st.env];
+    st.q = ""; st.done = "gone"; st.confirm = false; st.kb = false; st.sel = null; st.chooser = null;
+  }
+  function save(st) {
+    const ns = names(st);
+    if (G.saveMode === "all") { st.savedN = ns.length; st.left = 0; delete st.drafts[st.env]; }
+    else {
+      const keep = ns.filter(n => !n.line); st.savedN = ns.length - keep.length; st.left = keep.length;
+      if (keep.length) st.drafts[st.env] = keep; else delete st.drafts[st.env];
+    }
+    st.done = "saved"; st.kb = false; st.sel = null; st.chooser = null; st.confirm = false;
+  }
+
+  /* ---------- Shared pieces ---------- */
+  const ICON_CHECK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const ICON_BACK = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 5l-7 7 7 7" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const ICON_TRASH = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 7h16M9 7V4.5h6V7M6.5 7l1 13h9l1-13M10 11v5.5M14 11v5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+  const sb = () => '<div class="sb" aria-hidden="true"><span>9:41</span><span class="dots"><i></i></span></div>';
+  const hi = () => '<div class="hi" aria-hidden="true"></div>';
+  const id = (f, name) => f.idx === 0 ? ' id="' + name + '"' : "";
+
+  function keyboard() {
+    const row = s => '<div class="kr">' + [...s].map(k => '<button class="key" data-act="key" data-k="' + k + '">' + k + '</button>').join("") + "</div>";
+    return '<div class="kb" role="group" aria-label="On-screen keys (drawn)">' +
+      row("qwertyuiop") + row("asdfghjkl") +
+      '<div class="kr">' + [..."zxcvbnm"].map(k => '<button class="key" data-act="key" data-k="' + k + '">' + k + "</button>").join("") +
+      '<button class="key wide" data-act="key" data-k="back" aria-label="Delete">del</button></div>' +
+      '<div class="kr"><button class="key wide" data-act="hidekb">hide</button><button class="key space" data-act="key" data-k=" ">space</button><button class="key ret" data-act="add">add</button></div></div>';
+  }
+  function inputRow(st) {
+    const has = st.q.trim().length > 0;
+    return '<div class="inrow">' +
+      '<input class="field" data-field autocomplete="off" aria-label="Card name" placeholder="Type a card name" value="' + esc(st.q) + '">' +
+      '<button class="btn quiet" data-act="add" data-addbtn' + (has ? "" : " hidden") + '>Add</button></div>';
+  }
+  function lineText(env, lineId) { const l = L(env, lineId); return l.order + ", " + l.set + ", " + l.price; }
+  function pickList(st, f, forName, text, limit) {
+    if (st.failed) return '<div class="msg"><p>Order lines did not load. Names you type stay in the draft.</p><button class="btn quiet" data-act="retry">Try again</button></div>';
+    const own = forName ? (names(st).find(n => n.id === forName) || {}).line : null;
+    const list = ranked(st, text).filter(l => !limit || fits(text, l)).slice(0, limit || 99);
+    const rows = list.map((l, i) => {
+      const full = used(st, l.id) >= l.qty && own !== l.id;
+      return '<button class="pick' + (full ? " full" : "") + (i === 0 && text ? " best" : "") + '" data-act="match" data-name="' + (forName || "") + '" data-line="' + l.id + '"' +
+        (full ? ' aria-disabled="true" aria-label="' + esc(l.card) + ', every copy is named"' : "") + ">" +
+        "<span>" + esc(l.card) + "</span><small>" + esc(l.order + ", " + l.set + ", " + l.price) + "</small></button>";
+    }).join("");
+    const anyFull = list.some(l => used(st, l.id) >= l.qty && own !== l.id);
+    return (anyFull ? '<p class="sub">Dimmed lines have every copy named.</p>' : "") + rows;
+  }
+  function saveLabel(ns) {
+    const r = readyN(ns);
+    return G.saveMode === "all" ? "Save all " + ns.length : "Save " + r + (r === 1 ? " card" : " cards");
+  }
+  function confirmPanel(st, f) {
+    const n = names(st).length;
+    return '<div class="confirm nl" data-new="New: confirm in place"' + id(f, "choice-throw") + ' role="group" aria-label="Throw away this draft">' +
+      "<p>Throw away this draft? Its " + n + (n === 1 ? " name goes" : " names go") + " for good.</p>" +
+      '<div class="acts"><button class="btn quiet" data-act="keep">Keep draft</button><button class="btn danger fill" data-act="throwok">Throw away</button></div></div>';
+  }
+  function doneBody(st, f) {
+    if (st.done === "gone") {
+      if (st.stash) return '<div class="msg nl" data-new="New: undo strip"' + id(f, "choice-throw") + '><p>Draft thrown away.</p><button class="btn quiet" data-act="undo">Undo</button></div>';
+      return '<div class="msg"><p>Draft thrown away. Nothing was kept.</p><button class="btn quiet" data-act="again">Start again</button></div>';
+    }
+    if (st.done === "saved") {
+      const left = st.left ? " " + st.left + (st.left === 1 ? " name has" : " names have") + " no line and " + (st.left === 1 ? "stays" : "stay") + " in this draft." : "";
+      return '<div class="msg"' + id(f, "choice-save") + "><p>Saved " + st.savedN + (st.savedN === 1 ? " card." : " cards.") + left + '</p><button class="btn quiet" data-act="list">Today\'s mail</button></div>';
+    }
+    return "";
+  }
+
+  /* ---------- Pinned header concept ---------- */
+  function pinnedList(st, f) {
+    if (st.noMail) return '<h1 class="lt">Today\'s mail</h1><div class="ph"><p>No mail is expected today.</p><button class="btn quiet" data-act="checkagain">Check again</button></div>';
+    return '<h1 class="lt">Today\'s mail</h1><ul class="envlist">' + ENVS.map(env => {
+      const d = st.drafts[env.id];
+      const flag = d && d.length ? '<span class="flag" aria-label="Draft, ' + readyN(d) + " of " + d.length + ' ready">' + readyN(d) + "/" + d.length + "</span>" : "";
+      return '<li><button class="envrow' + (st.screen === "rec" && st.env === env.id ? " cur" : "") + '" data-act="open" data-env="' + env.id + '">' +
+        '<span class="er-name">' + esc(env.from) + '</span><span class="er-meta">' + meta(env) + "</span>" + flag + '<span class="chev" aria-hidden="true">›</span></button></li>';
+    }).join("") + "</ul>";
+  }
+  function pinnedRec(st, f, back) {
+    const env = E(st.env), ns = names(st), r = readyN(ns);
+    const meter = ns.length ? r + " of " + ns.length + " ready" : "No names yet";
+    let html = '<div class="band nl" data-new="New: pinned band, nothing floats over it"' + id(f, "choice-pinned") + ">" +
+      '<div class="band-row">' + (back ? '<button class="back" data-act="list" aria-label="Back to today\'s mail">‹</button>' : "") +
+      '<h2 class="env-name">' + esc(env.from) + "</h2></div>" +
+      '<p class="env-meta">' + meta(env) + "</p>" +
+      '<div class="meter"><span>' + meter + '</span><span class="ticks" aria-hidden="true">' + ns.map(n => '<i class="tick' + (n.line ? " on" : "") + '"></i>').join("") + "</span></div></div>";
+    html += '<div class="body">' + doneBody(st, f);
+    if (ns.length) {
+      html += '<ul class="names">' + ns.map(n => {
+        const open = st.chooser === n.id;
+        return '<li><button class="row ' + (n.line ? "ok" : "open") + (open ? " sel" : "") + '" data-act="chooser" data-id="' + n.id + '" aria-expanded="' + open + '">' +
+          '<span class="mark" aria-hidden="true"></span><span class="nm">' + esc(n.text) + '</span>' + (n.line ? '<span class="ln">' + esc(lineText(env, n.line)) + "</span>" : '<span class="vh">, no line yet</span>') + "</button>" +
+          (open ? '<div class="chooser nl" data-new="New: lines open under the name" role="group" aria-label="Lines for ' + esc(n.text) + '">' +
+            '<div class="subrow"><span class="sub">Lines in this envelope\'s orders</span><button class="btn danger" data-act="remove" data-id="' + n.id + '">Remove name</button></div>' +
+            pickList(st, f, n.id, n.text) + "</div>" : "") + "</li>";
+      }).join("") + "</ul>";
+      if (ns.some(n => !n.line) && !st.chooser) html += '<p class="sub">A dashed name has no line yet. Tap it to choose one.</p>';
+    } else if (!st.done) {
+      html += '<div class="msg"><p>Type each card name you find in this envelope.</p><button class="btn quiet" data-act="again">Type a name</button></div>';
+    }
+    html += "</div>";
+    html += '<div class="dock nl" data-new="New: the dock rides on the keys, under the band">';
+    if (st.confirm) html += confirmPanel(st, f);
+    else {
+      html += inputRow(st);
+      if (ns.length && st.done !== "saved" && !(f.ax && st.kb)) {
+        const can = G.saveMode === "all" || r > 0;
+        html += '<div class="acts"><button class="btn danger" data-act="throw"' + (f.ax ? ' aria-label="Throw away">' + ICON_TRASH : ">Throw away") + "</button>" +
+          '<button class="btn primary"' + id(f, "choice-save") + ' data-act="save"' +
+          (can ? "" : ' aria-disabled="true" aria-describedby="why-' + f.idx + '"') + ">" + (f.ax ? saveLabel(ns).replace(/ cards?$/, "") : saveLabel(ns)) + "</button></div>";
+        if (!can) html += WHY(f);
+      }
+    }
+    html += "</div>";
+    html += st.kb && !st.confirm ? keyboard() : hi();
+    return html;
+  }
+  function pinned(st, f) {
+    if (f.pose === "open") {
+      const right = st.screen === "rec" ? pinnedRec(st, f, false)
+        : '<div class="ph"><p>Pick the envelope in your hand from today\'s mail.</p><button class="btn quiet" data-act="open" data-env="e1">Open ' + esc(E("e1").from) + "</button></div>" + hi();
+      return '<div class="app open"><div class="page" data-page="left">' + sb() + pinnedList(st, f) + hi() + '</div><div class="hinge" aria-hidden="true"></div><div class="page" data-page="right">' + sb() + right + "</div></div>";
+    }
+    return '<div class="app">' + sb() + (st.screen === "rec" ? pinnedRec(st, f, true) : pinnedList(st, f) + hi()) + "</div>";
+  }
+
+  /* ---------- Spine concept ---------- */
+  function drawer(st, f) {
+    if (st.noMail) return '<h1 class="lt">Today\'s mail</h1><div class="ph"><p>No mail is expected today.</p><button class="btn quiet" data-act="checkagain">Check again</button></div>';
+    return '<h1 class="lt">Today\'s mail</h1><div class="drawer nl" data-new="New: the drawer, one spine per envelope" role="group" aria-label="Envelopes">' + ENVS.map(env => {
+      const d = st.drafts[env.id];
+      return '<button class="dspine' + (st.screen === "rec" && st.env === env.id ? " cur" : "") + '" data-act="open" data-env="' + env.id + '" aria-label="' + esc(env.from) + ", " + meta(env) + (d && d.length ? ", draft, " + readyN(d) + " of " + d.length + " ready" : "") + '">' +
+        (d && d.length ? '<span class="dmark" aria-hidden="true">' + readyN(d) + "/" + d.length + "</span>" : "") +
+        '<span class="vw" aria-hidden="true"><span class="v1">' + esc(env.from) + '</span><span class="v2">' + cards(env) + " cards</span></span></button>";
+    }).join("") + "</div>";
+  }
+  function spineRec(st, f) {
+    const env = E(st.env), ns = names(st), r = readyN(ns), open = f.pose === "open";
+    const can = ns.length && (G.saveMode === "all" || r > 0) && st.done !== "saved";
+    let html = '<div class="sp-main"><aside class="spine nl" data-new="New"' + id(f, "choice-spine") + ' aria-label="This envelope">';
+    const roomy = !(f.ax && st.kb);
+    /* Top: back and throw away, out of thumb reach on purpose. Bottom: count and Save, in thumb reach. */
+    if (roomy) html += '<button class="sp-back" data-act="list" aria-label="Back to the drawer">' + ICON_BACK + "</button>";
+    if (ns.length && !st.kb) html += '<button class="sp-throw" data-act="throw" aria-label="Throw away this draft" aria-expanded="' + st.confirm + '">' + ICON_TRASH + "</button>";
+    html += '<h2 class="sp-name"><span class="v1">' + esc(env.from) + '</span><span class="v2">' + meta(env) + "</span></h2>";
+    html += '<p class="sp-count" aria-label="' + r + " of " + ns.length + ' ready">' + r + "/" + ns.length + "<span>ready</span></p>";
+    if (ns.length && st.done !== "saved" && roomy)
+      html += '<button class="sp-save"' + id(f, "choice-save") + ' data-act="save" aria-label="' + saveLabel(ns) + '"' + (can ? "" : ' aria-disabled="true" title="Choose a line for a name first"') + ">" + ICON_CHECK + '<span class="t">' + (G.saveMode === "all" ? "Save all" : "Save") + "</span></button>";
+    html += '</aside><div class="sp-body"><div class="body">' + doneBody(st, f);
+    if (ns.length) {
+      html += '<ul class="names">' + ns.map(n => '<li><button class="row ' + (n.line ? "ok" : "open") + (st.sel === n.id ? " sel" : "") + '" data-act="sel" data-id="' + n.id + '" aria-pressed="' + (st.sel === n.id) + '">' +
+        '<span class="mark" aria-hidden="true"></span><span class="nm">' + esc(n.text) + '</span>' + (n.line ? '<span class="ln">' + esc(lineText(env, n.line)) + "</span>" : '<span class="vh">, no line yet</span>') + "</button></li>").join("") + "</ul>";
+      if (ns.some(n => !n.line)) html += '<p class="sub">' + (open ? "A dashed name has no line yet. Tap it, then its line on the right." : "A dashed name has no line yet. Tap it to match.") + "</p>";
+    } else if (!st.done) {
+      html += '<div class="msg"><p>Type each card name you find in this envelope.</p><button class="btn quiet" data-act="again">Type a name</button></div>';
+    }
+    html += "</div>";
+    html += '<div data-region="sugg">' + (open ? "" : sugg(st, f)) + "</div>";
+    html += '<div class="dock">' + (st.confirm ? confirmPanel(st, f) : inputRow(st)) + "</div></div></div>";
+    html += st.kb && !st.confirm ? keyboard() : hi();
+    return html;
+  }
+  function sugg(st, f) {
+    const ns = names(st), seln = ns.find(n => n.id === st.sel);
+    if (seln) {
+      return '<div class="sugg nl" data-new="New: lines rise above the field" role="group" aria-label="Lines for ' + esc(seln.text) + '">' +
+        '<div class="subrow"><span class="sub">Lines for ' + esc(seln.text) + '</span><span><button class="btn danger" data-act="remove" data-id="' + seln.id + '">Remove name</button><button class="btn" data-act="unsel">Close</button></span></div>' +
+        pickList(st, f, seln.id, seln.text) + "</div>";
+    }
+    if (st.q.trim()) {
+      return '<div class="sugg nl" data-new="New: typing narrows the lines" role="group" aria-label="Lines that fit">' +
+        pickList(st, f, "", st.q, 3) +
+        '<button class="pick" data-act="addfree"><span>Add “' + esc(st.q.trim()) + '” with no line</span></button></div>';
+    }
+    return "";
+  }
+  function linesPage(st, f) {
+    const env = E(st.env), ns = names(st), seln = ns.find(n => n.id === st.sel);
+    const text = seln ? seln.text : st.q;
+    const hint = st.failed ? "" : seln ? "Tap the line for “" + esc(seln.text) + "”." : st.q.trim() ? "Lines that fit “" + esc(st.q.trim()) + "” stand out. Tap one to add it." : "Tap a line to add it as a name.";
+    let html = '<div class="lp-head nl" data-new="New: right page holds the lines"><h2>Order lines</h2>' + (hint ? '<p class="sub">' + hint + "</p>" : "") + "</div>";
+    html += '<div class="body" data-region="lines">';
+    if (st.failed) html += pickList(st, f, "", "");
+    else {
+      const groups = {};
+      env.lines.forEach(l => { (groups[l.order] = groups[l.order] || []).push(l); });
+      html += Object.keys(groups).map(o => '<div class="lgroup"><h3>' + o + "</h3>" + groups[o].map(l => {
+        const u = used(st, l.id), full = u >= l.qty, fit = text && text.trim() && fits(text, l);
+        const cls = text && text.trim() ? (fit ? " fit" : " dim") : "";
+        const blocked = full && !(seln && seln.line === l.id);
+        return '<button class="line' + cls + '" data-act="match" data-name="' + (seln ? seln.id : "") + '" data-line="' + l.id + '"' +
+          (blocked ? ' aria-disabled="true" title="Every copy of this line is named"' : "") + ">" +
+          "<span>" + esc(l.card) + "</span><small>" + esc(l.set + ", " + l.price) + "</small>" +
+          '<span class="st' + (full ? " ok" : "") + '">' + (full ? ICON_CHECK.replace("<svg", '<svg width="16" height="16"') : "") + u + " of " + l.qty + "</span></button>";
+      }).join("") + "</div>").join("");
+    }
+    return html + "</div>" + hi();
+  }
+  function spine(st, f) {
+    if (f.pose === "open") {
+      const left = st.screen === "rec" ? spineRec(st, f) : drawer(st, f) + hi();
+      const right = st.screen === "rec" ? linesPage(st, f)
+        : '<div class="ph"><p>Pick the envelope in your hand from the drawer.</p><button class="btn quiet" data-act="open" data-env="e1">Open ' + esc(E("e1").from) + "</button></div>" + hi();
+      return '<div class="app open"><div class="page" data-page="left">' + sb() + left + '</div><div class="hinge" aria-hidden="true"></div><div class="page" data-page="right">' + sb() + right + "</div></div>";
+    }
+    return '<div class="app">' + sb() + (st.screen === "rec" ? spineRec(st, f) : drawer(st, f) + hi()) + "</div>";
+  }
+
+  /* ---------- Frames ---------- */
+  const frames = [...document.querySelectorAll(".device")].map((el, idx) => ({ el, idx, pose: el.dataset.pose, ax: el.classList.contains("ax5"), st: null }));
+  function visibleConcept() {
+    const vis = OPTS.concept.filter(o => !G.hidden.includes(o[0]));
+    if (!vis.length) return null;
+    if (!vis.some(o => o[0] === G.concept)) G.concept = vis[0][0];
+    return G.concept;
+  }
+  function render(f, refocus) {
+    const c = visibleConcept();
+    if (!c) { f.el.innerHTML = '<div class="app"><div class="ph"><p>Every concept is hidden.</p><button class="btn quiet" data-act="showall">Show all options</button></div></div>'; return; }
+    f.el.innerHTML = c === "pinned" ? pinned(f.st, f) : spine(f.st, f);
+    if (refocus) {
+      const fld = f.el.querySelector("[data-field]");
+      if (fld) { fld.focus({ preventScroll: true }); fld.setSelectionRange(fld.value.length, fld.value.length); }
+    }
+  }
+  function resetFrames() { frames.forEach(f => { f.st = initialState(G.state); render(f); }); }
+  function partial(f) {
+    const st = f.st, region = f.el.querySelector('[data-region="sugg"]');
+    if (region && f.pose !== "open") region.innerHTML = sugg(st, f);
+    const lines = f.el.querySelector('[data-region="lines"]');
+    if (lines) { const tmp = document.createElement("div"); tmp.innerHTML = linesPage(st, f); f.el.querySelector(".lp-head").outerHTML = tmp.querySelector(".lp-head").outerHTML; lines.innerHTML = tmp.querySelector('[data-region="lines"]').innerHTML; }
+    const add = f.el.querySelector("[data-addbtn]");
+    if (add) { if (st.q.trim()) { add.removeAttribute("aria-disabled"); add.removeAttribute("title"); } else { add.setAttribute("aria-disabled", "true"); add.title = "Type a name first"; } }
+  }
+
+  function act(f, a, d) {
+    const st = f.st;
+    switch (a) {
+      case "open":
+        if (st.env) st.qs[st.env] = st.q;
+        st.screen = "rec"; st.env = d.env; st.q = st.qs[d.env] || ""; st.kb = false; st.sel = null; st.chooser = null; st.confirm = false; st.done = null; st.stash = null; break;
+      case "list":
+        if (st.env) st.qs[st.env] = st.q;
+        st.screen = "list"; st.kb = false; st.confirm = false; st.sel = null; st.chooser = null; st.done = null; st.stash = null;
+        if (f.pose === "open") st.screen = "list";
+        break;
+      case "key":
+        st.q = d.k === "back" ? st.q.slice(0, -1) : st.q + d.k;
+        { const fld = f.el.querySelector("[data-field]"); if (fld) fld.value = st.q; }
+        partial(f); return;
+      case "hidekb": st.kb = false; break;
+      case "add":
+        if (!st.q.trim()) return;
+        addName(st, st.q); st.sel = null; render(f, st.kb); return;
+      case "addfree": addName(st, st.q, null); st.sel = null; render(f, st.kb); return;
+      case "chooser": st.chooser = st.chooser === d.id ? null : d.id; st.done = null; break;
+      case "sel": st.sel = st.sel === d.id ? null : d.id; st.kb = false; st.done = null; break;
+      case "unsel": st.sel = null; break;
+      case "match": {
+        const env = E(st.env), l = L(env, d.line);
+        if (d.name) { const n = names(st).find(x => x.id === d.name); if (n) n.line = d.line; }
+        else addName(st, l.card, d.line);
+        st.sel = null; st.chooser = null; st.q = st.q && !d.name ? "" : st.q; st.done = null; break;
+      }
+      case "remove": st.drafts[st.env] = names(st).filter(n => n.id !== d.id); st.sel = null; st.chooser = null; break;
+      case "throw":
+        if (G.throwStyle === "confirm") { st.confirm = !st.confirm; st.kb = false; }
+        else {
+          throwNow(st, true); clearTimeout(f.timer);
+          f.timer = setTimeout(() => { if (st.stash) { st.stash = null; render(f); } }, 6000);
+        }
+        break;
+      case "keep": st.confirm = false; break;
+      case "throwok": throwNow(st, false); break;
+      case "undo": if (st.stash) { st.drafts[st.env] = st.stash; st.stash = null; st.done = null; } break;
+      case "save": {
+        const ns = names(st); if (!ns.length || (G.saveMode === "ready" && !readyN(ns))) return;
+        save(st); break;
+      }
+      case "again": st.done = null; st.stash = null; st.kb = true; render(f, true); return;
+      case "retry": st.failed = false; break;
+      case "checkagain": st.noMail = false; break;
+      case "showall": G.hidden = []; controls(); resetFrames(); writeHash(); return;
+    }
+    render(f, st.kb && a !== "hidekb");
+  }
+
+  document.getElementById("stage").addEventListener("click", e => {
+    const b = e.target.closest("[data-act]"); if (!b) return;
+    const dev = b.closest(".device"); const f = frames.find(x => x.el === dev); if (!f) return;
+    if (b.getAttribute("aria-disabled") === "true") return;
+    e.preventDefault();
+    act(f, b.dataset.act, b.dataset);
+  });
+  document.getElementById("stage").addEventListener("focusin", e => {
+    if (!e.target.matches("[data-field]")) return;
+    const f = frames.find(x => x.el === e.target.closest(".device"));
+    if (f && !f.st.kb) { f.st.kb = true; f.st.confirm = false; render(f, true); }
+  });
+  document.getElementById("stage").addEventListener("input", e => {
+    if (!e.target.matches("[data-field]")) return;
+    const f = frames.find(x => x.el === e.target.closest(".device"));
+    f.st.q = e.target.value; partial(f);
+  });
+  document.getElementById("stage").addEventListener("keydown", e => {
+    if (e.key !== "Enter" || !e.target.matches("[data-field]")) return;
+    const f = frames.find(x => x.el === e.target.closest(".device"));
+    e.preventDefault(); act(f, "add", {});
+  });
+
+  /* ---------- Page controls ---------- */
+  function optGroup(key, title) {
+    const vis = OPTS[key].filter(o => !G.hidden.includes(o[0]));
+    let h = '<div class="ctl" role="group" aria-label="' + title + '"><span class="ctl-name">' + title + "</span>";
+    h += vis.map(o => '<span class="opt"><button data-g="' + key + '" data-v="' + o[0] + '" aria-pressed="' + (G[key] === o[0]) + '">' + o[1] + '</button><button class="x" data-hide="' + o[0] + '" aria-label="Hide ' + o[1] + '">Hide</button></span>').join("");
+    if (!vis.length) h += '<span class="hidden-note">All hidden.</span>';
+    return h + "</div>";
+  }
+  function controls() {
+    ["throwStyle", "saveMode"].forEach(k => { const vis = OPTS[k].filter(o => !G.hidden.includes(o[0])); if (vis.length && !vis.some(o => o[0] === G[k])) G[k] = vis[0][0]; });
+    visibleConcept();
+    const theme = G.theme || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.getElementById("ctls").innerHTML =
+      optGroup("concept", "Concept") +
+      '<div class="ctl"><label class="ctl-name" for="state">State</label><select id="state">' + STATES.map(s => '<option value="' + s[0] + '"' + (G.state === s[0] ? " selected" : "") + ">" + s[1] + "</option>").join("") + "</select></div>" +
+      '<div class="ctl" role="group" aria-label="Theme"><span class="ctl-name">Theme</span><span class="opt"><button data-theme-set="light" aria-pressed="' + (theme === "light") + '">Light</button><button data-theme-set="dark" aria-pressed="' + (theme === "dark") + '">Dark</button></span></div>' +
+      optGroup("throwStyle", "Throw away") + optGroup("saveMode", "Save") +
+      '<div class="ctl"><button class="plain" data-labels aria-pressed="' + G.labels + '">' + (G.labels ? "Hide New labels" : "Show New labels") + "</button>" +
+      (G.hidden.length ? '<button class="plain" data-showall>Show hidden options</button>' : "") + '<button class="plain" data-reset>Reset frames</button></div>';
+  }
+  document.getElementById("ctls").addEventListener("click", e => {
+    const t = e.target.closest("button"); if (!t) return;
+    if (t.dataset.g) { G[t.dataset.g] = t.dataset.v; }
+    else if (t.dataset.hide) { G.hidden.push(t.dataset.hide); }
+    else if (t.dataset.themeSet) { G.theme = t.dataset.themeSet; }
+    else if ("labels" in t.dataset) { G.labels = !G.labels; }
+    else if ("showall" in t.dataset) { G.hidden = []; }
+    applyAll();
+  });
+  document.getElementById("ctls").addEventListener("change", e => { if (e.target.id === "state") { G.state = e.target.value; applyAll(); } });
+  function applyAll() {
+    controls();
+    if (G.theme) document.documentElement.setAttribute("data-theme", G.theme); else document.documentElement.removeAttribute("data-theme");
+    document.body.classList.toggle("labels-on", G.labels);
+    writeHash(); resetFrames();
+  }
+  window.addEventListener("hashchange", () => { readHash(); applyAll(); });
+  readHash(); applyAll();
+})();
+</script>
+</body>
+</html>

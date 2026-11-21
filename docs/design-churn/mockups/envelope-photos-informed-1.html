@@ -58,6 +58,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .scroll::-webkit-scrollbar { display:none; }
 .scroll.kup { padding-bottom:calc(289px + 12px); }
 .scroll.fabpad { padding-bottom:calc(env(safe-area-inset-bottom) + 83px + 12px + 52px + 16px); }
+.dev.open .page.left .scroll.fabpad { padding-bottom:calc(env(safe-area-inset-bottom) + 24px + 52px + 16px); }
 .dev.open .scroll.kup { padding-bottom:calc(264px + 12px); }
 .stack { display:flex; flex-direction:column; gap:12px; }
 
@@ -205,6 +206,7 @@ a:focus-visible, button:focus-visible, input:focus-visible, textarea:focus-visib
 .sheet.one { grid-template-columns:1fr; }
 .print { all:unset; box-sizing:border-box; cursor:pointer; display:flex; flex-direction:column; gap:6px; background:var(--card); border:1px solid var(--line); border-radius:8px; padding:6px 6px 10px; box-shadow:0 1px 2px var(--shadow); min-width:0; }
 .print:focus-visible { outline:2px solid var(--accent); }
+.print.picked { outline:2px solid var(--accent); outline-offset:-2px; }
 .print .face { aspect-ratio:4/3; border-radius:4px; overflow:hidden; position:relative; background:var(--manila); }
 .print .face svg { width:100%; height:100%; display:block; }
 .print .face .n { position:absolute; right:4px; bottom:4px; font-family:var(--mono); font-size:11px; background:var(--card); color:var(--ink); border-radius:4px; padding:1px 5px; }
@@ -547,7 +549,7 @@ function printCell(e, i) {
   let face;
   if (live.length) face = `<div class="face">${photoSVG(live[0])}${e.photos.length>1?`<span class="n">${e.photos.length} photos</span>`:""}</div>`;
   else if (e.photos.length) face = `<div class="face lostface">Photo lost</div>`;
-  else face = `<div class="face none" aria-hidden="true">${e.entries.slice(0,3).map(x=>`<i>${esc(x.name)}</i>`).join("")}<em>no photo</em></div>`;
+  else face = `<div class="face none" aria-hidden="true">${e.note ? `<i style="white-space:normal">${esc(e.note)}</i>` : e.entries.slice(0,3).map(x=>`<i>${esc(x.name)}</i>`).join("")}<em>no photo</em></div>`;
   const picked = S.d === "open" && S.sel === e.id;
   return `<button class="print${picked?" picked":""}" type="button" data-act="${S.d==="open"?"pick":"detail"}" data-id="${e.id}" data-anchor="${e.id}"${i===0?pid("focus-envelope-faces"):""}>${face}<span class="names" style="${fs(14)}">${e.entries.map(x=>(x.qty>1?`×${x.qty} `:"")+esc(x.name)).join(", ")}</span><span class="pm" style="${fs(11,"cap")}">${e.date.slice(5)} · ${cardsOf(total)}</span></button>`;
 }
@@ -652,7 +654,7 @@ function screenOpen() {
   let lo = "", ro = "";
   if (S.camera) ro += cameraView();
   if (S.view) { if (on("spreadViewer")) { lo += viewerLeft(); ro += viewerMain(true); } else { ro += viewerMain(false); lo += `<div class="viewer" style="z-index:50"></div>`; } }
-  return `<div class="page left">${pageScroll(left,{keys:keysUp})}${fab}${lo}</div><div class="hinge" aria-hidden="true"></div><div class="page right">${pageScroll(right,{keys:keysUp})}${tabbar(S.data.envs.length)}${ro}</div>${keysUp?keys():""}`;
+  return `<div class="page left">${pageScroll(left,{keys:keysUp, fab:!!fab})}${fab}${lo}</div><div class="hinge" aria-hidden="true"></div><div class="page right">${pageScroll(right,{keys:keysUp})}${tabbar(S.data.envs.length)}${ro}</div>${keysUp?keys():""}`;
 }
 function frame(d) {
   K = d === "ax5" ? SCALES.AX5 : SCALES.L;
@@ -701,7 +703,7 @@ function placeMarks() {
     const host = el.closest("[data-scroll]") || el.closest(".page") || el.closest(".dev"); if (!host) return;
     const t = document.createElement("span"); t.className = "mtag " + (k==="new"?"n":k==="today"?"t":"s"); t.textContent = el.dataset.mlabel;
     const hr = host.getBoundingClientRect(), r = el.getBoundingClientRect();
-    t.style.top = Math.max(2, r.top - hr.top + host.scrollTop + 3) + "px"; /* inside the outline, top right: over the empty end of the row, not the text above */
+    t.style.top = Math.max(2, r.top - hr.top + host.scrollTop + (r.height >= 72 ? 3 : -16)) + "px"; /* a tall part takes its tag inside the outline, top right; a small control takes it above */
     host.appendChild(t);
     /* right-aligned on the marked part, where rows are mostly empty; kept inside the page */
     const w = t.offsetWidth; t.style.left = Math.max(2, Math.min(host.clientWidth - w - 2, r.right - hr.left - w - 4)) + "px";

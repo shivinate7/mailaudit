@@ -76,6 +76,8 @@ code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
   z-index:4; white-space:nowrap; pointer-events:none; }
 .tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::before { color:var(--new); }
 .tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::before { color:var(--today); }
+.tl[data-tag]::before { left:-2px; right:auto; }
+.rhead[data-tag]::before { top:auto; bottom:-8px; }
 .notags [data-tag]::before { display:none; } .notags .tag-new, .notags .tag-today { outline:0; }
 
 /* ---------- Today: running head and tab bars ---------- */
@@ -142,7 +144,7 @@ code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
   font:500 calc(15px * min(var(--kb), 1.353)) var(--sys); padding:0 14px; cursor:pointer; }
 
 /* ---------- the camera (both options) ---------- */
-.cam { position:absolute; inset:0; background:var(--scrim); color:var(--card); display:flex; flex-direction:column; z-index:20; }
+.cam { position:absolute; inset:0; background:linear-gradient(var(--scrim), var(--scrim)), var(--ink); color:var(--card); display:flex; flex-direction:column; z-index:20; }
 .cam .bar { padding-top:var(--sat); min-height:calc(var(--sat) + 52px); display:flex; align-items:center; justify-content:space-between; padding-left:8px; padding-right:8px; gap:8px; }
 .cam .bar .t { font:600 calc(15px * min(var(--kh), 1.353)) var(--sys); text-align:center; flex:1; min-width:0; }
 .sysbtn { font:calc(17px * min(var(--kb), 1.353)) var(--sys); color:inherit; background:none; border:0; min-height:44px; min-width:44px; padding:0 8px; cursor:pointer; }
@@ -158,6 +160,8 @@ code { font-family:var(--mono); font-size:0.9em; overflow-wrap:anywhere; }
 .vf .guide i:nth-child(4) { right:0; bottom:0; border-left:0; border-top:0; border-bottom-right-radius:6px; }
 .vf .hint { position:absolute; left:0; right:0; top:10px; text-align:center; font:calc(13px * min(var(--kf), 1.46)) var(--sys); }
 .vf .hint span { background:var(--scrim); padding:4px 10px; border-radius:12px; }
+.vf::after { content:""; position:absolute; left:0; right:0; bottom:0; height:45%; background:linear-gradient(transparent, var(--scrim)); pointer-events:none; }
+.shutter[disabled] { opacity:0.35; cursor:default; }
 .vf .flash { position:absolute; inset:0; background:var(--card); opacity:0; pointer-events:none; }
 .vf .flash.go { animation:flash 220ms ease-out; }
 @keyframes flash { 0% { opacity:0.85; } 100% { opacity:0; } }
@@ -457,7 +461,7 @@ class Frame {
       case 'resume': st.draft = draft(2, [{ name: 'Sol Ring', qty: 1 }]); break;
       case 'detail': st.sel = 'e1'; if (this.c === 'live') st.view = 'detail'; break;
       case 'viewer': st.v = { src: 'e1', i: 1, z: 1, x: 0, y: 0 }; break;
-      case 'zoomed': st.v = { src: 'e1', i: 1, z: 2.5, x: -0.35, y: -0.3 }; break;
+      case 'zoomed': st.v = { src: 'e1', i: 1, z: 2.5, x: -0.8, y: -0.85 };  // zoomed on the hand-written address break;
       case 'removed': { const e = st.envs[0]; const [ph] = e.photos.splice(1, 1); st.v = { src: 'e1', i: 1, z: 1, x: 0, y: 0 };
         st.undo = { src: 'e1', at: 1, ph, text: 'Photo removed from this envelope.' }; break; }
       case 'denied': st.denied = true; if (this.c === 'shutter') { st.view = 'camera'; st.cam = { target: 'draft' }; } break;
@@ -500,7 +504,7 @@ class Frame {
   rowS(e, i) {
     const p = e.photos[0];
     const tile = p ? this.tileFor(e.id, p, 0, e.photos.length) : this.addTile(e.id, `Add a photo to the ${shortDate(e.date)} envelope`);
-    const tag = i === 0 ? ` tag-new" data-tag="New: the photo leads the row` : (!p && i === 2 ? ` tag-new" data-tag="New: Add photo square` : '');
+    const tag = i === 0 ? ` tag-new tl" data-tag="New: the photo leads the row` : (!p && i === 2 ? ` tag-new tl" data-tag="New: Add photo square` : '');
     const head = `<div class="hd"><span class="micro">Envelope · ${e.date} · ${plural(cardsOf(e), 'card')}</span>${this.one ? this.headBtns(e) : ''}</div>`;
     if (!this.one) {
       return `<div class="card env cell${this.st.sel === e.id ? ' on' : ''}" data-act="pick" data-id="${e.id}" role="button" tabindex="0" aria-pressed="${this.st.sel === e.id}">
@@ -512,7 +516,7 @@ class Frame {
   pileS() {
     const st = this.st;
     let h = this.rhead() + '<div class="stack">';
-    if (st.undo && !st.v) h += this.undoBar();
+    if (st.undo && !st.v && (this.one || st.undo.src === 'draft')) h += this.undoBar();
     if (st.view === 'compose' && this.one) h += this.composer('inline');
     if (!st.envs.length && !(st.view === 'compose')) h += `<p class="empty">No envelopes are waiting. When one comes with no name on it, photograph it with the bar below.</p>`;
     h += st.envs.map((e, i) => (st.draft && st.draft.editing === e.id && st.view === 'compose' && this.one) ? '' : this.rowS(e, i)).join('');
@@ -521,10 +525,12 @@ class Frame {
   }
   accessory() {
     const d = this.st.draft, has = d && (d.photos.length || d.entries.length);
-    const sub = has ? `<small>${plural(d.photos.length, 'photo')} · ${plural(d.entries.reduce((a, x) => a + x.qty, 0), 'card')} kept</small>` : '';
+    const composing = this.st.view === 'compose';
+    const sub = has && !composing ? `<small>${plural(d.photos.length, 'photo')} · ${plural(d.entries.reduce((a, x) => a + x.qty, 0), 'card')} kept</small>` : '';
+    const label = composing ? 'Open the camera' : has ? 'Resume envelope' : (this.ax ? 'Photograph' : 'Photograph an envelope');
     return `<div class="acc tag-new" data-tag="New: shutter bar"${this.focusId ? ` id="${this.focusId}"` : ''}>
       <button class="type" data-act="type" aria-label="Type the cards, no photo">Type</button>
-      <button class="shoot" data-act="shoot" data-target="draft"><span class="dot"><i></i></span><span><b>${has ? 'Resume envelope' : (this.ax ? 'Photograph' : 'Photograph an envelope')}</b>${sub}</span></button></div>`;
+      <button class="shoot" data-act="shoot" data-target="draft"><span class="dot"><i></i></span><span><b>${label}</b>${sub}</span></button></div>`;
   }
 
   /* The camera. target 'draft' fills the new envelope; an envelope id adds to that envelope. */
@@ -540,9 +546,9 @@ class Frame {
     const tray = st.camErr
       ? `<div class="err" role="alert"><span>This photo was not saved: the phone is out of space. The envelope still saves without it.</span><button class="sysbtn" data-act="retry">Try again</button></div>`
       : shots.length ? shots.map((p, i) => this.tileFor(toDraft ? 'draft' : 'cam', p, i, 1)).join('') + `<span class="cap">${plural(shots.length, 'shot')}</span>`
-      : `<span class="cap">${toDraft ? 'Shoot the front and the back if they both carry marks.' : 'Each shot is added to this envelope.'}</span>`;
-    const left = this.one || !toDraft
-      ? (toDraft ? `<button class="sysbtn l" data-act="nophoto">No photo</button>` : `<span></span>`)
+      : st.denied ? '' : `<span class="cap">${toDraft ? 'Shoot the front and the back if they both carry marks.' : 'Each shot is added to this envelope.'}</span>`;
+    const left = st.denied ? `<span></span>` : this.one || !toDraft
+      ? (toDraft ?`<button class="sysbtn l" data-act="nophoto">No photo</button>` : `<span></span>`)
       : `<button class="sysbtn l" data-act="cam-close">Close camera</button>`;
     const right = shots.length && (this.one || !toDraft) ? `<button class="pill r" data-act="cam-done">Done</button>` : `<span class="r" style="min-width:64px"></span>`;
     return `<div class="cam tag-new" data-tag="New: camera">
@@ -561,7 +567,7 @@ class Frame {
          <div class="strip">${d.photos.map((p, i) => this.tileFor('draft', p, i, 1)).join('')}${this.addTile('draft', 'Take another photo')}</div>`
       : `<div class="nophoto tag-new" data-tag="New"><span>No photo of this envelope yet.</span><button class="btn2" data-act="shoot" data-target="draft">${ICON.camera}Photograph it</button></div>`;
     const save = `<button class="save" data-act="save" aria-disabled="${!ready}" ${ready ? '' : 'aria-describedby="why-' + this.uid() + '" title="Add a card to save"'}>Save envelope</button>`;
-    const foot = mode === 'sheet' ? `<div class="foot"><span class="note">${plural(n, 'card')}</span></div>`
+    const foot = mode !== 'inline' ? `<div class="foot"><span class="note">${plural(n, 'card')}</span></div>`
       : `<div class="foot"><span class="note">${plural(n, 'card')}</span><button class="mini" data-act="comp-cancel">Cancel</button>${save}</div>`;
     const why = ready ? '' : `<div class="why" id="why-${this.uid()}">Add a card to save</div>`;
     const body = `${mode === 'inline' ? `<span class="micro">${d.editing ? 'Edit envelope' : 'New envelope'}</span>` : ''}${photos}
@@ -569,11 +575,11 @@ class Frame {
       <div class="sugg" data-sugg>${this.suggHTML()}</div>
       <div class="ents" data-ents>${this.entsHTML()}</div>
       <textarea class="field" rows="2" data-in="note" placeholder="Note (optional) — tracking #, sender, mailer…" aria-label="Note">${esc(d.note)}</textarea>
-      ${foot}${mode === 'sheet' ? '' : why}`;
+      ${foot}${mode === 'sheet' ? '' : why}`;  // the page mode's why line sits in the body, once
     if (mode === 'inline') return `<div class="card comp tag-today" data-tag="Today: composer, photos now lead">${body}</div>`;
     if (mode === 'page') return `<div class="navbar"><button class="sysbtn" data-act="comp-cancel">Cancel</button><span class="t">${d.editing ? 'Edit envelope' : 'New envelope'}</span>
         <button class="sysbtn b" data-act="save" aria-disabled="${!ready}" ${ready ? '' : 'title="Add a card to save"'} style="${ready ? '' : 'opacity:.45'}">Save</button></div>
-        <div class="det" style="padding-top:4px">${body}${why}</div>`;
+        <div class="det" style="padding-top:4px">${body}</div>`;
     return body;
   }
   uid() { if (!this._u) this._u = 'f' + (++uid); return this._u; }
@@ -601,7 +607,8 @@ class Frame {
          ${e.photos.length > 1 ? `<div class="dots">${e.photos.map((_, k) => `<button data-act="ci" data-i="${k}" class="${k === i ? 'on' : ''}" aria-label="Photo ${k + 1}"><i></i></button>`).join('')}</div>` : ''}`
       : `<div class="nophoto"><span>No photo of this envelope.</span><button class="btn2" data-act="shoot" data-target="${e.id}">${ICON.camera}Photograph it</button></div>`;
     const nav = withNav ? `<div class="navbar"><button class="sysbtn" data-act="back">‹ Orphaned</button><span class="t">Envelope, ${shortDate(e.date)}</span><span class="sp"></span></div>` : '';
-    return `${nav}<div class="det"><div class="tag-new" data-tag="New: photos lead the page">${car}</div>
+    const undo = this.st.undo && !this.st.v && this.st.undo.src === e.id ? this.undoBar() : '';
+    return `${nav}<div class="det">${undo}<div class="tag-new" data-tag="New: photos lead the page">${car}</div>
       ${e.photos.length ? `<div class="rowbtns"><button class="btn2" data-act="shoot" data-target="${e.id}">${ICON.camera}Add photo</button><span class="note">${plural(e.photos.length, 'photo')}</span></div>` : ''}
       <div class="card" style="padding:12px;display:flex;flex-direction:column;gap:4px"><div class="env hd" style="padding:0;display:flex"><span class="micro">Envelope · ${e.date} · ${plural(cardsOf(e), 'card')}</span>${this.headBtns(e)}</div>${this.entriesHTML(e)}</div>
       ${this.cands()}</div>`;
@@ -621,7 +628,7 @@ class Frame {
   pileL() {
     const st = this.st;
     let h = this.rhead() + '<div class="stack">';
-    if (st.undo && !st.v) h += this.undoBar();
+    if (st.undo && !st.v && this.one) h += this.undoBar();
     if (!st.envs.length) h += `<p class="empty">No envelopes are waiting. When one comes with no name on it, point the camera below at it and press the shutter.</p>`;
     else h += `<div class="sheetgrid">${st.envs.map((e, i) => this.printL(e, i)).join('')}</div>`;
     h += `<div style="height:${st.dockMin ? 160 : (this.one ? 320 : 260)}px"></div></div>`;
@@ -675,7 +682,8 @@ class Frame {
       const camOn = this.c === 'shutter' && st.view === 'camera';
       h += this.status(camOn || st.v);
       if (this.c === 'shutter') {
-        h += `<div class="body">${this.pileS()}</div>` + this.accessory() + this.tabbar();
+        // While the composer is open it holds its own Add photo square, so the shutter bar steps aside and Save stays clear.
+        h += `<div class="body">${this.pileS()}</div>` + (st.view === 'compose' ? '' : this.accessory()) + this.tabbar();
         if (camOn) h += this.camera();
       } else {
         h += st.view === 'detail' ? `<div class="body">${this.detail(this.env(st.sel), true)}<div style="height:100px"></div></div>` : `<div class="body">${this.pileL()}</div>` + this.dock();
