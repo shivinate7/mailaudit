@@ -1,0 +1,218 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Packages Is Hand</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger), as the other Duo mockups in docs/design use them. The native app is held to light, so this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --manila:#EADBBA; --manilaInk:#695832; --gold:#C9A961;
+  --shadow:rgba(51,46,63,.14);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot: unmeasured on the Duo inner screen. Drawn at the UI test's 20 pt floor, as the house mockups do. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px 0; }
+.txt { padding:0 16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; margin:0 16px; }
+h1 { font-family:var(--cochin); font-size:24px; margin:16px 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 12px; max-width:80ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; margin:12px 0; }
+nav a { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+figure { margin:24px 0; }
+figure[hidden] { display:none; }
+figcaption { margin:8px 16px 0; max-width:80ch; }
+figcaption b { font-family:var(--cochin); font-size:18px; }
+ul.tags { margin:8px 16px 0; padding-left:20px; color:var(--inkSoft); font-size:14px; max-width:80ch; }
+.fit { width:100%; overflow:hidden; }
+
+/* ---- device: iPhone Duo inner screen, open, 951 x 669 pt, 1 CSS px = 1 pt ----
+   951 wide and the 40 pt fold at 455.5: measured (duo-fold-and-keyboard). 669 high: the house frame, the measured bar foot (y 657) plus its 12 pt lift. */
+.duo { position:relative; width:951px; height:669px; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden;
+  font-family:-apple-system, system-ui, sans-serif; padding-bottom:var(--sab); }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:5; background:var(--paper); }
+.page { position:absolute; top:0; bottom:0; width:455.5px; overflow:hidden; }
+.page.l { left:0; } .page.r { left:495.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:3; pointer-events:none; }
+.fold span { position:absolute; top:520px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+/* The Duo tab bar under the right page (DuoSpine.swift, DuoBarMetrics: 64 pt pill, 12 pt lift). Measured at x 520 to 927, y 593 to 657 (debt hand-open-under-bar-at-l). */
+.bar { position:absolute; left:519.5px; width:407.5px; top:593px; height:64px; border:1px solid var(--line); border-radius:32px; z-index:6;
+  background:color-mix(in srgb, var(--paper) 62%, transparent); box-shadow:0 4px 16px var(--shadow); display:grid; grid-template-columns:repeat(4,1fr); padding:4px; gap:4px;
+  -webkit-backdrop-filter:blur(8px); backdrop-filter:blur(8px); }
+.bar span { display:flex; flex-direction:column; align-items:center; justify-content:center; border-radius:28px; font:12px var(--cochin); color:var(--inkSoft); }
+.bar span::before { content:""; width:20px; height:20px; border:1.5px solid currentColor; border-radius:5px; margin-bottom:4px; }
+.bar span.on { background:color-mix(in srgb, var(--card) 90%, transparent); color:var(--accent); font-weight:700; }
+
+/* ---- Packages, one page across the whole window (DuoSpread.spreads(tab:) is false for .packages) ---- */
+.abs { position:absolute; }
+.mast { left:16px; right:16px; top:calc(var(--sat) + 12px); height:278px; display:flex; flex-direction:column; align-items:center; gap:0; font-family:var(--cochin); }
+.seal-row { display:flex; align-items:center; gap:12px; width:270px; height:36px; margin-bottom:12px; }
+.seal-row i { flex:1; height:1px; background:var(--gold); opacity:.75; }
+.seal { width:36px; height:36px; border-radius:50%; background:var(--red); box-shadow:inset 0 0 0 3px color-mix(in srgb, var(--red) 70%, #000); }
+.mast .title { font-size:31px; line-height:38px; letter-spacing:.5px; }
+.mast .house { font-size:10px; letter-spacing:2px; color:var(--inkSoft); margin-top:8px; }
+.cells { display:grid; grid-template-columns:repeat(3, 140px); margin-top:24px; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.cells div { padding:16px 8px; text-align:center; border-left:1px solid var(--line); }
+.cells div:first-child { border-left:0; }
+.cells b { display:block; font:700 20px var(--mono); }
+.cells small { font-size:12px; color:var(--inkSoft); }
+.slot { left:0; right:0; top:330px; height:47px; border-bottom:1px solid var(--line); }
+.stamped { left:16px; top:378px; height:30px; display:flex; align-items:center; gap:8px; font:13px var(--cochin); color:var(--inkSoft); }
+.mini { font:11.5px var(--mono); border:1px solid var(--line); background:var(--card); border-radius:5px; padding:8px 12px; color:var(--ink); white-space:nowrap; }
+.hit { min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; }
+.handopen { right:16px; top:416px; height:44px; }
+.cards { left:16px; right:16px; top:468px; display:flex; flex-direction:column; gap:8px; font-family:var(--cochin); }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 1px var(--shadow); overflow:hidden; position:relative; }
+.pkg .hd { display:flex; align-items:center; gap:8px; padding:12px 12px 0; }
+.pkg .hd .who { flex:1; }
+.pkg .hd .who b { display:block; font-size:15px; }
+.pkg .hd .who span { font:11px var(--mono); color:var(--inkSoft); }
+.pkg .pillx { font:700 12.5px var(--cochin); background:color-mix(in srgb, var(--red) 14%, var(--card)); color:var(--red); border-radius:14px; padding:4px 8px; }
+.pkg .oid { font:11px var(--mono); color:var(--inkSoft); text-decoration:underline; padding:0 12px; height:45px; display:flex; align-items:center; }
+.pkg .bulk { display:flex; gap:8px; padding:0 12px 8px; }
+.line { display:flex; gap:8px; height:64px; padding-left:4px; border-top:1px solid var(--line); }
+.line .box { flex:0 0 45px; height:45px; display:grid; place-items:center; margin-top:10px; }
+.line .box i { width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; display:block; }
+.line .t { flex:1; padding:12px 12px 12px 0; }
+.line .t b { font-size:14px; font-weight:600; display:flex; justify-content:space-between; gap:8px; }
+.line .t b span { font:12px var(--mono); color:var(--inkSoft); font-weight:400; }
+.line .t small { font-size:11.5px; color:var(--inkSoft); display:block; margin-top:4px; }
+
+/* ---- Card in Hand, two pages (HandScreen.swift) ---- */
+.content { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 16px); display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.rowx { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.rowx .soft { color:var(--inkSoft); font-size:14px; }
+.count { font:12px var(--mono); color:var(--inkSoft); margin-left:auto; }
+.field { height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:16px; color:var(--inkSoft); }
+.empty { font-size:14px; color:var(--inkSoft); margin:0; }
+.transit { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; align-items:center; gap:8px; }
+.transit div { flex:1; } .transit b { display:block; font-size:14px; font-weight:400; } .transit small { font-size:12.5px; color:var(--red); }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+:where([data-tag]) { position:relative; }
+[data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 11px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:8; white-space:nowrap; }
+.tag-low[data-tag]::after { top:auto; bottom:-8px; }
+.tag-left[data-tag]::after { right:auto; left:4px; }
+.tag-new { outline:2px dashed var(--new); outline-offset:2px; } .tag-new::after { color:var(--new); }
+.tag-today { outline:2px dashed var(--today); outline-offset:2px; } .tag-today::after { color:var(--today); }
+
+/* folded frame: the outer screen, 466 x 678 pt (duo-fold-and-keyboard, re-measured 2026-11-08), drawn at half size */
+.folded { position:relative; width:233px; height:339px; border:1px solid var(--ink); border-radius:12px; background:var(--paper); overflow:hidden;
+  padding:calc(env(safe-area-inset-top) + 10px) 12px calc(env(safe-area-inset-bottom) + 12px); font-family:var(--cochin); margin-left:16px; }
+.folded .ft { text-align:center; font-size:16px; margin:4px 0 8px; }
+.folded .fc { background:var(--card); border:1px solid var(--line); border-radius:6px; height:58px; margin-bottom:6px; padding:6px 8px; font-size:10px; }
+.folded .fc b { display:block; font-size:11px; }
+.folded .sysbar { position:absolute; left:0; right:0; bottom:0; height:41.5px; border-top:1px solid var(--line); display:grid; grid-template-columns:repeat(4,1fr);
+  font:9px var(--cochin); color:var(--inkSoft); text-align:center; align-items:center; background:var(--paper); }
+.folded .sysbar .on { color:var(--accent); font-weight:700; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No seller, card, count or price on this page is real. The masthead's heights are drawn, not measured.</div>
+<div class="txt">
+<h1>Packages becomes Card in Hand</h1>
+<p class="sub">Item 35, <code>duo-card-in-hand-entry</code>. iPhone Duo, open pose, 951 x 669 pt, fold 40 pt at 455.5 pt. Keys down, so the tab bar shows. Light theme only: the native app is held to light. This option follows the PR 144 mockup (its README, line 5): on the open Duo the Packages tab is Card in Hand. Only the open Duo changes.</p>
+
+<nav aria-label="States">
+  <a href="#s=packages-is-hand">The Packages tab</a>
+  <a href="#s=list">One tap in: the list</a>
+  <a href="#s=folded">Folded</a>
+  <a href="#">All</a>
+</nav>
+</div>
+
+<!-- Folded first, in the ios-apps order. -->
+<figure id="s-folded" data-state="folded">
+  <div class="folded" data-device="iphone-duo-folded">
+    <div class="ft">Manifest</div>
+    <div class="fc"><b>Sample Seller One</b>3 left &#183; $1.10</div>
+    <div class="fc"><b>Sample Seller Two</b>1 left &#183; $0.25</div>
+    <div class="fc"><b>Sample Seller Three</b>2 left &#183; $0.60</div>
+    <div class="sysbar"><span>Ledger</span><span>Orphaned</span><span>Tally</span><span class="on">Packages</span></div>
+  </div>
+  <figcaption><b>Folded: the list stays.</b> Outer screen 466 x 678 pt, drawn at half size. Card in Hand opens only on two pages side by side (<code>PackagesTab.twoPages</code>), so folded, the Packages tab still opens the list. One tab then opens two screens, by pose: that is this option's loss.</figcaption>
+</figure>
+
+<!-- The picture the owner rules on: the Packages tab on the open Duo opens Card in Hand. Focus: #duo-packages-is-hand. -->
+<figure id="s-packages-is-hand" data-state="packages-is-hand">
+  <div class="fit"><div class="duo" id="duo-packages-is-hand" data-device="iphone-duo-unfolded">
+    <div class="status"><span>9:41</span><span>100%</span></div>
+    <div class="page l"><div class="content">
+      <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count">41 in &#183; 23 out</span><span class="hit tag-new" data-tag="New: Packages list, where Close sits today"><span class="mini">Packages list</span></span></div>
+      <div class="field tag-today tag-low tag-left" data-tag="Today: Card in Hand, as built">Type the card in hand</div>
+      <div class="rowx"><span class="soft">This envelope</span><span class="hit"><span class="mini">New envelope</span></span></div>
+    </div></div>
+    <div class="page r"><div class="content">
+      <p class="empty">Type the card in hand. The envelope it came from shows here.</p>
+      <div class="transit"><div><b>Past 14 days: 3 envelopes</b><small>1 refund window closing</small></div><span class="hit"><span class="mini">Open</span></span></div>
+    </div></div>
+    <div class="fold"><span>FOLD</span></div>
+    <div class="bar tag-new tag-low" data-tag="New: the Packages tab opens Card in Hand"><span>Ledger</span><span>Orphaned</span><span>Tally</span><span class="on">Packages</span></div>
+  </div></div>
+  <figcaption><b>The Packages tab opens Card in Hand.</b> Tap Packages on the open Duo and the two-page screen is there, with no extra tap. The list is one tap in, from a Packages list control where Close sits today.</figcaption>
+  <ul class="tags">
+    <li>Built today, drawn as built: the two pages of Card in Hand, opened with the keys down, since nothing focuses the field on open (<code>HandScreen.swift</code>). Tab bar x 520 to 927, y 593 to 657, measured (debt <code>hand-open-under-bar-at-l</code>).</li>
+    <li>Proposed, not built: the tab opening Card in Hand, and the Packages list control. Its name and place are this mockup's guess.</li>
+    <li>Departs from: main's Packages tab, which opens the list (<code>PackagesTab</code> in <code>HandScreen.swift</code>; <code>DuoSpread.spreads(tab:)</code>).</li>
+  </ul>
+</figure>
+
+<!-- What the list costs here: one tap in, from the Packages list control. The way back is drawn where hand-open sits today. -->
+<figure id="s-list" data-state="list">
+  <div class="fit"><div class="duo" id="duo-list" data-device="iphone-duo-unfolded">
+    <div class="status"><span>9:41</span><span>100%</span></div>
+    <div class="abs mast tag-today tag-low tag-left" data-tag="Today: masthead, across both pages (heights drawn)">
+      <div class="seal-row"><i></i><span class="seal"></span><i></i></div>
+      <div class="title">Manifest</div>
+      <div class="house">C.H Postal Company</div>
+      <div class="cells"><div><b>41</b><small>in</small></div><div><b>23</b><small>out</small></div><div><b>$9.80</b><small>outstanding</small></div></div>
+    </div>
+    <div class="abs slot"></div>
+    <div class="abs stamped">2 stamped <span>&#9675;</span></div>
+    <div class="abs handopen hit tag-new" data-tag="New: back to Card in Hand (drawn where the control sits today)"><span class="mini">Card in Hand</span></div>
+    <div class="abs cards tag-today tag-left" data-tag="Today: the Packages list, one page across the fold">
+      <div class="pkg">
+        <div class="hd"><div class="who"><b>Sample Seller One</b><span>2026-10-02</span></div><span class="pillx">3 left &#183; $1.10</span></div>
+        <div class="oid">SAMPLE-0001</div>
+        <div class="bulk"><span class="hit"><span class="mini">Mark all received</span></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Lightning Bolt<span>$0.42</span></b><small>Sample Set &#183; NM</small></span></div>
+        <div class="line"><span class="box"><i></i></span><span class="t"><b>Ponder<span>$0.18</span></b><small>Sample Set &#183; NM</small></span></div>
+      </div>
+    </div>
+    <div class="fold"><span>FOLD</span></div>
+    <div class="bar"><span>Ledger</span><span>Orphaned</span><span>Tally</span><span class="on">Packages</span></div>
+  </div></div>
+  <figcaption><b>One tap in: the list.</b> The Packages list control shows the list you know, with a way back to Card in Hand. On the open Duo the list is no longer what the tab opens; the folded phone still opens on it.</figcaption>
+</figure>
+
+</main>
+
+<script>
+// Scale each 951 pt frame down only when the window is narrower; at 951 or wider it draws 1:1.
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; d.style.zoom = Math.min(1, w.clientWidth / 951); });
+}
+// Deep link: #s=<state> shows one state; no hash shows all.
+function route() {
+  const m = location.hash.match(/s=([\w-]+)/), s = m && m[1];
+  document.querySelectorAll('figure').forEach(f => { f.hidden = !!s && f.dataset.state !== s; });
+  document.querySelectorAll('nav a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === (location.hash || '#'))));
+  fit();
+}
+addEventListener('hashchange', route); addEventListener('resize', fit); route();
+</script>
+</body>
+</html>
