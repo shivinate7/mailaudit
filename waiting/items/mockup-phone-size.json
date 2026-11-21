@@ -1,13 +1,13 @@
 {
   "added": "2026-11-21T06:36:00Z",
-  "context": "Goal: mockups are drawn to the phone you carry on mail day.\nProblem (goal): no record or Apple page in this repo gives the phone size, designers drew four different sizes, and only you know which phone you use.\nBased on (read): designers drew 375, 402 by 874, 430 by 900 and 440 by 956 points; the repo's measured runs use an iPhone 17 or iPhone 18 Pro simulator.\nDeparts from: main records no phone size for mockups \u2014 this records one.\nWaiting on: your answer; designers keep drawing at their own sizes until then. All the design-churn mockups are on the design-churn branch for review and culling.",
+  "context": "Goal: mockups are drawn to the phone you carry on mail day.\nProblem (goal): no record or Apple page in this repo gives the phone size, designers drew four different sizes, and only you know which phone you use.\nBased on (read): designers drew 375, 402 by 874, 430 by 900 and 440 by 956 points; the repo's measured runs use an iPhone 17 or iPhone 18 Pro simulator.\nDeparts from: main records no phone size for mockups \u2014 this records one.\nWaiting on: your answer; designers keep drawing at their own sizes until then. All the design-churn mockups are now on main under docs/design-churn for review and culling.",
   "home": "repo record for mockup sizes (to be filed)",
   "id": "mockup-phone-size",
   "kind": "decision",
   "links": [
     {
-      "label": "Design-churn mockups (about 63 files, growing)",
-      "url": "https://github.com/shivinate7/mailaudit/tree/design-churn/docs/design-churn"
+      "label": "Design-churn mockups on main (296 files, 228 of them mockups)",
+      "url": "https://github.com/shivinate7/mailaudit/tree/main/docs/design-churn"
     }
   ],
   "n": 109,

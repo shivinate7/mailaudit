@@ -4,6 +4,10 @@
   "home": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the held-words item",
   "id": "held-words-box-title",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-21T23:15:00Z",
+    "note": "Closed as moot by triage; no owner pick."
+  },
   "n": 98,
   "options": [
     {
@@ -26,6 +30,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "b",
   "ref": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the held-words item",
+  "replied": "2026-11-21T23:15:00Z",
+  "reply": "Moot: on item 80 you chose one word only, so keeping both words, and with it this title question, no longer applies. Your saved answer is not built. Closed. Staleness check, 17:15 CST CST 2026-11-21.",
   "repo": "shivinate7/mailaudit",
   "short": "Box title: Suspense or Suspense line",
   "shown": [
@@ -40,7 +46,7 @@
       "label": "Leave the title as Suspense"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "Under keep both words, should the box title change from Suspense to Suspense line?",
   "why": "It is a one-word title and the screen is built; changing it adds width risk for no new meaning."
 }

@@ -4,6 +4,10 @@
   "home": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Card in Hand design page item",
   "id": "card-in-hand-note-extras",
   "kind": "decision",
+  "lastAnswer": {
+    "at": "2026-11-21T23:15:00Z",
+    "note": "Closed as moot by triage; no owner pick."
+  },
   "n": 100,
   "options": [
     {
@@ -26,6 +30,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Card in Hand design page item",
+  "replied": "2026-11-21T23:15:00Z",
+  "reply": "Moot: on item 51 you chose to archive the Card in Hand design page, not merge it, so no override note is added to it. Closed without a build. Staleness check, 17:15 CST CST 2026-11-21.",
   "repo": "shivinate7/mailaudit",
   "short": "Design page note: five rulings or nine",
   "shown": [
@@ -40,7 +46,7 @@
       "label": "List all nine differences"
     }
   ],
-  "status": "open",
+  "status": "closed",
   "title": "Should the note on the merged Card in Hand design page list five overriding rulings, or those and four other differences too?",
   "why": "The two open questions will change, so a list that names them is wrong within days."
 }

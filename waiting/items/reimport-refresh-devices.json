@@ -1,7 +1,7 @@
 {
   "added": "2026-11-16T05:44:00Z",
   "context": "Goal: a CSV re-import refreshes tracking on every device, not only the one that imported.\nProblem (risk): the refresh runs on the importing device only and the Worker keeps its stored copy, so a second or fresh device keeps the old tracking value until it imports the same CSV, while a plain overwrite on the Worker would let a stale device revert newer tracking.\nBased on (read): the debt record reimport-refresh-stays-on-device: the Worker's sync merge keeps the stored copy, and the refresh does not touch the two-device merge either.\nBased on (ruling): your 15 Nov 13:38 CST ruling that a re-import refreshes only the tracking field, on the importing device, and the rule that the saved data's layout never changes.\nDeparts from: main, where the refresh stays on the importing device \u2014 option b adds a refresh map that the Worker applies, and option c adds a per-line tracking stamp.\nWaiting on: nothing stopped, since the fix that updates the importing device's own copy is live; the coordinator acts on your pick next.",
-  "home": "PR 342 and debt reimport-refresh-stays-on-device (lane reimport-tracking-refresh)",
+  "home": "debt reimport-refresh-stays-on-device (lane reimport-tracking-refresh; pull requests 342 and 350 merged 2026-11-16)",
   "id": "reimport-refresh-devices",
   "kind": "decision",
   "lastAnswer": {
@@ -17,7 +17,7 @@
       "key": "a",
       "label": "Keep it on the importing device",
       "lose": "A second or fresh device keeps the old tracking value until it imports the same CSV.",
-      "note": "You ruled this out at 21:55 CST on 18 Nov. It stays listed so the letters do not move."
+      "note": "Ruled out by you (your 2026-11-18 21:54 CST reply: a is definitely out)."
     },
     {
       "gain": "All your devices follow the refresh without importing the CSV again.",

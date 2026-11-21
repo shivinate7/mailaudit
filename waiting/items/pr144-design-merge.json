@@ -111,8 +111,8 @@
   "pick": "a",
   "rank": 14,
   "ref": "draft PR #144 (Duo round 2 Card in Hand design, branch design/duo-round2); HandScreen.swift:4-5; DuoHandUITests.swift:2",
-  "replied": "2026-11-21T14:10:59-06:00",
-  "reply": "The pictures you asked for are now inside this item, not as links. Please look and pick an option.",
+  "replied": "2026-11-21T23:15:00Z",
+  "reply": "You chose b, archive it and re-point the citations (2026-11-21 17:06 CST). Filed in git. The archive branch archive/design/duo-round2 already exists (same commit as design/duo-round2); the coordinator's lane re-points HandScreen.swift:4-5 and DuoHandUITests.swift:2, then this item closes.",
   "repo": "shivinate7/mailaudit",
   "short": "Merge PR 144 design",
   "shown": [

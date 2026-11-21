@@ -26,6 +26,8 @@
   "owner": "coordinator session_01MVD32RMmHxq9LhRNihx66B",
   "recommended": "a",
   "ref": "owner 2026-11-18 22:37 CST: visuals for items needing feedback; designer question on the Orphaned keyboard item",
+  "replied": "2026-11-21T23:15:00Z",
+  "reply": "Your saved answer is held, not lost. The condition is now met: on item 86 you chose the drag (a). A draft pull request builds hide keys, draft stays. Staleness check, 17:15 CST CST 2026-11-21.",
   "repo": "shivinate7/mailaudit",
   "short": "Hiding the keys: does it also save the draft",
   "shown": [

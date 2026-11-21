@@ -82,7 +82,7 @@
   "recommended": "a",
   "ref": "PR 238 (the restyle step 8 pull request); lane restyle-step8 (the lane that builds it); FindPill.swift line 3 (the Find pill floats over the list); decision phone-nav-is-bottom-bar (the phone's navigation is a bottom bar); run 43848366093 (the phone UI run that shows the reds)",
   "replied": "2026-11-21T17:08:30-06:00",
-  "reply": "You said option b shows no mockup (2026-11-21 17:05 CST). Option b has a picture in the page, \"Pill Floats Over List\" (today's look, the pill over the list), but the page shows it as a View button with only a sliver of picture, which is the same fault you showed on item 62. A check of why is running; the fix puts every picture inline, with no click.\n\nYour choices are unchanged: a or b.",
+  "reply": "You said option b shows no mockup (2026-11-21 17:05 CST). Option b has a picture in the page, \"Pill Floats Over List\" (today's look, the pill over the list), but the page shows it as a View button with only a sliver of picture, which is the same fault you showed on item 62. A check of why is running; the fix puts every picture inline, with no click.\n\nYour choices are unchanged: a or b.\n\nCheck result (17:15 CST CST): in a headless browser every picture on this page showed inline for me, including option b; I could not reproduce the missing picture. Which browser and device do you use, and does a hard reload help?",
   "repo": "shivinate7/mailaudit",
   "short": "Find pill: end list above it",
   "shown": [
