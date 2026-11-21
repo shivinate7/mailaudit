@@ -114,10 +114,10 @@ final class HandModelTests: XCTestCase {
     static let boltS2 = "S2|0|pLightning Bolt"
     static let sol = "S3|0|pSol Ring"
 
-    static func item(_ order: String, _ seller: String, _ n: Int, _ name: String, date: String) -> [String: Any] {
+    static func item(_ order: String, _ seller: String, _ n: Int, _ name: String, date: String, qty: Int = 1) -> [String: Any] {
         [
             "key": "\(order)|\(n)|p\(name)", "orderId": order, "seller": seller, "name": name,
-            "set": "", "condition": "", "finish": "", "qty": 1, "price": 1,
+            "set": "", "condition": "", "finish": "", "qty": qty, "price": 1,
             "date": date, "tracking": "with tracking", "line": "Magic",
         ]
     }
@@ -605,5 +605,191 @@ final class HandModelTests: XCTestCase {
         try await h.model.type("Mind Stone")
         XCTAssertEqual(h.model.offer?.plan, [PlanStep(itemKey: Self.stone, take: 1)], "the offer is capped at the one copy left out")
         XCTAssertEqual(h.model.offer?.heldCopies, 0, "the offer carries no held copy")
+    }
+
+    // MARK: Today's pile and Not normal today (owner ruling item 79 a, 2026-11-19 23:23 CST)
+    //
+    // The contract these cases name. The builder adds it; the names are the test-author's choice.
+    //   public struct HandDayRow: Equatable, Sendable { gk, seller: String; got, qty: Int; var short: Bool { got < qty } }
+    //       got and qty are the whole envelope's copies in now and copies ordered, not today's alone.
+    //   public struct HandShortRow: Equatable, Sendable { gk, seller: String; missing: [String]; left: Int }
+    //       missing names each card with copies still owed; left counts those copies.
+    //   public struct HandNotNormal: Equatable, Sendable { rows: [HandShortRow]; allWell: Bool }
+    //   HandModel.todaysPile(now: Date, calendar: Calendar) async throws -> [HandDayRow]
+    //       The envelopes with a line whose count is above 0 and whose stamp is at or after local midnight of `now`.
+    //   HandModel.notNormalToday(now: Date, calendar: Calendar, pastCount: Int) async throws -> HandNotNormal
+    //       rows: the short envelopes of today's pile. allWell: no row and pastCount is 0 ("All is well.").
+    //   Reading taken here: an envelope with no check-in today is not in the pile, so it is never listed as short.
+
+    /// A fixed UTC-6 calendar, so no case reads the machine's zone.
+    static let fixtureCalendar: Calendar = {
+        var c = Calendar(identifier: .gregorian)
+        c.timeZone = TimeZone(secondsFromGMT: -6 * 3600) ?? .gmt
+        return c
+    }()
+    /// `t0` as a Date: 08:03 on the fixture day at UTC-6.
+    static let fixtureDate = Date(timeIntervalSince1970: HandModelTests.t0 / 1000)
+    /// 00:00 at UTC-6 on the fixture day, in the store's milliseconds: 28 980 000 ms before t0.
+    static let localMidnight: Double = HandModelTests.t0 - 28_980_000
+    static let ponder = "S4|0|pPonder"
+
+    /// Delta Cards holds four copies of Ponder: the one multi-copy line the envelope totals need.
+    static func deltaPonder() -> [[String: Any]] {
+        [item("S4", "Delta Cards", 0, "Ponder", date: "2026-07-01", qty: 4)]
+    }
+
+    /// Stamps a line's check-in at `ms`, as a write in the store would. Nothing is saved: the pile reads the store's memory.
+    static func checkIn(_ h: HandFixture, _ key: String, _ count: Int, at ms: Double) {
+        h.store.setReceived(key, count: count, at: ms)
+    }
+
+    /// Every line of the fixture ledger checked in today, so every envelope is whole: the full-size state of the pile.
+    static func checkEverythingInToday(_ h: HandFixture) {
+        for (key, count) in [(bolt, 1), (path, 1), (counter, 1), (boltS2, 1), (sol, 1), (ponder, 4)] {
+            checkIn(h, key, count, at: localMidnight + 60_000)
+        }
+    }
+
+    /// The row of one envelope in the pile. A missing row fails with the envelope's key.
+    static func row(_ rows: [HandDayRow], _ gk: String) throws -> HandDayRow {
+        try XCTUnwrap(rows.first { $0.gk == gk }, "today's pile has no row for \(gk)")
+    }
+
+    func pile(_ h: HandFixture) async throws -> [HandDayRow] {
+        try await h.model.todaysPile(now: Self.fixtureDate, calendar: Self.fixtureCalendar)
+    }
+
+    func notNormal(_ h: HandFixture, pastCount: Int = 0) async throws -> HandNotNormal {
+        try await h.model.notNormalToday(now: Self.fixtureDate, calendar: Self.fixtureCalendar, pastCount: pastCount)
+    }
+
+    /// Nothing is checked in: the pile is empty, so the empty query keeps the start hint.
+    func testNoPileBeforeAnyCheckInToday() async throws {
+        let h = try await makeHand()
+        let rows = try await pile(h)
+        XCTAssertEqual(rows, [], "an envelope is in today's pile though no line is checked in")
+    }
+
+    /// The cases below test the pile's cut, not the fixture's arithmetic, so the fixture's midnight is checked first.
+    func testFixtureMidnightIsTheCalendarsStartOfTheDay() {
+        XCTAssertEqual(Self.fixtureCalendar.startOfDay(for: Self.fixtureDate).timeIntervalSince1970 * 1000, Self.localMidnight,
+                       "the fixture's midnight is not the start of the fixture day at UTC-6")
+    }
+
+    /// Envelopes checked into since local midnight are in the pile. A check-in from yesterday, and an envelope nobody checked into, are not.
+    func testPileListsOnlyEnvelopesCheckedInSinceMidnight() async throws {
+        let h = try await makeHand()
+        Self.checkIn(h, Self.path, 1, at: Self.localMidnight + 60_000)
+        Self.checkIn(h, Self.sol, 1, at: Self.localMidnight - 60_000)
+        let rows = try await pile(h)
+        XCTAssertEqual(rows.map(\.gk), ["S1::Alpha Cards"],
+                       "the pile is not the one envelope checked into since midnight: Gamma's check-in is from yesterday and Beta has none")
+    }
+
+    /// Midnight counts to the millisecond: a check-in stamped at local midnight is today's, one millisecond earlier is yesterday's.
+    func testPileCutIsLocalMidnightToTheMillisecond() async throws {
+        let h = try await makeHand()
+        Self.checkIn(h, Self.path, 1, at: Self.localMidnight)
+        Self.checkIn(h, Self.sol, 1, at: Self.localMidnight - 1)
+        let rows = try await pile(h)
+        XCTAssertEqual(rows.map(\.gk), ["S1::Alpha Cards"], "the pile's cut is not local midnight to the millisecond")
+    }
+
+    /// An un-check stamps the line too, with no count. A line checked in and taken back today is no check-in.
+    func testCheckedInAndTakenBackTodayIsNoPileRow() async throws {
+        let h = try await makeHand()
+        try h.store.commitReceived(Self.path, count: 1)
+        try h.store.commitReceived(Self.path, count: 0)
+        let rows = try await pile(h)
+        XCTAssertEqual(rows, [], "a line taken back today is in the pile: its stamp is today, but its count is 0")
+    }
+
+    /// A held card is not an envelope. The shared name is held with no check-in today, and it puts no row in the pile.
+    func testHeldCardPutsNoRowInThePile() async throws {
+        let h = try await makeHand()
+        try await h.model.type("Lightning Bolt")
+        XCTAssertEqual(h.model.held, "lightning bolt", "the setup is real: the shared name is held")
+        let before = try await pile(h)
+        XCTAssertEqual(before, [], "the held card with no check-in today put a row in the pile")
+        try h.store.commitReceived(Self.path, count: 1)
+        let after = try await pile(h)
+        XCTAssertEqual(after.map(\.gk), ["S1::Alpha Cards"], "the pile lists an envelope with no check-in today: Beta Games, which holds the held name")
+    }
+
+    /// A row totals the whole envelope: a copy checked in yesterday counts toward today's row.
+    func testPileRowCountsEveryCopyInTheEnvelope() async throws {
+        let h = try await makeHand()
+        Self.checkIn(h, Self.path, 1, at: Self.localMidnight - 60_000)
+        Self.checkIn(h, Self.bolt, 1, at: Self.localMidnight + 60_000)
+        let rows = try await pile(h)
+        let alpha = try Self.row(rows, "S1::Alpha Cards")
+        XCTAssertEqual(alpha.got, 2, "the row leaves out the copy checked in yesterday, or counts today's copies alone")
+        XCTAssertEqual(alpha.qty, 3, "the row's qty is not the envelope's three copies")
+        XCTAssertTrue(alpha.short, "two of three copies in is not flagged short")
+    }
+
+    /// Partial quantity: one of four copies in is short, and the row counts copies, not lines.
+    func testPileRowOfAMultiCopyLineIsShort() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder())
+        Self.checkIn(h, Self.ponder, 1, at: Self.localMidnight + 60_000)
+        let rows = try await pile(h)
+        let delta = try Self.row(rows, "S4::Delta Cards")
+        XCTAssertEqual(delta.got, 1, "the row does not count the one copy in")
+        XCTAssertEqual(delta.qty, 4, "the row does not count the four copies ordered")
+        XCTAssertTrue(delta.short, "one of four copies in is not flagged short")
+    }
+
+    /// Every copy in: the envelope is in the pile and is not flagged.
+    func testPileRowIsNotShortWhenEveryCopyIsIn() async throws {
+        let h = try await makeHand()
+        for key in [Self.bolt, Self.path, Self.counter] { Self.checkIn(h, key, 1, at: Self.localMidnight + 60_000) }
+        let rows = try await pile(h)
+        let alpha = try Self.row(rows, "S1::Alpha Cards")
+        XCTAssertEqual(alpha.got, 3, "the row does not count all three copies in")
+        XCTAssertFalse(alpha.short, "three of three copies in is flagged short")
+    }
+
+    /// Not normal today lists the short envelopes of the pile, each with the cards it still owes. A full envelope is not listed.
+    func testNotNormalListsTheShortEnvelopeWithItsMissingCards() async throws {
+        let h = try await makeHand()
+        Self.checkIn(h, Self.path, 1, at: Self.localMidnight + 60_000)
+        Self.checkIn(h, Self.sol, 1, at: Self.localMidnight + 60_000)
+        let nn = try await notNormal(h)
+        XCTAssertEqual(nn.rows.map(\.gk), ["S1::Alpha Cards"], "Not normal today lists something other than the one short envelope of today's pile")
+        let alpha = try XCTUnwrap(nn.rows.first)
+        XCTAssertEqual(Set(alpha.missing), ["Lightning Bolt", "Counterspell"], "the short row does not name the cards still owed")
+        XCTAssertEqual(alpha.left, 2, "the short row does not count the two copies still owed")
+        XCTAssertFalse(nn.allWell, "Not normal today says All is well. while an envelope is short")
+    }
+
+    /// The short row owes copies, not lines: one of four Ponder copies in leaves three owed.
+    func testNotNormalCountsTheCopiesStillOwed() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder())
+        Self.checkIn(h, Self.ponder, 1, at: Self.localMidnight + 60_000)
+        let nn = try await notNormal(h)
+        XCTAssertEqual(nn.rows.map(\.gk), ["S4::Delta Cards"], "Not normal today does not list the short Delta Cards envelope")
+        let delta = try XCTUnwrap(nn.rows.first)
+        XCTAssertEqual(delta.left, 3, "the short row counts lines, not the copies still owed")
+        XCTAssertEqual(delta.missing, ["Ponder"], "the short row does not name Ponder as the card still owed")
+    }
+
+    /// Full-size state: every line checked in today, every envelope whole, nothing past 14 days. The page says All is well.
+    func testAllIsWellWhenEveryEnvelopeInTodaysPileIsWhole() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder())
+        Self.checkEverythingInToday(h)
+        let rows = try await pile(h)
+        XCTAssertEqual(rows.count, 4, "the four envelopes of the ledger are not all in today's pile")
+        let nn = try await notNormal(h)
+        XCTAssertEqual(nn.rows, [], "a whole envelope is listed under Not normal today")
+        XCTAssertTrue(nn.allWell, "nothing is short and nothing is past 14 days, but the page does not say All is well.")
+    }
+
+    /// The same whole pile with one envelope past 14 days: the page does not say All is well.
+    func testAllIsNotWellWhileAnEnvelopeIsPast14Days() async throws {
+        let h = try await makeHand(extra: Self.deltaPonder())
+        Self.checkEverythingInToday(h)
+        let nn = try await notNormal(h, pastCount: 1)
+        XCTAssertEqual(nn.rows, [], "a whole envelope is listed under Not normal today")
+        XCTAssertFalse(nn.allWell, "an envelope is past 14 days, but the page says All is well.")
     }
 }
