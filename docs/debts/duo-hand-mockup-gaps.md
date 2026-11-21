@@ -1,6 +1,6 @@
 # Eight parts of the Card in Hand mockup are not built
 
-**What.** Poses 1, 2, 3 and 5 of PR 144, the Duo round 2 design pull request, show eight parts that the build lacks:
+**What.** Poses 1, 2, 3 and 5 of the Duo round 2 design, archived at `origin/archive/design/duo-round2` (draft PR 144, the Duo round 2 design pull request, before the archive), show eight parts that the build lacks:
 - Pose 1: the "line now" mark on the typed card's line, the cards so far under "This envelope" (or "Nothing checked in yet"), and "Still owed here" with N left and its cost, on the order line (page item 78 a, 2026-11-18 23:22 CST).
 - Poses 2, 3 and 5: Keep held, the held marking on lines, a per-envelope "Post here" at a tie, the end-of-day view, and Suspense ranking of accounts by named copies.
 
