@@ -113,6 +113,11 @@ The sample data holds the hard case: three open Gamma Cards orders across four w
     - Line-up: the rail becomes a stack (ViewThatFits), and head, stack and card scroll as one.
     - Loss: at AX5 the band takes about a third of the folded screen. Close stays at the system size in the drawing; the build should scale it.
 
+13. **What each tied order holds.** New, Line-up, from the critique.
+    - What: on a tie, the space under the rail lists each tied order's cards in one line ("Gamma Cards, Oct 22: Ponder, Preordain ×2, Brainstorm"). A tap on a line picks that order, as a tile tap does.
+    - Gain: the person holds the list against the cards in the envelope and picks with no extra word. Loss: one more control set in the tie state; card names can run long and wrap.
+    - Pick: apply.
+
 ## Guesses
 
 - Scoring weights (order 10, card 3, seller 3, month 2, set 1) are this drawing's, not measured on real searches.
@@ -123,4 +128,14 @@ The sample data holds the hard case: three open Gamma Cards orders across four w
 
 ## Critique
 
-See the report of this lane for the impeccable critique and what was fixed.
+Skill `impeccable`, `critique`, 2026-11-21. Method: design review only (detector not applicable, native platform). The launcher was not run; no PRODUCT.md or DESIGN.md exists. No snapshot.
+
+Heuristic scores (Line-up / Clue Words): status 3/3, real world 4/3, control 3/3, consistency 3/3, error prevention 3/2, recognition 4/3, efficiency 3/3, minimalist 3/3, error recovery 3/3, help 2/2. Totals 31/40 and 28/40.
+
+- Fixed: Line-up said its count twice, in the clue line and under "Which order?" (ux-label-once). The clue line now holds no count in Line-up.
+- Fixed: a one-word search showed "Fits" on every tile, which told nothing. One word now shows no fit line.
+- Fixed: the Clue Words no-match sentence did not say which word to drop. It now says whether a word missed outright or only the mix missed.
+- Fixed: a tie left an empty answer area. It now lists what each tied order holds (item 13).
+- Open, a question: in Clue Words, the masthead and stamped cell sit above the results on one page, so the folded Duo shows one result card. Scrolling to the first result on a typed word would move the list; the running head rules are outside this mockup.
+- Open, a question: at AX5 the band takes about a third of the folded screen, and the query scrolls inside one line (as PR 238 does).
+- Open, outside this folder: the matcher change (item 3) lands in `src/view-rules.mjs` and needs tests on both clients.

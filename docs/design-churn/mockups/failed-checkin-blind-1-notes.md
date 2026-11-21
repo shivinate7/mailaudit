@@ -48,7 +48,7 @@ Each concept has a "Hide this concept" button. Its section id is the focus for t
 
 3. **Envelope (bold).** One package per screen, the way it sits in the hand. Each expected card is a
    bead. A bead fills only when its save is confirmed; it shows a dashed ring while saving, and turns
-   red with "!" when the save fails. The whole card row is the tick, and on a failed card the same
+   red with "!" when the save fails. A one-line legend under the strip names the bead states. The whole card row is the tick, and on a failed card the same
    tap retries. You page with the arrows or a sideways swipe. "All packages" opens a rack: every
    package with its beads, so every red bead in the session is in one view. Open Duo: rack on the
    left page, package on the right.

@@ -325,7 +325,8 @@ textarea.textfield { min-height: 96px; padding: var(--space-2) var(--space-3); r
 .ax5 .day { font-size: 26px; min-height: 56px; }
 .ax5 .cal-h { font-size: 20px; line-height: 24px; }
 .ax5 .sheet { top: 6%; }
-.ax5 .btn { min-height: 72px; }
+.ax5 .btn { min-height: 72px; padding-block: var(--space-2); text-align: center; }
+.ax5 .actionrow { flex-direction: column; }
 .ax5 .tray-head span { display: none; }
 
 /* "New:" labels: every part is new to a blind designer, who saw no current screen. */
@@ -552,11 +553,11 @@ body.show-new [data-new]::after {
       if (st === 'date') S.search.q = 'nov 8';
       if (st === 'nomatch') S.search.q = 'zebra';
       if (st === 'detail' || st === 'done') { S.search.q = 'pike'; S.search.open = F1; }
-      if (st === 'done') { byId(F1).lines.forEach(function (l) { l.got = l.qty; }); S.search.answer = 'all'; }
+      if (st === 'done') { byId(F1).lines.forEach(function (l) { l.got = l.qty; }); S.search.answer = 'all'; S.keep[F1] = 1; }
     } else {
       if (st === 'narrowed') { S.env.from = 'Pike Street Cards'; S.env.thick = 'some'; }
       if (st === 'one' || st === 'done') { S.env.from = 'Pike Street Cards'; S.env.inside = 'lantern'; }
-      if (st === 'done') { byId(F1).lines.forEach(function (l) { l.got = l.qty; }); S.env.answer = 'all'; }
+      if (st === 'done') { byId(F1).lines.forEach(function (l) { l.got = l.qty; }); S.env.answer = 'all'; S.keep[F1] = 1; }
       if (st === 'sheet') { S.env.from = 'Pike Street Cards'; S.env.sheet = { field: 'postmark', draft: null }; }
       if (st === 'nomatch') { S.env.from = 'Two Rivers Games'; S.env.inside = 'tidecaller'; }
     }
@@ -849,7 +850,20 @@ body.show-new [data-new]::after {
     f.push(fieldBtn('inside', I.inside, 'Inside', E.inside || null, big ? 'A card name or order number you can read' : ''));
     return '<div class="envelope' + (big ? ' big-envelope' : '') + '"' + (focusId ? ' id="' + focusId + '"' : '') + ' data-new="the envelope is the search"><div class="envelope-inner">' + f.join('') + '</div></div>';
   }
+  function clueSummary() {
+    var E = S.env, v = [];
+    if (E.from) v.push(E.from);
+    if (ui.opts.postmark && E.postmark != null) v.push('postmark ' + fmtDate(daysAgo(E.postmark)));
+    if (ui.opts.thickness && E.thick) v.push(THICK[E.thick][2].toLowerCase());
+    if (E.inside) v.push('“' + E.inside + '” inside');
+    return v.join(', ');
+  }
   function envTray(ax, focusId) {
+    // When one order fits, the tray folds to one line so the order's cards have the room.
+    if (envResults().count === 1 && !S.env.trayOpen) {
+      return '<div class="tray"' + (focusId ? ' id="' + focusId + '"' : '') + '><button type="button" class="field set" data-act="tray-open" data-new="clues fold away when one fits" aria-label="Your clues: ' + esc(clueSummary()) + '. Change the clues">' +
+        '<span class="field-name">' + I.from + 'Your clues</span><span class="field-val">' + esc(clueSummary()) + '</span><span class="field-kind" style="color:var(--accent)">Change the clues</span></button></div>';
+    }
     return '<div class="tray"><div class="tray-head"><span>Fill in what the envelope shows</span>' +
       (cluesSet() ? '<button type="button" class="navbtn" data-act="clear-clues">Clear clues</button>' : '<span class="navbtn ghost" aria-hidden="true"></span>') + '</div>' +
       envelopeFace(false, ax, focusId) + '</div>';
@@ -1115,11 +1129,12 @@ body.show-new [data-new]::after {
       case 'import': S.data = 'ready'; break;
       case 'expand': E.open = E.open === b.dataset.id ? null : b.dataset.id; E.answer = null; break;
       case 'more': E.more = true; break;
+      case 'tray-open': E.trayOpen = true; break;
       case 'field': E.sheet = { field: b.dataset.field, draft: undefined, filter: '' }; break;
       case 'sheet-cancel': E.sheet = null; break;
       case 'sheet-done': {
         var sh = E.sheet;
-        if (sh && sh.draft !== undefined && sh.draft !== null) { var k = sh.field; E[k] = sh.draft; E.open = null; E.more = false; E.answer = null; }
+        if (sh && sh.draft !== undefined && sh.draft !== null) { var k = sh.field; E[k] = sh.draft; E.open = null; E.more = false; E.answer = null; E.trayOpen = false; }
         E.sheet = null; break;
       }
       case 'pick-from': E.sheet.draft = b.dataset.v; break;
@@ -1127,8 +1142,8 @@ body.show-new [data-new]::after {
       case 'pick-day': E.sheet.draft = +b.dataset.v; break;
       case 'pick-thick': E.sheet.draft = b.dataset.v; break;
       case 'pick-inside': E.sheet.draft = b.dataset.v; break;
-      case 'drop': { var fk = b.dataset.field; E[fk] = fk === 'inside' ? '' : null; E.open = null; E.sheet = null; E.answer = null; break; }
-      case 'clear-clues': E.from = null; E.postmark = null; E.thick = null; E.inside = ''; E.open = null; E.more = false; E.answer = null; S.keep = {}; break;
+      case 'drop': { var fk = b.dataset.field; E[fk] = fk === 'inside' ? '' : null; E.open = null; E.sheet = null; E.answer = null; E.trayOpen = false; break; }
+      case 'clear-clues': E.from = null; E.postmark = null; E.thick = null; E.inside = ''; E.open = null; E.more = false; E.answer = null; E.trayOpen = false; S.keep = {}; break;
       case 'aside-open': S.asideSheet = true; break;
       case 'aside-cancel': S.asideSheet = false; break;
       case 'aside-done': S.setAside = S.asideNote || 'No note'; S.asideNote = ''; S.asideSheet = false; S.toast = 'Envelope set aside under Unmatched.'; setTimeout(function () { S.toast = null; renderFrames(); }, 3200); break;

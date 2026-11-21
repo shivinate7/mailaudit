@@ -37,7 +37,7 @@
   :root:not([data-theme="light"]) {
     --page: #1B1D20; --surface: #000000; --raised: #1C1D21; --text: #F2F3F5; --muted: #A1A7B0;
     --line: #34373D; --accent: #7EA8FF; --accent-ink: #0B1836; --ok: #56C487; --fail: #FF7468;
-    --fail-bg: #3A1512; --fail-ink: #1E0503; --bead-empty: #4B4F57; --hinge: #050506;
+    --fail-bg: #3A1512; --fail-ink: #1E0503; --bead-empty: #4B4F57; --hinge: #2C2F35;
     --device-edge: #3A3D43; --banner-bg: #3A3000; --banner-text: #FFE79A;
     --scrim: rgba(0, 0, 0, 0.5); --chrome-bg: rgba(28, 29, 33, 0.88);
     color-scheme: dark;
@@ -46,7 +46,7 @@
 :root[data-theme="dark"] {
   --page: #1B1D20; --surface: #000000; --raised: #1C1D21; --text: #F2F3F5; --muted: #A1A7B0;
   --line: #34373D; --accent: #7EA8FF; --accent-ink: #0B1836; --ok: #56C487; --fail: #FF7468;
-  --fail-bg: #3A1512; --fail-ink: #1E0503; --bead-empty: #4B4F57; --hinge: #050506;
+  --fail-bg: #3A1512; --fail-ink: #1E0503; --bead-empty: #4B4F57; --hinge: #2C2F35;
   --device-edge: #3A3D43; --banner-bg: #3A3000; --banner-text: #FFE79A;
   --scrim: rgba(0, 0, 0, 0.5); --chrome-bg: rgba(28, 29, 33, 0.88);
   color-scheme: dark;
@@ -264,6 +264,9 @@ figcaption { color: var(--muted); font-size: 13px; line-height: 18px; max-inline
 .env-head { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-1) var(--space-4) var(--space-3); }
 .env-pos { font-size: var(--t-ft); line-height: var(--l-ft); color: var(--muted); }
 .env-meta { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); }
+.env-legend { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-1) var(--space-2); font-size: var(--t-c1); line-height: var(--l-c1); color: var(--muted); }
+.env-legend .b { width: 10px; height: 10px; font-size: 0; }
+.env-legend .b-fail::after { content: none; }
 .beads { display: flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
 .beads .gap { width: var(--space-2); }
 .b { width: 14px; height: 14px; border-radius: 50%; border: 2px solid var(--bead-empty); background: transparent; flex: none; display: inline-flex; align-items: center; justify-content: center; font-size: 10px; line-height: 10px; font-weight: 800; color: var(--fail-ink); }
@@ -474,8 +477,8 @@ details code { font-size: 13px; }
     return { k: 'idle' };
   }
   function reasonText(t) {
-    if (t.reason === 'signal') return (t.tries > 1 ? 'Still not saved.' : 'Not saved.') + ' No signal.';
-    if (t.reason === 'sync') return 'Not saved. Sync problem.';
+    if (t.reason === 'signal') return t.tries > 1 ? 'Still no signal.' : 'No signal.';
+    if (t.reason === 'sync') return 'Sync problem.';
     return 'No answer. It may not have saved.';
   }
   function subText(st, l) {
@@ -483,7 +486,7 @@ details code { font-size: 13px; }
     if (st.k === 'saving') return 'Saving…';
     if (st.k === 'flash') return '<span class="ok-text">Saved ' + st.t.at.s + ', You</span>';
     if (l.by) return 'Last: ' + l.by + ', ' + l.at;
-    return 'None in yet';
+    return l.set;
   }
   function countOf(l) { return l.qty == null ? l.rec + ' logged' : l.rec + ' of ' + l.qty; }
 
@@ -655,9 +658,9 @@ details code { font-size: 13px; }
   }
   function tlineHTML(s, t) {
     var e = s.byId[t.lineId], l = e.line, p = e.pkg;
-    var where = p.orphan ? p.seller : p.seller + ', order ' + p.order;
+    var where = (p.orphan ? p.seller : p.seller + ', order ' + p.order) + (t.status === 'failed' ? '. ' + reasonText(t) : '');
     var st;
-    if (t.status === 'failed') st = '<span class="fail-text">' + (t.reason === 'timeout' ? 'No answer' : 'Not saved') + '</span><button class="sbtn" data-act="retry" data-arg="' + t.id + '" aria-label="Retry ' + l.name + '">Retry</button>';
+    if (t.status === 'failed') st = '<span class="fail-text">' + IC.warn + '</span><button class="sbtn" data-act="retry" data-arg="' + t.id + '" aria-label="Retry ' + l.name + '">Retry</button>';
     else if (t.status === 'saving') st = '<span class="spin" aria-hidden="true"></span>Saving';
     else st = '<span class="ok-text">' + IC.check + '</span>' + t.at.l;
     return '<div class="tline st-' + t.status + '"><span class="tl-what"><b>+1 ' + l.name + '</b><span>' + where + '</span></span><span class="tl-state">' + st + '</span></div>';
@@ -722,13 +725,13 @@ details code { font-size: 13px; }
     var st = lstate(s, l);
     var dis = st.k === 'full' ? ' aria-disabled="true" title="All ' + l.qty + ' are in"' : ' data-act="tick" data-arg="' + l.id + '"';
     var lab = st.k === 'failed' ? 'Retry ' + l.name : st.k === 'full' ? 'All ' + l.qty + ' ' + l.name + ' are in' : 'Tick one ' + l.name + ', ' + countOf(l);
-    var sub = st.k === 'failed' ? subText(st, l) + ' Tap the card to retry.' : l.set + '. ' + subText(st, l);
+    var sub = st.k === 'failed' ? subText(st, l) + ' Tap the card to retry.' : (subText(st, l) === l.set ? l.set : l.set + '. ' + subText(st, l));
     return '<button class="erow st-' + st.k + '"' + dis + ' aria-label="' + lab + '"><span class="er-top"><span class="er-name">' + l.name + '</span><span class="er-count">' + countOf(l) + '</span></span><span class="beads big-beads" aria-hidden="true">' + beadsFor(s, l) + '</span><span class="er-sub">' + sub + '</span></button>';
   }
   function curPkg(f, s) { var all = allPk(s); return all.filter(function (p) { return p.id === f.ui.pkg; })[0] || all[0]; }
   function envBody(f, s) {
     var p = curPkg(f, s), all = allPk(s), i = all.indexOf(p), u = sum(p);
-    var head = '<div class="env-head"><span class="env-pos">' + (p.orphan ? 'Orphaned mail' : 'Package ' + (i + 1) + ' of ' + s.packages.length) + '</span><h1 class="t2">' + p.seller + '</h1><span class="env-meta">' + (p.orphan ? 'Arrived ' + p.arrived + '. Counts toward no order.' : 'Order ' + p.order + ', ' + u[0] + ' of ' + u[1] + ' cards in') + '</span><span class="beads" role="img" aria-label="' + u[0] + ' of ' + u[1] + ' cards in' + (pkgFails(s, p) ? ', ' + pkgFails(s, p) + ' not saved' : '') + '">' + pkgBeads(s, p) + '</span></div>';
+    var head = '<div class="env-head"><span class="env-pos">' + (p.orphan ? 'Orphaned mail' : 'Package ' + (i + 1) + ' of ' + s.packages.length) + '</span><h1 class="t2">' + p.seller + '</h1><span class="env-meta">' + (p.orphan ? 'Arrived ' + p.arrived + '. Counts toward no order.' : 'Order ' + p.order + ', ' + u[0] + ' of ' + u[1] + ' cards in') + '</span><span class="beads" role="img" aria-label="' + u[0] + ' of ' + u[1] + ' cards in' + (pkgFails(s, p) ? ', ' + pkgFails(s, p) + ' not saved' : '') + '">' + pkgBeads(s, p) + '</span><span class="env-legend" aria-hidden="true"><span class="b b-in"></span> saved <span class="b"></span> not in yet <span class="b b-fail"></span> tap to retry</span></div>';
     var ax = f.d.key === 'ax5';
     return (ax ? '' : head) + '<div class="scroll" data-scroll="env-' + p.id + '" data-swipe="1">' + (ax ? head : '') + '<div class="stack"><div class="group">' + p.lines.map(function (l) { return erowHTML(s, l); }).join('') + '</div></div></div>';
   }

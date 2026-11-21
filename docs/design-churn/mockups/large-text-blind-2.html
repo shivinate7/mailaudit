@@ -107,7 +107,7 @@ button { font: inherit; color: inherit; }
   resize: both; min-width: 252px; min-height: 420px; max-width: 760px; max-height: 1000px;
 }
 .hinge {
-  background: repeating-linear-gradient(90deg, var(--hinge) 0 2px, transparent 2px 6px), var(--surface-sunk);
+  background: var(--hinge);
 }
 
 /* The drawn app. Dynamic Type sizes from the HIG typography page (read 2026-11-21). */
@@ -127,7 +127,7 @@ button { font: inherit; color: inherit; }
 }
 .screen::before {
   content: ""; position: absolute; inset: 0 0 auto 0; height: var(--safe-top);
-  background: repeating-linear-gradient(135deg, var(--surface-sunk) 0 6px, transparent 6px 12px);
+  background: var(--surface-sunk);
   pointer-events: none;
 }
 .screen::after {
@@ -182,6 +182,9 @@ button { font: inherit; color: inherit; }
 .meter i { display: block; height: 100%; background: var(--accent); }
 .screen[data-ts^="ax"] .facts { flex-direction: column; align-items: stretch; }
 .screen[data-ts^="ax"] .fig { font-size: var(--t3); line-height: var(--t3-l); }
+/* At AX sizes the pinned strip drops "cards here": the meter under the count carries it, and the list gains a line. */
+.screen[data-ts^="ax"] .facts-strip .fact:first-child .lab { position: absolute; width: 1px; height: 1px; overflow: hidden; clip-path: inset(50%); white-space: nowrap; }
+.screen[data-ts^="ax"] .meter { flex: 0 0 8px; }
 .facts-big { border: 0; padding: var(--space-4); flex-direction: column; align-items: stretch; gap: var(--space-3); }
 .facts-big .fig { font-size: var(--t1); line-height: var(--t1-l); }
 .facts-line .fig, .screen[data-ts^="ax"] .facts-line .fig { font-size: var(--hd, var(--bd)); line-height: var(--bd-l); }
@@ -268,7 +271,9 @@ button.pos { align-self: flex-start; min-height: 44px; padding: 0; background: n
   border: 1px solid var(--accent); border-radius: var(--radius); background: var(--accent-soft);
   color: var(--accent); font-weight: 700; cursor: pointer;
 }
-.s-row { padding-block: var(--space-2); border-bottom: 1px solid var(--rule); }
+/* The chip sits in a narrow end gutter, so it never wraps to a blank line and a row keeps its height when tapped. */
+.s-row { display: grid; grid-template-columns: 1fr auto; align-items: start; gap: var(--space-2); padding-block: var(--space-2); border-bottom: 1px solid var(--rule); }
+.s-row .nchip { font-size: var(--ft); line-height: var(--ft-l); margin-top: var(--space-2); }
 .s-add { display: inline; padding: var(--space-2) 0; background: none; border: 0; text-align: start; cursor: pointer; }
 .s-add[aria-disabled="true"] { cursor: default; color: var(--text-muted); }
 .s-name { font-weight: 600; }
@@ -365,7 +370,8 @@ button.s-dock .owed { color: inherit; }
     S.pend = S.cards.map(function () { return 0; });
     S.flash = ""; S.sheet = false; S.phase = "ready"; S.qi = firstOut();
     if (s === "editing") { S.pend[0] = 1; S.pend[5] = 2; }
-    if (s === "saved") { S.cards[0].a += 1; S.cards[5].a += 2; S.flash = "Saved 3 cards."; }
+    S.last = null;
+    if (s === "saved") { S.cards[0].a += 1; S.cards[5].a += 2; S.flash = "Saved 3 cards."; S.last = S.pend.slice(); S.last[0] = 1; S.last[5] = 2; }
     if (s === "done") { S.cards.forEach(function (c) { c.a = c.o; }); }
     if (s === "empty" || s === "loading" || s === "failed") { S.phase = s; }
     S.qi = firstOut();
@@ -548,7 +554,7 @@ button.s-dock .owed { color: inherit; }
     var q = outList(), show = S.all ? S.cards.map(function (_, i) { return i; }) : q;
     var intro = S.all
       ? '<p>All ' + S.cards.length + ' cards. <button class="word" data-act="filter" data-k="filter">Show only the ' + q.length + ' still out.</button></p>'
-      : '<p>' + (q.length ? 'These ' + q.length + ' cards are still out. ' : 'No card is still out. ') + '<button class="word" data-act="filter" data-k="filter">Show all ' + S.cards.length + '.</button></p>';
+      : '<p>' + (q.length ? '<span class="long">These </span>' + q.length + '<span class="long"> cards are</span> still out. ' : 'No card is still out. ') + '<button class="word" data-act="filter" data-k="filter">Show all ' + S.cards.length + '.</button></p>';
     var rows = show.map(function (i) {
       var c = S.cards[i], p = S.pend[i], h = c.a + p, full = h >= c.o;
       var label = c.n + ": " + h + " of " + c.o + " here" + (p ? ", " + p + " new" : "") + (full ? "." : ". Tap to add one.");
@@ -565,7 +571,9 @@ button.s-dock .owed { color: inherit; }
     }
     var f = '<span class="s-facts"><span class="nw">' + num(t.here) + '</span> <span class="nw">of ' + num(t.tot) + '</span><span class="long"> cards are</span> here. <span class="owed nw">' + money(t.owed) + '</span><span class="long"> is still</span> owed.</span>';
     if (t.pend) return '<button class="s-dock" data-act="save" data-k="save" data-new="the whole dock is Save">' + f + '<span class="s-act">Save ' + plural(t.pend, "card") + '</span></button>';
-    return '<div class="s-dock" role="group" aria-label="Totals" data-new="facts and Save in one dock" data-k="save">' + f + '<span class="s-act' + (S.flash ? "" : " quiet") + '" aria-live="polite">' + esc(reasonText()) + '</span></div>';
+    /* The whole dock is a large target, so a save made by mistake gets an Undo right where it was pressed. */
+    var undo = S.last && S.flash.indexOf("Saved") === 0 ? ' <button class="word" data-act="undosave" data-k="undosave">Undo.</button>' : "";
+    return '<div class="s-dock" role="group" aria-label="Totals" data-new="facts and Save in one dock" data-k="save">' + f + '<span class="s-act' + (S.flash ? "" : " quiet") + '" aria-live="polite">' + esc(reasonText()) + undo + '</span></div>';
   }
   function sentenceCompact() {
     return '<div class="col" id="pick-sentence"><div class="bar">' + cancelBtn() + '<h2 class="bar-title">Check in</h2><span></span></div>' +
@@ -716,9 +724,14 @@ button.s-dock .owed { color: inherit; }
       if (S.pend[i] > 0) { S.pend[i] -= 1; S.flash = ""; }
     } else if (a === "save") {
       t = totals(); if (!t.pend) return;
+      S.last = S.pend.slice();
       S.cards.forEach(function (c, j) { c.a += S.pend[j]; S.pend[j] = 0; });
       S.flash = "Saved " + plural(t.pend, "card") + ".";
       if (S.qi >= 0 && S.cards[S.qi].a >= S.cards[S.qi].o) S.qi = firstOut();
+    } else if (a === "undosave") {
+      if (!S.last) return;
+      S.cards.forEach(function (c, j) { c.a -= S.last[j]; S.pend[j] = S.last[j]; });
+      S.last = null; S.flash = "";
     } else if (a === "cancel") {
       t = totals(); if (!t.pend) return;
       S.pend = S.pend.map(function () { return 0; });

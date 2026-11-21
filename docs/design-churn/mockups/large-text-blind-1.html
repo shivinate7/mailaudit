@@ -177,7 +177,7 @@ button { font: inherit; color: inherit; }
 /* Buttons */
 .btn { border: 0; border-radius: var(--radius); min-height: 44px; min-width: 44px; cursor: pointer; }
 .textbtn { background: none; color: var(--accent); font-size: var(--bd); line-height: var(--bd-lh); padding: 0 var(--space-2); }
-.textbtn.ghost { visibility: hidden; }
+.textbtn[aria-disabled="true"] { color: var(--muted); cursor: default; }
 .primary {
   width: 100%;
   background: var(--accent); color: var(--on-accent);
@@ -267,13 +267,16 @@ button { font: inherit; color: inherit; }
 .hero { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); }
 .hero .fig, .hero .of { font-size: var(--hfig); line-height: var(--hfig-lh); }
 .hero .facts { flex-direction: column; align-items: stretch; }
+.qwrap { display: flex; flex-direction: column; }
+.qwrap > .q { margin-block-start: auto; }
 .q { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-5) var(--space-4); }
 .q-name { margin: 0; font-size: var(--t1); line-height: var(--t1-lh); font-weight: 700; hyphens: auto; overflow-wrap: normal; }
 .q-sub { margin: 0; color: var(--muted); }
+.screen:not([data-ax]) .q-name { font-size: var(--lt); line-height: var(--lt-lh); }
 .q-pos { margin: 0; font-size: var(--fn); line-height: var(--fn-lh); color: var(--muted); }
 .answers { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-2); background: var(--raised); border-top: 1px solid var(--line); }
 .alt { display: flex; flex-wrap: wrap; gap: var(--space-2); }
-.alt > .btn { flex: 1 1 5.5em; }
+.alt > .btn { flex: 1 1 0; min-width: fit-content; }
 .stepper { flex: 1 1 100%; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); }
 .stepper .btn { min-width: 2.2em; }
 .stepper output { font-size: var(--fig); line-height: var(--fig-lh); font-weight: 700; font-variant-numeric: tabular-nums; }
@@ -297,7 +300,7 @@ button { font: inherit; color: inherit; }
 .anno { position: relative; outline: 2px dashed var(--anno); outline-offset: -2px; }
 .anno::after {
   content: "New: " attr(data-new);
-  position: absolute; top: 0; right: 4px; z-index: 8; transform: translateY(-50%);
+  position: absolute; top: 0; right: 0; z-index: 8;
   padding: 1px 6px; border-radius: 4px;
   background: var(--anno); color: var(--anno-on);
   font: 600 11px/1.35 -apple-system, system-ui, sans-serif;
@@ -329,7 +332,33 @@ button { font: inherit; color: inherit; }
   <div class="hidden-list" id="hidden-list"></div>
 </header>
 
-<main id="concepts"></main>
+<main id="concepts">
+<noscript><p class="top">This mockup draws its screens with script. Turn script on to see them.</p></noscript>
+<section class="concept" id="concept-dock" data-c="dock" aria-labelledby="h-dock">
+<div class="concept-head"><h2 id="h-dock">Thumb dock</h2><button class="pagebtn" data-page="only" data-k="dock">Show only this</button><button class="pagebtn hide" data-page="hide" data-k="dock">Hide this concept</button><p>One list, grouped by seller. The arrived count, the money still owed and the main button share one band at the bottom, in reach of the thumb. Cancel and Undo sit in the title bar, where iOS puts Cancel. Open, the sellers sit on the first screen and their cards on the second.</p></div>
+<div class="frames">
+<figure class="frame-wrap" data-i="0"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="1"><figcaption></figcaption><div class="fit"><div class="device" id="focus-dock"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="2"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen open" data-kind="open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="3"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="phone" data-device="iphone-large" style="--w:440px;--h:956px"></div></div></div></figure>
+</div></section>
+<section class="concept" id="concept-tabs" data-c="tabs" aria-labelledby="h-tabs">
+<div class="concept-head"><h2 id="h-tabs">Fact tabs</h2><button class="pagebtn" data-page="only" data-k="tabs">Show only this</button><button class="pagebtn hide" data-page="hide" data-k="tabs">Hide this concept</button><p>The two facts are the tabs. Tap the money to see the cards still coming; tap the count to see the cards that arrived. The facts are the way around, so they are always on screen. The button bar sits at the bottom; at accessibility sizes Cancel moves to the title bar.</p></div>
+<div class="frames">
+<figure class="frame-wrap" data-i="0"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="1"><figcaption></figcaption><div class="fit"><div class="device" id="focus-tabs"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="2"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen open" data-kind="open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="3"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="phone" data-device="iphone-large" style="--w:440px;--h:956px"></div></div></div></figure>
+</div></section>
+<section class="concept" id="concept-ask" data-c="ask" aria-labelledby="h-ask">
+<div class="concept-head"><h2 id="h-ask">One card at a time</h2><button class="pagebtn" data-page="only" data-k="ask">Show only this</button><button class="pagebtn hide" data-page="hide" data-k="ask">Hide this concept</button><p>No list on the first screen: the facts fill it, with one button to start. Then the app asks about one card at a time, in big type, with the answers under the thumb. The list is one tap away when folded, and always open on the second screen when open.</p></div>
+<div class="frames">
+<figure class="frame-wrap" data-i="0"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="1"><figcaption></figcaption><div class="fit"><div class="device" id="focus-ask"><div class="screen" data-kind="folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="2"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen open" data-kind="open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"></div></div></div></figure>
+<figure class="frame-wrap" data-i="3"><figcaption></figcaption><div class="fit"><div class="device"><div class="screen" data-kind="phone" data-device="iphone-large" style="--w:440px;--h:956px"></div></div></div></figure>
+</div></section>
+</main>
 
 <script>
 "use strict";
@@ -495,7 +524,7 @@ function listPrimary(m) {
 function slotBtn(m, ghost) {
   if (m.picks.size) return `<button class="btn textbtn" data-act="cancel">Cancel</button>`;
   if (m.last) return `<button class="btn textbtn" data-act="undo">Undo</button>`;
-  return ghost ? `<button class="btn textbtn ghost" tabindex="-1" aria-hidden="true">Cancel</button>` : "";
+  return ghost ? `<button class="btn textbtn" aria-disabled="true" title="Nothing is picked">Cancel</button>` : "";
 }
 
 /* ---------- Concept: Thumb dock ---------- */
@@ -530,7 +559,7 @@ function renderDock(m, f) {
       `<div class="hinge" aria-hidden="true"></div>` +
       `<div class="page">${dockNav(m, f, o ? o.seller : "Cards")}` +
         `<div class="scroll" data-k="cards">${o ? dockList(m, f, m.sel) : ""}</div>` +
-        `<div class="dock">${primaryBtn(p, f, "button under the thumb")}</div></div>`;
+        `<div class="dock anno" data-new="button under the thumb">${primaryBtn(p, f)}</div></div>`;
   }
   return `<div class="page">${dockNav(m, f, "Mail day", !f.ax)}` +
     `<div class="scroll main" data-k="list">${f.ax ? "" : `<h1 class="lt">Mail day</h1>`}<div class="scroll-body">${dockList(m, f)}</div></div>` +
@@ -629,7 +658,7 @@ function askQuestion(m, f, showListBtn) {
   const c = card(m, m.run.cur); const o = m.orders[c.oi];
   const pos = o.cards.indexOf(c) + 1; const left = c.qty - c.got;
   const nav = `<div class="nav"><div class="nav-lead"><button class="btn textbtn" data-act="stop">Cancel</button></div>` +
-    `<div class="nav-ttl">${esc(o.seller)}</div><div class="nav-trail">${trail}</div></div>`;
+    `<div class="nav-ttl">${f.ax ? "" : esc(o.seller)}</div><div class="nav-trail">${trail}</div></div>`;
   const sub = (c.got === 0 ? `${c.qty} ordered, none arrived yet.` : `${c.qty} ordered, ${c.got} arrived.`) + (isOpen(c) ? " How many came?" : "");
   let answers;
   if (!isOpen(c)) {
@@ -646,8 +675,8 @@ function askQuestion(m, f, showListBtn) {
       `<div class="alt">${left > 1 ? `<button class="btn secondary" data-act="some">Some</button>` : ""}<button class="btn secondary" data-act="notyet">None</button></div>`;
   }
   return `<div class="page">${nav}<div class="factband">${factsHTML(m, f, { bare: true })}</div>` +
-    `<div class="scroll" data-k="q"><div class="q"><p class="q-name">${esc(c.name)}</p><p class="q-sub">${sub}</p>` +
-    `<p class="q-pos">Card ${pos} of ${o.cards.length} from this seller</p></div></div>` +
+    `<div class="scroll qwrap" data-k="q"><div class="q"><p class="q-name">${esc(c.name)}</p><p class="q-sub">${sub}</p>` +
+    `<p class="q-pos">Card ${pos} of ${o.cards.length} from ${f.ax ? esc(o.seller) : "this seller"}</p></div></div>` +
     `<div class="answers anno" data-new="answers under the thumb">${answers}</div></div>`;
 }
 function renderAsk(m, f) {
@@ -815,7 +844,7 @@ window.addEventListener("hashchange", () => { const old = G.s; readHash(); if (G
 
 readHash();
 M = Object.fromEntries(CONCEPTS.map(c => [c.key, makeModel(G.s)]));
-buildSections();
+if (!document.querySelector(".concept")) buildSections();
 applyAll();
 if (G.c) document.getElementById("concept-" + G.c).scrollIntoView();
 </script>

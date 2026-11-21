@@ -226,8 +226,7 @@ details.said summary { min-block-size: var(--tap); display: flex; align-items: c
 /* ---------- Sieve ---------- */
 .sv-head { flex: none; display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-4) 0; min-block-size: 64px; }
 .sv-count { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
-.sv-big { font-size: 56px; line-height: 60px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
-.ax5 .sv-big { font-size: var(--fs-lt); line-height: var(--lh-lt); }
+.sv-big { font-size: var(--fs-lt); line-height: var(--lh-lt); font-weight: 700; font-variant-numeric: tabular-nums; }
 .ax5 .sv-head { flex-direction: column; align-items: flex-start; }
 .pills { flex: none; display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-4); min-block-size: 60px; align-content: flex-start; }
 .pill { min-block-size: var(--tap); border-radius: 22px; border: 0; background: var(--accent-soft); color: var(--accent); padding: 0 var(--space-2) 0 var(--space-4); display: inline-flex; align-items: center; gap: var(--space-1); cursor: pointer; font-size: var(--fs-sub); font-weight: 600; }
@@ -500,6 +499,7 @@ function openPose(f) {
   let right;
   if (f.st.orderId) right = detail(f, G.concept === "sieve", "Candidates");
   else if (G.concept === "sieve" && frameState(f) !== "loading" && frameState(f) !== "failed" && frameState(f) !== "empty") right = sieveList(f);
+  else if (frameState(f) === "loading" || frameState(f) === "failed" || frameState(f) === "empty") right = `<div class="screen"></div>`; // nothing to pick yet, so the page claims nothing
   else right = `<div class="screen"><div class="placeholder"><p class="t-t3">No order open</p><p>Pick an order on the left to see its cards here.</p></div></div>`;
   return `<div class="page">${`<div class="${appCls(f)}">${chrome()}${finder(f)}</div>`}</div><div class="hinge" aria-hidden="true"></div><div class="page">${`<div class="${appCls(f)}">${chrome()}${right}</div>`}</div>`;
 }
@@ -667,7 +667,7 @@ function sieveFinder(f) {
 }
 function sieveList(f) {
   const hits = sieveBase().filter(o => sieveMatch(o, f.st.clues));
-  const body = hits.length ? grouped(f, hits) : `<div class="msg"><p>No order fits all your clues.</p><button class="btn btn-tinted" data-act="unclue-last">Remove the last clue</button></div>`;
+  const body = hits.length ? grouped(f, hits) : ""; // the left page already says no order fits, with its one control
   return `<div class="screen"><div class="titlebar"><h2 class="t-t2">Pick yours</h2><p class="t-ft muted">Newest first. The list narrows as you answer.</p></div><div class="scroll" data-scroll="sv-right" data-new="live candidate list">${body}</div></div>`;
 }
 
@@ -687,7 +687,8 @@ function detail(f, withBack, backLabel) {
     return `<li class="line"><button class="tick" data-act="tick" data-line="${i}" aria-pressed="${got >= l.qty}" aria-label="${esc(l.name)}: ${got >= l.qty ? "arrived" : "not arrived"}"${dis}>${tickIcon(unk ? 0 : got, l.qty)}</button><span class="ln-name"><span>${esc(l.name)}</span><span class="t-ft muted num">${l.qty > 1 ? `${l.qty} at ${money(l.price)}` : money(l.price)}</span></span><span class="ln-right">${right}<span class="t-sub num">${money(l.qty * l.price)}</span></span></li>`;
   }).join("");
   let bar;
-  if (unk) bar = `<div class="d-bar"><p class="t-ft">Check-ins could not be read, so ticks are off.</p><button class="btn btn-tinted" data-act="recover">Try again</button></div>`;
+  // In the open pose the finder page already offers Try again, so the bar only says why ticks are off.
+  if (unk) bar = `<div class="d-bar"><p class="t-ft">Check-ins could not be read, so ticks are off.</p>${f.def.pose === "open" ? "" : `<button class="btn btn-tinted" data-act="recover">Try again</button>`}</div>`;
   else if (f.st.undo && f.st.undo.id === o.id) bar = `<div class="d-bar" role="status" data-new="next envelope"><p class="t-sub">Marked all ${n} arrived.</p><button class="btn btn-plain" data-act="undo">Undo</button><button class="btn btn-primary" data-act="next">Next envelope</button></div>`;
   else if (s === "all") bar = `<div class="d-bar"><p class="t-sub muted">Every card in this order is ticked.</p></div>`;
   else bar = `<div class="d-bar"><button class="btn btn-primary btn-wide" data-act="all" data-new="one press for the whole package">Mark all ${n - have} arrived</button></div>`;

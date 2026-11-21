@@ -426,6 +426,7 @@ function Frame(concept, devKey) {
   }
   // The open Duo's desk narrows by one initial, not a range.
   if (devKey === 'duo' && concept === 'thumb-index' && this.ui.range !== 'any') { this.ui.letter = s === 'empty' ? 'W' : 'G'; this.ui.range = 'any'; }
+  if (s === 'picked' && devKey !== 'duo') this.pendingCard = STORY;
   if (s === 'picked' && concept === 'week-ruler') { this.ui.week = weekStart(TODAY - 9 * DAY); this.pendingWeek = this.ui.week; }
   if (s === 'empty') { this.ui.age = 'over'; this.ui.range = 5; this.ui.st = 'some'; if (concept !== 'thumb-index') this.ui.q = 'Mox Opal'; if (concept !== 'thumb-index') this.ui.find = true; }
   if (s === 'find') { this.ui.find = true; this.ui.q = 'Pond'; }
@@ -461,7 +462,9 @@ function card(p, f, coll) {
   var st = stateOf(p), left = qty(p) - got(p), frac = got(p) / qty(p);
   var h = '<div class="pcard' + (st === 'all' ? ' done' : '') + '" data-gk="' + esc(p.gk) + '">';
   if (frac > 0) h += '<div class="bar"><i style="width:' + (frac * 100) + '%"></i></div>';
-  h += '<div class="ph"' + (coll ? ' data-act="collapse" data-gk="' + esc(p.gk) + '" role="button" tabindex="0" aria-expanded="true" aria-label="' + esc(p.seller) + ', close"' : '') + '><div class="who"><b>' + esc(p.seller) + '</b><span>' + fmtDate(p.t) + '</span></div><div class="slot">' +
+  // Under a seller head the seller is said once, so the card heads on its order date (ux-label-once).
+  var who = f.noSeller ? '<b>Ordered ' + fmtDate(p.t) + '</b><span>' + (p.age === 0 ? 'today' : pl(p.age, 'day') + ' ago') + '</span>' : '<b>' + esc(p.seller) + '</b><span>' + fmtDate(p.t) + '</span>';
+  h += '<div class="ph"' + (coll ? ' data-act="collapse" data-gk="' + esc(p.gk) + '" role="button" tabindex="0" aria-expanded="true" aria-label="' + esc(p.seller) + ', close"' : '') + '><div class="who">' + who + '</div><div class="slot">' +
     (st === 'all' ? '<span class="rcv">RECEIVED</span>' : '<span class="pill">' + left + ' left</span>') + '</div></div>';
   h += '<div style="display:flex"><span class="oid">' + p.oid + '</span></div>';
   h += '<div class="crow"><span class="mini" role="button" tabindex="0">Stamp</span>' +
@@ -555,7 +558,9 @@ function sellerPage(f, withBack) {
   var all = PKGS.filter(function (p) { return p.seller === s; }), rec = all.filter(function (p) { return stateOf(p) === 'all'; }).length;
   var h = '<div class="shead tag new" data-tag="New: seller head">' + (withBack ? '<button type="button" class="back" data-act="back">All Sellers</button>' : '') +
     '<h3>' + esc(s) + '</h3><span>' + pl(all.length - rec, 'package') + ' owed &middot; ' + rec + ' received</span></div>';
+  f.noSeller = true;
   h += '<div class="stack">' + (ps.length ? ps.map(function (p) { return card(p, f); }).join('') : emptyState(f)) + '</div>';
+  f.noSeller = false;
   return h;
 }
 function renderPigeon(f) {
@@ -747,6 +752,13 @@ Frame.prototype.render = function (keepFocus) {
     this.spy();
   }
   if (this.pendingWeek) { this.jump(this.pendingWeek); this.pendingWeek = null; }
+  if (this.pendingCard && this.c !== 'pigeonholes') {
+    // The "Picked" link opens on the envelope in hand, with its slip already opened into the card.
+    var gk = this.pendingCard, sc = this.el.querySelector('[data-scroll="m"]'), pc = null;
+    this.el.querySelectorAll('.pcard').forEach(function (x) { if (x.dataset.gk === gk) pc = x; });
+    if (sc && pc) { sc.scrollTop = offTop(pc, sc) - 48; this.lockUntil = Date.now() + 400; }
+    this.pendingCard = null;
+  }
 };
 Frame.prototype.draw = function () { return this.c === 'pigeonholes' ? renderPigeon(this) : this.c === 'week-ruler' ? renderWeek(this) : renderThumb(this); };
 function offTop(el, anc) { var y = 0; while (el && el !== anc) { y += el.offsetTop; el = el.offsetParent; } return y; }

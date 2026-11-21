@@ -149,7 +149,8 @@ figcaption b { font-family:var(--cochin); font-size:17px; color:var(--ink); }
 .slot { position:relative; z-index:1; width:132px; height:44px; display:flex; align-items:center; justify-content:flex-end; gap:0; }
 .act { all:unset; cursor:pointer; box-sizing:border-box; height:44px; padding:0 12px; border-radius:8px; display:inline-flex; align-items:center; justify-content:center; gap:6px;
   font:700 12px var(--mono); letter-spacing:.3px; }
-.act.claim { width:132px; background:var(--accent); color:var(--card); }
+/* Un-inked until pressed: an outline with the stamp glyph. The press inks the red impression, so the strong mark means done. */
+.act.claim { width:132px; background:var(--card); color:var(--accent); border:1.5px solid var(--accent); }
 .act.claim svg { width:16px; height:16px; }
 .act.open { width:96px; border:1px solid var(--accent); color:var(--accent); background:var(--card); }
 .act.undo { width:44px; padding:0; font-weight:400; color:var(--accent); text-decoration:underline; text-underline-offset:3px; }
@@ -506,12 +507,14 @@ figcaption b { font-family:var(--cochin); font-size:17px; color:var(--ink); }
 
   function rowHTML(f, o) {
     const owed = g.s === "unknown" ? `owed: unknown` : `<em>${o.owed}</em> of <em>${o.of}</em> cards · <em>${money(o.value)}</em>`;
+    /* "+" marks days past day 30, so the figure keeps its meaning once the band head scrolls away */
     const n = o.tier === "deadline" ? o.days - 30 : o.left;
+    const fig = o.tier === "deadline" ? `+${n}` : `${n}`;
     const sel = f.dev === "open" && f.sel === o.gk ? " sel" : "";
     const pick = f.dev === "open" ? `<button class="pick" data-act="select" data-gk="${esc(o.gk)}" aria-label="Show ${esc(o.seller)}"></button>` : "";
     return `<div class="row${sel}" data-row="${esc(o.id)}">
       ${pick}
-      <div class="n ${o.tier}" aria-label="${o.tier === "deadline" ? `${n} days past day 30` : `${n} days left`}">${n}<span class="unit"> ${n === 1 ? "day" : "days"} ${o.tier === "deadline" ? "over" : "left"}</span></div>
+      <div class="n ${o.tier}" aria-label="${o.tier === "deadline" ? `${n} days past day 30` : `${n} days left`}">${fig}<span class="unit"> ${n === 1 ? "day" : "days"} ${o.tier === "deadline" ? "over" : "left"}</span></div>
       <div class="t"><b>${esc(o.seller)}</b><span class="owed">${owed}</span>
         <span class="meta">ordered ${short(o.t)} · by ${short(o.claimBy)}</span>${f.concept === "tab" ? ruler(o) : ""}</div>
       ${slot(f, o)}</div>`;
@@ -656,7 +659,7 @@ figcaption b { font-family:var(--cochin); font-size:17px; color:var(--ink); }
     for (const concept of ["desk","tab"]) {
       for (const dev of DEVICES) { frames[`${concept}-${dev}`] = freshFrame(concept, dev); render(frames[`${concept}-${dev}`]); }
       /* The AX5 frame opens scrolled to the first band, so a row shows at that size. */
-      const ax = document.querySelector(`#dev-${concept}-ax5 .scr`), band = ax && ax.querySelector(".band, .state, .rows");
+      const ax = document.querySelector(`#dev-${concept}-ax5 .scr`), band = ax && (ax.querySelector(".rows") || ax.querySelector(".state"));
       if (band) ax.scrollTop = band.getBoundingClientRect().top - ax.getBoundingClientRect().top + ax.scrollTop - 8;
     }
     document.getElementById("concept-desk").hidden = !on("concept-desk") || g.c === "tab";

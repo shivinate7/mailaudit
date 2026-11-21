@@ -71,7 +71,8 @@ No "Today:" label: a blind designer sees no current screen, so every marked part
 11. **No tab bar.** This brief covers one job on one screen, and a blind designer cannot know the
     app's other sections. tokens.md says a phone app navigates with a bottom tab bar. Gain: the
     bottom of the screen goes to the box or the question. Loss: other sections need a way in.
-    Pick: leave it to the informed designer. **Owner grant: yes**, if the app has sections.
+    Question: does this screen sit under a tab bar with the app's other sections? **Owner grant:
+    yes.**
 
 12. **States** (`ux-unknown-is-not-empty`). Each state is distinct.
     - Loading: a status line and fixed-size skeleton rows.
@@ -86,13 +87,13 @@ No "Today:" label: a blind designer sees no current screen, so every marked part
 14. **Colour and type.** The colours are my own, by role, in a light set and a dark set. I used no
     product or Apple system colours. The airmail blue accent is for actions. The arrived, partial
     and danger roles each check against their surface. The font is the system font. Sizes come from
-    the iOS Dynamic Type table, Large (default) and AX5. The Sieve count (56 pt) is the one display
-    size, and it uses Large Title at AX5. Spacing is on the 4 px step, with an 8 px radius.
+    the iOS Dynamic Type table, Large (default) and AX5. The Sieve count uses Large Title. Spacing
+    is on the 4 px step, with an 8 px radius.
 
 15. **Default order of the waiting list: newest first.** This follows `ux-order-holds-still`. Gain:
     the order is plain, and it matches the Sieve dot groups. Loss: orders bought today sit on top,
-    and they are the least likely to be in today's mail. The other choice is oldest first within the
-    last four weeks. **Owner grant: yes**, if the order should change.
+    and they are the least likely to be in today's mail. Question: is newest first right for the
+    mail-day list? **Owner grant: yes.**
 
 ## Devices and sizes
 

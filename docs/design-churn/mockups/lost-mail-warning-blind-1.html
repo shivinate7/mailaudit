@@ -353,6 +353,7 @@ figcaption { color: var(--text-2); font-size: 13px; line-height: 18px; max-width
 .chip.gone { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line); opacity: .7; }
 .chip.on { outline: 3px solid var(--tint); outline-offset: 1px; }
 .chip.entering { box-shadow: inset 4px 0 0 var(--nudge), 0 0 0 2px var(--tint); }
+.chip[hidden] { display: none; }
 .track .overflow { position: absolute; right: var(--space-2); top: var(--space-6); min-height: 44px; padding: 0 var(--space-3); border: 0; border-radius: 22px; background: var(--text); color: var(--surface); font-size: 13px; font-weight: 600; cursor: pointer; }
 .tray { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-4) 0; }
 .tray .chips { display: flex; gap: var(--space-2); overflow-x: auto; min-height: 44px; align-items: center; }
@@ -716,9 +717,9 @@ function agenda(c, f, onlyDay) {
   if (onlyDay != null) dl = dl.filter(([t]) => t === onlyDay);
   const closed = open(c).filter(p => p.zone === 'closed');
   const unk = open(c).filter(p => p.zone === 'unknown');
-  let h = '';
+  let h = '', tail = '';
   if (onlyDay == null && closed.length) {
-    h += `<div class="sect">${closedBtn(st, closed)}
+    tail = `<div class="sect">${closedBtn(st, closed)}
       ${st.closedOpen ? `<div class="group">${closed.map(p => row(c, f, p, 'cal')).join('')}</div>` : ''}</div>`;
   }
   if (onlyDay == null && unk.length) {
@@ -730,6 +731,7 @@ function agenda(c, f, onlyDay) {
     h += `<div class="sect" id="ag-${c}-${f}-${t}"><div class="agenda-h"><span class="d z-${z}">${dayName(t)}</span><span class="m">${money(sum(ps))}</span></div>
       <div class="group">${ps.map(p => row(c, f, p, 'cal')).join('')}</div></div>`;
   });
+  h += tail;
   if (!dl.length && onlyDay != null) h = `<div class="state"><p class="t-sh">No claim window closes ${fd(onlyDay)}.</p><button class="btn secondary" data-a="calday" data-t="" data-f="${f}">Show every day</button></div>`;
   if (!dl.length && onlyDay == null && !closed.length && !unk.length) h = `<div class="state"><p class="t-t3">All is well.</p><p class="t-sh muted">No open package is past day 14.</p></div>`;
   return h;
@@ -913,6 +915,7 @@ function layoutTracks(root) {
     // offers the list, so a crowded day never misplaces money on the clock.
     let over = 0;
     chips.forEach(ch => {
+      ch.hidden = false;
       const top = Math.max(0, Math.min(H - 40, y(+ch.dataset.age) + per / 2 - 20));
       const lane = bottoms.findIndex(bt => bt + 4 <= top);
       if (lane < 0) { ch.hidden = true; over++; return; }
