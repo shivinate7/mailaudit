@@ -1,6 +1,6 @@
 {
   "added": "2026-11-21T06:36:00Z",
-  "context": "Goal: sessions can delete merged and temporary branches on their own.\nProblem (rule): your ruling says the cloud environment carries a GitHub token named SHIV_GITHUB_TOKEN, it is not set (checked in two sessions), and branch deletes return 403; only you can create a token.\nBased on (ruling): the claude-settings ruling r45 (the relay drops branch-delete pushes).\nBased on (read): ten branches wait for deletion: ideas/mock-delight, ideas/mock-deputy, ideas/mock-money, ideas/mock-say-it-back, red/duo-post-pins, design-duo-post-pins, duo-post-pins, duo-post-bar-53, red/duo-post-bar-53, design-duo-post-bar-53.\nDeparts from: main has no such token in the cloud environment \u2014 this adds one cloud environment variable.\nWaiting on: your answer; the branches stay until then.",
+  "context": "Goal: sessions can delete merged and temporary branches on their own.\nProblem (rule): you already ruled that the cloud environment carries a GitHub token named SHIV_GITHUB_TOKEN, it is still not set (checked in two sessions), and branch deletes return 403; only you can create the token.\nBased on (ruling): r45, your ruling of 2026-11-11 14:25 CST in claude-settings: you approve a GitHub token in the cloud environment as SHIV_GITHUB_TOKEN, which you create, so sessions can delete branches.\nBased on (read): ten branches wait for deletion: ideas/mock-delight, ideas/mock-deputy, ideas/mock-money, ideas/mock-say-it-back, red/duo-post-pins, design-duo-post-pins, duo-post-pins, duo-post-bar-53, red/duo-post-bar-53, design-duo-post-bar-53.\nDeparts from: main has no such token in the cloud environment \u2014 this adds one cloud environment variable.\nWaiting on: your answer; the branches stay until then.",
   "home": "claude-settings ruling r45; cloud environment settings",
   "id": "cloud-env-branch-delete-token",
   "kind": "task",
@@ -14,18 +14,18 @@
   "options": [
     {
       "gain": "Sessions delete merged and temporary branches themselves; the ten waiting branches go.",
-      "how": "You create a GitHub token that can delete branches in this repo and add it to the cloud environment as SHIV_GITHUB_TOKEN. Never paste its value in chat.",
+      "how": "You create a GitHub token that can delete branches in this repo and add it to the cloud environment as SHIV_GITHUB_TOKEN, as ruling r45 says. Never paste its value in chat.",
       "id": "create-token",
       "key": "a",
-      "label": "I create the token and add it to the environment",
+      "label": "I create the token and add it to the environment (as ruled)",
       "lose": "You make and look after one more credential."
     },
     {
       "gain": "No new credential.",
-      "how": "The ten branches stay on GitHub until you delete them by hand.",
+      "how": "The ten branches stay on GitHub until you create the token or delete them by hand. Ruling r45 stands.",
       "id": "leave-branches",
       "key": "b",
-      "label": "No token; leave the branches",
+      "label": "Not now; leave the branches",
       "lose": "Merged and temporary branches pile up and nobody clears them."
     }
   ],
@@ -33,20 +33,20 @@
   "recommended": "a",
   "ref": "claude-settings ruling r45",
   "repo": "shivinate7/mailaudit",
-  "short": "Token for deleting branches",
+  "short": "Create the branch-delete token (r45)",
   "shown": [
     {
       "id": "create-token",
       "key": "a",
-      "label": "I create the token and add it to the environment"
+      "label": "I create the token and add it to the environment (as ruled)"
     },
     {
       "id": "leave-branches",
       "key": "b",
-      "label": "No token; leave the branches"
+      "label": "Not now; leave the branches"
     }
   ],
   "status": "open",
-  "title": "May the cloud environment get a GitHub token so sessions can delete merged and temporary branches?",
-  "why": "Your ruling already asks for it, and only you can create a token."
+  "title": "Your ruling r45 is waiting on you: create the GitHub token for the cloud environment so sessions can delete branches",
+  "why": "Your ruling r45 already approves it; only you can create a token."
 }
