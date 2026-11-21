@@ -59,7 +59,7 @@ A typed query matches as the web search does: a case-insensitive part of the car
 
 Packages does not spread on the open Duo. It keeps the web's one-page layout. Default, not owner.
 
-Card in Hand opens from a `hand-open` control in Packages. The control is ruled, item 35 a (see Ruled). Default, not owner: the control sits at the top of Packages, on two pages side by side only, and covers both pages. The mockup (`docs/design/duo-card-in-hand/index.html` at commit b8d11e7, in the archive `origin/archive/design/duo-round2` at head 441b4e46) makes Card in Hand the Packages tab itself, which is not chosen.
+Card in Hand opens from a `hand-open` control in Packages. The control is ruled, item 35 a (see Ruled). Default, not owner: the control sits at the top of Packages, on two pages side by side only, and covers both pages. The mockup (its index page at commit b8d11e7, in the archive `origin/archive/design/duo-round2` at head 441b4e46) makes Card in Hand the Packages tab itself, which is not chosen.
 
 A unique name shows its envelope with a check-in tap on each line. Post shows only when a held card came with the typed one, and it never runs by itself. Default, not owner.
 
