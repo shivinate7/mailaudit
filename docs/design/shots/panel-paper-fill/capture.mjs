@@ -21,7 +21,7 @@ const STORE_KEY = "mailday:mailday:v1"; // STORE_KEY in test/screens.mjs
 const OVERLAY = `
 .mdl-lcard:has(> .mdl-panel) { position: relative; overflow: visible; }
 .mdl-lcard > .mdl-panel { position: absolute; left: 0; right: 0; z-index: 4; }`;
-const NOFILL = `.mdl-lcard > .mdl-panel { background: transparent; }`;
+const NOFILL = `.mdl-lcard > .mdl-panel { background: transparent !important; }`; // beats the panel's inline panelWrap style
 const FILL = `.mdl-lcard > .mdl-panel { background: ${C.paper}; }`;
 const RULE = `.mdl-lcard > .mdl-panel { border-bottom: 1px solid ${C.line}; }`;
 const STYLE = { inflow: null, none: OVERLAY + NOFILL, paper: OVERLAY + FILL, rule: OVERLAY + FILL + RULE };
@@ -69,6 +69,7 @@ for (const width of [375, 760]) {
         const p = document.querySelector(".mdl-panel");
         if (p) {
           const q = p.getBoundingClientRect();
+          out.panelBg = getComputedStyle(p).backgroundColor;
           out.panel = { top: Math.round(q.top + window.scrollY), height: Math.round(q.height), width: Math.round(q.width) };
           const card = p.closest(".mdl-lcard");
           if (card) out.cardBottom = Math.round(card.getBoundingClientRect().bottom + window.scrollY);

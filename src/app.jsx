@@ -1706,8 +1706,9 @@ const ITEM_SORTS = [
 /* Paper fill: a panel is to overlay the list (motion-disclosure-panels-arrive,
    debt panels-overlay-unbuilt), and an unfilled overlay shows the rows through
    it. `paper` is opaque. It is not `card`, which painted a beige rectangle with
-   square, full-bleed edges. The option grid still reads: optGrid paints C.line and each optCell paints
-   C.card over it, so the cells sit slightly raised against the panel. */
+   square, full-bleed edges. The option grid still reads: optGrid paints C.line
+   and each optCell paints C.card over it, so the cells sit slightly raised
+   against the panel. */
 const panelWrap = {
   padding: "4px 8px 12px",
   borderTop: `1px solid ${C.line}`,

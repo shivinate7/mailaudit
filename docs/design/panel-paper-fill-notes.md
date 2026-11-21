@@ -11,7 +11,7 @@ Deep links: `#p=sort` or `#p=history` for the panel, `w=375` or `w=760` for the 
 - Sample data: the fixture's counts and dollar figures are not real. The px readings are real measurements of the built page.
 - `layout.py devices` gives `unknown` for this repo. Widths 375 and 760 px at height 812 come from `WIDTHS` and `openSeeded` in `test/screens.mjs`.
 - One theme, light. `shared/tokens.json` holds one palette and `src/app.jsx` has no dark rule. The brief named light and dark tokens; there are no dark tokens.
-- Panel style: `panelWrap` in `src/app.jsx` (padding 4px 8px 12px, a 1px `line` top rule, `background: paper`; the frames compare no fill, card and paper). Its callers: the Sorted by and Orders from panels in the View card, and `RecentPanel`, the Sync panel and the History panel in the Data card. All five open inside an `.mdl-lcard`, which paints `card`.
+- Panel style: `panelWrap` in `src/app.jsx` (padding 4px 8px 12px, a 1px `line` top rule, `background: paper`; the frames are none, paper and rule). Its callers: the Sorted by and Orders from panels in the View card, and `RecentPanel`, the Sync panel and the History panel in the Data card. All five open inside an `.mdl-lcard`, which paints `card`.
 - Fill: `paper` #F2E9DA. Card: `card` #FCF6EA. So a paper panel reads darker than the card it opens from. Rule: `line` #DCCDB6.
 - The overlay is not built. A style tag draws it: `.mdl-lcard:has(> .mdl-panel) { position: relative; overflow: visible }` and `.mdl-lcard > .mdl-panel { position: absolute; left: 0; right: 0; z-index: 4 }`. The panel keeps its place in flow and takes no space. The fill frames add `background: paper`. This geometry is the mockup's guess: `motion-disclosure-panels-arrive` names no geometry.
 - Panels drawn: Sorted by (an option grid; little shows through) and History (text; much shows through). Figures read from the page, in document px:
@@ -63,3 +63,4 @@ Single context: a designer has no sub-agent tool. The launcher's context step wa
 - False alarm (detector): "cream palette". The parchment page is the repo's palette (`design-parchment-ledger`).
 - Open, for the owner: with the guessed geometry, the cut row under a filled panel shows in every fill frame. See items 1 and 3.
 - Fixed (design review round 1): the overlay tags and the intro now say the geometry is a guess, and each cut caption ties the cut to it. The banner covers only the sample data. The capture script is committed. The Theme link keeps the panel and width.
+- Built: the Recent panel's sticky day head paints `paper`, so it follows the panel fill.
