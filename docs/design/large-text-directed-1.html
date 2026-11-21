@@ -341,7 +341,7 @@ function facts() {
   const n = S.checked.size, have = 999 + n, total = 1350, left = total - have, owed = 68640 - 25*n;
   return { have, total, left, owed, pct: have/total*100 };
 }
-const W = s => s.replace(/\//g, '/<wbr>');
+const W = s => s.replace(/(?<!<)\//g, '/<wbr>');
 // live figure plus a hidden reserve of its widest 4-digit form; plain in Today, which reserves nothing
 const fig = (live, rsv, today) => today ? W(live) : `<span class="fig"><span class="rsv" aria-hidden="true">${W(rsv)}</span><span class="live">${W(live)}</span></span>`;
 // parts break only at their own spaces and after a separator, never inside a word
@@ -358,9 +358,9 @@ function letterhead(m, ax, today, tag) {
     : `<div class="cl stack" id="${tag ? 'count-line' : ''}">${Object.entries(countLines).filter(([k]) => k !== 'ledger')
         .map(([k, v]) => `<span class="${k === S.tab || (S.tab === 'ledger' && k === 'packages') ? '' : 'rsv'}" ${k === S.tab || (S.tab === 'ledger' && k === 'packages') ? '' : 'aria-hidden="true"'}>${parts(v.split(' · '))}</span>`).join('')}</div>`;
   const cells = [
-    ['cards', `<b>${fig(fmt(f.have), '0,000', today)}</b>${fig('/' + fmt(f.total), '/0,000', today)}`],
-    ['packages', `<b>${fig('87', '0,000', today)}</b>${fig('/112', '/0,000', today)}`],
-    ['value', `<b>${fig('$1,204', '$0,000', today)}</b>${fig('/$1,890', '/$0,000', today)}`],
+    ['cards', fig(`<b>${fmt(f.have)}</b>/${fmt(f.total)}`, '0,000/0,000', today)],
+    ['packages', fig('<b>87</b>/112', '0,000/0,000', today)],
+    ['value', fig('<b>$1,204</b>/$1,890', '$0,000/$0,000', today)],
   ];
   const miss = today ? `${fmt(f.left)} still missing · ${money(f.owed)}`
     : parts([`${fig(fmt(f.left), '0,000')} still missing`, fig(money(f.owed), '$0,000.00')]);
@@ -379,7 +379,7 @@ function letterhead(m, ax, today, tag) {
 function runningFigure(today) {
   const f = facts();
   return today ? `${fmt(f.have)}/${fmt(f.total)} · ${money(f.owed)}`
-    : parts([`${fig(fmt(f.have), '0,000')}${fig('/' + fmt(f.total), '/0,000')}`, fig(money(f.owed), '$0,000.00')]);
+    : parts([fig(`${fmt(f.have)}/${fmt(f.total)}`, '0,000/0,000'), fig(money(f.owed), '$0,000.00')]);
 }
 function runningHead(m, ax, id) {
   const today = m === 'today';
@@ -388,7 +388,7 @@ function runningHead(m, ax, id) {
   return `<div class="rh ${today ? 'tag-today' : 'tag-new'}" ${id ? `id="${id}"` : ''} data-tag="${today ? 'Today: running head' : 'New: running head grows by lines'}" aria-label="Running head">${SEAL}${title}<span class="rf">${runningFigure(today)}</span></div>`;
 }
 function dock(id) {
-  return `<div class="dock tag-new" ${id ? `id="${id}"` : ''} data-tag="New: facts at the thumb" aria-label="Pinned facts">${SEAL}<span class="rf">${runningFigure(false)}</span></div>`;
+  return `<div class="dock tag-new" ${id ? `id="${id}"` : ''} data-tag="New: facts at the thumb" aria-label="Pinned facts"><span class="rf">${runningFigure(false)}</span></div>`;
 }
 function packagesBody() {
   const lines = [
@@ -667,7 +667,7 @@ async function auditAll() {
   S.hidden = new Set(); S.show = 'all'; S.d = 'all';
   for (const st of ['rest', 'armed', 'tapped']) for (const ts of LEVELS) for (const tab of TABS) {
     S.s = st; S.ts = ts; S.tab = tab.id; S.checked = new Set(st === 'tapped' ? ['p1-2'] : []);
-    render(); await new Promise(r => requestAnimationFrame(r));
+    render(); await new Promise(r => setTimeout(r, 0));
     document.querySelectorAll('.dev').forEach(dev => {
       const f = auditFrame(dev);
       lines.push({ frame:dev.dataset.frame, ts, tab:tab.id, st, f });
@@ -691,7 +691,7 @@ async function lineShiftCheck() {
     const heights = [];
     for (const n of [0, 1]) {
       S.s = n ? 'tapped' : 'rest'; S.checked = new Set(n ? ['p1-2'] : []);
-      render(); await new Promise(r => requestAnimationFrame(r));
+      render(); await new Promise(r => setTimeout(r, 0));
       heights.push([...document.querySelectorAll('.dev:not(.m-today) .lh, .dev:not(.m-today) .rh, .dev:not(.m-today) .dock')].map(e => e.offsetHeight).join(','));
     }
     if (heights[0] !== heights[1]) res.push(`${ts} ${tab.id}`);
@@ -700,9 +700,11 @@ async function lineShiftCheck() {
 }
 document.getElementById('run-audit').addEventListener('click', auditAll);
 
+const runAudit = new URLSearchParams(location.hash.slice(1)).get('audit') === 'all';
 readHash();
 render();
-if (new URLSearchParams(location.hash.slice(1)).get('audit') === 'all') auditAll();
+if (runAudit)
+  auditAll().catch(err => { document.getElementById('audit-out').textContent = 'Check failed to run: ' + err; });
 })();
 </script>
 </body>
