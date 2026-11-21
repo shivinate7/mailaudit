@@ -43,7 +43,8 @@ and the money still missing (`MastheadView.missingLine`). The primary button com
    clips, and the proof line under each frame shows that. Loss: the shape can change between text sizes.
    Pick: yes.
 5. **Labels "cards" and "missing".** "cards" is the masthead cell's own label. "missing" shortens the missing
-   line's "still missing", so the ledger-lines shape fits at AX3 on 466 pt. Departs from:
+   line's "still missing", so the ledger-lines shape fits at AX3 on 466 pt. Gain: the band is one line
+   shorter per fact. Loss: "missing" is terser than the masthead's own wording. Departs from:
    `MastheadModel.missingLine` wording. Pick: yes.
 6. **The action slot.** "Mark all received" shows while a copy is owed, then Undo takes its slot. When every
    copy is in, "Clear check‑ins" shows. It asks with two taps, "Tap again to clear N check-ins", lapses after
@@ -51,24 +52,27 @@ and the money still missing (`MastheadView.missingLine`). The primary button com
    as `BulkRow.hangingAsk` hangs the ask today, so the band keeps its height. All faces are stacked in one
    cell (the `SaveSlot` pattern), so the slot holds its tallest face. Each face shrinks to 0.75 before it
    wraps (`minimumScaleFactor(0.75)`, which the spec asked of the count line). While a copy is out and
-   another is in, Clear stays in the detail's own bulk row. Departs from: `native-bulk-check-in` (the bulk row
-   sits under the stamp slot, in `TallyRowView.detail`). Owner grant: yes.
+   another is in, Clear stays in the detail's own bulk row. Gain: the primary act stays on screen and in
+   reach. Loss: the act sits away from the copies it marks when folded. Departs from: `native-bulk-check-in`
+   (the bulk row sits under the stamp slot, in `TallyRowView.detail`). Departs from:
+   `armed-reset-takes-the-row` (Cancel sits after the control). In Foot band, Cancel hangs above the confirm,
+   so it reads before it. In the head band and on the core page it comes after. Owner grant: yes.
 7. **Progress on the band's edge.** A 4 pt bar runs along the band's edge: accent, then green at 100%
    (`progress-bar-accent-then-green`). It is out of flow, so it moves nothing. Gain: "where am I" at a glance.
-   Loss: it repeats the masthead's 8 pt bar. Pick: yes. Hide it if the owner reads it as a second bar.
+   Loss: it repeats the masthead's 8 pt bar. Pick: yes.
 8. **Opening and failed states.** The band keeps its size and shows one sentence in the figures' place:
    "Opening the ledger" (the word from `RootView.Placeholder`). When the read fails, the sentence is "The
    ledger did not open." with an Open Ledger control, because the Ledger tab works with no ledger
-   (`recovery-control-not-state-gated`). No figure ever shows as 0 (`ux-unknown-is-not-empty`). Departs
-   from: `RootView`. Today the failed tab shows only the failure text, with no control. Owner grant: no.
+   (`recovery-control-not-state-gated`). No figure ever shows as 0 (`ux-unknown-is-not-empty`). Gain: no
+   dead end, and the band never shows a false zero. Loss: one more control on a failed tab. Departs from:
+   `RootView`. Today the failed tab shows only the failure text, with no control. Pick: yes. Owner grant: no.
 9. **Rows that scroll stack at accessibility sizes.** The Orphaned envelope header label wraps at word breaks,
    and Discard drops below it (`OrphanedView.swift`). The Tally name takes the full width, with counts first
    (`TallyView.swift`, `TallyRowView`; `card-tally-row-counts-first`). The armed Reset ask wraps, and Cancel
    goes after it at full width. This drops the fixed 80 pt `cancelWidth` and `lineLimit(1)` in
    `LedgerTab.swift`, `AskRow.resetRow`. `AskRow.restoreRow` and `BulkRow` already stack on
-   `typeSize.isAccessibilitySize`, so this extends today's behaviour. Pick: yes.
-10. **Section label removed.** The "Tally" label above the list repeated the tab's own label
-    (`ux-label-once`), and at AX5 it cost a row. Pick: yes.
+   `typeSize.isAccessibilitySize`, so this extends today's behaviour. Gain: no word breaks inside itself.
+   Loss: each row is taller at accessibility sizes. Pick: yes.
 
 ## Not drawn
 
