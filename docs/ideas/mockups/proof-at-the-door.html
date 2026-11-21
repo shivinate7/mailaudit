@@ -1,0 +1,504 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Proof at the Door</title>
+<style>
+:root{
+  --page:#e9e7e2; --page-ink:#1c1b18; --page-muted:#5d5950; --panel:#f7f6f3; --panel-line:#d6d2c9;
+  --scr:#f3f2ee; --surface:#ffffff; --fill:#e9e7e1; --ink:#1c1b18; --muted:#67635b; --sep:#dcd8cf;
+  --accent:#24588a; --on-accent:#ffffff; --accent-soft:#e0e9f3;
+  --ok:#2a7549; --ok-soft:#dff0e5; --warn:#8a5205; --warn-soft:#f8ead0; --bad:#a63827; --bad-soft:#f6e0da;
+  --new:#6b45a8; --today:#6f6a61; --frame:#17171a; --cam:#121316; --scrim:rgba(20,18,14,.38);
+  --sample:#7a2e1f; --sample-soft:#f6e3dc;
+  color-scheme:light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#0e0e0f; --page-ink:#eeebe5; --page-muted:#a6a197; --panel:#171718; --panel-line:#2f2e2b;
+    --scr:#0a0a0b; --surface:#1b1a19; --fill:#2a2926; --ink:#efece6; --muted:#a39e94; --sep:#33312d;
+    --accent:#80b2e4; --on-accent:#0a1826; --accent-soft:#1a2938;
+    --ok:#74c596; --ok-soft:#14261b; --warn:#e5ab52; --warn-soft:#2c210f; --bad:#f08b77; --bad-soft:#321914;
+    --new:#bb9bf0; --today:#9c978d; --frame:#2b2b2f; --cam:#050506; --scrim:rgba(0,0,0,.55);
+    --sample:#f2a58f; --sample-soft:#2f1912;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0e0e0f; --page-ink:#eeebe5; --page-muted:#a6a197; --panel:#171718; --panel-line:#2f2e2b;
+  --scr:#0a0a0b; --surface:#1b1a19; --fill:#2a2926; --ink:#efece6; --muted:#a39e94; --sep:#33312d;
+  --accent:#80b2e4; --on-accent:#0a1826; --accent-soft:#1a2938;
+  --ok:#74c596; --ok-soft:#14261b; --warn:#e5ab52; --warn-soft:#2c210f; --bad:#f08b77; --bad-soft:#321914;
+  --new:#bb9bf0; --today:#9c978d; --frame:#2b2b2f; --cam:#050506; --scrim:rgba(0,0,0,.55);
+  --sample:#f2a58f; --sample-soft:#2f1912;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--page-ink);font-family:-apple-system, system-ui, BlinkMacSystemFont, "Helvetica Neue", sans-serif;font-size:15px;line-height:1.4;overflow-x:hidden;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)}
+button{font:inherit;color:inherit}
+.wrap{max-width:1320px;margin:0 auto;padding:0 16px 48px}
+.sample{background:var(--sample-soft);color:var(--sample);border-bottom:1px solid var(--panel-line);padding:8px 16px;font-size:13px;font-weight:600;text-align:center}
+header.top{padding:20px 0 8px}
+header.top h1{margin:0;font-size:22px;line-height:1.25;font-weight:700;letter-spacing:-.01em}
+header.top h1 .tag{font-size:13px;font-weight:600;color:var(--page-muted);border:1px solid var(--panel-line);border-radius:999px;padding:2px 10px;margin-left:8px;vertical-align:3px;white-space:nowrap}
+header.top p{margin:4px 0 0;color:var(--page-muted);max-width:70ch}
+.controls{display:flex;flex-wrap:wrap;gap:8px 16px;align-items:center;margin:12px 0}
+.seg{display:inline-flex;border:1px solid var(--panel-line);border-radius:999px;overflow:hidden;background:var(--panel)}
+.seg button{border:0;background:transparent;padding:0 14px;min-height:36px;cursor:pointer;font-size:13px}
+.seg button[aria-pressed="true"]{background:var(--page-ink);color:var(--page)}
+.toggle{display:inline-flex;gap:6px;align-items:center;font-size:13px;color:var(--page-muted);cursor:pointer;min-height:36px}
+.steps{display:flex;flex-wrap:wrap;gap:6px;margin:0;padding:0;list-style:none}
+.steps button{border:1px solid var(--panel-line);background:var(--panel);border-radius:8px;padding:6px 10px;font-size:13px;cursor:pointer;min-height:36px;text-align:left}
+.steps button[aria-current="step"]{border-color:var(--page-ink);background:var(--page-ink);color:var(--page)}
+.steps button .n{font-variant-numeric:tabular-nums;opacity:.7;margin-right:6px}
+.caption{background:var(--panel);border:1px solid var(--panel-line);border-radius:12px;padding:12px 14px;margin:12px 0 20px;display:flex;flex-wrap:wrap;gap:4px 16px;align-items:baseline}
+.caption b{font-size:15px}
+.caption .plan{color:var(--page-muted)}
+.caption code{font-size:12px;color:var(--page-muted);margin-left:auto}
+.nav-pn{display:inline-flex;gap:6px}
+.nav-pn button{border:1px solid var(--panel-line);background:var(--panel);border-radius:999px;min-height:36px;padding:0 14px;cursor:pointer;font-size:13px}
+.stage{display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.frame-col{max-width:100%}
+.frame-col h2{font-size:13px;font-weight:600;color:var(--page-muted);margin:0 0 8px}
+.scroller{max-width:100%;overflow-x:auto;padding-bottom:6px}
+aside.decisions{margin-top:28px;background:var(--panel);border:1px solid var(--panel-line);border-radius:12px;padding:14px 16px;max-width:860px}
+aside.decisions h2{font-size:15px;margin:0 0 6px}
+aside.decisions ol{margin:0;padding-left:20px}
+aside.decisions li{margin:6px 0}
+aside.decisions .rec{color:var(--page-muted)}
+aside.decisions a{color:inherit}
+.legend{display:flex;gap:16px;flex-wrap:wrap;font-size:12px;color:var(--page-muted);margin-top:6px}
+.legend span{border:1.5px dashed;border-radius:4px;padding:1px 6px}
+.legend .l-new{border-color:var(--new);color:var(--new)}
+.legend .l-today{border-color:var(--today);color:var(--today)}
+
+/* device */
+.device{background:var(--frame);border-radius:58px;padding:12px;display:inline-flex;gap:0;box-shadow:0 1px 0 rgba(255,255,255,.06) inset, 0 20px 40px rgba(0,0,0,.18)}
+.device.duo{border-radius:44px;gap:22px;position:relative}
+.device.duo::after{content:"";position:absolute;top:24px;bottom:24px;left:50%;width:2px;margin-left:-1px;background:rgba(255,255,255,.08)}
+.screen{position:relative;width:390px;height:844px;border-radius:46px;overflow:hidden;background:var(--scr);color:var(--ink);
+  font-family:-apple-system, system-ui, BlinkMacSystemFont, "Helvetica Neue", sans-serif;font-size:17px;line-height:22px;
+  --sa-top:calc(54px + env(safe-area-inset-top));--sa-bottom:calc(34px + env(safe-area-inset-bottom))}
+.device.duo .screen{border-radius:34px}
+.status{position:absolute;top:0;left:0;right:0;height:54px;display:flex;justify-content:space-between;align-items:center;padding:6px 30px 0 36px;font-size:15px;font-weight:600;z-index:25;pointer-events:none}
+.cam-on .status{color:#fff}
+.island{position:absolute;top:11px;left:50%;width:124px;height:36px;margin-left:-62px;background:#000;border-radius:20px;z-index:26}
+.status .sys{display:flex;gap:5px;align-items:center}
+.status .sys i{display:block;width:17px;height:11px;border:1.5px solid currentColor;border-radius:3px;position:relative}
+.status .sys i::after{content:"";position:absolute;inset:1.5px 4px 1.5px 1.5px;background:currentColor;border-radius:1px}
+.status .bars{display:flex;gap:1.5px;align-items:flex-end;height:11px}
+.status .bars b{display:block;width:3px;background:currentColor;border-radius:1px}
+.home{position:absolute;bottom:8px;left:50%;width:134px;height:5px;margin-left:-67px;border-radius:3px;background:var(--ink);opacity:.85;z-index:27}
+.cam-on .home{background:#fff}
+.content{position:absolute;inset:0;overflow-y:auto;overflow-x:hidden;padding:var(--sa-top) 0 calc(var(--sa-bottom) + 84px);scrollbar-width:none}
+.content.no-tabs{padding-bottom:calc(var(--sa-bottom) + 16px)}
+.content::-webkit-scrollbar{display:none}
+
+/* nav */
+.navbar{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 8px;position:relative}
+.navbar .title{position:absolute;left:0;right:0;text-align:center;font-weight:600;font-size:17px;pointer-events:none}
+.back{display:inline-flex;align-items:center;gap:2px;min-height:44px;min-width:44px;padding:0 8px;border:0;background:transparent;color:var(--accent);font-size:17px;cursor:pointer;position:relative;z-index:1}
+.navbtn{min-height:44px;min-width:44px;padding:0 8px;border:0;background:transparent;color:var(--accent);font-size:17px;cursor:pointer;position:relative;z-index:1}
+.navbtn.strong{font-weight:600}
+.large{font-size:34px;line-height:41px;font-weight:700;margin:4px 16px 8px;letter-spacing:.01em}
+.sub{font-size:15px;line-height:20px;color:var(--muted);margin:-4px 16px 12px}
+
+/* lists */
+.sh{font-size:13px;line-height:18px;color:var(--muted);margin:20px 32px 6px}
+.sf{font-size:13px;line-height:18px;color:var(--muted);margin:6px 32px 0}
+.group{margin:0 16px;background:var(--surface);border-radius:14px}
+.row{display:flex;align-items:center;gap:12px;min-height:44px;padding:10px 16px;position:relative;width:100%;border:0;background:transparent;text-align:left;cursor:default;border-radius:inherit}
+button.row{cursor:pointer}
+.row + .row::before,.row + .chipline::before,.chipline + .row::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:var(--sep)}
+.row .main{flex:1;min-width:0}
+.row .t{font-size:17px;line-height:22px}
+.row .m{font-size:13px;line-height:18px;color:var(--muted)}
+.row .r{font-size:15px;color:var(--muted);text-align:right;white-space:nowrap}
+.row .chev{color:var(--muted);opacity:.6}
+.check{width:44px;height:44px;margin:-10px 0 -10px -10px;display:grid;place-items:center;border:0;background:transparent;cursor:pointer;flex:none}
+.check span{width:26px;height:26px;border-radius:50%;border:2px solid var(--muted);display:grid;place-items:center}
+.check.on span{background:var(--ok);border-color:var(--ok);color:var(--on-accent)}
+.check.prob span{background:var(--bad);border-color:var(--bad);color:var(--on-accent);font-weight:700;font-size:15px}
+.check.empty span{border-style:dashed}
+.pbtn{min-height:44px;padding:0 14px;border-radius:999px;border:0;background:var(--fill);color:var(--ink);font-size:15px;cursor:pointer;white-space:nowrap}
+.pbtn.on{background:var(--bad-soft);color:var(--bad);font-weight:600}
+.chipline{display:flex;gap:8px;padding:0 12px 12px 16px;position:relative;flex-wrap:wrap}
+.chip{min-height:44px;padding:0 14px;border-radius:999px;border:1.5px solid var(--sep);background:var(--surface);font-size:15px;cursor:pointer;color:var(--ink)}
+.btn{display:flex;align-items:center;justify-content:center;gap:8px;min-height:50px;width:100%;border-radius:999px;border:0;font-size:17px;font-weight:600;cursor:pointer}
+.btn.pro{background:var(--accent);color:var(--on-accent)}
+.btn.sec{background:var(--fill);color:var(--ink)}
+.btnrow{display:flex;gap:10px;margin:0 16px}
+.btnrow .btn{flex:1}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:18px;font-weight:600;padding:5px 10px;border-radius:999px;white-space:nowrap}
+.badge.bad{background:var(--bad-soft);color:var(--bad)}
+.badge.warn{background:var(--warn-soft);color:var(--warn)}
+.badge.ok{background:var(--ok-soft);color:var(--ok)}
+.badge.mut{background:var(--fill);color:var(--muted)}
+.hdr .badge{white-space:normal}
+.hdr{margin:4px 16px 0;background:var(--surface);border-radius:14px;padding:14px 16px}
+.hdr .id{font-size:13px;color:var(--muted);font-variant-numeric:tabular-nums}
+.hdr .seller{font-size:22px;line-height:28px;font-weight:700;margin:2px 0}
+.hdr .facts{font-size:15px;color:var(--muted)}
+.hdr .badges{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.banner{margin:12px 16px 0;border-radius:14px;padding:12px 14px;font-size:15px;line-height:20px;display:flex;gap:10px}
+.banner.warn{background:var(--warn-soft);color:var(--warn)}
+.banner.ok{background:var(--ok-soft);color:var(--ok)}
+.banner s{opacity:.7}
+
+/* photos */
+.strip{display:flex;gap:10px;padding:12px 16px;overflow-x:auto}
+.ph{flex:none;width:96px}
+.ph .img{width:96px;height:120px;border-radius:10px;position:relative;overflow:hidden;background:#c9b99a}
+.ph .cap{font-size:12px;line-height:16px;color:var(--muted);margin-top:4px}
+.ph .cap b{display:block;color:var(--ink);font-weight:600}
+.ph.none .img{background:transparent;border:1.5px dashed var(--muted);display:grid;place-items:center;font-size:13px;color:var(--muted);text-align:center;padding:6px}
+.ph .img.dark{background:#3a3833}
+.env{position:absolute;inset:14px 10px;background:#efe6d3;border-radius:3px;box-shadow:0 1px 2px rgba(0,0,0,.25)}
+.env::before{content:"";position:absolute;right:6px;top:6px;width:16px;height:19px;background:#b2553f;outline:1.5px dotted #efe6d3;outline-offset:-3px}
+.env::after{content:"";position:absolute;left:10px;right:24px;top:40%;height:3px;background:#8c8170;box-shadow:0 7px 0 #8c8170,0 14px 0 #8c8170}
+.env.big{inset:22% 18%}
+.env.big::before{width:34px;height:40px;right:14px;top:14px}
+.env.big::after{left:22%;right:30%;height:6px;box-shadow:0 14px 0 #8c8170,0 28px 0 #8c8170}
+.crd{position:absolute;inset:12px 20px;border-radius:5px;background:linear-gradient(160deg,#3d5a7a,#a6b9c9 55%,#2b3c50);border:3px solid #1d1d1d}
+.crd::after{content:"";position:absolute;left:6px;right:6px;bottom:6px;height:28%;background:#ece6d6;border-radius:2px}
+.crd.big{inset:18% 26%}
+.crd.empty{background:none;border:2px dashed rgba(255,255,255,.55)}
+.crd.empty::after{display:none}
+.tagpill{position:absolute;left:6px;bottom:6px;right:6px;font-size:11px;line-height:13px;padding:3px 6px;border-radius:6px;background:rgba(0,0,0,.66);color:#fff;font-weight:600}
+
+/* camera */
+.cam{position:absolute;inset:0;background:var(--cam);color:#fff;z-index:20;display:flex;flex-direction:column}
+.cam .vf{flex:1;position:relative;margin-top:calc(var(--sa-top) + 52px);background:radial-gradient(ellipse at 50% 45%,#5a5347,#24221e 70%)}
+.cam .vf .corner{position:absolute;inset:12% 10%;border:2px solid rgba(255,255,255,.35);border-radius:16px}
+.cam .camtop{position:absolute;top:var(--sa-top);left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:4px 8px;z-index:2}
+.cam .camtop .navbtn{color:#fff}
+.tagnow{background:rgba(0,0,0,.62);color:#fff;border-radius:999px;padding:6px 12px;font-size:15px;line-height:20px;font-weight:600;white-space:nowrap}
+.cam .tagnow{position:absolute;left:50%;transform:translateX(-50%);top:calc(var(--sa-top) + 64px);z-index:2}
+.cam .hint{position:absolute;left:16px;right:16px;bottom:12px;text-align:center;font-size:15px;color:rgba(255,255,255,.88)}
+.cam .shutterbar{height:calc(var(--sa-bottom) + 120px);display:flex;align-items:center;justify-content:center;gap:40px;padding-bottom:var(--sa-bottom)}
+.shutter{width:72px;height:72px;border-radius:50%;border:4px solid #fff;background:transparent;display:grid;place-items:center;cursor:pointer;flex:none}
+.shutter::after{content:"";width:58px;height:58px;border-radius:50%;background:#fff}
+.shutter.ink{border-color:var(--ink)}
+.shutter.ink::after{background:var(--ink)}
+.cam .sidebtn{min-width:64px;min-height:44px;border:0;background:transparent;color:#fff;font-size:17px;cursor:pointer}
+.pane-cam{margin:8px 16px 0;border-radius:20px;overflow:hidden;position:relative;height:420px;background:radial-gradient(ellipse at 50% 45%,#5a5347,#24221e 70%)}
+.pane-cam .tagnow{position:absolute;left:50%;transform:translateX(-50%);top:12px}
+.pane-cam .prompt{position:absolute;left:12px;right:12px;bottom:12px;background:rgba(0,0,0,.68);color:#fff;border-radius:14px;padding:12px 14px;font-size:15px;line-height:20px}
+.pane-cam .prompt b{font-size:17px}
+
+/* sheet */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:15}
+.sheet{position:absolute;left:0;right:0;bottom:0;background:var(--scr);border-radius:28px 28px 0 0;z-index:16;padding:0 0 var(--sa-bottom);box-shadow:0 -8px 30px rgba(0,0,0,.2)}
+.grab{width:36px;height:5px;border-radius:3px;background:var(--sep);margin:6px auto 0}
+.sheet .lead{font-size:15px;line-height:20px;color:var(--muted);text-align:center;margin:0 24px 12px}
+.field{margin:0 16px;background:var(--surface);border-radius:12px;padding:11px 14px;font-size:17px;min-height:44px}
+.field .caret{display:inline-block;width:2px;height:20px;background:var(--accent);vertical-align:-4px;margin-left:1px;animation:blink 1s steps(1) infinite}
+@keyframes blink{50%{opacity:0}}
+@media (prefers-reduced-motion: reduce){.field .caret{animation:none}}
+
+/* tab bar */
+.tabbar{position:absolute;left:20px;right:20px;bottom:calc(var(--sa-bottom) - 6px);height:62px;border-radius:999px;background:color-mix(in srgb,var(--surface) 86%,transparent);backdrop-filter:blur(18px);-webkit-backdrop-filter:blur(18px);box-shadow:0 6px 24px rgba(0,0,0,.14), 0 0 0 1px var(--sep);display:flex;align-items:center;justify-content:space-around;padding:0 6px;z-index:10}
+.tab{flex:1;min-height:52px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;border:0;background:transparent;color:var(--muted);font-size:11px;line-height:13px;cursor:pointer;border-radius:999px}
+.tab.on{color:var(--accent);background:var(--accent-soft);font-weight:600}
+.tab svg{width:24px;height:24px}
+.toast{position:absolute;left:16px;right:16px;bottom:calc(var(--sa-bottom) + 70px);background:var(--ink);color:var(--scr);border-radius:16px;padding:12px 14px;font-size:15px;line-height:20px;z-index:11;display:flex;gap:10px;align-items:center}
+.empty-pane{position:absolute;inset:0;display:grid;place-items:center;text-align:center;color:var(--muted);padding:40px;font-size:17px}
+
+/* Today / New marks */
+.mk{position:relative;outline:1.5px dashed var(--new);outline-offset:2px}
+.mk::after{content:attr(data-mk);position:absolute;top:-9px;right:10px;font-size:11px;line-height:14px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--new);color:var(--scr);z-index:5;white-space:nowrap;pointer-events:none;font-style:normal;letter-spacing:0}
+.mk.today{outline-color:var(--today)}
+.mk.today::after{background:var(--today)}
+.no-marks .mk{outline:0}
+.no-marks .mk::after{display:none}
+svg{flex:none}
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample: every name, price, order number, date and photo here is invented. No figure on this page is real.</div>
+<div class="wrap">
+<header class="top">
+  <h1>Proof at the door <span class="tag">idea mockup, not built</span></h1>
+  <p>Each card gets a named outcome, and the envelope a timed, tagged photo, at the moment it is opened, so a wrong, damaged or missing card is proved before any claim starts.</p>
+</header>
+
+<div class="controls">
+  <div class="nav-pn"><button type="button" id="prev">Back a step</button><button type="button" id="next">Next step</button></div>
+  <div class="seg" role="group" aria-label="Theme">
+    <button type="button" data-theme-set="auto">Auto</button><button type="button" data-theme-set="light">Light</button><button type="button" data-theme-set="dark">Dark</button>
+  </div>
+  <label class="toggle"><input type="checkbox" id="marks" checked> Show "Today" and "New" labels</label>
+</div>
+<ol class="steps" id="steps"></ol>
+<div class="caption" id="caption"></div>
+
+<div class="stage">
+  <div class="frame-col">
+    <h2>Folded: one screen</h2>
+    <div class="scroller"><div class="device" data-device="iphone-duo-folded" id="folded"></div></div>
+  </div>
+  <div class="frame-col">
+    <h2>Unfolded: two screens. Card list left, camera and photo strip right</h2>
+    <div class="scroller"><div class="device duo" data-device="iphone-duo-unfolded" id="unfolded"></div></div>
+  </div>
+</div>
+<div class="legend"><span class="l-today">Today: exists now</span><span class="l-new">New: this idea adds it</span></div>
+
+<aside class="decisions">
+  <h2>Owner decisions in the plan, and where each recommended answer shows</h2>
+  <ol>
+    <li>Does a problem card count as received? <span class="rec">Recommended: the package counts as arrived and the lost-mail warning stops; the card stays outstanding in Tally.</span> <a href="#s=empty">See "Empty envelope"</a>.</li>
+    <li>Photo required for a problem? <span class="rec">Recommended: optional, with a visible "no photo" mark.</span> <a href="#s=skipped">See "Photo skipped"</a>.</li>
+    <li>Outcome per card or per package? <span class="rec">Recommended: per card, plus "Empty envelope" for the whole package.</span> <a href="#s=open">See "Problem chips"</a>.</li>
+    <li>Does undo delete photos? <span class="rec">Recommended: no.</span> <a href="#s=undone">See "Undo"</a>.</li>
+    <li>Blur the address label? <span class="rec">Recommended: not in slice 1; warn whenever a photo leaves the app.</span> Not drawn: no step in this plan sends a photo out of the app.</li>
+  </ol>
+</aside>
+</div>
+
+<script>
+(function(){
+"use strict";
+var IC = {
+  check:'<svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  chevL:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M15 4l-8 8 8 8"/></svg>',
+  chevR:'<svg class="chev" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"><path d="M9 4l8 8-8 8"/></svg>',
+  cam:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="3.5"/></svg>',
+  env:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M3 7l9 6 9-6"/></svg>',
+  warn:'<svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5" stroke-linecap="round"/></svg>',
+  box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>',
+  tally:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M5 5v14M9 5v14M13 5v14M17 5v14M3 15l18-6"/></svg>',
+  orphan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" stroke-linecap="round"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M10 10.5a2 2 0 1 1 2.6 1.9c-.4.2-.6.5-.6.9v.7M12 16v.3"/></svg>',
+  undo:'<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 5L4 10l5 5"/><path d="M4 10h10a5 5 0 0 1 0 10h-3"/></svg>'
+};
+function mkc(cls, label, today){ return ' class="'+cls+' mk'+(today?' today':'')+'" data-mk="'+(today?'Today: ':'New: ')+label+'"'; }
+
+var PK = {id:'DEMO-0042', seller:'Owl Lantern Cards', line:'DEMO-0042 · Owl Lantern Cards · 3 cards · $2.15'};
+var CARDS = [
+  {n:'Ember Finch', m:'Hollow Coast · near mint · $0.65'},
+  {n:'Tidecaller Moth', m:'Hollow Coast · near mint · $0.75'},
+  {n:'Glass Wyvern', m:'Ninefold Spire · near mint · $0.75'}
+];
+var PK2 = {id:'DEMO-0058', seller:'Pine & Pebble Trading', line:'DEMO-0058 · Pine & Pebble Trading · 2 cards · $1.40'};
+var CARDS2 = [
+  {n:'Lantern Sprite', m:'Hollow Coast · lightly played · $0.55'},
+  {n:'Saltmarsh Heron', m:'Ninefold Spire · near mint · $0.85'}
+];
+var PH_ENV = {k:'env', tag:'Envelope, before opening', t:'18:41'};
+var PH_CON = {k:'crd', tag:'Contents', t:'18:45'};
+var PH_ENV2 = {k:'env', tag:'Envelope, before opening', t:'18:51'};
+var PH_EMPTY = {k:'empty', tag:'Contents: empty', t:'18:52'};
+
+function status(time){
+  return '<div class="island"></div><div class="status"><span>'+time+'</span><span class="sys"><span class="bars"><b style="height:4px"></b><b style="height:6px"></b><b style="height:8px"></b><b style="height:11px"></b></span><i></i></span></div>';
+}
+function tabbar(on){
+  function t(id,label,icon,go){ return '<button type="button" class="tab'+(on===id?' on':'')+'"'+(go?' data-go="'+go+'"':'')+(on===id?' aria-current="page"':'')+'>'+icon+'<span>'+label+'</span></button>'; }
+  return '<nav class="tabbar" aria-label="Sections">'+t('packages','Packages',IC.box,'list')+t('tally','Tally',IC.tally)+t('orphaned','Orphaned',IC.orphan)+'</nav>';
+}
+function screen(inner, opt){
+  opt = opt||{};
+  return '<div class="screen'+(opt.cam?' cam-on':'')+'">'+status(opt.time||'18:44')+inner+(opt.tabs===false?'':tabbar(opt.tab||'packages'))+'<div class="home"></div></div>';
+}
+function thumb(p){
+  if(p.k==='none') return '<div class="ph none"><div class="img">no photo</div><div class="cap"><b>Contents</b>skipped</div></div>';
+  var inner = p.k==='env' ? '<div class="env"></div>' : (p.k==='empty' ? '<div class="crd empty"></div>' : '<div class="crd"></div>');
+  return '<div class="ph"><div class="img'+(p.k==='empty'?' dark':'')+'">'+inner+'<span class="tagpill">'+p.t+'</span></div><div class="cap"><b>'+p.tag+'</b>'+(p.date||'21 Nov '+p.t)+'</div></div>';
+}
+
+/* card row: st = out | chips | waitphoto | wrong | wrongnp | got | emptyout */
+function cardRow(c, st){
+  var checkCls='check', checkIn='', right='', meta=c.m, chips='';
+  if(st==='got'){ checkCls+=' on'; checkIn=IC.check; meta='Got it · 21 Nov 18:44'; }
+  if(st==='out'){ right='<button type="button" class="pbtn" data-go="open">Problem</button>'; }
+  if(st==='chips'){ right='<button type="button" class="pbtn on" aria-expanded="true">Problem</button>';
+    chips='<div'+mkc('chipline','outcome per card')+'><button type="button" class="chip" data-go="photo">Wrong card</button><button type="button" class="chip" data-go="photo">Damaged</button><button type="button" class="chip" data-go="photo">Missing</button></div>'; }
+  if(st==='waitphoto'){ checkCls+=' prob'; checkIn='!'; meta='Wrong card · 21 Nov 18:45'; right='<span class="badge bad">Wrong card</span>'; }
+  if(st==='wrong' || st==='wrongnp'){ checkCls+=' prob'; checkIn='!';
+    meta='<span style="color:var(--bad);font-weight:600">Wrong card</span> · 21 Nov 18:45<br>“got Moonlit Heron, ordered Glass Wyvern”';
+    right = st==='wrong' ? '<span class="badge mut">1 photo</span>' : '<span'+mkc('badge mut','no photo mark')+'>no photo</span>'; }
+  if(st==='emptyout'){ checkCls+=' empty'; meta='Outstanding in Tally until resolved'; }
+  return '<div class="row"><button type="button" class="'+checkCls+'" aria-label="Got it: '+c.n+'"><span>'+checkIn+'</span></button><div class="main"><div class="t">'+c.n+'</div><div class="m">'+meta+'</div></div>'+right+'</div>'+chips;
+}
+function pkgHeader(p, badges){
+  return '<div class="hdr"><div class="id">'+p.line+'</div><div class="seller">'+p.seller+'</div><div class="facts">Ordered 12 Nov · shipped 14 Nov</div>'+(badges?'<div class="badges">'+badges+'</div>':'')+'</div>';
+}
+function navPkg(){ return '<div class="navbar"><button type="button" class="back" data-go="list">'+IC.chevL+'Packages</button></div>'; }
+function photosSection(photos, withButtons){
+  var h = '<div class="sh">Photos</div><div class="group"><div class="strip">'+(photos.length?photos.map(thumb).join(''):'<div style="color:var(--muted);font-size:15px;padding:8px 0">No photos yet</div>')+'</div></div>';
+  if(withButtons) h += '<div class="btnrow" style="margin-top:12px"><button type="button"'+mkc('btn sec','envelope photo')+' data-go="envelope">'+IC.env+'Envelope photo</button><button type="button"'+mkc('btn sec','photo',true)+'>'+IC.cam+'Photo</button></div>';
+  return h;
+}
+function logSection(entries){
+  if(!entries.length) return '';
+  return '<div class="sh">Recent checks</div><div'+mkc('group','recent-checks log and undo',true)+'>'+entries.map(function(e){
+    return '<div class="row"><div class="main"><div class="t">'+e.what+'</div><div class="m">'+e.when+'</div></div><button type="button" class="navbtn"'+(e.undo?' data-go="'+e.undo+'"':'')+'>Undo</button></div>';
+  }).join('')+'</div>';
+}
+var LOG_DONE = [
+  {what:'Glass Wyvern · <span style="color:var(--bad)">Wrong card</span>', when:'18:45 · outcome, note, photo', undo:'undone'},
+  {what:'Tidecaller Moth · Got it', when:'18:44'},
+  {what:'Ember Finch · Got it', when:'18:44'}
+];
+var LOG_SKIP = [
+  {what:'Glass Wyvern · <span style="color:var(--bad)">Wrong card</span>', when:'18:45 · outcome, note, no photo', undo:'undone'},
+  {what:'Tidecaller Moth · Got it', when:'18:44'},
+  {what:'Ember Finch · Got it', when:'18:44'}
+];
+var LOG_UNDONE = [
+  {what:'Tidecaller Moth · Got it', when:'18:44'},
+  {what:'Ember Finch · Got it', when:'18:44'}
+];
+function pkgBody(cfg, withPhotos){
+  var p = cfg.pkg||PK, cards = cfg.cards||CARDS;
+  var h = navPkg() + pkgHeader(p, cfg.badges);
+  if(cfg.banner) h += cfg.banner;
+  h += '<div class="sh">Cards</div><div class="group">'+cards.map(function(c,i){ return cardRow(c, cfg.rows[i]); }).join('')+'</div>';
+  if(cfg.rows.indexOf('chips')>=0) h += '<div class="sf">Tap the circle when a card is here. Problem opens the outcomes.</div>';
+  if(withPhotos) h += photosSection(cfg.photos||[], true);
+  h += '<div class="sh">Whole package</div><div'+mkc('group','outcome per package')+'><button type="button" class="row" data-go="'+(cfg.emptyGo||'warned')+'"><span style="color:var(--bad)">'+IC.env+'</span><span class="main"><span class="t" style="color:var(--bad);display:block">Empty envelope</span><span class="m" style="display:block">The envelope came with no cards inside</span></span></button></div>';
+  h += logSection(cfg.log||[]);
+  return h;
+}
+function badgeDone(photoPart){ return '<span'+mkc('badge bad','problem badge')+'>1 problem · Wrong card · '+photoPart+' · opened 21 Nov 18:44</span>'; }
+
+function camera(o){
+  return '<div class="cam"><div class="camtop"><button type="button" class="navbtn" data-go="'+o.cancel+'">Cancel</button><span style="font-weight:600;font-size:17px">'+o.title+'</span><span style="width:44px"></span></div>'+
+    '<div class="vf"><div class="corner"></div>'+(o.subject==='env'?'<div class="env big"></div>':'<div class="crd big"></div>')+'<div class="hint">'+o.hint+'</div></div>'+
+    '<div'+mkc('tagnow','tag and time on capture')+'>'+o.tag+' · 21 Nov '+o.time+'</div>'+
+    '<div class="shutterbar"><button type="button" class="sidebtn" data-go="'+o.skip+'">Skip</button><button type="button" class="shutter" aria-label="Take photo" data-go="'+o.shoot+'"></button><span style="min-width:64px"></span></div></div>';
+}
+function sheet(inner){ return '<div class="scrim"></div><div class="sheet"><div class="grab"></div>'+inner+'</div>'; }
+function promptSheet(){
+  return sheet('<div class="navbar"><span class="title">Photo what arrived</span></div>'+
+    '<p class="lead">Expected <b style="color:var(--ink)">Glass Wyvern</b> · $0.75<br>Outcome: Wrong card · 21 Nov 18:45</p>'+
+    '<div class="btnrow" style="margin-top:4px"><button type="button" class="btn sec" data-go="skipped">Skip</button><button type="button" class="btn pro" data-go="note">'+IC.cam+'Take photo</button></div>'+
+    '<div class="sf" style="text-align:center;margin:12px 24px 12px">A skip marks the card “no photo”.</div>');
+}
+function noteSheet(){
+  return sheet('<div class="navbar"><button type="button" class="navbtn" data-go="photo">Cancel</button><span class="title">Note</span><button type="button" class="navbtn strong" data-go="done">Done</button></div>'+
+    '<div class="strip" style="padding-top:4px;align-items:center">'+thumb(PH_CON)+'<div style="font-size:15px;line-height:20px;color:var(--muted)">Photo saved, tagged Contents.<br>Wrong card · Glass Wyvern</div></div>'+
+    '<div class="sh" style="margin-top:4px">One line, optional</div><div'+mkc('field','outcome note')+'>got Moonlit Heron, ordered Glass Wyvern<span class="caret"></span></div><div style="height:16px"></div>');
+}
+function rightPane(c){
+  var p = c.pkg||PK;
+  var h = '<div class="content no-tabs"><div class="navbar"><span class="title">Photos · '+p.id+'</span></div>';
+  if(c.rcam){
+    var k = c.rcam;
+    h += '<div class="pane-cam">'+(k.subject==='env'?'<div class="env big"></div>':(k.subject==='crd'?'<div class="crd big"></div>':''))+
+      '<div'+mkc('tagnow','tag and time on capture')+'>'+k.tag+'</div>'+
+      (k.prompt?'<div class="prompt"><b>Photo what arrived</b><br>Expected Glass Wyvern · $0.75 · Wrong card</div>':'')+'</div>'+
+      '<div style="display:flex;align-items:center;justify-content:center;gap:40px;margin-top:16px">'+
+      (k.skip?'<button type="button" class="pbtn" data-go="'+k.skip+'" style="min-width:72px">Skip</button>':'<span style="min-width:72px"></span>')+
+      '<button type="button" class="shutter ink" aria-label="Take photo" data-go="'+k.shoot+'"></button><span style="min-width:72px"></span></div>';
+  }
+  if(c.rnote){
+    h += '<div class="sh">Note for Glass Wyvern, one line, optional</div><div'+mkc('field','outcome note')+'>got Moonlit Heron, ordered Glass Wyvern<span class="caret"></span></div>'+
+      '<div class="btnrow" style="margin-top:12px"><button type="button" class="btn sec" data-go="photo">Cancel</button><button type="button" class="btn pro" data-go="done">Done</button></div>';
+  }
+  if(c.rtext) h += '<div class="sf" style="margin-top:12px;font-size:15px;line-height:20px">'+c.rtext+'</div>';
+  var ph = c.photos||[];
+  h += '<div class="sh">Photo strip</div><div class="group"><div class="strip">'+(ph.length?ph.map(thumb).join(''):'<div style="color:var(--muted);font-size:15px;padding:8px 0">No photos yet</div>')+'</div></div>';
+  if(c.rbuttons) h += '<div class="btnrow" style="margin-top:12px"><button type="button"'+mkc('btn sec','envelope photo')+' data-go="envelope">'+IC.env+'Envelope photo</button><button type="button"'+mkc('btn sec','photo',true)+'>'+IC.cam+'Photo</button></div>';
+  return h+'</div>';
+}
+function packagesList(sel){
+  function r(id,seller,meta,right,go){ return '<button type="button" class="row" data-go="'+go+'"'+(sel===id?' style="background:var(--accent-soft)"':'')+'><span class="main"><span class="t" style="display:block">'+seller+'</span><span class="m" style="display:block">'+meta+'</span></span>'+right+IC.chevR+'</button>'; }
+  return '<div class="large">Packages</div><div class="sub">4 open · 9 cards outstanding</div><div class="sh">Arriving</div><div'+mkc('group','package list',true)+'>'+
+    r('DEMO-0042','Owl Lantern Cards','DEMO-0042 · 3 cards · $2.15','<span class="r">day 7</span>','envelope')+
+    r('DEMO-0058','Pine & Pebble Trading','DEMO-0058 · 2 cards · $1.40','<span class="badge warn">warned</span>','warned')+
+    r('DEMO-0063','Brightwater Cards','DEMO-0063 · 2 cards · $1.10','<span class="r">day 5</span>','list')+
+    r('DEMO-0066','Quiet Harbor Games','DEMO-0066 · 2 cards · $0.95','<span class="r">day 3</span>','list')+'</div>';
+}
+function ledgerPeek(){
+  return '<div class="navbar"><button type="button" class="back" data-go="done">'+IC.chevL+'Back</button><span class="title">At risk</span></div>'+
+    '<div class="sub" style="text-align:center;margin:0 16px 12px">Recovery ledger · oldest first</div>'+
+    '<div class="group">'+
+    '<div class="row"><div class="main"><div class="t">DEMO-0091 · Brightwater Cards</div><div class="m">$4.10 · day 26 · warned 12 days ago</div></div></div>'+
+    '<div class="row" style="background:var(--accent-soft)"><div class="main"><div class="t">DEMO-0042 · Owl Lantern Cards</div><div class="m">Glass Wyvern · $0.75 · Wrong card · 2 photos · 21 Nov</div></div><span'+mkc('badge bad','problem is At risk')+'>At risk</span></div>'+
+    '</div><div class="sh">DEMO-0042 stamps</div><div'+mkc('group','“claim filed” stamp',true)+'><button type="button" class="row"><span class="main"><span class="t" style="color:var(--accent);display:block">Claim filed</span><span class="m" style="display:block">Stamps today’s date</span></span></button></div>'+
+    '<div class="sf">The outcome, the note and both photos travel with the card into the claim.</div>';
+}
+
+var S = [
+ {id:'list', name:'Packages', plan:'Step 1. Envelope in hand: open its package in Packages, as today.',
+  f:function(){ return screen('<div class="content">'+packagesList()+'</div>'); },
+  u:function(){ return screen('<div class="content">'+packagesList('DEMO-0042')+'</div>')+screen('<div class="empty-pane">Open a package. Its camera and photo strip show here.</div>',{tabs:false}); }},
+ {id:'envelope', name:'Envelope photo', plan:'Step 2, optional. Photo the front (postmark, label, seal) before opening. Tagged “before opening” with the time.',
+  f:function(){ return screen('<div class="content">'+pkgBody({rows:['out','out','out'],photos:[]},true)+'</div>'+camera({title:'Envelope photo',tag:'Envelope, before opening',time:'18:41',subject:'env',hint:'Front: postmark, label, seal',cancel:'list',shoot:'open',skip:'open'}),{time:'18:41',tabs:false,cam:true}); },
+  u:function(){ return screen('<div class="content">'+pkgBody({rows:['out','out','out']},false)+'</div>',{time:'18:41'})+screen(rightPane({rcam:{subject:'env',tag:'Envelope, before opening · 21 Nov 18:41',shoot:'open',skip:'open'},photos:[],rtext:'Front: postmark, label, seal. Optional.'}),{time:'18:41',tabs:false}); }},
+ {id:'open', name:'Problem chips', plan:'Steps 3 and 4. A tap on the circle means Got it, as today. Problem opens Wrong card, Damaged, Missing. “Empty envelope” covers the whole package.',
+  f:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','chips'],photos:[PH_ENV]},true)+'</div>'); },
+  u:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','chips']},false)+'</div>')+screen(rightPane({rcam:{subject:'none',tag:'Next photo: Contents',shoot:'note'},photos:[PH_ENV],rtext:'A photo taken while a problem is open is tagged Contents.'}),{tabs:false}); }},
+ {id:'photo', name:'Photo prompt', plan:'Step 5. A problem outcome prompts “Photo what arrived”. Skippable; a skip is marked “no photo”.',
+  f:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','waitphoto'],photos:[PH_ENV]},true)+'</div>'+promptSheet(),{time:'18:45',tabs:false}); },
+  u:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','waitphoto']},false)+'</div>',{time:'18:45'})+screen(rightPane({rcam:{subject:'crd',tag:'Contents · 21 Nov 18:45',prompt:true,shoot:'note',skip:'skipped'},photos:[PH_ENV]}),{time:'18:45',tabs:false}); }},
+ {id:'note', name:'Note', plan:'Step 6, optional. One line, such as “got Moonlit Heron, ordered Glass Wyvern”.',
+  f:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','waitphoto'],photos:[PH_ENV,PH_CON]},true)+'</div>'+noteSheet(),{time:'18:45',tabs:false}); },
+  u:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','waitphoto']},false)+'</div>',{time:'18:45'})+screen(rightPane({rnote:true,photos:[PH_ENV,PH_CON]}),{time:'18:45',tabs:false}); }},
+ {id:'done', name:'Done with a problem', plan:'Step 7. The package shows a problem badge, the log holds the outcome, and undo reverts it.',
+  f:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','wrong'],photos:[PH_ENV,PH_CON],badges:badgeDone('2 photos')+'<button type="button"'+mkc('badge warn','ledger link')+' data-go="ledger" style="border:0;cursor:pointer;min-height:44px">At risk in Recovery ›</button>',log:LOG_DONE},true)+'</div>',{time:'18:46'}); },
+  u:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','wrong'],badges:badgeDone('2 photos'),log:LOG_DONE},false)+'</div>',{time:'18:46'})+screen(rightPane({photos:[PH_ENV,PH_CON],rtext:'Glass Wyvern: Wrong card. Each photo keeps its tag and time.',rbuttons:true}),{time:'18:46',tabs:false}); }},
+ {id:'skipped', name:'Photo skipped', plan:'Step 5, the skip branch. The card carries a visible “no photo” mark.',
+  f:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','wrongnp'],photos:[PH_ENV,{k:'none'}],badges:badgeDone('1 photo, contents: no photo'),log:LOG_SKIP},true)+'</div>',{time:'18:46'}); },
+  u:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','wrongnp'],badges:badgeDone('1 photo, contents: no photo'),log:LOG_SKIP},false)+'</div>',{time:'18:46'})+screen(rightPane({photos:[PH_ENV,{k:'none'}],rtext:'No contents photo. The card keeps its “no photo” mark until one is added.',rbuttons:true}),{time:'18:46',tabs:false}); }},
+ {id:'undone', name:'Undo', plan:'Step 7. Undo in the recent-checks log reverts the outcome and its note. No photo is deleted.',
+  f:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','out'],photos:[PH_ENV,PH_CON],log:LOG_UNDONE},true)+'</div><div class="toast">'+IC.undo+'<span>Wrong card on Glass Wyvern undone. Both photos kept.</span></div>',{time:'18:47'}); },
+  u:function(){ return screen('<div class="content">'+pkgBody({rows:['got','got','out'],log:LOG_UNDONE},false)+'</div><div class="toast">'+IC.undo+'<span>Wrong card undone. Photos kept.</span></div>',{time:'18:47'})+screen(rightPane({photos:[PH_ENV,PH_CON],rtext:'Undo reverts the outcome and its note. It deletes no photo.',rbuttons:true}),{time:'18:47',tabs:false}); }},
+ {id:'warned', name:'Warned package', plan:'“Empty envelope”, before: a package with a lost-mail warning arrives.',
+  f:function(){ return screen('<div class="content">'+pkgBody({pkg:PK2,cards:CARDS2,rows:['out','out'],photos:[PH_ENV2],emptyGo:'empty',banner:'<div'+mkc('banner warn','lost-mail warning',true)+'>'+IC.warn+'<span>Lost-mail warning · day 18 · warned 16 Nov</span></div>'},true)+'</div>',{time:'18:51'}); },
+  u:function(){ return screen('<div class="content">'+pkgBody({pkg:PK2,cards:CARDS2,rows:['out','out'],emptyGo:'empty',banner:'<div'+mkc('banner warn','lost-mail warning',true)+'>'+IC.warn+'<span>Lost-mail warning · day 18 · warned 16 Nov</span></div>'},false)+'</div>',{time:'18:51'})+screen(rightPane({pkg:PK2,photos:[PH_ENV2],rtext:'Envelope photographed before opening.',rbuttons:true}),{time:'18:51',tabs:false}); }},
+ {id:'empty', name:'Empty envelope', plan:'“Empty envelope” stops the lost-mail warning, because the envelope did arrive. The cards stay outstanding in Tally.',
+  f:function(){ return screen('<div class="content">'+pkgBody({pkg:PK2,cards:CARDS2,rows:['emptyout','emptyout'],photos:[PH_ENV2,PH_EMPTY],emptyGo:'empty',
+    badges:'<span'+mkc('badge bad','problem badge')+'>Empty envelope · 2 photos · opened 21 Nov 18:52</span>',
+    banner:'<div'+mkc('banner ok','warning stopped by arrival')+'>'+IC.check+'<span><s>Lost-mail warning</s> stopped: the envelope arrived. 2 cards stay outstanding in Tally.</span></div>',
+    log:[{what:'Whole package · <span style="color:var(--bad)">Empty envelope</span>',when:'18:52 · outcome, photo',undo:'warned'}]},true)+'</div>',{time:'18:53'}); },
+  u:function(){ return screen('<div class="content">'+pkgBody({pkg:PK2,cards:CARDS2,rows:['emptyout','emptyout'],emptyGo:'empty',
+    badges:'<span'+mkc('badge bad','problem badge')+'>Empty envelope · 2 photos · opened 21 Nov 18:52</span>',
+    banner:'<div'+mkc('banner ok','warning stopped by arrival')+'>'+IC.check+'<span><s>Lost-mail warning</s> stopped: the envelope arrived.</span></div>',
+    log:[{what:'Whole package · <span style="color:var(--bad)">Empty envelope</span>',when:'18:52',undo:'warned'}]},false)+'</div>',{time:'18:53'})+screen(rightPane({pkg:PK2,photos:[PH_ENV2,PH_EMPTY],rtext:'Both cards now show in Recovery as At risk.',rbuttons:true}),{time:'18:53',tabs:false}); }},
+ {id:'ledger', name:'Into the ledger', plan:'Step 8. The problem card shows in the recovery ledger as At risk, ready for the existing “claim filed” stamp.',
+  f:function(){ return screen('<div class="content">'+ledgerPeek()+'</div>',{time:'18:47'}); },
+  u:function(){ return screen('<div class="content">'+packagesList('DEMO-0042')+'</div>',{time:'18:47'})+screen('<div class="content no-tabs">'+ledgerPeek()+'</div>',{time:'18:47',tabs:false}); }}
+];
+
+var folded = document.getElementById('folded'), unfolded = document.getElementById('unfolded');
+var stepsEl = document.getElementById('steps'), cap = document.getElementById('caption');
+var theme = 'auto', cur = 0;
+stepsEl.innerHTML = S.map(function(s,i){ return '<li><button type="button" data-step="'+s.id+'"><span class="n">'+(i+1)+'</span>'+s.name+'</button></li>'; }).join('');
+function readHash(){ var p = new URLSearchParams(location.hash.slice(1)); return {s:p.get('s'), t:p.get('t')}; }
+function writeHash(){ var p = new URLSearchParams(); p.set('s', S[cur].id); if(theme!=='auto') p.set('t', theme); var h = '#'+p.toString(); if(location.hash!==h) history.replaceState(null,'',h); }
+function applyTheme(){
+  if(theme==='auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', theme);
+  Array.prototype.forEach.call(document.querySelectorAll('[data-theme-set]'), function(b){ b.setAttribute('aria-pressed', String(b.getAttribute('data-theme-set')===theme)); });
+}
+function render(){
+  var s = S[cur];
+  folded.innerHTML = s.f();
+  unfolded.innerHTML = s.u();
+  cap.innerHTML = '<b>'+(cur+1)+'. '+s.name+'</b><span class="plan">'+s.plan+'</span><code>#s='+s.id+(theme!=='auto'?'&amp;t='+theme:'')+'</code>';
+  Array.prototype.forEach.call(stepsEl.querySelectorAll('button'), function(b){ if(b.getAttribute('data-step')===s.id) b.setAttribute('aria-current','step'); else b.removeAttribute('aria-current'); });
+  applyTheme(); writeHash();
+}
+function go(id){ for(var i=0;i<S.length;i++){ if(S[i].id===id){ cur=i; render(); return true; } } return false; }
+function fromHash(){ var h = readHash(); theme = (h.t==='dark'||h.t==='light') ? h.t : 'auto'; if(!h.s || !go(h.s)) render(); }
+document.addEventListener('click', function(e){
+  var t = e.target.closest('[data-go],[data-step],[data-theme-set]');
+  if(!t) return;
+  if(t.tagName==='A') return;
+  if(t.hasAttribute('data-theme-set')){ theme = t.getAttribute('data-theme-set'); render(); return; }
+  var id = t.getAttribute('data-step') || t.getAttribute('data-go');
+  if(id) go(id);
+});
+document.getElementById('prev').addEventListener('click', function(){ cur = Math.max(0,cur-1); render(); });
+document.getElementById('next').addEventListener('click', function(){ cur = Math.min(S.length-1,cur+1); render(); });
+document.getElementById('marks').addEventListener('change', function(e){ document.body.classList.toggle('no-marks', !e.target.checked); });
+window.addEventListener('hashchange', fromHash);
+fromHash();
+})();
+</script>
+</body>
+</html>
