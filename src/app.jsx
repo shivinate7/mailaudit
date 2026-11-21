@@ -1703,16 +1703,16 @@ const ITEM_SORTS = [
   ["name", "Name A–Z"],
 ];
 
-/* No fill. With `background: C.card` this painted a beige rectangle ruled top
-   and bottom whose left and right edges simply stopped, square-cornered and
-   full-bleed to the column, in an app where every other filled surface is a
-   rounded inset card. The fill was the only thing creating an edge to resolve —
-   and the region's whole thesis is hairlines, no boxes and no fills. The option
-   grid still reads: optGrid paints C.line and each optCell paints C.card over
-   it, so the cells sit slightly raised against the page. */
+/* Paper fill: a panel is to overlay the list (motion-disclosure-panels-arrive,
+   debt panels-overlay-unbuilt), and an unfilled overlay shows the rows through
+   it. `paper` is opaque. It is not `card`, which painted a beige rectangle with
+   square, full-bleed edges. The option grid still reads: optGrid paints C.line
+   and each optCell paints C.card over it, so the cells sit slightly raised
+   against the panel. */
 const panelWrap = {
   padding: "4px 8px 12px",
   borderTop: `1px solid ${C.line}`,
+  background: C.paper,
 };
 /* the 1px gap over a `line` background IS the grid — cells paint `card` over it */
 const optGrid = (cols) => ({
@@ -5742,7 +5742,7 @@ export default function MailDayLedger() {
            and scrolling inside (mockup docs/design/recent-log). */
         .rp-list { max-height: 360px; overflow-y: auto; }
         .rp-dh { position: sticky; top: 0; z-index: 2; box-sizing: border-box; height: 28px; display: flex;
-                 align-items: flex-end; padding: 0 0 6px; background: ${C.card};
+                 align-items: flex-end; padding: 0 0 6px; background: ${C.paper};
                  border-bottom: 1px solid ${C.line}; font-family: ${mono}; font-size: 10px;
                  letter-spacing: .16em; text-transform: uppercase; color: ${C.inkSoft}; }
         .rp-rr { display: flex; align-items: stretch; gap: 12px; width: 100%; height: 72px;

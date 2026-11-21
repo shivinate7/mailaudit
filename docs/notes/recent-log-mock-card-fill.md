@@ -1,0 +1,1 @@
+- recent-log-mock-card-fill: In `docs/design/recent-log/recent-log.html`, `.rp` and `.dh` still paint `card`, while `docs/design/recent-log/recent-log-notes.md` says the in-flow panel takes the paper fill. The mockup is not redrawn. Seen: 2026-11-21 x1 Decision: head-panels-carry-paper-fill.

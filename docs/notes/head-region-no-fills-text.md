@@ -1,0 +1,1 @@
+- head-region-no-fills-text: The comment at `src/app.jsx` line 1597 and the first paragraph of `ruled-head-masthead-vocabulary` still say the control region has no fills, though the Sorted by and History panels now carry the paper fill. Seen: 2026-11-21 x1 Decision: head-panels-carry-paper-fill.
