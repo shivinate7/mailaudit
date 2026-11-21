@@ -6,7 +6,11 @@
   "kind": "task",
   "links": [
     {
-      "label": "Design-churn README and mockups",
+      "label": "Clickable, filterable page of every mockup and its notes (private)",
+      "url": "https://claude.ai/artifact/F83UecjXn2SjgFeSp5gMDE"
+    },
+    {
+      "label": "Design-churn files on GitHub (backup)",
       "url": "https://github.com/shivinate7/mailaudit/tree/design-churn/docs/design-churn"
     }
   ],
