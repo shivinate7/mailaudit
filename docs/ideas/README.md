@@ -77,3 +77,5 @@ These are not shortlisted. A note marks each one that overlaps something that al
 - Each plan file starts with the planner's first pass. Shortlisted directions add a "Phase 2" section: the flow, the screen states, the data, the smallest first slice, and the owner's decisions, each with a recommended answer.
 - Phase 2 told planners which features already exist, so they could build on them rather than reinvent them.
 - All names, prices and order ids are invented.
+- Each mockup is one self-contained HTML page. It shows the folded phone, then the two-screen pose, in light and dark (`#…&t=dark`). Frame sizes and colours are the designers' own picks, not the app's tokens.
+- Blindness was partial. Planners were told not to read the repo, but some phase-2 answers name the app's views (Packages, Tally), so the project file may have reached them.
