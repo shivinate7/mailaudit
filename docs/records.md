@@ -105,6 +105,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `three-views-share-one-switch` | The bottom bar replaces the top view switch at every width (`phone-nav-is-bottom-bar`). | [`docs/decisions/three-views-share-one-switch.md`](../docs/decisions/three-views-share-one-switch.md) |
 | `typography-cochin-and-mono` | Cochin sets everything that is not a number. | [`docs/decisions/typography-cochin-and-mono.md`](../docs/decisions/typography-cochin-and-mono.md) |
 | `undo-removes-only-its-delta` | Undo keeps the deltas of an assignment, not a snapshot of the ledger. | [`docs/decisions/undo-removes-only-its-delta.md`](../docs/decisions/undo-removes-only-its-delta.md) |
+| `ux-control-earns-place` | Kind: build | [`docs/decisions/ux-control-earns-place.md`](../docs/decisions/ux-control-earns-place.md) |
 | `ux-house-rules-govern` | The owner ruled on 2026-10-11: "apply the latest from claude settings' ux guidelines, along with /design-review /ci-hygiene /fresh-prose". | [`docs/decisions/ux-house-rules-govern.md`](../docs/decisions/ux-house-rules-govern.md) |
 | `worker-keeps-snapshots` | **Status:** ruled. | [`docs/decisions/worker-keeps-snapshots.md`](../docs/decisions/worker-keeps-snapshots.md) |
 
