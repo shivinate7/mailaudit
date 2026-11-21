@@ -326,7 +326,7 @@ function svgRuler(rows, w, big) {
   [...spots.values()].map(g => g.find(p => p.gk === S.sel) || g[0]).forEach(p => {
     const n = spots.get(Math.min(p.days, 30)).length;
     const t = tier(p), c = t === "deadline" ? "var(--red)" : "var(--amber)", cx = x(p.days), ew = big ? 16 : 12, eh = big ? 11 : 8, y = base - eh - 3;
-    if (n > 1) s += `<text x="${cx + ew / 2 + 2}" y="${y + 2}" font-family="Menlo, monospace" font-size="10" font-weight="700" fill="${c}">${n}</text>`;
+    if (n > 1) s += `<text x="${cx}" y="${y - 3}" text-anchor="middle" font-family="Menlo, monospace" font-size="10" font-weight="700" fill="${c}">${n}</text>`;
     s += `<g><rect x="${cx - ew / 2}" y="${y}" width="${ew}" height="${eh}" rx="1.5" fill="${p.gk === S.sel && big ? c : "var(--card)"}" stroke="${c}" stroke-width="1.5"/>` +
          `<polyline points="${cx - ew / 2},${y} ${cx},${y + eh * .6} ${cx + ew / 2},${y}" fill="none" stroke="${p.gk === S.sel && big ? "var(--card)" : c}" stroke-width="1.2"/></g>`;
   });
