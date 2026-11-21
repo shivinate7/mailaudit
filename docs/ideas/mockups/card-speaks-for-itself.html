@@ -1,0 +1,615 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Card Speaks For Itself</title>
+<style>
+/* Own palette for an idea mockup (no repo tokens were read). Type sizes are the iOS
+   Dynamic Type defaults from the HIG typography page, read 2026-11-21. */
+:root{
+  --page:#eceef2; --screen:#f3f3f6; --surface:#ffffff; --raise:#f7f7fa;
+  --ink:#16181d; --ink2:#555b69; --ink3:#7c8292; --sep:#d8dbe2;
+  --accent:#2a5bd0; --accent-ink:#ffffff; --accent-soft:#e4ecfb;
+  --ok:#1b7f45; --ok-soft:#e0f2e7; --warn:#9a5600; --warn-soft:#fbeed8;
+  --bad:#b8352a; --bad-soft:#f9e3e0; --new:#7135c9; --today:#555b69;
+  --bezel:#17181b; --cam:#0b0c0e; --cam-ink:#e9ecf2; --kbd:#d3d6dc; --key:#ffffff;
+  --banner:#fff4c9; --banner-ink:#5a4300;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0e11; --screen:#000000; --surface:#1b1c21; --raise:#232429;
+    --ink:#f1f2f5; --ink2:#a9aebb; --ink3:#7d8391; --sep:#30323a;
+    --accent:#7499ff; --accent-ink:#0b1020; --accent-soft:#1c2645;
+    --ok:#4cc77f; --ok-soft:#14301f; --warn:#f1a640; --warn-soft:#33250d;
+    --bad:#ff7466; --bad-soft:#3a1814; --new:#b994ff; --today:#a9aebb;
+    --bezel:#2a2b30; --kbd:#2b2c31; --key:#46474d; --banner:#3a3216; --banner-ink:#f3e2a0;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0e11; --screen:#000000; --surface:#1b1c21; --raise:#232429;
+  --ink:#f1f2f5; --ink2:#a9aebb; --ink3:#7d8391; --sep:#30323a;
+  --accent:#7499ff; --accent-ink:#0b1020; --accent-soft:#1c2645;
+  --ok:#4cc77f; --ok-soft:#14301f; --warn:#f1a640; --warn-soft:#33250d;
+  --bad:#ff7466; --bad-soft:#3a1814; --new:#b994ff; --today:#a9aebb;
+  --bezel:#2a2b30; --kbd:#2b2c31; --key:#46474d; --banner:#3a3216; --banner-ink:#f3e2a0;
+  color-scheme: dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;-webkit-font-smoothing:antialiased}
+button{font:inherit;color:inherit}
+/* Dynamic Type defaults (pt), HIG typography */
+.lt{font-size:34px;line-height:41px;font-weight:700}
+.t2{font-size:22px;line-height:28px;font-weight:700}
+.t3{font-size:20px;line-height:25px;font-weight:600}
+.hl{font-size:17px;line-height:22px;font-weight:600}
+.body{font-size:17px;line-height:22px}
+.callout{font-size:16px;line-height:21px}
+.sub{font-size:15px;line-height:20px}
+.foot{font-size:13px;line-height:18px}
+.c1{font-size:12px;line-height:16px}
+.c2{font-size:11px;line-height:13px}
+.mute{color:var(--ink2)} .faint{color:var(--ink3)}
+.num{font-variant-numeric:tabular-nums}
+
+/* ---------- page chrome (outside the phone) ---------- */
+.banner{background:var(--banner);color:var(--banner-ink);padding:8px 16px;text-align:center;font-size:13px;line-height:18px;font-weight:600}
+header.top{max-width:1280px;margin:0 auto;padding:20px 16px 4px}
+header.top h1{margin:0;font-size:28px;line-height:34px;font-weight:700;letter-spacing:-.01em}
+header.top .tag{display:inline-block;margin-left:8px;vertical-align:middle;font-size:12px;line-height:16px;font-weight:600;padding:3px 8px;border-radius:999px;border:1px dashed var(--new);color:var(--new)}
+header.top p{margin:6px 0 0;color:var(--ink2);font-size:16px;line-height:21px;max-width:70ch}
+.bar{max-width:1280px;margin:0 auto;padding:12px 16px;display:flex;flex-wrap:wrap;gap:10px 20px;align-items:center}
+.seg{display:inline-flex;flex-wrap:wrap;background:var(--sep);border-radius:9px;padding:2px;gap:2px}
+.seg button{border:0;background:transparent;padding:6px 12px;min-height:32px;border-radius:7px;font-size:13px;cursor:pointer;color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--surface);box-shadow:0 1px 2px rgba(0,0,0,.15);font-weight:600}
+.ctl{display:flex;flex-wrap:wrap;align-items:center;gap:8px;font-size:13px;color:var(--ink2)}
+.steps{max-width:1280px;margin:0 auto;padding:0 16px 8px;display:flex;flex-wrap:wrap;gap:6px}
+.steps a{font-size:13px;line-height:18px;text-decoration:none;color:var(--ink);background:var(--surface);border:1px solid var(--sep);border-radius:999px;padding:6px 11px}
+.steps a[aria-current="true"]{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.sim{max-width:1280px;margin:0 auto;padding:4px 16px 12px;display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.sim span{font-size:13px;color:var(--ink2);margin-right:4px}
+.sim button{font-size:13px;border:1px dashed var(--ink3);background:transparent;border-radius:8px;padding:6px 10px;min-height:32px;cursor:pointer}
+.stage{max-width:1280px;margin:0 auto;padding:8px 16px 24px;display:flex;flex-wrap:wrap;gap:28px;align-items:flex-start}
+.pose{display:flex;flex-direction:column;gap:8px;min-width:0}
+.pose h2{margin:0;font-size:15px;line-height:20px;font-weight:600}
+.pose .cap{font-size:13px;line-height:18px;color:var(--ink2)}
+.fit{position:relative;overflow:hidden}
+.fit > .scaler{transform-origin:0 0;position:absolute;left:0;top:0}
+.why{max-width:1280px;margin:0 auto;padding:0 16px 32px;font-size:13px;line-height:18px;color:var(--ink2)}
+.why h3{font-size:15px;color:var(--ink);margin:16px 0 6px}
+.why ol{margin:0;padding-left:20px}
+.why li{margin:3px 0}
+
+/* ---------- device frames ---------- */
+.device{background:var(--bezel);border-radius:54px;padding:11px;display:flex;gap:0}
+.device.open{gap:14px;border-radius:40px}
+.scr{width:375px;height:780px;border-radius:44px;background:var(--screen);overflow:hidden;position:relative;display:flex;flex-direction:column}
+.device.open .scr{border-radius:30px}
+.status{flex:none;height:max(50px, env(safe-area-inset-top));padding:14px 28px 0 34px;display:flex;justify-content:space-between;font-size:15px;font-weight:600;position:relative;z-index:3}
+.status .island{position:absolute;left:50%;top:10px;width:118px;height:34px;margin-left:-59px;border-radius:20px;background:#000}
+.device.open .status .island{display:none}
+.status.oncam{color:#fff}
+.home{flex:none;height:max(30px, env(safe-area-inset-bottom));display:flex;justify-content:center;align-items:flex-end;padding-bottom:8px}
+.home i{width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.85}
+.home.oncam i{background:#fff}
+
+/* ---------- in-app ---------- */
+.nav{flex:none;display:flex;align-items:center;justify-content:space-between;padding:0 8px;min-height:44px;position:relative}
+.nav .title{position:absolute;left:0;right:0;text-align:center;pointer-events:none}
+.nbtn{border:0;background:transparent;color:var(--accent);min-width:44px;min-height:44px;padding:0 10px;display:inline-flex;align-items:center;gap:6px;cursor:pointer;position:relative;z-index:1;font-size:17px}
+.nbtn.bold{font-weight:600}
+.nbtn svg{width:22px;height:22px}
+.body-area{flex:1;overflow:auto;min-height:0;padding:0 16px}
+.cam{flex:none;position:relative;background:radial-gradient(120% 90% at 50% 40%, #2a2e36 0%, var(--cam) 70%);color:var(--cam-ink);overflow:hidden}
+.cam.strip{height:176px;margin:0 12px 10px;border-radius:22px}
+.cam.full{flex:1;margin:0}
+.reticle{position:absolute;left:50%;top:50%;width:112px;height:150px;margin:-84px 0 0 -56px;border-radius:14px}
+.reticle::before{content:"";position:absolute;inset:0;border-radius:14px;border:2px solid rgba(255,255,255,.55);-webkit-mask:linear-gradient(#000 0 0) top/100% 22px no-repeat,linear-gradient(#000 0 0) bottom/100% 22px no-repeat;mask:linear-gradient(#000 0 0) top/100% 22px no-repeat,linear-gradient(#000 0 0) bottom/100% 22px no-repeat}
+.cam.full .reticle{width:220px;height:300px;margin:-150px 0 0 -110px}
+.card{position:absolute;inset:8px;border-radius:9px;background:linear-gradient(160deg,#6b5a3e,#3b3226);box-shadow:0 0 0 3px rgba(255,255,255,.25) inset;overflow:hidden}
+.card .nameline{margin:8px;padding:3px 6px;border-radius:4px;background:#e8dcc0;color:#2a2418;font-size:12px;line-height:16px;font-weight:700;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card .art{position:absolute;left:12px;right:12px;top:38px;bottom:40px;border-radius:4px;background:linear-gradient(135deg,#7f9c8a,#3c5f6b)}
+.card .glare{position:absolute;inset:0;background:linear-gradient(115deg,transparent 25%,rgba(255,255,255,.8) 42%,transparent 62%)}
+.cam.strip .card .nameline{font-size:10px;line-height:14px;margin:6px;padding:2px 4px}
+.card.hit{box-shadow:0 0 0 3px #4cc77f inset}
+.camchip{position:absolute;left:12px;right:12px;bottom:12px;display:flex;justify-content:center}
+.camchip span{background:rgba(0,0,0,.66);backdrop-filter:blur(8px);-webkit-backdrop-filter:blur(8px);border-radius:999px;padding:7px 14px;font-size:15px;line-height:20px;color:#fff;text-align:center}
+.cam.full .camchip{bottom:44px}
+.camtop{position:absolute;left:14px;top:10px;font-size:12px;line-height:16px;color:rgba(255,255,255,.78)}
+.cam.full .camtop{top:4px;left:20px}
+.statusline{padding:6px 4px 12px}
+.group{background:var(--surface);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;min-height:52px;padding:10px 16px;position:relative}
+.row + .row::before{content:"";position:absolute;left:54px;right:0;top:0;height:1px;background:var(--sep)}
+.row.plain + .row.plain::before{left:16px}
+.row .grow{flex:1;min-width:0}
+.row .price{color:var(--ink2)}
+.tick{width:26px;height:26px;flex:none;border-radius:50%;border:2px solid var(--ink3);display:flex;align-items:center;justify-content:center}
+.tick.on{background:var(--ok);border-color:var(--ok)}
+.tick.on svg{width:16px;height:16px;color:#fff}
+.row.done .name{color:var(--ink2)}
+.envhead{padding:4px 4px 12px}
+.prog{height:6px;border-radius:3px;background:var(--sep);overflow:hidden;margin-top:10px}
+.prog i{display:block;height:100%;background:var(--ok);border-radius:3px}
+.bottom{flex:none;padding:8px 16px 4px;display:flex;flex-direction:column;gap:8px}
+.search{display:flex;align-items:center;gap:8px;min-height:44px;border-radius:12px;background:var(--surface);border:1px solid var(--sep);padding:0 12px;color:var(--ink2);width:100%;cursor:pointer;text-align:left;font-size:17px}
+.search svg{width:18px;height:18px;flex:none}
+.search.focus{border-color:var(--accent);color:var(--ink)}
+.caret{display:inline-block;width:2px;height:20px;background:var(--accent);vertical-align:-4px;margin-left:1px}
+.btn{border:0;border-radius:14px;min-height:50px;padding:12px 16px;font-size:17px;line-height:22px;font-weight:600;cursor:pointer;width:100%}
+.btn.pri{background:var(--accent);color:var(--accent-ink)}
+.btn.sec{background:var(--accent-soft);color:var(--accent)}
+.btn.huge{min-height:72px;font-size:20px;line-height:25px}
+.btn.quiet{background:transparent;color:var(--accent);min-height:44px;font-weight:400}
+.pair{display:flex;gap:8px}
+.pair .btn{flex:1}
+.choice{display:flex;flex-direction:column;gap:10px;flex:1;min-height:0;padding-bottom:6px}
+.choice button{flex:1;border:2px solid var(--sep);background:var(--surface);border-radius:18px;text-align:left;padding:16px;cursor:pointer;display:flex;flex-direction:column;justify-content:center;gap:4px;min-height:96px}
+.choice button:first-child{border-color:var(--accent)}
+.choice .rank{font-size:12px;line-height:16px;font-weight:600;color:var(--accent);text-transform:uppercase;letter-spacing:.04em}
+.toastslot{min-height:44px;display:flex;align-items:center}
+.toast{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;background:var(--raise);border:1px solid var(--sep);border-radius:12px;padding:0 4px 0 12px;min-height:44px;font-size:15px}
+.toast .nbtn{font-size:15px;font-weight:600}
+.big-result{display:flex;flex-direction:column;align-items:center;text-align:center;gap:6px;padding:8px 8px 12px}
+.badge{width:56px;height:56px;border-radius:50%;display:flex;align-items:center;justify-content:center}
+.badge svg{width:30px;height:30px}
+.badge.ok{background:var(--ok-soft);color:var(--ok)}
+.badge.bad{background:var(--bad-soft);color:var(--bad)}
+.sound{display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:18px;color:var(--ink2);border:1px solid var(--sep);border-radius:12px;padding:4px 10px}
+.sound svg{width:14px;height:14px;flex:none}
+.note{font-size:13px;line-height:18px;color:var(--ink2);padding:8px 4px}
+.lbl{display:inline-block;font-size:11px;line-height:13px;font-weight:600;padding:3px 6px;border-radius:6px;border:1px dashed currentColor;margin:2px 0 6px}
+.lbl.new{color:var(--new)}
+.lbl.today{color:var(--today)}
+body.nolabels .lbl{display:none}
+.stats{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.stat{background:var(--surface);border-radius:12px;padding:12px 14px}
+.stat b{display:block;font-size:28px;line-height:34px;font-weight:700}
+.sec-h{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.03em;padding:18px 4px 6px}
+.pill{font-size:12px;line-height:16px;font-weight:600;padding:2px 8px;border-radius:999px;white-space:nowrap}
+.pill.warn{background:var(--warn-soft);color:var(--warn)}
+.pill.ok{background:var(--ok-soft);color:var(--ok)}
+.chev{color:var(--ink3);width:10px;height:16px;flex:none}
+.tabbar{flex:none;margin:0 16px 4px;display:flex;justify-content:space-around;background:var(--raise);border:1px solid var(--sep);border-radius:999px;padding:4px;box-shadow:0 6px 20px rgba(0,0,0,.12)}
+.tabbar button{flex:1;border:0;background:transparent;min-height:48px;border-radius:999px;font-size:11px;line-height:13px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:3px;color:var(--ink2);cursor:pointer}
+.tabbar button svg{width:22px;height:22px}
+.tabbar button.on{background:var(--accent-soft);color:var(--accent);font-weight:600}
+.sheet-dim{position:absolute;inset:0;background:rgba(0,0,0,.35);z-index:5}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:62px;background:var(--screen);border-radius:22px 22px 0 0;z-index:6;display:flex;flex-direction:column;box-shadow:0 -8px 30px rgba(0,0,0,.25)}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:6px auto 0}
+.photo{height:170px;border-radius:14px;position:relative;overflow:hidden;background:var(--cam)}
+.photo .card{inset:auto;left:50%;top:10px;width:104px;height:142px;margin-left:-52px}
+.placeholder{border:1.5px dashed var(--ink3);border-radius:12px;padding:16px;text-align:center;color:var(--ink2);font-size:15px;line-height:20px}
+.kbd{flex:none;background:var(--kbd);padding:8px 4px 30px;display:grid;grid-template-columns:repeat(10,1fr);gap:8px 5px}
+.kbd i{display:block;height:40px;border-radius:6px;background:var(--key);box-shadow:0 1px 0 rgba(0,0,0,.25);font-style:normal;font-size:20px;line-height:40px;text-align:center;color:var(--ink)}
+.kbd .wide{grid-column:span 6;font-size:15px}
+.kbd .mid{grid-column:span 2;font-size:15px}
+.hl-match{background:var(--accent-soft);color:var(--accent);border-radius:3px;padding:0 1px}
+.side-cap{position:absolute;left:0;right:0;bottom:12px;color:rgba(255,255,255,.75);font-size:13px;line-height:18px;text-align:center}
+.rowbtn{width:100%;border:0;background:transparent;text-align:left;cursor:pointer}
+</style>
+</head>
+<body>
+<div class="banner" role="note">Sample: no figure, seller, card or price on this page is real. Invented data only.</div>
+<header class="top">
+  <h1>Card speaks for itself <span class="tag">idea mockup, not built</span></h1>
+  <p>Slide each card under the propped phone: the app reads its name, finds the open order that holds it, and ticks it. No packing slip or return address needed.</p>
+</header>
+
+<div class="bar" aria-label="Mockup controls">
+  <div class="ctl">Theme
+    <div class="seg" id="themeSeg"><button data-v="auto">Auto</button><button data-v="light">Light</button><button data-v="dark">Dark</button></div></div>
+  <div class="ctl">Pose
+    <div class="seg" id="poseSeg"><button data-v="both">Both</button><button data-v="folded">Folded</button><button data-v="unfolded">Unfolded</button></div></div>
+  <div class="ctl">First card of an envelope
+    <div class="seg" id="firstSeg"><button data-v="confirm">Confirm (recommended)</button><button data-v="auto">Auto-tick</button></div></div>
+  <div class="ctl">Today/New labels
+    <div class="seg" id="lblSeg"><button data-v="on">Show</button><button data-v="off">Hide</button></div></div>
+</div>
+<nav class="steps" id="steps" aria-label="Screen states"></nav>
+<div class="sim" id="sim" aria-label="Simulate the camera">
+  <span>Slide a card under the camera:</span>
+  <button data-card="Moss Golem">Moss Golem</button>
+  <button data-card="Ember Wisp">Ember Wisp</button>
+  <button data-card="Tidepool Lantern">Tidepool Lantern</button>
+  <button data-card="Glass Heron">Glass Heron</button>
+  <button data-card="glare">Foil glare (read fails)</button>
+</div>
+
+<main class="stage" id="stage">
+  <section class="pose" id="poseFolded">
+    <h2>Folded: one screen</h2>
+    <div class="cap">Camera strip on top, this envelope's cards below, type-ahead at the bottom.</div>
+    <div class="fit" id="fitFolded"><div class="scaler">
+      <div class="device" data-device="iphone-duo-folded"><div class="scr" id="scrFolded"></div></div>
+    </div></div>
+  </section>
+  <section class="pose" id="poseUnfolded">
+    <h2>Unfolded: two screens, propped like a tent</h2>
+    <div class="cap">Camera on one half, facing the card. The expected list on the other half, facing you.</div>
+    <div class="fit" id="fitUnfolded"><div class="scaler">
+      <div class="device open" data-device="iphone-duo-unfolded"><div class="scr" id="scrLeft"></div><div class="scr" id="scrRight"></div></div>
+    </div></div>
+  </section>
+</main>
+
+<section class="why">
+  <h3>What this mockup shows, from the plan</h3>
+  <ol>
+    <li>It writes the same check-ins as today. The package list stays; "Scan cards" is a new way in.</li>
+    <li>Every tick lands in the recent-checks log, and its undo is what makes an auto-tick safe.</li>
+    <li>A card in no open order goes to the existing orphaned pile. A scan only proposes a match there; it never assigns one.</li>
+    <li>"Missing one" leaves the line open, so the lost-mail warning keeps counting it.</li>
+    <li>Matching is by card name. Set and collector number would only break ties, and the CSV may not carry them.</li>
+    <li>Camera frames are not kept, except the one photo taken after "Problem".</li>
+    <li>On web there is no camera: it opens the type-ahead box (state 8) instead.</li>
+    <li>Frame size is nominal, 375 x 780 per screen: no device size is written for this repo.</li>
+  </ol>
+</section>
+
+<script>
+(function(){
+'use strict';
+var ORDER = {seller:'Seller Kestrel-7', shipped:9, lines:[
+  {n:'Moss Golem', p:0.45}, {n:'Ember Wisp', p:0.65}, {n:'Tidepool Lantern', p:0.75}]};
+var OTHER = {seller:'Seller Brindle Barn', shipped:4, cards:5, p:0.70};
+var STATES = [
+  ['start','1 Package list'],['idle','2 Live scan, nothing pinned'],['confirm','3 First card: confirm'],
+  ['pinned','4 Envelope pinned'],['ambiguous','5 Which envelope?'],['done','6 Envelope done'],
+  ['nomatch','7 No match'],['typeahead','8 Type-ahead fallback'],['problem','9 Problem'],['summary','10 Session summary']];
+var CANON = {start:{},idle:{},confirm:{card:'Moss Golem'},pinned:{k:[1,0,0],last:'Moss Golem'},
+  ambiguous:{card:'Ember Wisp'},done:{k:[1,1,1],last:'Tidepool Lantern'},nomatch:{card:'Glass Heron'},typeahead:{},
+  problem:{k:[1,0,0],last:'Moss Golem'},summary:{}};
+
+var st = {s:'idle', k:[0,0,0], card:'', last:'', t:'auto', v:'both', first:'confirm', labels:true, muted:false, msg:''};
+
+function store(get, key, val){ try{ if(get) return localStorage.getItem(key); localStorage.setItem(key,val);}catch(e){ return null; } }
+st.muted = store(true,'csfi-muted') === '1';
+
+/* ---------- icons ---------- */
+var I = {
+  check:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  spk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M16.5 8.5a5 5 0 0 1 0 7M19 6a8.5 8.5 0 0 1 0 12"/></svg>',
+  spkOff:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9h4l5-4v14l-5-4H4z"/><path d="M17 9l5 6M22 9l-5 6"/></svg>',
+  search:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" aria-hidden="true"><circle cx="10.5" cy="10.5" r="6.5"/><path d="M15.5 15.5L21 21"/></svg>',
+  cam:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 8h4l2-3h6l2 3h4v11H3z"/><circle cx="12" cy="13" r="4"/></svg>',
+  x:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" aria-hidden="true"><path d="M7 7l10 10M17 7L7 17"/></svg>',
+  note:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M9 17.5V5l11-2v12.5a3 3 0 1 1-2-2.8V6.4L11 7.7v9.8a3 3 0 1 1-2-2.8z"/></svg>',
+  chev:'<svg class="chev" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M2 2l6 6-6 6"/></svg>',
+  box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>',
+  sum:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9"/></svg>',
+  q:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .9-1 1.7M12 17h.01"/></svg>'
+};
+function esc(s){ return String(s).replace(/[&<>"]/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c];}); }
+function money(n){ return '$'+n.toFixed(2); }
+function lbl(kind, text){ return '<span class="lbl '+kind+'">'+(kind==='new'?'New: ':'Today: ')+esc(text)+'</span>'; }
+function count(){ return st.k.reduce(function(a,b){return a+b;},0); }
+
+/* ---------- sound: synthesized with Web Audio, nothing loaded ---------- */
+var ac = null;
+function tone(freqs, dur, type, gainV){
+  if (st.muted) return;
+  try{
+    ac = ac || new (window.AudioContext || window.webkitAudioContext)();
+    var t0 = ac.currentTime;
+    freqs.forEach(function(f, i){
+      var o = ac.createOscillator(), g = ac.createGain();
+      o.type = type; o.frequency.value = f;
+      g.gain.setValueAtTime(0.0001, t0 + i*0.02);
+      g.gain.exponentialRampToValueAtTime(gainV, t0 + i*0.02 + 0.01);
+      g.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      o.connect(g); g.connect(ac.destination); o.start(t0 + i*0.02); o.stop(t0 + dur + 0.05);
+    });
+  }catch(e){}
+}
+var SND = { click:function(){tone([1800],0.05,'square',0.05);},
+  chord:function(){tone([523.25,659.25,783.99],0.7,'sine',0.12);},
+  buzz:function(){tone([110,116],0.35,'sawtooth',0.06);} };
+
+/* ---------- pieces ---------- */
+function statusBar(onCam){
+  return '<div class="status'+(onCam?' oncam':'')+'"><span class="num">9:41</span><span class="island"></span><span class="num" aria-hidden="true">82%</span></div>';
+}
+function home(onCam){ return '<div class="home'+(onCam?' oncam':'')+'"><i></i></div>'; }
+function muteBtn(){
+  return '<button class="nbtn" data-act="mute" aria-label="'+(st.muted?'Sound off. Turn sound on':'Sound on. Mute')+'">'+(st.muted?I.spkOff:I.spk)+'</button>';
+}
+function scanNav(){
+  return '<div class="nav">'+muteBtn()+'<div class="title hl">Scan cards</div><button class="nbtn bold" data-act="finish">Done</button></div>';
+}
+function cardEl(name, mode){
+  return '<div class="card'+(mode==='hit'?' hit':'')+'"><div class="nameline">'+esc(name)+'</div><div class="art"></div>'+
+    (mode==='glare'?'<div class="glare"></div>':'')+'</div>';
+}
+function camera(full){
+  var inner = '', chip = '', s = st.s;
+  if (s==='idle'){ inner = '<div class="reticle"></div>'; chip = 'Slide a card in, name line up'; }
+  else if (s==='confirm'){ inner = '<div class="reticle">'+cardEl(st.card,'hit')+'</div>'; chip = 'Read: '+st.card; }
+  else if (s==='pinned' || s==='problem'){
+    var n = st.last;
+    inner = '<div class="reticle">'+(n?cardEl(n,'hit'):'')+'</div>'; chip = n ? 'Ticked: '+n : 'Next card, please'; }
+  else if (s==='ambiguous'){ inner = '<div class="reticle">'+cardEl(st.card,'hit')+'</div>'; chip = 'Read: '+st.card+' (2 orders)'; }
+  else if (s==='done'){ inner = '<div class="reticle">'+cardEl(st.last||'Tidepool Lantern','hit')+'</div>'; chip = 'Envelope complete'; }
+  else if (s==='nomatch'){ inner = '<div class="reticle">'+cardEl(st.card,'')+'</div>'; chip = 'Read: '+st.card+' · no open order'; }
+  else if (s==='typeahead'){ inner = '<div class="reticle">'+cardEl('Ember W…','glare')+'</div>'; chip = 'Could not read: glare on the sleeve'; }
+  return '<div class="cam '+(full?'full':'strip')+'" aria-label="Camera view">'+(full?'<div class="camtop">Reads on the phone. Frames are not kept.</div>':'')+inner+
+    '<div class="camchip"><span>'+esc(chip)+'</span></div>'+(full?'<div class="side-cap">This half faces the card</div>':'')+'</div>';
+}
+function searchField(focus){
+  if (focus) return '<div class="search focus" role="searchbox" aria-label="Card name">'+I.search+'<span>Emb<span class="caret"></span></span></div>';
+  return '<button class="search" data-act="type" aria-label="Type a card name instead">'+I.search+'<span>Type a card name</span></button>';
+}
+function toastSlot(){
+  var inner = '';
+  if (st.msg) inner = '<div class="toast"><span>'+esc(st.msg)+'</span></div>';
+  else if (st.last) inner = '<div class="toast"><span>Ticked '+esc(st.last)+'</span><button class="nbtn" data-act="undo">Undo</button></div>';
+  return '<div class="toastslot">'+inner+'</div>';
+}
+function envRows(){
+  return ORDER.lines.map(function(l,i){
+    var on = st.k[i]===1;
+    return '<div class="row'+(on?' done':'')+'"><span class="tick'+(on?' on':'')+'" role="img" aria-label="'+(on?'Received':'Expected')+'">'+(on?I.check:'')+'</span>'+
+      '<span class="grow"><span class="body name">'+esc(l.n)+'</span><br><span class="foot mute">'+(on?'Received':'Expected')+' · qty 1</span></span>'+
+      '<span class="body price num">'+money(l.p)+'</span></div>';
+  }).join('');
+}
+function envHead(){
+  var c = count();
+  return '<div class="envhead"><div style="display:flex;justify-content:space-between;align-items:baseline;gap:8px"><div><div class="t3">'+ORDER.seller+'</div><div class="sub mute">shipped '+ORDER.shipped+' days ago</div></div>'+
+    '<div class="lt num" aria-label="'+c+' of 3 received">'+c+'<span class="t3 mute">/3</span></div></div>'+
+    '<div class="prog" role="progressbar" aria-valuemin="0" aria-valuemax="3" aria-valuenow="'+c+'"><i style="width:'+(c/3*100)+'%"></i></div></div>';
+}
+
+/* ---------- per-state panel: the half that faces the person ---------- */
+function panel(){
+  var s = st.s, body = '', bottom = '';
+  if (s==='idle'){
+    body = '<div class="statusline"><div class="t3">No envelope yet</div><div class="sub mute num">214 cards outstanding in 38 orders</div></div>'+
+      (st.msg?'<div class="toastslot"><div class="toast"><span>'+esc(st.msg)+'</span></div></div>':'')+
+      '<div class="note">Open the first envelope and slide one card under the camera. The app searches only open lines, by card name. Reading happens on the phone; frames are not kept.</div>'+
+      '<div class="sound">'+(st.muted?I.spkOff+' Sound off':I.spk+' Sound on: a click per tick, a chord when an envelope is full')+'</div>';
+    bottom = lbl('new','type-ahead on any card name')+searchField(false);
+  }
+  else if (s==='confirm'){
+    body = lbl('new','first card of an envelope is confirmed')+
+      '<div class="statusline"><div class="t3">'+esc(st.card)+'</div><div class="sub mute">is in 1 open order</div></div>'+
+      '<div class="group"><div class="row plain"><span class="grow"><span class="hl">'+ORDER.seller+'</span><br><span class="foot mute">shipped '+ORDER.shipped+' days ago · 3 cards · '+money(1.85)+'</span></span></div></div>'+
+      '<div class="note">Tick it and this envelope is pinned to that order. Later cards from it tick on their own.</div>';
+    bottom = '<button class="btn pri huge" data-act="pin">Tick and pin envelope</button><button class="btn quiet" data-act="notthis">Not this order</button>';
+  }
+  else if (s==='pinned' || s==='problem'){
+    body = envHead()+'<div class="group">'+envRows()+'</div>'+
+      '<div class="note">Later cards match this order first and tick on their own.</div>';
+    bottom = lbl('today','recent-checks log and its undo')+toastSlot()+
+      '<div class="pair"><button class="btn sec" data-act="problem">Problem</button><button class="btn sec" data-act="missing">Missing one</button></div>'+searchField(false);
+  }
+  else if (s==='ambiguous'){
+    body = '<div style="display:flex;flex-direction:column;height:100%"><div class="statusline"><div class="t3">'+esc(st.card)+' is in 2 open orders</div><div class="sub mute">Which envelope? Asked once, then it is pinned.</div></div>'+
+      '<div class="choice">'+
+      '<button data-act="pick"><span class="rank">Shipped first</span><span class="t2">'+ORDER.seller+'</span><span class="sub mute">shipped '+ORDER.shipped+' days ago · 3 cards · '+money(0.65)+'</span></button>'+
+      '<button data-act="pick2"><span class="t2">'+OTHER.seller+'</span><span class="sub mute">shipped '+OTHER.shipped+' days ago · '+OTHER.cards+' cards · '+money(OTHER.p)+'</span></button></div></div>';
+    bottom = '<button class="btn quiet" data-act="neither">Neither of these</button>';
+  }
+  else if (s==='done'){
+    body = '<div class="big-result"><div class="badge ok">'+I.check+'</div><div class="t2 num">3 of 3 received · '+money(1.85)+'</div>'+
+      '<div class="sub mute">'+ORDER.seller+'</div><div class="sound">'+I.note+' Chord played</div></div>'+
+      '<div class="group">'+envRows()+'</div>';
+    bottom = toastSlot()+'<button class="btn pri huge" data-act="next">Next envelope</button><button class="btn quiet" data-act="problem">Problem with a card</button>';
+  }
+  else if (s==='nomatch'){
+    body = '<div class="big-result"><div class="badge bad">'+I.x+'</div><div class="t2">'+esc(st.card)+(st.neither?': not from those orders':' is in no open order')+'</div>'+
+      '<div class="sub mute">Low buzz played. Nothing was ticked.</div></div>'+lbl('today','orphaned pile')+
+      '<div class="note"><b>Orphaned</b>: the envelope goes to the orphaned pile with this card. A later scan may suggest a match there; you tap to assign it. <b>Extra card</b>: a bonus or stray card in a known envelope. It is noted; nothing is ticked.</div>';
+    bottom = '<div class="pair"><button class="btn sec huge" data-act="orphan">Orphaned</button><button class="btn sec huge" data-act="extra">Extra card</button></div>'+searchField(false);
+  }
+  else if (s==='typeahead'){
+    var rows = [
+      ['Ember Wisp', ORDER.seller+(count()>0?' · this envelope':''), ORDER.shipped, 0.65, 'pickta', count()>0],
+      ['Ember Wisp', OTHER.seller, OTHER.shipped, 0.70, 'pick2', false],
+      ['Emberline Drake', 'Seller Quill &amp; Moth', 12, 1.10, 'pickother', false]];
+    body = '<div class="statusline"><div class="sub mute">Matches across all open lines. '+(count()>0?'The pinned order comes first.':'Tap one to tick it and pin its envelope.')+'</div></div>'+
+      '<div class="group">'+rows.map(function(r){
+        return '<button class="row plain rowbtn" data-act="'+r[4]+'">'+
+          '<span class="grow"><span class="body"><span class="hl-match">Emb</span>'+esc(r[0].slice(3))+'</span><br><span class="foot mute">'+r[1]+' · '+r[2]+' days · '+money(r[3])+'</span></span>'+
+          (r[5]?'<span class="pill ok">pinned</span>':'')+I.chev+'</button>';
+      }).join('')+'</div>';
+    bottom = searchField(true);
+  }
+  return {body:body, bottom:bottom};
+}
+function problemSheet(){
+  return '<div class="sheet-dim"></div><div class="sheet" role="dialog" aria-label="Problem">'+
+    '<div class="grabber"></div><div class="nav"><button class="nbtn" data-act="closeprob">Cancel</button><div class="title hl">Problem</div><button class="nbtn bold" data-act="saveprob">Done</button></div>'+
+    '<div class="body-area">'+lbl('today','photo and stamp tools')+
+    '<div class="photo">'+cardEl(st.last||'Moss Golem','')+'<div class="camchip"><span>1 photo · attached to '+ORDER.seller+'</span></div></div>'+
+    '<div class="note">This is the only camera frame kept. Tap the photo to retake it.</div>'+
+    '<div class="sec-h">Stamp</div>'+
+    '<div class="placeholder">The existing stamp picker opens here.<br><span class="foot">Not redrawn in this idea mockup.</span></div></div></div>';
+}
+
+/* start: today's package list, with the new way in */
+function pkgRows(sel){
+  var rows = [[ORDER.seller,3,9,''],[OTHER.seller,5,4,''],['Seller Quill &amp; Moth',2,12,''],['Seller Pebble Post',4,23,'warn']];
+  return '<div class="group">'+rows.map(function(r,i){
+    return '<div class="row plain"'+(sel&&i===0?' style="background:var(--accent-soft)"':'')+'><span class="grow"><span class="hl">'+r[0]+'</span><br><span class="foot mute">'+r[1]+' cards · shipped '+r[2]+' days ago</span></span>'+
+      (r[3]?'<span class="pill warn">May be lost</span>':'')+I.chev+'</div>';
+  }).join('')+'</div>';
+}
+function tabbar(){
+  return '<div class="tabbar" role="tablist"><button class="on" role="tab" aria-selected="true">'+I.box+'Packages</button><button role="tab" aria-selected="false">'+I.sum+'Tally</button><button role="tab" aria-selected="false">'+I.q+'Orphaned</button></div>';
+}
+function startNav(){ return '<div class="nav"><span></span><button class="nbtn bold" data-act="scan">'+I.cam+'Scan cards</button></div>'; }
+function startFolded(){
+  return statusBar(false)+startNav()+
+    '<div class="body-area"><div style="text-align:right">'+lbl('new','Scan cards')+'</div><div class="lt">Packages</div>'+
+    '<div style="margin:8px 0 6px">'+lbl('today','package list, drawn generic')+'</div>'+pkgRows(false)+
+    '<div class="note num">38 open orders · 214 cards outstanding</div></div>'+tabbar()+home(false);
+}
+function startLeft(){
+  return statusBar(false)+'<div class="nav"></div><div class="body-area"><div class="lt">Packages</div><div style="margin:8px 0 6px">'+lbl('today','package list, drawn generic')+'</div>'+pkgRows(true)+'</div>'+tabbar()+home(false);
+}
+function startRight(){
+  return statusBar(false)+startNav()+'<div class="body-area"><div style="text-align:right">'+lbl('new','Scan cards')+'</div>'+envHead()+'<div class="group">'+envRows()+'</div>'+
+    '<div class="note">Unfolded, the list sits beside the selected package. "Scan cards" turns the left half into the camera.</div></div>'+home(false);
+}
+function summaryTop(){
+  return '<div class="lt">Mail day</div><div class="sub mute" style="margin-bottom:12px">Session summary</div>'+
+    '<div class="stats num"><div class="stat"><b>6</b><span class="foot mute">envelopes closed</span></div>'+
+    '<div class="stat"><b>17</b><span class="foot mute">cards ticked</span></div>'+
+    '<div class="stat"><b>'+money(14.20)+'</b><span class="foot mute">cost received</span></div>'+
+    '<div class="stat"><b>197</b><span class="foot mute">cards still open, in 32 orders</span></div></div>';
+}
+function summaryLists(){
+  return '<div class="sec-h">Left open with "Missing one"</div><div class="group"><div class="row plain"><span class="grow"><span class="body">Harbor Sprite</span><br><span class="foot mute">Seller Pebble Post · '+money(0.35)+' · the lost-mail warning still counts it</span></span></div></div>'+
+    '<div class="sec-h">Sent to orphaned</div><div class="group"><div class="row plain"><span class="grow"><span class="body">1 envelope, holding Glass Heron</span><br><span class="foot mute">No match assigned. You assign it in Orphaned.</span></span></div></div>'+
+    '<div class="sec-h">Problems</div><div class="group"><div class="row plain"><span class="grow"><span class="body">1 photo, stamped</span><br><span class="foot mute">'+ORDER.seller+'</span></span></div></div>';
+}
+function summaryNav(){ return '<div class="nav"><span></span><button class="nbtn bold" data-act="restart">Close</button></div>'; }
+function keyboard(){
+  return '<div class="kbd" aria-hidden="true">'+'QWERTYUIOP'.split('').map(function(c){return '<i>'+c+'</i>';}).join('')+
+    '<i style="visibility:hidden"></i>'+'ASDFGHJKL'.split('').map(function(c){return '<i>'+c+'</i>';}).join('')+
+    '<i class="mid">123</i><i class="wide">space</i><i class="mid">search</i></div>';
+}
+
+/* ---------- compose ---------- */
+function render(){
+  var s = st.s, f = '', L = '', R = '';
+  if (s==='start'){ f = startFolded(); L = startLeft(); R = startRight(); }
+  else if (s==='summary'){
+    f = statusBar(false)+summaryNav()+'<div class="body-area">'+summaryTop()+summaryLists()+'</div>'+home(false);
+    L = statusBar(false)+'<div class="nav"></div><div class="body-area">'+summaryTop()+'</div>'+home(false);
+    R = statusBar(false)+summaryNav()+'<div class="body-area">'+summaryLists()+'</div>'+home(false);
+  } else {
+    var p = panel();
+    var tail = s==='typeahead' ? keyboard() : home(false);
+    var sheet = s==='problem' ? problemSheet() : '';
+    f = statusBar(false)+scanNav()+camera(false)+'<div class="body-area">'+p.body+'</div><div class="bottom">'+p.bottom+'</div>'+tail+sheet;
+    L = '<div style="display:flex;flex-direction:column;height:100%;background:var(--cam)">'+statusBar(true)+camera(true)+home(true)+'</div>';
+    R = statusBar(false)+scanNav()+'<div class="body-area">'+p.body+'</div><div class="bottom">'+p.bottom+'</div>'+tail+sheet;
+  }
+  document.getElementById('scrFolded').innerHTML = f;
+  document.getElementById('scrLeft').innerHTML = L;
+  document.getElementById('scrRight').innerHTML = R;
+  document.getElementById('steps').innerHTML = STATES.map(function(x){
+    return '<a href="#s='+x[0]+'" data-jump="'+x[0]+'" aria-current="'+(x[0]===s)+'">'+esc(x[1])+'</a>';
+  }).join('');
+  document.body.classList.toggle('nolabels', !st.labels);
+  segSet('themeSeg', st.t); segSet('poseSeg', st.v); segSet('firstSeg', st.first); segSet('lblSeg', st.labels?'on':'off');
+  if (st.t==='auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', st.t);
+  document.getElementById('poseFolded').style.display = st.v==='unfolded' ? 'none' : '';
+  document.getElementById('poseUnfolded').style.display = st.v==='folded' ? 'none' : '';
+  fit(); writeHash();
+}
+function segSet(id, v){ Array.prototype.forEach.call(document.getElementById(id).children, function(b){ b.setAttribute('aria-pressed', String(b.dataset.v===v)); }); }
+
+/* scale each frame to the room it has, so the page never scrolls sideways at phone width */
+function fit(){
+  var avail = document.getElementById('stage').clientWidth - 32;
+  var FW = 397, UW = 786, H = 802, GAP = 28;
+  var both = st.v==='both';
+  var sf = Math.min(1, avail/FW), su = Math.min(1, avail/UW);
+  if (both && avail >= FW + GAP + 520){ sf = 1; su = Math.min(1, (avail - FW - GAP)/UW); }
+  [['fitFolded',FW,sf],['fitUnfolded',UW,su]].forEach(function(x){
+    var box = document.getElementById(x[0]);
+    box.style.width = (x[1]*x[2])+'px'; box.style.height = (H*x[2])+'px';
+    box.firstElementChild.style.transform = 'scale('+x[2]+')';
+    box.parentElement.style.width = (x[1]*x[2])+'px';
+  });
+}
+
+/* ---------- deep links: #s=pinned&k=110&t=dark&v=folded&first=auto&labels=off ---------- */
+function writeHash(){
+  var h = 's='+st.s;
+  if (['pinned','done','problem'].indexOf(st.s)>=0) h += '&k='+st.k.join('');
+  if (st.t!=='auto') h += '&t='+st.t;
+  if (st.v!=='both') h += '&v='+st.v;
+  if (st.first!=='confirm') h += '&first='+st.first;
+  if (!st.labels) h += '&labels=off';
+  if (location.hash.slice(1)!==h) history.replaceState(null,'','#'+h);
+}
+function readHash(){
+  var q = {}; location.hash.slice(1).split('&').forEach(function(kv){ var a = kv.split('='); if(a[0]) q[a[0]] = decodeURIComponent(a[1]||''); });
+  go(STATES.some(function(x){return x[0]===q.s;}) ? q.s : 'idle', true);
+  if (q.k && /^[01]{3}$/.test(q.k)){ st.k = q.k.split('').map(Number); st.last = st.k.lastIndexOf(1)>=0 ? ORDER.lines[st.k.lastIndexOf(1)].n : ''; }
+  st.t = (q.t==='light'||q.t==='dark') ? q.t : 'auto';
+  st.v = (q.v==='folded'||q.v==='unfolded') ? q.v : 'both';
+  st.first = q.first==='auto' ? 'auto' : 'confirm';
+  st.labels = q.labels!=='off';
+  render();
+}
+function go(s, quiet){
+  var c = CANON[s] || {};
+  st.s = s; st.msg = ''; st.neither = false;
+  st.k = c.k ? c.k.slice() : [0,0,0];
+  st.card = c.card || ''; st.last = c.last || '';
+  if (!quiet) render();
+}
+
+/* ---------- the flow ---------- */
+function idx(name){ for (var i=0;i<3;i++) if (ORDER.lines[i].n===name) return i; return -1; }
+function tickName(name){
+  var i = idx(name); st.k[i] = 1; st.last = name; st.msg = '';
+  if (count()===3){ st.s='done'; SND.chord(); } else { st.s='pinned'; SND.click(); }
+}
+function slide(name){
+  if (st.s==='start' || st.s==='summary') go('idle', true);
+  if (st.s==='problem') st.s = 'pinned';
+  if (name==='glare'){ st.s='typeahead'; render(); return; }
+  if (count()>0){
+    var i = idx(name);
+    if (i>=0 && st.k[i]===0){ tickName(name); render(); return; }
+    if (i>=0){ st.s='pinned'; st.last=''; st.msg = name+' is already ticked'; SND.buzz(); render(); return; }
+    st.card = name; st.s='nomatch'; st.neither = false; SND.buzz(); render(); return;
+  }
+  if (name==='Ember Wisp'){ st.card=name; st.s='ambiguous'; render(); return; }
+  if (name==='Glass Heron'){ st.card=name; st.neither=false; st.s='nomatch'; SND.buzz(); render(); return; }
+  if (st.first==='confirm'){ st.card=name; st.s='confirm'; render(); return; }
+  tickName(name); render();
+}
+function backToEnvelope(msg){ st.s = count()===3 ? 'done' : (count()>0 ? 'pinned' : 'idle'); st.msg = msg||''; render(); }
+var ACTS = {
+  scan:function(){ go('idle'); },
+  mute:function(){ st.muted=!st.muted; store(false,'csfi-muted',st.muted?'1':'0'); render(); },
+  finish:function(){ go('summary'); },
+  type:function(){ st.s='typeahead'; render(); },
+  pin:function(){ tickName(st.card); render(); },
+  notthis:function(){ st.s='typeahead'; render(); },
+  pick:function(){ tickName('Ember Wisp'); render(); },
+  pickta:function(){ if (st.k[1]===0) tickName('Ember Wisp'); else st.s='pinned'; render(); },
+  pick2:function(){ backToEnvelope('Sample: only '+ORDER.seller+' is drawn'); },
+  pickother:function(){ backToEnvelope('Sample: only '+ORDER.seller+' is drawn'); },
+  neither:function(){ st.card = st.card || 'Ember Wisp'; st.s='nomatch'; st.neither = true; SND.buzz(); render(); },
+  undo:function(){ var i = idx(st.last); if (i>=0) st.k[i]=0; var n = st.last; st.last=''; backToEnvelope('Undone: '+n); },
+  problem:function(){ if (!st.last) st.last = 'Moss Golem'; st.s='problem'; render(); },
+  closeprob:function(){ backToEnvelope(); },
+  saveprob:function(){ backToEnvelope('Photo and stamp saved to the package'); },
+  missing:function(){ go('idle', true); st.msg='Envelope closed. The open line stays on the lost-mail warning.'; render(); },
+  next:function(){ go('idle'); },
+  orphan:function(){ go('idle', true); st.msg='Envelope sent to Orphaned. Nothing assigned.'; render(); },
+  extra:function(){ backToEnvelope('Extra card noted. Nothing ticked.'); },
+  restart:function(){ go('start'); }
+};
+document.addEventListener('click', function(e){
+  var a = e.target.closest('[data-act]');
+  if (a && ACTS[a.dataset.act]){ e.preventDefault(); ACTS[a.dataset.act](); return; }
+  var j = e.target.closest('[data-jump]');
+  if (j){ e.preventDefault(); go(j.dataset.jump); return; }
+  var c = e.target.closest('[data-card]');
+  if (c){ slide(c.dataset.card); return; }
+  var sb = e.target.closest('.seg button');
+  if (sb){
+    var id = sb.parentElement.id, v = sb.dataset.v;
+    if (id==='themeSeg') st.t=v; else if (id==='poseSeg') st.v=v; else if (id==='firstSeg') st.first=v; else if (id==='lblSeg') st.labels = v==='on';
+    render();
+  }
+});
+window.addEventListener('hashchange', readHash);
+window.addEventListener('resize', fit);
+readHash();
+})();
+</script>
+</body>
+</html>
