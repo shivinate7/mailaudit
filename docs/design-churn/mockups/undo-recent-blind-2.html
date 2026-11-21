@@ -88,7 +88,7 @@ button { font: inherit; color: inherit; }
 .concept-nav .chip {
   display: flex; align-items: center; gap: var(--space-1);
   border: 1px solid var(--line); border-radius: var(--radius); background: var(--raised);
-  padding-inline-start: var(--space-3);
+  padding: var(--space-1) var(--space-1) var(--space-1) var(--space-3);
 }
 .concept-nav a { color: var(--text); text-decoration: none; font-weight: 600; }
 .concept-nav .hide, .concept-head .hide {
@@ -177,9 +177,13 @@ figcaption { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--
 .undo-btn {
   grid-column: 3; justify-self: end; margin-inline-end: var(--space-2);
   width: 56px; height: 52px; border-radius: var(--radius); cursor: pointer;
-  display: grid; place-items: center;
+  display: grid; place-items: center; align-content: center; gap: 0;
   border: 2px solid var(--undo); background: var(--raised); color: var(--undo);
 }
+/* The word under the icon: Caption 2 at the default size, so a confused person reads "Undo", not only an arrow. */
+.undo-btn .cap-word { font-size: var(--t-cap2); line-height: var(--l-cap2); font-weight: 600; }
+.undo-btn svg { width: 22px; height: 22px; }
+.ax .undo-btn .cap-word { display: none; }
 .undo-btn.redo { border-color: var(--tick); color: var(--tick); background: var(--tick-soft); }
 .undo-btn:active { transform: scale(0.96); }
 
@@ -263,7 +267,7 @@ body.no-labels .new-tag { display: none; }
 .shelf-head { display: flex; justify-content: space-between; align-items: center; padding-inline-start: var(--space-2); }
 .shelf-head b { font-size: var(--t-foot); color: var(--text-2); }
 .shelf-head .nav-btn { font-size: var(--t-sub); }
-.slots { display: flex; flex-direction: column; gap: var(--space-1); }
+.slots { display: flex; flex-direction: column; gap: var(--space-2); }
 .slot { display: grid; grid-template-columns: minmax(0, 1fr) var(--space-4) 64px; align-items: center; min-height: 56px; border-radius: var(--radius); }
 .slot .row-body { min-height: 52px; padding: var(--space-1) var(--space-2); }
 .slot.undone { background: var(--undo-soft); }
@@ -334,6 +338,8 @@ body.no-labels .new-tag { display: none; }
 .ax .tickbox span { width: 48px; height: 48px; }
 .ax .facts { grid-template-columns: 1fr; }
 .ax .row-meta .tm-rel { display: none; }
+.ax .scr, .ax .scr * { line-height: 1.17; }
+.ax .scr { font-size: var(--t-body); }
 /* AX5: the full-width undo button carries its word, the filter and the long hint step aside */
 .btn-word { display: none; }
 .ax .btn-word { display: inline; font-size: var(--t-head); font-weight: 600; }
@@ -477,7 +483,7 @@ body.no-labels .new-tag { display: none; }
     return acts;
   }
   function freshSt() {
-    return { acts: freshActs(), phase: page.state === "loading" || page.state === "failed" ? page.state : "loaded", sel: 0, sheet: false, tab: null, filter: "all", nextId: 100 };
+    return { acts: freshActs(), phase: page.state === "loading" || page.state === "failed" ? page.state : "loaded", sel: 0, sheet: false, tab: null, order: "4471", filter: "all", nextId: 100 };
   }
 
   const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
@@ -497,17 +503,17 @@ body.no-labels .new-tag { display: none; }
   }
   function undoBtn(a) {
     return a.undone
-      ? `<button class="undo-btn redo" data-act="redo" data-id="${a.id}" aria-label="Tick ${esc(a.card)} again">${ICON.redo}<span class="btn-word">Tick again</span></button>`
-      : `<button class="undo-btn" data-act="undo" data-id="${a.id}" aria-label="Undo the tick on ${esc(a.card)}">${ICON.undo}<span class="btn-word">Undo</span></button>`;
+      ? `<button class="undo-btn redo" data-act="redo" data-id="${a.id}" aria-label="Tick ${esc(a.card)} again">${ICON.redo}<span class="cap-word" aria-hidden="true">Tick</span><span class="btn-word">Tick again</span></button>`
+      : `<button class="undo-btn" data-act="undo" data-id="${a.id}" aria-label="Undo the tick on ${esc(a.card)}">${ICON.undo}<span class="cap-word" aria-hidden="true">Undo</span><span class="btn-word">Undo</span></button>`;
   }
   function hint(txt) { return `<p class="hint">${txt}</p>`; }
-  const UNDO_HINT = `<span style="color:var(--undo)">${ICON.undo}</span><span>Tap the arrow to undo a tick. Tap it again to put the tick back. Nothing else on a row changes a tick.</span>`;
+  const UNDO_HINT = `<span style="color:var(--undo)">${ICON.undo}</span><span>Tap Undo on the card you ticked by mistake. Tap it again to put the tick back. Nothing else on a row changes a tick.</span>`;
 
   function loadingBox() {
     return `<div class="state-box" aria-busy="true"><p class="hint">Reading recent ticks.</p></div><div class="list"><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>`;
   }
   function failedBox() {
-    return `<div class="state-box" role="alert"><p class="err">Recent ticks did not load.</p><p>Your list of ticks is not known right now, so nothing here is shown as empty.</p><button class="solid-btn" data-act="retry">Try again</button><details><summary>What the server said</summary><span>Sample: request timed out after 10 s.</span></details></div>`;
+    return `<div class="state-box" role="alert"><p class="err">Recent ticks did not load.</p><p>Until they load, this list is unknown, not empty.</p><button class="solid-btn" data-act="retry">Try again</button><details><summary>What the server said</summary><span>Sample: request timed out after 10 s.</span></details></div>`;
   }
   function emptyBox(ctrl) {
     return `<div class="state-box"><p>No ticks yet today. Each card you tick shows here, ready to undo.</p>${ctrl}</div>`;
@@ -545,8 +551,8 @@ body.no-labels .new-tag { display: none; }
     else if (!st.acts.length) body = `<div class="slot empty">Your next tick shows here, ready to undo.</div>`;
     else body = st.acts.slice(0, n).map((a) => `<div class="slot ${a.undone ? "undone" : ""}"><button class="row-body" data-act="sheet-open" aria-label="${esc(a.card)}. Show all ticks"><span class="row-name">${esc(a.card)}</span><span class="row-meta"><span>${esc(a.t)}</span>${devLabel(a)}${a.undone ? '<span class="status-word">Undone</span>' : ""}</span></button>${undoBtn(a)}</div>`).join("");
     // The shelf holds n slot heights in every state, so nothing above or below it moves when a tick lands or loads.
-    const minH = ax ? 0 : n * 56 + (n - 1) * 4;
-    return `<div class="dock" style="padding-left:0;padding-right:0"><div class="shelf new-mark" id="shelf-dock">${newTag("shelf")}
+    const minH = ax ? 0 : n * 56 + (n - 1) * 8;
+    return `<div class="dock" style="padding-left:0;padding-right:0"><div class="shelf new-mark">${newTag("shelf")}
       <div class="shelf-head"><b>Last ticks</b><button class="nav-btn" data-act="sheet-open">See all</button></div>
       <div class="slots" style="min-height:${minH}px">${body}</div></div></div>`;
   }
@@ -555,22 +561,34 @@ body.no-labels .new-tag { display: none; }
     if (st.phase === "failed") return failedBox();
     const acts = st.filter === "phone" ? st.acts.filter((a) => a.dev === "phone") : st.acts;
     if (!st.acts.length) return emptyBox("");
-    return `<p class="hint long">${UNDO_HINT}</p><ul class="list" id="${withDetailSel ? "recent-list" : ""}">${acts.map((a) => {
+    return `<p class="hint long">${UNDO_HINT}</p><ul class="list">${acts.map((a) => {
       const i = st.acts.indexOf(a);
       return `<li class="row ${a.undone ? "undone" : ""}"><button class="row-body" data-act="select" data-i="${i}" ${withDetailSel && st.sel === i ? 'aria-current="true"' : ""}><span class="row-name">${esc(a.card)}</span>${meta(a)}</button>${undoBtn(a)}</li>`;
     }).join("")}</ul>`;
   }
   function filterSeg(st) {
+    if (st.phase !== "loaded" || !st.acts.length) return ""; // no data: no filter
     return `<div class="seg" role="group" aria-label="Whose ticks"><button data-act="filter" data-f="all" aria-pressed="${st.filter === "all"}">All devices</button><button data-act="filter" data-f="phone" aria-pressed="${st.filter === "phone"}">This phone</button></div>`;
   }
+  // The checklist where ticks happen, and a plain list of orders. Shared by all three concepts' Cards tab.
+  function cardsScreen(st, tabs, dock) {
+    return `<div class="scr">${statusBar()}
+      <div class="nav"><div class="nav-top"><span></span><span class="small-title">Cards</span></div></div>
+      <div class="content">${shelfChecklist(st, st.order)}</div>
+      ${dock || "<div></div>"}
+      ${tabBar(tabs, "cards")}${homeBar()}</div>`;
+  }
+  function ordersScreen(st, tabs) {
+    return `<div class="scr">${statusBar()}<div class="nav"><h3>Orders</h3></div>
+      <div class="content"><div class="list">${Object.keys(ORDERS).map((k) =>
+        `<button class="card-line" data-act="open-order" data-order="${k}" style="cursor:pointer;text-align:start;font:inherit;color:inherit"><span class="nm">Order ${k}, ${esc(ORDERS[k].seller)}</span><span class="row-meta">${ORDERS[k].cards.filter((c) => isTicked(st, c)).length} of ${ORDERS[k].cards.length} in</span></button>`).join("")}</div></div>
+      <div></div>${tabBar(tabs, "orders")}${homeBar()}</div>`;
+  }
+
   function renderShelf(f) {
     const { st, pose } = f; const ax = pose === "ax";
     const tabs = [{ key: "cards", label: "Cards", icon: "cards" }, { key: "orders", label: "Orders", icon: "clock" }];
-    const checklistScreen = (withShelf) => `<div class="scr">${statusBar()}
-      <div class="nav"><div class="nav-top"><span></span><span class="small-title">Cards</span></div></div>
-      <div class="content">${shelfChecklist(st, "4471")}</div>
-      ${withShelf ? shelfDock(st, ax) : "<div></div>"}
-      ${tabBar(tabs, "cards")}${homeBar()}</div>`;
+    const checklistScreen = (withShelf) => st.tab === "orders" ? ordersScreen(st, tabs) : cardsScreen(st, tabs, withShelf ? shelfDock(st, ax) : "");
     if (pose === "open") {
       return `<div class="page">${checklistScreen(false)}</div><div class="hinge" aria-hidden="true"></div>
         <div class="page"><div class="scr">${statusBar()}<div class="nav"><h3 class="new-mark" style="align-self:flex-start">Last ticks${newTag("page")}</h3>${filterSeg(st)}</div>
@@ -589,7 +607,7 @@ body.no-labels .new-tag { display: none; }
   function renderRecent(f) {
     const { st, pose } = f; const ax = pose === "ax";
     const tabs = [{ key: "cards", label: "Cards", icon: "cards" }, { key: "recent", label: "Recent", icon: "clock" }];
-    const listScreen = (sel) => `<div class="scr">${statusBar()}
+    const listScreen = (sel) => st.tab === "cards" ? cardsScreen(st, tabs) : `<div class="scr">${statusBar()}
       <div class="nav"><h3 class="new-mark" style="align-self:flex-start">Recent${newTag("Recent tab")}</h3>${st.phase === "loaded" && st.acts.length ? filterSeg(st) : ""}</div>
       <div class="content">${
         st.phase === "loading" ? loadingBox() : st.phase === "failed" ? failedBox()
@@ -600,7 +618,7 @@ body.no-labels .new-tag { display: none; }
       const a = st.phase === "loaded" ? st.acts[st.sel] : null;
       return `<div class="page">${listScreen(true)}</div><div class="hinge" aria-hidden="true"></div>
         <div class="page"><div class="scr">${statusBar()}<div class="nav"><div class="nav-top"><span></span><span class="small-title">${a ? esc(a.card) : "Detail"}</span></div></div>
-        ${a ? detail(st, a) : '<div class="content"><p class="hint">Pick a tick on the left to see its order.</p></div>'}<div></div><div></div>${homeBar()}</div></div>`;
+        ${a ? detail(st, a) : `<div class="content"><p class="hint">${st.phase === "loaded" && st.acts.length ? "Pick a tick on the left to see its order." : "The order of a tick shows here."}</p></div>`}<div></div><div></div>${homeBar()}</div></div>`;
     }
     let out = listScreen(false);
     if (st.sheet && st.phase === "loaded" && st.acts[st.sel]) {
@@ -618,13 +636,13 @@ body.no-labels .new-tag { display: none; }
     const i = o.cards.indexOf(a.card);
     const lo = Math.max(0, Math.min(i - 2, o.cards.length - 5));
     const rows = o.cards.slice(lo, lo + 5);
-    return `<div class="snap" id="replay-stage"><span class="snap-cap"><span class="long">Order ${esc(a.order)}, ${esc(o.seller)}, as the list looked at ${esc(a.t)} on ${esc(DEV[a.dev]).toLowerCase()}</span><span class="short">At ${esc(a.t)}</span></span>
+    return `<div class="snap"><span class="snap-cap"><span class="long">Order ${esc(a.order)}, ${esc(o.seller)}, as the list looked at ${esc(a.t)} on ${esc(DEV[a.dev]).toLowerCase()}</span><span class="short">At ${esc(a.t)}</span></span>
       ${rows.map((c) => {
         const tapped = c === a.card;
         const on = tapped ? !a.undone : isTicked(st, c);
         return `<div class="snap-row ${on ? "ticked" : ""} ${tapped ? "tapped" : ""} ${tapped && a.undone ? "undone" : ""}">
           <span class="box">${on ? ICON.check : ""}</span>
-          <span class="nm">${esc(c)}${tapped ? `<br><span class="note">${a.undone ? "Tick undone" : "Your tap landed here"}</span>` : ""}</span>
+          <span><span class="nm">${esc(c)}</span>${tapped ? `<br><span class="note">${a.undone ? "Tick undone" : "Your tap landed here"}</span>` : ""}</span>
           ${tapped ? "" : on ? "<span></span>" : `<button class="move-btn" data-act="move" data-card="${esc(c)}" aria-label="Move the tick to ${esc(c)}">Move tick here</button>`}
           ${tapped && !a.undone ? '<span class="ring" aria-hidden="true"></span>' : ""}
         </div>`;
@@ -636,7 +654,7 @@ body.no-labels .new-tag { display: none; }
     return `<div class="dock new-mark" style="outline-offset:-2px">${newTag("undo dock")}
       ${a.undone
         ? `<button class="big-undo redo" data-act="redo" data-id="${a.id}">${ICON.redo}<span>Tick ${esc(a.card)} again</span></button>`
-        : `<button class="big-undo" data-act="undo" data-id="${a.id}" id="replay-undo">${ICON.undo}<span>Undo this tick</span></button>`}
+        : `<button class="big-undo" data-act="undo" data-id="${a.id}">${ICON.undo}<span>${a.movedFrom ? "Undo move" : "Undo this tick"}</span></button>`}
       <div class="pager"><button data-act="older" ${st.sel >= n - 1 ? 'disabled aria-disabled="true" title="This is the oldest tick today"' : ""}>Earlier</button>
         <span class="where"><b>Tap ${st.sel + 1} of ${n}</b><span class="tm">${esc(a.t)}</span></span>
         <button data-act="newer" ${st.sel <= 0 ? 'disabled aria-disabled="true" title="This is the newest tick"' : ""}>Later</button></div></div>`;
@@ -654,11 +672,12 @@ body.no-labels .new-tag { display: none; }
       const strip = st.phase !== "loaded" ? (st.phase === "loading" ? loadingBox() : failedBox())
         : !st.acts.length ? emptyBox("")
         : `<div class="strip" role="list">${st.acts.map((a, i) => `<button role="listitem" class="${a.undone ? "undone" : ""}" data-act="select" data-i="${i}" ${i === st.sel ? 'aria-current="true"' : ""}><span class="tm">${esc(a.t)}</span><span><span class="nm">${esc(a.card)}</span><br><span class="row-meta">${devLabel(a)}</span></span></button>`).join("")}</div>`;
-      return `<div class="page"><div class="scr">${statusBar()}<div class="nav"><h3>Taps</h3></div><div class="content">${strip}</div><div></div>${tabBar(tabs, "replay")}${homeBar()}</div></div>
+      return `<div class="page">${st.tab === "cards" ? cardsScreen(st, tabs) : `<div class="scr">${statusBar()}<div class="nav"><h3>Taps</h3></div><div class="content">${strip}</div><div></div>${tabBar(tabs, "replay")}${homeBar()}</div>`}</div>
         <div class="hinge" aria-hidden="true"></div>
         <div class="page"><div class="scr">${statusBar()}<div class="nav"><div class="nav-top"><span></span><span class="small-title">Replay</span></div></div>
         <div class="content">${st.phase === "loaded" && st.acts.length ? `<div class="stage">${snapshot(st, st.acts[st.sel])}</div>` : '<p class="hint">The replay shows here.</p>'}</div>${replayDock(st)}<div style="height:16px"></div>${homeBar()}</div></div>`;
     }
+    if (st.tab === "cards") return cardsScreen(st, tabs);
     return `<div class="scr">${statusBar()}<div class="nav"><h3>Replay</h3></div>
       <div class="content">${replayBody(st)}</div>${replayDock(st)}${tabBar(tabs, "replay")}${homeBar()}</div>`;
   }
@@ -669,6 +688,13 @@ body.no-labels .new-tag { display: none; }
     const keep = [...f.el.querySelectorAll(".content")].map((c) => c.scrollTop);
     f.el.innerHTML = RENDER[f.concept](f);
     [...f.el.querySelectorAll(".content")].forEach((c, i) => { if (keep[i]) c.scrollTop = keep[i]; });
+    // Replay keeps the tapped row in view, so the ring is never hidden at large text sizes.
+    const tapped = f.el.querySelector(".snap-row.tapped");
+    if (tapped) {
+      const c = tapped.closest(".content");
+      const top = tapped.offsetTop - c.offsetTop;
+      if (top < c.scrollTop || top + tapped.offsetHeight > c.scrollTop + c.clientHeight) c.scrollTop = Math.max(0, top - 8);
+    }
   }
 
   function nowLabel() { return "2:43 pm"; }
@@ -677,7 +703,14 @@ body.no-labels .new-tag { display: none; }
     const st = f.st; const a = btn.dataset.act; const id = Number(btn.dataset.id);
     const byId = st.acts.find((x) => x.id === id);
     switch (a) {
-      case "undo": if (byId) { byId.undone = true; byId.undoneAt = nowLabel(); } break;
+      case "undo":
+        if (byId) {
+          byId.undone = true; byId.undoneAt = nowLabel();
+          // Undoing a move also puts the tick back where it was, so one press reverses one press.
+          const from = byId.movedFrom && st.acts.find((x) => x.id === byId.movedFrom);
+          if (from) { from.undone = false; from.undoneAt = null; st.sel = st.acts.indexOf(from); }
+        }
+        break;
       case "redo": if (byId) { byId.undone = false; byId.undoneAt = null; } break;
       case "select": st.sel = Number(btn.dataset.i); if (f.pose !== "open") st.sheet = f.concept === "recent"; break;
       case "sheet-open": st.sheet = true; break;
@@ -686,7 +719,8 @@ body.no-labels .new-tag { display: none; }
       case "retry": st.phase = "loaded"; if (!st.acts.length && page.state !== "empty") st.acts = freshActs(); break;
       case "older": st.sel = Math.min(st.sel + 1, st.acts.length - 1); break;
       case "newer": st.sel = Math.max(st.sel - 1, 0); break;
-      case "tab": break; // tabs are drawn; only this concept's screen is mocked
+      case "tab": st.tab = btn.dataset.tab; st.sheet = false; break;
+      case "open-order": st.order = btn.dataset.order; st.tab = "cards"; break;
       case "tick-card":
       case "toggle-card": {
         const card = btn.dataset.card; const order = btn.dataset.order;
@@ -700,7 +734,7 @@ body.no-labels .new-tag { display: none; }
         const cur = st.acts[st.sel];
         if (!cur.undone) { cur.undone = true; cur.undoneAt = nowLabel(); }
         const card = btn.dataset.card;
-        st.acts.unshift({ card, order: cur.order, t: nowLabel(), ago: "just now", dev: "phone", id: st.nextId++, undone: false, undoneAt: null });
+        st.acts.unshift({ card, order: cur.order, t: nowLabel(), ago: "just now", dev: "phone", id: st.nextId++, undone: false, undoneAt: null, movedFrom: cur.id });
         st.sel = 0;
         break;
       }
@@ -724,8 +758,9 @@ body.no-labels .new-tag { display: none; }
   // ---------- Hash, theme, hide ----------
   function readHash() {
     const h = new URLSearchParams(location.hash.replace(/^#/, ""));
-    const s = h.get("s"); if (["loaded", "undone", "empty", "loading", "failed"].includes(s)) page.state = s;
-    const t = h.get("t"); if (["light", "dark", "system"].includes(t)) page.theme = t;
+    const s = h.get("s") === "error" ? "failed" : h.get("s"); // s=error is the house spelling of a failed read
+    page.state = ["loaded", "undone", "empty", "loading", "failed"].includes(s) ? s : "loaded";
+    const t = h.get("t"); page.theme = ["light", "dark", "system"].includes(t) ? t : "system";
     page.concept = h.get("c");
   }
   function writeHash() {

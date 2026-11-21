@@ -112,7 +112,6 @@ section.concept > h2 { font-size:22px; margin:var(--space-4) 0 0; }
 .subj { font-family:var(--cochin); font-size:15px; line-height:20px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
 .subj.struck { text-decoration:line-through; text-decoration-color:var(--inkSoft); color:var(--inkSoft); }
 .meta { font:11px/14px var(--mono); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
-.meta .mac { color:var(--manilaInk); }
 /* one-ticket shelf: text left, the Undo cell right */
 .shelf.one .ticket { flex-direction:row; align-items:stretch; gap:var(--space-2); padding:0 0 0 var(--space-2); }
 .shelf.one .txt { flex:1; min-width:0; display:flex; flex-direction:column; justify-content:center; }
@@ -168,7 +167,8 @@ section.concept > h2 { font-size:22px; margin:var(--space-4) 0 0; }
 .dev[data-pose="ax5"] .shelf.one .slot { flex:none; border-left:0; padding:0; border-bottom:1px solid var(--line); }
 .dev[data-pose="ax5"] .row { grid-template-columns:1fr; height:auto; }
 .dev[data-pose="ax5"] .row .l1, .dev[data-pose="ax5"] .row .l2 { flex-direction:column; gap:0; }
-.dev[data-pose="ax5"] .row .cell { border-left:0; border-top:1px dashed var(--line); justify-content:flex-start; min-height:72px; }
+/* Undo leads the row at AX5, as it leads the AX5 shelf, so the newest row's Undo is in view without a scroll. */
+.dev[data-pose="ax5"] .row .cell { order:-1; border-left:0; border-bottom:1px dashed var(--line); justify-content:flex-start; min-height:72px; }
 .dev[data-pose="ax5"] .row .cell .undo { flex-direction:row; justify-content:flex-start; }
 .dev[data-pose="ax5"] .tab span { display:none; }
 
@@ -188,9 +188,11 @@ body.notags .tag-new, body.notags .tag-today { outline:0; } body.notags .tagl { 
 .ruler { position:absolute; left:0; right:0; height:0; border-top:1px dotted var(--accent); z-index:12; pointer-events:none; }
 .ruler span { position:absolute; right:4px; top:-15px; font:10.5px var(--mono); color:var(--accent); background:var(--paper); padding:0 3px; }
 body.notags .ruler { display:none; }
-.toast { position:absolute; left:50%; top:calc(var(--sat) + 8px); transform:translateX(-50%); z-index:13; background:var(--ink); color:var(--card); font:12px var(--sys); padding:6px 10px; border-radius:8px; pointer-events:none; opacity:0; transition:opacity .2s; }
-.toast.on { opacity:1; }
-@media (prefers-reduced-motion: reduce) { .toast { transition:none; } }
+/* The undone card's line glows where it sits in the list (HIG undo: show the result), then settles. Paint only: nothing moves. */
+.ln.lit { background:color-mix(in srgb, var(--accent) 14%, var(--card)); transition:background-color 1.2s ease-out .4s; }
+.ln.lit.settle { background:var(--card); }
+@media (prefers-reduced-motion: reduce) { .ln.lit { transition:none; } }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip-path:inset(50%); white-space:nowrap; }
 @media (forced-colors: active) { .undo u { border-bottom-color:LinkText; } .shelf, .pkg, .bar .pill { border-color:CanvasText; } }
 </style>
 </head>
@@ -242,13 +244,26 @@ body.notags .ruler { display:none; }
 <section class="concept" id="concept-shelf" data-concept="shelf">
   <h2>Undo shelf</h2>
   <p class="pitch">A shelf sits on every tab, just above the tab bar, and holds your last taps. Each has its own Undo. It never opens, never scrolls, and never moves. The working list ends above it, so nothing slides under it. Only the Undo words act. The rest of the shelf takes a tap and does nothing, so a tap that misses Undo lands on nothing and the tab bar below it is out of reach.</p>
-  <div class="poses" data-poses="shelf"></div>
+  <div class="poses" data-poses="shelf">
+    <div class="pose" data-concept="shelf" data-pose="folded" data-depth="3"><h3>Duo folded, 466 x 678 pt · three tickets</h3><div class="fit"><div class="scaler"><div class="dev" id="shelf3-folded" data-device="iphone-duo-folded" data-pose="folded" role="group" aria-label="Undo shelf, Duo folded, three tickets"></div></div></div><div class="read"></div></div>
+    <div class="pose" data-concept="shelf" data-pose="folded" data-depth="1"><h3>Duo folded, 466 x 678 pt · one ticket</h3><div class="fit"><div class="scaler"><div class="dev" id="shelf1-folded" data-device="iphone-duo-folded" data-pose="folded" role="group" aria-label="Undo shelf, Duo folded, one ticket"></div></div></div><div class="read"></div></div>
+    <div class="pose" data-concept="shelf" data-pose="open" data-depth="3"><h3>Duo open, 951 x 669 pt, fold at 455.5 to 495.5 pt · three tickets</h3><div class="fit"><div class="scaler"><div class="dev" id="shelf3-open" data-device="iphone-duo-unfolded" data-pose="open" role="group" aria-label="Undo shelf, Duo open, three tickets"></div></div></div><div class="read"></div></div>
+    <div class="pose" data-concept="shelf" data-pose="open" data-depth="1"><h3>Duo open, 951 x 669 pt, fold at 455.5 to 495.5 pt · one ticket</h3><div class="fit"><div class="scaler"><div class="dev" id="shelf1-open" data-device="iphone-duo-unfolded" data-pose="open" role="group" aria-label="Undo shelf, Duo open, one ticket"></div></div></div><div class="read"></div></div>
+    <div class="pose" data-concept="shelf" data-pose="phone" data-depth="3"><h3>Large phone, drawn at 375 x 812 pt (no size written for it) · three tickets</h3><div class="fit"><div class="scaler"><div class="dev" id="shelf3-phone" data-device="iphone-large" data-pose="phone" role="group" aria-label="Undo shelf, large phone, three tickets"></div></div></div><div class="read"></div></div>
+    <div class="pose" data-concept="shelf" data-pose="phone" data-depth="1"><h3>Large phone, drawn at 375 x 812 pt (no size written for it) · one ticket</h3><div class="fit"><div class="scaler"><div class="dev" id="shelf1-phone" data-device="iphone-large" data-pose="phone" role="group" aria-label="Undo shelf, large phone, one ticket"></div></div></div><div class="read"></div></div>
+    <div class="pose" data-concept="shelf" data-pose="ax5" data-depth="ax"><h3>Duo folded, biggest accessibility text (AX5) · one ticket at any depth</h3><div class="fit"><div class="scaler"><div class="dev" id="shelfax-ax5" data-device="iphone-duo-folded-ax5" data-pose="ax5" role="group" aria-label="Undo shelf, Duo folded, AX5 text"></div></div></div><div class="read"></div></div>
+  </div>
 </section>
 
 <section class="concept" id="concept-tab" data-concept="tab">
   <h2>Recent tab</h2>
   <p class="pitch">Recent becomes a fifth tab, so the list is one tap away from any tab. It is a page, not a panel: it covers nothing and pushes nothing. Each row has one Undo cell. A tap on the rest of a row shows its package, where you tick the card you meant. On the open Duo the package sits on the right page while the list stays on the left.</p>
-  <div class="poses" data-poses="tab"></div>
+  <div class="poses" data-poses="tab">
+    <div class="pose" data-concept="tab" data-pose="folded"><h3>Duo folded, 466 x 678 pt</h3><div class="fit"><div class="scaler"><div class="dev" id="recent-tab-folded" data-device="iphone-duo-folded" data-pose="folded" role="group" aria-label="Recent tab, Duo folded"></div></div></div><div class="read"></div></div>
+    <div class="pose" data-concept="tab" data-pose="open"><h3>Duo open, 951 x 669 pt, fold at 455.5 to 495.5 pt</h3><div class="fit"><div class="scaler"><div class="dev" id="recent-tab-open" data-device="iphone-duo-unfolded" data-pose="open" role="group" aria-label="Recent tab, Duo open"></div></div></div><div class="read"></div></div>
+    <div class="pose" data-concept="tab" data-pose="phone"><h3>Large phone, drawn at 375 x 812 pt (no size written for it)</h3><div class="fit"><div class="scaler"><div class="dev" id="recent-tab-phone" data-device="iphone-large" data-pose="phone" role="group" aria-label="Recent tab, large phone"></div></div></div><div class="read"></div></div>
+    <div class="pose" data-concept="tab" data-pose="ax5"><h3>Duo folded, biggest accessibility text (AX5)</h3><div class="fit"><div class="scaler"><div class="dev" id="recent-tab-ax5" data-device="iphone-duo-folded-ax5" data-pose="ax5" role="group" aria-label="Recent tab, Duo folded, AX5 text"></div></div></div><div class="read"></div></div>
+  </div>
 </section>
 </main>
 
@@ -355,29 +370,16 @@ body.notags .ruler { display:none; }
     seed(P.s);
     snapShelf();
     FR = [];
-    for (const concept of ["shelf", "tab"]) {
-      const host = document.querySelector('[data-poses="' + concept + '"]');
-      host.innerHTML = "";
-      for (const pose of POSES) {
-        // AX5 has room for one ticket only, so the shelf draws one AX5 frame whatever the depth.
-        const depths = concept === "shelf" ? (pose.id === "ax5" ? ["ax"] : ["3", "1"]) : [null];
-        for (const d of depths) {
-          const fr = { concept, pose, d, tab: concept === "tab" ? "recent" : "packages", pushed: null, picked: null, snap: null, newN: 0 };
-          if (P.s === "keys") fr.tab = "orphaned";
-          if (concept === "tab" && pose.id === "open") fr.picked = 1;
-          const wrap = document.createElement("div");
-          wrap.className = "pose option";
-          wrap.dataset.pose = pose.id; if (d) wrap.dataset.depth = d;
-          const idf = concept === "shelf" ? "shelf" + d + "-" + pose.id : "recent-tab-" + pose.id;
-          wrap.innerHTML = '<h3>' + pose.title + (d ? (d === "3" ? " · three tickets" : " · one ticket") : "") + '</h3>' +
-            '<div class="fit"><div class="scaler"><div class="dev" id="' + idf + '" data-device="' + pose.device + '" data-pose="' + pose.id + '" role="group" aria-label="' + concept + " " + pose.title + '"></div></div></div><div class="read"></div>';
-          host.appendChild(wrap);
-          fr.el = wrap.querySelector(".dev"); fr.wrap = wrap; fr.read = wrap.querySelector(".read");
-          if (concept === "tab") recentSnap(fr);
-          FR.push(fr);
-        }
-      }
-    }
+    // The frames are static in the page (one per concept, pose and shelf depth); the script fills them.
+    document.querySelectorAll(".pose[data-concept]").forEach((wrap) => {
+      const concept = wrap.dataset.concept, pose = POSES.find((p) => p.id === wrap.dataset.pose), d = wrap.dataset.depth || null;
+      const fr = { concept, pose, d, tab: concept === "tab" ? "recent" : "packages", pushed: null, picked: null, snap: null };
+      if (P.s === "keys") fr.tab = "orphaned";
+      if (concept === "tab" && pose.id === "open") fr.picked = 1;
+      fr.el = wrap.querySelector(".dev"); fr.wrap = wrap; fr.read = wrap.querySelector(".read");
+      if (concept === "tab") recentSnap(fr);
+      FR.push(fr);
+    });
     if (P.s === "mac") macArrives();
     applyFilters();
     draw();
@@ -505,7 +507,7 @@ body.notags .ruler { display:none; }
       html += bar(fr) + tagLabel("new", "Recent tab", open ? 820 : W - 110, (open ? 593 : pose.barTop) - 14);
     }
     if (P.s === "keys") html += keyboard(fr);
-    html += '<div class="toast" aria-live="polite"></div>';
+    html += '<div class="sr" aria-live="polite"></div>';
     fr.el.innerHTML = html;
     measure(fr);
   }
@@ -549,8 +551,17 @@ body.notags .ruler { display:none; }
     fr.read.innerHTML = txt;
   }
 
+  // The answer shows at the press (the cell turns to Undone) and on the card itself where it is in view. VoiceOver hears it.
   function flash(a) {
-    for (const fr of FR) { const t = fr.el.querySelector(".toast"); if (!t) continue; t.textContent = "Undone: " + a.subj + " (" + a.seller + ")"; t.classList.add("on"); setTimeout(() => t.classList.remove("on"), 1600); }
+    const keys = a.bulk ? Object.keys(a.bulk) : (a.key ? [a.key] : []);
+    for (const fr of FR) {
+      const t = fr.el.querySelector(".sr"); if (t) t.textContent = "Undone: " + a.kind.toLowerCase() + " " + a.subj + ", " + a.seller;
+      for (const k of keys) {
+        const ln = fr.el.querySelector('[data-k="' + k + '"]'); if (!ln) continue;
+        const row = ln.closest(".ln"); row.classList.add("lit");
+        requestAnimationFrame(() => requestAnimationFrame(() => row.classList.add("settle")));
+      }
+    }
   }
 
   function draw() { for (const fr of FR) if (!fr.wrap.hidden) render(fr); scale(); }

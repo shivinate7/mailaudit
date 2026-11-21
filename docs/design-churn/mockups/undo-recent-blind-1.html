@@ -129,10 +129,17 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
 .urow.undone { background: transparent; border-color: var(--line); border-style: dashed; }
 .urow.undone .uname { text-decoration: line-through; color: var(--text-2); }
 .urow.sel { border-color: var(--accent); border-style: solid; }
-.urow .tapbody { all: unset; display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-height: 44px; justify-content: center; }
-.urow .tapbody:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+.tapbody { all: unset; display: flex; flex-direction: column; gap: 2px; cursor: pointer; min-height: 44px; justify-content: center; }
+.tapbody:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
 .uname { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; overflow-wrap: anywhere; }
 .reason { color: var(--warn); }
+/* Row lines hold one line each (the reason holds two), so a state change never changes a row's height */
+.line { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.reason.line { white-space: normal; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; min-height: calc(2 * var(--l-foot)); }
+.f.ax5 .line { white-space: normal; }
+.f.ax5 .reason.line { -webkit-line-clamp: unset; display: block; }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.tapbody, .urow .stack-1, .rec .tapbody { min-width: 0; }
 .tcol { display: flex; flex-direction: column; align-items: flex-start; }
 .ubtn { display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); min-height: 44px; border-radius: var(--radius); border: 1.5px solid var(--accent); background: var(--surface); color: var(--accent); font-weight: 600; font-size: var(--t-body); cursor: pointer; padding: 0; }
 .ubtn.glyph { width: 56px; height: 56px; }
@@ -158,7 +165,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
 
 /* Sheet */
 .scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .28); z-index: 40; }
-.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: var(--space-3); background: var(--bg); border-radius: 16px 16px 0 0; z-index: 41; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: calc(var(--sb-h) + var(--space-2)); background: var(--bg); border-radius: 16px 16px 0 0; z-index: 41; display: flex; flex-direction: column; border-top: 1px solid var(--line); }
 .grabber { width: 40px; height: 5px; border-radius: 3px; background: var(--line); margin: var(--space-2) auto 0; flex: none; }
 .sheet-h { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); }
 .done { border: 0; background: none; color: var(--accent); font-weight: 600; min-height: 44px; min-width: 44px; font-size: var(--t-body); cursor: pointer; }
@@ -168,11 +175,13 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
 .seg button { min-height: 40px; border: 0; background: none; border-radius: 6px; font-size: var(--t-sub); cursor: pointer; }
 .seg button[aria-pressed="true"] { background: var(--surface); font-weight: 600; box-shadow: 0 1px 2px rgb(0 0 0 / .18); }
 .f.ax5 .seg { grid-auto-flow: row; }
+.f.ax5 .seg button { min-height: 72px; }
+.f.ax5 .navbar { padding-top: var(--space-4); }
 
 /* Fix bench */
-.bench { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-3) calc(var(--tab-h) + var(--home-h) + var(--space-4)); background: var(--surface-2); border-top: 1px solid var(--line); }
+.bench { flex: none; display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-2) var(--space-3) calc(var(--tab-h) + var(--home-h) + var(--space-4)); background: var(--surface-2); border-top: 1px solid var(--line); }
 .page.full .bench { flex: 1 1 auto; min-height: 0; padding-bottom: calc(var(--home-h) + var(--space-3)); }
-.spool { display: flex; flex-direction: column-reverse; gap: var(--space-1); overflow-y: auto; overscroll-behavior: contain; height: 124px; }
+.spool { display: flex; flex-direction: column-reverse; gap: var(--space-1); overflow-y: auto; overscroll-behavior: contain; height: 96px; }
 .page.full .spool { flex: 1 1 auto; height: auto; min-height: 0; }
 .rec { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: center; background: var(--surface); border-radius: var(--radius); padding: var(--space-1) var(--space-3) var(--space-1) var(--space-2); min-height: 60px; flex: none; border: 1px solid transparent; }
 .rec.trail { grid-template-columns: 1fr auto; padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3); }
@@ -195,7 +204,13 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
 .panel-h { display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-2); min-height: 32px; }
 .newer { min-height: 32px; border-radius: 16px; border: 1.5px solid var(--accent); background: var(--accent-weak); padding: 0 var(--space-3); font-size: var(--t-foot); font-weight: 600; cursor: pointer; color: var(--text); }
 .newer[hidden] { display: inline-block; visibility: hidden; }
-.f.ax5 .panel { height: auto; }
+.f.ax5 .panel { height: auto; order: -1; }
+.f.ax5 .panel-h { grid-template-columns: 1fr; }
+.f.ax5 .panel-h > .foot { display: none; }
+.f.ax5 .bench { max-height: 420px; overflow-y: auto; overscroll-behavior: contain; }
+.f.ax5 .spool { height: auto; overflow: visible; flex-direction: column; }
+.f.ax5 .slot .legend svg { width: .8em; height: .8em; }
+.f.ax5 .slot .legend { flex-wrap: wrap; }
 .f.ax5 .panel-top, .f.ax5 .panel-top.trail { grid-template-columns: 1fr; }
 .f.ax5 .rec, .f.ax5 .rec.trail { grid-template-columns: 1fr; }
 .f.ax5 .rec .ubtn.glyph, .f.ax5 .rec .ubtn.word, .f.ax5 .panel .ubtn.glyph, .f.ax5 .panel .ubtn.word { width: 100%; height: 72px; }
@@ -203,9 +218,10 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
 .f.ax5 .swap { min-height: 72px; border-radius: var(--radius); }
 
 /* Today / New marks: an outline and a tag that take no layout space */
-.marks .mk { position: relative; outline: 2px dashed var(--mark-today); outline-offset: -2px; }
+.marks .mk { outline: 2px dashed var(--mark-today); outline-offset: -2px; }
+.marks .mk:not(.tabbar):not(.acc):not(.screen) { position: relative; }
 .marks .mk.new { outline-color: var(--mark-new); }
-.marks .mk::after { content: attr(data-mark); position: absolute; top: 2px; right: 4px; font-size: 11px; line-height: 14px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--mark-today); color: var(--bg); pointer-events: none; z-index: 60; white-space: nowrap; }
+.marks .mk::after { content: attr(data-mark); position: absolute; top: 2px; right: 4px; font-size: 11px; line-height: 14px; font-weight: 600; padding: 1px 6px; border-radius: 4px; background: var(--mark-today); color: var(--bg); pointer-events: none; z-index: 15; white-space: nowrap; }
 .marks .mk.new::after { background: var(--mark-new); }
 .marks .tabbar.mk::after, .marks .acc.mk::after { top: -18px; }
 .marks .acc.mk::after { right: 0; }
@@ -254,8 +270,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
   'use strict';
   /* ---------- Icons ---------- */
   var I = {
-    undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 7 4 12l5 5"/><path d="M4 12h10a6 6 0 0 1 0 12h-2" transform="translate(0 -6)"/></svg>',
-    redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 7 5 5-5 5"/><path d="M20 12H10a6 6 0 0 0 0 12h2" transform="translate(0 -6)"/></svg>',
+    undo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>',
+    redo: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m15 14 5-5-5-5"/><path d="M20 9H9.5a5.5 5.5 0 0 0 0 11H13"/></svg>',
     tickOn: '<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="var(--ok)"/><path d="m8.5 14.5 3.5 3.5 7.5-8" fill="none" stroke="var(--surface)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
     tickOff: '<svg viewBox="0 0 28 28" aria-hidden="true"><circle cx="14" cy="14" r="12" fill="none" stroke="var(--text-2)" stroke-width="2"/></svg>',
     clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 12a8.5 8.5 0 1 0 2.5-6"/><path d="M3 4v4h4"/><path d="M12 8v4l3 2"/></svg>',
@@ -316,14 +332,19 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
   }
 
   /* ---------- View settings, in the URL hash ---------- */
-  var V = { c: 'sheet', state: 'loaded', d: 'all', t: 'system', btn: 'glyph', hold: 'hold', edge: 'lead', marks: true };
+  var V = { c: 'sheet', state: 'loaded', d: 'all', t: 'system', btn: 'glyph', hold: 'hold', edge: 'lead', win: '120', xdev: 'any', p: false, marks: true };
   var HIDDEN = {};
   var OPTS = {
     c: [['sheet', 'Recent sheet'], ['tab', 'Recent tab'], ['bench', 'Fix bench (bold)']],
     btn: [['glyph', 'Arrow, label once'], ['word', 'Word on each row']],
     hold: [['hold', 'Hold behind a pill'], ['insert', 'Insert at once']],
-    edge: [['lead', 'Leading edge'], ['trail', 'Trailing edge']]
+    edge: [['lead', 'Leading edge'], ['trail', 'Trailing edge']],
+    win: [['120', 'Two hours'], ['30', 'Thirty minutes']],
+    xdev: [['any', 'Any device'], ['own', 'Only the device that ticked']]
   };
+  function winText() { return V.win === '30' ? 'thirty minutes' : 'two hours'; }
+  /* With "Only the device that ticked", a tick from another device cannot be undone here. */
+  function ownOk(a, me) { return V.xdev === 'any' || a.dev === me; }
   function readHash() {
     var h = location.hash.replace(/^#/, '');
     h.split('&').forEach(function (kv) {
@@ -336,6 +357,10 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
       if (k === 'btn' && /^(glyph|word)$/.test(v)) V.btn = v;
       if (k === 'hold' && /^(hold|insert)$/.test(v)) V.hold = v;
       if (k === 'edge' && /^(lead|trail)$/.test(v)) V.edge = v;
+      if (k === 'o' && /^(sheet|detail|pick)$/.test(v)) V.o = v;
+      if (k === 'win' && /^(120|30)$/.test(v)) V.win = v;
+      if (k === 'xdev' && /^(any|own)$/.test(v)) V.xdev = v;
+      if (k === 'p' && v === '1') V.p = true;
     });
   }
   function writeHash() {
@@ -344,6 +369,10 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     if (V.btn !== 'glyph') h += '&btn=' + V.btn;
     if (V.hold !== 'hold') h += '&hold=' + V.hold;
     if (V.edge !== 'lead') h += '&edge=' + V.edge;
+    if (V.o) h += '&o=' + V.o;
+    if (V.win !== '120') h += '&win=' + V.win;
+    if (V.xdev !== 'any') h += '&xdev=' + V.xdev;
+    if (V.p) h += '&p=1';
     history.replaceState(null, '', '#' + h);
   }
 
@@ -351,7 +380,8 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
   function card(id) { return S.cards[id]; }
   function order(id) { return ORDERS[id]; }
   function visibleLog(me) {
-    return S.log.filter(function (a) { return S.read === 'ok' || a.dev === me; });
+    var w = +V.win;
+    return S.log.filter(function (a) { return (S.read === 'ok' || a.dev === me) && a.ago <= w; });
   }
   function laterChange(a) {
     for (var i = 0; i < S.log.length; i++) {
@@ -413,22 +443,31 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     var word = V.btn === 'word';
     var cls = 'ubtn ' + (word ? 'word' : 'glyph') + (a.undone ? ' redo' : '');
     var label = (a.undone ? 'Redo: ' : 'Undo: ') + verb(a).toLowerCase() + ' ' + c.name;
-    if (blocked) {
+    if (blocked || !ownOk(a, me)) {
       return '<button type="button" class="' + cls + '" aria-disabled="true" aria-label="Undo is off for ' + c.name + '" ' + (extra || '') + '>' + I.undo + (word ? '<span>Undo</span>' : '') + '</button>';
     }
     return '<button type="button" class="' + cls + '" data-act="undo" data-id="' + a.id + '" aria-label="' + label + '" ' + (extra || '') + '>' +
       (a.undone ? I.redo : I.undo) + (word ? '<span>' + (a.undone ? 'Redo' : 'Undo') + '</span>' : '') + '</button>';
   }
+  function laterSameCard(a) {
+    for (var i = 0; i < S.log.length && S.log[i] !== a; i++) if (S.log[i].card === a.card) return S.log[i];
+    return null;
+  }
   function metaLine(a, me) {
     var blocked = laterChange(a);
-    var s = a.undone ? 'Put back. ' + verb(a) + ' ' + when(a.ago) + ' on ' + devName(a.dev, me)
-                     : verb(a) + ' ' + when(a.ago) + ' on ' + devName(a.dev, me);
+    /* An undo or redo changes no text in its row, so the row keeps its height and nothing below it moves.
+       The undone look (strike, dashed edge, redo arrow) carries the state; screen readers get a sentence. */
+    var s = verb(a) + ' ' + when(a.ago) + ' on ' + devName(a.dev, me);
     if (a.swapOf) s += ', in place of ' + card(find(a.swapOf).card).name;
-    var out = '<span class="foot num">' + s + '</span>';
-    if (blocked) out += '<span class="foot reason">Changed again on ' + devName(blocked.dev, me) + ' ' + when(blocked.ago) + ', so this undo is off.</span>';
+    var out = '<span class="foot num line">' + (a.undone ? '<span class="vh">You undid this. </span>' : '') + s + '</span>';
+    /* A later row on the same card can switch this undo off. Its reason line is always drawn, hidden while
+       that later row is undone, so undoing or redoing the later row never changes this row's height. */
+    var later = blocked || laterSameCard(a);
+    if (later) out += '<span class="foot reason line"' + (blocked ? '' : ' aria-hidden="true" style="visibility:hidden"') + '>Changed again on ' + devName(later.dev, me) + ' ' + when(later.ago) + ', so this undo is off.</span>';
+    if (!ownOk(a, me)) out += '<span class="foot reason line">Ticked on ' + DEVICES[a.dev] + ', so only ' + DEVICES[a.dev] + ' can undo it.</span>';
     return out;
   }
-  function orderLine(a) { var c = card(a.card), o = order(c.order); return '<span class="sub">Order ' + o.no + ', ' + o.seller + '</span>'; }
+  function orderLine(a) { var c = card(a.card), o = order(c.order); return '<span class="sub line">Order ' + o.no + ', ' + o.seller + '</span>'; }
   function legend() {
     if (V.btn === 'word') return '<span class="foot">Newest first. Each row undoes one tick.</span>';
     return '<span class="legend foot">' + I.undo + '<span>undoes that tick.</span>' + I.redo + '<span>puts it back.</span></span>';
@@ -443,7 +482,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     return '<div class="note"><span class="sub" style="color:var(--text)">Ticks from your other devices did not load. Only ticks from ' + devName(me, me) + ' show.</span><button type="button" class="btn quiet" data-act="retry">Try again</button></div>';
   }
   function emptyBlock(ctl) {
-    return '<div class="empty"><span class="body">No ticks in the last two hours. Each card you tick shows here.</span>' + ctl + '</div>';
+    return '<div class="empty"><span class="body">No ticks in the last ' + winText() + '. Each card you tick shows here.</span>' + ctl + '</div>';
   }
 
   function checklist(fid, me) {
@@ -495,7 +534,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
   /* ---------- Concept 1: Recent sheet ---------- */
   function recentList(fid, me, isMain) {
     var log = rowsList(fid, me);
-    var h = '<div class="stack inset">' + failNote(me) + slot(fid);
+    var h = '<div class="stack inset"' + (fid === 'f-folded' ? ' id="choice-list"' : '') + '>' + failNote(me) + slot(fid);
     if (!log.length) h += emptyBlock(isMain ? '<span class="foot">Tick a card on the left page.</span>' : '<button type="button" class="btn" data-act="close">Back to the checklist</button>');
     else {
       h += '<div class="rows">';
@@ -530,12 +569,12 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     var all = visibleLog(me);
     var log = u.filter === 'me' ? all.filter(function (a) { return a.dev === me; }) : all;
     var h = '<div class="stack inset" ' + (fid === 'f-folded' && V.c === 'tab' ? 'id="choice-tab"' : '') + '>' + failNote(me);
-    if (all.length) {
+    if (all.length && S.read === 'ok') {
       h += '<div class="seg" role="group" aria-label="Device"><button type="button" data-act="filter" data-v="all" aria-pressed="' + (u.filter === 'all') + '">All devices</button><button type="button" data-act="filter" data-v="me" aria-pressed="' + (u.filter === 'me') + '">' + devName(me, me).replace('this', 'This') + '</button></div>';
     }
     h += slot(fid);
     if (!all.length) return h + emptyBlock('<button type="button" class="btn" data-act="tab" data-tab="check">Go to the checklist</button>') + '</div>';
-    if (!log.length) return h + '<div class="empty"><span class="body">No ticks from ' + devName(me, me) + ' in the last two hours.</span><button type="button" class="btn" data-act="filter" data-v="all">Show all devices</button></div></div>';
+    if (!log.length) return h + '<div class="empty"><span class="body">No ticks from ' + devName(me, me) + ' in the last ' + winText() + '.</span><button type="button" class="btn" data-act="filter" data-v="all">Show all devices</button></div></div>';
     var groups = [['In the last 10 minutes', function (a) { return a.ago <= 10; }], ['Earlier', function (a) { return a.ago > 10; }]];
     groups.forEach(function (g) {
       var rows = log.filter(g[1]); if (!rows.length) return;
@@ -549,9 +588,10 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     if (!a) return '<div class="empty"><span class="body">Pick a tick on the left to see its order.</span></div>';
     var c = card(a.card), o = order(c.order);
     var h = '<div class="navbar">' + (withBack ? '<button type="button" class="navback" data-act="back">' + I.back + 'Recent</button>' : '<span></span>') + '</div>';
-    h += '<div class="scroll" data-key="d" style="padding-bottom:calc(var(--tab-h) + var(--home-h) + var(--space-6))"><div class="stack-3 inset">';
+    h += '<div class="scroll pad-bottom" data-key="d"><div class="stack-3 inset">';
     h += '<h2 class="t2">' + c.name + '</h2>';
-    h += urow(a, me, {});
+    /* Folded: the list is gone, so this screen carries the tick's undo. Open: the undo stays on the left page, its one home there. */
+    h += '<div class="urow' + (a.undone ? ' undone' : '') + '"><div class="stack-1">' + orderLine(a) + metaLine(a, me) + '</div>' + (withBack ? undoBtn(a, me) : '') + '</div>';
     h += '<span class="foot">Wrong card? Tick the one you meant below. Its order holds:</span>';
     h += '<div class="order"><div class="order-h"><span class="head">Order ' + o.no + '</span><span class="foot">' + o.seller + '</span></div>';
     Object.keys(S.cards).forEach(function (k) {
@@ -572,7 +612,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
       var log = visibleLog(me);
       if (!u.detail && log.length) u.detail = log[0].id;
       return pages(
-        statusbar(true) + '<div class="screen"><div class="navbar"><h2 class="large">Recent</h2></div><div class="scroll pad-bottom" data-key="l">' + tabList(fid, me) + '</div></div>' + tabbar(fid, 'recent', true, false),
+        statusbar(true) + '<div class="screen above-bar"><div class="navbar"><h2 class="large">Recent</h2></div><div class="scroll pad-bottom" data-key="l">' + tabList(fid, me) + '</div></div>' + tabbar(fid, 'recent', true, false),
         statusbar(false) + '<div class="screen' + mk('new', 'New: order beside the tick') + '">' + detail(fid, me, find(u.detail), false) + '</div>'
       );
     }
@@ -580,9 +620,9 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
       return pages(statusbar() + '<div class="screen"><div class="navbar"><h2 class="large">Checklist</h2></div><div class="scroll pad-bottom" data-key="l">' + checklist(fid, me) + '</div></div>' + tabbar(fid, 'check', true, false));
     }
     if (u.detail && find(u.detail)) {
-      return pages(statusbar() + '<div class="screen' + mk('new', 'New: order of one tick') + '">' + detail(fid, me, find(u.detail), true) + '</div>' + tabbar(fid, 'recent', true, false));
+      return pages(statusbar() + '<div class="screen above-bar' + mk('new', 'New: order of one tick') + '">' + detail(fid, me, find(u.detail), true) + '</div>' + tabbar(fid, 'recent', true, false));
     }
-    return pages(statusbar() + '<div class="screen' + mk('new', 'New: Recent page') + '"><div class="navbar"><h2 class="large">Recent</h2></div><div class="scroll pad-bottom" data-key="r">' + tabList(fid, me) + '</div></div>' + tabbar(fid, 'recent', true, false));
+    return pages(statusbar() + '<div class="screen above-bar' + mk('new', 'New: Recent page') + '"><div class="navbar"><h2 class="large">Recent</h2></div><div class="scroll pad-bottom" data-key="r">' + tabList(fid, me) + '</div></div>' + tabbar(fid, 'recent', true, false));
   }
 
   /* ---------- Concept 3: Fix bench (bold) ---------- */
@@ -596,7 +636,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     var newer = S.pending.length;
     var h = '<section class="panel" aria-label="Bench" ' + (fid === 'f-folded' && V.c === 'bench' ? 'id="choice-bench"' : '') + '>';
     if (!a) {
-      return h + '<span class="body">No ticks in the last two hours. Tick a card and it lands here, ready to undo or swap.</span></section>';
+      return h + '<span class="body">No ticks in the last ' + winText() + '. Tick a card and it lands here, ready to undo or swap.</span></section>';
     }
     var c = card(a.card), o = order(c.order);
     var blocked = laterChange(a);
@@ -604,7 +644,9 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
       '<button type="button" class="newer" data-act="pending"' + (newer ? '' : ' hidden') + '>' + newer + ' newer</button></div>';
     h += '<div class="panel-top' + (V.edge === 'trail' ? ' trail' : '') + '">' + undoBtn(a, me) + '<div class="stack-1"><span class="uname">' + c.name + '</span>' + metaLine(a, me) + '</div></div>';
     var sibs = Object.keys(S.cards).map(function (k) { return S.cards[k]; }).filter(function (x) { return x.order === c.order && x.id !== c.id && !x.got; });
-    if (a.tick && !a.undone && !blocked && sibs.length) {
+    if (!ownOk(a, me)) {
+      /* the reason line under the name says why; no swap is offered */
+    } else if (a.tick && !a.undone && !blocked && sibs.length) {
       h += '<div class="swaps" role="group" aria-label="Meant another card from this order?">';
       sibs.forEach(function (x) { h += '<button type="button" class="swap" data-act="swap" data-id="' + a.id + '" data-card="' + x.id + '" aria-label="Swap: untick ' + c.name + ' and tick ' + x.name + '">' + I.swap + x.name + '</button>'; });
       h += '</div>';
@@ -632,7 +674,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
         statusbar(false) + '<div class="screen full-host"><div class="navbar"><h2 class="large">Fix a tick</h2></div><div class="page full" style="flex:1;display:flex;flex-direction:column;min-height:0;background:transparent">' + bench + '</div></div>'
       );
     }
-    return pages(statusbar() + '<div class="screen"><div class="navbar"><h2 class="large">Checklist</h2></div><div class="scroll" data-key="l" style="padding-bottom:var(--space-4)">' + checklist(fid, me) + '</div>' + bench + '</div>' + tabbar(fid, 'check', false, false));
+    return pages(statusbar() + '<div class="screen above-bar"><div class="navbar"><h2 class="large">Checklist</h2></div><div class="scroll" data-key="l" style="padding-bottom:var(--space-4)">' + checklist(fid, me) + '</div>' + bench + '</div>' + tabbar(fid, 'check', false, false));
   }
 
   function pages(left, right) {
@@ -705,6 +747,7 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
     var f = t.closest('.f'); var fid = f.id, me = f.getAttribute('data-me'); var u = ui(fid);
     var act = t.getAttribute('data-act');
     if (t.getAttribute('aria-disabled') === 'true') return;
+    if (act === 'close' || act === 'back' || act === 'tab') V.o = null;
     if (act === 'tick') { var n = tickCard(t.getAttribute('data-card'), me); if (V.c === 'bench') u.sel = null; render(); }
     else if (act === 'undo') doUndo(t.getAttribute('data-id'));
     else if (act === 'swap') swap(t.getAttribute('data-id'), t.getAttribute('data-card'), me, fid);
@@ -725,6 +768,13 @@ button:focus-visible, [tabindex]:focus-visible { outline: 3px solid var(--accent
 
   readHash();
   reset();
+  /* o= opens one screen in every frame: the sheet, a tick's order, or an older tick on the bench */
+  if (V.o && V.state !== 'empty') FRAMES.forEach(function (fid) {
+    var u = ui(fid);
+    if (V.o === 'sheet') u.sheet = true;
+    if (V.o === 'detail') u.detail = 'a1';
+    if (V.o === 'pick') u.sel = 'a2';
+  });
   render();
 })();
 </script>

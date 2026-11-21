@@ -85,10 +85,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 /* ---------- Shell (mockup chrome, not the app) ---------- */
 .sample {
-  background: repeating-linear-gradient(135deg, var(--c-sample) 0 14px, transparent 14px 20px), var(--c-sample);
+  background: var(--c-sample); border-bottom: 2px solid var(--c-sample-ink);
   color: var(--c-sample-ink); padding: var(--space-2) var(--space-4); font-weight: 600; font-size: 0.9375rem;
 }
-.sample span { background: var(--c-sample); padding: 2px var(--space-2); border-radius: 4px; }
 .shell { background: var(--c-shell); border-bottom: 1px solid var(--c-edge); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
 .shell-top { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-6); align-items: baseline; }
 .shell h1 { font-size: 1.375rem; margin: 0; }
@@ -200,10 +199,10 @@ figure { margin: 0; }
   background: var(--c-paper); color: var(--c-text); border: 1px solid var(--c-edge-strong);
   box-shadow: 0 10px 30px var(--c-shadow), 0 1px 0 var(--c-edge); display: flex; flex-direction: column; min-height: 0;
 }
-.p-head { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4); min-height: 52px; touch-action: none; }
+.p-head { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2) var(--space-1) var(--space-4); min-height: 52px; touch-action: none; }
 .p-head h3 { margin: 0; flex: 1; font-size: var(--hd); line-height: var(--hd-l); font-weight: 600; }
 .p-head .note { font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); font-weight: 400; display: block; }
-.grabber { display: flex; justify-content: center; padding-top: var(--space-2); touch-action: none; }
+.grabber { display: flex; justify-content: center; padding-top: var(--space-2); touch-action: none; flex: none; }
 .grabber i { width: 36px; height: 5px; border-radius: 3px; background: var(--c-edge-strong); }
 .p-body { overflow-y: auto; overscroll-behavior: contain; min-height: 0; padding: 0 0 var(--space-4); }
 .p-sec { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4) 0; }
@@ -265,22 +264,26 @@ figure { margin: 0; }
 .tray { position: absolute; left: 0; right: 0; bottom: 0; height: 60%; border-radius: 14px 14px 0 0; border-bottom: 0; }
 .device[data-ax="5"] .tray { height: 100%; border-radius: 0; }
 .side { display: flex; flex-direction: column; min-height: 0; flex: 1; background: var(--c-paper); border-left: 1px solid var(--c-edge); }
-.side .segc { grid-template-columns: repeat(4, 1fr); margin: 0 var(--space-4) var(--space-2); }
+.side > .segc { grid-template-columns: repeat(4, 1fr); margin: 0 var(--space-4) var(--space-2); flex: none; }
 
 /* ---------- Concept: Spread ---------- */
 .sline { display: flex; gap: var(--space-2); overflow-x: auto; padding: var(--space-2) var(--space-3); border-top: 1px solid var(--c-edge); background: var(--c-list); scrollbar-width: none; position: relative; z-index: 6; }
 .sline::-webkit-scrollbar { display: none; }
+.sline { -webkit-mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); mask-image: linear-gradient(to right, #000 calc(100% - 32px), transparent); }
 .schip { flex: none; min-height: 44px; display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border: 1px solid var(--c-edge-strong); border-radius: 22px; background: var(--c-paper); font-size: var(--sh); line-height: var(--sh-l); white-space: nowrap; position: relative; }
 .schip svg { width: 18px; height: 18px; color: var(--c-text-2); flex: none; }
 .schip[aria-expanded="true"] { border-color: var(--c-accent); box-shadow: 0 0 0 2px var(--c-accent); font-weight: 600; }
 .schip.set { background: var(--c-accent-wash); }
 .device[data-ax="5"] .schip svg { width: 36px; height: 36px; }
-.card { position: absolute; bottom: var(--space-3); border-radius: 14px; max-height: calc(100% - 24px); }
+.card { position: absolute; bottom: var(--space-3); border-radius: 14px; max-height: 72%; }
+.device[data-ax="5"] .card { max-height: calc(100% - 24px); }
 .card .tail { position: absolute; bottom: -9px; width: 16px; height: 16px; background: var(--c-paper); border-right: 1px solid var(--c-edge-strong); border-bottom: 1px solid var(--c-edge-strong); transform: rotate(45deg); }
 .pagehint { font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--c-edge); }
 .folio { position: absolute; bottom: 4px; font-size: 11px; color: var(--c-text-2); }
 
 /* ---------- Concept: Ring ---------- */
+.device[data-c="ring"] [data-main] { padding-bottom: 88px; }
+.device[data-c="ring"][data-ax="5"] [data-main] { padding-bottom: 112px; }
 .grip { position: absolute; width: 56px; height: 56px; border-radius: 28px; background: var(--c-accent); color: var(--c-accent-ink); display: grid; place-items: center; box-shadow: 0 4px 14px var(--c-shadow); z-index: 7; touch-action: none; }
 .grip svg { width: 26px; height: 26px; }
 .grip .dot { top: 4px; right: 4px; background: var(--c-accent-ink); border: 2px solid var(--c-accent); width: 12px; height: 12px; border-radius: 6px; }
@@ -297,6 +300,7 @@ figure { margin: 0; }
 .slip { position: absolute; left: var(--space-3); right: var(--space-3); border-radius: 14px; max-height: calc(100% - 100px); }
 .ringhint { position: absolute; font-size: var(--fn); line-height: var(--fn-l); color: var(--c-text-2); background: var(--c-paper); border: 1px solid var(--c-edge); border-radius: var(--radius); padding: var(--space-1) var(--space-2); }
 .full { position: absolute; inset: 0; border-radius: 0; border: 0; }
+.full .p-body { padding-bottom: 120px; }
 
 /* Parts: dashed labels for what this option adds. */
 .parts-on [data-part] { outline: 2px dashed var(--c-part); outline-offset: -2px; }
@@ -504,16 +508,22 @@ figure { margin: 0; }
     showBody() {
       return `<div class="p-sec"><div class="p-list">` + SHOW.map(([k, l]) => `<button class="opt" role="switch" aria-checked="${this.st.show[k]}" data-act="show" data-v="${k}"><span class="lbl">${l}</span><span class="sw"></span></button>`).join("") + `</div></div>`;
     }
-    histBody() {
-      if (!this.hist.length) return `<div class="h-empty"><p>No changes yet. Each item you mark done or open shows here.</p><button class="btn line" data-act="close">Back to the list</button></div>`;
+    histBody(onPage) {
+      if (!this.hist.length) return `<div class="h-empty"><p>No changes yet. Each item you mark done or open shows here.</p>${onPage ? "" : `<button class="btn line" data-act="close">Back to the list</button>`}</div>`;
       return `<div role="list">` + this.hist.map(h => { const it = this.items.find(x => x.id === h.item); return `<div class="hist" role="listitem"><div><div class="what">Marked ${h.kind}: ${esc(it.name)}</div><div class="when">${h.when}</div></div><button class="undo" data-act="undo" data-v="${h.id}">Undo</button></div>`; }).join("") + `</div>`;
     }
     body(k) { return k === "sort" ? this.sortBody() : k === "filter" ? this.filterBody() : k === "show" ? this.showBody() : this.histBody(); }
-    panelNote(k) { return k === "filter" ? `<span class="note" data-answer>${this.countText()}</span>` : k === "history" ? `<span class="note">Newest first</span>` : ""; }
+    panelNote(k) { return k === "filter" && this.filterActive() ? `<span class="note" data-answer>${this.countText()}</span>` : k === "history" ? `<span class="note">Newest first</span>` : ""; }
+    focusPanel(trigger) {
+      this._trigger = trigger || null;
+      const h = this.dev.querySelector(".ov [role=dialog] h3, .ov [role=menu] h3");
+      if (h) { h.setAttribute("tabindex", "-1"); h.focus({ preventScroll: true }); }
+    }
 
     // ----- build per concept -----
     build() {
       const d = this.dev, open = this.pose === "open";
+      d.dataset.c = this.c;
       const page = (cls, inner) => `<div class="page ${cls}"><div class="status" aria-hidden="true">${cls === "pr" ? "" : "9:41"}</div>${inner}<div class="homebar" aria-hidden="true"></div></div>`;
       const head = (title, small) => `<div class="head"><h2 class="${small ? "small" : ""}">${title}</h2><span class="count" data-slot="count"></span></div>`;
       const fid = d.dataset.fid;
@@ -548,10 +558,13 @@ figure { margin: 0; }
       if (anchor) {
         let r = L.querySelector(`.row[data-id="${anchor}"]`);
         if (!r && this._order) { const i = this._order.indexOf(anchor); for (let j = i + 1; j < this._order.length && !r; j++) r = L.querySelector(`.row[data-id="${this._order[j]}"]`); }
-        if (r) { L.scrollTop = r.offsetTop - off; if (r.offsetTop - off !== L.scrollTop || this._moved) { /* clamp at ends */ } r.classList.add("kept"); setTimeout(() => r.classList.remove("kept"), 1500); }
+        if (r) {
+          L.scrollTop = r.offsetTop - off;
+          if (keep === "flash") { r.classList.add("kept"); setTimeout(() => r.classList.remove("kept"), 1500); }
+        }
       }
       const C = this.dev.querySelector("[data-cont]");
-      if (C) { C.innerHTML = this.rowsHTML() + `<div style="height:${L.clientHeight}px"></div>`; this.syncCont(); }
+      if (C) { C.innerHTML = this.visible().length ? this.rowsHTML() + `<div style="height:${L.clientHeight}px"></div>` : ""; this.syncCont(); }
     }
     syncCont() {
       const L = this.mainList(), C = this.dev.querySelector("[data-cont]"); if (!C) return;
@@ -577,7 +590,7 @@ figure { margin: 0; }
         const sc = side.querySelector(".p-body"), top = sc ? sc.scrollTop : 0;
         if (this.c === "tray") side.innerHTML = `<div class="p-head" style="padding-top:var(--space-2)"><h3>${PANELS.find(p => p[0] === this.side)[1]}${this.panelNote(this.side)}</h3></div>
           <div class="segc" role="tablist" aria-label="Panel">` + PANELS.map(([k, l]) => `<button role="tab" aria-pressed="${this.side === k}" aria-selected="${this.side === k}" data-act="side" data-v="${k}">${l}</button>`).join("") + `</div><div class="p-body">${this.body(this.side)}</div>`;
-        else side.innerHTML = `<div class="head"><h2 class="small">History</h2><span class="count">Each mark you make, newest first</span></div><div class="p-body" style="padding-bottom:96px">${this.histBody()}</div>`;
+        else side.innerHTML = `<div class="head"><h2 class="small">History</h2><span class="count">Each mark you make, newest first</span></div><div class="p-body" style="padding-bottom:96px">${this.histBody(true)}</div>`;
         const nsc = side.querySelector(".p-body"); if (nsc) nsc.scrollTop = top;
         if (this.jumpDates && this.c === "tray") { const dd = side.querySelector("[data-dates]"); if (dd) nsc.scrollTop = dd.offsetTop - 8; this.jumpDates = false; }
       }
@@ -658,7 +671,6 @@ figure { margin: 0; }
       const grip = this.dev.querySelector(`[data-grip="${pgKey}"]`);
       const W = ov.clientWidth, Hh = ov.clientHeight;
       const leftSide = pgKey === "pl";
-      const gb = parseFloat(grip.style.bottom) - (ov.offsetTop ? 0 : 0);
       const ovTopInPage = ov.getBoundingClientRect().top, gr = grip.getBoundingClientRect();
       const z = ov.getBoundingClientRect().height / ov.offsetHeight || 1;
       const cy = (gr.top + gr.height / 2 - ovTopInPage) / z, cx = leftSide ? 48 : W - 48;
@@ -690,19 +702,28 @@ figure { margin: 0; }
     }
 
     // ----- actions -----
-    change(fn) { fn(); this.renderLists(true); this.renderChrome(); this.renderOverlay(false); }
-    close() { this.open = null; this.ring = null; this.slip = null; this.full = false; this.renderChrome(); this.renderOverlay(false); }
-    act(a, v, el) {
+    change(fn, quiet) { fn(); this.renderLists(quiet ? true : "flash"); this.renderChrome(); this.renderOverlay(false); }
+    close() {
+      const was = this.dev.contains(document.activeElement) && document.activeElement.closest(".ov");
+      this.open = null; this.ring = null; this.slip = null; this.full = false; this.renderChrome(); this.renderOverlay(false);
+      if (was) { const t = this._trigger && this.dev.querySelector(this._trigger); if (t) t.focus({ preventScroll: true }); }
+    }
+    act(a, v, el, e) {
       const s = this.st;
       switch (a) {
         case "mark": {
           this.lastTouch = v; const it = this.items.find(x => x.id === v);
-          this.change(() => { it.done = !it.done; this.hist.unshift({ id: "h" + (this.hid++), kind: it.done ? "done" : "open", item: it.id, when: "Just now" }); });
+          this.change(() => { it.done = !it.done; this.hist.unshift({ id: "h" + (this.hid++), kind: it.done ? "done" : "open", item: it.id, when: "Just now" }); }, true);
           const b = this.dev.querySelector(`.chk[data-id="${v}"]`); if (b) b.focus({ preventScroll: true });
           return;
         }
-        case "panel": this.open = this.open === v ? null : v; this.renderChrome(); this.renderOverlay(true); return;
-        case "card": this.open = this.open === v ? null : v; this.renderChrome(); this.renderOverlay(true); return;
+        case "panel": case "card": {
+          const sel = `[data-act="${a}"][data-v="${v}"]`;
+          if (this.open === v) { this._trigger = sel; this.open = null; this.renderChrome(); this.renderOverlay(false); this.dev.querySelector(sel).focus({ preventScroll: true }); return; }
+          this.open = v; this.renderChrome(); this.renderOverlay(true);
+          if (e && e.detail === 0) this.focusPanel(sel); else this._trigger = sel;
+          return;
+        }
         case "side": this.side = v; this.renderChrome(); return;
         case "close": this.close(); return;
         case "sort": this.change(() => s.sort = v); return;
@@ -729,12 +750,12 @@ figure { margin: 0; }
         const t = e.target.closest("[data-act]"); if (!t || !d.contains(t)) return;
         if (t.tagName === "INPUT") return;
         if (t.dataset.ringOpt && this._dragPicked) { this._dragPicked = false; return; }
-        e.preventDefault(); this.act(t.dataset.act, t.dataset.v || t.dataset.id, t);
+        e.preventDefault(); this.act(t.dataset.act, t.dataset.v || t.dataset.id, t, e);
       });
       d.addEventListener("change", e => { const t = e.target; if (t.matches("input[data-act]")) this.act(t.dataset.act, null, t); });
       d.addEventListener("keydown", e => { if (e.key === "Escape" && (this.open || this.ring || this.slip || this.full)) { this.close(); e.stopPropagation(); } });
       // Spread: the page you touch last keeps its view; the card opens on the other page.
-      d.addEventListener("pointerdown", e => { const pg = e.target.closest("[data-pg]"); if (this.c === "spread" && this.pose === "open" && pg && !e.target.closest(".sline") && !e.target.closest(".card")) this.cardPage = pg.dataset.pg === "pl" ? "pr" : "pl"; if (this.c === "spread" && this.pose === "open" && e.target.closest(".sline")) this.cardPage = "pr"; }, true);
+      d.addEventListener("pointerdown", e => { const pg = e.target.closest("[data-pg]"); if (this.c === "spread" && this.pose === "open" && pg && !e.target.closest(".card")) this.cardPage = pg.dataset.pg === "pl" ? "pr" : "pl"; }, true);
       const L = this.mainList(), C = d.querySelector("[data-cont]");
       if (C) {
         L.addEventListener("scroll", () => { if (!this._sync) this.syncCont(); });

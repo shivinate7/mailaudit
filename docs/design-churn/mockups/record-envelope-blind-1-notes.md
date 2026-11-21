@@ -16,9 +16,9 @@ not cut off.
 
 Open `record-envelope-blind-1.html` with a hash. `c` is the concept (`pinned`, `spine`), `s` the
 state, `t` the theme (`light`, `dark`; default follows the system), `d=undo` the undo strip,
-`v=all` the save-every-name mode, `l=0` hides the New labels, `h=<option>,...` hides options.
-States: `list` (first screen), `nomail`, `empty`, `typing`, `matched`, `choose`, `confirm`,
-`gone`, `saved`, `failed`. Examples:
+`v=all` the save-every-name mode, `m=manual` matching by hand, `l=0` hides the New labels,
+`h=<option>,...` hides options. States: `list` (first screen), `nomail`, `empty`, `typing`,
+`matched`, `noready`, `choose`, `confirm`, `gone`, `saved`, `failed`. Examples:
 
 - `record-envelope-blind-1.html#c=pinned&s=typing&t=dark`
 - `record-envelope-blind-1.html#c=spine&s=list`
@@ -69,8 +69,8 @@ concept), `#choice-throw` (state `confirm` with the confirm style, state `gone` 
    this one. Owner grant: yes. Hide control: Throw away, "Hide" beside Undo strip.
 
 5. **Save: Save ready names.** Save records the names that have a line; a name with no line stays
-   in the draft, and the message says how many stay. Save is off, with its reason on hover, while
-   no name has a line. Gain: nothing is saved without a line. Loss: the draft lives on after Save
+   in the draft, and the message says how many stay. While no name has a line, Save is off and a
+   visible line under the field says why (state `noready`). Gain: nothing is saved without a line. Loss: the draft lives on after Save
    when a name has no line. Pick: this one. Owner grant: yes. Hide control: Save, "Hide" beside
    Save ready names.
 
@@ -78,28 +78,40 @@ concept), `#choice-throw` (state `confirm` with the confirm style, state `gone` 
    Gain: one press ends the envelope. Loss: a name with no line is saved with no cost. Pick: not
    this one. Owner grant: yes. Hide control: Save, "Hide" beside Save every name.
 
-7. **An exact name matches by itself.** When a typed name equals a line's card name and that line
-   has a copy left, the name gets that line on Add. Gain: most names need no second tap. Loss: a
-   wrong line is possible when two orders hold the same card; the row shows the line it took, and
-   a tap changes it. Pick: keep. Owner grant: yes.
+7. **Matching: Exact name matches itself.** When a typed name equals a line's card name and that
+   line has a copy left, the name gets that line on Add. Gain: most names need no second tap.
+   Loss: a wrong line is possible when two orders hold the same card; the row shows the line it
+   took, and a tap changes it. Pick: this one. Owner grant: yes. Hide control: Matching, "Hide"
+   beside Exact name matches itself.
 
-8. **A line with every copy named cannot take another name.** It shows dimmed with "every copy
-   named" and says why on hover. Gain: the count of a line never goes over. Loss: a seller who
-   sent an extra copy cannot be recorded against that line. Pick: keep.
+8. **Matching: Every match by hand** (`m=manual`). Every added name starts with no line. Gain: the
+   person confirms each line. Loss: one more tap per card. Pick: not this one. Owner grant: yes.
+   Hide control: Matching, "Hide" beside Every match by hand.
 
-9. **A draft survives leaving.** Back, another envelope or another screen keeps the names and the
-   half-typed text for that envelope. Only Save and Throw away end a draft. Pick: keep.
+9. **A line with every copy named cannot take another name.** It shows dimmed, one line above the
+   list says what dimmed means, and VoiceOver reads the reason on the row. Gain: the count of a
+   line never goes over. Loss: a seller who sent an extra copy cannot be recorded against that
+   line. Pick: keep.
 
-10. **Largest text (AX5).** Pinned: the orders line and the ticks hide, the name may wrap to two
+10. **A draft survives leaving.** Back, another envelope or another screen keeps the names and the
+    half-typed text for that envelope. Only Save and Throw away end a draft. Gain: an interrupted
+    check-in loses nothing. Loss: a forgotten draft stays until someone saves or throws it away;
+    the list or drawer marks it with its ready count so it is not hidden. Pick: keep.
+
+11. **Largest text (AX5).** Pinned: the orders line and the ticks hide, the name may wrap to two
     lines, Throw away becomes a trash icon with a label for VoiceOver, and while the keys are up
     Save and Throw away hide (the keys' add key still adds; hide the keys to save). Spine: the
     sender wraps into two columns; while the keys are up, Back, Throw away and Save hide. Gain:
     the identity stays whole at AX5. Loss: at AX5 with the keys up, the list of names shows about
     one row. Pick: keep.
 
-11. **Empty, failed and unknown states.** No names: one sentence and "Type a name". No mail:
+12. **Empty, failed and unknown states.** No names: one sentence and "Type a name". No mail:
     one sentence and "Check again". Order lines failed: "Order lines did not load. Names you type
-    stay in the draft." and "Try again"; names can still be typed. Pick: keep.
+    stay in the draft." and "Try again"; names can still be typed. Gain: a failed read never looks
+    like an envelope with no lines. Loss: none seen. Pick: keep.
+
+13. **Add shows only when the field has text.** Gain: no control that does nothing. Loss: the
+    field widens and narrows as text comes and goes. Pick: keep.
 
 ## Sizes, stand-ins and sources
 
@@ -107,7 +119,8 @@ concept), `#choice-throw` (state `confirm` with the confirm style, state `gone` 
   `layout.py devices` printed `unknown` for this repo. A headless check confirms no drawn element
   crosses the hinge in any state.
 - Large phone: no size is written in the brief or the device list, so its frame has no real size
-  and can be resized by hand. Input needed: the phone's size.
+  and can be resized by hand. It starts at 440 x 900, a stand-in from no source. Input needed: the
+  phone's size.
 - Stand-ins with no Apple source: the status bar (32 pt), the home indicator area (20 pt), the
   keys' height (four rows of 44 pt keys), the spine widths (72 pt, 144 pt at AX5), the undo time
   (6 s). The keys are drawn, not real.
@@ -115,14 +128,17 @@ concept), `#choice-throw` (state `confirm` with the confirm style, state `gone` 
 - Apple pages read 2026-11-21, each through its `tutorials/data` JSON (all answered 200):
   - design/human-interface-guidelines/layout: safe areas; lay out by size class.
   - design/human-interface-guidelines/typography: Dynamic Type sizes, Large and AX5.
-  - design/human-interface-guidelines/accessibility: 44 x 44 pt default control size.
-  - design/human-interface-guidelines/buttons: 44 x 44 pt hit region.
-  - design/human-interface-guidelines/alerts: prefer undo to an alert for an undoable delete;
-    Cancel on the leading side.
-  - design/human-interface-guidelines/virtual-keyboards: keep important parts of the interface
-    visible while the keyboard is up (the keyboard layout guide).
-  - design/human-interface-guidelines/sheets, tab-bars, toolbars, lists-and-tables: read; no
-    sheet or tab bar is drawn, because both concepts navigate by a stack (pinned) or the drawer
-    (spine), and a sheet would cover the identity.
+  - design/human-interface-guidelines/accessibility: iOS default control size 44x44 pt, minimum
+    28x28 pt. Every tap target in the frames is 44 pt or more (checked headless), the drawn keys
+    excepted.
+  - design/human-interface-guidelines/alerts: avoid an alert for an undoable delete; an uncommon
+    delete that cannot be undone gets one. Cancel sits on the leading side.
+  - design/human-interface-guidelines/virtual-keyboards: use the keyboard layout guide to keep
+    important parts of the interface visible while the keyboard is up.
+  - design/human-interface-guidelines/sheets: a sheet presents a task before people return to the
+    parent view. No sheet is drawn: it would sit over the identity.
+  - design/human-interface-guidelines/tab-bars: a tab bar is for navigation among sections, not
+    for actions. No tab bar is drawn: this screen has one section.
+  - design/human-interface-guidelines/buttons, toolbars, lists-and-tables: fetched, not used.
 - Departs from: the house rule "on a phone, navigation uses a bottom tab bar" (tokens.md). This
   screen has one section, so a tab bar would hold one tab. Not blocking.

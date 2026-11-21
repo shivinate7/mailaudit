@@ -179,9 +179,11 @@ figcaption, .say { max-width:80ch; font-size:14px; }
 /* the system tab bar: floats over the content at the bottom of the screen (HIG Tab bars). Labels stop growing at Large (duo-card-in-hand, Tab bar text). */
 .tabbar { position:absolute; left:16px; right:16px; height:64px; border-radius:32px; z-index:7; display:flex; align-items:center; justify-content:space-around;
   background:color-mix(in srgb, var(--card) 86%, transparent); border:1px solid var(--line); box-shadow:0 2px 10px rgba(28,43,36,0.06); font-family:var(--sys); }
-.tabbar span { display:flex; flex-direction:column; align-items:center; gap:2px; font-size:10px; color:var(--inkSoft); min-width:64px; min-height:44px; justify-content:center; }
-.tabbar span i { width:20px; height:16px; border:1.5px solid currentColor; border-radius:4px; }
-.tabbar span.on { color:var(--accent); font-weight:600; }
+.tabbar .tb { display:flex; flex-direction:column; align-items:center; gap:2px; font:10px var(--sys); color:var(--inkSoft); min-width:64px; min-height:44px; justify-content:center; text-align:center; }
+.tabbar .tb i { width:20px; height:16px; border:1.5px solid currentColor; border-radius:4px; }
+.tabbar .tb.on { color:var(--accent); font-weight:600; }
+/* A Post bar on the answer page: the page's scroll region ends above it, as DuoSystemBar's content margin does. */
+.pg.top.withbar > .in { bottom:53px; overflow:hidden; }
 .home { position:absolute; bottom:8px; left:50%; width:134px; height:5px; margin-left:-67px; border-radius:3px; background:var(--ink); z-index:11; opacity:.8; }
 
 /* the system keyboard: iOS chrome, not an app colour, so its greys sit outside the tokens. Stock keys only (item 22). */
@@ -215,7 +217,7 @@ figcaption, .say { max-width:80ch; font-size:14px; }
 <div class="banner" role="note">Sample. No card, seller, order, count, date or price on this page is real. Places come from the code, the records and this drawing, not from a simulator.</div>
 <h1>Desk mode: the Duo in its stacked poses</h1>
 <p class="kind"><b>Designer kind: directed.</b> Direction: desk mode. The laptop pose is the primary pose. Keys and list below, answer above.</p>
-<p class="sub">Stacked pages are the open inner screen turned a quarter: 669 by 951 pt, top page y 0 to 455.5, fold 455.5 to 495.5, bottom page 495.5 to 951. No record measures this window; the size is the brief's open size turned. Laptop is the hinge half open (<code>DuoHinge.halfOpen</code>), tall is flat (<code>.flat</code>); both report <code>DuoSpread.stacked</code>. The keys' height in this pose is unmeasured: they are drawn with the side-by-side frame's 263 pt plus its 44 pt drawn strip, so they start at y 644 (dashed); the dotted line at 667 is the top with no word suggestions. Light theme only: the app ships light. Ruled: answer page on top, system tab bar at the bottom of the screen (item 28 a), the tab bar stays under the keys while they are up.</p>
+<p class="sub">Stacked pages are the open inner screen turned a quarter: 669 by 951 pt, top page y 0 to 455.5, fold 455.5 to 495.5, bottom page 495.5 to 951. No record measures this window; the size is the brief's open size turned. Laptop is the hinge half open (<code>DuoHinge.halfOpen</code>), tall is flat (<code>.flat</code>); both report <code>DuoSpread.stacked</code>. The keys' height in this pose is unmeasured: they are drawn with the side-by-side frame's 263 pt plus its 44 pt drawn strip, so they start at y 644 (dashed); the dotted line at 667 is the top with no word suggestions. Light theme only: the app ships light. The laptop, tall and folded Typewriter frames are live: tap them or type on your own keyboard. Shift and 123 are drawn, not live; the other frames are references. Ruled: answer page on top, system tab bar at the bottom of the screen (item 28 a), the tab bar stays under the keys while they are up.</p>
 <p class="pick"><b>Pick: Typewriter.</b> In laptop pose the top page stands up at arm's length and wobbles under a finger, and the bottom page lies under the hand. Typewriter puts every press but Post on the flat page and makes the standing page a large, quiet answer. Desk is the safer step: it keeps today's press places and only stacks the pages.</p>
 
 <nav aria-label="Concepts, poses and states">
@@ -247,7 +249,7 @@ figcaption, .say { max-width:80ch; font-size:14px; }
 <!-- ================= Desk ================= -->
 <section class="concept" data-concept="desk">
   <h2>Desk</h2>
-  <p class="lede">Packages spreads over both stacked pages: orders below, the picked order or the day above, as a list under its detail. The field below is the Packages search and filters the list. Card in Hand opens from its own control beside the search and stacks today's two pages: the answer page above with its tappable lines and Post bar, the left page below with the keys. Every press stays where it is today; the pages only turn.</p>
+  <p class="lede">Packages spreads over both stacked pages: orders below, the picked order or the day above, as a list under its detail. The field below is the Packages search and filters the list. Card in Hand opens from its own control beside the search and stacks today's two pages: the answer page above with its tappable lines and Post bar, the left page below with the keys. The check-in presses stay where they are today, on the lines of the answer page. Like Typewriter, it moves Post to the answer page's foot, the head's figures up and Close into the field row, and it adds a search.</p>
   <div class="row-frames" data-slot="desk-fold" data-device="iphone-duo-folded"></div>
   <div class="row-frames" data-slot="desk" data-device="iphone-duo-unfolded"></div>
 </section>
@@ -269,7 +271,9 @@ const ORDERS = [
   { gk:'alpha', seller:'Alpha Cards', id:'4F2A-01C7', date:'2026-10-14', lines:[
     { n:'Lightning Bolt', set:'Magic 2011', p:1.12 }, { n:'Path to Exile', set:'Conflux', p:0.88 },
     { n:'Swords to Plowshares', set:'Ice Age', p:1.40 }, { n:'Brainstorm', set:'Commander Masters', p:0.62, in:true },
-    { n:'Ponder', set:'Commander Masters', p:0.18, in:true } ] },
+    { n:'Ponder', set:'Commander Masters', p:0.18, in:true }, { n:'Mana Leak', set:'Tempest', p:0.30 },
+    { n:'Remand', set:'Ravnica', p:0.45 }, { n:'Serum Visions', set:'Fifth Dawn', p:0.25, in:true },
+    { n:'Spell Pierce', set:'Zendikar', p:0.20 }, { n:'Mystic Remora', set:'Ice Age', p:0.90 } ] },
   { gk:'beta', seller:'Beta Games', id:'77B0-4E1D', date:'2026-10-02', lines:[
     { n:'Swords to Plowshares', set:'Fifth Edition', p:1.35 }, { n:'Wrath of God', set:'Tenth Edition', p:2.10 }, { n:'Opt', set:'Ixalan', p:0.12, in:true } ] },
   { gk:'kestrel', seller:'Kestrel Card Co.', id:'1C9D-22A0', date:'2026-10-09', lines:[
@@ -355,9 +359,13 @@ function keysHTML(lay, ret) {
     + (lay.kind === 'stacked' ? `<div class="guide" style="top:${lay.keysTop}px"><span>keys drawn from y ${lay.keysTop} pt, unmeasured in this pose</span></div>
        <div class="guide plain" style="top:${lay.keysTop + KEYS_PLAIN_DROP}px"><span>${lay.keysTop + KEYS_PLAIN_DROP} pt: no word suggestions</span></div>` : '');
 }
-function tabbarHTML(lay) {
-  const t = lay.h - BAR_ZONE + 6;
-  return `<div class="tabbar" style="top:${t}px" role="tablist" aria-label="Tabs"><span class="on" role="tab" aria-selected="true"><i></i>Packages</span><span role="tab"><i></i>Tally</span><span role="tab"><i></i>Orphaned</span><span role="tab"><i></i>Ledger</span></div>`;
+const TABS = ['Packages', 'Tally', 'Orphaned', 'Ledger'];
+function tabbarHTML(lay, st) {
+  // Live frames draw the tabs as buttons; reference frames draw them still.
+  const t = lay.h - BAR_ZONE + 6, cur = (st && st.tab) || 'Packages';
+  return `<div class="tabbar" style="top:${t}px" role="tablist" aria-label="Tabs">${TABS.map(n => st
+    ? `<button class="tb${n === cur ? ' on' : ''}" role="tab" aria-selected="${n === cur}" data-act="tab" data-tab="${n}" data-n="${n}"><i></i>${n}</button>`
+    : `<span class="tb${n === cur ? ' on' : ''}" role="tab" aria-selected="${n === cur}"><i></i>${n}</span>`).join('')}</div>`;
 }
 const page = (r, cls, inner, extra = '') => `<div class="pg ${cls}" style="left:${r.x}px;top:${r.y}px;width:${r.w}px;height:${r.h}px"${extra}><div class="in">${inner}</div></div>`;
 const foldHTML = (lay, over) => lay.fold ? `<div class="fold ${lay.kind === 'book' ? 'v' : ''} ${over ? 'over' : ''}" style="left:${lay.fold.x}px;top:${lay.fold.y}px;width:${lay.fold.w}px;height:${lay.fold.h}px" aria-hidden="true"><span>${over ? 'THE FOLD RUNS THROUGH THIS PAGE' : 'FOLD 40 PT'}</span></div>` : '';
@@ -414,6 +422,7 @@ function answerHand(st, lay, concept) {
   return head + body;
 }
 function postBarHTML(st, lay, concept) {
+  if (st.mode !== 'hand') return '';
   const v = handView(st);
   if (!v.offer && !st.receipt) return '';
   // Side by side: pinned just above the keys (item 103 b). Stacked and folded: pinned at the answer page's foot, above the fold or the field.
@@ -481,15 +490,18 @@ function inputPK(st, lay, concept) {
 function stackedFrame(st, concept, pose, live) {
   const lay = L.stacked, hand = st.mode === 'hand';
   const ret = hand ? 'done' : 'search';
-  const top = hand ? answerHand(st, lay, concept) : answerPK(st, lay);
-  const bot = hand ? inputHand(st, lay, concept) : inputPK(st, lay, concept);
+  // Another tab: this mockup draws Packages and Card in Hand only, so the standing page says so and the bar leads back.
+  const away = st.tab && st.tab !== 'Packages';
+  const top = away ? `<p class="hint">${st.tab} is not part of this mockup. Packages, in the tab bar, brings the sample back.</p>` : hand ? answerHand(st, lay, concept) : answerPK(st, lay);
+  const bot = away ? '' : hand ? inputHand(st, lay, concept) : inputPK(st, lay, concept);
+  const bar = hand && !away ? postBarHTML(st, lay, concept) : '';
   return `<div class="dev stacked" style="width:${lay.w}px;height:${lay.h}px" data-device="iphone-duo-unfolded" data-pose="${pose}" data-concept="${concept}"${live ? ` data-live="${concept}"` : ''} role="group" aria-label="${concept} ${pose} pose">
     ${statusHTML()}
-    ${page({ ...lay.ans, y:lay.ans.y + 20, h:lay.ans.h - 20 }, 'top', top, ' data-id="toppage"')}
+    ${page({ ...lay.ans, y:lay.ans.y + 20, h:lay.ans.h - 20 }, bar ? 'top withbar' : 'top', top, ' data-id="toppage"')}
     ${foldHTML(lay)}
     ${page(lay.inp, 'bot', bot)}
-    ${hand ? postBarHTML(st, lay, concept) : ''}
-    ${st.keys ? keysHTML(lay, ret) : tabbarHTML(lay)}
+    ${bar}
+    ${st.keys && !away ? keysHTML(lay, ret) : tabbarHTML(lay, live ? st : null)}
     ${st.keys ? '' : '<div class="home" aria-hidden="true"></div>'}
     <div class="finger" hidden></div></div>`;
 }
@@ -520,11 +532,12 @@ function onePK(st, ax5, device, label) {
 function oneHand(st, ax5, live) {
   // Typewriter on the folded screen (option): answer above, field and matches below, keys at the foot.
   const lay = L.one;
-  return `<div class="dev one${ax5 ? ' ax5' : ''}" style="width:466px;height:678px" data-device="iphone-duo-folded" data-pose="folded"${live ? ' data-live="typewriter"' : ''} role="group" aria-label="Typewriter folded">
+  const bar = postBarHTML(st, lay, 'typewriter');
+  return `<div class="dev one${ax5 ? ' ax5' : ''}" style="width:466px;height:678px" data-device="iphone-duo-folded" data-pose="folded" data-concept="twfold"${live ? ' data-live="twfold"' : ''} role="group" aria-label="Typewriter folded">
     ${statusHTML()}
-    ${page({ ...lay.ans, y:20, h:lay.ans.h - 20 }, 'top', answerHand(st, lay, 'typewriter'))}
-    ${page(lay.inp, 'bot', inputHand(st, lay, 'typewriter'))}
-    ${postBarHTML(st, lay, 'typewriter')}
+    ${page({ ...lay.ans, y:20, h:lay.ans.h - 20 }, bar ? 'top withbar' : 'top', st.mode === 'hand' ? answerHand(st, lay, 'typewriter') : answerPK(st, lay))}
+    ${page(lay.inp, 'bot', st.mode === 'hand' ? inputHand(st, lay, 'typewriter') : inputPK(st, lay, 'typewriter'))}
+    ${bar}
     ${st.keys ? keysHTML(lay, 'done') : tabbarHTML(lay)}
     <div class="finger" hidden></div></div>`;
 }
@@ -545,7 +558,12 @@ function todayStacked(st) {
 }
 
 // ---------------- state, per concept: every pose of a concept draws from one state ----------------
-const S = { typewriter:fresh('typewriter'), desk:fresh('desk'), today:fresh('today') };
+// twfold is the Typewriter-on-the-folded-screen option: its own state, opening in Card in Hand with the keys up.
+const freshFor = k => k === 'twfold' ? Object.assign(fresh('typewriter'), { mode:'hand', keys:true }) : fresh(k);
+const S = { typewriter:freshFor('typewriter'), desk:freshFor('desk'), today:freshFor('today'), twfold:freshFor('twfold') };
+// Search states exist in Desk only: Typewriter has no Packages search, so a query there could not be seen or cleared.
+const presetTargets = s => ['search', 'nomatch'].includes(s) ? ['desk'] : ['typewriter', 'desk', 'twfold'];
+function applyPreset(s) { for (const k of ['typewriter', 'desk', 'twfold']) { S[k] = freshFor(k); if (presetTargets(s).includes(k)) PRESETS[s](S[k]); } }
 const PRESETS = {
   list:     st => {},
   order:    st => { st.sel = 'alpha'; st.drill = true; },
@@ -585,7 +603,8 @@ function act(st, a) {
     case 'back': st.drill = false; break;
     case 'pkcheck': st.ins.has(a.gk + '|' + a.n) ? st.ins.delete(a.gk + '|' + a.n) : st.ins.add(a.gk + '|' + a.n); st.flash = { gk:a.gk, n:a.n }; break;
     case 'clearq': st.q = ''; break;
-    case 'ledger': break;
+    case 'ledger': st.tab = 'Ledger'; st.keys = false; break;
+    case 'tab': st.tab = a.n; st.keys = false; break;
   }
 }
 
@@ -597,6 +616,12 @@ function fixTags(root) {
   root.querySelectorAll('[class-tag]').forEach(e => { e.classList.add('tag-' + e.getAttribute('class-tag')); e.removeAttribute('class-tag'); });
 }
 function renderConcept(c) {
+  if (c === 'twfold') {
+    const s2 = document.querySelector('[data-slot="tw-folded"]'), st = S.twfold;
+    s2.innerHTML = block('Typewriter folded, default text, live', oneHand(st, false, true).replace('data-live', 'id="focus-tw-folded" data-live'), ' data-pose="folded" data-size="default" data-opt="tw-folded"')
+      + block('Typewriter folded, AX5 text', oneHand(st, true, false), ' data-pose="folded" data-size="ax5" data-opt="tw-folded"');
+    fixTags(s2); return;
+  }
   const st = S[c], slot = document.querySelector(`[data-slot="${c}"]`), fslot = document.querySelector(`[data-slot="${c}-fold"]`);
   if (!slot) return;
   let h = '', fh = '';
@@ -613,12 +638,6 @@ function renderConcept(c) {
   }
   slot.innerHTML = h; fixTags(slot);
   fslot.innerHTML = fh; fixTags(fslot);
-  if (c === 'typewriter') {
-    const s2 = document.querySelector('[data-slot="tw-folded"]');
-    s2.innerHTML = block('Typewriter folded, default text, live', oneHand(st, false, true).replace('data-live', 'id="focus-tw-folded" data-live'), ' data-pose="folded" data-size="default" data-opt="tw-folded"')
-      + block('Typewriter folded, AX5 text', oneHand(st, true, false), ' data-pose="folded" data-size="ax5" data-opt="tw-folded"');
-    fixTags(s2);
-  }
 }
 // The side-by-side reference shows the same sample with Card in Hand open, keys up, and two matches.
 function fresh2(st) { const s = fresh(); s.ins = new Set(st.ins); s.mode = 'hand'; s.keys = true; s.typed = 'to'; return s; }
@@ -688,7 +707,7 @@ function readFrames() {
   document.querySelectorAll('.frame').forEach(fr => {
     const d = fr.querySelector('.dev'), out = fr.querySelector('[data-read]');
     if (!d || fr.hidden || !d.getBoundingClientRect().width) return;
-    if (lastPress && d.dataset.live && d.dataset.frameKey === lastPress.key) readPress(d, out); else readStatic(d, out);
+    if (lastPress && d.dataset.live && frameKey(d) === lastPress.key) readPress(d, out); else readStatic(d, out);
   });
 }
 
@@ -699,16 +718,17 @@ document.addEventListener('click', e => {
   const d = b.closest('.dev'), c = d.dataset.live; if (!c) return;
   active = c;
   const s = geo(d), r = d.getBoundingClientRect(), z = r.width / d.offsetWidth;
-  const key = d.closest('.frame').querySelector('.cap').textContent;
+  const key = frameKey(d);
   const scope = pageOf(b);
   lastPress = { key, scope, what:b.dataset.act, n:b.dataset.n || '', cx:e.clientX, cy:e.clientY, px:(e.clientX - r.left) / z, py:(e.clientY - r.top) / z, before:snapshot(d, scope) };
   act(S[c], { act:b.dataset.act, k:b.dataset.k, n:b.dataset.n, gk:b.dataset.gk });
   const keep = window.scrollY;
   renderConcept(c); route(false);
   window.scrollTo(0, keep);
-  document.querySelectorAll('.dev[data-live]').forEach(x => { x.dataset.frameKey = x.closest('.frame').querySelector('.cap').textContent; });
   readFrames();
 });
+// A press is read back on the frame it landed in: concept, pose and text size name that frame.
+const frameKey = d => `${d.dataset.live}|${d.dataset.pose}|${d.classList.contains('ax5')}`;
 document.addEventListener('keydown', e => {
   const st = S[active]; if (!st || !st.keys || e.metaKey || e.ctrlKey || e.altKey) return;
   if (e.target.closest && e.target.closest('nav')) return;
@@ -726,7 +746,7 @@ const param = k => { const m = location.hash.match(new RegExp('[#&]' + k + '=([\
 function fit() { document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; if (!d) return; d.style.zoom = ''; const avail = w.parentElement.parentElement.clientWidth; d.style.zoom = Math.min(1, avail / d.offsetWidth, w.closest('.frame').dataset.pose === 'laptop' ? 1 : 0.62); }); }
 function route(fromHash) {
   const c = param('c'), p = param('p'), s = param('s'), z = param('z');
-  if (fromHash && s && PRESETS[s]) for (const k of ['typewriter', 'desk']) { S[k] = fresh(k); PRESETS[s](S[k]); renderConcept(k); }
+  if (fromHash && s && PRESETS[s]) { applyPreset(s); for (const k of ['typewriter', 'desk', 'twfold']) renderConcept(k); }
   document.querySelectorAll('section.concept').forEach(x => { x.hidden = (c && x.dataset.concept !== c) || hidden.has(x.dataset.concept); });
   document.querySelectorAll('.frame').forEach(fr => {
     fr.hidden = (p && fr.dataset.pose !== p) || (z && fr.dataset.size !== z) || (fr.dataset.opt && hidden.has(fr.dataset.opt));
@@ -752,8 +772,8 @@ document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click'
   route(false);
 }));
 document.querySelector('[data-tags]').addEventListener('click', e => { document.body.classList.toggle('tagged'); e.target.textContent = document.body.classList.contains('tagged') ? 'Hide tags' : 'Show tags'; fit(); });
-document.querySelector('[data-reset]').addEventListener('click', () => { for (const k of Object.keys(S)) S[k] = fresh(k); lastPress = null; const s = param('s'); if (s && PRESETS[s]) for (const k of ['typewriter', 'desk']) PRESETS[s](S[k]); renderAll(); });
-addEventListener('hashchange', () => { lastPress = null; for (const k of Object.keys(S)) S[k] = fresh(k); renderAll(); });
+document.querySelector('[data-reset]').addEventListener('click', () => { for (const k of Object.keys(S)) S[k] = freshFor(k); lastPress = null; renderAll(); });
+addEventListener('hashchange', () => { lastPress = null; for (const k of Object.keys(S)) S[k] = freshFor(k); renderAll(); });
 addEventListener('resize', () => route(false));
 renderAll();
 (document.fonts ? document.fonts.ready : Promise.resolve()).then(() => route(false));

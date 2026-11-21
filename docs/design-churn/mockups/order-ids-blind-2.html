@@ -164,9 +164,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .chev { flex: none; color: var(--ink-muted); }
 
 /* the order number, set in chunks */
-.num { font-family: var(--font-number); font-variant-numeric: slashed-zero tabular-nums; letter-spacing: .04em; display: flex; flex-wrap: wrap; column-gap: .35em; user-select: text; -webkit-user-select: text; }
+.num { font-family: var(--font-number); font-variant-numeric: slashed-zero tabular-nums; letter-spacing: .02em; display: flex; flex-wrap: wrap; user-select: text; -webkit-user-select: text; }
 .num .chunk { white-space: nowrap; }
-.num .dash { color: var(--ink-muted); }
+.num .dash { color: var(--ink-muted); padding-inline: .15em; }
 .num.plain { display: block; overflow-wrap: anywhere; column-gap: 0; }
 
 /* Order slip */
@@ -187,6 +187,16 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .plate .slot { display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); min-width: 6.5em; color: var(--accent); font-weight: 600; }
 .plate .num { font-size: var(--fs-t2); line-height: var(--lh-t2); color: var(--ink); }
 .plate.copied { border-color: var(--done); background: var(--done-tint); }
+.ax5 .plate .top { flex-wrap: wrap; }
+.ax5 .sheetbar { flex-wrap: wrap; justify-content: space-between; }
+.ax5 .sheetbar .title { flex: none; text-align: start; }
+.ax5 .sheetbar > span.textbtn { display: none; }
+/* At AX5 the pinned dock would hide the order: the whole screen scrolls instead. */
+.ax5 .screen { overflow-y: auto; }
+.ax5 .screen > .scroll { flex: none; overflow: visible; }
+.ax5 .plate .slot { min-width: 0; }
+.ax5 .btn { flex-basis: 100%; }
+.btn svg, .slot svg, .cslot svg { width: 1em; height: 1em; flex: none; }
 .plate.copied .slot { color: var(--done); }
 .spell { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); }
 .spell summary { min-height: var(--hit); display: flex; align-items: center; cursor: pointer; color: var(--accent); }
@@ -203,20 +213,26 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 /* Number ledger */
 .ledger { list-style: none; margin: 0; padding: 0 var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
-.lrow { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); background: var(--surface-raised); border-radius: var(--radius); }
-.lrow .who { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--space-3); font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--ink-muted); }
-.lrow .who b { color: var(--ink); font-weight: 600; }
+.lrow { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1); background: var(--surface-raised); border-radius: var(--radius); }
 .lrow .line { display: flex; align-items: center; gap: var(--space-2); }
+.lrow .numbtn { flex-direction: column; align-items: stretch; gap: var(--space-1); padding: var(--space-2) var(--space-3); margin-left: 0; }
+.lrow .who { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: 0 var(--space-3); font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--ink-muted); }
+.lrow .who b { color: var(--ink); font-weight: 600; }
 .numbtn { flex: 1; min-width: 0; min-height: var(--hit); display: flex; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-2); margin-left: calc(-1 * var(--space-2)); border-radius: var(--radius); }
-.numbtn .num { flex: 1; min-width: 0; font-size: var(--fs-t3); line-height: var(--lh-t3); }
-.numbtn .cslot { flex: none; display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); min-width: 5.2em; font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--accent); font-weight: 600; }
+.numbtn .num { flex: 1; min-width: 0; font-size: var(--fs-t3); line-height: var(--lh-t3); color: var(--ink); }
+.cslot { flex: none; display: inline-flex; align-items: center; justify-content: flex-end; gap: var(--space-1); min-width: 5.2em; font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--accent); font-weight: 600; }
 .numbtn.copied { background: var(--done-tint); }
 .numbtn.copied .cslot { color: var(--done); }
+.lrow .iconbtn { align-self: stretch; height: auto; min-height: var(--hit); }
 .iconbtn { flex: none; width: var(--hit); height: var(--hit); display: inline-flex; align-items: center; justify-content: center; border-radius: var(--radius); color: var(--accent); background: var(--accent-tint); }
-.iconbtn[aria-disabled="true"] { color: var(--ink-muted); background: var(--surface-sunk); cursor: not-allowed; }
-.lrow .why { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); margin: 0; }
+.iconbtn[aria-disabled="true"] { color: var(--ink-muted); background: transparent; border: 1px dashed var(--rule); cursor: not-allowed; }
+.lrow .why { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); margin: 0; padding: 0 var(--space-3) var(--space-2); }
 .ax5 .lrow .line { flex-wrap: wrap; }
-.ax5 .numbtn .cslot { min-width: 0; }
+.ax5 .lrow .iconbtn { flex: 1 1 100%; }
+.ax5 .cslot { min-width: 0; }
+.pk .short { display: none; }
+.ax5 .pk .short { display: block; }
+.ax5 .pk .full, .ax5 .pk small { display: none; }
 
 .pocket { flex: none; margin: 0 var(--space-2) var(--space-1); display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); border-radius: var(--radius); background: var(--surface-raised); border: 2px solid var(--accent); }
 .pocket.idle { border-style: dashed; border-color: var(--rule); color: var(--ink-muted); padding: var(--space-3) var(--space-4); font-size: var(--fs-sub); line-height: var(--lh-sub); }
@@ -225,8 +241,8 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .pocket .pk .num { font-size: var(--fs-head); line-height: var(--lh-head); }
 .ax5 .pocket { flex-wrap: wrap; }
 
-.sheet-scrim { position: absolute; inset: 0; background: rgba(0,0,0,.32); }
-.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: calc(var(--status-h) + var(--space-6)); display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--home-h)); }
+.sheet-scrim { position: absolute; inset: 0; z-index: 10; background: rgba(0,0,0,.32); }
+.sheet { z-index: 11; position: absolute; left: 0; right: 0; bottom: 0; top: calc(var(--status-h) + var(--space-6)); display: flex; flex-direction: column; background: var(--surface); border-radius: var(--radius) var(--radius) 0 0; padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--home-h)); }
 .grabber { align-self: center; width: 36px; height: 5px; border-radius: 3px; background: var(--rule); margin-top: var(--space-2); }
 .sheetbar { display: flex; align-items: center; gap: var(--space-2); min-height: var(--hit); padding-inline: var(--space-2); }
 .sheetbar .title { flex: 1; text-align: center; font-weight: 600; font-size: var(--fs-head); line-height: var(--lh-head); }
@@ -242,6 +258,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
 /* states */
 .state { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) var(--space-4); }
+.state .btn { flex: none; }
 .state p { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
 .skel { list-style: none; margin: 0 var(--space-4); padding: 0; display: flex; flex-direction: column; gap: var(--space-2); }
 .skel li { height: 88px; border-radius: var(--radius); background: var(--surface-raised); position: relative; overflow: hidden; }
@@ -249,7 +266,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 .loading-line { padding: 0 var(--space-4) var(--space-2); font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--ink-muted); }
 
 /* stand-in for the seller's page */
-.web { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--surface-raised); padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-h)); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--home-h)); }
+.web { z-index: 12; position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--surface-raised); padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-h)); padding-bottom: calc(env(safe-area-inset-bottom, 0px) + var(--home-h)); }
 .webbar { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); border-bottom: 1px solid var(--rule); }
 .addr { flex: 1; min-width: 0; padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--surface-sunk); font-size: var(--fs-sub); line-height: var(--lh-sub); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .webbody { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); overflow-y: auto; }
@@ -345,7 +362,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     { key: "chunks", label: "Number set in its dash groups, wrapping only between groups (hidden: one plain string)." },
     { key: "spell", label: "“Spell it out”: the number as words, for reading it aloud." },
     { key: "copyopen", label: "“Copy and open order”: one press copies, then opens the order page to paste into." },
-    { key: "where", label: "“Where this goes”: the web address, in a closed disclosure." },
+    { key: "where", label: "“Show the web address”: the address, in a closed disclosure." },
     { key: "numsearch", label: "Search also matches part of a number (hidden: seller only)." }
   ];
   var NATO = { A: "Alfa", B: "Bravo", C: "Charlie", D: "Delta", E: "Echo", F: "Foxtrot" };
@@ -386,7 +403,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
   }
   function whereHTML(o) {
     if (!o.url) return "";
-    return '<details class="where" data-opt="where"><summary>Where this goes</summary><code>' + esc(o.url) + "</code></details>";
+    return '<details class="where" data-opt="where"><summary>Show the web address</summary><code>' + esc(o.url) + "</code></details>";
   }
   function searchHTML(label) {
     var ph = S.hidden.numsearch ? "Seller" : "Seller or part of a number";
@@ -403,7 +420,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
 
   function webHTML(o) {
     var copiedNote = (S.copied === o.id) ? '<div class="banner" role="status">Order number copied. Paste it into your message.</div>' : "";
-    return '<div class="web" role="dialog" aria-label="Order page in Safari">' +
+    return '<div class="web" role="dialog" aria-label="Order page in Safari">' + statusBar() +
       '<div class="webbar"><button class="textbtn strong" data-act="closeweb">Done</button><div class="addr">orders.example/order/' + esc(o.number) + "</div></div>" +
       '<div class="webbody">' + copiedNote +
       '<p class="standin">Stand-in for the seller’s order page: it lands on this one order.</p>' +
@@ -466,7 +483,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     var left = slipListScreen(true);
     var right;
     if (S.s === "loading" || S.s === "failed" || S.s === "empty") {
-      right = '<div class="screen">' + statusBar() + '<div class="state"><p>An order’s number shows here once orders are read.</p></div></div>';
+      right = '<div class="screen">' + statusBar() + '<div class="state"><p>An order’s number shows here once ' + (S.s === "empty" ? "you add orders" : "orders are read") + ".</p></div></div>";
     } else right = slipDetail(ord(), false, false);
     return '<div class="page">' + left + '</div><div class="hinge" aria-hidden="true"></div><div class="page">' + right + "</div>";
   }
@@ -478,9 +495,9 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
       var open = o.url
         ? '<button class="iconbtn" data-act="open" data-i="' + i + '" aria-label="Open order page for ' + esc(o.seller) + '">' + I.open + "</button>"
         : '<button class="iconbtn" aria-disabled="true" aria-label="Open order page: no web address saved" title="No web address is saved for this order.">' + I.open + "</button>";
-      return '<li class="lrow"><div class="who"><b>' + esc(o.seller) + "</b><span>" + esc(o.date) + ", " + esc(o.mail) + "</span></div>" +
-        '<div class="line"><button class="numbtn' + (copied ? " copied" : "") + '" data-act="copy" data-i="' + i + '" aria-label="Copy order number ' + esc(o.number) + '">' +
-        numHTML(o.number) + '<span class="cslot" aria-live="polite">' + (copied ? I.check + "Copied" : I.copy + "Copy") + "</span></button>" + open + "</div>" +
+      return '<li class="lrow"><div class="line"><button class="numbtn' + (copied ? " copied" : "") + '" data-act="copy" data-i="' + i + '" aria-label="Copy order number ' + esc(o.number) + ", " + esc(o.seller) + '">' +
+        '<span class="who"><b>' + esc(o.seller) + ", " + esc(o.date) + '</b><span class="cslot" aria-live="polite">' + (copied ? I.check + "Copied" : I.copy + "Copy") + "</span></span>" +
+        numHTML(o.number) + "</button>" + open + "</div>" +
         (o.url ? "" : '<p class="why">No web address is saved for this order.</p>') + "</li>";
     }).join("");
   }
@@ -492,7 +509,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
       ? '<button class="iconbtn" data-act="open" data-i="' + ORDERS.indexOf(o) + '" aria-label="Open order page">' + I.open + "</button>"
       : '<button class="iconbtn" aria-disabled="true" aria-label="Open order page: no web address saved" title="No web address is saved for this order.">' + I.open + "</button>";
     return '<div class="pocket new" style="position:relative" data-opt="pocket"' + id + ">" + tag("clipboard pocket") +
-      '<button class="pk" data-act="pocket" aria-label="Show clipboard and earlier copies"><small>On your clipboard, ' + esc(o.seller) + "</small>" + numHTML(o.number) + "</button>" + open + "</div>";
+      '<button class="pk" data-act="pocket" aria-label="Show clipboard and earlier copies"><small>On your clipboard, ' + esc(o.seller) + '</small><span class="full">' + numHTML(o.number) + '</span><span class="short">Copied, ends ' + esc(o.number.split("-").pop()) + "</span></button>" + open + "</div>";
   }
   function clipboardPanel(inSheet) {
     var o = S.copied ? ORDERS.filter(function (x) { return x.id === S.copied; })[0] : null;
@@ -534,7 +551,7 @@ button { font: inherit; color: inherit; background: none; border: 0; padding: 0;
     var left = ledgerScreen(false, false);
     S.s = saved;
     var right = '<div class="screen">' + statusBar() + '<div class="navbar"><span class="title">Clipboard</span></div><div class="scroll">' +
-      (noData ? '<div class="state"><p>A copied number shows here once orders are read.</p></div>' : '<div class="new" style="position:relative" id="ledger-pocket-open">' + tag("clipboard page") + clipboardPanel(false) + "</div>") +
+      (noData ? '<div class="state"><p>A copied number shows here once ' + (S.s === "empty" ? "you add orders" : "orders are read") + ".</p></div>" : '<div class="new" style="position:relative;margin-top:var(--space-3)" id="ledger-pocket-open">' + tag("clipboard page") + clipboardPanel(false) + "</div>") +
       "</div>" + (S.s === "opened" ? webHTML(ord()) : "") + "</div>";
     return '<div class="page">' + left + '</div><div class="hinge" aria-hidden="true"></div><div class="page">' + right + "</div>";
   }

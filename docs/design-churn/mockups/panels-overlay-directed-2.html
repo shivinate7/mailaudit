@@ -1,0 +1,715 @@
+<!doctype html>
+<html lang="en" data-theme="light">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Panels Overlay Popovers</title>
+<style>
+/* Tokens: shared/tokens.json, light set (design-parchment-ledger). The app ships one theme, light:
+   native Parchment.color reads only the light names, and src/app.jsx has no dark rule. So this page has one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --amber:#846008; --shadow:rgba(28,43,36,0.06);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot on the Duo: unmeasured; drawn at the UI test floor of 20 pt (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+}
+* { box-sizing:border-box; }
+html, body { margin:0; }
+body { background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.45;
+  padding:0 max(16px, env(safe-area-inset-right)) 32px max(16px, env(safe-area-inset-left)); }
+main { max-width:1500px; margin:0 auto; display:flex; flex-direction:column; gap:16px; padding-top:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-size:13px; }
+.banner b { font-weight:700; }
+header.top { display:flex; flex-direction:column; gap:4px; }
+h1 { font-family:var(--sys); font-size:26px; font-weight:600; margin:0; letter-spacing:-.01em; }
+.kind { font-size:14px; color:var(--inkSoft); margin:0; }
+.kind b { color:var(--ink); font-weight:600; }
+.lede { margin:0; max-width:76ch; }
+.controls { display:flex; flex-direction:column; gap:8px; }
+.ctl { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.ctl .lab { font-size:13px; color:var(--inkSoft); min-width:84px; }
+.ctl a, .ctl button { font:13px/1.3 var(--sys); min-height:44px; padding:0 12px; display:inline-flex; align-items:center;
+  border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.ctl a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; box-shadow:inset 0 0 0 1px var(--accent); }
+.ctl button[aria-pressed="true"] { color:var(--inkSoft); text-decoration:line-through; }
+.ctl a:focus-visible, .ctl button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+
+.device { display:flex; flex-direction:column; gap:8px; }
+.device[hidden] { display:none; }
+.device > h2 { font-size:19px; font-weight:600; margin:16px 0 0; }
+.device > p { margin:0; color:var(--inkSoft); font-size:14px; max-width:90ch; }
+.row { display:grid; column-gap:24px; row-gap:8px; grid-template-columns:repeat(auto-fill, minmax(min(100%, var(--col, 300px)), 1fr)); align-items:start; }
+.device[data-device="iphone-duo-unfolded"] .row { --col:600px; }
+figure { margin:0 0 24px; display:grid; grid-template-rows:subgrid; grid-row:span 4; row-gap:8px; min-width:0; align-content:start; }
+.tags { align-self:end; }
+figure[hidden] { display:none; }
+.cap { display:flex; flex-wrap:wrap; align-items:baseline; gap:8px; font-size:17px; font-weight:600; }
+.cap small { font-size:13px; font-weight:400; color:var(--inkSoft); }
+.tags { display:flex; flex-wrap:wrap; gap:4px; }
+/* Tag text is ink; the colour rides on the dashed border (green and red text at 12px fall under 4.5:1 on paper). */
+.tag { font-size:12px; color:var(--ink); border:1px dashed var(--inkSoft); border-radius:4px; padding:2px 6px; }
+.tag.today { border-color:var(--red); } .tag.new { border-color:var(--green); }
+.fit { width:100%; position:relative; }
+.read { font:12px/1.5 var(--mono); color:var(--inkSoft); white-space:pre-line; min-height:3em; }
+.read b { color:var(--ink); }
+.read b.bad { color:var(--red); }
+figcaption { font-size:14px; max-width:70ch; }
+
+/* ---------- the device ---------- */
+.scr { position:absolute; left:0; top:0; transform-origin:0 0; background:var(--paper); overflow:hidden; border-radius:28px;
+  box-shadow:0 0 0 1px var(--ink), 0 0 0 7px #2a2731, 0 0 0 8px var(--ink); color:var(--ink);
+  --fs-t1:28px; --fs-t3:20px; --fs-body:17px; --fs-call:14px; --fs-foot:13.5px; --fs-cap:11px; --fs-cap2:10px; --fs-opt:14px;
+  --fs-vlab:14px; --fs-vfig:10.5px; --fs-tally:16px; --row-min:52px; --cols-sort:2; --cols-range:4; }
+/* AX5, the largest accessibility size. Each size scales by its text style's Large-to-AX5 ratio
+   (HIG Typography, read 2026-11-21): Title 1 28 to 58, Title 3 20 to 55, Body 17 to 53, Callout 16 to 51,
+   Footnote 13 to 44, Caption 1 12 to 43, Caption 2 11 to 40. Native fonts are relativeTo these styles (Theme.swift, LedgerTab.swift). */
+.scr[data-x="ax5"] { --fs-t1:58px; --fs-t3:55px; --fs-body:53px; --fs-call:44.6px; --fs-foot:45.7px; --fs-cap:39.4px; --fs-cap2:36.4px;
+  --fs-opt:44.6px; --fs-vlab:43.6px; --fs-vfig:38.2px; --fs-tally:53px; --cols-sort:1; --cols-range:1; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 24px; font:600 12px var(--sys); color:var(--ink); z-index:6; pointer-events:none; }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.scroll { position:absolute; inset:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:none; }
+.scroll::-webkit-scrollbar { display:none; }
+.content { position:relative; padding:calc(var(--sat) + 8px) 16px var(--padb, 100px); display:flex; flex-direction:column; }
+.fold { position:absolute; top:0; bottom:0; background:repeating-linear-gradient(90deg, #2a2731 0 2px, #3a3642 2px 4px); z-index:7; }
+.fold span { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%) rotate(-90deg); font:11px var(--mono); color:#c9c2d4;
+  letter-spacing:.12em; white-space:nowrap; }
+
+/* masthead, drawn simple: the letterhead is not this lane's subject */
+.mast { display:flex; flex-direction:column; gap:8px; padding:8px 8px 16px; }
+.mast .name { display:flex; align-items:center; gap:12px; }
+.mast .name i { flex:1; height:1px; background:var(--gold); }
+.mast .name span { font-family:var(--cochin); font-size:var(--fs-t1); letter-spacing:.18em; line-height:1.1; text-align:center; }
+.tallies { display:grid; grid-template-columns:1.2fr 1.3fr .8fr; border-top:1px solid var(--line); border-bottom:1px solid var(--line); }
+.scr[data-x="ax5"] .tallies { grid-template-columns:1fr; }
+.tallies div { padding:8px; display:flex; flex-direction:column; gap:4px; min-width:0; }
+.tallies div + div { border-left:1px solid var(--line); }
+.scr[data-x="ax5"] .tallies div + div { border-left:0; border-top:1px solid var(--line); }
+.tallies small { font:var(--fs-cap2)/1.2 var(--mono); letter-spacing:.14em; color:var(--inkSoft); text-transform:uppercase; }
+.tallies b { font:400 var(--fs-tally)/1.15 var(--mono); }
+
+.lt { font:var(--fs-cap)/1.3 var(--mono); letter-spacing:.3em; text-transform:uppercase; color:var(--inkSoft); text-align:center; padding:4px 0 0; }
+.gl { font:var(--fs-cap)/1.3 var(--mono); letter-spacing:.2em; text-transform:uppercase; color:var(--inkSoft); padding:16px 4px 8px; }
+.lcard { position:relative; background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.lrow { position:relative; display:flex; flex-wrap:wrap; align-items:center; column-gap:12px; row-gap:4px; width:100%; min-height:var(--row-min);
+  padding:8px 16px; border:0; background:transparent; color:inherit; text-align:left; cursor:pointer; font:inherit; }
+.lrow + .lrow, .lrow + .inflow, .inflow + .lrow { border-top:1px solid var(--line); }
+.lrow:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.lrow .tt { display:flex; flex-direction:column; gap:4px; flex:1 1 auto; min-width:0; }
+.lrow .ti { font-family:var(--cochin); font-size:var(--fs-t3); line-height:1.2; }
+.lrow .sb { font-family:var(--cochin); font-size:var(--fs-foot); color:var(--inkSoft); line-height:1.3; }
+.lrow .vl { font-family:var(--mono); font-size:var(--fs-call); color:var(--ink); text-align:right; display:flex; align-items:center; gap:8px; margin-left:auto; }
+.lrow .vl em { font-style:normal; border-bottom:1px solid var(--inkSoft); padding-bottom:1px; }
+.lrow[aria-expanded="true"] .vl em { border-bottom-color:var(--accent); color:var(--accent); }
+.lrow .dc { font-family:var(--cochin); font-size:calc(var(--fs-t3) * 1.1); color:var(--inkSoft); display:inline-block; transition:transform 200ms ease; line-height:1; }
+.lrow[aria-expanded="true"] .dc { transform:rotate(90deg); color:var(--accent); }
+/* the open row takes the popover's paper, so row and popover read as one sheet */
+.lrow[aria-expanded="true"] { background:var(--paper); }
+.lrow .vl.fix { color:var(--amber); }
+.reset { margin-top:20px; }
+.reset .ti { color:var(--red); }
+/* an armed Reset takes its row, same height; Cancel keeps its own cell (armed-reset-takes-the-row) */
+.armrow { display:flex; min-height:var(--row-min); }
+.armrow .arm { flex:1; border:0; background:var(--red); color:var(--card); font:700 var(--fs-body)/1.2 var(--cochin); text-align:left; padding:8px 16px; cursor:pointer; }
+.armrow .arm-no { min-width:80px; border:0; border-left:1px solid var(--line); background:var(--card); color:var(--ink); font:var(--fs-foot) var(--cochin); cursor:pointer; }
+.armrow button:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+
+/* ---------- the popover ---------- */
+.catch { position:absolute; left:0; top:0; right:0; z-index:4; background:transparent; }
+.pop { position:absolute; z-index:5; background:var(--paper); border:1px solid var(--line); border-radius:8px;
+  /* token shadow only (shadow, 6%), stacked to lift the paper off the card */
+  box-shadow:0 2px 4px var(--shadow), 0 8px 16px var(--shadow), 0 16px 32px var(--shadow), 0 24px 48px var(--shadow); display:flex; flex-direction:column; }
+.pop.labelled { outline:1.5px dashed var(--green); outline-offset:4px; }
+.pop .body { overflow-y:auto; overscroll-behavior:contain; padding:12px; display:flex; flex-direction:column; gap:12px; border-radius:8px; }
+.pop .notch { position:absolute; width:14px; height:14px; background:var(--paper); border:1px solid var(--line); transform:rotate(45deg); }
+.pop:not(.up) .notch { top:-8px; border-right:0; border-bottom:0; }
+.pop.up .notch { bottom:-8px; border-left:0; border-top:0; }
+.pop.arrive { animation:pop-in 220ms cubic-bezier(.2,.7,.2,1) both; }
+.pop.up.arrive { animation-name:pop-in-up; }
+@keyframes pop-in { from { opacity:0; transform:translateY(-4px); } to { opacity:1; transform:none; } }
+@keyframes pop-in-up { from { opacity:0; transform:translateY(4px); } to { opacity:1; transform:none; } }
+@media (prefers-reduced-motion: reduce) { .pop.arrive { animation:none; } .lrow .dc { transition:none; } }
+.ph { font:var(--fs-cap2)/1.3 var(--mono); letter-spacing:.16em; text-transform:uppercase; color:var(--inkSoft); display:flex; gap:8px; align-items:center; }
+.ph i { flex:1; height:1px; background:var(--line); }
+
+/* the slip's option grid: the 1px gap over `line` draws the grid, each cell paints `card` (src/app.jsx optGrid, optCell) */
+.grid { display:grid; gap:1px; background:var(--line); border:1px solid var(--line); }
+.grid.s { grid-template-columns:repeat(var(--cols-sort), minmax(0,1fr)); }
+.grid.r { grid-template-columns:repeat(var(--cols-range), minmax(0,1fr)); }
+.opt { min-height:44px; border:0; background:var(--card); color:var(--ink); font:var(--fs-opt)/1.2 var(--mono); padding:8px; cursor:pointer;
+  display:flex; align-items:center; justify-content:center; text-align:center; }
+.grid.r .opt:last-child { grid-column:span 2; }
+.scr[data-x="ax5"] .grid.r .opt:last-child { grid-column:auto; }
+.opt[aria-pressed="true"] { background:var(--accent); color:var(--card); }
+.opt:focus-visible { outline:2px solid var(--ink); outline-offset:-3px; }
+/* the tag's list: one column, a checkmark on the choice in effect (HIG Menus) */
+.list { display:flex; flex-direction:column; }
+.li { min-height:44px; border:0; border-top:1px solid var(--line); background:transparent; color:var(--ink); font:var(--fs-opt)/1.2 var(--mono); padding:8px 12px 8px 8px; cursor:pointer;
+  display:grid; grid-template-columns:calc(var(--fs-opt) * 1.4) 1fr; align-items:center; text-align:left; }
+.li:first-child { border-top:0; }
+.li .ck { color:var(--accent); font-family:var(--sys); font-weight:600; }
+.li[aria-pressed="true"] { color:var(--accent); }
+.li:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.sub { display:flex; flex-wrap:wrap; align-items:center; gap:8px; font:var(--fs-cap)/1.2 var(--mono); color:var(--inkSoft); letter-spacing:.1em; text-transform:uppercase; }
+.well { display:inline-flex; align-items:stretch; min-height:44px; border-radius:999px; background:var(--card); box-shadow:inset 0 0 0 1px var(--line); }
+.well button { min-width:44px; border:0; background:transparent; font:var(--fs-call) var(--mono); color:var(--ink); cursor:pointer; border-radius:999px; }
+.well button:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.well output { min-width:3ch; display:flex; align-items:center; justify-content:center; font:var(--fs-call) var(--mono); color:var(--ink); letter-spacing:0; text-transform:none; }
+.months { display:flex; flex-wrap:wrap; gap:4px; }
+.mo { min-height:44px; padding:0 12px; border:1px solid var(--line); background:var(--card); color:var(--ink); font:var(--fs-opt) var(--mono); cursor:pointer; }
+.mo[aria-pressed="true"] { background:var(--accent); border-color:var(--accent); color:var(--card); }
+.link { align-self:flex-start; min-height:44px; border:0; background:transparent; color:var(--accent); font:var(--fs-foot) var(--cochin);
+  text-decoration:underline; text-underline-offset:3px; cursor:pointer; padding:0 4px; }
+.dates { display:grid; grid-template-columns:auto 1fr; gap:8px 12px; align-items:center; font:var(--fs-cap)/1.2 var(--mono); color:var(--inkSoft); }
+.dates span.d { min-height:44px; display:flex; align-items:center; padding:0 12px; background:var(--card); border:1px solid var(--line); border-radius:8px; color:var(--ink); font-size:var(--fs-call); }
+.pgrid { display:grid; grid-template-columns:auto minmax(0,1fr); gap:4px 12px; align-items:baseline; }
+.pgrid .k { font:var(--fs-cap2)/1.4 var(--cochin); letter-spacing:.16em; text-transform:uppercase; color:var(--inkSoft); white-space:nowrap; }
+.pgrid .v { font:var(--fs-cap)/1.6 var(--mono); color:var(--ink); }
+.ver { display:flex; flex-direction:column; gap:8px; }
+.vr { display:flex; flex-wrap:wrap; align-items:baseline; gap:4px 8px; min-height:45px; padding:8px 4px; border:0; border-top:1px solid var(--line);
+  background:transparent; color:inherit; text-align:left; cursor:pointer; width:100%; }
+.vr:focus-visible { outline:2px solid var(--accent); outline-offset:-2px; }
+.vr .w { font:var(--fs-cap)/1.3 var(--mono); color:var(--inkSoft); }
+.vr .n { font:var(--fs-vlab)/1.3 var(--cochin); color:var(--ink); flex:1 1 auto; }
+.vr .n.soft { color:var(--inkSoft); }
+.vr .f { font:var(--fs-vfig)/1.3 var(--mono); color:var(--inkSoft); margin-left:auto; }
+/* in the narrow tag, a version takes two lines: time and figure, then its label */
+.pop.narrow .vr .n { order:3; flex-basis:100%; }
+.ask { display:flex; gap:8px; align-items:stretch; }
+.ask button { min-height:44px; border:0; font:var(--fs-foot) var(--cochin); cursor:pointer; border-radius:6px; padding:0 12px; }
+.ask .go { flex:1; background:var(--redSoft); color:var(--red); font-weight:700; text-align:left; }
+.ask .go.armed { background:var(--red); color:var(--card); }
+.ask .no { background:transparent; color:var(--ink); box-shadow:inset 1px 0 0 var(--line); }
+.done { font:var(--fs-foot)/1.3 var(--cochin); color:var(--green); padding:4px; }
+
+/* today, as built: the panel in flow, no fill, a top rule (src/app.jsx panelWrap; LedgerTab.swift syncPanel, history) */
+.inflow { padding:4px 8px 12px; display:flex; flex-direction:column; gap:8px; outline:1.5px dashed var(--red); outline-offset:-3px; }
+body.nolabels .inflow { outline:0; }
+
+/* the list page on the open Duo */
+.lh { display:flex; flex-direction:column; gap:4px; padding:4px 4px 12px; border-bottom:1px solid var(--line); }
+.lh b { font:var(--fs-cap)/1.3 var(--mono); letter-spacing:.3em; text-transform:uppercase; color:var(--inkSoft); font-weight:400; }
+.lh span { font:var(--fs-cap)/1.4 var(--mono); color:var(--ink); }
+.trow { display:grid; grid-template-columns:1fr auto; gap:2px 12px; padding:12px 4px; border-bottom:1px solid var(--line); }
+.trow .nm { font:var(--fs-body)/1.25 var(--cochin); }
+.trow .ct { font:var(--fs-call)/1.25 var(--mono); text-align:right; }
+.trow .mt { font:var(--fs-cap)/1.3 var(--mono); color:var(--inkSoft); grid-column:1 / -1; }
+.trow.out .ct { color:var(--red); }
+.empty { font:var(--fs-foot)/1.4 var(--cochin); color:var(--inkSoft); padding:16px 4px; }
+
+/* tab bar: system glass, drawn simple. Folded: from y 595, 83 pt with the bottom inset (duo-fold-and-keyboard). */
+.bar { position:absolute; z-index:6; display:flex; justify-content:space-around; align-items:flex-start; padding:8px 12px calc(var(--sab) + 8px);
+  background:color-mix(in srgb, var(--card) 72%, transparent); backdrop-filter:blur(14px); -webkit-backdrop-filter:blur(14px);
+  border-top:1px solid color-mix(in srgb, var(--line) 70%, transparent); font-family:var(--sys); pointer-events:none; }
+.bar div { display:flex; flex-direction:column; align-items:center; gap:2px; font-size:10px; color:var(--inkSoft); min-width:56px; }
+.bar div.on { color:var(--ink); font-weight:600; }
+.bar svg { width:24px; height:24px; }
+.sizebox { font:11px var(--sys); color:var(--inkSoft); }
+section.notes h2 { font-size:19px; font-weight:600; margin:16px 0 8px; }
+section.notes ul { margin:0; padding-left:20px; max-width:92ch; font-size:14px; display:flex; flex-direction:column; gap:4px; }
+code { font:12.5px/1.4 var(--mono); }
+</style>
+</head>
+<body>
+<main>
+<div class="banner" role="note"><b>Sample.</b> No figure on this page is real: every card name, count, dollar figure, date and saved version is made up for the drawing. Nothing here is built.</div>
+
+<header class="top">
+  <h1>Panels overlay the list</h1>
+  <p class="kind"><b>Designer kind:</b> directed. <b>Direction:</b> popover: anchored to its button, never moves the list.</p>
+  <p class="lede">"Everything jumps when I open a menu." Each option row on the Ledger tab opens a paper popover that hangs from that row. Nothing under it moves. One gesture closes it: a pick, a tap outside, a tap on the row again, or Escape. Two concepts, each in its own state, beside today's build for reference. Tap the rows in any frame. The line under each frame measures how far the other rows moved.</p>
+</header>
+
+<div class="controls">
+  <nav class="ctl" aria-label="Device">
+    <span class="lab">Device</span>
+    <a data-k="d" data-v="all">All three</a>
+    <a data-k="d" data-v="folded">Duo, folded</a>
+    <a data-k="d" data-v="open">Duo, open</a>
+    <a data-k="d" data-v="phone">Large phone</a>
+  </nav>
+  <nav class="ctl" aria-label="Panel">
+    <span class="lab">Open panel</span>
+    <a data-k="s" data-v="closed">None</a>
+    <a data-k="s" data-v="sort">Sorted by</a>
+    <a data-k="s" data-v="range">Orders from</a>
+    <a data-k="s" data-v="days">Last… days</a>
+    <a data-k="s" data-v="month">By month</a>
+    <a data-k="s" data-v="exact">Exact dates</a>
+    <a data-k="s" data-v="history">History</a>
+    <a data-k="s" data-v="restore">Restore armed</a>
+    <a data-k="s" data-v="sync">Sync</a>
+  </nav>
+  <nav class="ctl" aria-label="Text size">
+    <span class="lab">Text size</span>
+    <a data-k="x" data-v="default">Default (Large)</a>
+    <a data-k="x" data-v="ax5">AX5, the largest</a>
+  </nav>
+  <nav class="ctl" aria-label="Theme">
+    <span class="lab">Theme</span>
+    <a data-k="t" data-v="light">Light, the only theme</a>
+  </nav>
+  <nav class="ctl" aria-label="Labels">
+    <span class="lab">Labels</span>
+    <button type="button" id="labels" aria-pressed="false">Hide New and Today outlines in the frames</button>
+  </nav>
+  <nav class="ctl" aria-label="Hide an option">
+    <span class="lab">Hide</span>
+    <button type="button" data-hide="slip" aria-pressed="false">Card-wide slip</button>
+    <button type="button" data-hide="tag" aria-pressed="false">Value tag</button>
+    <button type="button" data-hide="today" aria-pressed="false">Today, as built</button>
+  </nav>
+</div>
+
+<!-- Folded first, then open (skill ios-apps, Mockups). Each pose is its own layout. -->
+<section class="device" data-device="iphone-duo-folded" data-dev="folded">
+  <h2>iPhone Duo, folded</h2>
+  <p>One screen, 466 x 678 pt, portrait, one hand. Tab bar from y 595, 83 pt with the bottom inset (measurement duo-fold-and-keyboard). Compact width.</p>
+  <div class="row"></div>
+</section>
+<section class="device" data-device="iphone-duo-unfolded" data-dev="open">
+  <h2>iPhone Duo, open</h2>
+  <p>951 x 669 pt, two pages. The fold strip, 455.5 to 495.5 pt, holds nothing. Left page: the Ledger options. Right page: the Tally list the options govern, so a pick shows its answer on the facing page. The tab bar sits under the right page only (duo-card-in-hand, item 23 a), drawn at the 76 pt cap a DuoShellUITests comment names.</p>
+  <div class="row"></div>
+</section>
+<section class="device" data-device="iphone-regular" data-dev="phone">
+  <h2>Large phone</h2>
+  <p>Portrait, one hand. No written size exists for this phone in the repo or the brief, so it is drawn at a stand-in 430 x 900 pt, not a measured size. The tab bar uses the Duo's measured 83 pt.</p>
+  <div class="row"></div>
+</section>
+
+<section class="notes" aria-label="How it works">
+  <h2>How both concepts behave</h2>
+  <ul>
+    <li><b>Never moves the list.</b> The popover is out of flow. It overlays the rows below or above its row. The rows keep their place: the readout under each frame compares every row's top with the closed state.</li>
+    <li><b>Anchored.</b> It hangs from its row, and a notch points at the row's value. It never covers its own row (HIG Popovers). It opens below when it fits above the tab bar, else above, else on the larger side with its own scroll. The page never scrolls to make room, because a scroll is a jump.</li>
+    <li><b>One gesture closes it.</b> A pick (single choice), a tap outside, a tap on its row, or Escape. A tap outside is used up by the close, so it never also presses Showing, Backup or Reset under it. A tap on another option row closes this popover and opens that one in the same tap (HIG Popovers).</li>
+    <li><b>One at a time.</b> Sorted by and Orders from close each other, and History and Sync close each other, as today (history-sync-close-each-other). Now every pair does, since only one popover can stand.</li>
+    <li><b>Paper.</b> The fill is <code>paper</code> (head-panels-carry-paper-fill, item 63 a), with a 1 pt <code>line</code> edge, 8 pt corners and a shadow, so its square-edge question goes away.</li>
+    <li><b>Arrival.</b> 220 ms, opacity and 4 pt (motion-disclosure-panels-arrive). Reduced motion: it is simply there.</li>
+  </ul>
+</section>
+</main>
+
+<script>
+"use strict";
+/* ---------- sample data (all made up) ---------- */
+const TODAY = new Date(2026, 10, 21);
+const daysAgo = (n) => { const d = new Date(TODAY); d.setDate(d.getDate() - n); return d; };
+const ITEMS = [
+  ["Counterspell", 4, 1, 0.45, 9], ["Swords to Plowshares", 3, 3, 1.80, 12], ["Brainstorm", 6, 2, 0.30, 21],
+  ["Path to Exile", 2, 0, 2.10, 33], ["Lightning Bolt", 8, 5, 0.90, 40], ["Dark Ritual", 4, 4, 0.25, 47],
+  ["Llanowar Elves", 5, 1, 0.20, 58], ["Sol Ring", 2, 1, 1.40, 64], ["Thoughtseize", 1, 0, 9.75, 77],
+  ["Fatal Push", 3, 2, 1.15, 88], ["Opt", 9, 6, 0.10, 104], ["Ponder", 4, 0, 0.35, 131],
+].map(([name, ord, got, rate, ago]) => ({ name, ord, got, rate, date: daysAgo(ago) }));
+const ITEM_SORTS = [["missing","Most missing"],["basis","Cost basis"],["ordered","Most ordered"],["value","$ remaining"],["rate","Unit rate"],["name","Name A–Z"]];
+const RANGES = [["all","All time"],[30,"30 days"],[45,"45 days"],[60,"60 days"],[90,"90 days"],["days","Last…"],["custom","By month"]];
+const MON = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const MONTHS = [...new Set(ITEMS.map((i) => i.date.getFullYear() * 12 + i.date.getMonth()))].sort((a, b) => b - a);
+const monthLabel = (k) => `${MON[k % 12]} ${Math.floor(k / 12)}`;
+const VERSIONS = [
+  ["Today, 00:38", "Checked 4 cards", "212 of 340", false], ["Today, 00:31", "Checked 2 cards", "208 of 340", false],
+  ["Yesterday, 19:02", "Milestone before import", "206 of 340", true], ["Yesterday, 18:55", "Imported orders", "206 of 340", false],
+  ["19 Nov, 21:40", "Checked 11 cards", "190 of 318", false], ["17 Nov, 08:12", "Milestone", "179 of 318", true],
+  ["14 Nov, 22:03", "Checked 6 cards", "171 of 318", false], ["11 Nov, 07:50", "Stamped one package", "165 of 318", false],
+];
+
+const sortItems = (key, rows) => {
+  const r = [...rows], left = (i) => i.ord - i.got;
+  const by = { missing: (a, b) => left(b) - left(a), basis: (a, b) => b.ord * b.rate - a.ord * a.rate, ordered: (a, b) => b.ord - a.ord,
+    value: (a, b) => left(b) * b.rate - left(a) * a.rate, rate: (a, b) => b.rate - a.rate, name: (a, b) => a.name.localeCompare(b.name) }[key];
+  return r.sort((a, b) => by(a, b) || a.name.localeCompare(b.name));
+};
+const inRange = (st, i) => {
+  const p = st.range;
+  if (p === "all") return true;
+  if (typeof p === "number") return i.date >= daysAgo(p);
+  if (p === "days") return i.date >= daysAgo(st.days);
+  if (p === "custom") {
+    if (st.exact) return i.date >= st.from && i.date <= st.to;
+    return st.month == null || i.date.getFullYear() * 12 + i.date.getMonth() === st.month;
+  }
+  return true;
+};
+const rangeLabel = (st) => st.range === "days" ? `Last ${st.days}d` : st.range === "custom"
+  ? (st.exact ? "Exact dates" : st.month == null ? "By month" : monthLabel(st.month)) : RANGES.find(([v]) => v === st.range)[1];
+const sortLabel = (st) => ITEM_SORTS.find(([v]) => v === st.sort)[1];
+const money = (n) => "$" + n.toFixed(2);
+const fmt = (d) => `${d.getDate()} ${MON[d.getMonth()]} ${d.getFullYear()}`;
+
+/* ---------- devices ---------- */
+const DEV = {
+  folded: { w: 466, h: 678, bar: { x: 0, w: 466, h: 83 } },
+  open:   { w: 951, h: 669, fold: [455.5, 495.5], bar: { x: 495.5, w: 455.5, h: 76 } },
+  phone:  { w: 430, h: 900, bar: { x: 0, w: 430, h: 83 } },
+};
+const CONCEPTS = {
+  slip:  { name: "Card-wide slip", note: "the web's option grid, in a slip as wide as the card",
+           tags: [["new", "New: slip popover, out of flow"], ["new", "New: notch at the value"], ["today", "Today: option grid (optGrid)"], ["today", "Today: Ledger rows (LedgerRow)"]] },
+  tag:   { name: "Value tag", note: "a narrow tag on the value, one column, a checkmark on the choice",
+           tags: [["new", "New: tag popover, out of flow"], ["new", "New: one-column list with checkmark"], ["today", "Today: Ledger rows (LedgerRow)"]] },
+  today: { name: "Today, as built", note: "for reference, not an option",
+           tags: [["today", "Today: panel in flow, pushes the rows (panelWrap; syncRow, history)"]] },
+};
+const ICON = {
+  pk: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 8l9-4 9 4v8l-9 4-9-4z"/><path d="M3 8l9 4 9-4M12 12v8"/></svg>',
+  ty: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M5 6h14M5 12h14M5 18h9"/></svg>',
+  or: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="12" rx="1"/><path d="M3 7l9 6 9-6"/></svg>',
+  lg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M6 3h10l3 3v15H6z"/><path d="M9 10h7M9 14h7M9 18h4"/></svg>',
+};
+const barHTML = () => `<div><span>${ICON.pk}</span>Packages</div><div><span>${ICON.ty}</span>Tally</div><div><span>${ICON.or}</span>Orphaned</div><div class="on"><span>${ICON.lg}</span>Ledger</div>`;
+
+/* ---------- state from the hash ---------- */
+const H = () => new URLSearchParams(location.hash.slice(1));
+function hashState() {
+  const h = H();
+  const pick = (k, ok, d) => (ok.includes(h.get(k)) ? h.get(k) : d);
+  return {
+    d: pick("d", ["all", "folded", "open", "phone"], "all"),
+    s: pick("s", ["closed", "sort", "range", "days", "month", "exact", "history", "restore", "sync"], "closed"),
+    x: pick("x", ["default", "ax5"], "default"),
+    t: "light",
+    c: pick("c", ["slip", "tag", "today"], null),
+  };
+}
+const freshState = (s) => {
+  const st = { panel: null, hide: true, backup: false, reset: false, sort: "missing", range: 90, days: 21, month: null, exact: false,
+    from: daysAgo(60), to: TODAY, ver: null, armed: false, restored: false, arrive: false };
+  if (s === "sort") st.panel = "sort";
+  if (["range", "days", "month", "exact"].includes(s)) st.panel = "range";
+  if (s === "days") st.range = "days";
+  if (s === "month") { st.range = "custom"; st.month = MONTHS[1]; }
+  if (s === "exact") { st.range = "custom"; st.exact = true; }
+  if (s === "history" || s === "restore") st.panel = "history";
+  if (s === "restore") { st.ver = 2; st.armed = true; }
+  if (s === "sync") st.panel = "sync";
+  return st;
+};
+
+/* ---------- one frame ---------- */
+const frames = [];
+let showLabels = true;
+const hidden = new Set();
+
+function makeFrame(concept, dev, host) {
+  const D = DEV[dev];
+  const fig = document.createElement("figure");
+  fig.dataset.o = concept;
+  if (dev === "folded" && concept !== "today") fig.id = `focus-${concept}`;
+  const C = CONCEPTS[concept];
+  fig.innerHTML = `<div class="cap">${C.name} <small>${C.note}</small></div>
+    <div class="tags">${C.tags.map(([k, t]) => `<span class="tag ${k}">${t}</span>`).join("")}</div>
+    <div class="fit"><div class="scr" role="group" aria-label="${C.name}, ${dev === "open" ? "Duo open" : dev === "folded" ? "Duo folded" : "large phone"}"></div></div>
+    <div class="read" aria-live="polite"></div>`;
+  host.appendChild(fig);
+  const scr = fig.querySelector(".scr");
+  scr.style.width = D.w + "px"; scr.style.height = D.h + "px";
+  const F = { concept, dev, D, fig, scr, st: null, base: null, x: "default" };
+  frames.push(F);
+  return F;
+}
+
+function rowHTML(F, id, title, sub, value, opens, extra = "", act = "") {
+  const st = F.st, open = opens && st.panel === id;
+  const v = value == null ? "" : `<span class="vl${extra}">${opens ? `<em>${value}</em>` : value}${opens ? '<span class="dc" aria-hidden="true">›</span>' : ""}</span>`;
+  return `<button type="button" class="lrow" data-row="${id}" ${act ? `data-act="${act}"` : ""} ${opens ? `data-open="${id}" aria-expanded="${open}" aria-haspopup="dialog"` : ""}>
+    <span class="tt"><span class="ti">${title}</span>${sub ? `<span class="sb">${sub}</span>` : ""}</span>${v}</button>`;
+}
+
+function ledgerHTML(F) {
+  const st = F.st, ranged = ITEMS.filter((i) => inRange(st, i)), out = ITEMS.length - ranged.length;
+  const lines = ranged.reduce((n, i) => n + i.ord, 0);
+  const inflow = (id) => (F.concept === "today" && st.panel === id ? `<div class="inflow" data-inflow>${panelBody(F, id)}</div>` : "");
+  return `<div class="mast">
+      <div class="name"><i></i><span>MANIFEST</span><i></i></div>
+      <div class="tallies"><div><small>Received</small><b>212/340</b></div><div><small>Outstanding</small><b>$96.40</b></div><div><small>Late</small><b>3</b></div></div>
+    </div>
+    <div class="lt">Ledger</div>
+    <div class="gl">View</div>
+    <div class="lcard">
+      ${rowHTML(F, "showing", "Showing", null, st.hide ? "● Unreceived" : "○ Everything", false, "", "showing")}
+      ${rowHTML(F, "sort", "Sorted by", null, sortLabel(st), true)}${inflow("sort")}
+      ${rowHTML(F, "range", "Orders from", `${lines} lines${out ? ` · ${ITEMS.filter((i) => !inRange(st, i)).reduce((n, i) => n + i.ord, 0)} outside` : ""}`, rangeLabel(st), true)}${inflow("range")}
+    </div>
+    <div class="gl">Data</div>
+    <div class="lcard">
+      ${rowHTML(F, "sync", "Sync", "Saved 2 min ago", "On", true)}${inflow("sync")}
+      ${rowHTML(F, "history", "History", null, "Saved versions", true)}${inflow("history")}
+      ${rowHTML(F, "backup", "Backup", null, st.backup ? "Share sheet opens (sample)" : null, false, "", "backup")}
+    </div>
+    <div class="lcard reset">${st.reset
+      ? `<div class="armrow" data-row="reset"><button type="button" class="arm" data-act="reset">Reset? Clears 340 cards</button><button type="button" class="arm-no" data-act="reset-no">Cancel</button></div>`
+      : rowHTML(F, "reset", "Reset", null, null, false, "", "reset")}</div>`;
+}
+
+function listHTML(F) {
+  const st = F.st, rows = sortItems(st.sort, ITEMS.filter((i) => inRange(st, i) && (!st.hide || i.got < i.ord)));
+  return `<div class="lh"><b>Tally</b><span>${sortLabel(st)} · ${rangeLabel(st)} · ${rows.length} of ${ITEMS.length} names</span></div>
+    ${rows.length ? rows.map((i) => `<div class="trow${i.ord - i.got ? " out" : ""}" data-row="t-${i.name}"><span class="nm">${i.name}</span>
+      <span class="ct">${i.got} of ${i.ord}</span><span class="mt">${money(i.rate)} each · basis ${money(i.ord * i.rate)} · ${fmt(i.date)}</span></div>`).join("")
+      : `<div class="empty">No orders in this range. Pick a wider range under Orders from.</div>`}`;
+}
+
+/* the inside of a panel: the same parts in every concept; the slip draws options as a grid, the tag as a list */
+function panelBody(F, id) {
+  const st = F.st, list = F.concept === "tag";
+  if (id === "sort") {
+    const opts = ITEM_SORTS.map(([v, l], i, a) => list
+      ? `<button type="button" class="li" data-act="sort" data-v="${v}" aria-pressed="${st.sort === v}"><span class="ck" aria-hidden="true">${st.sort === v ? "✓" : ""}</span>${l}</button>`
+      : `<button type="button" class="opt" data-act="sort" data-v="${v}" aria-pressed="${st.sort === v}">${l}</button>`).join("");
+    return `<div class="ph">Sorts Tally<i></i></div><div class="${list ? "list" : "grid s"}" role="group" aria-label="Sorted by">${opts}</div>`;
+  }
+  if (id === "range") {
+    const opts = RANGES.map(([v, l], i) => list
+      ? `<button type="button" class="li" data-act="range" data-v="${v}" aria-pressed="${st.range === v}"><span class="ck" aria-hidden="true">${st.range === v ? "✓" : ""}</span>${l}</button>`
+      : `<button type="button" class="opt" data-act="range" data-v="${v}" aria-pressed="${st.range === v}">${l}</button>`).join("");
+    let more = "";
+    if (st.range === "days") more = `<div class="sub"><span>Last</span><span class="well"><button type="button" data-act="days" data-v="-1" aria-label="Fewer days">−</button><output>${st.days}</output><button type="button" data-act="days" data-v="1" aria-label="More days">+</button></span><span>days</span></div>`;
+    if (st.range === "custom") more = st.exact
+      ? `<div class="ph">Exact dates<i></i></div><div class="dates"><span>From</span><span class="d">${fmt(st.from)}</span><span>To</span><span class="d">${fmt(st.to)}</span></div>
+         <button type="button" class="link" data-act="exact" data-v="0">Pick a month instead</button>`
+      : `<div class="ph">Month<i></i></div><div class="months">${MONTHS.map((k) => `<button type="button" class="mo" data-act="month" data-v="${k}" aria-pressed="${st.month === k}">${monthLabel(k)}</button>`).join("")}</div>
+         <button type="button" class="link" data-act="exact" data-v="1">Exact dates</button>`;
+    return `<div class="ph">Ledger views<i></i></div><div class="${list ? "list" : "grid r"}" role="group" aria-label="Orders from">${opts}</div>${more}`;
+  }
+  if (id === "sync") {
+    return `<div class="pgrid"><span class="k">Server</span><span class="v">Answered at 00:41</span><span class="k">Last sync</span><span class="v">Today, 00:41</span></div>`;
+  }
+  if (id === "history") {
+    if (st.restored) return `<div class="done">Restored the version of ${VERSIONS[st.ver][0]}. Sample: nothing changed.</div>`;
+    return `<div class="ver" role="list" aria-label="Saved versions">${VERSIONS.map(([w, n, f, m], i) => `<div role="listitem">
+      <button type="button" class="vr" data-act="ver" data-v="${i}" aria-expanded="${st.ver === i}"><span class="w">${w}</span><span class="n${m ? "" : " soft"}">${n}</span><span class="f">${f}</span></button>
+      ${st.ver === i ? `<div class="ask"><button type="button" class="go${st.armed ? " armed" : ""}" data-act="restore">${st.armed ? `Restore? Back to ${f}` : "Restore this version"}</button>${st.armed ? '<button type="button" class="no" data-act="cancel">Cancel</button>' : ""}</div>` : ""}
+      </div>`).join("")}</div>`;
+  }
+  return "";
+}
+
+function render(F) {
+  const { D, dev, scr, st } = F;
+  const keepScroll = [...scr.querySelectorAll(".scroll")].map((s) => s.scrollTop);
+  scr.dataset.x = F.x;
+  const barTop = D.h - D.bar.h;
+  let pages;
+  if (dev === "open") {
+    pages = `<div class="page" data-page="left" style="left:0;width:${D.fold[0]}px"><div class="scroll"><div class="content" style="--padb:24px">${ledgerHTML(F)}</div></div></div>
+      <div class="fold" style="left:${D.fold[0]}px;width:${D.fold[1] - D.fold[0]}px"><span>FOLD · 40 PT · NOTHING HERE</span></div>
+      <div class="page" data-page="right" style="left:${D.fold[1]}px;width:${D.w - D.fold[1]}px"><div class="scroll"><div class="content" style="--padb:${D.bar.h + 16}px">${listHTML(F)}</div></div></div>`;
+  } else {
+    pages = `<div class="page" data-page="one" style="left:0;width:${D.w}px"><div class="scroll"><div class="content" style="--padb:${D.bar.h + 16}px">${ledgerHTML(F)}</div></div></div>`;
+  }
+  scr.innerHTML = `<div class="status"><span>9:41</span><span>100%</span></div>${pages}
+    <div class="bar" style="left:${D.bar.x}px;width:${D.bar.w}px;top:${barTop}px;height:${D.bar.h}px">${barHTML()}</div>`;
+  scr.querySelectorAll(".scroll").forEach((s, i) => (s.scrollTop = keepScroll[i] || 0));
+  if (F.concept !== "today" && st.panel) placePopover(F);
+  measure(F);
+}
+
+/* Place the popover: below the row if it fits above the bar, else above, else the larger side with its own scroll.
+   It lives inside the scroll content, out of flow, so the rows keep their place and it scrolls with its row. */
+function placePopover(F) {
+  const { st, scr, D, dev } = F;
+  const row = scr.querySelector(`[data-open="${st.panel}"]`);
+  if (!row) return;
+  const scroll = row.closest(".scroll"), content = scroll.firstElementChild, card = row.closest(".lcard");
+  const pageW = scroll.clientWidth;
+  const catcher = document.createElement("div");
+  catcher.className = "catch";
+  catcher.style.height = Math.max(content.scrollHeight, scroll.clientHeight) + "px";
+  content.appendChild(catcher);
+  if (dev === "open") { // the right page is outside too: a tap there closes, and is used up
+    const other = scr.querySelector('[data-page="right"] .content');
+    const c2 = catcher.cloneNode(); c2.style.height = Math.max(other.scrollHeight, other.parentElement.clientHeight) + "px"; other.appendChild(c2);
+  }
+  const pop = document.createElement("div");
+  pop.className = "pop" + (showLabels ? " labelled" : "") + (st.arrive ? " arrive" : "") + (F.concept === "tag" ? " narrow" : "");
+  pop.setAttribute("role", "dialog");
+  pop.setAttribute("aria-label", row.querySelector(".ti").textContent);
+  pop.innerHTML = `<span class="notch" aria-hidden="true"></span><div class="body">${panelBody(F, st.panel)}</div>`;
+  content.appendChild(pop);
+  const body = pop.querySelector(".body");
+  const rTop = row.offsetTop + card.offsetTop, rBot = rTop + row.offsetHeight;
+  const val = row.querySelector(".vl em") || row;
+  const valMid = card.offsetLeft + row.offsetLeft + val.offsetLeft + val.offsetWidth / 2;
+  // width
+  let left, width;
+  if (F.concept === "slip") { left = card.offsetLeft; width = card.offsetWidth; }
+  else {
+    const cardRight = card.offsetLeft + card.offsetWidth;
+    width = Math.min(F.x === "ax5" ? pageW - 32 : st.panel === "history" ? 320 : 248, pageW - 32);
+    if (st.panel === "range" && st.range === "custom" && F.x !== "ax5") width = Math.min(Math.max(width, 300), pageW - 32);
+    left = Math.max(16, cardRight - width);
+  }
+  pop.style.left = left + "px"; pop.style.width = width + "px";
+  // vertical room, in content coordinates, inside what the screen shows
+  const satPx = 20, gap = 10;
+  const visTop = scroll.scrollTop + satPx + 8;
+  const barLimit = dev === "open" ? D.h - 8 : D.h - D.bar.h - 8;
+  const visBot = scroll.scrollTop + barLimit;
+  const natural = pop.offsetHeight;
+  const below = visBot - rBot - gap, above = rTop - gap - visTop;
+  let up = false, maxH = null;
+  if (natural <= below) up = false;
+  else if (natural <= above) up = true;
+  else { up = above > below; maxH = Math.max(132, up ? above : below); }
+  if (maxH) body.style.maxHeight = maxH - 2 + "px";
+  const h = pop.offsetHeight;
+  pop.classList.toggle("up", up);
+  row.querySelector(".dc").style.transform = up ? "rotate(-90deg)" : "rotate(90deg)"; // the caret points at its popover
+  pop.style.top = (up ? rTop - gap - h : rBot + gap) + "px";
+  const notch = pop.querySelector(".notch");
+  notch.style.left = Math.min(Math.max(valMid - left - 7, 12), width - 26) + "px";
+  F.place = { side: up ? "above" : "below", clipped: !!maxH, h: Math.round(h), w: Math.round(width) };
+  st.arrive = false;
+  const first = pop.querySelector('[aria-pressed="true"], button');
+  if (F.focusIn && first) { first.focus({ preventScroll: true }); F.focusIn = false; }
+}
+
+/* the readout: how far did any row move, against the closed state */
+function rowTops(F) {
+  const out = {};
+  F.scr.querySelectorAll(".lrow[data-row], .armrow").forEach((r) => {
+    const c = r.closest(".lcard");
+    out[r.dataset.row] = r.offsetTop + (c && c !== r ? c.offsetTop : 0);
+  });
+  return out;
+}
+function measure(F) {
+  const tops = rowTops(F);
+  if (!F.st.panel || !F.base) { if (!F.st.panel) F.base = tops; }
+  const base = F.base || tops;
+  let worst = 0, who = "";
+  for (const [k, v] of Object.entries(tops)) {
+    if (base[k] == null) continue;
+    const d = Math.abs(v - base[k]);
+    if (d > worst) { worst = d; who = k; }
+  }
+  const read = F.fig.querySelector(".read");
+  const label = { showing: "Showing", sort: "Sorted by", range: "Orders from", sync: "Sync", history: "History", backup: "Backup", reset: "Reset" };
+  const sz = `${F.D.w} x ${F.D.h} pt, ${F.x === "ax5" ? "AX5" : "default text"}, light.`;
+  if (!F.st.panel) { read.innerHTML = `${sz}\nNo panel open. Tap a row with a › to open one.`; return; }
+  const moved = worst < 0.5 ? `<b>Ledger rows moved: 0 pt.</b>` : `<b class="bad">Ledger rows moved: ${Math.round(worst)} pt (${label[who] || who.replace(/^t-/, "")} and below).</b>`;
+  const where = F.place && F.concept !== "today" ? ` Popover ${F.place.side} its row, ${F.place.w} x ${F.place.h} pt${F.place.clipped ? ", scrolls inside" : ""}.` : F.concept === "today" ? " Panel in flow." : "";
+  read.innerHTML = `${sz}${where}\n${moved}`;
+}
+
+/* ---------- taps ---------- */
+function open(F, id, viaKey) {
+  F.st.panel = id; F.st.arrive = true; F.st.ver = null; F.st.armed = false; F.st.restored = false; F.focusIn = viaKey;
+  render(F);
+}
+function close(F, refocus) {
+  const id = F.st.panel; F.st.panel = null; F.st.ver = null; F.st.armed = false; render(F);
+  if (refocus) F.scr.querySelector(`[data-open="${id}"]`)?.focus({ preventScroll: true });
+}
+function onTap(F, e) {
+  const t = e.target;
+  if (t.classList.contains("catch")) { // outside: close, and pass the tap only to another option row
+    t.style.pointerEvents = "none";
+    const sib = [...F.scr.querySelectorAll(".catch")]; sib.forEach((c) => (c.style.pointerEvents = "none"));
+    const under = document.elementFromPoint(e.clientX, e.clientY)?.closest("[data-open]");
+    sib.forEach((c) => (c.style.pointerEvents = ""));
+    const id = under && F.scr.contains(under) ? under.dataset.open : null;
+    if (id && id !== F.st.panel) open(F, id, false); else close(F, false);
+    return;
+  }
+  const opener = t.closest("[data-open]");
+  if (opener) {
+    const id = opener.dataset.open, kb = e.detail === 0;
+    if (F.st.panel === id) close(F, kb); else open(F, id, kb);
+    return;
+  }
+  const act = t.closest("[data-act]");
+  if (!act) return;
+  const st = F.st, v = act.dataset.v, kb = e.detail === 0;
+  switch (act.dataset.act) {
+    case "sort": st.sort = v; close(F, kb); break; // a single choice closes on the pick (HIG Popovers)
+    case "range": {
+      const val = /^\d+$/.test(v) ? Number(v) : v;
+      st.range = val;
+      if (val === "custom" && st.month == null && !st.exact) st.month = MONTHS[0];
+      if (val === "days" || val === "custom") render(F); else close(F, kb);
+      break;
+    }
+    case "days": st.days = Math.max(1, st.days + Number(v)); render(F); break;
+    case "month": st.month = Number(v); close(F, kb); break;
+    case "exact": st.exact = v === "1"; render(F); break;
+    case "ver": st.ver = st.ver === Number(v) ? null : Number(v); st.armed = false; render(F); break;
+    case "restore": if (st.armed) { st.restored = true; st.armed = false; } else st.armed = true; render(F); break;
+    case "cancel": st.armed = false; render(F); break;
+    case "showing": st.hide = !st.hide; render(F); break;
+    case "backup": st.backup = true; render(F); break;
+    case "reset": if (st.reset) st.reset = false; else st.reset = true; render(F); break; // sample: a second press would clear; it only disarms here
+    case "reset-no": st.reset = false; render(F); break;
+  }
+}
+function wire(F) {
+  F.scr.addEventListener("click", (e) => onTap(F, e));
+  F.scr.addEventListener("keydown", (e) => { if (e.key === "Escape" && F.st.panel) { e.preventDefault(); close(F, true); } });
+}
+
+/* ---------- fit each device to its column ---------- */
+const ro = new ResizeObserver((entries) => {
+  for (const en of entries) {
+    const fit = en.target, scr = fit.firstElementChild, w = parseFloat(scr.style.width), h = parseFloat(scr.style.height);
+    if (fit.clientWidth < 40) continue;
+    const k = Math.min(1, (fit.clientWidth - 16) / w);
+    scr.style.transform = `translate(8px, 8px) scale(${k})`;
+    fit.style.height = h * k + 16 + "px";
+  }
+});
+
+/* ---------- build ---------- */
+for (const sec of document.querySelectorAll(".device")) {
+  const dev = sec.dataset.dev, host = sec.querySelector(".row");
+  for (const c of ["slip", "tag", "today"]) {
+    const F = makeFrame(c, dev, host);
+    wire(F);
+    ro.observe(F.fig.querySelector(".fit"));
+  }
+}
+function apply() {
+  const s = hashState();
+  for (const a of document.querySelectorAll(".ctl a[data-k]")) {
+    a.setAttribute("aria-current", String(s[a.dataset.k] === a.dataset.v));
+    const q = new URLSearchParams({ d: s.d, s: s.s, x: s.x, t: s.t });
+    if (s.c) q.set("c", s.c);
+    q.set(a.dataset.k, a.dataset.v);
+    a.href = "#" + q.toString();
+  }
+  for (const sec of document.querySelectorAll(".device")) sec.hidden = s.d !== "all" && s.d !== sec.dataset.dev;
+  for (const F of frames) {
+    F.fig.hidden = hidden.has(F.concept) || (s.c && s.c !== F.concept);
+    F.x = s.x; F.base = null;
+    F.st = freshState("closed"); render(F);           // the closed state is the baseline
+    const want = freshState(s.s);
+    if (want.panel) { // a deep link opens a row the person could see: scroll it to just under the middle first
+      const row = F.scr.querySelector(`[data-open="${want.panel}"]`), sc = row.closest(".scroll"), c = row.closest(".lcard");
+      const top = row.offsetTop + c.offsetTop, view = sc.clientHeight - (F.dev === "open" ? 0 : F.D.bar.h);
+      sc.scrollTop = top + row.offsetHeight > view - 8 ? top - view * 0.5 : 0;
+    }
+    F.st = want; F.st.arrive = false; render(F);
+  }
+}
+for (const b of document.querySelectorAll("button[data-hide]"))
+  b.addEventListener("click", () => {
+    const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+    b.setAttribute("aria-pressed", String(hidden.has(o)));
+    for (const F of frames) F.fig.hidden = hidden.has(F.concept) || (hashState().c && hashState().c !== F.concept);
+  });
+document.getElementById("labels").addEventListener("click", (e) => {
+  showLabels = !showLabels; e.currentTarget.setAttribute("aria-pressed", String(!showLabels));
+  document.body.classList.toggle("nolabels", !showLabels);
+  frames.forEach(render);
+});
+addEventListener("hashchange", apply);
+(document.fonts ? document.fonts.ready : Promise.resolve()).then(apply);
+apply();
+</script>
+</body>
+</html>

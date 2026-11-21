@@ -1,0 +1,1032 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Sync Change Feed</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light, so this page has one theme.
+   Cochin sets words and Menlo sets numbers inside the app (typography-cochin-and-mono); the page chrome and the
+   iOS chrome (status bar, tab bar, nav bar, share sheet) use the system font. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9;
+  --manila:#EADBBA; --manilaInk:#695832; --amber:#846008;
+  --sys: -apple-system, system-ui, sans-serif;
+  --cochin: Cochin, Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot and home indicator: unmeasured on these screens. Drawn at a 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 20px);
+  --new:#2E7A5E; --today:#A8443C;
+  color-scheme: light;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.45; }
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-size:26px; line-height:1.2; margin:0; }
+.kind { margin:0; color:var(--inkSoft); max-width:72ch; }
+.kind b { color:var(--ink); }
+nav { display:flex; flex-direction:column; gap:8px; }
+.navrow { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.navrow > span { font-size:13px; color:var(--inkSoft); min-width:88px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav button[aria-pressed="true"] { background:var(--ink); color:var(--card); border-color:var(--ink); }
+nav a:focus-visible, nav button:focus-visible, .dev [data-act]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+figure { margin:0; display:flex; flex-direction:column; gap:12px; padding-top:16px; border-top:1px solid var(--line); }
+figure[hidden], .shell[hidden] { display:none; }
+figcaption { max-width:80ch; display:flex; flex-direction:column; gap:4px; }
+figcaption b { font-size:18px; }
+figcaption small { color:var(--inkSoft); }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+.shell { display:flex; flex-direction:column; gap:6px; max-width:100%; }
+.shell > i { font-style:normal; font-size:12px; color:var(--inkSoft); }
+.fit { overflow:hidden; max-width:100%; }
+
+/* ---- device frames, 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:14px; overflow:hidden; transform-origin:0 0;
+  --b:1; --f:1; --c1:1; --c2:1; --t3:1; --cl:1; }
+.dev.folded { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+.dev.phone { width:400px; height:860px; }
+/* AX5, the largest accessibility size: each text style scales by its own ratio, from the Dynamic Type tables on the
+   HIG Typography page (read 2026-11-21): Body 17 -> 53, Footnote 13 -> 44, Caption 1 12 -> 43, Caption 2 11 -> 40,
+   Title 3 20 -> 55, Callout 16 -> 51. The 44 pt hit floors do not scale. */
+.dev.ax5 { --b:calc(53 / 17); --f:calc(44 / 13); --c1:calc(43 / 12); --c2:calc(40 / 11); --t3:calc(55 / 20); --cl:calc(51 / 16); }
+.sb { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font:600 12px/1 var(--sys); z-index:9; background:var(--paper); }
+.page { position:absolute; top:var(--sat); bottom:0; overflow:hidden; display:flex; flex-direction:column; }
+.folded .page, .phone .page { left:0; right:0; }
+.open .page.l { left:0; width:455.5px; }
+.open .page.r { left:495.5px; width:455.5px; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 50%, transparent); z-index:8; }
+.fold span { position:absolute; top:300px; left:50%; transform:translateX(-50%) rotate(-90deg); font:11px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+.scroll { flex:1; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; }
+.pad { padding:0 16px 16px; display:flex; flex-direction:column; gap:12px; }
+
+/* iOS chrome: system font, standard proportions */
+.navbar { flex:none; min-height:44px; display:grid; grid-template-columns:1fr auto 1fr; align-items:center; padding:0 8px; font-family:var(--sys); }
+/* The standard navigation bar keeps its size at accessibility text sizes; iOS offers the large content viewer on a long press. */
+.navbar .back { justify-self:start; min-height:44px; min-width:44px; display:inline-flex; align-items:center; gap:4px; color:var(--accent); font-size:17px; background:none; border:0; padding:0 8px; cursor:pointer; font-family:var(--sys); }
+.navbar .back::before { content:"\2039"; font-size:28px; line-height:1; margin-top:-3px; }
+.navbar .ttl { font-weight:600; font-size:17px; text-align:center; }
+.tabbar { flex:none; display:grid; grid-template-columns:repeat(4,1fr); border-top:1px solid var(--line); background:var(--card);
+  padding-bottom:var(--sab); font-family:var(--sys); }
+.tabbar button { min-height:50px; border:0; background:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px;
+  font:500 10px/1 var(--sys); color:var(--inkSoft); cursor:pointer; position:relative; }
+.tabbar button[aria-current="true"] { color:var(--accent); }
+.tabbar svg { width:22px; height:22px; }
+.tabbar .bdg { position:absolute; top:4px; left:calc(50% + 6px); min-width:18px; height:18px; border-radius:9px; background:var(--red); color:#fff;
+  font:600 11px/18px var(--sys); padding:0 5px; }
+/* the open Duo's bar: a paper pill under the right page, 24 pt in from the page edges and 12 pt up (DuoSpine, mockup pose 11 a) */
+.pill { position:absolute; left:519.5px; width:407.5px; bottom:12px; height:64px; border-radius:32px; background:var(--card); border:1px solid var(--line);
+  display:grid; grid-template-columns:repeat(4,1fr); z-index:7; font-family:var(--sys); }
+.pill button { border:0; background:none; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; font:500 10px/1 var(--sys);
+  color:var(--inkSoft); cursor:pointer; min-height:44px; position:relative; }
+.pill button[aria-current="true"] { color:var(--accent); }
+.pill svg { width:22px; height:22px; }
+.pill .bdg { position:absolute; top:6px; left:calc(50% + 6px); min-width:18px; height:18px; border-radius:9px; background:var(--red); color:#fff; font:600 11px/18px var(--sys); padding:0 5px; }
+.open .page.r .scroll { padding-bottom:88px; }
+.open .page.l .scroll { padding-bottom:16px; }
+
+/* ---- app content ---- */
+.micro { font-family:var(--mono); font-size:calc(10px * var(--c2)); letter-spacing:1.4px; text-transform:uppercase; color:var(--inkSoft); line-height:1.3; }
+.cochin { font-family:var(--cochin); }
+.num { font-family:var(--mono); }
+.mast { flex:none; text-align:center; padding:8px 16px 8px; display:flex; flex-direction:column; gap:4px; border-bottom:1px solid var(--line); }
+.mast .title { font-family:var(--cochin); font-size:calc(26px * var(--t3)); letter-spacing:6px; line-height:1.1; }
+.mast .tallies { display:grid; grid-template-columns:1fr 1fr 1.7fr; font-family:var(--mono); font-size:calc(11px * var(--c1)); color:var(--inkSoft); }
+.mast .tallies b { display:block; color:var(--accent); font-size:calc(15px * var(--cl)); }
+.mast .bar { height:8px; border-radius:4px; background:var(--line); overflow:hidden; }
+.mast .bar i { display:block; height:100%; width:64%; background:var(--accent); }
+
+.card { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.pkg { display:flex; flex-direction:column; }
+.pkg .hd { padding:12px 12px 8px; display:flex; flex-direction:column; gap:2px; }
+.pkg .hd b { font-family:var(--cochin); font-size:calc(17px * var(--b)); }
+.pkg .hd span { font-family:var(--mono); font-size:calc(11px * var(--c1)); color:var(--inkSoft); }
+.ln { display:flex; gap:8px; min-height:45px; align-items:center; border-top:1px solid var(--line); padding:4px 12px 4px 4px; }
+.ln .box { flex:0 0 45px; height:45px; display:grid; place-items:center; }
+.ln .box i { width:28px; height:28px; border:1.5px solid var(--inkSoft); border-radius:6px; display:grid; place-items:center; color:var(--card); font-style:normal; font-size:18px; }
+.ln .box i.on { background:var(--green); border-color:var(--green); }
+.ln .t { flex:1; min-width:0; font-family:var(--cochin); font-size:calc(15px * var(--b)); }
+.ln .t small { display:block; font-size:calc(12px * var(--f)); color:var(--inkSoft); }
+.ln .fig { font-family:var(--mono); font-size:calc(12px * var(--c1)); color:var(--inkSoft); }
+
+/* the advisory and notice lines: manila with manilaInk, a rule above and below (SyncAdvisoryLine) */
+.adv { display:block; width:100%; text-align:left; border:0; border-top:1px solid var(--gold); border-bottom:1px solid var(--gold);
+  background:var(--manila); color:var(--manilaInk); font-family:var(--cochin); font-size:calc(13.5px * var(--f)); padding:8px 16px; min-height:44px; cursor:pointer; }
+.adv.inert { cursor:default; }
+
+/* the merge slip, docked above the tab bar: an overlay, so it moves no row */
+.slip { position:absolute; left:8px; right:8px; z-index:6; display:flex; align-items:stretch; background:var(--manila); color:var(--manilaInk);
+  border:1px solid var(--gold); border-radius:8px; box-shadow:0 6px 18px rgba(28,43,36,0.14); }
+.slip .say { flex:1; min-width:0; border:0; background:none; text-align:left; color:inherit; padding:8px 4px 8px 12px; cursor:pointer; display:flex; flex-direction:column; gap:2px; min-height:52px; }
+.slip .say span { font-family:var(--cochin); font-size:calc(14px * var(--f)); line-height:1.3; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; overflow:hidden; }
+.slip .x { flex:0 0 44px; border:0; background:none; color:inherit; font:20px/1 var(--sys); cursor:pointer; border-left:1px solid color-mix(in srgb, var(--gold) 60%, transparent); }
+
+/* ---- the Recent feed ---- */
+/* The slot keeps one fixed height whatever it says, so a change of words moves no row: one line at default, two at AX5. */
+.slot { flex:none; height:44px; display:flex; align-items:center; gap:8px; padding:0 16px; font-family:var(--mono);
+  font-size:calc(11px * var(--c1)); border-bottom:1px solid var(--line); background:var(--paper); }
+.ax5 .slot { height:120px; flex-wrap:wrap; align-content:center; line-height:1.15; }
+.slot .long { display:inline; } .slot .short { display:none; }
+.ax5 .slot .long { display:none; } .ax5 .slot .short { display:inline; }
+.slot.ok { color:var(--green); }
+.slot.ok::before { content:""; width:10px; height:10px; border-radius:50%; background:var(--green); flex:none; }
+.slot.stale { background:var(--manila); color:var(--manilaInk); }
+.slot.fresh { color:var(--accent); }
+.slot .go { margin-left:auto; min-height:44px; padding:0 12px; border:1px solid var(--accent); border-radius:6px; background:var(--card); color:var(--accent);
+  font:inherit; cursor:pointer; }
+.day { position:sticky; top:0; z-index:2; background:var(--paper); padding:12px 16px 4px; border-bottom:1px solid var(--line); }
+
+/* Facing columns */
+.colhead { position:sticky; top:0; z-index:3; display:grid; grid-template-columns:1fr 1fr; background:var(--paper); border-bottom:2px solid var(--ink); }
+.colhead div { padding:8px 16px; }
+.colhead div + div { border-left:1px solid var(--line); }
+.cols { display:grid; grid-template-columns:1fr 1fr; }
+/* Every row is one fixed height, as Recent rules (72), so the two columns and the two pages stay level. AX5 releases it. */
+.cols > .cell { min-height:72px; border-bottom:1px solid var(--line); }
+.mirror { visibility:hidden; }
+.cols > .cell + .cell { border-left:1px solid var(--line); }
+.cols > .cell.empty { background:repeating-linear-gradient(180deg, transparent 0 7px, color-mix(in srgb, var(--line) 35%, transparent) 7px 8px); }
+.entry { display:flex; flex-direction:column; gap:2px; width:100%; text-align:left; border:0; background:none; color:inherit; padding:8px 12px 8px 16px; cursor:pointer; height:72px; overflow:hidden; }
+.entry .top { display:flex; justify-content:space-between; gap:8px; }
+.entry .subj, .entry .sell { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.entry .subj { font-family:var(--cochin); font-size:calc(16px * var(--b)); line-height:1.25; }
+.entry .sell { font-family:var(--cochin); font-size:calc(13px * var(--f)); color:var(--inkSoft); line-height:1.25; }
+.single .entry { height:auto; } .single .entry .subj, .single .entry .sell { white-space:normal; overflow-wrap:anywhere; }
+.entry .top .micro.red { color:var(--red); } .entry .top .micro.amber { color:var(--amber); } .entry .top .micro.green { color:var(--green); }
+.entry.lost .subj { text-decoration:line-through; text-decoration-color:var(--red); }
+.entry.pending { box-shadow:inset 4px 0 0 var(--amber); }
+.tagline { font-family:var(--mono); font-size:calc(10px * var(--c2)); letter-spacing:1px; text-transform:uppercase; }
+.tagline.red { color:var(--red); } .tagline.amber { color:var(--amber); } .tagline.green { color:var(--green); }
+/* the agreement rule: the line where both devices agreed with the server */
+.rule { grid-column:1 / -1; display:flex; flex-direction:column; border-bottom:2px solid var(--ink); background:var(--card); }
+.rule > button { display:grid; grid-template-columns:1fr 1fr; width:100%; border:0; background:none; color:inherit; text-align:left; cursor:pointer; padding:0; height:56px; }
+.single .rule > button { height:auto; }
+.rule > button > span { padding:8px 16px; display:flex; flex-direction:column; gap:2px; justify-content:center; min-width:0; }
+.rule .what, .rule .when { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.single .rule .what, .single .rule .when { white-space:normal; }
+.rule > button > span + span { border-left:1px solid var(--line); }
+.rule .when { font-family:var(--mono); font-size:calc(12px * var(--c1)); color:var(--ink); }
+.rule .what { font-family:var(--cochin); font-size:calc(13.5px * var(--f)); color:var(--inkSoft); line-height:1.25; }
+.rule.lost { background:var(--redSoft); }
+.more { padding:12px 16px 16px; display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); background:var(--card); }
+.more p { margin:0; font-family:var(--cochin); font-size:calc(15px * var(--b)); line-height:1.35; }
+.more .soft { color:var(--inkSoft); font-size:calc(13.5px * var(--f)); }
+.counts { display:grid; grid-template-columns:auto 1fr; gap:4px 16px; font-family:var(--mono); font-size:calc(12px * var(--c1)); }
+.counts dt { color:var(--inkSoft); text-transform:uppercase; letter-spacing:1px; }
+.counts dd { margin:0; }
+.acts { display:flex; flex-wrap:wrap; gap:8px; }
+.btn { min-height:44px; padding:0 14px; border-radius:8px; border:1px solid var(--line); background:var(--card); color:var(--ink);
+  font-family:var(--cochin); font-size:calc(15px * var(--b)); cursor:pointer; }
+.btn.primary { background:var(--accent); border-color:var(--accent); color:var(--card); font-weight:700; }
+.btn.warn { background:var(--redSoft); border-color:var(--red); color:var(--red); }
+.said { font-family:var(--mono); font-size:calc(11px * var(--c1)); color:var(--green); }
+.undo { align-self:flex-start; min-height:44px; min-width:72px; border:0; background:none; color:var(--accent); font-family:var(--mono);
+  font-size:calc(11px * var(--c1)); letter-spacing:1px; text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:4px; cursor:pointer; padding:0; text-align:left; }
+.undone { font-family:var(--mono); font-size:calc(11px * var(--c1)); color:var(--inkSoft); }
+.remain { font-family:var(--cochin); font-size:calc(13.5px * var(--f)); color:var(--manilaInk); background:color-mix(in srgb, var(--manila) 55%, transparent); padding:8px 12px; border-radius:6px; }
+.single .cell { grid-column:1 / -1; border-left:0 !important; }
+.single .rule > button { grid-template-columns:1fr; }
+.single .rule > button > span + span { border-left:0; border-top:1px solid var(--line); }
+.cols .day { position:static; }
+.side { font-family:var(--mono); font-size:calc(10px * var(--c2)); letter-spacing:1px; color:var(--accent); text-transform:uppercase; }
+.side.them { color:var(--green); }
+
+/* Sync receipts */
+.rlist { display:flex; flex-direction:column; gap:12px; padding:12px 16px 16px; }
+.receipt { display:flex; flex-direction:column; width:100%; text-align:left; color:inherit; cursor:pointer; padding:0;
+  background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; }
+.receipt[aria-current="true"] { border-color:var(--accent); box-shadow:0 0 0 1px var(--accent); }
+.receipt .rh { display:flex; justify-content:space-between; gap:8px; align-items:baseline; padding:10px 12px 0; flex-wrap:wrap; }
+.receipt .rs { padding:4px 12px 10px; font-family:var(--cochin); font-size:calc(15px * var(--b)); line-height:1.3; }
+.receipt .rl { border-top:1px dashed var(--line); padding:6px 12px; display:flex; justify-content:space-between; gap:8px; font-family:var(--cochin);
+  font-size:calc(13.5px * var(--f)); }
+.receipt .rl .num { color:var(--inkSoft); font-size:calc(11px * var(--c1)); white-space:nowrap; }
+.receipt .rf { border-top:1px solid var(--line); padding:8px 12px; display:flex; justify-content:space-between; font-family:var(--mono); font-size:calc(11px * var(--c1)); color:var(--accent); }
+.receipt.mine { border-style:dashed; background:color-mix(in srgb, var(--card) 60%, var(--paper)); }
+.receipt.lost { border-color:var(--red); }
+.receipt.lost .rh .tagline { color:var(--red); }
+.receipt.kept { background:var(--manila); border-color:var(--gold); color:var(--manilaInk); }
+.dsec { display:flex; flex-direction:column; gap:8px; }
+.drow { display:flex; gap:8px; align-items:flex-start; border-top:1px solid var(--line); padding-top:8px; }
+.drow .t { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.drow .t b { font-family:var(--cochin); font-weight:400; font-size:calc(16px * var(--b)); line-height:1.25; }
+.drow .t small { font-family:var(--cochin); font-size:calc(13px * var(--f)); color:var(--inkSoft); }
+.empty-page { flex:1; display:grid; place-items:center; padding:24px; text-align:center; font-family:var(--cochin); color:var(--inkSoft); font-size:calc(15px * var(--b)); }
+
+/* Ledger tab (LedgerTab.swift) */
+.lt { padding:8px 16px 16px; display:flex; flex-direction:column; gap:8px; }
+.lrow { display:flex; align-items:center; gap:12px; min-height:52px; padding:8px 16px; border:0; border-top:1px solid var(--line); background:none; width:100%; text-align:left; color:inherit; cursor:pointer; }
+.lrow:first-child { border-top:0; }
+.lrow .tt { flex:1; display:flex; flex-direction:column; gap:4px; }
+.lrow .tt b { font-family:var(--cochin); font-weight:400; font-size:calc(20px * var(--t3)); line-height:1.2; }
+.lrow .tt small { font-family:var(--cochin); font-size:calc(13.5px * var(--f)); color:var(--inkSoft); }
+.lrow .v { font-family:var(--mono); font-size:calc(14px * var(--cl)); color:var(--accent); text-decoration:underline; text-decoration-color:var(--line); text-underline-offset:4px; text-align:right; }
+.lrow .car { font-family:var(--cochin); font-size:22px; color:var(--inkSoft); }
+.part { display:grid; grid-template-columns:auto 1fr; gap:4px 12px; padding:4px 16px 12px; border-top:1px solid var(--line); font-size:calc(11px * var(--c1)); }
+.part dt { font-family:var(--cochin); font-size:calc(10px * var(--c2)); letter-spacing:1.6px; text-transform:uppercase; color:var(--inkSoft); }
+.part dd { margin:0; font-family:var(--mono); }
+.hrow { border-top:1px solid var(--line); padding:8px 16px; display:flex; flex-direction:column; gap:8px; }
+.hrow.hl { background:color-mix(in srgb, var(--accent) 8%, var(--card)); }
+.hrow .h1 { display:flex; gap:8px; align-items:baseline; flex-wrap:wrap; font-size:calc(11px * var(--c1)); }
+.hrow .h1 b { font-family:var(--cochin); font-weight:400; font-size:calc(14px * var(--b)); }
+
+/* the system share sheet (UIActivityViewController), drawn plain */
+.scrim { position:absolute; inset:0; background:rgba(28,43,36,0.35); z-index:20; display:flex; align-items:flex-end; }
+.sheet { width:100%; background:#F2F2F7; border-radius:14px 14px 0 0; padding:12px 16px calc(var(--sab) + 8px); display:flex; flex-direction:column; gap:12px; font-family:var(--sys); color:#111; }
+.sheet .sh { display:flex; align-items:center; gap:12px; }
+.sheet .sh b { font-size:calc(15px * var(--b)); display:block; }
+.sheet .sh small { color:#555; font-size:calc(12px * var(--c1)); }
+.sheet .doc { width:36px; height:44px; border-radius:4px; background:#fff; border:1px solid #ccc; flex:none; }
+.sheet .grp { background:#fff; border-radius:10px; display:flex; flex-direction:column; }
+.sheet .grp button { min-height:44px; border:0; background:none; text-align:left; padding:0 16px; font:calc(17px * var(--b)) var(--sys); color:#111; border-top:1px solid #e3e3e8; cursor:pointer; }
+.sheet .grp button:first-child { border-top:0; }
+.sheet .cls { margin-left:auto; min-width:44px; min-height:44px; border:0; border-radius:22px; background:#e3e3e8; font:17px var(--sys); cursor:pointer; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+.tags [data-tag] { outline-offset:-2px; }
+.tags [data-tag]:not(.page):not(.slip):not(.pill):not(.tabbar) { position:relative; }
+.tags [data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:2px; font:600 11px/14px var(--sys); padding:0 4px; background:var(--paper);
+  z-index:5; white-space:nowrap; letter-spacing:0; text-transform:none; pointer-events:none; }
+.tags .tag-new { outline:2px dashed var(--new); } .tags .tag-new::after { color:var(--new); }
+.tags .tag-today { outline:2px dashed var(--today); } .tags .tag-today::after { color:var(--today); }
+.ax5 [data-tag]::after { font-size:11px; }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No card, seller, order, count, time or price on this page is real. Sizes come from the brief and the code, not from a simulator.</div>
+<h1>Did both devices agree? Recent, read as a change feed</h1>
+<p class="kind"><b>Designer kind: directed.</b> Direction: <b>change feed, a readable timeline of what each device changed.</b> Screens: the Recent feed (extended), the merge notice, the kept copy, the copy that lost, a stale sync, and Packages after a Tally check-in. iPhone Duo folded (466 x 678 pt) first, then open (951 x 669 pt, fold at 455.5 to 495.5 pt), then a large phone drawn at a stand-in size. Light theme only (design-parchment-ledger). Every frame is live: tap through it.</p>
+
+<nav aria-label="Mockup controls">
+  <div class="navrow"><span>Concept</span>
+    <a href="#" data-c="">Both</a>
+    <a href="#c=columns" data-c="columns">Facing columns</a>
+    <a href="#c=receipts" data-c="receipts">Sync receipts</a>
+  </div>
+  <div class="navrow"><span>State</span>
+    <a href="#s=feed" data-s="feed">Feed</a>
+    <a href="#s=lost" data-s="lost">The copy that lost</a>
+    <a href="#s=kept" data-s="kept">Kept copy</a>
+    <a href="#s=stale" data-s="stale">Stale sync</a>
+    <a href="#s=frozen" data-s="frozen">Sync while open</a>
+    <a href="#s=uncounted" data-s="uncounted">Counts past the log</a>
+    <a href="#s=names" data-s="names">Device names</a>
+    <a href="#s=notice" data-s="notice">Merge notice place</a>
+    <a href="#s=tabs" data-s="tabs">Packages after Tally</a>
+    <a href="#" data-s="">All</a>
+  </div>
+  <div class="navrow"><span>Text size</span>
+    <a href="#z=default" data-z="default">Default only</a>
+    <a href="#z=ax5" data-z="ax5">AX5 only</a>
+    <a href="#" data-z="">Both</a>
+  </div>
+  <div class="navrow"><span>Cull</span>
+    <button type="button" data-hide="columns" aria-pressed="false">Hide Facing columns</button>
+    <button type="button" data-hide="receipts" aria-pressed="false">Hide Sync receipts</button>
+    <button type="button" data-hide="slip" aria-pressed="false">Hide Slip above the tab bar</button>
+    <button type="button" data-hide="line" aria-pressed="false">Hide Line in the list</button>
+    <button type="button" data-hide="badge" aria-pressed="false">Hide Badge on Ledger</button>
+    <button type="button" data-hide="named" aria-pressed="false">Hide Named devices</button>
+    <button type="button" id="tagsBtn" aria-pressed="true">Today and New tags</button>
+    <button type="button" id="resetBtn">Reset every frame</button>
+  </div>
+</nav>
+
+<!-- Each figure holds static device shells, folded first; the script draws each shell's screen and keeps its own state. -->
+
+<figure data-s="feed" data-c="columns" data-opt="columns">
+  <figcaption><b>Facing columns: the feed.</b> Ledger tab, Recent. This phone writes in the left column, the other device in the right, time runs down. Each thick rule is a sync the server agreed to, labelled with what went out and what came in. Tap a row for its detail and Undo; tap a rule for the merge sentence.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded, default text</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" id="focus-columns"></div></div></div>
+    <div class="shell"><i>Duo folded, AX5: columns give way to one list</i><div class="fit"><div class="dev folded ax5" data-device="iphone-duo-folded" data-z="ax5" id="focus-columns-ax5"></div></div></div>
+    <div class="shell"><i>Duo open: the two pages are the two devices</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default"></div></div></div>
+    <div class="shell"><i>Large phone (stand-in size, see notes)</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="lost" data-c="columns" data-opt="columns">
+  <figcaption><b>Facing columns: the copy that lost.</b> Yesterday's 21:05 sync removed a check-in this phone made. The rule turns red-soft, the losing row is struck, and the rule opens on what lost, with two ways back.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default"></div></div></div>
+    <div class="shell"><i>Duo open</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="kept" data-c="columns" data-opt="columns">
+  <figcaption><b>Facing columns: the kept copy.</b> Packages opens with today's mended-load line. It becomes a button that opens Recent on the "Mended on open" row, which shares the kept copy. The lost copy and the kept copy never share a control.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded, Packages</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default"></div></div></div>
+    <div class="shell"><i>Duo folded, where the line leads</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" data-start="feed"></div></div></div>
+    <div class="shell"><i>Duo open</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="stale" data-c="columns" data-opt="columns">
+  <figcaption><b>Facing columns: a stale sync.</b> No agreement for more than 24 hours. Packages shows the web's advisory line; its tap opens Sync, as ruled, and Sync's neighbour row Recent reads "14 not sent". Recent shows what is only on this phone above the last agreement rule, each row with an amber edge.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded, Packages</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default"></div></div></div>
+    <div class="shell"><i>Duo folded, Recent</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" data-start="feed"></div></div></div>
+    <div class="shell"><i>Duo open, Recent</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default" data-start="feed"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="frozen" data-c="columns" data-opt="columns">
+  <figcaption><b>Facing columns: a sync lands while Recent is open.</b> The rows are frozen at open, as Recent rules. Only the reserved slot at the top changes its words. Show it is the one act that adds the new rows.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default"></div></div></div>
+    <div class="shell"><i>Duo open</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="uncounted" data-c="columns" data-opt="columns">
+  <figcaption><b>Facing columns: the counts name more than the log.</b> The server's merge says 5 check-ins; Recent names 3. The rule shows the server's count, and a manila line says how many changes have no row.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default"></div></div></div>
+    <div class="shell"><i>Duo open</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="feed" data-c="receipts" data-opt="receipts">
+  <figcaption><b>Sync receipts: the feed.</b> Ledger tab, Recent. One receipt per sync, newest first. A solid receipt came in from the other device; a dashed one went out from this phone. The server's sentence leads, then the named rows. On the open Duo the list sits on the left page and the receipt on the right.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded, default text</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" id="focus-receipts"></div></div></div>
+    <div class="shell"><i>Duo folded, AX5</i><div class="fit"><div class="dev folded ax5" data-device="iphone-duo-folded" data-z="ax5" id="focus-receipts-ax5"></div></div></div>
+    <div class="shell"><i>Duo open: list beside receipt</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default"></div></div></div>
+    <div class="shell"><i>Large phone (stand-in size)</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="lost" data-c="receipts" data-opt="receipts">
+  <figcaption><b>Sync receipts: the copy that lost.</b> The 21:05 receipt carries a red edge. Its page shows the check-in that lost, the later un-check that won, and two ways back: check it in again, or open the saved version taken before that sync.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default"></div></div></div>
+    <div class="shell"><i>Duo open</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="kept" data-c="receipts" data-opt="receipts">
+  <figcaption><b>Sync receipts: the kept copy.</b> The mended-load line on Packages opens Recent on a manila "Mended on open" receipt. Its one act shares the kept copy through the system share sheet.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded, Packages</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default"></div></div></div>
+    <div class="shell"><i>Duo folded, where the line leads</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" data-start="feed"></div></div></div>
+    <div class="shell"><i>Duo open</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="stale" data-c="receipts" data-opt="receipts">
+  <figcaption><b>Sync receipts: a stale sync.</b> The advisory line on Packages opens Sync as ruled. In Recent, an open receipt "Not sent yet" sits on top, listing what only this phone holds.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded, Packages</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default"></div></div></div>
+    <div class="shell"><i>Duo folded, Recent</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" data-start="feed"></div></div></div>
+    <div class="shell"><i>Duo open, Recent</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default" data-start="feed"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="frozen" data-c="receipts" data-opt="receipts">
+  <figcaption><b>Sync receipts: a sync lands while Recent is open.</b> No receipt slides in under the thumb. The slot at the top says one more sync landed, and Show it adds it.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default"></div></div></div>
+    <div class="shell"><i>Duo open</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="uncounted" data-c="receipts" data-opt="receipts">
+  <figcaption><b>Sync receipts: the counts name more than the log.</b> The receipt's counts are the server's. Under its 3 named rows, a manila line says 2 check-ins have no row, and why.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default"></div></div></div>
+    <div class="shell"><i>Duo open</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="names" data-opt="local">
+  <figcaption><b>Device names: this device's own record (pick).</b> This phone keeps a list of the Recent ids it wrote, on the device only. A row it did not write is the other device's. Nothing in the saved ledger changes.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded, Facing columns</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" data-c="columns" id="focus-names-local"></div></div></div>
+    <div class="shell"><i>Duo open</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default" data-c="columns"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="names" data-opt="named">
+  <figcaption><b>Device names: named in each entry.</b> Each Recent entry carries the name of the device that wrote it, so the columns read Duo and Mac on both devices. This adds a field to the saved ledger.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded, Facing columns</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" data-c="columns" data-names="named" id="focus-names-named"></div></div></div>
+    <div class="shell"><i>Duo open</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default" data-c="columns" data-names="named"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="notice" data-opt="slip">
+  <figcaption><b>Merge notice: a slip above the tab bar (pick).</b> After a sync that changed something, the merge sentence docks above the tab bar, over the list, so no row moves. Tap it to read the sync in Recent; the cross dismisses it. It has no timeout, as the web notice has none. Open Duo: Packages does not spread, so the open frame draws Tally, which does.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" data-np="slip" id="focus-slip"></div></div></div>
+    <div class="shell"><i>Duo folded, AX5</i><div class="fit"><div class="dev folded ax5" data-device="iphone-duo-folded" data-z="ax5" data-np="slip" id="focus-slip-ax5"></div></div></div>
+    <div class="shell"><i>Duo open (Tally spread)</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default" data-np="slip"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default" data-np="slip"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="notice" data-opt="line">
+  <figcaption><b>Merge notice: a line in the list.</b> The web's place: the notice sits in the page under the masthead, with Dismiss. The web scrolls to hold the row in view; the native list has no such anchor, so the cards drop by the line's height.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" data-np="line" id="focus-line"></div></div></div>
+    <div class="shell"><i>Duo open (Tally spread)</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default" data-np="line"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default" data-np="line"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="notice" data-opt="badge">
+  <figcaption><b>Merge notice: a badge on Ledger only.</b> The working screen shows no sync words. The Ledger tab gains a count badge, and Recent's row says what is unread.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" data-np="badge" id="focus-badge"></div></div></div>
+    <div class="shell"><i>Duo open (Tally spread)</i><div class="fit"><div class="dev open" data-device="iphone-duo-unfolded" data-z="default" data-np="badge"></div></div></div>
+    <div class="shell"><i>Large phone</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default" data-np="badge"></div></div></div>
+  </div>
+</figure>
+
+<figure data-s="tabs">
+  <figcaption><b>Packages after a Tally check-in.</b> Left: today. Tally checked in all 4 copies of Path to Exile, and Packages still reads 2 of 4 until its own next check-in or a restart. Right: the pick, a reload on every write that moves a check-in. No badge and no "old figures" stamp: the screen is simply never behind. This is product code (debt native-masthead-stale-after-tabs), for a builder.</figcaption>
+  <div class="frames">
+    <div class="shell"><i>Duo folded, today</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" data-tabs="today"></div></div></div>
+    <div class="shell"><i>Duo folded, after the reload fix</i><div class="fit"><div class="dev folded" data-device="iphone-duo-folded" data-z="default" data-tabs="fixed"></div></div></div>
+    <div class="shell"><i>Large phone, after the fix</i><div class="fit"><div class="dev phone" data-device="iphone-large" data-z="default" data-tabs="fixed"></div></div></div>
+  </div>
+</figure>
+
+</main>
+
+<script>
+"use strict";
+/* ---------- sample data: shapes follow mergeSummary stats (src/merge-rules.mjs) and Recent entries (src/recent-rules.mjs) ---------- */
+const ICON = {
+  ledger: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.5v3M12 18.5v3M2.5 12h3M18.5 12h3M5.3 5.3l2.1 2.1M16.6 16.6l2.1 2.1M5.3 18.7l2.1-2.1M16.6 7.4l2.1-2.1"/></svg>',
+  orphaned: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="13" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>',
+  tally: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3l-2 18M17 3l-2 18M4 8.5h17M3 15.5h17"/></svg>',
+  packages: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3 7.5l9-4.5 9 4.5v9l-9 4.5-9-4.5z"/><path d="M3 7.5l9 4.5 9-4.5M12 12v9"/></svg>'
+};
+const MERGE_1432 = "Merged — 3 check-ins and 1 stamp from the other device. Nothing of yours was lost.";
+const MERGE_1432_UNC = "Merged — 5 check-ins and 1 stamp from the other device. Nothing of yours was lost.";
+const MERGE_2105 = "Merged — 1 check-in from the other device. Removed by the other device's later changes: un-checked 1 card.";
+const MERGE_1435 = "Merged — 1 check-in from the other device. Nothing of yours was lost.";
+const KEPT_LINE = "1 entry could not be read; the original is kept on this device.";
+
+function feedData(variant) {
+  const today = [];
+  if (variant === "stale") {
+    today.push({ k: "pend", id: "p1", side: "me", day: "Today", at: "09:40", label: "Checked", subj: "Lightning Bolt", sell: "Alpha Cards", fig: "1 of 1" });
+    today.push({ k: "pend", id: "p2", side: "me", day: "Today", at: "09:38", label: "Count 1 → 3", subj: "Brainstorm", sell: "Gamma Cards", fig: "3 of 4" });
+    today.push({ k: "pend", id: "p3", side: "me", day: "Today", at: "09:35", label: "Stamp · Refunded", subj: "Delta Hobby", sell: "order 7F3A-0219", fig: "" });
+    today.push({ k: "pendmore", id: "pm", day: "Today", n: 11 });
+    today.push({ k: "sync", id: "s0916", day: "Mon Nov 16", at: "09:12", when: "Mon Nov 16, 9:12 AM", out: 2, inn: "nothing new", sentence: null, last: true });
+    today.push({ k: "row", id: "o1", side: "me", day: "Mon Nov 16", at: "09:10", label: "Checked", subj: "Ponder", sell: "Beta Games", fig: "1 of 1" });
+    today.push({ k: "row", id: "o2", side: "me", day: "Mon Nov 16", at: "09:04", label: "Checked", subj: "Opt", sell: "Alpha Cards", fig: "1 of 1" });
+    return today;
+  }
+  const unc = variant === "uncounted";
+  today.push({ k: "sync", id: "s1432", day: "Today", at: "14:32", when: "14:32", out: 0, inn: unc ? "5 check-ins, 1 stamp" : "3 check-ins, 1 stamp",
+    sentence: unc ? MERGE_1432_UNC : MERGE_1432, stats: unc ? [["Check-ins", "5"], ["Stamps", "1"], ["Removed", "0"]] : [["Check-ins", "3"], ["Stamps", "1"], ["Removed", "0"]],
+    unnamed: unc ? 2 : 0 });
+  today.push({ k: "row", id: "t1", side: "them", day: "Today", at: "14:30", label: "Checked", subj: "Counterspell", sell: "Alpha Cards", fig: "1 of 1" });
+  today.push({ k: "row", id: "t2", side: "them", day: "Today", at: "14:29", label: "Count 1 → 2", subj: "Path to Exile", sell: "Gamma Cards", fig: "2 of 4" });
+  today.push({ k: "row", id: "t3", side: "them", day: "Today", at: "14:27", label: "Checked", subj: "Swords to Plowshares", sell: "Gamma Cards", fig: "1 of 1" });
+  today.push({ k: "row", id: "t4", side: "them", day: "Today", at: "14:25", label: "Stamp · Refunded", subj: "Delta Hobby", sell: "order 7F3A-0219", fig: "" });
+  today.push({ k: "sync", id: "s1421", day: "Today", at: "14:21", when: "14:21", out: 3, inn: "nothing new", sentence: null });
+  today.push({ k: "row", id: "m1", side: "me", day: "Today", at: "14:20", label: "Checked", subj: "Brainstorm", sell: "Gamma Cards", fig: "1 of 1" });
+  today.push({ k: "row", id: "m2", side: "me", day: "Today", at: "14:18", label: "Un-checked", subj: "Opt", sell: "Alpha Cards", fig: "0 of 1" });
+  today.push({ k: "row", id: "m3", side: "me", day: "Today", at: "14:16", label: "Envelope recorded", subj: "Blue envelope, no return", sell: "2 cards", fig: "" });
+  if (variant === "kept") today.push({ k: "kept", id: "kept", side: "me", day: "Today", at: "08:02" });
+  today.push({ k: "sync", id: "s2105", day: "Yesterday", at: "21:05", when: "Yesterday 21:05", out: 0, inn: "1 check-in, 1 un-check", sentence: MERGE_2105,
+    stats: [["Check-ins", "1"], ["Removed", "1 un-check"]], lost: true });
+  today.push({ k: "row", id: "y1", side: "them", day: "Yesterday", at: "21:03", label: "Un-checked", subj: "Thoughtseize", sell: "Beta Games", fig: "0 of 1", won: true });
+  today.push({ k: "row", id: "y2", side: "them", day: "Yesterday", at: "21:01", label: "Checked", subj: "Ponder", sell: "Beta Games", fig: "1 of 1" });
+  today.push({ k: "sync", id: "s2059", day: "Yesterday", at: "20:59", when: "Yesterday 20:59", out: 1, inn: "nothing new", sentence: null });
+  today.push({ k: "row", id: "y3", side: "me", day: "Yesterday", at: "20:58", label: "Checked", subj: "Thoughtseize", sell: "Beta Games", fig: "1 of 1", lostRow: true });
+  return today;
+}
+const FROZEN_NEW = [
+  { k: "sync", id: "s1435", day: "Today", at: "14:35", when: "14:35", out: 0, inn: "1 check-in", sentence: MERGE_1435, stats: [["Check-ins", "1"], ["Removed", "0"]] },
+  { k: "row", id: "f1", side: "them", day: "Today", at: "14:34", label: "Checked", subj: "Fatal Push", sell: "Gamma Cards", fig: "1 of 1" }
+];
+
+/* ---------- frame state ---------- */
+function startState(el) {
+  const fig = el.closest("figure");
+  const s = fig.dataset.s;
+  const c = el.dataset.c || fig.dataset.c || "receipts";
+  const st = { c, s, dev: el.classList.contains("open") ? "open" : el.classList.contains("phone") ? "phone" : "folded",
+    ax5: el.classList.contains("ax5"), names: el.dataset.names || "local", np: el.dataset.np || null, tabs: el.dataset.tabs || null,
+    screen: "feed", sel: null, open: new Set(), undone: new Set(), sheet: false, arrived: false, shown: false, dismissed: false,
+    sent: {}, ask: false, syncOpen: false, tab: "ledger" };
+  if (s === "feed" || s === "names") { st.screen = "feed"; st.sel = c === "receipts" ? "s1432" : null; }
+  if (s === "lost") { st.screen = c === "receipts" ? "detail" : "feed"; st.sel = "s2105"; st.open.add("s2105"); st.scrollTo = "s2105"; }
+  if (s === "kept") { st.screen = "packages"; st.tab = "packages"; }
+  if (s === "stale") { st.screen = "packages"; st.tab = "packages"; }
+  if (s === "frozen") { st.screen = "feed"; st.arrived = true; st.sel = c === "receipts" ? "s1432" : null; }
+  if (s === "uncounted") { st.screen = c === "receipts" ? "detail" : "feed"; st.sel = "s1432"; st.open.add("s1432"); }
+  if (s === "notice") { st.screen = "packages"; st.tab = "packages"; }
+  if (s === "tabs") { st.screen = "packages"; st.tab = "packages"; }
+  /* a shell marked data-start="feed" opens where the line on Packages leads, so the state shows with no tap */
+  if (el.dataset.start === "feed") {
+    st.screen = "feed"; st.tab = "ledger";
+    if (s === "kept") { st.sel = "kept"; st.open.add("kept"); st.scrollTo = "kept"; if (c === "receipts" && st.dev !== "open") st.screen = "detail"; }
+    if (s === "stale") st.sel = c === "receipts" ? "pend" : null;
+  }
+  if (st.dev === "open" && st.screen === "detail") st.screen = "feed";
+  return st;
+}
+const variantOf = (st) => st.s === "stale" ? "stale" : st.s === "kept" ? "kept" : st.s === "uncounted" ? "uncounted" : "base";
+function rowsOf(st) {
+  let r = feedData(variantOf(st));
+  if (st.shown) r = FROZEN_NEW.concat(r);
+  return r;
+}
+const who = (st, side) => side === "me" ? (st.names === "named" ? "Duo" : "This phone") : (st.names === "named" ? "Mac" : "Other device");
+const esc = (t) => String(t).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------- chrome ---------- */
+function statusBar() { return '<div class="sb"><span>9:41</span><span>●●● 100%</span></div>'; }
+function tabItems(st, badge) {
+  const items = [["ledger", "Ledger"], ["orphaned", "Orphaned"], ["tally", "Tally"], ["packages", "Packages"]];
+  return items.map(([k, n]) => {
+    const b = k === "ledger" && badge ? '<span class="bdg">1</span>' : k === "orphaned" ? '<span class="bdg">2</span>' : "";
+    return `<button type="button" data-act="tab" data-v="${k}" aria-current="${st.tab === k}" aria-label="${n}">${ICON[k]}<span>${n}</span>${b}</button>`;
+  }).join("");
+}
+function tabBar(st) {
+  const badge = st.np === "badge" && !st.badgeRead;
+  if (st.dev === "open") return `<div class="pill${badge ? " tag-new" : ""}" ${badge ? 'data-tag="New: badge on Ledger"' : ""}>${tabItems(st, badge)}</div>`;
+  return `<div class="tabbar${badge ? " tag-new" : ""}" ${badge ? 'data-tag="New: badge on Ledger"' : ""}>${tabItems(st, badge)}</div>`;
+}
+function navBar(back, title, act) {
+  return `<div class="navbar"><button type="button" class="back" data-act="${act}">${esc(back)}</button><span class="ttl">${esc(title)}</span><span></span></div>`;
+}
+function masthead() {
+  return `<div class="mast"><div class="title">MANIFEST</div>
+    <div class="tallies"><span>IN<b>41</b></span><span>OUT<b>23</b></span><span>OWED<b>$18.40</b></span></div><div class="bar"><i></i></div></div>`;
+}
+
+/* ---------- working screens ---------- */
+function pkgCards(st) {
+  const fixed = st.tabs === "fixed";
+  const today = st.tabs === "today";
+  const pte = today ? "2 of 4" : fixed ? "4 of 4" : "2 of 4";
+  const on = fixed ? "on" : "";
+  return `
+  <div class="card pkg${today ? " tag-today" : fixed ? " tag-new" : ""}" ${today ? 'data-tag="Today: reads 2 of 4 after Tally"' : fixed ? 'data-tag="New: reloads after Tally"' : ""}>
+    <div class="hd"><b>Gamma Cards</b><span>ordered 2026-07-01 · ${fixed ? "4" : "2"} of 6 in</span></div>
+    <div class="ln"><span class="box"><i class="${on}">${on ? "✓" : ""}</i></span><span class="t">Path to Exile<small>Sample Set · NM</small></span><span class="fig">${pte}</span></div>
+    <div class="ln"><span class="box"><i class="on">✓</i></span><span class="t">Brainstorm<small>Sample Set · LP</small></span><span class="fig">1 of 1</span></div>
+    <div class="ln"><span class="box"><i></i></span><span class="t">Swords to Plowshares<small>Sample Set · NM</small></span><span class="fig">0 of 1</span></div>
+  </div>
+  <div class="card pkg"><div class="hd"><b>Alpha Cards</b><span>ordered 2026-07-03 · 1 of 3 in</span></div>
+    <div class="ln"><span class="box"><i class="on">✓</i></span><span class="t">Counterspell<small>Sample Set · NM</small></span><span class="fig">1 of 1</span></div>
+    <div class="ln"><span class="box"><i></i></span><span class="t">Opt<small>Sample Set · NM</small></span><span class="fig">0 of 1</span></div>
+    <div class="ln"><span class="box"><i></i></span><span class="t">Lightning Bolt<small>Sample Set · NM</small></span><span class="fig">0 of 1</span></div>
+  </div>
+  <div class="card pkg"><div class="hd"><b>Beta Games</b><span>ordered 2026-07-04 · 1 of 2 in</span></div>
+    <div class="ln"><span class="box"><i class="on">✓</i></span><span class="t">Ponder<small>Sample Set · NM</small></span><span class="fig">1 of 1</span></div>
+    <div class="ln"><span class="box"><i></i></span><span class="t">Thoughtseize<small>Sample Set · LP</small></span><span class="fig">0 of 1</span></div>
+  </div>`;
+}
+function topLines(st) {
+  let h = "";
+  if (st.s === "stale") h += `<button type="button" class="adv tag-today" data-tag="Today: advisory line (web case 4)" data-act="advisory">Not backed up since Nov 16 — tap to fix</button>`;
+  if (st.s === "kept") h += `<button type="button" class="adv tag-new" data-tag="New: the line leads to the kept copy" data-act="kept-line">${KEPT_LINE}</button>`;
+  if (st.np === "line" && !st.dismissed) h += `<div class="adv tag-today" data-tag="Today on the web: the notice in the page" style="display:flex;gap:8px;align-items:center;padding:4px 4px 4px 16px">
+     <button type="button" class="adv" data-act="notice" style="border:0;padding:4px 0;flex:1">${MERGE_1432}</button>
+     <button type="button" class="btn" data-act="dismiss" style="flex:none">Dismiss</button></div>`;
+  return h;
+}
+function slip(st, bottom, inset) {
+  if (st.np !== "slip" || st.dismissed) return "";
+  const side = inset ? `left:${inset};right:${inset};` : "";
+  return `<div class="slip tag-new" data-tag="New: merge slip" style="${side}bottom:${bottom}"><button type="button" class="say" data-act="notice"><span>${MERGE_1432}</span></button>
+    <button type="button" class="x" data-act="dismiss" aria-label="Dismiss the merge notice">✕</button></div>`;
+}
+function packagesScreen(st) {
+  /* while the slip shows, the list gains a bottom inset so its last row can scroll clear; no row in view moves */
+  const inset = st.np === "slip" && !st.dismissed ? "padding-bottom:96px;" : "";
+  const body = `<div class="scroll"><div class="pad" style="padding-top:12px;${inset}">${pkgCards(st)}</div></div>`;
+  if (st.dev === "open") {
+    /* Packages does not spread on the open Duo (DuoSpread.spreads). The working screen drawn here is Tally, which does. */
+    const tallyRows = [["Path to Exile", "2 of 4", "3 sellers"], ["Counterspell", "1 of 1", "Alpha Cards"], ["Brainstorm", "1 of 1", "Gamma Cards"], ["Thoughtseize", "0 of 1", "Beta Games"], ["Lightning Bolt", "0 of 1", "Alpha Cards"]];
+    const left = `${masthead()}${topLines(st)}<div class="scroll"><div class="pad" style="padding-top:12px"><div class="card">${tallyRows.map((r, i) =>
+      `<div class="ln" style="${i ? "" : "border-top:0"}"><span class="t" style="padding-left:12px">${r[0]}<small>${r[2]}</small></span><span class="fig">${r[1]}</span></div>`).join("")}</div></div></div>`;
+    const right = `<div class="scroll"><div class="pad" style="padding-top:12px"><span class="micro">Copies of Path to Exile</span><div class="card">
+      <div class="ln" style="border-top:0"><span class="t" style="padding-left:12px">Gamma Cards<small>ordered 2026-07-01</small></span><span class="fig">2 of 2</span></div>
+      <div class="ln"><span class="t" style="padding-left:12px">Delta Hobby<small>ordered 2026-07-02 · refunded</small></span><span class="fig">0 of 1</span></div>
+      <div class="ln"><span class="t" style="padding-left:12px">Alpha Cards<small>ordered 2026-07-03</small></span><span class="fig">0 of 1</span></div></div></div></div>`;
+    return `<div class="page l">${left}</div><div class="page r">${right}${slip(st, "88px", "24px")}</div>${tabBar(st)}`;
+  }
+  return `<div class="page">${masthead()}${topLines(st)}${body}${slip(st, "calc(50px + var(--sab) + 8px)")}${tabBar(st)}</div>`;
+}
+function placeholderScreen(st, name) {
+  const inner = `<div class="empty-page">${name} is not drawn in this mockup. Its screen does not change.</div>`;
+  if (st.dev === "open") return `<div class="page l">${inner}</div><div class="page r"></div>${tabBar(st)}`;
+  return `<div class="page">${inner}${tabBar(st)}</div>`;
+}
+
+/* ---------- Ledger tab ---------- */
+function ledgerScreen(st) {
+  const stale = st.s === "stale";
+  const unread = st.np === "badge" && !st.badgeRead;
+  const recentVal = stale ? "14 not sent" : unread ? "1 sync to read" : "Undo a tap";
+  const sync = `<button type="button" class="lrow tag-today" data-tag="Today: Sync row" data-act="sync-toggle">
+      <span class="tt"><b>Sync</b><small>${stale ? "Backed up 2026-11-16" : "Backed up 2026-11-19"}${st.syncOpen ? " — tap to close" : ""}</small></span><span class="v">On</span><span class="car">${st.syncOpen ? "⌄" : "›"}</span></button>
+    ${st.syncOpen ? `<dl class="part"><dt>Server</dt><dd>${stale ? "Not checked" : "Connected"}</dd><dt>Last sync</dt><dd>${stale ? "Nov 16, 9:12 AM" : "Nov 19, 2:32 PM"}</dd></dl>` : ""}`;
+  const recent = `<button type="button" class="lrow tag-new" data-tag="New: Recent opens the feed" data-act="open-feed">
+      <span class="tt"><b>Recent</b><small>What each device changed, and each sync</small></span><span class="v">${recentVal}</span><span class="car">›</span></button>`;
+  const hist = `<button type="button" class="lrow" data-act="history"><span class="tt"><b>History</b></span><span class="v">Saved versions</span><span class="car">›</span></button>
+    <button type="button" class="lrow" data-act="none"><span class="tt"><b>Backup</b></span></button>`;
+  const body = `${masthead()}<div class="scroll"><div class="lt"><div class="micro" style="text-align:center;letter-spacing:3.6px">Ledger</div><div class="micro">Data</div>
+    <div class="card">${sync}${recent}${hist}</div></div></div>`;
+  if (st.dev === "open") return `<div class="page l">${body}</div><div class="page r"><div class="empty-page">Recent opens across both pages.</div></div>${tabBar(st)}`;
+  return `<div class="page">${body}${tabBar(st)}</div>`;
+}
+function historyScreen(st) {
+  const rows = `<div class="hrow hl tag-new" data-tag="New: reached from the sync that removed it">
+      <div class="h1"><span class="num">Nov 18, 9:05 PM</span><b>before sync</b><span class="num" style="margin-left:auto">412 of 980</span></div>
+      ${st.ask ? `<div class="acts"><button type="button" class="btn warn" data-act="restore" style="flex:1;font-weight:700">Tap again to restore 412 cards</button><button type="button" class="btn" data-act="ask-cancel">Cancel</button></div>`
+        : `<div class="acts"><button type="button" class="btn warn" data-act="restore" style="flex:1">Restore this version</button><button type="button" class="btn" data-act="none" style="visibility:hidden">Cancel</button></div>`}
+      ${st.restored ? `<span class="said">Restored. The restore travels to the other device on the next sync.</span>` : ""}
+    </div>
+    <div class="hrow"><div class="h1"><span class="num">Nov 18, 8:40 PM</span><b>recent</b><span class="num" style="margin-left:auto">411 of 980</span></div></div>
+    <div class="hrow"><div class="h1"><span class="num">Nov 18, 9:00 AM</span><b>day start</b><span class="num" style="margin-left:auto">398 of 980</span></div></div>`;
+  const body = `${navBar("Recent", "History", "back-feed")}<div class="scroll"><div class="lt"><div class="card">${rows}</div>
+    <p class="cochin" style="margin:0;color:var(--inkSoft);font-size:calc(13.5px * var(--f))">A restore replaces the whole ledger. To bring back one card, check it in again from Recent.</p></div></div>`;
+  if (st.dev === "open") return `<div class="page l">${body}</div><div class="page r"><div class="empty-page">History stays on one page.</div></div>${tabBar(st)}`;
+  return `<div class="page">${body}${tabBar(st)}</div>`;
+}
+
+/* ---------- the feed: shared parts ---------- */
+function slot(st) {
+  if (st.s === "stale") return `<div class="slot stale tag-new" data-tag="New: agreement slot"><span class="long">Last agreed with the server Nov 16, 9:12 AM</span><span class="short">Last agreed Nov 16</span></div>`;
+  if (st.arrived && !st.shown) return `<div class="slot fresh tag-new" data-tag="New: rows frozen, slot speaks"><span class="long">Another sync landed at 14:35</span><span class="short">New sync 14:35</span><button type="button" class="go" data-act="show-new">Show it</button></div>`;
+  const at = st.shown ? "14:35" : "14:32";
+  return `<div class="slot ok tag-new" data-tag="New: agreement slot"><span class="long">Both devices agreed with the server at ${at}</span><span class="short">Agreed ${at}</span></div>`;
+}
+function rowDetail(st, r) {
+  const undone = st.undone.has(r.id);
+  const wrote = r.side === "me" ? "on this phone" : "on the other device";
+  const arrived = r.side === "me" ? (r.k === "pend" ? "Not sent yet" : "Sent and agreed") : "Arrived here";
+  let lost = "";
+  if (r.lostRow) lost = `<p class="soft">This check-in lost to a later un-check on the other device, at 21:03. The later change wins.</p>`;
+  if (r.won) lost = `<p class="soft">This later un-check beat a check-in made on this phone at 20:58.</p>`;
+  const undo = undone ?`<span class="undone">UNDONE 14:44</span>` : `<button type="button" class="undo" data-act="undo" data-id="${r.id}">UNDO</button>`;
+  return `<div class="more"><p>${esc(r.label)} ${esc(r.subj)}, ${esc(r.sell)}${r.fig ? `: <span class="num">${r.fig}</span>` : ""}.</p>
+    <p class="soft">Written ${wrote} at <span class="num">${r.at}</span>. ${arrived}.</p>${lost}${undo}</div>`;
+}
+function lostBlock(st) {
+  const done = st.sent.again;
+  return `<div class="dsec"><span class="micro" style="color:var(--red)">What lost</span>
+    <div class="drow"><span class="t"><b style="text-decoration:line-through;text-decoration-color:var(--red)">Thoughtseize, Beta Games</b><small>Checked in on this phone at <span class="num">20:58</span>, 1 of 1</small></span></div>
+    <div class="drow"><span class="t"><b>Un-checked on the other device</b><small>at <span class="num">21:03</span>, later, so it won</small></span></div>
+    <div class="acts">${done ? `<span class="said">Checked in again at 21:40. It reaches the other device on the next sync.</span>`
+      : `<button type="button" class="btn primary" data-act="again">Check it in again</button>`}
+      <button type="button" class="btn" data-act="history">Open the version before this sync</button></div></div>`;
+}
+function keptBlock(st) {
+  return `<p>${KEPT_LINE}</p><p class="soft">The rest of the ledger opened and is in use. The kept copy is the file as this phone found it at <span class="num">08:02</span>. It never syncs.</p>
+    <div class="acts"><button type="button" class="btn primary" data-act="share">Share the kept copy</button></div>`;
+}
+function syncMore(st, r) {
+  if (!r.sentence) return `<div class="more"><p>Sent ${r.out} change${r.out === 1 ? "" : "s"} from this phone. The other device had nothing new.</p></div>`;
+  const counts = `<dl class="counts">${r.stats.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>`;
+  const rem = r.unnamed ? `<div class="remain tag-new" data-tag="New: unnamed remainder">${r.unnamed} more check-ins came in that Recent has no row for. The counts above are the server's, and they are whole.</div>` : "";
+  return `<div class="more"><p>${esc(r.sentence)}</p>${counts}${rem}${r.lost ? lostBlock(st) : ""}</div>`;
+}
+
+/* ---------- concept: Facing columns ---------- */
+function columnsEntry(st, r, single) {
+  const lost = r.lostRow && !st.sent.again;
+  /* an end state takes the label's place on the top line, so the row keeps its three lines and its 72 pt */
+  let label = esc(r.label), cls = "";
+  if (r.lostRow) { label = lost ? `${label}, lost` : "Checked in again"; cls = lost ? "red" : "green"; }
+  else if (r.won) { label = `${label}, won`; cls = "red"; }
+  else if (r.k === "pend") { cls = "amber"; }
+  if (st.undone.has(r.id)) { label = `${esc(r.label)}, undone`; cls = ""; }
+  const side = single ? `<span class="side ${r.side}">${who(st, r.side)}</span>` : "";
+  const say = `${r.label}${r.k === "pend" ? ", only on this phone" : ""} ${r.subj}, ${r.sell}${r.fig ? ", " + r.fig : ""}, ${r.at}, ${who(st, r.side)}`;
+  return `<button type="button" class="entry${lost ? " lost" : ""}${r.k === "pend" ? " pending" : ""}" data-act="row" data-id="${r.id}" aria-expanded="${st.open.has(r.id)}" aria-label="${esc(say)}">
+    ${side}<span class="top"><span class="micro ${cls}">${label}</span><span class="micro num">${r.at}</span></span>
+    <span class="subj">${esc(r.subj)}</span><span class="sell">${esc(r.sell)}${r.fig ? ` · <span class="num">${r.fig}</span>` : ""}</span></button>`;
+}
+function columnsRule(st, r, single) {
+  /* with one list there are no column heads, so each half of the rule names its device */
+  const pre = (side) => single ? `${who(st, side)}: ` : "";
+  const outTxt = pre("me") + (r.out ? `${r.out} sent` : "nothing sent");
+  const lostCls = r.lost ? " lost" : "";
+  const head = r.last ? "Last agreed" : "Agreed";
+  return `<div class="rule${lostCls}" data-id="${r.id}"><button type="button" data-act="rule" data-id="${r.id}" aria-expanded="${st.open.has(r.id)}">
+      <span><span class="when">${head} ${r.when}</span><span class="what">${outTxt}</span></span>
+      <span><span class="when">${r.lost ? "1 of yours removed" : r.sentence ? "Came in" : " "}</span><span class="what">${pre("them")}${r.inn}</span></span></button>
+    ${st.open.has(r.id) ? syncMore(st, r) : ""}</div>`;
+}
+function columnsKept(st, r, mirror) {
+  return `<div class="rule${mirror ? " mirror" : ""}" data-id="kept" style="background:var(--manila);color:var(--manilaInk)"${mirror ? ' aria-hidden="true"' : ""}><button type="button" ${mirror ? 'tabindex="-1"' : 'data-act="rule" data-id="kept"'} aria-expanded="${st.open.has("kept")}" style="grid-template-columns:1fr">
+      <span><span class="when" style="color:var(--manilaInk)">Mended on open ${r.at}</span><span class="what" style="color:var(--manilaInk)">1 entry could not be read</span></span></button>
+    ${st.open.has("kept") ? `<div class="more" style="background:var(--manila)">${keptBlock(st)}</div>` : ""}</div>`;
+}
+function columnsList(st, rows, mode) {
+  /* mode: "both" = two columns in one page; "single" = one list (AX5); "me"/"them" = one side per page (open Duo) */
+  let h = "", day = "";
+  for (const r of rows) {
+    if (r.day !== day) { day = r.day; h += `<div class="day micro" style="grid-column:1 / -1">${day}</div>`; }
+    if (r.k === "sync") { h += mode === "me" || mode === "them" ? pageRule(st, r, mode) : columnsRule(st, r, mode === "single"); continue; }
+    if (r.k === "kept") { h += columnsKept(st, r, mode === "them"); continue; }
+    if (r.k === "pendmore") {
+      const t = `<div class="entry pending" style="cursor:default"><span class="tagline amber">${r.n} more only on this phone since Nov 16</span></div>`;
+      h += mode === "them" ? `<div class="cell empty" style="grid-column:1/-1"></div>` : mode === "single" || mode === "me" ? `<div class="cell" style="grid-column:1/-1">${t}</div>` : `<div class="cell">${t}</div><div class="cell empty"></div>`;
+      continue;
+    }
+    const me = r.side === "me";
+    const det = st.open.has(r.id) ? rowDetail(st, r) : "";
+    if (mode === "single") { h += `<div class="cell">${columnsEntry(st, r, true)}${det}</div>`; continue; }
+    if (mode === "me" || mode === "them") {
+      const mine = (mode === "me") === me;
+      /* the facing page holds a hidden copy of the row, so an open row keeps both pages level */
+      h += mine ? `<div class="cell" style="grid-column:1/-1">${columnsEntry(st, r, false)}${det}</div>`
+        : `<div class="cell empty" style="grid-column:1/-1" aria-hidden="true"><div class="mirror">${columnsEntry(st, r, false).replace('data-act="row"', 'tabindex="-1"')}${det}</div></div>`;
+      continue;
+    }
+    const cell = `<div class="cell">${columnsEntry(st, r, false)}</div>`;
+    h += me ? `${cell}<div class="cell empty"></div>` : `<div class="cell empty"></div>${cell}`;
+    if (det) h += `<div style="grid-column:1 / -1;border-bottom:1px solid var(--line)">${det}</div>`;
+  }
+  return h;
+}
+/* on the open Duo each page holds one side of the rule, at the same height */
+function pageRule(st, r, mode) {
+  const me = mode === "me";
+  const head = r.last ? "Last agreed" : "Agreed";
+  const top = me ? `<span class="when">${head} ${r.when}</span><span class="what">${r.out ? `${r.out} sent` : "nothing sent"}</span>`
+    : `<span class="when">${r.lost ? "1 of yours removed" : r.sentence ? "Came in " + r.at : " "}</span><span class="what">${r.inn}</span>`;
+  /* the merge reads on the right page; the left page holds a hidden copy of it, under a short pointer, so both stay level */
+  const more = !st.open.has(r.id) ? "" : me
+    ? `<div style="position:relative"><div class="mirror" aria-hidden="true">${syncMore(st, r).replace(/data-act="[^"]*"/g, 'tabindex="-1"')}</div>
+        <p class="cochin" style="position:absolute;top:12px;left:16px;right:16px;margin:0;color:var(--inkSoft);font-size:calc(13.5px * var(--f))">Agreed at <span class="num">${r.at}</span>. The merge reads on the right page.</p></div>`
+    : syncMore(st, r);
+  return `<div class="rule${r.lost ? " lost" : ""}" data-id="${r.id}"><button type="button" data-act="rule" data-id="${r.id}" aria-expanded="${st.open.has(r.id)}" style="grid-template-columns:1fr"><span>${top}</span></button>${more}</div>`;
+}
+function columnsFeed(st) {
+  const rows = rowsOf(st);
+  if (st.dev === "open") {
+    const hd = (side) => `<div class="colhead" style="grid-template-columns:1fr"><div class="micro" style="color:${side === "me" ? "var(--accent)" : "var(--green)"}">${who(st, side)}</div></div>`;
+    const left = `${navBar("Ledger", "Recent", "back-ledger")}${slot(st)}<div class="scroll" data-sync="1">${hd("me")}<div class="cols">${columnsList(st, rows, "me")}</div></div>`;
+    const right = `<div class="navbar"><span></span><span class="ttl"></span><span></span></div>
+      <div class="slot" aria-hidden="true"></div>
+      <div class="scroll" data-sync="1">${hd("them")}<div class="cols">${columnsList(st, rows, "them")}</div></div>`;
+    return `<div class="page l tag-new" data-tag="New: this phone's page">${left}</div><div class="page r tag-new" data-tag="New: the other device's page">${right}</div>${tabBar(st)}`;
+  }
+  const single = st.ax5;
+  const head = single ? "" : `<div class="colhead"><div class="micro" style="color:var(--accent)">${who(st, "me")}</div><div class="micro" style="color:var(--green)">${who(st, "them")}</div></div>`;
+  return `<div class="page">${navBar("Ledger", "Recent", "back-ledger")}${slot(st)}<div class="scroll tag-new" data-tag="New: facing columns">${head}<div class="cols${single ? " single" : ""}">${columnsList(st, rows, single ? "single" : "both")}</div></div>${tabBar(st)}</div>`;
+}
+
+/* ---------- concept: Sync receipts ---------- */
+function receiptsOf(st) {
+  const rows = rowsOf(st);
+  const out = [];
+  let cur = null;
+  for (const r of rows) {
+    if (r.k === "sync") { cur = { ...r, items: [] }; out.push(cur); continue; }
+    if (r.k === "kept") { out.push({ k: "kept", id: "kept", day: r.day, at: r.at, items: [] }); cur = null; continue; }
+    if (r.k === "pend" || r.k === "pendmore") {
+      let p = out.find((x) => x.k === "pend");
+      if (!p) { p = { k: "pend", id: "pend", day: r.day, at: "09:40", items: [], more: 0 }; out.push(p); }
+      if (r.k === "pendmore") p.more = r.n; else p.items.push(r);
+      continue;
+    }
+    if (cur) cur.items.push(r);
+  }
+  return out;
+}
+function receiptCard(st, rc) {
+  const cur = st.sel === rc.id && st.dev === "open";
+  if (rc.k === "kept") return `<button type="button" class="receipt kept" data-act="receipt" data-id="kept" aria-current="${cur}">
+      <span class="rh"><span class="micro" style="color:var(--manilaInk)">Mended on open</span><span class="micro num" style="color:var(--manilaInk)">${rc.at}</span></span>
+      <span class="rs">${KEPT_LINE}</span><span class="rf" style="color:var(--manilaInk)"><span>Share the kept copy</span><span>›</span></span></button>`;
+  if (rc.k === "pend") return `<button type="button" class="receipt mine tag-new" data-tag="New: not sent yet" data-act="receipt" data-id="pend" aria-current="${cur}" style="border-color:var(--amber)">
+      <span class="rh"><span class="tagline amber">Not sent yet</span><span class="micro num">since Nov 16</span></span>
+      <span class="rs">${rc.items.length + rc.more} changes are only on this phone.</span>
+      ${rc.items.slice(0, 3).map((i) => `<span class="rl"><span>${esc(i.subj)}</span><span class="num">${esc(i.label.toUpperCase())}</span></span>`).join("")}
+      <span class="rf"><span>All ${rc.items.length + rc.more}</span><span>›</span></span></button>`;
+  const mine = !rc.sentence;
+  const from = mine ? `Sent from ${who(st, "me").toLowerCase().replace("this phone", "this phone")}` : `From ${who(st, "them") === "Other device" ? "the other device" : who(st, "them")}`;
+  const sentence = mine ? `Sent ${rc.out} change${rc.out === 1 ? "" : "s"}. The server agreed, and the other device had nothing new.` : rc.sentence;
+  const items = rc.items.slice(0, 3).map((i) => {
+    const lost = i.lostRow && !st.sent.again;
+    return `<span class="rl"><span style="${lost ? "text-decoration:line-through;text-decoration-color:var(--red)" : ""}">${esc(i.subj)}${i.side !== (mine ? "me" : "them") ? ` <span class="side ${i.side}">${who(st, i.side)}</span>` : ""}</span><span class="num">${esc(i.label.toUpperCase())}</span></span>`;
+  }).join("");
+  const n = rc.items.length + (rc.unnamed || 0);
+  const tag = rc.lost ? '<span class="tagline red">1 of yours removed</span>' : `<span class="micro">${from}</span>`;
+  return `<button type="button" class="receipt${mine ? " mine" : ""}${rc.lost ? " lost" : ""}" data-act="receipt" data-id="${rc.id}" aria-current="${cur}">
+      <span class="rh">${tag}<span class="micro num">${rc.when}</span></span>
+      <span class="rs">${esc(sentence)}</span>${items}
+      <span class="rf"><span>${n > 3 ? `All ${n} changes` : "Read the receipt"}</span><span>›</span></span></button>`;
+}
+function receiptList(st) {
+  const rcs = receiptsOf(st);
+  let h = "", day = "";
+  for (const rc of rcs) {
+    if (rc.day !== day) { day = rc.day; h += `<div class="micro" style="padding-top:4px">${day}</div>`; }
+    h += receiptCard(st, rc);
+  }
+  return `<div class="rlist tag-new" data-tag="New: sync receipts">${h}</div>`;
+}
+function receiptDetail(st, id) {
+  const rc = receiptsOf(st).find((x) => x.id === id);
+  if (!rc) return `<div class="empty-page">Choose a receipt.</div>`;
+  if (rc.k === "kept") return `<div class="pad" style="padding-top:12px"><span class="micro">Mended on open, ${rc.at}</span><div class="more" style="border-radius:8px;border:1px solid var(--gold);background:var(--manila)">${keptBlock(st)}</div></div>`;
+  const rows = rc.items.map((i) => {
+    const lost = i.lostRow && !st.sent.again;
+    const undo = st.undone.has(i.id) ?`<span class="undone">UNDONE<br>14:44</span>` : `<button type="button" class="undo" data-act="undo" data-id="${i.id}">UNDO</button>`;
+    return `<div class="drow"><span class="t"><span class="micro">${esc(i.label)} · <span class="num">${i.at}</span> · <span class="side ${i.side}">${who(st, i.side)}</span></span>
+      <b style="${lost ? "text-decoration:line-through;text-decoration-color:var(--red)" : ""}">${esc(i.subj)}</b><small>${esc(i.sell)}${i.fig ? ` · <span class="num">${i.fig}</span>` : ""}</small></span>${undo}</div>`;
+  }).join("");
+  const more = rc.more ? `<div class="remain">${rc.more} more changes are only on this phone since Nov 16.</div>` : "";
+  if (rc.k === "pend") return `<div class="pad" style="padding-top:12px"><span class="tagline amber">Not sent yet</span>
+    <p class="cochin" style="margin:0;font-size:calc(17px * var(--b))">${rc.items.length + rc.more} changes are only on this phone. They go out on the next sync the server answers.</p>
+    <div class="dsec">${rows}</div>${more}</div>`;
+  const mine = !rc.sentence;
+  const counts = rc.stats ? `<dl class="counts">${rc.stats.map(([a, b]) => `<dt>${a}</dt><dd>${b}</dd>`).join("")}</dl>` : "";
+  const rem = rc.unnamed ? `<div class="remain tag-new" data-tag="New: unnamed remainder">${rc.unnamed} more check-ins came in that Recent has no row for. Recent keeps 14 days and 200 rows, and an older build writes none. The counts above are the server's, and they are whole.</div>` : "";
+  return `<div class="pad" style="padding-top:12px"><div style="display:flex;justify-content:space-between;gap:8px;flex-wrap:wrap"><span class="micro">${mine ? "Sent from this phone" : "From the other device"}</span><span class="micro num">Agreed ${rc.when}</span></div>
+    <p class="cochin" style="margin:0;font-size:calc(17px * var(--b));line-height:1.35">${esc(mine ? `Sent ${rc.out} changes. The server agreed, and the other device had nothing new.` : rc.sentence)}</p>
+    ${counts}${rc.lost ? lostBlock(st) : ""}<div class="dsec"><span class="micro">Named in Recent</span>${rows}</div>${rem}</div>`;
+}
+function receiptsFeed(st) {
+  if (st.dev === "open") {
+    const left = `${navBar("Ledger", "Recent", "back-ledger")}${slot(st)}<div class="scroll">${receiptList(st)}</div>`;
+    const right = `<div style="min-height:44px"></div><div class="scroll">${receiptDetail(st, st.sel)}</div>`;
+    return `<div class="page l">${left}</div><div class="page r tag-new" data-tag="New: the receipt page">${right}</div>${tabBar(st)}`;
+  }
+  return `<div class="page">${navBar("Ledger", "Recent", "back-ledger")}${slot(st)}<div class="scroll">${receiptList(st)}</div>${tabBar(st)}</div>`;
+}
+function receiptScreen(st) {
+  const rc = receiptsOf(st).find((x) => x.id === st.sel);
+  const title = rc && rc.k === "kept" ? "Kept copy" : rc && rc.k === "pend" ? "Not sent" : "Receipt";
+  return `<div class="page">${navBar("Recent", title, "back-feed")}<div class="scroll">${receiptDetail(st, st.sel)}</div>${tabBar(st)}</div>`;
+}
+
+/* ---------- share sheet ---------- */
+function shareSheet(st) {
+  if (!st.sheet) return "";
+  return `<div class="scrim"><div class="sheet" role="dialog" aria-label="Share"><div class="sh"><span class="doc"></span><span><b>Kept copy of the ledger</b><small>As this phone found it, Nov 19, 8:02 AM</small></span>
+    <button type="button" class="cls" data-act="sheet-close" aria-label="Close">✕</button></div>
+    <div class="grp"><button type="button" data-act="sheet-close">AirDrop</button><button type="button" data-act="sheet-close">Save to Files</button><button type="button" data-act="sheet-close">Mail</button></div></div></div>`;
+}
+
+/* ---------- render and act ---------- */
+function render(el, st) {
+  let h = statusBar();
+  if (st.dev === "open") h += '<div class="fold"><span>FOLD</span></div>';
+  if (st.screen === "packages") h += st.tab === "packages" ? packagesScreen(st) : placeholderScreen(st, st.tab[0].toUpperCase() + st.tab.slice(1));
+  else if (st.screen === "ledger") h += ledgerScreen(st);
+  else if (st.screen === "history") h += historyScreen(st);
+  else if (st.screen === "detail") h += receiptScreen(st);
+  else h += st.c === "columns" ? columnsFeed(st) : receiptsFeed(st);
+  h += shareSheet(st);
+  el.innerHTML = h;
+  if (st.dev === "open" && st.screen === "feed" && st.c === "columns") linkScroll(el);
+  if (st.scrollTo) {
+    /* a link into Recent lands on its row: the feed opens scrolled there, it does not scroll under the finger later */
+    const scale = el.getBoundingClientRect().width / el.offsetWidth || 1;
+    el.querySelectorAll(".scroll").forEach((sc) => {
+      const t = sc.querySelector(`[data-id="${st.scrollTo}"]`);
+      if (t) sc.scrollTop += (t.getBoundingClientRect().top - sc.getBoundingClientRect().top) / scale - 36;
+    });
+    st.scrollTo = null;
+  }
+}
+/* the two pages of Facing columns scroll together, so each rule stays level across the fold */
+function linkScroll(el) {
+  const panes = el.querySelectorAll('[data-sync="1"]');
+  if (panes.length !== 2) return;
+  let busy = false;
+  panes.forEach((p, i) => p.addEventListener("scroll", () => {
+    if (busy) return; busy = true; panes[1 - i].scrollTop = p.scrollTop; requestAnimationFrame(() => { busy = false; });
+  }));
+  /* level the blank cell under an open row on the facing page */
+  el.querySelectorAll(".page.l .cell, .page.r .cell").forEach(() => {});
+}
+function act(el, st, a, id) {
+  switch (a) {
+    case "tab": st.tab = id; st.screen = id === "ledger" ? "ledger" : "packages"; if (id === "ledger") st.badgeRead = st.badgeRead || false; break;
+    case "row": case "rule": st.open.has(id) ? st.open.delete(id) : st.open.add(id); break;
+    case "receipt":
+      st.sel = id;
+      if (st.dev !== "open") st.screen = "detail";
+      break;
+    case "undo": st.undone.add(id); break;
+    case "again": st.sent.again = true; break;
+    case "history": st.screen = "history"; st.ask = false; break;
+    case "restore": if (st.ask) { st.ask = false; st.restored = true; } else st.ask = true; break;
+    case "ask-cancel": st.ask = false; break;
+    case "back-feed": st.screen = "feed"; if (st.dev !== "open" && st.c === "receipts") st.sel = st.sel; break;
+    case "back-ledger": st.screen = "ledger"; st.tab = "ledger"; break;
+    case "open-feed": st.screen = "feed"; st.tab = "ledger"; st.badgeRead = true; if (st.s === "stale" && st.c === "receipts") st.sel = "pend"; break;
+    case "sync-toggle": st.syncOpen = !st.syncOpen; break;
+    case "advisory": st.screen = "ledger"; st.tab = "ledger"; st.syncOpen = true; break;
+    case "kept-line":
+      st.screen = st.c === "receipts" && st.dev !== "open" ? "detail" : "feed"; st.tab = "ledger"; st.sel = "kept"; st.open.add("kept"); st.scrollTo = "kept"; break;
+    case "notice":
+      st.tab = "ledger"; st.sel = "s1432"; st.open.add("s1432");
+      st.screen = st.c === "receipts" && st.dev !== "open" ? "detail" : "feed"; break;
+    case "dismiss": st.dismissed = true; break;
+    case "show-new": st.shown = true; break;
+    case "share": st.sheet = true; break;
+    case "sheet-close": st.sheet = false; break;
+    default: return;
+  }
+  render(el, st);
+}
+const frames = [];
+function mount(el) {
+  const st = startState(el);
+  frames.push({ el, st });
+  el.addEventListener("click", (e) => {
+    const t = e.target.closest("[data-act]");
+    if (!t || !el.contains(t)) return;
+    const f = frames.find((x) => x.el === el);
+    act(el, f.st, t.dataset.act, t.dataset.v || t.dataset.id);
+  });
+  render(el, st);
+}
+document.querySelectorAll(".dev").forEach(mount);
+
+/* ---------- fit each frame to the page width, with no sideways scroll ---------- */
+function fit() {
+  document.querySelectorAll(".fit").forEach((w) => {
+    const d = w.firstElementChild;
+    const avail = w.parentElement.parentElement.clientWidth;
+    const s = Math.min(1, avail / d.offsetWidth);
+    d.style.transform = s < 1 ? `scale(${s})` : "";
+    w.style.width = d.offsetWidth * s + "px";
+    w.style.height = d.offsetHeight * s + "px";
+  });
+}
+window.addEventListener("resize", fit);
+
+/* ---------- deep links: #s=<state>&c=<concept>&z=<size>; culls hide an option's figures ---------- */
+const hidden = new Set();
+function route() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  const s = p.get("s") || "", c = p.get("c") || "", z = p.get("z") || "";
+  document.querySelectorAll("figure").forEach((f) => {
+    const okS = !s || f.dataset.s === s;
+    const okC = !c || !f.dataset.c || f.dataset.c === c;
+    const okH = !hidden.has(f.dataset.opt) && !hidden.has(f.dataset.c);
+    f.hidden = !(okS && okC && okH);
+    f.querySelectorAll(".shell").forEach((sh) => {
+      const dz = sh.querySelector(".dev").dataset.z;
+      sh.hidden = !!z && dz !== z && sh.parentElement.querySelectorAll(".dev").length > 1 && f.querySelector(`.dev[data-z="${z}"]`) != null;
+    });
+  });
+  document.querySelectorAll("nav a").forEach((a) => {
+    const on = (a.dataset.s !== undefined && a.dataset.s === s) || (a.dataset.c !== undefined && a.dataset.c === c) || (a.dataset.z !== undefined && a.dataset.z === z);
+    a.setAttribute("aria-current", String(on));
+  });
+  fit();
+}
+document.querySelectorAll("nav a").forEach((a) => a.addEventListener("click", (e) => {
+  e.preventDefault();
+  const p = new URLSearchParams(location.hash.slice(1));
+  for (const k of ["s", "c", "z"]) if (a.dataset[k] !== undefined) { if (a.dataset[k]) p.set(k, a.dataset[k]); else p.delete(k); }
+  location.hash = p.toString();
+}));
+document.querySelectorAll("[data-hide]").forEach((b) => b.addEventListener("click", () => {
+  const k = b.dataset.hide;
+  hidden.has(k) ? hidden.delete(k) : hidden.add(k);
+  b.setAttribute("aria-pressed", String(hidden.has(k)));
+  route();
+}));
+document.getElementById("tagsBtn").addEventListener("click", (e) => {
+  const on = document.body.classList.toggle("tags");
+  e.currentTarget.setAttribute("aria-pressed", String(on));
+});
+document.getElementById("resetBtn").addEventListener("click", () => {
+  frames.forEach((f) => { f.st = startState(f.el); render(f.el, f.st); });
+});
+document.body.classList.add("tags");
+window.addEventListener("hashchange", route);
+route();
+</script>
+</body>
+</html>

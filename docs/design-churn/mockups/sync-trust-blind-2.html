@@ -3,822 +3,1007 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
-<title>Sync Trust Mockup</title>
+<title>Sync trust mockup</title>
 <style>
-/* Tokens by role. Spacing on the 4 px step, radius 8 px (house tokens). Colours are this designer's own. */
+/* Tokens. Spacing on the house 4 px step; radius 8 px (house tokens.md). Colours are this
+   designer's own, by role; no repo or product value. Type sizes are iOS Dynamic Type text
+   styles at the default size (Large), from the HIG typography page; .ax5 swaps in the AX5 row. */
 :root {
   --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
-  --space-6: 24px; --space-7: 28px; --space-8: 32px; --space-10: 40px; --space-11: 44px; --space-12: 48px; --space-13: 52px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px; --space-12: 48px;
   --radius: 8px;
-  --inset-top: var(--space-10);
-  --inset-bottom: var(--space-6);
+  --large: 34px; --large-lh: 41px;
+  --title2: 22px; --title2-lh: 28px;
+  --title3: 20px; --title3-lh: 25px;
+  --headline: 17px; --headline-lh: 22px;
+  --body: 17px; --body-lh: 22px;
+  --callout: 16px; --callout-lh: 21px;
+  --sub: 15px; --sub-lh: 20px;
+  --foot: 13px; --foot-lh: 18px;
+  --cap1: 12px; --cap1-lh: 16px;
+  --cap2: 11px; --cap2-lh: 13px;
+  --tab-label: 11px;
 
-  --page: #E4E9EC;
-  --surface: #F4F6F7;
+  --page: #DCE0E8;
+  --bezel: #2A2E3B;
+  --surface: #F5F6F8;
   --raised: #FFFFFF;
-  --text: #17222B;
-  --text-2: #4E5C67;
-  --line: #CBD3D9;
-  --accent: #1E4FA3;
-  --on-accent: #FFFFFF;
-  --dev-a: #0A7468;
-  --dev-b: #6145B8;
-  --attn: #7F4A00;
-  --attn-bg: #FCEBCB;
-  --attn-line: #D9A24A;
-  --bad: #A2241A;
-  --bad-bg: #FBE4E1;
-  --hatch: rgba(78, 92, 103, .22);
-  --hinge: #232B31;
-  --new: #B0368A;
-  --bezel: #9AA6AE;
+  --sunk: #E8EBF1;
+  --ink: #171B2E;
+  --ink-soft: #4C5266;
+  --line: #CDD2DD;
+  --carbon: #3446A8;
+  --on-carbon: #FFFFFF;
+  --copy: #FAEDAA;
+  --on-copy: #3A3108;
+  --copy-edge: #D9C467;
+  --merge: #A3204F;
+  --merge-soft: #F7DEE7;
+  --stale: #6A6F80;
+  --hatch: rgba(106, 111, 128, 0.28);
+  --fail: #B3261E;
+  --fail-soft: #FBE3E1;
+  --glass: rgba(255, 255, 255, 0.78);
   color-scheme: light;
 }
 @media (prefers-color-scheme: dark) {
   :root:not([data-theme="light"]) {
-    --page: #0B1013; --surface: #12191E; --raised: #1A242B; --text: #E6EDF1; --text-2: #9AAAB5;
-    --line: #2D3B45; --accent: #86AEF5; --on-accent: #0B1A33; --dev-a: #4FC7B6; --dev-b: #AD9AF5;
-    --attn: #F3BE6A; --attn-bg: #34260F; --attn-line: #8A6420; --bad: #F59C91; --bad-bg: #3A1714;
-    --hatch: rgba(154, 170, 181, .22); --hinge: #000000; --new: #F07CCB; --bezel: #3A4852;
-    color-scheme: dark;
+    --page: #05060A; --bezel: #3A3F50; --surface: #101320; --raised: #1A1E2E; --sunk: #0B0D16;
+    --ink: #E7E9F2; --ink-soft: #A7ADC0; --line: #2D3348; --carbon: #9AA8FF; --on-carbon: #0E1230;
+    --copy: #3B3414; --on-copy: #F4E7A6; --copy-edge: #6E6127; --merge: #FF8DB2; --merge-soft: #3A1826;
+    --stale: #8E94A8; --hatch: rgba(142, 148, 168, 0.30); --fail: #FF8A80; --fail-soft: #3A1715;
+    --glass: rgba(26, 30, 46, 0.82); color-scheme: dark;
   }
 }
 :root[data-theme="dark"] {
-  --page: #0B1013; --surface: #12191E; --raised: #1A242B; --text: #E6EDF1; --text-2: #9AAAB5;
-  --line: #2D3B45; --accent: #86AEF5; --on-accent: #0B1A33; --dev-a: #4FC7B6; --dev-b: #AD9AF5;
-  --attn: #F3BE6A; --attn-bg: #34260F; --attn-line: #8A6420; --bad: #F59C91; --bad-bg: #3A1714;
-  --hatch: rgba(154, 170, 181, .22); --hinge: #000000; --new: #F07CCB; --bezel: #3A4852;
-  color-scheme: dark;
+  --page: #05060A; --bezel: #3A3F50; --surface: #101320; --raised: #1A1E2E; --sunk: #0B0D16;
+  --ink: #E7E9F2; --ink-soft: #A7ADC0; --line: #2D3348; --carbon: #9AA8FF; --on-carbon: #0E1230;
+  --copy: #3B3414; --on-copy: #F4E7A6; --copy-edge: #6E6127; --merge: #FF8DB2; --merge-soft: #3A1826;
+  --stale: #8E94A8; --hatch: rgba(142, 148, 168, 0.30); --fail: #FF8A80; --fail-soft: #3A1715;
+  --glass: rgba(26, 30, 46, 0.82); color-scheme: dark;
+}
+.ax5 {
+  --large: 60px; --large-lh: 70px;
+  --title2: 56px; --title2-lh: 66px;
+  --title3: 55px; --title3-lh: 65px;
+  --headline: 53px; --headline-lh: 62px;
+  --body: 53px; --body-lh: 62px;
+  --callout: 51px; --callout-lh: 60px;
+  --sub: 49px; --sub-lh: 58px;
+  --foot: 44px; --foot-lh: 52px;
+  --cap1: 43px; --cap1-lh: 51px;
+  --cap2: 40px; --cap2-lh: 48px;
 }
 
 * { box-sizing: border-box; }
 html, body { margin: 0; }
 body {
-  background: var(--page); color: var(--text);
+  background: var(--page); color: var(--ink);
   font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
-  font-size: 1rem; line-height: 1.4;
+  font-size: var(--body); line-height: var(--body-lh);
+  -webkit-font-smoothing: antialiased;
 }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
-:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
-
-/* ---------- Page shell (the mockup page, not the app) ---------- */
-.sample {
-  padding: var(--space-2) var(--space-4);
-  background: var(--attn-bg); color: var(--attn); border-bottom: 1px solid var(--attn-line); font-weight: 600;
-}
-.shell { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-6) var(--space-4) var(--space-12); max-inline-size: 100%; }
-.intro { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 44rem; }
-.intro h1 { margin: 0; font-size: 1.75rem; line-height: 1.2; }
-.intro p { margin: 0; color: var(--text-2); }
-.controls { display: flex; flex-direction: column; gap: var(--space-3); }
-.ctl-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
-.ctl-row > span { color: var(--text-2); min-inline-size: 4.5rem; }
-.chip {
-  min-block-size: 44px; padding: 0 var(--space-4); border-radius: var(--radius);
-  border: 1px solid var(--line); background: var(--raised);
-}
-.chip[aria-pressed="true"] { background: var(--text); color: var(--page); border-color: var(--text); }
-.concept { display: flex; flex-direction: column; gap: var(--space-4); }
-.concept[hidden] { display: none; }
-.concept-head { display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: var(--space-3); max-inline-size: 72rem; }
-.concept-head h2 { margin: 0; font-size: 1.5rem; }
-.concept-head p { margin: 0; color: var(--text-2); max-inline-size: 44rem; }
-.concept-head .stack { display: flex; flex-direction: column; gap: var(--space-1); }
-.frames { display: flex; flex-wrap: wrap; align-items: flex-start; gap: var(--space-6); }
-.fwrap { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 100%; }
-.fwrap.fluid { flex: 1 1 466px; min-inline-size: 0; }
-.fscroll { overflow-x: auto; max-inline-size: 100%; padding-block-end: var(--space-1); }
-.fcap { color: var(--text-2); font-size: .9rem; }
-.restore[hidden] { display: none; }
-
-/* ---------- Device frames: 1 CSS px = 1 pt ---------- */
-.dev {
-  position: relative; overflow: hidden; background: var(--surface); color: var(--text);
-  border: 2px solid var(--bezel); border-radius: var(--radius);
-  font-family: -apple-system, system-ui, sans-serif;
-  --fs-lt: 34px; --lh-lt: 41px; --fs-t2: 22px; --lh-t2: 28px; --fs-t3: 20px; --lh-t3: 25px;
-  --fs-hl: 17px; --lh-hl: 22px; --fs-bd: 17px; --lh-bd: 22px; --fs-co: 16px; --lh-co: 21px;
-  --fs-sh: 15px; --lh-sh: 20px; --fs-fn: 13px; --lh-fn: 18px; --fs-c1: 12px; --lh-c1: 16px;
-  font-size: var(--fs-bd); line-height: var(--lh-bd);
-  container-type: inline-size;
-}
-.dev.ax5 {
-  --fs-lt: 60px; --lh-lt: 70px; --fs-t2: 56px; --lh-t2: 66px; --fs-t3: 55px; --lh-t3: 65px;
-  --fs-hl: 53px; --lh-hl: 62px; --fs-bd: 53px; --lh-bd: 62px; --fs-co: 51px; --lh-co: 60px;
-  --fs-sh: 49px; --lh-sh: 58px; --fs-fn: 44px; --lh-fn: 52px; --fs-c1: 43px; --lh-c1: 51px;
-}
-.dev[data-device^="iphone-duo"] { box-sizing: content-box; }
-.dev[data-device="iphone-duo-folded"] { width: 466px; height: 678px; }
-.dev[data-device="iphone-duo-unfolded"] { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
-.dev[data-device="iphone-regular"] { width: 100%; height: 100svh; resize: both; }
-.hinge { background: var(--hinge); }
-
-.scr {
-  position: relative; height: 100%; min-height: 0; display: flex; flex-direction: column; overflow: hidden;
-  padding-top: max(var(--inset-top), env(safe-area-inset-top));
-  padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
-}
-.body { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
-  display: flex; flex-direction: column; gap: var(--space-4);
-  padding: 0 var(--space-4) calc(var(--space-12) + var(--space-12) + max(var(--inset-bottom), env(safe-area-inset-bottom))); }
-.scr.notab .body { padding-bottom: max(var(--inset-bottom), env(safe-area-inset-bottom)); }
-
-.nav { flex: none; display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 var(--space-2); gap: var(--space-2); }
-.navbtn { min-height: 44px; min-width: 44px; padding: 0 var(--space-2); color: var(--accent); font-size: var(--fs-bd); line-height: var(--lh-bd); display: inline-flex; align-items: center; gap: var(--space-1); }
-.navtitle { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; text-align: center; flex: 1; }
-.lt { font-size: var(--fs-lt); line-height: var(--lh-lt); font-weight: 700; margin: 0; overflow-wrap: anywhere; }
-.t2 { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; margin: 0; }
-.t3 { font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 600; margin: 0; }
-.hl { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; }
-.sh { font-size: var(--fs-sh); line-height: var(--lh-sh); color: var(--text-2); }
-.fn { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); }
-.c1 { font-size: var(--fs-c1); line-height: var(--lh-c1); color: var(--text-2); }
+button:focus-visible, a:focus-visible, summary:focus-visible { outline: 3px solid var(--carbon); outline-offset: 2px; border-radius: var(--radius); }
 .num { font-variant-numeric: tabular-nums; }
-.secthead { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); padding: 0 var(--space-4); }
-.stack { display: flex; flex-direction: column; gap: var(--space-2); }
-.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
 
-.btn { min-height: 44px; min-width: 44px; padding: 0 var(--space-4); border-radius: var(--radius);
-  background: var(--accent); color: var(--on-accent); font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600;
-  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2); flex: none; }
-.btn.plain { background: transparent; color: var(--accent); padding: 0 var(--space-2); }
-.btn.quiet { background: var(--surface); color: var(--accent); border: 1px solid var(--line); }
-
-.group { background: var(--raised); border-radius: var(--radius); display: flex; flex-direction: column; }
-.row { display: flex; align-items: center; gap: var(--space-3); min-height: 44px; padding: var(--space-2) var(--space-4); }
-.group > .row + .row { border-top: 1px solid var(--line); }
-.row .grow { flex: 1 1 auto; min-width: 0; }
-.dot { width: 12px; height: 12px; border-radius: 50%; flex: none; }
-.dot.a { background: var(--dev-a); }
-.dot.b { background: var(--dev-b); }
-.ax5 .row { flex-wrap: wrap; }
-
-/* Verdict block: the answer to "did they agree?" */
-.verdict { display: flex; gap: var(--space-3); align-items: flex-start; padding: var(--space-3) var(--space-4);
-  background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); }
-.verdict.attn { background: var(--attn-bg); border-color: var(--attn-line); }
-.verdict.bad { background: var(--bad-bg); border-color: var(--bad); }
-.verdict.old { border-style: dashed; border-color: var(--text-2); }
-.verdict .grow { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
-.verdict .vt { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; }
-.verdict.big .vt { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; }
-.verdict .vs { font-size: var(--fs-sh); line-height: var(--lh-sh); color: var(--text-2); }
-.verdict.attn .vs, .verdict.bad .vs { color: var(--text); }
-.verdict .acts { display: flex; flex-wrap: wrap; gap: var(--space-2); padding-top: var(--space-1); }
-.verdict.tap { width: 100%; }
-.ax5 .verdict:not(.big) .vs { display: none; }
-.glyph { flex: none; width: 28px; height: 28px; }
-.ax5 .glyph { width: 52px; height: 52px; }
-
-.progress { height: 4px; border-radius: 2px; background: var(--line); overflow: hidden; position: relative; }
-.progress::after { content: ""; position: absolute; inset: 0 auto 0 0; width: 40%; background: var(--accent); animation: slide 1.2s ease-in-out infinite; }
-@keyframes slide { from { transform: translateX(-100%); } to { transform: translateX(250%); } }
-@media (prefers-reduced-motion: reduce) { .progress::after { animation: none; width: 100%; opacity: .5; } }
-
-details.srv summary { min-height: 44px; display: flex; align-items: center; color: var(--accent); cursor: pointer; font-size: var(--fs-sh); }
-details.srv pre { margin: 0; font-size: var(--fs-c1); white-space: pre-wrap; color: var(--text-2); }
-
-/* Stale: hatch plus a dashed edge, so forced colours keep the cue. */
-.hatch { background-image: repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 8px); outline: 1px dashed var(--text-2); outline-offset: -1px; }
-
-/* Tab bar: floats above content, navigation only. */
-.tabbar { position: absolute; left: var(--space-4); right: var(--space-4);
-  bottom: max(var(--inset-bottom), env(safe-area-inset-bottom));
-  display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-1); padding: var(--space-1);
-  background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,.12); }
-.tab { min-height: 48px; border-radius: var(--radius); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 12px; line-height: 16px; color: var(--text-2); position: relative; }
-.tab svg { width: 24px; height: 24px; }
-.tab[aria-current="page"] { color: var(--accent); background: var(--surface); font-weight: 600; }
-.tab .badge { position: absolute; top: 6px; right: calc(50% - 20px); width: 8px; height: 8px; border-radius: 50%; background: var(--attn-line); }
-
-/* Items list (Sync line concept) */
-.check { width: 44px; height: 44px; flex: none; display: grid; place-items: center; margin-left: calc(-1 * var(--space-2)); }
-.check svg { width: 24px; height: 24px; }
-.qty { font-variant-numeric: tabular-nums; color: var(--text-2); }
-.rowmark { width: 44px; height: 44px; flex: none; display: grid; place-items: center; color: var(--attn); }
-.rowmark svg { width: 22px; height: 22px; }
-.rowmark.up { color: var(--accent); }
-.ax5 .check svg, .ax5 .rowmark svg { width: 44px; height: 44px; }
-.ax5 .check, .ax5 .rowmark { width: 56px; height: 56px; }
-
-.counts { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
-.count { background: var(--raised); border-radius: var(--radius); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
-.count .n { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; font-variant-numeric: tabular-nums; }
-.count.old .n { color: var(--text-2); }
-.ax5 .counts { grid-template-columns: 1fr; }
-
-/* Merge detail table */
-.mtable { display: flex; flex-direction: column; background: var(--raised); border-radius: var(--radius); }
-.mhead, .mrow { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); padding: var(--space-2) var(--space-4); }
-.mhead { color: var(--text-2); font-size: var(--fs-fn); line-height: var(--lh-fn); border-bottom: 1px solid var(--line); }
-.mrow + .mrow { border-top: 1px solid var(--line); }
-.mrow .mname { grid-column: 1 / -1; font-weight: 600; }
-.cell { display: flex; flex-direction: column; gap: var(--space-1); }
-.cell .v { display: flex; align-items: center; gap: var(--space-2); font-variant-numeric: tabular-nums; }
-.cell.dim .v { text-decoration: line-through; color: var(--text-2); }
-.answer { color: var(--accent); font-size: var(--fs-sh); line-height: var(--lh-sh); }
-.ax5 .mhead, .ax5 .mrow { grid-template-columns: 1fr; }
-
-/* Seam concept */
-.seamhead, .srow { display: grid; grid-template-columns: minmax(0, 1fr) 76px 28px 76px; align-items: center; column-gap: var(--space-1); }
-.seamhead { padding: var(--space-2) var(--space-4); }
-.devhead { display: flex; flex-direction: column; align-items: center; text-align: center; padding: var(--space-1) 0; border-radius: var(--radius); }
-.devhead .dn { font-size: var(--fs-fn); line-height: var(--lh-fn); font-weight: 600; }
-.devhead.a .dn { color: var(--dev-a); }
-.devhead.b .dn { color: var(--dev-b); }
-.srows { background: var(--raised); border-radius: var(--radius); display: flex; flex-direction: column; }
-.srow { min-height: 52px; padding: 0 var(--space-4); width: 100%; }
-.srow + .srow { border-top: 1px solid var(--line); }
-.srow .nm { overflow-wrap: anywhere; }
-.val { display: flex; align-items: center; justify-content: center; gap: var(--space-1); font-variant-numeric: tabular-nums; min-height: 36px; border-radius: var(--radius); }
-.val svg { width: 18px; height: 18px; flex: none; }
-.val.diff { background: var(--attn-bg); color: var(--attn); font-weight: 600; outline: 1px solid var(--attn-line); outline-offset: -1px; }
-.mark { width: 28px; height: 28px; display: block; }
-.ax5 .seamhead, .ax5 .srow { grid-template-columns: 1fr 28px 1fr; row-gap: var(--space-1); padding-top: var(--space-2); padding-bottom: var(--space-2); }
-.ax5 .seamhead .ihead, .ax5 .srow .nm { grid-column: 1 / -1; }
-.ax5 .val svg, .ax5 .toggle svg { width: 40px; height: 40px; }
-.ax5 .mark { width: 28px; height: 52px; }
-.moments { position: absolute; left: var(--space-4); right: var(--space-4); bottom: max(var(--inset-bottom), env(safe-area-inset-bottom));
-  display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2); background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); box-shadow: 0 4px 16px rgba(0,0,0,.12); }
-.seg { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-1); }
-.seg button { min-height: 44px; border-radius: var(--radius); text-align: center; font-variant-numeric: tabular-nums; font-size: var(--fs-sh); }
-.seg button[aria-pressed="true"] { background: var(--text); color: var(--surface); font-weight: 600; }
-.ax5 .moments { position: static; box-shadow: none; }
-.ax5 .seg { grid-auto-flow: row; }
-.toggle { min-height: 44px; display: inline-flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-3); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); font-size: var(--fs-sh); }
-.toggle[aria-pressed="true"] { border-color: var(--accent); color: var(--accent); font-weight: 600; }
-.empty { padding: var(--space-6) var(--space-4); display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); background: var(--raised); border-radius: var(--radius); }
-
-/* Seam, open pose: each page is one device's copy; the hinge is the seam. */
-.pane { position: relative; min-width: 0; height: 100%; }
-.ptop { height: 212px; flex: none; padding: 0 var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
-.phead { height: 52px; flex: none; display: flex; align-items: center; gap: var(--space-2); padding: 0 var(--space-4); }
-.phead .dn { font-weight: 700; }
-.phead.a .dn { color: var(--dev-a); }
-.phead.b .dn { color: var(--dev-b); }
-.prows { flex: 1 1 auto; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding-bottom: var(--inset-bottom); }
-.prow { height: 52px; display: grid; align-items: center; column-gap: var(--space-2); width: 100%; border-top: 1px solid var(--line); }
-.pane.a .prow { grid-template-columns: minmax(0,1fr) 76px 14px; padding-left: var(--space-4); }
-.pane.b .prow { grid-template-columns: 14px 76px minmax(0,1fr); padding-right: var(--space-4); }
-.pane.b .prow .nm { color: var(--text-2); }
-.half { width: 14px; height: 28px; display: block; }
-.mlist { display: flex; flex-direction: column; gap: var(--space-1); }
-.mbtn { min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding: var(--space-1) var(--space-3); border-radius: var(--radius); background: var(--raised); border: 1px solid var(--line); }
-.mbtn[aria-pressed="true"] { border-color: var(--text); border-width: 2px; }
-
-/* Sheet */
-.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.32); z-index: 5; }
-.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: var(--space-12); z-index: 6; background: var(--surface); border-radius: var(--radius) var(--radius) 0 0;
-  display: flex; flex-direction: column; box-shadow: 0 -4px 24px rgba(0,0,0,.2); }
-.sheet .body { padding-bottom: max(var(--inset-bottom), env(safe-area-inset-bottom)); }
-
-/* New: labels, dashed, toggled from the page controls. */
-html.labels [data-new] { outline: 2px dashed var(--new); outline-offset: 2px; position: relative; }
-html.labels [data-new]::after {
-  content: "New: " attr(data-new); position: absolute; top: -10px; right: 4px; z-index: 4;
-  font: 600 11px/16px -apple-system, system-ui, sans-serif; color: var(--new); background: var(--surface);
-  padding: 0 4px; border: 1px dashed var(--new); border-radius: 4px; pointer-events: none; white-space: nowrap;
+/* ---------- Page chrome (not part of the app) ---------- */
+.sample {
+  position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: var(--space-3);
+  align-items: center; justify-content: space-between;
+  padding: var(--space-2) var(--space-4); background: var(--ink); color: var(--surface);
+  font-size: var(--sub); line-height: var(--sub-lh);
 }
-@media (forced-colors: active) { .val.diff, .verdict { border: 2px solid CanvasText; } .chip[aria-pressed="true"], .seg button[aria-pressed="true"] { outline: 3px solid Highlight; } }
+.sample strong { font-weight: 700; }
+.chrome { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4) var(--space-4) 0; max-width: 100%; }
+.chrome h1 { margin: 0; font-size: var(--title2); line-height: var(--title2-lh); }
+.chrome p { margin: 0; max-width: 64ch; color: var(--ink-soft); font-size: var(--sub); line-height: var(--sub-lh); }
+.ctl-row { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.ctl-row .lbl { font-size: var(--foot); color: var(--ink-soft); min-width: 5rem; }
+.chip {
+  display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--space-11);
+  padding: 0 var(--space-3); border-radius: 999px; border: 1px solid var(--line); background: var(--raised);
+  font-size: var(--sub); text-decoration: none; color: var(--ink);
+}
+.chip[aria-current="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.opt { display: inline-flex; align-items: stretch; border-radius: 999px; border: 1px solid var(--line); background: var(--raised); overflow: hidden; }
+.opt a { display: inline-flex; align-items: center; min-height: var(--space-11); padding: 0 var(--space-4); color: var(--ink); text-decoration: none; font-weight: 600; font-size: var(--sub); }
+.opt[aria-current="true"] { border-color: var(--ink); }
+.opt[aria-current="true"] a { background: var(--ink); color: var(--surface); }
+.opt button { min-width: var(--space-11); display: inline-flex; align-items: center; justify-content: center; border-left: 1px solid var(--line); color: var(--ink-soft); font-size: var(--foot); padding: 0 var(--space-3); }
+.poses { display: flex; flex-wrap: wrap; gap: var(--space-8); padding: var(--space-6) var(--space-4) var(--space-12); align-items: flex-start; }
+.poses figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); max-width: 100%; }
+.poses figcaption { font-size: var(--foot); line-height: var(--foot-lh); color: var(--ink-soft); max-width: 466px; }
+.poses figcaption b { color: var(--ink); }
+.scaler { max-width: 100%; overflow-x: auto; }
+
+/* ---------- Device frames ---------- */
+.frame {
+  position: relative; background: var(--surface); color: var(--ink); overflow: hidden;
+  border-radius: var(--space-6); outline: var(--space-2) solid var(--bezel); outline-offset: 0;
+  margin: var(--space-2);
+}
+.frame[data-frame="folded"], .frame[data-frame="ax5"] { width: 466px; height: 678px; }
+.frame[data-frame="phone"] { width: 466px; height: 678px; resize: both; min-width: 320px; min-height: 480px; }
+.frame.open { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; background: var(--bezel); }
+.frame.open > .pg { position: relative; background: var(--surface); overflow: hidden; height: 669px; }
+.hinge { background: var(--bezel); }
+
+.scr { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.status {
+  flex: none; display: flex; align-items: flex-end; justify-content: space-between;
+  padding: max(env(safe-area-inset-top), var(--space-4)) var(--space-6) var(--space-1);
+  min-height: max(env(safe-area-inset-top), var(--space-12));
+  font-size: var(--sub); line-height: var(--sub-lh); font-weight: 600;
+}
+.ax5 .status { font-size: 15px; line-height: 20px; }
+.scroll {
+  flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  padding: 0 var(--space-4) calc(max(env(safe-area-inset-bottom), var(--space-8)) + 96px);
+  display: flex; flex-direction: column; gap: var(--space-4);
+}
+.homebar { position: absolute; left: 50%; bottom: var(--space-2); width: 128px; height: 5px; margin-left: -64px; border-radius: 3px; background: var(--ink); opacity: .85; z-index: 6; }
+
+/* Nav bar: back control and large title. */
+.nav { display: flex; flex-direction: column; gap: var(--space-1); }
+.back { display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--space-11); color: var(--carbon); font-size: var(--body); align-self: flex-start; }
+.back svg { width: 12px; height: 20px; }
+.large { margin: 0; font-size: var(--large); line-height: var(--large-lh); font-weight: 700; letter-spacing: 0; overflow-wrap: anywhere; }
+.t2 { margin: 0; font-size: var(--title2); line-height: var(--title2-lh); font-weight: 700; overflow-wrap: anywhere; }
+.t3 { margin: 0; font-size: var(--title3); line-height: var(--title3-lh); font-weight: 600; }
+.hl { font-size: var(--headline); line-height: var(--headline-lh); font-weight: 600; }
+.sub { font-size: var(--sub); line-height: var(--sub-lh); color: var(--ink-soft); }
+.foot { font-size: var(--foot); line-height: var(--foot-lh); color: var(--ink-soft); }
+.cap { font-size: var(--cap1); line-height: var(--cap1-lh); color: var(--ink-soft); }
+.sect { display: flex; flex-direction: column; gap: var(--space-2); }
+.sect > h3 { margin: 0; font-size: var(--foot); line-height: var(--foot-lh); font-weight: 600; color: var(--ink-soft); padding: 0 var(--space-4); }
+.ico { width: 22px; height: 22px; flex: none; }
+.ax5 .ico { width: 40px; height: 40px; }
+
+/* Buttons */
+.btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  min-height: var(--space-11); min-width: var(--space-11); padding: 0 var(--space-4); border-radius: 999px;
+  font-size: var(--body); line-height: var(--body-lh); font-weight: 600;
+}
+.btn.pri { background: var(--carbon); color: var(--on-carbon); }
+.btn.sec { background: var(--sunk); color: var(--ink); }
+.btn.plain { color: var(--carbon); padding: 0 var(--space-2); }
+.btn.danger { background: var(--sunk); color: var(--fail); }
+.answer { font-size: var(--foot); line-height: var(--foot-lh); color: var(--ink); display: inline-flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.answer .btn { min-height: var(--space-11); }
+.with-answer { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-3); }
+
+/* Grouped list (inset) */
+.group { background: var(--raised); border-radius: var(--radius); display: flex; flex-direction: column; overflow: hidden; }
+.row {
+  display: flex; align-items: center; gap: var(--space-3); min-height: var(--space-11);
+  padding: var(--space-3) var(--space-4); width: 100%; border-top: 1px solid var(--line);
+}
+.group > .row:first-child, .group > :first-child .row { border-top: 0; }
+.row .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.row .trail { display: inline-flex; align-items: center; gap: var(--space-2); color: var(--ink-soft); }
+.chev { width: 8px; height: 14px; flex: none; color: var(--ink-soft); }
+.ax5 .chev { width: 16px; height: 28px; }
+.ax5 .row { flex-wrap: wrap; }
+.ax5 .row .chev { width: 16px; height: 28px; }
+.check {
+  flex: none; width: var(--space-11); height: var(--space-11); display: inline-flex; align-items: center; justify-content: center; border-radius: 50%;
+}
+.check span { width: 24px; height: 24px; border-radius: 50%; border: 2px solid var(--line); display: inline-flex; align-items: center; justify-content: center; }
+.check.on span { background: var(--carbon); border-color: var(--carbon); color: var(--on-carbon); }
+.check svg { width: 14px; height: 14px; }
+.ax5 .check span { width: 40px; height: 40px; }
+.qty { font-size: var(--sub); color: var(--ink-soft); }
+
+/* Stale and unknown counts: a hatch, so the words "as of" show once, on the line above. */
+.hatched { background-image: repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 7px); }
+.faded { color: var(--stale); }
+
+/* Disclosure */
+details.why { font-size: var(--foot); line-height: var(--foot-lh); color: var(--ink-soft); }
+details.why summary { min-height: var(--space-11); display: flex; align-items: center; cursor: pointer; color: var(--carbon); }
+details.why pre { margin: 0; white-space: pre-wrap; font-family: -apple-system, system-ui, sans-serif; font-size: var(--foot); background: var(--sunk); padding: var(--space-3); border-radius: var(--radius); }
+
+/* Progress for a running sync */
+/* A running sync shows the system activity indicator (SwiftUI ProgressView), not a moving bar. */
+.spin { width: 20px; height: 20px; flex: none; border-radius: 50%; border: 2.5px solid var(--line); border-top-color: var(--ink-soft); animation: turn 0.9s linear infinite; }
+.ax5 .spin { width: 40px; height: 40px; border-width: 4px; }
+@keyframes turn { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .spin { animation-duration: 2.4s; } }
+
+/* "New:" marks: dashed. A blind designer cannot see today's screen, so every drawn part is New. */
+.labels-on .new { outline: 1.5px dashed var(--carbon); outline-offset: 3px; }
+.labels-on .new:not(.seambar):not(.tabbar) { position: relative; }
+.labels-on .new::after {
+  content: "New: " attr(data-new); position: absolute; right: 6px; top: -9px; z-index: 4;
+  font-size: 10px; line-height: 14px; padding: 0 4px; border-radius: 4px; background: var(--surface); color: var(--carbon);
+  border: 1px dashed var(--carbon); pointer-events: none; white-space: nowrap;
+}
+.ax5.labels-on .new::after, .labels-on .ax5 .new::after { display: none; }
+
+/* Floating tab bar (HIG tab bars: floats above content at the bottom). */
+.tabbar {
+  position: absolute; left: var(--space-4); right: var(--space-4); bottom: max(env(safe-area-inset-bottom), var(--space-5)); z-index: 5;
+  display: flex; gap: var(--space-1); padding: var(--space-1); border-radius: 999px;
+  background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px);
+  border: 1px solid var(--line);
+}
+.tabbar button {
+  flex: 1; min-height: 52px; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  border-radius: 999px; font-size: var(--tab-label); line-height: 13px; font-weight: 600; color: var(--ink-soft); position: relative;
+}
+.tabbar button[aria-current="page"] { color: var(--carbon); background: var(--sunk); }
+.tabbar .ico { width: 24px; height: 24px; }
+.dot { position: absolute; top: 6px; left: calc(50% + 8px); width: 9px; height: 9px; border-radius: 50%; background: var(--merge); border: 2px solid var(--raised); }
+.dot.fail { background: var(--fail); }
+
+/* ======== Sync line concept ======== */
+.syncline {
+  display: flex; align-items: center; gap: var(--space-3); width: 100%; min-height: 64px;
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius); background: var(--raised);
+  border-left: 4px solid var(--carbon);
+}
+.syncline.k-merge { border-left-color: var(--merge); }
+.syncline.k-stale { border-left-color: var(--stale); }
+.syncline.k-fail { border-left-color: var(--fail); }
+.syncline .main { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.syncline .glyph { color: var(--carbon); }
+.syncline.k-merge .glyph { color: var(--merge); }
+.syncline.k-stale .glyph { color: var(--stale); }
+.syncline.k-fail .glyph { color: var(--fail); }
+.ax5 .syncline { flex-wrap: wrap; }
+.syncwrap { display: flex; flex-direction: column; gap: var(--space-2); }
+.counts { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.ax5 .counts { grid-template-columns: 1fr; }
+.count { background: var(--raised); border-radius: var(--radius); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; }
+.count b { font-size: var(--title2); line-height: var(--title2-lh); font-weight: 700; }
+.count.hatched { background-color: var(--raised); }
+.mark { display: inline-flex; width: 18px; height: 18px; color: var(--merge); }
+.mark.copy { color: var(--on-copy); background: var(--copy); border-radius: 4px; padding: 2px; }
+.ax5 .mark { width: 36px; height: 36px; }
+
+.summary { background: var(--raised); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.summary.k-merge { box-shadow: inset 4px 0 0 var(--merge); }
+.summary.k-fail { box-shadow: inset 4px 0 0 var(--fail); }
+.summary.k-stale { box-shadow: inset 4px 0 0 var(--stale); }
+.pair { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-3); align-items: center; }
+.pair .bracket { grid-row: span 2; width: 14px; align-self: stretch; border: 2px solid var(--carbon); border-left: 0; border-radius: 0 6px 6px 0; }
+.pair .bracket.open { border-style: dashed; border-color: var(--stale); }
+.devline { display: flex; align-items: center; gap: var(--space-2); }
+.ax5 .devline { flex-wrap: wrap; }
+
+/* Sheets: the kept copy on top, the older copy under it like a carbon copy. */
+.sheets { position: relative; display: flex; flex-direction: column; gap: var(--space-3); }
+.sheet { border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); }
+.sheet.kept { background: var(--raised); border: 1px solid var(--line); }
+.sheet.older { background: var(--copy); color: var(--on-copy); border: 1px solid var(--copy-edge); }
+.sheet.older .sub, .sheet.older .foot { color: var(--on-copy); }
+.sheet .val { font-size: var(--title3); line-height: var(--title3-lh); font-weight: 600; overflow-wrap: anywhere; }
+.sheet .who { display: flex; align-items: center; gap: var(--space-2); }
+.removed { text-decoration: line-through; }
+
+/* ======== Seam concept ======== */
+.zip { background: var(--raised); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.teeth { display: grid; grid-template-columns: 1fr 1fr; gap: 0; height: 14px; }
+.teeth span { background-image: repeating-linear-gradient(90deg, var(--carbon) 0 6px, transparent 6px 12px); height: 7px; }
+.teeth span:last-child { background-position: 6px 0; align-self: end; }
+.teeth.k-merge span { background-image: repeating-linear-gradient(90deg, var(--merge) 0 6px, transparent 6px 12px); }
+.teeth.k-open span { background-image: repeating-linear-gradient(90deg, var(--stale) 0 3px, transparent 3px 12px); }
+.teeth.k-open span:last-child { transform: translateY(4px); }
+.cols { position: sticky; top: 0; z-index: 3; display: grid; grid-template-columns: 1fr 24px 1fr; align-items: center; background: var(--surface); padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
+.cols .h { display: flex; align-items: center; gap: var(--space-2); font-weight: 600; font-size: var(--sub); }
+.cols .h:last-child { justify-content: flex-end; text-align: right; }
+.srows { display: flex; flex-direction: column; }
+.srow { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) 0; border-bottom: 1px solid var(--line); }
+.srow > .shead { display: flex; align-items: center; gap: var(--space-2); min-height: var(--space-11); font-weight: 600; width: 100%; }
+.srow > .shead .main { flex: 1; min-width: 0; }
+.cells { display: grid; grid-template-columns: 1fr 24px 1fr; align-items: stretch; min-height: var(--space-11); }
+.cell { padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--raised); display: flex; flex-direction: column; justify-content: center; gap: 2px; }
+.cell.r { text-align: right; align-items: flex-end; }
+.cell.hatched, .count.hatched { background-image: repeating-linear-gradient(135deg, var(--hatch) 0 2px, transparent 2px 7px); }
+.cell .v { font-size: var(--body); line-height: var(--body-lh); }
+.seam { position: relative; display: flex; justify-content: center; }
+.seam::before { content: ""; width: 2px; height: 100%; }
+.seam.k-agree::before { background-image: repeating-linear-gradient(180deg, var(--ink-soft) 0 5px, transparent 5px 9px); }
+.seam.k-merged::before, .seam.k-clash::before { width: 3px; background-image: repeating-linear-gradient(180deg, var(--merge) 0 5px, transparent 5px 9px); }
+.seam.k-clash::after { content: ""; position: absolute; top: 50%; left: 50%; width: 10px; height: 10px; margin: -5px 0 0 -5px; border-radius: 50%; background: var(--merge); }
+.seam.k-differ::before { width: 0; }
+.seam.k-differ::after { content: ""; position: absolute; top: 50%; left: 50%; width: 14px; height: 14px; margin: -7px 0 0 -7px; border: 2px solid var(--ink); border-radius: 3px; transform: rotate(45deg); }
+.seam.k-unknown::before { width: 2px; background-image: repeating-linear-gradient(180deg, var(--stale) 0 2px, transparent 2px 7px); }
+.slip { display: grid; grid-template-columns: 1fr 24px 1fr; }
+.slip .paper { background: var(--copy); color: var(--on-copy); border: 1px solid var(--copy-edge); border-radius: var(--radius); padding: var(--space-2) var(--space-3); font-size: var(--foot); line-height: var(--foot-lh); display: flex; gap: var(--space-2); align-items: flex-start; }
+.slip .paper .ico { width: 16px; height: 16px; margin-top: 1px; }
+.slip .paper.r { grid-column: 3; }
+.slip .paper.l { grid-column: 1; }
+.expand { background: var(--sunk); border-radius: var(--radius); padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-3); }
+.seambar {
+  position: absolute; left: var(--space-4); right: var(--space-4); bottom: max(env(safe-area-inset-bottom), var(--space-5)); z-index: 5;
+  display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; justify-content: space-between; padding: var(--space-2);
+  border-radius: 28px; background: var(--glass); backdrop-filter: blur(14px); -webkit-backdrop-filter: blur(14px); border: 1px solid var(--line);
+}
+.seg { display: inline-flex; background: var(--sunk); border-radius: 999px; padding: 2px; }
+.seg button { min-height: 40px; padding: 0 var(--space-3); border-radius: 999px; font-size: var(--sub); font-weight: 600; color: var(--ink-soft); }
+.seg button[aria-pressed="true"] { background: var(--raised); color: var(--ink); }
+.ax5 .seambar { left: var(--space-2); right: var(--space-2); flex-direction: column; align-items: stretch; border-radius: var(--radius); }
+.ax5 .seambar { position: static; background: var(--raised); backdrop-filter: none; -webkit-backdrop-filter: none; }
+.ax5 .seg { display: flex; flex-direction: column; border-radius: var(--radius); }
+.ax5 .seg button { border-radius: var(--radius); text-align: left; padding: var(--space-2) var(--space-3); line-height: var(--sub-lh); }
+.ax5 .seg button { flex: 1; min-height: var(--space-11); }
+.ax5 .cols { display: none; }
+/* AX5: the two copies stack, phone above laptop, and the seam turns sideways. */
+.ax5 .cells { grid-template-columns: 1fr; grid-template-rows: auto 24px auto; }
+.ax5 .cell.r { text-align: left; align-items: flex-start; }
+.ax5 .seam::before { width: 100%; height: 2px; align-self: center; }
+.ax5 .seam.k-agree::before { background-image: repeating-linear-gradient(90deg, var(--ink-soft) 0 5px, transparent 5px 9px); }
+.ax5 .seam.k-merged::before, .ax5 .seam.k-clash::before { height: 3px; background-image: repeating-linear-gradient(90deg, var(--merge) 0 5px, transparent 5px 9px); }
+.ax5 .seam.k-unknown::before { background-image: repeating-linear-gradient(90deg, var(--stale) 0 2px, transparent 2px 7px); }
+.ax5 .slip { grid-template-columns: 1fr; }
+.ax5 .slip .paper.r, .ax5 .slip .paper.l { grid-column: 1; }
+.devtag { display: inline-flex; align-items: center; gap: var(--space-1); }
+.devtag .ico { width: 16px; height: 16px; }
+.ax5 .devtag .ico { width: 36px; height: 36px; }
+
+/* Open pose of the seam: each page is one device; rows keep one height on both pages so they line up. */
+.opg-head { height: 176px; flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-4); }
+.orow { height: 88px; display: flex; flex-direction: column; justify-content: center; gap: 2px; padding: 0 var(--space-4); border-bottom: 1px solid var(--line); position: relative; }
+.orow.tall { height: 136px; justify-content: flex-start; padding-top: var(--space-2); }
+.orow.xl { height: 248px; justify-content: flex-start; padding-top: var(--space-2); }
+.orow .shead { min-height: var(--space-11); display: flex; align-items: center; font-weight: 600; width: 100%; }
+.orow .edge { position: absolute; top: 12px; bottom: 12px; width: 4px; }
+.pg-l .orow .edge { right: 0; }
+.pg-r .orow .edge { left: 0; }
+.edge.k-agree { background-image: repeating-linear-gradient(180deg, var(--ink-soft) 0 5px, transparent 5px 9px); width: 2px; }
+.edge.k-merged, .edge.k-clash { background-image: repeating-linear-gradient(180deg, var(--merge) 0 5px, transparent 5px 9px); }
+.edge.k-clash { box-shadow: 0 0 0 0 transparent; }
+.edge.k-differ { background: var(--ink); width: 4px; }
+.edge.k-unknown { background-image: repeating-linear-gradient(180deg, var(--stale) 0 2px, transparent 2px 7px); width: 2px; }
+.oscroll { flex: 1; overflow-y: auto; padding-bottom: 120px; }
+.oscroll .slipbox { margin-top: var(--space-2); }
+.ospacer { visibility: hidden; }
+.hidden { display: none !important; }
 </style>
 </head>
 <body>
-<div class="sample" role="note">Sample: every name, figure and time on this page is invented. Nothing here is real data.</div>
-<main class="shell">
-  <header class="intro">
-    <h1>Sync trust</h1>
-    <p>Designer kind: blind. Designer sync-trust-blind-2.</p>
-    <p>The job: "Did my phone and my laptop actually agree?" Two concepts, each with its own structure, its own way to move around and its own first screen. Every button in the frames works. All frames of a concept share one state, so a tap in one frame shows in the others.</p>
-  </header>
+<div class="sample" role="note"><span><strong>Sample.</strong> No figure, name or time on this page is real.</span><span>Designer kind: blind</span></div>
 
-  <section class="controls" aria-label="Mockup controls">
-    <div class="ctl-row" role="group" aria-label="State"><span>State</span><div class="cluster" id="ctl-state"></div></div>
-    <div class="ctl-row" role="group" aria-label="Theme"><span>Theme</span><div class="cluster" id="ctl-theme"></div></div>
-    <div class="ctl-row" role="group" aria-label="Labels"><span>Labels</span><div class="cluster">
-      <button class="chip" data-a="labels" id="ctl-labels" aria-pressed="false">Show New: labels</button>
-      <button class="chip" data-a="reset">Reset taps</button></div></div>
-    <div class="ctl-row restore" id="ctl-restore" hidden><span>Hidden</span><div class="cluster" id="ctl-hidden"></div></div>
-  </section>
+<div class="chrome">
+  <h1>Did my phone and my laptop agree?</h1>
+  <p>Two concepts for one job: tell the person that two devices agree, what a merge changed, where the losing copy went, and when a number is old. Each concept opens on its own first screen. Every state has a deep link.</p>
+  <div class="ctl-row" id="concepts" aria-label="Concepts"></div>
+  <div class="ctl-row" id="states" aria-label="States"></div>
+  <div class="ctl-row" id="themes" aria-label="Theme and marks"></div>
+</div>
 
-  <section class="concept" id="concept-sync-line" aria-labelledby="h-sync-line">
-    <div class="concept-head">
-      <div class="stack">
-        <h2 id="h-sync-line">Sync line</h2>
-        <p>One line under every title answers "do they agree?" in words. Tap it to reach Sync, where each merge lists what changed and keeps the older copy one tap away. Moves: a tab bar with Items, Counts and Sync. First screen: Items.</p>
-      </div>
-      <button class="chip" data-a="hide" data-x="sync-line">Hide this concept</button>
-    </div>
-    <div class="frames" data-concept="sync-line">
-      <figure class="fwrap"><figcaption class="fcap">Duo folded, 466 × 678 pt, default text size</figcaption>
-        <div class="fscroll"><div class="dev" data-device="iphone-duo-folded" data-fk="sync-line-0" role="group" aria-label="Sync line, Duo folded"></div></div></figure>
-      <figure class="fwrap"><figcaption class="fcap">Duo open, 951 × 669 pt; the hinge gap from x 455.5 to 495.5 holds nothing</figcaption>
-        <div class="fscroll"><div class="dev" data-device="iphone-duo-unfolded" data-fk="sync-line-1" role="group" aria-label="Sync line, Duo open"></div></div></figure>
-      <figure class="fwrap fluid"><figcaption class="fcap">Large phone: no size is written, so it is drawn fluid. It fills this column and the screen height; drag its corner to resize.</figcaption>
-        <div class="fscroll"><div class="dev" data-device="iphone-regular" data-fk="sync-line-2" role="group" aria-label="Sync line, large phone"></div></div></figure>
-      <figure class="fwrap"><figcaption class="fcap">Duo folded, largest accessibility text (AX5: body 53 pt, large title 60 pt)</figcaption>
-        <div class="fscroll"><div class="dev ax5" data-device="iphone-duo-folded" data-fk="sync-line-3" role="group" aria-label="Sync line, Duo folded, largest text"></div></div></figure>
-    </div>
-  </section>
-
-  <section class="concept" id="concept-seam" aria-labelledby="h-seam">
-    <div class="concept-head">
-      <div class="stack">
-        <h2 id="h-seam">Seam</h2>
-        <p>Bold: the screen is the two copies side by side, joined by a seam. Each row shows what this phone holds and what the laptop holds; the seam mark between them says whether they agree. Open the Duo and each screen holds one device's copy, with the hinge as the seam. Moves: no tab bar; you move in time, from one sync to the next, and tap a row for its older copy. First screen: the comparison.</p>
-      </div>
-      <button class="chip" data-a="hide" data-x="seam">Hide this concept</button>
-    </div>
-    <div class="frames" data-concept="seam">
-      <figure class="fwrap"><figcaption class="fcap">Duo folded, 466 × 678 pt, default text size</figcaption>
-        <div class="fscroll"><div class="dev" data-device="iphone-duo-folded" data-fk="seam-0" role="group" aria-label="Seam, Duo folded"></div></div></figure>
-      <figure class="fwrap"><figcaption class="fcap">Duo open, 951 × 669 pt; each screen holds one device's copy, and the hinge gap from x 455.5 to 495.5 holds nothing</figcaption>
-        <div class="fscroll"><div class="dev" data-device="iphone-duo-unfolded" data-fk="seam-1" role="group" aria-label="Seam, Duo open"></div></div></figure>
-      <figure class="fwrap fluid"><figcaption class="fcap">Large phone: no size is written, so it is drawn fluid. It fills this column and the screen height; drag its corner to resize.</figcaption>
-        <div class="fscroll"><div class="dev" data-device="iphone-regular" data-fk="seam-2" role="group" aria-label="Seam, large phone"></div></div></figure>
-      <figure class="fwrap"><figcaption class="fcap">Duo folded, largest accessibility text (AX5: body 53 pt, large title 60 pt)</figcaption>
-        <div class="fscroll"><div class="dev ax5" data-device="iphone-duo-folded" data-fk="seam-3" role="group" aria-label="Seam, Duo folded, largest text"></div></div></figure>
-    </div>
-  </section>
+<main class="poses" id="poses">
+  <figure>
+    <figcaption><b>Duo, folded</b>: 466 x 678 pt, one hand.</figcaption>
+    <div class="frame" data-device="iphone-duo-folded" data-frame="folded"></div>
+  </figure>
+  <figure>
+    <figcaption><b>Duo, open</b>: 951 x 669 pt. Hinge gap from x 455.5 to x 495.5; nothing crosses it.</figcaption>
+    <div class="scaler"><div class="frame open" data-device="iphone-duo-unfolded" data-frame="open"><div class="pg pg-l" data-page="left"></div><div class="hinge" aria-hidden="true"></div><div class="pg pg-r" data-page="right"></div></div></div>
+  </figure>
+  <figure>
+    <figcaption><b>Large phone</b>: no size was written, so it is drawn at the folded size. Drag the corner to resize it.</figcaption>
+    <div class="frame" data-device="iphone-large" data-frame="phone"></div>
+  </figure>
+  <figure>
+    <figcaption><b>Duo, folded, largest text (AX5)</b>: 466 x 678 pt.</figcaption>
+    <div class="frame ax5" data-device="iphone-duo-folded-ax5" data-frame="ax5"></div>
+  </figure>
 </main>
 
 <script>
-(() => {
-"use strict";
+(function () {
+  "use strict";
 
-/* ---------- Sample data (invented; household inventory) ---------- */
-const ORDER = ["aa","bulbs","keys","hooks","fuse","tape","bags","plugs","torch","sand","ties","alarm"];
-const NAMES = { aa:"Batteries, AA", bulbs:"Light bulbs", keys:"Spare keys", hooks:"Picture hooks", fuse:"Fuses",
-  tape:"Tape measure", bags:"Bin bags", plugs:"Wall plugs", torch:"Torch", sand:"Sandpaper", ties:"Cable ties", alarm:"Alarm batteries" };
-const BASE = { aa:{q:10,d:false}, bulbs:{q:6,d:true}, keys:{q:2,d:false,n:""}, hooks:{q:20,d:true}, fuse:{q:4,d:true},
-  tape:{q:1,d:true}, bags:{q:40,d:false}, plugs:{q:50,d:true}, torch:{q:1,d:true}, sand:{q:10,d:false}, ties:{q:100,d:true}, alarm:{q:2,d:true} };
-const PHONE_EDITS = { aa:{q:12}, bulbs:{q:5}, keys:{d:true} };
-const LAPTOP_EDITS = { aa:{q:8}, bulbs:{q:3}, keys:{n:"In the blue tin"} };
-const MERGED = { aa:{q:8}, bulbs:{q:3}, keys:{d:true,n:"In the blue tin"} };
-const MERGES = {
-  "0029": { when:"Today, 00:29", title:"Merge at 00:29", rows:[
-    { id:"aa", kept:{v:"8", dev:"b", t:"00:27"}, lost:{v:"12", q:12, dev:"a", t:"00:12"} },
-    { id:"bulbs", kept:{v:"3", dev:"b", t:"00:26"}, lost:{v:"5", q:5, dev:"a", t:"00:18"} },
-    { id:"keys", kept:{v:"Checked, note added", dev:"ab", t:"00:20 and 00:25"}, lost:null } ] },
-  "2140": { when:"Yesterday, 21:40", title:"Merge at 21:40", rows:[
-    { id:"bags", kept:{v:"40", dev:"a", t:"21:38"}, lost:{v:"30", q:30, dev:"b", t:"21:10"} } ] }
-};
-const DEVNAME = { a:"This phone", b:"Laptop", ab:"Both" };
+  /* ---------- Icons ---------- */
+  var I = {
+    chevL: '<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    chev: '<svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    check: '<svg viewBox="0 0 14 14" aria-hidden="true"><path d="m2 7.5 3 3 7-7" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    phone: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="2.5" width="10" height="19" rx="2.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M11 18.5h2" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    laptop: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="4.5" y="5" width="15" height="10.5" rx="1.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M2 19h20" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    agree: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="11" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/><rect x="10" y="5" width="11" height="14" rx="2" fill="currentColor" opacity=".25"/><rect x="10" y="5" width="11" height="14" rx="2" fill="none" stroke="currentColor" stroke-width="1.8"/></svg>',
+    merge: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 3v4c0 3 3 5 7 6m7-10v4c0 3-3 5-7 6v8" fill="none" stroke="currentColor" stroke-width="1.9" stroke-linecap="round"/></svg>',
+    copy: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M6 3h8l5 5v13H6z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M14 3v5h5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg>',
+    clock: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="8.5" fill="none" stroke="currentColor" stroke-width="1.8"/><path d="M12 7.5V12l3 2" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    off: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M3 9.5a14 14 0 0 1 18 0M6.5 13a9 9 0 0 1 11 0M10 16.5a3.5 3.5 0 0 1 4 0M4 4l16 16" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+    warn: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3 2.5 20h19z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/><path d="M12 9.5v5M12 17.2v.3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    sync: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M19.5 9A8 8 0 0 0 5 7.5M4.5 15A8 8 0 0 0 19 16.5M5 3.5v4h4M19 20.5v-4h-4" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    list: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor"/></svg>',
+    unsent: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 19V6m-5 5 5-5 5 5" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    plus: '<svg class="ico" viewBox="0 0 24 24" aria-hidden="true"><path d="M12 5v14M5 12h14" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+  };
 
-/* ---------- State ---------- */
-const STATES = [
-  ["agree","All is well"], ["merged","Just merged"], ["pending","Change waiting"], ["stale","Old numbers"],
-  ["syncing","Syncing"], ["unknown","Can't tell"], ["failed","Failed"]
-];
-const S = {};
-function fresh(s) {
-  Object.assign(S, {
-    s: s || "agree", seen: false, edits: {}, srv: false, timer: null, auto: false, lastSync: "00:31",
-    mergeArrived: !["stale","unknown","failed"].includes(s || "agree"),
-    screenOld: (s || "agree") === "stale",
-    sl: { v: "items" },
-    se: { at: "now", only: false, sheet: null }
-  });
-  if (S.s === "pending") { S.s = "agree"; S.seen = true; S.edits = { aa: { q: 12, sent: false, restore: "0029" } }; }
-}
+  /* ---------- Sample data ---------- */
+  var ITEMS = [
+    { id: "hinge", name: "Brass hinge", qty: 4, done: true },
+    { id: "lamp", name: "Desk lamp bulb", qty: 2, done: false },
+    { id: "bits", name: "Drill bits", qty: 1, done: true },
+    { id: "notebook", name: "Field notebook", qty: 3, done: true },
+    { id: "wire", name: "Picture wire", qty: 1, done: false },
+    { id: "tape", name: "Tape measure", qty: 1, done: false },
+    { id: "cable", name: "USB-C cable, 2 m", qty: 1, done: false, note: "Keep for desk" },
+    { id: "anchors", name: "Wall anchors", qty: 12, done: true },
+    { id: "glue", name: "Wood glue", qty: 1, done: true }
+  ];
+  var MORE = 140;
+  var MERGES = {
+    m939: { when: "Today, 9:39", short: "9:39", changes: [
+      { id: "hinge", kind: "merged", text: "The laptop marked it done." },
+      { id: "lamp", kind: "clash", text: "This phone removed it. The laptop changed the quantity later. The later change was kept.",
+        kept: { who: "laptop", at: "9:20", v: { qty: 2 } }, older: { who: "phone", at: "9:05", v: { removed: true } } },
+      { id: "notebook", kind: "merged", text: "Combined: done from this phone, quantity 3 from the laptop." },
+      { id: "cable", kind: "clash", text: "Both changed the note. The later change, from the laptop, was kept.",
+        kept: { who: "laptop", at: "9:31", v: { note: "Keep for desk" } }, older: { who: "phone", at: "9:12", v: { note: "Return" } } }
+    ] },
+    mtue: { when: "Tuesday, 21:12", short: "Tue 21:12", changes: [
+      { id: "wire", kind: "merged", text: "This phone changed the quantity to 1." }
+    ] },
+    mmon: { when: "Monday, 8:02", short: "Mon 8:02", changes: [
+      { id: "anchors", kind: "merged", text: "The laptop marked it done." },
+      { id: "glue", kind: "merged", text: "This phone marked it done." },
+      { id: "bits", kind: "merged", text: "The laptop marked it done." }
+    ] }
+  };
+  /* Which states the counts are fresh in, and the sentence each state leads with. */
+  var SC = {
+    agree: { fresh: true, name: "Agree" },
+    merged: { fresh: true, name: "Merged with a clash" },
+    stale: { fresh: false, name: "Old numbers" },
+    offline: { fresh: false, name: "No connection" },
+    failed: { fresh: false, name: "Sync failed" },
+    syncing: { fresh: false, name: "Syncing" },
+    empty: { fresh: true, name: "One device only" }
+  };
+  var CONCEPTS = {
+    line: { name: "Sync line", focus: "opt-sync-line" },
+    seam: { name: "Seam", focus: "opt-seam" }
+  };
 
-/* ---------- Copies ---------- */
-function apply(...layers) {
-  const out = {};
-  for (const id of ORDER) out[id] = Object.assign({}, BASE[id]);
-  for (const L of layers) for (const id in L) {
-    const e = L[id]; if (!out[id]) continue;
-    if (e.q !== undefined) out[id].q = e.q;
-    if (e.d !== undefined) out[id].d = e.d;
-    if (e.n !== undefined) out[id].n = e.n;
+  /* ---------- State ---------- */
+  var S = { c: "line", s: "agree", t: "", v: "list", x: "", f: "all", from: "list", used: {}, tog: {}, flash: null, hidden: {}, labels: true, prev: "agree" };
+  var timer = null, flashTimer = null;
+
+  function readHash() {
+    var h = new URLSearchParams(location.hash.slice(1));
+    if (h.get("c") && CONCEPTS[h.get("c")]) S.c = h.get("c");
+    if (h.get("s") && SC[h.get("s")]) S.s = h.get("s");
+    S.t = h.get("t") === "dark" || h.get("t") === "light" ? h.get("t") : "";
+    S.v = h.get("v") || "list";
+    S.x = h.get("x") || "";
+    S.f = h.get("f") === "diff" ? "diff" : "all";
   }
-  return out;
-}
-function editsWhere(f) { const o = {}; for (const id in S.edits) if (f(S.edits[id])) o[id] = S.edits[id]; return o; }
-function pendingCount() { return Object.values(S.edits).filter(e => !e.sent).length; }
-function copies(at) {
-  if (at === "2358") return { a: apply(), b: apply(), bOld: false };
-  if (at === "0028") return { a: apply(PHONE_EDITS), b: apply(LAPTOP_EDITS), bOld: false };
-  if (S.screenOld) return { a: apply(editsWhere(() => true)), b: apply(), bOld: true };
-  if (!S.mergeArrived) return { a: apply(PHONE_EDITS, editsWhere(() => true)), b: apply(), bOld: true };
-  return { a: apply(MERGED, editsWhere(() => true)), b: apply(MERGED, editsWhere(e => e.sent)), bOld: false };
-}
-function counts(c) { let d = 0, u = 0; for (const id of ORDER) { if (c[id].d) d++; u += c[id].q; } return { done: d, open: ORDER.length - d, units: u }; }
-function moments() { return S.mergeArrived ? ["2358","0028","now"] : ["2358","now"]; }
-const MLABEL = { "2358":"23:58", "0028":"00:28", now:"Now" };
-function lastAgreed() { return S.mergeArrived ? S.lastSync : "23:58"; }
-
-/* ---------- Verdict: one answer, used by both concepts ---------- */
-function verdict() {
-  const n = pendingCount();
-  switch (S.s) {
-    case "syncing": return { k:"syncing", cls:"", t:"Comparing with your laptop", sub:"", acts:[["stop","Stop"]], progress:true };
-    case "stopped": return { k:"stopped", cls:"old", t:"Stopped", sub:`Nothing changed. Last agreed at ${lastAgreed()}.`, acts:[["sync","Sync now"]] };
-    case "unknown": return { k:"unknown", cls:"old", t:"Can't tell if they agree", sub:"Your laptop was last heard from at 23:58.", acts:[["sync","Sync now"]] };
-    case "failed": return { k:"failed", cls:"bad", t:"Sync didn't finish", sub:"Your changes stay on this phone. Last agreed at 23:58.", acts:[["sync","Try again"]], srv:true };
-    case "stale": return { k:"stale", cls:"old", t:"Old numbers on screen", sub:"Your laptop changed 3 items at 00:27. This screen shows 23:58.", acts:[["sync","Update now"]] };
+  function hashFor(o) {
+    var p = new URLSearchParams();
+    var m = Object.assign({ c: S.c, s: S.s, t: S.t, v: S.v, x: S.x, f: S.f }, o || {});
+    p.set("c", m.c); p.set("s", m.s);
+    if (m.t) p.set("t", m.t);
+    if (m.v && m.v !== "list") p.set("v", m.v);
+    if (m.x) p.set("x", m.x);
+    if (m.f === "diff") p.set("f", "diff");
+    return "#" + p.toString();
   }
-  if (n) return { k:"pending", cls:"attn", t:`${n} change${n>1?"s":""} waiting to send`, sub:"Your laptop gets it at the next sync.", acts:[["sync","Send now"]] };
-  if (S.s === "merged" && !S.seen) return { k:"merged", cls:"attn", t:"3 items merged at 00:29", sub:"Both devices changed them. 2 older copies are saved.", acts:[["review","Review"]] };
-  return { k:"agree", cls:"", t:"All is well.", sub:`This phone and your laptop agree, checked at ${S.lastSync}.`, acts:[] };
-}
+  function writeHash() { try { history.replaceState(null, "", hashFor()); } catch (e) { /* file: URLs in some browsers */ } }
 
-/* ---------- Icons ---------- */
-const I = {
-  agree: `<svg class="glyph" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 4a10 10 0 0 0 0 20z" fill="var(--dev-a)"/><path d="M14 4a10 10 0 0 1 0 20z" fill="var(--dev-b)"/></svg>`,
-  merged: `<svg class="glyph" viewBox="0 0 28 28" aria-hidden="true" fill="none" stroke="var(--attn)" stroke-width="2.4" stroke-linecap="round"><path d="M8 4v6c0 4 6 4 6 8v6M20 4v6c0 4-6 4-6 8"/><circle cx="8" cy="4" r="1.6" fill="var(--attn)"/><circle cx="20" cy="4" r="1.6" fill="var(--attn)"/></svg>`,
-  pending: `<svg class="glyph" viewBox="0 0 28 28" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M14 22V6M7 13l7-7 7 7"/></svg>`,
-  stale: `<svg class="glyph" viewBox="0 0 28 28" aria-hidden="true"><defs><pattern id="hp" width="5" height="5" patternUnits="userSpaceOnUse" patternTransform="rotate(45)"><rect width="2" height="5" fill="var(--text-2)"/></pattern></defs><rect x="4" y="4" width="20" height="20" rx="4" fill="url(#hp)" stroke="var(--text-2)" stroke-dasharray="3 2" stroke-width="1.5"/></svg>`,
-  unknown: `<svg class="glyph" viewBox="0 0 28 28" aria-hidden="true"><path d="M14 4a10 10 0 0 0 0 20z" fill="var(--dev-a)"/><path d="M14 4a10 10 0 0 1 0 20" fill="none" stroke="var(--text-2)" stroke-width="2" stroke-dasharray="3 3"/></svg>`,
-  stopped: `<svg class="glyph" viewBox="0 0 28 28" aria-hidden="true"><rect x="7" y="7" width="14" height="14" rx="2" fill="var(--text-2)"/></svg>`,
-  failed: `<svg class="glyph" viewBox="0 0 28 28" aria-hidden="true" fill="none" stroke="var(--bad)" stroke-width="2.4" stroke-linecap="round"><path d="M11 4.5A10 10 0 0 0 11 23.5M17 4.5A10 10 0 0 1 17 23.5M10 10l8 8M18 10l-8 8"/></svg>`,
-  syncing: `<svg class="glyph" viewBox="0 0 28 28" aria-hidden="true" fill="none" stroke="var(--accent)" stroke-width="2.4" stroke-linecap="round"><path d="M22 14a8 8 0 1 1-3-6.2M22 5v4h-4"/></svg>`,
-  checkOn: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10" fill="var(--accent)"/><path d="M7.5 12.5l3 3 6-6.5" fill="none" stroke="var(--on-accent)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  checkOff: `<svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9.5" fill="none" stroke="var(--text-2)" stroke-width="1.6"/></svg>`,
-  fork: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M7 3v5c0 3 5 3 5 7v6M17 3v5c0 3-5 3-5 7"/></svg>`,
-  up: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 19V5M6 11l6-6 6 6"/></svg>`,
-  chevL: `<svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2 2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  chevR: `<svg width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="m1 1 6 6-6 6" fill="none" stroke="var(--text-2)" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
-  tItems: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M9 6h11M9 12h11M9 18h11"/><circle cx="4.5" cy="6" r="1.3" fill="currentColor"/><circle cx="4.5" cy="12" r="1.3" fill="currentColor"/><circle cx="4.5" cy="18" r="1.3" fill="currentColor"/></svg>`,
-  tCounts: `<svg viewBox="0 0 24 24" aria-hidden="true" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 20V11M12 20V4M19 20v-6"/></svg>`,
-  tSync: `<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 3a9 9 0 0 0 0 18z" fill="currentColor"/><path d="M12 3a9 9 0 0 1 0 18" fill="none" stroke="currentColor" stroke-width="2"/></svg>`
-};
-function valIcon(d) { return d ? I.checkOn : I.checkOff; }
-/* Seam mark: two halves. Level and joined = agree. Apart = differ. Ring = settled by a merge. Dashed = unknown. */
-function mark(kind, side) {
-  const A = `fill="var(--dev-a)"`, B = `fill="var(--dev-b)"`;
-  const L = (dy, extra = "") => `<path d="M14 ${4+dy}a10 10 0 0 0 0 20z" ${A} ${extra}/>`;
-  const R = (dy, extra = "") => `<path d="M14 ${4+dy}a10 10 0 0 1 0 20z" ${B} ${extra}/>`;
-  const Rdash = `<path d="M14 4a10 10 0 0 1 0 20" fill="none" stroke="var(--text-2)" stroke-width="2" stroke-dasharray="3 3"/>`;
-  let body;
-  if (kind === "diff") body = L(-4) + R(4) + `<path d="M14 0v28" stroke="var(--attn)" stroke-width="2"/>`;
-  else if (kind === "pending") body = L(-4) + R(4) + `<path d="M14 0v28" stroke="var(--accent)" stroke-width="2" stroke-dasharray="2 2"/>`;
-  else if (kind === "unknown") body = L(0) + Rdash;
-  else if (kind === "merged") body = L(0) + R(0) + `<circle cx="14" cy="14" r="12.5" fill="none" stroke="var(--text)" stroke-width="1.5"/>`;
-  else body = L(0) + R(0);
-  if (side === "a") return `<svg class="half" viewBox="0 0 14 28" aria-hidden="true">${body}</svg>`;
-  if (side === "b") return `<svg class="half" viewBox="14 0 14 28" aria-hidden="true">${body}</svg>`;
-  return `<svg class="mark" viewBox="0 0 28 28" aria-hidden="true">${body}</svg>`;
-}
-const MARK_WORD = { same:"agree", diff:"differ", pending:"differ until the next sync", unknown:"laptop copy unknown", merged:"agree after a merge" };
-function markKind(id, c, at) {
-  if (c.bOld) return "unknown";
-  const A = c.a[id], B = c.b[id];
-  const differ = A.q !== B.q || A.d !== B.d || (A.n || "") !== (B.n || "");
-  if (differ) return (at === "now" && S.edits[id] && !S.edits[id].sent) ? "pending" : "diff";
-  if (at === "now" && S.s === "merged" && MERGES["0029"].rows.some(r => r.id === id)) return "merged";
-  return "same";
-}
-function esc(s) { return String(s).replace(/[&<>"]/g, ch => ({ "&":"&amp;", "<":"&lt;", ">":"&gt;", '"':"&quot;" }[ch])); }
-
-/* ---------- Shared pieces ---------- */
-function verdictBlock(opts = {}) {
-  const v = verdict();
-  const big = opts.big ? " big" : "";
-  const acts = v.acts.map(([a, label]) => `<button class="btn" data-a="${a}">${label}</button>`).join("");
-  const prog = v.progress ? `<div class="progress" role="progressbar" aria-label="Comparing"></div>` : "";
-  const sub = v.sub ? `<span class="vs">${esc(v.sub)}</span>` : "";
-  const srv = v.srv ? `<details class="srv" data-a="srv" ${S.srv ? "open" : ""}><summary>What the server said</summary><pre>503 upstream timeout after 30 s
-request 7f3a-sample</pre></details>` : "";
-  return `<div class="verdict ${v.cls}${big}" role="status" data-new="${opts.newLabel || "agreement answer"}">
-    ${I[v.k]}<div class="grow"><span class="vt">${esc(v.t)}</span>${sub}${prog}${acts ? `<div class="acts">${acts}</div>` : ""}${srv}</div></div>`;
-}
-
-/* ================= Concept: Sync line ================= */
-function slItemsBody(withCounts) {
-  const c = copies("now");
-  const cn = counts(c.a);
-  const mergedIds = S.s === "merged" ? new Set(MERGES["0029"].rows.map(r => r.id)) : new Set();
-  const rows = ORDER.map(id => {
-    const it = c.a[id];
-    const e = S.edits[id];
-    let trail = "";
-    if (e && !e.sent) trail = `<span class="rowmark up" role="img" aria-label="Waiting to send">${I.up}</span>`;
-    else if (mergedIds.has(id)) trail = `<button class="rowmark" data-a="push" data-x="merge:0029" aria-label="Changed by the merge at 00:29: ${esc(NAMES[id])}">${I.fork}</button>`;
-    return `<div class="row">
-      <button class="check" data-a="check" data-x="${id}" aria-pressed="${it.d}" aria-label="${it.d ? "Uncheck" : "Check"} ${esc(NAMES[id])}">${valIcon(it.d)}</button>
-      <div class="grow"><div>${esc(NAMES[id])}</div>${it.n ? `<div class="fn">${esc(it.n)}</div>` : ""}</div>
-      <span class="qty">${it.q}</span>${trail}</div>`;
-  }).join("");
-  const countsStrip = withCounts ? countsBlock(cn) : "";
-  return `${verdictLine()}${countsStrip}<div class="group">${rows}</div>`;
-}
-function verdictLine() {
-  return verdictBlock({ newLabel: "sync line" });
-}
-function countsBlock(cn) {
-  const old = S.screenOld;
-  return `<div class="stack" data-new="counts with their time">
-    <div class="secthead">Counts as of ${old ? "23:58" : S.lastSync}</div>
-    <div class="counts">
-      <div class="count ${old ? "old hatch" : ""}"><span class="n">${cn.done}<span class="sh"> of ${ORDER.length}</span></span><span class="c1">Checked</span></div>
-      <div class="count ${old ? "old hatch" : ""}"><span class="n">${cn.open}</span><span class="c1">Open</span></div>
-      <div class="count ${old ? "old hatch" : ""}"><span class="n">${cn.units}</span><span class="c1">Units</span></div>
-    </div></div>`;
-}
-function slSyncBody() {
-  const deviceRow = (k, text) => `<div class="row"><span class="dot ${k}"></span><div class="grow">${DEVNAME[k]}</div><span class="sh">${text}</span></div>`;
-  const aText = S.s === "failed" ? "Last try 00:31" : `Synced ${S.mergeArrived ? S.lastSync : "23:58"}`;
-  const bText = S.mergeArrived ? `Synced ${S.lastSync}` : (S.screenOld ? "Changed 00:27" : "Heard 23:58");
-  const keys = S.mergeArrived ? ["0029","2140"] : ["2140"];
-  const mrows = keys.map(k => {
-    const m = MERGES[k];
-    const unseen = k === "0029" && S.s === "merged" && !S.seen;
-    const lost = m.rows.filter(r => r.lost).length;
-    return `<button class="row" data-a="push" data-x="merge:${k}" style="width:100%">
-      <div class="grow"><div class="${unseen ? "hl" : ""}">${m.when}</div><div class="fn">${m.rows.length} item${m.rows.length>1?"s":""} changed on both, ${lost} older cop${lost===1?"y":"ies"} saved</div></div>${I.chevR}</button>`;
-  }).join("");
-  return `${verdictBlock({ big: true, newLabel: "agreement answer" })}
-    <div class="stack"><div class="secthead">Devices</div><div class="group">${deviceRow("a", aText)}${deviceRow("b", bText)}</div></div>
-    <div class="stack" data-new="merge history"><div class="secthead">Merges</div><div class="group">${mrows}</div></div>`;
-}
-function slMergeBody(key) {
-  const m = MERGES[key];
-  const rows = m.rows.map(r => {
-    const e = S.edits[r.id];
-    const inUse = e && e.restore === key;
-    const kept = `<div class="cell ${inUse ? "dim" : ""}"><span class="v"><span class="dot ${r.kept.dev === "ab" ? "a" : r.kept.dev}"></span>${esc(r.kept.v)}</span><span class="c1">${DEVNAME[r.kept.dev]}, ${r.kept.t}</span></div>`;
-    let older;
-    if (!r.lost) older = `<div class="cell"><span class="sh">Nothing lost: each device changed a different part.</span></div>`;
-    else if (inUse) older = `<div class="cell"><span class="v"><span class="dot ${r.lost.dev}"></span>${esc(r.lost.v)}</span>
-        <span class="answer" role="status">In use on this phone. ${e.sent ? "Your laptop has it." : "Your laptop gets it at the next sync."}</span>
-        ${e.sent ? "" : `<button class="btn plain" data-a="undo" data-x="${r.id}">Undo</button>`}</div>`;
-    else older = `<div class="cell"><span class="v"><span class="dot ${r.lost.dev}"></span>${esc(r.lost.v)}</span><span class="c1">${DEVNAME[r.lost.dev]}, ${r.lost.t}</span>
-        <button class="btn quiet" data-a="use" data-x="${key}:${r.id}" aria-label="Use older copy of ${esc(NAMES[r.id])}">Use this</button></div>`;
-    return `<div class="mrow"><div class="mname">${esc(NAMES[r.id])}</div>${kept}${older}</div>`;
-  }).join("");
-  return `<p class="sh" style="margin:0">Both devices changed these items before they synced. The later change was kept. The older copy is saved here.</p>
-    <div class="mtable" data-new="kept and older copy"><div class="mhead"><span>Kept</span><span>Older copy</span></div>${rows}</div>`;
-}
-function tabbar() {
-  const t = S.sl.v.startsWith("merge") ? "sync" : S.sl.v;
-  const unseen = S.s === "merged" && !S.seen;
-  const tab = (k, label, icon) => `<button class="tab" data-a="tab" data-x="${k}" ${t === k ? 'aria-current="page"' : ""}>${icon}<span>${label}</span>${k === "sync" && unseen ? '<span class="badge" aria-label="New merge"></span>' : ""}</button>`;
-  return `<nav class="tabbar" aria-label="Sections">${tab("items","Items",I.tItems)}${tab("counts","Counts",I.tCounts)}${tab("sync","Sync",I.tSync)}</nav>`;
-}
-function slOne() {
-  const v = S.sl.v;
-  if (v.startsWith("merge:")) {
-    const key = v.slice(6);
-    return `<div class="scr"><div class="nav"><button class="navbtn" data-a="back">${I.chevL}Sync</button><span class="navtitle">${MERGES[key].title}</span><span style="width:44px"></span></div>
-      <div class="body" data-sk="merge">${slMergeBody(key)}</div>${tabbar()}</div>`;
+  /* ---------- Data helpers ---------- */
+  function item(id) { for (var i = 0; i < ITEMS.length; i++) if (ITEMS[i].id === id) return ITEMS[i]; return null; }
+  function change(id) {
+    if (S.s !== "merged") return null;
+    var c = MERGES.m939.changes;
+    for (var i = 0; i < c.length; i++) if (c[i].id === id) return c[i];
+    return null;
   }
-  let title, body;
-  if (v === "counts") { title = "Counts"; body = verdictLine() + countsBlock(counts(copies("now").a)); }
-  else if (v === "sync") { title = "Sync"; body = slSyncBody(); }
-  else { title = "Items"; body = slItemsBody(false); }
-  return `<div class="scr"><div class="body" data-sk="${v}"><h1 class="lt">${title}</h1>${body}</div>${tabbar()}</div>`;
-}
-function slTwo() {
-  const v = S.sl.v;
-  let right;
-  if (v.startsWith("merge:")) {
-    const key = v.slice(6);
-    right = `<div class="scr notab"><div class="nav"><button class="navbtn" data-a="back">${I.chevL}Sync</button><span class="navtitle">${MERGES[key].title}</span><span style="width:44px"></span></div>
-      <div class="body" data-sk="r-merge">${slMergeBody(key)}</div></div>`;
-  } else {
-    right = `<div class="scr notab"><div class="body" data-sk="r-sync"><h1 class="lt">Sync</h1>${slSyncBody()}</div></div>`;
+  function fresh() { return SC[S.s].fresh; }
+  function single() { return S.s === "empty"; }
+  /* This phone's value of an item now. */
+  function phoneVal(it) {
+    var v = { done: it.done, qty: it.qty, note: it.note || "", removed: false };
+    if (!fresh() && it.id === "hinge") v.done = false;           /* the laptop's change has not arrived */
+    var ch = change(it.id);
+    if (ch && ch.kind === "clash" && S.used[it.id]) Object.assign(v, ch.older.v);
+    if (S.tog[it.id]) v.done = !v.done;
+    return v;
   }
-  const c = copies("now");
-  const left = `<div class="scr notab"><div class="body" data-sk="l-items"><h1 class="lt">Items</h1>${countsBlock(counts(c.a))}${slItemsBody(false).replace(verdictLine(), "")}</div></div>`;
-  return `<div class="pane">${left}</div><div class="hinge" aria-hidden="true"></div><div class="pane">${right}</div>`;
-}
-
-/* ================= Concept: Seam ================= */
-function seamVerdict(opts = {}) {
-  const at = S.se.at;
-  if (at === "now") return verdictBlock({ big: opts.big, newLabel: "agreement answer" });
-  const sub = at === "0028" ? "The copies differed on 3 items. The merge at 00:29 settled them." : "Both copies held the same items.";
-  return `<div class="verdict old${opts.big ? " big" : ""}" role="status">${at === "0028" ? I.merged : I.agree}
-    <div class="grow"><span class="vt">At ${MLABEL[at]}</span><span class="vs">${sub}</span><div class="acts"><button class="btn" data-a="at" data-x="now">Back to now</button></div></div></div>`;
-}
-function seamRowsOne(c, at) {
-  let ids = ORDER;
-  if (S.se.only) ids = ORDER.filter(id => markKind(id, c, at) !== "same");
-  if (!ids.length) return `<div class="empty"><span>No rows differ ${at === "now" ? "now" : "at " + MLABEL[at]}.</span><button class="btn quiet" data-a="only">Show every row</button></div>`;
-  const rows = ids.map(id => {
-    const A = c.a[id], B = c.b[id], k = markKind(id, c, at);
-    const dq = A.q !== B.q || A.d !== B.d;
-    const bcls = c.bOld ? "hatch" : (dq ? "diff" : "");
-    return `<button class="srow" data-a="sheet" data-x="${id}" aria-label="${esc(NAMES[id])}: this phone ${A.q}, laptop ${B.q}, ${MARK_WORD[k]}">
-      <span class="nm">${esc(NAMES[id])}</span>
-      <span class="val ${dq && !c.bOld ? "diff" : ""}">${valIcon(A.d)}${A.q}</span>
-      ${mark(k)}
-      <span class="val ${bcls}">${valIcon(B.d)}${B.q}</span></button>`;
-  }).join("");
-  return `<div class="srows" data-new="seam rows">${rows}</div>`;
-}
-function seamHeadOne(c) {
-  const ca = counts(c.a), cb = counts(c.b);
-  return `<div class="seamhead" data-new="two copies">
-    <span class="ihead fn">${ORDER.length} items</span>
-    <span class="devhead a"><span class="dn">This phone</span><span class="c1 num">${I.checkOn.replace("<svg", '<svg width="12" height="12"')} ${ca.done}</span></span>
-    <span></span>
-    <span class="devhead b ${c.bOld ? "hatch" : ""}"><span class="dn">Laptop</span><span class="c1 num">${c.bOld ? "as of 23:58" : I.checkOn.replace("<svg", '<svg width="12" height="12"') + " " + cb.done}</span></span></div>`;
-}
-function momentsSeg() {
-  const ms = moments();
-  return `<div class="moments" data-new="compare in time"><span class="c1">Compare at</span><div class="seg" role="group" aria-label="Compare at">${
-    ms.map(m => `<button data-a="at" data-x="${m}" aria-pressed="${S.se.at === m}">${MLABEL[m]}</button>`).join("")}</div></div>`;
-}
-function onlyToggle() {
-  return `<div class="cluster"><button class="toggle" data-a="only" aria-pressed="${S.se.only}">${I.fork.replace("<svg", '<svg width="18" height="18"')}Only rows that differ</button></div>`;
-}
-function seamSheet() {
-  const id = S.se.sheet; if (!id) return "";
-  const c = copies(S.se.at);
-  const A = c.a[id], B = c.b[id];
-  const r = MERGES["0029"].rows.find(x => x.id === id) || MERGES["2140"].rows.find(x => x.id === id);
-  const key = r ? (MERGES["0029"].rows.includes(r) ? "0029" : "2140") : null;
-  const e = S.edits[id];
-  let olderBlock = `<p class="sh" style="margin:0">No merge has touched this item, so there is no older copy.</p>`;
-  if (r && r.lost && (key === "2140" || S.mergeArrived)) {
-    const inUse = e && e.restore === key;
-    olderBlock = `<div class="stack" data-new="older copy"><div class="secthead">Older copy, saved by the ${MERGES[key].title.toLowerCase()}</div>
-      <div class="group"><div class="row"><span class="dot ${r.lost.dev}"></span><div class="grow">${esc(r.lost.v)}</div><span class="sh">${DEVNAME[r.lost.dev]}, ${r.lost.t}</span></div>
-      <div class="row">${inUse
-        ? `<span class="answer grow" role="status">In use on this phone. ${e.sent ? "Your laptop has it." : "Your laptop gets it at the next sync."}</span>${e.sent ? "" : `<button class="btn plain" data-a="undo" data-x="${id}">Undo</button>`}`
-        : `<span class="grow sh">The kept value is ${esc(r.kept.v)} from ${DEVNAME[r.kept.dev].toLowerCase()}.</span><button class="btn" data-a="use" data-x="${key}:${id}">Use older copy</button>`}</div></div></div>`;
-  } else if (r && !r.lost && S.mergeArrived) {
-    olderBlock = `<p class="sh" style="margin:0">The merge at 00:29 kept both changes: each device changed a different part. Nothing was lost.</p>`;
+  /* The laptop's value as this phone last heard it. */
+  function laptopVal(it) {
+    var v = phoneVal(it);
+    if (fresh()) return v;
+    v = { done: it.done, qty: it.qty, note: it.note || "", removed: false };
+    if (it.id === "hinge") v.done = false;
+    if (it.id === "notebook") { v.done = false; v.qty = 2; }
+    return v;
   }
-  const at = S.se.at === "now" ? "" : ` at ${MLABEL[S.se.at]}`;
-  return `<div class="scrim" data-a="close" aria-hidden="true"></div>
-    <div class="sheet" role="dialog" aria-label="${esc(NAMES[id])}">
-      <div class="nav"><span style="width:44px"></span><span class="navtitle">${esc(NAMES[id])}</span><button class="navbtn" data-a="close" style="font-weight:600">Done</button></div>
-      <div class="body" data-sk="sheet">
-        <div class="stack"><div class="secthead">Each copy${at}</div><div class="group">
-          <div class="row"><span class="dot a"></span><div class="grow">${DEVNAME.a}</div><span class="num">${valIcon(A.d).replace("<svg", '<svg width="20" height="20"')} ${A.q}</span></div>
-          <div class="row ${c.bOld ? "hatch" : ""}"><span class="dot b"></span><div class="grow">${DEVNAME.b}${c.bOld ? '<div class="fn">As of 23:58</div>' : ""}</div><span class="num">${valIcon(B.d).replace("<svg", '<svg width="20" height="20"')} ${B.q}</span></div>
-        </div></div>
-        ${olderBlock}
-      </div></div>`;
-}
-function seamOne(ax) {
-  const at = S.se.at, c = copies(at);
-  return `<div class="scr ${ax ? "notab" : ""}"><div class="body" data-sk="seam">
-      <h1 class="lt">Both copies</h1>
-      ${seamVerdict()}
-      ${ax ? momentsSeg() : ""}
-      ${onlyToggle()}
-      <div class="stack">${seamHeadOne(c)}${seamRowsOne(c, at)}</div>
-    </div>${ax ? "" : momentsSeg()}${seamSheet()}</div>`;
-}
-function seamTwo() {
-  const at = S.se.at, c = copies(at);
-  const ca = counts(c.a), cb = counts(c.b);
-  let ids = ORDER;
-  if (S.se.only) ids = ORDER.filter(id => markKind(id, c, at) !== "same");
-  const rowsA = ids.map(id => {
-    const A = c.a[id], B = c.b[id], k = markKind(id, c, at); const dq = A.q !== B.q || A.d !== B.d;
-    return `<button class="prow" data-a="sheet" data-x="${id}" aria-label="${esc(NAMES[id])}: this phone ${A.q}, ${MARK_WORD[k]}">
-      <span class="nm">${esc(NAMES[id])}</span><span class="val ${dq && !c.bOld ? "diff" : ""}">${valIcon(A.d)}${A.q}</span>${mark(k, "a")}</button>`;
-  }).join("");
-  const rowsB = ids.map(id => {
-    const A = c.a[id], B = c.b[id], k = markKind(id, c, at); const dq = A.q !== B.q || A.d !== B.d;
-    return `<button class="prow" data-a="sheet" data-x="${id}" aria-label="${esc(NAMES[id])}: laptop ${B.q}, ${MARK_WORD[k]}">
-      ${mark(k, "b")}<span class="val ${c.bOld ? "hatch" : (dq ? "diff" : "")}">${valIcon(B.d)}${B.q}</span><span class="nm">${esc(NAMES[id])}</span></button>`;
-  }).join("");
-  const emptyA = ids.length ? "" : `<div class="empty" style="margin:var(--space-4)"><span>No rows differ ${at === "now" ? "now" : "at " + MLABEL[at]}.</span><button class="btn quiet" data-a="only">Show every row</button></div>`;
-  const ms = moments();
-  const mdesc = { "2358":"Both copies agree", "0028":"3 items differ", now: `Last sync ${lastAgreed()}` };
-  const left = `<div class="scr notab" style="padding-bottom:0">
-      <div class="ptop"><h1 class="lt">Both copies</h1>${seamVerdict()}</div>
-      <div class="phead a" data-new="this phone's copy"><span class="dot a"></span><span class="dn">This phone</span><span class="c1 num">${I.checkOn.replace("<svg", '<svg width="12" height="12"')} ${ca.done} of ${ORDER.length}</span>
-        <span style="margin-left:auto">${onlyToggle()}</span></div>
-      <div class="prows" data-sk="pa" data-sync="seam">${rowsA}${emptyA}</div></div>`;
-  const right = `<div class="scr notab" style="padding-bottom:0">
-      <div class="ptop" data-new="compare in time"><div class="secthead" style="padding:0">Compare at</div><div class="mlist">${
-        ms.map(m => `<button class="mbtn" data-a="at" data-x="${m}" aria-pressed="${at === m}"><span class="hl num">${MLABEL[m]}</span><span class="sh">${esc(mdesc[m])}</span></button>`).join("")}</div></div>
-      <div class="phead b ${c.bOld ? "hatch" : ""}" data-new="laptop's copy"><span class="dot b"></span><span class="dn">Laptop</span><span class="c1 num">${c.bOld ? "as of 23:58" : I.checkOn.replace("<svg", '<svg width="12" height="12"') + " " + cb.done + " of " + ORDER.length}</span></div>
-      <div class="prows" data-sk="pb" data-sync="seam">${rowsB}</div>${seamSheet()}</div>`;
-  return `<div class="pane a">${left}</div><div class="hinge" aria-hidden="true"></div><div class="pane b">${right}</div>`;
-}
+  function seamKind(it) {
+    if (fresh()) {
+      var ch = change(it.id);
+      return ch ? ch.kind : "agree";
+    }
+    var a = phoneVal(it), b = laptopVal(it);
+    if (a.done !== b.done || a.qty !== b.qty || a.note !== b.note) return "differ";
+    return "unknown";
+  }
+  function unsent(it) { return !fresh() && seamKind(it) === "differ"; }
+  function counts() {
+    var open = fresh() ? 37 : 38, done = fresh() ? 112 : 111;
+    ITEMS.forEach(function (it) {
+      if (S.tog[it.id]) { var d = phoneVal(it).done; if (d) { done++; open--; } else { done--; open++; } }
+    });
+    return { open: open, done: done };
+  }
+  function laptopCounts() { return fresh() ? counts() : { open: 39, done: 110 }; }
+  function fmtState(v) { return v.removed ? "Removed" : (v.done ? "Done" : "Open"); }
+  function fmtVal(v) {
+    if (v.removed) return '<span class="removed">Removed</span>';
+    return fmtState(v) + ', <span class="num">' + v.qty + '</span>';
+  }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  /* The copy not in use is the older one until the person picks it; then the newer one waits. */
+  function otherWord(id) { return S.used[id] ? "newer" : "older"; }
+  function cap(s) { return s.charAt(0).toUpperCase() + s.slice(1); }
+  function useBtn(id) { return '<button class="btn pri" data-act="use:' + id + '">Use ' + otherWord(id) + " copy</button>"; }
+  function who(w) { return w === "phone" ? "This phone" : "The laptop"; }
+  function devGlyph(w) { return w === "phone" ? I.phone : I.laptop; }
 
-/* ---------- Frames ---------- */
-const FRAMES = [
-  { dev: "iphone-duo-folded" }, { dev: "iphone-duo-unfolded" }, { dev: "iphone-regular" }, { dev: "iphone-duo-folded", ax: true }
-];
-function render() {
-  const keep = {};
-  document.querySelectorAll("[data-fk] [data-sk]").forEach(el => { keep[el.closest("[data-fk]").dataset.fk + "/" + el.dataset.sk] = el.scrollTop; });
-  for (const concept of ["sync-line", "seam"]) {
-    FRAMES.forEach((f, i) => {
-      const dev = document.querySelector(`[data-fk="${concept}-${i}"]`);
-      const two = f.dev === "iphone-duo-unfolded";
-      dev.innerHTML = concept === "sync-line" ? (two ? slTwo() : slOne()) : (two ? seamTwo() : seamOne(f.ax));
+  /* An answer shown at the control that was pressed. */
+  function answer(key) {
+    if (!S.flash || S.flash.key !== key) return "";
+    var undo = S.flash.undo ? ' <button class="btn plain" data-act="undo:' + S.flash.undo + '">Undo</button>' : "";
+    return '<span class="answer" role="status">' + esc(S.flash.text) + undo + "</span>";
+  }
+  function flash(key, text, undo) {
+    S.flash = { key: key, text: text, undo: undo || "" };
+    clearTimeout(flashTimer);
+    flashTimer = setTimeout(function () { S.flash = null; render(); }, 6000);
+  }
+
+  /* ---------- Shared pieces ---------- */
+  function statusBar() { return '<div class="status"><span class="num">9:41</span><span aria-hidden="true"></span></div>'; }
+  function nav(title, back, backLabel, ctx) {
+    var b = back ? '<button class="back" data-act="go:' + back + '">' + I.chevL + "<span>" + esc(backLabel) + "</span></button>" : "";
+    return '<div class="nav">' + b + '<h2 class="large">' + esc(title) + "</h2></div>";
+  }
+  function syncControl(ctx) {
+    /* One control, one name, in every concept: Sync now / Stop / Try again / Add a device. */
+    var s = S.s;
+    if (s === "syncing") return '<div class="with-answer"><button class="btn sec" data-act="stop">Stop</button>' + answer("sync") + "</div>";
+    if (s === "failed") return '<div class="with-answer"><button class="btn pri" data-act="sync">Try again</button>' + answer("sync") + "</div>";
+    if (s === "empty") return '<div class="with-answer"><button class="btn pri" data-act="add">' + I.plus + "Add a device</button>" + answer("add") + "</div>";
+    return '<div class="with-answer"><button class="btn ' + (s === "stale" ? "pri" : "sec") + '" data-act="sync">' + I.sync + "Sync now</button>" + answer("sync") + "</div>";
+  }
+  function serverSaid() {
+    return '<details class="why"><summary>What the server said</summary><pre>503 Service Unavailable\nretry-after: 30</pre></details>';
+  }
+
+  /* ======================= Sync line concept ======================= */
+  function lineHead() {
+    switch (S.s) {
+      case "agree": return { k: "", g: I.agree, a: "All is well.", b: "This phone and the laptop agree. Synced 2 min ago." };
+      case "merged": return { k: "k-merge", g: I.merge, a: "Merged 4 changes with the laptop", b: "2 clashed. Each older copy is kept. Synced 2 min ago." };
+      case "stale": return { k: "k-stale", g: I.clock, a: "Showing yesterday's numbers", b: "Last synced yesterday at 18:20." };
+      case "offline": return { k: "k-stale", g: I.off, a: "Can't check the laptop", b: "No connection. Last synced yesterday at 18:20." };
+      case "failed": return { k: "k-fail", g: I.warn, a: "Sync failed at 9:40", b: "Your changes are safe on this phone." };
+      case "syncing": return { k: "", g: I.sync, a: "Syncing with the laptop", b: "Numbers below may change." };
+      case "empty": return { k: "", g: I.phone, a: "Only this phone so far.", b: "" };
+    }
+  }
+  function lineSyncLine(ctx) {
+    var h = lineHead();
+    var id = ctx.frame === "folded" ? ' id="opt-sync-line"' : "";
+    if (S.s === "empty") {
+      return '<div class="syncwrap new" data-new="sync line"' + id + '><div class="syncline"><span class="glyph">' + h.g + '</span><div class="main"><span class="hl">' + h.a + "</span></div></div>" + syncControl(ctx) + "</div>";
+    }
+    var extra = "";
+    /* In the open pose the Sync page beside it holds the control, so the line does not repeat it. */
+    if (ctx.frame !== "open" && (S.s === "failed" || S.s === "syncing" || S.s === "stale" || S.s === "offline")) extra = syncControl(ctx);
+    if (S.s === "syncing") extra = '<div class="with-answer"><span class="spin" aria-hidden="true"></span>' + extra + "</div>";
+    return '<div class="syncwrap new" data-new="sync line"' + id + '><button class="syncline ' + h.k + '" data-act="go:sync"><span class="glyph">' + h.g + '</span><span class="main"><span class="hl">' + h.a + '</span><span class="sub">' + h.b + "</span></span>" + I.chev + "</button>" + extra + "</div>";
+  }
+  function lineCounts() {
+    var c = counts(), hatch = fresh() ? "" : " hatched new";
+    var lbl = fresh() ? "" : ' data-new="old-number hatch"';
+    var aria = fresh() ? "" : ' aria-label="Old number"';
+    return '<div class="counts">' +
+      '<div class="count' + hatch + '"' + lbl + aria + '><span class="sub">Open</span><b class="num">' + c.open + "</b></div>" +
+      '<div class="count' + (fresh() ? "" : " hatched") + '"' + aria + '><span class="sub">Done</span><b class="num">' + c.done + "</b></div></div>";
+  }
+  function lineRow(it, ctx) {
+    var v = phoneVal(it), ch = change(it.id);
+    var marks = "";
+    if (ch && ch.kind === "merged") marks = '<span class="mark" title="Changed by the merge">' + I.merge + "</span>";
+    if (ch && ch.kind === "clash") marks = '<span class="mark copy" title="An older copy is kept">' + I.copy + "</span>";
+    var sub = [];
+    if (v.note) sub.push("Note: " + esc(v.note));
+    if (unsent(it)) sub.push("Not sent yet");
+    var name = v.removed ? '<span class="removed">' + esc(it.name) + "</span>" : esc(it.name);
+    var open = ch ? ' data-act="item:' + it.id + ':list"' : "";
+    var tag = ch ? "button" : "div";
+    return '<div class="row" style="padding-left:var(--space-1)">' +
+      '<button class="check' + (v.done ? " on" : "") + '" data-act="tog:' + it.id + '" aria-pressed="' + v.done + '" aria-label="Done: ' + esc(it.name) + '"><span>' + (v.done ? I.check : "") + "</span></button>" +
+      "<" + tag + ' class="main"' + open + ' style="text-align:left">' + '<span>' + name + "</span>" + (sub.length ? '<span class="foot">' + sub.join(". ") + "</span>" : "") + "</" + tag + ">" +
+      '<span class="trail">' + marks + '<span class="qty num">' + (v.removed ? "" : "x" + v.qty) + "</span>" + (ch ? I.chev : "") + "</span></div>";
+  }
+  function lineList(ctx) {
+    var rows = ITEMS.map(function (it) { return lineRow(it, ctx); }).join("");
+    return nav("Checklist") + lineSyncLine(ctx) + lineCounts() +
+      '<div class="sect"><div class="group">' + rows + '</div><span class="foot" style="padding:0 var(--space-4)">' + MORE + " more items, not drawn.</span></div>";
+  }
+  function lineSummary() {
+    var s = S.s, body = "";
+    var dev = function (w, t, ok) {
+      return '<div class="devline">' + devGlyph(w) + '<span class="hl">' + (w === "phone" ? "This phone" : "Laptop") + '</span><span class="sub">' + t + "</span></div>";
+    };
+    var pair = function (a, b, open) {
+      return '<div class="pair"><span class="bracket' + (open ? " open" : "") + '" aria-hidden="true"></span>' + a + b + "</div>";
+    };
+    if (s === "agree") body = '<h3 class="t2">All is well.</h3>' + pair(dev("phone", "synced 9:39"), dev("laptop", "synced 9:38")) + '<span class="sub">Both hold the same <span class="num">149</span> items.</span>';
+    if (s === "merged") body = '<h3 class="t2">Merged 4 changes at 9:39</h3><span class="sub">Both devices changed things while apart. 2 changes clashed; each older copy is kept.</span>' + pair(dev("phone", "synced 9:39"), dev("laptop", "synced 9:38"));
+    if (s === "stale") body = '<h3 class="t2">Showing yesterday\'s numbers</h3><span class="sub">This phone has 1 change not sent yet. The laptop may have more.</span>' + pair(dev("phone", "synced yesterday 18:20"), dev("laptop", "last heard yesterday 18:20"), true);
+    if (s === "offline") body = '<h3 class="t2">No connection</h3><span class="sub">Whether the laptop changed anything since yesterday at 18:20 is unknown.</span>' + pair(dev("phone", "synced yesterday 18:20"), dev("laptop", "unknown"), true);
+    if (s === "failed") body = '<h3 class="t2">Sync failed at 9:40</h3><span class="sub">Your changes are safe on this phone. The sync service did not answer.</span>' + serverSaid() + pair(dev("phone", "synced yesterday 18:20"), dev("laptop", "unknown"), true);
+    if (s === "syncing") body = '<div class="devline"><span class="spin" aria-hidden="true"></span><h3 class="t2">Syncing with the laptop</h3></div>' + pair(dev("phone", "sending 1 change"), dev("laptop", "checking"), true);
+    if (s === "empty") body = '<h3 class="t2">Only this phone so far.</h3>';
+    var k = { merged: "k-merge", failed: "k-fail", stale: "k-stale", offline: "k-stale", syncing: "k-stale" }[s] || "";
+    return '<div class="summary new ' + k + '" data-new="sync summary">' + body + syncControl() + "</div>";
+  }
+  function lineSync(ctx, back) {
+    var list = "";
+    if (!single()) {
+      var ids = S.s === "merged" ? ["m939", "mtue", "mmon"] : ["mtue", "mmon"];
+      list = '<div class="sect new" data-new="merge history"><h3>Merges</h3><div class="group">' + ids.map(function (m) {
+        var M = MERGES[m], cl = M.changes.filter(function (c) { return c.kind === "clash"; }).length;
+        return '<button class="row" data-act="go:merge:' + m + '"><span class="main"><span>' + M.when + '</span><span class="foot">' + M.changes.length + (M.changes.length === 1 ? " change" : " changes") + (cl ? ", " + cl + " clashed" : "") + "</span></span>" + (cl ? '<span class="mark copy">' + I.copy + "</span>" : '<span class="mark">' + I.merge + "</span>") + I.chev + "</button>";
+      }).join("") + "</div></div>";
+    }
+    return nav("Sync", back ? "list" : "", "Checklist") + lineSummary() + list;
+  }
+  function lineMerge(ctx, m) {
+    var M = MERGES[m] || MERGES.m939;
+    var rows = M.changes.map(function (c) {
+      var it = item(c.id);
+      var mk = c.kind === "clash" ? '<span class="mark copy">' + I.copy + "</span>" : '<span class="mark">' + I.merge + "</span>";
+      var act = c.kind === "clash" ? ' data-act="item:' + c.id + ':merge:' + m + '"' : "";
+      var tag = c.kind === "clash" ? "button" : "div";
+      var used = c.kind === "clash" && S.used[c.id] ? '<span class="foot">You chose the older copy.</span>' : "";
+      return "<" + tag + ' class="row"' + act + ">" + mk + '<span class="main"><span class="hl">' + esc(it.name) + '</span><span class="sub">' + esc(c.text) + "</span>" + used + "</span>" + (c.kind === "clash" ? I.chev : "") + "</" + tag + ">";
+    }).join("");
+    return nav("Merge, " + M.short, "sync", "Sync") + '<p class="sub" style="margin:0">Both devices changed things while apart. This is what each sent and what was kept.</p><div class="group new" data-new="change list">' + rows + "</div>";
+  }
+  /* The field that clashed leads; the rest of the item sits under it. */
+  function sheetBody(v, field) {
+    if (v.removed) return '<span class="val">Removed from the list</span>';
+    if (field === "note") return '<span class="val">Note: ' + esc(v.note) + '</span><span class="sub">' + fmtState(v) + ', quantity <span class="num">' + v.qty + "</span></span>";
+    var out = '<span class="val">Quantity <span class="num">' + v.qty + '</span></span><span class="sub">' + fmtState(v) + "</span>";
+    if (v.note) out += '<span class="sub">Note: ' + esc(v.note) + "</span>";
+    return out;
+  }
+  function clashSheets(c, it, compactBtn) {
+    var base = { done: it.done, qty: it.qty, note: it.note || "", removed: false };
+    var keptV = Object.assign({}, base, c.kept.v), olderV = Object.assign({}, base, c.older.v);
+    var keptW = c.kept, olderW = c.older;
+    if (S.used[it.id]) { var t = keptV; keptV = olderV; olderV = t; var w = keptW; keptW = olderW; olderW = w; }
+    var field = c.kept.v.note !== undefined ? "note" : "qty";
+    return '<div class="sheets new" data-new="older copy">' +
+      '<div class="sheet kept"><span class="foot">In use now</span>' + sheetBody(keptV, field) + '<span class="who foot">' + devGlyph(keptW.who) + who(keptW.who) + ", " + keptW.at + "</span></div>" +
+      '<div class="sheet older"><span class="foot">' + cap(otherWord(it.id)) + ' copy, kept</span>' + sheetBody(olderV, field) + '<span class="who foot">' + devGlyph(olderW.who) + who(olderW.who) + ", " + olderW.at + "</span>" +
+      '<div class="with-answer">' + useBtn(it.id) + answer("use:" + it.id) + "</div></div></div>";
+  }
+  function lineItem(ctx, id, back) {
+    var it = item(id), c = change(id);
+    var b = back && back.indexOf("merge") === 0 ? back : "list";
+    var bl = b === "list" ? "Checklist" : "Merge";
+    if (!it) return nav("Not found", "list", "Checklist");
+    if (!c) return nav(it.name, b, bl) + '<p class="sub" style="margin:0">Nothing clashed on this item. No older copy was needed.</p>';
+    if (c.kind !== "clash") return nav(it.name, b, bl) + '<div class="summary"><span class="sub">' + esc(c.text) + '</span><span class="sub">Nothing was lost, so no older copy was kept.</span></div>';
+    return nav(it.name, b, bl) + '<p class="sub" style="margin:0">' + esc(c.text) + "</p>" + clashSheets(c, it);
+  }
+  function lineRoute(ctx, route) {
+    var p = route.split(":");
+    if (p[0] === "sync") return lineSync(ctx, ctx.compact ? "" : "");
+    if (p[0] === "merge") return lineMerge(ctx, p[1]);
+    if (p[0] === "item") return lineItem(ctx, p[1], p.slice(2).join(":"));
+    return lineList(ctx);
+  }
+  function lineTabbar() {
+    var r = S.v.split(":")[0];
+    var onSync = r === "sync" || r === "merge" || (r === "item" && S.from.indexOf("merge") === 0);
+    var dot = S.s === "merged" ? '<span class="dot"></span>' : (S.s === "failed" ? '<span class="dot fail"></span>' : "");
+    return '<nav class="tabbar" aria-label="Sections">' +
+      '<button data-act="go:list"' + (onSync ? "" : ' aria-current="page"') + ">" + I.list + "Checklist</button>" +
+      '<button data-act="go:sync"' + (onSync ? ' aria-current="page"' : "") + ">" + I.sync + "Sync" + dot + "</button></nav>";
+  }
+  function lineCompact(ctx) {
+    return '<div class="scr">' + statusBar() + '<div class="scroll">' + lineRoute(ctx, S.v) + "</div>" + lineTabbar() + '<div class="homebar"></div></div>';
+  }
+  function lineOpen(ctx, side) {
+    if (side === "left") return '<div class="scr">' + statusBar() + '<div class="scroll">' + lineList(ctx) + '</div><div class="homebar"></div></div>';
+    var r = S.v === "list" ? "sync" : S.v;
+    return '<div class="scr">' + statusBar() + '<div class="scroll">' + lineRoute(ctx, r) + '</div><div class="homebar"></div></div>';
+  }
+
+  /* ======================= Seam concept ======================= */
+  function seamHead() {
+    switch (S.s) {
+      case "agree": return { k: "", a: "All is well.", b: "Phone and laptop agree on all 149 items. Synced 2 min ago." };
+      case "merged": return { k: "k-merge", a: "Agree, after merging 4 changes", b: "2 clashed, marked with a knot on the seam. Each older copy is kept under its row." };
+      case "stale": return { k: "k-open", a: "Showing yesterday's numbers", b: "The laptop was last heard yesterday at 18:20. A dotted seam means unknown since then." };
+      case "offline": return { k: "k-open", a: "Can't check the laptop", b: "No connection. Last heard yesterday at 18:20. A dotted seam means unknown since then." };
+      case "failed": return { k: "k-open", a: "Sync failed at 9:40", b: "Your changes are safe on this phone." };
+      case "syncing": return { k: "k-open", a: "Comparing with the laptop", b: "Rows close as they match." };
+      case "empty": return { k: "k-open", a: "Only this phone so far.", b: "" };
+    }
+  }
+  function seamZip(ctx, half) {
+    var h = seamHead();
+    var id = ctx.frame === "folded" ? ' id="opt-seam"' : "";
+    var extra = "";
+    if (S.s === "failed") extra = serverSaid() + syncControl();
+    if (S.s === "syncing") extra = '<div class="with-answer"><span class="spin" aria-hidden="true"></span>' + syncControl() + "</div>";
+    if (S.s === "merged" && S.f !== "diff") extra = '<button class="btn sec" data-act="f:diff" style="align-self:flex-start">Show the 4 changes</button>';
+    if (S.s === "empty") extra = syncControl();
+    var teeth = S.s === "empty" ? "" : '<div class="teeth ' + h.k + '" aria-hidden="true"><span></span><span></span></div>';
+    return '<div class="zip new" data-new="seam status"' + id + ">" + teeth + '<span class="t3">' + h.a + "</span>" + (h.b ? '<span class="sub">' + h.b + "</span>" : "") + extra + "</div>";
+  }
+  function seamCols() {
+    return '<div class="cols new" data-new="two columns" aria-hidden="true"><span class="h">' + I.phone + 'This phone</span><span></span><span class="h">Laptop' + I.laptop + "</span></div>";
+  }
+  function seamCell(v, side, extra) {
+    var hatch = side === "r" && !fresh() ? " hatched" : "";
+    var tag = '<span class="devtag cap">' + (side === "l" ? I.phone : I.laptop) + "</span>";
+    return '<div class="cell ' + side + hatch + '"><span class="v">' + fmtVal(v) + "</span>" + (v.note && !v.removed ? '<span class="foot">' + esc(v.note) + "</span>" : "") + (extra || "") + (S._ax ? tag : "") + "</div>";
+  }
+  function slip(it, ch) {
+    if (!ch || ch.kind !== "clash") return "";
+    var base = { done: it.done, qty: it.qty, note: it.note || "", removed: false };
+    var o = S.used[it.id] ? ch.kept : ch.older;
+    var ov = Object.assign({}, base, o.v);
+    var side = o.who === "phone" ? "l" : "r";
+    var txt = ov.removed ? "Removed" : (o.v.note !== undefined ? "Note: " + esc(ov.note) : "Quantity " + ov.qty);
+    return '<div class="slip new" data-new="older copy"><div class="paper ' + side + '">' + I.copy + "<span>" + cap(otherWord(it.id)) + " copy: " + txt + ". " + who(o.who) + ", " + o.at + ".</span></div></div>";
+  }
+  function seamExpand(it, ch) {
+    if (S.x !== it.id) return "";
+    var k = seamKind(it), body;
+    if (ch && ch.kind === "clash") body = '<span class="sub">' + esc(ch.text) + '</span><div class="with-answer">' + useBtn(it.id) + answer("use:" + it.id) + "</div>";
+    else if (ch) body = '<span class="sub">' + esc(ch.text) + " Nothing was lost.</span>";
+    else if (k === "differ") body = '<span class="sub">This phone changed it at 8:50. The laptop has not got the change yet.</span>' + syncControl();
+    else if (k === "unknown") body = '<span class="sub">Same on both as of yesterday at 18:20. Since then is unknown.</span>';
+    else body = '<span class="sub">Same on both devices.</span>';
+    return '<div class="expand">' + body + "</div>";
+  }
+  function visibleItems() {
+    if (S.f !== "diff") return ITEMS;
+    return ITEMS.filter(function (it) { var k = seamKind(it); return k === "merged" || k === "clash" || k === "differ"; });
+  }
+  function seamRows(ctx) {
+    var c = counts(), lc = laptopCounts();
+    var cKind = fresh() ? "agree" : "unknown";
+    var nums = function (x) { return '<span class="v"><span class="num hl">' + x.open + '</span> open</span><span class="v"><span class="num hl">' + x.done + "</span> done</span>"; };
+    var countRow = function () {
+      return '<div class="srow"><div class="cells"><div class="cell l">' + nums(c) + '</div><div class="seam k-' + cKind + '"></div><div class="cell r' + (fresh() ? "" : " hatched") + '">' + nums(lc) + "</div></div></div>";
+    };
+    var list = visibleItems();
+    var rows = list.map(function (it) {
+      var ch = change(it.id), k = seamKind(it);
+      return '<div class="srow"><button class="shead" data-act="x:' + it.id + '" aria-expanded="' + (S.x === it.id) + '"><span class="main">' + esc(it.name) + "</span>" + I.chev + "</button>" +
+        '<div class="cells">' + seamCell(phoneVal(it), "l", unsent(it) ? '<span class="foot">Not sent yet</span>' : "") + '<div class="seam k-' + k + '" role="img" aria-label="' + seamWord(k) + '"></div>' + seamCell(laptopVal(it), "r") + "</div>" +
+        slip(it, ch) + seamExpand(it, ch) + "</div>";
+    }).join("");
+    if (!list.length) rows = '<div class="srow"><span class="sub">No differences. All is well.</span><button class="btn sec" data-act="f:all" style="align-self:flex-start">Show everything</button></div>';
+    var head = S.f === "diff" ? "" : countRow();
+    return '<div class="srows new" data-new="seam">' + head + rows + "</div>" + (S.f === "diff" ? "" : '<span class="foot">' + MORE + " more items, not drawn.</span>");
+  }
+  function seamWord(k) { return { agree: "Same on both", merged: "Changed by the merge", clash: "Clashed; older copy kept", differ: "Different", unknown: "Unknown since yesterday" }[k]; }
+  function seamBar(ctx, part) {
+    var seg = '<div class="seg" role="group" aria-label="Rows"><button data-act="f:all" aria-pressed="' + (S.f === "all") + '">Everything</button><button data-act="f:diff" aria-pressed="' + (S.f === "diff") + '">Differences</button></div>';
+    var sync = (S.s === "failed" || S.s === "syncing" || S.s === "empty") ? "" : syncControl();
+    if (part === "left") return '<div class="seambar new" data-new="seam bar">' + (sync || seg) + "</div>";
+    if (part === "right") return '<div class="seambar">' + seg + "</div>";
+    return '<div class="seambar new" data-new="seam bar">' + seg + sync + "</div>";
+  }
+  function seamEmptyLaptop() {
+    return '<div class="zip"><span class="sub">No second device yet.</span></div>';
+  }
+  function seamCompact(ctx) {
+    S._ax = ctx.frame === "ax5";
+    var body;
+    if (single()) {
+      body = nav("Checklist") + seamZip(ctx) + '<div class="srows">' + ITEMS.map(function (it) {
+        return '<div class="srow"><div class="shead"><span class="main">' + esc(it.name) + '</span></div><div class="cell l"><span class="v">' + fmtVal(phoneVal(it)) + "</span></div></div>";
+      }).join("") + "</div>";
+      S._ax = false;
+      return '<div class="scr">' + statusBar() + '<div class="scroll">' + body + '</div><div class="homebar"></div></div>';
+    }
+    /* At AX5 a floating bar would cover half the screen, so it sits in the page under the status. */
+    var ax = ctx.frame === "ax5";
+    body = nav("Checklist") + seamZip(ctx) + (ax ? seamBar(ctx) : seamCols()) + seamRows(ctx);
+    var out = '<div class="scr">' + statusBar() + '<div class="scroll">' + body + "</div>" + (ax ? "" : seamBar(ctx)) + '<div class="homebar"></div></div>';
+    S._ax = false;
+    return out;
+  }
+  /* Open pose: the left page is this phone, the right page is the laptop. The hinge is the seam. */
+  function seamOpen(ctx, side) {
+    var L = side === "left";
+    var h = seamHead();
+    var head;
+    if (L) {
+      head = '<div class="opg-head">' + '<div class="nav"><h2 class="large">Checklist</h2></div>' +
+        '<div class="devline">' + I.phone + '<span class="hl">This phone</span><span class="sub">' + (fresh() ? "synced 9:39" : "synced yesterday 18:20") + "</span></div>" +
+        '<span class="t3"' + (ctx.frame === "open" ? "" : "") + ">" + h.a + "</span></div>";
+    } else {
+      var lt = { agree: "synced 9:38", merged: "synced 9:38", stale: "last heard yesterday 18:20", offline: "unknown since yesterday 18:20", failed: "unknown since yesterday 18:20", syncing: "checking", empty: "" }[S.s];
+      head = '<div class="opg-head"><div class="nav"><h2 class="large" aria-hidden="true">&nbsp;</h2></div>' +
+        '<div class="devline">' + I.laptop + '<span class="hl">Laptop</span><span class="sub">' + lt + "</span></div>" +
+        '<span class="sub">' + (S.s === "agree" || S.s === "merged" ? h.b : "") + "</span>" + (S.s === "failed" ? serverSaid() : "") + "</div>";
+    }
+    if (single()) {
+      var bodyE = L ? ITEMS.map(function (it) { return '<div class="orow"><span class="shead">' + esc(it.name) + '</span><span class="sub">' + fmtVal(phoneVal(it)) + "</span></div>"; }).join("")
+        : '<div style="padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3)"><span class="sub">No second device yet.</span>' + syncControl() + "</div>";
+      return '<div class="scr">' + statusBar() + head + '<div class="oscroll" data-sync-scroll>' + bodyE + '</div><div class="homebar"></div></div>';
+    }
+    var c = counts(), lc = laptopCounts(), cKind = fresh() ? "agree" : "unknown";
+    var countRow = function (label, a, b) {
+      return '<div class="orow' + (!L && !fresh() ? " hatched" : "") + '"><span class="sub">' + label + '</span><span class="t2 num">' + (L ? a : b) + '</span><span class="edge k-' + cKind + '"></span></div>';
+    };
+    var list = visibleItems();
+    var rows = list.map(function (it) {
+      var ch = change(it.id), k = seamKind(it);
+      var v = L ? phoneVal(it) : laptopVal(it);
+      var isClash = ch && ch.kind === "clash";
+      var exp = S.x === it.id;
+      var cls = exp ? " xl" : (isClash ? " tall" : "");
+      var slipHtml = "";
+      if (isClash) {
+        var o = S.used[it.id] ? ch.kept : ch.older;
+        var mine = (o.who === "phone") === L;
+        var base = { done: it.done, qty: it.qty, note: it.note || "", removed: false };
+        var ov = Object.assign({}, base, o.v);
+        var txt = ov.removed ? "Removed" : (o.v.note !== undefined ? "Note: " + esc(ov.note) : "Quantity " + ov.qty);
+        slipHtml = '<div class="slip slipbox' + (mine ? "" : " ospacer") + '" style="grid-template-columns:1fr"><div class="paper l">' + I.copy + "<span>" + cap(otherWord(it.id)) + " copy: " + txt + ". " + o.at + ".</span></div></div>";
+      }
+      var expHtml = "";
+      if (exp) {
+        var inner;
+        if (isClash) {
+          var o2 = S.used[it.id] ? ch.kept : ch.older;
+          var mine2 = (o2.who === "phone") === L;
+          inner = mine2 ? '<div class="with-answer">' + useBtn(it.id) + answer("use:" + it.id) + "</div>" : '<span class="sub">' + esc(ch.text) + "</span>";
+        } else if (ch) inner = '<span class="sub">' + (L ? esc(ch.text) : "Nothing was lost.") + "</span>";
+        else if (k === "differ") inner = L ? '<span class="sub">Changed here at 8:50. Not sent yet.</span>' : '<span class="sub">Has not got the change.</span>';
+        else if (k === "unknown") inner = '<span class="sub">' + (L ? "Same as of yesterday 18:20." : "Since then is unknown.") + "</span>";
+        else inner = '<span class="sub">Same on both devices.</span>';
+        expHtml = '<div class="expand" style="margin-top:var(--space-2)">' + inner + "</div>";
+      }
+      var hatch = !L && !fresh() ? " hatched" : "";
+      var nameBtn = '<button class="shead" data-act="x:' + it.id + '" aria-expanded="' + exp + '"><span style="flex:1">' + esc(it.name) + "</span>" + I.chev + "</button>";
+      var extra = L && unsent(it) ? ' <span class="foot">Not sent yet</span>' : "";
+      return '<div class="orow' + cls + hatch + '">' + nameBtn + '<span class="sub">' + fmtVal(v) + (v.note && !v.removed ? ", " + esc(v.note) : "") + extra + "</span>" + slipHtml + expHtml + '<span class="edge k-' + k + '" role="img" aria-label="' + seamWord(k) + '"></span></div>';
+    }).join("");
+    if (!list.length) rows = L ? '<div class="orow"><span class="sub">No differences. All is well.</span></div>' : '<div class="orow"><button class="btn sec" data-act="f:all" style="align-self:flex-start">Show everything</button></div>';
+    var head2 = S.f === "diff" ? "" : countRow("Open", c.open, lc.open) + countRow("Done", c.done, lc.done);
+    var bar = (S.s === "failed" || S.s === "syncing") ? (L ? '<div class="seambar">' + (S.s === "syncing" ? '<span class="spin" aria-hidden="true"></span>' : "") + syncControl() + "</div>" : seamBar(ctx, "right")) : seamBar(ctx, side);
+    return '<div class="scr">' + statusBar() + head + '<div class="oscroll new" data-new="' + (L ? "this phone page" : "laptop page") + '" data-sync-scroll>' + head2 + rows + "</div>" + bar + '<div class="homebar"></div></div>';
+  }
+
+  /* ---------- Page controls ---------- */
+  function renderControls() {
+    var cs = Object.keys(CONCEPTS).filter(function (k) { return !S.hidden[k]; });
+    document.getElementById("concepts").innerHTML = '<span class="lbl">Concept</span>' + cs.map(function (k) {
+      return '<span class="opt"' + (S.c === k ? ' aria-current="true"' : "") + '><a href="' + hashFor({ c: k, v: "list", x: "", f: "all" }) + '">' + CONCEPTS[k].name + '</a><button data-page="hide:' + k + '" aria-label="Hide ' + CONCEPTS[k].name + '">Hide</button></span>';
+    }).join("") + (Object.keys(S.hidden).length ? '<button class="chip" data-page="showall">Show hidden</button>' : "");
+    document.getElementById("states").innerHTML = '<span class="lbl">State</span>' + Object.keys(SC).map(function (k) {
+      return '<a class="chip" href="' + hashFor({ s: k, x: "" }) + '"' + (S.s === k ? ' aria-current="true"' : "") + ">" + SC[k].name + "</a>";
+    }).join("");
+    var t = S.t || (matchMedia("(prefers-color-scheme: dark)").matches ? "dark" : "light");
+    document.getElementById("themes").innerHTML = '<span class="lbl">Theme</span>' +
+      '<a class="chip" href="' + hashFor({ t: "light" }) + '"' + (t === "light" ? ' aria-current="true"' : "") + ">Light</a>" +
+      '<a class="chip" href="' + hashFor({ t: "dark" }) + '"' + (t === "dark" ? ' aria-current="true"' : "") + ">Dark</a>" +
+      '<button class="chip" data-page="labels" aria-pressed="' + S.labels + '">' + (S.labels ? "Hide New marks" : "Show New marks") + "</button>";
+  }
+
+  /* ---------- Render ---------- */
+  var scrollMemo = {};
+  function remember() {
+    document.querySelectorAll(".frame").forEach(function (f) {
+      f.querySelectorAll(".scroll, .oscroll").forEach(function (s, i) { scrollMemo[f.dataset.frame + i] = s.scrollTop; });
     });
   }
-  document.querySelectorAll("[data-fk] [data-sk]").forEach(el => {
-    const k = el.closest("[data-fk]").dataset.fk + "/" + el.dataset.sk; if (k in keep) el.scrollTop = keep[k];
-  });
-  document.querySelectorAll("[data-fk]").forEach(frame => {
-    const panes = frame.querySelectorAll('[data-sync="seam"]');
-    if (panes.length === 2) panes.forEach((p, i) => p.addEventListener("scroll", () => { const o = panes[1 - i]; if (Math.abs(o.scrollTop - p.scrollTop) > 1) o.scrollTop = p.scrollTop; }, { passive: true }));
-  });
-  renderControls();
-  writeHash();
-}
-function renderControls() {
-  document.getElementById("ctl-state").innerHTML = STATES.map(([k, l]) => {
-    const pend = pendingCount() > 0 && (S.s === "agree" || S.s === "merged");
-    const cur = k === "pending" ? pend : (S.s === k && !pend);
-    return `<button class="chip" data-a="state" data-x="${k}" aria-pressed="${cur}">${l}</button>`;
-  }).join("");
-  const t = document.documentElement.dataset.theme || "auto";
-  document.getElementById("ctl-theme").innerHTML = ["auto","light","dark"].map(k => `<button class="chip" data-a="theme" data-x="${k}" aria-pressed="${t === k}">${k[0].toUpperCase() + k.slice(1)}</button>`).join("");
-  document.getElementById("ctl-labels").setAttribute("aria-pressed", document.documentElement.classList.contains("labels"));
-  const hidden = [...document.querySelectorAll(".concept[hidden]")];
-  document.getElementById("ctl-restore").hidden = !hidden.length;
-  document.getElementById("ctl-hidden").innerHTML = hidden.map(s => `<button class="chip" data-a="unhide" data-x="${s.id.replace("concept-","")}">Show ${s.querySelector("h2").textContent}</button>`).join("");
-}
+  function restore() {
+    document.querySelectorAll(".frame").forEach(function (f) {
+      f.querySelectorAll(".scroll, .oscroll").forEach(function (s, i) { var v = scrollMemo[f.dataset.frame + i]; if (v) s.scrollTop = v; });
+    });
+  }
+  function render() {
+    if (S.t) document.documentElement.setAttribute("data-theme", S.t); else document.documentElement.removeAttribute("data-theme");
+    document.body.classList.toggle("labels-on", S.labels);
+    remember();
+    var C = S.c;
+    var compact = C === "line" ? lineCompact : seamCompact;
+    var open = C === "line" ? lineOpen : seamOpen;
+    ["folded", "phone", "ax5"].forEach(function (f) {
+      document.querySelector('[data-frame="' + f + '"]').innerHTML = compact({ frame: f, compact: true });
+    });
+    var o = document.querySelector('[data-frame="open"]');
+    o.querySelector('[data-page="left"]').innerHTML = open({ frame: "open" }, "left");
+    o.querySelector('[data-page="right"]').innerHTML = open({ frame: "open" }, "right");
+    restore();
+    renderControls();
+    linkScroll();
+    writeHash();
+  }
+  /* Seam open pose: the two pages scroll together so each row lines up across the hinge. */
+  function linkScroll() {
+    var s = document.querySelectorAll('[data-frame="open"] [data-sync-scroll]');
+    if (s.length !== 2) return;
+    var lock = false;
+    s.forEach(function (el, i) {
+      el.addEventListener("scroll", function () {
+        if (lock) return; lock = true; s[1 - i].scrollTop = el.scrollTop; requestAnimationFrame(function () { lock = false; });
+      });
+    });
+  }
 
-/* ---------- Actions ---------- */
-function startSync() {
-  clearTimeout(S.timer);
-  S.prev = S.s; S.s = "syncing"; S.auto = true;
-  S.timer = setTimeout(() => {
-    if (S.s !== "syncing") return;
-    for (const id in S.edits) S.edits[id].sent = true;
-    const arrived = !S.mergeArrived;
-    S.mergeArrived = true; S.screenOld = false; S.lastSync = "00:32";
-    S.s = arrived ? "merged" : "agree";
-    if (arrived) { S.seen = false; S.se.at = "now"; }
-    render();
-  }, 2600);
-}
-const ACT = {
-  state(x) { clearTimeout(S.timer); const labels = { sl: S.sl, se: S.se }; fresh(x); S.sl = labels.sl; S.se = labels.se; S.se.at = "now"; S.se.sheet = null; if (S.sl.v.startsWith("merge:0029") && !S.mergeArrived) S.sl.v = "sync"; },
-  theme(x) { if (x === "auto") delete document.documentElement.dataset.theme; else document.documentElement.dataset.theme = x; },
-  labels() { document.documentElement.classList.toggle("labels"); },
-  reset() { clearTimeout(S.timer); fresh(S.s === "syncing" ? "agree" : S.s); },
-  hide(x) { document.getElementById("concept-" + x).hidden = true; },
-  unhide(x) { document.getElementById("concept-" + x).hidden = false; },
-  tab(x) { S.sl.v = x; },
-  push(x) { S.sl.v = x; if (x === "merge:0029") S.seen = true; },
-  back() { S.sl.v = "sync"; },
-  review() { S.seen = true; S.sl.v = "merge:0029"; S.se.only = true; S.se.at = "now"; },
-  sync() { startSync(); },
-  stop() { clearTimeout(S.timer); S.s = "stopped"; },
-  use(x) { const [key, id] = x.split(":"); const r = MERGES[key].rows.find(r => r.id === id); S.edits[id] = { q: r.lost.q, sent: false, restore: key }; if (S.s === "merged") S.seen = true; },
-  undo(id) { delete S.edits[id]; },
-  check(id) {
-    const cur = copies("now").a[id].d;
-    S.edits[id] = Object.assign({}, S.edits[id], { d: !cur, sent: false });
-    if (S.edits[id].restore === undefined && S.edits[id].q === undefined) {
-      const base = (S.mergeArrived && !S.screenOld ? apply(MERGED) : S.screenOld ? apply() : apply(PHONE_EDITS))[id].d;
-      if (base === !cur) delete S.edits[id];
+  /* ---------- Acts ---------- */
+  function startSync() {
+    S.prev = S.s === "syncing" ? S.prev : S.s;
+    var from = S.prev;
+    if (from === "offline") { flash("sync", "Still no connection."); render(); return; }
+    S.s = "syncing"; S.flash = null; render();
+    clearTimeout(timer);
+    timer = setTimeout(function () {
+      if (S.s !== "syncing") return;
+      if (from === "agree") { S.s = "agree"; flash("sync", "Synced. Nothing new."); }
+      else { S.s = "merged"; S.used = {}; flash("sync", "Synced. 4 changes merged."); }
+      render();
+    }, 1800);
+  }
+  function act(a) {
+    var p = a.split(":");
+    switch (p[0]) {
+      case "go":
+        S.v = p.slice(1).join(":") || "list"; if (S.v === "list" || S.v === "sync") S.from = S.v; break;
+      case "item":
+        S.from = p.slice(2).join(":") || "list"; S.v = "item:" + p[1] + ":" + S.from; break;
+      case "tog":
+        S.tog[p[1]] = !S.tog[p[1]]; break;
+      case "use":
+        S.used[p[1]] = !S.used[p[1]];
+        flash("use:" + p[1], S.used[p[1]] ? "Now using the older copy." : "Now using the newer copy.", S.used[p[1]] ? p[1] : "");
+        break;
+      case "undo":
+        S.used[p[1]] = false; flash("use:" + p[1], "Undone. The kept copy is back."); break;
+      case "sync": startSync(); return;
+      case "stop":
+        clearTimeout(timer); S.s = S.prev || "stale"; flash("sync", "Stopped. Nothing changed."); break;
+      case "add": flash("add", "On the laptop, open this app and sign in. It joins here."); break;
+      case "x": S.x = S.x === p[1] ? "" : p[1]; break;
+      case "f": S.f = p[1]; S.x = ""; break;
     }
-  },
-  at(x) { S.se.at = x; S.se.sheet = null; },
-  only() { S.se.only = !S.se.only; },
-  sheet(x) { S.se.sheet = x; },
-  close() { S.se.sheet = null; },
-  srv() { /* toggled by <details> itself */ }
-};
-document.addEventListener("click", e => {
-  const b = e.target.closest("[data-a]"); if (!b) return;
-  const a = b.dataset.a;
-  if (a === "srv") { setTimeout(() => { S.srv = b.open; }, 0); return; }
-  if (!ACT[a]) return;
-  e.preventDefault();
-  ACT[a](b.dataset.x);
+    render();
+  }
+  document.addEventListener("click", function (e) {
+    var pg = e.target.closest("[data-page]");
+    if (pg && !pg.classList.contains("pg")) {
+      var a = pg.getAttribute("data-page");
+      if (a.indexOf("hide:") === 0) {
+        S.hidden[a.slice(5)] = true;
+        var left = Object.keys(CONCEPTS).filter(function (k) { return !S.hidden[k]; });
+        if (S.hidden[S.c] && left.length) { S.c = left[0]; S.v = "list"; }
+      }
+      if (a === "showall") S.hidden = {};
+      if (a === "labels") S.labels = !S.labels;
+      render(); return;
+    }
+    var t = e.target.closest("[data-act]");
+    if (t) { e.preventDefault(); act(t.getAttribute("data-act")); }
+  });
+  window.addEventListener("hashchange", function () { readHash(); S.flash = null; render(); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", render);
+  readHash();
+  if (S.v.indexOf("item:") === 0) S.from = S.v.split(":").slice(2).join(":") || "list";
   render();
-});
-document.addEventListener("keydown", e => { if (e.key === "Escape" && S.se.sheet) { S.se.sheet = null; render(); } });
-
-/* ---------- Deep links: #s=merged&t=dark&v=merge:0029&at=0028&only=1&sheet=aa&hide=seam&labels=1&c=seam ---------- */
-function writeHash() {
-  const p = new URLSearchParams();
-  const st = (S.s === "agree" || S.s === "merged") && pendingCount() ? "pending" : S.s;
-  if (st !== "agree") p.set("s", st);
-  const t = document.documentElement.dataset.theme; if (t) p.set("t", t);
-  if (S.sl.v !== "items") p.set("v", S.sl.v);
-  if (S.se.at !== "now") p.set("at", S.se.at);
-  if (S.se.only) p.set("only", "1");
-  if (S.se.sheet) p.set("sheet", S.se.sheet);
-  const hidden = [...document.querySelectorAll(".concept[hidden]")].map(s => s.id.replace("concept-", ""));
-  if (hidden.length) p.set("hide", hidden.join(","));
-  if (document.documentElement.classList.contains("labels")) p.set("labels", "1");
-  const str = p.toString().replace(/%3A/g, ":").replace(/%2C/g, ",");
-  history.replaceState(null, "", str ? "#" + str : location.pathname + location.search);
-}
-function readHash() {
-  const p = new URLSearchParams(location.hash.slice(1));
-  const s = p.get("s");
-  fresh(STATES.some(([k]) => k === s) || s === "stopped" ? s : "agree");
-  if (s === "stopped") { S.s = "stopped"; }
-  const t = p.get("t"); if (t === "dark" || t === "light") document.documentElement.dataset.theme = t;
-  const v = p.get("v"); if (v && /^(items|counts|sync|merge:(0029|2140))$/.test(v)) S.sl.v = v;
-  if (S.sl.v === "merge:0029") { if (!S.mergeArrived) S.sl.v = "sync"; }
-  const at = p.get("at"); if (at && moments().includes(at)) S.se.at = at;
-  if (p.get("only") === "1") S.se.only = true;
-  const sh = p.get("sheet"); if (sh && ORDER.includes(sh)) S.se.sheet = sh;
-  (p.get("hide") || "").split(",").forEach(x => { const el = document.getElementById("concept-" + x); if (el) el.hidden = true; });
-  if (p.get("labels") === "1") document.documentElement.classList.add("labels");
-  render();
-  const c = p.get("c"); if (c) { const el = document.getElementById("concept-" + c); if (el) el.scrollIntoView(); }
-}
-readHash();
 })();
 </script>
 </body>

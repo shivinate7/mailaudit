@@ -1,0 +1,825 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Import and backup</title>
+<style>
+/* Tokens. Spacing and radius follow the house step (4 px, radius 8). Colours are this designer's own,
+   named by role. Type sizes are Apple Dynamic Type text styles at the default size (Large) and at AX5. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --radius: 8px;
+  --font: -apple-system, system-ui, "Helvetica Neue", Arial, sans-serif;
+
+  /* Dynamic Type, Large (default) */
+  --t-large: 34px; --l-large: 41px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap: 12px; --l-cap: 16px;
+  /* Bar buttons and bar titles stop growing at AX1 Body (28/34) so both bottom actions stay on screen. */
+  --t-bar: 17px; --l-bar: 22px;
+
+  /* Drawn placeholders, not from an Apple page: status bar and home indicator areas. */
+  --sa-top: 44px; --sa-bottom: 20px;
+  /* Open pose: both pages share one header height and one row height, so rows line up across the hinge. */
+  --phead: 216px; --open-row: 80px; --open-month: 36px;
+
+  /* Light set */
+  --page: #E4E8EC;
+  --surface: #F2F4F6;
+  --raised: #FFFFFF;
+  --sheet: rgba(251, 252, 255, 0.97);
+  --ink: #17202A;
+  --muted: #586372;
+  --line: #CDD4DC;
+  --accent: #2C3FBF;
+  --accent-ink: #FFFFFF;
+  --new: #2C3FBF;
+  --kept: #1D7148;
+  --kept-soft: #DCEFE4;
+  --changed: #8F5300;
+  --skipped: #6A7381;
+  --danger: #A8231B;
+  --danger-soft: #F7DEDB;
+  --frame-edge: #9AA3AE;
+  --scrim: rgba(23, 32, 42, 0.28);
+  --label: #2C3FBF;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0C0F13; --surface: #14181E; --raised: #1D232B; --sheet: rgba(34, 41, 51, 0.95);
+    --ink: #E7EBF0; --muted: #9BA5B3; --line: #2F3843;
+    --accent: #8E9CFF; --accent-ink: #0C0F13; --new: #8E9CFF;
+    --kept: #63CC94; --kept-soft: #173326; --changed: #E5AA55;
+    --skipped: #8B94A1; --danger: #F2877E; --danger-soft: #3D1A17;
+    --frame-edge: #4A5462; --scrim: rgba(0, 0, 0, 0.5); --label: #8E9CFF;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0C0F13; --surface: #14181E; --raised: #1D232B; --sheet: rgba(34, 41, 51, 0.95);
+  --ink: #E7EBF0; --muted: #9BA5B3; --line: #2F3843;
+  --accent: #8E9CFF; --accent-ink: #0C0F13; --new: #8E9CFF;
+  --kept: #63CC94; --kept-soft: #173326; --changed: #E5AA55;
+  --skipped: #8B94A1; --danger: #F2877E; --danger-soft: #3D1A17;
+  --frame-edge: #4A5462; --scrim: rgba(0, 0, 0, 0.5); --label: #8E9CFF;
+}
+/* Dynamic Type, AX5 */
+.ax5 {
+  --t-large: 60px; --l-large: 70px;
+  --t-title2: 56px; --l-title2: 66px;
+  --t-title3: 55px; --l-title3: 65px;
+  --t-head: 53px; --l-head: 62px;
+  --t-body: 53px; --l-body: 62px;
+  --t-callout: 51px; --l-callout: 60px;
+  --t-sub: 49px; --l-sub: 58px;
+  --t-foot: 44px; --l-foot: 52px;
+  --t-cap: 43px; --l-cap: 51px;
+  --t-bar: 28px; --l-bar: 34px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--ink); font-family: var(--font); font-size: 17px; line-height: 22px; }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Review chrome (outside the devices) */
+.chrome { position: sticky; top: 0; z-index: 20; background: var(--page); border-bottom: 1px solid var(--line);
+  display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4); font-size: 15px; line-height: 20px; }
+.banner { background: var(--danger-soft); color: var(--danger); border-radius: var(--radius); padding: var(--space-2) var(--space-3); font-weight: 600; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.chip { min-height: 36px; border: 1px solid var(--line); background: var(--raised); border-radius: 999px; padding: 0 var(--space-3); }
+.chip[aria-pressed="true"] { background: var(--ink); color: var(--surface); border-color: var(--ink); }
+.chrome select { min-height: 36px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); padding: 0 var(--space-2); }
+.who { color: var(--muted); }
+
+.concepts { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-6) var(--space-4) 80px; }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-direction: column; gap: var(--space-1); max-width: 72ch; }
+.concept-head h2 { margin: 0; font-size: 22px; line-height: 28px; }
+.concept-head p { margin: 0; color: var(--muted); font-size: 15px; line-height: 20px; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-6); align-items: flex-start; }
+.figure { display: flex; flex-direction: column; gap: var(--space-2); margin: 0; }
+.figure figcaption { font-size: 13px; line-height: 18px; color: var(--muted); max-width: 466px; }
+.frames-scroll { max-width: 100%; overflow-x: auto; }
+
+/* Devices */
+.device { position: relative; overflow: hidden; border-radius: 28px; background: var(--surface); font-size: var(--t-body); line-height: var(--l-body);
+  box-shadow: 0 0 0 1px var(--frame-edge); flex: none; }
+.device[data-device="iphone-duo-folded"] { width: 466px; height: 678px; }
+.device[data-device="iphone-duo-unfolded"] { width: 951px; height: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.device[data-device="iphone-regular"] { width: 466px; height: 900px; resize: both; min-width: 320px; min-height: 560px; max-width: 600px; }
+.hinge { background: var(--page); box-shadow: inset 1px 0 0 var(--frame-edge), inset -1px 0 0 var(--frame-edge); }
+.pane { position: relative; overflow: hidden; }
+.device > .pane:only-child { position: absolute; inset: 0; }
+.screen { position: absolute; inset: 0; display: flex; flex-direction: column; background: var(--surface); }
+.status { flex: none; height: calc(var(--sa-top) + env(safe-area-inset-top)); display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--space-6); font-size: 15px; line-height: 20px; font-weight: 600; }
+.status .dots { letter-spacing: 2px; }
+.home-ind { flex: none; height: calc(var(--sa-bottom) + env(safe-area-inset-bottom)); display: grid; place-items: center; }
+.home-ind::before { content: ""; width: 134px; height: 5px; border-radius: 3px; background: var(--ink); opacity: .75; }
+.scroll { flex: 1; min-height: 0; overflow: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-5); padding: 0 var(--space-4) var(--space-6); }
+.scroll.flush { padding: 0; gap: 0; }
+
+/* Navigation bar */
+.nav { flex: none; display: flex; align-items: center; justify-content: space-between; min-height: 44px; padding: 0 var(--space-2); gap: var(--space-2); }
+.nav .end { min-width: 44px; display: flex; }
+.nav .end:last-child { justify-content: flex-end; }
+.nav h3 { margin: 0; font-size: var(--t-bar); line-height: var(--l-bar); font-weight: 600; text-align: center; flex: 1; }
+.large { margin: 0; padding: 0 var(--space-4); font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; flex: none; }
+.tbtn { min-height: 44px; min-width: 44px; border: 0; background: none; color: var(--accent); padding: 0 var(--space-2); font-size: var(--t-bar); line-height: var(--l-bar); }
+
+/* Lists */
+.stack { display: flex; flex-direction: column; gap: var(--space-2); }
+.group-title { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); padding: 0 var(--space-4); }
+.list { background: var(--raised); border-radius: var(--radius); overflow: hidden; display: flex; flex-direction: column; }
+.row { min-height: 44px; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); border: 0; background: none; text-align: start; width: 100%; position: relative; }
+.list > * + .row::before { content: ""; position: absolute; top: 0; left: var(--space-4); right: 0; border-top: 1px solid var(--line); }
+.row .body { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.row .t { font-size: var(--t-body); line-height: var(--l-body); }
+.row .s { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); }
+.row .s.k { color: var(--kept); }
+.row .v { font-size: var(--t-body); line-height: var(--l-body); color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.row .chev::after { content: "\203A"; color: var(--muted); font-size: var(--t-title3); }
+.row.sel { background: color-mix(in srgb, var(--accent) 12%, var(--raised)); }
+.ax5 .row { flex-wrap: wrap; }
+.ax5 .row .v { white-space: normal; }
+
+.glyph { width: 28px; height: 28px; flex: none; border-radius: 50%; display: grid; place-items: center; font-size: 14px; line-height: 1; font-weight: 700; }
+.g-import { background: color-mix(in srgb, var(--new) 16%, transparent); color: var(--new); }
+.g-copy { background: color-mix(in srgb, var(--muted) 18%, transparent); color: var(--muted); }
+.g-kept { background: color-mix(in srgb, var(--kept) 18%, transparent); color: var(--kept); }
+.ax5 .glyph { width: 56px; height: 56px; font-size: 28px; }
+
+/* Kept proof */
+.proof { background: var(--kept-soft); border-radius: var(--radius); padding: var(--space-3) var(--space-4); display: flex; gap: var(--space-3); align-items: flex-start; }
+.proof b { color: var(--kept); font-variant-numeric: tabular-nums; }
+.proof .body { display: flex; flex-direction: column; gap: var(--space-1); }
+.proof .s { font-size: var(--t-sub); line-height: var(--l-sub); }
+.ax5 .proof { flex-direction: column; }
+.ax5 .proof .glyph { display: none; }
+
+/* Counts */
+.count-row .n { font-variant-numeric: tabular-nums; font-weight: 600; min-width: 3ch; text-align: end; }
+.k-new { color: var(--new); }
+.k-changed { color: var(--changed); }
+.k-skipped { color: var(--skipped); }
+.k-danger { color: var(--danger); }
+.swatch { width: 10px; height: 10px; border-radius: 2px; flex: none; }
+.sw-new { background: var(--new); } .sw-changed { background: var(--changed); } .sw-skipped { background: var(--skipped); } .sw-danger { background: var(--danger); }
+.detail { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); padding: 0 var(--space-4) var(--space-3) calc(var(--space-4) + 22px); display: flex; flex-direction: column; gap: var(--space-1); }
+.detail .it { display: flex; justify-content: space-between; gap: var(--space-3); color: var(--ink); }
+.detail .it .q { color: var(--muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ax5 .detail { padding-left: var(--space-4); }
+.ax5 .detail .it { flex-direction: column; }
+
+/* Buttons */
+.btn { min-height: 50px; border-radius: var(--radius); border: 0; padding: var(--space-2) var(--space-4); font-weight: 600; font-size: var(--t-body); line-height: var(--l-body); }
+.btn-primary { background: var(--accent); color: var(--accent-ink); }
+.btn-plain { background: var(--raised); color: var(--accent); box-shadow: inset 0 0 0 1px var(--line); }
+.btn-danger { background: var(--danger); color: var(--surface); }
+.btn[disabled] { opacity: .45; cursor: not-allowed; }
+.bar { flex: none; display: flex; gap: var(--space-3); padding: var(--space-3) var(--space-4) 0; background: var(--surface); border-top: 1px solid var(--line); }
+.bar .btn { flex: 1; font-size: var(--t-bar); line-height: var(--l-bar); }
+.bar-wrap { flex: none; display: flex; flex-direction: column; gap: var(--space-2); background: var(--surface); }
+.bar-wrap > .answer { margin: var(--space-2) var(--space-4) 0; }
+.ax5 .bar { flex-direction: column; }
+.ax5 .btn { min-height: 56px; }
+
+/* Answers shown at the press */
+.answer { border-radius: var(--radius); padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2);
+  background: color-mix(in srgb, var(--accent) 10%, var(--raised)); box-shadow: inset 3px 0 0 var(--accent); }
+.answer.warn { background: var(--danger-soft); box-shadow: inset 3px 0 0 var(--danger); }
+.answer.ok { background: var(--kept-soft); box-shadow: inset 3px 0 0 var(--kept); }
+.answer p { margin: 0; font-size: var(--t-callout); line-height: var(--l-callout); }
+.answer .btn { min-height: 44px; }
+.list .answer { margin: 0 var(--space-2) var(--space-2); }
+
+/* Sheets (folded and phone) */
+.scrim { position: absolute; inset: 0; background: var(--scrim); }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: calc(var(--sa-top) + 12px); background: var(--surface); border-radius: 12px 12px 0 0;
+  display: flex; flex-direction: column; box-shadow: 0 -1px 0 var(--line); }
+.grabber { flex: none; height: 16px; display: grid; place-items: center; }
+.grabber::before { content: ""; width: 36px; height: 5px; border-radius: 3px; background: var(--line); }
+
+/* Forms */
+.field { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-4); }
+.field label, .lbl { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+.field input, .field select { min-height: 44px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--surface); padding: 0 var(--space-3); width: 100%; }
+.pair { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.ax5 .pair { grid-template-columns: 1fr; }
+.note { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); padding: 0 var(--space-4); margin: 0; }
+.meta { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); }
+details.machine { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+details.machine summary { min-height: 44px; display: flex; align-items: center; cursor: pointer; }
+details.machine code { display: block; white-space: pre-wrap; font-family: ui-monospace, Menlo, monospace; font-size: 12px; line-height: 16px; }
+.progress { height: 6px; width: 100%; background: var(--line); border-radius: 3px; overflow: hidden; }
+.progress i { display: block; height: 100%; width: 51%; background: var(--accent); }
+.center-msg { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-8) var(--space-4); text-align: center; align-items: center; }
+.center-msg p { margin: 0; }
+
+/* "New:" review labels */
+.show-labels [data-new] { outline: 1.5px dashed var(--label); outline-offset: 2px; position: relative; }
+.show-labels [data-new]::after { content: "New: " attr(data-new); position: absolute; right: 0; top: -9px; z-index: 5; font-size: 10px; line-height: 14px; font-weight: 600;
+  background: var(--surface); color: var(--label); border: 1px dashed var(--label); border-radius: 4px; padding: 0 4px; pointer-events: none; white-space: nowrap; }
+.ax5 [data-new]::after { display: none; }
+
+/* ---------- Tracing paper ---------- */
+.ledger { display: flex; flex-direction: column; }
+.month { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); padding: var(--space-3) var(--space-4) var(--space-1); font-weight: 600; }
+.lrow, .orow { min-height: 60px; display: grid; grid-template-columns: 1fr auto; align-items: center; gap: var(--space-1) var(--space-3); padding: var(--space-2) var(--space-4); border-top: 1px solid var(--line); position: relative; }
+.lrow { background: var(--raised); }
+.who2 { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); }
+.what { font-size: var(--t-body); line-height: var(--l-body); }
+.right { display: flex; align-items: center; gap: var(--space-2); justify-content: flex-end; font-variant-numeric: tabular-nums; }
+.ticks { display: inline-flex; gap: 3px; }
+.tick { width: 14px; height: 14px; border-radius: 50%; border: 1.5px solid var(--kept); }
+.tick.on { background: var(--kept); }
+.tick.lose { border-color: var(--danger); border-style: dashed; background: transparent; }
+.orow .tick.on { box-shadow: 0 0 0 2px var(--raised), 0 1px 3px 2px var(--scrim); }
+.ax5 .lrow, .ax5 .orow { grid-template-columns: 1fr; }
+.ax5 .tick { width: 28px; height: 28px; }
+.gaprow { background: transparent; border-top: 1px dashed var(--new); }
+.gaprow .what { color: var(--new); font-size: var(--t-sub); line-height: var(--l-sub); }
+.stampmark { font-size: var(--t-cap); line-height: var(--l-cap); font-weight: 600; color: var(--new); }
+
+.paper-wrap { position: relative; flex: 1; min-height: 0; display: flex; flex-direction: column; }
+.overlay { position: absolute; left: var(--space-2); right: var(--space-2); top: 0; bottom: 0; min-height: 0; overflow: hidden; background: var(--sheet);
+  -webkit-backdrop-filter: blur(3px); backdrop-filter: blur(3px); border-radius: 12px 12px 0 0; box-shadow: 0 0 0 1px var(--line), 0 -6px 16px -8px var(--scrim);
+  display: flex; flex-direction: column; transition: transform .28s cubic-bezier(.2,.7,.2,1); }
+.overlay.peek { transform: translateY(calc(100% - 64px)); }
+.overlay.static { position: relative; left: auto; right: auto; flex: 1; border-radius: 0; box-shadow: none; -webkit-backdrop-filter: none; backdrop-filter: none; }
+@media (prefers-reduced-motion: reduce) { .overlay { transition: none; } }
+.ax5 .overlay { overflow: auto; background: var(--raised); -webkit-backdrop-filter: none; backdrop-filter: none; }
+.ax5 .overlay > .scroll { flex: none; overflow: visible; }
+.tab { flex: none; position: relative; z-index: 2; padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); border-bottom: 1px solid var(--line); }
+.tab .file { font-weight: 600; font-size: var(--t-head); line-height: var(--l-head); display: flex; justify-content: space-between; gap: var(--space-2); align-items: center; }
+.tab .file .meta { font-weight: 400; }
+.tab p { margin: 0; font-size: var(--t-sub); line-height: var(--l-sub); }
+.fchip { min-height: 44px; border-radius: 999px; padding: var(--space-1) var(--space-3); border: 1px solid var(--line); background: var(--raised); display: inline-flex; align-items: center; gap: var(--space-2); font-size: var(--t-sub); line-height: var(--l-sub); }
+.fchip[aria-pressed="true"] { border-color: currentColor; box-shadow: inset 0 0 0 1px currentColor; }
+.fchip b { font-variant-numeric: tabular-nums; }
+.orow.same { opacity: .4; }
+.orow.out { opacity: .25; }
+.orow.dim { opacity: .12; }
+.orow.new { box-shadow: inset 3px 0 0 var(--new); }
+.orow.new .what { color: var(--new); font-weight: 600; }
+.orow.new .what::before { content: "+ "; }
+.orow.changed { box-shadow: inset 3px 0 0 var(--changed); }
+.orow.lose { box-shadow: inset 3px 0 0 var(--danger); }
+.delta { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--changed); }
+.orow.lose .delta, .orow.gone .delta { color: var(--danger); }
+.orow.gone { background: var(--danger-soft); }
+.orow.gone .what { text-decoration: line-through; color: var(--danger); }
+.pop { position: absolute; left: var(--space-2); right: var(--space-2); top: calc(100% - var(--space-2)); z-index: 4; background: var(--raised); border-radius: var(--radius);
+  box-shadow: 0 0 0 1px var(--line), 0 12px 28px var(--scrim); display: flex; flex-direction: column; padding: var(--space-2) 0; }
+.ax5 .pop { position: static; box-shadow: 0 0 0 1px var(--line); }
+
+/* Open pose: shared header height and row height on both pages */
+.pane[data-pose="left"] .phead, .pane[data-pose="right"] .phead { height: var(--phead); flex: none; overflow: hidden; }
+.pane[data-pose="left"] .lrow, .pane[data-pose="right"] .orow { height: var(--open-row); min-height: 0; }
+.pane[data-pose="left"] .month, .pane[data-pose="right"] .month { height: var(--open-month); }
+.pane[data-pose="right"] .tab.phead { overflow: visible; }
+.phead { display: flex; flex-direction: column; gap: var(--space-2); }
+.phead .answer { margin: 0 var(--space-4); }
+.phead .meta { padding: 0 var(--space-4); }
+
+.stackbar { flex: none; background: var(--surface); padding: var(--space-2) var(--space-4) 0; display: flex; flex-direction: column; gap: var(--space-2); border-top: 1px solid var(--line); }
+.edges { display: flex; flex-direction: column; border: 0; background: none; padding: 0; width: 100%; text-align: start; min-height: 44px; justify-content: flex-end; }
+.edge { height: 7px; margin: 0 calc(var(--i) * 6px); border: 1px solid var(--line); border-bottom: 0; border-radius: 4px 4px 0 0; background: var(--raised); }
+.edges .cap { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); padding-top: var(--space-1); display: flex; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.ax5 .edges .cap { font-size: var(--t-bar); line-height: var(--l-bar); }
+.ax5 .edges .cap span:last-child { display: none; }
+.fan { display: flex; flex-direction: column; gap: var(--space-2); }
+.leaf { min-height: 56px; border-radius: var(--radius); background: var(--raised); box-shadow: 0 0 0 1px var(--line); display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-4); border: 0; width: 100%; text-align: start; }
+.leaf .body { flex: 1; display: flex; flex-direction: column; }
+.leaf .s { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--muted); }
+.leaf .size { color: var(--muted); font-variant-numeric: tabular-nums; }
+.ax5 .leaf { flex-wrap: wrap; }
+.legend { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); font-size: var(--t-foot); line-height: var(--l-foot); color: var(--muted); }
+.legend span { display: inline-flex; align-items: center; gap: var(--space-2); }
+</style>
+</head>
+<body>
+<div class="chrome" role="region" aria-label="Review controls">
+  <div class="banner">Sample: no figure, name or date on this page is real.</div>
+  <div class="cluster"><span class="who">Designer kind: blind (import-and-backup-blind-1). Every part is drawn as new: a blind designer cannot see what exists today.</span></div>
+  <div class="cluster" aria-label="Concepts and view">
+    <button class="chip" data-hide="checkpoints" aria-pressed="false">Hide Checkpoints</button>
+    <button class="chip" data-hide="tracing" aria-pressed="false">Hide Tracing paper</button>
+    <label>State <select id="state-pick"></select></label>
+    <button class="chip" id="theme-btn" aria-pressed="false">Dark theme</button>
+    <button class="chip" id="labels-btn" aria-pressed="true">New labels</button>
+  </div>
+</div>
+
+<main class="concepts show-labels" id="concepts">
+  <section class="concept" id="choice-checkpoints" data-concept="checkpoints" aria-labelledby="h-checkpoints">
+    <div class="concept-head">
+      <h2 id="h-checkpoints">Checkpoints</h2>
+      <p>One history of every import and every safety copy, newest first. A file is checked in a sheet before anything changes, with the stamp and dates set there. Each import in the history shows its check-in count before and after, so the proof sits where the fear is.</p>
+    </div>
+    <div class="frames">
+      <figure class="figure"><div class="device" data-device="iphone-duo-folded"><div class="pane" data-pose="folded"></div></div><figcaption>Duo, folded, 466 x 678</figcaption></figure>
+      <div class="frames-scroll"><figure class="figure"><div class="device" data-device="iphone-duo-unfolded"><div class="pane" data-pose="left"></div><div class="hinge" aria-hidden="true"></div><div class="pane" data-pose="right"></div></div><figcaption>Duo, open, 951 x 669. History on the left page, the chosen entry or the file check on the right. Nothing crosses the hinge (x 455.5 to 495.5).</figcaption></figure></div>
+      <figure class="figure"><div class="device" data-device="iphone-regular"><div class="pane" data-pose="phone"></div></div><figcaption>Large phone. No size is written for it: drawn at 466 wide; drag the corner to the real size.</figcaption></figure>
+      <figure class="figure"><div class="device ax5" data-device="iphone-duo-folded" data-text="ax5"><div class="pane" data-pose="folded"></div></div><figcaption>Duo, folded, largest accessibility text (AX5)</figcaption></figure>
+    </div>
+  </section>
+
+  <section class="concept" id="choice-tracing" data-concept="tracing" aria-labelledby="h-tracing">
+    <div class="concept-head">
+      <h2 id="h-tracing">Tracing paper</h2>
+      <p>The first screen is the ledger itself. A file is laid over it like tracing paper: new orders are inked on the sheet, your check-ins sit on top of it, and the sheet lifts to peek under. Safety copies are a stack of earlier sheets under the ledger; restoring lays one over in the same way, and shows what it would take back. Open, the ledger and the sheet line up row for row across the hinge.</p>
+    </div>
+    <div class="frames">
+      <figure class="figure"><div class="device" data-device="iphone-duo-folded"><div class="pane" data-pose="folded"></div></div><figcaption>Duo, folded, 466 x 678</figcaption></figure>
+      <div class="frames-scroll"><figure class="figure"><div class="device" data-device="iphone-duo-unfolded"><div class="pane" data-pose="left"></div><div class="hinge" aria-hidden="true"></div><div class="pane" data-pose="right"></div></div><figcaption>Duo, open, 951 x 669. Left page: the ledger now. Right page: the sheet, row for row; the two pages scroll together.</figcaption></figure></div>
+      <figure class="figure"><div class="device" data-device="iphone-regular"><div class="pane" data-pose="phone"></div></div><figcaption>Large phone. No size is written for it: drawn at 466 wide; drag the corner to the real size.</figcaption></figure>
+      <figure class="figure"><div class="device ax5" data-device="iphone-duo-folded" data-text="ax5"><div class="pane" data-pose="folded"></div></div><figcaption>Duo, folded, largest accessibility text (AX5)</figcaption></figure>
+    </div>
+  </section>
+</main>
+
+<script>
+(function () {
+  "use strict";
+  var STATES = [
+    ["home", "Loaded"], ["copied", "Safety copy made"], ["empty", "Empty: no orders yet"], ["reading", "Reading a file"],
+    ["error", "File not readable"], ["review", "Check the file"], ["edit", "Edit stamp and dates"], ["done", "Imported"],
+    ["restore", "Restore a copy"], ["restored", "Restored"], ["unknown", "Copies could not be read"]
+  ];
+  var MONTHS = ["Jun", "Jul", "Aug", "Sep", "Oct", "Nov"];
+  var MONTH_START = ["Jun 1", "Jul 1", "Aug 1", "Sep 1", "Oct 1", "Nov 1"];
+  var MONTH_END = ["Jun 30", "Jul 31", "Aug 31", "Sep 30", "Oct 31", "Nov 20"];
+  // Per month in the file: new orders, changed orders, orders already here and the same.
+  var BY_MONTH = [[0, 0, 64], [0, 1, 71], [0, 0, 68], [2, 1, 77], [9, 2, 58], [26, 1, 32]];
+  var FILE = "orders-export-nov.csv", FILE_ROWS = 412, CHECKINS = 931;
+  // Ledger rows, newest first. "added16": came in with the Nov 16 import. "since": check-ins made after Nov 14.
+  var ROWS = [
+    { m: 5, seller: "Harbor Hobby", item: "Glass Heron x4", cost: "$3.20", got: 2, of: 4, kind: "changed", change: "Quantity 3 to 4", since: 1 },
+    { m: 5, seller: "Lantern Games", item: "Ember Fox x2", cost: "$0.90", got: 0, of: 2, kind: "new" },
+    { m: 5, seller: "Mossback Cards", item: "Quiet Lantern x1", cost: "$0.35", got: 1, of: 1, kind: "same", added16: true },
+    { m: 5, seller: "Northgate Cards", item: "Tidecaller Adept x3", cost: "$1.65", got: 0, of: 3, kind: "new" },
+    { m: 5, seller: "Pinecrest Collectibles", item: "Copper Sentinel x1", cost: "$0.48", got: 0, of: 1, kind: "same", added16: true },
+    { m: 5, seller: "Fernway Cards", item: "Salt Marsh Wisp x4", cost: "$1.12", got: 0, of: 4, kind: "new" },
+    { m: 4, seller: "Harbor Hobby", item: "Ashen Courier x2", cost: "$0.70", got: 2, of: 2, kind: "same", since: 1 },
+    { m: 4, seller: "Quillstone", item: "Brass Owl x1", cost: "$2.10", got: 1, of: 1, kind: "changed", change: "Status shipped to delivered" },
+    { m: 4, seller: "Lantern Games", item: "Gale Runner x3", cost: "$0.84", got: 0, of: 3, kind: "new" },
+    { m: 4, seller: "Mossback Cards", item: "Root Warden x2", cost: "$0.60", got: 1, of: 2, kind: "same" }
+  ];
+  var COPIES = [
+    { when: "Nov 16, 07:58", short: "Nov 16", why: "Before the Mid-Nov import", size: "211 KB", lose: [9, 15] },
+    { when: "Nov 14, 09:12", short: "Nov 14", why: "Made by you", size: "209 KB", lose: [9, 22] },
+    { when: "Nov 2, 18:40", short: "Nov 2", why: "Before the Nov 2 import", size: "198 KB", lose: [23, 58] },
+    { when: "Oct 21, 07:05", short: "Oct 21", why: "Before a restore", size: "181 KB", lose: [23, 131] }
+  ];
+  var PAST = [
+    { kind: "import", stamp: "Mid-Nov", when: "Nov 16", n: [9, 2, 401], before: 909, after: 909, range: "Nov 1 to Nov 15" },
+    { kind: "copy", c: 0 }, { kind: "copy", c: 1 },
+    { kind: "import", stamp: "Nov 2 import", when: "Nov 2", n: [14, 3, 352], before: 744, after: 744, range: "Jun 1 to Nov 1" },
+    { kind: "copy", c: 2 }, { kind: "copy", c: 3 },
+    { kind: "import", stamp: "Oct haul", when: "Oct 9", n: [52, 0, 290], before: 512, after: 512, range: "Jun 1 to Oct 8" }
+  ];
+
+  function fresh(key) { return { key: key, s: "home", open: "new", stamp: "Nov 21 import", from: 0, to: 5, copy: 1, peek: false, filter: "all", sel: 0 }; }
+  var st = { checkpoints: fresh("cp"), tracing: fresh("tp") };
+
+  function esc(t) { return String(t).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+  function nf(n) { return n.toLocaleString("en-US"); }
+  function counts(c) {
+    var n = 0, ch = 0, same = 0, out = 0;
+    BY_MONTH.forEach(function (m, i) {
+      if (i >= c.from && i <= c.to) { n += m[0]; ch += m[1]; same += m[2]; } else { out += m[0] + m[1] + m[2]; }
+    });
+    return { n: n, ch: ch, sk: same + out, same: same, out: out };
+  }
+  function range(c) { return MONTH_START[c.from] + " to " + MONTH_END[c.to]; }
+  function inRange(c, r) { return r.m >= c.from && r.m <= c.to; }
+  function kindOf(c, r) { return inRange(c, r) ? r.kind : "out"; }
+  function importLabel(c) { var k = counts(c); return k.n + k.ch === 0 ? "Nothing to import" : "Import: add " + nf(k.n) + ", update " + nf(k.ch); }
+  function importedText(c) { var k = counts(c); return "Imported: " + nf(k.n) + " added, " + nf(k.ch) + " updated. All " + nf(CHECKINS) + " check-ins kept."; }
+
+  // ---------- shared pieces ----------
+  function status() { return '<div class="status" aria-hidden="true"><span>9:41</span><span class="dots">&#9679;&#9679;&#9679;</span></div>'; }
+  function homeInd() { return '<div class="home-ind" aria-hidden="true"></div>'; }
+  function nav(left, title, right) { return '<div class="nav"><div class="end">' + (left || "") + '</div><h3>' + (title || "") + '</h3><div class="end">' + (right || "") + '</div></div>'; }
+  function tb(label, act) { return '<button class="tbtn" data-act="' + act + '">' + label + '</button>'; }
+  function btn(label, act, kind, extra) { return '<button class="btn btn-' + (kind || "plain") + '" data-act="' + act + '"' + (extra || "") + '>' + label + '</button>'; }
+  function machine(text, who) { return '<details class="machine"><summary>What the ' + (who || "file") + ' said</summary><code>' + esc(text) + '</code></details>'; }
+  function ticks(got, of, lose) {
+    var h = '<span class="ticks" role="img" aria-label="' + got + ' of ' + of + ' checked in">';
+    for (var i = 0; i < of; i++) h += '<span class="tick' + (lose && i >= got - lose && i < got ? " lose" : i < got ? " on" : "") + '"></span>';
+    return h + '</span>';
+  }
+  function proof(main, sub, tag) {
+    return '<div class="proof"' + (tag ? ' data-new="' + tag + '"' : "") + '><span class="glyph g-kept" aria-hidden="true">&#10003;</span><div class="body"><span>' + main + '</span>' + (sub ? '<span class="s">' + sub + '</span>' : "") + '</div></div>';
+  }
+  function keptNow() { return proof('<b>' + nf(CHECKINS) + '</b> check-ins now, <b>' + nf(CHECKINS) + '</b> after', "An import adds and updates orders. It never clears a check-in.", "check-ins kept proof"); }
+
+  function countRows(c, expand) {
+    var k = counts(c);
+    var groups = [["new", "New orders", k.n, "new"], ["changed", "Changed orders", k.ch, "changed"], ["skipped", "Skipped", k.sk, "skipped"]];
+    var h = '<div class="list" data-new="dry run counts">';
+    groups.forEach(function (g) {
+      var open = expand && c.open === g[0];
+      h += '<button class="row count-row" data-act="open:' + g[0] + '" aria-expanded="' + open + '"><span class="swatch sw-' + g[3] + '"></span><span class="body"><span class="t">' + g[1] + '</span></span><span class="n k-' + g[3] + '">' + nf(g[2]) + '</span><span class="chev"></span></button>';
+      if (open) h += groupDetail(c, g[0], k);
+    });
+    return h + '</div>';
+  }
+  function staticCounts(n) {
+    var g = [["New orders", n[0], "new"], ["Changed orders", n[1], "changed"], ["Skipped", n[2], "skipped"]];
+    return '<div class="list">' + g.map(function (x) { return '<div class="row"><span class="swatch sw-' + x[2] + '"></span><span class="body"><span class="t">' + x[0] + '</span></span><span class="n k-' + x[2] + '" style="font-weight:600">' + nf(x[1]) + '</span></div>'; }).join("") + '</div>';
+  }
+  function groupDetail(c, g, k) {
+    var h = '<div class="detail">';
+    if (g === "skipped") {
+      return h + '<div class="it"><span>Already here and the same</span><span class="q">' + nf(k.same) + '</span></div><div class="it"><span>Outside your dates</span><span class="q">' + nf(k.out) + '</span></div></div>';
+    }
+    var rows = ROWS.filter(function (r) { return kindOf(c, r) === g; });
+    rows.forEach(function (r) {
+      h += '<div class="it"><span>' + esc(r.seller) + ', ' + esc(r.item) + '</span><span class="q">' + (g === "changed" ? esc(r.change) : r.cost) + '</span></div>';
+      if (g === "changed") h += '<div class="it"><span class="q" style="white-space:normal">Its check-ins stay: ' + r.got + ' of ' + r.of + '</span></div>';
+    });
+    var more = (g === "new" ? k.n : k.ch) - rows.length;
+    if (more > 0) h += '<div class="it"><span class="q">And ' + more + ' more</span></div>';
+    if (!rows.length && more <= 0) h += '<div class="it"><span class="q">None in these dates</span></div>';
+    return h + '</div>';
+  }
+  function monthSelect(c, which) {
+    var h = '<select data-in="' + which + '" id="' + c.key + '-' + which + '">';
+    MONTHS.forEach(function (m, i) {
+      var bad = which === "from" ? i > c.to : i < c.from;
+      h += '<option value="' + i + '"' + (i === c[which] ? " selected" : "") + (bad ? " disabled" : "") + '>' + (which === "from" ? MONTH_START[i] : MONTH_END[i]) + '</option>';
+    });
+    return h + '</select>';
+  }
+  function editorFields(c) {
+    return '<div class="field"><label for="' + c.key + '-stamp">Stamp on each order this import adds</label><input id="' + c.key + '-stamp" data-in="stamp" value="' + esc(c.stamp) + '" autocomplete="off"></div>' +
+      '<div class="field"><div class="pair"><div class="stack" style="gap:var(--space-1)"><label for="' + c.key + '-from">From</label>' + monthSelect(c, "from") + '</div><div class="stack" style="gap:var(--space-1)"><label for="' + c.key + '-to">To</label>' + monthSelect(c, "to") + '</div></div></div>';
+  }
+
+  // ---------- Checkpoints ----------
+  var CP = {};
+  CP.entries = function (c) {
+    var e = [];
+    if (c.s === "copied") e.push({ kind: "copy", cp: { when: "Nov 21, 00:41", why: "Made by you", size: "214 KB" }, fresh: "copied" });
+    if (c.s === "done") {
+      var k = counts(c);
+      e.push({ kind: "import", stamp: c.stamp, when: "Nov 21", n: [k.n, k.ch, k.sk], before: CHECKINS, after: CHECKINS, range: range(c), fresh: "done" });
+      e.push({ kind: "copy", cp: { when: "Nov 21, 00:42", why: "Before the " + c.stamp, size: "214 KB" } });
+    }
+    if (c.s === "restored") e.push({ kind: "copy", cp: { when: "Nov 21, 00:43", why: "Before the restore of Nov 14", size: "214 KB" }, fresh: "restored" });
+    return e.concat(PAST);
+  };
+  CP.history = function (c) {
+    var h = '<div class="stack"><div class="group-title">History, newest first</div><div class="list">';
+    CP.entries(c).forEach(function (e, i) {
+      var sel = i === c.sel ? " sel" : "";
+      if (e.kind === "import") {
+        h += '<button class="row' + sel + '" data-act="sel:' + i + '"><span class="glyph g-import" aria-hidden="true">&#8595;</span><span class="body"><span class="t">' + esc(e.stamp) + '</span><span class="s">' + nf(e.n[0]) + ' new, ' + nf(e.n[1]) + ' changed, ' + nf(e.n[2]) + ' skipped</span><span class="s k">Check-ins ' + nf(e.before) + ' before, ' + nf(e.after) + ' after</span></span><span class="v">' + e.when + '</span><span class="chev"></span></button>';
+        if (e.fresh === "done") h += '<div class="answer ok"><p>' + importedText(c) + '</p><div class="cluster">' + btn("Undo import", "undo", "plain") + '</div></div>';
+      } else {
+        var cp = e.cp || COPIES[e.c];
+        // A copy made in this session is listed, not tappable: its Undo sits in the answer beside it.
+        var tag = e.cp ? 'div' : 'button';
+        h += '<' + tag + ' class="row' + (e.fresh ? " sel" : sel) + '"' + (e.cp ? "" : ' data-act="copy:' + e.c + '"') + '><span class="glyph g-copy" aria-hidden="true">&#9636;</span><span class="body"><span class="t">' + cp.when + '</span><span class="s">' + esc(cp.why) + '</span></span><span class="v">' + cp.size + '</span>' + (e.cp ? "" : '<span class="chev"></span>') + '</' + tag + '>';
+        if (e.fresh === "restored") h += '<div class="answer ok"><p>Restored to Nov 14, 09:12. This copy holds what you had just before.</p><div class="cluster">' + btn("Undo restore", "undo", "plain") + '</div></div>';
+      }
+    });
+    return h + '</div></div>';
+  };
+  CP.unknown = function () {
+    return '<div class="answer warn" data-new="unknown is not empty"><p>The history could not be read, so this page cannot say which safety copies exist. Your orders and check-ins are not touched.</p><div class="cluster">' + btn("Try again", "retry", "plain") + '</div>' + machine("storage read failed: copies index (timeout after 5 s)", "storage") + '</div>';
+  };
+  CP.bottom = function (c) {
+    var ans = c.s === "copied" ? '<div class="answer ok"><p>Safety copy made: Nov 21, 00:41, 214 KB. It is at the top of the history.</p></div>' : "";
+    return '<div class="bar-wrap">' + ans + '<div class="bar">' + btn("Make a safety copy", "copynow", "plain") + btn("Import a file", "import", "primary") + '</div></div>';
+  };
+  CP.main = function (c) {
+    if (c.s === "empty") return status() + '<h1 class="large">Imports and copies</h1><div class="scroll"><div class="center-msg"><p>No orders yet. Import an order file to start the ledger.</p>' + btn("Import a file", "import", "primary") + '</div></div>' + homeInd();
+    var body = proof('<b>' + nf(CHECKINS) + '</b> check-ins', "An import adds and updates orders. It never clears a check-in. Each import below shows its count before and after.", "check-ins kept proof");
+    body += c.s === "unknown" ? CP.unknown() : CP.history(c);
+    return status() + '<h1 class="large">Imports and copies</h1><div class="scroll">' + body + '</div>' + CP.bottom(c) + homeInd();
+  };
+  // Returns {head, body, foot} for the file check and restore flows.
+  CP.flow = function (c) {
+    if (c.s === "reading") return { head: nav(tb("Cancel", "cancel"), "Reading the file", ""), body: '<div class="center-msg"><p>Reading ' + FILE + '</p><div class="progress"><i></i></div><p class="meta">212 of ' + FILE_ROWS + ' rows. Nothing has changed yet.</p>' + btn("Stop", "cancel", "plain") + '</div>' };
+    if (c.s === "error") return { head: nav(tb("Cancel", "cancel"), "Check the file", ""), body: '<div class="answer warn"><p>This file has no orders in it. Nothing was imported and nothing changed.</p><p class="meta">An order file has a seller, an order date and a price on each row.</p><div class="cluster">' + btn("Choose another file", "import", "primary") + '</div>' + machine("row 1: missing columns: Order Date, Seller, Price") + '</div>' };
+    if (c.s === "review" || c.s === "edit") {
+      var k = counts(c);
+      var settings = '<div class="stack"><div class="group-title">This import</div>' + (c.s === "edit"
+        ? '<div class="list" data-new="stamp and dates">' + editorFields(c) + '<div class="field">' + btn("Done", "editdone", "plain") + '</div></div><p class="note">The counts above change as you pick. Orders outside the dates are skipped, never removed.</p>'
+        : '<div class="list" data-new="stamp and dates"><button class="row" data-act="edit"><span class="body"><span class="t">Stamp</span></span><span class="v">' + esc(c.stamp) + '</span><span class="chev"></span></button><button class="row" data-act="edit"><span class="body"><span class="t">Dates</span></span><span class="v">' + range(c) + '</span><span class="chev"></span></button></div>') + '</div>';
+      return {
+        head: nav(tb("Cancel", "cancel"), "Check the file", ""),
+        body: '<p class="meta" style="margin:0">' + FILE + ', ' + FILE_ROWS + ' orders</p>' + keptNow() + '<div class="stack"><div class="group-title">What the file would do</div>' + countRows(c, true) + '</div>' + settings + '<p class="note">A safety copy is made before anything changes.</p>',
+        foot: '<div class="bar">' + btn(importLabel(c), "commit", "primary", k.n + k.ch === 0 ? ' disabled title="No new or changed orders in these dates"' : "") + '</div>'
+      };
+    }
+    if (c.s === "restore") {
+      var cp = COPIES[c.copy];
+      return {
+        head: nav(tb("Cancel", "cancel"), "Restore", ""),
+        body: '<div class="stack"><div class="group-title">Safety copy</div><div class="list"><div class="row"><span class="glyph g-copy" aria-hidden="true">&#9636;</span><span class="body"><span class="t">' + cp.when + '</span><span class="s">' + cp.why + '</span></span><span class="v">' + cp.size + '</span></div></div></div>' +
+          '<div class="stack"><div class="group-title">Restoring it takes back</div><div class="list" data-new="restore loss preview">' +
+          '<div class="row"><span class="swatch sw-danger"></span><span class="body"><span class="t">Check-ins made since</span></span><span class="n k-danger" style="font-weight:600">' + cp.lose[1] + '</span></div>' +
+          '<div class="row"><span class="swatch sw-danger"></span><span class="body"><span class="t">Orders added since</span></span><span class="n k-danger" style="font-weight:600">' + cp.lose[0] + '</span></div></div></div>' +
+          proof("A safety copy of now is made first.", "If this restore was wrong, restore that copy and you are back where you are now.", "copy of now first"),
+        foot: '<div class="bar">' + btn("Restore this copy", "dorestore", "primary") + '</div>'
+      };
+    }
+    return null;
+  };
+  CP.detail = function (c, back) {
+    var e = CP.entries(c)[c.sel] || PAST[0];
+    if (e.kind !== "import") e = CP.entries(c).filter(function (x) { return x.kind === "import"; })[0];
+    // Undo lives in the answer on the left page only, so one act shows once.
+    var undo = "";
+    return status() + nav(back ? tb("Back", "pop") : "", esc(e.stamp), "") + '<div class="scroll">' +
+      proof('<b>' + nf(e.before) + '</b> check-ins before, <b>' + nf(e.after) + '</b> after', "", "") +
+      '<div class="stack"><div class="group-title">What it brought in</div>' + (e.fresh === "done" ? countRows(c, true) : staticCounts(e.n)) + '</div>' +
+      '<div class="stack"><div class="group-title">This import</div><div class="list"><div class="row"><span class="body"><span class="t">Stamp</span></span><span class="v">' + esc(e.stamp) + '</span></div><div class="row"><span class="body"><span class="t">Dates</span></span><span class="v">' + e.range + '</span></div></div></div>' +
+      undo + '</div>' + homeInd();
+  };
+  CP.render = function (c, pose) {
+    var f = CP.flow(c);
+    if (pose === "left") return '<div class="screen">' + CP.main(c) + '</div>';
+    if (pose === "right") {
+      if (f) return '<div class="screen">' + status() + f.head + '<div class="scroll">' + f.body + '</div>' + (f.foot || "") + homeInd() + '</div>';
+      if (c.s === "empty") return '<div class="screen">' + status() + '<div class="scroll"><div class="center-msg"><p class="meta">The history of imports and safety copies shows here after the first import.</p></div></div>' + homeInd() + '</div>';
+      if (c.s === "unknown") return '<div class="screen">' + status() + '<div class="scroll"><div class="center-msg"><p class="meta">Once the history reads, pick an import to see what it brought in.</p></div></div>' + homeInd() + '</div>';
+      if (c.s === "restored") return '<div class="screen">' + status() + nav("", "Nov 21, 00:43", "") + '<div class="scroll"><div class="answer ok"><p>Restored to Nov 14, 09:12. The copy on the left holds what you had just before. Restore it to come back.</p><div class="cluster">' + btn("Undo restore", "undo", "plain") + '</div></div></div>' + homeInd() + '</div>';
+      return '<div class="screen">' + CP.detail(c) + '</div>';
+    }
+    // Folded and phone: tapping an import pushes its detail, with Back.
+    var h = '<div class="screen">' + (c.push && !f ? CP.detail(c, true) : CP.main(c)) + '</div>';
+    if (f) h += '<div class="scrim"></div><div class="sheet" role="dialog" aria-label="' + (c.s === "restore" ? "Restore" : "Check the file") + '"><div class="grabber"></div>' + f.head + '<div class="scroll">' + f.body + '</div>' + (f.foot || "") + homeInd() + '</div>';
+    return h;
+  };
+
+  // ---------- Tracing paper ----------
+  var TP = {};
+  TP.isFile = function (c) { return c.s === "review" || c.s === "edit" || c.s === "reading" || c.s === "error"; };
+  // mode: now (before this import), after (merged), slots (open-pose left page with gaps for new rows), restored (as at Nov 14)
+  TP.ledgerRows = function (c, mode) {
+    var h = '<div class="ledger">', last = -1;
+    ROWS.forEach(function (r) {
+      var isNew = r.kind === "new";
+      if ((mode === "now" || mode === "restored") && isNew) return;
+      if (mode === "restored" && r.added16) return;
+      if (mode === "after" && isNew && !inRange(c, r)) return;
+      if (r.m !== last) { h += '<div class="month">' + MONTHS[r.m] + ' 2026</div>'; last = r.m; }
+      if (mode === "slots" && isNew) { h += '<div class="lrow gaprow"><span class="what">' + (inRange(c, r) ? "Goes here" : "Outside your dates") + '</span><span></span></div>'; return; }
+      var got = mode === "restored" && r.since ? r.got - r.since : r.got;
+      var mark = mode === "after" && isNew ? '<span class="stampmark">' + esc(c.stamp) + '</span>' : "";
+      h += '<div class="lrow"><div class="stack" style="gap:0"><span class="who2">' + esc(r.seller) + '</span><span class="what">' + esc(r.item) + '</span>' + mark + '</div><div class="right">' + ticks(got, r.of) + '<span class="who2">' + r.cost + '</span></div></div>';
+    });
+    return h + '</div>';
+  };
+  TP.sheetRows = function (c, mode, open) {
+    var h = '<div class="ledger">', last = -1;
+    ROWS.forEach(function (r) {
+      var k, sub = "", right = "";
+      if (mode === "restore") {
+        if (r.kind === "new") return;
+        k = r.added16 ? "gone" : r.since ? "lose" : "same";
+        if (k === "gone") sub = '<span class="delta">Added since. Restoring removes it.</span>';
+        if (k === "lose") sub = '<span class="delta">Checked in since. Restoring clears it.</span>';
+        right = ticks(r.got, r.of, k === "lose" ? r.since : 0);
+      } else {
+        k = kindOf(c, r);
+        if (k === "changed") sub = '<span class="delta">' + esc(r.change) + '</span>';
+        if (k === "out") sub = '<span class="who2">Outside your dates</span>';
+        if (r.got > 0 && k !== "new") right = ticks(r.got, r.of);
+        var match = c.filter === "all" || c.filter === k || (c.filter === "skipped" && (k === "same" || k === "out"));
+        if (!match && !open) return;
+        if (!match) k += " dim";
+      }
+      if (r.m !== last) { h += '<div class="month">' + MONTHS[r.m] + ' 2026</div>'; last = r.m; }
+      h += '<div class="orow ' + k + '"><div class="stack" style="gap:0"><span class="who2">' + esc(r.seller) + '</span><span class="what">' + esc(r.item) + '</span>' + sub + '</div><div class="right">' + right + '</div></div>';
+    });
+    return h + '</div>';
+  };
+  TP.chips = function (c) {
+    var k = counts(c);
+    function ch(key, label, n) { return '<button class="fchip k-' + key + '" data-act="filter:' + key + '" aria-pressed="' + (c.filter === key) + '"><span class="swatch sw-' + key + '"></span>' + label + ' <b>' + nf(n) + '</b></button>'; }
+    return '<div class="cluster" data-new="counts as filters">' + ch("new", "New", k.n) + ch("changed", "Changed", k.ch) + ch("skipped", "Skipped", k.sk) + '</div>';
+  };
+  TP.fileTab = function (c) {
+    var h = '<div class="tab phead"><div class="file"><span>' + FILE + '</span>' + tb("Cancel", "cancel") + '</div>';
+    h += '<div class="cluster" data-new="stamp and dates"><button class="fchip" data-act="edit" aria-expanded="' + (c.s === "edit") + '">Stamp: ' + esc(c.stamp) + '</button><button class="fchip" data-act="edit" aria-expanded="' + (c.s === "edit") + '">' + range(c) + '</button></div>';
+    h += TP.chips(c);
+    h += '<div class="legend"><span><span class="tick on"></span>Your check-ins sit on top of the file. It cannot reach them.</span></div>';
+    if (c.s === "edit") h += '<div class="pop" role="group" aria-label="Stamp and dates">' + editorFields(c) + '<p class="note">The counts change as you pick. Orders outside the dates are skipped, never removed.</p><div class="field">' + btn("Done", "editdone", "plain") + '</div></div>';
+    return h + '</div>';
+  };
+  TP.copyTab = function (c) {
+    var cp = COPIES[c.copy];
+    var chips = COPIES.map(function (x, i) { return '<button class="fchip" data-act="copy:' + i + '" aria-pressed="' + (i === c.copy) + '">' + x.short + '</button>'; }).join("");
+    return '<div class="tab phead"><div class="file"><span>Copy of ' + cp.when + ' <span class="meta">' + cp.size + '</span></span>' + tb("Cancel", "cancel") + '</div>' +
+      '<div class="cluster" role="group" aria-label="Safety copies">' + chips + '</div>' +
+      '<p data-new="restore loss preview">Restoring takes back ' + cp.lose[0] + ' orders and ' + cp.lose[1] + ' check-ins made since. A safety copy of now goes on the stack first.</p></div>';
+  };
+  TP.stackList = function (c) {
+    var list = COPIES.slice();
+    if (c.s === "copied") list.unshift({ when: "Nov 21, 00:41", why: "Made by you", size: "214 KB" });
+    if (c.s === "done") list.unshift({ when: "Nov 21, 00:42", why: "Before the " + c.stamp, size: "214 KB" });
+    if (c.s === "restored") list.unshift({ when: "Nov 21, 00:43", why: "Before the restore of Nov 14", size: "214 KB" });
+    return list;
+  };
+  TP.stack = function (c) {
+    if (c.s === "unknown") return '<div class="stackbar"><div class="answer warn" data-new="unknown is not empty"><p>The safety copies could not be read. That does not mean there are none. The ledger is not touched.</p><div class="cluster">' + btn("Try again", "retry", "plain") + '</div>' + machine("storage read failed: copies index (timeout after 5 s)", "storage") + '</div></div>';
+    var list = TP.stackList(c);
+    var h = '<button class="edges" data-act="restorefirst" aria-label="Safety copies, ' + list.length + '. Open to restore one" data-new="copies as a stack">';
+    for (var i = 0; i < Math.min(list.length, 4); i++) h += '<span class="edge" style="--i:' + (3 - i) + '"></span>';
+    h += '<span class="cap"><span>' + list.length + ' safety copies under the ledger. Tap to restore one.</span><span>Newest ' + list[0].when + '</span></span></button>';
+    return '<div class="stackbar">' + h + '</div>';
+  };
+  TP.fan = function (c) {
+    return '<div class="fan">' + TP.stackList(c).map(function (cp, i) {
+      var idx = COPIES.indexOf(cp);
+      var tag = idx < 0 ? "div" : "button";
+      return '<' + tag + ' class="leaf"' + (idx < 0 ? "" : ' data-act="copy:' + idx + '"') + '><span class="body"><span>' + cp.when + '</span><span class="s">' + esc(cp.why) + '</span></span><span class="size">' + cp.size + '</span></' + tag + '>';
+    }).join("") + '</div>';
+  };
+  TP.actions = function (c, open) {
+    var k = counts(c);
+    if (c.s === "review" || c.s === "edit") return '<div class="bar">' + (open ? "" : btn(c.peek ? "Lay it back" : "Peek under", "peek", "plain", ' aria-pressed="' + c.peek + '" data-new="peek under"')) + btn(importLabel(c), "commit", "primary", k.n + k.ch === 0 ? ' disabled title="No new or changed orders in these dates"' : "") + '</div>';
+    if (c.s === "restore") return '<div class="bar">' + btn("Restore this copy", "dorestore", "primary") + '</div>';
+    if (c.s === "home" || c.s === "unknown" || c.s === "done" || c.s === "restored" || c.s === "copied") {
+      var ans = c.s === "copied" ? '<div class="answer ok"><p>Safety copy made: Nov 21, 00:41, 214 KB. It is on top of the stack.</p></div>' : "";
+      return '<div class="bar-wrap">' + ans + '<div class="bar">' + btn("Make a safety copy", "copynow", "plain") + btn("Import a file", "import", "primary") + '</div></div>';
+    }
+    return "";
+  };
+  TP.answer = function (c) {
+    if (c.s === "done") return '<div class="answer ok"><p>' + importedText(c) + '</p><div class="cluster">' + btn("Undo import", "undo", "plain") + '</div></div>';
+    if (c.s === "restored") return '<div class="answer ok"><p>Restored to Nov 14, 09:12. What you had just before is the top safety copy.</p><div class="cluster">' + btn("Undo restore", "undo", "plain") + '</div></div>';
+    return "";
+  };
+  TP.overlay = function (c, open) {
+    var cls = "overlay" + (open ? " static" : "") + (c.peek && !open ? " peek" : "");
+    if (c.s === "reading") return '<div class="' + cls + '"><div class="tab"><div class="file"><span>' + FILE + '</span>' + tb("Cancel", "cancel") + '</div></div><div class="center-msg"><p>Reading the file</p><div class="progress"><i></i></div><p class="meta">212 of ' + FILE_ROWS + ' rows. The ledger has not changed.</p>' + btn("Stop", "cancel", "plain") + '</div></div>';
+    if (c.s === "error") return '<div class="' + cls + '"><div class="tab"><div class="file"><span>' + FILE + '</span>' + tb("Cancel", "cancel") + '</div></div><div class="scroll" style="padding-top:var(--space-4)"><div class="answer warn"><p>This file has no orders in it. Nothing was laid over the ledger and nothing changed.</p><p class="meta">An order file has a seller, an order date and a price on each row.</p><div class="cluster">' + btn("Choose another file", "import", "primary") + '</div>' + machine("row 1: missing columns: Order Date, Seller, Price") + '</div></div></div>';
+    if (c.s === "review" || c.s === "edit") return '<div class="' + cls + '" role="region" aria-label="File laid over the ledger">' + TP.fileTab(c) + '<div class="scroll flush"' + (open ? ' data-sync' : "") + '>' + TP.sheetRows(c, "import", open) + '</div></div>';
+    if (c.s === "restore") return '<div class="' + cls + '" role="region" aria-label="Safety copy laid over the ledger">' + TP.copyTab(c) + '<div class="scroll flush"' + (open ? ' data-sync' : "") + '>' + TP.sheetRows(c, "restore", open) + '</div></div>';
+    return "";
+  };
+  TP.ledgerMode = function (c) { return c.s === "done" ? "after" : c.s === "restored" ? "restored" : "now"; };
+  TP.render = function (c, pose) {
+    var open = pose === "left" || pose === "right";
+    if (c.s === "empty") {
+      if (pose === "right") return '<div class="screen">' + status() + '<div class="scroll"><div class="center-msg"><p class="meta">A file you import shows here, row for row beside the ledger, before anything changes.</p></div></div>' + homeInd() + '</div>';
+      return '<div class="screen">' + status() + '<h1 class="large">Ledger</h1><div class="scroll"><div class="center-msg"><p>No orders yet. Import an order file to start the ledger.</p>' + btn("Import a file", "import", "primary") + '</div></div>' + homeInd() + '</div>';
+    }
+    if (pose === "left") {
+      var mode = c.s === "review" || c.s === "edit" ? "slots" : TP.ledgerMode(c);
+      var headSub = TP.answer(c) || '<div style="padding:0 var(--space-4)">' + proof('<b>' + nf(CHECKINS) + '</b> check-ins in 412 orders',
+        mode === "slots" ? "Dashed rows show where the file adds an order. No check-in moves." : c.s === "restore" ? "The sheet on the right shows what restoring would take back." : "Imports add and update orders. They never clear a check-in.", "") + '</div>';
+      var bottom = c.s === "restore" || mode === "slots" ? "" : TP.stack(c);
+      return '<div class="screen">' + status() + '<div class="phead"><h1 class="large">Ledger</h1>' + headSub + '</div><div class="scroll flush" data-sync>' + TP.ledgerRows(c, mode) + '</div>' + bottom + homeInd() + '</div>';
+    }
+    if (pose === "right") {
+      if (TP.isFile(c) || c.s === "restore") return '<div class="screen">' + status() + '<div class="paper-wrap">' + TP.overlay(c, true) + '</div>' + TP.actions(c, true) + homeInd() + '</div>';
+      var inner = c.s === "unknown" ? TP.stack(c) : '<p class="note" style="padding:0">Tap a copy to lay it over the ledger and see what restoring would take back.</p>' + TP.fan(c);
+      return '<div class="screen">' + status() + nav("", "Safety copies", "") + '<div class="scroll">' + inner + '</div>' + TP.actions(c, true) + homeInd() + '</div>';
+    }
+    var title = c.s === "restore" ? "Restore" : TP.isFile(c) ? "Import" : "Ledger";
+    var ans = TP.answer(c);
+    var h = status() + '<h1 class="large">' + title + '</h1>' + (ans ? '<div style="padding:0 var(--space-4) var(--space-2)">' + ans + '</div>' : "") +
+      '<div class="paper-wrap"><div class="scroll flush">' + TP.ledgerRows(c, TP.ledgerMode(c)) + '</div>' + TP.overlay(c, false) + '</div>';
+    if (!TP.isFile(c) && c.s !== "restore") h += TP.stack(c);
+    return '<div class="screen">' + h + TP.actions(c, false) + homeInd() + '</div>';
+  };
+
+  var R = { checkpoints: CP, tracing: TP };
+
+  function renderConcept(key) {
+    var sec = document.querySelector('[data-concept="' + key + '"]');
+    var a = document.activeElement, focusId = a && sec.contains(a) && a.id;
+    sec.querySelectorAll(".pane").forEach(function (p) { p.innerHTML = R[key].render(st[key], p.getAttribute("data-pose")); });
+    if (focusId) { var f = sec.querySelector("#" + focusId); if (f) f.focus(); }
+  }
+  function renderAll() { renderConcept("checkpoints"); renderConcept("tracing"); }
+
+  var timers = {};
+  function act(key, a) {
+    var c = st[key], p = a.split(":");
+    if (p[0] !== "sel" && p[0] !== "open") c.push = false;
+    switch (p[0]) {
+      case "import": c.s = "reading"; c.peek = false; c.filter = "all"; clearTimeout(timers[key]);
+        timers[key] = setTimeout(function () { if (st[key].s === "reading") { st[key].s = "review"; writeHash(); renderConcept(key); } }, 1400); break;
+      case "cancel": case "undo": case "retry": c.s = "home"; c.peek = false; c.sel = 0; break;
+      case "commit": c.s = "done"; c.sel = 0; break;
+      case "edit": c.s = c.s === "edit" ? "review" : "edit"; break;
+      case "editdone": c.s = "review"; break;
+      case "open": c.open = c.open === p[1] ? "" : p[1]; break;
+      case "filter": c.filter = c.filter === p[1] ? "all" : p[1]; break;
+      case "peek": c.peek = !c.peek; break;
+      case "copy": c.copy = +p[1]; c.s = "restore"; break;
+      case "restorefirst": c.copy = 1; c.s = "restore"; break;
+      case "dorestore": c.s = "restored"; c.sel = 0; break;
+      case "sel": c.sel = +p[1]; c.push = true; break;
+      case "pop": c.push = false; break;
+      case "copynow": c.s = "copied"; c.sel = 0; break;
+      default: return;
+    }
+    writeHash(); renderConcept(key);
+  }
+
+  var root = document.getElementById("concepts");
+  root.addEventListener("click", function (ev) {
+    var b = ev.target.closest("[data-act]"); if (!b || b.disabled) return;
+    act(b.closest("[data-concept]").getAttribute("data-concept"), b.getAttribute("data-act"));
+  });
+  root.addEventListener("input", function (ev) {
+    var el = ev.target, w = el.getAttribute("data-in"); if (!w) return;
+    var key = el.closest("[data-concept]").getAttribute("data-concept"), c = st[key];
+    if (w === "stamp") {
+      c.stamp = el.value;
+      // Keep the typed text in the other frames of this concept without a re-render that would steal the caret.
+      root.querySelectorAll('[data-concept="' + key + '"] [data-in="stamp"]').forEach(function (o) { if (o !== el) o.value = el.value; });
+      return;
+    }
+    c[w] = +el.value; writeHash(); renderConcept(key);
+  });
+  root.addEventListener("change", function (ev) {
+    var el = ev.target; if (el.getAttribute("data-in") === "stamp") renderConcept(el.closest("[data-concept]").getAttribute("data-concept"));
+  });
+  // Open pose of Tracing paper: the ledger page and the sheet page scroll together.
+  var syncing = false;
+  root.addEventListener("scroll", function (ev) {
+    var el = ev.target; if (syncing || !el.hasAttribute || !el.hasAttribute("data-sync")) return;
+    var dev = el.closest(".device"); syncing = true;
+    dev.querySelectorAll("[data-sync]").forEach(function (o) { if (o !== el) o.scrollTop = el.scrollTop; });
+    requestAnimationFrame(function () { syncing = false; });
+  }, true);
+
+  var pick = document.getElementById("state-pick");
+  STATES.forEach(function (s) { var o = document.createElement("option"); o.value = s[0]; o.textContent = s[1]; pick.appendChild(o); });
+  pick.addEventListener("change", function () { setState(pick.value); writeHash(); renderAll(); });
+  function setState(s) {
+    ["checkpoints", "tracing"].forEach(function (k) {
+      var c = st[k]; c.s = s; c.push = false; c.peek = false; c.filter = "all"; c.sel = 0; c.copy = 1; c.open = "new";
+      c.from = s === "edit" ? 4 : 0;
+    });
+  }
+  var theme = null;
+  function isDark() { return theme === "dark" || (!theme && matchMedia("(prefers-color-scheme: dark)").matches); }
+  document.getElementById("theme-btn").addEventListener("click", function () { theme = isDark() ? "light" : "dark"; applyTheme(); writeHash(); });
+  function applyTheme() {
+    if (theme) document.documentElement.setAttribute("data-theme", theme); else document.documentElement.removeAttribute("data-theme");
+    var b = document.getElementById("theme-btn"); b.setAttribute("aria-pressed", String(isDark())); b.textContent = isDark() ? "Light theme" : "Dark theme";
+  }
+  document.getElementById("labels-btn").addEventListener("click", function () {
+    var on = root.classList.toggle("show-labels"); this.setAttribute("aria-pressed", String(on));
+  });
+  var hidden = {};
+  document.querySelectorAll("[data-hide]").forEach(function (b) {
+    b.addEventListener("click", function () { var k = b.getAttribute("data-hide"); hidden[k] = !hidden[k]; applyHidden(); writeHash(); });
+  });
+  function applyHidden() {
+    document.querySelectorAll("[data-hide]").forEach(function (b) {
+      var k = b.getAttribute("data-hide"); b.setAttribute("aria-pressed", String(!!hidden[k]));
+      b.textContent = (hidden[k] ? "Show " : "Hide ") + (k === "checkpoints" ? "Checkpoints" : "Tracing paper");
+      document.querySelector('[data-concept="' + k + '"]').hidden = !!hidden[k];
+    });
+  }
+  var focusKey = null, writing = false;
+  function writeHash() {
+    var s = st.checkpoints.s === st.tracing.s ? st.checkpoints.s : pick.value;
+    var parts = ["s=" + s];
+    if (theme) parts.push("t=" + theme);
+    var h = Object.keys(hidden).filter(function (k) { return hidden[k]; });
+    if (h.length) parts.push("hide=" + h.join(","));
+    if (focusKey) parts.push("c=" + focusKey);
+    writing = true; history.replaceState(null, "", "#" + parts.join("&")); writing = false;
+    pick.value = s;
+  }
+  function readHash() {
+    var q = {}; location.hash.replace(/^#/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) q[p[0]] = decodeURIComponent(p[1] || ""); });
+    var s = STATES.some(function (x) { return x[0] === q.s; }) ? q.s : "home";
+    setState(s); pick.value = s;
+    theme = q.t === "dark" || q.t === "light" ? q.t : null; applyTheme();
+    hidden = {}; (q.hide || "").split(",").forEach(function (k) { if (k) hidden[k] = true; }); applyHidden();
+    focusKey = q.c === "checkpoints" || q.c === "tracing" ? q.c : null;
+    renderAll();
+    if (focusKey) { var el = document.getElementById("choice-" + focusKey); if (el) { el.setAttribute("tabindex", "-1"); el.scrollIntoView(); el.focus({ preventScroll: true }); } }
+  }
+  window.addEventListener("hashchange", function () { if (!writing) readHash(); });
+  matchMedia("(prefers-color-scheme: dark)").addEventListener("change", applyTheme);
+  readHash();
+})();
+</script>
+</body>
+</html>

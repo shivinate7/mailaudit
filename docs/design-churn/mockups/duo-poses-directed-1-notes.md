@@ -26,7 +26,7 @@ Mockup: `duo-poses-directed-1.html`. Debt: `duo-stacked-poses-unbuilt`. Decision
 
 3. **Typewriter: each match row carries its own check box.** A tap on the name chooses it (today's hold, item 48); a tap on the box checks that card in to its one envelope, and the box ticks at the press (`ux-answer-at-press`). A name two envelopes share shows "2 envelopes" and no box. Gain: a card checks in where it was named, in one press. Loss: two targets per row; the box is a second meaning beside the name. Departs from: today's check-in on the answer page lines (`HandScreen.lines`). Owner grant: yes. Pick: yes.
 
-4. **Post sits at the answer page's foot in stacked poses.** The 53 pt bar, a hairline, 4 pt, the 44 pt button, 4 pt, as item 103 b, pinned above the fold. Gain: the flat page has no room: 148.5 pt holds the field row and two match rows, and the bar would cover the tapped row and land under the finger. Loss: one press on the standing page, at its lowest edge. Departs from: item 103 b, "a bar pinned just above the keys" (`HandPostBar`, `HandScreen`). Owner grant: yes. Pick: yes, both concepts.
+4. **Post sits at the answer page's foot in stacked poses.** The 53 pt bar, a hairline, 4 pt, the 44 pt button, 4 pt, as item 103 b, pinned above the fold. The answer page's scroll region ends above the bar, as `DuoSystemBar` keeps a content margin, so the lines scroll clear of it (the 10-line Alpha envelope fits whole). Gain: the flat page has no room: 148.5 pt holds the field row and two match rows, and the bar would cover the tapped row and land under the finger. Loss: one press on the standing page, at its lowest edge. Departs from: item 103 b, "a bar pinned just above the keys" (`HandPostBar`, `HandScreen`). Owner grant: yes. Pick: yes, both concepts.
 
 5. **The offer stands after a row tick.** If the held card's mate checks in from its row, the bar still offers "Post the held card here". Gain: a row tick never strands the held card. Loss: none seen. Pick: yes.
 
@@ -49,6 +49,8 @@ Mockup: `duo-poses-directed-1.html`. Debt: `duo-stacked-poses-unbuilt`. Decision
 14. **Folded, side by side and the large phone are unchanged.** Drawn as references. At AX5 the folded Packages masthead takes the first screen and the list scrolls; figures pair in two columns and rows stack, as `ViewThatFits` would. Today's build clips there (debts `native-masthead-axl-clips`, `native-axl-rows-break`); this drawing does not fix them.
 
 15. **Light only.** The app ships `UIUserInterfaceStyle Light`, so there is no theme switch to draw.
+
+16. **What is live.** The laptop and tall frames of each concept, and the folded Typewriter option (its own state, opening in Card in Hand), take taps and typing. The tab bar answers: another tab says it is not part of this mockup. Shift and 123 are drawn only. The search states exist in Desk only, since Typewriter has no Packages search.
 
 ## Self-review (design-review applied to this mockup)
 

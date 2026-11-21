@@ -114,8 +114,9 @@ figure { margin: 0; }
   --fs-t3: 55px; --lh-t3: 65px; --fs-hl: 53px; --lh-hl: 62px; --fs-body: 53px; --lh-body: 62px;
   --fs-call: 51px; --lh-call: 60px; --fs-sub: 49px; --lh-sub: 58px; --fs-foot: 44px; --lh-foot: 52px;
   --fs-cap: 43px; --lh-cap: 51px;
-  --key-h: 72px;
+  --key-h: 60px;
 }
+.screen[data-ax="ax5"] .key { line-height: 1; }
 .screen:focus-visible { box-shadow: 0 0 0 3px var(--accent); }
 .screen[data-pose="folded"], .screen[data-pose="phone"] { grid-template: 1fr / 1fr; }
 .screen[data-pose="book"] { grid-template: 1fr / 455.5px 40px 455.5px; }
@@ -199,13 +200,21 @@ figure { margin: 0; }
 @media (prefers-reduced-motion: reduce) { .spin { animation: none; } }
 
 /* Floating check-in button, desk concept, compact width */
-.fab { position: absolute; right: var(--space-4); bottom: max(calc(env(safe-area-inset-bottom) + 12px), 32px); min-height: 52px; padding: 0 var(--space-5); border-radius: 26px; border: 1px solid transparent; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: var(--fs-body); line-height: var(--lh-body); display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
+.dock { position: absolute; right: var(--space-4); bottom: max(calc(env(safe-area-inset-bottom) + 12px), 32px); }
+/* At AX5 the button docks below the list, so it never covers the segments or a row. */
+.screen[data-ax="ax5"] .dock { position: static; display: flex; padding: var(--space-2) var(--space-4) max(calc(env(safe-area-inset-bottom) + 12px), 32px); border-top: 1px solid var(--line); background: var(--surface); }
+.fab { min-height: 52px; padding: 0 var(--space-5); border-radius: 26px; border: 1px solid transparent; background: var(--accent); color: var(--on-accent); font-weight: 600; font-size: var(--fs-body); line-height: var(--lh-body); display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer; box-shadow: 0 4px 14px rgba(0,0,0,.18); }
 .fab svg { width: 20px; height: 20px; }
-.screen[data-ax="ax5"] .fab { left: var(--space-4); justify-content: center; min-height: 76px; border-radius: 38px; }
+.screen[data-ax="ax5"] .fab { flex: 1; justify-content: center; min-height: 76px; border-radius: 38px; box-shadow: none; }
 
 /* Sheet */
 .scrim { position: absolute; inset: 0; background: rgba(0,0,0,.32); }
 .sheet { position: absolute; left: 0; right: 0; bottom: 0; background: var(--surface); border-radius: 12px 12px 0 0; display: flex; flex-direction: column; max-height: 92%; padding-bottom: max(env(safe-area-inset-bottom), 20px); }
+.screen[data-ax="ax5"] .sheet { max-height: calc(100% - 28px); }
+.screen[data-ax="ax5"] .deck { gap: var(--space-2); }
+.sheet-title { padding-inline-start: var(--space-2); }
+.screen[data-ax="ax5"] .sheet-title { visibility: hidden; }
+.screen[data-ax="ax5"] .display { min-height: 0; }
 .sheet-bar { display: flex; align-items: center; justify-content: space-between; padding: var(--space-2) var(--space-2) 0; }
 
 /* Key deck (desk concept) and keypad (both concepts) */
@@ -263,8 +272,10 @@ figure { margin: 0; }
 .akeys .key.go { grid-column: 4; grid-row: 2 / span 3; }
 .akeys .key.undo { grid-column: 4; grid-row: 1; }
 .screen[data-ax="ax5"] .akeys { grid-template-columns: repeat(3, 1fr); grid-template-rows: repeat(5, var(--key-h)); }
-.screen[data-ax="ax5"] .akeys .key.go { grid-column: 1 / span 2; grid-row: 5; }
-.screen[data-ax="ax5"] .akeys .key.undo { grid-column: 3; grid-row: 5; }
+.screen[data-ax="ax5"] .akeys .key.go { grid-column: 1 / span 3; grid-row: 5; }
+.screen[data-ax="ax5"] .key.go small { display: none; }
+.fab-room { padding-bottom: 104px; }
+.screen[data-ax="ax5"] .fab-room { padding-bottom: var(--space-4); }
 .tot-btn { display: grid; grid-template-columns: 1fr auto; gap: var(--space-1) var(--space-3); align-items: center; margin: var(--space-2) var(--space-4) 0; padding: var(--space-3) var(--space-4); background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius); text-align: start; cursor: pointer; min-height: 44px; }
 
 /* Laptop bottom page of the adding machine: a wide keyboard */
@@ -273,12 +284,14 @@ figure { margin: 0; }
 /* ---------- Today / New labels ---------- */
 :where([data-ann]) { position: relative; }
 .show-ann [data-ann]::after {
-  content: attr(data-ann); position: absolute; top: 2px; right: 2px; z-index: 5;
+  content: attr(data-ann); position: absolute; top: 0; right: var(--space-2); transform: translateY(-50%); z-index: 5;
   font: 600 10px/14px -apple-system, system-ui, sans-serif; letter-spacing: 0;
   color: var(--ann); background: var(--surface); border: 1px dashed var(--ann); border-radius: 4px; padding: 0 4px;
   pointer-events: none; white-space: nowrap;
 }
 .show-ann [data-ann] { outline: 1px dashed var(--ann); outline-offset: -1px; }
+.show-ann .list[data-ann]::after, .show-ann .roll[data-ann]::after { top: 2px; transform: none; }
+.show-ann .pg[data-ann]::after { top: 4px; right: auto; left: 50%; transform: translateX(-50%); }
 .screen[data-ax="ax5"] [data-ann]::after { font-size: 12px; line-height: 16px; }
 
 @media (forced-colors: active) {
@@ -305,7 +318,28 @@ figure { margin: 0; }
   <div class="hidden-list" id="hidden-list" hidden></div>
 </header>
 
-<main class="concepts" id="concepts"></main>
+<main class="concepts" id="concepts">
+  <section class="concept" data-concept="desk">
+    <div class="concept-head"><div class="stack" style="gap: var(--space-1)"><h2>Desk spread</h2><span class="kind">Designer kind: blind</span><p></p></div><button class="hide" data-hide="desk">Hide Desk spread</button></div>
+    <div class="frames" id="concept-desk">
+      <figure class="dev" data-pose="folded"><div class="fit"><div class="screen" tabindex="0" data-device="iphone-duo-folded" data-pose="folded" data-ax="default"></div></div><figcaption></figcaption></figure>
+      <figure class="dev" data-pose="ax5"><div class="fit"><div class="screen" tabindex="0" data-device="iphone-duo-folded" data-pose="folded" data-ax="ax5"></div></div><figcaption></figcaption></figure>
+      <figure class="dev" data-pose="book"><div class="fit"><div class="screen" tabindex="0" data-device="iphone-duo-unfolded" data-pose="book" data-ax="default"></div></div><figcaption></figcaption></figure>
+      <figure class="dev" data-pose="laptop"><div class="fit"><div class="screen" tabindex="0" data-device="iphone-duo-unfolded" data-pose="laptop" data-ax="default"></div></div><figcaption></figcaption></figure>
+      <figure class="dev" data-pose="phone"><div class="fit"><div class="screen" tabindex="0" data-device="iphone-large" data-pose="phone" data-ax="default"></div></div><figcaption></figcaption></figure>
+    </div>
+  </section>
+  <section class="concept" data-concept="adder">
+    <div class="concept-head"><div class="stack" style="gap: var(--space-1)"><h2>Adding machine</h2><span class="kind">Designer kind: blind</span><p></p></div><button class="hide" data-hide="adder">Hide Adding machine</button></div>
+    <div class="frames" id="concept-adder">
+      <figure class="dev" data-pose="folded"><div class="fit"><div class="screen" tabindex="0" data-device="iphone-duo-folded" data-pose="folded" data-ax="default"></div></div><figcaption></figcaption></figure>
+      <figure class="dev" data-pose="ax5"><div class="fit"><div class="screen" tabindex="0" data-device="iphone-duo-folded" data-pose="folded" data-ax="ax5"></div></div><figcaption></figcaption></figure>
+      <figure class="dev" data-pose="book"><div class="fit"><div class="screen" tabindex="0" data-device="iphone-duo-unfolded" data-pose="book" data-ax="default"></div></div><figcaption></figcaption></figure>
+      <figure class="dev" data-pose="laptop"><div class="fit"><div class="screen" tabindex="0" data-device="iphone-duo-unfolded" data-pose="laptop" data-ax="default"></div></div><figcaption></figcaption></figure>
+      <figure class="dev" data-pose="phone"><div class="fit"><div class="screen" tabindex="0" data-device="iphone-large" data-pose="phone" data-ax="default"></div></div><figcaption></figcaption></figure>
+    </div>
+  </section>
+</main>
 
 <script>
 (() => {
@@ -372,10 +406,10 @@ const POSES = [
   { key: 'ax5', label: 'Duo folded, AX5 text', dev: 'iphone-duo-folded', w: 466, h: 678, ax: 'ax5', note: '466 x 678 pt at the biggest accessibility text size (AX5: Body 53 pt).' },
   { key: 'book', label: 'Duo open as a book', dev: 'iphone-duo-unfolded', w: 951, h: 669, ax: 'default', note: '951 x 669 pt, two pages side by side, hinge gap x 455.5 to 495.5. Size from the brief.' },
   { key: 'laptop', label: 'Duo open as a laptop', dev: 'iphone-duo-unfolded', w: 669, h: 951, ax: 'default', note: 'The open device turned a quarter: 669 x 951 pt, hinge gap y 455.5 to 495.5. Page on top, keys below.' },
-  { key: 'phone', label: 'Large phone', dev: 'iphone-large', w: 430, h: 932, ax: 'default', note: 'No size is written for this device. Drawn at a stand-in 430 x 932 pt; see the notes.' },
+  { key: 'phone', label: 'Large phone', dev: 'iphone-large', w: 466, h: 678, ax: 'default', note: 'No size is written for this device, in the brief or the repo. Drawn at the brief\'s one-screen size, 466 x 678 pt.' },
 ];
 const STATES = [
-  ['loaded', 'Loaded'], ['typing', 'Typing, two matches'], ['nomatch', 'No match'], ['arrived', 'Just marked'],
+  ['loaded', 'Loaded'], ['typing', 'Typing, three matches'], ['nomatch', 'No match'], ['arrived', 'Just marked'],
   ['empty', 'No orders'], ['failed', 'Read failed'], ['loading', 'Reading'],
 ];
 const THEMES = [['auto', 'System'], ['light', 'Light'], ['dark', 'Dark']];
@@ -407,7 +441,7 @@ function initState(concept, pose, ax, s) {
   const st = { concept, pose, ax, status: 'loaded', filter: 'out', mode: 'out', typed: '', sel: null,
     detail: null, sheet: false, rollOpen: false, orders: freshOrders(), last: null, msg: null };
   if (s === 'empty') { st.status = 'empty'; st.orders = []; }
-  if (s === 'failed') st.status = 'failed';
+  if (s === 'failed' || s === 'error') st.status = 'failed';
   if (s === 'loading') st.status = 'loading';
   if (s === 'typing') { st.typed = '71'; if (concept === 'desk' && (pose === 'folded' || pose === 'ax5' || pose === 'phone')) st.sheet = true; }
   if (s === 'nomatch') { st.typed = '999'; if (concept === 'desk' && (pose === 'folded' || pose === 'ax5' || pose === 'phone')) st.sheet = true; }
@@ -492,7 +526,20 @@ function deskRows(st) {
       <span class="amt"><span class="t-body num">${money(o.cents)}</span>${rowFlag(o)}</span>
     </button>`).join('')}</div>`;
 }
+/* At AX5 the answer is one short line (plus Undo after a mark), so the keys and Mark arrived
+   stay on the folded screen. Both concepts use it. */
+function axAnswer(st) {
+  const typed = st.typed ? `<span class="typed num">${esc(st.typed)}</span>` : '';
+  if (st.msg && st.msg.kind === 'done') return `<span class="t-hl ok">Marked arrived</span><div class="acts"><button class="btn quiet" data-act="undo">Undo</button></div>`;
+  if (st.msg && st.msg.kind === 'undone') return '<span class="t-sub">Back to still out</span>';
+  const t = target(st), m = matches(st);
+  if (t) return `${typed}<span class="t-hl">${esc(t.seller)}</span>`;
+  if (st.typed && m.length) return `${typed}<span class="t-sub">${m.length} orders match</span>`;
+  if (st.typed) return `${typed}<span class="t-sub late">No match</span>`;
+  return '<span class="t-sub dim">Order digits</span>';
+}
 function deskDisplay(st) {
+  if (st.ax === 'ax5') return `<div class="display" role="status" aria-live="polite">${axAnswer(st)}</div>`;
   if (st.msg && st.msg.kind === 'done') {
     const o = st.orders.find(x => x.id === st.msg.id);
     return `<div class="display" role="status" aria-live="polite"><span class="t-hl ok">${ICON.check.replace('<svg', '<svg width="16" height="16"')} Marked arrived</span><span class="t-sub">${esc(o.seller)}, ${plural(o.cards, 'card')}, ${money(o.cents)}</span><div class="acts"><button class="btn quiet" data-act="undo">Undo</button></div></div>`;
@@ -556,17 +603,17 @@ function deskCompact(st) {
   let sheet = '';
   if (st.sheet) {
     sheet = `<div class="scrim" data-act="sheet-close"></div><div class="sheet" role="dialog" aria-label="Check in a package" data-ann="Today: input area">
-      <div class="sheet-bar"><button class="navbtn" data-act="sheet-close">Cancel</button><span class="t-hl">Check in</span><button class="navbtn b" data-act="sheet-close">Done</button></div>
+      <div class="sheet-bar"><span class="t-hl sheet-title">Check in</span><button class="navbtn b" data-act="sheet-close">Done</button></div>
       <div class="scroll" data-keep="s" style="flex: 0 1 auto">${deskDeck(st, 'New: keys open as a sheet')}</div></div>`;
   }
   return `<section class="pg top-safe">${sbar()}
     <div class="scroll" data-keep="l">
       <div class="nav"><span class="t-lt">Orders</span></div>
-      <div class="stack pad" style="padding-bottom: 104px">
+      <div class="stack pad fab-room">
         ${empty ? statusMsg(st) : deskSummary(st) + deskSeg(st) + deskRows(st)}
       </div>
     </div>
-    ${empty ? '' : `<button class="fab" data-act="sheet-open" data-ann="New: Check in button">${ICON.box}Check in</button>`}
+    ${empty ? '' : `<div class="dock"><button class="fab" data-act="sheet-open" data-ann="New: Check in button">${ICON.box}Check in</button></div>`}
     ${sheet}${homebar}</section>`;
 }
 
@@ -575,7 +622,8 @@ function deskBook(st) {
     <div class="nav"><span class="t-lt">Orders</span></div>
     ${st.status === 'loaded' ? `<div class="stack pad" style="padding-bottom: var(--space-3)">${deskSummary(st)}${deskSeg(st)}</div><div class="scroll pad" data-keep="l" style="padding-bottom: var(--space-4)">${deskRows(st)}</div>` : statusMsg(st)}
     ${homebar}</section>`;
-  const sel = st.sel ? st.orders.find(x => x.id === st.sel) : target(st);
+  const just = st.msg && st.msg.kind === 'done' ? st.orders.find(x => x.id === st.msg.id) : null;
+  const sel = st.sel ? st.orders.find(x => x.id === st.sel) : (target(st) || just);
   const right = `<section class="pg top-safe bottom-safe" data-ann="New: right page holds the order and the keys">${sbar()}
     ${st.status === 'loaded'
       ? `<div class="scroll" data-keep="r">${deskDetail(st, sel, false)}</div>${deskDeck(st, 'Today: input area')}`
@@ -643,9 +691,11 @@ function adderDisplay(st) {
     typed = st.typed ? `<span class="typed num">${esc(st.typed)}</span>` : (t ? `<span class="typed num">${t.id}</span>` : '<span class="typed ph num">0</span>');
     if (!st.typed && !t) line = '<span class="t-sub dim">Key the last digits of the order number.</span>';
     else if (t) line = `<span class="t-hl">${esc(t.seller)}</span><span class="t-sub dim">${plural(t.cards, 'card')}, ${money(t.cents)}</span>`;
-    else if (m.length) line = `<span class="t-sub">${m.length} orders end in ${esc(st.typed)}. Tap yours on the roll.</span>`;
+    else if (m.length) line = `<span class="t-sub">${m.length} orders end in ${esc(st.typed)}. ${st.ax === 'ax5' ? 'Key one more digit, or open the roll.' : 'Tap yours on the roll.'}</span>`;
     else line = `<span class="t-sub late">No order still out ends in ${esc(st.typed)}.</span>`;
   }
+  // At AX5 the answer keeps only its first line, so the keys and Mark arrived stay on screen.
+  if (st.ax === 'ax5') return `<div class="adisp" role="status" aria-live="polite" data-ann="New: answer line">${axAnswer(st)}</div>`;
   return `<div class="adisp" role="status" aria-live="polite" data-ann="New: answer line">${typed}${line}${acts}</div>`;
 }
 function adderKeys(st) {
@@ -654,13 +704,13 @@ function adderKeys(st) {
   const undoKey = st.last
     ? `<button class="key undo" data-act="undo">Undo</button>`
     : `<button class="key undo" data-act="noop" aria-disabled="true" title="Nothing to undo yet" style="color: var(--text-2)">Undo</button>`;
-  return `<div class="akeys" data-ann="Today: input area">${keypad()}${undoKey}${goKey(st)}</div>`;
+  return `<div class="akeys" data-ann="Today: input area">${keypad()}${st.ax === 'ax5' ? '' : undoKey}${goKey(st)}</div>`;
 }
 function adderCompact(st) {
   if (st.ax === 'ax5' && !st.rollOpen) {
     const t = totals(st);
     const head = st.status === 'loaded'
-      ? `<button class="tot-btn" data-act="roll-open" data-ann="New: roll behind a button at AX5"><span class="t-sub">${plural(t.out, 'order')} still out<br><b class="num">${money(t.outCents)}</b></span><span class="t-sub" style="color: var(--accent)">Roll</span></button>`
+      ? `<button class="tot-btn" data-act="roll-open" data-ann="New: roll behind a button at AX5"><span class="t-sub"><b class="num">${money(t.outCents)}</b> out</span><span class="t-sub" style="color: var(--accent)">Roll</span></button>`
       : statusMsg(st);
     return `<section class="pg top-safe bottom-safe">${sbar()}<div class="scroll" data-keep="a">${head}${adderDisplay(st)}${adderKeys(st)}</div>${homebar}</section>`;
   }
@@ -671,9 +721,21 @@ function adderCompact(st) {
   }
   return `<section class="pg top-safe bottom-safe">${sbar()}${roll(st, 'New: order roll')}${adderDisplay(st)}${adderKeys(st)}${homebar}</section>`;
 }
+/* Book pose only: the right page's spare top shows the matched order's packing slip, so the person can
+   tick the cards against the paper in hand. */
+function slip(st) {
+  if (st.status !== 'loaded') return '';
+  const just = st.msg && st.msg.kind === 'done' ? st.orders.find(x => x.id === st.msg.id) : null;
+  const o = target(st) || just;
+  if (!o) return '';
+  return `<div class="stack pad" style="padding-block: var(--space-2)" data-ann="New: packing slip of the match">
+    <span class="t-sub dim">${just ? 'Just marked. Check these cards against the slip.' : 'In this order'}</span>
+    <div class="cards">${o.list.map(([n, c]) => `<div><span>${esc(n)}</span><span class="num dim">${money(c)}</span></div>`).join('')}</div>
+  </div>`;
+}
 function adderBook(st) {
   const left = `<section class="pg top-safe bottom-safe">${sbar()}${roll(st, 'New: roll fills the left page')}${homebar}</section>`;
-  const right = `<section class="pg top-safe bottom-safe" style="justify-content: flex-end">${sbar()}${adderDisplay(st)}${adderKeys(st)}${homebar}</section>`;
+  const right = `<section class="pg top-safe bottom-safe">${sbar()}<div class="scroll" data-keep="slip">${slip(st)}</div>${adderDisplay(st)}${adderKeys(st)}${homebar}</section>`;
   return left + '<div class="hinge" aria-hidden="true"></div>' + right;
 }
 function adderLaptop(st) {
@@ -729,27 +791,22 @@ function act(frame, a) {
 
 /* ---------- Build the page ---------- */
 const frames = [];
+/* The device frames are static markup; this fills each frame's size, label and caption. */
 function build() {
-  const main = document.getElementById('concepts');
-  main.innerHTML = '';
   frames.length = 0;
   for (const c of CONCEPTS) {
-    const sec = document.createElement('section');
-    sec.className = 'concept';
-    sec.dataset.concept = c.key;
-    sec.innerHTML = `<div class="concept-head"><div class="stack" style="gap: var(--space-1)"><h2>${c.name}</h2><span class="kind">Designer kind: blind</span><p>${c.blurb}</p></div><button class="hide" data-hide="${c.key}">Hide ${c.name}</button></div><div class="frames" id="${c.focus}"></div>`;
-    const row = sec.querySelector('.frames');
-    for (const p of POSES) {
-      const fig = document.createElement('figure');
-      fig.className = 'dev';
-      fig.dataset.pose = p.key;
-      fig.innerHTML = `<div class="fit" style="width:${p.w}px;height:${p.h}px"><div class="screen" tabindex="0" data-device="${p.dev}" data-pose="${p.key === 'ax5' ? 'folded' : p.key}" data-ax="${p.ax}" data-pose-key="${p.key}" style="width:${p.w}px;height:${p.h}px" aria-label="${c.name}, ${p.label}"></div></div><figcaption><b>${p.label}.</b> ${p.note}</figcaption>`;
-      row.appendChild(fig);
-      const scr = fig.querySelector('.screen');
+    const sec = document.querySelector(`.concept[data-concept="${c.key}"]`);
+    sec.querySelector('.concept-head p').textContent = c.blurb;
+    for (const fig of sec.querySelectorAll('.dev')) {
+      const p = POSES.find(x => x.key === fig.dataset.pose);
+      const box = fig.querySelector('.fit'), scr = fig.querySelector('.screen');
+      box.style.width = p.w + 'px'; box.style.height = p.h + 'px';
+      scr.style.width = p.w + 'px'; scr.style.height = p.h + 'px';
+      scr.setAttribute('aria-label', `${c.name}, ${p.label}`);
+      fig.querySelector('figcaption').innerHTML = `<b>${p.label}.</b> ${p.note}`;
       scr._fig = fig; scr._p = p;
       frames.push(scr);
     }
-    main.appendChild(sec);
   }
   resetFrames();
 }
