@@ -8,6 +8,6 @@ The decision `duo-card-in-hand` keeps the tab bar under the keys while they are 
 
 The gap closes when the test is green on the iPhone 18 Pro.
 
-**Status:** open. Owner ruling, page item 86 a, 2026-11-18 23:22 CST: the Orphaned form gets a drag on the list that hides the keys. Options b (leave it) and c (point the test at Return) are not chosen. Nothing is built yet.
+**Status:** open. Owner ruling, page item 86 a, 2026-11-18 23:22 CST: the Orphaned form gets a drag on the list that hides the keys. Options b (leave it) and c (point the test at Return) are not chosen. The drag is built (`scrollDismissesKeyboard(.interactively)` on the Orphaned list in `OrphanedView.swift`); the debt stays open until the pro-ui-a run is green.
 
 **Decision:** `duo-card-in-hand`.
