@@ -1,0 +1,725 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Failed Check-in Rows</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (Info.plist UIUserInterfaceStyle Light,
+   InterfaceStyleTests), so the app frames have one theme. The page chrome around them follows the same paper. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6; --silver:#C4C3C0;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  /* Status bar foot: unmeasured on the Duo, drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor). */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: env(safe-area-inset-bottom);
+  --keys-top: 405px; /* the keyboard panel draws from about y 405 pt (duo-fold-and-keyboard; debt duo-keyboard-gap-unmeasured) */
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing:border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.4; }
+main { max-width:1040px; margin:0 auto; padding:16px; display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-family:var(--cochin); font-size:26px; line-height:1.15; margin:0; }
+h2 { font-family:var(--cochin); font-size:21px; margin:0; }
+.kind { font:13px var(--mono); color:var(--inkSoft); margin:0; }
+.kind b { color:var(--ink); }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; }
+nav a, button.ctl { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+button.ctl[aria-pressed="true"] { border-color:var(--red); color:var(--red); font-weight:600; }
+.group { display:flex; flex-direction:column; gap:8px; }
+.group > span { font-size:12px; color:var(--inkSoft); }
+section.opt { display:flex; flex-direction:column; gap:16px; border-top:1px solid var(--line); padding-top:16px; }
+section.opt[hidden], figure[hidden] { display:none; }
+section.opt > p { margin:0; max-width:72ch; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figcaption { max-width:72ch; }
+figcaption b { font-family:var(--cochin); font-size:17px; }
+.ctlrow { display:flex; flex-wrap:wrap; gap:8px; }
+.fit { width:100%; overflow:hidden; }
+.pair { display:flex; flex-wrap:wrap; gap:16px; align-items:flex-start; }
+ul.tags { margin:0; padding-left:20px; color:var(--inkSoft); font-size:14px; max-width:72ch; }
+
+/* ---- device frames, 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; font-family:var(--sys); }
+.dev.folded { width:466px; height:678px; }
+.dev.open { width:951px; height:669px; }
+.dev.phone { width:466px; height:678px; resize:both; min-width:320px; min-height:560px; max-width:520px; max-height:960px; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:8; }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.page.l { left:0; width:455.5px; } .page.r { left:495.5px; width:455.5px; } .page.one { left:0; right:0; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:7; }
+.fold span { position:absolute; top:200px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+/* The system keyboard and tab bar are iOS chrome, not app colours, so their greys sit outside the tokens. */
+.keys { position:absolute; left:0; right:0; top:var(--keys-top); bottom:0; background:#D2D0D6; z-index:9; padding:8px 6px; }
+.keys .row { display:flex; gap:6px; margin-bottom:8px; justify-content:center; }
+.keys .k { height:42px; flex:0 0 42px; background:#FFFFFF; border-radius:6px; display:grid; place-items:center; font-size:18px; color:#111; }
+.keys .k.w { flex-basis:300px; font-size:14px; }
+.tabbar { position:absolute; left:16px; right:16px; bottom:calc(var(--sab) + 8px); height:64px; border-radius:32px; z-index:6;
+  background:rgba(250,250,252,0.82); backdrop-filter:blur(12px); -webkit-backdrop-filter:blur(12px); border:1px solid rgba(0,0,0,0.08);
+  display:grid; grid-template-columns:repeat(4,1fr); align-items:center; font:10px var(--sys); color:#3C3C43; text-align:center; }
+.tabbar .on { color:var(--accent); font-weight:600; }
+.tabbar i { display:block; width:22px; height:22px; margin:0 auto 4px; border-radius:6px; border:1.5px solid currentColor; }
+.page.r .tabbar { left:12px; right:12px; }
+
+/* ---- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono) ---- */
+.runhead { position:absolute; left:0; right:0; top:var(--sat); height:52px; padding:0 16px; display:flex; align-items:center; gap:8px;
+  background:var(--paper); border-bottom:1px solid var(--line); z-index:5; font-family:var(--cochin); }
+.runhead .ttl { font-size:19px; font-weight:700; }
+.runhead .cnt { font:12px var(--mono); color:var(--inkSoft); flex:1; }
+.slot { width:120px; height:28px; display:flex; align-items:center; justify-content:flex-end; font:12px var(--mono); color:var(--inkSoft); white-space:nowrap; }
+.slot.bad { color:var(--red); }
+.list { position:absolute; left:0; right:0; top:calc(var(--sat) + 52px); bottom:0; overflow-y:auto; padding:12px 16px 96px;
+  display:flex; flex-direction:column; gap:8px; font-family:var(--cochin); scrollbar-width:none; }
+.list::-webkit-scrollbar { display:none; }
+.pkg { background:var(--card); border:1px solid var(--line); border-radius:8px; overflow:hidden; flex:none; }
+.pkg .hd { display:flex; align-items:baseline; gap:8px; padding:12px 12px 8px; }
+.pkg .hd b { font-size:17px; }
+.pkg .hd .meta { font:11px var(--mono); color:var(--inkSoft); flex:1; }
+.pill { font:12px var(--mono); color:var(--red); background:var(--redSoft); border-radius:8px; padding:4px 8px; white-space:nowrap; }
+.pill.rcv { color:var(--green); background:var(--greenSoft); }
+
+/* One item line: ItemLine.swift. 4 pt lead, a 45 pt check-in frame with a 30 pt box, 12 pt above and below the text. */
+.ln { position:relative; display:flex; gap:8px; padding-left:4px; border-top:1px solid var(--line); background:var(--card); }
+.ln.done, .ln.here { background:var(--greenSoft); }
+.ln.failed { background:var(--redSoft); }
+.ln.failed::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--red); } /* inside the 4 pt lead: moves nothing */
+.bx { flex:0 0 45px; width:45px; height:45px; display:grid; place-items:center; background:none; border:0; padding:0; cursor:pointer; }
+.box { position:relative; width:30px; height:30px; border-radius:8px; border:2px solid var(--inkSoft); background:var(--card); display:grid; place-items:center; }
+.box svg { width:18px; height:18px; overflow:visible; }
+.box .tick { fill:none; stroke:var(--card); stroke-width:3.2; stroke-linecap:round; stroke-linejoin:round; stroke-dasharray:24; stroke-dashoffset:0; }
+.done .box { background:var(--green); border-color:var(--green); }
+.here .box { background:var(--card); border:2px dashed var(--green); }
+.here .box .tick { stroke:var(--green); stroke-width:2.6; }
+.box .redo { fill:none; stroke:var(--red); stroke-width:2.4; stroke-linecap:round; stroke-linejoin:round; }
+.failed.mode-box .box, .failed.mode-ink .box { background:var(--card); border:2px dashed var(--red); }
+.writing .tick { animation:write 300ms ease-out both; }
+@keyframes write { from { stroke-dashoffset:24; } to { stroke-dashoffset:0; } }
+.blot .box { animation:blot 420ms ease-out both; }
+@keyframes blot { from { box-shadow:0 0 0 0 color-mix(in srgb, var(--red) 55%, transparent); } to { box-shadow:0 0 0 10px transparent; } }
+.setting .box { transition:border-style 0s 300ms, background-color 300ms ease-out; }
+.tx { flex:1; min-width:0; padding:12px 12px 12px 0; display:flex; flex-direction:column; gap:4px; }
+.t1 { display:flex; align-items:baseline; gap:8px; }
+.t1 b { font-size:14px; font-weight:600; flex:1; min-width:0; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.done .t1 b { color:var(--inkSoft); }
+.t1 .pr { font:12px var(--mono); color:var(--inkSoft); }
+.t2 { position:relative; font-size:11.5px; line-height:14px; color:var(--inkSoft); }
+.t2 .f { position:absolute; left:0; right:0; top:0; color:var(--red); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; display:none; }
+.failed .t2 .d { visibility:hidden; }  /* the detail keeps the row's height; the failure line is drawn over it */
+.failed .t2 .f { display:block; }
+.t2 .f time { font:11px var(--mono); }
+/* Retry at the row's end: the price slot gives way to a Retry button in a 44 pt hit frame. */
+.failed.mode-pill .tx { padding-right:84px; }
+.failed.mode-pill .t1 .pr { visibility:hidden; }
+.rt { position:absolute; right:4px; top:50%; transform:translateY(-50%); min-width:72px; height:44px; display:none; align-items:center; justify-content:center;
+  background:none; border:0; padding:0 4px; cursor:pointer; }
+.rt span { font:600 14px var(--cochin); color:var(--card); background:var(--red); border-radius:8px; padding:6px 12px; }
+.failed.mode-pill .rt { display:flex; }
+.bulk { display:flex; align-items:center; gap:8px; min-height:52px; padding:4px 12px; border-top:1px solid var(--line); font-size:14px; position:relative; }
+.bulk .bb { min-height:44px; display:inline-flex; align-items:center; font:14px var(--cochin); color:var(--accent); text-decoration:underline; background:none; border:0; padding:0; }
+.bulk.failed { background:var(--redSoft); }
+.bulk.failed::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--red); }
+.bulk .bf { color:var(--red); font-size:13px; }
+
+/* Edge pointer: an overlay at the list's edge that points at a failed row out of view. */
+.ptr { position:absolute; left:50%; transform:translateX(-50%); z-index:5; min-height:44px; display:none; align-items:center; background:none; border:0; padding:0; cursor:pointer; }
+.ptr span { font:600 14px var(--cochin); color:var(--card); background:var(--red); border-radius:18px; padding:6px 14px; white-space:nowrap; }
+.ptr.up { top:calc(var(--sat) + 56px); } .ptr.down { bottom:calc(var(--sab) + 80px); }
+.ptr.show { display:flex; }
+.ptr span { display:inline-flex; align-items:center; gap:6px; font-size:17px; }
+.ptr .mini { width:22px; height:22px; border:2px dashed var(--card); border-radius:6px; display:grid; place-items:center; }
+.ptr .mini svg { width:14px; height:14px; } .ptr .mini .redo { stroke:var(--card); }
+.hnote { position:absolute; z-index:10; font:600 11px var(--sys); color:var(--new); background:var(--paper); border:1.5px dashed var(--new); border-radius:6px; padding:2px 6px; opacity:0; transition:opacity 200ms; pointer-events:none; white-space:nowrap; }
+.hnote.on { opacity:1; }
+
+/* Today: the bars the screens draw now. */
+.todaybar { position:absolute; left:0; right:0; z-index:5; padding:12px; font:13px var(--sys); text-align:center; display:none;
+  background:rgba(242,242,247,0.86); backdrop-filter:blur(16px); -webkit-backdrop-filter:blur(16px); color:#1C1C1E; }
+.todaybar.cochin { font:13px var(--cochin); color:var(--red); background:var(--paper); text-align:left; border-bottom:1px solid var(--line); backdrop-filter:none; }
+.todaybar.show { display:block; }
+
+/* Card in Hand, open Duo */
+.lp { position:absolute; left:16px; right:16px; top:calc(var(--sat) + 16px); display:flex; flex-direction:column; gap:12px; font-family:var(--cochin); }
+.rowx { display:flex; align-items:center; justify-content:space-between; gap:8px; }
+.rowx .soft { color:var(--inkSoft); font-size:14px; }
+.btnp { font:12px var(--mono); border:1px solid var(--line); background:var(--card); border-radius:8px; padding:6px 10px; color:var(--ink); white-space:nowrap; min-height:44px; display:inline-flex; align-items:center; }
+.field { height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:0 12px; display:flex; align-items:center; font-size:16px; }
+.field::after { content:""; width:2px; height:20px; background:var(--accent); margin-left:1px; }
+.micro { font:10.5px/13px var(--mono); letter-spacing:1.2px; text-transform:uppercase; color:var(--inkSoft); }
+.match { min-height:44px; display:flex; align-items:center; font-size:14px; padding-left:10px; }
+.match.tapped { font-weight:700; box-shadow:inset 3px 0 0 var(--accent); }
+.rhead { position:absolute; left:0; right:0; top:var(--sat); padding:16px 16px 8px; display:flex; flex-direction:column; gap:4px; font-family:var(--cochin);
+  border-bottom:1px solid var(--line); background:var(--paper); z-index:4; }
+.rhead .who { font-size:22px; line-height:27px; font-weight:700; }
+.rhead .meta { font:11px var(--mono); color:var(--inkSoft); }
+.rlist { position:absolute; left:0; right:0; top:calc(var(--sat) + 94px); bottom:calc(669px - var(--keys-top)); overflow-y:auto; padding:8px 16px 16px;
+  display:flex; flex-direction:column; gap:8px; font-family:var(--cochin); scrollbar-width:none; }
+.rlist.keysdown { bottom:0; padding-bottom:96px; }
+.ride { display:flex; flex-direction:column; gap:4px; }
+.ride > span { font-size:12px; color:var(--inkSoft); }
+/* Tally spread, left page */
+.names { position:absolute; left:0; right:0; top:calc(var(--sat) + 52px); bottom:0; overflow:hidden; padding:12px 16px; display:flex; flex-direction:column; font-family:var(--cochin); }
+.nm { position:relative; display:flex; align-items:center; min-height:48px; padding:0 12px; border-top:1px solid var(--line); font-size:15px; gap:8px; }
+.nm span { flex:1; } .nm code { font:12px var(--mono); color:var(--inkSoft); }
+.nm.pick { background:var(--card); font-weight:700; }
+.nm.failed::before { content:""; position:absolute; left:0; top:0; bottom:0; width:3px; background:var(--red); }
+.nm .dot { width:10px; height:10px; border:2px dashed var(--red); border-radius:3px; }
+.thead { position:absolute; left:0; right:0; top:var(--sat); padding:16px 16px 8px; font-family:var(--cochin); display:flex; flex-direction:column; gap:4px; }
+.thead b { font-size:22px; } .thead span { font:11px var(--mono); color:var(--inkSoft); }
+
+/* AX5 rows: Body 17 to 53 pt (HIG Typography, AX5), so each content size scales by 53/17. */
+.ax .t1 { flex-wrap:wrap; }
+.ax .t1 b { font-size:43.6px; line-height:1.15; white-space:normal; }
+.ax .t1 .pr { font-size:37.4px; }
+.ax .t2 { font-size:35.9px; line-height:1.2; }
+.ax .t2 .f time { font-size:34px; }
+.ax .pkg .hd b { font-size:53px; line-height:1.1; }
+.ax .runhead .ttl { font-size:23px; } /* the running head is capped, as the Duo bar is */
+.ax .rt span { font-size:19px; } /* capped at xxxLarge, as item 104 a caps the Post bar */
+/* At AX sizes Retry drops to the failure line's end, so the title keeps the row's full width and is never cut. */
+.ax .failed.mode-pill .tx { padding-right:12px; }
+.ax .failed.mode-pill .t2 .f { right:84px; }
+.ax .failed.mode-pill .t1 .pr { visibility:visible; }
+.ax .rt { top:auto; bottom:8px; transform:none; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+.tagbox { position:absolute; z-index:11; pointer-events:none; }
+.tagbox i { position:absolute; inset:0; border:2px dashed; border-radius:6px; }
+.tagbox b { position:absolute; right:4px; top:-9px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper); white-space:nowrap; }
+.tagbox.left b { right:auto; left:120px; }
+.tagbox.new i { border-color:var(--new); } .tagbox.new b { color:var(--new); }
+.tagbox.today i { border-color:var(--today); } .tagbox.today b { color:var(--today); }
+:focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
+@media (prefers-reduced-motion: reduce) { .writing .tick, .blot .box { animation:none; } .setting .box { transition:none; } .hnote { transition:none; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No figure, seller, card, time or count on this page is real. Row heights follow ItemLine.swift; every y is from this drawing, not a simulator.</div>
+<h1>A failed check-in stays on the row that failed</h1>
+<p class="kind">Designer kind: <b>directed</b> · Direction: <b>inline: the failure lives on the row that failed, with a retry on that row</b></p>
+<p class="sub">Three concepts, each in both Duo poses (folded first) and on a large phone, plus three add-ons. Every frame is live: set "Next tick fails", tap boxes, or run a fast mail day. Light theme only: the native app is held to light. The same ItemLine draws Packages, Tally and Card in Hand lines, so each concept lands on all three at once.</p>
+
+<nav aria-label="States">
+  <a href="#">All</a>
+  <a href="#s=today">Today</a>
+  <a href="#s=failed">A row failed</a>
+  <a href="#s=retried">After the retry</a>
+  <a href="#s=offscreen">Failed row scrolled away</a>
+  <a href="#s=ride">Card in Hand, next card</a>
+  <a href="#s=ax5">AX5 text</a>
+  <a href="#s=bulk">No single row</a>
+  <a href="#s=tally">Tally spread</a>
+</nav>
+<div class="group"><span>Hide one option per press</span>
+<nav aria-label="Options">
+  <button type="button" class="ctl" data-hide="box">Hide Struck box</button>
+  <button type="button" class="ctl" data-hide="pill">Hide Retry at the row's end</button>
+  <button type="button" class="ctl" data-hide="ink">Hide Pencil until sent</button>
+  <button type="button" class="ctl" data-hide="pointer">Hide Edge pointer</button>
+  <button type="button" class="ctl" data-hide="ride">Hide Rides along</button>
+  <button type="button" class="ctl" data-hide="haptic">Hide Error haptic</button>
+</nav></div>
+
+<!-- ============ TODAY ============ -->
+<section class="opt" data-opt="today">
+  <h2>Today</h2>
+  <p>A failed save leaves the row as it was and shows one line that names no card. The next good tick on any row clears that line (<code>PackagesModel.checkIn</code> sets <code>checkInError = nil</code>), so at speed the one sign is gone before the eye reaches it. Run a fast mail day below: the third tick fails, the fourth wipes the bar.</p>
+  <figure data-states="today">
+    <div class="ctlrow" data-for="t-fold"></div>
+    <div class="pair">
+      <div class="fit" style="max-width:468px"><div class="dev folded" id="t-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="today" data-preset="today"></div></div>
+    </div>
+    <figcaption><b>Today, folded: Packages.</b> The <code>checkin-error</code> overlay (<code>PackagesView.swift</code>) in system footnote on material, at the tab's bottom edge, just above the floating bar, where the thumb is not looking (debt <code>checkin-error-bar-is-sans</code>).</figcaption>
+  </figure>
+  <figure data-states="today">
+    <div class="ctlrow" data-for="t-open"></div>
+    <div class="fit"><div class="dev open" id="t-open" data-device="iphone-duo-unfolded" data-view="hand" data-concept="today" data-preset="today"></div></div>
+    <figcaption><b>Today, open: Card in Hand.</b> <code>hand-checkin-error</code> (<code>HandScreen.swift</code>) lies over the top of the answer page: it covers the sender head and the first line until a later save lands (debt notes, 2026-10-29). A good Post now clears it too (debt <code>hand-stale-checkin-error</code>, fixed in code).</figcaption>
+  </figure>
+</section>
+
+<!-- ============ CONCEPT: STRUCK BOX ============ -->
+<section class="opt" data-opt="box">
+  <h2>Struck box: the box you tapped is the retry</h2>
+  <p>The failed row turns red-soft with a red lead bar. Its box draws a dashed red edge and a turn arrow, and the detail line reads "Not saved. Tap the box again." The thumb is already on that box: one more tap writes the same count, because a failed save left the stored count as it was. Other rows' saves leave the mark alone. Only that row's own good save clears it.</p>
+  <figure data-states="failed retried">
+    <div class="ctlrow" data-for="box-fold"></div>
+    <div class="fit" style="max-width:468px"><div class="dev folded" id="box-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="box" data-preset="failed" data-focus="focus-box"></div></div>
+    <figcaption><b>Struck box, folded: Packages.</b> Swords to Plowshares failed; Ponder and Preordain saved after it, and the mark stayed. The save slot in the running head holds "1 not saved" until the row is fixed.</figcaption>
+  </figure>
+  <figure data-states="failed retried">
+    <div class="ctlrow" data-for="box-open"></div>
+    <div class="fit"><div class="dev open" id="box-open" data-device="iphone-duo-unfolded" data-view="hand" data-concept="box" data-preset="failed"></div></div>
+    <figcaption><b>Struck box, open: Card in Hand.</b> The failed line is marked where it sits on the answer page. Nothing lies over the sender head, and the keys stay up for the next card.</figcaption>
+  </figure>
+  <figure data-states="failed retried">
+    <div class="ctlrow" data-for="box-phone"></div>
+    <div class="fit" style="max-width:522px"><div class="dev phone" id="box-phone" data-device="iphone-regular" data-view="packages" data-concept="box" data-preset="failed"></div></div>
+    <figcaption><b>Struck box, large phone.</b> No size is written for this phone, so it is drawn at the brief's only portrait size, 466 x 678 pt. Drag the corner to try other widths: the row holds its height at every width.</figcaption>
+  </figure>
+  <figure data-states="ax5">
+    <div class="fit" style="max-width:468px"><div class="dev folded ax" id="box-ax" data-device="iphone-duo-folded" data-view="packages" data-concept="box" data-preset="failed" data-ax="1"></div></div>
+    <figcaption><b>Struck box, folded, AX5.</b> At accessibility sizes the failure line drops to "Not saved", so it never needs more lines than the detail it covers. VoiceOver reads the row as "Swords to Plowshares, not saved. Double-tap to try again."</figcaption>
+  </figure>
+</section>
+
+<!-- ============ CONCEPT: RETRY AT THE ROW'S END ============ -->
+<section class="opt" data-opt="pill">
+  <h2>Retry at the row's end</h2>
+  <p>The box keeps showing what is stored, so an unticked box means "not in". The price slot gives way to a red Retry button on the row, at the thumb's side. The detail line says "Not saved" and the time of the tap. Retry writes the count the failed tap meant, so it is the same act whichever way the box sits.</p>
+  <figure data-states="failed retried">
+    <div class="ctlrow" data-for="pill-fold"></div>
+    <div class="fit" style="max-width:468px"><div class="dev folded" id="pill-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="pill" data-preset="failed" data-focus="focus-pill"></div></div>
+    <figcaption><b>Retry at the row's end, folded: Packages.</b> The Retry hit frame is 72 x 44 pt, inside the row's own 59 pt; the title gives up width, never height.</figcaption>
+  </figure>
+  <figure data-states="failed retried">
+    <div class="ctlrow" data-for="pill-open"></div>
+    <div class="fit"><div class="dev open" id="pill-open" data-device="iphone-duo-unfolded" data-view="hand" data-concept="pill" data-preset="failed"></div></div>
+    <figcaption><b>Retry at the row's end, open: Card in Hand.</b> Retry sits at the right page's outer edge, the thumb's side when the open Duo is held in two hands.</figcaption>
+  </figure>
+  <figure data-states="failed retried">
+    <div class="ctlrow" data-for="pill-phone"></div>
+    <div class="fit" style="max-width:522px"><div class="dev phone" id="pill-phone" data-device="iphone-regular" data-view="packages" data-concept="pill" data-preset="failed"></div></div>
+    <figcaption><b>Retry at the row's end, large phone.</b> Drawn at 466 x 678 pt, no written size. Drag the corner to try others.</figcaption>
+  </figure>
+  <figure data-states="ax5">
+    <div class="fit" style="max-width:468px"><div class="dev folded ax" id="pill-ax" data-device="iphone-duo-folded" data-view="packages" data-concept="pill" data-preset="failed" data-ax="1"></div></div>
+    <figcaption><b>Retry at the row's end, folded, AX5.</b> Retry's label is capped at xxxLarge (19 pt) and offers the large content viewer, as the Post bar does. At accessibility sizes Retry drops to the end of the "Not saved" line, so the card name keeps the full width and the row keeps its height.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ CONCEPT: PENCIL UNTIL SENT ============ -->
+<section class="opt" data-opt="ink">
+  <h2>Pencil until sent</h2>
+  <p>"I never know if it actually took" covers two cases. A save on the phone can fail (rare), and a saved tick can wait for signal before the sync server has it (common at the mailbox). Here every tick shows both on its own row: a dashed green box is saved on this phone and not yet sent; it sets to solid green when the server has it. A failed save is the Struck box. The running head says the count once; the rows say it by shape.</p>
+  <figure data-states="failed retried">
+    <div class="ctlrow" data-for="ink-fold"></div>
+    <div class="fit" style="max-width:468px"><div class="dev folded" id="ink-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="ink" data-preset="failed" data-focus="focus-ink"></div></div>
+    <figcaption><b>Pencil until sent, folded: Packages.</b> No signal: Ponder and Preordain are saved here, not sent (dashed). Swords to Plowshares did not save. Press "Signal" to send: the dashed boxes set solid in 300 ms.</figcaption>
+  </figure>
+  <figure data-states="failed retried">
+    <div class="ctlrow" data-for="ink-open"></div>
+    <div class="fit"><div class="dev open" id="ink-open" data-device="iphone-duo-unfolded" data-view="hand" data-concept="ink" data-preset="failed"></div></div>
+    <figcaption><b>Pencil until sent, open: Card in Hand.</b> The same three box faces on the answer page's lines.</figcaption>
+  </figure>
+  <figure data-states="failed retried">
+    <div class="ctlrow" data-for="ink-phone"></div>
+    <div class="fit" style="max-width:522px"><div class="dev phone" id="ink-phone" data-device="iphone-regular" data-view="packages" data-concept="ink" data-preset="failed"></div></div>
+    <figcaption><b>Pencil until sent, large phone.</b> Drawn at 466 x 678 pt, no written size.</figcaption>
+  </figure>
+  <figure data-states="ax5">
+    <div class="fit" style="max-width:468px"><div class="dev folded ax" id="ink-ax" data-device="iphone-duo-folded" data-view="packages" data-concept="ink" data-preset="failed" data-ax="1"></div></div>
+    <figcaption><b>Pencil until sent, folded, AX5.</b> The box keeps its 30 pt face at every size, so the dashed edge reads the same. VoiceOver adds "saved on this phone, not sent" to a pencil row's value.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ ADD-ONS ============ -->
+<section class="opt" data-opt="pointer">
+  <h2>Edge pointer (add-on to any concept)</h2>
+  <p>When the failed row scrolls out of view, a red pointer floats at the list's edge on the side where the row went. It carries the struck box face and an arrow, not words: the save slot already says "1 not saved" once (<code>ux-label-once</code>), and VoiceOver reads "Show the row that did not save". A tap scrolls the row back to the middle of the list. It is an overlay, so nothing moves, and it goes when the row is fixed or back in view.</p>
+  <figure data-states="offscreen">
+    <div class="ctlrow" data-for="ptr-fold"></div>
+    <div class="fit" style="max-width:468px"><div class="dev folded" id="ptr-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="box" data-preset="offscreen" data-focus="focus-pointer"></div></div>
+    <figcaption><b>Edge pointer, folded, with Struck box.</b> The list is scrolled on to the next seller; the failed row is above the view. Tap the pointer.</figcaption>
+  </figure>
+</section>
+
+<section class="opt" data-opt="ride">
+  <h2>Rides along (add-on, Card in Hand)</h2>
+  <p>On Card in Hand the next typed card swaps the answer page to a new envelope, and the failed line would leave with the old one. Here it rides along: it sits above the new envelope's lines under "From Gamma Cards", with its own retry, until it saves or its envelope comes back. It is placed while the page is being redrawn for the new card, and the finger is on the keys then, so no row moves under a press.</p>
+  <figure data-states="ride">
+    <div class="ctlrow" data-for="ride-open"></div>
+    <div class="fit"><div class="dev open" id="ride-open" data-device="iphone-duo-unfolded" data-view="hand" data-concept="box" data-preset="ride" data-focus="focus-ride"></div></div>
+    <figcaption><b>Rides along, open: Card in Hand, with Struck box.</b> "Counterspell" typed; the answer is Delta Games, and the Gamma Cards line that failed still waits at the top.</figcaption>
+  </figure>
+  <figure data-states="ride">
+    <div class="fit" style="max-width:468px"><div class="dev folded" data-device="iphone-duo-folded">
+      <div style="position:absolute;inset:calc(var(--sat) + 16px) 16px 16px;display:flex;flex-direction:column;gap:8px;font-family:var(--cochin)">
+        <b style="font-size:19px">Folded: Card in Hand does not open</b>
+        <span style="color:var(--inkSoft)">Card in Hand opens only on two pages side by side (<code>HandScreen.twoPages</code>; decision <code>duo-card-in-hand</code>). Folded, the line check-ins are on Packages, drawn in each concept above.</span>
+      </div>
+    </div></div>
+    <figcaption><b>Rides along, folded.</b> Nothing to draw.</figcaption>
+  </figure>
+</section>
+
+<section class="opt" data-opt="haptic">
+  <h2>Error haptic (add-on to any concept)</h2>
+  <p>The person ticks without looking. A failed save plays the system error haptic (<code>.sensoryFeedback(.error, …)</code>) at the moment the box turns red, so the hand learns of it before the eye. A good save stays silent, as today: hundreds of success taps would numb the signal. Set "Next tick fails" and tap: the frame marks where the haptic plays.</p>
+  <figure data-states="failed">
+    <div class="ctlrow" data-for="hap-fold"></div>
+    <div class="fit" style="max-width:468px"><div class="dev folded" id="hap-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="box" data-preset="failed" data-haptic="1" data-focus="focus-haptic"></div></div>
+    <figcaption><b>Error haptic, folded, with Struck box.</b> Felt, not seen: the dashed note beside the struck box stands for the haptic. Set "Next tick fails" and tap a box to see it play again.</figcaption>
+  </figure>
+</section>
+
+<!-- ============ SHARED STATES ============ -->
+<section class="opt" data-opt="shared">
+  <h2>Failures with no single row, and the Tally spread</h2>
+  <p>Not every write has a row. Mark all received and Clear check-ins write a whole package; the stamped filter reads the list. Each failure stays on the control that was pressed, in that control's own row (<code>ux-answer-at-press</code>). Drawn with Struck box; the other concepts read the same.</p>
+  <figure data-states="bulk">
+    <div class="ctlrow" data-for="bulk-fold"></div>
+    <div class="fit" style="max-width:468px"><div class="dev folded" id="bulk-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="box" data-preset="bulk"></div></div>
+    <figcaption><b>No single row, folded: Mark all received failed.</b> The bulk row under the stamp slot (<code>native-bulk-check-in</code>) takes the mark and the words; Mark all is its own retry. Its height is reserved, so no row moves.</figcaption>
+  </figure>
+  <figure data-states="tally">
+    <div class="ctlrow" data-for="tally-open"></div>
+    <div class="fit"><div class="dev open" id="tally-open" data-device="iphone-duo-unfolded" data-view="tally" data-concept="box" data-preset="tally"></div></div>
+    <figcaption><b>Tally spread, open, with Struck box.</b> The failed copy is marked on the right page. On the left page the name row carries the red lead bar and a small dashed box, so a failed copy is found from the list too. Tally's own bar (<code>TallyView.errorBar</code>) goes.</figcaption>
+  </figure>
+</section>
+</main>
+
+<template id="keys">
+  <div class="keys">
+    <div class="row"><span class="k">q</span><span class="k">w</span><span class="k">e</span><span class="k">r</span><span class="k">t</span><span class="k">y</span><span class="k">u</span><span class="k">i</span><span class="k">o</span><span class="k">p</span></div>
+    <div class="row"><span class="k">a</span><span class="k">s</span><span class="k">d</span><span class="k">f</span><span class="k">g</span><span class="k">h</span><span class="k">j</span><span class="k">k</span><span class="k">l</span></div>
+    <div class="row"><span class="k">z</span><span class="k">x</span><span class="k">c</span><span class="k">v</span><span class="k">b</span><span class="k">n</span><span class="k">m</span></div>
+    <div class="row"><span class="k w">space</span><span class="k" style="flex-basis:90px;font-size:14px">done</span></div>
+  </div>
+</template>
+
+<script>
+// ---------- sample data (none of it real) ----------
+const PKGS = [
+  { id:'g', seller:'Gamma Cards', date:'2026-07-01', rows:[
+    { k:'g1', name:'Lightning Bolt', d:'Sample Set · NM', p:0.42 }, { k:'g2', name:'Path to Exile', d:'Sample Set · NM', p:0.31 },
+    { k:'g3', name:'Swords to Plowshares', d:'Sample Set · LP', p:0.55 }, { k:'g4', name:'Ponder', d:'Sample Set · NM', p:0.18 },
+    { k:'g5', name:'Preordain', d:'Sample Set · NM', p:0.20 } ] },
+  { id:'d', seller:'Delta Games', date:'2026-07-03', rows:[
+    { k:'d1', name:'Counterspell', d:'Sample Set · NM', p:0.35 }, { k:'d2', name:'Opt', d:'Sample Set · NM', p:0.12 },
+    { k:'d3', name:'Consider', d:'Sample Set · NM', p:0.25 }, { k:'d4', name:'Fatal Push', d:'Sample Set · LP', p:0.60 } ] },
+  { id:'e', seller:'Epsilon TCG', date:'2026-07-04', rows:[
+    { k:'e1', name:'Thoughtseize', d:'Sample Set · NM', p:0.95 }, { k:'e2', name:'Duress', d:'Sample Set · NM', p:0.10 },
+    { k:'e3', name:'Spell Pierce', d:'Sample Set · NM', p:0.15 }, { k:'e4', name:'Mana Leak', d:'Sample Set · NM', p:0.22 } ] },
+];
+const TALLY = { name:'Lightning Bolt', rows:[
+  { k:'t1', name:'Gamma Cards', d:'Sample Set · NM · order 1001', p:0.42 }, { k:'t2', name:'Delta Games', d:'Sample Set · NM · order 1002', p:0.40 },
+  { k:'t3', name:'Epsilon TCG', d:'Sample Set · LP · order 1003', p:0.38 }, { k:'t4', name:'Zeta Cards', d:'Sample Set · NM · order 1004', p:0.44 } ] };
+const ALL = [...PKGS.flatMap(p => p.rows), ...TALLY.rows];
+const byKey = k => ALL.find(r => r.k === k);
+const money = n => '$' + n.toFixed(2);
+const hidden = new Set();
+const TICK = '<svg viewBox="0 0 18 18" aria-hidden="true"><path class="tick" d="M3.5 9.5 L7.5 13.5 L14.5 4.5"/></svg>';
+const REDO = '<svg viewBox="0 0 18 18" aria-hidden="true"><path class="redo" d="M14 9a5 5 0 1 1-1.6-3.7"/><path class="redo" d="M13.2 2.4 L12.6 5.6 L9.4 5.2"/></svg>';
+
+// ---------- one frame's state ----------
+// got: stored count per key. failed: key -> the count the failed tap meant. here: keys saved on this phone, not sent.
+function freshState(f) { return { got:{}, failed:{}, here:new Set(), failNext:false, signal:true, bulkFailed:false, todayErr:null, ride:false, scrollTo:0 }; }
+function preset(f, name) {
+  const s = freshState(f); f.st = s;
+  const c = f.dataset.concept;
+  if (name === 'fresh') return;
+  if (name === 'today') { s.got.g1 = 1; s.got.g2 = 1; s.todayErr = 'Could not save the check-in. The operation couldn’t be completed.'; return; }
+  if (name === 'tally') { s.got.t1 = 1; s.got.t3 = 1; s.failed.t2 = 1; return; }
+  if (name === 'bulk') { s.got.g1 = 1; s.bulkFailed = true; return; }
+  // failed, retried, offscreen, ride: g1..g5 ticked in order, g3's save failed.
+  ['g1','g2','g4','g5'].forEach(k => s.got[k] = 1);
+  if (name === 'retried') { s.got.g3 = 1; return; }
+  s.failed.g3 = 1;
+  if (c === 'ink') { s.signal = false; s.here.add('g4'); s.here.add('g5'); }
+  if (name === 'offscreen') s.scrollTo = 470;
+  if (name === 'ride') s.ride = true;
+}
+
+// ---------- rendering ----------
+function rowHTML(f, r, view) {
+  const s = f.st, c = f.dataset.concept, ax = f.dataset.ax;
+  const failed = c !== 'today' && r.k in s.failed;
+  const done = (s.got[r.k] || 0) > 0;
+  let cls = 'ln';
+  if (failed) cls += ' failed mode-' + c; else if (done) cls += (c === 'ink' && s.here.has(r.k)) ? ' here' : ' done';
+  let face = '';
+  if (failed && c !== 'pill') face = REDO; else if (done) face = TICK;
+  if (failed && c === 'pill' && done) face = TICK;
+  const undo = failed && s.failed[r.k] === 0;
+  let fl = '';
+  if (failed) {
+    if (ax) fl = undo ? 'Not taken back' : 'Not saved';
+    else if (c === 'pill') fl = (undo ? 'Not taken back' : 'Not saved') + ' at <time>' + (s.failAt && s.failAt[r.k] || '9:41') + '</time>';
+    else fl = undo ? 'Not taken back. Tap the box again.' : 'Not saved. Tap the box again.';
+  }
+  const label = failed ? `${r.name}, not saved. ${c === 'pill' ? 'Retry is at the row’s end.' : 'Double-tap to try again.'}` : `${done ? 'Undo check in' : 'Check in'} ${r.name}`;
+  return `<div class="${cls}" data-k="${r.k}">
+    <button class="bx" type="button" data-act="tap" aria-label="${label}"><i class="box">${face}</i></button>
+    <div class="tx"><div class="t1"><b>${r.name}</b><span class="pr">${money(r.p)}</span></div>
+      <div class="t2"><span class="d">${r.d}</span><span class="f">${fl}</span></div></div>
+    <button class="rt" type="button" data-act="retry" aria-label="Retry ${r.name}"><span>Retry</span></button>
+  </div>`;
+}
+function pkgHTML(f, p, opts = {}) {
+  const s = f.st;
+  const out = p.rows.filter(r => !(s.got[r.k] > 0)).reduce((a, r) => a + r.p, 0);
+  const pill = out > 0 ? `<span class="pill">${money(out)} out</span>` : `<span class="pill rcv">Received</span>`;
+  let bulk = '';
+  if (opts.bulk) bulk = `<div class="bulk${s.bulkFailed ? ' failed' : ''}" id="${f.id}-bulk"><button class="bb" type="button" data-act="bulk">Mark all received</button>
+    ${s.bulkFailed ? '<span class="bf">Not saved. Tap Mark all again.</span>' : ''}</div>`;
+  return `<div class="pkg" data-p="${p.id}"><div class="hd"><b>${p.seller}</b><span class="meta">ordered ${p.date}</span>${pill}</div>
+    ${p.rows.map(r => rowHTML(f, r)).join('')}${bulk}</div>`;
+}
+function slotText(f) {
+  const s = f.st, c = f.dataset.concept;
+  if (c === 'today') return s.todayErr ? ['couldn’t save', true] : [s.anyTick ? 'saved ✓' : ' ', false];
+  const n = Object.keys(s.failed).length + (s.bulkFailed ? 1 : 0);
+  if (n) return [n + ' not saved', true];
+  if (c === 'ink' && s.here.size) return [s.here.size + ' not sent', false];
+  return ['saved ✓', false];
+}
+function statusBar() { return `<div class="status"><span>9:41</span><span>${'●●●'} 100%</span></div>`; }
+function tabbar(on) { return `<div class="tabbar" aria-label="Tab bar (system), height unmeasured">${['Ledger','Orphaned','Tally','Packages'].map(t => `<span class="${t===on?'on':''}"><i></i>${t}</span>`).join('')}</div>`; }
+
+function render(f) {
+  const v = f.dataset.view, c = f.dataset.concept, s = f.st;
+  const keepScroll = {};
+  f.querySelectorAll('.list,.rlist').forEach(el => keepScroll[el.className] = el.scrollTop);
+  const [slot, bad] = slotText(f);
+  let h = '';
+  if (v === 'packages') {
+    h += statusBar();
+    h += `<div class="runhead"><span class="ttl">Packages</span><span class="cnt">41 in · 23 out</span><span class="slot${bad ? ' bad' : ''}" aria-live="polite">${slot}</span></div>`;
+    h += `<div class="list">${PKGS.map((p, i) => pkgHTML(f, p, { bulk: f.dataset.preset === 'bulk' && i === 0 })).join('')}</div>`;
+    h += tabbar('Packages');
+    // Today's overlay sits at the bottom of the tab's safe area, just above the floating bar (PackagesView, overlay(alignment: .bottom)).
+    if (c === 'today') h += `<div class="todaybar${s.todayErr ? ' show' : ''}" style="bottom:calc(var(--sab) + 76px)">${s.todayErr || ''}</div>`;
+    // The save slot holds the words once (ux-label-once); the pointer says it by shape: the struck box face and an arrow.
+    const nf = Object.keys(s.failed).length;
+    h += `<button class="ptr up" type="button" data-act="ptr" aria-label="Show the row that did not save"><span><i class="mini">${REDO}</i>${nf > 1 ? nf + ' ' : ''}↑</span></button>`
+       + `<button class="ptr down" type="button" data-act="ptr" aria-label="Show the row that did not save"><span><i class="mini">${REDO}</i>${nf > 1 ? nf + ' ' : ''}↓</span></button>`;
+  } else if (v === 'hand') {
+    const ride = s.ride;
+    const env = ride ? PKGS[1] : PKGS[0];
+    const typed = ride ? 'Counterspell' : 'Ponder';
+    h += statusBar() + '<div class="fold"><span>FOLD</span></div>';
+    h += `<div class="page l"><div class="lp">
+      <div class="rowx"><span style="font-weight:700;font-size:17px">Mail day</span><span class="count" style="font:12px var(--mono);color:var(--inkSoft)">41 in · 23 out</span><span class="btnp">Close</span></div>
+      <div class="field">${typed}</div>
+      <div class="rowx"><span class="soft">This envelope</span><span class="btnp">New envelope</span></div>
+      <span class="micro">Matches</span><div class="match tapped">${typed}</div></div></div>`;
+    let lines = '';
+    if (ride && c !== 'today') {
+      const fk = Object.keys(s.failed).filter(k => k.startsWith('g'));
+      if (fk.length) lines += `<div class="ride" id="${f.id}-ride"><span>From Gamma Cards</span><div class="pkg">${fk.map(k => rowHTML(f, byKey(k))).join('')}</div></div>`;
+    }
+    lines += `<div class="pkg">${env.rows.map(r => rowHTML(f, r)).join('')}</div>`;
+    h += `<div class="page r">
+      <div class="rhead"><span class="micro">It came from</span><span class="who">${env.seller}</span><span class="meta">ordered ${env.date}</span></div>
+      <div class="rlist">${lines}</div>
+      ${c === 'today' ? `<div class="todaybar cochin${s.todayErr ? ' show' : ''}" style="top:var(--sat)">${s.todayErr || ''}</div>` : ''}
+    </div>`;
+    h += document.getElementById('keys').innerHTML;
+  } else if (v === 'tally') {
+    h += statusBar() + '<div class="fold"><span>FOLD</span></div>';
+    const tf = Object.keys(s.failed).some(k => k.startsWith('t'));
+    const got = TALLY.rows.filter(r => s.got[r.k] > 0).length;
+    const names = [['Lightning Bolt', got + '/4', true], ['Counterspell','0/2'], ['Opt','1/1'], ['Path to Exile','1/1'], ['Ponder','2/3'], ['Preordain','1/1'], ['Thoughtseize','0/1']];
+    h += `<div class="page l"><div class="runhead"><span class="ttl">Tally</span><span class="cnt">7 names</span><span class="slot${bad ? ' bad' : ''}">${slot}</span></div>
+      <div class="names">${names.map(([n, q, pick]) => `<div class="nm${pick ? ' pick' : ''}${pick && tf ? ' failed' : ''}" ${pick && tf ? `id="${f.id}-nm"` : ''}><span>${n}</span>${pick && tf ? '<i class="dot" aria-label="a copy did not save"></i>' : ''}<code>${q}</code></div>`).join('')}</div></div>`;
+    h += `<div class="page r"><div class="thead"><b>${TALLY.name}</b><span>4 copies · 4 sellers</span></div>
+      <div class="rlist keysdown" style="top:calc(var(--sat) + 72px)"><div class="pkg">${TALLY.rows.map(r => rowHTML(f, r)).join('')}</div></div>${tabbar('Tally')}</div>`;
+  }
+  if (f.dataset.haptic) h += `<span class="hnote" style="left:64px;top:0">New: error haptic plays here</span>`;
+  f.innerHTML = h;
+  f.querySelectorAll('.list,.rlist').forEach(el => { if (keepScroll[el.className] != null) el.scrollTop = keepScroll[el.className]; });
+  if (s.scrollTo) { const L = f.querySelector('.list'); if (L) L.scrollTop = s.scrollTo; s.scrollTo = 0; }
+  // AX5: rows are three times taller, so open the frame with the failed row in view.
+  if (f.dataset.ax && !s.axPlaced) { const L = f.querySelector('.list'), r = L && L.querySelector('.ln.failed'); if (r) L.scrollTop = r.offsetTop - 60; s.axPlaced = true; }
+  const L = f.querySelector('.list'); if (L) L.addEventListener('scroll', () => pointer(f), { passive:true });
+  pointer(f);
+  hapticNote(f, false);
+  placeFocus(f);
+  placeTags(f);
+}
+
+// Edge pointer: show when a failed row sits outside the list's visible band.
+function pointer(f) {
+  const L = f.querySelector('.list'); if (!L) return;
+  const up = f.querySelector('.ptr.up'), dn = f.querySelector('.ptr.down');
+  up.classList.remove('show'); dn.classList.remove('show');
+  if (hidden.has('pointer') || f.dataset.concept === 'today') return;
+  const row = L.querySelector('.ln.failed'); if (!row) return;
+  const z = parseFloat(getComputedStyle(f).zoom) || 1;
+  const lr = L.getBoundingClientRect(), rr = row.getBoundingClientRect();
+  const top = lr.top + 0 * z, bottom = lr.bottom - 96 * z;  // the bottom 96 pt is the tab bar's scroll margin
+  if (rr.bottom < top + 8 * z) up.classList.add('show'); else if (rr.top > bottom - 8 * z) dn.classList.add('show');
+}
+
+// The haptic note sits beside the failed row's box; a fresh failure makes it blink once.
+function hapticNote(f, blink) {
+  const hn = f.querySelector('.hnote'), row = f.querySelector('.ln.failed'); if (!hn || !row) return;
+  const b = row.querySelector('.box').getBoundingClientRect(), fr0 = f.getBoundingClientRect(), z = parseFloat(getComputedStyle(f).zoom) || 1;
+  hn.style.left = ((b.right - fr0.left) / z + 8) + 'px'; hn.style.top = ((b.top - fr0.top) / z - 22) + 'px';
+  hn.classList.add('on');
+  if (blink) { hn.classList.remove('on'); requestAnimationFrame(() => requestAnimationFrame(() => hn.classList.add('on'))); }
+}
+function placeFocus(f) {
+  const id = f.dataset.focus; if (!id) return;
+  let el = null;
+  if (id === 'focus-pointer') el = f.querySelector('.ptr.show') || f.querySelector('.ptr.up');
+  else if (id === 'focus-ride') el = f.querySelector('.ride');
+  else if (id === 'focus-haptic') el = f.querySelector('.hnote');
+  else el = f.querySelector('.ln.failed') || f.querySelector('.ln');
+  if (el) el.id = id;
+}
+
+// Dashed "Today:" and "New:" tags, drawn as boxes over the frame so they never change layout.
+function placeTags(f) {
+  const c = f.dataset.concept, v = f.dataset.view, tags = [];
+  const pick = sel => f.querySelector(sel);
+  if (c === 'today') {
+    tags.push([pick('.todaybar.show'), 'today', 'Today: names no card; next good save clears it']);
+  } else {
+    const fr = pick('.ln.failed');
+    const word = { box:'New: struck box is the retry', pill:'New: Retry on the row', ink:'New: failed row' }[c];
+    if (fr) tags.push([fr, 'new', word]);
+    if (c === 'ink') { const hr = pick('.ln.here'); if (hr) tags.push([hr, 'new', 'New: dashed = on this phone, not sent']); }
+    const sl = pick('.slot.bad') || (c === 'ink' && pick('.slot'));
+    if (sl && v !== 'hand') tags.push([sl, 'new', 'New: slot holds the count']);
+    tags.push([pick('.ptr.show'), 'new', 'New: edge pointer']);
+    tags.push([pick('.ride'), 'new left', 'New: rides along']);
+    tags.push([pick('.bulk.failed'), 'new', 'New: failure on the pressed row']);
+    tags.push([pick('.nm.failed'), 'new', 'New: name row marked']);
+  }
+  const z = parseFloat(getComputedStyle(f).zoom) || 1, fr0 = f.getBoundingClientRect();
+  tags.forEach(([el, kind, text]) => {
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (r.width === 0) return;
+    const t = document.createElement('span'); t.className = 'tagbox ' + kind;
+    t.style.left = ((r.left - fr0.left) / z - 2) + 'px'; t.style.top = ((r.top - fr0.top) / z - 2) + 'px';
+    t.style.width = (r.width / z + 4) + 'px'; t.style.height = (r.height / z + 4) + 'px';
+    t.innerHTML = `<i></i><b>${text}</b>`; f.appendChild(t);
+  });
+}
+
+// ---------- acts ----------
+function now() { return '9:41'; }  // the status bar's sample time; the build shows the tap's own time
+function tap(f, k, viaRetry) {
+  const s = f.st, c = f.dataset.concept;
+  s.anyTick = true;
+  // A tap toggles from the stored count. A failed save stored nothing, so the same tap again means the same count.
+  const want = viaRetry && k in s.failed ? s.failed[k] : ((s.got[k] || 0) > 0 ? 0 : 1);
+  if (s.failNext) {
+    s.failNext = false;
+    if (c === 'today') { s.todayErr = 'Could not save the check-in. The operation couldn’t be completed.'; render(f); syncCtl(f); return; }
+    s.failed[k] = want; (s.failAt = s.failAt || {})[k] = now();
+    render(f); syncCtl(f);
+    const row = f.querySelector(`.ln[data-k="${k}"]`); if (row) row.classList.add('blot');
+    hapticNote(f, true);
+    return;
+  }
+  if (c === 'today') s.todayErr = null;     // today: any good save clears the one line
+  delete s.failed[k];                         // new: only this row's own good save clears its mark
+  if (want > 0) s.got[k] = want; else delete s.got[k];
+  if (c === 'ink') { if (!s.signal && want > 0) s.here.add(k); else s.here.delete(k); }
+  render(f);
+  const row = f.querySelector(`.ln[data-k="${k}"]`); if (row && want > 0) row.classList.add('writing');
+  syncCtl(f);
+}
+function signalOn(f) {
+  const s = f.st; s.signal = !s.signal;
+  if (s.signal && s.here.size) {
+    setTimeout(() => { f.querySelectorAll('.ln.here').forEach(r => { r.classList.add('setting'); r.classList.replace('here', 'done'); });
+      setTimeout(() => { s.here.clear(); render(f); }, 320); }, 250);
+  }
+  syncCtl(f);
+}
+function fastDay(f) {
+  preset(f, 'fresh'); render(f);
+  if (f.dataset.view === 'hand' || f.dataset.view === 'packages') {
+    const keys = ['g1','g2','g3','g4','g5'];
+    keys.forEach((k, i) => setTimeout(() => { if (k === 'g3') f.st.failNext = true; tap(f, k); }, 350 * (i + 1)));
+  } else {
+    ['t1','t2','t3'].forEach((k, i) => setTimeout(() => { if (k === 't2') f.st.failNext = true; tap(f, k); }, 350 * (i + 1)));
+  }
+}
+
+// ---------- per-frame controls ----------
+function buildCtl(f) {
+  const host = document.querySelector(`[data-for="${f.id}"]`); if (!host) return;
+  const c = f.dataset.concept;
+  host.innerHTML = `<button type="button" class="ctl" data-c="fail" aria-pressed="false">Next tick fails</button>
+    ${c === 'ink' ? '<button type="button" class="ctl" data-c="signal" aria-pressed="false">Signal: on</button>' : ''}
+    <button type="button" class="ctl" data-c="run">Run a fast mail day</button>
+    <button type="button" class="ctl" data-c="reset">Reset to this state</button>`;
+  host.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b) return;
+    const a = b.dataset.c;
+    if (a === 'fail') { f.st.failNext = !f.st.failNext; syncCtl(f); }
+    if (a === 'signal') signalOn(f);
+    if (a === 'run') fastDay(f);
+    if (a === 'reset') { preset(f, currentPreset(f)); render(f); syncCtl(f); }
+  });
+}
+function syncCtl(f) {
+  const host = document.querySelector(`[data-for="${f.id}"]`); if (!host) return;
+  const fb = host.querySelector('[data-c="fail"]'); if (fb) fb.setAttribute('aria-pressed', String(!!f.st.failNext));
+  const sb = host.querySelector('[data-c="signal"]'); if (sb) { sb.textContent = 'Signal: ' + (f.st.signal ? 'on' : 'off'); sb.setAttribute('aria-pressed', String(!f.st.signal)); }
+}
+function wire(f) {
+  f.addEventListener('click', e => {
+    const b = e.target.closest('button'); if (!b || !f.contains(b)) return;
+    const row = b.closest('.ln'), a = b.dataset.act;
+    if (a === 'tap' && row) tap(f, row.dataset.k, f.dataset.concept !== 'pill');
+    if (a === 'retry' && row) tap(f, row.dataset.k, true);
+    if (a === 'bulk') {
+      const s = f.st;
+      if (s.failNext) { s.failNext = false; s.bulkFailed = true; } else { s.bulkFailed = false; PKGS[0].rows.forEach(r => s.got[r.k] = 1); s.failed = {}; }
+      render(f); syncCtl(f);
+    }
+    if (a === 'ptr') { const r = f.querySelector('.list .ln.failed'); const L = f.querySelector('.list');
+      if (r && L) L.scrollTo({ top: r.offsetTop - L.clientHeight / 2 + r.offsetHeight / 2, behavior: matchMedia('(prefers-reduced-motion: reduce)').matches ? 'auto' : 'smooth' }); }
+  });
+}
+
+// ---------- routing ----------
+const frames = [...document.querySelectorAll('.dev[data-view]')];
+function hashState() { const m = location.hash.match(/s=([\w-]+)/); return m ? m[1] : null; }
+function currentPreset(f) {
+  const s = hashState(), p = f.dataset.preset;
+  if (s === 'retried' && (p === 'failed')) return 'retried';
+  return p;
+}
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; const W = d.classList.contains('open') ? 951 : (d.offsetWidth || 466);
+    d.style.zoom = Math.min(1, w.clientWidth / W); });
+}
+function route() {
+  const s = hashState();
+  document.querySelectorAll('section.opt').forEach(sec => {
+    const o = sec.dataset.opt;
+    sec.hidden = hidden.has(o);
+    let any = false;
+    sec.querySelectorAll('figure').forEach(fg => {
+      const st = (fg.dataset.states || '').split(' ');
+      fg.hidden = !!s && !st.includes(s);
+      if (!fg.hidden) any = true;
+    });
+    if (s && !any) sec.hidden = true;
+  });
+  document.querySelectorAll('nav a').forEach(a => a.setAttribute('aria-current', String(a.getAttribute('href') === (location.hash || '#'))));
+  fit();
+  frames.forEach(f => { preset(f, currentPreset(f)); render(f); syncCtl(f); });
+}
+frames.forEach(f => { buildCtl(f); wire(f); });
+document.querySelectorAll('[data-hide]').forEach(b => b.addEventListener('click', () => {
+  const o = b.dataset.hide; hidden.has(o) ? hidden.delete(o) : hidden.add(o);
+  b.textContent = (hidden.has(o) ? 'Show ' : 'Hide ') + b.textContent.replace(/^(Show|Hide) /, '');
+  b.setAttribute('aria-pressed', String(hidden.has(o)));
+  route();
+}));
+addEventListener('hashchange', route);
+addEventListener('resize', () => { fit(); frames.forEach(render); });
+if (window.ResizeObserver) document.querySelectorAll('.dev.phone').forEach(p => new ResizeObserver(() => { fit(); render(p); }).observe(p));
+route();
+</script>
+</body>
+</html>

@@ -1,0 +1,865 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Search everything, blind 1</title>
+<style>
+/* Tokens. Space on the 4 px step, radius 8 px (house tokens). Colours by role, light and dark. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px; --space-12: 48px;
+  --radius: 8px;
+  --tap: 44px;               /* HIG buttons: hit region at least 44x44 pt */
+  --inset-top: 44px;         /* stand-in on the 4 px step; no Apple page read gives it */
+  --inset-bottom: 24px;      /* stand-in on the 4 px step; no Apple page read gives it */
+  --font: -apple-system, system-ui, sans-serif;
+
+  /* Dynamic Type, iOS, size Large (default), from the HIG typography page */
+  --fs-large: 34px; --lh-large: 41px;
+  --fs-title2: 22px; --lh-title2: 28px;
+  --fs-title3: 20px; --lh-title3: 25px;
+  --fs-head: 17px; --lh-head: 22px;
+  --fs-body: 17px; --lh-body: 22px;
+  --fs-callout: 16px; --lh-callout: 21px;
+  --fs-sub: 15px; --lh-sub: 20px;
+  --fs-foot: 13px; --lh-foot: 18px;
+  --fs-cap1: 12px; --lh-cap1: 16px;
+  --fs-cap2: 11px; --lh-cap2: 13px;
+
+  --surface: #EEF1F4;
+  --surface-raised: #FFFFFF;
+  --surface-sunk: #E2E6EB;
+  --text: #141821;
+  --text-muted: #566070;
+  --line: #D3D9E0;
+  --accent: #4B36C9;
+  --accent-soft: #E6E2FA;
+  --on-accent: #FFFFFF;
+  --arrived: #1C7A4A;
+  --waiting: #A85600;
+  --grain-off: #C3CAD3;
+  --notice: #FFF1BF;
+  --on-notice: #4A3A00;
+  --device: #22252B;
+  --page: #D9DEE4;
+  --scrim: rgba(20, 24, 33, 0.32);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #000000; --surface-raised: #17191E; --surface-sunk: #24272E;
+    --text: #F2F4F7; --text-muted: #A3ABB8; --line: #30353E;
+    --accent: #A796FF; --accent-soft: #2A2350; --on-accent: #120E2B;
+    --arrived: #4FCF8B; --waiting: #F4A64A; --grain-off: #343943;
+    --notice: #3D3313; --on-notice: #FFE9A6;
+    --device: #3A3E46; --page: #0C0E12; --scrim: rgba(0, 0, 0, 0.55);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #000000; --surface-raised: #17191E; --surface-sunk: #24272E;
+  --text: #F2F4F7; --text-muted: #A3ABB8; --line: #30353E;
+  --accent: #A796FF; --accent-soft: #2A2350; --on-accent: #120E2B;
+  --arrived: #4FCF8B; --waiting: #F4A64A; --grain-off: #343943;
+  --notice: #3D3313; --on-notice: #FFE9A6;
+  --device: #3A3E46; --page: #0C0E12; --scrim: rgba(0, 0, 0, 0.55);
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--text); font-family: var(--font); font-size: var(--fs-body); line-height: var(--lh-body); }
+button, input, select { font: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; text-align: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* Viewer chrome: outside the device frames */
+.viewer { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-4); max-inline-size: 100%; }
+.sample { background: var(--notice); color: var(--on-notice); padding: var(--space-3) var(--space-4); border-radius: var(--radius); font-weight: 600; }
+.vhead { display: flex; flex-direction: column; gap: var(--space-2); }
+.vhead h1 { margin: 0; font-size: var(--fs-title2); line-height: var(--lh-title2); }
+.vhead p { margin: 0; color: var(--text-muted); max-inline-size: 70ch; }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.vbtn { min-block-size: var(--tap); padding: 0 var(--space-4); border-radius: var(--radius); background: var(--surface-raised); border: 1px solid var(--line); }
+.vbtn[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.concept { display: flex; flex-direction: column; gap: var(--space-3); }
+.concept[hidden] { display: none; }
+.chead { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-3); }
+.chead h2 { margin: 0; font-size: var(--fs-title2); line-height: var(--lh-title2); }
+.chead p { margin: 0; color: var(--text-muted); flex: 1 1 30ch; }
+.newtag { border: 2px dashed var(--accent); color: var(--accent); border-radius: var(--radius); padding: var(--space-1) var(--space-2); font-size: var(--fs-foot); line-height: var(--lh-foot); }
+.frames { display: flex; gap: var(--space-8); overflow-x: auto; padding-block-end: var(--space-4); align-items: flex-start; }
+.fwrap { display: flex; flex-direction: column; gap: var(--space-2); flex: none; }
+.fcap { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-muted); }
+
+/* Device frames: points drawn as CSS px, 1:1 */
+.device { position: relative; background: var(--device); border-radius: 28px; padding: 10px; flex: none; }
+.device .glass { position: relative; inline-size: 100%; block-size: 100%; border-radius: 18px; overflow: hidden; background: var(--surface); }
+.device.open .glass { display: grid; grid-template-columns: 455.5px 40px 455.5px; grid-template-rows: 100%; background: var(--device); }
+.page { position: relative; min-block-size: 0; min-inline-size: 0; overflow: hidden; }
+.hinge { background: var(--device); }
+.device.phone { resize: both; overflow: hidden; min-inline-size: 320px; min-block-size: 480px; max-inline-size: 700px; max-block-size: 1000px; }
+
+/* One screen (or one page of the open pose) */
+.screen { font-size: var(--fs-body); line-height: var(--lh-body); position: relative; display: flex; flex-direction: column; block-size: 100%; min-block-size: 0; background: var(--surface); overflow: hidden; container-type: inline-size;
+  padding-top: max(env(safe-area-inset-top), var(--inset-top)); padding-bottom: max(env(safe-area-inset-bottom), var(--inset-bottom)); }
+.sbar { position: absolute; inset: 0 0 auto 0; block-size: var(--inset-top); display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-6); font-size: 15px; font-weight: 600; pointer-events: none; }
+.homebar { position: absolute; inset: auto 0 var(--space-2) 0; margin-inline: auto; inline-size: 120px; block-size: 4px; border-radius: 2px; background: var(--text); opacity: 0.5; pointer-events: none; }
+.body { display: flex; flex-direction: column; flex: 1; min-block-size: 0; }
+
+/* Shared iOS-like parts */
+.nav { display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-1) var(--space-4) var(--space-2); }
+.nav h1, .nav .ttl { margin: 0; font-size: var(--fs-large); line-height: var(--lh-large); font-weight: 700; }
+.navbar { display: flex; align-items: center; gap: var(--space-2); min-block-size: var(--tap); padding: 0 var(--space-2); }
+.navbar .mid { flex: 1; text-align: center; font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; }
+.navbtn { min-block-size: var(--tap); min-inline-size: var(--tap); padding: 0 var(--space-2); color: var(--accent); display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-body); }
+.scroll { flex: 1; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; display: flex; flex-direction: column; gap: var(--space-5); padding: var(--space-2) var(--space-4) var(--space-4); }
+.scroll > * { flex-shrink: 0; }
+.sec { display: flex; flex-direction: column; gap: var(--space-2); }
+.sech { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-muted); padding-inline: var(--space-4); }
+.list { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius); overflow: hidden; }
+.row { display: flex; align-items: center; gap: var(--space-3); min-block-size: var(--tap); padding: var(--space-2) var(--space-4); inline-size: 100%; text-align: start; }
+.list > * + * { border-block-start: 1px solid var(--line); }
+.row .main { flex: 1; min-inline-size: 0; display: flex; flex-direction: column; }
+.row .t { font-size: var(--fs-body); line-height: var(--lh-body); }
+.row .s { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-muted); }
+.row .num { font-variant-numeric: tabular-nums; font-size: var(--fs-body); line-height: var(--lh-body); }
+.row.sel { background: var(--accent-soft); }
+.row .chev { color: var(--text-muted); }
+.cardh { display: flex; align-items: baseline; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-1); }
+.cardh b { font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; flex: 1; }
+.cardh span { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-muted); font-variant-numeric: tabular-nums; }
+mark { background: var(--accent-soft); color: inherit; border-radius: 3px; }
+.glyph { flex: none; inline-size: 22px; block-size: 22px; }
+.state { display: flex; flex-direction: column; align-items: flex-start; gap: var(--space-3); padding: var(--space-6) var(--space-4); }
+.state p { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); }
+.state .muted { color: var(--text-muted); }
+.pbtn { min-block-size: var(--tap); padding: 0 var(--space-5); border-radius: var(--radius); background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.tbtn { min-block-size: var(--tap); padding: 0 var(--space-2); color: var(--accent); }
+.seg { display: flex; gap: 2px; background: var(--surface-sunk); border-radius: var(--radius); padding: 2px; margin: 0 var(--space-4); }
+.seg button { flex: 1; min-block-size: 40px; border-radius: 6px; display: inline-flex; align-items: center; justify-content: center; gap: var(--space-1); font-size: var(--fs-sub); line-height: var(--lh-sub); font-variant-numeric: tabular-nums; }
+.seg button[aria-checked="true"] { background: var(--surface-raised); font-weight: 600; }
+.seg .glyph { inline-size: 16px; block-size: 16px; }
+.spinner { inline-size: 22px; block-size: 22px; border-radius: 50%; border: 3px solid var(--line); border-top-color: var(--accent); animation: spin 0.9s linear infinite; }
+@keyframes spin { to { transform: rotate(1turn); } }
+@media (prefers-reduced-motion: reduce) { .spinner { animation: none; } }
+.skel { display: flex; flex-direction: column; gap: var(--space-2); }
+.skel i { display: block; block-size: var(--tap); border-radius: var(--radius); background: var(--surface-raised); }
+
+/* Answer block and order list: one home for every concept */
+.answer { display: flex; flex-direction: column; gap: var(--space-2); background: var(--surface-raised); border-radius: var(--radius); padding: var(--space-4); }
+.answer .nm { font-size: var(--fs-title2); line-height: var(--lh-title2); font-weight: 700; }
+.answer .st { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; }
+.answer .st.y { color: var(--arrived); }
+.answer .st.n { color: var(--waiting); }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-4); margin: 0; }
+.facts dt { color: var(--text-muted); font-size: var(--fs-sub); line-height: var(--lh-body); }
+.facts dd { margin: 0; font-variant-numeric: tabular-nums; }
+
+/* Sheet inside one screen or page */
+.sheet { position: absolute; inset: 0; display: flex; flex-direction: column; justify-content: flex-end; background: var(--scrim); z-index: 5; }
+.sheet .pane { background: var(--surface); border-radius: 16px 16px 0 0; max-block-size: 88%; display: flex; flex-direction: column; min-block-size: 0; padding-bottom: max(env(safe-area-inset-bottom), var(--inset-bottom)); }
+.sheet .grab { inline-size: 36px; block-size: 5px; border-radius: 3px; background: var(--grain-off); margin: var(--space-2) auto 0; }
+
+/* Search field, bottom dock (Field concept) */
+.dock { padding: var(--space-2) var(--space-4) var(--space-2); }
+.search { display: flex; align-items: center; flex-wrap: wrap; gap: var(--space-2); min-block-size: var(--tap); padding: var(--space-1) var(--space-2) var(--space-1) var(--space-3); border-radius: 22px; background: var(--surface-raised); border: 1px solid var(--line); }
+.search input { flex: 1 1 8ch; min-inline-size: 8ch; min-block-size: 36px; border: 0; background: none; outline: none; font-size: var(--fs-body); }
+.search input::placeholder { color: var(--text-muted); }
+.search svg { flex: none; color: var(--text-muted); }
+.token { display: inline-flex; align-items: center; gap: var(--space-1); min-block-size: 32px; padding: 0 var(--space-1) 0 var(--space-3); border-radius: 16px; background: var(--accent-soft); color: var(--text); font-size: var(--fs-sub); }
+.token button { min-inline-size: var(--tap); min-block-size: var(--tap); margin-block: -6px; display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); }
+.clearbtn { min-inline-size: var(--tap); min-block-size: var(--tap); display: inline-flex; align-items: center; justify-content: center; color: var(--text-muted); }
+.hint { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-muted); padding-inline: var(--space-4); }
+
+/* Biggest accessibility size (AX5), folded pose: HIG typography table AX5 */
+.ax5 {
+  --fs-large: 60px; --lh-large: 70px; --fs-title2: 56px; --lh-title2: 66px; --fs-title3: 55px; --lh-title3: 65px;
+  --fs-head: 53px; --lh-head: 62px; --fs-body: 53px; --lh-body: 62px; --fs-callout: 51px; --lh-callout: 60px;
+  --fs-sub: 49px; --lh-sub: 58px; --fs-foot: 44px; --lh-foot: 52px; --fs-cap1: 43px; --lh-cap1: 51px; --fs-cap2: 40px; --lh-cap2: 48px;
+}
+.ax5 .row { flex-wrap: wrap; }
+.ax5 .row .num { flex-basis: 100%; padding-inline-start: calc(22px + var(--space-3)); }
+.ax5 .cardh { flex-direction: column; }
+.ax5 .seg { flex-direction: column; }
+.ax5 .glyph { inline-size: 40px; block-size: 40px; }
+.ax5 .facts { grid-template-columns: 1fr; }
+.ax5 .search input { min-inline-size: 4ch; }
+.ax5 .nav h1, .ax5 .nav .ttl { overflow-wrap: anywhere; }
+
+/* Sentence concept */
+.sbottom { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4); max-block-size: 72%; overflow-y: auto; overscroll-behavior: contain; }
+.sent { margin: 0; background: var(--surface-raised); border-radius: var(--radius); padding: var(--space-2) var(--space-4); font-size: var(--fs-title3); line-height: var(--tap); }
+.blank { display: inline-flex; align-items: center; min-block-size: var(--tap); padding: 0 var(--space-1); color: var(--accent); font-weight: 600; text-decoration: underline 2px; text-underline-offset: 6px; }
+.blank.set { text-decoration: none; background: var(--accent-soft); color: var(--text); border-radius: var(--radius); padding: 0 var(--space-2); line-height: var(--lh-title3); }
+.blank[aria-expanded="true"] { outline: 2px solid var(--accent); outline-offset: -2px; border-radius: var(--radius); }
+.blankin { inline-size: 10ch; min-block-size: 36px; border: 0; border-radius: var(--radius); background: var(--accent-soft); font-weight: 600; padding: 0 var(--space-2); font-size: var(--fs-title3); }
+.picker { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius); }
+.pickh { display: flex; align-items: center; gap: var(--space-2); min-block-size: var(--tap); padding: 0 var(--space-2) 0 var(--space-4); border-block-end: 1px solid var(--line); }
+.pickh b { flex: 1; font-size: var(--fs-head); line-height: var(--lh-head); font-weight: 600; }
+.pickb { max-block-size: 220px; overflow-y: auto; }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-3) var(--space-4); }
+.chip { min-block-size: var(--tap); padding: 0 var(--space-3); border-radius: 22px; background: var(--surface-sunk); font-size: var(--fs-sub); line-height: var(--lh-sub); font-variant-numeric: tabular-nums; }
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); font-weight: 600; }
+.summary { margin: 0; font-size: var(--fs-title3); line-height: var(--lh-title3); font-weight: 600; }
+.ssent { font-size: var(--fs-body); line-height: var(--lh-body); }
+.ax5 .sbottom { max-block-size: 58%; }
+.ax5 .pickb { max-block-size: none; }
+
+/* Sieve concept */
+.sv-top { display: flex; align-items: baseline; gap: var(--space-3); padding: var(--space-1) var(--space-4) 0; min-block-size: var(--space-12); }
+.sv-frag { flex: 1; min-inline-size: 0; font-size: var(--fs-title2); line-height: var(--lh-title2); font-weight: 700; overflow-wrap: anywhere; }
+.sv-frag .caret { display: inline-block; inline-size: 2px; block-size: 1em; background: var(--accent); vertical-align: -0.12em; margin-inline-start: 1px; }
+.sv-frag .ph { color: var(--text-muted); font-weight: 400; }
+.sv-count { text-align: end; display: flex; flex-direction: column; }
+.sv-count b { font-size: var(--fs-large); line-height: var(--lh-large); font-weight: 700; font-variant-numeric: tabular-nums; }
+.sv-count span { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-muted); }
+.grains { display: block; margin: var(--space-1) var(--space-4) 0; inline-size: calc(100% - 2 * var(--space-4)); touch-action: manipulation; cursor: pointer; }
+.axis { display: flex; justify-content: space-between; padding: 0 var(--space-4); font-size: var(--fs-cap1); line-height: var(--lh-cap1); color: var(--text-muted); }
+.pad { display: grid; grid-template-columns: repeat(8, 1fr); gap: var(--space-1); padding: var(--space-2) var(--space-2) var(--space-1); background: var(--surface-sunk); }
+.key { min-block-size: var(--tap); border-radius: 6px; background: var(--surface-raised); display: flex; flex-direction: column; align-items: center; justify-content: center; line-height: 1; gap: 2px; }
+.key .k { font-size: 20px; font-weight: 500; }
+.key .n { font-size: 11px; color: var(--text-muted); font-variant-numeric: tabular-nums; }
+.key[aria-disabled="true"] { background: transparent; opacity: 0.32; cursor: default; }
+.key.fn { background: var(--grain-off); }
+.key.fn .k { font-size: 15px; font-weight: 600; }
+.svlist { padding-block-start: var(--space-3); }
+
+</style>
+</head>
+<body>
+<div class="viewer">
+  <div class="sample" role="note">Sample. No figure, card, seller, price or day on this page is real.</div>
+  <header class="vhead">
+    <h1>Search everything</h1>
+    <p>Designer kind: blind. Designer: search-everything-blind-1. Job: a person holds a card or half a name and wants its order, its seller and whether it arrived. Every frame below works: type, tap rows, open orders.</p>
+    <div class="cluster" role="group" aria-label="Theme">
+      <span class="fcap">Theme</span>
+      <button class="vbtn" data-theme-set="auto" aria-pressed="true">Auto</button>
+      <button class="vbtn" data-theme-set="light" aria-pressed="false">Light</button>
+      <button class="vbtn" data-theme-set="dark" aria-pressed="false">Dark</button>
+    </div>
+    <div class="cluster" id="restore" hidden></div>
+  </header>
+
+  <section class="concept" id="concept-field" data-concept="field" aria-labelledby="h-field">
+    <div class="chead">
+      <h2 id="h-field">Pocket field</h2>
+      <span class="newtag">New: whole search screen</span>
+      <p>One field at the thumb. Results come grouped by what matched: card names, sellers, days, prices. A seller or day becomes a token that narrows the rest.</p>
+      <button class="vbtn" data-hide="field">Hide Pocket field</button>
+    </div>
+    <div class="cluster states" role="group" aria-label="Pocket field state"></div>
+    <div class="frames">
+      <div class="fwrap"><span class="fcap">Duo folded, 466 x 678</span><div class="device" id="field-folded" data-device="iphone-duo-folded" data-fid="field-folded" style="width:486px;height:698px"><div class="glass"></div></div></div>
+      <div class="fwrap"><span class="fcap">Duo open, 951 x 669, hinge 455.5 to 495.5</span><div class="device open" id="field-open" data-device="iphone-duo-unfolded" data-fid="field-open" style="width:971px;height:689px"><div class="glass"></div></div></div>
+      <div class="fwrap"><span class="fcap">Large phone, no size written: drawn at 466 x 678, drag the corner</span><div class="device phone" id="field-phone" data-device="iphone-regular" data-fid="field-phone" style="width:486px;height:698px"><div class="glass"></div></div></div>
+      <div class="fwrap"><span class="fcap">Duo folded, biggest text (AX5)</span><div class="device ax5" id="field-ax5" data-device="iphone-duo-folded-ax5" data-fid="field-ax5" style="width:486px;height:698px"><div class="glass"></div></div></div>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-sentence" data-concept="sentence" aria-labelledby="h-sentence">
+    <div class="chead">
+      <h2 id="h-sentence">Fill-in sentence</h2>
+      <span class="newtag">New: whole search screen</span>
+      <p>The search is one sentence with blanks: card, seller, day, price, arrival. Fill any blank; the answers come back as sentences that say where each copy is.</p>
+      <button class="vbtn" data-hide="sentence">Hide Fill-in sentence</button>
+    </div>
+    <div class="cluster states" role="group" aria-label="Fill-in sentence state"></div>
+    <div class="frames">
+      <div class="fwrap"><span class="fcap">Duo folded, 466 x 678</span><div class="device" id="sentence-folded" data-device="iphone-duo-folded" data-fid="sentence-folded" style="width:486px;height:698px"><div class="glass"></div></div></div>
+      <div class="fwrap"><span class="fcap">Duo open, 951 x 669, hinge 455.5 to 495.5</span><div class="device open" id="sentence-open" data-device="iphone-duo-unfolded" data-fid="sentence-open" style="width:971px;height:689px"><div class="glass"></div></div></div>
+      <div class="fwrap"><span class="fcap">Large phone, no size written: drawn at 466 x 678, drag the corner</span><div class="device phone" id="sentence-phone" data-device="iphone-regular" data-fid="sentence-phone" style="width:486px;height:698px"><div class="glass"></div></div></div>
+      <div class="fwrap"><span class="fcap">Duo folded, biggest text (AX5)</span><div class="device ax5" id="sentence-ax5" data-device="iphone-duo-folded-ax5" data-fid="sentence-ax5" style="width:486px;height:698px"><div class="glass"></div></div></div>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-sieve" data-concept="sieve" aria-labelledby="h-sieve">
+    <div class="chead">
+      <h2 id="h-sieve">Sieve</h2>
+      <span class="newtag">New: whole search screen</span>
+      <p>The bold one. Every card line is a grain on screen. A letter pad that knows the data sifts them: each key shows how many lines are left if you press it, and keys that lead nowhere go dark.</p>
+      <button class="vbtn" data-hide="sieve">Hide Sieve</button>
+    </div>
+    <div class="cluster states" role="group" aria-label="Sieve state"></div>
+    <div class="frames">
+      <div class="fwrap"><span class="fcap">Duo folded, 466 x 678</span><div class="device" id="sieve-folded" data-device="iphone-duo-folded" data-fid="sieve-folded" style="width:486px;height:698px"><div class="glass"></div></div></div>
+      <div class="fwrap"><span class="fcap">Duo open, 951 x 669, hinge 455.5 to 495.5</span><div class="device open" id="sieve-open" data-device="iphone-duo-unfolded" data-fid="sieve-open" style="width:971px;height:689px"><div class="glass"></div></div></div>
+      <div class="fwrap"><span class="fcap">Large phone, no size written: drawn at 466 x 678, drag the corner</span><div class="device phone" id="sieve-phone" data-device="iphone-regular" data-fid="sieve-phone" style="width:486px;height:698px"><div class="glass"></div></div></div>
+      <div class="fwrap"><span class="fcap">Duo folded, biggest text (AX5)</span><div class="device ax5" id="sieve-ax5" data-device="iphone-duo-folded-ax5" data-fid="sieve-ax5" style="width:486px;height:698px"><div class="glass"></div></div></div>
+    </div>
+  </section>
+</div>
+
+<script>
+'use strict';
+/* ---------- Sample data: thousands of card lines, seeded, no real names ---------- */
+function rng(seed) { return function () { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const R = rng(20261121);
+const DAY = 86400000, TODAY = Date.UTC(2026, 10, 21);
+const ADJ = ['Ember','Hollow','Gilded','Thorn','Brine','Ashen','Quiet','Storm','Velvet','Iron','Moss','Glass','Copper','Dusk','Frost','Willow','Cinder','Salt','Hearth','Raven','Amber','Silt','Lumen','Bramble'];
+const NOUN = ['Drake','Warden','Sigil','Courier','Oracle','Familiar','Lantern','Hound','Tide','Herald','Golem','Wisp','Archivist','Sentry','Kite','Drifter','Mender','Tinker','Dragoon','Lynx'];
+const SELLERS = ['Gull Street Cards','Pocket Dragon Games','Northbend Collectibles','Two Owls TCG','Harbor Lane Hobby','Redwood Card Co.','Moonpie Singles','Basement Binder','Cobalt Cards and Comics','Draft Night Supply','Quarry Road Games','Little Lighthouse TCG','Brass Key Cards','Elm and Ash Hobbies','Sixfold Singles','Paper Tiger Games','Kestrel Cards','Old Mill Collectibles','Tidepool TCG','Crowsnest Cards','Juniper Games','Static Shop','Fox Den Singles','Lowtide Trading'];
+const NAMES = (() => { const s = new Set(); while (s.size < 300) s.add(ADJ[Math.floor(R() * ADJ.length)] + ' ' + NOUN[Math.floor(R() * NOUN.length)]); return [...s]; })();
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const WDL = ['sunday','monday','tuesday','wednesday','thursday','friday','saturday'];
+function fmtDay(ms) { const d = new Date(ms); return WD[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + MON[d.getUTCMonth()]; }
+function slashDay(ms) { const d = new Date(ms); return (d.getUTCMonth() + 1) + '/' + d.getUTCDate(); }
+function fmtPrice(p) { return '$' + p.toFixed(2); }
+const DATA = (() => {
+  const lines = [], orders = [];
+  for (let day = Date.UTC(2026, 9, 1); day <= Date.UTC(2026, 10, 19); day += DAY) {
+    const n = Math.floor(R() * 6) + (R() < 0.5 ? 1 : 2);
+    for (let k = 0; k < n; k++) {
+      const seller = SELLERS[Math.floor(R() * SELLERS.length)];
+      const age = (TODAY - day) / DAY;
+      const pArr = age > 16 ? 0.98 : age > 9 ? 0.72 : age > 4 ? 0.35 : 0.04;
+      const came = R() < pArr;
+      const o = { id: 'o' + orders.length, seller, day, lines: [] };
+      const count = 6 + Math.floor(R() * R() * 40);
+      for (let j = 0; j < count; j++) {
+        const name = NAMES[Math.floor(Math.pow(R(), 1.6) * NAMES.length)];
+        const price = Math.round((0.1 + Math.pow(R(), 3) * 4.9) * 100) / 100;
+        const l = { id: lines.length, name, seller, day, price, arrived: came && R() > 0.012, order: o };
+        l.lname = name.toLowerCase(); l.lseller = seller.toLowerCase(); l.pstr = fmtPrice(price); l.dstr = fmtDay(day); l.dslash = slashDay(day);
+        const d = new Date(day);
+        l.dvars = [l.dstr.toLowerCase(), d.getUTCDate() + ' ' + MON[d.getUTCMonth()].toLowerCase(), MON[d.getUTCMonth()].toLowerCase() + ' ' + d.getUTCDate(), l.dslash, WDL[d.getUTCDay()]];
+        lines.push(l); o.lines.push(l);
+      }
+      orders.push(o);
+    }
+  }
+  return { lines, orders };
+})();
+const LINES = DATA.lines, ORDERS = DATA.orders;
+const SELLER_ORDERS = {}; ORDERS.forEach(o => { SELLER_ORDERS[o.seller] = (SELLER_ORDERS[o.seller] || 0) + 1; });
+const nf = new Intl.NumberFormat('en-US');
+
+/* ---------- Matching: one home for every concept ---------- */
+function isPriceQ(q) { return /^\$?\d*\.?\d+$/.test(q) || /^\$\d*\.?$/.test(q); }
+function priceHit(q, l) { const s = q.replace('$', ''); if (!s) return q === '$'; return l.pstr.slice(1).startsWith(s) || (s.startsWith('.') && l.pstr.includes(s)); }
+function dayHit(q, l) { if (q.length < 2 && !/\d/.test(q)) return false; return l.dvars.some(v => v.startsWith(q)); }
+function kinds(q, l) {
+  const k = {};
+  if (l.lname.includes(q)) k.name = 1;
+  if (l.lseller.includes(q)) k.seller = 1;
+  if (/[\d$.]/.test(q) && isPriceQ(q) && priceHit(q, l)) k.price = 1;
+  if (dayHit(q, l)) k.day = 1;
+  return k;
+}
+function esc(s) { return String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c])); }
+function hi(text, q) { if (!q) return esc(text); const i = text.toLowerCase().indexOf(q); if (i < 0) return esc(text); return esc(text.slice(0, i)) + '<mark>' + esc(text.slice(i, i + q.length)) + '</mark>' + esc(text.slice(i + q.length)); }
+function wordStart(text, q) { const i = text.toLowerCase().indexOf(q); return i === 0 || (i > 0 && text[i - 1] === ' '); }
+
+/* ---------- Shared parts ---------- */
+function glyph(arrived) {
+  return arrived
+    ? '<svg class="glyph" viewBox="0 0 22 22" role="img" aria-label="Arrived"><circle cx="11" cy="11" r="10" fill="var(--arrived)"/><path d="M6.5 11.3l3 3 6-6.3" fill="none" stroke="var(--surface-raised)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>'
+    : '<svg class="glyph" viewBox="0 0 22 22" role="img" aria-label="Not yet arrived"><circle cx="11" cy="11" r="9" fill="none" stroke="var(--waiting)" stroke-width="2.4" stroke-dasharray="4 2.6"/></svg>';
+}
+const ICON = {
+  search: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="7.5" cy="7.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M11.6 11.6l4.4 4.4" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+  x: '<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><circle cx="9" cy="9" r="8" fill="currentColor" opacity=".35"/><path d="M6 6l6 6M12 6l-6 6" stroke="var(--surface-raised)" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  back: '<svg width="12" height="20" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  chev: '<svg class="chev" width="8" height="14" viewBox="0 0 8 14" aria-hidden="true"><path d="M1.5 1.5L6.5 7l-5 5.5" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+};
+/* The answer to "where is it, did it arrive", and the rest of its order. Every concept calls this. */
+function answerHTML(l, opts) {
+  opts = opts || {};
+  const o = l.order, got = o.lines.filter(x => x.arrived).length;
+  const rest = o.lines.map(x => `<button class="row${x === l ? ' sel' : ''}" data-act="pick" data-arg="${x.id}" aria-current="${x === l}">${glyph(x.arrived)}<span class="main"><span class="t">${esc(x.name)}</span></span><span class="num">${x.pstr}</span></button>`).join('');
+  return `<div class="answer" aria-live="polite">
+      <div class="nm">${esc(l.name)}</div>
+      <div class="st ${l.arrived ? 'y' : 'n'}">${glyph(l.arrived)}<span>${l.arrived ? 'Arrived' : 'Not yet arrived'}</span></div>
+      <dl class="facts"><dt>Seller</dt><dd>${esc(l.seller)}</dd><dt>Ordered</dt><dd>${l.dstr}</dd><dt>Price</dt><dd>${l.pstr}</dd></dl>
+      ${opts.extra || ''}
+    </div>
+    <div class="sec"><div class="sech">The whole order, ${got} of ${o.lines.length} in</div><div class="list">${rest}</div></div>`;
+}
+function stateHTML(kind, c) {
+  if (kind === 'loading') return `<div class="state" role="status"><div class="cluster"><span class="spinner" aria-hidden="true"></span><p>Reading ${nf.format(LINES.length)} card lines</p></div><div class="skel" style="inline-size:100%"><i></i><i></i><i></i><i></i></div></div>`;
+  if (kind === 'failed') return `<div class="state" role="alert"><p>Your order history could not be read.</p><button class="pbtn" data-act="retry">Try again</button></div>`;
+  if (kind === 'empty') return `<div class="state"><p>No orders yet. Add your order history and every card line becomes searchable.</p><button class="pbtn" data-act="retry">Add order history</button></div>`;
+  return '';
+}
+function frameScreen(inner, opts) {
+  opts = opts || {};
+  return `<div class="screen${opts.cls ? ' ' + opts.cls : ''}"><div class="sbar" aria-hidden="true"><span>1:37</span><span>Sample</span></div><div class="body">${inner}</div><div class="homebar" aria-hidden="true"></div></div>`;
+}
+
+/* ---------- Concepts register here ---------- */
+const C = {}, M = {}, STATUS = {};
+const STATES = [['first', 'First screen'], ['results', 'Results'], ['detail', 'Order'], ['nomatch', 'No match'], ['empty', 'No data'], ['loading', 'Loading'], ['failed', 'Failed']];
+
+/* ===== Pocket field ===== */
+C.field = {
+  fresh() { return { q: '', tokens: [], scope: 'all', sel: null, more: false }; },
+  preset(s) {
+    const m = this.fresh();
+    if (s === 'results') m.q = 'dra';
+    if (s === 'detail') { m.q = 'dra'; m.sel = this.compute(m).firstLine; }
+    if (s === 'nomatch') { m.tokens = [{ k: 'seller', v: NO_MATCH.seller }]; m.q = NO_MATCH.name; }
+    return m;
+  },
+  compute(m) {
+    const q = m.q.trim().toLowerCase();
+    let base = LINES;
+    m.tokens.forEach(t => { base = base.filter(l => t.k === 'seller' ? l.seller === t.v : l.day === t.v); });
+    const scoped = l => m.scope === 'all' || (m.scope === 'arrived' ? l.arrived : !l.arrived);
+    const hits = q ? base.filter(l => { const k = kinds(q, l); l._k = k; return k.name || k.seller || k.price || k.day; }) : base;
+    const counts = { all: hits.length, arrived: hits.filter(l => l.arrived).length };
+    counts.waiting = counts.all - counts.arrived;
+    const shown = hits.filter(scoped);
+    const groups = new Map();
+    const nameHits = q ? shown.filter(l => l._k.name) : (m.tokens.length || m.scope !== 'all' ? shown : []);
+    nameHits.forEach(l => { if (!groups.has(l.name)) groups.set(l.name, []); groups.get(l.name).push(l); });
+    let cards = [...groups.entries()];
+    cards.sort((a, b) => (wordStart(b[0], q) - wordStart(a[0], q)) || a[0].localeCompare(b[0]));
+    cards.forEach(c => c[1].sort((a, b) => b.day - a.day));
+    const sellers = q ? [...new Set(shown.filter(l => l._k.seller).map(l => l.seller))].filter(s => !m.tokens.some(t => t.v === s)) : [];
+    const days = q ? [...new Set(shown.filter(l => l._k.day).map(l => l.day))].sort((a, b) => b - a) : [];
+    const prices = q ? shown.filter(l => l._k.price && !l._k.name) : [];
+    const firstLine = cards.length ? cards[0][1][0].id : (prices[0] ? prices[0].id : null);
+    return { q, base, hits, shown, counts, cards, sellers, days, prices, firstLine };
+  },
+  act(m, a, arg) {
+    if (a === 'pick') m.sel = +arg;
+    else if (a === 'back') m.sel = null;
+    else if (a === 'scope') m.scope = arg;
+    else if (a === 'clearq') m.q = '';
+    else if (a === 'untoken') m.tokens.splice(+arg, 1);
+    else if (a === 'token-seller') { m.tokens.push({ k: 'seller', v: arg }); m.q = ''; }
+    else if (a === 'token-day') { m.tokens.push({ k: 'day', v: +arg }); m.q = ''; }
+    else if (a === 'recent') m.q = arg;
+    else if (a === 'waiting') { m.scope = 'waiting'; m.q = ''; }
+    else if (a === 'clearall') { m.q = ''; m.tokens = []; m.scope = 'all'; }
+    else if (a === 'more') m.more = true;
+    else return false;
+    if (a !== 'more' && a !== 'pick' && a !== 'back') m.more = false;
+    return true;
+  },
+  onInput(m, k, v) { m.q = v; m.more = false; },
+  fieldHTML(m) {
+    const toks = m.tokens.map((t, i) => `<span class="token">${esc(t.k === 'seller' ? t.v : fmtDay(t.v))}<button data-act="untoken" data-arg="${i}" aria-label="Remove ${esc(t.k === 'seller' ? t.v : fmtDay(t.v))}">${ICON.x}</button></span>`).join('');
+    return `<div class="dock"><label class="search">${ICON.search}${toks}<input data-input="q" type="search" enterkeyhint="search" autocomplete="off" aria-label="Search card lines" placeholder="Name, seller, price or day" value="${esc(m.q)}">${m.q ? `<button class="clearbtn" data-act="clearq" aria-label="Clear text">${ICON.x}</button>` : ''}</label></div>`;
+  },
+  scopeHTML(m, r) {
+    const b = (k, label) => `<button role="radio" aria-checked="${m.scope === k}" data-act="scope" data-arg="${k}">${label}</button>`;
+    return `<div class="seg" role="radiogroup" aria-label="Arrival">${b('all', 'All ' + nf.format(r.counts.all))}${b('waiting', glyph(false) + 'Not yet ' + nf.format(r.counts.waiting))}${b('arrived', glyph(true) + 'Arrived ' + nf.format(r.counts.arrived))}</div>`;
+  },
+  lineRow(l, m, q, sub) {
+    return `<button class="row${m.sel === l.id ? ' sel' : ''}" data-act="pick" data-arg="${l.id}">${glyph(l.arrived)}<span class="main"><span class="t">${sub === 'name' ? hi(l.name, q) : hi(l.seller, q)}</span><span class="s">${sub === 'name' ? hi(l.seller, q) + ', ' : ''}${l.dstr}</span></span><span class="num">${l.pstr}</span></button>`;
+  },
+  listHTML(m, r) {
+    const st = STATUS.field;
+    if (st !== 'ok') return stateHTML(st);
+    if (!r.q && !m.tokens.length && m.scope === 'all') {
+      const waiting = LINES.filter(l => !l.arrived).length;
+      const recents = ['drake', 'Gull Street', '0.42', 'nov 4'];
+      return `<p class="hint" style="padding:0">${nf.format(LINES.length)} card lines in ${nf.format(ORDERS.length)} orders.</p>
+        <div class="sec"><div class="list"><button class="row" data-act="waiting">${glyph(false)}<span class="main"><span class="t">${nf.format(waiting)} card lines not yet in</span></span>${ICON.chev}</button></div></div>
+        <div class="sec"><div class="sech">Recent searches</div><div class="list">${recents.map(x => `<button class="row" data-act="recent" data-arg="${esc(x)}"><span class="main"><span class="t">${esc(x)}</span></span>${ICON.chev}</button>`).join('')}</div></div>`;
+    }
+    if (!r.shown.length) return `<div class="state"><p>Nothing matches ${r.q ? '“' + esc(m.q.trim()) + '”' : 'this filter'}${m.tokens.length ? ' with ' + m.tokens.map(t => esc(t.k === 'seller' ? t.v : fmtDay(t.v))).join(' and ') : ''}${m.scope !== 'all' ? ' in this group' : ''}.</p><button class="pbtn" data-act="clearall">Clear search</button></div>`;
+    let out = '';
+    if (r.sellers.length) out += `<div class="sec"><div class="sech">Sellers</div><div class="list">${r.sellers.slice(0, 4).map(s => `<button class="row" data-act="token-seller" data-arg="${esc(s)}"><span class="main"><span class="t">${hi(s, r.q)}</span><span class="s">${SELLER_ORDERS[s]} orders</span></span>${ICON.chev}</button>`).join('')}</div></div>`;
+    if (r.days.length) out += `<div class="sec"><div class="sech">Order days</div><div class="list">${r.days.slice(0, 4).map(d => `<button class="row" data-act="token-day" data-arg="${d}"><span class="main"><span class="t">${fmtDay(d)}</span><span class="s">${ORDERS.filter(o => o.day === d).length} orders</span></span>${ICON.chev}</button>`).join('')}</div></div>`;
+    if (r.cards.length) {
+      const lim = m.more ? r.cards.length : 6;
+      out += `<div class="sec"><div class="sech">Cards</div>${r.cards.slice(0, lim).map(([name, ls]) => `<div class="list"><div class="cardh"><b>${hi(name, r.q)}</b><span>${ls.filter(x => x.arrived).length} of ${ls.length} in</span></div>${ls.map(l => this.lineRow(l, m, r.q, 'seller')).join('')}</div>`).join('')}${r.cards.length > lim ? `<button class="tbtn" data-act="more">Show ${r.cards.length - lim} more cards</button>` : ''}</div>`;
+    }
+    if (r.prices.length) out += `<div class="sec"><div class="sech">Prices</div><div class="list">${r.prices.slice(0, 20).map(l => this.lineRow(l, m, '', 'name')).join('')}</div></div>`;
+    return out;
+  },
+  render(m, pose) {
+    const r = this.compute(m);
+    const ok = STATUS.field === 'ok';
+    const filters = ok && (r.q || m.tokens.length || m.scope !== 'all') ? this.scopeHTML(m, r) : '';
+    const left = `<div class="nav"><h1>Find</h1></div>${filters}<div class="scroll" data-scroll="list">${this.listHTML(m, r)}</div>${STATUS.field === 'empty' ? '' : this.fieldHTML(m)}`;
+    const l = m.sel != null ? LINES[m.sel] : null;
+    if (pose === 'open') {
+      const right = l ? `<div class="navbar"><span class="mid">Order</span></div><div class="scroll" data-scroll="order">${answerHTML(l)}</div>`
+        : `<div class="navbar"><span class="mid">Order</span></div><div class="state"><p class="muted">Tap a card line to see its order here.</p></div>`;
+      return [frameScreen(left), frameScreen(right)];
+    }
+    if (l) return [frameScreen(`<div class="navbar"><button class="navbtn" data-act="back">${ICON.back}Find</button><span class="mid">Order</span><span style="inline-size:72px"></span></div><div class="scroll" data-scroll="order">${answerHTML(l)}</div>`)];
+    return [frameScreen(left)];
+  }
+};
+
+/* A real card name and a seller who never sold it: the no-match state's sample. */
+const NO_MATCH = (() => { for (const n of NAMES) { const s = SELLERS.find(x => !LINES.some(l => l.seller === x && l.name === n)); if (s && LINES.some(l => l.name === n)) return { name: n.toLowerCase(), seller: s }; } return { name: 'lynx', seller: SELLERS[0] }; })();
+function frameOf(el) { const f = el && el.closest('[data-fid]'); return f ? f.dataset.fid : null; }
+
+/* ===== Fill-in sentence ===== */
+const BANDS = [['u25', 'under 25¢', 0, 0.25], ['u50', '25¢ to 50¢', 0.25, 0.5], ['u1', '50¢ to $1', 0.5, 1], ['u3', '$1 to $3', 1, 3], ['o3', '$3 or more', 3, 1e9]];
+const ARR = [['any', 'arrived or not'], ['y', 'arrived'], ['n', 'not yet in']];
+C.sentence = {
+  fresh() { return { name: '', seller: null, day: null, price: null, arr: 'any', open: null, sel: null, more: false, focusFid: null }; },
+  preset(s) {
+    const m = this.fresh();
+    if (s === 'results') m.name = 'drake';
+    if (s === 'detail') { m.name = 'drake'; m.sel = this.compute(m).cards[0][1][0].id; }
+    if (s === 'nomatch') { m.name = NO_MATCH.name; m.seller = NO_MATCH.seller; }
+    return m;
+  },
+  filt(m, skip) {
+    const q = m.name.trim().toLowerCase();
+    const band = BANDS.find(b => b[0] === m.price);
+    return LINES.filter(l => (skip === 'name' || !q || l.lname.includes(q)) && (skip === 'seller' || !m.seller || l.seller === m.seller)
+      && (skip === 'day' || !m.day || l.day === m.day) && (skip === 'price' || !band || (l.price >= band[2] && l.price < band[3]))
+      && (skip === 'arr' || m.arr === 'any' || (m.arr === 'y' ? l.arrived : !l.arrived)));
+  },
+  compute(m) {
+    const hits = this.filt(m);
+    const g = new Map();
+    hits.forEach(l => { if (!g.has(l.name)) g.set(l.name, []); g.get(l.name).push(l); });
+    const cards = [...g.entries()].sort((a, b) => b[1].length - a[1].length || a[0].localeCompare(b[0]));
+    cards.forEach(c => c[1].sort((a, b) => b.day - a.day));
+    return { hits, cards, got: hits.filter(l => l.arrived).length };
+  },
+  filled(m) { return !!(m.name.trim() || m.seller || m.day || m.price || m.arr !== 'any'); },
+  act(m, a, arg, t) {
+    if (a === 'open') { m.open = m.open === arg ? null : arg; if (m.open === 'name') m.focusFid = frameOf(t); }
+    else if (a === 'done') m.open = null;
+    else if (a === 'set-name') { m.name = arg; m.open = null; }
+    else if (a === 'set-seller') { m.seller = arg || null; m.open = null; }
+    else if (a === 'set-day') { m.day = arg ? +arg : null; m.open = null; }
+    else if (a === 'set-price') { m.price = arg || null; m.open = null; }
+    else if (a === 'set-arr') { m.arr = arg; m.open = null; }
+    else if (a === 'pick') m.sel = +arg;
+    else if (a === 'close') m.sel = null;
+    else if (a === 'use-seller') { m.seller = LINES[m.sel].seller; m.name = ''; m.sel = null; }
+    else if (a === 'use-day') { m.day = LINES[m.sel].day; m.name = ''; m.sel = null; }
+    else if (a === 'clearall') { const f = this.fresh(); Object.assign(m, f); }
+    else if (a === 'more') m.more = true;
+    else return false;
+    if (a.startsWith('set-')) m.more = false;
+    return true;
+  },
+  onInput(m, k, v) { m.name = v; m.more = false; },
+  sentenceHTML(m) {
+    const blank = (k, text, set) => `<button class="blank${set ? ' set' : ''}" data-act="open" data-arg="${k}" aria-expanded="${m.open === k}">${esc(text)}</button>`;
+    const nameB = m.open === 'name'
+      ? `<input class="blankin" data-input="name" type="search" autocomplete="off" enterkeyhint="done" aria-label="Card name, any part" placeholder="any card" value="${esc(m.name)}">`
+      : blank('name', m.name.trim() || 'any card', !!m.name.trim());
+    const band = BANDS.find(b => b[0] === m.price);
+    return `<p class="sent">Find ${nameB} from ${blank('seller', m.seller || 'any seller', !!m.seller)}, ordered ${blank('day', m.day ? fmtDay(m.day) : 'any day', !!m.day)}, at ${blank('price', band ? band[1] : 'any price', !!band)}, ${blank('arr', ARR.find(x => x[0] === m.arr)[1], m.arr !== 'any')}.</p>`;
+  },
+  pickerHTML(m) {
+    if (!m.open) return '';
+    const pool = this.filt(m, m.open);
+    const count = fn => pool.filter(fn).length;
+    let title = '', body = '';
+    if (m.open === 'name') {
+      title = 'Cards that match';
+      const q = m.name.trim().toLowerCase();
+      const names = [...new Set(pool.map(l => l.name))].sort((a, b) => (wordStart(b, q) - wordStart(a, q)) || a.localeCompare(b)).slice(0, 8);
+      body = names.length ? `<div class="list">${names.map(n => `<button class="row" data-act="set-name" data-arg="${esc(n)}"><span class="main"><span class="t">${hi(n, q)}</span></span><span class="num">${count(l => l.name === n)}</span></button>`).join('')}</div>`
+        : `<div class="state"><p>No card name holds “${esc(m.name.trim())}” with the other blanks.</p></div>`;
+    } else if (m.open === 'seller') {
+      title = 'Pick a seller';
+      const ss = SELLERS.filter(s => pool.some(l => l.seller === s)).sort();
+      body = `<div class="list"><button class="row" data-act="set-seller" data-arg=""><span class="main"><span class="t">any seller</span></span><span class="num">${pool.length}</span></button>${ss.map(s => `<button class="row" data-act="set-seller" data-arg="${esc(s)}" aria-current="${m.seller === s}"><span class="main"><span class="t">${esc(s)}</span></span><span class="num">${count(l => l.seller === s)}</span></button>`).join('')}</div>`;
+    } else if (m.open === 'day') {
+      title = 'Pick an order day';
+      const ds = [...new Set(pool.map(l => l.day))].sort((a, b) => b - a);
+      body = `<div class="chips"><button class="chip" data-act="set-day" data-arg="" aria-pressed="${!m.day}">any day</button>${ds.map(d => `<button class="chip" data-act="set-day" data-arg="${d}" aria-pressed="${m.day === d}">${fmtDay(d)}</button>`).join('')}</div>`;
+    } else if (m.open === 'price') {
+      title = 'Pick a price';
+      body = `<div class="chips"><button class="chip" data-act="set-price" data-arg="" aria-pressed="${!m.price}">any price</button>${BANDS.map(b => `<button class="chip" data-act="set-price" data-arg="${b[0]}" aria-pressed="${m.price === b[0]}">${b[1]}, ${count(l => l.price >= b[2] && l.price < b[3])}</button>`).join('')}</div>`;
+    } else if (m.open === 'arr') {
+      title = 'Arrived or not';
+      body = `<div class="chips">${ARR.map(x => `<button class="chip" data-act="set-arr" data-arg="${x[0]}" aria-pressed="${m.arr === x[0]}">${x[0] === 'any' ? x[1] : glyph(x[0] === 'y') + ' ' + x[1]}${x[0] === 'any' ? '' : ', ' + count(l => x[0] === 'y' ? l.arrived : !l.arrived)}</button>`).join('')}</div>`;
+    }
+    return `<div class="picker" role="group" aria-label="${title}"><div class="pickh"><b>${title}</b><button class="tbtn" data-act="done">Done</button></div><div class="pickb">${body}</div></div>`;
+  },
+  answersHTML(m, r, pose) {
+    const st = STATUS.sentence;
+    if (st !== 'ok') return stateHTML(st);
+    if (!this.filled(m)) return `<div class="state"><p>${nf.format(LINES.length)} card lines in ${nf.format(ORDERS.length)} orders.</p><p class="muted">${pose === "open" ? "Tap a blank in the sentence on the left page." : "Tap a blank in the sentence below."} Fill one or all of them.</p></div>`;
+    if (!r.hits.length) return `<div class="state"><p>No card line fits this sentence.</p><button class="pbtn" data-act="clearall">Clear search</button></div>`;
+    const q = m.name.trim().toLowerCase();
+    const lim = m.more ? r.cards.length : 8;
+    const waiting = r.hits.length - r.got;
+    let out = `<p class="summary" aria-live="polite">${nf.format(r.hits.length)} ${r.hits.length === 1 ? 'copy' : 'copies'} of ${nf.format(r.cards.length)} ${r.cards.length === 1 ? 'card' : 'cards'}. ${nf.format(r.got)} arrived, ${nf.format(waiting)} not yet in.</p>`;
+    out += r.cards.slice(0, lim).map(([name, ls]) => `<div class="list"><div class="cardh"><b>${hi(name, q)}</b></div>${ls.map(l => `<button class="row${m.sel === l.id ? ' sel' : ''}" data-act="pick" data-arg="${l.id}">${glyph(l.arrived)}<span class="main"><span class="ssent">From ${esc(l.seller)}, ordered ${l.dstr}, ${l.pstr}.</span></span>${ICON.chev}</button>`).join('')}</div>`).join('');
+    if (r.cards.length > lim) out += `<button class="tbtn" data-act="more">Show ${r.cards.length - lim} more cards</button>`;
+    return out;
+  },
+  sheetHTML(m) {
+    if (m.sel == null) return '';
+    const l = LINES[m.sel];
+    const extra = `<div class="cluster"><button class="tbtn" data-act="use-seller">Find more from ${esc(l.seller)}</button><button class="tbtn" data-act="use-day">Find more from ${l.dstr}</button></div>`;
+    return `<div class="sheet" role="dialog" aria-label="Order"><div class="pane"><div class="grab" aria-hidden="true"></div><div class="navbar"><button class="navbtn" data-act="close">Close</button><span class="mid">Order</span><span style="inline-size:60px"></span></div><div class="scroll" data-scroll="order">${answerHTML(l, { extra })}</div></div></div>`;
+  },
+  render(m, pose) {
+    const r = this.compute(m);
+    const ok = STATUS.sentence === 'ok';
+    const bottom = ok ? `<div class="sbottom">${this.pickerHTML(m)}${this.sentenceHTML(m)}</div>` : '';
+    if (pose === 'open') {
+      const leftHint = "";
+      const left = `<div class="nav"><h1>Find</h1></div><div style="flex:1"></div>${leftHint}${bottom}`;
+      const right = `<div class="navbar"><span class="mid">Answers</span></div><div class="scroll" data-scroll="ans">${this.answersHTML(m, r, pose)}</div>${this.sheetHTML(m)}`;
+      return [frameScreen(left), frameScreen(right)];
+    }
+    return [frameScreen(`<div class="navbar"><span class="mid">Find</span></div><div class="scroll" data-scroll="ans">${this.answersHTML(m, r, pose)}</div>${bottom}${this.sheetHTML(m)}`)];
+  },
+  after(m, glass) {
+    if (m.focusFid && glass.parentElement.dataset.fid === m.focusFid) {
+      const el = glass.querySelector('[data-input="name"]');
+      if (el) { el.focus({ preventScroll: true }); m.focusFid = null; }
+    }
+  }
+};
+
+/* ===== Sieve ===== */
+const SV_ABC = 'abcdefghijklmnopqrstuvwxyz'.split('');
+const SV_NUM = '0123456789$./'.split('');
+let SV_MEMO = { key: null, val: null };
+C.sieve = {
+  fresh() { return { frag: '', mode: 'abc', sel: null }; },
+  preset(s) {
+    const m = this.fresh();
+    if (s === 'results') m.frag = 'dra';
+    if (s === 'detail') { m.frag = 'drag'; m.sel = this.compute(m).hits[0].id; }
+    if (s === 'nomatch') m.frag = 'lynx tide';
+    return m;
+  },
+  fields(l) { return [l.lname, l.lseller, l.pstr, l.dslash]; },
+  compute(m) {
+    const f = m.frag;
+    const key = f + '|' + STATUS.sieve;
+    if (SV_MEMO.key === key) return SV_MEMO.val;
+    const hits = [], next = {};
+    LINES.forEach(l => {
+      let hit = !f;
+      const seen = {};
+      this.fields(l).forEach(s => {
+        if (!f) { for (const c of s) if (!seen[c]) { seen[c] = 1; next[c] = (next[c] || 0) + 1; } return; }
+        let i = s.indexOf(f);
+        while (i >= 0) { hit = true; const c = s[i + f.length]; if (c && !seen[c]) { seen[c] = 1; next[c] = (next[c] || 0) + 1; } i = s.indexOf(f, i + 1); }
+      });
+      if (hit) hits.push(l);
+    });
+    hits.sort((a, b) => b.day - a.day);
+    const set = new Set(hits.map(l => l.id));
+    SV_MEMO = { key, val: { f, hits, next, set } };
+    return SV_MEMO.val;
+  },
+  act(m, a, arg) {
+    if (a === 'key') { m.frag += arg; m.sel = null; }
+    else if (a === 'del') m.frag = m.frag.slice(0, -1);
+    else if (a === 'clear' || a === 'clearall') { m.frag = ''; m.sel = null; }
+    else if (a === 'mode') m.mode = m.mode === 'abc' ? 'num' : 'abc';
+    else if (a === 'pick') m.sel = +arg;
+    else if (a === 'close') m.sel = null;
+    else return false;
+    return true;
+  },
+  onInput() {},
+  topHTML(m, r) {
+    const f = m.frag;
+    return `<div class="sv-top"><div class="sv-frag" aria-label="Typed so far">${f ? esc(f) + '<span class="caret" aria-hidden="true"></span>' : '<span class="ph">Type with the pad</span>'}</div><div class="sv-count" aria-live="polite"><b>${nf.format(r.hits.length)}</b><span>${f ? 'lines left' : 'card lines'}</span></div></div>`;
+  },
+  padHTML(m, r) {
+    const f = m.frag;
+    const key = c => {
+      const n = r.next[c] || 0, label = c === ' ' ? 'space' : c.toUpperCase();
+      const dead = !n;
+      const why = dead ? `${label}: no card line continues ${f ? '“' + f + '”' : ''} with ${label}` : `${label}, ${n} lines left`;
+      return `<button class="key" data-act="key" data-arg="${esc(c)}" aria-label="${esc(why)}"${dead ? ' aria-disabled="true"' : ''}><span class="k">${c === ' ' ? '␣' : esc(c.toUpperCase())}</span><span class="n">${dead ? '' : nf.format(n)}</span></button>`;
+    };
+    const keys = (m.mode === 'abc' ? SV_ABC.concat([' ']) : SV_NUM.concat([' '])).map(key).join('');
+    const fn = `<button class="key fn" data-act="del" aria-label="Delete last letter"${f ? '' : ' aria-disabled="true"'}><span class="k">⌫</span></button>`
+      + `<button class="key fn" data-act="mode" aria-label="${m.mode === 'abc' ? 'Numbers, for prices and days' : 'Letters'}"><span class="k">${m.mode === 'abc' ? '123' : 'ABC'}</span></button>`
+      + `<button class="key fn" data-act="clear" aria-label="Clear"${f ? '' : ' aria-disabled="true"'}><span class="k">Clear</span></button>`;
+    return `<div class="pad" role="group" aria-label="Letter pad">${keys}${fn}</div>`;
+  },
+  listHTML(m, r) {
+    const st = STATUS.sieve;
+    if (st !== 'ok') return stateHTML(st);
+    if (!m.frag) return `<div class="state"><p class="muted">Each dot is one card line: green came, amber has not. Press letters from any part of a card, seller, price or day. Keys that lead nowhere go dark.</p></div>`;
+    if (!r.hits.length) return `<div class="state"><p>No card line holds “${esc(m.frag)}”.</p><button class="pbtn" data-act="clearall">Clear search</button></div>`;
+    const lim = 40;
+    const rows = r.hits.slice(0, lim).map(l => `<button class="row${m.sel === l.id ? ' sel' : ''}" data-act="pick" data-arg="${l.id}">${glyph(l.arrived)}<span class="main"><span class="t">${hi(l.name, m.frag)}</span><span class="s">${hi(l.seller, m.frag)}, ${l.dstr}</span></span><span class="num">${hi(l.pstr, m.frag)}</span></button>`).join('');
+    return `<div class="list">${rows}</div>${r.hits.length > lim ? `<p class="hint">${nf.format(r.hits.length - lim)} more. Press another letter to narrow.</p>` : ''}`;
+  },
+  sheetHTML(m) {
+    if (m.sel == null) return '';
+    return `<div class="sheet" role="dialog" aria-label="Order"><div class="pane"><div class="grab" aria-hidden="true"></div><div class="navbar"><button class="navbtn" data-act="close">Close</button><span class="mid">Order</span><span style="inline-size:60px"></span></div><div class="scroll" data-scroll="order">${answerHTML(LINES[m.sel])}</div></div></div>`;
+  },
+  render(m, pose, dev) {
+    const r = this.compute(m);
+    const ok = STATUS.sieve === 'ok';
+    const grains = ok ? `<canvas class="grains" data-grains="${pose === 'open' ? 'time' : 'field'}" role="img" aria-label="Every card line as a dot. ${nf.format(r.hits.length)} match. The list below holds the same lines."></canvas>${pose === 'open' ? '<div class="axis" aria-hidden="true"><span>1 Oct</span><span>1 Nov</span><span>19 Nov</span></div>' : ''}` : '';
+    const top = ok ? this.topHTML(m, r) : `<div class="nav"><h1>Find</h1></div>`;
+    const list = `<div class="scroll svlist" data-scroll="list">${this.listHTML(m, r)}</div>`;
+    const pad = ok ? this.padHTML(m, r) : '';
+    if (pose === 'open') {
+      const right = m.sel != null ? `<div class="navbar"><button class="navbtn" data-act="close">Close</button><span class="mid">Order</span><span style="inline-size:60px"></span></div><div class="scroll" data-scroll="order">${answerHTML(LINES[m.sel])}</div>`
+        : `<div class="navbar"><span class="mid">Order</span></div><div class="state" style="flex:1">${ok ? '<p class="muted">Tap a line or a dot to see its order here.</p>' : ''}</div>`;
+      return [frameScreen(top + grains + list), frameScreen(right + pad)];
+    }
+    return [frameScreen(top + grains + list + pad + this.sheetHTML(m))];
+  },
+  after(m, glass) {
+    const cv = glass.querySelector('canvas.grains');
+    if (!cv) return;
+    const r = this.compute(m);
+    const cs = getComputedStyle(document.documentElement);
+    const col = { y: cs.getPropertyValue('--arrived').trim(), n: cs.getPropertyValue('--waiting').trim(), off: cs.getPropertyValue('--grain-off').trim(), sel: cs.getPropertyValue('--accent').trim() };
+    const W = cv.clientWidth, dpr = window.devicePixelRatio || 1;
+    const pts = [];
+    let H;
+    if (cv.dataset.grains === 'time') {
+      const d0 = Date.UTC(2026, 9, 1), days = Math.round((Date.UTC(2026, 10, 19) - d0) / DAY) + 1;
+      const colW = W / days, byDay = {};
+      LINES.forEach(l => { (byDay[l.day] = byDay[l.day] || []).push(l); });
+      const max = Math.max(...Object.values(byDay).map(a => a.length));
+      H = 200;
+      const p = Math.max(2, Math.floor(Math.sqrt(H * colW / max) * 10) / 10);
+      const per = Math.max(1, Math.floor(colW / p));
+      Object.entries(byDay).forEach(([d, ls]) => {
+        const x0 = ((+d - d0) / DAY) * colW;
+        ls.slice().sort((a, b) => b.arrived - a.arrived).forEach((l, i) => pts.push({ l, x: x0 + (i % per) * p + p / 2, y: H - Math.floor(i / per) * p - p / 2, r: p * 0.42 }));
+      });
+    } else {
+      const p = 4, cols = Math.floor(W / p);
+      const sorted = LINES.slice().sort((a, b) => a.day - b.day || a.seller.localeCompare(b.seller));
+      H = Math.ceil(sorted.length / cols) * p;
+      sorted.forEach((l, i) => pts.push({ l, x: (i % cols) * p + p / 2, y: Math.floor(i / cols) * p + p / 2, r: 1.5 }));
+    }
+    cv.style.height = H + 'px';
+    cv.width = Math.round(W * dpr); cv.height = Math.round(H * dpr);
+    const g = cv.getContext('2d');
+    g.scale(dpr, dpr);
+    const lit = l => !r.f || r.set.has(l.id);
+    [false, true].forEach(pass => pts.forEach(pt => {
+      if (lit(pt.l) !== pass) return;
+      g.fillStyle = pass ? (pt.l.arrived ? col.y : col.n) : col.off;
+      g.beginPath(); g.arc(pt.x, pt.y, pass && r.f ? pt.r * 1.25 : pt.r, 0, 6.2832); g.fill();
+    }));
+    if (m.sel != null) { const pt = pts.find(q => q.l.id === m.sel); if (pt) { g.strokeStyle = col.sel; g.lineWidth = 2; g.beginPath(); g.arc(pt.x, pt.y, 6, 0, 6.2832); g.stroke(); } }
+    cv._pts = pts;
+  }
+};
+document.addEventListener('click', e => {
+  const cv = e.target.closest && e.target.closest('canvas.grains');
+  if (!cv || !cv._pts) return;
+  const b = cv.getBoundingClientRect(), x = e.clientX - b.left, y = e.clientY - b.top;
+  const r = C.sieve.compute(M.sieve);
+  let best = null, bd = 144;
+  cv._pts.forEach(pt => { if (r.f && !r.set.has(pt.l.id)) return; const d = (pt.x - x) ** 2 + (pt.y - y) ** 2; if (d < bd) { bd = d; best = pt; } });
+  if (best) { M.sieve.sel = best.l.id; rerender('sieve'); }
+});
+document.addEventListener('keydown', e => {
+  if (e.metaKey || e.ctrlKey || e.altKey) return;
+  const t = e.target;
+  if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA')) return;
+  if (!t.closest || !t.closest('#concept-sieve .device')) return;
+  const k = e.key.toLowerCase();
+  const r = C.sieve.compute(M.sieve);
+  if (k === 'backspace') { C.sieve.act(M.sieve, 'del'); rerender('sieve'); e.preventDefault(); }
+  else if (k.length === 1 && r.next[k]) { C.sieve.act(M.sieve, 'key', k); rerender('sieve'); e.preventDefault(); }
+});
+
+/* ---------- Frames, events, deep links ---------- */
+const POSES = ['folded', 'open', 'phone', 'ax5'];
+function renderConcept(ck) {
+  const m = M[ck];
+  POSES.forEach(p => {
+    const dev = document.getElementById(ck + '-' + p);
+    if (!dev) return;
+    const glass = dev.querySelector('.glass');
+    const scrolls = {};
+    glass.querySelectorAll('[data-scroll]').forEach(s => { scrolls[s.dataset.scroll] = s.scrollTop; });
+    const parts = C[ck].render(m, p === 'open' ? 'open' : 'compact', p);
+    glass.innerHTML = p === 'open' ? `<div class="page">${parts[0]}</div><div class="hinge" aria-hidden="true"></div><div class="page">${parts[1]}</div>` : parts[0];
+    glass.querySelectorAll('[data-scroll]').forEach(s => { if (scrolls[s.dataset.scroll] != null) s.scrollTop = scrolls[s.dataset.scroll]; });
+    if (C[ck].after) C[ck].after(m, glass, p);
+  });
+}
+function rerender(ck) {
+  const a = document.activeElement;
+  let keep = null;
+  if (a && a.dataset && (a.dataset.input || a.dataset.act)) {
+    const fr = a.closest('[data-fid]');
+    if (fr) keep = { fid: fr.dataset.fid, input: a.dataset.input, act: a.dataset.act, arg: a.dataset.arg, s: a.selectionStart, e: a.selectionEnd };
+  }
+  renderConcept(ck);
+  if (keep) {
+    const fr = document.querySelector(`[data-fid="${keep.fid}"]`);
+    let el = keep.input ? fr.querySelector(`[data-input="${keep.input}"]`) : fr.querySelector(`[data-act="${keep.act}"]${keep.arg != null ? `[data-arg="${CSS.escape(keep.arg)}"]` : ''}`);
+    if (el) { el.focus({ preventScroll: true }); if (keep.input) try { el.setSelectionRange(keep.s, keep.e); } catch (e) { /* not a text field */ } }
+  }
+}
+function setState(ck, s) {
+  STATUS[ck] = ['empty', 'loading', 'failed'].includes(s) ? s : 'ok';
+  M[ck] = C[ck].preset(s);
+  document.querySelectorAll(`#concept-${ck} .states button`).forEach(b => b.setAttribute('aria-pressed', String(b.dataset.state === s)));
+  renderConcept(ck);
+}
+document.addEventListener('click', e => {
+  const t = e.target.closest('button');
+  if (!t) return;
+  if (t.dataset.themeSet) { setTheme(t.dataset.themeSet); writeHash({ t: t.dataset.themeSet === 'auto' ? null : t.dataset.themeSet }); return; }
+  if (t.dataset.hide) { hideConcept(t.dataset.hide, true); return; }
+  if (t.dataset.unhide) { hideConcept(t.dataset.unhide, false); return; }
+  const sec = t.closest('[data-concept]');
+  if (!sec) return;
+  const ck = sec.dataset.concept;
+  if (t.dataset.state) { setState(ck, t.dataset.state); writeHash({ c: ck, s: t.dataset.state }); return; }
+  if (t.dataset.act) {
+    if (t.getAttribute('aria-disabled') === 'true') return;
+    if (t.dataset.act === 'retry') { STATUS[ck] = 'ok'; M[ck] = C[ck].fresh(); rerender(ck); return; }
+    if (C[ck].act(M[ck], t.dataset.act, t.dataset.arg, t)) rerender(ck);
+  }
+});
+document.addEventListener('input', e => {
+  const k = e.target.dataset && e.target.dataset.input;
+  if (!k) return;
+  const ck = e.target.closest('[data-concept]').dataset.concept;
+  C[ck].onInput(M[ck], k, e.target.value);
+  rerender(ck);
+});
+function setTheme(v) {
+  if (v === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', v);
+  document.querySelectorAll('[data-theme-set]').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.themeSet === v)));
+  Object.keys(C).forEach(renderConcept);
+}
+function hideConcept(ck, h) {
+  const sec = document.getElementById('concept-' + ck);
+  sec.hidden = h;
+  const hidden = Object.keys(C).filter(k => document.getElementById('concept-' + k).hidden);
+  const box = document.getElementById('restore');
+  box.hidden = !hidden.length;
+  box.innerHTML = hidden.length ? '<span class="fcap">Hidden</span>' + hidden.map(k => `<button class="vbtn" data-unhide="${k}">Show ${esc(document.getElementById('h-' + k).textContent)}</button>`).join('') : '';
+  writeHash({ h: hidden.length ? hidden.join(',') : null });
+}
+function readHash() { const o = {}; location.hash.replace(/^#/, '').split('&').forEach(p => { if (!p) return; const [k, v] = p.split('='); o[decodeURIComponent(k)] = decodeURIComponent(v || ''); }); return o; }
+function writeHash(patch) {
+  const o = Object.assign(readHash(), patch);
+  Object.keys(o).forEach(k => { if (o[k] == null) delete o[k]; });
+  history.replaceState(null, '', '#' + Object.entries(o).map(([k, v]) => k + '=' + encodeURIComponent(v)).join('&'));
+}
+function boot() {
+  Object.keys(C).forEach(ck => {
+    const box = document.querySelector(`#concept-${ck} .states`);
+    box.innerHTML = '<span class="fcap">State</span>' + STATES.map(([k, label]) => `<button class="vbtn" data-state="${k}" aria-pressed="false">${label}</button>`).join('');
+  });
+  const h = readHash();
+  const alias = { error: 'failed', fail: 'failed', none: 'empty' };
+  const s = alias[h.s] || h.s;
+  Object.keys(C).forEach(ck => setState(ck, (!h.c || h.c === ck) && s ? s : (ck === h.c ? 'results' : 'results')));
+  if (h.t === 'dark' || h.t === 'light') setTheme(h.t);
+  if (h.h) h.h.split(',').forEach(k => { if (C[k]) hideConcept(k, true); });
+  if (h.c && document.getElementById('concept-' + h.c)) document.getElementById('concept-' + h.c).scrollIntoView();
+}
+window.addEventListener('hashchange', () => { const h = readHash(); if (h.c && h.s && C[h.c]) setState(h.c, h.s); });
+boot();
+</script>
+</body>
+</html>

@@ -1,0 +1,861 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Envelope progress</title>
+<style>
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-11: 44px; --space-12: 48px; --space-14: 56px;
+  --radius: 8px;
+  --tap: 44px;
+  /* Dynamic Type, iOS Large (default) size, HIG typography page */
+  --t-large: 34px; --l-large: 41px;
+  --t-title1: 28px; --l-title1: 34px;
+  --t-title2: 22px; --l-title2: 28px;
+  --t-title3: 20px; --l-title3: 25px;
+  --t-head: 17px; --l-head: 22px;
+  --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px;
+  --t-sub: 15px; --l-sub: 20px;
+  --t-foot: 13px; --l-foot: 18px;
+  --t-cap1: 12px; --l-cap1: 16px;
+  --t-cap2: 11px; --l-cap2: 13px;
+
+  --canvas: #DCE1E8;
+  --surface: #F4F6F9;
+  --surface-raised: #FFFFFF;
+  --surface-sunk: #E5E9EF;
+  --text: #17202E;
+  --text-muted: #556073;
+  --line: #CDD4DE;
+  --line-strong: #8C97A8;
+  --accent: #2148BE;
+  --accent-soft: #E1E8FA;
+  --on-accent: #FFFFFF;
+  --found: #156E48;
+  --found-soft: #DCEFE4;
+  --short: #A8231B;
+  --short-soft: #F7E0DD;
+  --extra: #7D5200;
+  --extra-soft: #F5EAD2;
+  --hinge: #2A2F38;
+  --note: #6A35B0;
+  --note-bg: #F0E8FA;
+  --banner: #FFF4C2;
+  --banner-text: #4A3B00;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --canvas: #07090D; --surface: #10141B; --surface-raised: #1A202A; --surface-sunk: #252D39;
+    --text: #E8ECF2; --text-muted: #A3AEBF; --line: #303A48; --line-strong: #6B7789;
+    --accent: #93B2FF; --accent-soft: #1E2A47; --on-accent: #0C1426;
+    --found: #62D39F; --found-soft: #15301F; --short: #FF8F85; --short-soft: #3B1C19;
+    --extra: #F0C264; --extra-soft: #33270E; --hinge: #000000;
+    --note: #C9A6FF; --note-bg: #2A1E3D; --banner: #3A3210; --banner-text: #FFE98A;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --canvas: #07090D; --surface: #10141B; --surface-raised: #1A202A; --surface-sunk: #252D39;
+  --text: #E8ECF2; --text-muted: #A3AEBF; --line: #303A48; --line-strong: #6B7789;
+  --accent: #93B2FF; --accent-soft: #1E2A47; --on-accent: #0C1426;
+  --found: #62D39F; --found-soft: #15301F; --short: #FF8F85; --short-soft: #3B1C19;
+  --extra: #F0C264; --extra-soft: #33270E; --hinge: #000000;
+  --note: #C9A6FF; --note-bg: #2A1E3D; --banner: #3A3210; --banner-text: #FFE98A;
+  color-scheme: dark;
+}
+/* Largest accessibility text size, AX5, HIG typography page */
+.ax {
+  --t-large: 60px; --l-large: 70px;
+  --t-title1: 58px; --l-title1: 68px;
+  --t-title2: 56px; --l-title2: 66px;
+  --t-title3: 55px; --l-title3: 65px;
+  --t-head: 53px; --l-head: 62px;
+  --t-body: 53px; --l-body: 62px;
+  --t-callout: 51px; --l-callout: 60px;
+  --t-sub: 49px; --l-sub: 58px;
+  --t-foot: 44px; --l-foot: 52px;
+  --t-cap1: 43px; --l-cap1: 51px;
+  --t-cap2: 40px; --l-cap2: 48px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  font-family: -apple-system, system-ui, sans-serif;
+  background: var(--canvas);
+  color: var(--text);
+  font-size: var(--t-body); line-height: var(--l-body);
+}
+button, input { font-family: inherit; font-size: inherit; line-height: inherit; color: inherit; }
+button { background: none; border: 0; padding: 0; cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+[hidden] { display: none !important; }
+
+/* ---------- Page chrome around the devices ---------- */
+.banner {
+  position: sticky; top: 0; z-index: 20;
+  background: var(--banner); color: var(--banner-text);
+  padding: var(--space-2) var(--space-4);
+  font-size: var(--t-foot); line-height: var(--l-foot); font-weight: 600;
+  text-align: center;
+}
+.chrome { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); max-width: 1440px; margin-inline: auto; }
+.chrome-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4); }
+.chrome-head h1 { margin: 0; font-size: var(--t-title2); line-height: var(--l-title2); }
+.kind { color: var(--text-muted); font-size: var(--t-sub); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); }
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ctl-name { font-size: var(--t-foot); color: var(--text-muted); min-width: 4.5em; }
+.chip {
+  min-height: 36px; padding: 0 var(--space-3); border-radius: var(--radius);
+  background: var(--surface-raised); border: 1px solid var(--line);
+  font-size: var(--t-foot);
+}
+.chip[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.opt { display: inline-flex; align-items: stretch; border-radius: var(--radius); }
+.opt .chip:first-child { border-start-end-radius: 0; border-end-end-radius: 0; }
+.opt .hide { border-start-start-radius: 0; border-end-start-radius: 0; border-inline-start: 0; color: var(--text-muted); }
+.concept-line { margin: 0; max-width: 72ch; color: var(--text-muted); font-size: var(--t-sub); line-height: var(--l-sub); }
+.stage { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-6); align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+figcaption { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-muted); max-width: 466px; }
+.all-hidden { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+
+/* ---------- Device frames ---------- */
+.device {
+  width: var(--w); height: var(--h);
+  border-radius: 28px; overflow: hidden;
+  border: 1px solid var(--line-strong);
+  background: var(--surface);
+  position: relative;
+}
+.device.open { display: grid; grid-template-columns: 455.5px 40px 455.5px; background: var(--hinge); }
+.hinge { background: var(--hinge); }
+.screen {
+  position: relative; height: 100%; min-width: 0;
+  background: var(--surface);
+  display: flex; flex-direction: column;
+  padding: env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  overflow: hidden;
+  container-type: inline-size;
+}
+.status {
+  flex: none; height: var(--space-12);
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 0 var(--space-6);
+  font-size: 15px; font-weight: 600;
+}
+.status-icons { display: flex; gap: var(--space-1); }
+.status-icons i { width: 16px; height: 10px; border-radius: 2px; background: var(--text); opacity: .8; }
+.home { flex: none; height: var(--space-5); display: grid; place-items: center; }
+.home i { width: 120px; height: 4px; border-radius: 2px; background: var(--text); opacity: .7; }
+.main { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; padding: 0 var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+.bottom { flex: none; padding: var(--space-2) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2); background: var(--surface); border-top: 1px solid var(--line); }
+
+/* Type roles */
+.large { font-size: var(--t-large); line-height: var(--l-large); font-weight: 700; margin: 0; }
+.title1 { font-size: var(--t-title1); line-height: var(--l-title1); font-weight: 700; margin: 0; }
+.title3 { font-size: var(--t-title3); line-height: var(--l-title3); font-weight: 600; margin: 0; }
+.head { font-size: var(--t-head); line-height: var(--l-head); font-weight: 600; margin: 0; }
+.callout { font-size: var(--t-callout); line-height: var(--l-callout); margin: 0; }
+.sub { font-size: var(--t-sub); line-height: var(--l-sub); margin: 0; }
+.foot { font-size: var(--t-foot); line-height: var(--l-foot); margin: 0; }
+.muted { color: var(--text-muted); }
+.num { font-variant-numeric: tabular-nums; }
+
+/* Shared controls */
+.nav-bar { display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); }
+.nav-bar .spacer { flex: 1; }
+.link { color: var(--accent); min-height: var(--tap); min-width: var(--tap); display: inline-flex; align-items: center; gap: var(--space-1); padding: 0 var(--space-1); }
+.link.strong { font-weight: 600; }
+.btn {
+  min-height: var(--space-12); width: 100%; border-radius: var(--radius);
+  background: var(--accent); color: var(--on-accent); font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+  padding: var(--space-2) var(--space-4); text-align: center;
+}
+.btn.quiet { background: var(--surface-sunk); color: var(--text); font-weight: 500; }
+.field {
+  display: flex; align-items: center; gap: var(--space-2);
+  min-height: var(--tap); padding: 0 var(--space-3);
+  border-radius: var(--radius); background: var(--surface-sunk);
+}
+.field input { flex: 1; min-width: 0; border: 0; background: transparent; outline: none; min-height: var(--tap); }
+.field:focus-within { outline: 3px solid var(--accent); outline-offset: 1px; }
+.icon { width: 1em; height: 1em; flex: none; }
+.state-box { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-6) 0; }
+details.machine { font-size: var(--t-foot); color: var(--text-muted); }
+details.machine summary { min-height: var(--tap); display: flex; align-items: center; cursor: pointer; }
+.skel { background: var(--surface-sunk); border-radius: var(--radius); }
+
+/* Sheet (no native dialog) */
+.scrim { position: absolute; inset: 0; background: rgb(0 0 0 / .35); z-index: 5; }
+.sheet {
+  position: absolute; inset-inline: 0; bottom: 0; z-index: 6;
+  max-height: 85%; overflow-y: auto;
+  background: var(--surface-raised); border-radius: 16px 16px 0 0;
+  padding: var(--space-2) var(--space-4) var(--space-6);
+  display: flex; flex-direction: column; gap: var(--space-3);
+}
+.sheet-bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; min-height: var(--tap); }
+.sheet-bar > :first-child { justify-self: start; }
+.sheet-bar > :last-child { justify-self: end; }
+.sheet ul { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.sheet li { display: flex; justify-content: space-between; gap: var(--space-3); padding: var(--space-3) 0; border-bottom: 1px solid var(--line); }
+
+/* Pips: one per copy. Filled = still to find. Hollow = found. */
+.pips { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); align-items: center; }
+.pip { width: 10px; height: 10px; border-radius: 50%; background: var(--text); display: block; }
+.pip.found { background: transparent; box-shadow: inset 0 0 0 1.5px var(--line-strong); border: 1.5px solid transparent; }
+.is-short .pip:not(.found) { background: var(--short); }
+.ax .pip { width: 28px; height: 28px; }
+
+/* ---------- Concept: Ledger ---------- */
+.env-list, .rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.env-row {
+  width: 100%; min-height: var(--space-14);
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-3);
+  padding: var(--space-2) 0; border-bottom: 1px solid var(--line); text-align: start;
+}
+.env-row[aria-current="true"] { background: var(--accent-soft); border-radius: var(--radius); padding-inline: var(--space-2); }
+.env-row .who { display: flex; flex-direction: column; }
+.ring { width: 28px; height: 28px; }
+.ring .track { stroke: var(--line); }
+.ring .arc { stroke: var(--accent); }
+.ring.complete .arc { stroke: var(--found); }
+.ring.short .arc { stroke: var(--short); }
+.chev { color: var(--text-muted); }
+
+.progress {
+  display: flex; flex-direction: column; gap: var(--space-2);
+  background: var(--surface-raised); border-radius: var(--radius);
+  padding: var(--space-4); border: 1px solid var(--line);
+}
+/* The count stays in view while the list scrolls under it, so "how many left" never leaves the screen. */
+.progress { position: sticky; top: 0; z-index: 2; }
+.ax .progress { position: static; }
+.progress.complete { background: var(--found-soft); border-color: var(--found); }
+.progress.complete .large { color: var(--found); }
+.progress.short { background: var(--short-soft); border-color: var(--short); }
+.progress.short .large { color: var(--short); }
+.progress-head { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: var(--space-1) var(--space-3); }
+.segbar { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: var(--space-1); height: var(--space-2); }
+.segbar i { border-radius: 2px; background: var(--line); }
+.segbar i.on { background: var(--found); }
+.short .segbar i:not(.on) { background: var(--short); opacity: .5; }
+
+.seg { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1); padding: var(--space-1); background: var(--surface-sunk); border-radius: var(--radius); }
+.seg button { min-height: 36px; border-radius: 6px; font-size: var(--t-sub); }
+.seg button[aria-pressed="true"] { background: var(--surface-raised); font-weight: 600; box-shadow: 0 0 0 1px var(--line); }
+
+.row { display: grid; grid-template-columns: 1fr var(--tap); align-items: center; border-bottom: 1px solid var(--line); }
+.row-main {
+  min-height: var(--space-14); display: grid; grid-template-columns: 24px 1fr auto; align-items: center;
+  gap: var(--space-3); text-align: start; padding: var(--space-2) 0;
+}
+.row-main[aria-disabled="true"] { cursor: default; }
+.row.done .name { color: var(--text-muted); }
+.mark { width: 24px; height: 24px; display: grid; place-items: center; }
+.mark .ring-o { width: 20px; height: 20px; border-radius: 50%; border: 2px solid var(--line-strong); }
+.mark .ok { color: var(--found); width: 24px; height: 24px; }
+.row.missing .ring-o { border-color: var(--short); border-style: dashed; }
+.row.missing .count { color: var(--short); font-weight: 600; }
+.row.flash .row-main { animation: flash .6s ease-out; }
+@keyframes flash { from { background: var(--found-soft); } to { background: transparent; } }
+.undo { width: var(--tap); height: var(--tap); display: grid; place-items: center; color: var(--text-muted); border-radius: var(--radius); }
+.undo[aria-hidden="true"] { visibility: hidden; }
+.row.extra .mark { color: var(--extra); font-weight: 700; }
+.row.extra .count { color: var(--extra); }
+.nomatch { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) 0; }
+
+/* ---------- Concept: Letter board ---------- */
+.b-top { display: flex; align-items: center; gap: var(--space-2); min-height: var(--tap); }
+.b-top .spacer { flex: 1; }
+.env-switch { min-height: var(--tap); display: inline-flex; align-items: center; gap: var(--space-1); font-weight: 600; text-align: start; }
+.b-count { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-1) var(--space-3); }
+.b-count.complete .large { color: var(--found); }
+.b-count.short .large { color: var(--short); }
+.board { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.board.many { grid-template-columns: repeat(4, 1fr); }
+.tile {
+  min-height: 84px; border-radius: var(--radius);
+  background: var(--surface-raised); border: 1.5px solid var(--line);
+  display: flex; flex-direction: column; align-items: flex-start; justify-content: space-between; gap: var(--space-2);
+  padding: var(--space-2) var(--space-3) var(--space-3); text-align: start;
+}
+.tile .letter { font-size: var(--t-title1); line-height: var(--l-title1); font-weight: 700; display: flex; align-items: center; justify-content: space-between; width: 100%; }
+.tile[aria-pressed="true"] { border-color: var(--accent); border-width: 3px; background: var(--accent-soft); }
+.tile.clear { background: transparent; border-style: dashed; }
+.tile.clear .letter { color: var(--text-muted); font-weight: 500; }
+.tile.clear .ok { color: var(--found); width: 22px; height: 22px; }
+.tile.skel { border: 0; }
+.tray {
+  flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain;
+  background: var(--surface-raised); border-top: 1px solid var(--line);
+  border-radius: 16px 16px 0 0;
+  padding: var(--space-2) var(--space-4) var(--space-3);
+  display: flex; flex-direction: column; gap: var(--space-2);
+}
+.tray-head { min-height: var(--tap); display: flex; align-items: center; gap: var(--space-2); }
+.tray-head .what { flex: 1; min-width: 0; }
+.names { display: flex; flex-direction: column; gap: var(--space-2); }
+.name-btn {
+  width: 100%; min-height: var(--space-14); border-radius: var(--radius);
+  border: 1.5px solid var(--line); background: var(--surface);
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  padding: var(--space-2) var(--space-4); text-align: start; font-weight: 600;
+}
+.name-btn[aria-disabled="true"] { color: var(--text-muted); font-weight: 400; border-style: dashed; cursor: default; background: transparent; }
+.name-btn.flash { animation: flash .6s ease-out; }
+.name-btn .right { display: inline-flex; align-items: center; gap: var(--space-2); }
+.name-btn .ok { color: var(--found); }
+.extra-tag { color: var(--extra); }
+.log { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; counter-reset: log; }
+.log li { display: grid; grid-template-columns: 2.2em 1fr var(--tap); align-items: center; border-bottom: 1px solid var(--line); min-height: var(--tap); counter-increment: log; }
+.log li::before { content: counter(log) "."; color: var(--text-muted); font-variant-numeric: tabular-nums; font-size: var(--t-foot); }
+.page-board { display: flex; flex-direction: column; gap: var(--space-4); }
+.open-r .tray { border-radius: 0; border-top: 0; background: var(--surface); flex: none; overflow: visible; padding: 0; }
+
+/* ---------- Largest text: layouts change shape, not just size ---------- */
+.ax .row-main { grid-template-columns: 1fr; gap: var(--space-1); }
+.ax .row-main .mark { display: none; }
+.ax .row { grid-template-columns: 1fr 64px; }
+.ax .undo { width: 64px; height: 64px; }
+.ax .board, .ax .board.many { grid-template-columns: repeat(2, 1fr); }
+.ax .tile { min-height: 140px; }
+.ax .tray { flex: none; overflow: visible; }
+.ax .screen > .main { gap: var(--space-6); }
+.ax .name-btn { flex-direction: column; align-items: flex-start; }
+.ax .env-row { grid-template-columns: 1fr; }
+.ax .env-row .ring, .ax .env-row .chev { display: none; }
+.ax .seg { grid-template-columns: 1fr; }
+.ax .ring { width: 56px; height: 56px; }
+.ax .status { font-size: 15px; }
+
+/* ---------- "New:" labels (blind designer: every part is new) ---------- */
+.labels-on [data-new] { outline: 1.5px dashed var(--note); outline-offset: 2px; position: relative; }
+.labels-on [data-new]::after {
+  content: "New: " attr(data-new);
+  position: absolute; top: -9px; right: 8px; z-index: 4;
+  font-size: 11px; line-height: 16px; padding: 0 var(--space-1);
+  background: var(--note-bg); color: var(--note); border: 1px dashed var(--note); border-radius: 4px;
+  pointer-events: none; font-weight: 500;
+}
+.labels-on .ax [data-new]::after { font-size: 11px; }
+
+@media (prefers-reduced-motion: reduce) { .row.flash .row-main, .name-btn.flash { animation: none; } }
+@media (forced-colors: active) {
+  .pip { forced-color-adjust: none; background: CanvasText; }
+  .pip.found { background: Canvas; border: 1.5px solid CanvasText; }
+  .tile[aria-pressed="true"] { outline: 3px solid Highlight; }
+}
+@media (max-width: 1000px) { .device.open { transform-origin: top left; } }
+</style>
+</head>
+<body>
+<div class="banner" role="note">Sample. No sender, card, count or figure on this page is real.</div>
+
+<div class="chrome" id="chrome">
+  <div class="chrome-head">
+    <h1>Envelope progress</h1>
+    <span class="kind">Designer kind: blind. Two concepts, drawn on the Duo folded and open, a large phone, and the largest text.</span>
+  </div>
+
+  <div class="controls" role="group" aria-label="Mockup controls">
+    <div class="ctl" role="group" aria-label="Concept">
+      <span class="ctl-name">Concept</span>
+      <span class="opt" data-opt="ledger"><button class="chip" data-ui="c" data-v="ledger">Ledger</button><button class="chip hide" data-ui="hide" data-v="ledger" aria-label="Hide the Ledger concept">Hide</button></span>
+      <span class="opt" data-opt="board"><button class="chip" data-ui="c" data-v="board">Letter board</button><button class="chip hide" data-ui="hide" data-v="board" aria-label="Hide the Letter board concept">Hide</button></span>
+      <button class="chip" data-ui="unhide" hidden>Show hidden</button>
+    </div>
+    <div class="ctl" role="group" aria-label="State">
+      <span class="ctl-name">State</span>
+      <button class="chip" data-ui="s" data-v="fresh">Not started</button>
+      <button class="chip" data-ui="s" data-v="progress">In progress</button>
+      <button class="chip" data-ui="s" data-v="complete">Complete</button>
+      <button class="chip" data-ui="s" data-v="short">Short</button>
+      <button class="chip" data-ui="s" data-v="extra">Extra card</button>
+      <button class="chip" data-ui="s" data-v="empty">No envelopes</button>
+      <button class="chip" data-ui="s" data-v="error">Failed load</button>
+      <button class="chip" data-ui="s" data-v="loading">Loading</button>
+    </div>
+    <div class="ctl" role="group" aria-label="Theme">
+      <span class="ctl-name">Theme</span>
+      <button class="chip" data-ui="t" data-v="">System</button>
+      <button class="chip" data-ui="t" data-v="light">Light</button>
+      <button class="chip" data-ui="t" data-v="dark">Dark</button>
+    </div>
+    <div class="ctl" role="group" aria-label="Devices">
+      <span class="ctl-name">Devices</span>
+      <button class="chip" data-ui="d" data-v="all">All</button>
+      <button class="chip" data-ui="d" data-v="folded">Duo folded</button>
+      <button class="chip" data-ui="d" data-v="open">Duo open</button>
+      <button class="chip" data-ui="d" data-v="phone">Large phone</button>
+      <button class="chip" data-ui="d" data-v="ax">Largest text</button>
+    </div>
+    <div class="ctl" role="group" aria-label="Labels">
+      <span class="ctl-name">Labels</span>
+      <button class="chip" data-ui="labels" aria-pressed="true">New: labels</button>
+      <button class="chip" data-ui="reset">Reset sample</button>
+    </div>
+  </div>
+
+  <p class="concept-line" id="concept-line"></p>
+
+  <div class="all-hidden" id="all-hidden" hidden>
+    <p class="callout">Both concepts are hidden.</p>
+    <button class="chip" data-ui="unhide">Show hidden</button>
+  </div>
+
+  <section class="stage" id="stage-ledger" data-concept="ledger" aria-label="Ledger concept">
+    <figure data-fig="folded"><div class="device" id="ledger-folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"><div class="screen" data-kind="folded"></div></div><figcaption>Duo folded, 466 × 678 pt, the size the brief gives. Launches to the envelope list.</figcaption></figure>
+    <figure data-fig="open"><div class="device open" id="ledger-open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"><div class="screen open-l" data-kind="open-l"></div><div class="hinge" aria-hidden="true"></div><div class="screen open-r" data-kind="open-r"></div></div><figcaption>Duo open, 951 × 669 pt. Envelopes on the left page, the open envelope on the right. Nothing crosses the hinge (x 455.5 to 495.5).</figcaption></figure>
+    <figure data-fig="phone"><div class="device" id="ledger-phone" data-device="iphone-regular" style="--w:466px;--h:678px"><div class="screen" data-kind="phone"></div></div><figcaption>Large phone. No size is written for it; drawn at the folded size, 466 × 678 pt (see notes).</figcaption></figure>
+    <figure data-fig="ax"><div class="device ax" id="ledger-ax" data-device="iphone-duo-folded" data-variant="ax5" style="--w:466px;--h:678px"><div class="screen" data-kind="ax"></div></div><figcaption>Duo folded at the largest accessibility text size (AX5). Rows stack; the page scrolls.</figcaption></figure>
+  </section>
+
+  <section class="stage" id="stage-board" data-concept="board" aria-label="Letter board concept">
+    <figure data-fig="folded"><div class="device" id="board-folded" data-device="iphone-duo-folded" style="--w:466px;--h:678px"><div class="screen" data-kind="folded"></div></div><figcaption>Duo folded, 466 × 678 pt, the size the brief gives. Launches straight into the current envelope.</figcaption></figure>
+    <figure data-fig="open"><div class="device open" id="board-open" data-device="iphone-duo-unfolded" style="--w:951px;--h:669px"><div class="screen open-l" data-kind="open-l"></div><div class="hinge" aria-hidden="true"></div><div class="screen open-r" data-kind="open-r"></div></div><figcaption>Duo open, 951 × 669 pt. The board on the left page; names and the found list on the right.</figcaption></figure>
+    <figure data-fig="phone"><div class="device" id="board-phone" data-device="iphone-regular" style="--w:466px;--h:678px"><div class="screen" data-kind="phone"></div></div><figcaption>Large phone. No size is written for it; drawn at the folded size, 466 × 678 pt (see notes).</figcaption></figure>
+    <figure data-fig="ax"><div class="device ax" id="board-ax" data-device="iphone-duo-folded" data-variant="ax5" style="--w:466px;--h:678px"><div class="screen" data-kind="ax"></div></div><figcaption>Duo folded at the largest accessibility text size (AX5). Two tiles a row; the page scrolls.</figcaption></figure>
+  </section>
+</div>
+
+<script>
+(function () {
+  'use strict';
+
+  // Sample data shapes: an envelope has a sender and an expected list of cards with counts.
+  const ENVS = [
+    { id: 'harbor', sender: 'Harbor Card Co.', cards: [
+      ['ash', 'Ash Ward', 2], ['amber', 'Amber Sentinel', 1], ['ember', 'Ember Drake', 2], ['glass', 'Glass Heron', 1],
+      ['mirror', 'Mirror Ward', 1], ['moss', 'Moss Golem', 2], ['river', 'Riverbank Scout', 1], ['tide', 'Tidecaller', 2]] },
+    { id: 'north', sender: 'Northlight Games', cards: [
+      ['bram', 'Bramble Knight', 3], ['cinder', 'Cinder Fox', 2], ['lumen', 'Lumen Owl', 2], ['stone', 'Stonewake', 2]] },
+    { id: 'pell', sender: 'Pell and Daughter', cards: [
+      ['fog', 'Fogbound Seer', 2], ['iron', 'Ironbark', 1], ['kite', 'Kite Tamer', 1], ['vale', 'Vale Warden', 2]] },
+    { id: 'quarry', sender: 'Quarry Hobby', cards: [
+      ['arc', 'Arc Sprite', 3], ['bell', 'Bell Tower Ghoul', 2], ['cobalt', 'Cobalt Wyrm', 1], ['dune', 'Dune Strider', 2],
+      ['hollow', 'Hollow Crown', 1], ['jade', 'Jade Serpent', 2], ['nimbus', 'Nimbus Ray', 1], ['opal', 'Opal Sphinx', 1],
+      ['zephyr', 'Zephyr Hawk', 2]] }
+  ].map(e => ({ id: e.id, sender: e.sender, cards: e.cards.map(([id, name, want]) => ({ id, name, want })) }));
+  const envById = id => ENVS.find(e => e.id === id);
+
+  const STATES = ['fresh', 'progress', 'complete', 'short', 'extra', 'empty', 'error', 'loading'];
+  const LIST_STATES = ['empty', 'error', 'loading'];
+  const DESCRIBE = {
+    ledger: 'Ledger: the app opens on a list of envelopes. One tap opens an envelope: a running count on top, every expected card below in one fixed order, and a name field under the thumb. Type a few letters and press Return; the count drops by one.',
+    board: 'Letter board: the app opens straight on the envelope in your hand. Each first letter is a pigeonhole, with one dot for each card still to find. Tap the letter, then the name. When every hole is empty, the envelope is done. No typing.'
+  };
+
+  function seed(s) {
+    const d = {};
+    for (const e of ENVS) d[e.id] = { found: {}, short: false, extras: [], log: [] };
+    for (const c of envById('north').cards) { d.north.found[c.id] = c.want; for (let i = 0; i < c.want; i++) d.north.log.push(c.id); }
+    Object.assign(d.pell.found, { fog: 2, kite: 1, vale: 1 }); d.pell.short = true; d.pell.log = ['fog', 'vale', 'fog', 'kite'];
+    const h = d.harbor;
+    const LOG = ['ash', 'tide', 'glass', 'ash', 'ember', 'moss', 'tide'];
+    if (s === 'fresh') { /* nothing found */ }
+    else if (s === 'complete') {
+      for (const c of envById('harbor').cards) h.found[c.id] = c.want;
+      h.log = LOG.concat(['amber', 'ember', 'mirror', 'moss', 'river']);
+    } else {
+      Object.assign(h.found, { ash: 2, ember: 1, glass: 1, moss: 1, tide: 2 });
+      h.log = LOG.slice();
+      if (s === 'short') h.short = true;
+      if (s === 'extra') { h.extras = ['Copper Lantern']; h.log.push('x:Copper Lantern'); }
+    }
+    return d;
+  }
+
+  const S = { c: 'ledger', s: 'progress', t: '', v: 'list', l: '', sh: '', d: 'all', hidden: new Set(), labels: true,
+    env: 'harbor', data: seed('progress'), q: '', last: null, flash: null, filter: 'all' };
+
+  // ---------- hash ----------
+  function readHash() {
+    const p = new URLSearchParams(location.hash.slice(1));
+    if (p.get('c') === 'ledger' || p.get('c') === 'board') S.c = p.get('c');
+    if (STATES.includes(p.get('s'))) S.s = p.get('s');
+    S.t = ['light', 'dark'].includes(p.get('t')) ? p.get('t') : '';
+    S.v = p.get('v') === 'env' ? 'env' : (p.has('v') ? 'list' : S.v);
+    S.l = /^[A-Z#]$/.test(p.get('l') || '') ? p.get('l') : '';
+    S.sh = ['finish', 'envs', 'extra'].includes(p.get('sh')) ? p.get('sh') : '';
+    S.d = ['all', 'folded', 'open', 'phone', 'ax'].includes(p.get('d')) ? p.get('d') : 'all';
+    S.hidden = new Set((p.get('h') || '').split(',').filter(x => x === 'ledger' || x === 'board'));
+    S.labels = p.get('n') !== '0';
+    S.data = seed(S.s); S.env = 'harbor'; S.q = ''; S.last = null; S.filter = p.get('f') === 'left' ? 'left' : 'all';
+  }
+  function writeHash() {
+    const p = new URLSearchParams();
+    p.set('c', S.c); p.set('s', S.s);
+    if (S.t) p.set('t', S.t);
+    if (S.c === 'ledger') p.set('v', S.v);
+    if (S.l) p.set('l', S.l);
+    if (S.sh) p.set('sh', S.sh);
+    if (S.d !== 'all') p.set('d', S.d);
+    if (S.hidden.size) p.set('h', [...S.hidden].join(','));
+    if (!S.labels) p.set('n', '0');
+    if (S.filter === 'left') p.set('f', 'left');
+    history.replaceState(null, '', '#' + p.toString());
+  }
+
+  // ---------- data helpers ----------
+  const esc = s => String(s).replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+  function tally(id) {
+    const e = envById(id), st = S.data[id];
+    let total = 0, found = 0;
+    for (const c of e.cards) { total += c.want; found += Math.min(st.found[c.id] || 0, c.want); }
+    const left = total - found;
+    return { total, found, left, complete: left === 0, short: st.short && left > 0, extras: st.extras.length };
+  }
+  const letterOf = name => { const ch = name.trim()[0].toUpperCase(); return /[A-Z]/.test(ch) ? ch : '#'; };
+  function letters(id) {
+    const map = new Map();
+    for (const c of envById(id).cards) { const L = letterOf(c.name); if (!map.has(L)) map.set(L, []); map.get(L).push(c); }
+    return [...map.entries()].sort((a, b) => a[0] === '#' ? 1 : b[0] === '#' ? -1 : a[0].localeCompare(b[0]));
+  }
+  const cardById = (envId, cid) => envById(envId).cards.find(c => c.id === cid);
+  function statusText(id) {
+    const t = tally(id);
+    if (t.complete) return 'Complete';
+    if (t.short) return 'Short by ' + t.left;
+    if (t.found === 0) return 'Not started, ' + t.total + ' cards';
+    return t.found + ' of ' + t.total;
+  }
+
+  // ---------- acts ----------
+  function find(cid) {
+    const st = S.data[S.env], c = cardById(S.env, cid);
+    if (!c) return;
+    if ((st.found[cid] || 0) >= c.want) return;
+    st.found[cid] = (st.found[cid] || 0) + 1;
+    st.log.push(cid);
+    if (tally(S.env).complete) st.short = false;
+    S.last = cid; S.flash = cid;
+  }
+  function undo(cid) {
+    const st = S.data[S.env];
+    if (!(st.found[cid] > 0)) return;
+    st.found[cid] -= 1;
+    const i = st.log.lastIndexOf(cid); if (i >= 0) st.log.splice(i, 1);
+    S.last = null; S.flash = null;
+  }
+  function undoAt(i) {
+    const st = S.data[S.env], id = st.log[i];
+    if (id === undefined) return;
+    if (id.startsWith('x:')) { st.log.splice(i, 1); const k = st.extras.indexOf(id.slice(2)); if (k >= 0) st.extras.splice(k, 1); }
+    else { st.found[id] -= 1; st.log.splice(i, 1); }
+    S.last = null;
+  }
+  function addExtra(name) {
+    name = name.trim(); if (!name) return;
+    const st = S.data[S.env]; st.extras.push(name); st.log.push('x:' + name); S.q = ''; S.sh = '';
+  }
+  const nextOf = () => ENVS.find(e => e.id !== S.env && !tally(e.id).complete && !S.data[e.id].short);
+  // The next envelope is named on the screen, so the press has no surprise. With none left, the control leads to the envelope list.
+  function nextBlock(listAct) {
+    const n = nextOf();
+    if (!n) return '<p class="callout">Every envelope is checked.</p><button class="btn quiet" data-act="' + listAct + '">Envelopes</button>';
+    return '<button class="btn" data-act="next">Next envelope</button><p class="foot muted num">' + esc(n.sender) + ', ' + tally(n.id).total + ' cards</p>';
+  }
+  function nextEnv() {
+    const n = nextOf();
+    if (n) { S.env = n.id; S.v = 'env'; S.l = ''; S.last = null; S.q = ''; }
+  }
+
+  // ---------- shared pieces ----------
+  const ICON = {
+    search: '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l4.5 4.5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    check: '<svg class="ok" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="11" fill="currentColor"/><path d="M7 12.5l3.2 3.2L17 9" fill="none" stroke="var(--surface-raised)" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    back: '<svg class="icon" viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    chev: '<svg class="icon chev" viewBox="0 0 12 20" aria-hidden="true"><path d="M2 2l8 8-8 8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    down: '<svg class="icon" viewBox="0 0 20 12" aria-hidden="true"><path d="M2 2l8 8 8-8" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+    minus: '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><circle cx="10" cy="10" r="9" fill="none" stroke="currentColor" stroke-width="1.6"/><path d="M6 10h8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>',
+    uturn: '<svg class="icon" viewBox="0 0 20 20" aria-hidden="true"><path d="M7 4L3 8l4 4" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M3 8h9a5 5 0 010 10H8" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>'
+  };
+  const status = () => '<div class="status" aria-hidden="true"><span>9:41</span><span class="status-icons"><i></i><i></i></span></div>';
+  const home = () => '<div class="home" aria-hidden="true"><i></i></div>';
+  function ring(id) {
+    const t = tally(id), C = 2 * Math.PI * 11, frac = t.total ? t.found / t.total : 0;
+    const cls = t.complete ? 'complete' : t.short ? 'short' : '';
+    return '<svg class="ring ' + cls + '" viewBox="0 0 28 28" aria-hidden="true"><circle class="track" cx="14" cy="14" r="11" fill="none" stroke-width="4"/>' +
+      '<circle class="arc" cx="14" cy="14" r="11" fill="none" stroke-width="4" stroke-linecap="round" stroke-dasharray="' + (C * frac).toFixed(2) + ' ' + C.toFixed(2) + '" transform="rotate(-90 14 14)"/></svg>';
+  }
+  function pips(c, st) {
+    let out = '';
+    const got = Math.min(st.found[c.id] || 0, c.want);
+    for (let i = 0; i < c.want; i++) out += '<i class="pip' + (i < got ? ' found' : '') + '"></i>';
+    return '<span class="pips" aria-hidden="true">' + out + '</span>';
+  }
+  function stateBox(kind) {
+    if (S.s === 'empty') return '<div class="state-box"><p class="callout">Envelopes appear here when you add an order.</p><button class="btn" data-act="preset" data-s="fresh">Add an order</button></div>';
+    if (S.s === 'error') return '<div class="state-box"><p class="callout">The envelope list did not load. Your marks on this phone are kept.</p><button class="btn" data-act="preset" data-s="progress">Try again</button>' +
+      '<details class="machine"><summary>What the server said</summary><p class="foot">Sample: request timed out after 30 s.</p></details></div>';
+    return null;
+  }
+  function finishSheet() {
+    const e = envById(S.env), st = S.data[S.env], t = tally(S.env);
+    const miss = e.cards.filter(c => (st.found[c.id] || 0) < c.want);
+    return '<div class="scrim" data-act="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Finish envelope">' +
+      '<div class="sheet-bar"><button class="link" data-act="close-sheet">Cancel</button><span class="head">Finish envelope</span><button class="link strong" data-act="mark-short">Mark short</button></div>' +
+      '<p class="callout">' + t.left + (t.left === 1 ? ' card is' : ' cards are') + ' not in the envelope. Marking it short keeps this list, so a late card can still be found.</p>' +
+      '<ul>' + miss.map(c => '<li><span>' + esc(c.name) + '</span><span class="muted num">' + (c.want - (st.found[c.id] || 0)) + ' missing</span></li>').join('') + '</ul></div>';
+  }
+  function envsSheet() {
+    return '<div class="scrim" data-act="close-sheet"></div><div class="sheet" role="dialog" aria-modal="true" aria-label="Envelopes">' +
+      '<div class="sheet-bar"><span></span><span class="head">Envelopes</span><button class="link strong" data-act="close-sheet">Done</button></div>' +
+      '<ul class="env-list">' + ENVS.map(e => '<li><button class="env-row" data-act="pick-env" data-env="' + e.id + '"' + (e.id === S.env ? ' aria-current="true"' : '') + '>' + ring(e.id) +
+        '<span class="who"><span>' + esc(e.sender) + '</span><span class="foot muted num">' + statusText(e.id) + '</span></span>' + ICON.chev + '</button></li>').join('') + '</ul></div>';
+  }
+
+  // ---------- Ledger ----------
+  function ledgerList(selected) {
+    const box = stateBox();
+    let body;
+    if (S.s === 'loading') {
+      body = '<ul class="env-list" aria-busy="true" aria-label="Loading envelopes">' + [1, 2, 3, 4].map(() => '<li class="env-row"><span class="skel" style="width:28px;height:28px;border-radius:50%"></span><span class="skel" style="height:20px;width:70%"></span><span></span></li>').join('') + '</ul>';
+    } else if (box) body = box;
+    else body = '<ul class="env-list" data-new="envelope list">' + ENVS.map(e => '<li><button class="env-row" data-act="open-env" data-env="' + e.id + '"' + (selected && e.id === S.env ? ' aria-current="true"' : '') + '>' + ring(e.id) +
+      '<span class="who"><span class="head">' + esc(e.sender) + '</span><span class="foot muted num">' + statusText(e.id) + '</span></span>' + ICON.chev + '</button></li>').join('') + '</ul>';
+    return status() + '<div class="main"><div class="nav-bar"></div><h2 class="large">Envelopes</h2>' + body + '</div>' + home();
+  }
+  function ledgerEnv(showBack) {
+    const e = envById(S.env), st = S.data[S.env], t = tally(S.env);
+    const q = S.q.trim().toLowerCase();
+    const pcls = t.complete ? 'complete' : t.short ? 'short' : '';
+    const big = t.complete ? 'Envelope complete' : t.short ? 'Short by ' + t.left : t.left + ' to find';
+    let seg = '';
+    for (const c of e.cards) { const got = Math.min(st.found[c.id] || 0, c.want); for (let i = 0; i < c.want; i++) seg += '<i class="' + (i < got ? 'on' : '') + '"></i>'; }
+    const prog = '<section class="progress ' + pcls + '"' + (S._kind === 'folded' ? ' id="ledger-progress"' : '') + ' data-new="running count" aria-live="polite">' +
+      '<div class="progress-head"><p class="large num">' + big + '</p><p class="callout muted num">' + t.found + ' of ' + t.total + ' found' + (t.extras ? ', ' + t.extras + ' extra' : '') + '</p></div>' +
+      '<div class="segbar" aria-hidden="true">' + seg + '</div></section>';
+    const rows = e.cards.filter(c => (!q || c.name.toLowerCase().includes(q)) && (S.filter === 'all' || (st.found[c.id] || 0) < c.want)).map(c => {
+      const got = Math.min(st.found[c.id] || 0, c.want), done = got >= c.want;
+      const missing = t.short && !done;
+      return '<li class="row' + (done ? ' done' : '') + (missing ? ' missing' : '') + (S.flash === c.id ? ' flash' : '') + '">' +
+        '<button class="row-main" data-act="find" data-card="' + c.id + '"' + (done ? ' aria-disabled="true" title="All ' + c.want + ' found"' : '') +
+        ' aria-label="' + esc(c.name) + ', ' + got + ' of ' + c.want + ' found' + (done ? '' : '. Mark one found') + '">' +
+        '<span class="mark">' + (done ? ICON.check : '<span class="ring-o"></span>') + '</span><span class="name">' + esc(c.name) + '</span><span class="count num muted">' + got + ' of ' + c.want + '</span></button>' +
+        '<button class="undo" data-act="undo" data-card="' + c.id + '" aria-label="Take back one ' + esc(c.name) + '"' + (got ? '' : ' aria-hidden="true" tabindex="-1"') + '>' + ICON.minus + '</button></li>';
+    });
+    let nomatch = '';
+    if (q && !rows.length) {
+      nomatch = '<li class="nomatch"><p class="callout">No card named “' + esc(S.q.trim()) + '” is on this list.</p><button class="btn quiet" data-act="add-extra">Add “' + esc(S.q.trim()) + '” as an extra card</button></li>';
+    } else if (!q && S.filter === 'left' && !rows.length) {
+      nomatch = '<li class="nomatch"><p class="callout">Every card is found.</p><button class="btn quiet" data-act="filter" data-f="all">Show all cards</button></li>';
+    }
+    const extras = st.extras.map(x => '<li class="row extra"><span class="row-main" role="text"><span class="mark">+</span><span class="name">' + esc(x) + '</span><span class="count">Not on the list</span></span><span></span></li>').join('');
+    const segc = '<div class="seg" role="group" aria-label="Show"><button data-act="filter" data-f="all" aria-pressed="' + (S.filter === 'all') + '">All ' + e.cards.length + ' names</button><button data-act="filter" data-f="left" aria-pressed="' + (S.filter === 'left') + '">Still to find</button></div>';
+    let bottom;
+    if (t.complete) bottom = nextBlock('back');
+    else if (t.short) bottom = '<button class="btn quiet" data-act="reopen">Reopen envelope</button>';
+    else bottom = '<label class="field" data-new="name field">' + ICON.search + '<input data-act="q" type="search" enterkeyhint="done" autocomplete="off" placeholder="Card name" aria-label="Find a card by name" value="' + esc(S.q) + '"></label>';
+    const nav = '<div class="nav-bar">' + (showBack ? '<button class="link" data-act="back">' + ICON.back + 'Envelopes</button>' : '') + '<span class="spacer"></span>' +
+      (!t.complete && !t.short ? '<button class="link strong" data-act="finish">Finish</button>' : '') + '</div>';
+    return status() + '<div class="main">' + nav + '<div><h2 class="title1">' + esc(e.sender) + '</h2><p class="foot muted num">' + t.total + ' cards expected, ' + e.cards.length + ' names</p></div>' +
+      prog + segc + '<ul class="rows">' + rows.join('') + nomatch + extras + '</ul></div><div class="bottom">' + bottom + '</div>' + home() +
+      (S.sh === 'finish' ? finishSheet() : '');
+  }
+  function renderLedger(kind) {
+    const listState = LIST_STATES.includes(S.s);
+    if (kind === 'open-l') return ledgerList(true);
+    if (kind === 'open-r') {
+      if (listState) return status() + '<div class="main"><div class="nav-bar"></div><p class="callout muted">' + (S.s === 'loading' ? '' : 'Open an envelope from the list.') + '</p></div>' + home();
+      return ledgerEnv(false);
+    }
+    if (listState || S.v === 'list') return ledgerList(false);
+    return ledgerEnv(true);
+  }
+
+  // ---------- Letter board ----------
+  function boardCount(id) {
+    const t = tally(S.env);
+    const cls = t.complete ? 'complete' : t.short ? 'short' : '';
+    const big = t.complete ? 'Envelope complete' : t.short ? 'Short by ' + t.left : t.left + ' to find';
+    return '<section class="b-count ' + cls + '" aria-live="polite"' + (id ? ' id="' + id + '"' : '') + '><p class="large num">' + big + '</p><p class="callout muted num">' + t.found + ' of ' + t.total + ' found' + (t.extras ? ', ' + t.extras + ' extra' : '') + '</p></section>';
+  }
+  function boardGrid(id) {
+    if (S.s === 'loading') return '<div class="board" aria-busy="true" aria-label="Loading envelope">' + [1, 2, 3, 4, 5, 6].map(() => '<span class="tile skel"></span>').join('') + '</div>';
+    const st = S.data[S.env], t = tally(S.env), L = letters(S.env);
+    return '<div class="board' + (L.length > 12 ? ' many' : '') + (t.short ? ' is-short' : '') + '"' + (id ? ' id="' + id + '"' : '') + ' role="group" aria-label="First letters" data-new="letter board">' + L.map(([letter, cards]) => {
+      const left = cards.reduce((n, c) => n + Math.max(0, c.want - (st.found[c.id] || 0)), 0);
+      const all = cards.reduce((n, c) => n + c.want, 0);
+      // Dots still to find come first, so a tile reads as "how many left" at a glance.
+      let p = '<i class="pip"></i>'.repeat(left) + '<i class="pip found"></i>'.repeat(all - left);
+      return '<button class="tile' + (left === 0 ? ' clear' : '') + '" data-act="letter" data-l="' + letter + '" aria-pressed="' + (S.l === letter) + '" aria-label="' + letter + ', ' + left + ' of ' + all + ' still to find">' +
+        '<span class="letter">' + letter + (left === 0 ? ICON.check : '') + '</span><span class="pips" aria-hidden="true">' + p + '</span></button>';
+    }).join('') + '</div>';
+  }
+  function trayBody(roomy) {
+    const e = envById(S.env), st = S.data[S.env], t = tally(S.env);
+    const lastName = S.last ? (cardById(S.env, S.last) || {}).name : '';
+    const undoBtn = S.last ? '<button class="link" data-act="undo-last">' + ICON.uturn + 'Undo</button>' : '';
+    if (S.s === 'loading') return '<div class="tray-head"><span class="what callout muted"></span></div><span class="skel" style="height:56px"></span><span class="skel" style="height:56px"></span>';
+    if (t.complete) return '<div class="tray-head"><span class="what callout">' + (lastName ? 'Found ' + esc(lastName) + ', the last card.' : '') + '</span>' + undoBtn + '</div>' + nextBlock('envs');
+    if (t.short) {
+      const miss = e.cards.filter(c => (st.found[c.id] || 0) < c.want);
+      return '<div class="tray-head"><span class="what callout">Not in the envelope</span></div><div class="names is-short">' + miss.map(c =>
+        '<button class="name-btn" data-act="find" data-card="' + c.id + '">' + esc(c.name) + '<span class="right">' + pips(c, st) + '</span></button>').join('') +
+        '</div><button class="btn quiet" data-act="reopen">Reopen envelope</button>';
+    }
+    if (S.sh === 'extra') {
+      return '<div class="tray-head"><button class="link" data-act="close-sheet">Cancel</button><span class="what head" style="text-align:center">Card not on the list</span><button class="link strong" data-act="add-extra">Add</button></div>' +
+        '<label class="field">' + ICON.search + '<input data-act="q" autocomplete="off" placeholder="Name on the card" aria-label="Name on the card" value="' + esc(S.q) + '"></label>' +
+        '<p class="foot muted">It is kept with this envelope as an extra card. It does not change the count.</p>';
+    }
+    if (!S.l) {
+      return '<div class="tray-head"><span class="what callout">' + (lastName ? 'Found ' + esc(lastName) + '. Tap the next first letter.' : 'Tap the first letter of the card’s name.') + '</span>' + undoBtn + '</div>' +
+        '<p class="foot muted">Each filled dot is a card still to find. A hollow dot is found.</p>' +
+        (roomy ? '' : '<button class="link" data-act="extra">Card not on the list</button>');
+    }
+    const cards = letters(S.env).find(([L]) => L === S.l);
+    const list = cards ? cards[1] : [];
+    return '<div class="tray-head"><span class="what title3">' + S.l + '</span>' + (lastName ? '<span class="foot muted">Found ' + esc(lastName) + '</span>' : '') + undoBtn + '</div>' +
+      '<div class="names" data-new="name tray">' + list.map(c => {
+        const got = Math.min(st.found[c.id] || 0, c.want), done = got >= c.want;
+        return '<button class="name-btn' + (S.flash === c.id ? ' flash' : '') + '" data-act="find" data-card="' + c.id + '"' + (done ? ' aria-disabled="true" title="All ' + c.want + ' found"' : '') +
+          ' aria-label="' + esc(c.name) + ', ' + got + ' of ' + c.want + ' found">' + esc(c.name) + '<span class="right">' + pips(c, st) + (done ? ICON.check : '') + '</span></button>';
+      }).join('') + '</div><button class="link" data-act="extra">Card not on the list</button>';
+  }
+  function boardTop() {
+    const t = tally(S.env);
+    return '<div class="b-top"><button class="env-switch" data-act="envs" aria-label="Envelope: ' + esc(envById(S.env).sender) + '. Change envelope">' + esc(envById(S.env).sender) + ICON.down + '</button><span class="spacer"></span>' +
+      (!t.complete && !t.short && S.s !== 'loading' ? '<button class="link strong" data-act="finish">Finish</button>' : '') + '</div>';
+  }
+  function boardLog() {
+    const st = S.data[S.env];
+    if (!st.log.length) return '<p class="foot muted">Cards you find show here in the order you find them.</p>';
+    return '<ol class="log" aria-label="Found in this envelope">' + st.log.map((id, i) => {
+      const name = id.startsWith('x:') ? id.slice(2) : (cardById(S.env, id) || {}).name;
+      return '<li><span>' + esc(name) + (id.startsWith('x:') ? ' <span class="foot extra-tag">extra</span>' : '') + '</span><button class="undo" data-act="undo-at" data-i="' + i + '" aria-label="Take back ' + esc(name) + '">' + ICON.uturn + '</button></li>';
+    }).join('') + '</ol>';
+  }
+  function renderBoard(kind) {
+    const box = stateBox();
+    const sheet = (S.sh === 'finish' ? finishSheet() : S.sh === 'envs' ? envsSheet() : '');
+    if (box) {
+      if (kind === 'open-r') return status() + '<div class="main"></div>' + home();
+      return status() + '<div class="main"><div class="b-top"></div><h2 class="large">Envelope</h2>' + box + '</div>' + home();
+    }
+    const fid = kind === 'folded' ? 'board-letters' : '';
+    if (kind === 'open-l') return status() + '<div class="main">' + boardTop() + boardCount() + boardGrid('') + '</div>' + home() + sheet;
+    if (kind === 'open-r') return status() + '<div class="main"><div class="b-top"></div><section class="tray">' + trayBody(true) + '</section>' +
+      '<section class="page-board"><h3 class="head">Found in this envelope</h3>' + boardLog() + '</section></div>' + home();
+    if (kind === 'ax') return status() + '<div class="main">' + boardTop() + boardCount() + boardGrid('') + '<section class="tray">' + trayBody(false) + '</section></div>' + home() + sheet;
+    return status() + '<div class="main" style="flex:none;overflow:visible">' + boardTop() + boardCount(kind === 'folded' ? 'board-count' : '') + boardGrid(fid) + '</div>' +
+      '<section class="tray">' + trayBody(false) + '</section>' + home() + sheet;
+  }
+
+  // ---------- render ----------
+  function render() {
+    const root = document.documentElement;
+    if (S.t) root.setAttribute('data-theme', S.t); else root.removeAttribute('data-theme');
+    document.body.classList.toggle('labels-on', S.labels);
+    if (S.hidden.has(S.c)) { const other = S.c === 'ledger' ? 'board' : 'ledger'; if (!S.hidden.has(other)) S.c = other; }
+    const allHidden = S.hidden.has('ledger') && S.hidden.has('board');
+
+    document.querySelectorAll('[data-ui]').forEach(b => {
+      const k = b.dataset.ui, v = b.dataset.v;
+      if (k === 'c') b.setAttribute('aria-pressed', String(S.c === v));
+      if (k === 's') b.setAttribute('aria-pressed', String(S.s === v));
+      if (k === 't') b.setAttribute('aria-pressed', String(S.t === v));
+      if (k === 'd') b.setAttribute('aria-pressed', String(S.d === v));
+      if (k === 'labels') b.setAttribute('aria-pressed', String(S.labels));
+      if (k === 'unhide') b.hidden = S.hidden.size === 0 || b.closest('#all-hidden') !== null;
+    });
+    document.querySelectorAll('[data-opt]').forEach(o => { o.hidden = S.hidden.has(o.dataset.opt); });
+    document.getElementById('all-hidden').hidden = !allHidden;
+    document.getElementById('concept-line').textContent = allHidden ? '' : DESCRIBE[S.c];
+
+    // keep the caret in the field the person types in
+    const a = document.activeElement;
+    let keep = null;
+    if (a && a.matches('input[data-act="q"]')) keep = { dev: a.closest('.device').id, kind: a.closest('.screen').dataset.kind, pos: a.selectionStart };
+
+    document.querySelectorAll('.stage').forEach(stage => {
+      const c = stage.dataset.concept;
+      stage.hidden = allHidden || c !== S.c;
+      stage.querySelectorAll('figure').forEach(f => { f.hidden = S.d !== 'all' && f.dataset.fig !== S.d; });
+      if (stage.hidden) return;
+      stage.querySelectorAll('.screen').forEach(sc => {
+        S._kind = sc.dataset.kind;
+        sc.innerHTML = c === 'ledger' ? renderLedger(sc.dataset.kind) : renderBoard(sc.dataset.kind);
+      });
+    });
+    if (keep) {
+      const inp = document.querySelector('#' + keep.dev + ' .screen[data-kind="' + keep.kind + '"] input[data-act="q"]');
+      if (inp) { inp.focus(); try { inp.setSelectionRange(keep.pos, keep.pos); } catch (e) { /* type=search */ } }
+    }
+    S.flash = null;
+    writeHash();
+  }
+
+  // ---------- events ----------
+  document.addEventListener('click', ev => {
+    const ui = ev.target.closest('[data-ui]');
+    if (ui) {
+      const k = ui.dataset.ui, v = ui.dataset.v;
+      if (k === 'c') { S.c = v; S.sh = ''; }
+      if (k === 's') { S.s = v; S.data = seed(v); S.env = 'harbor'; S.q = ''; S.last = null; S.sh = ''; if (!LIST_STATES.includes(v)) S.v = 'env'; }
+      if (k === 't') S.t = v;
+      if (k === 'd') S.d = v;
+      if (k === 'labels') S.labels = !S.labels;
+      if (k === 'hide') S.hidden.add(v);
+      if (k === 'unhide') S.hidden.clear();
+      if (k === 'reset') { S.data = seed(S.s); S.env = 'harbor'; S.q = ''; S.last = null; S.sh = ''; S.l = ''; S.filter = 'all'; }
+      render(); return;
+    }
+    const el = ev.target.closest('[data-act]');
+    if (!el || el.matches('input')) return;
+    const act = el.dataset.act;
+    if (el.getAttribute('aria-disabled') === 'true') return;
+    switch (act) {
+      case 'find': find(el.dataset.card); break;
+      case 'undo': undo(el.dataset.card); break;
+      case 'undo-last': if (S.last) undo(S.last); break;
+      case 'undo-at': undoAt(Number(el.dataset.i)); break;
+      case 'open-env': S.env = el.dataset.env; S.v = 'env'; S.q = ''; S.last = null; S.l = ''; break;
+      case 'pick-env': S.env = el.dataset.env; S.sh = ''; S.l = ''; S.last = null; break;
+      case 'back': S.v = 'list'; S.sh = ''; break;
+      case 'finish': S.sh = 'finish'; break;
+      case 'envs': S.sh = 'envs'; break;
+      case 'extra': S.sh = 'extra'; S.q = ''; break;
+      case 'close-sheet': S.sh = ''; S.q = ''; break;
+      case 'mark-short': S.data[S.env].short = true; S.sh = ''; S.q = ''; break;
+      case 'reopen': S.data[S.env].short = false; break;
+      case 'next': nextEnv(); break;
+      case 'letter': S.l = S.l === el.dataset.l ? '' : el.dataset.l; S.sh = ''; break;
+      case 'filter': S.filter = el.dataset.f; break;
+      case 'add-extra': addExtra(S.q); break;
+      case 'preset': S.s = el.dataset.s; S.data = seed(S.s); S.env = 'harbor'; S.v = 'list'; break;
+      default: return;
+    }
+    render();
+  });
+  document.addEventListener('input', ev => {
+    if (ev.target.matches('input[data-act="q"]')) { S.q = ev.target.value; render(); }
+  });
+  document.addEventListener('keydown', ev => {
+    if (ev.key === 'Escape' && S.sh) { S.sh = ''; render(); return; }
+    if (ev.key !== 'Enter' || !ev.target.matches('input[data-act="q"]')) return;
+    ev.preventDefault();
+    if (S.sh === 'extra') { addExtra(S.q); render(); return; }
+    const q = S.q.trim().toLowerCase(); if (!q) return;
+    const st = S.data[S.env];
+    const open = envById(S.env).cards.filter(c => c.name.toLowerCase().includes(q) && (st.found[c.id] || 0) < c.want);
+    if (open.length === 1) { find(open[0].id); S.q = ''; render(); }
+  });
+  window.addEventListener('hashchange', () => { readHash(); render(); });
+
+  readHash();
+  if (!location.hash) { S.v = 'list'; }
+  render();
+})();
+</script>
+</body>
+</html>

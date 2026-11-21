@@ -1,0 +1,994 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tracking checker concepts</title>
+<style>
+/* House tokens: 4 px step, 8 px radius (tokens.md). Colours are this designer's own choice. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px; --space-14: 56px;
+  --radius: 8px;
+  /* iOS Dynamic Type, Large (default) size, from the HIG typography page */
+  --fs-lt: 34px; --lh-lt: 41px;
+  --fs-t2: 22px; --lh-t2: 28px;
+  --fs-t3: 20px; --lh-t3: 25px;
+  --fs-head: 17px; --lh-head: 22px;
+  --fs-body: 17px; --lh-body: 22px;
+  --fs-sub: 15px; --lh-sub: 20px;
+  --fs-foot: 13px; --lh-foot: 18px;
+  --fs-cap: 12px; --lh-cap: 16px;
+  --tap: 44px;
+  /* Drawn safe areas: no page read gives a Duo status bar or home indicator height (see notes) */
+  --sa-top: 44px; --sa-bottom: 20px;
+
+  --surface: #EDF1F5;
+  --surface-raised: #FFFFFF;
+  --surface-sunk: #E1E7EE;
+  --text: #13202E;
+  --text-muted: #4D5B6B;
+  --line: #C6D0DB;
+  --accent: #2B47C9;
+  --on-accent: #FFFFFF;
+  --accent-soft: #DDE3FA;
+  --v-moving: #2A63A8;
+  --v-done: #1C7246;
+  --v-alarm: #B42B24;
+  --v-stuck: #95510A;
+  --v-returned: #6343A0;
+  --v-none: #5E6B79;
+  --band: #F8E4E1;
+  --bezel: #2A3038;
+  --page: #D9DFE6;
+  --note: #8A4B00;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #10151B; --surface-raised: #1B222B; --surface-sunk: #0A0E12;
+    --text: #E6ECF2; --text-muted: #A2AFBD; --line: #33404E;
+    --accent: #93A6FF; --on-accent: #0D1433; --accent-soft: #232D55;
+    --v-moving: #7FB2EE; --v-done: #6BCB97; --v-alarm: #FF8D84; --v-stuck: #F0B465;
+    --v-returned: #BBA3F2; --v-none: #98A5B3; --band: #3A1F1E; --bezel: #000000; --page: #1F252C;
+    --note: #F0B465;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #10151B; --surface-raised: #1B222B; --surface-sunk: #0A0E12;
+  --text: #E6ECF2; --text-muted: #A2AFBD; --line: #33404E;
+  --accent: #93A6FF; --on-accent: #0D1433; --accent-soft: #232D55;
+  --v-moving: #7FB2EE; --v-done: #6BCB97; --v-alarm: #FF8D84; --v-stuck: #F0B465;
+  --v-returned: #BBA3F2; --v-none: #98A5B3; --band: #3A1F1E; --bezel: #000000; --page: #1F252C;
+  --note: #F0B465;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page); color: var(--text);
+  font-family: -apple-system, system-ui, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  font-size: var(--fs-body); line-height: var(--lh-body);
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Page chrome around the device frames (the viewer, not the app) ---------- */
+.sample {
+  background: var(--v-stuck); color: var(--surface-raised);
+  padding: var(--space-2) var(--space-4); font-weight: 600; font-size: var(--fs-sub);
+}
+.viewer { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-4); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: center; font-size: var(--fs-sub); }
+.controls .group { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+.seg { display: inline-flex; border: 1px solid var(--line); border-radius: var(--radius); overflow: hidden; background: var(--surface-raised); }
+.seg button { border: 0; background: transparent; padding: var(--space-2) var(--space-3); min-height: 36px; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); }
+.kind { font-weight: 600; }
+.hidden-list { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; font-size: var(--fs-sub); }
+.hidden-list:empty { display: none; }
+.chip-btn { border: 1px solid var(--line); background: var(--surface-raised); border-radius: var(--radius); padding: var(--space-1) var(--space-3); min-height: 32px; cursor: pointer; }
+
+.concept { display: flex; flex-direction: column; gap: var(--space-3); padding-block: var(--space-4); border-top: 1px solid var(--line); }
+.concept[hidden] { display: none; }
+.concept:focus { outline: none; }
+.concept-head { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: baseline; }
+.concept-head h2 { margin: 0; font-size: var(--fs-t2); line-height: var(--lh-t2); }
+.concept-head p { margin: 0; color: var(--text-muted); max-width: 70ch; flex: 1 1 30ch; }
+.concept-head .chip-btn { margin-inline-start: auto; }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+figcaption { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; font-size: var(--fs-foot); color: var(--text-muted); }
+.tag-new, .tag-today {
+  border: 1.5px dashed var(--accent); border-radius: var(--radius); padding: 0 var(--space-2);
+  color: var(--accent); font-size: var(--fs-cap); line-height: 20px;
+}
+.tag-today { border-color: var(--text-muted); color: var(--text-muted); }
+
+/* ---------- Device frames ---------- */
+.device {
+  position: relative; overflow: hidden; flex: none;
+  border: 10px solid var(--bezel); border-radius: 36px; background: var(--surface);
+  box-sizing: content-box;
+}
+.device[data-device="iphone-duo-folded"] { width: 466px; height: 678px; }
+.device[data-device="iphone-duo-unfolded"] { width: 951px; height: 669px; }
+.device[data-device="iphone-regular"] { width: 440px; height: 956px; }
+.device .pane { position: absolute; top: 0; bottom: 0; overflow: hidden; }
+.device .pane.solo { left: 0; right: 0; }
+.device .pane.left { left: 0; width: 455.5px; }
+.device .pane.right { left: 495.5px; width: 455.5px; }
+.device .hinge { position: absolute; top: 0; bottom: 0; left: 455.5px; width: 40px; background: var(--bezel); }
+
+.screen {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  background: var(--surface); container-type: inline-size;
+}
+.sbar {
+  flex: none; height: max(env(safe-area-inset-top), var(--sa-top));
+  display: flex; align-items: center; justify-content: space-between;
+  padding-inline: var(--space-8); font-size: 15px; line-height: 20px; font-weight: 600; /* system chrome: does not scale with Dynamic Type */
+}
+.sbar .icons { display: flex; gap: var(--space-1); }
+.sbar .icons i { display: block; width: 16px; height: 10px; border-radius: 2px; background: var(--text); opacity: .8; }
+.home-ind {
+  position: absolute; left: 50%; bottom: 6px; transform: translateX(-50%);
+  width: 134px; height: 5px; border-radius: 3px; background: var(--text); opacity: .7; z-index: 5;
+}
+.scroll {
+  flex: 1; overflow-y: auto; overscroll-behavior: contain;
+  padding: 0 var(--space-4) calc(max(env(safe-area-inset-bottom), var(--sa-bottom)) + 140px);
+  display: flex; flex-direction: column; gap: var(--space-4);
+}
+.scroll.no-tab { padding-bottom: calc(max(env(safe-area-inset-bottom), var(--sa-bottom)) + 120px); }
+.scroll.with-actions { padding-bottom: calc(max(env(safe-area-inset-bottom), var(--sa-bottom)) + 220px); }
+.scroll.with-actions.no-tab { padding-bottom: calc(max(env(safe-area-inset-bottom), var(--sa-bottom)) + 150px); }
+.lt { margin: 0; font-size: var(--fs-lt); line-height: var(--lh-lt); font-weight: 700; padding-top: var(--space-1); }
+.subtitle { margin: 0; font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-muted); }
+.navbar {
+  flex: none; display: flex; align-items: center; gap: var(--space-1);
+  min-height: var(--tap); padding-inline: var(--space-2);
+}
+.navbar .title { flex: 1; text-align: center; font-weight: 600; font-size: var(--fs-head); margin-inline-end: 96px; }
+.back {
+  display: inline-flex; align-items: center; gap: var(--space-1); min-height: var(--tap); min-width: 96px;
+  border: 0; background: none; color: var(--accent); font-size: var(--fs-body); cursor: pointer; padding: 0 var(--space-2);
+}
+.back svg { width: 22px; height: 22px; }
+
+/* Tab bar floats above content (HIG tab bars) */
+.tabbar {
+  position: absolute; z-index: 4; left: var(--space-4); right: var(--space-4);
+  bottom: calc(max(env(safe-area-inset-bottom), var(--sa-bottom)) + var(--space-1));
+  height: var(--space-14); border-radius: 28px; background: var(--surface-raised);
+  border: 1px solid var(--line); display: flex; align-items: stretch; padding: var(--space-1); gap: var(--space-1);
+  box-shadow: 0 6px 18px rgba(10, 20, 35, .14);
+}
+.tabbar .ph {
+  flex: 2; border: 1.5px dashed var(--text-muted); border-radius: 22px; display: flex; align-items: center; justify-content: center;
+  font-size: var(--fs-cap); color: var(--text-muted); text-align: center; padding-inline: var(--space-2);
+}
+.tabbar .tab {
+  flex: 1; border: 0; border-radius: 22px; background: var(--accent-soft); color: var(--accent);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; font-size: var(--fs-cap); font-weight: 600; min-height: var(--tap);
+}
+.tabbar .tab svg { width: 22px; height: 22px; }
+
+/* ---------- Shared parts ---------- */
+.glyph { width: 32px; height: 32px; flex: none; display: grid; place-items: center; border-radius: 50%; border: 2px solid currentColor; }
+.glyph svg { width: 18px; height: 18px; }
+.c-moving { color: var(--v-moving); } .c-done { color: var(--v-done); } .c-nothere { color: var(--v-alarm); }
+.c-stuck { color: var(--v-stuck); } .c-returned { color: var(--v-returned); } .c-none { color: var(--v-none); }
+.glyph.c-none { border-style: dashed; }
+
+.summary {
+  background: var(--surface-raised); border-radius: var(--radius); padding: var(--space-3) var(--space-4);
+  display: flex; flex-direction: column; gap: var(--space-2); border: 1px solid var(--line);
+}
+.summary p { margin: 0; }
+.summary .big { font-size: var(--fs-head); font-weight: 600; }
+.summary.alarm { border-color: var(--v-alarm); }
+.summary .row-actions { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; }
+
+.group { display: flex; flex-direction: column; gap: var(--space-1); }
+.group-head {
+  display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-foot); line-height: var(--lh-foot);
+  font-weight: 600; padding-inline: var(--space-1); color: var(--text-muted);
+}
+.group-head .count { font-variant-numeric: tabular-nums; }
+.group-head .colhead { margin-inline-start: auto; font-weight: 400; }
+.rows { display: flex; flex-direction: column; background: var(--surface-raised); border-radius: var(--radius); border: 1px solid var(--line); overflow: hidden; }
+.row {
+  display: flex; align-items: center; gap: var(--space-3); min-height: 60px; width: 100%;
+  border: 0; background: transparent; text-align: start; padding: var(--space-2) var(--space-3); cursor: pointer;
+}
+.row + .row { border-top: 1px solid var(--line); }
+.row[aria-current="true"] { background: var(--accent-soft); }
+.row .main { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.row .name { font-size: var(--fs-head); font-weight: 600; line-height: var(--lh-head); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.row .sub { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-muted); }
+.row .sub.warn { color: var(--v-stuck); }
+.row .chev { width: 16px; height: 16px; color: var(--text-muted); flex: none; }
+.ring { width: 44px; height: 44px; flex: none; position: relative; display: grid; place-items: center; font-weight: 700; font-variant-numeric: tabular-nums; font-size: var(--fs-sub); }
+.ring svg { position: absolute; inset: 0; transform: rotate(-90deg); }
+
+.skel { height: 60px; display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-3); }
+.skel + .skel { border-top: 1px solid var(--line); }
+.skel i { display: block; height: 12px; border-radius: 6px; background: var(--surface-sunk); }
+.skel .dot { width: 32px; height: 32px; border-radius: 50%; }
+
+.btn {
+  min-height: var(--tap); border-radius: var(--radius); border: 1.5px solid var(--accent); background: transparent;
+  color: var(--accent); font-weight: 600; padding: 0 var(--space-4); cursor: pointer; font-size: var(--fs-body);
+}
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.plain { border-color: transparent; padding-inline: var(--space-2); }
+.btn.wide { width: 100%; }
+
+.empty { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) var(--space-1); }
+.empty p { margin: 0; max-width: 34ch; }
+
+/* Detail */
+.hero { display: flex; gap: var(--space-3); align-items: center; padding-top: var(--space-2); }
+.hero .glyph { width: 56px; height: 56px; border-width: 3px; }
+.hero .glyph svg { width: 28px; height: 28px; }
+.hero h2 { margin: 0; font-size: var(--fs-t2); line-height: var(--lh-t2); }
+.hero .who { color: var(--text-muted); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.lead { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); max-width: 40ch; }
+.meter { display: flex; flex-direction: column; gap: var(--space-2); background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius); padding: var(--space-3) var(--space-4); }
+.meter p { margin: 0; }
+.meter .bar { height: 8px; border-radius: 4px; background: var(--surface-sunk); overflow: hidden; }
+.meter .bar i { display: block; height: 100%; border-radius: 4px; }
+.meter .fine { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--text-muted); }
+.warnline { margin: 0; color: var(--v-stuck); font-size: var(--fs-sub); line-height: var(--lh-sub); display: flex; gap: var(--space-2); align-items: flex-start; }
+.warnline svg { width: 18px; height: 18px; flex: none; margin-top: 1px; }
+details.raw { background: var(--surface-raised); border: 1px solid var(--line); border-radius: var(--radius); }
+details.raw summary { min-height: var(--tap); display: flex; align-items: center; padding: 0 var(--space-4); cursor: pointer; color: var(--accent); font-weight: 600; }
+details.raw .in { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-4) var(--space-3); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+details.raw dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: var(--space-1) var(--space-3); }
+details.raw dt { color: var(--text-muted); }
+details.raw dd { margin: 0; font-variant-numeric: tabular-nums; overflow-wrap: anywhere; }
+.actionbar {
+  position: absolute; z-index: 3; left: 0; right: 0;
+  bottom: calc(max(env(safe-area-inset-bottom), var(--sa-bottom)) + var(--space-14) + var(--space-3));
+  padding: var(--space-2) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2);
+  background: linear-gradient(to bottom, transparent, var(--surface) 30%);
+}
+.actionbar .btns { display: flex; gap: var(--space-2); }
+.actionbar .btns .btn { flex: 1; }
+.answer { min-height: var(--lh-sub); font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-muted); text-align: center; }
+.answer.ok { color: var(--v-done); }
+
+/* Sheet (HIG: Cancel leading, Done or the act trailing) */
+.sheet-scrim { position: absolute; inset: 0; background: rgba(5, 10, 20, .35); z-index: 8; }
+.sheet {
+  position: absolute; z-index: 9; left: 0; right: 0; bottom: 0; top: 56px; background: var(--surface);
+  border-radius: 16px 16px 0 0; display: flex; flex-direction: column;
+}
+.sheet .bar { display: flex; align-items: center; min-height: var(--space-14); padding: 0 var(--space-2); }
+.sheet .bar .title { flex: 1; text-align: center; font-weight: 600; font-size: var(--fs-head); }
+.sheet .bar .btn { min-width: 80px; }
+.sheet .body { padding: var(--space-2) var(--space-4) var(--space-8); display: flex; flex-direction: column; gap: var(--space-4); overflow-y: auto; }
+.field { display: flex; flex-direction: column; gap: var(--space-1); font-size: var(--fs-sub); }
+.field input, .field select {
+  font: inherit; font-size: var(--fs-body); min-height: var(--tap); border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--surface-raised); color: var(--text); padding: 0 var(--space-3);
+}
+
+/* ---------- Doorstep ---------- */
+.door-fill { flex: 1; display: flex; flex-direction: column; justify-content: flex-end; gap: var(--space-3); }
+.progress { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-foot); color: var(--text-muted); }
+.progress .dots { display: flex; gap: var(--space-1); }
+.progress .dots i { width: 8px; height: 8px; border-radius: 50%; background: var(--line); display: block; }
+.progress .dots i.on { background: var(--accent); }
+.qcard {
+  background: var(--surface-raised); border-radius: 16px; border: 1px solid var(--line);
+  padding: var(--space-5) var(--space-4) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3);
+  border-top: 6px solid currentColor;
+}
+.qcard .who { display: flex; gap: var(--space-3); align-items: center; color: var(--text); }
+.qcard .who b { font-size: var(--fs-head); }
+.qcard .q { margin: 0; font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 600; color: var(--text); }
+.qcard .ctx { margin: 0; font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-muted); }
+.qcard .answers { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); min-height: 96px; align-content: end; }
+.qcard .answers .btn { min-height: 56px; }
+.qcard .answers .said { grid-column: 1 / -1; margin: 0; color: var(--text); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.qcard .answers .said + .btn { grid-column: 1 / -1; }
+.calm { background: var(--surface-raised); border: 1px solid var(--line); border-radius: 16px; padding: var(--space-5) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.calm .big { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; margin: 0; }
+.calm p { margin: 0; color: var(--text-muted); }
+.ledger-line { display: flex; gap: var(--space-2); align-items: center; font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.ledger-line .btn { margin-inline-start: auto; min-height: var(--tap); }
+
+/* ---------- Runway ---------- */
+.rw-head { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-4); flex: none; }
+.shelf { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.pill {
+  position: relative; display: inline-flex; align-items: center; gap: var(--space-2); min-height: var(--tap);
+  border-radius: 22px; border: 2px solid currentColor; background: var(--surface-raised); padding: 0 var(--space-3) 0 var(--space-1);
+  cursor: pointer; font-size: var(--fs-sub); font-weight: 600; max-width: 100%;
+}
+.pill .glyph { width: 30px; height: 30px; border: 0; }
+.pill span.t { color: var(--text); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pill[aria-pressed="true"] { background: currentColor; }
+.pill[aria-pressed="true"] span.t, .pill[aria-pressed="true"] .glyph { color: var(--surface-raised); }
+.pill.c-none { border-style: dashed; }
+.axis-scroll { flex: 1; overflow-y: auto; overscroll-behavior: contain; position: relative; }
+.axis { position: relative; margin: 0 var(--space-4); }
+.axis .spine { position: absolute; top: 0; bottom: 0; left: 51px; width: 2px; background: var(--line); }
+.axis .band { position: absolute; left: 0; right: 0; background: var(--band); border-radius: var(--radius); }
+.axis .ties { position: absolute; inset: 0; pointer-events: none; overflow: visible; }
+.axis .tick { position: absolute; left: 0; width: 40px; text-align: end; transform: translateY(50%); font-size: var(--fs-cap); line-height: var(--lh-cap); color: var(--text-muted); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.axis .tick.zero { color: var(--v-alarm); font-weight: 700; }
+.axis .grid { position: absolute; left: 44px; width: 16px; height: 1px; background: var(--text-muted); }
+.axis .slot { position: absolute; left: 78px; right: 0; transform: translateY(50%); display: flex; }
+.rw-card {
+  position: absolute; left: 0; right: 0; z-index: 3; background: var(--surface-raised); border-radius: 16px;
+  border: 2px solid currentColor; padding: var(--space-3) var(--space-4); display: flex; flex-direction: column; gap: var(--space-2);
+  box-shadow: 0 10px 24px rgba(10, 20, 35, .22);
+}
+.rw-card .top { display: flex; align-items: center; gap: var(--space-2); color: var(--text); }
+.rw-card .top b { flex: 1; font-size: var(--fs-head); }
+.rw-card .lbl { color: currentColor; font-weight: 700; font-size: var(--fs-sub); }
+.rw-card p { margin: 0; color: var(--text); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.rw-card .btns { display: flex; gap: var(--space-2); }
+.rw-card .btns .btn { flex: 1; }
+.iconbtn { width: var(--tap); height: var(--tap); border: 0; background: none; border-radius: 50%; display: grid; place-items: center; cursor: pointer; color: var(--text-muted); }
+.iconbtn svg { width: 20px; height: 20px; }
+.key { display: flex; flex-wrap: wrap; gap: var(--space-1) var(--space-3); font-size: var(--fs-foot); line-height: var(--lh-foot); }
+.key > span { display: inline-flex; align-items: center; gap: var(--space-1); }
+.key svg { width: 14px; height: 14px; }
+.key span span { color: var(--text-muted); }
+.bands { display: flex; flex-direction: column; gap: var(--space-4); }
+
+/* ---------- Biggest accessibility size: AX5 from the HIG typography page ---------- */
+.ax {
+  --fs-lt: 60px; --lh-lt: 70px; --fs-t2: 56px; --lh-t2: 66px; --fs-t3: 55px; --lh-t3: 65px;
+  --fs-head: 53px; --lh-head: 62px; --fs-body: 53px; --lh-body: 62px; --fs-sub: 49px; --lh-sub: 58px;
+  --fs-foot: 44px; --lh-foot: 52px; --fs-cap: 43px; --lh-cap: 51px;
+}
+.ax .screen { font-size: var(--fs-body); line-height: var(--lh-body); }
+.ax .row { flex-wrap: wrap; align-items: flex-start; }
+.ax .row .main { flex-basis: 100%; order: 2; }
+.ax .row .name { white-space: normal; }
+.ax .row .chev { display: none; }
+.ax .ring { width: 64px; height: 64px; }
+.ax .glyph { width: 56px; height: 56px; }
+.ax .glyph svg { width: 32px; height: 32px; }
+.ax .tabbar { height: 72px; border-radius: 36px; }
+.ax .tabbar .ph { font-size: 15px; line-height: 18px; }
+.ax .tabbar .tab span { display: none; }
+.ax .tabbar .tab svg { width: 32px; height: 32px; }
+.ax .actionbar .btns, .ax .rw-card .btns { flex-direction: column; }
+.ax .qcard .answers { grid-template-columns: 1fr; }
+.ax .btn { min-height: 72px; }
+.ax .group-head { flex-wrap: wrap; }
+.ax .back { min-width: 0; }
+.ax .navbar .title { display: none; }
+.ax .hero { flex-direction: column; align-items: flex-start; }
+.ax .scroll { padding-bottom: 460px; }
+
+@media (forced-colors: active) {
+  .glyph, .pill, .btn, .rows, .summary, .qcard, .rw-card { border-color: CanvasText; }
+  .btn.primary { background: Highlight; color: HighlightText; }
+}
+@media (prefers-reduced-motion: no-preference) {
+  .rw-card.enter, .sheet.enter { animation: rise .18s ease-out; }
+  @keyframes rise { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: none; } }
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample. No seller, order, tracking number, carrier status, date or figure on this page is real.</div>
+<div class="viewer">
+  <div class="controls">
+    <span class="kind">Designer kind: blind. Designer: tracking-checker-blind-2.</span>
+    <div class="group" aria-label="State"><span>State</span>
+      <div class="seg" id="stateSeg">
+        <button data-s="loaded">Loaded</button>
+        <button data-s="loading">Loading</button>
+        <button data-s="failed">Check failed</button>
+        <button data-s="allwell">All is well</button>
+        <button data-s="empty">Empty</button>
+      </div>
+    </div>
+    <div class="group" aria-label="Theme"><span>Theme</span>
+      <div class="seg" id="themeSeg">
+        <button data-t="auto">Auto</button>
+        <button data-t="light">Light</button>
+        <button data-t="dark">Dark</button>
+      </div>
+    </div>
+  </div>
+  <div class="hidden-list" id="hiddenList"></div>
+  <main id="concepts">
+<section class="concept" id="concept-watchlist" data-concept="watchlist" tabindex="-1">
+    <div class="concept-head"><h2>Watchlist</h2><p>A list sorted by what needs you. Tap a row to see the carrier's word and act on it. Unfolded, the list sits beside the package.</p><button class="chip-btn" data-hide="watchlist">Hide Watchlist</button></div>
+    <div class="frames">
+  <figure><figcaption><span>Duo folded, 466 × 678 pt</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device" data-device="iphone-duo-folded" data-pose="folded" id="watchlist-folded"></div></figure>
+  <figure><figcaption><span>Duo open, 951 × 669 pt, hinge at 455.5 to 495.5</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device" data-device="iphone-duo-unfolded" data-pose="open" id="watchlist-open"></div></figure>
+  <figure><figcaption><span>Large phone, drawn at 440 × 956 pt (size not written, see notes)</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device" data-device="iphone-regular" data-pose="phone" id="watchlist-phone"></div></figure>
+  <figure><figcaption><span>Duo folded, biggest accessibility text (AX5)</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device ax" data-device="iphone-duo-folded" data-pose="ax" id="watchlist-ax"></div></figure></div>
+</section>
+<section class="concept" id="concept-doorstep" data-concept="doorstep" tabindex="-1">
+    <div class="concept-head"><h2>Doorstep</h2><p>The first screen asks one question at a time, in reach of the thumb: “UPS says it was delivered. Is it here?” The list hides behind one button.</p><button class="chip-btn" data-hide="doorstep">Hide Doorstep</button></div>
+    <div class="frames">
+  <figure><figcaption><span>Duo folded, 466 × 678 pt</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device" data-device="iphone-duo-folded" data-pose="folded" id="doorstep-folded"></div></figure>
+  <figure><figcaption><span>Duo open, 951 × 669 pt, hinge at 455.5 to 495.5</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device" data-device="iphone-duo-unfolded" data-pose="open" id="doorstep-open"></div></figure>
+  <figure><figcaption><span>Large phone, drawn at 440 × 956 pt (size not written, see notes)</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device" data-device="iphone-regular" data-pose="phone" id="doorstep-phone"></div></figure>
+  <figure><figcaption><span>Duo folded, biggest accessibility text (AX5)</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device ax" data-device="iphone-duo-folded" data-pose="ax" id="doorstep-ax"></div></figure></div>
+</section>
+<section class="concept" id="concept-runway" data-concept="runway" tabindex="-1">
+    <div class="concept-head"><h2>Runway</h2><p>Bold. No list at all: each package sits on a ruler of days left to claim. The nearest deadline is at the bottom, by the thumb. Tap a package and its card opens in place.</p><button class="chip-btn" data-hide="runway">Hide Runway</button></div>
+    <div class="frames">
+  <figure><figcaption><span>Duo folded, 466 × 678 pt</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device" data-device="iphone-duo-folded" data-pose="folded" id="runway-folded"></div></figure>
+  <figure><figcaption><span>Duo open, 951 × 669 pt, hinge at 455.5 to 495.5</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device" data-device="iphone-duo-unfolded" data-pose="open" id="runway-open"></div></figure>
+  <figure><figcaption><span>Large phone, drawn at 440 × 956 pt (size not written, see notes)</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device" data-device="iphone-regular" data-pose="phone" id="runway-phone"></div></figure>
+  <figure><figcaption><span>Duo folded, biggest accessibility text (AX5)</span><span class="tag-new">New: whole screen</span></figcaption>
+      <div class="device ax" data-device="iphone-duo-folded" data-pose="ax" id="runway-ax"></div></figure></div>
+</section>
+  </main>
+</div>
+
+<script>
+"use strict";
+/* ---------- Sample data: carrier, number, latest status, time (the brief's shape), plus the order it belongs to ---------- */
+const NOW = "9:41 am";
+const ITEMS = [
+  { id: "a1", seller: "Northfield Cards", order: "Order 2218", carrier: "UPS", number: "1Z SAMPLE 0000 0001",
+    raw: "DELIVERED / FRONT PORCH", plain: "Delivered to the front porch", when: "yesterday, 2:14 pm",
+    state: "delivered", here: false, claim: 9, window: 14, closes: "Mon 30 Nov" },
+  { id: "a2", seller: "Ridge and Vale", order: "Order 2236", carrier: "FedEx", number: "SAMPLE 0000 0002",
+    raw: "DELAY - WEATHER - AT HUB", plain: "Held at a hub", when: "Tue, 6:40 am", lastScanDays: 4,
+    state: "transit", claim: 6, window: 21, closes: "Fri 27 Nov" },
+  { id: "a3", seller: "Brightwater Games", order: "Order 2231", carrier: "USPS", number: "9400 SAMPLE 0003",
+    raw: "IN TRANSIT TO NEXT FACILITY", plain: "Moving to the next facility", when: "Mon, 6:02 am", lastScanDays: 5,
+    state: "transit", claim: 18, window: 30, closes: "Wed 9 Dec" },
+  { id: "a4", seller: "Kestrel Collectibles", order: "Order 2240", carrier: "USPS", number: "9400 SAMPLE 0004",
+    raw: "RETURN TO SENDER - ADDRESSEE UNKNOWN", plain: "Going back to the seller", when: "Thu, 3:55 pm",
+    state: "return", claim: 24, window: 30, closes: "Tue 15 Dec" },
+  { id: "a5", seller: "Pine Hollow TCG", order: "Order 2244", carrier: "FedEx", number: "SAMPLE 0000 0005",
+    raw: "ON FEDEX VEHICLE FOR DELIVERY", plain: "Out for delivery", when: "today, 8:12 am", lastScanDays: 0,
+    state: "transit", claim: 28, window: 28, closes: "Sat 19 Dec" },
+  { id: "a6", seller: "Marigold Card Co", order: "Order 2247", carrier: "USPS", number: "9400 SAMPLE 0006",
+    raw: "ARRIVED AT USPS REGIONAL FACILITY", plain: "At a regional facility", when: "yesterday, 11:40 pm", lastScanDays: 1,
+    state: "transit", claim: 33, window: 34, closes: "Thu 24 Dec" },
+  { id: "a7", seller: "Harbor Street Cards", order: "Order 2252", carrier: "USPS", number: "9400 SAMPLE 0007",
+    raw: "IN TRANSIT", plain: "Moving to you", when: "Thu, 5:20 pm", lastScanDays: 2, failed: true,
+    state: "transit", claim: 38, window: 40, closes: "Wed 30 Dec" },
+  { id: "a8", seller: "Old Mill Hobby", order: "Order 2250", carrier: "UPS", number: "1Z SAMPLE 0000 0008",
+    raw: "LABEL CREATED - NOT YET IN SYSTEM", plain: "Label made, not scanned", when: "Wed, 10:05 am",
+    state: "label", claim: null },
+  { id: "a9", seller: "Lantern Games", order: "Order 2209", carrier: "USPS", number: "9400 SAMPLE 0009",
+    raw: "DELIVERED, IN/AT MAILBOX", plain: "Delivered to the mailbox", when: "Wed, 1:30 pm",
+    state: "delivered", here: true, hereAt: "Wed 18 Nov", claim: null },
+  { id: "a10", seller: "Copperleaf Cards", order: "Order 2213", carrier: "UPS", number: "1Z SAMPLE 0000 0010",
+    raw: "DELIVERED / FRONT DOOR", plain: "Delivered to the front door", when: "Tue, 4:48 pm",
+    state: "delivered", here: true, hereAt: "Tue 17 Nov", claim: null },
+];
+const ALLWELL_IDS = ["a5", "a6", "a9", "a10"];
+const STUCK_AFTER_DAYS = 4; // design choice, see notes
+let ENTER = false; // true for the one render that opens a card or a sheet, so only opening animates
+
+/* Verdicts. Order is fixed: most urgent first. Each has one label and one shape. */
+const V = {
+  nothere:  { label: "Delivered, not here", cls: "c-nothere", needs: true },
+  stuck:    { label: "Stuck", cls: "c-stuck", needs: true },
+  returned: { label: "Returned", cls: "c-returned", needs: true },
+  moving:   { label: "On its way", cls: "c-moving" },
+  none:     { label: "No scan yet", cls: "c-none" },
+  done:     { label: "In hand", cls: "c-done" },
+};
+const ORDER = ["nothere", "stuck", "returned", "moving", "none", "done"];
+
+const SVG = {
+  moving: '<path d="M4 12h14M13 6l6 6-6 6"/>',
+  done: '<path d="M6 12.5l4 4L18 8"/>',
+  nothere: '<path d="M4 11l8-6 8 6v9H4z"/><path d="M12 10.5v4"/><path d="M12 17.2v.3"/>',
+  stuck: '<path d="M9 6v12M15 6v12"/>',
+  returned: '<path d="M9 14L4 9l5-5"/><path d="M4 9h10a6 6 0 0 1 0 12h-3"/>',
+  none: '<path d="M8 12h.01M12 12h.01M16 12h.01"/>',
+  warn: '<path d="M12 4l9 16H3z"/><path d="M12 10v4"/><path d="M12 17v.4"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  chev: '<path d="M9 5l7 7-7 7"/>',
+  box: '<path d="M4 8l8-4 8 4v8l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v8"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+};
+const svg = (k, extra = "") =>
+  `<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${SVG[k]}</svg>`;
+const esc = (s) => String(s).replace(/[&<>"]/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
+
+/* ---------- Page state from the URL hash: #c=runway&s=empty&t=dark&d=a1&hide=doorstep ---------- */
+const CONCEPTS = [
+  { key: "watchlist", name: "Watchlist" },
+  { key: "doorstep", name: "Doorstep" },
+  { key: "runway", name: "Runway" },
+];
+const DEVICES = [
+  { key: "folded" }, { key: "open" }, { key: "phone" }, { key: "ax", ax: true },
+];
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  return {
+    c: p.get("c") || "", s: p.get("s") || "loaded", t: p.get("t") || "auto", d: p.get("d") || "",
+    hide: (p.get("hide") || "").split(",").filter(Boolean),
+  };
+}
+function writeHash() {
+  const p = new URLSearchParams();
+  if (page.c) p.set("c", page.c);
+  if (page.s !== "loaded") p.set("s", page.s);
+  if (page.t !== "auto") p.set("t", page.t);
+  if (page.d) p.set("d", page.d);
+  if (page.hide.length) p.set("hide", page.hide.join(","));
+  const h = p.toString();
+  history.replaceState(null, "", h ? "#" + h : location.pathname);
+}
+let page = readHash();
+
+/* ---------- Per-frame state: each device frame is its own working app ---------- */
+function freshState() {
+  return { sel: page.d || null, here: {}, ack: {}, kept: {}, said: {}, checked: {}, copied: {}, qi: 0,
+           card: page.d || null, sheet: null, draft: { carrier: "USPS", number: "" }, added: [],
+           stopped: false, retried: false, shelfOpen: false };
+}
+function itemsFor(fs) {
+  if (page.s === "empty") return fs.added;
+  if (page.s === "allwell") return ITEMS.filter((i) => ALLWELL_IDS.includes(i.id)).concat(fs.added);
+  return ITEMS.concat(fs.added);
+}
+function verdict(it, fs) {
+  const here = it.id in fs.here ? fs.here[it.id] : it.here;
+  if (here) return "done";
+  if (it.state === "delivered") return "nothere";
+  if (it.state === "return") return "returned";
+  if (it.state === "label") return "none";
+  if ((it.lastScanDays || 0) >= STUCK_AFTER_DAYS) return "stuck";
+  return "moving";
+}
+function grouped(fs) {
+  const g = {}; ORDER.forEach((k) => (g[k] = []));
+  itemsFor(fs).forEach((it) => g[verdict(it, fs)].push(it));
+  ORDER.forEach((k) => g[k].sort((a, b) => (a.claim ?? 999) - (b.claim ?? 999)));
+  return g;
+}
+const needsList = (fs) => { const g = grouped(fs); return [...g.nothere, ...g.stuck, ...g.returned]; };
+const byId = (fs, id) => itemsFor(fs).find((i) => i.id === id);
+const showLoading = (fs) => page.s === "loading" && !fs.stopped;
+const showFailed = (fs) => page.s === "failed" && !fs.retried;
+
+function sentence(it, fs) {
+  const v = verdict(it, fs);
+  if (v === "nothere") return `${it.carrier} says it was delivered ${it.when}. It is not marked here.`;
+  if (v === "stuck") return `${it.carrier} has not scanned it since ${it.when}.`;
+  if (v === "returned") return `${it.carrier} is sending it back to the seller.`;
+  if (v === "none") return `${it.carrier} has a label for it but no scan yet.`;
+  if (v === "done") return it.state === "delivered" ? `${it.carrier} said it was delivered ${it.when}.` : `${it.carrier} last said: ${it.plain.toLowerCase()}, ${it.when}.`;
+  return `${it.carrier}: ${it.plain.toLowerCase()}, ${it.when}.`;
+}
+const subline = (it) => `${it.carrier}, ${it.when}`;
+function failLine(it, fs) {
+  const msg = showFailed(fs) ? `Could not reach the carriers at 9:02 am. This is what ${it.carrier} said at 7:30 am.`
+    : it.failed && page.s === "loaded" ? `Could not reach ${it.carrier} at 9:02 am. This is what it said before.` : "";
+  return msg ? `<p class="warnline">${svg("warn")}<span>${msg}</span></p>` : "";
+}
+
+/* ---------- Shared parts ---------- */
+const glyph = (v) => `<span class="glyph ${V[v].cls}">${svg(v)}</span>`;
+function ring(it, v) {
+  if (it.claim == null || !V[v].needs) return "";
+  const r = 19, c = 2 * Math.PI * r, f = Math.max(0.04, it.claim / it.window);
+  return `<span class="ring ${V[v].cls}" aria-label="${it.claim} days left to claim">
+    <svg viewBox="0 0 44 44" aria-hidden="true"><circle cx="22" cy="22" r="${r}" fill="none" stroke="var(--surface-sunk)" stroke-width="4"/>
+    <circle cx="22" cy="22" r="${r}" fill="none" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-dasharray="${(c * f).toFixed(1)} ${c.toFixed(1)}"/></svg>
+    <span style="color:var(--text)">${it.claim}</span></span>`;
+}
+const statusBar = () => `<div class="sbar" aria-hidden="true"><span>9:41</span><span class="icons"><i></i><i></i><i></i></span></div>`;
+const tabBar = () => `<nav class="tabbar" aria-label="Tabs"><div class="ph">Today: the tool's other tabs (not seen)</div>
+  <button class="tab" aria-current="page">${svg("box")}<span>Tracking</span></button></nav>`;
+const homeInd = () => `<div class="home-ind" aria-hidden="true"></div>`;
+
+function topNotice(fs) {
+  if (showLoading(fs)) {
+    return `<div class="summary" aria-live="polite"><p class="big">Checking carriers, 3 of 7</p>
+      <div class="meter" style="padding:0;border:0;background:none"><div class="bar"><i style="width:43%;background:var(--accent)"></i></div></div>
+      <div class="row-actions"><button class="btn" data-act="stop">Stop</button></div></div>`;
+  }
+  if (showFailed(fs)) {
+    return `<div class="summary alarm" role="status"><p class="big">Could not reach the carriers at 9:02 am.</p>
+      <p>Each package shows what its carrier said at 7:30 am.</p>
+      <div class="row-actions"><button class="btn primary" data-act="retry">Try again</button></div></div>`;
+  }
+  return "";
+}
+function summaryLine(fs) {
+  const n = needsList(fs);
+  const extra = fs.stopped ? `<p class="subtitle">Stopped. Showing what carriers said at 7:30 am.</p>` :
+    fs.retried ? `<p class="subtitle">Checked again at ${NOW}. Every carrier answered.</p>` : "";
+  if (!n.length) return `<div class="summary" role="status"><p class="big">All is well.</p>${extra}</div>`;
+  const nearest = Math.min(...n.map((i) => i.claim ?? 999));
+  return `<div class="summary alarm" role="status"><p class="big">${n.length} need${n.length === 1 ? "s" : ""} you.</p>
+    <p>The nearest claim window closes in ${nearest} days.</p>${extra}</div>`;
+}
+function emptyState() {
+  return `<div class="empty"><p>No order has a tracking number yet. An order shows here once it has one.</p>
+    <button class="btn primary" data-act="sheet-add">Add a tracking number</button></div>`;
+}
+function skeletonRows(n) {
+  return `<div class="rows" aria-hidden="true">${Array.from({ length: n }, (_, i) =>
+    `<div class="skel"><i class="dot"></i><span style="flex:1;display:flex;flex-direction:column;gap:8px"><i style="width:${60 - i * 7}%"></i><i style="width:40%"></i></span></div>`).join("")}</div>`;
+}
+function rowHtml(it, fs, v, current) {
+  const sub = it.failed && page.s === "loaded" ? `<span class="sub warn">Could not reach ${it.carrier} at 9:02 am</span>` :
+    `<span class="sub">${esc(subline(it))}</span>`;
+  return `<button class="row" data-act="open" data-id="${it.id}" ${current ? 'aria-current="true"' : ""}>
+    ${glyph(v)}<span class="main"><span class="name">${esc(it.seller)}</span>${sub}</span>${ring(it, v)}
+    <span class="chev">${svg("chev")}</span></button>`;
+}
+function groupsHtml(fs, curId) {
+  const g = grouped(fs);
+  let firstNeeds = true;
+  return ORDER.filter((k) => g[k].length).map((k) => {
+    const col = V[k].needs && firstNeeds ? `<span class="colhead">Days left to claim</span>` : "";
+    if (V[k].needs) firstNeeds = false;
+    return `<section class="group"><div class="group-head"><span class="${V[k].cls}" style="display:flex">${svg(k, 'width="16" height="16"')}</span>
+      <span>${V[k].label}</span><span class="count">${g[k].length}</span>${col}</div>
+      <div class="rows">${g[k].map((it) => rowHtml(it, fs, k, it.id === curId)).join("")}</div></section>`;
+  }).join("");
+}
+
+/* Detail: the carrier's word, the verdict, the claim clock and the acts. Shared by Watchlist and Runway's open pose. */
+function detailHtml(fs, it, opts) {
+  if (!it) return `<div class="screen">${statusBar()}<div class="scroll no-tab"><div class="empty"><p>Pick a package on the left to see what its carrier said.</p></div></div></div>`;
+  const v = verdict(it, fs);
+  const nav = opts.back ? `<div class="navbar"><button class="back" data-act="back">${svg("back")}<span>Tracking</span></button>
+    <span class="title">${esc(it.seller)}</span></div>` : "";
+  const meter = it.claim != null && v !== "done" ? `<div class="meter ${V[v].cls}"><p style="color:var(--text)"><b>${it.claim} of ${it.window} days</b> left to claim. The window closes ${it.closes}.</p>
+    <div class="bar"><i style="width:${Math.round((it.claim / it.window) * 100)}%;background:currentColor"></i></div>
+    <p class="fine">Sample window. Real windows come from each carrier's rules.</p></div>` : "";
+  const fail = failLine(it, fs);
+  const ans = fs.checked[it.id] || "";
+  let btns;
+  if (v === "done") btns = `<button class="btn" data-act="unhere" data-id="${it.id}">Not here after all</button>`;
+  else if (v === "nothere" || v === "moving") btns = `<button class="btn primary" data-act="here" data-id="${it.id}">It's here</button><button class="btn" data-act="check" data-id="${it.id}">Check again</button>`;
+  else btns = `<button class="btn primary" data-act="check" data-id="${it.id}">Check again</button><button class="btn" data-act="here" data-id="${it.id}">It's here</button>`;
+  return `<div class="screen">${statusBar()}${nav}
+    <div class="scroll with-actions${opts.tab ? "" : " no-tab"}" data-scroll="detail">
+      ${opts.back
+        ? `<div class="hero">${glyph(v)}<div><h2>${V[v].label}</h2><div class="who">${esc(it.seller)}, ${esc(it.order)}</div></div></div>`
+        /* Open pose: the list beside it already names the verdict, so here it shows by shape and colour only. */
+        : `<div class="hero">${glyph(v)}<div><h2>${esc(it.seller)}</h2><div class="who">${esc(it.order)}</div></div></div>`}
+      <p class="lead">${esc(sentence(it, fs))}</p>${fail}${meter}
+      <details class="raw" data-id="${it.id}"><summary>What ${it.carrier} said</summary><div class="in">
+        <dl><dt>Status</dt><dd>${esc(it.raw)}</dd><dt>Time</dt><dd>${esc(it.when)}</dd><dt>Carrier</dt><dd>${it.carrier}</dd><dt>Number</dt><dd>${esc(it.number)}</dd></dl>
+        <div class="ledger-line"><button class="btn plain" data-act="copy" data-id="${it.id}">Copy number</button>
+        <span class="answer ok" aria-live="polite" style="text-align:start">${esc(fs.copied[it.id] || "")}</span></div></div></details>
+    </div>
+    <div class="actionbar" ${opts.tab ? "" : 'style="bottom:calc(max(env(safe-area-inset-bottom), var(--sa-bottom)) + 8px)"'}><div class="btns">${btns}</div>
+      <div class="answer ${ans ? "ok" : ""}" aria-live="polite">${esc(ans)}</div></div>
+    ${opts.tab ? tabBar() : ""}${homeInd()}</div>`;
+}
+function sheetHtml(fs) {
+  if (!fs.sheet) return "";
+  if (fs.sheet === "add") {
+    return `<div class="sheet-scrim" data-act="sheet-cancel"></div><div class="sheet${ENTER ? " enter" : ""}" role="dialog" aria-label="Add a tracking number">
+      <div class="bar"><button class="btn plain" data-act="sheet-cancel">Cancel</button><span class="title">Add a tracking number</span>
+      <button class="btn plain" data-act="sheet-save" style="font-weight:700">Add</button></div>
+      <div class="body"><label class="field">Carrier<select data-draft="carrier">${["USPS", "UPS", "FedEx"].map((c) => `<option ${fs.draft.carrier === c ? "selected" : ""}>${c}</option>`).join("")}</select></label>
+      <label class="field">Tracking number<input data-draft="number" inputmode="text" autocomplete="off" value="${esc(fs.draft.number)}" placeholder="From the seller's message"></label>
+      <p class="subtitle">What you type here stays if you close this sheet.</p></div></div>`;
+  }
+  return `<div class="sheet-scrim" data-act="sheet-cancel"></div><div class="sheet${ENTER ? " enter" : ""}" role="dialog" aria-label="All tracked">
+    <div class="bar"><span style="min-width:80px"></span><span class="title">All tracked</span><button class="btn plain" data-act="sheet-cancel" style="font-weight:700">Done</button></div>
+    <div class="body">${groupsHtml(fs, null)}</div></div>`;
+}
+
+/* ---------- Concept: Watchlist ---------- */
+function watchList(fs, curId) {
+  let body;
+  if (page.s === "empty" && !fs.added.length) body = emptyState();
+  else if (showLoading(fs)) body = topNotice(fs) + skeletonRows(5);
+  else body = (showFailed(fs) ? topNotice(fs) : summaryLine(fs)) + groupsHtml(fs, curId);
+  return `<div class="screen">${statusBar()}<div class="scroll" data-scroll="list"><h1 class="lt">Tracking</h1>${body}</div>${tabBar()}${homeInd()}${sheetHtml(fs)}</div>`;
+}
+const WATCH = {
+  compact(fs) { const it = fs.sel && byId(fs, fs.sel); return it && !showLoading(fs) ? detailHtml(fs, it, { back: true, tab: true }) : watchList(fs, null); },
+  open(fs) {
+    const it = (fs.sel && byId(fs, fs.sel)) || needsList(fs)[0] || itemsFor(fs)[0];
+    return { left: watchList(fs, it && it.id), right: showLoading(fs) || !it ? detailHtml(fs, null, {}) : detailHtml(fs, it, { back: false, tab: false }) };
+  },
+};
+
+/* ---------- Concept: Doorstep ---------- */
+function question(it, fs) {
+  const v = verdict(it, fs);
+  if (v === "nothere") return { q: "Is it here?", ctx: `${it.carrier} says it was delivered ${it.when}. ${it.claim} days left to claim.`,
+    a: [["here", "It's here", "primary"], ["keep", "Not here", ""]] };
+  if (v === "stuck") return { q: `No scan since ${it.when.split(",")[0]}.`, ctx: `${it.carrier} last said: ${it.plain.toLowerCase()}. ${it.claim} days left to claim.`,
+    a: [["check", "Check again", "primary"], ["keep", "Keep watching", ""]] };
+  return { q: "It is going back to the seller.", ctx: `${it.carrier} said so ${it.when}. ${it.claim} days left to claim.`,
+    a: [["ack", "Got it", "primary"], ["here", "It came anyway", ""]] };
+}
+/* Today's questions are fixed when the screen first opens, so an answer never reorders the queue. */
+function doorBase(fs) {
+  if (!fs.base) fs.base = needsList(fs).map((i) => i.id);
+  return fs.base.filter((id) => byId(fs, id));
+}
+function doorCards(fs) {
+  if (page.s === "empty" && !fs.added.length) return emptyState();
+  if (showLoading(fs)) return `<div class="door-fill">${topNotice(fs)}<div class="qcard" aria-hidden="true" style="color:var(--line)"><div class="skel" style="padding:0"><i class="dot"></i><i style="width:50%"></i></div><i style="display:block;height:20px;width:80%;background:var(--surface-sunk);border-radius:6px"></i><div class="answers"></div></div></div>`;
+  const base = doorBase(fs);
+  const idx = base.findIndex((id) => !(fs.said[id] && fs.said[id].next));
+  const current = idx >= 0 ? byId(fs, base[idx]) : null;
+  /* A compact failure line keeps the question card in reach of the thumb. */
+  const fail = showFailed(fs) ? `<div class="ledger-line" role="status"><span class="warnline">${svg("warn")}<span>Could not reach the carriers at 9:02 am. These answers use what they said at 7:30 am.</span></span>
+    <button class="btn plain" data-act="retry">Try again</button></div>` : "";
+  const seeAll = `<button class="btn wide" data-act="sheet-all">See all tracked</button>`;
+  if (!current) {
+    return `${fail}<div class="door-fill"><div class="calm" role="status" id="door-question"><p class="big">All is well.</p>${
+      fs.retried ? `<p>Checked again at ${NOW}.</p>` : ""}</div>${seeAll}</div>`;
+  }
+  const s = fs.said[current.id];
+  const q = s ? s.q : question(current, fs);
+  const v = s ? s.v : verdict(current, fs);
+  const n = base.length;
+  const answers = s
+    ? `<p class="said" aria-live="polite">${esc(s.text)}</p><button class="btn primary" data-act="next" data-id="${current.id}">${idx < n - 1 ? "Next question" : "Done for today"}</button>`
+    : q.a.map(([act, label, cls]) => `<button class="btn ${cls}" data-act="d-${act}" data-id="${current.id}">${label}</button>`).join("");
+  return `${fail}<div class="door-fill">
+    <div class="progress"><span class="dots">${base.map((_, i) => `<i class="${i <= idx ? "on" : ""}"></i>`).join("")}</span><span>${idx + 1} of ${n} for today</span></div>
+    <div class="qcard ${V[v].cls}" id="door-question"><div class="who">${glyph(v)}<span><b>${esc(current.seller)}</b><br><span class="subtitle">${esc(current.order)}</span></span></div>
+      <p class="q">${esc(q.q)}</p><p class="ctx">${esc(q.ctx)}</p><div class="answers">${answers}</div></div>
+    ${seeAll}</div>`;
+}
+function doorScreen(fs, withSheet) {
+  return `<div class="screen">${statusBar()}<div class="scroll" data-scroll="door" style="padding-bottom:calc(max(env(safe-area-inset-bottom), var(--sa-bottom)) + 84px)">
+    <h1 class="lt">Tracking</h1><p class="subtitle">Saturday 21 November</p>${doorCards(fs)}</div>${tabBar()}${homeInd()}${withSheet ? sheetHtml(fs) : ""}</div>`;
+}
+function doorLedger(fs) {
+  if (showLoading(fs) || (page.s === "empty" && !fs.added.length)) return `<div class="screen">${statusBar()}<div class="scroll no-tab"></div>${homeInd()}</div>`;
+  const answered = doorBase(fs).filter((id) => fs.said[id]).map((id) => byId(fs, id));
+  const log = answered.length ? `<section class="group"><div class="group-head"><span>Answered today</span><span class="count">${answered.length}</span></div>
+    <div class="rows">${answered.map((i) => `<div class="row" style="cursor:default">${glyph(verdict(i, fs))}<span class="main"><span class="name">${esc(i.seller)}</span>
+    <span class="sub">${esc(fs.said[i.id].text)}</span></span>
+    <button class="btn plain" data-act="undo" data-id="${i.id}">Undo</button></div>`).join("")}</div></section>` : "";
+  const g = grouped(fs);
+  const keep = ["moving", "none", "done"].filter((k) => g[k].length).map((k) => `<section class="group"><div class="group-head"><span class="${V[k].cls}" style="display:flex">${svg(k, 'width="16" height="16"')}</span><span>${V[k].label}</span><span class="count">${g[k].length}</span></div>
+    <div class="rows">${g[k].map((it) => `<div class="row" style="cursor:default">${glyph(k)}<span class="main"><span class="name">${esc(it.seller)}</span><span class="sub">${esc(subline(it))}</span></span></div>`).join("")}</div></section>`).join("");
+  return `<div class="screen">${statusBar()}<div class="scroll no-tab" data-scroll="ledger"><h2 class="lt" style="font-size:var(--fs-t2);line-height:var(--lh-t2)">Everything else</h2>${log}${keep}</div>${homeInd()}${sheetHtml(fs)}</div>`;
+}
+const DOOR = {
+  compact(fs) { return doorScreen(fs, true); },
+  open(fs) { return { left: doorScreen(fs, false), right: doorLedger(fs) }; },
+};
+
+/* ---------- Concept: Runway ---------- */
+function runwayAxis(fs, opts) {
+  const g = grouped(fs);
+  // A package just marked here keeps its place while its card is open, so the answer stays where the press was.
+  const held = g.done.filter((i) => i.id === opts.cardId);
+  const placed = [...g.nothere, ...g.stuck, ...g.returned, ...g.moving, ...held].filter((i) => i.claim != null).sort((a, b) => a.claim - b.claim);
+  const maxDay = Math.max(35, ...placed.map((i) => i.claim)) + 3;
+  const PX = opts.px, GAP = 50;
+  const y = (d) => d * PX + 16;
+  // Each pill sits at its day. When two days are too close for two 44 pt pills, the later pill moves up
+  // and a line ties it back to its true day on the ruler.
+  let prev = -Infinity;
+  const pos = placed.map((it) => { const at = Math.max(y(it.claim), prev + GAP); prev = at; return { it, at }; });
+  const H = Math.max(y(maxDay), prev + GAP) + 8;
+  let ticks = "";
+  for (let d = 0; d <= maxDay - 3; d += 7) ticks += `<span class="tick ${d === 0 ? "zero" : ""}" style="bottom:${y(d)}px">${d === 0 ? "Today" : d + " d"}</span><span class="grid" style="bottom:${y(d)}px"></span>`;
+  const RX = 52; // ruler x
+  const lines = pos.map(({ it, at }) => { const v = verdict(it, fs);
+    return `<line x1="${RX}" y1="${H - y(it.claim)}" x2="${RX + 26}" y2="${H - at}" class="${V[v].cls}" stroke="currentColor" stroke-width="2"/>
+      <circle cx="${RX}" cy="${H - y(it.claim)}" r="5" class="${V[v].cls}" fill="currentColor"/>`; }).join("");
+  const slot = ({ it, at }) => {
+    const v = verdict(it, fs);
+    return `<div class="slot ${V[v].cls}" style="bottom:${at}px">
+      <button class="pill ${V[v].cls}" data-act="pill" data-id="${it.id}" aria-pressed="${(opts.selId === it.id)}" aria-label="${esc(it.seller)}, ${V[v].label}, ${it.claim} days left to claim">
+      <span class="glyph ${V[v].cls}">${svg(v)}</span><span class="t">${esc(it.seller)}</span></button></div>`;
+  };
+  let card = "";
+  const cit = opts.cardId && byId(fs, opts.cardId);
+  const cpos = cit && pos.find((p) => p.it.id === cit.id);
+  if (cit && cpos) {
+    const v = verdict(cit, fs);
+    const low = cpos.at < H - 300;
+    const pos2 = low ? `bottom:${cpos.at + 30}px` : `top:${H - cpos.at + 30}px`;
+    const ans = fs.checked[cit.id] || "";
+    const btns = v === "done"
+      ? `<button class="btn" data-act="unhere" data-id="${cit.id}">Not here after all</button>`
+      : v === "nothere" || v === "moving"
+      ? `<button class="btn primary" data-act="here" data-id="${cit.id}">It's here</button><button class="btn" data-act="check" data-id="${cit.id}">Check again</button>`
+      : `<button class="btn primary" data-act="check" data-id="${cit.id}">Check again</button><button class="btn" data-act="here" data-id="${cit.id}">It's here</button>`;
+    card = `<div class="rw-card ${V[v].cls}${ENTER ? " enter" : ""}" style="${pos2}" role="dialog" aria-label="${esc(cit.seller)}">
+      <div class="top">${glyph(v)}<b>${esc(cit.seller)}</b><button class="iconbtn" data-act="card-close" aria-label="Close">${svg("close")}</button></div>
+      <p>${esc(sentence(cit, fs))}</p>
+      ${failLine(cit, fs)}
+      <div class="btns">${btns}</div><div class="answer ${ans ? "ok" : ""}" aria-live="polite">${esc(ans)}</div></div>`;
+  }
+  return `<div class="axis" style="height:${H}px">
+    <div class="band" style="bottom:0;height:${y(7) + 4}px"></div><div class="spine"></div>
+    <svg class="ties" width="100%" height="${H}" aria-hidden="true">${lines}</svg>
+    ${ticks}${pos.map(slot).join("")}${card}</div>`;
+}
+/* The ruler shows verdicts by shape and colour only, so its key names each shape once. */
+function runwayKey(fs) {
+  const g = grouped(fs);
+  const ks = ["nothere", "stuck", "returned", "moving"].filter((k) => g[k].some((i) => i.claim != null));
+  return ks.length ? `<div class="key">${ks.map((k) => `<span class="${V[k].cls}">${svg(k)}<span>${V[k].label}</span></span>`).join("")}</div>` : "";
+}
+/* Height above the ruler's floor of the nearest package, so the first view always shows one. */
+function lowestPill(fs, opts) {
+  const ds = itemsFor(fs).filter((i) => i.claim != null && verdict(i, fs) !== "done" && verdict(i, fs) !== "none").map((i) => i.claim);
+  return ds.length ? Math.min(...ds) * opts.px + 16 : 0;
+}
+function runwayShelf(fs) {
+  const g = grouped(fs);
+  const parts = [];
+  if (g.none.length) parts.push(...g.none.map((i) => `<button class="pill c-none" data-act="pill" data-id="${i.id}" aria-label="${esc(i.seller)}, ${V.none.label}"><span class="glyph c-none">${svg("none")}</span><span class="t">${esc(i.seller)}</span></button>`));
+  if (g.done.length) parts.push(`<button class="pill c-done" data-act="shelf" aria-expanded="${fs.shelfOpen}"><span class="glyph c-done">${svg("done")}</span><span class="t">${g.done.length} in hand</span></button>`);
+  const open = fs.shelfOpen && g.done.length ? `<div class="rows">${g.done.map((it) => `<div class="row" style="cursor:default">${glyph("done")}<span class="main"><span class="name">${esc(it.seller)}</span><span class="sub">${esc(sentence(it, fs))}</span></span><button class="btn plain" data-act="unhere" data-id="${it.id}">Not here after all</button></div>`).join("")}</div>` : "";
+  const nscan = g.none.length ? `<span class="subtitle">No scan yet, so no place on the ruler:</span>` : "";
+  const nit = fs.noneNote && byId(fs, fs.noneNote);
+  const note = nit ? `<p class="subtitle" aria-live="polite">${esc(nit.seller)}: ${esc(sentence(nit, fs))} It takes its place on the ruler at its first scan.</p>` : "";
+  return parts.length ? `<div style="display:flex;flex-direction:column;gap:8px">${nscan}<div class="shelf">${parts.join("")}</div>${note}${open}</div>` : "";
+}
+function runwayScreen(fs, opts) {
+  let body;
+  if (page.s === "empty" && !fs.added.length) {
+    return `<div class="screen">${statusBar()}<div class="scroll"><h1 class="lt">Tracking</h1>${emptyState()}</div>${tabBar()}${homeInd()}${sheetHtml(fs)}</div>`;
+  }
+  if (showLoading(fs)) {
+    return `<div class="screen">${statusBar()}<div class="scroll"><h1 class="lt">Tracking</h1>${topNotice(fs)}
+      <div class="axis" style="height:420px;opacity:.5"><div class="spine"></div></div></div>${tabBar()}${homeInd()}</div>`;
+  }
+  const n = needsList(fs);
+  const head = showFailed(fs) ? topNotice(fs) : (n.length ? "" : `<div class="summary" role="status"><p class="big">All is well.</p></div>`);
+  body = `<div class="rw-head"><h1 class="lt">Tracking</h1>${head}${runwayShelf(fs)}${runwayKey(fs)}<p class="subtitle">Days left to claim, nearest at the bottom.</p></div>
+    <div class="axis-scroll" data-scroll="axis" data-bottom="1" data-lowest="${lowestPill(fs, opts)}" style="padding-bottom:calc(max(env(safe-area-inset-bottom), var(--sa-bottom)) + 76px)">${runwayAxis(fs, opts)}</div>`;
+  return `<div class="screen">${statusBar()}${body}${tabBar()}${homeInd()}${sheetHtml(fs)}</div>`;
+}
+/* At AX5 the ruler cannot hold its pills, so the screen falls back to day bands (ViewThatFits). */
+function runwayBands(fs) {
+  if (page.s === "empty" && !fs.added.length || showLoading(fs)) return runwayScreen(fs, { px: 12 });
+  const it = fs.sel && byId(fs, fs.sel);
+  if (it) return detailHtml(fs, it, { back: true, tab: true });
+  const all = itemsFor(fs).filter((i) => i.claim != null && verdict(i, fs) !== "done");
+  const band = (name, f) => { const xs = all.filter(f).sort((a, b) => a.claim - b.claim); return xs.length ? `<section class="group"><div class="group-head"><span>${name}</span><span class="count">${xs.length}</span></div><div class="rows">${xs.map((i) => rowHtml(i, fs, verdict(i, fs), false)).join("")}</div></section>` : ""; };
+  return `<div class="screen">${statusBar()}<div class="scroll" data-scroll="bands"><h1 class="lt">Tracking</h1>${showFailed(fs) ? topNotice(fs) : ""}
+    <p class="subtitle">Days left to claim</p><div class="bands">${band("Closes within 7 days", (i) => i.claim <= 7)}${band("8 to 21 days", (i) => i.claim > 7 && i.claim <= 21)}${band("Later", (i) => i.claim > 21)}</div>${runwayShelf(fs)}</div>${tabBar()}${homeInd()}</div>`;
+}
+const RUNWAY = {
+  compact(fs, dev) {
+    if (dev.ax) return runwayBands(fs);
+    return runwayScreen(fs, { px: dev.key === "phone" ? 18 : 15, cardId: fs.card, selId: fs.card });
+  },
+  open(fs) {
+    const it = (fs.card && byId(fs, fs.card)) || needsList(fs)[0];
+    return { left: runwayScreen(fs, { px: 14, cardId: null, selId: it && it.id }),
+             right: showLoading(fs) || !it ? detailHtml(fs, null, {}) : detailHtml(fs, it, { back: false, tab: false }) };
+  },
+};
+const RENDER = { watchlist: WATCH, doorstep: DOOR, runway: RUNWAY };
+
+/* ---------- Frames ---------- */
+class Frame {
+  constructor(host, concept, dev) {
+    this.host = host; this.concept = concept; this.dev = dev; this.fs = freshState();
+    host.addEventListener("click", (e) => this.onClick(e));
+    host.addEventListener("input", (e) => { const k = e.target.dataset && e.target.dataset.draft; if (k) this.fs.draft[k] = e.target.value; });
+    host.addEventListener("change", (e) => { const k = e.target.dataset && e.target.dataset.draft; if (k) this.fs.draft[k] = e.target.value; });
+    this.render();
+  }
+  reset() { this.fs = freshState(); this.render(); }
+  render() {
+    const keep = {};
+    this.host.querySelectorAll("[data-scroll]").forEach((el) => (keep[el.dataset.scroll] = el.scrollTop));
+    const openDetails = [...this.host.querySelectorAll("details[open]")].map((d) => d.dataset.id);
+    const r = RENDER[this.concept];
+    if (this.dev.key === "open") {
+      const o = r.open(this.fs, this.dev);
+      this.host.innerHTML = `<div class="pane left">${o.left}</div><div class="hinge" aria-hidden="true"></div><div class="pane right">${o.right}</div>`;
+    } else {
+      this.host.innerHTML = `<div class="pane solo">${r.compact(this.fs, this.dev)}</div>`;
+    }
+    this.host.querySelectorAll("[data-scroll]").forEach((el) => {
+      if (el.dataset.scroll in keep) el.scrollTop = keep[el.dataset.scroll];
+      else if (el.dataset.bottom) {
+        const lift = Math.max(0, Number(el.dataset.lowest || 0) - el.clientHeight * 0.5);
+        el.scrollTop = el.scrollHeight - el.clientHeight - lift;
+      }
+    });
+    this.host.querySelectorAll(".enter").forEach((el) => el.addEventListener("animationend", () => el.classList.remove("enter"), { once: true }));
+    // A card taller than the room above its pill would open half out of view, so the ruler scrolls just enough to show it.
+    const card = this.host.querySelector(".rw-card.enter");
+    if (card) {
+      const sc = card.closest(".axis-scroll"), cr = card.getBoundingClientRect(), sr = sc.getBoundingClientRect();
+      if (cr.top < sr.top) sc.scrollTop -= sr.top - cr.top + 8;
+      else if (cr.bottom > sr.bottom) sc.scrollTop += cr.bottom - sr.bottom + 8;
+    }
+    ENTER = false;
+    openDetails.forEach((id) => { const d = this.host.querySelector(`details[data-id="${id}"]`); if (d) d.open = true; });
+  }
+  onClick(e) {
+    const t = e.target.closest("[data-act]"); if (!t || !this.host.contains(t)) return;
+    const fs = this.fs, id = t.dataset.id, act = t.dataset.act;
+    ENTER = ["pill", "sheet-add", "sheet-all"].includes(act);
+    const it = id && byId(fs, id);
+    switch (act) {
+      case "open": fs.sel = id; delete fs.checked[id]; break;
+      case "back": fs.sel = null; break;
+      case "here": fs.here[id] = true; fs.checked[id] = `Marked here at ${NOW}.`; break;
+      case "unhere": fs.here[id] = false; fs.checked[id] = "Marked not here."; break;
+      case "check": fs.checked[id] = it && verdict(it, fs) === "stuck" ? `Checked at ${NOW}. Still no new scan.` : `Checked at ${NOW}. No change.`; break;
+      case "copy": fs.copied[id] = "Number copied."; try { navigator.clipboard && navigator.clipboard.writeText(it.number); } catch (_) {} break;
+      case "stop": fs.stopped = true; break;
+      case "retry": fs.retried = true; break;
+      case "sheet-add": fs.sheet = "add"; break;
+      case "sheet-all": fs.sheet = "all"; break;
+      case "sheet-cancel": fs.sheet = null; break;
+      case "sheet-save": {
+        const num = fs.draft.number.trim() || "SAMPLE 0000 0099";
+        fs.added.push({ id: "n" + (fs.added.length + 1), seller: "New order", order: "Order added by hand", carrier: fs.draft.carrier, number: num,
+          raw: "NO INFORMATION YET", plain: "No scan yet", when: "today, " + NOW, state: "label", claim: null });
+        fs.draft = { carrier: "USPS", number: "" }; fs.sheet = null; break;
+      }
+      case "pill":
+        if (it && verdict(it, fs) === "none") { fs.noneNote = fs.noneNote === id ? null : id; break; }
+        fs.card = this.dev.key === "open" ? id : (fs.card === id ? null : id); break;
+      case "card-close": fs.card = null; break;
+      case "shelf": fs.shelfOpen = !fs.shelfOpen; break;
+      case "d-here": fs.said[id] = { q: question(it, fs), v: verdict(it, fs), text: `Marked here at ${NOW}.` }; fs.here[id] = true; break;
+      case "d-keep": fs.said[id] = { q: question(it, fs), v: verdict(it, fs), text: verdict(it, fs) === "nothere"
+          ? "Kept on watch. You get this question again tomorrow." : "Kept on watch. You hear again if nothing moves by Monday." }; break;
+      case "d-check": fs.said[id] = { q: question(it, fs), v: verdict(it, fs), text: `Checked at ${NOW}. Still no new scan.` }; break;
+      case "d-ack": fs.said[id] = { q: question(it, fs), v: verdict(it, fs), text: "Noted. It leaves today's questions unless it moves." }; break;
+      case "next": if (fs.said[id]) fs.said[id].next = true; break;
+      case "undo": delete fs.said[id]; delete fs.here[id]; break;
+      default: return;
+    }
+    this.render();
+  }
+}
+
+/* ---------- Build the page ---------- */
+const frames = [];
+function build() {
+  // The sections and empty device frames are static HTML above; each frame becomes a working app here.
+  const main = document.getElementById("concepts");
+  CONCEPTS.forEach((c) => DEVICES.forEach((d) => frames.push(new Frame(document.getElementById(`${c.key}-${d.key}`), c.key, d))));
+  main.addEventListener("click", (e) => { const b = e.target.closest("[data-hide]"); if (b) { page.hide.push(b.dataset.hide); apply(); } });
+}
+function apply() {
+  const root = document.documentElement;
+  if (page.t === "auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", page.t);
+  document.querySelectorAll("#stateSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.s === page.s)));
+  document.querySelectorAll("#themeSeg button").forEach((b) => b.setAttribute("aria-pressed", String(b.dataset.t === page.t)));
+  CONCEPTS.forEach((c) => {
+    const el = document.getElementById(`concept-${c.key}`);
+    el.hidden = page.hide.includes(c.key) || (page.c && page.c !== c.key);
+  });
+  const hl = document.getElementById("hiddenList");
+  hl.innerHTML = page.hide.length ? `<span>Hidden:</span>${page.hide.map((k) => `<button class="chip-btn" data-show="${k}">Show ${CONCEPTS.find((c) => c.key === k).name}</button>`).join("")}` : "";
+  writeHash();
+}
+document.getElementById("stateSeg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; page.s = b.dataset.s; apply(); frames.forEach((f) => f.reset()); });
+document.getElementById("themeSeg").addEventListener("click", (e) => { const b = e.target.closest("button"); if (!b) return; page.t = b.dataset.t; apply(); });
+document.getElementById("hiddenList").addEventListener("click", (e) => { const b = e.target.closest("[data-show]"); if (!b) return; page.hide = page.hide.filter((k) => k !== b.dataset.show); apply(); });
+window.addEventListener("hashchange", () => { const before = page.s + page.d; page = readHash(); apply(); if (page.s + page.d !== before) frames.forEach((f) => f.reset()); });
+build(); apply();
+if (page.c) { const el = document.getElementById(`concept-${page.c}`); if (el) el.focus({ preventScroll: true }); }
+</script>
+</body>
+</html>

@@ -1,0 +1,902 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Claim a Lost Package</title>
+<style>
+/* Tokens. Space and radius from the house tokens (4 px step, 8 px radius).
+   Colour is the designer's own choice: the house file names roles, not values. */
+:root{
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --radius:8px;
+  /* Status bar and home indicator: no page read gives these heights; see notes. */
+  --sa-top:max(env(safe-area-inset-top), 44px);
+  --sa-bottom:max(env(safe-area-inset-bottom), 32px);
+  --font-ui:-apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  --font-letter:-apple-system-ui-serif, ui-serif, "New York", Georgia, "Times New Roman", serif;
+  color-scheme:light;
+  --page:#E6EAF1; --bg:#F3F5F8; --surface:#FFFFFF; --paper:#FFFFFF;
+  --ink:#172033; --ink-2:#465168; --ink-3:#5B6679; --line:#D3D9E3; --fill:#E6EAF1;
+  --accent:#2F43C4; --on-accent:#FFFFFF; --accent-soft:#E3E7FB;
+  --urgent:#A8361A; --urgent-soft:#FBE7E0;
+  --warn:#7A5000; --warn-soft:#FAEFD6;
+  --ok:#1E6A49; --ok-soft:#DFF1E8;
+  --closed:#5B6679; --closed-soft:#E7EAF0;
+  --scrim:rgba(16,22,38,.32); --lift:0 8px 24px rgba(16,22,38,.18);
+  --bezel:#1C2233;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme:dark;
+    --page:#0B0F18; --bg:#121828; --surface:#1A2134; --paper:#1D2539;
+    --ink:#E7EBF4; --ink-2:#B3BCCF; --ink-3:#9AA4B8; --line:#2C3650; --fill:#242D44;
+    --accent:#9DAAFF; --on-accent:#10173A; --accent-soft:#283363;
+    --urgent:#FF9C82; --urgent-soft:#3B2019;
+    --warn:#F0BF5A; --warn-soft:#352A12;
+    --ok:#7AD6AA; --ok-soft:#163327;
+    --closed:#A3ACBF; --closed-soft:#252C3D;
+    --scrim:rgba(0,0,0,.5); --lift:0 8px 24px rgba(0,0,0,.55);
+    --bezel:#3A4360;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme:dark;
+  --page:#0B0F18; --bg:#121828; --surface:#1A2134; --paper:#1D2539;
+  --ink:#E7EBF4; --ink-2:#B3BCCF; --ink-3:#9AA4B8; --line:#2C3650; --fill:#242D44;
+  --accent:#9DAAFF; --on-accent:#10173A; --accent-soft:#283363;
+  --urgent:#FF9C82; --urgent-soft:#3B2019;
+  --warn:#F0BF5A; --warn-soft:#352A12;
+  --ok:#7AD6AA; --ok-soft:#163327;
+  --closed:#A3ACBF; --closed-soft:#252C3D;
+  --scrim:rgba(0,0,0,.5); --lift:0 8px 24px rgba(0,0,0,.55);
+  --bezel:#3A4360;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--page);color:var(--ink);font-family:var(--font-ui);font-size:16px;line-height:1.4}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+h1,h2,h3,p{margin:0}
+
+/* ---------- Harness (the review page around the frames) ---------- */
+.sample{background:var(--warn-soft);color:var(--warn);border-bottom:1px solid var(--line);padding:var(--space-2) var(--space-4);font-weight:600;text-align:center}
+.harness{max-width:1440px;margin-inline:auto;padding:var(--space-6) var(--space-4);display:flex;flex-direction:column;gap:var(--space-4)}
+.h-top{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-6);align-items:baseline}
+.h-top h1{font-size:28px;line-height:1.15;letter-spacing:-.01em}
+.h-kind{color:var(--ink-2);font-size:14px}
+.h-controls{display:flex;flex-wrap:wrap;gap:var(--space-3) var(--space-6);align-items:center}
+.h-group{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center}
+.h-label{font-size:14px;color:var(--ink-2)}
+.h-concept{display:inline-flex;align-items:stretch;border:1px solid var(--line);border-radius:var(--radius);background:var(--surface);overflow:hidden}
+.h-concept button{padding:var(--space-2) var(--space-3);min-height:40px;font-size:15px}
+.h-concept .pick[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);font-weight:600}
+.h-concept .hide{border-inline-start:1px solid var(--line);font-size:13px;color:var(--ink-2)}
+.h-hidden{font-size:14px;color:var(--ink-2);display:flex;gap:var(--space-2);align-items:center;flex-wrap:wrap}
+.h-hidden button{text-decoration:underline;color:var(--accent);min-height:32px}
+select.h-select{font:inherit;font-size:15px;min-height:40px;padding:0 var(--space-2);border-radius:var(--radius);border:1px solid var(--line);background:var(--surface);color:var(--ink)}
+.h-about{max-width:72ch;color:var(--ink-2);font-size:15px}
+.h-about strong{color:var(--ink)}
+.stage{max-width:2400px;margin-inline:auto;padding:0 var(--space-4) var(--space-12);display:flex;flex-wrap:wrap;gap:var(--space-8);align-items:flex-start}
+.device{margin:0;display:flex;flex-direction:column;gap:var(--space-2);max-width:100%}
+.device[hidden],.h-hidden[hidden]{display:none}
+.device figcaption{font-size:14px;color:var(--ink-2)}
+.device figcaption b{color:var(--ink);font-weight:600}
+.scroller{max-width:100%;overflow-x:auto;padding:var(--space-2)}
+.screen{position:relative;overflow:hidden;border-radius:28px;background:var(--bg);box-shadow:0 0 0 6px var(--bezel);isolation:isolate}
+
+/* ---------- Dynamic Type (Apple typography page, iOS, read 2026-11-21) ---------- */
+.screen{
+  --fs-large:34px;--lh-large:41px;--fs-t1:28px;--lh-t1:34px;--fs-t2:22px;--lh-t2:28px;--fs-t3:20px;--lh-t3:25px;
+  --fs-head:17px;--lh-head:22px;--fs-body:17px;--lh-body:22px;--fs-call:16px;--lh-call:21px;--fs-sub:15px;--lh-sub:20px;
+  --fs-foot:13px;--lh-foot:18px;--fs-cap:12px;--lh-cap:16px;--fs-cap2:11px;--lh-cap2:13px;
+  font-family:var(--font-ui);font-size:var(--fs-body);line-height:var(--lh-body);color:var(--ink);
+}
+.screen.ax5{
+  --fs-large:60px;--lh-large:70px;--fs-t1:58px;--lh-t1:68px;--fs-t2:56px;--lh-t2:66px;--fs-t3:55px;--lh-t3:65px;
+  --fs-head:53px;--lh-head:62px;--fs-body:53px;--lh-body:62px;--fs-call:51px;--lh-call:60px;--fs-sub:49px;--lh-sub:58px;
+  --fs-foot:44px;--lh-foot:52px;--fs-cap:43px;--lh-cap:51px;--fs-cap2:40px;--lh-cap2:48px;
+}
+.t-large{font-size:var(--fs-large);line-height:var(--lh-large);font-weight:700;letter-spacing:-.01em}
+.t-t2{font-size:var(--fs-t2);line-height:var(--lh-t2);font-weight:700}
+.t-t3{font-size:var(--fs-t3);line-height:var(--lh-t3);font-weight:600}
+.t-head{font-size:var(--fs-head);line-height:var(--lh-head);font-weight:600}
+.t-body{font-size:var(--fs-body);line-height:var(--lh-body)}
+.t-call{font-size:var(--fs-call);line-height:var(--lh-call)}
+.t-sub{font-size:var(--fs-sub);line-height:var(--lh-sub)}
+.t-foot{font-size:var(--fs-foot);line-height:var(--lh-foot)}
+.t-cap{font-size:var(--fs-cap);line-height:var(--lh-cap)}
+.t-cap2{font-size:var(--fs-cap2);line-height:var(--lh-cap2)}
+.ink2{color:var(--ink-2)} .ink3{color:var(--ink-3)}
+.num{font-variant-numeric:tabular-nums}
+.ic{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round;flex:none}
+.ax5 .ic{width:44px;height:44px}
+
+/* ---------- App frame ---------- */
+.duo{display:flex;height:100%}
+.duo>.page{flex:none;width:455.5px;height:100%;position:relative;overflow:hidden}
+.hinge{flex:none;width:40px;height:100%;background:var(--bezel)}
+.app{position:absolute;inset:0;display:flex;flex-direction:column;background:var(--bg)}
+.statusbar{flex:none;height:var(--sa-top);padding-top:var(--space-4);padding-inline:var(--space-8);font-size:15px;line-height:20px;font-weight:600}
+.ax5 .statusbar{font-size:15px}
+.scroll{flex:1;min-height:0;overflow-y:auto;overscroll-behavior:contain}
+.pad{padding:0 var(--space-4) var(--space-6);display:flex;flex-direction:column;gap:var(--space-6)}
+.stack-1{display:flex;flex-direction:column;gap:var(--space-1)}
+.stack-2{display:flex;flex-direction:column;gap:var(--space-2)}
+.stack-3{display:flex;flex-direction:column;gap:var(--space-3)}
+.navbar{flex:none;min-height:44px;display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);padding-inline:var(--space-2)}
+.navbar .spacer{flex:1}
+.navbtn{min-height:44px;min-width:44px;display:inline-flex;align-items:center;gap:var(--space-1);padding-inline:var(--space-2);color:var(--accent);font-size:var(--fs-body);line-height:var(--lh-body)}
+.titlebar{padding:var(--space-1) var(--space-4) var(--space-3)}
+.sec-head{padding-inline:var(--space-4);color:var(--ink-2)}
+.ax5 .navbtn span.lbl{display:none}
+
+/* Inset grouped list */
+.group{background:var(--surface);border-radius:var(--radius);display:flex;flex-direction:column;overflow:hidden}
+.group>*+*{border-top:1px solid var(--line)}
+.groupwrap{display:flex;flex-direction:column;gap:var(--space-2)}
+.row{display:flex;align-items:center;gap:var(--space-3);min-height:44px;padding:var(--space-3) var(--space-4);width:100%;background:var(--surface)}
+.row.is-sel{background:var(--accent-soft)}
+.row-main{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.row-end{display:flex;align-items:center;gap:var(--space-2);color:var(--ink-3)}
+.ax5 .row{flex-direction:column;align-items:flex-start}
+.ax5 .row-end{width:100%;justify-content:space-between}
+.kv{display:flex;gap:var(--space-3);padding:var(--space-3) var(--space-4);align-items:flex-start;min-height:44px}
+.kv .k{flex:none;width:88px;color:var(--ink-2)}
+.kv .v{flex:1;min-width:0;display:flex;flex-direction:column;gap:var(--space-1)}
+.ax5 .kv{flex-direction:column;gap:var(--space-1)}
+.ax5 .kv .k{width:auto}
+.line-item{display:flex;justify-content:space-between;gap:var(--space-3);padding:var(--space-2) var(--space-4);min-height:44px;align-items:center}
+.line-item.total{font-weight:600}
+.ax5 .line-item{flex-direction:column;align-items:flex-start;gap:0}
+
+/* Deadline pill */
+.due{display:inline-flex;align-items:baseline;gap:4px;padding:2px var(--space-2);border-radius:var(--radius);font-size:var(--fs-foot);line-height:var(--lh-foot);font-weight:600;white-space:nowrap}
+.due b{font-size:var(--fs-head);font-variant-numeric:tabular-nums}
+.tone-urgent{color:var(--urgent);background:var(--urgent-soft)}
+.tone-warn{color:var(--warn);background:var(--warn-soft)}
+.tone-calm{color:var(--ink-2);background:var(--fill)}
+.tone-ok{color:var(--ok);background:var(--ok-soft)}
+.tone-closed{color:var(--closed);background:var(--closed-soft)}
+.band{border-radius:var(--radius);padding:var(--space-3) var(--space-4);display:flex;flex-direction:column;gap:2px}
+.band .t-sub{color:var(--ink)}
+
+/* Buttons */
+.btn{min-height:50px;border-radius:var(--radius);display:inline-flex;align-items:center;justify-content:center;gap:var(--space-2);padding:var(--space-2) var(--space-4);font-size:var(--fs-head);line-height:var(--lh-head);font-weight:600;text-align:center}
+.btn-primary{background:var(--accent);color:var(--on-accent);flex:1}
+.btn-icon{min-width:50px;padding:0;background:var(--surface);color:var(--accent);border:1px solid var(--line)}
+.btn-plain{color:var(--accent);background:transparent;min-height:44px;font-weight:600}
+.btn-quiet{background:var(--surface);color:var(--accent);border:1px solid var(--line);flex:1}
+.btn-small{min-height:44px;padding:0 var(--space-3);font-size:var(--fs-sub);line-height:var(--lh-sub);border-radius:var(--radius);color:var(--accent);background:var(--fill);font-weight:600;display:inline-flex;align-items:center;gap:var(--space-1)}
+.actionbar{flex:none;padding:var(--space-3) var(--space-4) var(--sa-bottom);background:var(--bg);border-top:1px solid var(--line);display:flex;flex-direction:column;gap:var(--space-2)}
+.actionbar .r{display:flex;gap:var(--space-2);align-items:stretch}
+.actionbar .note{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);min-height:44px;color:var(--ink-2)}
+.ax5 .btn{min-height:76px}
+.ax5 .actionbar{padding-bottom:var(--space-4)}
+.ax5 .btn-icon{min-width:76px}
+.ax5 .btn-primary .ic{display:none}
+.ax5 .btn-primary{padding-inline:var(--space-2)}
+.ax5 .sheet-bar{flex-wrap:wrap}
+.ax5 .sheet-bar .ttl{order:3;flex-basis:100%;text-align:start;padding-inline:var(--space-2)}
+.ax5 .sheet-bar>.slot{min-width:0}
+.ax5 .rw-tick:not(.today){display:none}
+
+/* Segmented control */
+.seg{display:flex;background:var(--fill);border-radius:var(--radius);padding:2px;gap:2px}
+.seg button{flex:1;min-height:44px;border-radius:6px;font-size:var(--fs-sub);line-height:var(--lh-sub);text-align:center;padding:var(--space-1) var(--space-2)}
+.seg button[aria-pressed="true"]{background:var(--surface);font-weight:600;box-shadow:0 1px 2px rgba(0,0,0,.12)}
+.ax5 .seg{flex-direction:column}
+
+/* The message */
+.letter{font-family:var(--font-letter);font-size:var(--fs-body);line-height:1.6;background:var(--paper);border-radius:var(--radius);padding:var(--space-4);display:flex;flex-direction:column;gap:var(--space-3);border:1px solid var(--line)}
+.letter ul{margin:0;padding-inline-start:1.1em}
+.letter-edit{font-family:var(--font-letter);font-size:var(--fs-body);line-height:1.6;width:100%;min-height:320px;border-radius:var(--radius);padding:var(--space-4);border:2px solid var(--accent);background:var(--paper);color:var(--ink);resize:vertical}
+.edited{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);color:var(--ink-2)}
+
+/* Tab bar: floats over content at the bottom (Apple tab bars page) */
+.tabbar{position:absolute;left:var(--space-6);right:var(--space-6);bottom:calc(var(--sa-bottom) - var(--space-4));display:flex;gap:var(--space-1);padding:var(--space-1);border-radius:999px;background:color-mix(in srgb, var(--surface) 88%, transparent);backdrop-filter:blur(12px);box-shadow:var(--lift);border:1px solid var(--line)}
+.tabbar button{flex:1;min-height:52px;border-radius:999px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;font-size:var(--fs-cap2);line-height:var(--lh-cap2);color:var(--ink-2);text-align:center}
+.tabbar button[aria-current="page"]{color:var(--accent);background:var(--accent-soft);font-weight:600}
+.tab-space{height:calc(52px + var(--space-8))}
+.ax5 .tabbar button{min-height:96px}
+.ax5 .tab-space{height:140px}
+
+/* Sheets: always inside one page, never across the hinge */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:5}
+.sheet{position:absolute;left:0;right:0;bottom:0;max-height:calc(100% - var(--sa-top) - var(--space-4));z-index:6;background:var(--bg);border-radius:16px 16px 0 0;display:flex;flex-direction:column;box-shadow:var(--lift)}
+.sheet.tall{top:calc(var(--sa-top) + var(--space-3))}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--line);margin:var(--space-2) auto 0}
+.sheet-bar{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);padding:0 var(--space-2);min-height:52px}
+.sheet-bar .ttl{flex:1;text-align:center}
+.sheet-bar>.slot{min-width:72px;display:flex}
+.sheet-bar>.slot:last-child{justify-content:flex-end}
+.sheet-body>*,.pad>*,.stack-3>*,.sheet>.sheet-bar,.sheet>.grabber,.sheet>.actionbar{flex-shrink:0}
+.sheet-body{overflow-y:auto;padding:0 var(--space-4) var(--sa-bottom);display:flex;flex-direction:column;gap:var(--space-4)}
+
+/* Skeleton for carrier loading: keeps the loaded line's height */
+.skel{display:inline-block;height:1em;width:12em;max-width:100%;border-radius:4px;background:var(--fill);vertical-align:middle;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{50%{opacity:.5}}
+@media (prefers-reduced-motion: reduce){.skel{animation:none}}
+
+.empty{display:flex;flex-direction:column;gap:var(--space-4);align-items:flex-start;padding:var(--space-8) var(--space-4)}
+
+/* ---------- Letters ---------- */
+.strip{flex:none;display:flex;gap:var(--space-2);overflow-x:auto;padding:var(--space-1) var(--space-4) var(--space-3);scrollbar-width:none}
+.stamp{flex:none;width:72px;min-height:76px;border-radius:var(--radius);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;padding:var(--space-1);border:2px dashed currentColor;text-align:center;background:var(--surface)}
+.stamp .n{font-size:26px;line-height:30px;font-weight:700;font-variant-numeric:tabular-nums;display:flex;align-items:center;justify-content:center;min-height:30px}
+.stamp .u{font-size:var(--fs-cap2);line-height:var(--lh-cap2);font-weight:600}
+.stamp .s{font-size:var(--fs-cap2);line-height:var(--lh-cap2);color:var(--ink-2);max-width:100%;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.stamp[aria-current="true"]{border-style:solid;box-shadow:0 0 0 3px var(--accent)}
+.ax5 .stamp{width:150px;min-height:150px}
+.ax5 .stamp .n{font-size:56px;line-height:64px;min-height:64px}
+.postmark{flex:none;display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);padding:0 var(--space-2) var(--space-2) var(--space-4)}
+.postmark .pm{display:flex;flex-direction:column}
+.ax5 .postmark{flex-direction:column;align-items:flex-start}
+.paper{font-family:var(--font-letter);font-size:var(--fs-body);line-height:1.75;background:var(--paper);border-radius:var(--radius);padding:var(--space-5) var(--space-5) var(--space-6);display:flex;flex-direction:column;gap:var(--space-4);border:1px solid var(--line);box-shadow:0 1px 0 var(--line)}
+.paper ul{margin:0;padding-inline-start:1.1em}
+.chip{font:inherit;display:inline;padding:6px 0;border-radius:2px;background:transparent;color:var(--ink);box-decoration-break:clone;-webkit-box-decoration-break:clone;text-decoration:underline 2px var(--accent);text-underline-offset:4px;cursor:pointer}
+.chip:hover{background:var(--accent-soft)}
+.chip.is-on{background:var(--accent);color:var(--on-accent)}
+.pm-warn{color:var(--warn);font-weight:600}
+.ev-sec{display:flex;flex-direction:column;gap:var(--space-2);border-radius:var(--radius);transition:box-shadow .2s}
+.ev-sec.is-on{box-shadow:0 0 0 3px var(--accent)}
+@media (prefers-reduced-motion: reduce){.ev-sec{transition:none}}
+
+/* ---------- Runway ---------- */
+.rw{display:flex;flex-direction:column;gap:var(--space-1);position:relative;padding:0 var(--space-4)}
+.rw-axis{position:relative;height:var(--lh-foot);margin-bottom:var(--space-1)}
+.rw-tick{position:absolute;top:0;transform:translateX(-50%);color:var(--ink-3);white-space:nowrap}
+.rw-tick.today{color:var(--accent);font-weight:700}
+.rw-body{position:relative;display:flex;flex-direction:column;gap:var(--space-1)}
+.rw-today{position:absolute;top:-4px;bottom:-4px;width:2px;margin-left:-1px;background:var(--accent);z-index:1}
+.rw-row{position:relative;display:flex;flex-direction:column;gap:var(--space-1);padding:var(--space-2) 0;min-height:56px;width:100%;border-radius:var(--radius)}
+.rw-row.is-sel{background:var(--accent-soft);box-shadow:-8px 0 0 var(--accent-soft),8px 0 0 var(--accent-soft)}
+.rw-head{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-2);padding-inline:2px}
+.rw-head .t-sub{font-weight:600;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.ax5 .rw-head{flex-direction:column}
+.ax5 .rw-head .t-sub{white-space:normal}
+.rw-track{position:relative;height:16px}
+.ax5 .rw-track{height:32px}
+.rw-seg{position:absolute;top:3px;bottom:3px;border-radius:4px}
+.rw-seg.past{background:var(--fill);border:1px solid var(--line)}
+.rw-seg.left.tone-urgent{background:var(--urgent)} .rw-seg.left.tone-warn{background:var(--warn)} .rw-seg.left.tone-calm{background:var(--ink-3)} .rw-seg.left.tone-ok{background:var(--ok)}
+.rw-end{position:absolute;top:0;bottom:0;width:3px;border-radius:2px;background:var(--closed)}
+.rw-dot{position:absolute;top:50%;width:12px;height:12px;border-radius:50%;background:var(--surface);border:2px solid var(--ink);transform:translate(-50%,-50%);z-index:2}
+.rw-dot.diamond{border-radius:2px;transform:translate(-50%,-50%) rotate(45deg)}
+.rw-dot.ask{background:var(--ok);border-color:var(--ok)}
+.ax5 .rw-dot{width:24px;height:24px}
+.legend{display:flex;flex-wrap:wrap;gap:var(--space-2) var(--space-4);padding:0 var(--space-4);color:var(--ink-2)}
+.legend span{display:inline-flex;align-items:center;gap:var(--space-2)}
+.lg{display:inline-block;width:12px;height:12px;border-radius:50%;border:2px solid var(--ink);background:var(--surface)}
+.lg.diamond{border-radius:2px;transform:rotate(45deg)}
+.lg.bar{width:20px;height:10px;border-radius:3px;border:0;background:var(--ink-3)}
+.lg.past{width:20px;height:10px;border-radius:3px;background:var(--fill);border:1px solid var(--line)}
+.ax5 .lg{width:24px;height:24px}
+.disclose{display:flex;align-items:center;justify-content:space-between;gap:var(--space-2);width:100%;min-height:44px;padding:var(--space-2) var(--space-4)}
+.disclose .ic{transition:transform .2s}
+.disclose[aria-expanded="true"] .ic{transform:rotate(90deg)}
+
+@media (forced-colors: active){
+  .chip{text-decoration-color:LinkText}
+  .rw-seg,.rw-dot,.lg{forced-color-adjust:none}
+  .stamp[aria-current="true"]{outline:3px solid Highlight}
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample. No figure, seller, card, date or tracking number on this page is real.</div>
+
+<header class="harness">
+  <div class="h-top">
+    <h1>Claim a lost package</h1>
+    <p class="h-kind">Designer kind: blind. Designer: claim-a-lost-package-blind-2. Today in the sample is Sat, Nov 21, 2026.</p>
+  </div>
+  <div class="h-controls">
+    <div class="h-group" role="group" aria-label="Concept">
+      <span class="h-label">Concept</span>
+      <div id="concepts" class="h-group"></div>
+    </div>
+    <label class="h-group"><span class="h-label">State</span><select id="state" class="h-select"></select></label>
+    <label class="h-group"><span class="h-label">Theme</span>
+      <select id="theme" class="h-select"><option value="auto">Match device</option><option value="light">Light</option><option value="dark">Dark</option></select>
+    </label>
+    <button id="reset" class="h-select" type="button">Reset frames</button>
+  </div>
+  <div id="hidden" class="h-hidden" hidden></div>
+  <p id="about" class="h-about"></p>
+</header>
+
+<main class="stage">
+  <figure class="device" data-device="iphone-duo-folded">
+    <figcaption><b>Duo, folded</b>. 466 x 678 pt, one screen, from the brief.</figcaption>
+    <div class="scroller"><div class="screen" data-frame="folded" style="width:466px;height:678px"></div></div>
+  </figure>
+  <figure class="device" data-device="iphone-duo-unfolded">
+    <figcaption><b>Duo, open</b>. 951 x 669 pt, two pages, hinge from x 455.5 to 495.5, from the brief.</figcaption>
+    <div class="scroller"><div class="screen" data-frame="open" style="width:951px;height:669px"></div></div>
+  </figure>
+  <figure class="device" data-device="iphone-regular">
+    <figcaption><b>Large phone</b>. Size not written in the brief or the device list: drawn at 440 x 956 pt, unsourced.</figcaption>
+    <div class="scroller"><div class="screen" data-frame="phone" style="width:440px;height:956px"></div></div>
+  </figure>
+  <figure class="device" data-device="iphone-duo-folded" data-text-size="AX5">
+    <figcaption><b>Duo, folded, largest text (AX5)</b>. Body 53 pt.</figcaption>
+    <div class="scroller"><div class="screen ax5" data-frame="ax5" style="width:466px;height:678px"></div></div>
+  </figure>
+</main>
+
+<script>
+(function(){
+"use strict";
+/* ---------------- Sample data (all made up) ---------------- */
+const TODAY = '2026-11-21';
+const ORDERS = [
+  {id:'o1', seller:'Gray Owl Games', ordered:'2026-10-24', deadline:'2026-11-24', tracking:'9400 1000 0000 0000 0000 01',
+   carrier:{kind:'stalled', date:'2026-10-29', place:'a regional sorting center'},
+   cards:[['Ashen Lantern',0.89],['Tidecaller’s Oath',2.35],['Brass Wren',0.42],['Lantern Moth (foil)',3.10],['Quiet Harbor',0.67]]},
+  {id:'o2', seller:'Cobble Lane Cards', ordered:'2026-10-30', deadline:'2026-11-29', tracking:null, carrier:null,
+   cards:[['Saltmarsh Heron',0.71],['Ember Tithe',0.47]]},
+  {id:'o3', seller:'Moth and Moon Collectibles', ordered:'2026-11-02', deadline:'2026-12-02', tracking:'9200 1900 0000 0000 0000 37',
+   carrier:{kind:'delivered', date:'2026-11-10'},
+   cards:[['Glass Orchard',1.25],['Veiled Courier',0.95],['Rimefang Scout',0.38],['Hollow Bell',2.10],['Mirror Tide',4.40],['Starling Pact',0.62],['Root and Ruin',1.85],['Dusk Ledger',0.57],['Kettle Golem',2.50]]},
+  {id:'o4', seller:'Pine Street Singles', ordered:'2026-11-04', deadline:'2026-12-04', tracking:'9400 1000 0000 0000 0000 88',
+   carrier:{kind:'failed'},
+   cards:[['Copper Augur',0.55],['Field of Reeds',0.80],['Night Ferry',0.70]]},
+  {id:'o5', seller:'Rook’s Rest Games', ordered:'2026-09-30', deadline:'2026-11-19', tracking:'9400 1000 0000 0000 0000 15',
+   carrier:{kind:'stalled', date:'2026-10-06', place:'the post office it left from'},
+   cards:[['Wardstone',0.33],['Bramble Herald',1.40]]},
+  {id:'o6', seller:'Thimble and Thorn', ordered:'2026-10-20', deadline:'2026-11-26', tracking:null, carrier:null,
+   cards:[['Lark Sigil',3.75]]}
+];
+const byId = id => ORDERS.find(o => o.id === id);
+
+/* ---------------- Dates and words ---------------- */
+const MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const WD = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'];
+const ms = s => { const [y,m,d] = s.split('-').map(Number); return Date.UTC(y, m-1, d); };
+const between = (a,b) => Math.round((ms(b) - ms(a)) / 864e5);
+const fmt = s => { const d = new Date(ms(s)); return MON[d.getUTCMonth()] + ' ' + d.getUTCDate(); };
+const fmtW = s => { const d = new Date(ms(s)); return WD[d.getUTCDay()] + ', ' + fmt(s); };
+const money = n => '$' + n.toFixed(2);
+const total = o => o.cards.reduce((a,c) => a + c[1], 0);
+const plural = (n, w) => n + ' ' + w + (n === 1 ? '' : 's');
+const daysLeft = o => between(TODAY, o.deadline);
+const daysSince = s => between(s, TODAY);
+const tone = L => L < 0 ? 'closed' : L <= 3 ? 'urgent' : L <= 7 ? 'warn' : 'calm';
+const esc = s => String(s).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const cardsLine = o => plural(o.cards.length, 'card') + ', ' + money(total(o));
+
+const IC = {
+  chevR:'<path d="M9 6l6 6-6 6"/>', chevL:'<path d="M15 5l-7 7 7 7"/>',
+  share:'<path d="M12 3v12M8 7l4-4 4 4"/><path d="M6 11v8a2 2 0 0 0 2 2h8a2 2 0 0 0 2-2v-8"/>',
+  copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/>',
+  check:'<path d="M5 12l5 5 9-10"/>',
+  tray:'<path d="M4 13h4l2 3h4l2-3h4"/><path d="M4 13l2.5-8h11l2.5 8v6H4z"/>',
+  sent:'<path d="M21 3L10 14"/><path d="M21 3l-7 18-4-7-7-4z"/>',
+  retry:'<path d="M20 12a8 8 0 1 1-2.3-5.7"/><path d="M20 4v5h-5"/>'
+};
+const ic = k => '<svg class="ic" viewBox="0 0 24 24" aria-hidden="true">' + IC[k] + '</svg>';
+
+/* ---------------- Drafts: the person's own edits survive a reload ---------------- */
+const DRAFT = {};
+try { const raw = localStorage.getItem('claim-blind-2-drafts'); if (raw) Object.assign(DRAFT, JSON.parse(raw)); } catch(e) {}
+function saveDrafts(){ try { localStorage.setItem('claim-blind-2-drafts', JSON.stringify(DRAFT)); } catch(e) {} }
+
+/* ---------------- Frame state ---------------- */
+function statusOf(o, st){
+  if (st.outcome[o.id]) return 'done';
+  if (st.asked[o.id]) return 'asked';
+  return daysLeft(o) < 0 ? 'closed' : 'open';
+}
+function visible(st){ return st.empty ? [] : ORDERS; }
+function openOrders(st){ return visible(st).filter(o => statusOf(o,st) === 'open').sort((a,b) => daysLeft(a) - daysLeft(b)); }
+function closedOrders(st){ return visible(st).filter(o => statusOf(o,st) === 'closed'); }
+function askedOrders(st){ return visible(st).filter(o => statusOf(o,st) === 'asked').sort((a,b) => daysLeft(a) - daysLeft(b)); }
+function allLate(st){ return openOrders(st).concat(askedOrders(st), closedOrders(st)); }
+
+function carrierOf(o, st){
+  if (!o.tracking) return {kind:'none', short:'No tracking number', long:'Sent without tracking.'};
+  const over = st.carrier[o.id];
+  if (st.loading || over === 'loading') return {kind:'loading', short:'Checking the carrier', long:'Checking the carrier'};
+  if (over === 'transit') return {kind:'transit', date:'2026-11-18', short:'Last scan ' + fmt('2026-11-18'),
+    long:'Last scan ' + fmtW('2026-11-18') + ', in transit at a sorting center. ' + plural(daysSince('2026-11-18'),'day') + ' ago.'};
+  const c = o.carrier;
+  if (c.kind === 'stalled') return {kind:'stalled', date:c.date, place:c.place, short:'No scan since ' + fmt(c.date),
+    long:'Last scan ' + fmtW(c.date) + ', at ' + c.place + '. No movement for ' + plural(daysSince(c.date),'day') + '.'};
+  if (c.kind === 'delivered') return {kind:'delivered', date:c.date, short:'Carrier says delivered ' + fmt(c.date),
+    long:'The carrier marked it delivered on ' + fmtW(c.date) + '. It never reached you.'};
+  return {kind:'failed', short:'The carrier did not answer', long:'The carrier did not answer, so its status is unknown.'};
+}
+
+function initState(s, concept){
+  const st = {tab:'late', view:'list', id:null, copied:false, loading:false, empty:false, ask:{}, asked:{o6:'2026-11-18'},
+    outcome:{}, carrier:{}, edit:false, sheet:null, flash:null, share:false, cardsOpen:false, note:null, numCopied:null, emptyNote:false};
+  const open = id => { st.view = 'detail'; st.id = id; };
+  switch (s) {
+    case 'detail': open('o1'); if (concept === 'letters') st.sheet = 'cards'; if (concept === 'runway') st.cardsOpen = true; break;
+    case 'copied': open('o1'); st.copied = true; break;
+    case 'notrack': open('o2'); break;
+    case 'delivered': open('o3'); break;
+    case 'failed': open('o4'); break;
+    case 'loading': st.loading = true; if (concept !== 'docket') open('o1'); break;
+    case 'closed': open('o5'); break;
+    case 'asked': open('o6'); st.tab = 'asked'; break;
+    case 'edit': open('o1'); st.edit = true; break;
+    case 'empty': st.empty = true; st.asked = {}; break;
+  }
+  if (concept === 'runway' && st.view === 'detail') st.sheet = 'kit';
+  return st;
+}
+function selected(F){
+  const st = F.st;
+  if (st.id && !st.empty) return byId(st.id);
+  const first = (st.tab === 'asked' && CONCEPT === 'docket') ? askedOrders(st)[0] : allLate(st)[0];
+  return first || null;
+}
+
+/* ---------------- The message: one home for its words ---------------- */
+// Returns paragraphs; each is {p:[segments]} or {list:[strings]}. A segment is a string or {k, t}.
+function message(o, st){
+  const ask = st.ask[o.id] || 'refund';
+  const c = carrierOf(o, st);
+  const L = daysLeft(o);
+  const askSeg = {k:'ask', t: ask === 'refund' ? 'Could you refund the order, please?' : 'Could you send a replacement, please?'};
+  const P = [];
+  P.push({p:['Hi ', {k:'seller', t:o.seller}, ',']});
+  if (st.asked[o.id]) {
+    P.push({p:['I wrote to you on ', {k:'asked', t:fmt(st.asked[o.id])}, ' about my order from ', {k:'date', t:fmt(o.ordered)},
+      ' (', {k:'cards', t:plural(o.cards.length,'card')}, ', ', {k:'cards', t:money(total(o))}, '). It still has not arrived, and I have not had an answer.']});
+    P.push({p:[askSeg]});
+    P.push({p:['Thank you.']});
+    return P;
+  }
+  P.push({p:['My order from ', {k:'date', t:fmt(o.ordered)}, ' has not arrived. It held ', {k:'cards', t:plural(o.cards.length,'card')},
+    ' for ', {k:'cards', t:money(total(o))}, '.']});
+  if (c.kind === 'none') P.push({p:['It was sent without tracking, and it is now ', {k:'date', t:plural(daysSince(o.ordered),'day')}, ' since I ordered.']});
+  else if (c.kind === 'stalled') P.push({p:['Tracking number ', {k:'carrier', t:o.tracking}, ' has not moved since ', {k:'carrier', t:fmt(c.date)},
+    ', when it reached ' + c.place + '. That was ' + plural(daysSince(c.date),'day') + ' ago.']});
+  else if (c.kind === 'delivered') P.push({p:['Tracking number ', {k:'carrier', t:o.tracking}, ' shows it delivered on ', {k:'carrier', t:fmt(c.date)},
+    ', but it never reached me.']});
+  else if (c.kind === 'transit') P.push({p:['Tracking number ', {k:'carrier', t:o.tracking}, ' last moved on ', {k:'carrier', t:fmt(c.date)},
+    ', and it is now ', {k:'date', t:plural(daysSince(o.ordered),'day')}, ' since I ordered.']});
+  else P.push({p:['The tracking number is ', {k:'carrier', t:o.tracking}, '.']});
+  if (L < 0) P.push({p:['I know the claim window closed on ', {k:'window', t:fmt(o.deadline)}, '. I hope you can still help.']});
+  P.push({p:[askSeg]});
+  P.push({p:['The cards:']});
+  P.push({list:o.cards.map(c2 => c2[0] + ', ' + money(c2[1]))});
+  P.push({p:['Thank you.']});
+  return P;
+}
+function plainText(o, st){
+  if (DRAFT[o.id] != null) return DRAFT[o.id];
+  return message(o, st).map(b => b.list ? b.list.map(x => '- ' + x).join('\n') : b.p.map(s => typeof s === 'string' ? s : s.t).join('')).join('\n\n');
+}
+function messageHTML(o, st, chips, flash){
+  if (DRAFT[o.id] != null) return '<div style="white-space:pre-wrap">' + esc(DRAFT[o.id]) + '</div>';
+  return message(o, st).map(b => {
+    if (b.list) return '<ul>' + b.list.map(x => '<li>' + esc(x) + '</li>').join('') + '</ul>';
+    return '<p>' + b.p.map(s => typeof s === 'string' ? esc(s)
+      : chips ? '<button type="button" class="chip' + (flash === s.k ? ' is-on' : '') + '" data-act="chip" data-k="' + s.k + '">' + esc(s.t) + '</button>'
+      : esc(s.t)).join('') + '</p>';
+  }).join('');
+}
+
+/* ---------------- Shared parts ---------------- */
+const statusbar = '<div class="statusbar" aria-hidden="true">9:41</div>';
+function duePill(o, st){
+  const s = statusOf(o, st), L = daysLeft(o);
+  if (s === 'asked') return '<span class="due tone-ok">' + ic('check') + 'asked ' + fmt(st.asked[o.id]) + '</span>';
+  if (s === 'closed') return '<span class="due tone-closed"><b>' + (-L) + '</b> days past</span>';
+  return '<span class="due tone-' + tone(L) + '"><b>' + L + '</b> ' + (L === 1 ? 'day' : 'days') + ' left</span>';
+}
+function band(o, st){
+  const s = statusOf(o, st), L = daysLeft(o);
+  if (s === 'done') {
+    const v = st.outcome[o.id];
+    const word = v === 'refunded' ? 'Refunded' : v === 'arrived' ? 'Arrived after all' : 'Marked as lost';
+    return '<div class="band tone-ok"><span class="t-head">' + word + '</span><span class="t-sub">This order has left the list.</span></div>';
+  }
+  if (s === 'asked') return '<div class="band tone-ok"><span class="t-head">Asked the seller ' + plural(daysSince(st.asked[o.id]),'day') + ' ago</span><span class="t-sub">No answer yet. The claim window closes ' + fmtW(o.deadline) + '.</span></div>';
+  if (s === 'closed') return '<div class="band tone-closed"><span class="t-head">Claim window closed ' + plural(-L,'day') + ' ago</span><span class="t-sub">It closed ' + fmtW(o.deadline) + '. The seller may refuse, and you can still ask.</span></div>';
+  return '<div class="band tone-' + tone(L) + '"><span class="t-head">' + plural(L,'day') + ' left to claim</span><span class="t-sub">Claim by ' + fmtW(o.deadline) + '.</span></div>';
+}
+function carrierBlock(o, st){
+  const c = carrierOf(o, st);
+  let h = c.kind === 'loading' ? '<span><span class="skel"></span><span class="ink2"> Checking the carrier</span></span>' : '<span>' + esc(c.long) + '</span>';
+  if (o.tracking) {
+    const done = st.numCopied === o.id;
+    h += '<span class="ink2 num t-sub">' + esc(o.tracking) + '</span>';
+    h += '<span style="display:flex;flex-wrap:wrap;gap:8px">';
+    h += '<button type="button" class="btn-small" data-act="copyNum">' + ic(done ? 'check' : 'copy') + (done ? 'Number copied' : 'Copy number') + '</button>';
+    if (c.kind === 'failed') h += '<button type="button" class="btn-small" data-act="retry">' + ic('retry') + 'Try again</button>';
+    h += '</span>';
+  }
+  return h;
+}
+function cardsGroup(o){
+  return '<div class="group">' + o.cards.map(c => '<div class="line-item t-body"><span>' + esc(c[0]) + '</span><span class="num ink2">' + money(c[1]) + '</span></div>').join('')
+    + '<div class="line-item total t-body"><span>Total, ' + plural(o.cards.length,'card') + '</span><span class="num">' + money(total(o)) + '</span></div></div>';
+}
+function askSeg(o, st){
+  const a = st.ask[o.id] || 'refund';
+  return '<div class="seg" role="group" aria-label="Ask for"><button type="button" data-act="ask" data-v="refund" aria-pressed="' + (a === 'refund') + '">Ask for a refund</button>'
+    + '<button type="button" data-act="ask" data-v="replace" aria-pressed="' + (a === 'replace') + '">Ask for a replacement</button></div>';
+}
+// The action bar. One home for Copy, Share and the follow-on acts.
+function actionBar(F, o, opts){
+  const st = F.st, s = statusOf(o, st), ax = F.kind === 'ax5';
+  const copyLbl = s === 'asked' ? 'Copy follow-up' : 'Copy message';
+  const primary = '<button type="button" class="btn btn-primary" data-act="copy">' + (st.copied ? ic('check') + 'Copied' : ic('copy') + copyLbl) + '</button>';
+  const shareBtn = '<button type="button" class="btn btn-icon" data-act="share" aria-label="Share message">' + ic('share') + '</button>';
+  let second;
+  if (st.note && st.note.id === o.id) second = '<div class="note t-sub"><span>' + st.note.text + '</span><button type="button" class="btn-plain" data-act="undo">Undo</button></div>';
+  else if (s === 'asked') second = '<div class="r"><button type="button" class="btn btn-quiet" data-act="outcome" data-v="refunded">Refunded</button><button type="button" class="btn btn-quiet" data-act="outcome" data-v="arrived">Arrived</button></div>';
+  else if (s === 'closed') second = '<button type="button" class="btn btn-plain" data-act="outcome" data-v="lost">Mark as lost</button>';
+  else if (s === 'done') second = '';
+  else second = '<button type="button" class="btn btn-plain" data-act="asked">I sent it, mark as asked</button>';
+  if (s === 'done' && !(st.note && st.note.id === o.id)) return '';
+  if (ax) return {bar:'<div class="actionbar"><div class="r">' + primary + '</div></div>', rest:'<div class="stack-2">' + shareBtn.replace('btn btn-icon', 'btn btn-quiet').replace(ic('share'), ic('share') + 'Share') + second + '</div>'};
+  return '<div class="actionbar"><div class="r">' + primary + shareBtn + '</div>' + second + '</div>';
+}
+function barParts(F, o){
+  const r = actionBar(F, o);
+  if (typeof r === 'string') return {bar:r, rest:''};
+  return r;
+}
+function shareSheet(){
+  return '<div class="scrim" data-act="closeShare"></div><div class="sheet" role="dialog" aria-label="Share"><div class="grabber"></div>'
+    + '<div class="sheet-bar"><span class="slot"></span><span class="ttl t-head">Share</span><span class="slot"><button type="button" class="navbtn" data-act="closeShare">Done</button></span></div>'
+    + '<div class="sheet-body"><p class="t-body ink2">The system share sheet opens here, with the message filled in. Pick the app you use to reach the seller.</p></div></div>';
+}
+function emptyBlock(F){
+  return '<div class="empty"><p class="t-body">No order is late. An order shows here on the day its claim window opens.</p>'
+    + '<button type="button" class="btn btn-quiet" style="flex:none" data-act="emptyCtl">See orders still on the way</button>'
+    + (F.st.emptyNote ? '<p class="t-foot ink2">That list is not drawn in this mockup.</p>' : '') + '</div>';
+}
+function messageEditor(o, st, chips){
+  const edited = DRAFT[o.id] != null;
+  if (st.edit) return '<textarea class="letter-edit" data-id="' + o.id + '" aria-label="Message to ' + esc(o.seller) + '">' + esc(plainText(o, st)) + '</textarea>';
+  return (edited ? '<div class="edited t-foot"><span>You edited this message, so its facts no longer update.</span><button type="button" class="btn-plain" data-act="resetDraft">Undo edits</button></div>' : '')
+    + '<div class="' + (chips ? 'paper' : 'letter') + '">' + messageHTML(o, st, chips, st.flash) + '</div>';
+}
+
+/* ================= Concept: Docket ================= */
+function docketList(F, opts){
+  const st = F.st, sel = opts.sel;
+  const tab = st.tab;
+  let body;
+  if (tab === 'late') {
+    const open = openOrders(st), closed = closedOrders(st);
+    if (!open.length && !closed.length) body = emptyBlock(F);
+    else body = '<div class="pad">'
+      + (open.length ? '<div class="groupwrap"><p class="sec-head t-foot">Soonest deadline first</p><div class="group">' + open.map(o => docketRow(F, o, sel)).join('') + '</div></div>' : '')
+      + (closed.length ? '<div class="groupwrap"><p class="sec-head t-foot">Claim window closed</p><div class="group">' + closed.map(o => docketRow(F, o, sel)).join('') + '</div></div>' : '')
+      + '</div>';
+  } else {
+    const asked = askedOrders(st);
+    body = asked.length ? '<div class="pad"><div class="groupwrap"><p class="sec-head t-foot">Waiting on the seller</p><div class="group">' + asked.map(o => docketRow(F, o, sel)).join('') + '</div></div></div>'
+      : '<div class="empty"><p class="t-body">You have not asked a seller yet.</p><button type="button" class="btn btn-quiet" style="flex:none" data-act="tab" data-tab="late">Show late orders</button></div>';
+  }
+  const lateN = openOrders(st).length + closedOrders(st).length;
+  return '<div class="app" ' + (opts.focus ? 'id="focus-docket"' : '') + '>' + statusbar
+    + '<div class="scroll"><div class="titlebar"><h2 class="t-large">' + (tab === 'late' ? 'Late orders' : 'Asked') + '</h2></div>' + body + '<div class="tab-space"></div></div>'
+    + '<nav class="tabbar" aria-label="Sections">'
+    + '<button type="button" data-act="tab" data-tab="late" ' + (tab === 'late' ? 'aria-current="page"' : '') + '>' + ic('tray') + '<span>Late orders' + (lateN ? ' (' + lateN + ')' : '') + '</span></button>'
+    + '<button type="button" data-act="tab" data-tab="asked" ' + (tab === 'asked' ? 'aria-current="page"' : '') + '>' + ic('sent') + '<span>Asked</span></button>'
+    + '</nav></div>';
+}
+function docketRow(F, o, sel){
+  const isSel = sel && sel.id === o.id;
+  const c = carrierOf(o, F.st);
+  return '<button type="button" class="row' + (isSel ? ' is-sel' : '') + '" data-act="open" data-id="' + o.id + '"' + (isSel ? ' aria-current="true"' : '') + '>'
+    + '<span class="row-main"><span class="t-head">' + esc(o.seller) + '</span><span class="t-sub ink2 num">' + cardsLine(o) + ', ordered ' + fmt(o.ordered) + '</span>'
+    + '<span class="t-foot ink3">' + (c.kind === 'loading' ? '<span class="skel" style="width:9em"></span>' : esc(c.short)) + '</span></span>'
+    + '<span class="row-end">' + duePill(o, F.st) + ic('chevR') + '</span></button>';
+}
+function docketDetail(F, o, opts){
+  const st = F.st;
+  if (!o) return '<div class="app">' + statusbar + '<div class="scroll">' + emptyBlock(F) + '</div></div>';
+  const parts = barParts(F, o);
+  const back = opts.back ? '<button type="button" class="navbtn" data-act="back">' + ic('chevL') + '<span class="lbl">' + (st.tab === 'late' ? 'Late orders' : 'Asked') + '</span></button>' : '<span></span>';
+  const editBtn = st.edit ? '<button type="button" class="navbtn" data-act="done"><b>Done</b></button>' : '<button type="button" class="navbtn" data-act="edit">Edit message</button>';
+  return '<div class="app">' + statusbar
+    + '<div class="navbar">' + back + editBtn + '</div>'
+    + '<div class="scroll"><div class="titlebar"><h2 class="t-t1">' + esc(o.seller) + '</h2></div><div class="pad">'
+    + band(o, st)
+    + '<div class="group">'
+    + '<div class="kv t-body"><span class="k">Ordered</span><span class="v"><span>' + fmtW(o.ordered) + ', 2026</span><span class="ink2 t-sub">' + plural(daysSince(o.ordered),'day') + ' ago</span></span></div>'
+    + '<div class="kv t-body"><span class="k">Carrier</span><span class="v">' + carrierBlock(o, st) + '</span></div>'
+    + '</div>'
+    + '<div class="groupwrap"><p class="sec-head t-foot">Message to the seller</p><div class="stack-3">' + askSeg(o, st) + messageEditor(o, st, false) + '</div></div>'
+    + '<div class="groupwrap"><p class="sec-head t-foot">Cards</p>' + cardsGroup(o) + '</div>'
+    + parts.rest
+    + '</div></div>'
+    + parts.bar
+    + (st.share ? shareSheet() : '')
+    + '</div>';
+}
+function renderDocket(F){
+  const st = F.st;
+  if (F.kind === 'open') {
+    const sel = selected(F);
+    return '<div class="duo"><div class="page">' + docketList(F, {sel, focus:false}) + '</div><div class="hinge" aria-hidden="true"></div><div class="page">'
+      + docketDetail(F, sel, {back:false}) + '</div></div>';
+  }
+  if (st.view === 'detail' && st.id) return docketDetail(F, byId(st.id), {back:true});
+  return docketList(F, {sel:null, focus:F.kind === 'folded'});
+}
+
+/* ================= Concept: Letters (bold) ================= */
+const EV_TITLE = {seller:'Seller', date:'Ordered', cards:'Cards', carrier:'Carrier', window:'Claim window', asked:'Claim window', ask:'What to ask for'};
+const EV_KEY = {seller:'seller', date:'date', cards:'cards', carrier:'carrier', window:'window', asked:'window', ask:'ask'};
+function evidence(F, o, k){
+  const st = F.st, L = daysLeft(o);
+  switch (EV_KEY[k]) {
+    case 'seller': {
+      const n = allLate(st).filter(x => x.seller === o.seller).length;
+      return '<div class="group"><div class="kv t-body"><span class="k">Seller</span><span class="v">' + esc(o.seller) + '<span class="ink2 t-sub">' + plural(n,'late order') + ' from this seller</span></span></div></div>';
+    }
+    case 'date': return '<div class="group"><div class="kv t-body"><span class="k">Ordered</span><span class="v"><span>' + fmtW(o.ordered) + ', 2026</span><span class="ink2 t-sub">' + plural(daysSince(o.ordered),'day') + ' ago</span></span></div></div>';
+    case 'cards': return cardsGroup(o);
+    case 'carrier': return '<div class="group"><div class="kv t-body"><span class="k">Carrier</span><span class="v">' + carrierBlock(o, st) + '</span></div></div>';
+    case 'window': return band(o, st);
+    case 'ask': return askSeg(o, st);
+  }
+  return '';
+}
+function stamp(F, o, sel){
+  const st = F.st, s = statusOf(o, st), L = daysLeft(o);
+  const isSel = sel && sel.id === o.id;
+  const t = s === 'asked' ? 'ok' : tone(L);
+  const n = s === 'asked' ? ic('check') : s === 'closed' ? '0' : String(L);
+  const u = s === 'asked' ? 'asked' : 'days';
+  const label = o.seller + (s === 'asked' ? ', asked' : s === 'closed' ? ', claim window closed' : ', ' + plural(L,'day') + ' left');
+  return '<button type="button" class="stamp tone-' + t + '" data-act="pick" data-id="' + o.id + '"' + (isSel ? ' aria-current="true"' : '') + ' aria-label="' + esc(label) + '">'
+    + '<span class="n">' + n + '</span><span class="u">' + u + '</span><span class="s">' + esc(o.seller.split(' ')[0]) + '</span></button>';
+}
+function postmark(F, o){
+  const st = F.st, s = statusOf(o, st), L = daysLeft(o);
+  let line, sub;
+  if (s === 'asked') { line = 'Asked ' + fmtW(st.asked[o.id]); sub = 'This is your follow-up.'; }
+  else if (s === 'closed') { line = 'Claim window closed ' + fmtW(o.deadline); sub = 'You can still ask.'; }
+  else if (s === 'done') { line = st.outcome[o.id] === 'refunded' ? 'Refunded' : st.outcome[o.id] === 'arrived' ? 'Arrived after all' : 'Marked as lost'; sub = 'Leaves the stack.'; }
+  else { line = 'Claim by ' + fmtW(o.deadline); sub = plural(L,'day') + ' left, ' + plural(daysSince(o.ordered),'day') + ' since you ordered'; }
+  // A carrier that failed or is still loading shows on the first screen, not only behind the tracking fact.
+  const ck = carrierOf(o, st).kind;
+  if (ck === 'failed') sub += '</span><span class="t-foot pm-warn">The carrier did not answer. Tap the tracking number to try again.';
+  if (ck === 'loading') sub += '</span><span class="t-foot ink2">Checking the carrier.';
+  const t = s === 'asked' || s === 'done' ? 'ok' : tone(L);
+  const editBtn = st.edit ? '<button type="button" class="navbtn" data-act="done"><b>Done</b></button>' : '<button type="button" class="navbtn" data-act="edit">Edit</button>';
+  return '<div class="postmark"><div class="pm"><span class="t-head" style="color:var(--' + (t === 'calm' ? 'ink' : t) + ')">' + line + '</span><span class="t-foot ink2">' + sub + '</span></div>' + editBtn + '</div>';
+}
+function lettersLeft(F, o, opts){
+  const st = F.st;
+  const stack = allLate(st);
+  if (!o) return '<div class="app" ' + (opts.focus ? 'id="focus-letters"' : '') + '>' + statusbar + '<div class="scroll"><div class="pad"><div class="paper">' + emptyBlock(F).replace('class="empty"', 'class="stack-3"') + '</div></div></div></div>';
+  const parts = barParts(F, o);
+  const hint = opts.open ? 'Tap an underlined fact to find it on the right.' : 'Tap an underlined fact to see where it comes from.';
+  return '<div class="app" ' + (opts.focus ? 'id="focus-letters"' : '') + '>' + statusbar
+    // At AX5 the stamps and postmark scroll with the letter, so the letter keeps the screen.
+    + (F.kind === 'ax5' ? '<div class="scroll">' : '')
+    + '<div class="strip" role="group" aria-label="Late orders, soonest deadline first">' + stack.map(x => stamp(F, x, o)).join('') + '</div>'
+    + postmark(F, o)
+    + (F.kind === 'ax5' ? '' : '<div class="scroll">') + '<div class="pad" style="gap:12px">' + messageEditor(o, st, true)
+    + (st.edit || DRAFT[o.id] != null ? '' : '<p class="t-foot ink2">' + hint + '</p>')
+    + parts.rest + '</div></div>'
+    + parts.bar
+    + (st.sheet && !opts.open ? lettersSheet(F, o, st.sheet) : '')
+    + (st.share ? shareSheet() : '')
+    + '</div>';
+}
+function lettersSheet(F, o, k){
+  return '<div class="scrim" data-act="closeSheet"></div><div class="sheet" role="dialog" aria-label="' + EV_TITLE[k] + '"><div class="grabber"></div>'
+    + '<div class="sheet-bar"><span class="slot"></span><span class="ttl t-head">' + EV_TITLE[k] + '</span><span class="slot"><button type="button" class="navbtn" data-act="closeSheet"><b>Done</b></button></span></div>'
+    + '<div class="sheet-body">' + evidence(F, o, k) + '</div></div>';
+}
+function lettersRight(F, o){
+  const st = F.st;
+  if (!o) return '<div class="app">' + statusbar + '</div>';
+  const on = EV_KEY[st.flash];
+  const sec = (k, title, html) => '<section class="ev-sec' + (on === k ? ' is-on' : '') + '" data-ev="' + k + '"><p class="sec-head t-foot">' + title + '</p>' + html + '</section>';
+  return '<div class="app">' + statusbar
+    + '<div class="scroll" data-evscroll><div class="titlebar stack-1"><h2 class="t-t1">' + esc(o.seller) + '</h2><p class="t-sub ink2">Every fact the letter uses.</p></div><div class="pad">'
+    + sec('window', 'Claim window', band(o, st))
+    + sec('date', 'Ordered', evidence(F, o, 'date').replace('<span class="k">Ordered</span>', ''))
+    + sec('carrier', 'Carrier', evidence(F, o, 'carrier').replace('<span class="k">Carrier</span>', ''))
+    + sec('cards', 'Cards', cardsGroup(o))
+    + sec('ask', 'What to ask for', askSeg(o, st))
+    + '</div></div></div>';
+}
+function renderLetters(F){
+  const o = selected(F);
+  if (F.kind === 'open') return '<div class="duo"><div class="page">' + lettersLeft(F, o, {open:true, focus:false}) + '</div><div class="hinge" aria-hidden="true"></div><div class="page">' + lettersRight(F, o) + '</div></div>';
+  return lettersLeft(F, o, {open:false, focus:F.kind === 'folded'});
+}
+
+/* ================= Concept: Runway ================= */
+const R0 = '2026-09-26', R1 = '2026-12-08';
+const X = s => (between(R0, s) / between(R0, R1) * 100).toFixed(2) + '%';
+function runwayChart(F, opts){
+  const st = F.st, sel = opts.sel;
+  const rows = allLate(st);
+  if (!rows.length) return emptyBlock(F);
+  const ticks = [['2026-10-01','Oct 1'],['2026-11-01','Nov 1'],['2026-12-01','Dec 1']];
+  return '<div class="rw"><div class="rw-axis t-foot">' + ticks.map(t => '<span class="rw-tick" style="left:' + X(t[0]) + '">' + t[1] + '</span>').join('')
+    + '<span class="rw-tick today" style="left:' + X(TODAY) + '">Today</span></div>'
+    + '<div class="rw-body">'
+    + rows.map(o => runwayRow(F, o, sel)).join('') + '</div></div>';
+}
+function runwayRow(F, o, sel){
+  const st = F.st, s = statusOf(o, st), L = daysLeft(o), c = carrierOf(o, st);
+  const isSel = sel && sel.id === o.id;
+  const t = s === 'asked' ? 'ok' : tone(L);
+  let segs = '';
+  const end = L < 0 ? o.deadline : TODAY;
+  segs += '<span class="rw-seg past" style="left:' + X(o.ordered) + ';width:calc(' + X(end) + ' - ' + X(o.ordered) + ')"></span>';
+  if (L >= 0) segs += '<span class="rw-seg left tone-' + t + '" style="left:' + X(TODAY) + ';width:calc(' + X(o.deadline) + ' - ' + X(TODAY) + ')"></span>';
+  else segs += '<span class="rw-end" style="left:' + X(o.deadline) + '"></span>';
+  if (c.kind === 'stalled' || c.kind === 'transit') segs += '<span class="rw-dot" style="left:' + X(c.date) + '"></span>';
+  if (c.kind === 'delivered') segs += '<span class="rw-dot diamond" style="left:' + X(c.date) + '"></span>';
+  segs += '<span class="rw-today" style="left:' + X(TODAY) + '"></span>';
+  if (s === 'asked') segs += '<span class="rw-dot ask" style="left:' + X(st.asked[o.id]) + '"></span>';
+  const right = s === 'asked' ? 'asked, ' + plural(L,'day') + ' left' : s === 'closed' ? 'closed ' + plural(-L,'day') + ' ago' : plural(L,'day') + ' left';
+  const col = s === 'asked' ? 'ok' : t === 'calm' ? 'ink-2' : t;
+  return '<button type="button" class="rw-row' + (isSel ? ' is-sel' : '') + '" data-act="open" data-id="' + o.id + '"' + (isSel ? ' aria-current="true"' : '')
+    + ' aria-label="' + esc(o.seller + ', ordered ' + fmt(o.ordered) + ', ' + right) + '">'
+    + '<span class="rw-head"><span class="t-sub">' + esc(o.seller) + '</span><span class="t-foot num" style="color:var(--' + col + ');font-weight:600">' + right + '</span></span>'
+    + '<span class="rw-track" aria-hidden="true">' + segs + '</span></button>';
+}
+function runwayLegend(){
+  return '<div class="legend t-foot"><span><i class="lg past"></i>Since you ordered</span><span><i class="lg bar"></i>Days left to claim</span><span><i class="lg"></i>Last scan</span><span><i class="lg diamond"></i>Marked delivered</span></div>';
+}
+function runwayMain(F, opts){
+  return '<div class="app" ' + (opts.focus ? 'id="focus-runway"' : '') + '>' + statusbar
+    + '<div class="scroll"><div class="titlebar stack-1"><h2 class="t-large">Claim deadlines</h2><p class="t-sub ink2">Each bar runs from the order date to the last day to claim.</p></div>'
+    + '<div class="stack-3" style="padding-bottom:24px">' + runwayChart(F, opts) + (allLate(F.st).length ? runwayLegend() : '') + '</div></div>'
+    + (opts.sheet || '') + (F.st.share && F.kind !== 'open' ? shareSheet() : '') + '</div>';
+}
+function kitBody(F, o){
+  const st = F.st, ex = st.cardsOpen;
+  return band(o, st)
+    + '<div class="group">'
+    + '<div class="kv t-body"><span class="k">Ordered</span><span class="v"><span>' + fmtW(o.ordered) + '</span><span class="ink2 t-sub">' + plural(daysSince(o.ordered),'day') + ' ago</span></span></div>'
+    + '<div class="kv t-body"><span class="k">Carrier</span><span class="v">' + carrierBlock(o, st) + '</span></div>'
+    + '<button type="button" class="disclose t-body" data-act="cards" aria-expanded="' + ex + '"><span class="num">' + cardsLine(o) + '</span>' + ic('chevR') + '</button>'
+    + '</div>'
+    + (ex ? cardsGroup(o) : '')
+    + '<div class="stack-3">' + askSeg(o, st) + messageEditor(o, st, false) + '</div>';
+}
+function kitSheet(F, o){
+  const parts = barParts(F, o);
+  const editBtn = F.st.edit ? '<button type="button" class="navbtn" data-act="done"><b>Done</b></button>' : '<button type="button" class="navbtn" data-act="edit">Edit</button>';
+  return '<div class="scrim" data-act="closeSheet"></div><div class="sheet tall" role="dialog" aria-label="' + esc(o.seller) + '"><div class="grabber"></div>'
+    + '<div class="sheet-bar"><span class="slot"><button type="button" class="navbtn" data-act="closeSheet">Close</button></span><span class="ttl t-head">' + esc(o.seller) + '</span><span class="slot">' + editBtn + '</span></div>'
+    + '<div class="sheet-body" style="padding-bottom:16px">' + kitBody(F, o) + parts.rest + '</div>' + parts.bar + '</div>';
+}
+function kitPage(F, o){
+  if (!o) return '<div class="app">' + statusbar + '</div>';
+  const parts = barParts(F, o);
+  const editBtn = F.st.edit ? '<button type="button" class="navbtn" data-act="done"><b>Done</b></button>' : '<button type="button" class="navbtn" data-act="edit">Edit message</button>';
+  return '<div class="app">' + statusbar + '<div class="navbar"><span></span>' + editBtn + '</div>'
+    + '<div class="scroll"><div class="titlebar"><h2 class="t-t1">' + esc(o.seller) + '</h2></div><div class="pad">' + kitBody(F, o) + parts.rest + '</div></div>'
+    + parts.bar + (F.st.share ? shareSheet() : '') + '</div>';
+}
+function renderRunway(F){
+  const st = F.st;
+  if (F.kind === 'open') {
+    const sel = selected(F);
+    return '<div class="duo"><div class="page">' + runwayMain(F, {sel, focus:false}) + '</div><div class="hinge" aria-hidden="true"></div><div class="page">' + kitPage(F, sel) + '</div></div>';
+  }
+  const o = st.sheet === 'kit' && st.id ? byId(st.id) : null;
+  return runwayMain(F, {sel:o, focus:F.kind === 'folded', sheet: o ? kitSheet(F, o) : ''});
+}
+
+/* ---------------- Harness ---------------- */
+const CONCEPTS = [
+  {k:'docket', name:'Docket', about:'<strong>Docket.</strong> A list of late orders, soonest deadline first. Tap one to open its claim page: deadline, order, carrier, cards, then the message, with Copy in reach of the thumb. On the open Duo the list and the claim page sit side by side.'},
+  {k:'letters', name:'Letters', about:'<strong>Letters, the bold one.</strong> No list and no form: the first screen is the message itself, already written. Every fact in it is underlined and opens its source. A strip of stamps along the top, one per late order, moves between letters. On the open Duo the letter sits on the left and its facts on the right.'},
+  {k:'runway', name:'Runway', about:'<strong>Runway.</strong> One chart of every late order: each bar runs from the order date to the claim deadline, with a Today line, so time passed and time left are seen, not read. Tap a bar for its claim kit in a sheet, or on the right page of the open Duo.'}
+];
+const STATES = [['list','First screen'],['detail','One order open'],['copied','Message copied'],['notrack','No tracking number'],['delivered','Carrier says delivered'],
+  ['failed','Carrier did not answer'],['loading','Carrier still loading'],['closed','Claim window closed'],['asked','Asked, waiting on seller'],['edit','Editing the message'],['empty','Nothing is late']];
+let CONCEPT = 'docket', STATE = 'list', THEME = 'auto', HIDDEN = [], DEV = null;
+function readHash(){
+  const p = new URLSearchParams(location.hash.slice(1));
+  const c = p.get('c'); if (CONCEPTS.some(x => x.k === c)) CONCEPT = c;
+  const s = p.get('s'); if (STATES.some(x => x[0] === s)) STATE = s;
+  const t = p.get('t'); THEME = (t === 'light' || t === 'dark') ? t : 'auto';
+  HIDDEN = (p.get('h') || '').split(',').filter(h => CONCEPTS.some(x => x.k === h));
+  // d= shows one frame only (folded, open, phone or ax5), so a reviewer opens one frame with one URL.
+  DEV = ['folded','open','phone','ax5'].includes(p.get('d')) ? p.get('d') : null;
+  document.querySelectorAll('.screen[data-frame]').forEach(el => { el.closest('figure').hidden = !!DEV && el.dataset.frame !== DEV; });
+  if (HIDDEN.includes(CONCEPT)) { const v = CONCEPTS.find(x => !HIDDEN.includes(x.k)); if (v) CONCEPT = v.k; }
+}
+function writeHash(){
+  const p = new URLSearchParams();
+  p.set('c', CONCEPT); p.set('s', STATE); if (THEME !== 'auto') p.set('t', THEME); if (HIDDEN.length) p.set('h', HIDDEN.join(',')); if (DEV) p.set('d', DEV);
+  history.replaceState(null, '', '#' + p.toString());
+}
+const FRAMES = [...document.querySelectorAll('.screen[data-frame]')].map(el => ({el, kind:el.dataset.frame, st:null}));
+function render(F){
+  const keep = F.el.querySelector('[data-evscroll]');
+  F.el.innerHTML = CONCEPT === 'docket' ? renderDocket(F) : CONCEPT === 'letters' ? renderLetters(F) : renderRunway(F);
+  // The focus id sits on the folded frame's screen in every state, so a focus link always finds it.
+  if (F.kind === 'folded' && F.el.firstElementChild) F.el.firstElementChild.id = 'focus-' + CONCEPT;
+  if (F.st.flash) { const on = F.el.querySelector('.ev-sec.is-on'); if (on) on.scrollIntoView({block:'nearest'}); }
+}
+function resetFrames(){ FRAMES.forEach(F => { F.st = initState(STATE, CONCEPT); render(F); }); }
+function applyTheme(){ if (THEME === 'auto') document.documentElement.removeAttribute('data-theme'); else document.documentElement.setAttribute('data-theme', THEME); }
+function drawHarness(){
+  document.getElementById('concepts').innerHTML = CONCEPTS.filter(c => !HIDDEN.includes(c.k)).map(c =>
+    '<span class="h-concept"><button type="button" class="pick" data-c="' + c.k + '" aria-pressed="' + (c.k === CONCEPT) + '">' + c.name + '</button>'
+    + '<button type="button" class="hide" data-hide="' + c.k + '" aria-label="Hide ' + c.name + '">Hide</button></span>').join('');
+  const hid = document.getElementById('hidden');
+  hid.hidden = !HIDDEN.length;
+  hid.innerHTML = HIDDEN.length ? '<span>Hidden:</span>' + HIDDEN.map(k => '<button type="button" data-show="' + k + '">Show ' + CONCEPTS.find(c => c.k === k).name + '</button>').join('') : '';
+  document.getElementById('about').innerHTML = CONCEPTS.find(c => c.k === CONCEPT).about;
+  document.getElementById('state').value = STATE;
+  document.getElementById('theme').value = THEME;
+}
+document.getElementById('state').innerHTML = STATES.map(s => '<option value="' + s[0] + '">' + s[1] + '</option>').join('');
+document.querySelector('.harness').addEventListener('click', e => {
+  const b = e.target.closest('button'); if (!b) return;
+  if (b.dataset.c) { CONCEPT = b.dataset.c; }
+  else if (b.dataset.hide) { if (CONCEPTS.length - HIDDEN.length <= 1) return; HIDDEN.push(b.dataset.hide); if (CONCEPT === b.dataset.hide) CONCEPT = CONCEPTS.find(c => !HIDDEN.includes(c.k)).k; }
+  else if (b.dataset.show) { HIDDEN = HIDDEN.filter(h => h !== b.dataset.show); }
+  else if (b.id === 'reset') {}
+  else return;
+  writeHash(); drawHarness(); resetFrames();
+});
+document.getElementById('state').addEventListener('change', e => { STATE = e.target.value; writeHash(); resetFrames(); });
+document.getElementById('theme').addEventListener('change', e => { THEME = e.target.value; writeHash(); applyTheme(); });
+window.addEventListener('hashchange', () => { readHash(); applyTheme(); drawHarness(); resetFrames(); });
+// Escape closes an open sheet in the frame that holds focus, as a swipe down would on the phone.
+document.addEventListener('keydown', e => {
+  if (e.key !== 'Escape') return;
+  const F = FRAMES.find(f => f.el.contains(document.activeElement)); if (!F) return;
+  if (F.st.share) F.st.share = false; else if (F.st.sheet) F.st.sheet = null; else return;
+  render(F); F.el.querySelector('button') && F.el.querySelector('button').focus();
+});
+
+/* ---------------- Presses inside a frame ---------------- */
+function clip(text){ try { navigator.clipboard && navigator.clipboard.writeText(text).catch(() => {}); } catch(e) {} }
+const ACTS = {
+  open(F, b){ const st = F.st; st.id = b.dataset.id; st.view = 'detail'; st.copied = false; st.edit = false; st.flash = null; st.share = false; st.cardsOpen = false;
+    if (CONCEPT === 'runway' && F.kind !== 'open') st.sheet = 'kit'; },
+  back(F){ F.st.view = 'list'; F.st.copied = false; F.st.edit = false; },
+  tab(F, b){ F.st.tab = b.dataset.tab; F.st.view = 'list'; F.st.id = null; F.st.copied = false; },
+  pick(F, b){ const st = F.st; st.id = b.dataset.id; st.sheet = null; st.flash = null; st.copied = false; st.edit = false; },
+  copy(F){ const o = selected(F); clip(plainText(o, F.st)); F.st.copied = true; },
+  share(F){ F.st.share = true; }, closeShare(F){ F.st.share = false; },
+  asked(F){ const o = selected(F); F.st.id = o.id; F.st.asked[o.id] = TODAY; F.st.note = {id:o.id, kind:'asked', text:'Marked as asked.'}; F.st.copied = false; },
+  outcome(F, b){ const o = selected(F); F.st.id = o.id; F.st.outcome[o.id] = b.dataset.v;
+    F.st.note = {id:o.id, kind:'outcome', text: b.dataset.v === 'refunded' ? 'Marked as refunded.' : b.dataset.v === 'arrived' ? 'Marked as arrived.' : 'Marked as lost.'}; },
+  undo(F){ const n = F.st.note; if (!n) return; if (n.kind === 'asked') delete F.st.asked[n.id]; else delete F.st.outcome[n.id]; F.st.note = null; },
+  ask(F, b){ const o = selected(F); F.st.ask[o.id] = b.dataset.v; F.st.copied = false; },
+  edit(F){ F.st.edit = true; if (F.st.sheet !== 'kit') F.st.sheet = null; },
+  done(F){ F.st.edit = false; },
+  resetDraft(F){ const o = selected(F); delete DRAFT[o.id]; saveDrafts(); },
+  copyNum(F){ const o = selected(F); clip(o.tracking.replace(/ /g, '')); F.st.numCopied = o.id; },
+  retry(F){ const o = selected(F); F.st.carrier[o.id] = 'loading'; setTimeout(() => { F.st.carrier[o.id] = 'transit'; render(F); }, 1200); },
+  chip(F, b){ if (F.kind === 'open') F.st.flash = b.dataset.k; else F.st.sheet = b.dataset.k; },
+  closeSheet(F){ F.st.sheet = null; },
+  cards(F){ F.st.cardsOpen = !F.st.cardsOpen; },
+  emptyCtl(F){ F.st.emptyNote = true; }
+};
+FRAMES.forEach(F => {
+  F.el.addEventListener('click', e => {
+    const b = e.target.closest('[data-act]'); if (!b || !F.el.contains(b)) return;
+    const f = ACTS[b.dataset.act]; if (!f) return;
+    if (b.dataset.act !== 'undo' && b.dataset.act !== 'copy' && F.st.note && !['asked','outcome'].includes(b.dataset.act)) F.st.note = null;
+    f(F, b); render(F);
+  });
+  F.el.addEventListener('input', e => {
+    const t = e.target; if (!t.matches('textarea[data-id]')) return;
+    DRAFT[t.dataset.id] = t.value; saveDrafts();
+  });
+});
+
+readHash(); applyTheme(); drawHarness(); resetFrames();
+})();
+</script>
+</body>
+</html>

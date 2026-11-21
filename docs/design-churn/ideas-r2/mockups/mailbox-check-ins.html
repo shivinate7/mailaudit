@@ -1,0 +1,513 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mailbox Check-ins</title>
+<style>
+/* Own neutral tokens for an idea mockup, matching the round 1 idea frames.
+   Type sizes are the iOS Dynamic Type styles at the default (Large) size, read from
+   the Apple HIG typography page (JSON data path) on 2026-11-21:
+   Large Title 34/41, Headline 17/22 semibold, Body 17/22, Callout 16/21, Subhead 15/20,
+   Footnote 13/18, Caption 1 12/16, Caption 2 11/13. */
+:root{
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --tint:#e9e6df; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#6b685f;
+  --line:#dcd9d1; --accent:#a8402a; --on-accent:#ffffff; --ok:#256b41; --ok-bg:#e3f0e7; --ok-ink:#17462a;
+  --warn:#8a5200; --warn-bg:#f8ecd6; --danger:#a3261c; --tag-new:#2c5aa8; --tag-today:#5c5a55;
+  --chrome:#ffffff; --chrome-line:#d6d3cb; --scrim:rgba(20,18,15,.32); --hinge:#2a2926; --bezel:#151412;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --tint:#2c2b27; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+    --line:#35332e; --accent:#e2795d; --on-accent:#1d1c1a; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+    --warn:#e6aa52; --warn-bg:#3b2c13; --danger:#f09a8f; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+    --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --tint:#2c2b27; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+  --line:#35332e; --accent:#e2795d; --on-accent:#1d1c1a; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+  --warn:#e6aa52; --warn-bg:#3b2c13; --danger:#f09a8f; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+  --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+:focus-visible{outline:3px solid var(--tag-new);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+code{font-size:12px}
+
+/* Page chrome */
+.sample{background:var(--warn-bg);color:var(--warn);font-size:13px;line-height:18px;padding:8px 12px;border-radius:10px;margin:0 0 12px;max-width:1100px}
+header.page{max-width:1180px}
+header.page h1{font-size:28px;line-height:34px;margin:0;font-weight:700;letter-spacing:-.01em}
+header.page .meta{font-size:15px;line-height:20px;color:var(--ink2);margin:4px 0 0}
+header.page .meta b{color:var(--accent);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:8px 0 0}
+.seg{display:flex;flex-wrap:wrap;gap:6px}
+.seg button{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);font-size:15px;color:var(--ink)}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.seg button[disabled]{opacity:.4;cursor:not-allowed}
+.ctl-label{font-size:13px;color:var(--ink3);min-width:72px}
+.caption{font-size:15px;line-height:20px;color:var(--ink2);max-width:820px;margin:14px 0 0;height:60px;overflow:hidden}
+.caption b{color:var(--ink);font-weight:600}
+.stage{display:flex;gap:32px;align-items:flex-start;overflow-x:auto;padding:8px 2px 12px;margin-top:4px}
+.note{font-size:13px;line-height:18px;color:var(--ink3);max-width:1100px;margin:12px 0 0}
+
+/* Frames: 390 x 844 per screen, the brief's size; the device list writes no size */
+.phone{flex:none;background:var(--bezel);border-radius:52px;padding:10px}
+.flabel{font-size:13px;line-height:18px;color:var(--ink3);margin:0 0 6px 8px}
+.screen{position:relative;width:390px;height:844px;border-radius:42px;overflow:hidden;background:var(--screen);display:flex;flex-direction:column;
+  --sat:calc(env(safe-area-inset-top,0px) + 54px); --sab:calc(env(safe-area-inset-bottom,0px) + 34px)}
+.duo{display:flex}
+.duo .screen.left{border-top-right-radius:6px;border-bottom-right-radius:6px}
+.duo .screen.right{border-top-left-radius:6px;border-bottom-left-radius:6px}
+.hinge{width:14px;background:var(--hinge);margin:30px 0;border-radius:3px}
+.status{flex:none;height:var(--sat);padding:18px 32px 0;display:flex;justify-content:space-between;font-size:15px;font-weight:600}
+.status i{display:block;width:24px;height:12px;border-radius:3px;border:1.5px solid currentColor;opacity:.85;margin-top:4px}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:17px;background:#000}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--ink);opacity:.8;z-index:30}
+
+/* Navigation */
+.nav{flex:none;padding:0 16px 4px}
+.nav-top{height:44px;display:flex;justify-content:space-between;align-items:center}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;margin:0}
+.dateline{font-size:13px;line-height:18px;color:var(--ink2);margin:0}
+.navbtn{min-width:44px;min-height:44px;font-size:17px;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.sync{min-height:44px;display:inline-flex;align-items:center;gap:6px;font-size:13px;line-height:18px;color:var(--ink2)}
+.sync .dot{width:8px;height:8px;border-radius:4px;background:var(--ok)}
+.sync.bad{color:var(--warn)}
+.sync.bad .dot{background:var(--warn)}
+.scroll{flex:1;overflow:hidden;padding:4px 16px calc(var(--sab) + 64px)}
+
+/* The check bar. One fixed height in every state; only its contents change. */
+.barwrap{flex:none;padding:8px 16px 4px}
+.bar{height:116px;border-radius:16px;background:var(--surface);border:.5px solid var(--line);padding:10px 14px;display:grid;grid-template-rows:44px 44px;row-gap:8px;overflow:hidden}
+.bar .txt{height:44px;overflow:hidden;display:flex;flex-direction:column;justify-content:center}
+.bar .h{font-size:17px;line-height:22px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .f{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar .f.err{color:var(--danger);font-weight:600}
+.bar .sent{font-size:16px;line-height:21px;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-height:42px}
+.bar .sent b{font-weight:600}
+.bar .row{display:flex;gap:10px;align-items:center;height:44px}
+.bar .meta{flex:1;min-width:0;font-size:13px;line-height:18px;color:var(--ink2);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;max-height:36px}
+.bar .count{flex:1;font-size:15px;line-height:20px;color:var(--ink2)}
+.bar .count b{font-size:17px;color:var(--ink);font-weight:600}
+.btn{height:44px;min-width:44px;border-radius:12px;padding:0 16px;font-size:17px;line-height:22px;font-weight:600;display:inline-flex;align-items:center;justify-content:center;white-space:nowrap}
+.btn.fill{background:var(--accent);color:var(--on-accent)}
+.btn.soft{background:var(--tint);color:var(--ink)}
+.btn.plain{color:var(--accent);padding:0 8px}
+.btn.grow{flex:1}
+.fade{animation:fadein 160ms ease-out}
+@keyframes fadein{from{opacity:.2}to{opacity:1}}
+@media (prefers-reduced-motion:reduce){.fade{animation:none}}
+
+/* Package groups */
+.grp-h{display:flex;align-items:center;justify-content:space-between;gap:8px;height:36px;margin:6px 4px 2px}
+.grp-h .sect{font-size:13px;line-height:18px;color:var(--ink2);margin:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.grp-h .sect b{color:var(--ink);font-weight:600}
+.list{background:var(--surface);border-radius:14px;margin:0 0 6px}
+.crow{display:flex;width:100%;height:56px;align-items:center;gap:12px;padding:0 14px;border-top:.5px solid var(--line)}
+.list > .crow:first-child{border-top:0}
+.crow .main{flex:1;min-width:0;display:flex;flex-direction:column}
+.crow .t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.crow .s{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap}
+.crow .circ{width:26px;height:26px;border-radius:13px;border:2px solid var(--ink3);flex:none;display:grid;place-items:center}
+.crow.got .circ{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.crow.got .s{color:var(--ok)}
+.badge{display:inline-flex;align-items:center;height:22px;padding:0 8px;border-radius:11px;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;background:var(--warn-bg);color:var(--warn)}
+.emptystate{text-align:center;padding:96px 24px 0}
+.emptystate h2{font-size:22px;line-height:28px;margin:0 0 6px;font-weight:700}
+.emptystate p{font-size:15px;line-height:20px;color:var(--ink2);margin:0 0 16px}
+
+/* Tab bar */
+.tabbar{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) - 8px);height:58px;border-radius:29px;background:var(--chrome);border:.5px solid var(--chrome-line);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);display:grid;grid-template-columns:repeat(3,1fr);align-items:center;z-index:5}
+.tab{min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:13px;color:var(--ink2);gap:2px}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent)}
+
+/* Recent checks: a sheet when folded, the right pane when unfolded */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:10}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:110px;background:var(--screen);border-radius:24px 24px 0 0;z-index:11;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:6px auto 0}
+.sheet-bar{height:52px;display:grid;grid-template-columns:84px 1fr 84px;align-items:center;padding:0 8px;flex:none}
+.sheet-bar h3{margin:0;text-align:center;font-size:17px;line-height:22px;font-weight:600}
+.sheet-bar .done{justify-self:end;font-weight:600}
+.pane{padding:0 16px;overflow:hidden;flex:1}
+.sect-h{font-size:13px;line-height:18px;color:var(--ink2);margin:14px 4px 6px}
+.card{background:var(--surface);border-radius:14px;padding:12px 14px;margin:0 0 8px}
+.card.rows{padding:0 14px}
+.strip{display:grid;grid-template-columns:repeat(14,1fr);gap:2px;text-align:center}
+.dk{display:flex;flex-direction:column;align-items:center;gap:3px;padding:2px 0}
+.dk .w{font-size:11px;line-height:13px;color:var(--ink3)}
+.dk .d{font-size:12px;line-height:16px}
+.dk .m{width:14px;height:14px;display:grid;place-items:center}
+.dk .m i{display:block;width:12px;height:12px;border-radius:6px}
+.dk.mail .m i{background:var(--ink)}
+.dk.empty .m i{border:2px solid var(--ink2)}
+.dk.unknown .m i{display:none}
+.dk.unknown .m::after{content:"?";font-size:13px;line-height:14px;font-weight:700;color:var(--ink3)}
+.dk.paused .m i{width:12px;height:2px;border-radius:1px;background:var(--ink3)}
+.dk.today{background:var(--tint);border-radius:8px}
+.legend{display:flex;flex-wrap:wrap;gap:4px 14px;margin:10px 0 0;font-size:12px;line-height:16px;color:var(--ink2)}
+.legend > span{display:inline-flex;align-items:center;gap:6px}
+.legend .dk{display:inline-flex;padding:0}
+.foot{font-size:12px;line-height:16px;color:var(--ink2);margin:8px 0 0}
+.clock{display:flex;justify-content:space-between;align-items:center;gap:8px;min-height:44px;border-top:.5px solid var(--line)}
+.clock:first-child{border-top:0}
+.clock{min-height:52px}
+.clock .t{font-size:15px;line-height:20px;min-width:0;display:flex;flex-direction:column}
+.clock .t small{font-size:12px;line-height:16px;color:var(--ink3)}
+.clock .v{font-size:13px;line-height:18px;color:var(--ink2);text-align:right;white-space:nowrap}
+.clock .v b{color:var(--warn);font-weight:600}
+.lrow{display:flex;align-items:center;gap:10px;min-height:56px;border-top:.5px solid var(--line)}
+.card.rows > :first-child,.card.rows > :first-child .lrow{border-top:0}
+.lrow .main{flex:1;min-width:0;padding:6px 0}
+.lrow .t{font-size:15px;line-height:20px}
+.lrow .s{font-size:13px;line-height:18px;color:var(--ink2)}
+.lrow.undone .t{text-decoration:line-through;color:var(--ink3)}
+.inline-note{font-size:13px;line-height:18px;border-radius:10px;padding:8px 12px;margin:10px 0 0;background:var(--ok-bg);color:var(--ok-ink)}
+
+/* Tally (unchanged screen) */
+.trow{display:flex;justify-content:space-between;gap:8px;align-items:center;min-height:56px;padding:0 14px;border-top:.5px solid var(--line)}
+.list > .trow:first-child{border-top:0}
+.trow .s{font-size:13px;line-height:18px;color:var(--ink2)}
+
+/* Dashed labels: outline only, so labels never move layout */
+.lbl{position:relative;outline:1.5px dashed var(--tag-new);outline-offset:3px}
+.lbl[data-k="today"]{outline-color:var(--tag-today)}
+.lbl::after{content:attr(data-lbl);position:absolute;top:-11px;right:10px;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;
+  background:var(--tag-new);color:var(--surface);white-space:nowrap;z-index:4;pointer-events:none}
+.lbl[data-k="today"]::after{background:var(--tag-today)}
+.lbl.l::after{left:0;right:auto}
+span.lbl{display:inline-block}
+:root[data-labels="off"] .lbl{outline:none}
+:root[data-labels="off"] .lbl::after{display:none}
+</style>
+</head>
+<body>
+<p class="sample" role="note"><b>Sample.</b> Every seller, card, order id, date and price on this page is invented. No figure is real.</p>
+<header class="page">
+  <h1>Mailbox Check-ins</h1>
+  <p class="meta">A trip to the mailbox becomes a recorded event, empty days included, and every trip ends with one closing sentence. <b>Mockup, not built.</b></p>
+  <nav aria-label="Screen states" id="statesNav"></nav>
+  <div class="controls">
+    <span class="ctl-label">Shipped</span>
+    <div class="seg" id="slices"></div>
+    <div class="seg">
+      <button type="button" id="ccBtn" aria-pressed="true">Claim clock</button>
+      <button type="button" id="fcBtn" aria-pressed="false">Mail forecast</button>
+    </div>
+  </div>
+  <div class="controls">
+    <span class="ctl-label">Theme</span>
+    <div class="seg" id="themes"></div>
+    <div class="seg"><button type="button" id="lblBtn" aria-pressed="true">Today / New labels</button></div>
+  </div>
+</header>
+<p class="caption" id="caption" aria-live="polite"></p>
+<div class="stage">
+  <div>
+    <p class="flabel">Folded</p>
+    <div class="phone" data-device="iphone-duo-folded"><div class="screen" id="fscreen"></div></div>
+  </div>
+  <div>
+    <p class="flabel">Unfolded: the list beside its mail days</p>
+    <div class="phone duo" data-device="iphone-duo-unfolded">
+      <div class="screen left" id="uleft"></div>
+      <div class="hinge" aria-hidden="true"></div>
+      <div class="screen right" id="uright"></div>
+    </div>
+  </div>
+</div>
+<p class="note">Frames: each screen is 390 by 844 pt, the size the brief gives; the repo's device list writes no size. The plan names no web width, so none is drawn. Type uses the iOS Dynamic Type styles at the default size, and tap targets are at least 44 by 44 pt (Apple HIG Typography and Accessibility pages). Deep links: <code>#s=&lt;state&gt;</code>, <code>t=dark|light</code>, <code>sl=1|2|3</code>, <code>cc=0|1</code>, <code>fc=0|1</code>, for example <code>#s=late&amp;t=dark</code>. Card rows are tappable: tap one to mark it, or use the bar's buttons.</p>
+<script>
+(function(){
+"use strict";
+var GROUPS=[
+  {k:"pc",seller:"Pinecone Cards",oid:"PC-48213",placed:2,lateOnly:true,rows:[["bo","Brambleback Ox",1,"$0.38"],["ql","Quiet Lamplighter",1,"$0.47"]]},
+  {k:"cl",seller:"Copperleaf TCG",oid:"CL-30577",placed:12,rows:[["gf","Gilded Ferryman",1,"$1.15"],["sa","Sleet Archivist",4,"$0.48"]]},
+  {k:"hl",seller:"Harbor Lane Games",oid:"HL-11920",placed:8,rows:[["lm","Lantern Moth",2,"$0.48"],["to","Tidepool Oracle",1,"$0.89"]]},
+  {k:"oa",seller:"Owl & Anvil",oid:"OA-70264",placed:15,rows:[["rg","Rustvein Golem",1,"$0.55"],["cp","Cinder Postmaster",2,"$0.62"]]}
+];
+var IN_AIR=32;
+/* Days of Nov 2026 before today (Sat Nov 21). Kind: mail, empty, unknown, paused. Today is set per state. */
+var DAYS={3:"mail",4:"mail",5:"unknown",6:"mail",7:"mail",8:"paused",9:"mail",10:"mail",11:"unknown",12:"mail",13:"empty",14:"mail",15:"paused",16:"mail",17:"empty",18:"mail",19:"mail",20:"empty"};
+var WD=["S","M","T","W","T","F","S"]; /* Nov 1 2026 is a Sunday */
+var GROUP_ORDER=[
+  {g:"Bar",items:["idle","open","closed"]},
+  {g:"Sentences",items:["late","empty","early","sunday","allin","long"]},
+  {g:"Flow",items:["implied","autoclose","second"]},
+  {g:"Empty",items:["noorders"]},
+  {g:"Edge",items:["midnight","twodevices","undo","import","tally"]},
+  {g:"Errors",items:["syncfail","savefail"]}
+];
+var LOGMETA="Trip 14:10 to 14:32 · in Recent checks";
+var STATES={
+  idle:{n:"Idle",time:"14:08",bar:"idle",cap:"<b>Step 1.</b> Packages opens with the bar above the list: \"Checked the mail?\" Mail came opens a trip; Nothing today closes the day at once. Tap a card row instead and the mark still counts (step 5)."},
+  open:{n:"Trip open",time:"14:12",bar:"open",marked:["gf"],cap:"<b>Step 2.</b> Mail came opened a trip at 14:10. Tap cards as they come out: the count in the bar rises, and nothing else in the bar moves. Done closes the trip."},
+  closed:{n:"Closed",time:"14:34",bar:"closed",marked:["gf","sa","lm"],sent:"normal",meta:LOGMETA,act:"log",cap:"<b>Step 3.</b> Done swapped the bar's contents for the closing sentence, at the same height. The trip is one line in Recent checks, where undo lives. The sentence never names money."},
+  late:{n:"Late",time:"14:34",bar:"closed",late:true,marked:["gf","sa","lm"],sent:"late",meta:LOGMETA,act:"log",cap:"<b>Late.</b> One order is past its window. With the claim clock shipped, the sentence ends with the date to act; turn Claim clock off and it stops after \"mail day 14\". The order shows both counts."},
+  empty:{n:"Empty day",time:"16:20",bar:"closed",sent:"empty",today:"empty",meta:"Recorded 16:20 as an empty day. Cutoff 15:40, learned from 46 trips.",act:"mail",need:2,cap:"<b>Nothing today, after the cutoff.</b> The day is recorded as empty, so no lateness clock moves. No list changes. A later Mail came still turns it into a mail day."},
+  early:{n:"Too early",time:"10:05",bar:"closed",sent:"early",today:"unknown",meta:"Not recorded as an empty day.",act:"mail",need:2,cap:"<b>Nothing today, before the cutoff.</b> The sentence says \"Nothing yet\" and records nothing, so the day stays unknown and still counts as a mail day."},
+  sunday:{n:"Sunday",time:"09:30",date:"Sunday, Nov 22",bar:"closed",sent:"sunday",today:"mail",meta:"Sundays and the holidays you entered do not count.",act:"none",need:2,cap:"<b>Sunday or a holiday you entered.</b> No question is asked: the bar shows the paused sentence. Holidays come from a list the owner enters once a year; nothing is fetched."},
+  allin:{n:"All in",time:"14:34",bar:"closed",sent:"allin",allin:true,meta:"Trip 14:10 to 14:31 · in Recent checks",act:"log",cap:"<b>Orders exist, nothing in the air.</b> The bar still shows, and its sentence reads \"All in.\""},
+  long:{n:"Long sentence",time:"14:34",bar:"closed",late:true,late2:true,sent:"long",marked:["gf"],meta:"Full sentence in Recent checks",act:"log",cap:"<b>A long sentence.</b> It wraps inside the fixed two-line slot and is cut with an ellipsis; the bar never grows. The full text is in Recent checks (the right pane when unfolded)."},
+  implied:{n:"Implied trip",time:"14:13",bar:"implied",marked:["gf","lm"],cap:"<b>Step 5.</b> Cards marked with no trip open still count. Marks less than 30 minutes apart form one implied trip, read from the check-in times. The sentence shows 30 minutes after the last mark, or on the next open."},
+  autoclose:{n:"Closed itself",time:"17:05",bar:"closed",marked:["gf","sa"],sent:"normal",meta:"Trip from 14:10 closed itself at 16:22, two hours after the last mark.",act:"log",cap:"<b>Step 6.</b> A trip left open closes itself after two hours with no marks. Its sentence shows the next time the app opens."},
+  second:{n:"Second check",time:"18:31",bar:"open",tripAt:"18:30",today:"mail",sub:"Turns today's 16:20 empty check into a mail day.",need:2,cap:"<b>Step 7.</b> A second check on one day is allowed. Mail came at 18:30 turns the day recorded empty at 16:20 into a mail day."},
+  noorders:{n:"No orders",time:"14:08",bar:"none",noorders:true,cap:"<b>Empty.</b> No orders imported: the bar is absent and the existing empty state stands unchanged."},
+  midnight:{n:"After midnight",time:"00:30",date:"Sunday, Nov 22",bar:"closed",sent:"empty",today:"empty",meta:"Counted for Saturday, Nov 21. The day turns at 04:00.",act:"mail",need:2,cap:"<b>After midnight.</b> A check at 00:30 belongs to the day before, because the day boundary is 04:00."},
+  twodevices:{n:"Two devices",time:"17:41",bar:"closed",marked:["gf","sa"],sent:"normal",meta:"Also checked on the other device. Latest kind wins.",act:"log",sheet:true,log:"two",need:2,cap:"<b>Two devices on one day.</b> Their checks are united. The other device said Nothing today at 16:20; this phone said Mail came at 17:40. The latest kind wins, so the day is a mail day."},
+  undo:{n:"Undo",time:"14:40",bar:"closed",late:true,marked:["gf","sa","lm"],sent:"late",meta:LOGMETA,act:"log",sheet:true,undo20:true,need:2,cap:"<b>Undo.</b> Friday's empty check was undone from Recent checks. The day returns to unknown, which counts as a mail day, so the oldest clock moves from 14 to 15. Undo marks the entry; it never deletes it."},
+  "import":{n:"CSV import",time:"14:40",bar:"closed",marked:["gf","sa","lm"],sent:"normal",meta:LOGMETA,act:"log",sheet:true,imported:true,cap:"<b>Import.</b> A CSV import merges orders as it does today and never touches trips or checks."},
+  tally:{n:"Tally",time:"14:34",bar:"none",tab:"Tally",cap:"<b>Tally and Orphaned show nothing new.</b> No bar there. An orphaned package never makes a mail day on its own; only the owner's Mail came tap does."},
+  syncfail:{n:"Sync failed",time:"14:34",bar:"closed",marked:["gf","sa","lm"],sent:"normal",meta:"Saved on this phone. Sync will retry.",act:"log",syncbad:true,cap:"<b>Sync fails.</b> The trip is saved on the device and the sentence still shows. The existing sync indicator carries \"Not synced\"."},
+  savefail:{n:"Save failed",time:"14:33",bar:"open",marked:["gf","sa","lm"],saveErr:true,cap:"<b>Local save fails.</b> The bar stays in the trip-open state, so nothing is lost silently. The message is in-app text on the bar's own line; no dialog."}
+};
+var S={s:"idle",t:"auto",sl:3,cc:1,fc:0,labels:true};
+var R={}; /* live state of the current preset; clicks change it */
+function preset(){
+  var p=STATES[S.s];
+  R={bar:p.bar,marked:(p.marked||[]).slice(),sent:p.sent||"",meta:p.meta||"",act:p.act||"log",tripAt:p.tripAt||"14:10",
+     sheet:!!p.sheet,undo20:!!p.undo20,saveErr:!!p.saveErr,sub:p.sub||"",
+     today:p.today||((p.bar==="closed"||p.bar==="open"||p.bar==="implied")?"mail":"unknown")};
+}
+function L(k,text,inner,tag,cls,attrs){
+  tag=tag||"div";
+  return "<"+tag+' class="lbl'+(cls?" "+cls:"")+'" data-k="'+k+'" data-lbl="'+(k==="today"?"Today: ":"New: ")+text+'"'+(attrs||"")+'>'+inner+"</"+tag+">";
+}
+var ICON={
+  check:'<svg width="14" height="14" viewBox="0 0 14 14" aria-hidden="true"><path d="M3 7.5l2.6 2.6L11 4.5" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/></svg>',
+  box:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z M3 7l9 4 9-4 M12 11v10" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"/></svg>',
+  sum:'<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5h14M5 12h14M5 19h9" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  q:'<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2" fill="none" stroke="currentColor" stroke-width="1.7"/><path d="M10 10.5a2 2 0 1 1 2.5 1.9V14M12 16v.2" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"/></svg>'
+};
+function dayKind(d){
+  if(d===21)return R.today;
+  if(d===20&&R.undo20)return "unknown";
+  return DAYS[d];
+}
+/* Mail days since the order: each later day that is neither paused nor empty. */
+function mailDays(placed){var n=0;for(var d=placed+1;d<=21;d++){var k=dayKind(d);if(k!=="paused"&&k!=="empty")n++}return n}
+function calDays(placed){return 21-placed}
+function countText(g){
+  if(S.sl<3)return calDays(g.placed)+" days";
+  return "mail day "+mailDays(g.placed)+" ("+calDays(g.placed)+" calendar)";
+}
+function sentence(kind){
+  var n=R.marked.length, air=IN_AIR-n, pc=GROUPS[0], hl=GROUPS[2];
+  function dw(g){return S.sl<3?"day "+calDays(g.placed):"mail day "+mailDays(g.placed)}
+  var claim=S.cc?" Nothing to do until Dec 3.":"";
+  if(kind==="normal")return "<b>Done for today.</b> "+n+" marked, "+air+" in the air"+(S.fc?", 4 likely tomorrow":"")+". Nothing needs you.";
+  if(kind==="late")return "<b>Done for today.</b> 1 late: Pinecone Cards, "+dw(pc)+"."+claim+(S.fc?" 4 likely tomorrow.":"");
+  if(kind==="long")return "<b>Done for today.</b> 2 late: Pinecone Cards, "+dw(pc)+", and Harbor Lane Games, "+dw(hl)+"."+claim+" "+n+" marked, "+air+" in the air"+(S.fc?", 4 likely tomorrow":"")+".";
+  if(kind==="empty")return "<b>No mail today.</b> Clocks did not move.";
+  if(kind==="early")return "<b>Nothing yet.</b> Mail usually comes by 15:40.";
+  if(kind==="sunday")return "<b>No delivery today.</b> Clocks paused.";
+  if(kind==="allin")return "<b>All in.</b> Nothing in the air.";
+  return "";
+}
+function plain(h){return h.replace(/<[^>]+>/g,"")}
+function barHTML(){
+  var b=R.bar, txt="", row="";
+  if(b==="idle"){
+    txt='<div class="h">Checked the mail?</div><div class="f num">Last check: yesterday 16:30</div>';
+    row='<button type="button" class="btn fill grow" data-act="mailcame">Mail came</button>'+
+      (S.sl>=2?'<button type="button" class="btn soft grow" data-act="nothing">Nothing today</button>':'');
+  }else if(b==="open"||b==="implied"){
+    txt='<div class="h">'+(b==="open"?'Mail check · <span class="num">'+R.tripAt+'</span> · <span class="num">'+R.marked.length+'</span> marked'
+                                   :'<span class="num">'+R.marked.length+'</span> marked · no check open')+'</div>'+
+      (R.saveErr?'<div class="f err">Could not save. Trip kept open; tap Done again.</div>'
+      :b==="implied"?'<div class="f">Marks 30 min apart or less form one trip.</div>'
+      :'<div class="f">'+(R.sub||"Tap cards below as they come out.")+'</div>');
+    row='<span class="meta">'+(b==="open"?"Closes itself after 2 hours with no marks.":"The sentence follows 30 min after the last mark.")+'</span><button type="button" class="btn fill" data-act="done">Done</button>';
+  }else if(b==="closed"){
+    var s=sentence(R.sent);
+    txt='<div class="sent" title="'+plain(s)+'">'+s+'</div>';
+    row='<span class="meta num">'+R.meta+'</span>'+
+      (R.act==="mail"?'<button type="button" class="btn soft" data-act="mailcame">Mail came</button>'
+      :'');
+  }
+  var f=R.fade?" fade":"";
+  var inner='<div class="txt'+f+'">'+txt+'</div><div class="row'+f+'">'+row+'</div>';
+  return '<div class="barwrap">'+L("new","check bar",'<section class="bar" id="checkbar" aria-label="Mail check" aria-live="polite">'+inner+'</section>')+'</div>';
+}
+function rowHTML(r){
+  var p=STATES[S.s], i=R.marked.indexOf(r[0]), got=i>-1||!!p.allin;
+  var sub=r[3];
+  if(got)sub=p.allin?"Received · "+r[3]:"Received "+(R.bar==="implied"?"14:12":"14:"+(12+i*3))+" · "+r[3];
+  return '<button type="button" class="crow'+(got?" got":"")+'" data-act="mark" data-id="'+r[0]+'" aria-pressed="'+got+'"><span class="main"><span class="t">'+r[1]+' ×'+r[2]+'</span><span class="s num">'+sub+'</span></span><span class="circ">'+(got?ICON.check:"")+'</span></button>';
+}
+function groupsHTML(){
+  var p=STATES[S.s], out="", shown=0;
+  GROUPS.forEach(function(g){
+    if(g.lateOnly&&!p.late)return;
+    var badge="";
+    if(g.k==="pc")badge=S.sl<3?L("today","lost warning",'<span class="badge num">May be lost · '+countText(g)+'</span>',"span")
+                             :L("new","both counts",'<span class="badge num">Late · '+countText(g)+'</span>',"span");
+    if(g.k==="hl"&&p.late2)badge='<span class="badge num">Late · '+countText(g)+'</span>';
+    var list='<div class="list">'+g.rows.map(rowHTML).join("")+'</div>';
+    if(shown===(p.late?1:0))list=L("today","card rows",list);
+    shown++;
+    out+='<div class="grp-h"><p class="sect"><b>'+g.seller+'</b> · <span class="num">'+g.oid+'</span></p>'+badge+'</div>'+list;
+  });
+  return out;
+}
+function statusHTML(){return '<div class="island" aria-hidden="true"></div><div class="status" aria-hidden="true"><span class="num">'+STATES[S.s].time+'</span><i></i></div>'}
+function tabbar(cur){
+  function t(n,ic){return '<div class="tab"'+(cur===n?' aria-current="page"':'')+'>'+ic+n+'</div>'}
+  return L("today","tab bar",t("Packages",ICON.box)+t("Tally",ICON.sum)+t("Orphaned",ICON.q),"nav","tabbar")+'<div class="homebar" aria-hidden="true"></div>';
+}
+function syncHTML(){
+  var bad=STATES[S.s].syncbad;
+  return L("today","sync indicator",'<span class="sync'+(bad?" bad":"")+'"><span class="dot"></span>'+(bad?"Not synced":"Synced")+'</span>',"span","l");
+}
+function packagesHTML(folded){
+  var p=STATES[S.s];
+  var right=(folded&&!p.tab)?'<button type="button" class="navbtn" data-act="sheet">Recent checks</button>':'';
+  var head=statusHTML()+'<div class="nav"><div class="nav-top">'+syncHTML()+right+'</div><h1 class="largetitle">'+(p.tab||"Packages")+'</h1><p class="dateline">'+(p.date||"Saturday, Nov 21")+'</p></div>';
+  if(p.tab==="Tally")return head+'<div class="scroll">'+L("today","Tally, unchanged",tallyHTML())+'</div>'+tabbar("Tally");
+  if(p.noorders)return head+'<div class="scroll">'+L("today","empty state",'<div class="emptystate"><h2>No orders yet</h2><p>Import an OrderWand CSV to start your checklist.</p><button type="button" class="btn fill">Import CSV</button></div>')+'</div>'+tabbar("Packages");
+  return head+barHTML()+'<div class="scroll">'+groupsHTML()+'</div>'+tabbar("Packages");
+}
+function tallyHTML(){
+  var rows=[["Lantern Moth","2 of 4 arrived · 3 sellers","$0.96"],["Sleet Archivist","4 of 4 arrived","$0.48"],["Tidepool Oracle","0 of 1 arrived","$0.89"],["Gilded Ferryman","1 of 2 arrived","$2.30"],["Cinder Postmaster","0 of 2 arrived","$0.62"]];
+  return '<div class="list">'+rows.map(function(r){return '<div class="trow"><div><div>'+r[0]+'</div><div class="s num">'+r[1]+'</div></div><div class="num">'+r[2]+'</div></div>'}).join("")+'</div>';
+}
+var KIND_NAME={mail:"mail day",empty:"empty day",unknown:"no check, counts as a mail day",paused:"Sunday, paused"};
+function stripHTML(){
+  var cells="";
+  for(var d=8;d<=21;d++){
+    var k=dayKind(d);
+    cells+='<div class="dk '+k+(d===21?" today":"")+'" role="img" aria-label="Nov '+d+', '+KIND_NAME[k]+'"><span class="w">'+WD[(d-1)%7]+'</span><span class="m"><i></i></span><span class="d num">'+d+'</span></div>';
+  }
+  function lg(k,t){return '<span><span class="dk '+k+'"><span class="m"><i></i></span></span>'+t+'</span>'}
+  var leg='<div class="legend">'+lg("mail","Mail day")+lg("empty","Empty")+lg("unknown","No check, counts")+lg("paused","Sunday or holiday")+'</div>';
+  var foot=S.sl<3?'<p class="foot num">Lateness switches to mail days at 30 recorded trips: 12 so far.</p>':'<p class="foot">Holidays you entered: Nov 26, Dec 25.</p>';
+  return '<div class="card"><div class="strip">'+cells+'</div>'+leg+foot+'</div>';
+}
+function clocksHTML(){
+  var p=STATES[S.s];
+  if(p.allin)return "";
+  var gs=GROUPS.filter(function(g){return g.k==="pc"?!!p.late:g.k!=="oa"});
+  var rows=gs.map(function(g){
+    var late=g.k==="pc"||(g.k==="hl"&&p.late2);
+    var v=S.sl<3?calDays(g.placed)+" days":(late?'<b>':'')+'mail day '+mailDays(g.placed)+(late?'</b>':'')+' ('+calDays(g.placed)+' calendar)';
+    return '<div class="clock"><span class="t"><span>'+g.seller+'</span><small class="num">'+g.oid+'</small></span><span class="v num">'+v+'</span></div>';
+  }).join("");
+  return '<p class="sect-h">Order clocks</p>'+L(S.sl<3?"today":"new",S.sl<3?"day counts":"mail-day counts",'<div class="card rows">'+rows+'</div>');
+}
+function logHTML(){
+  var p=STATES[S.s], rows=[];
+  function r(id,t,s,undoable,undone){rows.push({id:id,t:t,s:s,u:undoable,d:undone})}
+  if(p.log==="two"){
+    r("t2","Mail came · 17:40","2 marked · this phone · today is a mail day",true,false);
+    r("t1","Nothing today · 16:20","Other device · replaced by the later Mail came",false,false);
+  }else if(R.bar==="closed"&&R.sent==="empty"){
+    r("t0","Nothing today · "+(S.s==="midnight"?"00:30":STATES[S.s].time),S.s==="midnight"?"Counted for Sat, Nov 21":"Empty day · clocks did not move",true,false);
+  }else if(R.bar==="closed"&&R.sent==="early"){
+    r("t0","Nothing yet · "+STATES[S.s].time,"Before the cutoff · not recorded",false,false);
+  }else if(R.bar==="closed"&&R.sent!=="sunday"){
+    r("t0","Mail came · "+R.tripAt+" trip",(S.s==="long"?plain(sentence("long")):R.marked.length+" marked"),true,false);
+  }else if(R.bar==="open"||R.bar==="implied"){
+    r("t0",(R.bar==="open"?"Mail came · "+R.tripAt:"Implied trip · 14:12")+" · open",R.marked.length+" marked so far",false,false);
+  }
+  if(S.sl>=2)r("f20","Nothing today · Fri 16:30",R.undo20?"Undone · Friday is unknown again, counts as a mail day":"Empty day",!R.undo20,R.undo20);
+  r("h19","Mail came · Thu 15:05","5 marked",false,false);
+  r("w18","Mail came · Wed 14:48","3 marked",false,false);
+  var list=rows.map(function(x,i){
+    var row='<div class="lrow'+(x.d?" undone":"")+'"><div class="main"><div class="t num">'+x.t+'</div><div class="s num">'+x.s+'</div></div>'+
+      (x.u?'<button type="button" class="btn plain" data-act="undo" data-id="'+x.id+'">Undo</button>':'')+'</div>';
+    return i===0?L("new","trip line",row):row;
+  }).join("");
+  var imp=p.imported?L("new","import line",'<p class="inline-note">Imported 14 orders from orders-nov.csv. Trips and checks unchanged.</p>'):"";
+  return imp+'<p class="sect-h">Recent checks</p>'+L("today","recent checks",'<div class="card rows">'+list+'</div>');
+}
+function detailHTML(){
+  var p=STATES[S.s];
+  if(p.noorders)return '<p class="sect-h">Recent checks</p><div class="card"><p style="margin:0;font-size:15px;line-height:20px;color:var(--ink2)">No checks yet. The bar appears once orders exist.</p></div>';
+  return (S.sl>=2?'<p class="sect-h">Mail days, last two weeks</p>'+L("new","mail-day strip",stripHTML()):"")+clocksHTML()+logHTML();
+}
+function sheetHTML(){
+  return '<div class="scrim" data-act="sheet" aria-hidden="true"></div><div class="sheet" role="dialog" aria-label="Recent checks"><div class="grabber"></div>'+
+    '<div class="sheet-bar"><span></span><h3>Recent checks</h3><button type="button" class="navbtn done" data-act="sheet">Done</button></div><div class="pane">'+detailHTML()+'</div></div>';
+}
+function rightHTML(){
+  return statusHTML()+'<div class="nav"><div class="nav-top"></div><h1 class="largetitle">Mail days</h1><p class="dateline">'+(STATES[S.s].date||"Saturday, Nov 21")+'</p></div><div class="pane">'+detailHTML()+'</div><div class="homebar" aria-hidden="true"></div>';
+}
+var lastBarKey="";
+function render(){
+  var root=document.documentElement, key=S.s+R.bar+R.sent+R.saveErr;
+  R.fade=lastBarKey!==""&&key!==lastBarKey;lastBarKey=key;
+  if(S.t==="auto")root.removeAttribute("data-theme");else root.setAttribute("data-theme",S.t);
+  root.setAttribute("data-labels",S.labels?"on":"off");
+  document.getElementById("fscreen").innerHTML=packagesHTML(true)+(R.sheet?sheetHTML():"");
+  document.getElementById("uleft").innerHTML=packagesHTML(false);
+  document.getElementById("uright").innerHTML=rightHTML();
+  document.getElementById("caption").innerHTML=STATES[S.s].cap;
+  renderControls();
+  var h="s="+S.s+(S.t!=="auto"?"&t="+S.t:"")+(S.sl!==3?"&sl="+S.sl:"")+(S.cc?"":"&cc=0")+(S.fc?"&fc=1":"");
+  try{history.replaceState(null,"","#"+h)}catch(e){}
+}
+function renderControls(){
+  document.getElementById("statesNav").innerHTML=GROUP_ORDER.map(function(gr){
+    return '<div class="controls"><span class="ctl-label">'+gr.g+'</span><div class="seg">'+gr.items.map(function(k){
+      var need=STATES[k].need||0, dis=need>S.sl;
+      return '<button type="button" data-state="'+k+'" aria-pressed="'+(S.s===k)+'"'+(dis?' disabled title="Needs slice '+need+'"':'')+'>'+STATES[k].n+'</button>';
+    }).join("")+'</div></div>';
+  }).join("");
+  document.getElementById("slices").innerHTML=[[1,"Slice 1: sentence"],[2,"Slice 2: empty days"],[3,"Slice 3: mail-day counts"]].map(function(x){
+    return '<button type="button" data-slice="'+x[0]+'" aria-pressed="'+(S.sl===x[0])+'">'+x[1]+'</button>';
+  }).join("");
+  document.getElementById("themes").innerHTML=[["auto","System"],["light","Light"],["dark","Dark"]].map(function(t){
+    return '<button type="button" data-theme-btn="'+t[0]+'" aria-pressed="'+(S.t===t[0])+'">'+t[1]+'</button>';
+  }).join("");
+  document.getElementById("ccBtn").setAttribute("aria-pressed",String(!!S.cc));
+  document.getElementById("fcBtn").setAttribute("aria-pressed",String(!!S.fc));
+  document.getElementById("lblBtn").setAttribute("aria-pressed",String(S.labels));
+}
+document.addEventListener("click",function(e){
+  var b=e.target.closest("button,[data-act]");if(!b)return;
+  if(b.dataset.state){if(!b.disabled){S.s=b.dataset.state;preset();render()}return}
+  if(b.dataset.slice){S.sl=+b.dataset.slice;if((STATES[S.s].need||0)>S.sl)S.s="closed";preset();render();return}
+  if(b.dataset.themeBtn){S.t=b.dataset.themeBtn;render();return}
+  if(b.id==="ccBtn"){S.cc=S.cc?0:1;render();return}
+  if(b.id==="fcBtn"){S.fc=S.fc?0:1;render();return}
+  if(b.id==="lblBtn"){S.labels=!S.labels;render();return}
+  var a=b.dataset.act, now=STATES[S.s].time;
+  if(a==="mailcame"){R.sub=(R.sent==="empty")?"Turns today's empty check into a mail day.":"";R.bar="open";R.tripAt=now;R.marked=[];R.today="mail";R.saveErr=false;render();return}
+  if(a==="nothing"){var early=now<"15:40";R.bar="closed";R.sent=early?"early":"empty";R.today=early?"unknown":"empty";
+    R.meta=early?"Not recorded as an empty day.":"Recorded "+now+" as an empty day.";R.act="mail";render();return}
+  if(a==="done"){R.saveErr=false;R.bar="closed";R.today="mail";R.sent=STATES[S.s].late?"late":"normal";R.meta="Trip "+R.tripAt+" to "+now+" · in Recent checks";R.act="log";render();return}
+  if(a==="sheet"){R.sheet=!R.sheet;render();return}
+  if(a==="undo"){if(b.dataset.id==="f20")R.undo20=true;else{R.bar="idle";R.marked=[];R.today="unknown";R.sent=""}render();return}
+  if(a==="mark"){
+    if(STATES[S.s].allin)return;
+    var id=b.dataset.id, i=R.marked.indexOf(id);
+    if(i>-1)R.marked.splice(i,1);else R.marked.push(id);
+    if(R.bar==="idle"||R.bar==="closed")R.bar="implied";
+    R.today="mail";render();return;
+  }
+});
+function readHash(){
+  var h={};location.hash.replace(/^#/,"").split("&").forEach(function(kv){var p=kv.split("=");if(p[0])h[p[0]]=decodeURIComponent(p[1]||"")});
+  if(h.s&&STATES.hasOwnProperty(h.s))S.s=h.s;
+  if(h.t==="dark"||h.t==="light"||h.t==="auto")S.t=h.t;
+  if(h.sl==="1"||h.sl==="2"||h.sl==="3")S.sl=+h.sl;
+  if(h.cc==="0")S.cc=0;
+  if(h.fc==="1")S.fc=1;
+  if((STATES[S.s].need||0)>S.sl)S.s="closed";
+}
+readHash();preset();render();
+window.addEventListener("hashchange",function(){readHash();preset();render()});
+})();
+</script>
+</body>
+</html>

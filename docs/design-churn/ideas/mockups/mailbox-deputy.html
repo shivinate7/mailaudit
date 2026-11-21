@@ -1,0 +1,727 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mailbox Deputy Mockup</title>
+<style>
+:root {
+  color-scheme: light;
+  --page: #e9e7e1;
+  --page-ink: #23221f;
+  --page-ink2: #5d5a53;
+  --frame: #161616;
+  --grouped: #f2f2f7;
+  --cell: #ffffff;
+  --ink: #1c1c1e;
+  --ink2: rgba(60, 60, 67, 0.62);
+  --sep: rgba(60, 60, 67, 0.22);
+  --accent: #1f5fbf;
+  --accent-ink: #ffffff;
+  --danger: #c8322b;
+  --ok: #2b8a4b;
+  --tray-bg: #fff2d6;
+  --tray-ink: #5f4300;
+  --tray-edge: #e9c87a;
+  --web-bg: #fbfaf7;
+  --web-card: #ffffff;
+  --web-edge: #dcd8cf;
+  --web-bar: #f1efea;
+  --new: #b4369a;
+  --today: #6b6b6b;
+  --sample-bg: #fff6c2;
+  --sample-ink: #4a3f00;
+  --scrim: rgba(0, 0, 0, 0.32);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    color-scheme: dark;
+    --page: #121212;
+    --page-ink: #ecebe7;
+    --page-ink2: #a9a69e;
+    --frame: #2a2a2a;
+    --grouped: #000000;
+    --cell: #1c1c1e;
+    --ink: #ffffff;
+    --ink2: rgba(235, 235, 245, 0.62);
+    --sep: rgba(84, 84, 88, 0.62);
+    --accent: #5b9cf2;
+    --accent-ink: #06182f;
+    --danger: #ff6a5f;
+    --ok: #55c27a;
+    --tray-bg: #3a2e14;
+    --tray-ink: #f6d98f;
+    --tray-edge: #6b5420;
+    --web-bg: #141414;
+    --web-card: #1f1f1f;
+    --web-edge: #353535;
+    --web-bar: #232323;
+    --new: #f07fd8;
+    --today: #a0a0a0;
+    --sample-bg: #3b3510;
+    --sample-ink: #f3e7a0;
+    --scrim: rgba(0, 0, 0, 0.55);
+  }
+}
+:root[data-theme="dark"] {
+  color-scheme: dark;
+  --page: #121212;
+  --page-ink: #ecebe7;
+  --page-ink2: #a9a69e;
+  --frame: #2a2a2a;
+  --grouped: #000000;
+  --cell: #1c1c1e;
+  --ink: #ffffff;
+  --ink2: rgba(235, 235, 245, 0.62);
+  --sep: rgba(84, 84, 88, 0.62);
+  --accent: #5b9cf2;
+  --accent-ink: #06182f;
+  --danger: #ff6a5f;
+  --ok: #55c27a;
+  --tray-bg: #3a2e14;
+  --tray-ink: #f6d98f;
+  --tray-edge: #6b5420;
+  --web-bg: #141414;
+  --web-card: #1f1f1f;
+  --web-edge: #353535;
+  --web-bar: #232323;
+  --new: #f07fd8;
+  --today: #a0a0a0;
+  --sample-bg: #3b3510;
+  --sample-ink: #f3e7a0;
+  --scrim: rgba(0, 0, 0, 0.55);
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--page);
+  color: var(--page-ink);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: 15px;
+  line-height: 20px;
+  padding: 0 16px 48px;
+  overflow-x: hidden;
+}
+button { font: inherit; color: inherit; }
+
+/* Page chrome, outside the phone */
+.sample {
+  margin: 0 -16px;
+  padding: 8px 16px;
+  background: var(--sample-bg);
+  color: var(--sample-ink);
+  font-size: 13px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 600;
+}
+header.top { max-width: 980px; margin: 20px auto 12px; }
+header.top h1 { font-size: 28px; line-height: 34px; margin: 0; font-weight: 700; }
+header.top h1 .tag {
+  font-size: 13px; line-height: 18px; font-weight: 600; vertical-align: middle;
+  border: 1px dashed var(--page-ink2); color: var(--page-ink2);
+  border-radius: 6px; padding: 2px 8px; margin-left: 8px; white-space: nowrap;
+}
+header.top p { margin: 6px 0 0; color: var(--page-ink2); font-size: 16px; line-height: 21px; max-width: 62ch; }
+
+.controls { max-width: 980px; margin: 0 auto 16px; display: flex; flex-wrap: wrap; gap: 8px 16px; align-items: center; }
+.steps { display: flex; flex-wrap: wrap; gap: 6px; }
+.steps button, .seg button {
+  min-height: 36px; padding: 6px 12px; border-radius: 18px; cursor: pointer;
+  border: 1px solid color-mix(in srgb, var(--page-ink) 22%, transparent);
+  background: transparent; font-size: 14px;
+}
+.steps button[aria-current="true"], .seg button[aria-pressed="true"] {
+  background: var(--page-ink); color: var(--page); border-color: var(--page-ink);
+}
+.steps .n { font-weight: 700; margin-right: 4px; }
+.steps .extra { border-style: dashed; }
+.seg { display: inline-flex; gap: 4px; }
+.toggles { display: flex; flex-wrap: wrap; gap: 4px 14px; font-size: 14px; color: var(--page-ink2); }
+.toggles label { display: inline-flex; gap: 6px; align-items: center; min-height: 36px; cursor: pointer; }
+
+.stage { max-width: 980px; margin: 0 auto; display: grid; grid-template-columns: auto 1fr; gap: 28px; align-items: start; }
+.caption h2 { font-size: 20px; line-height: 25px; margin: 0 0 6px; }
+.caption .who { font-size: 13px; color: var(--page-ink2); text-transform: uppercase; letter-spacing: .04em; font-weight: 600; margin-bottom: 6px; }
+.caption p { margin: 0 0 10px; color: var(--page-ink2); max-width: 46ch; }
+.caption ul { margin: 0 0 10px; padding-left: 18px; color: var(--page-ink2); max-width: 46ch; }
+.caption li { margin-bottom: 4px; }
+.caption .nextbtn {
+  margin-top: 6px; min-height: 44px; padding: 10px 16px; border-radius: 12px; border: 0; cursor: pointer;
+  background: var(--page-ink); color: var(--page); font-weight: 600;
+}
+.legend { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 14px; font-size: 13px; }
+.legend span { border: 1.5px dashed; border-radius: 6px; padding: 2px 8px; }
+.legend .l-new { color: var(--new); }
+.legend .l-today { color: var(--today); }
+
+@media (max-width: 760px) {
+  .stage { grid-template-columns: 1fr; justify-items: center; }
+  .caption { justify-self: stretch; }
+}
+
+/* Device frame */
+.device-wrap { position: relative; }
+.device {
+  width: 390px; height: 844px;
+  border-radius: 54px;
+  border: 12px solid var(--frame);
+  background: var(--grouped);
+  position: relative; overflow: hidden;
+  box-shadow: 0 18px 40px rgba(0,0,0,.22);
+  transform-origin: top left;
+  color: var(--ink);
+}
+.device.web { background: var(--web-bg); }
+.island {
+  position: absolute; top: 11px; left: 50%; transform: translateX(-50%);
+  width: 120px; height: 34px; border-radius: 20px; background: #000; z-index: 30;
+}
+.statusbar {
+  position: absolute; top: 0; left: 0; right: 0; height: 54px; z-index: 20;
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 0 32px 0 40px; font-size: 16px; font-weight: 600; pointer-events: none;
+}
+.statusbar .icons { display: flex; gap: 6px; align-items: center; }
+.statusbar .bar { width: 26px; height: 12px; border: 1.5px solid currentColor; border-radius: 4px; position: relative; opacity: .9; }
+.statusbar .bar::after { content: ""; position: absolute; inset: 1.5px 6px 1.5px 1.5px; background: currentColor; border-radius: 1.5px; }
+.statusbar .sig { width: 18px; height: 11px; background: currentColor; clip-path: polygon(0 100%, 100% 0, 100% 100%); opacity: .9; }
+.homebar { position: absolute; bottom: 8px; left: 50%; transform: translateX(-50%); width: 134px; height: 5px; border-radius: 3px; background: var(--ink); opacity: .85; z-index: 50; }
+
+.screen {
+  position: absolute; inset: 0;
+  padding-top: max(env(safe-area-inset-top, 0px), 54px);
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 34px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+  overflow-y: auto; overflow-x: hidden;
+  display: none;
+}
+.screen.on { display: block; }
+
+/* iOS type: Dynamic Type, Large (default) sizes */
+.t-large { font-size: 34px; line-height: 41px; font-weight: 700; }
+.t-title3 { font-size: 20px; line-height: 25px; font-weight: 600; }
+.t-head { font-size: 17px; line-height: 22px; font-weight: 600; }
+.t-body { font-size: 17px; line-height: 22px; }
+.t-callout { font-size: 16px; line-height: 21px; }
+.t-sub { font-size: 15px; line-height: 20px; }
+.t-foot { font-size: 13px; line-height: 18px; }
+.muted { color: var(--ink2); }
+
+/* iOS navigation and lists */
+.navbar { height: 44px; display: flex; align-items: center; justify-content: space-between; padding: 0 8px; }
+.navbtn { min-height: 44px; min-width: 44px; padding: 0 8px; border: 0; background: none; color: var(--accent); font-size: 17px; line-height: 22px; display: inline-flex; align-items: center; justify-content: center; gap: 2px; cursor: pointer; }
+.navbtn .chev { font-size: 28px; line-height: 22px; margin-top: -3px; }
+.large { padding: 2px 16px 8px; }
+.section-h { padding: 18px 32px 6px; text-transform: uppercase; }
+.group { margin: 0 16px; background: var(--cell); border-radius: 12px; overflow: hidden; }
+.row { min-height: 44px; display: flex; align-items: center; gap: 12px; padding: 10px 16px; position: relative; }
+.row + .row::before, .qrcard + .row::before { content: ""; position: absolute; top: 0; left: 16px; right: 0; border-top: 0.5px solid var(--sep); }
+.row.indent + .row.indent::before, .qrcard + .row.indent::before { left: 50px; }
+.row .grow { flex: 1; min-width: 0; }
+button.row { width: 100%; border: 0; background: none; text-align: left; cursor: pointer; color: inherit; font: inherit; }
+.acc { color: var(--accent); }
+.danger { color: var(--danger); }
+.section-f { padding: 6px 32px 0; }
+.avatar { width: 32px; height: 32px; border-radius: 16px; background: color-mix(in srgb, var(--accent) 18%, var(--cell)); color: var(--accent); display: grid; place-items: center; font-weight: 600; font-size: 15px; flex: none; }
+.pill { font-size: 12px; line-height: 16px; padding: 2px 8px; border-radius: 10px; font-weight: 600; }
+.pill.active { background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); }
+.glyph { width: 22px; text-align: center; flex: none; font-size: 18px; }
+
+/* QR placeholder: never a real code */
+.qrcard { padding: 18px 16px 14px; display: grid; justify-items: center; gap: 10px; border-top: 0.5px solid var(--sep); }
+.qr {
+  width: 168px; height: 168px; border-radius: 10px; position: relative;
+  border: 2px dashed var(--ink2);
+  background: repeating-linear-gradient(45deg, transparent 0 9px, color-mix(in srgb, var(--ink) 9%, transparent) 9px 11px);
+  display: grid; place-items: center; text-align: center;
+}
+.qr .lbl { background: var(--cell); padding: 6px 10px; border-radius: 8px; font-size: 13px; line-height: 18px; font-weight: 600; color: var(--ink2); }
+
+/* Home: tray banner and package list */
+.banner {
+  margin: 4px 16px 8px; border-radius: 14px; background: var(--tray-bg); color: var(--tray-ink);
+  border: 1px solid var(--tray-edge); display: flex; align-items: center; gap: 12px; padding: 12px 12px 12px 14px;
+  width: calc(100% - 32px); text-align: left; cursor: pointer; min-height: 76px;
+}
+.banner .tray-ic { flex: none; width: 34px; height: 34px; border-radius: 9px; background: color-mix(in srgb, var(--tray-ink) 14%, transparent); display: grid; place-items: center; font-size: 18px; }
+.banner .dots { display: flex; gap: 4px; margin-top: 6px; min-height: 6px; }
+.banner .dots i { width: 14px; height: 6px; border-radius: 3px; background: color-mix(in srgb, var(--tray-ink) 22%, transparent); }
+.banner .dots i.done { background: var(--tray-ink); }
+.banner.clear { background: var(--cell); color: var(--ink2); border-color: var(--sep); }
+.pkg .check {
+  width: 44px; height: 44px; margin: -10px -6px -10px -10px; border: 0; background: none; cursor: pointer; display: grid; place-items: center; flex: none;
+}
+.pkg .check span { width: 24px; height: 24px; border-radius: 12px; border: 2px solid var(--ink2); display: grid; place-items: center; font-size: 14px; color: transparent; }
+.pkg.got .check span { background: var(--ok); border-color: var(--ok); color: #fff; }
+.pkg.got .name { color: var(--ink2); }
+.seg-ios { margin: 0 16px 10px; display: grid; grid-template-columns: repeat(3, 1fr); background: color-mix(in srgb, var(--ink) 8%, transparent); border-radius: 9px; padding: 2px; }
+.seg-ios span { text-align: center; padding: 6px 0; font-size: 13px; line-height: 18px; font-weight: 600; border-radius: 7px; }
+.seg-ios span.on { background: var(--cell); box-shadow: 0 1px 3px rgba(0,0,0,.12); }
+
+/* Sheet and action sheet, drawn (never native dialogs) */
+.scrim { position: absolute; inset: 0; background: var(--scrim); z-index: 40; display: none; }
+.scrim.on { display: block; }
+.sheet {
+  position: absolute; left: 0; right: 0; bottom: 0; top: 64px; z-index: 41;
+  background: var(--grouped); border-radius: 14px 14px 0 0; display: none;
+  padding-bottom: max(env(safe-area-inset-bottom, 0px), 34px); overflow-y: auto;
+}
+.sheet.on { display: block; }
+.grabber { width: 36px; height: 5px; border-radius: 3px; background: var(--sep); margin: 6px auto 0; }
+.sheet .bar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: 4px 8px; }
+.sheet .bar .navbtn:last-child { justify-self: end; font-weight: 600; }
+.actions { position: absolute; left: 8px; right: 8px; bottom: max(env(safe-area-inset-bottom, 0px), 34px); z-index: 41; display: none; gap: 8px; }
+.actions.on { display: grid; }
+.actions .grp { background: var(--cell); border-radius: 14px; overflow: hidden; text-align: center; }
+.actions .msg { padding: 14px 16px; }
+.actions button { width: 100%; min-height: 56px; border: 0; background: none; border-top: 0.5px solid var(--sep); font-size: 20px; line-height: 25px; cursor: pointer; }
+.actions .cancel { border-top: 0; font-weight: 600; color: var(--accent); }
+
+/* Plain phone browser (deputy page) */
+.browserbar {
+  position: absolute; left: 0; right: 0; bottom: 0; z-index: 15;
+  padding: 8px 12px max(env(safe-area-inset-bottom, 0px), 34px);
+  background: var(--web-bar); border-top: 0.5px solid var(--web-edge);
+}
+.urlfield { height: 44px; border-radius: 12px; background: var(--web-bg); border: 0.5px solid var(--web-edge); display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 15px; color: var(--ink2); }
+.device.web .screen { padding-bottom: 104px; }
+.web-page { padding: 18px 20px 24px; }
+.web-kicker { font-size: 13px; line-height: 18px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--ink2); }
+.web-h { font-size: 30px; line-height: 36px; font-weight: 700; margin: 6px 0 16px; }
+.web-card { background: var(--web-card); border: 1px solid var(--web-edge); border-radius: 16px; padding: 16px; margin-bottom: 14px; }
+.expect-num { font-size: 22px; line-height: 28px; font-weight: 700; margin-top: 4px; }
+.stepper { display: grid; grid-template-columns: 64px 1fr 64px; align-items: center; margin-top: 12px; }
+.stepper button { height: 64px; border-radius: 32px; border: 1px solid var(--web-edge); background: var(--web-bg); font-size: 30px; line-height: 1; cursor: pointer; color: var(--accent); }
+.stepper .count { text-align: center; font-size: 56px; line-height: 64px; font-weight: 700; font-variant-numeric: tabular-nums; }
+.note-in { width: 100%; min-height: 48px; margin-top: 8px; border-radius: 12px; border: 1px solid var(--web-edge); background: var(--web-bg); padding: 12px 14px; font: inherit; font-size: 17px; color: var(--ink); }
+.bigbtn { width: 100%; min-height: 60px; border-radius: 16px; border: 0; background: var(--accent); color: var(--accent-ink); font-size: 20px; line-height: 25px; font-weight: 700; cursor: pointer; }
+.ghostbtn { width: 100%; min-height: 52px; border-radius: 14px; border: 1.5px solid var(--accent); background: none; color: var(--accent); font-size: 17px; line-height: 22px; font-weight: 600; cursor: pointer; }
+.web-fine { font-size: 13px; line-height: 18px; color: var(--ink2); margin-top: 14px; }
+.done-mark { width: 72px; height: 72px; border-radius: 36px; background: color-mix(in srgb, var(--ok) 16%, transparent); color: var(--ok); display: grid; place-items: center; font-size: 36px; margin: 32px auto 18px; }
+.center { text-align: center; }
+
+/* Today / New labels */
+.mark { position: relative; outline: 1.5px dashed var(--new); outline-offset: 3px; border-radius: 12px; }
+.mark.today { outline-color: var(--today); }
+.mark > .tagl {
+  position: absolute; top: -12px; right: 8px; z-index: 5;
+  font-size: 11px; line-height: 13px; font-weight: 700; padding: 2px 6px; border-radius: 5px;
+  background: var(--new); color: #fff; pointer-events: none; white-space: nowrap;
+}
+.mark.today > .tagl { background: var(--today); }
+:root[data-theme="dark"] .mark > .tagl { color: #1a1a1a; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .mark > .tagl { color: #1a1a1a; } }
+body.nolabels .mark { outline: none; }
+body.nolabels .tagl { display: none; }
+body.slice1 .slice2 { display: none !important; }
+.slice2-badge { font-size: 11px; line-height: 13px; font-weight: 700; color: var(--new); border: 1px solid var(--new); border-radius: 5px; padding: 1px 5px; margin-left: 6px; vertical-align: 2px; }
+
+.foot { max-width: 980px; margin: 36px auto 0; color: var(--page-ink2); font-size: 14px; }
+.foot h3 { font-size: 15px; color: var(--page-ink); margin: 0 0 6px; }
+.foot ol { margin: 0; padding-left: 20px; }
+.foot li { margin-bottom: 4px; max-width: 80ch; }
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample: every name, count, date and link on this page is invented. No figure here is real.</div>
+
+<header class="top">
+  <h1>Mailbox deputy <span class="tag">idea mockup, not built</span></h1>
+  <p>Whoever brings in the mail scans a fridge code and reports how many envelopes came, and never sees what you bought.</p>
+</header>
+
+<div class="controls">
+  <nav class="steps" aria-label="Screen states">
+    <button data-go="settings"><span class="n">1</span>Buyer settings</button>
+    <button data-go="deputy"><span class="n">2</span>Deputy page</button>
+    <button data-go="confirm"><span class="n">3</span>Deputy confirmation</button>
+    <button data-go="home"><span class="n">4</span>Buyer home</button>
+    <button data-go="tray" class="extra">Tray detail</button>
+    <button data-go="expired" class="extra">Link no longer active</button>
+  </nav>
+  <div class="seg" role="group" aria-label="Theme">
+    <button data-theme-set="auto">Auto</button>
+    <button data-theme-set="light">Light</button>
+    <button data-theme-set="dark">Dark</button>
+  </div>
+  <div class="toggles">
+    <label><input type="checkbox" id="labels" checked> Today / New labels</label>
+    <label><input type="checkbox" id="slice1"> Show first slice only</label>
+  </div>
+</div>
+
+<main class="stage">
+  <div class="device-wrap" id="wrap">
+    <div class="device" id="device" data-device="iphone">
+      <div class="island" aria-hidden="true"></div>
+      <div class="statusbar" aria-hidden="true"><span>18:12</span><span class="icons"><span class="sig"></span><span class="bar"></span></span></div>
+
+      <!-- 1. Buyer settings (iPhone app) -->
+      <section class="screen" data-s="settings" aria-label="Buyer settings, deputies">
+        <div class="navbar"><button class="navbtn"><span class="chev">&#8249;</span>Settings</button></div>
+        <div class="large t-large">Deputies</div>
+
+        <div class="mark" style="margin:8px 0 0"><span class="tagl">New: deputy pass</span>
+          <div class="section-h t-foot muted">Active pass</div>
+          <div class="group">
+            <div class="row indent">
+              <div class="avatar">S</div>
+              <div class="grow"><div class="t-body">Sam</div><div class="t-sub muted">Active until 6 Dec</div></div>
+              <span class="pill active">Active</span>
+            </div>
+            <div class="qrcard">
+              <div class="qr" role="img" aria-label="QR code placeholder, not a real code"><span class="lbl">QR placeholder<br>not a real code</span></div>
+              <div class="t-foot muted center">Scan to report the mail. Opens in any phone browser.</div>
+            </div>
+            <button class="row indent"><span class="glyph acc" aria-hidden="true">&#8599;</span><span class="grow t-body acc">Share link</span></button>
+            <button class="row indent"><span class="glyph acc" aria-hidden="true">&#9113;</span><span class="grow t-body acc">Print fridge sheet</span></button>
+          </div>
+          <div class="section-f t-foot muted">Sam can report how many envelopes came in. Sam never sees card names, prices or sellers, and cannot mark a package or change a lost-mail warning.</div>
+
+          <div class="group" style="margin-top:20px">
+            <button class="row" id="revokeBtn"><span class="grow t-body danger">Revoke Sam&#8217;s link</span></button>
+          </div>
+
+          <div class="group" style="margin-top:20px">
+            <button class="row"><span class="glyph acc" aria-hidden="true">+</span><span class="grow t-body acc">Add a deputy</span></button>
+          </div>
+          <div class="section-f t-foot muted">One pass per named person. Each lasts 30 days.</div>
+        </div>
+        <div style="height:24px"></div>
+      </section>
+
+      <!-- 2. Deputy page (phone browser) -->
+      <section class="screen" data-s="deputy" aria-label="Deputy page">
+        <div class="web-page">
+          <div class="web-kicker">Mail check-in</div>
+          <div class="web-h">Hi Sam.</div>
+
+          <div class="web-card mark slice2"><span class="tagl">New: expected range</span>
+            <div class="t-sub muted">Expected this week <span class="slice2-badge">slice 2</span></div>
+            <div class="expect-num">about 5 to 7 small envelopes</div>
+          </div>
+
+          <div class="web-card mark"><span class="tagl">New: count</span>
+            <div class="t-head">How many envelopes did you bring in?</div>
+            <div class="stepper">
+              <button id="minus" aria-label="One fewer">&#8722;</button>
+              <div class="count" id="count" aria-live="polite">4</div>
+              <button id="plus" aria-label="One more">+</button>
+            </div>
+          </div>
+
+          <div class="web-card mark slice2"><span class="tagl">New: note</span>
+            <label class="t-head" for="note">Note <span class="muted" style="font-weight:400">(optional)</span> <span class="slice2-badge">slice 2</span></label>
+            <input class="note-in" id="note" value="one padded mailer" autocomplete="off">
+          </div>
+
+          <button class="bigbtn" id="doneBtn">Done</button>
+          <div class="web-fine">This link can only report a count. It stops working on 6 Dec, or sooner if it is revoked.</div>
+        </div>
+      </section>
+
+      <!-- 3. Deputy confirmation (phone browser) -->
+      <section class="screen" data-s="confirm" aria-label="Deputy confirmation">
+        <div class="web-page">
+          <div class="web-kicker">Mail check-in</div>
+          <div class="done-mark" aria-hidden="true">&#10003;</div>
+          <div class="center mark" style="padding:6px 0"><span class="tagl">New: confirmation</span>
+            <div class="web-h" style="margin:0 0 8px;font-size:26px;line-height:32px">Logged <span id="cCount">4</span> <span id="cWord">envelopes</span>, Thu 18:10.</div>
+            <div class="t-title3">Thanks, Sam.</div>
+            <div class="t-sub muted slice2" id="cNote" style="margin-top:8px">Note: one padded mailer</div>
+          </div>
+          <div style="height:40px"></div>
+          <button class="ghostbtn" id="undoBtn">Undo (<span id="undoLeft">9</span> min left)</button>
+          <div class="web-fine center">You can close this page.</div>
+        </div>
+      </section>
+
+      <!-- 4. Buyer home (iPhone app) -->
+      <section class="screen" data-s="home" aria-label="Buyer home">
+        <div class="navbar"><span></span><button class="navbtn">Settings</button></div>
+        <div class="large t-large">Packages</div>
+
+        <div class="mark" style="margin:0 0 12px"><span class="tagl">New: tray banner</span>
+          <button class="banner" id="banner" aria-label="Open tray">
+            <span class="tray-ic" aria-hidden="true">&#9993;</span>
+            <span style="flex:1;min-width:0">
+              <span class="t-head" style="display:block" id="bannerText">Tray: 4 envelopes from Sam, Thu 18:10, 1 checked in</span>
+              <span class="dots" id="dots" aria-hidden="true"></span>
+            </span>
+            <span aria-hidden="true" style="font-size:22px;opacity:.6">&#8250;</span>
+          </button>
+        </div>
+
+        <div class="mark today" style="margin:6px 0 0"><span class="tagl">Today: package list, drawn loosely</span>
+          <div class="seg-ios" aria-hidden="true"><span class="on">Packages</span><span>Tally</span><span>Orphaned</span></div>
+          <div class="section-h t-foot muted" style="padding-top:6px">Expected</div>
+          <div class="group" id="pkgs"></div>
+          <div class="section-f t-foot muted">Tap a circle to check a package in. Each check-in lowers the tray count.</div>
+        </div>
+        <div style="height:24px"></div>
+      </section>
+
+      <!-- Extra: tray detail sheet over home -->
+      <div class="scrim" id="scrim"></div>
+      <div class="sheet" id="sheet" role="dialog" aria-label="Tray">
+        <div class="grabber"></div>
+        <div class="bar"><span></span><span class="t-head">Tray</span><button class="navbtn" id="sheetDone">Done</button></div>
+        <div class="mark" style="margin-top:8px"><span class="tagl">New: tray detail</span>
+          <div class="section-h t-foot muted" style="padding-top:8px">Report</div>
+          <div class="group">
+            <div class="row"><span class="grow t-body">From</span><span class="t-body muted">Sam</span></div>
+            <div class="row"><span class="grow t-body">Reported</span><span class="t-body muted">Thu 18:10</span></div>
+            <div class="row"><span class="grow t-body">Envelopes</span><span class="t-body muted">4</span></div>
+            <div class="row"><span class="grow t-body">Checked in since</span><span class="t-body muted" id="sheetChecked">1</span></div>
+            <div class="row slice2"><span class="grow t-body">Note</span><span class="t-body muted">one padded mailer</span></div>
+          </div>
+          <div class="section-f t-foot muted">The tray decides nothing. It never marks a package and never changes a lost-mail warning.</div>
+
+          <div class="section-h t-foot muted">Recent checks</div>
+          <div class="group">
+            <div class="row">
+              <div class="grow"><div class="t-body" id="logText">Sam reported 4 envelopes</div><div class="t-sub muted">Thu 18:10, by deputy link</div></div>
+              <button class="navbtn" id="logUndo">Undo</button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Revoke confirmation, drawn as an action sheet -->
+      <div class="actions" id="actions" role="dialog" aria-label="Revoke link">
+        <div class="grp">
+          <div class="msg t-foot muted">Sam&#8217;s link stops working at once. Reports Sam already made stay.</div>
+          <button class="danger" id="revokeYes">Revoke link</button>
+        </div>
+        <div class="grp"><button class="cancel" id="revokeNo">Cancel</button></div>
+      </div>
+
+      <!-- Extra: expired or revoked (phone browser) -->
+      <section class="screen" data-s="expired" aria-label="Link no longer active">
+        <div class="web-page">
+          <div class="web-kicker">Mail check-in</div>
+          <div class="mark" style="margin-top:40px;padding:4px 0"><span class="tagl">New: dead link</span>
+            <div class="web-h">This link is no longer active.</div>
+            <div class="t-callout muted">Ask the person who gave it to you for a new one.</div>
+          </div>
+        </div>
+      </section>
+
+      <div class="browserbar" id="browserbar" aria-hidden="true"><div class="urlfield">&#128274; deputy.example</div></div>
+      <div class="homebar" aria-hidden="true"></div>
+    </div>
+  </div>
+
+  <aside class="caption" id="caption" aria-live="polite"></aside>
+</main>
+
+<section class="foot">
+  <h3>Plan points not drawn as screens</h3>
+  <ol>
+    <li>The deputy pass is a separate credential from the device key. It allows one act: report a count.</li>
+    <li>The buyer's device computes the expected range and posts only the rounded range. The server never sees the item list.</li>
+    <li>A tray report is stored beside the check-in records, not inside them, so the saved-state shape keeps its form.</li>
+    <li>No photo of the stack: mail shows names and addresses.</li>
+  </ol>
+</section>
+
+<script>
+(function () {
+  var root = document.documentElement;
+  var STATES = {
+    settings: { kind: "app", who: "Buyer, iPhone app", title: "1. Buyer settings",
+      text: "The buyer adds a deputy by label. The server makes a deputy pass. This screen shows the QR code, a share link and a fridge sheet.",
+      pts: ["One pass per named person, 30 days, revocable.", "Revoke asks first in a drawn action sheet, never a browser dialog."],
+      next: "deputy" },
+    deputy: { kind: "web", who: "Deputy, any phone browser, no install", title: "2. Deputy page",
+      text: "Sam scans the code after bringing in the mail. The page shows a rounded range and a count stepper. No card names, prices or sellers.",
+      pts: ["Try the stepper, then tap Done.", "The expected range and the note are slice 2. Tick “Show first slice only” to hide them."],
+      next: "confirm" },
+    confirm: { kind: "web", who: "Deputy, phone browser", title: "3. Deputy confirmation",
+      text: "Sam sees what was logged, with Undo for 10 minutes.",
+      pts: ["Undo returns Sam to the deputy page."],
+      next: "home" },
+    home: { kind: "app", who: "Buyer, iPhone app", title: "4. Buyer home",
+      text: "Each of the buyer's devices shows a tray banner: count, who, when. The usual package list sits below.",
+      pts: ["Tap a circle to check a package in. The tray count drops.", "At zero the banner says the tray is clear, at the same height, so nothing moves under the finger.", "Tap the banner for the tray detail and its log entry."],
+      next: "tray" },
+    tray: { kind: "app", who: "Buyer, iPhone app", title: "Tray detail",
+      text: "The deputy report is one entry in the recent-checks log, with Undo.",
+      pts: ["The tray never changes a package state or a lost-mail warning."],
+      next: "expired" },
+    expired: { kind: "web", who: "Deputy, phone browser", title: "Link no longer active",
+      text: "After the pass expires, or the buyer revokes it, the link shows only this.",
+      pts: [],
+      next: "settings" }
+  };
+
+  var PKGS = [
+    { seller: "Harbor Lane Cards", sub: "3 cards, ordered 4 Nov", got: true },
+    { seller: "Quillfeather Games", sub: "1 card, ordered 6 Nov", got: false },
+    { seller: "Tidewater Singles", sub: "5 cards, ordered 6 Nov", got: false },
+    { seller: "Oak and Ember TCG", sub: "2 cards, ordered 8 Nov", got: false },
+    { seller: "Pinecone Collectibles", sub: "1 card, ordered 9 Nov", got: false },
+    { seller: "Lantern Row Cards", sub: "4 cards, ordered 10 Nov", got: false }
+  ];
+  var TRAY = 4, undone = false;
+
+  function parse() {
+    var o = {};
+    location.hash.replace(/^#/, "").split("&").forEach(function (kv) {
+      var p = kv.split("="); if (p[0]) o[p[0]] = decodeURIComponent(p[1] || "");
+    });
+    return o;
+  }
+  function setHash(patch) {
+    var o = parse(); for (var k in patch) { if (patch[k] == null) delete o[k]; else o[k] = patch[k]; }
+    var s = Object.keys(o).map(function (k) { return k + "=" + encodeURIComponent(o[k]); }).join("&");
+    if (("#" + s) !== location.hash) location.hash = s; else render();
+  }
+
+  // The first package was checked in after Sam's report; it counts toward the tray.
+  function checkedCount() {
+    var n = 0; PKGS.forEach(function (p) { if (p.got) n++; });
+    return Math.min(TRAY, n);
+  }
+
+  function renderPkgs() {
+    var g = document.getElementById("pkgs"); g.innerHTML = "";
+    PKGS.forEach(function (p) {
+      var r = document.createElement("div");
+      r.className = "row pkg" + (p.got ? " got" : "");
+      r.innerHTML = '<button class="check"><span>✓</span></button>' +
+        '<div class="grow"><div class="t-body name"></div><div class="t-sub muted sub"></div></div>' +
+        '<span class="t-sub muted">' + (p.got ? "In" : "Due") + '</span>';
+      r.querySelector(".name").textContent = p.seller;
+      r.querySelector(".sub").textContent = p.sub;
+      r.querySelector(".check").setAttribute("aria-label", (p.got ? "Undo check-in: " : "Check in: ") + p.seller);
+      r.querySelector(".check").addEventListener("click", function () { p.got = !p.got; renderPkgs(); renderBanner(); });
+      g.appendChild(r);
+    });
+  }
+
+  function renderBanner() {
+    var b = document.getElementById("banner"), t = document.getElementById("bannerText"), d = document.getElementById("dots");
+    var c = checkedCount();
+    document.getElementById("sheetChecked").textContent = c;
+    d.innerHTML = "";
+    if (undone) { b.classList.add("clear"); t.textContent = "Tray: Sam’s report was undone."; return; }
+    if (c >= TRAY) { b.classList.add("clear"); t.textContent = "Tray clear. All 4 from Sam checked in."; return; }
+    b.classList.remove("clear");
+    t.textContent = "Tray: 4 envelopes from Sam, Thu 18:10, " + c + " checked in";
+    for (var i = 0; i < TRAY; i++) { var e = document.createElement("i"); if (i < c) e.className = "done"; d.appendChild(e); }
+  }
+
+  function renderCaption(key) {
+    var s = STATES[key], el = document.getElementById("caption");
+    var html = '<div class="who"></div><h2></h2><p></p>';
+    if (s.pts.length) html += "<ul>" + s.pts.map(function () { return "<li></li>"; }).join("") + "</ul>";
+    html += '<button class="nextbtn" id="nextBtn"></button>';
+    html += '<div class="legend"><span class="l-new">New: what the idea adds</span><span class="l-today">Today: what exists, drawn loosely</span></div>';
+    el.innerHTML = html;
+    el.querySelector(".who").textContent = s.who;
+    el.querySelector("h2").textContent = s.title;
+    el.querySelector("p").textContent = s.text;
+    el.querySelectorAll("li").forEach(function (li, i) { li.textContent = s.pts[i]; });
+    var nb = document.getElementById("nextBtn");
+    nb.textContent = "Next: " + STATES[s.next].title.replace(/^\d\.\s*/, "") + " →";
+    nb.addEventListener("click", function () { setHash({ s: s.next }); });
+  }
+
+  function hideRevoke() {
+    document.getElementById("actions").classList.remove("on");
+  }
+
+  function render() {
+    var o = parse();
+    var key = STATES[o.s] ? o.s : "settings";
+    var theme = o.t === "dark" || o.t === "light" ? o.t : "auto";
+    if (theme === "auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", theme);
+    document.querySelectorAll("[data-theme-set]").forEach(function (b) { b.setAttribute("aria-pressed", b.dataset.themeSet === theme ? "true" : "false"); });
+
+    var screenKey = key === "tray" ? "home" : key;
+    document.querySelectorAll(".screen").forEach(function (sc) { sc.classList.toggle("on", sc.dataset.s === screenKey); });
+    var web = STATES[key].kind === "web";
+    var dev = document.getElementById("device");
+    dev.classList.toggle("web", web);
+    dev.setAttribute("data-device", web ? "phone-browser" : "iphone");
+    document.getElementById("browserbar").style.display = web ? "block" : "none";
+    var sheetOn = key === "tray";
+    document.getElementById("sheet").classList.toggle("on", sheetOn);
+    hideRevoke();
+    document.getElementById("scrim").classList.toggle("on", sheetOn);
+
+    document.querySelectorAll("[data-go]").forEach(function (b) { b.setAttribute("aria-current", b.dataset.go === key ? "true" : "false"); });
+    renderCaption(key);
+    renderBanner();
+  }
+
+  document.querySelectorAll("[data-go]").forEach(function (b) { b.addEventListener("click", function () { setHash({ s: b.dataset.go }); }); });
+  document.querySelectorAll("[data-theme-set]").forEach(function (b) {
+    b.addEventListener("click", function () { setHash({ t: b.dataset.themeSet === "auto" ? null : b.dataset.themeSet }); });
+  });
+  document.getElementById("labels").addEventListener("change", function (e) { document.body.classList.toggle("nolabels", !e.target.checked); });
+  document.getElementById("slice1").addEventListener("change", function (e) { document.body.classList.toggle("slice1", e.target.checked); });
+
+  var count = 4;
+  function setCount(n) { count = Math.max(0, Math.min(40, n)); document.getElementById("count").textContent = count; }
+  document.getElementById("minus").addEventListener("click", function () { setCount(count - 1); });
+  document.getElementById("plus").addEventListener("click", function () { setCount(count + 1); });
+  document.getElementById("doneBtn").addEventListener("click", function () {
+    document.getElementById("cCount").textContent = count;
+    document.getElementById("cWord").textContent = count === 1 ? "envelope" : "envelopes";
+    var note = document.getElementById("note").value.trim();
+    var cn = document.getElementById("cNote");
+    cn.textContent = note ? "Note: " + note : ""; cn.style.display = note ? "" : "none";
+    setHash({ s: "confirm" });
+  });
+  document.getElementById("undoBtn").addEventListener("click", function () { setHash({ s: "deputy" }); });
+
+  document.getElementById("banner").addEventListener("click", function () { setHash({ s: "tray" }); });
+  document.getElementById("sheetDone").addEventListener("click", function () { setHash({ s: "home" }); });
+  document.getElementById("scrim").addEventListener("click", function () {
+    if (document.getElementById("actions").classList.contains("on")) {
+      hideRevoke(); document.getElementById("scrim").classList.remove("on");
+    } else setHash({ s: "home" });
+  });
+  document.getElementById("logUndo").addEventListener("click", function () {
+    undone = !undone;
+    document.getElementById("logText").textContent = undone ? "Report undone" : "Sam reported 4 envelopes";
+    this.textContent = undone ? "Redo" : "Undo";
+    renderBanner();
+  });
+
+  document.getElementById("revokeBtn").addEventListener("click", function () {
+    document.getElementById("scrim").classList.add("on");
+    document.getElementById("actions").classList.add("on");
+  });
+  document.getElementById("revokeNo").addEventListener("click", function () {
+    hideRevoke(); document.getElementById("scrim").classList.remove("on");
+  });
+  document.getElementById("revokeYes").addEventListener("click", function () { setHash({ s: "expired" }); });
+
+  var left = 9;
+  setInterval(function () { if (left > 1) { left--; document.getElementById("undoLeft").textContent = left; } }, 60000);
+
+  // Scale the phone down on narrow windows, so the page never scrolls sideways.
+  function fit() {
+    var dev = document.getElementById("device"), wrap = document.getElementById("wrap");
+    var avail = Math.min(window.innerWidth - 32, 414);
+    var sc = Math.min(1, avail / 414);
+    dev.style.transform = sc < 1 ? "scale(" + sc + ")" : "";
+    wrap.style.width = (414 * sc) + "px";
+    wrap.style.height = (868 * sc) + "px";
+  }
+  window.addEventListener("resize", fit);
+  window.addEventListener("hashchange", render);
+
+  renderPkgs();
+  fit();
+  render();
+})();
+</script>
+</body>
+</html>

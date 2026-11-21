@@ -1,0 +1,500 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Tomorrow's Envelopes Idea</title>
+<style>
+/* Page chrome and phone colours. Phone colours follow iOS system roles; the accent is a sample choice. */
+:root{
+  color-scheme: light;
+  --page:#ebe8e1; --page-card:#f7f5f0; --page-ink:#22201c; --page-ink2:#5d584f; --page-line:#cfc9bd;
+  --banner:#fff4d6; --banner-ink:#5c4200;
+  --bg:#f2f2f7; --cell:#ffffff; --label:#000000; --label2:rgba(60,60,67,.62); --label3:rgba(60,60,67,.32);
+  --sep:rgba(60,60,67,.2); --fill:rgba(118,118,128,.12);
+  --tint:#0b6e5a; --on-tint:#ffffff; --tint-soft:rgba(11,110,90,.12);
+  --warn:#9a4600; --warn-soft:rgba(255,149,0,.16); --ok:#1d7a36;
+  --chip:#e8e4f7; --chip-ink:#45398a;
+  --bar:rgba(249,249,249,.88); --frame:#1b1b1d; --dim:rgba(0,0,0,.28);
+  --new:#c2410c; --today:#1d4ed8;
+  --env:#f3ecdc; --env-edge:#cdbf9f; --env-ink:#5f5646; --env-blur:#d8ccb1; --stamp:#b8d4c9;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --page:#141311; --page-card:#1d1c19; --page-ink:#ece8df; --page-ink2:#a39d92; --page-line:#36332d;
+    --banner:#3a2f12; --banner-ink:#ffe3a1;
+    --bg:#000000; --cell:#1c1c1e; --label:#ffffff; --label2:rgba(235,235,245,.62); --label3:rgba(235,235,245,.3);
+    --sep:rgba(84,84,88,.6); --fill:rgba(118,118,128,.24);
+    --tint:#45d0ad; --on-tint:#00261d; --tint-soft:rgba(69,208,173,.16);
+    --warn:#ffa940; --warn-soft:rgba(255,159,10,.18); --ok:#4ade80;
+    --chip:#2c2745; --chip-ink:#c9bfff;
+    --bar:rgba(28,28,30,.88); --frame:#2c2c2f; --dim:rgba(0,0,0,.5);
+    --new:#fb923c; --today:#7aa7ff;
+    --env:#4a4536; --env-edge:#6b6450; --env-ink:#e6dcc4; --env-blur:#625b48; --stamp:#3f6157;
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#141311; --page-card:#1d1c19; --page-ink:#ece8df; --page-ink2:#a39d92; --page-line:#36332d;
+  --banner:#3a2f12; --banner-ink:#ffe3a1;
+  --bg:#000000; --cell:#1c1c1e; --label:#ffffff; --label2:rgba(235,235,245,.62); --label3:rgba(235,235,245,.3);
+  --sep:rgba(84,84,88,.6); --fill:rgba(118,118,128,.24);
+  --tint:#45d0ad; --on-tint:#00261d; --tint-soft:rgba(69,208,173,.16);
+  --warn:#ffa940; --warn-soft:rgba(255,159,10,.18); --ok:#4ade80;
+  --chip:#2c2745; --chip-ink:#c9bfff;
+  --bar:rgba(28,28,30,.88); --frame:#2c2c2f; --dim:rgba(0,0,0,.5);
+  --new:#fb923c; --today:#7aa7ff;
+  --env:#4a4536; --env-edge:#6b6450; --env-ink:#e6dcc4; --env-blur:#625b48; --stamp:#3f6157;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--page-ink);font-family:-apple-system,system-ui,"Helvetica Neue",Arial,sans-serif;line-height:1.4}
+button{font:inherit;color:inherit}
+.page{max-width:1300px;margin:0 auto;padding:20px 16px 48px}
+.sample{background:var(--banner);color:var(--banner-ink);font-size:13px;padding:8px 16px;text-align:center}
+.sample b{letter-spacing:.06em}
+header.top{display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px;padding:18px 0 4px;border-bottom:1px solid var(--page-line)}
+header.top h1{font-family:-apple-system,system-ui,"Helvetica Neue",Arial,sans-serif;font-size:34px;font-weight:700;margin:0;letter-spacing:-.01em}
+.badge{font-size:12px;font-weight:600;text-transform:uppercase;letter-spacing:.08em;border:1px dashed var(--page-ink2);color:var(--page-ink2);padding:2px 8px;border-radius:4px}
+.pitch{flex-basis:100%;margin:4px 0 14px;color:var(--page-ink2);font-size:16px;max-width:70ch}
+.controls{display:flex;flex-wrap:wrap;gap:12px 24px;align-items:center;margin:16px 0 10px}
+.seg{display:flex;flex-wrap:wrap;gap:6px;align-items:center}
+.seg button{border:1px solid var(--page-line);background:var(--page-card);padding:8px 12px;border-radius:999px;font-size:13px;cursor:pointer;min-height:36px}
+.seg button[aria-pressed="true"]{background:var(--page-ink);color:var(--page);border-color:var(--page-ink)}
+.ctl-label{font-size:12px;color:var(--page-ink2);text-transform:uppercase;letter-spacing:.08em;margin-right:4px}
+.caption{font-size:14px;color:var(--page-ink2);margin:4px 0 16px;min-height:2.8em;max-width:80ch}
+.caption b{color:var(--page-ink)}
+.stage{display:flex;gap:24px;align-items:flex-start;overflow-x:auto;padding:12px 2px 18px}
+.frame-wrap{flex:none}
+.frame-wrap h2{font-size:13px;font-weight:600;color:var(--page-ink2);margin:0 0 8px;text-transform:uppercase;letter-spacing:.08em}
+.device{position:relative;background:var(--frame);border-radius:52px;padding:10px;box-shadow:0 18px 40px rgba(0,0,0,.18)}
+.device.folded{width:410px}
+.device.unfolded{width:820px;border-radius:44px}
+.screen{position:relative;height:844px;border-radius:42px;overflow:hidden;background:var(--bg);color:var(--label);font-size:17px;line-height:22px}
+.device.unfolded .screen{border-radius:34px;display:grid;grid-template-columns:1fr 2px 1fr}
+.hinge{background:linear-gradient(var(--frame),rgba(0,0,0,.4),var(--frame));z-index:5}
+.pane{position:relative;height:844px;overflow:hidden;background:var(--bg)}
+.statusbar{position:absolute;inset:0 0 auto 0;height:54px;display:flex;align-items:center;justify-content:space-between;padding:0 30px 0 36px;font-size:15px;font-weight:600;z-index:4;pointer-events:none}
+.island{position:absolute;top:11px;left:50%;transform:translateX(-50%);width:120px;height:34px;border-radius:20px;background:#000;z-index:5}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:134px;height:5px;border-radius:3px;background:var(--label);opacity:.85;z-index:6}
+.scroll{position:absolute;inset:0;overflow-y:auto;padding-top:calc(54px + env(safe-area-inset-top, 0px));padding-bottom:calc(120px + env(safe-area-inset-bottom, 0px));padding-left:env(safe-area-inset-left, 0px);padding-right:env(safe-area-inset-right, 0px);scrollbar-width:none}
+.scroll::-webkit-scrollbar{display:none}
+.navrow{display:flex;align-items:center;justify-content:space-between;min-height:44px;padding:0 8px}
+.navbtn{min-width:44px;min-height:44px;display:inline-flex;align-items:center;justify-content:center;gap:2px;padding:0 8px;background:none;border:0;color:var(--tint);font-size:17px;cursor:pointer}
+.navbtn svg{width:22px;height:22px}
+.navtitle{font-size:17px;font-weight:600}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;padding:2px 20px 8px}
+.sec{margin:0 16px 22px}
+.sec-h{font-size:13px;line-height:18px;color:var(--label2);text-transform:uppercase;padding:0 16px 6px}
+.sec-f{font-size:13px;line-height:18px;color:var(--label2);padding:6px 16px 0}
+.group{background:var(--cell);border-radius:12px;overflow:hidden}
+.row{display:flex;align-items:center;gap:12px;min-height:44px;padding:11px 16px;position:relative;background:none;border:0;width:100%;text-align:left;font-size:17px;color:var(--label);cursor:default}
+button.row{cursor:pointer}
+.group > .row + .row::before,.group > .ann + .row::before,.group > .row + .ann::before,.group > .ann + .ann::before{content:"";position:absolute;top:0;left:16px;right:0;height:1px;background:var(--sep)}
+.row .main{flex:1;min-width:0}
+.row .t{font-size:17px;line-height:22px}
+.row .s{font-size:15px;line-height:20px;color:var(--label2)}
+.row .d{color:var(--label2);font-size:17px;white-space:nowrap}
+.chev{width:9px;height:14px;flex:none;color:var(--label3)}
+.row.sel{background:var(--tint-soft)}
+.icon{width:30px;height:30px;border-radius:7px;display:grid;place-items:center;flex:none;color:#fff}
+.icon svg{width:18px;height:18px}
+.mono{font-family:ui-monospace,"SF Mono",Menlo,Consolas,monospace;font-size:16px}
+.chip{display:inline-flex;align-items:center;gap:4px;font-size:12px;line-height:16px;font-weight:600;background:var(--chip);color:var(--chip-ink);border-radius:6px;padding:2px 6px;vertical-align:1px;white-space:nowrap}
+.chip svg{width:12px;height:12px}
+.chip.warn{background:var(--warn-soft);color:var(--warn)}
+.chip.ok{background:var(--tint-soft);color:var(--tint)}
+.btn{min-height:44px;min-width:44px;border:0;border-radius:12px;padding:0 16px;font-size:17px;font-weight:600;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.btn.fill{background:var(--tint);color:var(--on-tint)}
+.btn.tinted{background:var(--tint-soft);color:var(--tint)}
+.btn.gray{background:var(--fill);color:var(--label)}
+.btn.plain{background:none;color:var(--tint);font-weight:400;padding:0 8px}
+.btn.wide{width:100%}
+.stack{display:flex;flex-direction:column;gap:10px;padding:0 16px 18px}
+.status-ok{color:var(--ok);display:inline-flex}
+.check{width:26px;height:26px;border-radius:50%;border:2px solid var(--label3);flex:none;display:grid;place-items:center}
+.check.on{background:var(--tint);border-color:var(--tint);color:var(--on-tint)}
+.check.on svg{width:16px;height:16px}
+
+/* Envelope placeholders */
+.env{display:block;width:100%;height:auto;border-radius:6px}
+.thumbs{display:flex;gap:10px;overflow-x:auto;padding:4px 16px 14px;scrollbar-width:none}
+.thumb{flex:none;width:96px;background:none;border:0;padding:0;cursor:pointer;text-align:left;min-height:44px}
+.thumb .cap{display:block;font-size:12px;line-height:16px;color:var(--label2);margin-top:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.thumb .cap.unk{color:var(--warn);font-weight:600}
+.morning{background:var(--cell);border-radius:12px;overflow:hidden}
+.morning .head{padding:14px 16px 10px}
+.morning .head .t{font-size:17px;line-height:22px;font-weight:600}
+.morning .head .s{font-size:15px;line-height:20px;color:var(--label2)}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;padding:0 16px 18px}
+.grid .thumb{width:auto}
+.bigimg{padding:0 16px 8px}
+.bigimg .env{border-radius:10px;box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.imgcap{font-size:13px;line-height:18px;color:var(--label2);padding:0 20px 18px}
+.readas{font-size:20px;line-height:25px;font-weight:600;padding:0 20px 4px}
+
+.tabbar{position:absolute;left:16px;right:16px;bottom:calc(26px + env(safe-area-inset-bottom, 0px));height:62px;border-radius:31px;background:var(--bar);backdrop-filter:blur(20px);-webkit-backdrop-filter:blur(20px);display:flex;justify-content:space-around;align-items:center;box-shadow:0 4px 18px rgba(0,0,0,.12);z-index:3;border:1px solid var(--sep)}
+.tab{display:flex;flex-direction:column;align-items:center;gap:1px;min-width:64px;min-height:48px;justify-content:center;font-size:11px;line-height:13px;color:var(--label2);background:none;border:0;cursor:pointer;border-radius:24px}
+.tab svg{width:24px;height:24px}
+.tab.on{color:var(--tint);background:var(--fill)}
+.dim{position:absolute;inset:0;background:var(--dim);z-index:7}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:62px;background:var(--bg);border-radius:14px 14px 0 0;z-index:8;overflow:hidden}
+.sheet .scroll{padding-top:0}
+.sheet .grab{width:36px;height:5px;border-radius:3px;background:var(--label3);margin:6px auto 0}
+.toast{position:absolute;left:50%;transform:translateX(-50%);bottom:110px;background:var(--label);color:var(--bg);font-size:15px;padding:10px 16px;border-radius:22px;z-index:9;white-space:nowrap}
+.ann{position:relative;outline:1.5px dashed var(--new);outline-offset:3px;border-radius:12px}
+.ann.today{outline-color:var(--today)}
+.ann.in{outline-offset:-3px;border-radius:0}
+.ann::after{content:attr(data-ann);position:absolute;top:-11px;right:8px;font-size:11px;line-height:14px;font-weight:600;padding:1px 6px;border-radius:4px;background:var(--new);color:#fff;z-index:2;pointer-events:none;white-space:nowrap;text-transform:none;letter-spacing:0}
+.ann.in::after{top:4px}
+.ann.today::after{background:var(--today)}
+body.nolabels .ann{outline:none}
+body.nolabels .ann::after{display:none}
+.sim{display:inline-flex;align-items:center;min-height:44px;margin:0 16px 14px;padding:0 12px;border:1.5px dashed var(--label2);border-radius:10px;background:transparent;color:var(--label2);font-size:13px;cursor:pointer}
+.lower{display:grid;grid-template-columns:repeat(auto-fit,minmax(280px,1fr));gap:20px;margin-top:8px}
+.panel{background:var(--page-card);border:1px solid var(--page-line);border-radius:10px;padding:14px 18px}
+.panel h3{margin:0 0 8px;font-size:15px}
+.panel ol,.panel ul{margin:0;padding-left:20px;font-size:14px;color:var(--page-ink2)}
+.panel li{margin:4px 0}
+.panel li b{color:var(--page-ink)}
+.foot{font-size:12px;color:var(--page-ink2);margin-top:22px;border-top:1px solid var(--page-line);padding-top:10px}
+:focus-visible{outline:2px solid var(--tint);outline-offset:2px}
+</style>
+</head>
+<body>
+<div class="sample"><b>SAMPLE</b> · every seller, card, price, date, name and envelope on this page is invented. Envelope images are drawn placeholders, not scans. No figure is real.</div>
+<div class="page">
+  <header class="top">
+    <h1>Tomorrow's envelopes</h1>
+    <span class="badge">idea mockup, not built</span>
+    <p class="pitch">The postal service's morning preview email shows today's envelopes before they land, so the app knows what to expect and which order has gone quiet.</p>
+  </header>
+
+  <div class="controls">
+    <div class="seg" id="stateSeg" role="group" aria-label="Screen state"></div>
+  </div>
+  <div class="controls">
+    <div class="seg" role="group" aria-label="Theme"><span class="ctl-label">Theme</span>
+      <button data-theme-set="auto">Auto</button><button data-theme-set="light">Light</button><button data-theme-set="dark">Dark</button>
+    </div>
+    <div class="seg" role="group" aria-label="Labels"><span class="ctl-label">Labels</span>
+      <button id="labelsBtn" aria-pressed="true">Today / New shown</button>
+    </div>
+  </div>
+  <p class="caption" id="caption"></p>
+
+  <div class="stage">
+    <div class="frame-wrap">
+      <h2>Folding phone, folded (iPhone)</h2>
+      <div class="device folded" data-device="iphone-duo-folded">
+        <div class="screen" id="folded"></div>
+      </div>
+    </div>
+    <div class="frame-wrap">
+      <h2>Folding phone, open (two screens)</h2>
+      <div class="device unfolded" data-device="iphone-duo-unfolded">
+        <div class="screen" id="unfolded"></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="lower">
+    <div class="panel">
+      <h3>How it builds on what exists</h3>
+      <ul>
+        <li>Needs mail drop: the preview email comes through the same forwarding address, by a second rule.</li>
+        <li>The lost-mail warning reasons from elapsed time. This adds earlier evidence: "not seen in any preview since shipped".</li>
+        <li>An unmatched envelope that arrives goes to Orphaned with its image. A match is only a suggestion.</li>
+        <li>A matched image joins that package's photos.</li>
+        <li>Known gap: the preview covers machine-scanned letter mail only.</li>
+      </ul>
+    </div>
+    <div class="panel">
+      <h3>Owner decisions the plan lists (its recommendation in bold)</h3>
+      <ol>
+        <li>Keep images of unmatched mail? <b>No; delete within 24 hours (the preview includes other household members).</b></li>
+        <li>What may a match change? <b>Only "expected today" and "sighted"; never a tick, never an orphan move.</b></li>
+        <li>Where does text reading run? <b>The server; images deleted once matched or after 24 hours.</b></li>
+        <li>Does "not sighted" move the lost-mail warning? <b>Evidence line only, until a month of data measures it.</b></li>
+        <li>How is the preview reached? <b>The forwarded email only, never the postal website.</b></li>
+      </ol>
+    </div>
+    <div class="panel">
+      <h3>Smallest first slice</h3>
+      <ul>
+        <li>No text reading. Show today's count and thumbnails. The owner taps one and picks the seller. The tool records the sighting and learns that return address.</li>
+        <li>In this mockup: state 5, "First slice: pick seller".</li>
+      </ul>
+    </div>
+  </div>
+  <p class="foot">Deep links: add <code>#s=&lt;state&gt;&amp;t=light|dark</code>, for example <code>#s=unknown&amp;t=dark</code>. Type sizes are the iOS Dynamic Type default sizes from Apple's HIG typography page (read 2026-11-21): large title 34, title 3 20, body and headline 17, subhead 15, footnote 13, caption 12 and 11. Tap targets are at least 44 pt. Frame sizes are illustrative: the repo's device list gives no folding-phone size.</p>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var I = {
+    back:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="M15 5l-7 7 7 7"/></svg>',
+    chev:'<svg class="chev" viewBox="0 0 9 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M1.5 1.5L7 7l-5.5 5.5"/></svg>',
+    mail:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="5.5" width="18" height="13" rx="2.5"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>',
+    eye:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M2.5 12S6 5.5 12 5.5 21.5 12 21.5 12 18 18.5 12 18.5 2.5 12 2.5 12z"/><circle cx="12" cy="12" r="3"/></svg>',
+    box:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/></svg>',
+    tally:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M5 5v14M9.5 5v14M14 5v14M18.5 5v14M3 15l18-6"/></svg>',
+    orphan:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M10 10.2a2.2 2.2 0 1 1 3 2c-.7.3-1 .8-1 1.4M12 15.6v.1" stroke-linecap="round"/></svg>',
+    gear:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M12 2.8v2.6M12 18.6v2.6M21.2 12h-2.6M5.4 12H2.8M18.5 5.5l-1.8 1.8M7.3 16.7l-1.8 1.8M18.5 18.5l-1.8-1.8M7.3 7.3L5.5 5.5" stroke-linecap="round"/></svg>',
+    checkc:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M8 12.5l2.8 2.8L16.5 9.5"/></svg>',
+    tick:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    warn:'<svg viewBox="0 0 24 24" width="22" height="22" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 4l9 16H3z"/><path d="M12 10v4.5M12 17.2v.1"/></svg>'
+  };
+  function esc(s){return String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;")}
+  function ann(kind, label, inner, inside){
+    return '<div class="ann'+(kind==="today"?" today":"")+(inside?" in":"")+'" data-ann="'+(kind==="today"?"Today: ":"New: ")+label+'">'+inner+'</div>';
+  }
+  function nav(o){
+    var left = o.back ? '<button class="navbtn" data-go="'+o.backGo+'" aria-label="Back to '+esc(o.back)+'">'+I.back+esc(o.back)+'</button>' : (o.left||SP);
+    return '<div class="navrow">'+left+(o.small?'<span class="navtitle">'+esc(o.small)+'</span>':'')+(o.right||SP)+'</div>'+(o.large?'<div class="largetitle">'+esc(o.large)+'</div>':'');
+  }
+  function sec(h, rows, f){
+    return '<div class="sec">'+(h?'<div class="sec-h">'+h+'</div>':'')+'<div class="group">'+rows+'</div>'+(f?'<div class="sec-f">'+f+'</div>':'')+'</div>';
+  }
+  function row(o){
+    var tag = (o.go||o.act) ? 'button' : 'div';
+    return '<'+tag+' class="row'+(o.sel?' sel':'')+'"'+(o.go?' data-go="'+o.go+'"':'')+(o.act?' data-act="'+o.act+'"':'')+'>'+
+      (o.lead||'')+'<div class="main"><div class="t">'+o.t+'</div>'+(o.s?'<div class="s">'+o.s+'</div>':'')+'</div>'+
+      (o.d?'<span class="d">'+o.d+'</span>':'')+(o.trail||'')+(o.go?I.chev:'')+'</'+tag+'>';
+  }
+  function icon(bg, svg){return '<span class="icon" style="background:'+bg+'">'+svg+'</span>'}
+  var SP = '<span style="width:44px"></span>';
+  function tabbar(active){
+    var tabs=[["packages","Packages",I.box],["tally","Tally",I.tally],["orphaned","Orphaned",I.orphan],["settings","Settings",I.gear]];
+    return '<nav class="tabbar" aria-label="Sections">'+tabs.map(function(t){
+      var go = t[0]==="tally" ? "" : t[0];
+      return '<button class="tab'+(t[0]===active?' on':'')+'"'+(go?' data-go="'+go+'"':'')+'>'+t[2]+'<span>'+t[1]+'</span></button>';
+    }).join("")+'</nav>';
+  }
+  function chrome(content, opts){
+    opts = opts||{};
+    return '<div class="statusbar"><span>9:41</span><span>'+
+      '<svg width="64" height="12" viewBox="0 0 64 12" fill="currentColor" aria-hidden="true"><rect x="0" y="7" width="3" height="5" rx="1"/><rect x="5" y="5" width="3" height="7" rx="1"/><rect x="10" y="3" width="3" height="9" rx="1"/><rect x="15" y="1" width="3" height="11" rx="1"/><rect x="36" y="1" width="23" height="11" rx="3" fill="none" stroke="currentColor"/><rect x="38" y="3" width="17" height="7" rx="1.5"/></svg></span></div>'+
+      (opts.pane?'':'<div class="island"></div>')+
+      '<div class="scroll">'+content+'</div>'+(opts.tab?tabbar(opts.tab):'')+(opts.overlay||'')+(opts.pane?'':'<div class="homebar"></div>');
+  }
+  function sheet(title, left, right, body){
+    return '<div class="dim"></div><div class="sheet" role="dialog" aria-label="'+esc(title)+'"><div class="grab"></div>'+
+      '<div class="navrow">'+left+'<span class="navtitle">'+esc(title)+'</span>'+right+'</div>'+
+      '<div class="scroll" style="top:50px">'+body+'</div></div>';
+  }
+  function paneBar(left, title, right){return '<div class="navrow">'+left+'<span class="navtitle">'+esc(title)+'</span>'+right+'</div>'}
+
+  // ---------- envelope placeholder ----------
+  // A drawn stand-in for a preview image: return-address lines (text only when "read"),
+  // a stamp, a recipient block always shown as blank bars, and a bar code. No real address.
+  function envelope(e, label){
+    var ret = e.read
+      ? '<text x="10" y="17" font-size="8" font-style="italic" font-family="-apple-system, system-ui, sans-serif" fill="var(--env-ink)">'+esc(e.read[0])+'</text><text x="10" y="27" font-size="8" font-style="italic" font-family="-apple-system, system-ui, sans-serif" fill="var(--env-ink)">'+esc(e.read[1])+'</text>'
+      : '<rect x="10" y="11" width="'+e.w1+'" height="4" rx="2" fill="var(--env-ink)" opacity=".55"/><rect x="10" y="19" width="'+e.w2+'" height="4" rx="2" fill="var(--env-ink)" opacity=".4"/>';
+    var bars = ""; for (var i=0;i<34;i++){ var h = (i*7+e.seed)%3===0 ? 7 : ((i*5+e.seed)%2 ? 4 : 5.5); bars += '<rect x="'+(52+i*2.2)+'" y="'+(88-h)+'" width="1.1" height="'+h+'" fill="var(--env-ink)" opacity=".6"/>'; }
+    return '<svg class="env" viewBox="0 0 160 100" role="img" aria-label="'+esc(label)+'">'+
+      '<rect x=".5" y=".5" width="159" height="99" rx="4" fill="var(--env)" stroke="var(--env-edge)"/>'+
+      ret+
+      '<rect x="128" y="8" width="22" height="26" rx="1.5" fill="var(--stamp)"/>'+
+      '<path d="M110 14q5-3 10 0t10 0t10 0M110 20q5-3 10 0t10 0t10 0M110 26q5-3 10 0t10 0t10 0" fill="none" stroke="var(--env-ink)" stroke-width=".8" opacity=".5"/>'+
+      '<rect x="52" y="46" width="58" height="5" rx="2.5" fill="var(--env-blur)"/><rect x="52" y="55" width="70" height="5" rx="2.5" fill="var(--env-blur)"/><rect x="52" y="64" width="46" height="5" rx="2.5" fill="var(--env-blur)"/>'+
+      bars+'</svg>';
+  }
+  // Today's preview: five invented envelopes.
+  var ENV = [
+    {id:"v1", seller:"Tin Lantern", seed:1, w1:44, w2:30, go:"detail"},
+    {id:"v2", seller:"Gravel Owl", seed:2, w1:38, w2:34, go:"detail"},
+    {id:"v3", seller:null, seed:3, w1:50, w2:26, read:["R. Ellery","Fairhaven"], go:"unknown"},
+    {id:"v4", seller:"Copper Wren", seed:4, w1:30, w2:40, go:"detail"},
+    {id:"v5", seller:null, seed:5, w1:42, w2:22, go:"unknown2"}
+  ];
+  var ui = {ticked:false, orphanArmed:false};
+
+  function thumb(e, big){
+    var cap = e.seller ? '<span class="cap">'+e.seller+'</span>' : '<span class="cap unk">Unknown</span>';
+    var lbl = e.seller ? "Envelope from Seller "+e.seller+", matched" : "Envelope, sender not known";
+    return '<button class="thumb" data-go="'+e.go+'">'+envelope(e, lbl)+cap+'</button>';
+  }
+  function morningCard(){
+    return '<div class="sec">'+ann("new","morning card",
+      '<div class="morning"><div class="head"><div class="t">Expected today: 5 envelopes · 3 matched · 2 unknown</div>'+
+      '<div class="s">From this morning\'s preview, 07:12</div></div>'+
+      '<div class="thumbs">'+ENV.map(function(e){return thumb(e)}).join("")+'</div></div>')+
+      '<div class="sec-f">Letter mail only. Parcels are not in the preview.</div></div>';
+  }
+  var EXP = '<span class="chip ok">'+I.eye+'expected today</span>';
+  function packagesScreen(opt){
+    opt = opt||{};
+    var rows =
+      ann("new","expected today", row({t:"Seller Tin Lantern", s:"6 cards · $2.84 · shipped 11-18 · "+EXP, go:"detail", sel:opt.sel==="tin"}), true)+
+      row({t:"Seller Gravel Owl", s:"4 cards · $3.18 · shipped 11-19 · "+EXP, go:"detail"})+
+      row({t:"Seller Copper Wren", s:"3 cards · $2.17 · shipped 11-17 · "+EXP, go:"detail"})+
+      ann("new","sighting evidence", row({t:"Seller North Pike", s:'<span class="chip warn">May be lost</span> shipped 11-06 · 0 sightings in 11 mail days', go:"warning", sel:opt.sel==="pike"}), true)+
+      ann("today","package row", row({t:"Seller Brass Heron", s:"2 cards · $0.96 · shipped 11-17", go:"unknown"}), true);
+    return nav({large:"Packages"})+(opt.morning===false?"":morningCard())+sec("Outstanding · 5", rows, "");
+  }
+  function previewGrid(sel){
+    return paneBar(SP,"",SP)+'<div class="largetitle">Today\'s preview</div>'+
+      '<div style="padding:0 20px 12px;color:var(--label2);font-size:15px;line-height:20px">11-21 · 5 envelopes · 3 matched · 2 unknown. A match is only a suggestion.</div>'+
+      '<div class="grid">'+ENV.map(function(e){return '<div'+(e.id===sel?' style="outline:2px solid var(--tint);outline-offset:4px;border-radius:8px"':'')+'>'+thumb(e)+'</div>'}).join("")+'</div>'+
+      '<div class="sec-f" style="padding:0 20px">Images of unmatched mail are deleted within 24 hours.</div>';
+  }
+  function detail(inPane){
+    var cards=[["Ironbark Herald","$0.62"],["Tidewater Scout","$0.48"],["Glassfern Adept","$0.51"],["Quiet Ember","$0.40"],["Mossback Sentry","$0.44"],["Saltmarsh Oracle","$0.39"]];
+    return (inPane?paneBar(SP,"",SP):nav({back:"Packages", backGo:"morning"}))+
+      '<div class="largetitle" style="font-size:28px;line-height:34px">Seller Tin Lantern</div>'+
+      ann("new","seen in preview", '<div style="padding:0 20px 12px;color:var(--label2);font-size:15px">6 cards · $2.84 · seen in preview 11-21</div>', true)+
+      '<div class="bigimg">'+envelope(ENV[0],"Preview image of the envelope from Seller Tin Lantern")+'</div>'+
+      '<div class="imgcap">Preview image, 11-21 07:12. Added to this package\'s photos.</div>'+
+      (ui.ticked ? '' : '<div class="stack"><button class="btn fill wide" data-act="tickall">Mail came: tick all 6 as today</button></div>')+
+      sec("Cards", cards.map(function(c){
+        return row({lead:'<span class="check'+(ui.ticked?' on':'')+'" role="checkbox" aria-checked="'+ui.ticked+'" aria-label="Received">'+(ui.ticked?I.tick:'')+'</span>', t:c[0], d:c[1]});
+      }).join(""), ui.ticked ? "Ticked 11-21 by you. The preview never ticks a card." : "The preview never ticks. You tick when the envelope is in your hand.");
+  }
+  function unknownBody(){
+    return '<div class="bigimg">'+envelope(ENV[2],"Preview image of an envelope whose sender is not known")+'</div>'+
+      '<div class="imgcap">Preview image, 11-21 07:12. Deleted within 24 hours unless matched.</div>'+
+      '<div class="sec-h" style="padding:0 20px 4px">Text read as</div>'+
+      ann("new","return-address reading", '<div class="readas">R. Ellery, Fairhaven</div>', true)+
+      '<div style="padding:12px 20px 16px;font-size:17px;line-height:22px">Possible: <b>Seller Brass Heron</b> (shipped 11-17)?</div>'+
+      '<div class="stack">'+
+        '<button class="btn fill wide" data-act="yes">Yes</button>'+
+        '<button class="btn gray wide" data-go="morning">Not sure</button>'+
+        '<button class="btn tinted wide" data-act="armorphan">Orphan it when it arrives</button>'+
+      '</div>'+
+      '<div class="sec-f" style="padding:0 20px">Yes marks Brass Heron "expected today" and "sighted", and learns this return address. It never ticks a card or moves anything to Orphaned.</div>';
+  }
+  function firstSliceBody(){
+    var opts = ["Brass Heron · shipped 11-17","Pale Finch · shipped 11-15","North Pike · shipped 11-06","Quiet Ember · shipped 11-19"];
+    return '<div class="bigimg">'+envelope(ENV[4],"Preview image of an envelope whose sender is not known")+'</div>'+
+      '<div class="imgcap">Preview image, 11-21 07:12. No text is read in this slice.</div>'+
+      sec("Who sent this?", opts.map(function(o){var p=o.split(" · ");return row({t:"Seller "+p[0], s:p[1], act:"pick"});}).join("")+row({t:'<span style="color:var(--label2)">Not one of these</span>', go:"morning"}),
+        "Your pick records a sighting and learns this return address for next time.");
+  }
+  function orphanedScreen(sel){
+    return nav({large:"Orphaned"})+
+      sec("Arrived with no known sender",
+        ann("new","image attached", row({lead:'<span style="width:64px;flex:none">'+envelope(ENV[2],"Envelope image")+'</span>', t:"Envelope, arrived 11-21", s:"From preview 11-21 · read as R. Ellery, Fairhaven", go:"orphaned", sel:sel}), true)+
+        ann("today","orphaned item", row({lead:'<span style="width:64px;flex:none;height:40px;border-radius:6px;background:var(--fill);display:grid;place-items:center;color:var(--label2)">'+I.box.replace('<svg','<svg width="20" height="20"')+'</span>', t:"Bubble mailer, arrived 11-14", s:"3 cards inside · no slip"}), true),
+        "Orphaned mail never decides anything. The suggestion stays a suggestion.");
+  }
+  function orphanDetail(){
+    return paneBar(SP,"",SP)+'<div class="largetitle" style="font-size:28px;line-height:34px">Envelope, 11-21</div>'+
+      '<div class="bigimg">'+envelope(ENV[2],"Preview image of the orphaned envelope")+'</div>'+
+      '<div class="imgcap">The preview image came with it in one tap.</div>'+
+      sec("", row({t:"Text read as", d:"R. Ellery, Fairhaven"})+row({t:"Suggested", d:"Brass Heron?"})+row({t:"Arrived", d:"11-21"}),
+        "A suggestion only. You decide what this is, as with any orphaned mail.");
+  }
+  function warningDetail(inPane){
+    return (inPane?paneBar(SP,"",SP):nav({back:"Packages", backGo:"morning"}))+
+      '<div class="largetitle" style="font-size:28px;line-height:34px">Seller North Pike</div>'+
+      '<div style="padding:0 20px 14px;font-size:15px;line-height:20px;color:var(--label2)">2 cards · $1.37 · shipped 11-06</div>'+
+      sec("Lost-mail warning",
+        ann("today","elapsed-time warning", row({lead:'<span style="color:var(--warn);display:inline-flex">'+I.warn+'</span>', t:"May be lost", s:"15 days since shipped"}), true)+
+        ann("new","evidence line", row({lead:'<span style="color:var(--label2);display:inline-flex">'+I.eye.replace('<svg','<svg width="22" height="22"')+'</span>', t:"0 sightings in 11 mail days", s:"Not seen in any preview since 11-06"}), true),
+        "Evidence only. The warning still runs on elapsed time until a month of previews measures how much a missed sighting means.")+
+      sec("Mail days since 11-06", '<div class="row" style="gap:6px;flex-wrap:wrap">'+
+        ["07","08","10","12","13","14","15","17","18","19","20"].map(function(d){return '<span class="chip" style="background:var(--fill);color:var(--label2)">11-'+d+'</span>'}).join("")+
+        '</div>', "Sundays and the 11-11 holiday are not mail days. Mail-day calendar: a built-in table.");
+  }
+  function settingsDetail(inPane){
+    return (inPane?paneBar(SP,"",SP)+'<div class="largetitle">Mail drop</div>':nav({back:"Settings", backGo:"rule", large:"Mail drop"}))+
+      sec("Forwarding address", row({t:'<span class="mono">drop-7k2q@example.invalid</span>', s:"Rule 1: marketplace emails · working"}), "")+
+      '<div class="sec">'+ann("new","second rule",
+        '<div class="group">'+row({lead:icon("#0b6e5a",I.eye), t:"Rule 2: daily mail preview", s:"Preview received today 07:12 · 5 envelopes"})+'</div>')+
+      '<div class="sec-f">In your mail app, add a second rule: the postal service\'s daily preview email forwards to the same address. Only the forwarded email is read, never the postal website.</div></div>'+
+      sec("Images", row({t:"Unmatched images", d:"Deleted in 24 h"})+row({t:"Matched images", d:"Kept with the package"}), "The preview can show mail for others in your home. Their images are never kept.");
+  }
+  function settingsList(){
+    return nav({large:"Settings"})+sec("", ann("new","preview rule", row({lead:icon("#0b6e5a",I.mail), t:"Mail drop", s:"2 rules · preview 07:12", go:"rule", sel:true}), true)+row({t:"Browser extension", s:"Pulls orders when clicked"}), "");
+  }
+
+  var STATES = [
+    {id:"rule", label:"1 · Second rule", cap:"<b>Flow 1.</b> On the mail drop card, a second rule forwards the postal service's daily preview email. It needs mail drop.",
+      folded:function(){return chrome(settingsDetail(false),{tab:"settings"})},
+      left:function(){return chrome(settingsList(),{tab:"settings",pane:true})},
+      right:function(){return chrome(settingsDetail(true),{pane:true})}},
+    {id:"morning", label:"2 · Morning card", cap:"<b>Flow 2 to 4, state 1.</b> “Expected today: 5 envelopes · 3 matched · 2 unknown”, with thumbnails. Tap a matched one for its package, an unknown one for the sheet.",
+      folded:function(){return chrome(packagesScreen(),{tab:"packages"})},
+      left:function(){return chrome(packagesScreen({morning:false}),{tab:"packages",pane:true})},
+      right:function(){return chrome(previewGrid(),{pane:true})}},
+    {id:"detail", label:"3 · Package detail", cap:"<b>Flow 5, state 2.</b> “Seller Tin Lantern · 6 cards · seen in preview 11-21” with the envelope image. When the mail comes, tick as today.",
+      folded:function(){return chrome(detail(false),{tab:"packages"})},
+      left:function(){return chrome(packagesScreen({morning:false, sel:"tin"}),{tab:"packages",pane:true})},
+      right:function(){return chrome(detail(true),{pane:true})}},
+    {id:"unknown", label:"4 · Unknown envelope", cap:"<b>Flow 3, state 3.</b> The unknown-envelope sheet: the image, the text read as “R. Ellery, Fairhaven”, then a possible seller with Yes, Not sure, and Orphan it when it arrives.",
+      folded:function(){return chrome(packagesScreen(),{tab:"packages",overlay:sheet("Unknown envelope",'<button class="navbtn" data-go="morning">Cancel</button>',SP, unknownBody())})},
+      left:function(){return chrome(previewGrid("v3"),{tab:"packages",pane:true})},
+      right:function(){return chrome(paneBar(SP,"Unknown envelope",SP)+unknownBody(),{pane:true})}},
+    {id:"unknown2", label:"5 · First slice: pick seller", cap:"<b>Smallest first slice.</b> No text reading. The owner taps an unknown thumbnail and picks the seller; the tool records the sighting and learns the return address.",
+      folded:function(){return chrome(packagesScreen(),{tab:"packages",overlay:sheet("Unknown envelope",'<button class="navbtn" data-go="morning">Cancel</button>',SP, firstSliceBody())})},
+      left:function(){return chrome(previewGrid("v5"),{tab:"packages",pane:true})},
+      right:function(){return chrome(paneBar(SP,"Unknown envelope",SP)+firstSliceBody(),{pane:true})}},
+    {id:"orphaned", label:"6 · Orphaned with image", cap:"<b>Flow 6.</b> The unmatched envelope arrived. One tap sent it to Orphaned with its preview image attached.",
+      folded:function(){return chrome(orphanedScreen(false),{tab:"orphaned"})},
+      left:function(){return chrome(orphanedScreen(true),{tab:"orphaned",pane:true})},
+      right:function(){return chrome(orphanDetail(),{pane:true})}},
+    {id:"warning", label:"7 · Not-sighted warning", cap:"<b>Flow 7, state 4.</b> “Seller North Pike · shipped 11-06 · 0 sightings in 11 mail days”. Each mail day with no sighting adds an evidence line.",
+      folded:function(){return chrome(warningDetail(false),{tab:"packages"})},
+      left:function(){return chrome(packagesScreen({morning:false, sel:"pike"}),{tab:"packages",pane:true})},
+      right:function(){return chrome(warningDetail(true),{pane:true})}}
+  ];
+  var byId = {}; STATES.forEach(function(s){byId[s.id]=s});
+  var ALIAS = {packages:"morning", settings:"rule"};
+
+  var cur = "morning", theme = "auto", labels = true, toastMsg = "", toastTimer = 0;
+  function readHash(){
+    var h = new URLSearchParams(location.hash.slice(1));
+    var s = h.get("s"); if (s && byId[s]) cur = s;
+    var t = h.get("t"); theme = (t==="light"||t==="dark") ? t : "auto";
+    labels = h.get("labels")!=="0";
+  }
+  function writeHash(){
+    var p = "s="+cur+(theme!=="auto"?"&t="+theme:"")+(labels?"":"&labels=0");
+    if (location.hash.slice(1)!==p) history.replaceState(null,"","#"+p);
+  }
+  function render(){
+    var s = byId[cur];
+    if (theme==="auto") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", theme);
+    document.body.classList.toggle("nolabels", !labels);
+    var lb = document.getElementById("labelsBtn");
+    lb.setAttribute("aria-pressed", String(labels)); lb.textContent = labels ? "Today / New shown" : "Today / New hidden";
+    document.querySelectorAll("[data-theme-set]").forEach(function(b){b.setAttribute("aria-pressed", String(b.getAttribute("data-theme-set")===theme))});
+    document.getElementById("stateSeg").innerHTML = '<span class="ctl-label">State</span>'+STATES.map(function(x){return '<button data-state="'+x.id+'" aria-pressed="'+(x.id===cur)+'">'+x.label+'</button>'}).join("");
+    document.getElementById("caption").innerHTML = s.cap;
+    var t = toastMsg ? '<div class="toast" role="status">'+toastMsg+'</div>' : '';
+    document.getElementById("folded").innerHTML = s.folded()+t;
+    document.getElementById("unfolded").innerHTML =
+      '<div class="pane">'+s.left()+'</div><div class="hinge" aria-hidden="true"></div><div class="pane">'+s.right()+t+'</div>'+
+      '<div class="island" style="left:75%"></div><div class="homebar"></div>';
+    writeHash();
+  }
+  function go(id){ id = ALIAS[id]||id; if (byId[id]) { cur = id; toastMsg=""; render(); } }
+  function toast(m){ toastMsg = m; render(); clearTimeout(toastTimer); toastTimer = setTimeout(function(){ toastMsg=""; render(); }, 1800); }
+
+  document.addEventListener("click", function(e){
+    var b = e.target.closest("[data-state],[data-go],[data-act],[data-theme-set],#labelsBtn");
+    if (!b) return;
+    if (b.id==="labelsBtn"){ labels=!labels; render(); return; }
+    if (b.hasAttribute("data-theme-set")){ theme=b.getAttribute("data-theme-set"); render(); return; }
+    if (b.hasAttribute("data-state")){ go(b.getAttribute("data-state")); return; }
+    var act = b.getAttribute("data-act");
+    if (act){
+      if (act==="tickall"){ ui.ticked=true; toast("6 cards ticked as today"); return; }
+      if (act==="yes"){ go("morning"); toast("Brass Heron: expected today, sighted"); return; }
+      if (act==="pick"){ go("morning"); toast("Sighting recorded, return address learned"); return; }
+      if (act==="armorphan"){ go("orphaned"); toast("Sample: it arrived and went to Orphaned"); return; }
+      return;
+    }
+    var g = b.getAttribute("data-go");
+    if (g) go(g);
+  });
+  window.addEventListener("hashchange", function(){ readHash(); render(); });
+  readHash(); render();
+})();
+</script>
+</body>
+</html>

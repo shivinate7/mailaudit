@@ -1,0 +1,851 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Seller trouble mockups</title>
+<style>
+/* Tokens. House step: 4 px. House radius: 8 px. Colours by role, a light set and a dark set.
+   Every colour value is this designer's own choice (blind designer: no repo colour). */
+:root{
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;--space-8:32px;--space-10:40px;--space-12:48px;
+  --radius:8px;
+  --page:#dde3e8;          /* the review page around the frames */
+  --surface:#f4f6f8;       /* screen background */
+  --raised:#ffffff;        /* rows, cards, sheets */
+  --sunk:#e7ebef;          /* bars, skeletons, field background */
+  --text:#141b22;
+  --muted:#56636f;
+  --line:#c9d1d9;
+  --accent:#1d4ed8;        /* links, selection, primary press */
+  --on-accent:#ffffff;
+  --ok:#2f7d4f;            /* order came fine */
+  --late:#a35f00;          /* order came late */
+  --lost:#c0321c;          /* order never came */
+  --short:#7339b0;         /* cards missing from an order */
+  --wrong:#0b7480;         /* wrong cards in an order */
+  --zone:rgba(192,50,28,.09);
+  --scrim:rgba(10,16,22,.38);
+  --sample:#fff4c2;--sample-text:#4a3b00;
+  --new:#1d4ed8;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#0a0e12;--surface:#11171c;--raised:#1a2229;--sunk:#222c35;--text:#e6ecf1;--muted:#9aa8b4;--line:#2f3b46;
+    --accent:#7fa4ff;--on-accent:#0b1226;--ok:#6cc98f;--late:#f0a940;--lost:#ff7b63;--short:#c39bf3;--wrong:#4cc6cf;
+    --zone:rgba(255,123,99,.11);--scrim:rgba(0,0,0,.55);--sample:#3d3410;--sample-text:#ffe58a;--new:#7fa4ff;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0a0e12;--surface:#11171c;--raised:#1a2229;--sunk:#222c35;--text:#e6ecf1;--muted:#9aa8b4;--line:#2f3b46;
+  --accent:#7fa4ff;--on-accent:#0b1226;--ok:#6cc98f;--late:#f0a940;--lost:#ff7b63;--short:#c39bf3;--wrong:#4cc6cf;
+  --zone:rgba(255,123,99,.11);--scrim:rgba(0,0,0,.55);--sample:#3d3410;--sample-text:#ffe58a;--new:#7fa4ff;
+}
+html{font-family:-apple-system,system-ui,"Helvetica Neue",sans-serif;-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--page);color:var(--text);font-size:15px;line-height:20px}
+button,textarea,select{font-family:inherit;font-size:inherit;line-height:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:3px solid var(--accent);outline-offset:2px}
+
+/* Review page chrome (outside the device frames) */
+.review{display:flex;flex-direction:column;gap:var(--space-4);padding:var(--space-4);max-inline-size:1400px;margin-inline:auto}
+.sample{background:var(--sample);color:var(--sample-text);border-radius:var(--radius);padding:var(--space-2) var(--space-4);font-weight:600}
+.bar{display:flex;flex-wrap:wrap;gap:var(--space-4);align-items:center}
+.cluster{display:flex;flex-wrap:wrap;gap:var(--space-2);align-items:center}
+.stack{display:flex;flex-direction:column;gap:var(--space-2)}
+.tabs .tab{display:flex;align-items:center;gap:var(--space-1);background:var(--raised);border:1px solid var(--line);border-radius:var(--radius);padding:0 var(--space-1) 0 0}
+.tabs .tab>button{min-height:44px;border:0;background:none;padding:0 var(--space-3)}
+.tabs .tab[aria-current="true"]{border-color:var(--accent);box-shadow:inset 0 0 0 1px var(--accent)}
+.tabs .tab[aria-current="true"]>button:first-child{font-weight:600;color:var(--accent)}
+.tabs .tab .hide{font-size:13px;color:var(--muted);padding:0 var(--space-2)}
+.ctl{min-height:44px;border:1px solid var(--line);border-radius:var(--radius);background:var(--raised);padding:0 var(--space-3)}
+.ctl label{color:var(--muted)}
+select.ctl{padding-inline:var(--space-2)}
+.concept-head{display:flex;flex-direction:column;gap:var(--space-1)}
+.concept-head h1{font-size:22px;line-height:28px;margin:0}
+.concept-head p{margin:0;color:var(--muted);max-inline-size:72ch}
+.newtag{display:inline-block;border:1.5px dashed var(--new);color:var(--new);border-radius:var(--radius);padding:0 var(--space-2);font-size:13px;font-weight:600}
+.kindtag{font-size:13px;color:var(--muted)}
+.stage{display:flex;flex-wrap:wrap;gap:var(--space-8) var(--space-6);align-items:flex-start}
+.fig{margin:0;display:flex;flex-direction:column;gap:var(--space-2)}
+.fig figcaption{font-size:13px;line-height:18px;color:var(--muted);max-inline-size:60ch}
+.fig figcaption b{color:var(--text)}
+.box{position:relative;overflow:hidden}
+.dev{position:absolute;inset:0 auto auto 0;transform-origin:0 0;border-radius:24px;box-shadow:0 0 0 6px #2a3138,0 0 0 7px #4a545e}
+.hidden-note{color:var(--muted);font-size:13px}
+
+/* ---------- Device screens ---------- */
+.screen,.duo-open .page{position:relative;width:100%;height:100%;overflow:hidden;background:var(--surface);color:var(--text);display:flex;flex-direction:column;border-radius:24px;
+  /* Dynamic Type, Large (default), from Apple's typography page */
+  --lt:34px;--lt-l:41px;--t1:28px;--t1-l:34px;--t2:22px;--t2-l:28px;--t3:20px;--t3-l:25px;--hl:17px;--hl-l:22px;--body:17px;--body-l:22px;
+  --callout:16px;--callout-l:21px;--sub:15px;--sub-l:20px;--foot:13px;--foot-l:18px;--c1:12px;--c1-l:16px;--c2:11px;--c2-l:13px;
+  --g:12px;--g-big:18px;
+  font-size:var(--body);line-height:var(--body-l)}
+.screen.ax{ /* AX5, the largest accessibility size, same page */
+  --lt:60px;--lt-l:70px;--t1:58px;--t1-l:68px;--t2:56px;--t2-l:66px;--t3:55px;--t3-l:65px;--hl:53px;--hl-l:62px;--body:53px;--body-l:62px;
+  --callout:51px;--callout-l:60px;--sub:49px;--sub-l:58px;--foot:44px;--foot-l:52px;--c1:43px;--c1-l:51px;--c2:40px;--c2-l:48px;--g:28px;--g-big:36px}
+.duo-open{display:flex;width:100%;height:100%;gap:40px;background:#05070a;border-radius:24px}
+.duo-open .page{position:relative;width:455.5px;height:100%;overflow:hidden;background:var(--surface);display:flex;flex-direction:column;border-radius:24px}
+.hinge-mark{position:absolute;top:0;bottom:0;left:455.5px;width:40px;display:flex;align-items:center;justify-content:center;pointer-events:none}
+.hinge-mark span{writing-mode:vertical-rl;color:#9aa5b0;font-size:11px;letter-spacing:.02em}
+.sb{flex:none;height:env(safe-area-inset-top,48px);min-height:48px;display:flex;align-items:center;padding:0 var(--space-6);font-size:15px;font-weight:600}
+.home-ind{position:absolute;left:50%;bottom:8px;width:136px;height:4px;margin-left:-68px;border-radius:4px;background:var(--text);opacity:.5;pointer-events:none}
+.scroll{flex:1;overflow:auto;overscroll-behavior:contain;display:flex;flex-direction:column;gap:var(--space-4);padding:0 var(--space-4) calc(env(safe-area-inset-bottom,20px) + 92px)}
+.scroll.no-tab{padding-bottom:calc(env(safe-area-inset-bottom,20px) + var(--space-4))}
+.nav{display:flex;align-items:center;justify-content:space-between;min-height:44px;gap:var(--space-2)}
+.lt{font-size:var(--lt);line-height:var(--lt-l);font-weight:700;margin:0}
+.t1{font-size:var(--t1);line-height:var(--t1-l);font-weight:700;margin:0}
+.t3{font-size:var(--t3);line-height:var(--t3-l);font-weight:600;margin:0}
+.hl{font-size:var(--hl);line-height:var(--hl-l);font-weight:600}
+.sub{font-size:var(--sub);line-height:var(--sub-l)}
+.foot{font-size:var(--foot);line-height:var(--foot-l);color:var(--muted)}
+.c1{font-size:var(--c1);line-height:var(--c1-l);color:var(--muted)}
+.muted{color:var(--muted)}
+.num{font-variant-numeric:tabular-nums}
+.tb-btn{min-height:44px;min-width:44px;border:0;background:none;color:var(--accent);font-size:var(--body);padding:0 var(--space-2);display:inline-flex;align-items:center;gap:var(--space-1)}
+.summary{margin:0;font-size:var(--sub);line-height:var(--sub-l)}
+.summary b{font-weight:600}
+
+/* Filter chips: the one place the five kinds are named in words */
+.chips{display:flex;flex-wrap:wrap;gap:var(--space-2)}
+.chip{min-height:44px;display:inline-flex;align-items:center;gap:var(--space-2);padding:0 var(--space-3);border-radius:22px;border:1px solid var(--line);background:var(--raised);font-size:var(--sub)}
+.chip[aria-pressed="true"]{background:var(--text);color:var(--surface);border-color:var(--text)}
+.chip[aria-pressed="true"] .gl *{stroke:currentColor}
+
+/* Ledger rows */
+.group{display:flex;flex-direction:column;gap:var(--space-2)}
+.ghead{display:flex;justify-content:space-between;align-items:baseline;gap:var(--space-2);padding:0 var(--space-1)}
+.list{display:flex;flex-direction:column;background:var(--raised);border-radius:var(--radius);overflow:hidden}
+.row{display:grid;grid-template-columns:1fr auto;gap:var(--space-1) var(--space-3);align-items:center;text-align:left;width:100%;min-height:64px;border:0;border-bottom:1px solid var(--line);background:none;padding:var(--space-3) var(--space-4)}
+.row:last-child{border-bottom:0}
+.row[aria-current="true"]{background:color-mix(in srgb,var(--accent) 12%,transparent)}
+.row .who{display:flex;flex-direction:column;gap:var(--space-1);min-width:0}
+.row .name{font-size:var(--hl);line-height:var(--hl-l);font-weight:600;overflow:hidden;text-overflow:ellipsis}
+.row .score{font-size:var(--t3);line-height:var(--t3-l);font-weight:600;text-align:right}
+.row .score small{font-size:var(--foot);color:var(--muted);font-weight:400}
+.ax .row{grid-template-columns:1fr}
+.ax .row .score{text-align:left}
+.strip{display:flex;flex-wrap:wrap;gap:var(--space-1);align-items:center}
+.strip.big{gap:var(--space-2)}
+.gl{flex:none;display:block}
+.disclose{min-height:44px;border:0;background:none;color:var(--accent);text-align:left;padding:0 var(--space-1);font-size:var(--sub)}
+.plain{padding:var(--space-3) var(--space-4);background:var(--raised);border-radius:var(--radius)}
+
+/* Detail (seller record) */
+.back{margin-left:calc(-1 * var(--space-2))}
+.figs{display:grid;grid-template-columns:repeat(auto-fill,minmax(120px,1fr));gap:var(--space-2)}
+.actions.inline,.card.inline{position:static;background:none;box-shadow:none;padding:0}
+.card.inline{background:var(--raised);padding:var(--space-3) var(--space-4)}
+.ax .figs{grid-template-columns:1fr}
+.fig1{background:var(--raised);border-radius:var(--radius);padding:var(--space-2) var(--space-3);display:flex;flex-direction:column}
+.fig1 .v{font-size:var(--t2);line-height:var(--t2-l);font-weight:700}
+.fig1 .v.bad{color:var(--lost)}
+.orders{display:flex;flex-direction:column;background:var(--raised);border-radius:var(--radius)}
+.orow{display:grid;grid-template-columns:auto 1fr;gap:var(--space-1) var(--space-3);padding:var(--space-3) var(--space-4);border-bottom:1px solid var(--line);align-items:start}
+.orow:last-child{border-bottom:0}
+.orow .gl{margin-top:5px}
+.orow .txt{display:flex;flex-direction:column;gap:var(--space-1)}
+.days{position:relative;height:8px;background:var(--sunk);border-radius:4px}
+.days i{position:absolute;inset:0 auto 0 0;border-radius:4px;background:var(--muted)}
+.days i.late,.days i.lost{background:var(--late)}
+.days i.lost{background:repeating-linear-gradient(90deg,var(--lost) 0 6px,transparent 6px 10px)}
+.days b{position:absolute;top:-4px;bottom:-4px;width:2px;background:var(--text);opacity:.55}
+.actions{position:absolute;left:0;right:0;bottom:calc(env(safe-area-inset-bottom,20px) + 76px);padding:var(--space-3) var(--space-4);display:flex;flex-direction:column;gap:var(--space-2);background:linear-gradient(to top,var(--surface) 70%,transparent)}
+.actions.no-tab{bottom:env(safe-area-inset-bottom,20px)}
+.actions .btns{display:flex;gap:var(--space-2)}
+.ax .actions .btns{flex-direction:column}
+.btn{flex:1;min-height:50px;border-radius:var(--radius);border:1px solid var(--line);background:var(--raised);font-size:var(--hl);font-weight:600;padding:var(--space-2) var(--space-3)}
+.btn.primary{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.btn[aria-pressed="true"]{background:var(--text);color:var(--surface);border-color:var(--text)}
+.reply{font-size:var(--foot);line-height:var(--foot-l);color:var(--muted);min-height:var(--foot-l)}
+.reply b{color:var(--text)}
+.linkbtn{border:0;background:none;color:var(--accent);min-height:44px;padding:0 var(--space-1);font-size:inherit}
+.spacer-actions{flex:none;height:120px}
+.ax .spacer-actions{height:520px}
+
+/* Tab bar: floats above the content (Apple tab bars page) */
+.tabbar{position:absolute;left:var(--space-4);right:var(--space-4);bottom:calc(env(safe-area-inset-bottom,20px) + var(--space-2));height:60px;border-radius:30px;background:color-mix(in srgb,var(--raised) 86%,transparent);backdrop-filter:blur(12px);border:1px solid var(--line);display:flex;align-items:center;gap:var(--space-2);padding:0 var(--space-2)}
+.tabbar .t{flex:1;min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:13px;border-radius:22px}
+.tabbar .t.on{color:var(--accent);background:color-mix(in srgb,var(--accent) 12%,transparent);font-weight:600}
+.tabbar .t.other{border:1.5px dashed var(--line);color:var(--muted)}
+.ax .tabbar{height:auto;min-height:60px}
+/* AX5: tab labels keep their size, as iOS tab bars do; a press and hold shows the Large Content Viewer bubble. */
+.lcv{position:absolute;left:50%;bottom:calc(env(safe-area-inset-bottom,20px) + 88px);transform:translateX(-50%);z-index:6;display:flex;flex-direction:column;align-items:center;gap:var(--space-2);padding:var(--space-4) var(--space-6);border-radius:var(--radius);background:color-mix(in srgb,var(--raised) 94%,transparent);border:1px solid var(--line);box-shadow:0 8px 24px rgba(0,0,0,.2);font-size:var(--c2);line-height:var(--c2-l);font-weight:600;color:var(--accent);white-space:nowrap;pointer-events:none}
+.lcv svg{width:72px;height:72px}
+
+/* Sheets */
+.scrim{position:absolute;inset:0;background:var(--scrim);display:flex;align-items:flex-end;z-index:5}
+.sheet{width:100%;height:88%;background:var(--surface);border-radius:var(--radius) var(--radius) 0 0;display:flex;flex-direction:column;overflow:hidden}
+.sheet .grab{align-self:center;width:36px;height:4px;border-radius:2px;background:var(--line);margin-top:var(--space-2)}
+.sheet .bar3{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:0 var(--space-2);min-height:52px}
+.sheet .bar3 .r{justify-self:end;font-weight:600}
+.sheet .bar3 .l{justify-self:start}
+.sheet .body{flex:1;overflow:auto;padding:var(--space-2) var(--space-4) calc(env(safe-area-inset-bottom,20px) + var(--space-4));display:flex;flex-direction:column;gap:var(--space-3)}
+textarea.draft{min-height:220px;resize:none;border:1px solid var(--line);border-radius:var(--radius);background:var(--raised);padding:var(--space-3);font-size:var(--body);line-height:var(--body-l)}
+
+/* States */
+.state{display:flex;flex-direction:column;gap:var(--space-3);align-items:flex-start;padding:var(--space-4);background:var(--raised);border-radius:var(--radius)}
+.state p{margin:0}
+.skel{height:64px;border-radius:var(--radius);background:linear-gradient(90deg,var(--sunk),var(--raised),var(--sunk));background-size:200% 100%;animation:sh 1.4s linear infinite}
+@keyframes sh{to{background-position:-200% 0}}
+@media (prefers-reduced-motion: reduce){.skel{animation:none}}
+details.machine summary{min-height:44px;display:flex;align-items:center;color:var(--accent);font-size:var(--sub)}
+details.machine code{font-size:var(--foot);color:var(--muted)}
+
+/* Verdict docket */
+.casehead{display:flex;flex-direction:column;gap:var(--space-2)}
+.pips{display:flex;gap:var(--space-1)}
+.pips i{width:24px;height:4px;border-radius:2px;background:var(--line)}
+.pips i.done{background:var(--muted)}
+.pips i.now{background:var(--accent)}
+.casefile{display:flex;flex-direction:column;gap:var(--space-3);background:var(--raised);border-radius:var(--radius);padding:var(--space-4)}
+.evidence{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:var(--space-2)}
+.evidence li{display:grid;grid-template-columns:auto 1fr;gap:var(--space-2);align-items:start}
+.evidence li .gl{margin-top:4px}
+.verdicts{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)}
+.ax .verdicts{grid-template-columns:1fr}
+.verdicts .btn{min-height:56px;font-size:var(--callout)}
+.vchip{display:inline-flex;align-items:center;gap:var(--space-1);font-size:var(--foot);color:var(--muted)}
+
+/* Speed field */
+.fieldbox{position:relative;background:var(--raised);border-radius:var(--radius);padding:var(--space-2)}
+.fieldbox svg{display:block;width:100%;height:auto;overflow:visible}
+.fieldbox .ax-t{font-size:11px;fill:var(--muted)}
+.fieldbox .lab{font-size:12px;fill:var(--text);font-weight:600}
+.dotbtn{cursor:pointer}
+.dotbtn:focus{outline:none}
+.dotbtn:focus-visible .ring{stroke:var(--accent);stroke-width:3}
+.card{position:absolute;left:var(--space-3);right:var(--space-3);bottom:calc(env(safe-area-inset-bottom,20px) + 76px);background:var(--raised);border:1px solid var(--line);border-radius:var(--radius);padding:var(--space-3) var(--space-4);display:flex;flex-direction:column;gap:var(--space-2);box-shadow:0 8px 24px rgba(0,0,0,.14)}
+.card .top{display:flex;justify-content:space-between;align-items:center;gap:var(--space-2);min-height:44px;border:0;background:none;padding:0;text-align:left;width:100%}
+.legend{display:flex;flex-wrap:wrap;gap:var(--space-1) var(--space-3);font-size:var(--foot);color:var(--muted)}
+.legend span{display:inline-flex;align-items:center;gap:var(--space-1)}
+.picklist{display:flex;flex-direction:column}
+.picklist button{min-height:44px;border:0;border-top:1px solid var(--line);background:none;text-align:left;display:flex;justify-content:space-between;align-items:center;padding:0}
+</style>
+</head>
+<body>
+<div class="review">
+  <div class="sample" role="note">Sample: no seller, order, card count or day count on this page is real.</div>
+
+  <div class="bar" aria-label="Mockup controls">
+    <div class="cluster tabs" role="group" aria-label="Concepts" id="tabs"></div>
+    <div class="cluster">
+      <label class="cluster ctl"><span class="muted">State</span>
+        <select id="state" aria-label="State" style="border:0;background:none;min-height:42px">
+          <option value="loaded">Loaded</option>
+          <option value="loading">Loading</option>
+          <option value="failed">Read failed</option>
+          <option value="unknown">Too early to tell</option>
+          <option value="empty">No orders yet</option>
+          <option value="allwell">All is well</option>
+          <option value="filtered">Filter emptied the list</option>
+        </select></label>
+      <label class="cluster ctl"><span class="muted">Theme</span>
+        <select id="theme" aria-label="Theme" style="border:0;background:none;min-height:42px">
+          <option value="system">System</option><option value="light">Light</option><option value="dark">Dark</option>
+        </select></label>
+    </div>
+  </div>
+  <p class="hidden-note" id="hiddenNote"></p>
+
+  <section id="concept" class="stack" aria-live="polite">
+    <div class="concept-head" id="conceptHead"></div>
+    <div class="stage">
+      <figure class="fig">
+        <figcaption><b>Duo, folded.</b> 466 x 678 pt, from the brief. Compact width.</figcaption>
+        <div class="box" style="width:466px;height:678px" data-w="466" data-h="678">
+          <div class="dev" data-device="iphone-duo-folded" style="width:466px;height:678px"><div class="screen" id="f-folded"></div></div>
+        </div>
+      </figure>
+      <figure class="fig">
+        <figcaption><b>Duo, open.</b> 951 x 669 pt, from the brief. Two pages; the hinge gap (x 455.5 to 495.5) holds nothing.</figcaption>
+        <div class="box" style="width:951px;height:669px" data-w="951" data-h="669">
+          <div class="dev" data-device="iphone-duo-unfolded" style="width:951px;height:669px">
+            <div class="duo-open"><div class="page" id="f-open-l"></div><div class="page" id="f-open-r"></div></div>
+            <div class="hinge-mark" aria-hidden="true"><span>hinge</span></div>
+          </div>
+        </div>
+      </figure>
+      <figure class="fig">
+        <figcaption><b>Large phone, stand-in size.</b> No size is written for it; 440 x 956 pt is a stand-in until the owner names one. Compact width.</figcaption>
+        <div class="box" style="width:440px;height:956px" data-w="440" data-h="956">
+          <div class="dev" data-device="iphone-large" style="width:440px;height:956px"><div class="screen" id="f-phone"></div></div>
+        </div>
+      </figure>
+      <figure class="fig">
+        <figcaption><b>Duo, folded, largest text (AX5).</b> Body 53 pt. Same screen, reflowed. Tab labels keep their size; press and hold a tab for its large label.</figcaption>
+        <div class="box" style="width:466px;height:678px" data-w="466" data-h="678">
+          <div class="dev" data-device="iphone-duo-folded" data-text-size="AX5" style="width:466px;height:678px"><div class="screen ax" id="f-ax"></div></div>
+        </div>
+      </figure>
+    </div>
+  </section>
+</div>
+
+<script>
+"use strict";
+/* ---------------- Sample data (real shapes, invented values) ----------------
+   Seller: name, orders[]. Order: placed, outcome, days to arrive (null when it never came or is on the way),
+   cards ordered, cards received, wrong cards. Outcome is derived in a build; here it is written out. */
+const LATE_DAYS = 10;   // assumption, see notes item 6
+const LOST_DAYS = 30;   // assumption, see notes item 6
+function o(placed, st, days, ord, rec, wrong){ return {placed, st, days, ord, rec: rec==null?ord:rec, wrong: wrong||0}; }
+const ALL = [
+  {id:"gravel", name:"Gravel Deck Co.", orders:[o("Aug 4","ok",6,4),o("Aug 19","late",17,5),o("Sep 1","lost",null,6,0),o("Sep 12","ok",8,3),o("Sep 30","late",23,4),o("Oct 14","lost",null,8,0),o("Oct 29","ok",7,2)]},
+  {id:"lantern", name:"Lantern Moth Games", orders:[o("Aug 9","ok",5,3),o("Aug 27","short",6,6,4),o("Sep 20","wrong",7,4,4,2),o("Oct 8","short",5,5,3),o("Oct 30","ok",6,2)]},
+  {id:"harbor", name:"Quiet Harbor Cards", orders:[o("Aug 2","ok",5,4),o("Sep 6","lost",null,3,0),o("Oct 3","ok",6,4),o("Oct 22","ok",4,3)]},
+  {id:"north", name:"Northbound Singles", orders:[o("Jul 28","ok",8,3),o("Aug 8","ok",9,2),o("Aug 21","late",14,4),o("Sep 3","ok",7,3),o("Sep 15","late",15,5),o("Sep 29","late",12,2),o("Oct 9","ok",8,3),o("Oct 20","late",19,4),o("Nov 2","ok",9,2)]},
+  {id:"sundial", name:"Sundial Collectibles", orders:[o("Sep 18","late",24,3),o("Oct 25","ok",6,2)]},
+  {id:"ridge", name:"Ridgeway Card Room", orders:[o("Jul 30","ok",5,3),o("Aug 13","ok",6,4),o("Aug 30","ok",5,2),o("Sep 9","wrong",6,4,4,1),o("Sep 24","ok",7,3),o("Oct 6","ok",5,3),o("Oct 19","ok",6,4),o("Nov 4","ok",5,2)]},
+  {id:"owl", name:"Little Owl Trading", orders:[o("Jul 25","ok",4,3),o("Aug 1","ok",3,4),o("Aug 11","ok",4,2),o("Aug 22","ok",5,3),o("Sep 2","short",4,4,3),o("Sep 10","ok",3,3),o("Sep 21","ok",4,4),o("Oct 1","ok",4,3),o("Oct 12","ok",5,2),o("Oct 21","ok",4,4),o("Nov 1","ok",3,3),o("Nov 9","ok",4,2)]},
+  {id:"fennel", name:"Fennel & Pike", orders:[o("Aug 6","ok",4,2),o("Aug 26","ok",3,3),o("Sep 14","ok",5,2),o("Oct 2","ok",4,4),o("Oct 18","ok",4,3),o("Nov 6","ok",3,2)]},
+  {id:"brass", name:"Brass Kettle TCG", orders:[o("Sep 5","ok",4,2),o("Oct 1","ok",5,3),o("Oct 27","ok",3,2),o("Nov 16","open",null,3)]},
+  {id:"pebble", name:"Pebble Street Cards", orders:[o("Nov 15","open",null,4)]},
+];
+const KIND = {
+  late:{word:"Late", color:"--late"}, lost:{word:"Lost", color:"--lost"}, short:{word:"Short", color:"--short"},
+  wrong:{word:"Wrong cards", color:"--wrong"}, ok:{word:"Came fine", color:"--ok"}, open:{word:"On the way", color:"--muted"}
+};
+const BAD = ["lost","wrong","short","late"]; // worst first
+
+function median(a){ if(!a.length) return null; const s=[...a].sort((x,y)=>x-y), m=s.length>>1; return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+function stats(s){
+  const closed = s.orders.filter(x=>x.st!=="open");
+  const n = {late:0,lost:0,short:0,wrong:0,ok:0,open:s.orders.length-closed.length};
+  closed.forEach(x=>n[x.st]++);
+  const bad = closed.length - n.ok;
+  const ordered = s.orders.reduce((a,x)=>a+x.ord,0);
+  const closedOrdered = closed.reduce((a,x)=>a+x.ord,0);
+  const right = closed.reduce((a,x)=>a+x.rec-x.wrong,0);
+  const typical = median(closed.map(x=>x.st==="lost"?LOST_DAYS:x.days));
+  // "Slow quarter": the day count that a quarter of its orders took longer than (lost counts as 30+).
+  const ds = closed.map(x=>x.st==="lost"?LOST_DAYS:x.days).sort((a,b)=>a-b);
+  const q = ds.length ? (ds.length-1)*.75 : 0, slowQ = ds.length ? Math.round(ds[Math.floor(q)] + (ds[Math.ceil(q)]-ds[Math.floor(q)])*(q-Math.floor(q))) : null;
+  const slowest = Math.max(0,...closed.filter(x=>x.days!=null).map(x=>x.days));
+  return {closed:closed.length, bad, n, ordered, closedOrdered, right, missing:closedOrdered-right, typical, slowQ, slowest, rate: closed.length? bad/closed.length : 0, early: closed.length===0};
+}
+const byId = id => ALL.find(s=>s.id===id);
+
+/* ---------------- Shared user data (one home for every concept and frame) ---------------- */
+const store = { verdict:{}, draft:{}, copied:null };
+const VERDICT = { keep:"Keep buying", watch:"Watch", avoid:"Avoid this seller" };
+
+/* ---------------- Page state, deep links ---------------- */
+const CONCEPTS = [
+  {id:"ledger", name:"Ranked ledger", kind:"Familiar structure", line:"A list of sellers, worst first. Each row carries a strip with one mark per order, so the pattern of trouble reads before any number. Tap a seller for the record and the two acts."},
+  {id:"docket", name:"Verdict docket", kind:"Deliberately bold", line:"No list to browse. Each seller who burned you opens a case, one at a time, and the screen asks for a ruling: keep buying, watch, or avoid. Ruled cases leave the docket and come back only when the seller burns you again."},
+  {id:"field", name:"Speed field", kind:"Unusual structure", line:"A map, not a list. Each seller is a dot: left to right is how long orders take, top to bottom is how many cards came right. Trouble sits in the shaded corner. Tap a dot for its card; a list view reads the same field in words."},
+];
+let page = { c:"ledger", s:"loaded", t:"system", h:[] };
+function readHash(){
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (p.get("c") && CONCEPTS.some(c=>c.id===p.get("c"))) page.c = p.get("c");
+  if (p.get("s")) page.s = p.get("s");
+  if (p.get("t")) page.t = p.get("t");
+  page.h = (p.get("h")||"").split(",").filter(x=>CONCEPTS.some(c=>c.id===x));
+}
+function writeHash(){
+  const p = new URLSearchParams({c:page.c, s:page.s});
+  if (page.t!=="system") p.set("t",page.t);
+  if (page.h.length) p.set("h",page.h.join(","));
+  history.replaceState(null,"","#"+p.toString());
+}
+
+/* Frames: each one is its own running copy of the screen, with its own selection. */
+const FRAMES = [
+  {key:"folded", ids:["f-folded"], mode:"compact"},
+  {key:"open", ids:["f-open-l","f-open-r"], mode:"regular"},
+  {key:"phone", ids:["f-phone"], mode:"compact"},
+  {key:"ax", ids:["f-ax"], mode:"compact", ax:true},
+];
+function freshUi(){ return {sel:null, filter:"all", sheet:null, showClean:false, listView:false, caseOverride:null, reply:null, cluster:null}; }
+FRAMES.forEach(f=>f.ui=freshUi());
+
+function dataFor(state){
+  if (state==="allwell") return ALL.filter(s=>{const t=stats(s); return !t.early && t.bad===0;});
+  if (state==="unknown") return [byId("pebble"), {id:"newleaf", name:"New Leaf Games", orders:[o("Nov 17","open",null,5)]}];
+  if (state==="filtered") return ALL.filter(s=>stats(s).n.wrong===0);
+  return ALL;
+}
+
+/* ---------------- Small renderers ---------------- */
+const esc = s => String(s).replace(/[&<>"]/g, c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+function glyph(k, size){
+  const s = size||"var(--g)", c = `var(${KIND[k].color})`;
+  const box = `class="gl" style="width:${s};height:${s}" viewBox="0 0 12 12" aria-hidden="true"`;
+  switch(k){
+    case "ok": return `<svg ${box}><circle cx="6" cy="6" r="4.6" fill="${c}"/></svg>`;
+    case "late": return `<svg ${box}><circle cx="6" cy="6" r="4.1" fill="none" stroke="${c}" stroke-width="2.2"/></svg>`;
+    case "lost": return `<svg ${box}><path d="M2.4 2.4L9.6 9.6M9.6 2.4L2.4 9.6" stroke="${c}" stroke-width="2.4" stroke-linecap="round"/></svg>`;
+    case "short": return `<svg ${box}><circle cx="6" cy="6" r="4.3" fill="none" stroke="${c}" stroke-width="1.8"/><path d="M6 1.7A4.3 4.3 0 0 0 6 10.3Z" fill="${c}"/></svg>`;
+    case "wrong": return `<svg ${box}><rect x="2.3" y="2.3" width="7.4" height="7.4" transform="rotate(45 6 6)" fill="${c}"/></svg>`;
+    default: return `<svg ${box}><rect x="2" y="5" width="8" height="2" rx="1" fill="${c}"/></svg>`;
+  }
+}
+function strip(s, big){
+  const t = stats(s);
+  const parts = BAD.filter(k=>t.n[k]).map(k=>`${t.n[k]} ${KIND[k].word.toLowerCase()}`);
+  const label = `${s.orders.length} orders, oldest first: ${t.n.ok} came fine${parts.length?", "+parts.join(", "):""}${t.n.open?`, ${t.n.open} on the way`:""}`;
+  return `<span class="strip${big?" big":""}" role="img" aria-label="${esc(label)}">${s.orders.map(x=>glyph(x.st, big?"var(--g-big)":null)).join("")}</span>`;
+}
+function plural(n, one, many){ return `${n} ${n===1?one:(many||one+"s")}`; }
+function orderLine(x){
+  switch(x.st){
+    case "ok": return `Came in ${x.days} days.`;
+    case "late": return `Came in ${x.days} days, ${x.days-LATE_DAYS} past the ${LATE_DAYS}-day mark.`;
+    case "lost": return `Never came. ${plural(x.ord,"card")} paid for.`;
+    case "short": return `Came in ${x.days} days, ${x.ord-x.rec} of ${x.ord} cards missing.`;
+    case "wrong": return `Came in ${x.days} days, ${plural(x.wrong,"wrong card")} of ${x.ord}.`;
+    default: return `On the way. Placed ${x.placed}.`;
+  }
+}
+function evidence(s){
+  const t = stats(s), out = [];
+  const of = k => s.orders.filter(x=>x.st===k);
+  if (t.n.lost){ const c = of("lost").reduce((a,x)=>a+x.ord,0); out.push(["lost",`${plural(t.n.lost,"order")} never came: ${plural(c,"card")}.`]); }
+  if (t.n.wrong){ const c = of("wrong").reduce((a,x)=>a+x.wrong,0); out.push(["wrong",`${plural(c,"card")} came that you did not order.`]); }
+  if (t.n.short){ const c = of("short").reduce((a,x)=>a+x.ord-x.rec,0); out.push(["short",`${plural(t.n.short,"order")} came short by ${plural(c,"card")} in all.`]); }
+  if (t.n.late){ out.push(["late",`${plural(t.n.late,"order")} took over ${LATE_DAYS} days; the slowest took ${t.slowest}.`]); }
+  return out;
+}
+function summarySentence(list){
+  const troubled = list.filter(s=>stats(s).bad>0);
+  if (!troubled.length) return `<p class="summary"><b>All is well.</b></p>`;
+  const bad = troubled.reduce((a,s)=>a+stats(s).bad,0), all = list.reduce((a,s)=>a+stats(s).closed,0);
+  return `<p class="summary"><b>${plural(troubled.length,"seller")} burned you</b> on ${bad} of ${all} orders that came or should have.</p>`;
+}
+function statusBar(){ return `<div class="sb" aria-hidden="true">9:41</div>`; }
+const TAB_ICON = `<svg width="18" height="18" viewBox="0 0 18 18" aria-hidden="true"><rect x="2" y="3" width="14" height="2.2" rx="1.1" fill="currentColor"/><rect x="2" y="8" width="10" height="2.2" rx="1.1" fill="currentColor"/><rect x="2" y="13" width="6" height="2.2" rx="1.1" fill="currentColor"/></svg>`;
+function tabBar(){ return `<nav class="tabbar" aria-label="Tabs"><span class="t on" aria-current="page">${TAB_ICON}Seller trouble</span><span class="t other" title="The app's other tabs are not known to a blind designer">Other tabs</span></nav>`; }
+function homeInd(){ return `<div class="home-ind" aria-hidden="true"></div>`; }
+
+/* Non-loaded states, shared by every concept. Returns null when the state is "loaded"-like. */
+function stateBody(ui, ax){
+  switch(page.s){
+    case "loading": return `<div class="stack" aria-busy="true" aria-label="Reading your orders">${"<div class='skel'></div>".repeat(ax?2:5)}</div>`;
+    case "failed": return `<div class="state" role="alert"><p class="hl">Your orders could not be read, so no seller is rated.</p><button class="btn primary" data-act="retry">Try again</button><details class="machine"><summary>What the app said</summary><code>Sample: store read failed (no real text)</code></details></div>`;
+    case "empty": return `<div class="state"><p>Sellers show here once you have orders.</p><button class="btn primary" data-act="noop">Add your orders</button></div>`;
+    case "unknown": return `<div class="state"><p>Every order is still on the way, so no seller can be rated yet: ${dataFor("unknown").map(s=>esc(s.name)).join(" and ")}.</p><button class="btn" data-act="retry">Check again</button></div>`;
+  }
+  return null;
+}
+
+/* ---------------- Seller record (one home; ledger, field and docket all use it) ---------------- */
+function figures(s){
+  const t = stats(s);
+  return `<div class="figs num">
+    <div class="fig1"><span class="v">${t.bad}<span class="muted" style="font-weight:400"> of ${t.closed}</span></span><span class="c1">orders went wrong</span></div>
+    <div class="fig1"><span class="v ${t.right<t.closedOrdered?"bad":""}">${t.right}<span class="muted" style="font-weight:400"> of ${t.closedOrdered}</span></span><span class="c1">cards came right</span></div>
+    <div class="fig1"><span class="v">${t.typical==null?"–":t.typical}</span><span class="c1">typical days</span></div>
+  </div>`;
+}
+function orderList(s){
+  return `<div class="group"><div class="ghead"><span class="foot">Orders, newest first. The line marks ${LATE_DAYS} days.</span></div><div class="orders">${[...s.orders].reverse().map(x=>{
+    const d = x.st==="lost"?LOST_DAYS:(x.days||0);
+    return `<div class="orow">${glyph(x.st)}<div class="txt"><span><span class="num">${x.placed}</span>. ${orderLine(x)}</span>${x.st==="open"?"":`<span class="days" aria-hidden="true"><i class="${x.st}" style="width:${Math.min(100,d/LOST_DAYS*100)}%"></i><b style="left:${LATE_DAYS/LOST_DAYS*100}%"></b></span>`}</div></div>`;}).join("")}</div></div>`;
+}
+function actsFor(s, ui){
+  const avoided = store.verdict[s.id]==="avoid", drafted = store.draft[s.id]!=null;
+  const reply = ui.reply && ui.reply.id===s.id ? ui.reply.text : (avoided?"Avoiding. This marks the seller in this app only.":"");
+  return `<div class="btns">
+      <button class="btn ${avoided?"":"primary"}" aria-pressed="${avoided}" data-act="avoid" data-id="${s.id}">${avoided?"Avoiding":"Avoid this seller"}</button>
+      <button class="btn" data-act="complain" data-id="${s.id}">${drafted?"Edit complaint draft":"Draft a complaint"}</button>
+    </div>
+    <div class="reply" role="status">${reply}${avoided?` <button class="linkbtn" data-act="avoid" data-id="${s.id}">Undo</button>`:""}</div>`;
+}
+function record(s, ui, opts){
+  // opts: back (bool), tab (bool), ax (bool). At AX5 the acts sit in the flow, after the figures,
+  // because a pinned bar of 53 pt buttons would cover the whole screen.
+  return `<div class="scroll ${opts.tab?"":"no-tab"}">
+    ${opts.back?`<div class="nav"><button class="tb-btn back" data-act="back">‹ Seller trouble</button></div>`:`<div class="nav"></div>`}
+    <h2 class="t1">${esc(s.name)}</h2>
+    ${strip(s,true)}
+    ${figures(s)}
+    ${opts.ax?`<div class="actions inline">${actsFor(s, ui)}</div>`:""}
+    ${orderList(s)}
+    ${opts.ax?"":`<div class="spacer-actions"></div>`}
+  </div>
+  ${opts.ax?"":`<div class="actions ${opts.tab?"":"no-tab"}">${actsFor(s, ui)}</div>`}`;
+}
+function complaintSheet(ui){
+  if (!ui.sheet || ui.sheet.type!=="complaint") return "";
+  const s = byId(ui.sheet.id);
+  if (store.draft[s.id]==null) store.draft[s.id] = defaultDraft(s);
+  const copied = store.copied===s.id;
+  return `<div class="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Complaint draft for ${esc(s.name)}">
+    <span class="grab" aria-hidden="true"></span>
+    <div class="bar3"><button class="tb-btn l" data-act="sheet-cancel">Cancel</button><span class="hl">Complaint draft</span><button class="tb-btn r" data-act="sheet-done">Done</button></div>
+    <div class="body">
+      <span class="foot">To ${esc(s.name)}. The app sends nothing; copy the text and paste it where you file the complaint.</span>
+      <textarea class="draft" data-draft="${s.id}" aria-label="Complaint text">${esc(store.draft[s.id])}</textarea>
+      <div class="cluster"><button class="btn primary" style="flex:none" data-act="copy" data-id="${s.id}">${copied?"Copied":"Copy text"}</button><span class="foot" role="status">${copied?"The text is on your clipboard.":""}</span></div>
+    </div></div></div>`;
+}
+function recordSheet(ui, ax){
+  if (!ui.sheet || ui.sheet.type!=="record") return "";
+  const s = byId(ui.sheet.id);
+  return `<div class="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="${esc(s.name)}" style="position:relative">
+    <span class="grab" aria-hidden="true"></span>
+    <div class="bar3"><button class="tb-btn l" data-act="sheet-cancel">Close</button><span></span><span></span></div>
+    <div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden">${record(s, ui, {back:false, tab:false, ax:!!ax})}</div>
+  </div></div>`;
+}
+function defaultDraft(s){
+  const bad = s.orders.filter(x=>BAD.includes(x.st));
+  return `Hello ${s.name},\n\nThese orders did not arrive as ordered:\n${bad.map(x=>`- Order placed ${x.placed}: ${orderLine(x)}`).join("\n")}\n\nPlease refund or replace the missing cards.\n`;
+}
+
+/* ---------------- Concept: Ranked ledger ---------------- */
+function rank(list, filter){
+  // "Keeps burning me": most bad orders first, then most cards that did not come right, then the higher share.
+  const key = s => filter==="all" ? stats(s).bad : stats(s).n[filter];
+  return [...list].sort((a,b)=> key(b)-key(a) || stats(b).missing-stats(a).missing || stats(b).rate-stats(a).rate || a.name.localeCompare(b.name));
+}
+function ledgerRow(s, ui, filter){
+  const t = stats(s), n = filter==="all"?t.bad:t.n[filter];
+  return `<button class="row" data-act="open" data-id="${s.id}" aria-current="${ui.sel===s.id}">
+    <span class="who"><span class="name">${esc(s.name)}</span>${strip(s)}</span>
+    <span class="score num">${n}<small> / ${t.closed}</small></span></button>`;
+}
+function ledgerList(f, ax){
+  const ui = f.ui, st = stateBody(ui, ax);
+  let h = `<div class="nav"></div><h1 class="lt">Seller trouble</h1>`;
+  if (st) return h + st;
+  const list = dataFor(page.s);
+  const filter = ui.filter;
+  const early = list.filter(s=>stats(s).early);
+  const rated = list.filter(s=>!stats(s).early);
+  const match = s => filter==="all" ? stats(s).bad>0 : stats(s).n[filter]>0;
+  const troubled = rank(rated.filter(match), filter);
+  const open = troubled.filter(s=>store.verdict[s.id]!=="avoid");
+  const avoided = troubled.filter(s=>store.verdict[s.id]==="avoid");
+  const clean = rated.filter(s=>stats(s).bad===0);
+  h += summarySentence(rated);
+  const anyTrouble = rated.some(s=>stats(s).bad>0) || filter!=="all";
+  if (anyTrouble){
+    h += `<div class="chips" role="group" aria-label="Show sellers by trouble">${["all",...BAD].map(k=>`<button class="chip" data-act="filter" data-k="${k}" aria-pressed="${filter===k}">${k==="all"?"All trouble":glyph(k)+KIND[k].word}</button>`).join("")}</div>`;
+  }
+  if (anyTrouble && !troubled.length){
+    h += `<div class="state"><p>No seller sent ${KIND[filter].word.toLowerCase()} in your orders.</p><button class="btn" data-act="filter" data-k="all">Clear filter</button></div>`;
+  }
+  if (open.length){
+    h += `<div class="group"><div class="ghead"><span class="foot">Worst first</span><span class="foot">Bad orders</span></div><div class="list">${open.map(s=>ledgerRow(s,ui,filter)).join("")}</div></div>`;
+  }
+  if (avoided.length){
+    h += `<div class="group"><div class="ghead"><span class="foot">Avoiding</span></div><div class="list">${avoided.map(s=>ledgerRow(s,ui,filter)).join("")}</div></div>`;
+  }
+  if (early.length && filter==="all"){
+    h += `<p class="foot plain">Too early to tell: ${early.map(s=>esc(s.name)).join(", ")}. Every order from ${early.length===1?"this seller":"them"} is still on the way.</p>`;
+  }
+  if (clean.length && filter==="all"){
+    h += `<div class="group"><button class="disclose" data-act="clean" aria-expanded="${ui.showClean}">${ui.showClean?"Hide":"Show"} ${plural(clean.length,"seller")} with no trouble</button>${ui.showClean?`<div class="list">${clean.map(s=>ledgerRow(s,ui,"all")).join("")}</div>`:""}</div>`;
+  }
+  return h;
+}
+function renderLedger(f){
+  const ui = f.ui, ax = !!f.ax;
+  if (f.mode==="compact"){
+    const el = document.getElementById(f.ids[0]);
+    if (ui.sel && !stateBody(ui,ax)){
+      el.innerHTML = statusBar() + `<div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden">${record(byId(ui.sel), ui, {back:true, tab:true, ax})}</div>` + tabBar() + complaintSheet(ui) + homeInd();
+    } else {
+      el.innerHTML = statusBar() + `<div class="scroll">${ledgerList(f, ax)}</div>` + tabBar() + homeInd();
+    }
+  } else {
+    const L = document.getElementById(f.ids[0]), R = document.getElementById(f.ids[1]);
+    const st = stateBody(ui, ax);
+    if (!st && !ui.sel){ const first = rank(dataFor(page.s).filter(s=>stats(s).bad>0 && store.verdict[s.id]!=="avoid"), "all")[0] || dataFor(page.s).find(s=>!stats(s).early); ui.sel = first && first.id; }
+    L.innerHTML = statusBar() + `<div class="scroll">${ledgerList(f, ax)}</div>` + tabBar() + homeInd();
+    R.innerHTML = statusBar() + (st||!ui.sel ? `<div class="scroll no-tab"><div class="nav"></div><p class="foot">A seller's record shows here.</p></div>` :
+      `<div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden">${record(byId(ui.sel), ui, {back:false, tab:false})}</div>`) + complaintSheet(ui) + homeInd();
+  }
+}
+
+/* ---------------- Concept: Verdict docket (deliberately bold) ---------------- */
+// A case opens at two bad orders, or at one lost order. One small slip opens no case (notes item 9).
+const opensCase = s => { const t = stats(s); return t.bad>=2 || t.n.lost>=1; };
+function cases(){ return rank(dataFor(page.s).filter(opensCase), "all"); }
+function slips(){ return dataFor(page.s).filter(s=>stats(s).bad>0 && !opensCase(s)); }
+function openCases(){ return cases().filter(s=>!store.verdict[s.id]); }
+function currentCase(ui){
+  if (ui.caseOverride && cases().some(s=>s.id===ui.caseOverride)) return byId(ui.caseOverride);
+  return openCases()[0] || null;
+}
+function caseFile(s, ui, ax){
+  const all = cases(), idx = all.indexOf(s), t = stats(s);
+  const ruled = store.verdict[s.id];
+  return `<div class="casehead">
+      <span class="foot num">Case ${idx+1} of ${all.length}</span>
+      <span class="pips" aria-hidden="true">${all.map((c,i)=>`<i class="${c===s?"now":store.verdict[c.id]?"done":""}"></i>`).join("")}</span>
+    </div>
+    <div class="casefile">
+      <h2 class="t1">${esc(s.name)}</h2>
+      ${strip(s,true)}
+      <ul class="evidence">${evidence(s).map(([k,txt])=>`<li>${glyph(k)}<span>${txt}</span></li>`).join("")}</ul>
+      <span class="foot num">${plural(t.closed,"order")} in all; ${t.right} of ${t.closedOrdered} cards came right; typical ${t.typical} days.</span>
+      <button class="linkbtn" style="align-self:flex-start" data-act="record" data-id="${s.id}">See orders</button>
+    </div>
+    ${ruled?`<p class="foot">Ruled: ${VERDICT[ruled]}. Rule again below, or move on.</p>`:""}`;
+}
+function verdictBar(s, ui){
+  const last = ui.reply;
+  // The reply line says what Keep and Watch mean until a ruling replaces it with the ruling and Undo.
+  return `<div class="reply" role="status">${last?`${last.text} <button class="linkbtn" data-act="undo-verdict" data-id="${last.id}">Undo</button>`:"Keep buying closes the case. Watch keeps buying and reopens it at the next bad order."}</div>
+    <div class="verdicts">${Object.entries(VERDICT).map(([k,v])=>`<button class="btn ${k==="avoid"?"primary":""}" aria-pressed="${store.verdict[s.id]===k}" data-act="verdict" data-k="${k}" data-id="${s.id}">${v}</button>`).join("")}</div>
+    <button class="btn" data-act="complain" data-id="${s.id}">${store.draft[s.id]!=null?"Edit complaint draft":"Draft a complaint"}</button>`;
+}
+function docketDone(ui){
+  const n = Object.keys(store.verdict).filter(id=>cases().some(s=>s.id===id)).length;
+  return `<div class="state"><p class="hl">All is well.</p><p>${n?`Every seller who burned you has a ruling.`:`No seller has burned you.`} A case opens again when a seller burns you again.</p>${n?`<button class="btn" data-act="ruled">See ruled cases</button>`:""}</div>`;
+}
+function ruledList(ui){
+  const ruled = cases().filter(s=>store.verdict[s.id]);
+  return `<div class="group"><div class="ghead"><span class="foot">Ruled</span></div>${ruled.length?`<div class="list">${ruled.map(s=>`<button class="row" data-act="reopen" data-id="${s.id}" aria-current="${ui.caseOverride===s.id}"><span class="who"><span class="name">${esc(s.name)}</span>${strip(s)}</span><span class="vchip">${VERDICT[store.verdict[s.id]]}</span></button>`).join("")}</div>`:`<p class="foot plain">No ruling yet.</p>`}</div>`;
+}
+function slipsLine(){
+  const s = slips();
+  return s.length ? `<p class="foot plain">One slip each, so no case yet: ${s.map(x=>esc(x.name)).join(", ")}. A second bad order, or one lost order, opens a case.</p>` : "";
+}
+function ruledSheet(ui){
+  if (!ui.sheet || ui.sheet.type!=="ruled") return "";
+  return `<div class="scrim"><div class="sheet" role="dialog" aria-modal="true" aria-label="Ruled cases"><span class="grab" aria-hidden="true"></span>
+    <div class="bar3"><button class="tb-btn l" data-act="sheet-cancel">Close</button><span class="hl">Ruled cases</span><span></span></div>
+    <div class="body">${ruledList(ui)}</div></div></div>`;
+}
+function renderDocket(f){
+  const ui = f.ui, ax = !!f.ax, st = stateBody(ui, ax);
+  const nRuled = cases().filter(s=>store.verdict[s.id]).length;
+  const s = st ? null : currentCase(ui);
+  if (f.mode==="compact"){
+    const el = document.getElementById(f.ids[0]);
+    let body = `<div class="nav"><span></span>${st?"":`<button class="tb-btn" data-act="ruled">Ruled (${nRuled})</button>`}</div><h1 class="lt">Seller trouble</h1>`;
+    if (st) body += st;
+    else if (!s) body += docketDone(ui) + slipsLine();
+    else body += caseFile(s, ui, ax) + (ax ? `<div class="actions inline">${verdictBar(s, ui)}</div>` + slipsLine() : slipsLine() + `<div class="spacer-actions" style="height:190px"></div>`);
+    el.innerHTML = statusBar() + `<div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden"><div class="scroll">${body}</div>${s && !ax?`<div class="actions">${verdictBar(s, ui)}</div>`:""}</div>` + tabBar() + complaintSheet(ui) + recordSheet(ui, ax) + ruledSheet(ui) + homeInd();
+  } else {
+    const L = document.getElementById(f.ids[0]), R = document.getElementById(f.ids[1]);
+    let left = `<div class="nav"></div><h1 class="lt">Seller trouble</h1>`;
+    if (st) left += st;
+    else {
+      const open = openCases();
+      left += `<div class="group"><div class="ghead"><span class="foot">Open cases, worst first</span></div>${open.length?`<div class="list">${open.map(c=>`<button class="row" data-act="reopen" data-id="${c.id}" aria-current="${s===c}"><span class="who"><span class="name">${esc(c.name)}</span>${strip(c)}</span><span class="score num">${stats(c).bad}<small> / ${stats(c).closed}</small></span></button>`).join("")}</div>`:`<p class="plain"><b>All is well.</b> No open case.</p>`}</div>` + ruledList(ui) + slipsLine();
+    }
+    L.innerHTML = statusBar() + `<div class="scroll">${left}</div>` + tabBar() + homeInd();
+    let right;
+    if (st) right = `<div class="scroll no-tab"><div class="nav"></div><p class="foot">The case file shows here.</p></div>`;
+    else if (!s) right = `<div class="scroll no-tab"><div class="nav"></div>${docketDone(ui)}</div>`;
+    else right = `<div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden"><div class="scroll no-tab"><div class="nav"></div>${caseFile(s, ui, ax)}<div class="spacer-actions" style="height:150px"></div></div><div class="actions no-tab">${verdictBar(s, ui)}</div></div>`;
+    R.innerHTML = statusBar() + right + complaintSheet(ui) + recordSheet(ui) + homeInd();
+  }
+}
+
+/* ---------------- Concept: Speed field ---------------- */
+function fieldSvg(list, ui, W, H){
+  const padL=40, padR=16, padT=36, padB=40, iw=W-padL-padR, ih=H-padT-padB;
+  const X = d => padL + Math.min(d, LOST_DAYS)/LOST_DAYS*iw;
+  const Y = p => padT + (1 - (Math.max(.5,p)-.5)/.5)*ih;
+  const rated = list.filter(s=>!stats(s).early);
+  // Place dots, then merge any whose 44 pt hit areas overlap into one cluster.
+  const pts = rated.map(s=>{const t=stats(s); return {s, t, x:X(t.slowQ), y:Y(t.right/t.closedOrdered), r:Math.min(16, 7+t.closed*.8)};});
+  const groups = [];
+  pts.sort((a,b)=>b.t.closed-a.t.closed).forEach(p=>{
+    const g = groups.find(g=>Math.hypot(g.x-p.x,g.y-p.y)<44);
+    if (g){ g.items.push(p); } else groups.push({x:p.x,y:p.y,items:[p]});
+  });
+  const worst = s => BAD.find(k=>stats(s).n[k]) || "ok";
+  const zone = `<path d="M${X(LATE_DAYS)} ${padT} H${padL+iw} V${padT+ih} H${padL} V${Y(.9)} H${X(LATE_DAYS)} Z" fill="var(--zone)"/>
+    <text class="ax-t" x="${padL+6}" y="${padT+ih-8}">Shaded: slow, or cards did not come right</text>`;
+  const axes = `<line x1="${padL}" y1="${padT+ih}" x2="${padL+iw}" y2="${padT+ih}" stroke="var(--line)"/>
+    <line x1="${padL}" y1="${padT}" x2="${padL}" y2="${padT+ih}" stroke="var(--line)"/>
+    ${[0,10,20,30].map(d=>`<text class="ax-t" x="${X(d)}" y="${padT+ih+16}" text-anchor="middle">${d===30?"30+":d}</text>`).join("")}
+    <text class="ax-t" x="${padL+iw/2}" y="${padT+ih+32}" text-anchor="middle">Days its slower orders took</text>
+    ${[1,.75,.5].map(p=>`<text class="ax-t" x="${padL-6}" y="${Y(p)+4}" text-anchor="end">${p*100}%</text>`).join("")}
+    <text class="ax-t" x="${padL}" y="${padT-10}">Cards that came right</text>`;
+  const placed = [];
+  const dots = groups.map(g=>{
+    const one = g.items.length===1, p = g.items[0];
+    const sel = one ? ui.sel===p.s.id : (ui.cluster && g.items.some(i=>i.s.id===ui.cluster));
+    const label = one ? `${p.s.name}: slower orders took ${p.t.slowQ} days, ${p.t.right} of ${p.t.closedOrdered} cards came right, ${p.t.bad} of ${p.t.closed} orders went wrong`
+                      : `${g.items.length} sellers close together: ${g.items.map(i=>i.s.name).join(", ")}`;
+    // A cluster takes the worst trouble among its members, so a merge never hides trouble behind a clean colour.
+    const k = one ? worst(p.s) : (BAD.find(b=>g.items.some(i=>i.t.n[b])) || "ok");
+    // Name labels try right, left, below, above, and take the first spot that hits no other label or dot.
+    let name = "";
+    if (one && p.t.bad>0){
+      const w = p.s.name.length*6.6, h = 14, gap = p.r+6;
+      const spots = [[g.x+gap, g.y-7, "start"], [g.x-gap-w, g.y-7, "end"], [g.x-w/2, g.y+gap, "middle"], [g.x-w/2, g.y-gap-h, "middle"]];
+      const hit = (x,y) => placed.some(b=>x<b.x+b.w && x+w>b.x && y<b.y+b.h && y+h>b.y) || groups.some(o=>o!==g && o.x>x-12 && o.x<x+w+12 && o.y>y-12 && o.y<y+h+12) || x<padL || x+w>W-4;
+      const spot = spots.find(([x,y])=>!hit(x,y)) || spots[0];
+      placed.push({x:spot[0], y:spot[1], w, h});
+      const tx = spot[2]==="start"?spot[0]:spot[2]==="end"?spot[0]+w:spot[0]+w/2;
+      name = `<text class="lab" x="${tx}" y="${spot[1]+11}" text-anchor="${spot[2]}">${esc(p.s.name)}</text>`;
+    }
+    const glyphMark = one ? (k==="ok" ? `<circle cx="${g.x}" cy="${g.y}" r="${p.r}" fill="var(--ok)" opacity=".85"/>`
+          : `<circle cx="${g.x}" cy="${g.y}" r="${p.r}" fill="var(${KIND[k].color})" opacity=".9"/>`)
+        : `<circle cx="${g.x}" cy="${g.y}" r="16" fill="var(${KIND[k].color})" opacity=".9"/><text x="${g.x}" y="${g.y+4}" text-anchor="middle" font-size="13" font-weight="700" fill="var(--surface)">${g.items.length}</text>`;
+    return `<g class="dotbtn" role="button" tabindex="0" aria-label="${esc(label)}" aria-pressed="${!!sel}" data-act="${one?"dot":"cluster"}" data-id="${p.s.id}">
+      <rect x="${g.x-22}" y="${g.y-22}" width="44" height="44" fill="transparent"/>
+      ${glyphMark}<circle class="ring" cx="${g.x}" cy="${g.y}" r="${(one?p.r:16)+4}" fill="none" stroke="${sel?"var(--text)":"none"}" stroke-width="2.5"/>${name}</g>`;
+  }).join("");
+  return `<svg viewBox="0 0 ${W} ${H}" role="group" aria-label="Sellers placed by speed and by cards that came right">${zone}${axes}${dots}</svg>`;
+}
+function fieldLegend(){
+  return `<div class="legend" aria-label="Dot colour shows each seller's worst trouble">${BAD.map(k=>`<span>${glyph(k)}${KIND[k].word}</span>`).join("")}<span>${glyph("ok")}${KIND.ok.word}</span><span>Bigger dot: more orders</span></div>`;
+}
+function fieldList(list, ui){
+  // Reading order of the field in words: farthest into the shaded corner first.
+  const far = s => { const t = stats(s); return Math.max(0, t.slowQ-LATE_DAYS)/(LOST_DAYS-LATE_DAYS) + Math.max(0, .9 - t.right/t.closedOrdered)/.4; };
+  const rated = [...list.filter(s=>!stats(s).early)].sort((a,b)=>far(b)-far(a) || a.name.localeCompare(b.name));
+  return `<div class="list">${rated.map(s=>{const t=stats(s); return `<button class="row" data-act="dot" data-id="${s.id}" aria-current="${ui.sel===s.id}"><span class="who"><span class="name">${esc(s.name)}</span><span class="foot num">Slower orders took ${t.slowQ} days. ${t.right} of ${t.closedOrdered} cards came right.</span></span>${glyph(BAD.find(k=>t.n[k])||"ok")}</button>`;}).join("")}</div>`;
+}
+function fieldCard(s, ui){
+  const t = stats(s);
+  return `<div class="card" role="region" aria-label="${esc(s.name)}">
+    <button class="top" data-act="record" data-id="${s.id}"><span class="stack" style="gap:var(--space-1)"><span class="hl">${esc(s.name)}</span>${strip(s)}</span><span class="tb-btn" style="padding:0">See orders ›</span></button>
+    ${actsFor(s, ui)}</div>`;
+}
+function clusterCard(ui, list){
+  const W=434, H=320;
+  // Find the members of the tapped cluster by re-running placement on the same box.
+  const id = ui.cluster, members = list.filter(s=>!stats(s).early).filter(s=>{
+    const a = stats(byId(id)), b = stats(s);
+    const dx = (Math.min(a.slowQ,30)-Math.min(b.slowQ,30))/30*(W-56), dy = ((a.right/a.closedOrdered)-(b.right/b.closedOrdered))/.5*(H-64);
+    return Math.hypot(dx,dy) < 44;});
+  return `<div class="card" role="region" aria-label="Sellers close together"><span class="hl">${members.length} sellers sit close together</span>
+    <div class="picklist">${members.map(s=>`<button data-act="dot" data-id="${s.id}"><span>${esc(s.name)}</span>${strip(s)}</button>`).join("")}</div></div>`;
+}
+function renderField(f){
+  const ui = f.ui, ax = !!f.ax, st = stateBody(ui, ax), list = dataFor(page.s);
+  const listView = ax || ui.listView;
+  if (!st && !ui.sel && !ui.cluster){ const w = rank(list.filter(s=>stats(s).bad>0 && store.verdict[s.id]!=="avoid"),"all")[0]; ui.sel = w ? w.id : null; }
+  const toggle = st || ax ? "" : `<button class="tb-btn" data-act="listview" aria-pressed="${ui.listView}">${ui.listView?"Show field":"Show as list"}</button>`;
+  if (f.mode==="compact"){
+    const el = document.getElementById(f.ids[0]), W = f.key==="phone"?408:434;
+    // The field needs the height, so the title starts as a standard title here (notes item 12).
+    let body = ax ? `<div class="nav"><span></span>${toggle}</div><h1 class="lt">Seller trouble</h1>`
+                  : `<div class="nav"><h1 class="hl" style="margin:0">Seller trouble</h1>${toggle}</div>`;
+    if (st) body += st;
+    else {
+      body += summarySentence(list.filter(s=>!stats(s).early));
+      if (ax){
+        // AX5: dots cannot carry 53 pt names, so the field reads as its list, and the card sits in the flow.
+        body += `<p class="foot">At this text size the field shows as a list.</p>` + (ui.sel ? fieldCard(byId(ui.sel), ui).replace('class="card"','class="card inline"') : "") + fieldList(list, ui);
+      } else {
+        body += listView ? fieldList(list, ui) : `<div class="fieldbox">${fieldSvg(list, ui, W, f.key==="phone"?440:280)}</div>${fieldLegend()}`;
+        body += `<div class="spacer-actions" style="height:230px"></div>`;
+      }
+    }
+    const card = st || ax ? "" : ui.cluster ? clusterCard(ui, list) : ui.sel ? fieldCard(byId(ui.sel), ui) : "";
+    el.innerHTML = statusBar() + `<div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden"><div class="scroll">${body}</div></div>` + card + tabBar() + complaintSheet(ui) + recordSheet(ui, ax) + homeInd();
+  } else {
+    const L = document.getElementById(f.ids[0]), R = document.getElementById(f.ids[1]);
+    let left = `<div class="nav"><span></span>${toggle}</div><h1 class="lt">Seller trouble</h1>`;
+    if (st) left += st;
+    else left += summarySentence(list.filter(s=>!stats(s).early)) + (ui.listView ? fieldList(list, ui) : `<div class="fieldbox">${fieldSvg(list, ui, 424, 380)}</div>${fieldLegend()}`);
+    L.innerHTML = statusBar() + `<div class="scroll">${left}</div>` + tabBar() + homeInd();
+    let right;
+    if (st || !ui.sel) right = ui.cluster && !st ? `<div class="scroll no-tab"><div class="nav"></div>${clusterCard(ui,list).replace('class="card"','class="state"')}</div>` : `<div class="scroll no-tab"><div class="nav"></div><p class="foot">Tap a dot to see that seller's record here.</p></div>`;
+    else right = `<div style="position:relative;flex:1;display:flex;flex-direction:column;overflow:hidden">${record(byId(ui.sel), ui, {back:false, tab:false})}</div>`;
+    R.innerHTML = statusBar() + right + complaintSheet(ui) + homeInd();
+  }
+}
+
+/* ---------------- Page wiring ---------------- */
+function renderFrame(f){ ({ledger:renderLedger, docket:renderDocket, field:renderField})[page.c](f); }
+function renderAll(){
+  const c = CONCEPTS.find(x=>x.id===page.c);
+  document.getElementById("concept").dataset.concept = c.id;
+  document.querySelector(".stage").id = "concept-" + c.id;
+  document.getElementById("conceptHead").innerHTML = `<h1>${c.name}</h1><span class="cluster"><span class="newtag">New: the whole screen</span><span class="kindtag">${c.kind}. Designer kind: blind (seller-trouble-blind-2).</span></span><p>${c.line}</p>`;
+  document.getElementById("tabs").innerHTML = CONCEPTS.filter(x=>!page.h.includes(x.id)).map(x=>`<span class="tab" aria-current="${x.id===page.c}"><button data-page="concept" data-id="${x.id}">${x.name}</button><button class="hide" data-page="hide" data-id="${x.id}" aria-label="Hide ${x.name}">Hide</button></span>`).join("");
+  document.getElementById("hiddenNote").innerHTML = page.h.length ? `Hidden: ${page.h.map(id=>`${CONCEPTS.find(x=>x.id===id).name} <button class="linkbtn" data-page="show" data-id="${id}">Show</button>`).join(", ")}` : "";
+  const sel = document.getElementById("state");
+  sel.value = page.s;
+  [...sel.options].forEach(op=>{ if (op.value==="filtered"){ op.disabled = page.c!=="ledger"; op.title = op.disabled ? "Only the ranked ledger has a filter." : ""; }});
+  document.getElementById("theme").value = page.t;
+  if (page.t==="system") document.documentElement.removeAttribute("data-theme"); else document.documentElement.setAttribute("data-theme", page.t);
+  FRAMES.forEach(renderFrame);
+  fit();
+}
+function resetUi(){ FRAMES.forEach(f=>{ f.ui = freshUi(); if (page.s==="filtered") f.ui.filter="wrong"; }); }
+
+function act(f, el){
+  const a = el.dataset.act, id = el.dataset.id, ui = f.ui;
+  let all = false;
+  switch(a){
+    case "open": ui.sel = id; ui.reply = null; break;
+    case "back": ui.sel = null; break;
+    case "filter": ui.filter = el.dataset.k; break;
+    case "clean": ui.showClean = !ui.showClean; break;
+    case "avoid": {
+      const on = store.verdict[id]==="avoid";
+      if (on) delete store.verdict[id]; else store.verdict[id] = "avoid";
+      ui.reply = {id, text: on ? "No longer avoiding." : "Avoiding. This marks the seller in this app only."};
+      all = true; break; }
+    case "complain": ui.sheet = {type:"complaint", id}; store.copied = null; break;
+    case "record": ui.sheet = {type:"record", id}; break;
+    case "ruled": ui.sheet = {type:"ruled"}; break;
+    case "sheet-cancel": case "sheet-done": ui.sheet = null; break;
+    case "copy": store.copied = id; try { navigator.clipboard && navigator.clipboard.writeText(store.draft[id]||""); } catch(e){} break;
+    case "verdict": {
+      const k = el.dataset.k, prev = store.verdict[id];
+      store.verdict[id] = k;
+      ui.reply = {id, prev, text: `${esc(byId(id).name)}: ${VERDICT[k]}.`};
+      ui.caseOverride = null; all = true; break; }
+    case "undo-verdict": {
+      const r = ui.reply; if (r){ if (r.prev) store.verdict[r.id] = r.prev; else delete store.verdict[r.id]; ui.caseOverride = r.id; ui.reply = null; }
+      all = true; break; }
+    case "reopen": ui.caseOverride = id; ui.sheet = null; ui.reply = null; break;
+    case "dot": ui.sel = id; ui.cluster = null; ui.reply = null; break;
+    case "cluster": ui.cluster = id; ui.sel = null; break;
+    case "listview": ui.listView = !ui.listView; break;
+    case "retry": page.s = "loaded"; writeHash(); resetUi(); renderAll(); return;
+    default: return;
+  }
+  if (all) FRAMES.forEach(renderFrame); else renderFrame(f);
+  fit();
+}
+FRAMES.forEach(f=>{
+  f.ids.forEach(id=>{
+    const root = document.getElementById(id);
+    root.addEventListener("click", e=>{ const el = e.target.closest("[data-act]"); if (el && root.contains(el)) act(f, el); });
+    root.addEventListener("keydown", e=>{ if ((e.key==="Enter"||e.key===" ") && e.target.matches("g[data-act]")){ e.preventDefault(); act(f, e.target); }});
+    root.addEventListener("input", e=>{ if (e.target.dataset.draft) store.draft[e.target.dataset.draft] = e.target.value; });
+    if (f.ax){
+      // Large Content Viewer: hold a tab for half a second to see its icon and label at the AX5 size.
+      let timer = null;
+      const hide = ()=>{ clearTimeout(timer); const b = root.querySelector(".lcv"); if (b) b.remove(); };
+      root.addEventListener("pointerdown", e=>{ const t = e.target.closest(".tabbar .t"); if (!t) return;
+        timer = setTimeout(()=>{ hide(); const b = document.createElement("div"); b.className = "lcv"; b.setAttribute("role","status");
+          b.innerHTML = t.classList.contains("on") ? TAB_ICON + "Seller trouble" : "Other tabs"; root.appendChild(b); }, 500); });
+      ["pointerup","pointerleave","pointercancel"].forEach(ev=>root.addEventListener(ev, hide));
+    }
+  });
+});
+document.addEventListener("click", e=>{
+  const el = e.target.closest("[data-page]"); if (!el) return;
+  const id = el.dataset.id;
+  if (el.dataset.page==="concept"){ page.c = id; if (page.s==="filtered" && id!=="ledger") page.s = "loaded"; resetUi(); }
+  if (el.dataset.page==="hide"){ page.h.push(id); if (page.c===id){ const n = CONCEPTS.find(x=>!page.h.includes(x.id)); if (n) page.c = n.id; } resetUi(); }
+  if (el.dataset.page==="show"){ page.h = page.h.filter(x=>x!==id); }
+  writeHash(); renderAll();
+});
+document.getElementById("state").addEventListener("change", e=>{ page.s = e.target.value; resetUi(); writeHash(); renderAll(); });
+document.getElementById("theme").addEventListener("change", e=>{ page.t = e.target.value; writeHash(); renderAll(); });
+window.addEventListener("hashchange", ()=>{ readHash(); resetUi(); renderAll(); });
+
+/* Scale each frame down to fit a narrow review window; nothing is drawn wider than the window. */
+function fit(){
+  const avail = document.querySelector(".review").clientWidth - 32;
+  document.querySelectorAll(".box").forEach(b=>{
+    const w = +b.dataset.w, h = +b.dataset.h, k = Math.min(1, avail/w);
+    b.style.width = w*k+"px"; b.style.height = h*k+"px";
+    b.firstElementChild.style.transform = `scale(${k})`;
+  });
+}
+window.addEventListener("resize", fit);
+readHash(); resetUi(); renderAll();
+</script>
+</body>
+</html>

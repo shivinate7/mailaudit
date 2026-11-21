@@ -1,0 +1,837 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Panels Over List</title>
+<style>
+/* Tokens. Spacing on the house 4 px step, radius 8 px. Colours are this designer's own, by role. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px; --space-14: 56px;
+  --radius: 8px;
+  --status-pad: 44px;   /* stand-in for the status bar area: my choice, no Apple page gives it */
+  --home-pad: 20px;     /* stand-in for the home indicator area: my choice */
+  --font: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+
+  --bg: #eef1f0;          /* page behind the frames */
+  --surface: #fbfcfb;     /* list background */
+  --paper: #ffffff;       /* solid panel paper */
+  --paper-2: #f2f5f4;     /* grouped rows inside a panel */
+  --edge: #c3ccc9;        /* panel edge */
+  --rule: #e1e6e4;        /* row separator */
+  --text: #17201d;
+  --text-2: #56625d;
+  --accent: #0b6e63;      /* deep teal: selection and the main action */
+  --accent-ink: #ffffff;
+  --accent-soft: #d7ece8;
+  --warn: #a4570a;        /* low stock */
+  --danger: #b3261e;      /* out of stock, failed read */
+  --look: #fff3c4;        /* the row the person was looking at */
+  --hinge: #2a302e;
+  --shadow: 0 -1px 0 var(--edge), 0 -8px 24px rgba(16, 32, 28, .16);
+  --label: #7a3fb8;       /* "New:" annotation, outside the product */
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0e1211; --surface: #151a19; --paper: #1f2624; --paper-2: #28302e;
+    --edge: #3d4744; --rule: #2a3230; --text: #e9eeec; --text-2: #a5b0ac;
+    --accent: #5fcfbf; --accent-ink: #062e29; --accent-soft: #1d3d38;
+    --warn: #f0a85a; --danger: #ff8a80; --look: #4a4020; --hinge: #000000;
+    --shadow: 0 -1px 0 var(--edge), 0 -8px 24px rgba(0, 0, 0, .5);
+    --label: #c79bff; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0e1211; --surface: #151a19; --paper: #1f2624; --paper-2: #28302e;
+  --edge: #3d4744; --rule: #2a3230; --text: #e9eeec; --text-2: #a5b0ac;
+  --accent: #5fcfbf; --accent-ink: #062e29; --accent-soft: #1d3d38;
+  --warn: #f0a85a; --danger: #ff8a80; --look: #4a4020; --hinge: #000000;
+  --shadow: 0 -1px 0 var(--edge), 0 -8px 24px rgba(0, 0, 0, .5);
+  --label: #c79bff; color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--text); font-family: var(--font); font-size: 1rem; line-height: 1.4;
+  padding-top: env(safe-area-inset-top, 0px); padding-bottom: env(safe-area-inset-bottom, 0px); }
+button, input, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Page chrome (outside the device frames) ---------- */
+.page { max-inline-size: 2100px; margin-inline: auto; padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-6); }
+.sample { display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4); align-items: center; padding: var(--space-3) var(--space-4);
+  border: 2px solid var(--text); border-radius: var(--radius); background: var(--paper); }
+.sample strong { font-size: 1.125rem; }
+.pagehead { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 70ch; }
+.pagehead h1 { margin: 0; font-size: 1.75rem; line-height: 1.2; }
+.pagehead p { margin: 0; color: var(--text-2); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); align-items: center; }
+.controls label { display: flex; gap: var(--space-2); align-items: center; }
+.controls select { min-block-size: 44px; padding-inline: var(--space-2); border: 1px solid var(--edge); border-radius: var(--radius); background: var(--paper); }
+.seg { display: inline-flex; border: 1px solid var(--edge); border-radius: var(--radius); overflow: hidden; }
+.seg button { min-block-size: 44px; padding-inline: var(--space-4); border: 0; background: var(--paper); }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--accent-ink); }
+.hiddenbar { display: flex; flex-wrap: wrap; gap: var(--space-2); align-items: center; color: var(--text-2); }
+.hiddenbar[hidden] { display: none; }
+.btn { min-block-size: 44px; padding-inline: var(--space-4); border: 1px solid var(--edge); border-radius: var(--radius); background: var(--paper); }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); padding-block-start: var(--space-4); border-top: 2px solid var(--edge); }
+.concept[hidden] { display: none; }
+.chead { display: flex; flex-wrap: wrap; gap: var(--space-3) var(--space-6); align-items: baseline; justify-content: space-between; }
+.chead > div { display: flex; flex-direction: column; gap: var(--space-1); max-inline-size: 75ch; }
+.chead h2 { margin: 0; font-size: 1.5rem; }
+.chead p { margin: 0; color: var(--text-2); }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8) var(--space-6); align-items: flex-start; }
+.fcard { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 100%; }
+.fcap { font-size: .875rem; color: var(--text-2); }
+.devwrap { position: relative; }
+.dev { position: absolute; top: 0; left: 0; transform-origin: 0 0; border-radius: 28px; outline: 6px solid var(--hinge);
+  overflow: hidden; background: var(--surface); font-family: var(--font); color: var(--text); }
+
+/* ---------- Device type: iOS Dynamic Type styles, Large (default) and AX5, from Apple's typography page ---------- */
+.dev { --t-lt: 34px; --l-lt: 41px; --t-head: 17px; --l-head: 22px; --t-body: 17px; --l-body: 22px;
+  --t-sub: 15px; --l-sub: 20px; --t-foot: 13px; --l-foot: 18px; --t-cap: 12px; --l-cap: 16px;
+  --row-min: 60px; --tb-inner: 56px; }
+.dev.ax5 { --t-lt: 60px; --l-lt: 70px; --t-head: 53px; --l-head: 62px; --t-body: 53px; --l-body: 62px;
+  --t-sub: 49px; --l-sub: 58px; --t-foot: 44px; --l-foot: 52px; --t-cap: 43px; --l-cap: 51px; --tb-inner: 80px; }
+.dev { --tb-h: calc(var(--tb-inner) + var(--home-pad) + env(safe-area-inset-bottom, 0px)); }
+
+.screen { position: absolute; inset: 0; overflow: hidden; background: var(--surface); }
+.dual { position: absolute; inset: 0; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.dual > .pg { position: relative; overflow: hidden; background: var(--surface); }
+.hingebar { background: var(--hinge); }
+
+.list-scroll { position: absolute; inset: 0; overflow-y: auto; overscroll-behavior: contain;
+  padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-pad));
+  padding-bottom: calc(var(--tb-h) + var(--space-4)); }
+.list-scroll.nobar { padding-bottom: calc(var(--home-pad) + env(safe-area-inset-bottom, 0px) + 88px); }
+.nav { display: flex; flex-direction: column; gap: var(--space-1); padding: 0 var(--space-4) var(--space-3); }
+.lt { margin: 0; font-size: var(--t-lt); line-height: var(--l-lt); font-weight: 700; letter-spacing: .01em; }
+.sum { margin: 0; font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); min-block-size: var(--l-sub); }
+.rows { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
+.row { display: flex; align-items: center; gap: var(--space-3); min-block-size: var(--row-min); padding: var(--space-2) var(--space-4);
+  border-bottom: 1px solid var(--rule); cursor: pointer; }
+.row.looked { background: var(--look); }
+.ax5 .row { flex-wrap: wrap; gap: var(--space-1) var(--space-3); padding-block: var(--space-3); }
+.rt { flex: 1 1 0; min-inline-size: 0; display: flex; flex-direction: column; }
+.ax5 .rt { flex-basis: 100%; order: 2; }
+.nm { font-size: var(--t-body); line-height: var(--l-body); }
+.meta { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); }
+.amt { font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.ax5 .amt { order: 3; white-space: normal; }
+.mark { inline-size: 14px; block-size: 14px; border-radius: 50%; flex: none; border: 2px solid var(--accent); background: var(--accent); }
+.ax5 .mark { inline-size: 36px; block-size: 36px; order: 1; }
+.mark.low { background: transparent; border-color: var(--warn); border-width: 3px; }
+.mark.out { background: transparent; border: 2px dashed var(--danger); }
+.empty { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) var(--space-4); }
+.empty p { margin: 0; font-size: var(--t-body); line-height: var(--l-body); }
+
+/* ---------- Shared controls inside panels ---------- */
+.pbody { display: flex; flex-direction: column; gap: var(--space-4); padding: var(--space-2) var(--space-4) var(--space-4); }
+.group { display: flex; flex-direction: column; border-radius: var(--radius); background: var(--paper-2); overflow: hidden; }
+.opt { display: flex; align-items: center; justify-content: space-between; gap: var(--space-3); min-block-size: 48px;
+  padding: var(--space-2) var(--space-4); border: 0; border-bottom: 1px solid var(--rule); background: transparent; text-align: start;
+  font-size: var(--t-body); line-height: var(--l-body); inline-size: 100%; }
+.group > .opt:last-child { border-bottom: 0; }
+.opt .ck { inline-size: 22px; block-size: 22px; color: var(--accent); flex: none; visibility: hidden; }
+.opt[aria-checked="true"] .ck { visibility: visible; }
+.opt[aria-checked="true"] { font-weight: 600; }
+.sw { position: relative; inline-size: 51px; block-size: 31px; border-radius: 16px; background: var(--edge); flex: none; transition: background .15s; }
+.sw::after { content: ""; position: absolute; top: 2px; left: 2px; inline-size: 27px; block-size: 27px; border-radius: 50%; background: #fff;
+  box-shadow: 0 1px 3px rgba(0,0,0,.3); transition: transform .15s; }
+.opt[aria-checked="true"] .sw { background: var(--accent); }
+.opt[aria-checked="true"] .sw::after { transform: translateX(20px); }
+.ax5 .sw { inline-size: 80px; block-size: 48px; border-radius: 24px; }
+.ax5 .sw::after { inline-size: 44px; block-size: 44px; }
+.ax5 .opt[aria-checked="true"] .sw::after { transform: translateX(32px); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip { min-block-size: 44px; padding: var(--space-2) var(--space-4); border-radius: 22px; border: 1px solid var(--edge); background: var(--paper);
+  font-size: var(--t-sub); line-height: var(--l-sub); display: inline-flex; align-items: center; gap: var(--space-2); }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.ax5 .chip { border-radius: var(--radius); }
+.answer { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; justify-content: space-between; font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); min-block-size: 44px; }
+.linkbtn { min-block-size: 44px; border: 0; background: none; color: var(--accent); font-size: var(--t-sub); font-weight: 600; padding-inline: var(--space-2); }
+.ranges { display: grid; grid-template-columns: repeat(4, 1fr); border-radius: var(--radius); background: var(--paper-2); padding: 2px; gap: 2px; }
+.ax5 .ranges { grid-template-columns: 1fr; }
+.ranges button { min-block-size: 40px; border: 0; border-radius: 6px; background: transparent; font-size: var(--t-foot); line-height: var(--l-foot); }
+.ranges button[aria-pressed="true"] { background: var(--paper); font-weight: 600; box-shadow: 0 1px 3px rgba(0,0,0,.18); }
+.dates { display: flex; flex-direction: column; border-radius: var(--radius); background: var(--paper-2); }
+.dates label { display: flex; flex-wrap: wrap; justify-content: space-between; align-items: center; gap: var(--space-2); min-block-size: 48px; padding: var(--space-1) var(--space-4);
+  border-bottom: 1px solid var(--rule); font-size: var(--t-body); line-height: var(--l-body); }
+.dates label:last-child { border-bottom: 0; }
+.dates input { border: 0; border-radius: 6px; background: var(--paper); padding: var(--space-1) var(--space-2); min-block-size: 36px; font-size: var(--t-sub); }
+.hlist { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; border-radius: var(--radius); background: var(--paper-2); }
+.hlist li { display: flex; flex-direction: column; padding: var(--space-2) var(--space-4); border-bottom: 1px solid var(--rule); min-block-size: 48px; justify-content: center; }
+.hlist li:last-child { border-bottom: 0; }
+.hlist .what { font-size: var(--t-body); line-height: var(--l-body); }
+.hlist .when { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); }
+.note { margin: 0; font-size: var(--t-body); line-height: var(--l-body); }
+.note.bad { color: var(--danger); }
+.fill { min-block-size: 44px; padding-inline: var(--space-4); border: 0; border-radius: var(--radius); background: var(--accent); color: var(--accent-ink);
+  font-size: var(--t-body); font-weight: 600; align-self: flex-start; }
+details.machine { font-size: var(--t-foot); color: var(--text-2); }
+details.machine summary { min-block-size: 44px; display: flex; align-items: center; cursor: pointer; }
+.ico { inline-size: 22px; block-size: 22px; flex: none; }
+.ax5 .ico { inline-size: 44px; block-size: 44px; }
+
+/* ---------- Thumb sheet ---------- */
+.toolbar { position: absolute; left: 0; right: 0; bottom: 0; z-index: 4; display: grid; grid-template-columns: repeat(4, 1fr);
+  padding: 0 var(--space-2) calc(var(--home-pad) + env(safe-area-inset-bottom, 0px)); background: var(--paper); border-top: 1px solid var(--edge); }
+.toolbar.one { grid-template-columns: 1fr; padding-inline: var(--space-4); }
+.tb { position: relative; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-block-size: var(--tb-inner); border: 0; background: none; color: var(--text-2); font-size: var(--t-cap); line-height: var(--l-cap); border-radius: var(--radius); }
+.toolbar.one .tb { flex-direction: row; gap: var(--space-3); font-size: var(--t-body); line-height: var(--l-body); color: var(--accent); font-weight: 600; }
+.tb[aria-expanded="true"] { color: var(--accent); background: var(--accent-soft); font-weight: 600; }
+.dot { position: absolute; top: 8px; right: calc(50% - 20px); inline-size: 9px; block-size: 9px; border-radius: 50%; background: var(--accent); }
+.toolbar.one .dot { position: static; inline-size: 14px; block-size: 14px; }
+.catcher { position: absolute; left: 0; right: 0; top: 0; z-index: 2; background: transparent; }
+.sheet { position: absolute; left: 0; right: 0; z-index: 3; display: flex; flex-direction: column; background: var(--paper);
+  border-radius: var(--radius) var(--radius) 0 0; box-shadow: var(--shadow); }
+.sheet.in { animation: rise .22s cubic-bezier(.2,.8,.2,1); }
+@keyframes rise { from { transform: translateY(100%); } to { transform: none; } }
+.grabzone { position: relative; display: flex; align-items: center; justify-content: space-between; min-block-size: 44px; padding-inline: var(--space-2); touch-action: none; cursor: grab; }
+.grabber { position: absolute; left: 50%; top: 0; transform: translateX(-50%); inline-size: 64px; block-size: 24px; border: 0; padding: 0; background: none; }
+.grabber::before { content: ""; position: absolute; left: 14px; top: 6px; inline-size: 36px; block-size: 5px; border-radius: 3px; background: var(--edge); }
+.sheet-scroll { overflow-y: auto; overscroll-behavior: contain; }
+.xbtn { inline-size: 44px; block-size: 44px; border: 0; border-radius: 50%; background: none; color: var(--text-2); display: grid; place-items: center; margin-inline-start: auto; }
+.backbtn { min-block-size: 44px; border: 0; background: none; color: var(--accent); font-size: var(--t-body); font-weight: 600; display: inline-flex; align-items: center; gap: var(--space-1); }
+.p2 { position: absolute; inset: 0; display: flex; flex-direction: column; padding-top: calc(env(safe-area-inset-top, 0px) + var(--status-pad)); }
+.p2 .p2scroll { flex: 1 1 0; overflow-y: auto; }
+.p2 .toolbar { position: static; }
+
+/* ---------- Corner fan ---------- */
+.fanbtn { position: absolute; z-index: 6; inline-size: 56px; block-size: 56px; border-radius: 50%; border: 0; display: grid; place-items: center;
+  background: var(--accent); color: var(--accent-ink); box-shadow: 0 4px 14px rgba(0,0,0,.28); touch-action: none; }
+.fanbtn .dot { top: 4px; right: 4px; background: var(--warn); border: 2px solid var(--paper); inline-size: 14px; block-size: 14px; }
+.ax5 .fanbtn { inline-size: 88px; block-size: 88px; }
+.fanlayer { position: absolute; inset: 0; z-index: 5; }
+.disc { position: absolute; border-radius: 50%; background: var(--paper); box-shadow: 0 0 0 2px var(--edge), 0 8px 30px rgba(0,0,0,.22); }
+.fanhint { position: absolute; margin: 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); max-inline-size: 220px; }
+.disc.in { animation: bloom .2s cubic-bezier(.2,.8,.2,1); }
+@keyframes bloom { from { transform: scale(.15); } to { transform: none; } }
+.sector { position: absolute; inline-size: 60px; block-size: 60px; border-radius: 50%; border: 1px solid var(--edge); background: var(--paper-2);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 1px; font-size: var(--t-cap); line-height: 14px; color: var(--text); padding: 0; }
+.sector .ico { inline-size: 20px; block-size: 20px; }
+.sector[aria-expanded="true"] { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); font-weight: 600; }
+.pill { position: absolute; max-inline-size: 172px; min-block-size: 44px; padding: 0 var(--space-4); border-radius: 22px; border: 1px solid var(--edge);
+  background: var(--paper); font-size: var(--t-sub); line-height: var(--l-sub); white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+  display: inline-flex; align-items: center; gap: var(--space-2); }
+.pill[aria-checked="true"], .pill[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--accent-ink); font-weight: 600; }
+.pill.hot { outline: 3px solid var(--accent); outline-offset: 2px; }
+.sector.hot { outline: 3px solid var(--accent); outline-offset: 2px; }
+.fancount { position: absolute; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--text-2); white-space: nowrap; }
+.hcard { position: absolute; left: var(--space-4); right: var(--space-4); z-index: 5; display: flex; flex-direction: column; background: var(--paper);
+  border-radius: var(--radius); box-shadow: 0 0 0 1px var(--edge), 0 8px 30px rgba(0,0,0,.22); transform-origin: 100% 100%; }
+.hcard.in { animation: bloom .2s cubic-bezier(.2,.8,.2,1); }
+.hcard .sheet-scroll { padding-top: var(--space-3); }
+.stack { position: absolute; left: 0; right: 0; z-index: 5; display: flex; flex-direction: column; background: var(--paper); box-shadow: var(--shadow); border-radius: var(--radius) var(--radius) 0 0; }
+.stack.in { animation: rise .22s cubic-bezier(.2,.8,.2,1); }
+.lens { margin: 0; font-size: var(--t-sub); line-height: var(--l-sub); color: var(--text-2); min-block-size: var(--l-sub); }
+.lens b { color: var(--text); font-weight: 600; }
+
+/* ---------- "New:" annotations ---------- */
+.newtag { position: absolute; z-index: 9; pointer-events: none; border: 2px dashed var(--label); color: var(--label); background: var(--paper);
+  font: 600 12px/16px var(--font); padding: 2px 6px; border-radius: 4px; max-inline-size: 260px; }
+.nolabels .newtag, .ax5 .newtag { display: none; }
+.ax5 .backbtn { font-size: 34px; }
+.newtag.box { background: transparent; padding: 0; }
+.newtag.box span { position: absolute; top: -22px; left: -2px; background: var(--paper); border: 2px dashed var(--label); border-radius: 4px; padding: 0 6px; white-space: nowrap; }
+
+@media (prefers-reduced-motion: reduce) { .sheet.in, .disc.in, .hcard.in, .stack.in { animation: none; } }
+@media (forced-colors: active) { .sheet, .disc, .hcard, .stack, .toolbar { border: 1px solid CanvasText; } .mark { forced-color-adjust: none; } }
+</style>
+</head>
+<body>
+<div class="page" id="page">
+  <div class="sample" role="note"><strong>Sample</strong><span>No figure, name, amount or date on this page is real. The pantry list is a stand-in made up by the designer.</span></div>
+  <header class="pagehead">
+    <h1>Panels that sit over a long list</h1>
+    <p>Designer kind: blind. Designer: panels-overlay-blind-2. Job: open a small panel (sort, filter, what to show, change history) over a long list. The list does not move, the panel is solid, and one gesture closes it.</p>
+  </header>
+  <div class="controls" aria-label="Mockup controls">
+    <label>State
+      <select id="stateSel">
+        <option value="list">List, no panel</option>
+        <option value="sort">Sort open</option>
+        <option value="filter">Filter open</option>
+        <option value="show">What to show open</option>
+        <option value="history">History open</option>
+        <option value="history-custom">History, picked dates</option>
+        <option value="history-failed">History, failed read</option>
+        <option value="history-empty">History, nothing in range</option>
+        <option value="empty">List emptied by a filter</option>
+      </select>
+    </label>
+    <div class="seg" role="group" aria-label="Theme" id="themeSeg">
+      <button data-t="auto" aria-pressed="true">Auto</button><button data-t="light" aria-pressed="false">Light</button><button data-t="dark" aria-pressed="false">Dark</button>
+    </div>
+    <label><input type="checkbox" id="labelsChk" checked> Show "New:" labels</label>
+  </div>
+  <div class="hiddenbar" id="hiddenBar" hidden></div>
+  <div id="concepts">
+    <section class="concept" data-c="thumb-sheet">
+      <div class="chead"><div><h2></h2><p></p></div><button class="btn" data-hide="thumb-sheet"></button></div>
+      <div class="frames" id="opt-thumb-sheet">
+        <figure class="fcard"><figcaption class="fcap"></figcaption><div class="devwrap"><div class="dev" data-device="iphone-duo-folded" data-k="folded"></div></div></figure>
+        <figure class="fcard"><figcaption class="fcap"></figcaption><div class="devwrap"><div class="dev" data-device="iphone-duo-unfolded" data-k="open"></div></div></figure>
+        <figure class="fcard"><figcaption class="fcap"></figcaption><div class="devwrap"><div class="dev" data-device="phone-large" data-k="phone"></div></div></figure>
+        <figure class="fcard"><figcaption class="fcap"></figcaption><div class="devwrap"><div class="dev ax5" data-device="iphone-duo-folded" data-text-size="AX5" data-k="ax5"></div></div></figure>
+      </div>
+    </section>
+    <section class="concept" data-c="corner-fan">
+      <div class="chead"><div><h2></h2><p></p></div><button class="btn" data-hide="corner-fan"></button></div>
+      <div class="frames" id="opt-corner-fan">
+        <figure class="fcard"><figcaption class="fcap"></figcaption><div class="devwrap"><div class="dev" data-device="iphone-duo-folded" data-k="folded"></div></div></figure>
+        <figure class="fcard"><figcaption class="fcap"></figcaption><div class="devwrap"><div class="dev" data-device="iphone-duo-unfolded" data-k="open"></div></div></figure>
+        <figure class="fcard"><figcaption class="fcap"></figcaption><div class="devwrap"><div class="dev" data-device="phone-large" data-k="phone"></div></div></figure>
+        <figure class="fcard"><figcaption class="fcap"></figcaption><div class="devwrap"><div class="dev ax5" data-device="iphone-duo-folded" data-text-size="AX5" data-k="ax5"></div></div></figure>
+      </div>
+    </section>
+  </div>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+/* ---------- Sample data: a pantry, made up ---------- */
+var NAMES = ['Basmati rice','Rolled oats','Red lentils','Dried chickpeas','Plain flour','Bread flour','Caster sugar','Brown sugar','Honey','Maple syrup',
+  'Olive oil','Sesame oil','Rice vinegar','Soy sauce','Fish sauce','Tomato paste','Chopped tomatoes','Coconut milk','Black beans','Kidney beans',
+  'Penne','Spaghetti','Egg noodles','Couscous','Quinoa','Polenta','Peanut butter','Tahini','Dark chocolate','Cocoa powder',
+  'Baking soda','Baking powder','Dried yeast','Sea salt','Black pepper','Cumin seed','Smoked paprika','Chili flakes','Bay leaves','Green tea'];
+var SHELVES = ['Top shelf','Middle shelf','Bottom shelf','Spice rack','Door'];
+var AMTS = ['500 g','1 kg','2 cans','250 ml','1 jar','300 g','4 packs','100 g'];
+var MON = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+var TODAY = new Date(2026, 10, 21);
+function dayStr(d) { return d.getDate() + ' ' + MON[d.getMonth()]; }
+function addDays(d, n) { var x = new Date(d); x.setDate(x.getDate() + n); return x; }
+function iso(d) { var m = d.getMonth() + 1, dd = d.getDate(); return d.getFullYear() + '-' + (m < 10 ? '0' : '') + m + '-' + (dd < 10 ? '0' : '') + dd; }
+var ITEMS = NAMES.map(function (n, i) {
+  var st = (i % 7 === 3) ? 'out' : (i % 5 === 1 ? 'low' : 'stock');
+  return { id: i, name: n, shelf: SHELVES[(i * 3 + Math.floor(i / 5)) % 5], amt: AMTS[(i * 5) % 8], added: addDays(TODAY, -((i * 11) % 31)),
+    state: st, opened: st !== 'out' && (i % 3 === 0) };
+});
+var HIST = [
+  [0, 'Rolled oats marked Low', 'Today, 8:12'], [0, 'Honey opened', 'Today, 7:40'], [1, 'Coconut milk marked Out', 'Yesterday, 19:05'],
+  [3, 'Basmati rice added', '18 Nov, 12:30'], [5, 'Tahini moved to Door', '16 Nov, 9:14'], [6, 'Black beans marked Low', '15 Nov, 18:22'],
+  [9, 'Green tea added', '12 Nov, 10:01'], [12, 'Penne marked Out', '9 Nov, 20:47'], [16, 'Cumin seed opened', '5 Nov, 13:33'],
+  [21, 'Bread flour added', '31 Oct, 11:08'], [26, 'Sea salt marked Low', '26 Oct, 17:55'], [29, 'Dried yeast added', '23 Oct, 9:30']
+].map(function (h) { return { ago: h[0], what: h[1], when: h[2], date: addDays(TODAY, -h[0]) }; });
+
+var SORTS = [['newest','Newest added'],['oldest','Oldest added'],['name','Name, A to Z'],['shelf','Shelf']];
+var FILTS = [['stock','In stock'],['low','Low'],['out','Out']];
+var SHOWS = [['shelf','Shelf'],['added','Date added'],['amt','Amount'],['mark','Stock mark']];
+var RANGES = [['today','Today'],['7','7 days'],['30','30 days'],['custom','Dates']];
+var PANELS = [['sort','Sort'],['filter','Filter'],['show','Show'],['history','History']];
+
+/* ---------- Icons ---------- */
+var ICON = {
+  sort: '<path d="M7 4v16M3 8l4-4 4 4M17 20V4M13 16l4 4 4-4"/>',
+  filter: '<path d="M3 5h18l-7 8v6l-4 2v-8z"/>',
+  show: '<path d="M2 12s3.6-7 10-7 10 7 10 7-3.6 7-10 7S2 12 2 12z"/><circle cx="12" cy="12" r="3"/>',
+  history: '<circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/>',
+  fan: '<path d="M4 6h10M18 6h2M4 12h4M12 12h8M4 18h12M20 18h0"/><circle cx="16" cy="6" r="2"/><circle cx="10" cy="12" r="2"/><circle cx="18" cy="18" r="2"/>',
+  close: '<path d="M6 6l12 12M18 6L6 18"/>',
+  check: '<path d="M4 12l5 5L20 6"/>',
+  back: '<path d="M15 5l-7 7 7 7"/>',
+  more: '<path d="M4 7h16M4 12h16M4 17h16"/>'
+};
+function ico(k, cls) { return '<svg class="ico ' + (cls || '') + '" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">' + ICON[k] + '</svg>'; }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function label(k, list) { for (var i = 0; i < list.length; i++) if (list[i][0] === k) return list[i][1]; return k; }
+
+/* ---------- Devices ---------- */
+var DEVS = [
+  { key: 'folded', w: 466, h: 678, dual: false, dd: 'iphone-duo-folded', cap: 'Duo folded, 466 x 678 pt' },
+  { key: 'open', w: 951, h: 669, dual: true, dd: 'iphone-duo-unfolded', cap: 'Duo open, 951 x 669 pt, hinge x 455.5 to 495.5' },
+  { key: 'phone', w: 466, h: 900, dual: false, dd: 'phone-large', cap: 'Large phone: stand-in frame, 466 x 900 pt. The brief writes no size.' },
+  { key: 'ax5', w: 466, h: 678, dual: false, dd: 'iphone-duo-folded', ax: true, cap: 'Duo folded, largest accessibility text (AX5). "New:" labels hidden here for room.' }
+];
+var CONCEPTS = [
+  { key: 'thumb-sheet', name: 'Thumb sheet', idea: 'Four panel buttons sit in a bar under the thumb. A tap raises a solid sheet over the lower list; the list never moves. On the open Duo the panels own the second screen, so nothing covers the list at all.' },
+  { key: 'corner-fan', name: 'Corner fan', idea: 'Bold: no bar and no menu. One corner button blooms into a fan along the thumb\'s arc. Press, slide out across a panel to a choice, and lift: one gesture opens, picks and closes. On the open Duo, history gets its own screen.' }
+];
+
+/* ---------- Hash state ---------- */
+function readHash() {
+  var o = {}; location.hash.replace(/^#/, '').split('&').forEach(function (kv) { if (!kv) return; var p = kv.split('='); o[decodeURIComponent(p[0])] = decodeURIComponent(p[1] || ''); });
+  return o;
+}
+function writeHash(o) {
+  var parts = []; Object.keys(o).forEach(function (k) { if (o[k] !== '' && o[k] != null) parts.push(k + '=' + encodeURIComponent(o[k])); });
+  history.replaceState(null, '', '#' + parts.join('&'));
+}
+var H = readHash();
+var hidden = {};
+
+function applyTheme(t) {
+  var root = document.documentElement;
+  if (t === 'light' || t === 'dark') root.setAttribute('data-theme', t); else root.removeAttribute('data-theme');
+  Array.prototype.forEach.call(document.querySelectorAll('#themeSeg button'), function (b) { b.setAttribute('aria-pressed', String(b.dataset.t === (t || 'auto'))); });
+}
+
+/* ---------- Instance state ---------- */
+function newState(concept, dev, s) {
+  var st = { concept: concept, dev: dev, sort: 'newest', filt: { stock: false, low: false, out: false, opened: false },
+    show: { shelf: true, added: true, amt: true, mark: true }, panel: null, axMenu: false, range: '30', from: iso(addDays(TODAY, -10)), to: iso(TODAY),
+    hist: 'ok', looked: 4, sector: null, seg: 'sort', anim: false };
+  if (s === 'sort' || s === 'filter' || s === 'show' || s === 'history') st.panel = s;
+  if (s === 'history-custom') { st.panel = 'history'; st.range = 'custom'; }
+  if (s === 'history-failed') { st.panel = 'history'; st.hist = 'failed'; }
+  if (s === 'history-empty') { st.panel = 'history'; st.range = 'today'; st.hist = 'none'; }
+  if (s === 'filter') { st.filt.low = true; }
+  if (s === 'empty') { st.filt.out = true; st.filt.opened = true; }
+  if (concept === 'thumb-sheet' && dev.dual) { if (st.panel) st.seg = st.panel; st.panel = null; }
+  if (concept === 'corner-fan') {
+    if (st.panel === 'history' && dev.dual) st.panel = null;          /* history is the second screen */
+    if (st.panel && st.panel !== 'history') { st.sector = st.panel; st.panel = 'fan'; }
+  }
+  return st;
+}
+
+function visible(st) {
+  var f = st.filt, anyS = f.stock || f.low || f.out;
+  var r = ITEMS.filter(function (it) { return (!anyS || f[it.state]) && (!f.opened || it.opened); });
+  var by = { newest: function (a, b) { return b.added - a.added || a.id - b.id; }, oldest: function (a, b) { return a.added - b.added || a.id - b.id; },
+    name: function (a, b) { return a.name.localeCompare(b.name); }, shelf: function (a, b) { return SHELVES.indexOf(a.shelf) - SHELVES.indexOf(b.shelf) || a.name.localeCompare(b.name); } }[st.sort];
+  return r.slice().sort(by);
+}
+function filtOn(st) { var f = st.filt; return f.stock || f.low || f.out || f.opened; }
+function histRows(st) {
+  if (st.hist === 'none') return [];
+  var lo, hi = TODAY;
+  if (st.range === 'today') lo = TODAY; else if (st.range === '7') lo = addDays(TODAY, -7); else if (st.range === '30') lo = addDays(TODAY, -30);
+  else { lo = new Date(st.from + 'T00:00'); hi = new Date(st.to + 'T00:00'); }
+  return HIST.filter(function (h) { return h.date >= lo && h.date <= hi; });
+}
+
+/* ---------- Panel bodies (one home for each panel, used by every concept) ---------- */
+function bodySort(st) {
+  return '<div class="pbody"><div class="group" role="radiogroup" aria-label="Sort">' + SORTS.map(function (s) {
+    return '<button class="opt" role="radio" aria-checked="' + (st.sort === s[0]) + '" data-act="sort" data-v="' + s[0] + '">' + s[1] + ico('check', 'ck') + '</button>';
+  }).join('') + '</div></div>';
+}
+function bodyFilter(st) {
+  var n = visible(st).length;
+  return '<div class="pbody"><div class="chips" role="group" aria-label="Stock">' + FILTS.map(function (f) {
+    return '<button class="chip" aria-pressed="' + st.filt[f[0]] + '" data-act="filt" data-k="' + f[0] + '">' + f[1] + '</button>';
+  }).join('') + '</div><div class="group"><button class="opt" role="switch" aria-checked="' + st.filt.opened + '" data-act="filt" data-k="opened">Opened only<span class="sw"></span></button></div>' +
+  '<div class="answer" aria-live="polite"><span>' + n + ' of ' + ITEMS.length + ' match</span>' + (filtOn(st) ? '<button class="linkbtn" data-act="clearf">Clear filters</button>' : '') + '</div></div>';
+}
+function bodyShow(st) {
+  return '<div class="pbody"><div class="group">' + SHOWS.map(function (s) {
+    return '<button class="opt" role="switch" aria-checked="' + st.show[s[0]] + '" data-act="show" data-k="' + s[0] + '">' + s[1] + '<span class="sw"></span></button>';
+  }).join('') + '</div></div>';
+}
+function bodyHistory(st) {
+  var h = '<div class="pbody"><div class="ranges" role="group" aria-label="Dates">' + RANGES.map(function (r) {
+    return '<button aria-pressed="' + (st.range === r[0]) + '" data-act="range" data-v="' + r[0] + '">' + r[1] + '</button>';
+  }).join('') + '</div>';
+  if (st.range === 'custom') h += '<div class="dates"><label>From <input type="date" data-act="from" value="' + st.from + '" max="' + iso(TODAY) + '"></label><label>To <input type="date" data-act="to" value="' + st.to + '" max="' + iso(TODAY) + '"></label></div>';
+  if (st.hist === 'loading') h += '<p class="note" role="status">Loading changes…</p>';
+  else if (st.hist === 'failed') h += '<p class="note bad" role="alert">Changes could not load.</p><button class="fill" data-act="retry">Try again</button><details class="machine"><summary>What the server said</summary>Sample: timeout after 10 s</details>';
+  else {
+    var rows = histRows(st);
+    if (!rows.length) h += '<p class="note">No changes in these dates.</p><button class="fill" data-act="range" data-v="30">Show 30 days</button>';
+    else h += '<ul class="hlist">' + rows.map(function (r) { return '<li><span class="what">' + esc(r.what) + '</span><span class="when">' + r.when + '</span></li>'; }).join('') + '</ul>';
+  }
+  return h + '</div>';
+}
+function body(p, st) { return p === 'sort' ? bodySort(st) : p === 'filter' ? bodyFilter(st) : p === 'show' ? bodyShow(st) : bodyHistory(st); }
+
+/* ---------- List ---------- */
+function rowsHtml(st) {
+  var r = visible(st);
+  if (!r.length) return '<div class="empty"><p>Nothing matches these filters.</p><button class="fill" data-act="clearf">Clear filters</button></div>';
+  return '<ul class="rows">' + r.map(function (it) {
+    var meta = [];
+    if (st.show.shelf) meta.push(it.shelf);
+    if (st.show.added) meta.push('added ' + dayStr(it.added));
+    return '<li class="row' + (it.id === st.looked ? ' looked' : '') + '" data-act="row" data-id="' + it.id + '" aria-label="' + esc(it.name) + ', ' + (it.state === 'stock' ? 'in stock' : it.state) + '">' +
+      (st.show.mark ? '<span class="mark ' + it.state + '" aria-hidden="true"></span>' : '') +
+      '<span class="rt"><span class="nm">' + esc(it.name) + '</span>' + (meta.length ? '<span class="meta">' + meta.join(', ') + '</span>' : '') + '</span>' +
+      (st.show.amt ? '<span class="amt">' + it.amt + '</span>' : '') + '</li>';
+  }).join('') + '</ul>';
+}
+function sumText(st) { var n = visible(st).length; return n === ITEMS.length ? ITEMS.length + ' items' : n + ' of ' + ITEMS.length + ' shown'; }
+function lensText(st) {
+  var f = st.filt, parts = FILTS.filter(function (x) { return f[x[0]]; }).map(function (x) { return x[1]; });
+  var n = visible(st).length;
+  if (!parts.length && !f.opened) return '<b>' + label(st.sort, SORTS) + '</b>, all ' + ITEMS.length + ' items.';
+  return '<b>' + label(st.sort, SORTS) + '</b>, ' + (parts.length ? parts.join(' or ') : 'any stock') + (f.opened ? ', opened only' : '') + ': ' + n + ' of ' + ITEMS.length + '.';
+}
+
+/* ---------- Frame build ---------- */
+var INST = [];
+function listPane(st, nobar) {
+  return '<div class="list-scroll' + (nobar ? ' nobar' : '') + '"><header class="nav"><h3 class="lt">Pantry</h3>' +
+    (st.concept === 'corner-fan' ? '<p class="lens" data-slot="sum">' + lensText(st) + '</p>' : '<p class="sum" data-slot="sum">' + sumText(st) + '</p>') +
+    '</header><div data-slot="rows">' + rowsHtml(st) + '</div></div>';
+}
+function buildFrame(inst) {
+  var st = inst.st, d = inst.dev, h = '';
+  if (!d.dual) {
+    h = '<div class="screen" data-pg="1">' + listPane(st, st.concept === 'corner-fan') + '<div data-slot="chrome"></div><div data-slot="over"></div></div>';
+  } else {
+    var p2 = st.concept === 'thumb-sheet'
+      ? '<div class="p2"><div class="p2scroll" data-slot="p2body"></div><div data-slot="p2bar"></div></div><div class="newtag" style="right:16px;top:56px">New: panels own this screen; nothing covers the list</div>'
+      : '<div class="list-scroll nobar"><header class="nav"><h3 class="lt">Changes</h3></header><div data-slot="p2body"></div></div><div class="newtag" style="right:16px;top:52px">New: history gets its own screen</div>';
+    h = '<div class="dual"><div class="pg" data-pg="1">' + listPane(st, true) + '<div data-slot="chrome"></div><div data-slot="over"></div></div>' +
+      '<div class="hingebar" aria-hidden="true"></div><div class="pg" data-pg="2">' + p2 + '</div></div>';
+  }
+  inst.el.innerHTML = h;
+  renderChrome(inst); renderOver(inst); renderP2(inst);
+  var ls = inst.el.querySelector('[data-pg="1"] .list-scroll'); ls.scrollTop = 0;
+}
+function slot(inst, name) { return inst.el.querySelector('[data-slot="' + name + '"]'); }
+function pageBox(inst) { var p = inst.el.querySelector('[data-pg="1"]'); return { w: p.offsetWidth || (inst.dev.dual ? 455.5 : inst.dev.w), h: p.offsetHeight || inst.dev.h }; }
+
+function renderRows(inst) {
+  var ls = inst.el.querySelector('[data-pg="1"] .list-scroll'), top = ls.scrollTop;
+  slot(inst, 'rows').innerHTML = rowsHtml(inst.st);
+  var s = slot(inst, 'sum'); s.innerHTML = inst.st.concept === 'corner-fan' ? lensText(inst.st) : sumText(inst.st);
+  ls.scrollTop = top;
+}
+
+function renderChrome(inst) {
+  var st = inst.st, d = inst.dev, c = slot(inst, 'chrome');
+  if (st.concept === 'thumb-sheet') {
+    if (d.dual) { c.innerHTML = ''; return; }
+    if (d.ax) {
+      c.innerHTML = '<nav class="toolbar one" aria-label="List options"><button class="tb" data-act="axmenu" aria-expanded="' + (!!st.panel || st.axMenu) + '">' + ico('more') + 'Options' + (filtOn(st) ? '<span class="dot" aria-label="filters on"></span>' : '') + '</button></nav>';
+      return;
+    }
+    c.innerHTML = '<nav class="toolbar" aria-label="List options">' + PANELS.map(function (p) {
+      return '<button class="tb" data-act="tb" data-p="' + p[0] + '" aria-expanded="' + (st.panel === p[0]) + '">' + ico(p[0]) + p[1] + (p[0] === 'filter' && filtOn(st) ? '<span class="dot" aria-label="filters on"></span>' : '') + '</button>';
+    }).join('') + '</nav>' + (st.panel ? '' : '<div class="newtag" style="left:12px;bottom:calc(var(--tb-h) + 8px)">New: four panels, one tap each, under the thumb</div>');
+    return;
+  }
+  /* corner fan: one button, built once and kept, so a press-and-slide keeps its pointer capture */
+  var g = fanGeo(inst);
+  if (!c.firstChild) {
+    c.innerHTML = '<button class="fanbtn" data-act="fan" aria-label="List options" aria-expanded="false"></button>' +
+      '<div class="newtag fantag" style="' + (g.mirror ? 'left:' + (g.cx - 28) : 'right:' + (g.W - g.cx - 28)) + 'px;top:' + (g.cy - 28 - 34) + 'px">New: press, slide to a choice, lift</div>';
+  }
+  var b = c.querySelector('.fanbtn'), open = !!st.panel, sz = d.ax ? 88 : 56;
+  b.style.left = (g.cx - sz / 2) + 'px'; b.style.top = (g.cy - sz / 2) + 'px';
+  b.setAttribute('aria-expanded', String(open));
+  c.querySelector('.fantag').style.display = open ? 'none' : '';
+  b.setAttribute('aria-label', open ? 'Close options' : 'List options');
+  b.innerHTML = ico(open ? 'close' : 'fan') + (!open && filtOn(st) ? '<span class="dot" aria-hidden="true"></span>' : '');
+}
+
+function fanGeo(inst) {
+  var d = inst.dev, pb = pageBox(inst), W = pb.w, Hh = pb.h, mirror = d.dual;
+  var off = d.ax ? 16 + 44 : 16 + 28;
+  var cy = Hh - 20 - off;
+  var cx = mirror ? off : W - off;
+  return { W: W, H: Hh, cx: cx, cy: cy, mirror: mirror };
+}
+
+function renderOver(inst) {
+  var st = inst.st, d = inst.dev, o = slot(inst, 'over'), anim = st.anim; st.anim = false;
+  var keepScroll = o.querySelector('.sheet-scroll'), sTop = keepScroll ? keepScroll.scrollTop : 0;
+  if (!st.panel) { o.innerHTML = ''; return; }
+  if (st.concept === 'thumb-sheet') {
+    var showMenu = d.ax && st.axMenu && !(st.panel && st.panel !== 'menu');
+    var head = '<div class="grabzone" data-drag="sheet"><button class="grabber" data-act="detent" aria-label="' + (st.large ? 'Make sheet smaller' : 'Make sheet larger') + '"></button>' +
+      (d.ax && st.panel !== 'menu' ? '<button class="backbtn" data-act="axback">' + ico('back') + 'Options</button>' : '') +
+      '<button class="xbtn" data-act="close" aria-label="Close">' + ico('close') + '</button></div>';
+    var inner;
+    if (st.panel === 'menu') {
+      inner = '<div class="pbody"><div class="group">' + PANELS.map(function (p) { return '<button class="opt" data-act="axgo" data-p="' + p[0] + '">' + p[1] + ico('back', 'fwd') + '</button>'; }).join('') + '</div></div>';
+    } else inner = body(st.panel, st);
+    /* medium detent: about half the space above the bar; a tap or an upward drag on the grabber goes to the large detent */
+    var maxH = d.ax ? 'calc(100% - var(--tb-h) - 24px)' : st.large ? 'calc(100% - var(--tb-h) - 150px)' : 'calc((100% - var(--tb-h)) * .55)';
+    o.innerHTML = '<div class="catcher" data-act="catch" style="bottom:var(--tb-h)" aria-hidden="true"></div>' +
+      '<section class="sheet' + (anim ? ' in' : '') + '" role="dialog" aria-modal="false" aria-label="' + (st.panel === 'menu' ? 'Options' : label(st.panel, PANELS)) + '" style="bottom:var(--tb-h);max-height:' + maxH + '">' +
+      head + '<div class="sheet-scroll">' + inner + '</div>' +
+      '<div class="newtag" style="left:12px;top:-30px">New: solid sheet over the list; the list does not move</div></section>';
+    var fw = o.querySelectorAll('.fwd'); Array.prototype.forEach.call(fw, function (x) { x.style.transform = 'scaleX(-1)'; x.style.visibility = 'visible'; });
+  } else {
+    o.innerHTML = fanHtml(inst, anim);
+  }
+  var ns = o.querySelector('.sheet-scroll'); if (ns) ns.scrollTop = sTop;
+}
+
+function fanHtml(inst, anim) {
+  var st = inst.st, d = inst.dev, g = fanGeo(inst), mir = g.mirror, h = '';
+  var catcher = '<div class="fanlayer" data-act="catch" aria-hidden="false">';
+  if (st.panel === 'history' && !d.ax) {
+    var bottom = g.H - g.cy + 28 + 12;
+    return catcher + '<section class="hcard' + (anim ? ' in' : '') + '" role="dialog" aria-modal="false" aria-label="History" style="bottom:' + bottom + 'px;max-height:calc(100% - ' + bottom + 'px - 110px)">' +
+      '<div class="sheet-scroll">' + bodyHistory(st) + '</div><div class="newtag" style="left:12px;top:-26px">New: history card grows from the corner</div></section></div>';
+  }
+  if (d.ax) {
+    var bottomA = g.H - g.cy + 44 + 12, inner, sec = st.panel === 'history' ? 'history' : st.sector;
+    if (sec) {
+      inner = '<div class="grabzone"><button class="backbtn" data-act="fanback">' + ico('back') + 'Options</button></div><div class="sheet-scroll">' + body(sec, st) + '</div>';
+    } else {
+      var secs = PANELS.filter(function (p) { return !(d.dual && p[0] === 'history'); });
+      inner = '<div class="sheet-scroll"><div class="pbody"><div class="group">' + secs.map(function (p) { return '<button class="opt" data-act="sector" data-p="' + p[0] + '">' + p[1] + '</button>'; }).join('') + '</div></div></div>';
+    }
+    return catcher + '<section class="stack' + (anim ? ' in' : '') + '" role="dialog" aria-modal="false" aria-label="Options" style="bottom:' + bottomA + 'px;max-height:calc(100% - ' + bottomA + 'px - 24px)">' + inner + '</section>' +
+      '<div class="newtag" style="left:12px;top:60px">New: at the largest text the fan stacks in rows</div></div>';
+  }
+  var R = 384, r1 = 152, r2 = 226;
+  var sectors = PANELS.filter(function (p) { return !(d.dual && p[0] === 'history'); });
+  var angs = sectors.length === 4 ? [100, 125, 150, 175] : [105, 135, 165];
+  h += catcher + '<div class="disc' + (anim ? ' in' : '') + '" style="left:' + (g.cx - R) + 'px;top:' + (g.cy - R) + 'px;width:' + (2 * R) + 'px;height:' + (2 * R) + 'px;transform-origin:50% 50%"></div>';
+  sectors.forEach(function (p, i) {
+    var a = angs[i] * Math.PI / 180, x = Math.cos(a) * r1, y = -Math.sin(a) * r1;
+    if (mir) x = -x;
+    h += '<button class="sector" data-act="sector" data-p="' + p[0] + '" aria-expanded="' + (st.sector === p[0]) + '" style="left:' + (g.cx + x - 30) + 'px;top:' + (g.cy + y - 30) + 'px">' + ico(p[0]) + p[1] + '</button>';
+  });
+  if (!st.sector) {   /* shown only before a sector is picked, so a tapper learns the one-gesture path */
+    h += '<p class="fanhint" style="' + (mir ? 'left:' + (g.cx + 24) : 'right:' + (g.W - g.cx + 24)) + 'px;top:' + (g.cy - 250) + 'px">Next time, press and slide to a choice, then lift.</p>';
+  }
+  if (st.sector) {
+    var ch = fanChoices(st);
+    ch.forEach(function (c, k) {
+      var y = -k * 56, xr = Math.sqrt(r2 * r2 - y * y);
+      var pos = mir ? 'left:' + (g.cx + xr) + 'px' : 'right:' + (g.W - (g.cx - xr)) + 'px';
+      h += '<button class="pill" ' + c.attr + ' style="' + pos + ';top:' + (g.cy + y - 22) + 'px">' + (c.on ? ico('check') : '') + esc(c.text) + '</button>';
+    });
+    if (st.sector === 'filter') {
+      var yT = -(ch.length - 1) * 56, xT = Math.sqrt(r2 * r2 - yT * yT);
+      h += '<div class="fancount" aria-live="polite" style="' + (mir ? 'left:' + (g.cx + xT) : 'right:' + (g.W - (g.cx - xT))) + 'px;top:' + (g.cy + yT - 22 - 30) + 'px">' + visible(st).length + ' of ' + ITEMS.length + ' match</div>';
+    }
+  }
+  return h + '</div>';
+}
+function fanChoices(st) {
+  if (st.sector === 'sort') return SORTS.map(function (s) { return { text: s[1], on: st.sort === s[0], attr: 'role="radio" aria-checked="' + (st.sort === s[0]) + '" data-act="sort" data-v="' + s[0] + '" data-single="1"' }; });
+  if (st.sector === 'filter') return FILTS.concat([['opened', 'Opened only']]).map(function (f) { return { text: f[1], on: st.filt[f[0]], attr: 'aria-pressed="' + st.filt[f[0]] + '" data-act="filt" data-k="' + f[0] + '"' }; });
+  if (st.sector === 'show') return SHOWS.map(function (s) { return { text: s[1], on: st.show[s[0]], attr: 'role="switch" aria-checked="' + st.show[s[0]] + '" data-act="show" data-k="' + s[0] + '"' }; });
+  return [];
+}
+
+function renderP2(inst) {
+  var st = inst.st, d = inst.dev;
+  if (!d.dual) return;
+  var b = slot(inst, 'p2body'), sc = b.closest('.p2scroll,.list-scroll'), top = sc ? sc.scrollTop : 0;
+  if (st.concept === 'thumb-sheet') {
+    b.innerHTML = '<header class="nav"><h3 class="lt">' + label(st.seg, PANELS) + '</h3></header>' + body(st.seg, st);
+    slot(inst, 'p2bar').innerHTML = '<nav class="toolbar" aria-label="Panels">' + PANELS.map(function (p) {
+      return '<button class="tb" data-act="seg" data-p="' + p[0] + '" aria-expanded="' + (st.seg === p[0]) + '">' + ico(p[0]) + p[1] + (p[0] === 'filter' && filtOn(st) ? '<span class="dot" aria-label="filters on"></span>' : '') + '</button>';
+    }).join('') + '</nav>';
+  } else {
+    b.innerHTML = bodyHistory(st);
+  }
+  if (sc) sc.scrollTop = top;
+}
+
+/* ---------- Acts ---------- */
+function openPanel(inst, p) { inst.st.anim = !inst.st.panel; inst.st.panel = p; renderOver(inst); renderChrome(inst); }
+function closePanel(inst) { inst.st.large = false; inst.st.panel = null; inst.st.sector = null; inst.st.axMenu = false; renderOver(inst); renderChrome(inst); }
+function changed(inst, rows) { if (rows) renderRows(inst); renderOver(inst); renderP2(inst); renderChrome(inst); }
+
+function act(inst, el, ev) {
+  var st = inst.st, a = el.dataset.act;
+  switch (a) {
+    case 'row': st.looked = +el.dataset.id; Array.prototype.forEach.call(inst.el.querySelectorAll('.row'), function (r) { r.classList.toggle('looked', r === el); }); break;
+    case 'tb': if (st.panel === el.dataset.p) closePanel(inst); else openPanel(inst, el.dataset.p); break;
+    case 'axmenu': if (st.panel) closePanel(inst); else { st.axMenu = true; openPanel(inst, 'menu'); } break;
+    case 'axgo': st.panel = el.dataset.p; renderOver(inst); break;
+    case 'axback': st.panel = 'menu'; renderOver(inst); break;
+    case 'close': case 'catch': closePanel(inst); break;
+    case 'detent': st.large = !st.large; renderOver(inst); break;
+    case 'seg': st.seg = el.dataset.p; renderP2(inst); break;
+    case 'sort': st.sort = el.dataset.v; renderRows(inst);
+      if (st.concept === 'thumb-sheet' && !inst.dev.dual) closePanel(inst);       /* one pick, one answer: a single choice closes */
+      else if (st.concept === 'corner-fan' && !inst.dev.ax) closePanel(inst);
+      else changed(inst, false);
+      break;
+    case 'filt': st.filt[el.dataset.k] = !st.filt[el.dataset.k]; changed(inst, true); break;
+    case 'clearf': st.filt = { stock: false, low: false, out: false, opened: false }; changed(inst, true); break;
+    case 'show': st.show[el.dataset.k] = !st.show[el.dataset.k]; changed(inst, true); break;
+    case 'range': st.range = el.dataset.v; if (st.hist === 'none') st.hist = 'ok'; changed(inst, false); break;
+    case 'retry': st.hist = 'loading'; changed(inst, false); setTimeout(function () { st.hist = 'ok'; changed(inst, false); }, 700); break;
+    case 'fan': if (st.panel) closePanel(inst); else { st.sector = null; openPanel(inst, 'fan'); } break;
+    case 'sector': if (el.dataset.p === 'history') { st.sector = null; st.anim = true; st.panel = 'history'; renderOver(inst); }
+      else { st.sector = el.dataset.p; renderOver(inst); } break;
+    case 'fanback': st.sector = null; st.panel = 'fan'; renderOver(inst); break;
+  }
+}
+
+function wire(inst) {
+  var el = inst.el;
+  el.addEventListener('click', function (ev) {
+    inst = el._inst;
+    var t = ev.target.closest('[data-act]'); if (!t || !el.contains(t)) return;
+    if (t.dataset.act === 'fan' && inst.suppressClick) { inst.suppressClick = false; return; }
+    if (t.dataset.act === 'detent' && inst.dragMoved) { inst.dragMoved = false; return; }
+    if (t.tagName === 'INPUT') return;
+    act(inst, t, ev);
+  });
+  el.addEventListener('change', function (ev) {
+    inst = el._inst;
+    var t = ev.target; if (t.dataset.act === 'from' || t.dataset.act === 'to') { inst.st[t.dataset.act] = t.value; renderOver(inst); renderP2(inst); }
+  });
+  /* swipe down on the sheet's grab zone closes it */
+  el.addEventListener('pointerdown', function (ev) {
+    inst = el._inst;
+    var gz = ev.target.closest('[data-drag="sheet"]');
+    if (gz && !ev.target.closest('button:not(.grabber)')) {
+      inst.dragMoved = false;
+      var sheet = gz.closest('.sheet'), y0 = ev.clientY, sc = inst.scale || 1;
+      gz.setPointerCapture(ev.pointerId);
+      var mv = function (e) { var raw = (e.clientY - y0) / sc; if (Math.abs(raw) > 8) inst.dragMoved = true; sheet.style.transform = 'translateY(' + Math.max(0, raw) + 'px)'; };
+      var up = function (e) { gz.removeEventListener('pointermove', mv); gz.removeEventListener('pointerup', up); gz.removeEventListener('pointercancel', up);
+        var dy = (e.clientY - y0) / sc; if (dy > 60) closePanel(inst); else if (dy < -40 && !inst.st.large) { inst.st.large = true; renderOver(inst); } else sheet.style.transform = ''; };
+      gz.addEventListener('pointermove', mv); gz.addEventListener('pointerup', up); gz.addEventListener('pointercancel', up);
+      return;
+    }
+    /* corner fan: press, slide across a sector to a choice, lift */
+    var fb = ev.target.closest('.fanbtn');
+    if (fb && !inst.st.panel && !inst.dev.ax) {
+      ev.preventDefault();
+      var x0 = ev.clientX, yy0 = ev.clientY, dragging = false, hot = null;
+      inst.st.sector = null; openPanel(inst, 'fan');
+      inst.suppressClick = true;
+      fb.setPointerCapture(ev.pointerId);
+      var move = function (e) {
+        if (!dragging && Math.hypot(e.clientX - x0, e.clientY - yy0) > 10) dragging = true;
+        if (!dragging) return;
+        var t = document.elementFromPoint(e.clientX, e.clientY); t = t && t.closest('.sector,.pill');
+        if (hot && hot !== t) hot.classList.remove('hot');
+        if (t && inst.el.contains(t)) {
+          if (t.classList.contains('sector') && inst.st.sector !== t.dataset.p && t.dataset.p !== 'history') { inst.st.sector = t.dataset.p; renderOver(inst); t = inst.el.querySelector('.sector[data-p="' + inst.st.sector + '"]'); }
+          hot = t; t.classList.add('hot');
+        } else hot = null;
+      };
+      var end = function (e) {
+        fb.removeEventListener('pointermove', move); fb.removeEventListener('pointerup', end); fb.removeEventListener('pointercancel', end);
+        if (!dragging) return;          /* a plain tap: the fan stays open for taps */
+        var t = document.elementFromPoint(e.clientX, e.clientY); t = t && t.closest('.sector,.pill');
+        if (t && t.classList.contains('pill')) { act(inst, t); if (inst.st.panel) closePanel(inst); }
+        else if (t && t.dataset.p === 'history') act(inst, t);
+        else if (!t) closePanel(inst);
+      };
+      fb.addEventListener('pointermove', move); fb.addEventListener('pointerup', end); fb.addEventListener('pointercancel', end);
+    }
+  });
+}
+
+/* ---------- Page ---------- */
+function frameCard(concept, dev, s, sec) {
+  var el = sec.querySelector('.dev[data-k="' + dev.key + '"]'), wrap = el.parentNode, card = wrap.parentNode;
+  card.style.margin = '0';
+  el.style.width = dev.w + 'px'; el.style.height = dev.h + 'px';
+  card.querySelector('.fcap').textContent = dev.cap;
+  var inst = { el: el, wrap: wrap, card: card, dev: dev, st: newState(concept.key, dev, s) };
+  INST.push(inst);
+  return inst;
+}
+function fit() {
+  INST.forEach(function (inst) {
+    var avail = inst.card.parentNode ? inst.card.parentNode.clientWidth : inst.dev.w;
+    var s = Math.min(1, avail / inst.dev.w); inst.scale = s;
+    inst.el.style.transform = s < 1 ? 'scale(' + s + ')' : '';
+    inst.wrap.style.width = (inst.dev.w * s) + 'px'; inst.wrap.style.height = (inst.dev.h * s) + 'px';
+  });
+}
+function build() {
+  H = readHash();
+  var s = H.s || 'list';
+  document.getElementById('stateSel').value = s;
+  applyTheme(H.t);
+  document.getElementById('labelsChk').checked = H.l !== '0';
+  document.body.classList.toggle('nolabels', H.l === '0');
+  (H.h || '').split(',').forEach(function (k) { if (k) hidden[k] = true; });
+  INST = [];
+  CONCEPTS.forEach(function (c) {
+    var sec = document.querySelector('.concept[data-c="' + c.key + '"]');
+    sec.hidden = !!hidden[c.key] || !!(H.c && H.c !== c.key);
+    sec.querySelector('h2').textContent = c.name;
+    sec.querySelector('.chead p').textContent = c.idea;
+    sec.querySelector('[data-hide]').textContent = 'Hide ' + c.name;
+    DEVS.forEach(function (d) { frameCard(c, d, s, sec); });
+  });
+  fit();
+  INST.forEach(function (inst) { inst.el._inst = inst; inst.el.innerHTML = ''; buildFrame(inst); if (!inst.el.dataset.wired) { wire(inst); inst.el.dataset.wired = '1'; } });
+  hiddenBar();
+  if (H.c) { var f = document.getElementById('opt-' + H.c); if (f) f.scrollIntoView({ block: 'start' }); }
+  if (H.selftest) selftest();
+}
+function hiddenBar() {
+  var bar = document.getElementById('hiddenBar'), ks = Object.keys(hidden).filter(function (k) { return hidden[k]; });
+  bar.hidden = !ks.length;
+  bar.innerHTML = ks.length ? 'Hidden: ' + ks.map(function (k) { var c = CONCEPTS.filter(function (x) { return x.key === k; })[0]; return '<button class="btn" data-unhide="' + k + '">Show ' + (c ? c.name : k) + '</button>'; }).join('') : '';
+}
+document.addEventListener('click', function (e) {
+  var hb = e.target.closest('[data-hide]'), ub = e.target.closest('[data-unhide]'), tb = e.target.closest('#themeSeg button');
+  if (hb) { hidden[hb.dataset.hide] = true; document.querySelector('.concept[data-c="' + hb.dataset.hide + '"]').hidden = true; hiddenBar(); var h = readHash(); h.h = Object.keys(hidden).filter(function (k) { return hidden[k]; }).join(','); writeHash(h); }
+  if (ub) { hidden[ub.dataset.unhide] = false; var sec = document.querySelector('.concept[data-c="' + ub.dataset.unhide + '"]'); sec.hidden = false; hiddenBar(); fit(); var h2 = readHash(); h2.h = Object.keys(hidden).filter(function (k) { return hidden[k]; }).join(','); writeHash(h2); }
+  if (tb) { var h3 = readHash(); h3.t = tb.dataset.t === 'auto' ? '' : tb.dataset.t; writeHash(h3); applyTheme(h3.t); }
+});
+document.getElementById('stateSel').addEventListener('change', function (e) { var h = readHash(); h.s = e.target.value; writeHash(h); build(); });
+document.getElementById('labelsChk').addEventListener('change', function (e) { var h = readHash(); h.l = e.target.checked ? '' : '0'; writeHash(h); document.body.classList.toggle('nolabels', !e.target.checked); });
+window.addEventListener('hashchange', build);
+var rt; window.addEventListener('resize', function () { clearTimeout(rt); rt = setTimeout(fit, 80); });
+
+/* ---------- Self test: #selftest=1 writes PASS or FAIL into the title ---------- */
+function selftest() {
+  var fails = [], checks = 0;
+  function tracked(inst) { return inst.el.querySelector('.row.looked') || inst.el.querySelector('.row'); }
+  function same(inst, what, fn) {
+    var ls = inst.el.querySelector('[data-pg="1"] .list-scroll'); var r = tracked(inst); var t0 = r.getBoundingClientRect().top, s0 = ls.scrollTop;
+    fn();
+    var r2 = inst.el.querySelector('.row[data-id="' + r.dataset.id + '"]'); checks++;
+    if (!r2 || Math.abs(r2.getBoundingClientRect().top - t0) > 0.5 || ls.scrollTop !== s0) fails.push(inst.st.concept + '/' + inst.dev.key + ': ' + what);
+  }
+  function click(inst, sel) { var e = inst.el.querySelector(sel); if (!e) { fails.push(inst.st.concept + '/' + inst.dev.key + ': missing ' + sel); return; } e.click(); }
+  INST.forEach(function (inst) {
+    var ls = inst.el.querySelector('[data-pg="1"] .list-scroll'); ls.scrollTop = 120;
+    var st = inst.st, d = inst.dev;
+    if (st.concept === 'thumb-sheet' && !d.dual && !d.ax) {
+      PANELS.forEach(function (p) {
+        same(inst, 'open ' + p[0], function () { closePanel(inst); click(inst, '.tb[data-p="' + p[0] + '"]'); });
+        same(inst, 'close ' + p[0] + ' by same button', function () { click(inst, '.tb[data-p="' + p[0] + '"]'); });
+        same(inst, 'close ' + p[0] + ' by tap outside', function () { click(inst, '.tb[data-p="' + p[0] + '"]'); click(inst, '.catcher'); });
+        same(inst, 'close ' + p[0] + ' by x', function () { click(inst, '.tb[data-p="' + p[0] + '"]'); click(inst, '.xbtn'); });
+      });
+      same(inst, 'grabber to large detent and back', function () { click(inst, '.tb[data-p="history"]'); click(inst, '.grabber'); click(inst, '.grabber'); click(inst, '.xbtn'); });
+      same(inst, 'switch panel in one tap', function () { click(inst, '.tb[data-p="sort"]'); click(inst, '.tb[data-p="show"]'); });
+      checks++; if (!inst.el.querySelector('.sheet') || inst.el.querySelectorAll('.sheet').length !== 1) fails.push('thumb-sheet/' + d.key + ': switch did not leave one sheet');
+      closePanel(inst);
+    }
+    if (st.concept === 'thumb-sheet' && d.ax) {
+      same(inst, 'ax open menu', function () { closePanel(inst); click(inst, '[data-act="axmenu"]'); click(inst, '[data-act="axgo"][data-p="filter"]'); });
+      same(inst, 'ax close', function () { click(inst, '.xbtn'); });
+    }
+    if (st.concept === 'thumb-sheet' && d.dual) {
+      PANELS.forEach(function (p) { same(inst, 'page 2 ' + p[0], function () { click(inst, '[data-act="seg"][data-p="' + p[0] + '"]'); }); });
+    }
+    if (st.concept === 'corner-fan') {
+      var secs = d.dual ? ['sort', 'filter', 'show'] : ['sort', 'filter', 'show', 'history'];
+      secs.forEach(function (p) {
+        same(inst, 'fan ' + p, function () { closePanel(inst); click(inst, '.fanbtn'); click(inst, '[data-act="sector"][data-p="' + p + '"]'); });
+        same(inst, 'fan close ' + p + ' by button', function () { click(inst, '.fanbtn'); });
+        same(inst, 'fan close ' + p + ' by tap outside', function () { click(inst, '.fanbtn'); click(inst, '[data-act="sector"][data-p="' + p + '"]'); click(inst, '.fanlayer'); });
+      });
+    }
+    if (d.dual) {   /* nothing sits across the hinge */
+      var hb = inst.el.querySelector('.hingebar').getBoundingClientRect(), s = inst.scale || 1;
+      Array.prototype.forEach.call(inst.el.querySelectorAll('.pg *'), function (n) {
+        var r = n.getBoundingClientRect(); if (!r.width || !r.height) return;
+        var pg = n.closest('.pg').getBoundingClientRect();
+        var vis = Math.min(r.right, pg.right) - Math.max(r.left, pg.left);
+        if (vis > 0 && Math.min(r.right, pg.right) > hb.left + 0.5 && Math.max(r.left, pg.left) < hb.right - 0.5) { fails.push(inst.st.concept + ': across hinge ' + n.className); }
+      });
+      checks++;
+    }
+    closePanel(inst);
+  });
+  checks++; if (document.documentElement.scrollWidth > window.innerWidth + 1) fails.push('page scrolls sideways: ' + document.documentElement.scrollWidth + ' > ' + window.innerWidth);
+  document.title = (fails.length ? 'SELFTEST FAIL ' + fails.length + '/' + checks + ': ' + fails.slice(0, 6).join(' | ') : 'SELFTEST PASS ' + checks);
+  document.body.setAttribute('data-selftest', document.title);
+}
+
+build();
+})();
+</script>
+</body>
+</html>

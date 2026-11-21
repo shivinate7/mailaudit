@@ -1,0 +1,762 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="color-scheme" content="light dark">
+<title>Envelope photos</title>
+<style>
+/* Tokens. Space on the 4 px step (house tokens.md). Colour by role, light and dark sets, my own values:
+   tokens.md gives no colour. Type sizes are Apple Dynamic Type styles, default (Large) and AX5, in pt. */
+:root{
+  --space-1:4px;--space-2:8px;--space-3:12px;--space-4:16px;--space-5:20px;--space-6:24px;
+  --space-8:32px;--space-10:40px;--space-11:44px;--space-12:48px;--space-14:56px;--space-18:72px;
+  --radius:8px;
+  --page:#DCE2E0;--surface:#F1F4F3;--raised:#FFFFFF;--sunk:#E2E8E6;--text:#17201E;--muted:#55615E;
+  --line:#C7D0CD;--accent:#3A3FB0;--on-accent:#FFFFFF;--accent-soft:#E1E2F7;--danger:#B42318;
+  --annot:#A3197C;--banner:#FFF1B8;--banner-text:#3D3000;--bezel:#26302D;--scrim:rgba(16,22,20,.38);
+  --cam-bg:#15181B;--cam-raised:#262B2F;--cam-text:#F2F4F5;--cam-muted:#A8B0B5;
+  --status:24px;--home:20px;
+  --font:-apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    --page:#0D1211;--surface:#111716;--raised:#1B2321;--sunk:#0A0F0E;--text:#E3EAE8;--muted:#9AA7A4;
+    --line:#2E3936;--accent:#A9ACFF;--on-accent:#12153F;--accent-soft:#272A55;--danger:#FF8A80;
+    --annot:#F08CD0;--banner:#3D3412;--banner-text:#FFE9A0;--bezel:#3A4542;--scrim:rgba(0,0,0,.55);
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0D1211;--surface:#111716;--raised:#1B2321;--sunk:#0A0F0E;--text:#E3EAE8;--muted:#9AA7A4;
+  --line:#2E3936;--accent:#A9ACFF;--on-accent:#12153F;--accent-soft:#272A55;--danger:#FF8A80;
+  --annot:#F08CD0;--banner:#3D3412;--banner-text:#FFE9A0;--bezel:#3A4542;--scrim:rgba(0,0,0,.55);
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--text);font-family:var(--font);font-size:100%;line-height:1.4;
+  padding-left:env(safe-area-inset-left);padding-right:env(safe-area-inset-right)}
+button,input,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+/* Page chrome, outside the devices */
+.banner{position:sticky;top:0;z-index:50;background:var(--banner);color:var(--banner-text);
+  padding:var(--space-2) var(--space-4);font-size:.9375rem;text-align:center}
+.top{display:flex;flex-direction:column;gap:var(--space-3);padding:var(--space-4);max-width:72rem;margin-inline:auto}
+.top h1{margin:0;font-size:1.5rem;line-height:1.2}
+.kind{margin:0;color:var(--muted);font-size:.9375rem}
+.ctl-row{display:flex;flex-wrap:wrap;align-items:center;gap:var(--space-2)}
+.ctl-row > .ctl-label{color:var(--muted);font-size:.875rem;min-width:4.5rem}
+.seg{border:1px solid var(--line);background:var(--raised);border-radius:var(--radius);
+  padding:var(--space-1) var(--space-3);min-height:32px;font-size:.875rem}
+.seg[aria-pressed="true"]{background:var(--accent);color:var(--on-accent);border-color:var(--accent)}
+.concept-tab{display:inline-flex;align-items:stretch;border:1px solid var(--line);border-radius:var(--radius);overflow:hidden;background:var(--raised)}
+.concept-tab button{border:0;background:none;padding:var(--space-2) var(--space-3);min-height:40px}
+.concept-tab .pick[aria-pressed="true"]{background:var(--accent);color:var(--on-accent)}
+.concept-tab .hide{border-left:1px solid var(--line);color:var(--muted);font-size:.8125rem}
+.blurb{margin:0;max-width:64ch}
+.hidden-note{margin:0;color:var(--muted);font-size:.875rem}
+.stage{display:flex;flex-wrap:wrap;gap:var(--space-8);padding:var(--space-4) var(--space-4) var(--space-18);
+  max-width:120rem;margin-inline:auto;align-items:flex-start}
+.fig{margin:0;display:flex;flex-direction:column;gap:var(--space-2);max-width:100%}
+.fig figcaption{font-size:.875rem;color:var(--muted)}
+.scrollx{overflow-x:auto;max-width:100%;padding:var(--space-1)}
+.fig[hidden]{display:none}
+
+/* Device frames. 1 CSS px stands for 1 pt. */
+.device{position:relative;border:10px solid var(--bezel);border-radius:28px;overflow:hidden;background:var(--surface);
+  box-sizing:content-box;color:var(--text);font-family:var(--font);
+  --lt:34px;--lt-lh:41px;--t2:22px;--t2-lh:28px;--t3:20px;--t3-lh:25px;--hl:17px;--hl-lh:22px;--body:17px;--body-lh:22px;
+  --callout:16px;--callout-lh:21px;--sub:15px;--sub-lh:20px;--foot:13px;--foot-lh:18px;--cap:12px;--cap-lh:16px;--cap2:11px;--cap2-lh:13px;
+  font-size:var(--body);line-height:var(--body-lh)}
+.device.ax{--lt:60px;--lt-lh:70px;--t2:56px;--t2-lh:66px;--t3:55px;--t3-lh:65px;--hl:53px;--hl-lh:62px;--body:53px;--body-lh:62px;
+  --callout:51px;--callout-lh:60px;--sub:49px;--sub-lh:58px;--foot:44px;--foot-lh:52px;--cap:43px;--cap-lh:51px;--cap2:40px;--cap2-lh:48px}
+.device.fluid{width:100%;min-width:320px;max-width:none;aspect-ratio:9/19.5;resize:horizontal}
+.phone-host{width:min(100%,30rem);min-width:320px}
+
+.pg{position:relative;display:flex;flex-direction:column;height:100%;background:var(--surface);overflow:hidden}
+.pg-dark{background:var(--cam-bg);color:var(--cam-text)}
+.status{flex:none;height:max(var(--status), env(safe-area-inset-top));display:flex;justify-content:space-between;align-items:center;
+  padding:0 var(--space-6);font-size:12px;font-weight:600}
+.status svg{width:24px;height:12px}
+.body{position:relative;flex:1;min-height:0;display:flex;flex-direction:column}
+.homeind{flex:none;height:max(var(--home), env(safe-area-inset-bottom));display:grid;place-items:center}
+.homeind span{width:120px;height:4px;border-radius:2px;background:currentColor;opacity:.35}
+.duo{display:grid;grid-template-columns:455.5px 40px 455.5px;height:100%}
+.hinge{background:repeating-linear-gradient(90deg,var(--bezel) 0 6px,#000 6px 8px);}
+.scroll{overflow-y:auto;overscroll-behavior:contain;flex:1;min-height:0}
+
+/* Navigation bar */
+.nb{display:flex;flex-direction:column;gap:var(--space-1);padding:0 var(--space-4) var(--space-3)}
+.nb-bar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:44px}
+.nb-lead{justify-self:start}.nb-trail{justify-self:end;display:flex;gap:var(--space-1)}
+.nb-title{font-size:var(--hl);line-height:var(--hl-lh);font-weight:600;text-align:center}
+.lt{margin:0;font-size:var(--lt);line-height:var(--lt-lh);font-weight:700}
+.nb-sub{margin:0;color:var(--muted);font-size:var(--sub);line-height:var(--sub-lh)}
+.nb-btn,.nb-back{border:0;background:none;color:var(--accent);font-size:var(--body);min-height:44px;min-width:44px;
+  display:inline-flex;align-items:center;gap:var(--space-1);padding:0 var(--space-1)}
+.nb-back{margin-left:calc(-1 * var(--space-2))}
+.nb-btn svg,.nb-back svg{width:24px;height:24px;flex:none}
+.nb-btn[aria-disabled="true"]{color:var(--muted)}
+
+/* Shared parts */
+.ph{display:block;width:100%;height:100%;background:var(--sunk);overflow:hidden}
+.ph svg{display:block;width:100%;height:100%}
+.ph.failed{display:grid;place-items:center;color:var(--muted)}
+.ph.failed svg{width:40%;height:40%;max-width:28px;max-height:28px}
+.pip{position:absolute;right:var(--space-1);bottom:var(--space-1);min-width:20px;height:20px;padding:0 var(--space-1);border-radius:10px;
+  background:rgba(10,14,13,.72);color:#fff;font-size:12px;line-height:20px;font-weight:600;text-align:center}
+.none-box{display:grid;place-items:center;border:2px dashed var(--line);border-radius:var(--radius);color:var(--muted)}
+.none-box svg{width:24px;height:24px}
+.btn-fill{border:0;border-radius:var(--radius);background:var(--accent);color:var(--on-accent);font-weight:600;
+  min-height:50px;padding:0 var(--space-5);font-size:var(--body)}
+.btn-tint{border:0;border-radius:var(--radius);background:var(--accent-soft);color:var(--accent);font-weight:600;
+  min-height:44px;padding:0 var(--space-4);font-size:var(--body)}
+.btn-tint[aria-disabled="true"]{color:var(--muted);background:var(--sunk)}
+.sec{margin:0;font-size:var(--foot);line-height:var(--foot-lh);font-weight:600;color:var(--muted)}
+.grp{display:flex;flex-direction:column;gap:var(--space-2)}
+.stack{display:flex;flex-direction:column;gap:var(--space-6)}
+.detail{padding:var(--space-2) var(--space-4) var(--space-8)}
+.note{width:100%;min-height:88px;resize:vertical;border:1px solid var(--line);border-radius:var(--radius);background:var(--raised);
+  padding:var(--space-3);font-size:var(--body);line-height:var(--body-lh)}
+.cards{list-style:none;margin:0;padding:0;border-radius:var(--radius);background:var(--raised);border:1px solid var(--line)}
+.cards:empty{display:none}
+.card-row{display:flex;align-items:center;gap:var(--space-2);padding-left:var(--space-3);min-height:44px}
+.card-row + .card-row{border-top:1px solid var(--line)}
+.card-row span{flex:1;min-width:0;overflow-wrap:anywhere}
+.icon-btn{border:0;background:none;min-width:44px;min-height:44px;display:grid;place-items:center;color:var(--muted)}
+.icon-btn svg{width:20px;height:20px}
+.add-card{display:flex;gap:var(--space-2)}
+.add-card input{flex:1;min-width:0;min-height:44px;border:1px solid var(--line);border-radius:var(--radius);background:var(--raised);
+  padding:0 var(--space-3);font-size:var(--body)}
+.hint{margin:0;color:var(--muted);font-size:var(--foot);line-height:var(--foot-lh)}
+.hint.warn{color:var(--danger)}
+.failbar{display:flex;align-items:center;gap:var(--space-3);margin:0 var(--space-4) var(--space-3);padding:var(--space-2) var(--space-3);
+  border-radius:var(--radius);background:var(--raised);border:1px solid var(--line);font-size:var(--sub);line-height:var(--sub-lh)}
+.failbar p{margin:0;flex:1}
+.empty{display:flex;flex-direction:column;align-items:flex-start;gap:var(--space-4);padding:var(--space-6) var(--space-4)}
+.empty p{margin:0;max-width:30ch}
+.quiet{display:grid;place-items:center;height:100%;color:var(--muted);padding:var(--space-6);text-align:center}
+
+/* Photo grid used on detail pages */
+.pgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:var(--space-2)}
+.pgrid.two{grid-template-columns:repeat(2,1fr)}
+.ptile{position:relative;aspect-ratio:3/4;border:0;padding:0;border-radius:var(--radius);overflow:hidden;background:var(--sunk)}
+.ptile.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-2);
+  border:2px dashed var(--line);background:none;color:var(--accent);font-size:var(--sub);line-height:var(--sub-lh)}
+.ptile.add svg{width:28px;height:28px}
+.ptile.add[aria-disabled="true"]{color:var(--muted)}
+.ptile.new-shot{animation:land .45s ease-out}
+@keyframes land{from{transform:scale(.6);opacity:.2}to{transform:none;opacity:1}}
+
+/* Shelf: list rows */
+.list{list-style:none;margin:0;padding:0 0 var(--space-6)}
+.row{display:flex;align-items:center;gap:var(--space-3);width:100%;border:0;background:none;text-align:left;
+  padding:var(--space-2) var(--space-4);min-height:72px}
+.row.sel{background:var(--accent-soft)}
+.list li + li .row-text{border-top:0}
+.thumb{position:relative;flex:none;width:56px;height:56px;border-radius:var(--radius);overflow:hidden}
+.thumb.none{border:2px dashed var(--line);display:grid;place-items:center;color:var(--muted);background:none}
+.thumb.none svg{width:24px;height:24px}
+.row-text{flex:1;min-width:0;display:flex;flex-direction:column;gap:2px}
+.row-title{font-size:var(--body);line-height:var(--body-lh);overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.row-title.muted,.muted{color:var(--muted)}
+.row-meta{display:flex;gap:var(--space-3);color:var(--muted);font-size:var(--sub);line-height:var(--sub-lh)}
+.row > svg{width:16px;height:16px;color:var(--muted);flex:none}
+.ax .row{flex-direction:column;align-items:stretch}
+.ax .thumb{width:100%;height:auto;aspect-ratio:4/3}
+.ax .row-title{white-space:normal}
+.ax .row-meta{flex-direction:column;gap:0}
+.ax .row > svg{display:none}
+.ax .pgrid{grid-template-columns:1fr}
+
+/* Contact sheet */
+.cgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--space-4) var(--space-3);padding:0 var(--space-4) var(--space-6)}
+.cgrid.c3{grid-template-columns:repeat(3,1fr);gap:var(--space-3) var(--space-2)}
+.ax .cgrid{grid-template-columns:1fr}
+.cfig{display:flex;flex-direction:column;gap:var(--space-1);border:0;background:none;padding:0;text-align:left}
+.ctile{position:relative;display:block;width:100%;aspect-ratio:3/4;border-radius:var(--radius);overflow:hidden}
+.cfig.sel .ctile{outline:3px solid var(--accent);outline-offset:2px}
+.ctile.none{display:flex;flex-direction:column;gap:var(--space-2);padding:var(--space-3);border:2px dashed var(--line);
+  background:repeating-linear-gradient(135deg,transparent 0 10px,var(--sunk) 10px 11px);color:var(--muted)}
+.ctile.none svg{width:28px;height:28px;flex:none;color:var(--accent)}
+.ctile-note{font-size:var(--foot);line-height:var(--foot-lh);color:var(--text);overflow:hidden;display:-webkit-box;-webkit-line-clamp:5;-webkit-box-orient:vertical}
+.cmeta{display:flex;gap:var(--space-2);font-size:var(--foot);line-height:var(--foot-lh);color:var(--muted)}
+.cmeta b{color:var(--text);font-weight:600}
+.cs-env{position:relative;flex:1;min-height:0;display:flex;flex-direction:column;background:var(--cam-bg)}
+.pager{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;height:56%;flex:none;scrollbar-width:none}
+.pager.tall{height:52%}
+.pager::-webkit-scrollbar{display:none}
+.ppage{flex:none;width:100%;height:100%;scroll-snap-align:start;border:0;padding:0;background:none}
+.ppage .ph{background:var(--cam-bg)}
+.ppage.add{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:var(--space-2);color:var(--cam-text);font-size:var(--body)}
+.ppage.add svg{width:40px;height:40px}
+.ppage.add[aria-disabled="true"]{color:var(--cam-muted)}
+.cs-top{position:absolute;top:var(--space-2);left:var(--space-3);right:var(--space-3);display:flex;align-items:center;gap:var(--space-2);pointer-events:none}
+.cs-top > *{pointer-events:auto}
+.glass{width:44px;height:44px;border-radius:22px;border:0;background:rgba(20,24,26,.6);color:#fff;display:grid;place-items:center;backdrop-filter:blur(8px)}
+.glass svg{width:22px;height:22px}
+.glass[aria-disabled="true"]{opacity:.4}
+.glass-title{flex:1;text-align:center;color:#fff;font-weight:600;font-size:var(--hl);text-shadow:0 1px 3px rgba(0,0,0,.6)}
+.dots{position:absolute;top:calc(56% - 20px);left:0;right:0;display:flex;justify-content:center;gap:6px;pointer-events:none}
+.dots.tall{top:calc(52% - 20px)}
+.dots i{width:6px;height:6px;border-radius:3px;background:rgba(255,255,255,.45)}
+.dots i.on{background:#fff}
+.bsheet{position:absolute;left:0;right:0;bottom:0;height:46%;background:var(--surface);color:var(--text);border-radius:16px 16px 0 0;
+  display:flex;flex-direction:column;transition:height .25s ease-out;box-shadow:0 -1px 0 var(--line)}
+.bsheet.large{height:88%}
+.grabber{flex:none;height:24px;border:0;background:none;display:grid;place-items:center;width:100%}
+.grabber::before{content:"";width:36px;height:5px;border-radius:3px;background:var(--line)}
+.cs-detail{flex:1;min-height:0;overflow-y:auto;background:var(--surface);color:var(--text)}
+
+/* Viewfinder */
+.vfw{flex:1;min-height:0;display:flex;flex-direction:column;background:var(--cam-bg);color:var(--cam-text)}
+.vf{position:relative;flex:1;min-height:0;overflow:hidden;border-radius:12px;margin:0 var(--space-2)}
+.vf-scene{position:absolute;inset:0}
+.vf-scene svg{width:100%;height:100%}
+.vf-guide{position:absolute;left:12%;right:12%;top:30%;bottom:26%;border-radius:6px;
+  background:
+    linear-gradient(#fff,#fff) top left/22px 3px no-repeat,linear-gradient(#fff,#fff) top left/3px 22px no-repeat,
+    linear-gradient(#fff,#fff) top right/22px 3px no-repeat,linear-gradient(#fff,#fff) top right/3px 22px no-repeat,
+    linear-gradient(#fff,#fff) bottom left/22px 3px no-repeat,linear-gradient(#fff,#fff) bottom left/3px 22px no-repeat,
+    linear-gradient(#fff,#fff) bottom right/22px 3px no-repeat,linear-gradient(#fff,#fff) bottom right/3px 22px no-repeat}
+.vf-top{position:absolute;top:var(--space-2);left:var(--space-2);right:var(--space-2);display:flex;flex-direction:column;align-items:center;gap:var(--space-2)}
+.chip{display:inline-flex;align-items:center;gap:var(--space-2);max-width:100%;padding:var(--space-1) var(--space-3);border-radius:18px;
+  background:rgba(20,24,26,.72);color:#fff;font-size:var(--sub);line-height:var(--sub-lh);font-weight:600;backdrop-filter:blur(8px);flex-wrap:wrap;justify-content:center}
+.ax .chip-pre{display:none}
+.ax .chip{font-size:var(--foot);line-height:var(--foot-lh)}
+.meter{display:inline-flex;gap:3px}
+.meter i{width:8px;height:11px;border-radius:2px;border:1.5px solid #fff}
+.meter i.on{background:#fff}
+.flash{position:absolute;inset:0;background:#fff;opacity:0;pointer-events:none}
+.flash.go{animation:flash .35s ease-out}
+@keyframes flash{0%{opacity:.85}100%{opacity:0}}
+.strip{flex:none;display:flex;gap:var(--space-2);overflow-x:auto;padding:var(--space-2) var(--space-2) var(--space-1);scrollbar-width:none}
+.strip::-webkit-scrollbar{display:none}
+.sitem{flex:none;width:56px;display:flex;flex-direction:column;align-items:center;gap:2px;border:0;background:none;padding:0;color:inherit;font-size:11px;line-height:13px}
+.sthumb{position:relative;width:48px;height:56px;border-radius:6px;overflow:hidden;outline:2px solid transparent;outline-offset:2px}
+.sitem[aria-selected="true"] .sthumb{outline-color:var(--accent)}
+.pg-dark .sitem[aria-selected="true"] .sthumb{outline-color:#fff}
+.sthumb.none{border:2px dashed currentColor;opacity:.75;display:grid;place-items:center}
+.sthumb.none svg{width:20px;height:20px}
+.sthumb.newb{border:2px solid currentColor;display:grid;place-items:center}
+.sthumb.newb svg{width:22px;height:22px}
+.sthumb .stk{position:absolute;inset:0}
+.sthumb .pip{right:2px;bottom:2px;min-width:16px;height:16px;line-height:16px;font-size:10px}
+.slabel{opacity:.85}
+.ax .sitem{width:72px}.ax .slabel{display:none}
+.shut{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;padding:var(--space-2) var(--space-4)}
+.lastshot{justify-self:start;width:52px;height:52px;border-radius:var(--radius);overflow:hidden;border:2px solid rgba(255,255,255,.6);padding:0;background:none}
+.lastshot.empty{border-style:dashed;opacity:.5}
+.shutter{width:72px;height:72px;border-radius:50%;border:4px solid #fff;background:none;display:grid;place-items:center;padding:0}
+.shutter::after{content:"";width:58px;height:58px;border-radius:50%;background:#fff;transition:transform .1s}
+.shutter:active::after{transform:scale(.9)}
+.shutter[aria-disabled="true"]{opacity:.4}
+.detbtn{justify-self:end;display:flex;flex-direction:column;align-items:center;gap:2px;min-width:52px;min-height:52px;border:0;background:none;color:#fff;font-size:11px;position:relative}
+.detbtn svg{width:26px;height:26px}
+.detbtn .badge{position:absolute;top:-2px;right:2px;min-width:18px;height:18px;border-radius:9px;background:#fff;color:#111;font-size:11px;line-height:18px;font-weight:700;padding:0 4px}
+.capnote{flex:none;margin:0;padding:0 var(--space-4) var(--space-1);text-align:center;font-size:var(--foot);line-height:var(--foot-lh);color:var(--cam-muted)}
+.ax .capnote{font-size:var(--cap2);line-height:var(--cap2-lh)}
+.vf-fail{display:flex;align-items:center;gap:var(--space-2);background:rgba(20,24,26,.82);color:#fff;border-radius:var(--radius);padding:var(--space-1) var(--space-1) var(--space-1) var(--space-3);font-size:var(--foot)}
+.vf-fail button{border:0;border-radius:6px;background:#fff;color:#111;min-height:32px;padding:0 var(--space-3);font-weight:600}
+.ledger-strip{border-bottom:1px solid var(--line)}
+.ledger-strip .sitem{color:var(--text)}
+.ledger-head{display:flex;align-items:center;justify-content:space-between;gap:var(--space-3)}
+.ledger-head h2{margin:0;font-size:var(--t3);line-height:var(--t3-lh)}
+
+/* Tab bar: floats above the content (Apple tab-bars page) */
+.tabbar{flex:none;align-self:center;display:flex;gap:var(--space-1);margin:var(--space-1) 0 0;padding:var(--space-1);border-radius:28px;
+  background:var(--raised);border:1px solid var(--line);box-shadow:0 2px 10px rgba(0,0,0,.08)}
+.pg-dark .tabbar{background:var(--cam-raised);border-color:#3a4045;color:var(--cam-text)}
+.tab{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:1px;min-width:88px;min-height:48px;border:0;border-radius:24px;background:none;
+  font-size:10px;line-height:12px;font-weight:600;color:var(--muted)}
+.pg-dark .tab{color:var(--cam-muted)}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent);background:var(--accent-soft)}
+.pg-dark .tab[aria-current="page"]{color:#fff;background:#3a4045}
+.ax .tab span{display:none}.ax .tab{min-width:64px}
+
+/* Viewer, sheets, toast */
+.viewer{position:absolute;inset:0;z-index:30;background:#0E1012;color:#F2F4F5;display:flex;flex-direction:column;
+  padding-top:max(var(--status), env(safe-area-inset-top));padding-bottom:max(var(--home), env(safe-area-inset-bottom))}
+.v-bar{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:44px;padding:0 var(--space-2)}
+.v-btn{border:0;background:none;color:#fff;min-height:44px;min-width:44px;font-size:var(--body);display:grid;place-items:center;padding:0 var(--space-2)}
+.v-btn svg{width:24px;height:24px}
+.v-title{font-weight:600;font-size:var(--hl)}
+.v-trail{justify-self:end;position:relative}
+.v-stage{position:relative;flex:1;min-height:0;overflow:hidden;touch-action:none;cursor:zoom-in}
+.v-stage.zoomed{cursor:grab}
+.v-img{position:absolute;inset:0;transform-origin:50% 50%}
+.v-img .ph{background:none}
+.v-zoom{position:absolute;top:var(--space-2);left:var(--space-2);min-width:48px;text-align:center;padding:2px var(--space-2);border-radius:12px;background:rgba(0,0,0,.6);
+  font-size:13px;font-weight:600;visibility:hidden}
+.v-zoom.on{visibility:visible}
+.v-thumbs{flex:none;display:flex;justify-content:center;gap:var(--space-2);padding:var(--space-2)}
+.v-thumb{width:44px;height:56px;border:0;padding:0;border-radius:6px;overflow:hidden;opacity:.55;outline:2px solid transparent;outline-offset:2px}
+.v-thumb[aria-current="true"]{opacity:1;outline-color:#fff}
+.v-hint{flex:none;margin:0;text-align:center;font-size:var(--foot);line-height:var(--foot-lh);color:#A8B0B5;padding-bottom:var(--space-1)}
+.pop{position:absolute;right:0;top:calc(100% + 6px);width:248px;max-width:calc(100vw - 32px);z-index:5;background:#2A2F33;color:#fff;border-radius:12px;padding:var(--space-3);
+  display:flex;flex-direction:column;gap:var(--space-2);box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.ax .pop{width:420px}
+.pop p{margin:0}.pop-t{font-weight:600}.pop-s{color:#C9CFD3;font-size:var(--sub);line-height:var(--sub-lh)}
+.pop-row{display:flex;gap:var(--space-2)}
+.pop-row button{flex:1;min-height:44px;border:0;border-radius:var(--radius);background:#3B4146;color:#fff;font-weight:600}
+.pop-row .danger{background:#C9302C}
+.scrim{position:absolute;inset:0;z-index:35;background:var(--scrim)}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:var(--space-10);z-index:36;background:var(--surface);color:var(--text);border-radius:16px 16px 0 0;
+  display:flex;flex-direction:column;box-shadow:0 -8px 24px rgba(0,0,0,.2)}
+.sheet-bar{flex:none;display:grid;grid-template-columns:1fr auto 1fr;align-items:center;min-height:52px;padding:0 var(--space-2);border-bottom:1px solid var(--line)}
+.sheet-bar h2{margin:0;font-size:var(--hl);line-height:var(--hl-lh);text-align:center}
+.sheet-bar > :last-child{justify-self:end}
+.sheet-bar button{font-weight:400}
+.sheet-bar .strong{font-weight:600}
+.sheet-body{padding:var(--space-4)}
+.ax .sheet-bar{grid-template-columns:auto 1fr auto}
+.olist{list-style:none;margin:0;padding:0;border:1px solid var(--line);border-radius:var(--radius);background:var(--raised)}
+.olist li + li{border-top:1px solid var(--line)}
+.orow{display:flex;align-items:center;gap:var(--space-3);width:100%;border:0;background:none;text-align:left;padding:var(--space-3);min-height:60px}
+.orow-txt{flex:1;display:flex;flex-direction:column;gap:2px}
+.orow-t{font-size:var(--body);line-height:var(--body-lh)}
+.orow-m{font-size:var(--sub);line-height:var(--sub-lh);color:var(--muted)}
+.orow svg{width:22px;height:22px;color:var(--accent);flex:none}
+.orow .tick{width:22px;flex:none}
+.toast{position:absolute;left:var(--space-4);right:var(--space-4);bottom:calc(var(--home) + 76px);z-index:40;display:flex;align-items:center;gap:var(--space-3);
+  background:#22282B;color:#fff;border-radius:12px;padding:var(--space-2) var(--space-2) var(--space-2) var(--space-4);font-size:var(--sub);line-height:var(--sub-lh)}
+.toast p{margin:0;flex:1}
+.toast button{border:0;background:none;color:#B9BCFF;font-weight:600;min-height:44px;padding:0 var(--space-3)}
+.toast.right{bottom:calc(var(--home) + var(--space-4))}
+
+/* "New:" labels. As a blind designer I saw no current screen, so nothing is marked "Today:". */
+.ann [data-new]{outline:2px dashed var(--annot);outline-offset:-2px}
+.ann [data-new]:not(.vf):not(.bsheet){position:relative}
+.ann [data-new]::after{content:"New: " attr(data-new);position:absolute;top:0;right:0;transform:translateY(-100%);z-index:3;padding:1px 6px;border:1px dashed var(--annot);
+  border-radius:4px;background:var(--surface);color:var(--annot);font:600 11px/15px var(--font);pointer-events:none}
+.ann .vf[data-new]::after{transform:none;top:auto;left:4px;right:auto;bottom:4px}
+.ann .cs-env[data-new]::after{transform:none;top:60px;left:12px;right:auto}
+
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+@media (forced-colors: active){.none-box,.thumb.none,.ctile.none,.ptile.add{border-color:CanvasText}.seg[aria-pressed="true"]{outline:2px solid Highlight}}
+</style>
+</head>
+<body>
+<div class="banner" role="note"><strong>Sample.</strong> No date, seller, card, note or photo on this page is real.</div>
+<header class="top">
+  <h1>Envelope photos</h1>
+  <p class="kind">Designer kind: blind. Designer: envelope-photos-blind-1. Three concepts; hide any one with its Hide button.</p>
+  <div class="ctl-row" id="concepts" aria-label="Concepts"></div>
+  <p class="blurb" id="blurb"></p>
+  <div class="ctl-row" id="states"><span class="ctl-label">State</span></div>
+  <div class="ctl-row" id="devices"><span class="ctl-label">Device</span></div>
+  <div class="ctl-row" id="themes"><span class="ctl-label">Theme</span></div>
+  <div class="ctl-row"><span class="ctl-label">Labels</span><button class="seg" id="annBtn" aria-pressed="true">Show "New:" labels</button>
+    <button class="seg" id="resetBtn">Reset sample data</button></div>
+</header>
+<main class="stage" id="stage">
+  <figure class="fig" data-fig="folded"><figcaption>Duo folded, 466 x 678 pt (brief's size)</figcaption>
+    <div class="scrollx"><div class="device" data-device="iphone-duo-folded" data-frame="folded" style="width:466px;height:678px"></div></div></figure>
+  <figure class="fig" data-fig="open"><figcaption>Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief's size)</figcaption>
+    <div class="scrollx"><div class="device" data-device="iphone-duo-unfolded" data-frame="open" style="width:951px;height:669px"></div></div></figure>
+  <figure class="fig" data-fig="phone"><figcaption>Large phone: no size written anywhere, so the frame is fluid. Drag its corner.</figcaption>
+    <div class="scrollx"><div class="phone-host"><div class="device fluid" data-device="iphone-large" data-frame="phone"></div></div></div></figure>
+  <figure class="fig" data-fig="ax"><figcaption>Duo folded at the largest accessibility text size (AX5)</figcaption>
+    <div class="scrollx"><div class="device ax" data-device="iphone-duo-folded-ax5" data-frame="ax" style="width:466px;height:678px"></div></div></figure>
+</main>
+<script>
+"use strict";
+/* ---------- icons (my own line drawings) ---------- */
+const sv=(d,extra='')=>`<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" ${extra}>${d}</svg>`;
+const I={
+  plus:sv('<path d="M12 5v14M5 12h14"/>'),
+  camPlus:sv('<path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.2"/><path d="M19.5 2.5v5M17 5h5"/>'),
+  cam:sv('<path d="M4 8h3l2-2.5h6L17 8h3v11H4z"/><circle cx="12" cy="13.5" r="3.2"/>'),
+  chev:sv('<path d="M9 5l7 7-7 7"/>'),
+  chevL:sv('<path d="M15 5l-7 7 7 7"/>'),
+  up:sv('<path d="M6 15l6-6 6 6"/>'),
+  down:sv('<path d="M6 9l6 6 6-6"/>'),
+  x:sv('<path d="M7 7l10 10M17 7L7 17"/>'),
+  trash:sv('<path d="M4 7h16M10 7V4.5h4V7M6.5 7l1 13h9l1-13M10 11v6M14 11v6"/>'),
+  warn:sv('<path d="M12 4l9 16H3z"/><path d="M12 10v4M12 17.2v.1"/>'),
+  note:sv('<path d="M6 3.5h9l3.5 3.5v13.5H6z"/><path d="M9 11h6M9 14.5h6M9 18h3"/>'),
+  check:sv('<path d="M5 12.5l4.5 4.5L19 7.5"/>'),
+  env:sv('<rect x="3" y="6" width="18" height="13" rx="1.5"/><path d="M3.5 7l8.5 6.5L20.5 7"/>'),
+  box:sv('<path d="M4 8l8-4 8 4v9l-8 4-8-4z"/><path d="M4 8l8 4 8-4M12 12v9"/>'),
+  batt:'<svg viewBox="0 0 24 12" aria-hidden="true"><rect x="1" y="1" width="19" height="10" rx="2.5" fill="none" stroke="currentColor"/><rect x="3" y="3" width="13" height="6" rx="1" fill="currentColor"/><rect x="21" y="4" width="2" height="4" rx="1" fill="currentColor"/></svg>'
+};
+/* ---------- sample photos: drawn envelopes, seeded ---------- */
+function rng(seed){let s=(seed*7919)%233280;return()=>{s=(s*9301+49297)%233280;return s/233280}}
+const photoCache={};
+function photoSVG(seed,fit){
+  const key=seed+fit; if(photoCache[key])return photoCache[key];
+  const r=rng(seed+3);
+  const pick=a=>a[Math.floor(r()*a.length)];
+  const desk=pick(['#5f5346','#3c4850','#7d8471','#584a5c','#8a6f52','#46524a']);
+  const paper=pick(['#f4f2ea','#e6d7b9','#cde0d2','#efdfe5','#d6e1ee','#fbfbf7']);
+  const ink=pick(['#1f3a8a','#2a2a2a','#5a2a82','#0f5132']);
+  const stamp=pick(['#c0392b','#2e7d6b','#d4a017','#3b5ba5','#8e44ad']);
+  const rot=(r()*12-6).toFixed(1);
+  const bubble=seed%4===2;
+  let lines='';
+  for(let i=0;i<3;i++){let y=214+i*24,x=78+r()*10,d=`M${x.toFixed(1)} ${y}`;const n=8+Math.floor(r()*6);
+    for(let k=0;k<n;k++){const nx=x+8+r()*5;d+=` Q${(x+nx)/2} ${(y-7-r()*7).toFixed(1)} ${nx.toFixed(1)} ${(y+r()*4-2).toFixed(1)}`;x=nx}
+    lines+=`<path d="${d}" fill="none" stroke="${ink}" stroke-width="2.2" stroke-linecap="round" opacity=".85"/>`}
+  let wave='';for(let i=0;i<4;i++){const y=142+i*8;wave+=`<path d="M150 ${y} q8 -5 16 0 t16 0 t16 0 t16 0" fill="none" stroke="${ink}" stroke-width="1.6" opacity=".5"/>`}
+  const tex=bubble?`<g opacity=".18">${Array.from({length:40},(_,i)=>`<circle cx="${40+(i%10)*24}" cy="${124+Math.floor(i/10)*40}" r="9" fill="none" stroke="#000"/>`).join('')}</g>`:'';
+  const svg=`<svg viewBox="0 0 300 400" preserveAspectRatio="xMidYMid ${fit==='meet'?'meet':'slice'}" aria-hidden="true">
+<rect width="300" height="400" fill="${desk}"/><rect width="300" height="400" fill="url(#g${seed})" opacity=".35"/>
+<defs><radialGradient id="g${seed}"><stop offset="0" stop-color="#fff"/><stop offset="1" stop-color="#000"/></radialGradient></defs>
+<g transform="rotate(${rot} 150 200)"><rect x="34" y="118" width="240" height="172" rx="4" fill="#000" opacity=".25"/>
+<rect x="28" y="110" width="244" height="172" rx="4" fill="${bubble?'#f3ecd2':paper}"/>${tex}
+<rect x="214" y="122" width="44" height="54" fill="#fff"/><rect x="218" y="126" width="36" height="46" fill="${stamp}"/>
+<circle cx="236" cy="146" r="9" fill="#fff" opacity=".55"/>
+<circle cx="198" cy="150" r="22" fill="none" stroke="${ink}" stroke-width="1.8" opacity=".5"/>${wave}${lines}</g></svg>`;
+  photoCache[key]=svg;return svg;
+}
+/* ---------- sample data: data shapes from the brief ---------- */
+const MAX=4;
+const SAMPLE=[
+  {id:'e1',arrived:'2026-11-18',photos:[{seed:1},{seed:2}],note:'Small white envelope, blue ballpoint, lighthouse stamp. Postmark smudged.',cards:['Lantern Moth','Tidecaller Rune','Tidecaller Rune']},
+  {id:'e2',arrived:'2026-11-18',photos:[],note:'Bubble mailer, printed label torn off.',cards:['Copper Sentinel']},
+  {id:'e3',arrived:'2026-11-17',photos:[{seed:3}],note:'',cards:[]},
+  {id:'e4',arrived:'2026-11-15',photos:[{seed:4},{seed:5},{seed:6}],note:'Green envelope. "Thank you!" written on the back flap.',cards:['Ashen Wyrmling','Quiet Orchard','Mirefen Scout','Glass Heron']},
+  {id:'e5',arrived:'2026-11-14',photos:[],note:'',cards:['Saltmarsh Toll']},
+  {id:'e6',arrived:'2026-11-12',photos:[{seed:7}],note:'Two cards in one toploader, taped shut.',cards:['Ember Lattice','Hollow Bell']}
+];
+const ORDERS=[
+  {id:'o1',seller:'Northgate Cards',placed:'Nov 9',total:3,waiting:2},
+  {id:'o2',seller:'Little Kestrel Games',placed:'Nov 8',total:5,waiting:4},
+  {id:'o3',seller:'Two Rivers TCG',placed:'Nov 6',total:2,waiting:1},
+  {id:'o4',seller:'Brightfold Supply',placed:'Nov 3',total:1,waiting:1}
+];
+let DATA=[],failed=false,LIVE=11,NEXTID=7,LAST=null;
+const clone=o=>JSON.parse(JSON.stringify(o));
+const MON=['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+const fmt=d=>{const [y,m,dd]=d.split('-');return MON[+m-1]+' '+(+dd)};
+const esc=s=>String(s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const cardsN=n=>n===1?'1 card':n+' cards';
+/* An envelope's name is its arrival day. Two on one day get a number in the order they were made. */
+function envName(e){const same=DATA.filter(x=>x.arrived===e.arrived).sort((a,b)=>+a.id.slice(1)-+b.id.slice(1));
+  return same.length>1?`${fmt(e.arrived)} (${same.indexOf(e)+1})`:fmt(e.arrived)}
+function ph(p,fit){return failed?`<span class="ph failed" role="img" aria-label="Photo did not load">${I.warn}</span>`:`<span class="ph">${photoSVG(p.seed,fit||'slice')}</span>`}
+function newEnv(){const e={id:'e'+(NEXTID++),arrived:'2026-11-21',photos:[],note:'',cards:[]};DATA.unshift(e);return e}
+function newPhoto(){return {seed:LIVE++}}
+
+/* ---------- page state ---------- */
+const CONCEPTS={
+  shelf:{name:'Shelf',blurb:'A list you scan, then one page per envelope. A dashed square in the list marks an envelope with no photo yet. The familiar shape.'},
+  sheet:{name:'Contact sheet',blurb:'Photos first. The envelopes are a wall of pictures, and one with no photo is a dashed, ruled gap that holds its note. Opening one shows the photo full width, with its note and cards in a sheet you pull up.'},
+  finder:{name:'Viewfinder',blurb:'Bold: the screen opens on the camera, not a list. The envelopes ride a strip under the lens, and each shot goes into the one that is lit. Its note and cards sit behind Details. No checklist app of this kind opens on a camera.'}
+};
+const STATES=[['list','First screen'],['detail','Envelope'],['viewer','Photo'],['zoom','Photo zoomed'],['confirm','Delete photo'],['match','Match'],['empty','Empty'],['failed','Photos failed']];
+const DEVICES=[['all','All'],['folded','Duo folded'],['open','Duo open'],['phone','Large phone'],['ax','Folded AX5']];
+const THEMES=[['system','System'],['light','Light'],['dark','Dark']];
+const S={c:'shelf',s:'list',t:'system',d:'all',ann:true,h:[]};
+const FRAMES=['folded','open','phone','ax'];
+const FR={};
+const freshUI=()=>({screen:'home',env:null,viewer:null,confirm:false,sheet:null,pick:null,matchHint:false,detent:'medium',snap:null,toast:null,full:false,fresh:null,flash:false,cardDraft:''});
+
+function readHash(){
+  const p=new URLSearchParams(location.hash.slice(1));
+  if(CONCEPTS[p.get('c')])S.c=p.get('c');
+  if(STATES.some(x=>x[0]===p.get('s')))S.s=p.get('s');
+  if(THEMES.some(x=>x[0]===p.get('t')))S.t=p.get('t');
+  if(DEVICES.some(x=>x[0]===p.get('d')))S.d=p.get('d');
+  if(p.has('ann'))S.ann=p.get('ann')!=='0';
+  S.h=(p.get('h')||'').split(',').filter(k=>CONCEPTS[k]);
+  if(S.h.includes(S.c)){const v=Object.keys(CONCEPTS).find(k=>!S.h.includes(k));if(v)S.c=v}
+}
+function writeHash(){
+  const p=new URLSearchParams();p.set('c',S.c);p.set('s',S.s);if(S.t!=='system')p.set('t',S.t);if(S.d!=='all')p.set('d',S.d);
+  if(!S.ann)p.set('ann','0');if(S.h.length)p.set('h',S.h.join(','));
+  history.replaceState(null,'','#'+p.toString());
+}
+function applyPreset(){
+  DATA=S.s==='empty'?[]:clone(SAMPLE);failed=S.s==='failed';LAST=null;
+  for(const fk of FRAMES){
+    const ui=freshUI();FR[fk]={ui};
+    const open=fk==='open';
+    ui.env=DATA[0]?DATA[0].id:null;
+    const s=S.s;
+    if(['detail','viewer','zoom','confirm','match'].includes(s)&&S.c!=='finder')ui.screen='env';
+    if(s==='detail'&&S.c==='finder'&&!open){ui.sheet='details';ui.snap=clone(DATA[0])}
+    if(['viewer','zoom','confirm'].includes(s))ui.viewer={idx:0,z:s==='zoom'?2.5:1,x:s==='zoom'?-60:0,y:s==='zoom'?40:0};
+    if(s==='confirm')ui.confirm=true;
+    if(s==='match')ui.sheet='match';
+  }
+}
+const cur=ui=>DATA.find(e=>e.id===ui.env);
+function fixUI(ui,open){
+  if(!cur(ui))ui.env=DATA[0]?DATA[0].id:null;
+  const e=cur(ui);
+  if(!e){ui.screen='home';ui.viewer=null;ui.sheet=null;ui.confirm=false;return}
+  if(ui.viewer&&(!e.photos.length||failed)){ui.viewer=null;ui.confirm=false}
+  if(ui.viewer&&ui.viewer.idx>=e.photos.length)ui.viewer.idx=e.photos.length-1;
+}
+
+/* ---------- shared pieces ---------- */
+function page(body,o){
+  return `<div class="pg ${o.dark?'pg-dark':''}"><div class="status">${o.side==='r'?'<span></span>':'<span>9:41</span>'}<span>${o.side==='l'?'':I.batt}</span></div>
+<div class="body">${body}</div>${o.tab?tabbar():''}<div class="homeind"><span></span></div>${o.over||''}</div>`;
+}
+function tabbar(){return `<nav class="tabbar" aria-label="Sections"><button class="tab" data-act="tab-orders">${I.box}<span>Orders</span></button><button class="tab" aria-current="page">${I.env}<span>Envelopes</span></button></nav>`}
+function navLarge(trail,lead){
+  return `<header class="nb"><div class="nb-bar"><span class="nb-lead">${lead||''}</span><span></span><span class="nb-trail">${trail||''}</span></div>
+<h1 class="lt">Envelopes</h1>${DATA.length?`<p class="nb-sub">${DATA.length} not matched yet</p>`:''}</header>`;
+}
+const newBtn=`<button class="nb-btn" data-act="new-env" aria-label="New envelope">${I.plus}</button>`;
+function failBar(){return failed?`<div class="failbar" role="alert"><p>Photos did not load. Notes and cards are all here.</p><button class="btn-tint" data-act="retry">Retry</button></div>`:''}
+function emptyState(){return `<div class="empty"><p>No unmatched envelopes. When one comes with no sender, photograph it here.</p><button class="btn-fill" data-act="new-env-photo">Photograph an envelope</button></div>`}
+function photoGrid(e,ui,two){
+  const full=e.photos.length>=MAX;
+  const tiles=e.photos.map((p,i)=>`<button class="ptile ${ui.fresh===p.seed?'new-shot':''}" data-act="open-photo" data-i="${i}" aria-label="Photo ${i+1} of ${e.photos.length}, open">${ph(p)}</button>`).join('');
+  const add=`<button class="ptile add" data-act="add-photo" ${full?`aria-disabled="true" title="${MAX} photos is the most. Delete one to add another."`:''}>${I.camPlus}<span>Add photo</span></button>`;
+  return `<div class="pgrid ${two?'two':''}">${tiles}${add}</div>${full&&ui.full?`<p class="hint warn" role="status">${MAX} photos is the most for one envelope. Delete one to add another.</p>`:''}`;
+}
+function noteField(e){return `<section class="grp"><h2 class="sec"><label for="n-${e.id}-FK">Note</label></h2><textarea class="note" id="n-${e.id}-FK" data-note="${e.id}" data-fid="note" rows="3" placeholder="What did it look like? Ink, stamp, postmark, size.">${esc(e.note)}</textarea></section>`}
+function cardsField(e,ui){
+  return `<section class="grp"><h2 class="sec">Cards inside</h2>
+<ul class="cards">${e.cards.map((c,i)=>`<li class="card-row"><span>${esc(c)}</span><button class="icon-btn" data-act="remove-card" data-i="${i}" aria-label="Remove ${esc(c)}">${I.x}</button></li>`).join('')}</ul>
+${e.cards.length?'':'<p class="hint">No cards listed yet.</p>'}
+<form class="add-card" data-form="add-card"><input data-fid="card" name="card" autocomplete="off" placeholder="Card name" aria-label="Card name" value="${esc(ui.cardDraft)}"><button class="btn-tint" type="submit">Add</button></form></section>`;
+}
+function viewer(e,ui){
+  const v=ui.viewer,n=e.photos.length,p=e.photos[v.idx];
+  return `<div class="viewer" role="dialog" aria-label="Photo ${v.idx+1} of ${n}">
+<div class="v-bar"><span><button class="v-btn" data-act="viewer-close">Close</button></span><span class="v-title">${v.idx+1} of ${n}</span>
+<span class="v-trail"><button class="v-btn" data-act="trash" aria-label="Delete photo" aria-expanded="${ui.confirm}">${I.trash}</button>${ui.confirm?`<div class="pop" role="alertdialog" aria-label="Delete this photo?"><p class="pop-t">Delete this photo?</p><p class="pop-s">It cannot be brought back.</p><div class="pop-row"><button data-act="confirm-keep">Keep</button><button class="danger" data-act="confirm-delete">Delete</button></div></div>`:''}</span></div>
+<div class="v-stage ${v.z>1?'zoomed':''}" data-stage><div class="v-img" style="transform:translate(${v.x}px,${v.y}px) scale(${v.z})">${ph(p,'meet')}</div><span class="v-zoom ${v.z>1?'on':''}" aria-live="polite">${v.z.toFixed(1)}×</span></div>
+<div class="v-thumbs">${e.photos.map((q,i)=>`<button class="v-thumb" data-act="viewer-go" data-i="${i}" aria-label="Photo ${i+1}" aria-current="${i===v.idx}">${ph(q)}</button>`).join('')}</div>
+<p class="v-hint">Double-tap to zoom. Drag to look around.</p></div>`;
+}
+function sheet(title,lead,trail,body){
+  return `<div class="scrim"></div><div class="sheet" role="dialog" aria-label="${esc(title)}"><div class="sheet-bar"><span>${lead}</span><h2>${esc(title)}</h2>${trail}</div><div class="sheet-body scroll">${body}</div></div>`;
+}
+function matchSheet(ui){
+  return sheet('Match to an order',`<button class="nb-btn" data-act="match-cancel">Cancel</button>`,
+    `<button class="nb-btn strong" data-act="match-do" ${ui.pick?'':'aria-disabled="true" title="Pick an order first."'}>Match</button>`,
+    `<div class="stack" style="gap:var(--space-3)">${ui.matchHint&&!ui.pick?'<p class="hint warn" role="status">Pick an order first.</p>':'<p class="hint">Orders with cards still on the way.</p>'}
+<ul class="olist" role="radiogroup" aria-label="Orders">${ORDERS.map(o=>`<li><button class="orow" role="radio" aria-checked="${ui.pick===o.id}" data-act="match-pick" data-id="${o.id}"><span class="orow-txt"><span class="orow-t">${esc(o.seller)}</span><span class="orow-m">Placed ${o.placed}. ${o.waiting} of ${o.total} cards not here yet.</span></span>${ui.pick===o.id?I.check:'<span class="tick"></span>'}</button></li>`).join('')}</ul></div>`);
+}
+function detailsSheet(e,ui){
+  return sheet(envName(e)+' envelope',`<button class="nb-btn" data-act="details-cancel">Cancel</button>`,`<button class="nb-btn strong" data-act="details-done">Done</button>`,
+   `<div class="stack">${photoGrid(e,ui)}${noteField(e)}${cardsField(e,ui)}<button class="btn-tint" data-act="match-open">Match</button></div>`);
+}
+function overlays(ui){
+  const e=cur(ui);let o='';
+  if(e&&ui.viewer)o+=viewer(e,ui);
+  if(e&&ui.sheet==='details')o+=detailsSheet(e,ui);
+  if(e&&ui.sheet==='match')o+=matchSheet(ui);
+  if(ui.toast)o+=`<div class="toast" role="status"><p>${esc(ui.toast.msg)}</p>${ui.toast.undo?'<button data-act="undo">Undo</button>':''}</div>`;
+  return o;
+}
+
+/* ---------- concept: Shelf ---------- */
+function shelfThumb(e){
+  if(!e.photos.length)return `<span class="thumb none" role="img" aria-label="No photo yet">${I.camPlus}</span>`;
+  return `<span class="thumb">${ph(e.photos[0])}${e.photos.length>1?`<span class="pip" aria-label="${e.photos.length} photos">${e.photos.length}</span>`:''}</span>`;
+}
+function shelfHome(ui,open,ann){
+  return `<div class="scroll">${navLarge(newBtn)}${failBar()}${DATA.length?`<ul class="list" ${ann?'data-new="photo mark in each row"':''}>${DATA.map(e=>`<li><button class="row ${open&&e.id===ui.env?'sel':''}" data-act="open-env" data-id="${e.id}" ${open&&e.id===ui.env?'aria-current="true"':''}>${shelfThumb(e)}
+<span class="row-text"><span class="row-title ${e.note?'':'muted'}">${esc(e.note||'No note yet')}</span><span class="row-meta"><span>${envName(e)}</span><span>${cardsN(e.cards.length)}</span></span></span>${open?'':I.chev}</button></li>`).join('')}</ul>`:emptyState()}</div>`;
+}
+function shelfEnv(ui,narrow,ann){
+  const e=cur(ui);
+  return `<div class="scroll"><header class="nb"><div class="nb-bar"><span class="nb-lead">${narrow?`<button class="nb-back" data-act="back">${I.chevL}<span>Envelopes</span></button>`:''}</span>
+<span class="nb-title">${envName(e)}</span><span class="nb-trail"><button class="nb-btn" data-act="match-open">Match</button></span></div></header>
+<div class="detail stack"><section class="grp" ${ann?'data-new="photos"':''}><h2 class="sec">Photos</h2>${photoGrid(e,ui)}</section>${noteField(e)}${cardsField(e,ui)}</div></div>`;
+}
+/* ---------- concept: Contact sheet ---------- */
+function sheetHome(ui,open,ann){
+  return `<div class="scroll">${navLarge(newBtn)}${failBar()}${DATA.length?`<div class="cgrid ${open?'c3':''}" ${ann?'data-new="wall of photos"':''}>${DATA.map(e=>{
+    const sel=open&&e.id===ui.env;
+    const tile=e.photos.length?`<span class="ctile">${ph(e.photos[0])}${e.photos.length>1?`<span class="pip" aria-label="${e.photos.length} photos">${e.photos.length}</span>`:''}</span>`
+      :`<span class="ctile none">${I.camPlus}<span class="ctile-note">${esc(e.note||'No note yet')}</span></span>`;
+    return `<button class="cfig ${sel?'sel':''}" data-act="open-env" data-id="${e.id}" aria-label="${envName(e)} envelope, ${e.photos.length?e.photos.length+' photos':'no photo yet'}">${tile}<span class="cmeta"><b>${envName(e)}</b><span>${cardsN(e.cards.length)}</span></span></button>`}).join('')}</div>`:emptyState()}</div>`;
+}
+function sheetEnv(ui,narrow,ann){
+  const e=cur(ui),i=DATA.indexOf(e),full=e.photos.length>=MAX;
+  const pages=e.photos.map((p,k)=>`<button class="ppage" data-act="open-photo" data-i="${k}" aria-label="Photo ${k+1} of ${e.photos.length}, open">${ph(p,'meet')}</button>`).join('')
+    +`<button class="ppage add" data-act="add-photo" ${full?`aria-disabled="true" title="${MAX} photos is the most. Delete one to add another."`:''}>${I.camPlus}<span>${full?MAX+' photos is the most':'Add photo'}</span></button>`;
+  const dots=Array.from({length:e.photos.length+1},(_,k)=>`<i class="${k===0?'on':''}"></i>`).join('');
+  const nav=`<span class="cs-nav" style="display:flex;gap:var(--space-2)"><button class="glass" data-act="prev-env" aria-label="Newer envelope" ${i<=0?'aria-disabled="true"':''}>${I.up}</button><button class="glass" data-act="next-env" aria-label="Older envelope" ${i>=DATA.length-1?'aria-disabled="true"':''}>${I.down}</button></span>`;
+  const body=`<div class="stack" style="padding:var(--space-2) var(--space-4) var(--space-8)"><div class="ledger-head"><h2 class="lt" style="font-size:var(--t3);line-height:var(--t3-lh)">${envName(e)} envelope</h2><button class="btn-tint" data-act="match-open">Match</button></div>${failBar()}${noteField(e)}${cardsField(e,ui)}</div>`;
+  return `<div class="cs-env" ${ann?'data-new="full-width photos"':''}><div class="pager ${narrow?'':'tall'}" data-pager>${pages}</div>
+<div class="cs-top">${narrow?`<button class="glass" data-act="back" aria-label="Back to envelopes">${I.chevL}</button>`:'<span style="width:44px"></span>'}<span class="glass-title">${e.photos.length?'':''}</span>${nav}</div>
+<div class="dots ${narrow?'':'tall'}" aria-hidden="true">${dots}</div>
+${narrow?`<section class="bsheet ${ui.detent}"><button class="grabber" data-act="detent" aria-label="${ui.detent==='large'?'Shrink':'Grow'} the details sheet"></button><div class="cs-detail">${body}</div></section>`
+ :`<div class="cs-detail">${body}</div>`}</div>`;
+}
+/* ---------- concept: Viewfinder ---------- */
+function stripItems(ui){
+  return `<button class="sitem" data-act="new-env" role="option" aria-selected="false"><span class="sthumb newb">${I.plus}</span><span class="slabel">New</span></button>`+
+  DATA.map(e=>`<button class="sitem" role="option" data-act="select-env" data-id="${e.id}" aria-selected="${e.id===ui.env}" aria-label="${envName(e)} envelope, ${e.photos.length?e.photos.length+' photos':'no photo yet'}">${e.photos.length?`<span class="sthumb">${ph(e.photos[e.photos.length-1])}${e.photos.length>1?`<span class="pip">${e.photos.length}</span>`:''}</span>`:`<span class="sthumb none">${I.cam}</span>`}<span class="slabel">${envName(e)}</span></button>`).join('');
+}
+function finderCam(ui,open,ann){
+  const e=cur(ui),n=e?e.photos.length:0,full=n>=MAX;
+  const meter=e?`<span class="meter" aria-label="${n} of ${MAX} photos">${Array.from({length:MAX},(_,k)=>`<i class="${k<n?'on':''}"></i>`).join('')}</span>`:'';
+  const last=e&&n?`<button class="lastshot" data-act="open-photo" data-i="${n-1}" aria-label="Open the last photo">${ph(e.photos[n-1])}</button>`:`<span class="lastshot empty" aria-hidden="true"></span>`;
+  return `<div class="vfw"><div class="vf" ${ann?'data-new="opens on the camera"':''}><div class="vf-scene">${photoSVG(LIVE,'slice')}</div><div class="vf-guide" aria-hidden="true"></div>
+<div class="vf-top"><span class="chip">${e?`<span class="chip-pre">Shooting into</span> ${envName(e)}`:'Next shot starts a new envelope'}${meter}</span>${failed?`<span class="vf-fail" role="alert">Photos did not load.<button data-act="retry">Retry</button></span>`:''}</div><div class="flash ${ui.flash?'go':''}"></div></div>
+${open?'':`<div class="strip" role="listbox" aria-label="Envelopes" ${ann?'data-new="envelope strip"':''}>${stripItems(ui)}</div>`}
+${!DATA.length&&!open?'<p class="capnote">No unmatched envelopes. Take a photo to start one.</p>':''}
+${full&&ui.full?`<p class="capnote" role="status">${MAX} photos is the most. Delete one to add another.</p>`:''}
+<div class="shut">${last}<button class="shutter" data-act="shutter" aria-label="Take photo" ${full?`aria-disabled="true" title="${MAX} photos is the most. Delete one to add another."`:''}></button>
+${open||!e?'<span></span>':`<button class="detbtn" data-act="details-open">${I.note}<span>Details</span>${e.cards.length?`<span class="badge" aria-label="${cardsN(e.cards.length)}">${e.cards.length}</span>`:''}</button>`}</div></div>`;
+}
+function finderLedger(ui,ann){
+  const e=cur(ui);
+  return `<div class="scroll"><header class="nb"><div class="nb-bar"><span></span><span class="nb-title">Envelopes</span><span class="nb-trail">${newBtn}</span></div></header>
+<div class="strip ledger-strip" role="listbox" aria-label="Envelopes" ${ann?'data-new="envelope strip"':''}>${stripItems(ui)}</div>
+${e?`<div class="detail stack"><div class="ledger-head"><h2>${envName(e)} envelope</h2><button class="btn-tint" data-act="match-open">Match</button></div>${failBar()}
+<section class="grp"><h2 class="sec">Photos</h2>${photoGrid(e,ui,true)}</section>${noteField(e)}${cardsField(e,ui)}</div>`
+:`<div class="empty"><p>No unmatched envelopes. Take a photo with the camera on the left to start one.</p></div>`}</div>`;
+}
+
+/* ---------- frame render ---------- */
+function renderFrame(fk){
+  const ui=FR[fk].ui,open=fk==='open',ann=S.ann&&(fk==='folded'||fk==='open');
+  fixUI(ui,open);
+  const e=cur(ui),c=S.c,ov=overlays(ui);
+  let html;
+  if(c==='shelf'){
+    html=open?`<div class="duo">${page(shelfHome(ui,true,ann),{tab:true,side:'l'})}<div class="hinge" aria-hidden="true"></div>${page(e?shelfEnv(ui,false,ann):'<p class="quiet">An envelope you open shows here.</p>',{side:'r',over:ov})}</div>`
+      :page(ui.screen==='env'&&e?shelfEnv(ui,true,ann):shelfHome(ui,false,ann),{tab:true,over:ov});
+  }else if(c==='sheet'){
+    html=open?`<div class="duo">${page(sheetHome(ui,true,ann),{tab:true,side:'l'})}<div class="hinge" aria-hidden="true"></div>${page(e?sheetEnv(ui,false,ann):'<p class="quiet">An envelope you open shows here.</p>',{side:'r',over:ov,dark:!!e})}</div>`
+      :page(ui.screen==='env'&&e?sheetEnv(ui,true,ann):sheetHome(ui,false,ann),{tab:true,over:ov,dark:ui.screen==='env'&&!!e});
+  }else{
+    html=open?`<div class="duo">${page(finderCam(ui,true,ann),{tab:true,side:'l',dark:true})}<div class="hinge" aria-hidden="true"></div>${page(finderLedger(ui,ann),{side:'r',over:ov})}</div>`
+      :page(finderCam(ui,false,ann),{tab:true,dark:true,over:ov});
+  }
+  return html.replace(/-FK"/g,'-'+fk+'"');
+}
+function renderAll(except){
+  for(const fk of FRAMES){
+    if(fk===except)continue;
+    const el=document.querySelector(`[data-frame="${fk}"]`);
+    const scrolls=[...el.querySelectorAll('.scroll,.cs-detail,.strip')].map(s=>[s.scrollTop,s.scrollLeft]);
+    const a=document.activeElement,fid=a&&el.contains(a)&&a.dataset.fid,sel=fid&&a.selectionStart;
+    el.classList.toggle('ann',S.ann&&(fk==='folded'||fk==='open'));
+    el.innerHTML=renderFrame(fk);
+    if(S.c==='shelf'||S.c==='sheet'||S.c==='finder'){const r=el.firstElementChild;if(fk==='folded'&&r)r.id=S.c+'-first'}
+    el.querySelectorAll('.scroll,.cs-detail,.strip').forEach((s,i)=>{if(scrolls[i]){s.scrollTop=scrolls[i][0];s.scrollLeft=scrolls[i][1]}});
+    if(fid){const t=el.querySelector(`[data-fid="${fid}"]`);if(t){t.focus();try{t.setSelectionRange(sel,sel)}catch(_){}}}
+    bindFrame(el,fk);
+    const ui=FR[fk].ui;ui.flash=false;ui.fresh=null;
+  }
+}
+function bindFrame(el,fk){
+  const pager=el.querySelector('[data-pager]');
+  if(pager){const dots=el.querySelectorAll('.dots i');pager.addEventListener('scroll',()=>{const k=Math.round(pager.scrollLeft/pager.clientWidth);dots.forEach((d,i)=>d.classList.toggle('on',i===k))},{passive:true})}
+  const st=el.querySelector('[data-stage]');if(st)bindViewer(st,fk);
+}
+function bindViewer(st,fk){
+  const ui=FR[fk].ui,img=st.querySelector('.v-img'),zc=st.querySelector('.v-zoom');
+  const apply=()=>{const v=ui.viewer;if(!v)return;const r=st.getBoundingClientRect(),mx=(v.z-1)*r.width/2,my=(v.z-1)*r.height/2;
+    v.x=Math.max(-mx,Math.min(mx,v.x));v.y=Math.max(-my,Math.min(my,v.y));
+    img.style.transform=`translate(${v.x}px,${v.y}px) scale(${v.z})`;zc.textContent=v.z.toFixed(1)+'×';zc.classList.toggle('on',v.z>1);st.classList.toggle('zoomed',v.z>1)};
+  const zoomAt=(z,cx,cy)=>{const v=ui.viewer,k=z/v.z;v.x=cx-(cx-v.x)*k;v.y=cy-(cy-v.y)*k;v.z=z;if(z<=1){v.z=1;v.x=0;v.y=0}apply()};
+  const centre=(ev)=>{const r=st.getBoundingClientRect();return [ev.clientX-r.left-r.width/2,ev.clientY-r.top-r.height/2]};
+  st.addEventListener('dblclick',ev=>{const [cx,cy]=centre(ev);img.style.transition='transform .2s ease-out';zoomAt(ui.viewer.z>1?1:2.5,cx,cy);setTimeout(()=>img.style.transition='',220)});
+  st.addEventListener('wheel',ev=>{ev.preventDefault();const [cx,cy]=centre(ev);zoomAt(Math.min(4,Math.max(1,ui.viewer.z*(ev.deltaY<0?1.12:1/1.12))),cx,cy)},{passive:false});
+  const pts=new Map();let startD=0,startZ=1;
+  st.addEventListener('pointerdown',ev=>{st.setPointerCapture(ev.pointerId);pts.set(ev.pointerId,[ev.clientX,ev.clientY]);if(pts.size===2){const [a,b]=[...pts.values()];startD=Math.hypot(a[0]-b[0],a[1]-b[1]);startZ=ui.viewer.z}});
+  st.addEventListener('pointermove',ev=>{if(!pts.has(ev.pointerId))return;const prev=pts.get(ev.pointerId);pts.set(ev.pointerId,[ev.clientX,ev.clientY]);
+    if(pts.size===2){const [a,b]=[...pts.values()];const d=Math.hypot(a[0]-b[0],a[1]-b[1]);const r=st.getBoundingClientRect();zoomAt(Math.min(4,Math.max(1,startZ*d/startD)),(a[0]+b[0])/2-r.left-r.width/2,(a[1]+b[1])/2-r.top-r.height/2)}
+    else if(ui.viewer.z>1){ui.viewer.x+=ev.clientX-prev[0];ui.viewer.y+=ev.clientY-prev[1];apply()}});
+  const up=ev=>pts.delete(ev.pointerId);st.addEventListener('pointerup',up);st.addEventListener('pointercancel',up);
+}
+
+/* ---------- acts ---------- */
+const timers={};
+function toast(fk,msg,undo){const ui=FR[fk].ui;ui.toast={msg,undo};clearTimeout(timers[fk]);timers[fk]=setTimeout(()=>{ui.toast=null;renderAll()},6000)}
+function act(fk,a,el){
+  const ui=FR[fk].ui,e=cur(ui),open=fk==='open';
+  if(el.getAttribute('aria-disabled')==='true'){
+    if(a==='add-photo'||a==='shutter')ui.full=true;
+    if(a==='match-do')ui.matchHint=true;
+    if(a!=='add-photo'&&a!=='shutter'&&a!=='match-do')return;
+    renderAll();return;
+  }
+  switch(a){
+    case 'open-env':ui.env=el.dataset.id;ui.screen='env';ui.viewer=null;ui.full=false;break;
+    case 'select-env':ui.env=el.dataset.id;ui.full=false;break;
+    case 'back':ui.screen='home';break;
+    case 'new-env':{const n=newEnv();ui.env=n.id;if(S.c!=='finder')ui.screen='env';break}
+    case 'new-env-photo':{const n=newEnv();n.photos.push(newPhoto());ui.env=n.id;if(S.c!=='finder')ui.screen='env';break}
+    case 'add-photo':{const p=newPhoto();e.photos.push(p);ui.fresh=p.seed;break}
+    case 'shutter':{let t=e;if(!t){t=newEnv();ui.env=t.id}const p=newPhoto();t.photos.push(p);ui.flash=true;ui.fresh=p.seed;break}
+    case 'open-photo':ui.viewer={idx:+el.dataset.i,z:1,x:0,y:0};ui.confirm=false;break;
+    case 'viewer-go':ui.viewer={idx:+el.dataset.i,z:1,x:0,y:0};ui.confirm=false;break;
+    case 'viewer-close':ui.viewer=null;ui.confirm=false;break;
+    case 'trash':ui.confirm=!ui.confirm;break;
+    case 'confirm-keep':ui.confirm=false;break;
+    case 'confirm-delete':{const i=ui.viewer.idx;e.photos.splice(i,1);ui.confirm=false;ui.full=false;
+      if(!e.photos.length)ui.viewer=null;else ui.viewer={idx:Math.min(i,e.photos.length-1),z:1,x:0,y:0};break}
+    case 'remove-card':e.cards.splice(+el.dataset.i,1);break;
+    case 'match-open':ui.sheet='match';ui.pick=null;ui.matchHint=false;break;
+    case 'match-pick':ui.pick=el.dataset.id;break;
+    case 'match-cancel':ui.sheet=null;break;
+    case 'match-do':{const i=DATA.indexOf(e),o=ORDERS.find(x=>x.id===ui.pick);DATA.splice(i,1);LAST={e,i};ui.sheet=null;ui.viewer=null;
+      const nx=DATA[i]||DATA[i-1];ui.env=nx?nx.id:null;if(!open&&S.c!=='finder')ui.screen='home';toast(fk,`Matched to ${o.seller}.`,true);break}
+    case 'undo':if(LAST){DATA.splice(LAST.i,0,LAST.e);ui.env=LAST.e.id;LAST=null}ui.toast=null;break;
+    case 'retry':failed=false;break;
+    case 'prev-env':case 'next-env':{const i=DATA.indexOf(e)+(a==='prev-env'?-1:1);if(DATA[i])ui.env=DATA[i].id;ui.full=false;break}
+    case 'detent':ui.detent=ui.detent==='large'?'medium':'large';break;
+    case 'details-open':ui.sheet='details';ui.snap=clone(e);break;
+    /* Cancel puts back the note and cards only. A photo taken or deleted stays so: deletes have their own ask. */
+    case 'details-cancel':if(ui.snap){e.note=ui.snap.note;e.cards=ui.snap.cards}ui.sheet=null;break;
+    case 'details-done':ui.sheet=null;break;
+    case 'tab-orders':toast(fk,'Orders is outside this mockup.',false);break;
+  }
+  renderAll();
+}
+document.addEventListener('click',ev=>{
+  const el=ev.target.closest('[data-act]');if(!el)return;const fr=el.closest('[data-frame]');if(!fr)return;
+  ev.preventDefault();act(fr.dataset.frame,el.dataset.act,el);
+});
+document.addEventListener('submit',ev=>{
+  const f=ev.target.closest('[data-form="add-card"]');if(!f)return;ev.preventDefault();
+  const fk=f.closest('[data-frame]').dataset.frame,ui=FR[fk].ui,e=cur(ui),inp=f.querySelector('input'),v=inp.value.trim();
+  if(!v){inp.focus();return}
+  e.cards.push(v);ui.cardDraft='';renderAll();
+  const again=document.querySelector(`[data-frame="${fk}"] [data-form="add-card"] input`);if(again)again.focus();
+});
+document.addEventListener('input',ev=>{
+  const t=ev.target,fr=t.closest('[data-frame]');if(!fr)return;const fk=fr.dataset.frame,ui=FR[fk].ui;
+  if(t.dataset.note){const e=DATA.find(x=>x.id===t.dataset.note);if(e){e.note=t.value;renderAll(fk)}}
+  if(t.dataset.fid==='card')ui.cardDraft=t.value;
+});
+
+/* ---------- page chrome ---------- */
+function chrome(){
+  const cs=document.getElementById('concepts');
+  cs.innerHTML='<span class="ctl-label">Concept</span>'+Object.entries(CONCEPTS).filter(([k])=>!S.h.includes(k)).map(([k,v])=>
+    `<span class="concept-tab"><button class="pick" data-c="${k}" aria-pressed="${S.c===k}">${v.name}</button><button class="hide" data-hide="${k}" aria-label="Hide ${v.name}">Hide</button></span>`).join('')
+    +(S.h.length?`<p class="hidden-note">Hidden: ${S.h.map(k=>CONCEPTS[k].name).join(', ')}. <button class="seg" data-unhide="1">Show all</button></p>`:'');
+  document.getElementById('blurb').textContent=CONCEPTS[S.c]?CONCEPTS[S.c].blurb:'';
+  const seg=(id,list,key)=>{const box=document.getElementById(id);box.querySelectorAll('.seg').forEach(n=>n.remove());
+    list.forEach(([k,l])=>{const b=document.createElement('button');b.className='seg';b.textContent=l;b.setAttribute('aria-pressed',S[key]===k);b.dataset[key]=k;box.appendChild(b)})};
+  seg('states',STATES,'s');seg('devices',DEVICES,'d');seg('themes',THEMES,'t');
+  document.getElementById('annBtn').setAttribute('aria-pressed',S.ann);
+  if(S.t==='system')document.documentElement.removeAttribute('data-theme');else document.documentElement.setAttribute('data-theme',S.t);
+  document.querySelectorAll('.fig').forEach(f=>f.hidden=!(S.d==='all'||S.d===f.dataset.fig));
+  const none=Object.keys(CONCEPTS).every(k=>S.h.includes(k));document.getElementById('stage').hidden=none;
+}
+document.querySelector('.top').addEventListener('click',ev=>{
+  const b=ev.target.closest('button');if(!b)return;
+  if(b.dataset.c){S.c=b.dataset.c;applyPreset()}
+  else if(b.dataset.hide){S.h.push(b.dataset.hide);if(S.c===b.dataset.hide){const v=Object.keys(CONCEPTS).find(k=>!S.h.includes(k));if(v){S.c=v;applyPreset()}}}
+  else if(b.dataset.unhide){S.h=[]}
+  else if(b.dataset.s){S.s=b.dataset.s;applyPreset()}
+  else if(b.dataset.d){S.d=b.dataset.d}
+  else if(b.dataset.t){S.t=b.dataset.t}
+  else if(b.id==='annBtn'){S.ann=!S.ann}
+  else if(b.id==='resetBtn'){applyPreset()}
+  else return;
+  writeHash();chrome();renderAll();
+});
+window.addEventListener('hashchange',()=>{readHash();applyPreset();chrome();renderAll()});
+readHash();applyPreset();chrome();renderAll();writeHash();
+</script>
+</body>
+</html>

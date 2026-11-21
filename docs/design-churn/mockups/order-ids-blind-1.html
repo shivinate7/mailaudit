@@ -1,0 +1,767 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Order numbers, blind 1</title>
+<style>
+/* Tokens. Spacing and radius from the house tokens; type from Apple's Dynamic Type tables
+   (default size "Large", and AX5); colours are this designer's own choice. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px;
+  --space-5: 20px; --space-6: 24px; --space-8: 32px; --space-11: 44px;
+  --radius: 8px;
+  --font-ui: -apple-system, system-ui, sans-serif;
+  --font-num: ui-monospace, "SF Mono", Menlo, monospace;
+  /* Status bar and home indicator: placeholders, no Apple page read gives them. */
+  --status-h: 44px; --home-h: 20px;
+
+  --t-lt: 34px; --l-lt: 41px; --t-t1: 28px; --l-t1: 34px; --t-t2: 22px; --l-t2: 28px;
+  --t-t3: 20px; --l-t3: 25px; --t-hl: 17px; --l-hl: 22px; --t-body: 17px; --l-body: 22px;
+  --t-callout: 16px; --l-callout: 21px; --t-sub: 15px; --l-sub: 20px; --t-foot: 13px;
+  --l-foot: 18px; --t-cap: 12px; --l-cap: 16px; --t-cap2: 11px; --l-cap2: 13px;
+
+  --c-page: #E6E9EE; --c-surface: #F3F4F7; --c-raised: #FFFFFF; --c-text: #16181D;
+  --c-muted: #565D67; --c-sep: #D3D8DF; --c-accent: #2F3FB0; --c-on-accent: #FFFFFF;
+  --c-accent-soft: #E3E6FA; --c-done: #1B7448; --c-done-soft: #DCF0E4; --c-danger: #B3261E;
+  --c-new: #7B3AB3; --c-bezel: #22252B; --c-hinge: #3A3E46; --c-dim: rgba(10, 12, 20, .36);
+  --c-banner: #FFF3C4; --c-banner-text: #4A3B00;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --c-page: #0F1114; --c-surface: #000000; --c-raised: #1C1E23; --c-text: #F1F2F4;
+    --c-muted: #A6ADB7; --c-sep: #34383F; --c-accent: #A3AFFF; --c-on-accent: #0B1036;
+    --c-accent-soft: #232A57; --c-done: #62D39C; --c-done-soft: #12341F; --c-danger: #FF8E85;
+    --c-new: #CDA2FF; --c-bezel: #3A3E46; --c-hinge: #555A63; --c-dim: rgba(0, 0, 0, .55);
+    --c-banner: #3D3200; --c-banner-text: #FFE899;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --c-page: #0F1114; --c-surface: #000000; --c-raised: #1C1E23; --c-text: #F1F2F4;
+  --c-muted: #A6ADB7; --c-sep: #34383F; --c-accent: #A3AFFF; --c-on-accent: #0B1036;
+  --c-accent-soft: #232A57; --c-done: #62D39C; --c-done-soft: #12341F; --c-danger: #FF8E85;
+  --c-new: #CDA2FF; --c-bezel: #3A3E46; --c-hinge: #555A63; --c-dim: rgba(0, 0, 0, .55);
+  --c-banner: #3D3200; --c-banner-text: #FFE899;
+  color-scheme: dark;
+}
+.ax5 {
+  --t-lt: 60px; --l-lt: 70px; --t-t1: 58px; --l-t1: 68px; --t-t2: 56px; --l-t2: 66px;
+  --t-t3: 55px; --l-t3: 65px; --t-hl: 53px; --l-hl: 62px; --t-body: 53px; --l-body: 62px;
+  --t-callout: 51px; --l-callout: 60px; --t-sub: 49px; --l-sub: 58px; --t-foot: 44px;
+  --l-foot: 52px; --t-cap: 43px; --l-cap: 51px; --t-cap2: 40px; --l-cap2: 48px;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--c-page); color: var(--c-text);
+  font-family: var(--font-ui); font-size: var(--t-body); line-height: var(--l-body);
+}
+button, input, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--c-accent); outline-offset: 2px; }
+.mono { font-family: var(--font-num); font-variant-numeric: slashed-zero; }
+.muted { color: var(--c-muted); }
+.vh { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+/* ---------- Review page chrome ---------- */
+.banner {
+  background: var(--c-banner); color: var(--c-banner-text);
+  padding: var(--space-3) var(--space-4); font-size: var(--t-sub); line-height: var(--l-sub);
+  font-weight: 600; border-bottom: 1px dashed currentColor;
+}
+.page { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-6) var(--space-4) var(--space-8); max-inline-size: 2200px; margin-inline: auto; }
+.intro { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 70ch; }
+.intro h1 { margin: 0; font-size: var(--t-t1); line-height: var(--l-t1); }
+.intro p { margin: 0; font-size: var(--t-sub); line-height: var(--l-sub); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-8); }
+.ctl { display: flex; flex-direction: column; gap: var(--space-2); border: 0; margin: 0; padding: 0; }
+.ctl legend { font-size: var(--t-foot); color: var(--c-muted); padding: 0; margin-bottom: var(--space-2); }
+.chips { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.chip {
+  min-height: 44px; padding: 0 var(--space-4); border-radius: var(--radius);
+  border: 1px solid var(--c-sep); background: var(--c-raised);
+  font-size: var(--t-sub); display: inline-flex; align-items: center; gap: var(--space-2);
+}
+.chip[aria-pressed="true"] { background: var(--c-accent); color: var(--c-on-accent); border-color: var(--c-accent); }
+.concept { display: flex; flex-direction: column; gap: var(--space-4); }
+.concept[hidden] { display: none; }
+.concept-head { display: flex; flex-wrap: wrap; align-items: baseline; gap: var(--space-2) var(--space-4); }
+.concept-head h2 { margin: 0; font-size: var(--t-t2); line-height: var(--l-t2); }
+.concept-head p { margin: 0; font-size: var(--t-sub); line-height: var(--l-sub); color: var(--c-muted); flex: 1 1 30ch; }
+.concept-head .chip { margin-inline-start: auto; }
+.frames { display: flex; gap: var(--space-8); overflow-x: auto; padding-bottom: var(--space-4); align-items: flex-start; }
+.frame-wrap { display: flex; flex-direction: column; gap: var(--space-2); flex: none; }
+.frame-wrap[hidden] { display: none; }
+.frame-cap { font-size: var(--t-foot); line-height: var(--l-foot); color: var(--c-muted); }
+
+/* ---------- Devices: 1 CSS px = 1 pt ---------- */
+.device {
+  flex: none; border-radius: 22px; padding: 10px; background: var(--c-bezel);
+  font-size: var(--t-body); line-height: var(--l-body);
+}
+.device[data-device="iphone-duo-folded"] .screen { width: 466px; height: 678px; }
+.device[data-device="iphone-duo-unfolded"] { display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.device[data-device="iphone-duo-unfolded"] .screen { width: 455.5px; height: 669px; }
+.hinge { background: var(--c-hinge); }
+.device[data-device="iphone-regular"] { resize: both; overflow: hidden; width: 460px; height: 900px; min-width: 340px; min-height: 600px; display: flex; }
+.device[data-device="iphone-regular"] .screen { flex: 1; }
+
+.screen {
+  position: relative; overflow: hidden; background: var(--c-surface);
+  display: flex; flex-direction: column; border-radius: 12px;
+  --pad: max(var(--space-4), env(safe-area-inset-left));
+}
+.status {
+  flex: none; height: max(var(--status-h), env(safe-area-inset-top));
+  display: flex; align-items: center; padding-inline: var(--space-6);
+  font-size: 15px; font-weight: 600;
+}
+.home { flex: none; height: max(var(--home-h), env(safe-area-inset-bottom)); display: grid; place-items: center; }
+.home::before { content: ""; width: 120px; height: 5px; border-radius: 3px; background: var(--c-text); opacity: .8; }
+.scroll { flex: 1; overflow: auto; padding: 0 var(--pad) var(--space-4); display: flex; flex-direction: column; gap: var(--space-4); }
+.scroll > * { flex-shrink: 0; }
+.scroll.has-tabs { padding-bottom: 88px; }
+.scroll > .bottom { border-top: 0; padding: 0; background: none; }
+.bottom { flex: none; padding: var(--space-3) var(--pad) 0; display: flex; flex-direction: column; gap: var(--space-2); border-top: 1px solid var(--c-sep); background: var(--c-surface); }
+
+/* Type roles */
+.lt { margin: 0; font-size: var(--t-lt); line-height: var(--l-lt); font-weight: 700; }
+.t2 { margin: 0; font-size: var(--t-t2); line-height: var(--l-t2); font-weight: 700; }
+.t3 { margin: 0; font-size: var(--t-t3); line-height: var(--l-t3); font-weight: 600; }
+.hl { font-size: var(--t-hl); line-height: var(--l-hl); font-weight: 600; }
+.sub { font-size: var(--t-sub); line-height: var(--l-sub); }
+.foot { font-size: var(--t-foot); line-height: var(--l-foot); }
+.cap { font-size: var(--t-cap); line-height: var(--l-cap); }
+p { margin: 0; }
+
+/* Nav bar */
+.navbar { flex: none; min-height: 44px; display: flex; align-items: center; justify-content: space-between; gap: var(--space-2); padding-inline: var(--space-2); }
+.navbtn { min-height: 44px; min-width: 44px; padding: 0 var(--space-2); border: 0; background: none; color: var(--c-accent); display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--t-body); }
+.navbtn svg { width: 1.1em; height: 1.1em; }
+.navtitle { font-size: var(--t-hl); font-weight: 600; }
+
+/* Search */
+.search { display: flex; align-items: center; gap: var(--space-2); min-height: 44px; padding: 0 var(--space-3); border-radius: var(--radius); background: var(--c-raised); border: 1px solid var(--c-sep); }
+.search svg { width: 1em; height: 1em; flex: none; color: var(--c-muted); }
+.search input { flex: 1; min-width: 0; border: 0; background: none; outline: none; font-size: var(--t-body); padding: var(--space-2) 0; }
+.search:focus-within { outline: 3px solid var(--c-accent); outline-offset: 1px; }
+
+/* Lists */
+.sec { display: flex; flex-direction: column; gap: var(--space-2); }
+.sec-h { margin: 0; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--c-muted); font-weight: 600; padding-inline: var(--space-1); }
+.list { list-style: none; margin: 0; padding: 0; background: var(--c-raised); border-radius: var(--radius); display: flex; flex-direction: column; }
+.list > li + li { border-top: 1px solid var(--c-sep); }
+.row { display: flex; align-items: center; gap: var(--space-1); padding-inline-end: var(--space-1); }
+.row.is-sel { background: var(--c-accent-soft); }
+.row-main { flex: 1; min-width: 0; border: 0; background: none; text-align: start; padding: var(--space-3) var(--space-2) var(--space-3) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); min-height: 44px; }
+.row-main:active { background: var(--c-accent-soft); }
+.row-top { display: flex; flex-wrap: wrap; justify-content: space-between; gap: 0 var(--space-2); }
+.row-num { font-size: var(--t-sub); line-height: var(--l-sub); letter-spacing: .02em; }
+.row.is-copied .row-num { color: var(--c-done); }
+
+.icon-btn { flex: none; width: 44px; height: 44px; border-radius: var(--radius); border: 0; background: none; color: var(--c-accent); display: grid; place-items: center; }
+.icon-btn svg { width: 22px; height: 22px; }
+.icon-btn:active { background: var(--c-accent-soft); }
+.icon-btn.is-done { color: var(--c-done); background: var(--c-done-soft); }
+.ax5 .icon-btn { width: 64px; height: 64px; }
+.ax5 .icon-btn svg { width: 34px; height: 34px; }
+
+/* Order number, wraps only at its dashes */
+.num { display: flex; flex-wrap: wrap; column-gap: 0; }
+.grp { white-space: nowrap; }
+.dash { color: var(--c-muted); }
+.bignum { font-size: var(--t-t1); line-height: var(--l-t1); font-weight: 600; letter-spacing: .03em; }
+
+/* Buttons: two stacked labels keep the box of the wider one */
+.btn { min-height: 50px; border-radius: var(--radius); border: 0; padding: var(--space-2) var(--space-4); display: grid; place-items: center; font-size: var(--t-body); font-weight: 600; width: 100%; }
+.btn > .lbl { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: var(--space-2); }
+.btn > .lbl[aria-hidden="true"] { visibility: hidden; }
+.btn svg { width: 1.05em; height: 1.05em; flex: none; }
+.btn.primary { background: var(--c-accent); color: var(--c-on-accent); }
+.btn.primary:active { filter: brightness(.88); }
+.btn.secondary { background: var(--c-accent-soft); color: var(--c-accent); }
+.btn.secondary:active { filter: brightness(.94); }
+.btn.is-done { background: var(--c-done-soft); color: var(--c-done); }
+.btn-row { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.ax5 .btn-row { grid-template-columns: 1fr; }
+
+.card { background: var(--c-raised); border-radius: var(--radius); padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.facts { display: grid; grid-template-columns: auto 1fr; gap: var(--space-2) var(--space-4); margin: 0; }
+.facts dt { color: var(--c-muted); }
+.facts dd { margin: 0; }
+.ax5 .facts { grid-template-columns: 1fr; gap: 0; }
+.note { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius); background: var(--c-raised); border: 1px dashed var(--c-muted); }
+
+/* Tab bar floats above content */
+.tabbar { position: absolute; left: var(--space-4); right: var(--space-4); bottom: calc(max(var(--home-h), env(safe-area-inset-bottom)) + var(--space-2)); display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1); padding: var(--space-1); border-radius: 30px; background: color-mix(in srgb, var(--c-raised) 86%, transparent); backdrop-filter: blur(16px); border: 1px solid var(--c-sep); }
+.tab { min-height: 52px; border: 0; border-radius: 26px; background: none; color: var(--c-muted); display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px; font-size: 11px; font-weight: 600; }
+.tab svg { width: 22px; height: 22px; }
+.tab[aria-current="page"] { color: var(--c-accent); background: var(--c-accent-soft); }
+
+/* Segmented control and radio list */
+.seg { display: grid; grid-template-columns: repeat(3, 1fr); gap: 2px; padding: 2px; border-radius: var(--radius); background: var(--c-sep); }
+.seg button { min-height: 44px; border: 0; border-radius: 6px; background: none; font-size: var(--t-foot); line-height: var(--l-foot); font-weight: 600; padding: 0 var(--space-1); }
+.seg button[aria-checked="true"] { background: var(--c-raised); box-shadow: 0 1px 2px rgba(0,0,0,.18); }
+.ax5 .seg { grid-template-columns: 1fr; background: none; padding: 0; gap: var(--space-2); }
+.ax5 .seg button { font-size: var(--t-body); line-height: var(--l-body); text-align: start; padding: var(--space-2) var(--space-3); background: var(--c-raised); }
+.ax5 .seg button[aria-checked="true"] { outline: 3px solid var(--c-accent); }
+
+.pick { border: 0; background: var(--c-raised); border-radius: var(--radius); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4); text-align: start; display: flex; align-items: center; gap: var(--space-3); min-height: 44px; }
+.pick > div { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: var(--space-1); }
+.pick > svg { width: 18px; height: 18px; color: var(--c-muted); flex: none; }
+.pick:active { background: var(--c-accent-soft); }
+.draft { width: 100%; min-height: 150px; resize: vertical; border-radius: var(--radius); border: 1px solid var(--c-sep); background: var(--c-raised); padding: var(--space-3); font-size: var(--t-body); line-height: var(--l-body); }
+.scroll > .draft { flex: 1 0 auto; }
+.ax5 .draft { min-height: 420px; }
+.warn { min-height: var(--l-foot); color: var(--c-danger); }
+.draft:focus { outline: 3px solid var(--c-accent); outline-offset: 1px; }
+
+/* Sheet */
+.dim { position: absolute; inset: 0; background: var(--c-dim); z-index: 5; }
+.sheet { position: absolute; left: 0; right: 0; bottom: 0; top: calc(max(var(--status-h), env(safe-area-inset-top)) + var(--space-3)); z-index: 6; background: var(--c-surface); border-radius: 14px 14px 0 0; display: flex; flex-direction: column; box-shadow: 0 -2px 18px rgba(0,0,0,.25); }
+.sheet .navbar { border-bottom: 1px solid var(--c-sep); }
+
+/* Mock seller page inside a web view */
+.web { flex: 1; overflow: auto; background: var(--c-raised); display: flex; flex-direction: column; }
+.addr { margin: var(--space-2) var(--space-3); padding: var(--space-2) var(--space-3); border-radius: var(--radius); background: var(--c-surface); font-size: var(--t-foot); line-height: var(--l-foot); overflow-wrap: anywhere; }
+.web-body { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); }
+.web-tag { align-self: flex-start; font-size: var(--t-cap); line-height: var(--l-cap); border: 1px dashed var(--c-muted); border-radius: var(--radius); padding: 0 var(--space-2); color: var(--c-muted); }
+.web-row { padding: var(--space-3); border: 1px solid var(--c-sep); border-radius: var(--radius); display: flex; flex-direction: column; gap: var(--space-1); }
+
+/* Deck */
+.deck-card { flex: 1; display: flex; flex-direction: column; gap: var(--space-4); justify-content: center; touch-action: pan-y; user-select: none; }
+.deck-num { border: 0; background: var(--c-raised); border-radius: var(--radius); padding: var(--space-5) var(--space-4); text-align: start; display: flex; flex-direction: column; gap: var(--space-3); width: 100%; }
+.deck-num:active { background: var(--c-accent-soft); }
+.deck-num.is-done { background: var(--c-done-soft); }
+.deck-lines { display: flex; flex-direction: column; font-size: var(--t-lt); line-height: var(--l-lt); font-weight: 700; letter-spacing: .04em; }
+.deck-lines .ln { display: flex; align-items: baseline; white-space: nowrap; }
+.deck-lines .ln .dash { font-weight: 400; }
+.deck-hint { display: grid; }
+.deck-hint > span { grid-area: 1 / 1; display: inline-flex; align-items: center; gap: var(--space-2); color: var(--c-muted); }
+.deck-hint > span[aria-hidden="true"] { visibility: hidden; }
+.deck-num.is-done .deck-hint > span { color: var(--c-done); }
+.deck-hint svg { width: 1em; height: 1em; }
+.pager { display: grid; grid-template-columns: 44px 1fr 44px; gap: var(--space-2); align-items: center; }
+.ax5 .pager { grid-template-columns: 64px 1fr 64px; }
+.dots { display: flex; justify-content: center; gap: 6px; }
+.dots i { width: 7px; height: 7px; border-radius: 50%; background: var(--c-sep); }
+.dots i.on { background: var(--c-accent); }
+
+/* States */
+.skel { background: var(--c-raised); border-radius: var(--radius); height: 76px; position: relative; overflow: hidden; }
+.skel::after { content: ""; position: absolute; inset: 0; background: linear-gradient(90deg, transparent, color-mix(in srgb, var(--c-sep) 60%, transparent), transparent); animation: sweep 1.4s infinite; }
+@keyframes sweep { from { transform: translateX(-100%); } to { transform: translateX(100%); } }
+@media (prefers-reduced-motion: reduce) { .skel::after { animation: none; } }
+.state { flex: 1; display: flex; flex-direction: column; justify-content: center; gap: var(--space-4); }
+details summary { min-height: 44px; display: flex; align-items: center; color: var(--c-accent); cursor: pointer; }
+details pre { margin: 0; white-space: pre-wrap; font-size: var(--t-foot); line-height: var(--l-foot); color: var(--c-muted); }
+
+/* "New:" labels: dashed, toggled from the page controls */
+.new { outline: 1.5px dashed var(--c-new); outline-offset: 3px; position: relative; }
+.new::after { content: "New: " attr(data-new); position: absolute; right: 0; top: -18px; z-index: 4; font: 600 10px/14px var(--font-ui); color: var(--c-new); background: var(--c-surface); padding: 0 4px; border: 1px dashed var(--c-new); border-radius: 4px; white-space: nowrap; pointer-events: none; }
+body.no-labels .new { outline: none; }
+body.no-labels .new::after { display: none; }
+
+@media (forced-colors: active) {
+  .btn, .chip, .icon-btn, .deck-num, .tab, .seg button { border: 1px solid ButtonText; }
+  .row.is-sel { outline: 2px solid Highlight; }
+}
+@media (max-width: 520px) {
+  .frames { gap: var(--space-4); }
+}
+</style>
+</head>
+<body>
+<div class="banner" role="note">Sample: every seller, order, number, date and page on this mockup is made up. No figure is real.</div>
+<main class="page">
+  <div class="intro">
+    <h1>Order numbers: read, copy, open</h1>
+    <p>Blind designer, order-ids-blind-1. Three ways to give the full order number, a one-tap copy, and a link to that one order. Each way is drawn on the two-screen device folded, then open, then on a large phone, then folded at the biggest accessibility text size. Every frame is live: tap, type and drag.</p>
+  </div>
+
+  <div class="controls">
+    <fieldset class="ctl"><legend>State</legend><div class="chips" id="ctl-state"></div></fieldset>
+    <fieldset class="ctl"><legend>Theme</legend><div class="chips" id="ctl-theme"></div></fieldset>
+    <fieldset class="ctl"><legend>Ways shown</legend><div class="chips" id="ctl-hide"></div></fieldset>
+    <fieldset class="ctl"><legend>Marks</legend><div class="chips"><button class="chip" id="ctl-labels" aria-pressed="true">“New” labels</button></div></fieldset>
+  </div>
+
+  <section class="concept" id="concept-list" data-concept="list" aria-labelledby="h-list">
+    <div class="concept-head">
+      <h2 id="h-list">Number list</h2>
+      <p>Each row shows the whole number and its own copy button, so a copy needs no other screen. A tap on the row opens the order with “Open order page”. Tabs: Orders and Recent.</p>
+      <button class="chip" data-hide="list">Hide Number list</button>
+    </div>
+    <div class="frames">
+      <div class="frame-wrap"><div class="device" data-device="iphone-duo-folded" data-concept="list" data-frame><div class="screen"></div></div><span class="frame-cap">Duo folded, 466 x 678</span></div>
+      <div class="frame-wrap"><div class="device" data-device="iphone-duo-unfolded" data-concept="list" data-frame><div class="screen"></div><div class="hinge" aria-hidden="true"></div><div class="screen"></div></div><span class="frame-cap">Duo open, 951 x 669, hinge 455.5 to 495.5</span></div>
+      <div class="frame-wrap"><div class="device" data-device="iphone-regular" data-concept="list" data-frame><div class="screen"></div></div><span class="frame-cap">Large phone, no size written: drag the corner</span></div>
+      <div class="frame-wrap"><div class="device ax5" data-device="iphone-duo-folded" data-concept="list" data-frame><div class="screen"></div></div><span class="frame-cap">Duo folded, text size AX5</span></div>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-message" data-concept="message" aria-labelledby="h-message">
+    <div class="concept-head">
+      <h2 id="h-message">Message first</h2>
+      <p>The first screen is the message to the seller, with the number already in it. Pick the order, pick the reason, then copy the message or the number alone. No tabs: the order list is a sheet, or the left page when open.</p>
+      <button class="chip" data-hide="message">Hide Message first</button>
+    </div>
+    <div class="frames">
+      <div class="frame-wrap"><div class="device" data-device="iphone-duo-folded" data-concept="message" data-frame><div class="screen"></div></div><span class="frame-cap">Duo folded, 466 x 678</span></div>
+      <div class="frame-wrap"><div class="device" data-device="iphone-duo-unfolded" data-concept="message" data-frame><div class="screen"></div><div class="hinge" aria-hidden="true"></div><div class="screen"></div></div><span class="frame-cap">Duo open, 951 x 669, hinge 455.5 to 495.5</span></div>
+      <div class="frame-wrap"><div class="device" data-device="iphone-regular" data-concept="message" data-frame><div class="screen"></div></div><span class="frame-cap">Large phone, no size written: drag the corner</span></div>
+      <div class="frame-wrap"><div class="device ax5" data-device="iphone-duo-folded" data-concept="message" data-frame><div class="screen"></div></div><span class="frame-cap">Duo folded, text size AX5</span></div>
+    </div>
+  </section>
+
+  <section class="concept" id="concept-deck" data-concept="deck" aria-labelledby="h-deck">
+    <div class="concept-head">
+      <h2 id="h-deck">Number deck</h2>
+      <p>Bold. No list first: one order fills the screen, its number set large, one dash group per line. The number itself is the copy button. Swipe or step between orders; find one by any part of its number. Open, the left page holds the number and the right page holds that order's own page.</p>
+      <button class="chip" data-hide="deck">Hide Number deck</button>
+    </div>
+    <div class="frames">
+      <div class="frame-wrap"><div class="device" data-device="iphone-duo-folded" data-concept="deck" data-frame><div class="screen"></div></div><span class="frame-cap">Duo folded, 466 x 678</span></div>
+      <div class="frame-wrap"><div class="device" data-device="iphone-duo-unfolded" data-concept="deck" data-frame><div class="screen"></div><div class="hinge" aria-hidden="true"></div><div class="screen"></div></div><span class="frame-cap">Duo open, 951 x 669, hinge 455.5 to 495.5</span></div>
+      <div class="frame-wrap"><div class="device" data-device="iphone-regular" data-concept="deck" data-frame><div class="screen"></div></div><span class="frame-cap">Large phone, no size written: drag the corner</span></div>
+      <div class="frame-wrap"><div class="device ax5" data-device="iphone-duo-folded" data-concept="deck" data-frame><div class="screen"></div></div><span class="frame-cap">Duo folded, text size AX5</span></div>
+    </div>
+  </section>
+</main>
+<div class="vh" aria-live="polite" id="live"></div>
+
+<script>
+(function () {
+  "use strict";
+  // Sample orders. Made up: no real seller, number or page.
+  const DATA = [
+    { id: "o1", seller: "Harbor Lane Cards", date: "Nov 3", cards: 4, num: "7C41E2A9-5B3D0F-8A21E", waiting: true },
+    { id: "o2", seller: "Owl and Anchor Games", date: "Nov 2", cards: 1, num: "3F90B7D2-A14C6E-07D3B", waiting: true },
+    { id: "o3", seller: "Quarry Road Collectibles", date: "Oct 29", cards: 2, num: "E5D18C40-2B9A71-C6F24", waiting: true },
+    { id: "o4", seller: "Little Comet Singles", date: "Oct 27", cards: 3, num: "91A4F6B0-7E2C58-3D1A9", waiting: false },
+    { id: "o5", seller: "Northfield Card House", date: "Oct 24", cards: 12, num: "B26E0A1F-9C7D33-5E8F0", waiting: false },
+    { id: "o6", seller: "Harbor Lane Cards", date: "Oct 22", cards: 6, num: "0D7B3E95-C48A12-F9E60", waiting: false },
+    { id: "o7", seller: "Pine Hollow Games", date: "Oct 20", cards: 1, num: "6A2C9D17-E05B84-1B7C3", waiting: false }
+  ];
+  const HOST = "seller.example";
+  const STATES = [["loaded", "Loaded"], ["copied", "Just copied"], ["nolink", "No page link"], ["loading", "Loading"], ["empty", "No orders yet"], ["failed", "File unreadable"]];
+  const THEMES = [["system", "System"], ["light", "Light"], ["dark", "Dark"]];
+  const CONCEPTS = [["list", "Number list"], ["message", "Message first"], ["deck", "Number deck"]];
+  const REASONS = [["late", "Not arrived"], ["missing", "Card missing"], ["wrong", "Wrong card"]];
+
+  const ICON = {
+    copy: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V6a2 2 0 0 0-2-2H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h2"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+    open: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M14 4h6v6M20 4l-9 9M18 14v4a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2V8a2 2 0 0 1 2-2h4"/></svg>',
+    back: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M15 5l-7 7 7 7"/></svg>',
+    next: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" aria-hidden="true"><path d="M9 5l7 7-7 7"/></svg>',
+    find: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" aria-hidden="true"><circle cx="11" cy="11" r="6.5"/><path d="M16 16l4 4"/></svg>',
+    recent: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M12 7.5V12l3 2"/></svg>',
+    list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>'
+  };
+
+  const G = { state: "loaded", theme: "system", hide: [], labels: true, d: "" };
+  // d= shows one device: folded, open, phone or ax5.
+  const DEVICES = { folded: '[data-device="iphone-duo-folded"]:not(.ax5)', open: '[data-device="iphone-duo-unfolded"]', phone: '[data-device="iphone-regular"]', ax5: ".ax5" };
+  const frames = [];
+
+  function esc(s) { return String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c])); }
+  function orders() {
+    return DATA.map(o => Object.assign({}, o, { url: (G.state === "nolink" && o.id === "o1") ? null : "https://" + HOST + "/orders/" + o.num }));
+  }
+  function byId(id) { return orders().find(o => o.id === id); }
+  function norm(s) { return s.toLowerCase().replace(/[^a-z0-9]/g, ""); }
+  function matches(o, q) { const n = norm(q); return !n || norm(o.num).includes(n) || norm(o.seller).includes(n); }
+  function numHTML(num, cls) {
+    const g = num.split("-");
+    return '<span class="num mono ' + (cls || "") + '">' + g.map((p, i) => '<span class="grp">' + esc(p) + (i < g.length - 1 ? '<span class="dash">-</span>' : "") + "</span>").join("") + "</span>";
+  }
+  function newMark(f, what) { return (f.device === "iphone-duo-folded" && !f.ax) ? ' new" data-new="' + esc(what) : ""; }
+
+  function copyText(text) {
+    const done = () => true;
+    try {
+      if (navigator.clipboard && window.isSecureContext) return navigator.clipboard.writeText(text).then(done, () => fallback(text));
+    } catch (e) { /* fall through */ }
+    return Promise.resolve(fallback(text));
+  }
+  function fallback(text) {
+    const t = document.createElement("textarea");
+    t.value = text; t.setAttribute("readonly", ""); t.style.position = "fixed"; t.style.opacity = "0";
+    document.body.appendChild(t); t.select();
+    try { document.execCommand("copy"); } catch (e) { /* the mockup still shows the answer */ }
+    t.remove(); return true;
+  }
+  function say(msg) { const l = document.getElementById("live"); l.textContent = ""; setTimeout(() => { l.textContent = msg; }, 30); }
+
+  // ---------- Shared pieces ----------
+  function statusBar() { return '<div class="status" aria-hidden="true">9:41</div>'; }
+  function homeBar() { return '<div class="home" aria-hidden="true"></div>'; }
+
+  function searchField(f, placeholder) {
+    return '<label class="search"><span class="vh">Find an order</span>' + ICON.find +
+      '<input type="search" data-input="query" value="' + esc(f.query) + '" placeholder="' + esc(placeholder) + '" autocomplete="off"></label>';
+  }
+  function copyBtn(f, o, mark) {
+    const done = f.copied === o.id;
+    return '<button class="icon-btn' + (done ? " is-done" : "") + (mark ? newMark(f, "copy in one tap") : "") + '" data-act="copy" data-id="' + o.id +
+      '" aria-label="' + (done ? "Copied " : "Copy order number ") + esc(o.num) + '">' + (done ? ICON.check : ICON.copy) + "</button>";
+  }
+  function row(f, o, opts, first) {
+    const sel = opts.selectable && f.sel === o.id;
+    return '<li class="row' + (sel ? " is-sel" : "") + (f.copied === o.id ? " is-copied" : "") + (first && opts.markNum ? newMark(f, "whole number, one-tap copy") : "") + '">' +
+      '<button class="row-main" data-act="' + opts.act + '" data-id="' + o.id + '"' + (sel ? ' aria-current="true"' : "") + ">" +
+      '<span class="row-top"><span class="hl">' + esc(o.seller) + '</span><span class="sub muted">' + esc(o.date) + ", " + o.cards + (o.cards === 1 ? " card" : " cards") + "</span></span>" +
+      '<span class="row-num">' + numHTML(o.num) + "</span></button>" +
+      (opts.copy ? copyBtn(f, o, false) : "") + "</li>";
+  }
+  function orderList(f, opts) {
+    const all = orders();
+    const shown = all.filter(o => matches(o, f.query));
+    let h = searchField(f, f.ax ? "Search" : "Seller or any part of the number");
+    if (!shown.length) {
+      return h + '<div class="note"><p>No order matches “' + esc(f.query) + '”.</p><button class="btn secondary" data-act="clear"><span class="lbl">Clear search</span></button></div>';
+    }
+    const wait = shown.filter(o => o.waiting), got = shown.filter(o => !o.waiting);
+    let first = true;
+    const sec = (title, list) => list.length ? '<section class="sec"><h3 class="sec-h">' + title + '</h3><ul class="list">' +
+      list.map(o => { const r = row(f, o, opts, first); first = false; return r; }).join("") + "</ul></section>" : "";
+    return h + sec("Waiting for mail", wait) + sec("Arrived", got);
+  }
+
+  function nonData(f) {
+    if (G.state === "loading") {
+      return '<div class="scroll"><h1 class="lt">' + titleFor(f) + '</h1><p class="sub muted">Reading your orders…</p><div class="skel"></div><div class="skel"></div><div class="skel"></div><div class="skel"></div></div>';
+    }
+    if (G.state === "empty") {
+      return '<div class="scroll"><h1 class="lt">' + titleFor(f) + '</h1><div class="state"><p>Import your order history file to list your orders here.</p>' +
+        '<button class="btn primary" data-act="fill"><span class="lbl">Import orders</span></button></div></div>';
+    }
+    if (G.state === "failed") {
+      return '<div class="scroll"><h1 class="lt">' + titleFor(f) + '</h1><div class="state"><p>Your order file could not be read, so no orders show. Nothing was changed.</p>' +
+        '<button class="btn primary" data-act="fill"><span class="lbl">Try again</span></button>' +
+        '<button class="btn secondary" data-act="fill"><span class="lbl">Choose another file</span></button>' +
+        '<details><summary>What the reader said</summary><pre>row 1: expected column "Order Number", found "Order #"</pre></details></div></div>';
+    }
+    return null;
+  }
+  function titleFor(f) { return f.concept === "list" ? "Orders" : f.concept === "message" ? "Write to a seller" : "Orders"; }
+
+  function webPage(o, all) {
+    if (all) {
+      return '<div class="web"><div class="addr mono">' + HOST + '/orders</div><div class="web-body"><span class="web-tag">Sample page: stands in for the seller site</span>' +
+        '<p class="t3">Your orders</p><div class="search"><span class="muted sub">Paste the number to find it</span></div>' +
+        orders().slice(0, 4).map(x => '<div class="web-row"><span class="sub">' + esc(x.date) + '</span><span class="foot mono">' + esc(x.num) + "</span></div>").join("") + "</div></div>";
+    }
+    return '<div class="web"><div class="addr mono">' + esc(o.url.replace("https://", "")) + '</div><div class="web-body"><span class="web-tag">Sample page: stands in for the seller site</span>' +
+      '<p class="t3">Order ' + numHTML(o.num) + '</p><p class="sub">' + esc(o.seller) + ", placed " + esc(o.date) + "</p>" +
+      '<div class="web-row"><span class="sub">' + o.cards + (o.cards === 1 ? " card" : " cards") + '</span><span class="foot muted">' + (o.waiting ? "Shipped, no tracking" : "Delivered") + "</span></div>" +
+      '<div class="web-row"><span class="sub">Message the seller about this order</span></div></div></div>';
+  }
+  function sheetHTML(f) {
+    if (!f.sheet) return "";
+    const o = byId(f.sheetId || f.sel);
+    if (f.sheet === "web" || f.sheet === "all") {
+      return '<div class="dim" data-act="close"></div><div class="sheet" role="dialog" aria-label="Order page"><div class="navbar">' +
+        '<button class="navbtn" data-act="close">Close</button><span class="navtitle">' + (f.sheet === "all" ? "All orders" : "Order page") + '</span><span style="width:44px"></span></div>' +
+        (f.sheet === "all" ? '<p class="foot" style="padding:8px 16px 0;color:var(--c-done)">Number copied. Paste it into the search on this page.</p>' : "") +
+        webPage(o, f.sheet === "all") + "</div>";
+    }
+    if (f.sheet === "picker") {
+      return '<div class="dim" data-act="close"></div><div class="sheet" role="dialog" aria-label="Choose order"><div class="navbar">' +
+        '<button class="navbtn" data-act="close">Cancel</button><span class="navtitle">Choose order</span><span style="width:60px"></span></div>' +
+        '<div class="scroll" style="padding-top:12px">' + orderList(f, { act: "pick", selectable: true, copy: false }) + "</div></div>";
+    }
+    return "";
+  }
+  function noLinkNote(f, o) {
+    return '<div class="note"><p class="sub">This order’s own page link is unknown. Copy the number, then find it in your list of orders on the seller site.</p>' +
+      '<button class="btn secondary" data-act="copyall" data-id="' + o.id + '"><span class="lbl">' + ICON.open + "Copy and open all orders</span></button></div>";
+  }
+  function copyBig(f, o, label, mark) {
+    const done = f.copied === o.id;
+    return '<button class="btn primary' + (done ? " is-done" : "") + (mark ? newMark(f, "one-tap copy") : "") + '" data-act="copy" data-id="' + o.id + '">' +
+      '<span class="lbl"' + (done ? ' aria-hidden="true"' : "") + ">" + ICON.copy + esc(label) + "</span>" +
+      '<span class="lbl"' + (done ? "" : ' aria-hidden="true"') + ">" + ICON.check + "Copied</span></button>";
+  }
+  function openBtn(f, o, mark) {
+    if (!o.url) return noLinkNote(f, o);
+    return '<button class="btn secondary' + (mark ? newMark(f, "lands on this order") : "") + '" data-act="web" data-id="' + o.id + '"><span class="lbl">' + ICON.open + "Open order page</span></button>";
+  }
+
+  // ---------- Number list ----------
+  function listDetail(f, withBack) {
+    const o = byId(f.sel);
+    return (withBack ? '<div class="navbar"><button class="navbtn" data-act="back">' + ICON.back + 'Orders</button></div>' : '<div class="navbar"></div>') +
+      '<div class="scroll"><div><p class="t2">' + esc(o.seller) + '</p><p class="sub muted">Placed ' + esc(o.date) + ", " + o.cards + (o.cards === 1 ? " card" : " cards") + "</p></div>" +
+      '<div class="card"><span class="foot muted">Order number</span>' + numHTML(o.num, "bignum") + copyBig(f, o, "Copy order number", true) + openBtn(f, o, true) + "</div>" +
+      '<dl class="facts card sub"><dt>Mail</dt><dd>' + (o.waiting ? "Waiting" : "Arrived") + "</dd></dl></div>";
+  }
+  function listCopied(f) {
+    const items = f.history.map(id => byId(id));
+    let h = '<div class="scroll has-tabs"><h1 class="lt">Recent</h1>';
+    if (!items.length) {
+      h += '<div class="state"><p>Numbers you copy show here, newest first, so you can copy one again.</p><button class="btn secondary" data-act="tab" data-tab="orders"><span class="lbl">Go to orders</span></button></div>';
+    } else {
+      h += '<ul class="list">' + items.map(o => row(f, o, { act: "open", selectable: false, copy: true }, false)).join("") + "</ul>";
+    }
+    return h + "</div>";
+  }
+  function tabBar(f) {
+    return '<nav class="tabbar" aria-label="Sections">' +
+      '<button class="tab" data-act="tab" data-tab="orders"' + (f.tab === "orders" ? ' aria-current="page"' : "") + ">" + ICON.list + "Orders</button>" +
+      '<button class="tab' + newMark(f, "re-copy") + '" data-act="tab" data-tab="copied"' + (f.tab === "copied" ? ' aria-current="page"' : "") + ">" + ICON.recent + "Recent</button></nav>";
+  }
+  function renderList(f, screens) {
+    const nd = nonData(f);
+    const open = f.device === "iphone-duo-unfolded";
+    const listPage = () => f.tab === "copied" ? listCopied(f) :
+      '<div class="scroll has-tabs"><h1 class="lt">Orders</h1>' + orderList(f, { act: "open", selectable: open, copy: true, markNum: true }) + "</div>";
+    if (open) {
+      screens[0].innerHTML = statusBar() + (nd || listPage()) + (nd ? "" : tabBar(f)) + homeBar();
+      screens[1].innerHTML = statusBar() + (nd ? '<div class="scroll"></div>' : listDetail(f, false)) + homeBar() + sheetHTML(f);
+      return;
+    }
+    const body = nd || (f.view === "detail" ? listDetail(f, true) : listPage());
+    screens[0].innerHTML = statusBar() + body + (nd || f.view === "detail" ? "" : tabBar(f)) + homeBar() + sheetHTML(f);
+  }
+
+  // ---------- Message first ----------
+  function template(o, reason) {
+    if (reason === "missing") return "Hi, my order " + o.num + " arrived, but a card is missing: [card name]. Could you check it?";
+    if (reason === "wrong") return "Hi, my order " + o.num + " arrived with the wrong card. I ordered [card name]. Could you help?";
+    return "Hi, my order " + o.num + " from " + o.date + " has not arrived yet. Could you check where it is?";
+  }
+  // A template blank left in a copied message would reach the seller; the line under the box says so.
+  function warnText(text) { return /\[card name\]/.test(text) ? "Replace [card name] with the card before you send it." : ""; }
+  function draftOf(f, o) { const k = o.id + "|" + f.reason; return k in f.drafts ? f.drafts[k] : template(o, f.reason); }
+  function composer(f, open) {
+    const o = byId(f.sel);
+    const done = f.copied === o.id, doneMsg = f.copiedMsg === o.id;
+    const head = open
+      ? '<div class="card"><span class="hl">' + esc(o.seller) + '</span>' + numHTML(o.num, "bignum") + "</div>"
+      : '<button class="pick' + newMark(f, "order picker") + '" data-act="picker"><div><span class="foot muted">To ' + esc(o.seller) + ", " + esc(o.date) + "</span>" + numHTML(o.num, "row-num hl") + "</div>" + ICON.next + "</button>";
+    const seg = '<div class="seg" role="radiogroup" aria-label="Reason">' + REASONS.map(r =>
+      '<button role="radio" aria-checked="' + (f.reason === r[0]) + '" data-act="reason" data-r="' + r[0] + '">' + r[1] + "</button>").join("") + "</div>";
+    const area = '<label class="vh" for="draft-' + f.uid + '">Message</label><textarea class="draft' + newMark(f, "message with number") + '" id="draft-' + f.uid + '" data-input="draft" aria-describedby="warn-' + f.uid + '">' + esc(draftOf(f, o)) + "</textarea>" +
+      '<p class="foot warn" id="warn-' + f.uid + '" data-warn>' + warnText(draftOf(f, o)) + "</p>" +
+      (((o.id + "|" + f.reason) in f.drafts) ? '<button class="navbtn" style="align-self:flex-start" data-act="reset">Start the message again</button>' : "");
+    const bottom = '<div class="bottom">' +
+      '<button class="btn primary' + (doneMsg ? " is-done" : "") + '" data-act="copymsg" data-id="' + o.id + '"><span class="lbl"' + (doneMsg ? ' aria-hidden="true"' : "") + ">" + ICON.copy + 'Copy message</span><span class="lbl"' + (doneMsg ? "" : ' aria-hidden="true"') + ">" + ICON.check + "Message copied</span></button>" +
+      '<div class="btn-row"><button class="btn secondary' + (done ? " is-done" : "") + '" data-act="copy" data-id="' + o.id + '"><span class="lbl"' + (done ? ' aria-hidden="true"' : "") + ">" + ICON.copy + 'Copy number</span><span class="lbl"' + (done ? "" : ' aria-hidden="true"') + ">" + ICON.check + "Copied</span></button>" +
+      (o.url ? '<button class="btn secondary" data-act="web" data-id="' + o.id + '"><span class="lbl">' + ICON.open + "Open order page</span></button>"
+             : '<button class="btn secondary" data-act="copyall" data-id="' + o.id + '"><span class="lbl">' + ICON.open + "Copy and open all orders</span></button>") +
+      "</div>" + (o.url ? "" : '<p class="foot muted">This order’s own page link is unknown.</p>') + "</div>";
+    // At the largest text sizes the actions scroll with the message, so the bar never covers it.
+    return '<div class="scroll" style="padding-top:8px"><h1 class="lt">Write to a seller</h1>' + head + seg + area + (f.ax ? bottom + "</div>" : "</div>" + bottom);
+  }
+  function renderMessage(f, screens) {
+    const nd = nonData(f);
+    if (f.device === "iphone-duo-unfolded") {
+      screens[0].innerHTML = statusBar() + (nd || '<div class="scroll"><h1 class="lt">Orders</h1>' + orderList(f, { act: "pick", selectable: true, copy: true }) + "</div>") + homeBar();
+      screens[1].innerHTML = statusBar() + (nd ? '<div class="scroll"></div>' : composer(f, true)) + homeBar() + sheetHTML(f);
+      return;
+    }
+    screens[0].innerHTML = statusBar() + (nd || composer(f, false)) + homeBar() + sheetHTML(f);
+  }
+
+  // ---------- Number deck ----------
+  function deckList(f) { return orders().filter(o => matches(o, f.query)); }
+  function deckCard(f, tail) {
+    const list = deckList(f);
+    if (!list.length) {
+      return '<div class="scroll"><div class="state"><p>No order matches “' + esc(f.query) + '”.</p><button class="btn secondary" data-act="clear"><span class="lbl">Clear search</span></button></div>' + (tail || "") + "</div>";
+    }
+    f.deck = Math.min(f.deck, list.length - 1);
+    const o = list[f.deck];
+    f.sel = o.id;
+    const done = f.copied === o.id;
+    const lines = o.num.split("-").map((p, i, a) => '<span class="ln mono">' + esc(p) + (i < a.length - 1 ? '<span class="dash">-</span>' : "") + "</span>").join("");
+    const dots = list.length <= 12 ? '<div class="dots" aria-hidden="true">' + list.map((_, i) => '<i class="' + (i === f.deck ? "on" : "") + '"></i>').join("") + "</div>" : "";
+    return '<div class="scroll"><div class="deck-card" data-swipe="1">' +
+      '<div><p class="t2">' + esc(o.seller) + '</p><p class="sub muted">Placed ' + esc(o.date) + ", " + o.cards + (o.cards === 1 ? " card" : " cards") + ", " + (o.waiting ? "waiting for mail" : "arrived") + "</p></div>" +
+      '<button class="deck-num' + (done ? " is-done" : "") + newMark(f, "the number is the copy button") + '" data-act="copy" data-id="' + o.id + '" aria-label="' + (done ? "Copied " : "Copy order number ") + esc(o.num) + '">' +
+      '<span class="foot muted">Order number</span><span class="deck-lines">' + lines + "</span>" +
+      '<span class="deck-hint sub"><span' + (done ? ' aria-hidden="true"' : "") + ">" + ICON.copy + 'Tap the number to copy it</span><span' + (done ? "" : ' aria-hidden="true"') + ">" + ICON.check + "Copied, dashes included</span></span></button>" +
+      dots + "</div>" + (tail || "") + "</div>";
+  }
+  function deckBottom(f, withOpen) {
+    const list = deckList(f);
+    const o = list[f.deck];
+    const n = list.length;
+    let h = '<div class="bottom">';
+    if (f.find) h += searchField(f, "Any part of the number, or the seller") + '<p class="foot muted">' + n + (n === 1 ? " order matches" : " orders match") + "</p>";
+    h += '<div class="pager"><button class="icon-btn" data-act="prev" aria-label="Previous order"' + (f.deck <= 0 || !n ? " disabled" : "") + ">" + ICON.back + "</button>";
+    if (withOpen && o) h += o.url ? '<button class="btn secondary' + newMark(f, "lands on this order") + '" data-act="web" data-id="' + o.id + '"><span class="lbl">' + ICON.open + "Open order page</span></button>"
+      : '<button class="btn secondary" data-act="copyall" data-id="' + o.id + '"><span class="lbl">' + ICON.open + "Copy and open all orders</span></button>";
+    else h += n <= 12 ? '<div class="dots" aria-hidden="true">' + list.map((_, i) => '<i class="' + (i === f.deck ? "on" : "") + '"></i>').join("") + "</div>" : "<span></span>";
+    h += '<button class="icon-btn" data-act="next" aria-label="Next order"' + (f.deck >= n - 1 ? " disabled" : "") + ">" + ICON.next + "</button></div>";
+    if (withOpen && o && !o.url) h += '<p class="foot muted">This order’s own page link is unknown.</p>';
+    return h + "</div>";
+  }
+  function deckNav(f) {
+    const n = deckList(f).length;
+    return '<div class="navbar"><span class="sub muted" style="padding-inline:8px">' + (n ? (f.deck + 1) + " of " + n : "") + "</span>" +
+      '<button class="navbtn' + newMark(f, "find by any part") + '" data-act="find" aria-pressed="' + f.find + '">' + ICON.find + (f.find ? "Done" : "Find") + "</button></div>";
+  }
+  function renderDeck(f, screens) {
+    const nd = nonData(f);
+    if (f.device === "iphone-duo-unfolded") {
+      if (nd) { screens[0].innerHTML = statusBar() + nd + homeBar(); screens[1].innerHTML = statusBar() + '<div class="scroll"></div>' + homeBar(); return; }
+      screens[0].innerHTML = statusBar() + deckNav(f) + deckCard(f) + deckBottom(f, false) + homeBar();
+      const o = deckList(f)[f.deck];
+      let right = '<div class="navbar"><span class="navtitle" style="padding-inline:8px">' + (o && o.url ? "Order page" : "All orders") + "</span></div>";
+      if (!o) right += '<div class="scroll"></div>';
+      else if (o.url) right += webPage(o, false);
+      else right += '<div class="scroll">' + noLinkNote(f, o) + "</div>" + (f.sheet === "all" ? "" : "");
+      if (o && !o.url && f.sheet === "all") right = '<div class="navbar"><span class="navtitle" style="padding-inline:8px">All orders</span></div><p class="foot" style="padding:0 16px;color:var(--c-done)">Number copied. Paste it into the search on this page.</p>' + webPage(o, true);
+      screens[1].innerHTML = statusBar() + right + homeBar();
+      return;
+    }
+    const body = f.ax ? deckNav(f) + deckCard(f, deckBottom(f, true)) : deckNav(f) + deckCard(f) + deckBottom(f, true);
+    screens[0].innerHTML = statusBar() + (nd || body) + homeBar() + sheetHTML(f);
+  }
+
+  // ---------- Frame plumbing ----------
+  function render(f) {
+    const screens = f.el.querySelectorAll(".screen");
+    const keep = document.activeElement && f.el.contains(document.activeElement) && document.activeElement.dataset.input
+      ? { k: document.activeElement.dataset.input, s: document.activeElement.selectionStart } : null;
+    if (f.concept === "list") renderList(f, screens);
+    else if (f.concept === "message") renderMessage(f, screens);
+    else renderDeck(f, screens);
+    if (keep) {
+      const el = f.el.querySelector('[data-input="' + keep.k + '"]');
+      if (el) { el.focus(); try { el.setSelectionRange(keep.s, keep.s); } catch (e) { /* search inputs */ } }
+    }
+  }
+  function resetFrame(f) {
+    Object.assign(f, { sel: "o1", view: f.device === "iphone-duo-unfolded" ? "detail" : "list", tab: "orders", sheet: null, sheetId: null,
+      copied: G.state === "copied" ? "o1" : null, copiedMsg: null, query: "", reason: "late", deck: 0, find: false });
+    if (G.state === "copied" && f.history.indexOf("o1") < 0) f.history.unshift("o1");
+    if (G.state === "copied" && f.concept === "list" && f.device !== "iphone-duo-unfolded") f.view = "detail";
+  }
+  function markCopied(f, id, key) {
+    f[key] = id;
+    clearTimeout(f["t_" + key]);
+    if (G.state !== "copied") f["t_" + key] = setTimeout(() => { f[key] = null; render(f); }, 2600);
+  }
+
+  document.querySelectorAll("[data-frame]").forEach((el, i) => {
+    const f = { el, uid: i, concept: el.dataset.concept, device: el.dataset.device, ax: el.classList.contains("ax5"), history: [], drafts: {} };
+    resetFrame(f); frames.push(f);
+    el.addEventListener("click", e => onClick(f, e));
+    el.addEventListener("input", e => onInput(f, e));
+    let x0 = null;
+    el.addEventListener("pointerdown", e => { if (e.target.closest("[data-swipe]")) x0 = e.clientX; });
+    el.addEventListener("pointerup", e => {
+      if (x0 === null) return;
+      const dx = e.clientX - x0; x0 = null;
+      if (Math.abs(dx) > 60) { f.swiped = true; step(f, dx < 0 ? 1 : -1); }
+    });
+  });
+
+  function step(f, d) {
+    const n = deckList(f).length;
+    f.deck = Math.max(0, Math.min(n - 1, f.deck + d));
+    render(f);
+  }
+  function onClick(f, e) {
+    const t = e.target.closest("[data-act]");
+    if (!t || !f.el.contains(t)) return;
+    if (f.swiped) { f.swiped = false; return; }
+    const act = t.dataset.act, id = t.dataset.id;
+    const o = id ? byId(id) : null;
+    switch (act) {
+      case "open": f.sel = id; if (f.device !== "iphone-duo-unfolded") f.view = "detail"; f.tab = "orders"; break;
+      case "back": f.view = "list"; break;
+      case "tab": f.tab = t.dataset.tab; f.view = "list"; break;
+      case "copy":
+        copyText(o.num); markCopied(f, id, "copied");
+        f.history = [id].concat(f.history.filter(h => h !== id)); say("Copied " + o.num); break;
+      case "copymsg": {
+        copyText(draftOf(f, o)); markCopied(f, id, "copiedMsg"); say("Message copied"); break;
+      }
+      case "copyall": copyText(o.num); f.history = [id].concat(f.history.filter(h => h !== id)); f.sheet = "all"; f.sheetId = id; say("Copied " + o.num + ". All orders open."); break;
+      case "web": f.sheet = "web"; f.sheetId = id; break;
+      case "close": f.sheet = null; break;
+      case "picker": f.sheet = "picker"; break;
+      case "pick": f.sel = id; f.sheet = null; break;
+      case "reason": f.reason = t.dataset.r; break;
+      case "reset": delete f.drafts[f.sel + "|" + f.reason]; break;
+      case "clear": f.query = ""; break;
+      case "find": f.find = !f.find; if (!f.find) f.query = ""; break;
+      case "prev": step(f, -1); return;
+      case "next": step(f, 1); return;
+      case "fill": setState("loaded"); return;
+      default: return;
+    }
+    render(f);
+  }
+  function onInput(f, e) {
+    const k = e.target.dataset.input;
+    if (k === "query") { f.query = e.target.value; f.deck = 0; render(f); }
+    else if (k === "draft") {
+      f.drafts[f.sel + "|" + f.reason] = e.target.value;
+      const w = f.el.querySelector("[data-warn]");
+      if (w) w.textContent = warnText(e.target.value);
+      if (!f.el.querySelector('[data-act="reset"]')) render(f);
+    }
+  }
+
+  // ---------- Page controls and deep links ----------
+  function chips(host, items, cur, onPick) {
+    host.innerHTML = items.map(([k, label]) => '<button class="chip" data-k="' + k + '" aria-pressed="' + (k === cur) + '">' + label + "</button>").join("");
+    host.onclick = e => { const b = e.target.closest("[data-k]"); if (b) onPick(b.dataset.k); };
+  }
+  function writeHash() {
+    const p = ["s=" + G.state, "t=" + G.theme];
+    if (G.hide.length) p.push("hide=" + G.hide.join(","));
+    if (!G.labels) p.push("labels=off");
+    if (G.d) p.push("d=" + G.d);
+    history.replaceState(null, "", "#" + p.join("&"));
+  }
+  function apply() {
+    if (G.theme === "system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme", G.theme);
+    document.body.classList.toggle("no-labels", !G.labels);
+    document.getElementById("ctl-labels").setAttribute("aria-pressed", String(G.labels));
+    CONCEPTS.forEach(([k]) => { document.getElementById("concept-" + k).hidden = G.hide.indexOf(k) >= 0; });
+    chips(document.getElementById("ctl-state"), STATES, G.state, setState);
+    chips(document.getElementById("ctl-theme"), THEMES, G.theme, k => { G.theme = k; writeHash(); apply(); });
+    const host = document.getElementById("ctl-hide");
+    host.innerHTML = CONCEPTS.map(([k, l]) => '<button class="chip" data-k="' + k + '" aria-pressed="' + (G.hide.indexOf(k) < 0) + '">' + l + "</button>").join("");
+    host.onclick = e => { const b = e.target.closest("[data-k]"); if (b) toggleHide(b.dataset.k); };
+  }
+  function toggleHide(k) {
+    G.hide = G.hide.indexOf(k) >= 0 ? G.hide.filter(x => x !== k) : G.hide.concat(k);
+    writeHash(); apply();
+  }
+  function setState(s) {
+    G.state = s; frames.forEach(f => { resetFrame(f); render(f); }); writeHash(); apply();
+  }
+  function readHash() {
+    const h = new URLSearchParams(location.hash.slice(1));
+    if (STATES.some(s => s[0] === h.get("s"))) G.state = h.get("s");
+    if (THEMES.some(s => s[0] === h.get("t"))) G.theme = h.get("t");
+    G.hide = (h.get("hide") || "").split(",").filter(k => CONCEPTS.some(c => c[0] === k));
+    G.labels = h.get("labels") !== "off";
+    G.d = DEVICES[h.get("d")] ? h.get("d") : "";
+    document.querySelectorAll(".frame-wrap").forEach(w => { w.hidden = !!G.d && !w.querySelector(DEVICES[G.d]); });
+    return h.get("c");
+  }
+  document.querySelectorAll("[data-hide]").forEach(b => b.addEventListener("click", () => toggleHide(b.dataset.hide)));
+  document.getElementById("ctl-labels").addEventListener("click", () => { G.labels = !G.labels; writeHash(); apply(); });
+  window.addEventListener("hashchange", () => { readHash(); frames.forEach(f => { resetFrame(f); render(f); }); apply(); });
+
+  const jump = readHash();
+  frames.forEach(f => { resetFrame(f); render(f); });
+  apply();
+  if (jump && document.getElementById("concept-" + jump)) document.getElementById("concept-" + jump).scrollIntoView();
+})();
+</script>
+</body>
+</html>

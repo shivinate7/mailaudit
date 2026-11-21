@@ -1,0 +1,728 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Box Mode</title>
+<style>
+/* Tokens: neutral idea-mockup roles, shared with the round 1 idea mockups. Type sizes are the iOS
+   Dynamic Type styles at the default (Large) size, read from the Apple HIG typography page on
+   2026-11-21: Large Title 34/41, Title 1 28/34, Title 2 22/28, Title 3 20/25, Body and Headline 17/22,
+   Subhead 15/20, Footnote 13/18, Caption 1 12/16, Caption 2 11/13. Spacing sits on a 4 px step. */
+:root{
+  --page:#ebe9e3; --screen:#f5f4f0; --surface:#ffffff; --ink:#1d1c1a; --ink2:#5c5a55; --ink3:#6b685f;
+  --line:#dcd9d1; --accent:#a8402a; --accent-faint:#f8ece7; --ok:#256b41; --ok-bg:#e3f0e7; --ok-ink:#17462a;
+  --warn:#8a5200; --warn-bg:#f8ecd6; --err:#a3261b; --err-bg:#fbe7e4; --tag-new:#2c5aa8; --tag-today:#5c5a55;
+  --chrome:#ffffff; --chrome-line:#d6d3cb; --scrim:rgba(20,18,15,.32); --hinge:#2a2926; --bezel:#151412;
+  --toast:#2b2a27; --toast-ink:#f5f4f0; --field:#e8e6e0; --win:#dedbd4;
+  color-scheme:light;
+}
+@media (prefers-color-scheme:dark){
+  :root:not([data-theme="light"]){
+    --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+    --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+    --warn:#e6aa52; --warn-bg:#3b2c13; --err:#f08a7e; --err-bg:#3a1a16; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+    --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27;
+    --toast:#e9e6df; --toast-ink:#1d1c1a; --field:#2a2925; --win:#262521;
+    color-scheme:dark;
+  }
+}
+:root[data-theme="dark"]{
+  --page:#0d0d0c; --screen:#121210; --surface:#1f1e1b; --ink:#f2f0ea; --ink2:#b5b1a8; --ink3:#9a968d;
+  --line:#35332e; --accent:#e2795d; --accent-faint:#2e211c; --ok:#7cc898; --ok-bg:#1a3123; --ok-ink:#c9ecd5;
+  --warn:#e6aa52; --warn-bg:#3b2c13; --err:#f08a7e; --err-bg:#3a1a16; --tag-new:#8fb2ef; --tag-today:#b5b1a8;
+  --chrome:#1a1917; --chrome-line:#34322d; --scrim:rgba(0,0,0,.55); --hinge:#000; --bezel:#2b2a27;
+  --toast:#e9e6df; --toast-ink:#1d1c1a; --field:#2a2925; --win:#262521;
+  color-scheme:dark;
+}
+*{box-sizing:border-box}
+html,body{margin:0}
+body{background:var(--page);color:var(--ink);font-family:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;font-size:17px;line-height:22px;overflow-x:hidden;
+  padding:max(16px,env(safe-area-inset-top)) max(16px,env(safe-area-inset-right)) max(24px,env(safe-area-inset-bottom)) max(16px,env(safe-area-inset-left))}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer;text-align:inherit}
+button[aria-disabled="true"]{cursor:default}
+input{font:inherit;color:inherit}
+input::-webkit-search-cancel-button{display:none}
+:focus-visible{outline:3px solid var(--tag-new);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums}
+code{font-size:13px}
+
+/* Page chrome */
+.sample{background:var(--warn-bg);color:var(--warn);font-size:13px;line-height:18px;padding:8px 12px;border-radius:8px;margin:0 0 12px;max-width:1100px}
+header.page{max-width:1100px}
+header.page h1{font-size:28px;line-height:34px;margin:0;font-weight:700}
+header.page .meta{font-size:15px;line-height:20px;color:var(--ink2);margin:4px 0 0}
+header.page .meta b{color:var(--accent);font-weight:600}
+.controls{display:flex;flex-wrap:wrap;gap:8px 12px;align-items:center;margin:12px 0 0;max-width:1100px}
+.seg{display:flex;flex-wrap:wrap;gap:4px 8px;align-items:center}
+.seg button{display:inline-flex;align-items:center;min-height:36px;padding:0 12px;border-radius:18px;border:1px solid var(--line);background:var(--surface);font-size:15px}
+.seg button[aria-pressed="true"]{background:var(--ink);color:var(--page);border-color:var(--ink)}
+.seg .grp{font-size:12px;line-height:16px;color:var(--ink3);margin:0 0 0 4px}
+.ctl-label{font-size:13px;color:var(--ink3);min-width:72px}
+.caption{font-size:15px;line-height:20px;color:var(--ink2);max-width:860px;margin:16px 0 0;min-height:60px}
+.caption b{color:var(--ink)}
+.stage{display:flex;flex-wrap:wrap;gap:32px;align-items:flex-start;margin-top:8px}
+.frame-wrap{max-width:100%;overflow-x:auto;padding:4px 2px 12px}
+.frame-wrap[hidden]{display:none}
+.frame-cap{font-size:13px;line-height:18px;color:var(--ink3);margin:0 0 8px}
+.notes{max-width:860px;font-size:15px;line-height:20px;color:var(--ink2);margin:24px 0 0}
+.notes h2{font-size:17px;line-height:22px;color:var(--ink);margin:16px 0 8px}
+.notes ol{margin:0;padding-left:20px}
+.notes li{margin:0 0 8px}
+.notes li b{color:var(--ink)}
+.notes .g{color:var(--warn);font-weight:600}
+
+/* Phone frames */
+.phone{display:inline-flex;background:var(--bezel);border-radius:52px;padding:12px}
+.screen{position:relative;flex:none;width:390px;height:844px;border-radius:40px;overflow:hidden;background:var(--screen);display:flex;flex-direction:column;
+  --sat:calc(env(safe-area-inset-top,0px) + 54px); --sab:calc(env(safe-area-inset-bottom,0px) + 34px)}
+.duo .screen.left{border-top-right-radius:8px;border-bottom-right-radius:8px}
+.duo .screen.right{border-top-left-radius:8px;border-bottom-left-radius:8px}
+.hinge{width:16px;background:var(--hinge);margin:32px 0;border-radius:4px;flex:none}
+.status{flex:none;height:var(--sat);padding:18px 32px 0;display:flex;justify-content:space-between;font-size:15px;line-height:20px;font-weight:600}
+.status i{display:block;width:24px;height:12px;border-radius:4px;border:1.5px solid currentColor;opacity:.85;margin-top:4px}
+.island{position:absolute;top:12px;left:50%;transform:translateX(-50%);width:120px;height:36px;border-radius:18px;background:#000;z-index:40}
+.homebar{position:absolute;bottom:8px;left:50%;transform:translateX(-50%);width:136px;height:5px;border-radius:3px;background:var(--ink);opacity:.8;z-index:40}
+
+/* iOS navigation */
+.nav{flex:none;padding:0 16px 8px;position:relative}
+.nav-top{height:44px;display:flex;align-items:center;justify-content:space-between}
+.largetitle{font-size:34px;line-height:41px;font-weight:700;margin:0}
+.largetitle.sm{font-size:28px;line-height:34px}
+.navsub{font-size:15px;line-height:20px;color:var(--ink2);margin:0}
+.navbtn{min-width:44px;min-height:44px;font-size:17px;line-height:22px;color:var(--accent);display:inline-flex;align-items:center;justify-content:center;gap:4px}
+.navbtn[aria-disabled="true"]{color:var(--ink3)}
+.navbtn.strong{font-weight:600}
+.more{width:44px;height:44px;border-radius:22px;display:grid;place-items:center;color:var(--accent)}
+.more svg{width:24px;height:24px}
+.scroll{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 16px calc(var(--sab) + 72px)}
+
+/* Lists */
+.sect{font-size:13px;line-height:18px;color:var(--ink2);text-transform:uppercase;letter-spacing:.04em;margin:0 0 8px 4px}
+.list,.rlist{position:relative;background:var(--surface);border-radius:12px;margin:0 0 12px}
+.list > :first-child,.rlist > :first-child{border-top:0;border-top-left-radius:12px;border-top-right-radius:12px}
+.list > :last-child,.rlist > :last-child{border-bottom-left-radius:12px;border-bottom-right-radius:12px}
+.prow{display:flex;align-items:center;gap:12px;width:100%;height:64px;padding:0 12px 0 16px;border-top:.5px solid var(--line)}
+.prow[aria-current="true"]{background:var(--accent-faint)}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.t{font-size:17px;line-height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.t.sm{font-size:15px;line-height:20px}
+.s{font-size:13px;line-height:18px;color:var(--ink2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.s.wrap{white-space:normal}
+.pend{flex:none;display:flex;align-items:center;gap:8px}
+.prog{font-size:15px;line-height:20px;color:var(--ink2)}
+.prog.all{color:var(--ok)}
+.badge{display:inline-flex;align-items:center;height:24px;padding:0 8px;border-radius:12px;font-size:12px;line-height:16px;font-weight:600;white-space:nowrap;background:var(--warn-bg);color:var(--warn)}
+.via{display:inline-block;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;background:var(--accent-faint);color:var(--accent);vertical-align:1px;margin-left:4px}
+.chev{flex:none;width:8px;height:14px;color:var(--ink3)}
+
+/* Overflow menu (drawn in the page, never a native dialog) */
+.menu{position:absolute;right:12px;top:48px;width:268px;background:var(--chrome);border:.5px solid var(--chrome-line);border-radius:12px;box-shadow:0 12px 32px rgba(0,0,0,.2);z-index:25}
+.menu .mi{display:flex;align-items:center;gap:12px;width:100%;min-height:48px;padding:12px 16px;font-size:17px;line-height:22px;border-radius:12px 12px 0 0}
+.menu .mi svg{width:20px;height:20px;flex:none;margin-left:auto}
+.menu .mi[aria-disabled="true"]{color:var(--ink3)}
+.menu .why{font-size:13px;line-height:18px;color:var(--ink2);padding:0 16px 12px;margin:-8px 0 0}
+.menu .rest{font-size:13px;line-height:18px;color:var(--ink3);padding:12px 16px;border-top:.5px solid var(--line)}
+
+/* Cards and buttons */
+.card{position:relative;background:var(--surface);border-radius:12px;padding:12px 16px;margin:0 0 12px}
+.card p{margin:0;font-size:15px;line-height:20px}
+.card .row{display:flex;gap:8px;margin-top:8px}
+.btn{min-height:44px;padding:0 16px;border-radius:22px;font-size:15px;line-height:20px;font-weight:600;display:inline-flex;align-items:center;justify-content:center}
+.btn.primary{background:var(--accent);color:var(--surface)}
+.btn.quiet{background:var(--field);color:var(--ink)}
+
+/* Tab bar */
+.tabbar{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) - 8px);height:60px;border-radius:30px;background:var(--chrome);border:.5px solid var(--chrome-line);
+  box-shadow:0 6px 20px rgba(0,0,0,.12);display:grid;grid-template-columns:repeat(3,1fr);align-items:center;z-index:5}
+.tab{min-height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:11px;line-height:13px;color:var(--ink2);gap:2px}
+.tab svg{width:24px;height:24px}
+.tab[aria-current="page"]{color:var(--accent)}
+
+/* Sheet */
+.scrim{position:absolute;inset:0;background:var(--scrim);z-index:10}
+.sheet{position:absolute;left:0;right:0;bottom:0;top:calc(var(--sat) + 12px);background:var(--screen);border-radius:24px 24px 0 0;z-index:11;display:flex;flex-direction:column;box-shadow:0 -6px 24px rgba(0,0,0,.18)}
+.grabber{width:36px;height:5px;border-radius:3px;background:var(--ink3);opacity:.5;margin:8px auto 0;flex:none}
+.pane{position:relative;flex:1;display:flex;flex-direction:column;min-height:0}
+.bar{height:56px;display:grid;grid-template-columns:96px 1fr 96px;align-items:center;padding:0 8px;flex:none}
+.bar .ttl{text-align:center;min-width:0}
+.bar h3{margin:0;font-size:17px;line-height:22px;font-weight:600}
+.bar .sub{font-size:12px;line-height:16px;color:var(--ink2)}
+.bar .end{justify-self:end}
+.bar .start{justify-self:start}
+
+/* Session */
+.counter{flex:none;display:grid;grid-template-columns:1fr 1fr 1fr;margin:0 16px 8px;background:var(--surface);border-radius:12px;padding:8px 0}
+.counter div{text-align:center;border-left:.5px solid var(--line)}
+.counter div:first-child{border-left:0}
+.counter b{display:block;font-size:20px;line-height:25px;font-weight:600;font-variant-numeric:tabular-nums}
+.counter span{font-size:12px;line-height:16px;color:var(--ink2)}
+.alert{position:relative;flex:none;margin:0 16px 8px;border-radius:12px;padding:12px 16px;font-size:15px;line-height:20px}
+.alert.err{background:var(--err-bg);color:var(--err)}
+.alert.warn{background:var(--warn-bg);color:var(--warn)}
+.alert.ok{background:var(--ok-bg);color:var(--ok-ink)}
+.alert b{font-weight:600}
+.alert .row{display:flex;gap:8px;margin-top:8px;flex-wrap:wrap}
+.alert .vers{margin:8px 0 0;padding:0;list-style:none}
+.alert .vers li{font-size:13px;line-height:18px}
+.results{flex:1;overflow-y:auto;overflow-x:hidden;padding:12px 16px 16px;min-height:0}
+.rrow{display:flex;align-items:center;gap:12px;width:100%;height:64px;padding:0 16px;border-top:.5px solid var(--line)}
+.circ{width:28px;height:28px;border-radius:14px;border:2px solid var(--ink3);flex:none;display:grid;place-items:center}
+.circ svg{width:16px;height:16px}
+.rrow.done .circ,.choice.done .circ{background:var(--ok);border-color:var(--ok);color:var(--surface)}
+.rrow.done .t,.choice.done .t{opacity:.55}
+.rrow.done .s,.choice.done .s{color:var(--ok)}
+.rrow.part .circ{border-color:var(--ok)}
+.qty{flex:none;min-width:56px;text-align:right;font-size:15px;line-height:20px;font-variant-numeric:tabular-nums;color:var(--ink2)}
+.rrow.part .qty,.rrow.done .qty{color:var(--ok)}
+.qty:empty{display:none}
+.t b{font-weight:700;color:var(--accent)}
+.grp-h{height:56px;display:flex;flex-direction:column;justify-content:center;padding:0 16px;border-top:.5px solid var(--line)}
+.choice{display:flex;align-items:center;gap:12px;width:100%;height:56px;padding:0 16px 0 28px;border-top:.5px solid var(--line)}
+.radio{width:24px;height:24px;border-radius:12px;border:2px solid var(--ink3);flex:none;display:grid;place-items:center}
+.choice[aria-checked="true"] .radio{border-color:var(--accent)}
+.choice[aria-checked="true"] .radio::after{content:"";width:12px;height:12px;border-radius:6px;background:var(--accent)}
+.older{font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;background:var(--field);color:var(--ink2);flex:none}
+.confirm{display:flex;align-items:center;justify-content:center;width:100%;height:48px;border-top:.5px solid var(--line);color:var(--accent);font-weight:600;font-size:17px}
+.confirm[aria-disabled="true"]{color:var(--ink3);font-weight:400}
+.info{display:flex;align-items:center;gap:12px;min-height:72px;padding:12px 16px}
+.pillbtn{flex:none;min-height:44px;width:160px;padding:0 12px;border-radius:22px;background:var(--field);font-size:15px;line-height:20px;font-weight:600;color:var(--accent);text-align:center}
+.pillbtn[aria-disabled="true"]{color:var(--ok)}
+.hint{padding:32px 16px;text-align:center}
+.hint .h{font-size:17px;line-height:22px;margin:0 0 4px;color:var(--ink)}
+.searchbar{flex:none;padding:8px 16px calc(var(--sab) + 4px);background:var(--screen);border-top:.5px solid var(--line)}
+.field{display:flex;align-items:center;gap:8px;height:44px;border-radius:12px;background:var(--field);padding:0 0 0 12px}
+.field svg{width:20px;height:20px;color:var(--ink3);flex:none}
+.field input{flex:1;min-width:0;border:0;background:none;outline:none;font-size:17px;line-height:22px;height:44px}
+.field input::placeholder{color:var(--ink3)}
+.clear{width:44px;height:44px;display:grid;place-items:center;color:var(--ink3);flex:none}
+.clear[hidden]{display:grid;visibility:hidden}
+
+/* Summary */
+.sumhead{text-align:center;padding:4px 16px 16px}
+.sumhead .big{font-size:28px;line-height:34px;font-weight:700}
+.sumsec{margin:0 0 16px}
+.sumsec p.foot{margin:0 4px;font-size:13px;line-height:18px;color:var(--ink2)}
+.srow{display:flex;align-items:center;gap:12px;min-height:56px;padding:8px 16px;border-top:.5px solid var(--line)}
+
+/* Toast (a log entry) */
+.toast{position:absolute;left:16px;right:16px;bottom:calc(var(--sab) + 64px);background:var(--toast);color:var(--toast-ink);border-radius:12px;padding:8px 8px 8px 16px;
+  font-size:15px;line-height:20px;z-index:20;box-shadow:0 8px 20px rgba(0,0,0,.2);display:flex;align-items:center;gap:8px;min-height:56px}
+.toast span{flex:1}
+.toast button{min-height:44px;min-width:96px;padding:0 12px;font-weight:600;color:var(--toast-ink);text-decoration:underline;text-align:center}
+
+/* Package detail */
+.lrow{display:flex;align-items:center;gap:12px;min-height:64px;padding:8px 16px;border-top:.5px solid var(--line)}
+.dot{width:12px;height:12px;border-radius:6px;flex:none;background:var(--ok)}
+.dot.out{background:none;border:2px solid var(--warn)}
+
+/* Dashed Today / New labels. Each labelled element is positioned by its own rule. */
+[data-lbl]{outline:1.5px dashed var(--tag-new);outline-offset:3px}
+[data-lbl][data-k="today"]{outline-color:var(--tag-today)}
+[data-lbl]::after{content:attr(data-lbl);position:absolute;top:-10px;right:12px;font-size:11px;line-height:13px;font-weight:600;padding:2px 6px;border-radius:6px;
+  background:var(--tag-new);color:var(--surface);white-space:nowrap;z-index:4;pointer-events:none}
+[data-lbl][data-k="today"]::after{background:var(--tag-today)}
+:root[data-labels="off"] [data-lbl]{outline:none}
+:root[data-labels="off"] [data-lbl]::after{display:none}
+
+/* Web window */
+.win{--sat:0px;--sab:0px;position:relative;width:1180px;height:760px;border-radius:12px;overflow:hidden;background:var(--screen);border:1px solid var(--chrome-line);display:flex;flex-direction:column}
+.win-bar{flex:none;height:36px;background:var(--win);display:flex;align-items:center;gap:8px;padding:0 12px}
+.win-bar i{width:12px;height:12px;border-radius:6px;background:var(--ink3);opacity:.45}
+.mast{flex:none;height:56px;display:flex;align-items:center;gap:24px;padding:0 16px 0 24px;background:var(--chrome);border-bottom:1px solid var(--chrome-line);position:relative;z-index:6}
+.mast .word{font-size:15px;line-height:20px;font-weight:700;letter-spacing:.16em}
+.mast nav{display:flex;gap:4px}
+.mast nav button{min-height:36px;padding:0 12px;border-radius:8px;font-size:15px;color:var(--ink2)}
+.mast nav button[aria-current="page"]{background:var(--field);color:var(--ink);font-weight:600}
+.mast .tail{margin-left:auto;display:flex;align-items:center;gap:12px}
+.boxpill{position:relative;display:inline-flex;align-items:center;min-height:32px;padding:0 12px;border-radius:16px;background:var(--accent-faint);color:var(--accent);font-size:15px;font-weight:600}
+.web-body{flex:1;display:grid;grid-template-columns:1fr 420px;min-height:0}
+.web-main{overflow-y:auto;padding:16px 24px 24px;min-width:0}
+.web-main h2{font-size:22px;line-height:28px;margin:0}
+.web-side{border-left:1px solid var(--chrome-line);background:var(--screen);display:flex;flex-direction:column;min-height:0;position:relative}
+.web-side .searchtop{flex:none;padding:0 16px 8px}
+.web .prow:hover,.web .rrow:not(.done):hover,.web .choice:not(.done):hover{background:var(--accent-faint)}
+.web .menu{top:52px;right:12px}
+.web .toast{left:auto;right:444px;width:400px;bottom:24px}
+.side-col{flex:1;display:flex;flex-direction:column;min-height:0}
+.side-col .scroll{padding-bottom:24px}
+
+@media (prefers-reduced-motion:no-preference){
+  .circ{transition:background-color 150ms ease-out,border-color 150ms ease-out}
+}
+</style>
+</head>
+<body>
+<p class="sample" role="note"><b>Sample.</b> Every seller, card, order id, date and price on this page is invented. No figure is real.</p>
+<header class="page">
+  <h1>Box Mode</h1>
+  <p class="meta"><b>Mockup, not built.</b> Open one box of cards from many sellers, type a few letters, tap to tick: every seller's package fills in at once.</p>
+  <nav class="controls" aria-label="Screen state">
+    <span class="ctl-label">State</span>
+    <div class="seg" id="states"></div>
+  </nav>
+  <div class="controls">
+    <span class="ctl-label">Device</span>
+    <div class="seg" id="devices"></div>
+  </div>
+  <div class="controls">
+    <span class="ctl-label">Theme</span>
+    <div class="seg" id="themes"></div>
+    <span class="ctl-label">Two sellers</span>
+    <div class="seg" id="opts"></div>
+    <span class="ctl-label">Labels</span>
+    <div class="seg"><button type="button" id="lblBtn" aria-pressed="true">Today / New</button></div>
+  </div>
+</header>
+
+<p class="caption" id="caption" aria-live="polite"></p>
+
+<div class="stage">
+  <div class="frame-wrap" id="w-folded">
+    <p class="frame-cap">Folded: phone, 390 by 844</p>
+    <div class="phone" data-device="iphone-duo-folded"><div class="screen" id="f-phone"></div></div>
+  </div>
+  <div class="frame-wrap" id="w-unfolded">
+    <p class="frame-cap">Unfolded: two screens, Packages beside the box</p>
+    <div class="phone duo" data-device="iphone-duo-unfolded">
+      <div class="screen left" id="f-left"></div>
+      <div class="hinge" aria-hidden="true"></div>
+      <div class="screen right" id="f-right"></div>
+    </div>
+  </div>
+  <div class="frame-wrap" id="w-web">
+    <p class="frame-cap">Web: desktop window, 1180 wide</p>
+    <div class="win web" data-device="web-desktop" id="f-web"></div>
+  </div>
+</div>
+
+<section class="notes" aria-labelledby="nh">
+  <h2 id="nh">Design choices</h2>
+  <ol>
+    <li><b>Results freeze until the next keystroke.</b> A tick dims its row and adds a check inside the same 64-point box. The result list is taken once per keystroke, so no row moves, leaves or resizes under the pointer. Gain: no mis-taps on a fast bench pass. Loss: ticked rows stay in view on a long list. Pick: freeze (plan step 4).</li>
+    <li><b>The live counter carries progress.</b> A fixed three-cell counter (ticked, sellers, cost) sits above the results, with tabular figures so its width never changes. Gain: progress shows on a small phone where dimmed rows hide it. Loss: one row of height. Pick: keep.</li>
+    <li><b>Search sits at the bottom on the phone poses and at the top on web.</b> Gain: the main input is in thumb reach on the phone, and the web panel follows a desk reader's eye. Loss: two placements to build. Pick: split by platform. On web, Enter ticks the line when the search leaves exactly one. The keyboard is not drawn; the field rides above it.</li>
+    <li><b>Two sellers for one name: the space is taken at the keystroke.</b> The plan says the row "expands inline". Here the two choices show as soon as the search finds them, so the tap that confirms moves nothing. The older order is preselected (plan owner decision 2). The "Two sellers" control above shows the other option, nothing preselected. Departs from: the plan's wording "the row expands inline", not from any app behaviour.</li>
+    <li><b>"Finish" opens the summary; "Close box" writes.</b> One act, one name. Finish at 0 ticks discards the box and writes nothing.</li>
+    <li><b>Surplus stays in the box summary.</b> It never goes to Orphaned and never attaches to an order (plan owner decision 3).</li>
+    <li><b>Slice 2 needs a ruling.</b> The "via B-07" tag, the split-package line and Undo box need <code>boxId</code> and <code>boxes[]</code> in the saved state (invariant saved-state-shape). <span class="g">Owner grant: yes.</span> Slice 1 (batch check-in) writes only existing fields and needs none.</li>
+    <li><b>Dormant entry point.</b> "Open a box" lives in the Packages overflow menu. While a box is open on web, a "Box B-07 open" pill shows in the masthead (plan owner decision 5).</li>
+    <li><b>The unfolded pose is its own layout.</b> Packages on the left fills in live as ticks land on the right. It is not the folded layout made wider.</li>
+    <li><b>Lost-mail badge drawn at 28 days.</b> The sample needs a number; the app's own lost-mail rule applies when built.</li>
+  </ol>
+  <h2>Frames</h2>
+  <p>The repo's device list reads "unknown", so no device size is written. The phone and each unfolded half are drawn at the brief's 390 by 844, and web at 1180 wide. Type sizes come from the Apple HIG typography page (Dynamic Type, Large), read 2026-11-21. Tap targets are at least 44 by 44 points (HIG accessibility and buttons pages, as cited in the house iOS rules). Not drawn: the doorstep pass that logs the box at the door (another direction owns it), Tally's optional "arrived in" column, and the old-client release that only preserves unknown fields, which has no screen.</p>
+</section>
+
+<script>
+(function(){
+"use strict";
+var TODAY="Nov 21",FLAG=28;
+var ICON={
+  check:'<svg viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3.5 8.5l3 3 6-7"/></svg>',
+  more:'<svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><circle cx="5" cy="12" r="2"/><circle cx="12" cy="12" r="2"/><circle cx="19" cy="12" r="2"/></svg>',
+  box:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linejoin="round" aria-hidden="true"><path d="M3 6.5L10 3l7 3.5v7L10 17l-7-3.5z"/><path d="M3 6.5L10 10l7-3.5M10 10v7"/></svg>',
+  search:'<svg viewBox="0 0 20 20" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="8.5" cy="8.5" r="5.5"/><path d="M13 13l4 4"/></svg>',
+  x:'<svg viewBox="0 0 20 20" width="20" height="20" aria-hidden="true"><circle cx="10" cy="10" r="8" fill="currentColor" opacity=".45"/><path d="M7 7l6 6M13 7l-6 6" stroke="var(--screen)" stroke-width="1.8" stroke-linecap="round"/></svg>',
+  chev:'<svg class="chev" viewBox="0 0 8 14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M1 1l6 6-6 6"/></svg>',
+  back:'<svg viewBox="0 0 12 20" width="12" height="20" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M10 2L2 10l8 8"/></svg>',
+  pk:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><path d="M3 7l9-4 9 4v10l-9 4-9-4z"/><path d="M3 7l9 4 9-4M12 11v10"/></svg>',
+  ta:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><path d="M5 6h14M5 12h14M5 18h9"/></svg>',
+  or:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3 8l9 6 9-6"/></svg>'
+};
+
+/* Invented order lines: id, card, seller, order, ordered, price, qty */
+var RAW=[
+ ["h1","Lightning Imp","Hollowpine Cards","TX-48213","Oct 30",0.27,1],
+ ["h3","Rook of Ash","Hollowpine Cards","TX-48213","Oct 30",0.19,1],
+ ["h2","Glass Owl","Hollowpine Cards","TX-47120","Oct 18",0.45,1],
+ ["b1","Lightningrod Heron","Brackenridge Games","TX-49102","Nov 8",0.18,1],
+ ["b2","Salt Golem","Brackenridge Games","TX-49102","Nov 8",0.35,2],
+ ["q1","Lightning Seam","Quarry Road Collectibles","TX-48650","Nov 2",0.22,1],
+ ["q2","Quiet Ember","Quarry Road Collectibles","TX-48650","Nov 2",0.14,1],
+ ["n1","Ember Fox","Ninefold Cards","TX-47731","Oct 22",0.38,1],
+ ["n2","Thornback Rider","Ninefold Cards","TX-47731","Oct 22",0.21,1],
+ ["s1","Ember Fox","Saltmeadow Games","TX-48890","Nov 4",0.41,1],
+ ["s2","Emberline Scout","Saltmeadow Games","TX-48890","Nov 4",0.16,1],
+ ["c1","Moss Wyrm","Copperfen Hobby","TX-48004","Oct 27",0.12,4],
+ ["c2","Mossback Toad","Copperfen Hobby","TX-48004","Oct 27",0.09,1],
+ ["g1","Briar Sprite","Gullwing Games","TX-48420","Oct 29",0.11,1],
+ ["g2","Cinder Moth","Gullwing Games","TX-48420","Oct 29",0.24,1],
+ ["g3","Dune Strider","Gullwing Games","TX-48420","Oct 29",0.17,1],
+ ["g4","Frost Lantern","Gullwing Games","TX-48420","Oct 29",0.29,1],
+ ["g5","Harbor Wisp","Gullwing Games","TX-48420","Oct 29",0.13,1],
+ ["o1","Lantern Shrike","Oriole Street Cards","TX-49215","Nov 10",0.33,1],
+ ["o2","Pale Lancer","Oriole Street Cards","TX-49215","Nov 10",0.27,1],
+ ["w1","Wren of Cinders","Wexley & Daughters","TX-47904","Oct 25",0.52,1],
+ ["f1","Tidewater Imp","Fernhook Cards","TX-48777","Nov 5",0.15,1],
+ ["a1","Iron Petal","Little Anvil TCG","TX-46980","Oct 10",0.48,1]
+];
+var MON={Oct:9,Nov:10};
+function ageDays(d){var p=d.split(" ");return Math.round((Date.UTC(2026,10,21)-Date.UTC(2026,MON[p[0]],+p[1]))/864e5);}
+var LINES=RAW.map(function(r){return {id:r[0],card:r[1],seller:r[2],order:r[3],ordered:r[4],price:r[5],qty:r[6],got:0,gotOn:"",via:"",sess:0};});
+var BY={};LINES.forEach(function(l){BY[l.id]=l;});
+
+/* States: the plan's screen states plus its flow steps */
+var STATES=[
+ {k:"start",g:"Flow",n:"Packages",cap:"<b>Step 2, bench.</b> On Packages, the overflow menu holds \"Open a box\". The layer is dormant: nothing is written until a box is opened. Press Open a box."},
+ {k:"opened",g:"Empty",n:"Box just opened",cap:"<b>Empty, box just opened.</b> The panel shows the box label, today's date and a counter at 0. Type part of a card name, such as lightn, ember or moss. Finish at 0 discards the box and writes nothing."},
+ {k:"none",g:"Empty",n:"Nothing outstanding",cap:"<b>Empty, no outstanding cards.</b> Open a box is off, and its reason shows inline in the menu."},
+ {k:"normal",g:"Normal",n:"Search and tick",cap:"<b>Steps 3 to 5, match and tick.</b> Results list outstanding lines from every seller. A tap ticks the line, stamps Nov 21 and B-07, and dims the row where it is. Rows reflow only when the search text changes. Try ember, moss, harbor or glass owl."},
+ {k:"two",g:"Edge",n:"Two sellers",cap:"<b>Edge, one name with two sellers outstanding.</b> The choices show inline as soon as the search finds them. The older order is preselected: one tap on Tick confirms, and a tap on the other seller switches."},
+ {k:"qty",g:"Edge",n:"Quantity split",cap:"<b>Edge, quantity split.</b> An order of 4 Moss Wyrm, 2 ticked so far. A tap counts up to 3 of 4. The 4th stays outstanding, and its lost-mail clock keeps running."},
+ {k:"already",g:"Edge",n:"Already received",cap:"<b>Edge, already received.</b> Glass Owl was checked in on Nov 12. It is never ticked twice. Count as surplus lists it in the box summary only."},
+ {k:"nomatch",g:"Edge",n:"No order",cap:"<b>Edge, matches no order.</b> Set aside as surplus lists the card in the box summary only. It attaches to no order, never goes to Orphaned, and decides nothing."},
+ {k:"split",g:"Edge",n:"Box and envelope",cap:"<b>Edge, one seller split across box and envelope.</b> Gullwing Games: 3 cards came in B-07, 2 are still due by envelope. One lost-mail clock per order, unchanged; the box never resets it. <b>Slice 2</b>, after the saved-state ruling."},
+ {k:"close",g:"Flow",n:"Summary",cap:"<b>Step 6, close.</b> The summary shows what came in and the surplus. With no packing slip the expected count is unknown, and the summary says so instead of implying the box is complete. Close box writes one log entry."},
+ {k:"closex",g:"Flow",n:"Summary, expected",cap:"<b>Step 6 with an expected list (slice 3).</b> When an export carries a shipment column, the summary names what the box should have held and did not."},
+ {k:"after",g:"Flow",n:"After close",cap:"<b>Step 7, after.</b> Each package shows partly or fully received as today, with a small \"via B-07\" tag. The log entry offers Undo box, which reverses every tick of the session. <b>Slice 2.</b>"},
+ {k:"savefail",g:"Error",n:"Save fails",cap:"<b>Error, save fails</b> (storage blocked or full). The ticks stay on screen. Finish is off until a save works. Press Retry."},
+ {k:"conflict",g:"Error",n:"Sync conflict",cap:"<b>Error, sync conflict.</b> The same box was edited on the phone and on web. Ticks merge as a union. The one tick that differs shows inline with both versions."},
+ {k:"resume",g:"Error",n:"Interrupted",cap:"<b>Error, interrupted.</b> The app was closed mid-session. The box stays open, and the next launch offers Resume or Close."}
+];
+var SK={};STATES.forEach(function(s){SK[s.k]=s;});
+
+var S={state:"start",theme:"",dev:"all",opt:"older",labels:true,
+  view:"packages",menu:false,query:"",results:[],ticks:[],pick:{},surplus:[],base:{n:0,s:0,c:0},
+  banner:"",toast:null,sel:"TX-48213",detail:false,expected:false};
+
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c];});}
+function money(v){return "$"+v.toFixed(2);}
+function lbl(k,text){return ' data-k="'+k+'" data-lbl="'+(k==="today"?"Today: ":"New: ")+esc(text)+'"';}
+function out(l){return l.qty-l.got-l.sess;}
+function resetLines(){LINES.forEach(function(l){l.got=0;l.gotOn="";l.via="";l.sess=0;});BY.h2.got=1;BY.h2.gotOn="Nov 12";}
+
+/* Results are taken once per keystroke; a tick never re-sorts or removes them. */
+function compute(){
+  var q=S.query.trim().toLowerCase();S.results=[];
+  if(!q)return;
+  var m=LINES.filter(function(l){return l.card.toLowerCase().indexOf(q)>=0;});
+  var open=m.filter(function(l){return out(l)>0||l.sess>0;});
+  if(!open.length){
+    var rec=m.filter(function(l){return l.got>0;});
+    if(rec.length)rec.forEach(function(l){S.results.push({type:"rec",id:l.id});});
+    else S.results.push({type:"none",text:S.query.trim()});
+    return;
+  }
+  var names={};open.forEach(function(l){(names[l.card]=names[l.card]||[]).push(l);});
+  Object.keys(names).sort().forEach(function(n){
+    var ls=names[n].sort(function(a,b){return ageDays(b.ordered)-ageDays(a.ordered);});
+    var sellers={};ls.forEach(function(l){sellers[l.seller]=1;});
+    if(Object.keys(sellers).length>1){
+      var ids=ls.map(function(l){return l.id;});
+      S.results.push({type:"group",name:n,ids:ids});
+      if(!(n in S.pick))S.pick[n]=S.opt==="older"?firstOpen(ids):null;
+    } else ls.forEach(function(l){S.results.push({type:"line",id:l.id});});
+  });
+}
+function firstOpen(ids){for(var i=0;i<ids.length;i++)if(out(BY[ids[i]])>0)return ids[i];return null;}
+function totals(){
+  var n=S.base.n,c=S.base.c,sel={};
+  S.ticks.forEach(function(t){var l=BY[t];n++;c+=l.price;sel[l.seller]=1;});
+  return {n:n,s:S.base.s+Object.keys(sel).length,c:c};
+}
+function tick(id){var l=BY[id];if(!l||out(l)<=0)return;l.sess++;S.ticks.push(id);}
+function undo(){var id=S.ticks.pop();if(id)BY[id].sess--;}
+
+function setState(k,keepHash){
+  if(!SK[k])k="start";
+  S.state=k;resetLines();
+  S.view="packages";S.menu=false;S.query="";S.ticks=[];S.pick={};S.surplus=[];S.base={n:0,s:0,c:0};
+  S.banner="";S.toast=null;S.sel="TX-48213";S.detail=false;S.expected=false;
+  if(k==="start")S.menu=true;
+  if(k==="none"){LINES.forEach(function(l){l.got=l.qty;l.gotOn=l.gotOn||"Nov 19";});S.menu=true;}
+  if(["opened","normal","two","qty","already","nomatch","savefail","conflict"].indexOf(k)>=0)S.view="session";
+  if(k==="normal"){S.base={n:11,s:6,c:4.65};S.query="lightn";BY.q1.sess=1;}
+  if(k==="two"){S.base={n:23,s:11,c:6.85};S.query="ember";}
+  if(k==="qty"){S.base={n:23,s:11,c:6.85};S.query="moss";BY.c1.sess=2;}
+  if(k==="already"){S.base={n:23,s:11,c:6.85};S.query="glass owl";}
+  if(k==="nomatch"){S.base={n:23,s:11,c:6.85};S.query="pale comet";}
+  if(k==="savefail"){S.base={n:12,s:7,c:5.40};S.banner="savefail";S.query="harbor";}
+  if(k==="conflict"){S.base={n:17,s:9,c:6.10};S.banner="conflict";S.query="harbor";BY.g5.sess=1;}
+  if(k==="resume")S.banner="resume";
+  if(k==="close"||k==="closex"){S.view="summary";S.base={n:48,s:19,c:22.85};S.expected=k==="closex";
+    S.surplus=[{name:"Glass Owl",why:"Duplicate of a card checked in Nov 12"},{name:"Pale Comet",why:"Not on any order"}];}
+  if(k==="after"||k==="split")applyClosed([]);
+  if(k==="after")S.toast={text:"Box B-07 closed · 48 cards",act:"undobox",btn:"Undo box"};
+  if(k==="split"){S.sel="TX-48420";S.detail=true;}
+  compute();
+  if(!keepHash)writeHash();
+  render();
+}
+/* A closed sample box, plus any lines ticked live before Close box */
+function applyClosed(live){
+  ["h1","h3","b1","q1","n1","c1","g1","g2","g3","o1","w1","f1"].forEach(function(id){var l=BY[id];l.got=id==="c1"?3:l.qty;l.gotOn=TODAY;l.via="B-07";});
+  live.forEach(function(x){var l=BY[x[0]];l.got=Math.min(l.qty,l.got+x[1]);l.gotOn=TODAY;l.via="B-07";});
+}
+
+/* Packages */
+function pkgs(){
+  var map={},list=[];
+  LINES.forEach(function(l){
+    var p=map[l.order];
+    if(!p){p=map[l.order]={order:l.order,seller:l.seller,ordered:l.ordered,cards:0,inn:0,via:0,lines:[]};list.push(p);}
+    p.cards+=l.qty;p.inn+=l.got+l.sess;p.lines.push(l);p.via+=(l.via?l.got:0)+l.sess;
+  });
+  return list.sort(function(a,b){return ageDays(b.ordered)-ageDays(a.ordered);});
+}
+function outstandingCount(){var n=0,s={};LINES.forEach(function(l){var o=out(l);if(o>0){n+=o;s[l.seller]=1;}});return {n:n,s:Object.keys(s).length};}
+function pkgRow(p,wide){
+  var left=p.cards-p.inn,age=ageDays(p.ordered);
+  var title=esc(p.seller),sub=esc(p.order)+" · "+p.cards+(p.cards===1?" card":" cards");
+  if(p.via>0){
+    if(left===0)title+='<span class="via">via B-07</span>';
+    else sub=esc(p.order)+" · "+p.via+" via B-07, "+left+" outstanding";
+  }
+  var right=left===0?'<span class="prog all">All in</span>':'<span class="prog num">'+p.inn+" of "+p.cards+"</span>"+(age>=FLAG?'<span class="badge num">'+age+" days</span>":"");
+  var cur=S.view==="packages"&&(wide||S.detail)&&S.sel===p.order;
+  return '<button class="prow" data-act="pkg" data-pkg="'+p.order+'"'+(cur?' aria-current="true"':"")+'><span class="main"><span class="t">'+title+'</span><span class="s">'+sub+'</span></span><span class="pend">'+right+"</span>"+(wide?"":ICON.chev)+"</button>";
+}
+function packagesList(wide){
+  var ps=pkgs(),oc=outstandingCount(),h="";
+  if(S.banner==="resume")h+='<div class="card"'+lbl("new","interrupted box")+'><p><b>B-07 is still open, 17 ticked.</b></p><div class="row"><button class="btn primary" data-act="resume">Resume</button><button class="btn quiet" data-act="resumeclose">Close</button></div></div>';
+  if(oc.n===0)h+='<div class="card"><p>Every card is checked in. All is well.</p></div>';
+  var showVia=ps.some(function(p){return p.via>0;});
+  h+='<div class="list"'+(showVia?lbl("new","via B-07 tag · slice 2"):lbl("today","Packages"))+">"+ps.map(function(p){return pkgRow(p,wide);}).join("")+"</div>";
+  return h;
+}
+function menuHtml(){
+  if(!S.menu)return "";
+  var off=outstandingCount().n===0;
+  return '<div class="menu" role="menu"'+lbl("new","Open a box")+'><button class="mi" role="menuitem" data-act="open"'+(off?' aria-disabled="true" aria-describedby="whyoff"':"")+">Open a box"+ICON.box+"</button>"+
+    (off?'<p class="why" id="whyoff">Nothing is outstanding, so there is nothing to match.</p>':"")+
+    '<div class="rest">Today\'s items stay in this menu.</div></div>';
+}
+function subline(){var oc=outstandingCount();return oc.n?oc.n+" cards outstanding from "+oc.s+" sellers":"Nothing outstanding";}
+function navPackages(){
+  return '<div class="nav"><div class="nav-top"><span></span><button class="more" data-act="menu" aria-label="More" aria-expanded="'+S.menu+'">'+ICON.more+"</button></div>"+
+    '<h2 class="largetitle">Packages</h2><p class="navsub num">'+subline()+"</p>"+menuHtml()+"</div>";
+}
+function tabbar(){return '<nav class="tabbar" aria-label="Sections"><button class="tab" aria-current="page">'+ICON.pk+'Packages</button><button class="tab">'+ICON.ta+'Tally</button><button class="tab">'+ICON.or+"Orphaned</button></nav>";}
+function toastHtml(){
+  if(!S.toast)return "";
+  return '<div class="toast" role="status"'+(S.toast.act?lbl("new","log entry"):"")+"><span>"+esc(S.toast.text)+"</span>"+(S.toast.act?'<button data-act="'+S.toast.act+'">'+esc(S.toast.btn)+"</button>":"")+"</div>";
+}
+function detailHtml(phone){
+  var p=pkgs().filter(function(x){return x.order===S.sel;})[0];if(!p)return "";
+  var left=p.cards-p.inn,age=ageDays(p.ordered);
+  var h='<div class="nav">'+(phone?'<div class="nav-top"><button class="navbtn" data-act="back" style="margin-left:-12px">'+ICON.back+"Packages</button><span></span></div>":'<div class="nav-top"></div>')+
+    '<h2 class="largetitle sm">'+esc(p.seller)+'</h2><p class="navsub num">'+esc(p.order)+" · ordered "+p.ordered+" · "+p.inn+" of "+p.cards+" in</p></div>";
+  h+='<div class="scroll" data-scroll="detail">';
+  if(p.via>0&&left>0)h+='<div class="card"'+lbl("new","box and envelope")+'><p><b class="num">'+p.via+" via B-07, "+left+' outstanding.</b></p><p class="s wrap" style="margin-top:4px">Lost-mail clock: '+age+" days, still running for the "+left+" outstanding. The box never resets it.</p></div>";
+  h+='<div class="list">'+p.lines.map(function(l){
+    var o=out(l),st,v=l.via?'<span class="via">via '+l.via+"</span>":"";
+    if(o<=0)st="Checked in "+(l.gotOn||TODAY)+v;
+    else if(l.got+l.sess>0)st=(l.got+l.sess)+" of "+l.qty+" in"+v+" · "+o+" outstanding";
+    else st="Outstanding · "+age+" days";
+    return '<div class="lrow"><span class="dot'+(o>0?" out":"")+'"></span><span class="main"><span class="t">'+esc(l.card)+(l.qty>1?" ×"+l.qty:"")+'</span><span class="s">'+st+'</span></span><span class="qty">'+money(l.price*l.qty)+"</span></div>";
+  }).join("")+"</div></div>";
+  return h;
+}
+
+/* Session */
+function hl(name){
+  var q=S.query.trim();if(!q)return esc(name);
+  var i=name.toLowerCase().indexOf(q.toLowerCase());if(i<0)return esc(name);
+  return esc(name.slice(0,i))+"<b>"+esc(name.slice(i,i+q.length))+"</b>"+esc(name.slice(i+q.length));
+}
+function lineRow(l){
+  var o=out(l),done=o<=0,part=!done&&l.sess>0;
+  var sub=done?"Ticked · B-07 · "+TODAY:esc(l.seller)+" · "+esc(l.order)+" · "+money(l.price);
+  var q=l.qty>1?(l.got+l.sess)+" of "+l.qty:"";
+  return '<button class="rrow'+(done?" done":"")+(part?" part":"")+'" data-act="tick" data-id="'+l.id+'"'+(done?' aria-disabled="true"':"")+' aria-label="'+esc(l.card+", "+l.seller+(done?", ticked":", tick"))+'">'+
+    '<span class="circ">'+(done?ICON.check:"")+'</span><span class="main"><span class="t">'+hl(l.card)+'</span><span class="s">'+sub+'</span></span><span class="qty">'+q+"</span></button>";
+}
+function groupHtml(g){
+  var pick=S.pick[g.name],openIds=g.ids.filter(function(id){return out(BY[id])>0;});
+  var h='<div class="rlist" role="radiogroup" aria-label="'+esc(g.name)+', pick a seller"'+lbl("new","two sellers, inline")+'><div class="grp-h"><span class="t">'+hl(g.name)+'</span><span class="s">'+g.ids.length+" sellers have it outstanding"+(S.opt==="older"?" · older picked":" · pick one")+"</span></div>";
+  g.ids.forEach(function(id,i){
+    var l=BY[id],done=out(l)<=0;
+    h+='<button class="choice'+(done?" done":"")+'" role="radio" aria-checked="'+(pick===id)+'" data-act="pick" data-name="'+esc(g.name)+'" data-id="'+id+'"'+(done?' aria-disabled="true"':"")+">"+
+      (done?'<span class="circ">'+ICON.check+"</span>":'<span class="radio"></span>')+
+      '<span class="main"><span class="t sm">'+esc(l.seller)+'</span><span class="s">'+(done?"Ticked · B-07 · "+TODAY:esc(l.order)+" · ordered "+l.ordered+" · "+money(l.price))+"</span></span>"+(i===0?'<span class="older">Older</span>':"")+"</button>";
+  });
+  var lab,off=false;
+  if(!openIds.length){lab="Both ticked";off=true;}
+  else if(!pick){lab="Pick a seller first";off=true;}
+  else lab="Tick from "+BY[pick].seller+(openIds.length<g.ids.length?" too":"");
+  h+='<button class="confirm" data-act="confirm" data-name="'+esc(g.name)+'"'+(off?' aria-disabled="true"':"")+">"+esc(lab)+"</button></div>";
+  return h;
+}
+function infoRow(title,msg,name,why,btn){
+  var done=S.surplus.some(function(x){return x.name.toLowerCase()===name.toLowerCase();});
+  return '<div class="rlist"><div class="info"><span class="main"><span class="t">'+esc(title)+'</span><span class="s wrap">'+msg+'</span></span><button class="pillbtn" data-act="surplus" data-name="'+esc(name)+'" data-why="'+esc(why)+'"'+(done?' aria-disabled="true"':"")+">"+(done?"In the summary":esc(btn))+"</button></div></div>";
+}
+function resultsHtml(){
+  if(!S.query.trim()){var oc=outstandingCount();return '<div class="hint"><p class="h">Type a card name from the box.</p><p class="s num">'+oc.n+" cards outstanding from "+oc.s+" sellers.</p></div>";}
+  var h="",lines=[];
+  function flush(){if(lines.length){h+='<div class="rlist">'+lines.join("")+"</div>";lines=[];}}
+  S.results.forEach(function(r){
+    if(r.type==="line"){lines.push(lineRow(BY[r.id]));return;}
+    flush();
+    if(r.type==="group")h+=groupHtml(r);
+    if(r.type==="rec"){var l=BY[r.id];h+=infoRow(l.card,"Checked in "+l.gotOn+" ("+esc(l.seller)+"). Duplicate purchase?",l.card,"Duplicate of a card checked in "+l.gotOn,"Count as surplus");}
+    if(r.type==="none"){var nm=r.text.replace(/\b\w/g,function(c){return c.toUpperCase();});h+=infoRow(nm,"Not on any order.",nm,"Not on any order","Set aside as surplus");}
+  });
+  flush();return h;
+}
+function counterHtml(){
+  var t=totals();
+  return '<div class="counter" role="status"><div><b>'+t.n+"</b><span>ticked</span></div><div><b>"+t.s+"</b><span>sellers</span></div><div><b>"+money(t.c)+"</b><span>cost</span></div></div>";
+}
+function bannerHtml(){
+  var t=totals();
+  if(S.banner==="savefail")return '<div class="alert err" role="alert"><b>Not saved. Your '+t.n+' ticks are held here.</b><br>Finish waits until a save works.<div class="row"><button class="btn primary" data-act="retry">Retry</button></div></div>';
+  if(S.banner==="saved")return '<div class="alert ok" role="status"><b>Saved.</b> All '+t.n+" ticks are kept.</div>";
+  if(S.banner==="conflict")return '<div class="alert warn"'+lbl("new","union merge")+'><b>B-07: 1 tick differs.</b><ul class="vers"><li>This phone: Harbor Wisp ticked, 10:02</li><li>Web: Harbor Wisp tick undone, 10:05</li></ul><div class="row"><button class="btn primary" data-act="keep">Keep ticked</button><button class="btn quiet" data-act="drop">Keep undone</button></div></div>';
+  if(S.banner==="kept")return '<div class="alert ok" role="status"><b>Resolved.</b> Harbor Wisp stays ticked on both.</div>';
+  if(S.banner==="dropped")return '<div class="alert ok" role="status"><b>Resolved.</b> Harbor Wisp is outstanding on both.</div>';
+  return "";
+}
+function sessionHtml(where){
+  var finOff=S.banner==="savefail",undoOff=!S.ticks.length;
+  var bar='<div class="bar"><button class="navbtn start" data-act="undo"'+(undoOff?' aria-disabled="true" title="Nothing to undo yet"':' title="Undo the last tick"')+">Undo</button>"+
+    '<div class="ttl"><h3>Box B-07</h3><div class="sub">Opened '+TODAY+"</div></div>"+
+    '<button class="navbtn strong end" data-act="finish"'+(finOff?' aria-disabled="true" title="Finish waits until a save works"':"")+">Finish</button></div>";
+  var search='<div class="field">'+ICON.search+'<input type="search" data-k="q-'+where+'" placeholder="Card name" value="'+esc(S.query)+'" aria-label="Card name" autocomplete="off" spellcheck="false"><button class="clear" data-act="clearq" data-where="'+where+'" aria-label="Clear"'+(S.query?"":" hidden")+">"+ICON.x+"</button></div>";
+  var body=counterHtml()+bannerHtml()+'<div class="results" data-scroll="res">'+resultsHtml()+"</div>";
+  var l=lbl("new","box session · slice 1");
+  if(where==="web")return '<div class="pane">'+bar+'<div class="searchtop">'+search+"</div>"+body+"</div>";
+  return '<div class="pane"'+l+">"+bar+body+'<div class="searchbar">'+search+"</div></div>";
+}
+function summaryHtml(){
+  var t=totals();
+  var h='<div class="pane"><div class="bar"><button class="navbtn start" data-act="backsess">Back</button><div class="ttl"><h3>Box B-07</h3><div class="sub">Summary</div></div><button class="navbtn strong end" data-act="closebox">Close box</button></div>';
+  h+='<div class="results" data-scroll="sum"><div class="sumhead"><div class="big num">'+t.n+' cards came in</div><p class="s num">from '+t.s+" sellers · "+money(t.c)+"</p></div>";
+  h+='<div class="sumsec"><p class="sect">Expected</p>';
+  if(S.expected)h+='<div class="rlist"'+lbl("new","expected list · slice 3")+'><div class="srow"><span class="main"><span class="t">3 expected cards still outstanding from 2 sellers</span></span></div><div class="srow"><span class="main"><span class="t">Frost Lantern, Harbor Wisp</span><span class="s">Gullwing Games · TX-48420</span></span></div><div class="srow"><span class="main"><span class="t">Moss Wyrm, 1 of 4</span><span class="s">Copperfen Hobby · TX-48004</span></span></div></div>';
+  else h+='<div class="rlist"><div class="srow"><span class="main"><span class="t">Unknown</span><span class="s wrap">This box came with no packing slip, so the summary cannot say what is missing.</span></span></div></div>';
+  h+="</div>";
+  h+='<div class="sumsec"><p class="sect">Surplus · '+S.surplus.length+'</p><div class="rlist">'+(S.surplus.length?S.surplus.map(function(x){return '<div class="srow"><span class="main"><span class="t">'+esc(x.name)+'</span><span class="s">'+esc(x.why)+"</span></span></div>";}).join(""):'<div class="srow"><span class="main"><span class="s">No surplus cards.</span></span></div>')+'</div><p class="foot">Kept in this summary only. Attached to no order.</p></div>';
+  h+='<div class="sumsec"><p class="foot">Close box writes one log entry, "Box B-07 closed", with Undo box.</p></div></div></div>';
+  return h;
+}
+
+/* Frames */
+function statusBar(){return '<div class="island" aria-hidden="true"></div><div class="status" aria-hidden="true"><span>9:41</span><i></i></div><div class="homebar" aria-hidden="true"></div>';}
+function framePhone(){
+  var h=statusBar();
+  if(S.view==="packages"&&S.detail)h+=detailHtml(true);
+  else h+=navPackages()+'<div class="scroll" data-scroll="pk">'+packagesList(false)+"</div>";
+  h+=tabbar();
+  if(S.view!=="packages")h+='<div class="scrim"></div><div class="sheet" role="dialog" aria-label="Box B-07"><div class="grabber"></div>'+(S.view==="session"?sessionHtml("phone"):summaryHtml())+"</div>";
+  return h+toastHtml();
+}
+function frameLeft(){return statusBar()+navPackages()+'<div class="scroll" data-scroll="pk">'+packagesList(true)+"</div>"+tabbar()+toastHtml();}
+function frameRight(){
+  var h=statusBar();
+  if(S.view==="session")h+=sessionHtml("right");
+  else if(S.view==="summary")h+=summaryHtml();
+  else h+=detailHtml(false);
+  return h;
+}
+function frameWeb(){
+  var open=S.view!=="packages";
+  var h='<div class="win-bar" aria-hidden="true"><i></i><i></i><i></i></div><div class="mast"><span class="word">MANIFEST</span><nav aria-label="Sections"><button aria-current="page">Packages</button><button>Tally</button><button>Orphaned</button></nav>'+
+    '<div class="tail">'+(open?'<span class="boxpill"'+lbl("new","header while open")+">Box B-07 open</span>":"")+
+    '<button class="more" data-act="menu" aria-label="More" aria-expanded="'+S.menu+'">'+ICON.more+"</button></div>"+menuHtml()+"</div>";
+  h+='<div class="web-body"><div class="web-main" data-scroll="pk"><h2>Packages</h2><p class="navsub num" style="margin:0 0 16px">'+subline()+"</p>"+packagesList(true)+"</div>";
+  h+='<div class="web-side">'+(S.view==="session"?sessionHtml("web"):S.view==="summary"?summaryHtml():'<div class="side-col">'+detailHtml(false)+"</div>")+"</div></div>";
+  return h+toastHtml();
+}
+
+/* Render, keeping focus, caret and scroll, so nothing moves under the pointer */
+var FRAMES=[["f-phone",framePhone],["f-left",frameLeft],["f-right",frameRight],["f-web",frameWeb]];
+function render(){
+  var ae=document.activeElement,fk=ae&&ae.getAttribute?ae.getAttribute("data-k"):null,sel=null;
+  if(fk&&fk.indexOf("q-")===0)sel=[ae.selectionStart,ae.selectionEnd];else fk=null;
+  var sc={};
+  FRAMES.forEach(function(f){var root=document.getElementById(f[0]);root.querySelectorAll("[data-scroll]").forEach(function(e){sc[f[0]+"|"+e.getAttribute("data-scroll")]=e.scrollTop;});
+    root.innerHTML=f[1]();
+    root.querySelectorAll("[data-scroll]").forEach(function(e){var k=f[0]+"|"+e.getAttribute("data-scroll");if(k in sc)e.scrollTop=sc[k];});});
+  if(fk){var n=document.querySelector('[data-k="'+fk+'"]');if(n){n.focus({preventScroll:true});try{n.setSelectionRange(sel[0],sel[1]);}catch(e){}}}
+  chrome();
+}
+
+/* Page controls and deep links: #s=<state>&t=dark|light&d=phone|duo|web&o=none */
+function writeHash(){
+  var p=["s="+S.state];if(S.theme)p.push("t="+S.theme);if(S.dev!=="all")p.push("d="+S.dev);if(S.opt!=="older")p.push("o="+S.opt);
+  var h="#"+p.join("&");if(location.hash!==h)history.replaceState(null,"",h);
+}
+function readHash(){
+  var o={};location.hash.replace(/^#/,"").split("&").forEach(function(kv){var a=kv.split("=");if(a[0])o[a[0]]=decodeURIComponent(a[1]||"");});
+  S.theme=o.t==="dark"||o.t==="light"?o.t:"";
+  S.dev=["phone","duo","web"].indexOf(o.d)>=0?o.d:"all";
+  S.opt=o.o==="none"?"none":"older";
+  applyTheme();setState(SK[o.s]?o.s:"start",true);
+}
+function applyTheme(){var r=document.documentElement;if(S.theme)r.setAttribute("data-theme",S.theme);else r.removeAttribute("data-theme");r.setAttribute("data-labels",S.labels?"on":"off");}
+function seg(id,items,cur,attr){
+  document.getElementById(id).innerHTML=items.map(function(it){return (it.g?'<span class="grp">'+it.g+"</span>":"")+'<button type="button" data-'+attr+'="'+it.k+'" aria-pressed="'+(it.k===cur)+'">'+it.n+"</button>";}).join("");
+}
+function chrome(){
+  var last="";
+  seg("states",STATES.map(function(s){var g=s.g!==last?s.g:"";last=s.g;return {k:s.k,n:s.n,g:g};}),S.state,"state");
+  seg("devices",[{k:"all",n:"All"},{k:"phone",n:"Phone"},{k:"duo",n:"Two screens"},{k:"web",n:"Web"}],S.dev,"dev");
+  seg("themes",[{k:"",n:"System"},{k:"light",n:"Light"},{k:"dark",n:"Dark"}],S.theme,"theme");
+  seg("opts",[{k:"older",n:"Older picked"},{k:"none",n:"None picked"}],S.opt,"opt");
+  document.getElementById("caption").innerHTML=SK[S.state].cap;
+  document.getElementById("w-folded").hidden=!(S.dev==="all"||S.dev==="phone");
+  document.getElementById("w-unfolded").hidden=!(S.dev==="all"||S.dev==="duo");
+  document.getElementById("w-web").hidden=!(S.dev==="all"||S.dev==="web");
+  document.getElementById("lblBtn").setAttribute("aria-pressed",String(S.labels));
+}
+
+document.addEventListener("click",function(e){
+  var b=e.target.closest("button");if(!b)return;
+  var d=b.dataset;
+  if(d.state!==undefined){setState(d.state);return;}
+  if(d.dev!==undefined){S.dev=d.dev;writeHash();chrome();return;}
+  if(d.theme!==undefined){S.theme=d.theme;applyTheme();writeHash();chrome();return;}
+  if(d.opt!==undefined){S.opt=d.opt;writeHash();setState(S.state,true);return;}
+  if(b.id==="lblBtn"){S.labels=!S.labels;applyTheme();chrome();return;}
+  var a=d.act;if(!a||b.getAttribute("aria-disabled")==="true")return;
+  if(a==="menu"){S.menu=!S.menu;render();return;}
+  if(a==="open"){setState("opened");return;}
+  if(a==="tick"){tick(d.id);render();return;}
+  if(a==="pick"){S.pick[d.name]=d.id;render();return;}
+  if(a==="confirm"){var g=S.results.filter(function(r){return r.name===d.name;})[0];tick(S.pick[d.name]);S.pick[d.name]=g?firstOpen(g.ids):null;render();return;}
+  if(a==="surplus"){S.surplus.push({name:d.name,why:d.why});render();return;}
+  if(a==="undo"){undo();render();return;}
+  if(a==="clearq"){S.query="";compute();render();var i=document.querySelector('[data-k="q-'+d.where+'"]');if(i)i.focus({preventScroll:true});return;}
+  if(a==="retry"){S.banner="saved";render();return;}
+  if(a==="keep"){S.banner="kept";render();return;}
+  if(a==="drop"){S.banner="dropped";BY.g5.sess=0;render();return;}
+  if(a==="finish"){
+    if(totals().n===0){S.view="packages";S.toast={text:"Box B-07 discarded. Nothing was written."};render();return;}
+    S.view="summary";render();return;}
+  if(a==="backsess"){S.view="session";compute();render();return;}
+  if(a==="closebox"){
+    var t=totals(),live=LINES.filter(function(l){return l.sess>0;}).map(function(l){return [l.id,l.sess];});
+    S.state="after";writeHash();resetLines();applyClosed(live);
+    S.view="packages";S.query="";S.ticks=[];S.banner="";S.menu=false;S.results=[];
+    S.toast={text:"Box B-07 closed · "+t.n+" cards",act:"undobox",btn:"Undo box"};render();return;}
+  if(a==="undobox"){resetLines();S.toast={text:"Box B-07 undone. Every tick is reversed."};render();return;}
+  if(a==="resume"){setState("normal");S.base={n:17,s:9,c:6.10};render();return;}
+  if(a==="resumeclose"){setState("close");S.base={n:17,s:9,c:6.10};S.surplus=[];render();return;}
+  if(a==="pkg"){S.sel=d.pkg;if(b.closest("#f-phone"))S.detail=true;S.menu=false;render();return;}
+  if(a==="back"){S.detail=false;render();return;}
+});
+document.addEventListener("input",function(e){
+  var k=e.target.getAttribute&&e.target.getAttribute("data-k");if(!k||k.indexOf("q-")!==0)return;
+  S.query=e.target.value;compute();render();
+});
+document.addEventListener("keydown",function(e){
+  if(e.key==="Escape"&&S.menu){S.menu=false;render();return;}
+  /* Enter ticks the one outstanding line when the search leaves exactly one */
+  var k=e.target.getAttribute&&e.target.getAttribute("data-k");
+  if(e.key==="Enter"&&k&&k.indexOf("q-")===0){
+    var ls=S.results.filter(function(r){return r.type==="line"&&out(BY[r.id])>0;});
+    if(S.results.length===1&&ls.length===1){e.preventDefault();tick(ls[0].id);render();}
+  }
+});
+window.addEventListener("hashchange",readHash);
+readHash();
+})();
+</script>
+</body>
+</html>

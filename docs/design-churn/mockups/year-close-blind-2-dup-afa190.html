@@ -1,0 +1,886 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Year close sketches</title>
+<style>
+/* Tokens. House step 4 px, radius 8 px, colour by role. Values are this designer's own (blind). */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-10: 40px; --space-11: 44px; --space-12: 48px;
+  --radius: 8px;
+  --font: -apple-system, system-ui, sans-serif;
+
+  /* Dynamic Type, iOS Large (default) size, HIG Typography, read 2026-11-21 */
+  --fs-large: 34px; --lh-large: 41px;
+  --fs-t1: 28px; --lh-t1: 34px;
+  --fs-t2: 22px; --lh-t2: 28px;
+  --fs-t3: 20px; --lh-t3: 25px;
+  --fs-body: 17px; --lh-body: 22px;
+  --fs-call: 16px; --lh-call: 21px;
+  --fs-sub: 15px; --lh-sub: 20px;
+  --fs-foot: 13px; --lh-foot: 18px;
+  --fs-cap: 12px; --lh-cap: 16px;
+  --target: 44px;
+
+  --surface: #F2F4F7;
+  --raised: #FFFFFF;
+  --text: #16202B;
+  --muted: #5A6878;
+  --line: #D5DCE4;
+  --accent: #1D5FA8;
+  --on-accent: #FFFFFF;
+  --ok: #2F7D4F;
+  --warn: #9A5600;
+  --danger: #B3261E;
+  --scrim: rgba(22, 32, 43, 0.32);
+  --layer: #DCE4EC;
+  --layer-edge: #AFBDCB;
+  --layer-stripe: #CDD7E1;
+  --layer-now: #FFFFFF;
+  --hinge: #1A1F25;
+  --bezel: #2B3138;
+  --page-bg: #E6E9ED;
+  --tag: #6B3FA0;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #0F151C; --raised: #18212B; --text: #E6ECF2; --muted: #9AA8B7; --line: #2A3643;
+    --accent: #6EA8EE; --on-accent: #0B1520; --ok: #6FC28E; --warn: #E3A452; --danger: #F08A80;
+    --scrim: rgba(0, 0, 0, 0.5); --layer: #223040; --layer-edge: #3B5068; --layer-stripe: #2A3A4C; --layer-now: #18212B;
+    --hinge: #000000; --bezel: #3A424C; --page-bg: #070A0D; --tag: #C9A4F2;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #0F151C; --raised: #18212B; --text: #E6ECF2; --muted: #9AA8B7; --line: #2A3643;
+  --accent: #6EA8EE; --on-accent: #0B1520; --ok: #6FC28E; --warn: #E3A452; --danger: #F08A80;
+  --scrim: rgba(0, 0, 0, 0.5); --layer: #223040; --layer-edge: #3B5068; --layer-stripe: #2A3A4C; --layer-now: #18212B;
+  --hinge: #000000; --bezel: #3A424C; --page-bg: #070A0D; --tag: #C9A4F2;
+  color-scheme: dark;
+}
+/* Largest accessibility text size, AX5, HIG Typography iOS table, read 2026-11-21 */
+.ax5 {
+  --fs-large: 60px; --lh-large: 70px;
+  --fs-t1: 58px; --lh-t1: 68px;
+  --fs-t2: 56px; --lh-t2: 66px;
+  --fs-t3: 55px; --lh-t3: 65px;
+  --fs-body: 53px; --lh-body: 62px;
+  --fs-call: 51px; --lh-call: 60px;
+  --fs-sub: 49px; --lh-sub: 58px;
+  --fs-foot: 44px; --lh-foot: 52px;
+  --fs-cap: 43px; --lh-cap: 51px;
+}
+
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0; font-family: var(--font); background: var(--page-bg); color: var(--text);
+  font-size: var(--fs-body); line-height: var(--lh-body);
+}
+button { font: inherit; color: inherit; }
+
+/* Page chrome around the frames (not part of the app) */
+.doc { display: flex; flex-direction: column; gap: var(--space-8); padding: var(--space-4); max-inline-size: 2200px; margin-inline: auto; }
+.sample {
+  position: sticky; top: 0; z-index: 20; display: flex; flex-wrap: wrap; gap: var(--space-2) var(--space-4);
+  align-items: center; justify-content: space-between;
+  padding: var(--space-3) var(--space-4); background: var(--warn); color: var(--raised);
+  font-size: var(--fs-sub); line-height: var(--lh-sub); border-radius: var(--radius);
+}
+:root[data-theme="dark"] .sample { color: #0F151C; }
+@media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) .sample { color: #0F151C; } }
+.sample strong { font-weight: 700; }
+.ctl { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.ctl button {
+  min-block-size: var(--space-11); padding-inline: var(--space-3); border-radius: var(--radius);
+  border: 1px solid currentColor; background: transparent; cursor: pointer;
+}
+.ctl button[aria-pressed="true"] { background: rgba(255,255,255,0.25); }
+.intro { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 70ch; }
+.intro h1 { margin: 0; font-size: var(--fs-t1); line-height: var(--lh-t1); }
+.intro p { margin: 0; color: var(--muted); }
+.opt { display: flex; flex-direction: column; gap: var(--space-4); }
+.opt[hidden] { display: none; }
+.opt-head { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 80ch; }
+.opt-head h2 { margin: 0; font-size: var(--fs-t2); line-height: var(--lh-t2); }
+.opt-head p { margin: 0; color: var(--muted); }
+.states { display: flex; flex-wrap: wrap; gap: var(--space-2); font-size: var(--fs-sub); }
+.states a {
+  display: inline-flex; align-items: center; min-block-size: var(--space-11); padding-inline: var(--space-3);
+  border: 1px solid var(--line); border-radius: var(--radius); color: var(--text); text-decoration: none; background: var(--raised);
+}
+.states a[aria-current="true"] { border-color: var(--accent); color: var(--accent); }
+.frames { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+figcaption { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--muted); max-inline-size: 466px; }
+
+/* Device frames */
+.dev {
+  position: relative; overflow: hidden; background: var(--surface); color: var(--text);
+  outline: 10px solid var(--bezel); border-radius: var(--radius);
+}
+.dev.folded { inline-size: 466px; block-size: 678px; }
+.dev.phone { inline-size: 466px; block-size: 678px; resize: both; min-inline-size: 320px; min-block-size: 560px; border-radius: 24px; }
+.dev.unfolded { inline-size: 951px; block-size: 669px; display: grid; grid-template-columns: 455.5px 40px 455.5px; }
+.hinge { background: var(--hinge); }
+
+/* One app page (a screen, or one side of the open pose) */
+.pg { position: relative; display: flex; flex-direction: column; block-size: 100%; min-inline-size: 0; overflow: hidden; background: var(--surface); }
+.status {
+  display: flex; justify-content: space-between; align-items: center; flex: none;
+  padding-top: env(safe-area-inset-top, 0px);
+  block-size: calc(var(--space-6) + env(safe-area-inset-top, 0px));
+  padding-inline: var(--space-5); font-size: 12px; font-weight: 600;
+}
+.status .dots { display: flex; gap: var(--space-1); }
+.status .dots i { inline-size: 6px; block-size: 6px; border-radius: 50%; background: currentColor; display: block; }
+.home { flex: none; block-size: calc(var(--space-5) + env(safe-area-inset-bottom, 0px)); display: grid; place-items: center; }
+.home::before { content: ""; inline-size: 120px; block-size: 4px; border-radius: 4px; background: var(--text); opacity: 0.5; }
+.nav {
+  flex: none; display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; gap: var(--space-2);
+  min-block-size: var(--target); padding-inline: var(--space-2);
+}
+.nav .ttl { font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; text-align: center; }
+.nav .lead { justify-self: start; }
+.nav .trail { justify-self: end; }
+.ax5 .nav { grid-template-columns: 1fr; }
+.ax5 .nav .ttl { text-align: start; padding-inline: var(--space-2); }
+.ax5 .nav .trail { justify-self: start; }
+.link {
+  display: inline-flex; align-items: center; gap: var(--space-1); min-block-size: var(--target); min-inline-size: var(--target);
+  padding-inline: var(--space-2); border: 0; background: transparent; color: var(--accent); cursor: pointer;
+  font-size: var(--fs-body); line-height: var(--lh-body);
+}
+.link.strong { font-weight: 600; }
+.scroll { flex: 1 1 auto; overflow-y: auto; overflow-x: hidden; overscroll-behavior: contain; padding-inline: var(--space-4); padding-block-end: var(--space-6); display: flex; flex-direction: column; gap: var(--space-6); }
+.scroll > * { flex-shrink: 0; }
+.lt { margin: 0; font-size: var(--fs-large); line-height: var(--lh-large); font-weight: 700; overflow-wrap: anywhere; }
+
+/* Grouped lists */
+.grp { display: flex; flex-direction: column; gap: var(--space-2); }
+.gh {
+  margin: 0; padding-inline: var(--space-4); display: flex; gap: var(--space-2); align-items: baseline; flex-wrap: wrap;
+  font-size: var(--fs-foot); line-height: var(--lh-foot); font-weight: 400; color: var(--muted);
+}
+.gh .n { font-variant-numeric: tabular-nums; }
+.list { list-style: none; margin: 0; padding: 0; background: var(--raised); border-radius: var(--radius); overflow: hidden; }
+.list > li + li { border-top: 1px solid var(--line); }
+.row {
+  display: grid; grid-template-columns: auto 1fr auto; align-items: center; gap: var(--space-3);
+  min-block-size: var(--target); padding: var(--space-2) var(--space-4); inline-size: 100%;
+  border: 0; background: transparent; text-align: start; cursor: default;
+}
+button.row, .row.tap { cursor: pointer; }
+.row.noicon { grid-template-columns: 1fr auto; }
+.row .main { display: flex; flex-direction: column; min-inline-size: 0; }
+.row .t { font-size: var(--fs-body); line-height: var(--lh-body); overflow-wrap: anywhere; }
+.row .s { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--muted); }
+.row .s.late { color: var(--warn); }
+.row .v { font-size: var(--fs-body); line-height: var(--lh-body); font-variant-numeric: tabular-nums; text-align: end; display: flex; align-items: center; gap: var(--space-1); }
+.row .v .chev { color: var(--muted); }
+.ax5 .row, .ax5 .row.noicon { grid-template-columns: 1fr; }
+.ax5 .row .v { justify-content: flex-start; text-align: start; }
+.row.more .t { color: var(--muted); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.ring {
+  inline-size: var(--target); block-size: var(--target); display: grid; place-items: center; margin-inline-start: calc(-1 * var(--space-3));
+  border: 0; background: transparent; cursor: pointer; color: var(--muted); padding: 0;
+}
+.ax5 .ring { margin-inline-start: 0; }
+.ring svg { inline-size: 24px; block-size: 24px; }
+.dot-ok { color: var(--ok); inline-size: var(--target); block-size: var(--target); display: grid; place-items: center; margin-inline-start: calc(-1 * var(--space-3)); }
+.ax5 .dot-ok { margin-inline-start: 0; }
+.dot-ok svg { inline-size: 24px; block-size: 24px; }
+.foot { margin: 0; padding-inline: var(--space-4); font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--muted); }
+
+/* Buttons */
+.btn {
+  min-block-size: var(--target); min-inline-size: var(--target); padding-inline: var(--space-4); border-radius: var(--radius);
+  border: 0; cursor: pointer; font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+}
+.btn.primary { background: var(--accent); color: var(--on-accent); }
+.btn.tint { background: var(--raised); color: var(--accent); border: 1px solid var(--line); }
+.btn.wide { inline-size: 100%; }
+.btn svg { inline-size: 20px; block-size: 20px; flex: none; }
+
+/* Dock above the tab bar: the year-end bar */
+.dock { flex: none; padding: var(--space-2) var(--space-3); }
+.bar {
+  display: flex; align-items: center; gap: var(--space-3); padding: var(--space-3) var(--space-3) var(--space-3) var(--space-4);
+  background: var(--raised); border-radius: calc(var(--radius) * 2); border: 1px solid var(--line);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.ax5 .bar { flex-direction: column; align-items: stretch; }
+.bar .txt { display: flex; flex-direction: column; flex: 1 1 auto; min-inline-size: 0; }
+.bar .txt b { font-size: var(--fs-head, var(--fs-body)); line-height: var(--lh-body); font-weight: 600; }
+.bar .txt span { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--muted); }
+.bar.ok { border-color: var(--ok); }
+.bar.ok .ico { color: var(--ok); }
+.bar.bad { border-color: var(--danger); }
+.bar.bad .txt b { color: var(--danger); }
+.bar .ico svg { inline-size: 24px; block-size: 24px; display: block; }
+
+/* Tab bar, floating */
+.tabbar { flex: none; display: flex; justify-content: center; padding: var(--space-1) var(--space-4) 0; }
+.tabbar .pill {
+  display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-1); padding: var(--space-1);
+  background: var(--raised); border: 1px solid var(--line); border-radius: 999px; inline-size: min(100%, 280px);
+  box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+}
+.tab {
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 2px;
+  min-block-size: var(--space-12); border: 0; background: transparent; border-radius: 999px; cursor: pointer;
+  font-size: 11px; line-height: 13px; font-weight: 600; color: var(--muted);
+}
+.tab svg { inline-size: 24px; block-size: 24px; }
+.tab[aria-current="page"] { color: var(--accent); background: var(--surface); }
+
+/* Sheet */
+.scrim { position: absolute; inset: 0; background: var(--scrim); display: flex; flex-direction: column; justify-content: flex-end; z-index: 5; }
+.sheet {
+  background: var(--surface); border-radius: calc(var(--radius) * 2) calc(var(--radius) * 2) 0 0; max-block-size: calc(100% - var(--space-10));
+  display: flex; flex-direction: column; overflow: hidden;
+}
+.sheet .scroll { padding-block-start: var(--space-2); }
+.grab { inline-size: 36px; block-size: 4px; border-radius: 4px; background: var(--line); margin: var(--space-2) auto 0; flex: none; }
+.figure { display: flex; flex-direction: column; padding-inline: var(--space-4); }
+.figure b { font-size: var(--fs-t1); line-height: var(--lh-t1); font-weight: 700; font-variant-numeric: tabular-nums; }
+.figure span { color: var(--muted); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.switch { position: relative; inline-size: 52px; block-size: 32px; border-radius: 999px; border: 0; background: var(--line); cursor: pointer; flex: none; padding: 0; }
+.switch::after { content: ""; position: absolute; inset-block-start: 2px; inset-inline-start: 2px; inline-size: 28px; block-size: 28px; border-radius: 50%; background: #fff; box-shadow: 0 1px 3px rgba(0,0,0,0.3); transition: transform 0.15s; }
+.switch[aria-checked="true"] { background: var(--ok); }
+.switch[aria-checked="true"]::after { transform: translateX(20px); }
+.sw-row { display: grid; grid-template-columns: 1fr auto; gap: var(--space-3); align-items: center; padding: var(--space-2) var(--space-4); min-block-size: var(--target); }
+.ax5 .sw-row { grid-template-columns: 1fr; }
+
+/* Search */
+.search {
+  display: flex; align-items: center; gap: var(--space-2); background: var(--raised); border: 1px solid var(--line);
+  border-radius: var(--radius); padding-inline: var(--space-3); min-block-size: var(--target);
+}
+.search svg { inline-size: 18px; block-size: 18px; color: var(--muted); flex: none; }
+.search input { flex: 1; min-inline-size: 0; border: 0; background: transparent; color: var(--text); font: inherit; font-size: var(--fs-body); line-height: var(--lh-body); padding-block: var(--space-2); }
+.search input:focus { outline: none; }
+.search:focus-within { outline: 2px solid var(--accent); outline-offset: 1px; }
+
+/* Message states (unknown, empty, no match) */
+.msg { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-4); background: var(--raised); border-radius: var(--radius); }
+.msg p { margin: 0; }
+.msg.bad p { color: var(--danger); }
+.msg details { font-size: var(--fs-foot); line-height: var(--lh-foot); color: var(--muted); }
+
+/* Detail fields */
+.kv { display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); padding: var(--space-2) var(--space-4); min-block-size: var(--target); align-items: center; }
+.kv dt { color: var(--muted); }
+.kv dd { margin: 0; text-align: end; font-variant-numeric: tabular-nums; }
+.ax5 .kv { grid-template-columns: 1fr; gap: 0; }
+.ax5 .kv dd { text-align: start; }
+.kept { display: flex; gap: var(--space-2); align-items: flex-start; padding-inline: var(--space-4); color: var(--muted); font-size: var(--fs-foot); line-height: var(--lh-foot); }
+.kept svg { inline-size: 16px; block-size: 16px; flex: none; margin-block-start: 1px; }
+
+/* "New:" labels: dashed outline, tag drawn inside the box so it never crosses the hinge */
+.lbl { position: relative; }
+body.labels .lbl { outline: 2px dashed var(--tag); outline-offset: -2px; }
+body.labels .lbl::before {
+  content: "New: " attr(data-new); position: absolute; inset-block-start: 2px; inset-inline-end: 2px; z-index: 4;
+  font: 600 11px/14px var(--font); color: var(--raised); background: var(--tag); padding: 1px 6px; border-radius: 4px; pointer-events: none;
+}
+
+/* At AX5 the year-end bar joins the list, so it does not cover the screen */
+.dock-in { display: none; }
+.ax5 .dock-in { display: block; }
+.ax5 .pg > .dock { display: none; }
+.opt { scroll-margin-top: 96px; }
+
+/* Strata: one band per year, height by money spent */
+.strata { display: flex; flex-direction: column; gap: 2px; }
+.layer {
+  position: relative; display: flex; flex-direction: column; justify-content: flex-start; gap: 0; inline-size: 100%;
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius); text-align: start; cursor: pointer;
+  border: 1px solid var(--layer-edge); color: var(--text);
+  background: repeating-linear-gradient(180deg, transparent 0 11px, var(--layer-stripe) 11px 12px), var(--layer);
+}
+.layer .yr { display: flex; align-items: center; gap: var(--space-2); font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 700; }
+.layer .yr svg { inline-size: 18px; block-size: 18px; flex: none; }
+.layer .amt { display: flex; flex-wrap: wrap; gap: 0 var(--space-3); align-items: baseline; }
+.layer .amt b { font-size: var(--fs-body); line-height: var(--lh-body); font-weight: 600; font-variant-numeric: tabular-nums; background: var(--layer); padding-inline: 2px; border-radius: 4px; }
+.layer .amt span { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--muted); background: var(--layer); padding-inline: 2px; border-radius: 4px; }
+.layer .yr span { background: var(--layer); padding-inline: 2px; border-radius: 4px; }
+.layer.forming { background: repeating-linear-gradient(180deg, transparent 0 11px, var(--layer-stripe) 11px 12px), var(--layer-now); border: 2px dashed var(--accent); }
+.layer.forming .amt b, .layer.forming .amt span, .layer.forming .yr span { background: var(--layer-now); }
+.layer[aria-expanded="true"], .layer[aria-current="true"] { outline: 3px solid var(--accent); outline-offset: -3px; }
+.layer.flash { animation: flash 0.7s ease-out; }
+@keyframes flash { 0% { box-shadow: 0 0 0 0 var(--ok); } 30% { box-shadow: 0 0 0 4px var(--ok); } 100% { box-shadow: 0 0 0 0 transparent; } }
+.panel { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) 0 var(--space-4); }
+.row.settling { transition: transform 0.28s ease-in, opacity 0.28s ease-in; transform: translateY(-24px); opacity: 0; }
+.now-head { display: flex; align-items: baseline; justify-content: space-between; gap: var(--space-2); }
+
+:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (forced-colors: active) {
+  .bar, .list, .msg, .search, .tabbar .pill, .layer { border: 1px solid CanvasText; }
+  .tab[aria-current="page"] { outline: 2px solid Highlight; }
+}
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+</style>
+</head>
+<body class="labels">
+<div class="doc">
+  <div class="sample" role="note">
+    <span><strong>Sample.</strong> No figure, seller or date on this page is real.</span>
+    <div class="ctl">
+      <button type="button" id="ctl-theme">Theme: auto</button>
+      <button type="button" id="ctl-labels" aria-pressed="true">"New" labels</button>
+      <button type="button" data-hide="close" aria-pressed="false">Hide Year close</button>
+      <button type="button" data-hide="strata" aria-pressed="false">Hide Strata</button>
+    </div>
+  </div>
+
+  <header class="intro">
+    <h1>Putting a finished year away</h1>
+    <p>Designer kind: blind. Designer: year-close-blind-2. Job: "Put the done stuff away, but never lose it." Each frame below is clickable. Links under each option open one state; the hash holds it (for example <code>#c=close&amp;s=sheet&amp;t=dark</code>).</p>
+  </header>
+
+  <section class="opt" id="opt-close" data-opt="close">
+    <div class="opt-head">
+      <h2>Year close</h2>
+      <p>Two tabs, Orders and Records. Received orders stay in Orders until the year ends; then one press puts the year's received orders into its record. Records keeps every year, its total, and every order, read only.</p>
+      <nav class="states" aria-label="Year close states" data-states="close"></nav>
+    </div>
+    <div class="frames">
+      <figure><figcaption>Duo, folded, 466 x 678 pt (brief's size)</figcaption>
+        <div class="dev folded" id="close-folded" data-device="iphone-duo-folded" data-opt="close" data-layout="compact"></div></figure>
+      <figure><figcaption>Duo, open, 951 x 669 pt; hinge x 455.5 to 495.5 (brief's size)</figcaption>
+        <div class="dev unfolded" data-device="iphone-duo-unfolded" data-opt="close" data-layout="split"></div></figure>
+      <figure><figcaption>Large phone. No size is written for it; drawn at the folded size from the brief. Drag the corner to try other sizes.</figcaption>
+        <div class="dev phone" data-device="iphone" data-opt="close" data-layout="compact"></div></figure>
+      <figure><figcaption>Duo, folded, largest accessibility text (AX5, body 53 pt)</figcaption>
+        <div class="dev folded ax5" data-device="iphone-duo-folded" data-text="ax5" data-opt="close" data-layout="compact"></div></figure>
+    </div>
+  </section>
+
+  <section class="opt" id="opt-strata" data-opt="strata">
+    <div class="opt-head">
+      <h2>Strata (the bold one)</h2>
+      <p>No tabs and no archive screen. One column runs through time: what is waiting sits at the bottom, by the thumb, and each year is a band above it, as tall as what it cost. A received order settles into its year's band the moment it is in, so clutter never builds. Year end only seals the band, so it can never change.</p>
+      <nav class="states" aria-label="Strata states" data-states="strata"></nav>
+    </div>
+    <div class="frames">
+      <figure><figcaption>Duo, folded, 466 x 678 pt (brief's size)</figcaption>
+        <div class="dev folded" id="strata-folded" data-device="iphone-duo-folded" data-opt="strata" data-layout="compact"></div></figure>
+      <figure><figcaption>Duo, open, 951 x 669 pt; hinge x 455.5 to 495.5. Left page: the column. Right page: the record of the band you tap.</figcaption>
+        <div class="dev unfolded" data-device="iphone-duo-unfolded" data-opt="strata" data-layout="split"></div></figure>
+      <figure><figcaption>Large phone. No size is written for it; drawn at the folded size from the brief. Drag the corner to try other sizes.</figcaption>
+        <div class="dev phone" data-device="iphone" data-opt="strata" data-layout="compact"></div></figure>
+      <figure><figcaption>Duo, folded, largest accessibility text (AX5, body 53 pt). Bands grow to fit their words, so height no longer tracks money here.</figcaption>
+        <div class="dev folded ax5" data-device="iphone-duo-folded" data-text="ax5" data-opt="strata" data-layout="compact"></div></figure>
+    </div>
+  </section>
+</div>
+
+<script>
+(function () {
+  "use strict";
+  // ---------- Sample data (not real) ----------
+  var OPEN = [
+    { id: "o1", seller: "Kestrel Card Co", placed: "2 Oct", items: 3, got: 0, cost: 14.20, days: 50 },
+    { id: "o2", seller: "Harbor Light Hobby", placed: "19 Oct", items: 1, got: 0, cost: 6.75, days: 33 },
+    { id: "o3", seller: "Old Mill Games", placed: "28 Oct", items: 6, got: 4, cost: 31.10, days: 24 },
+    { id: "o4", seller: "Sable Street Cards", placed: "4 Nov", items: 2, got: 0, cost: 9.40, days: 17 },
+    { id: "o5", seller: "Northgate Cards", placed: "8 Nov", items: 4, got: 1, cost: 22.85, days: 13 },
+    { id: "o6", seller: "Tin Roof Games", placed: "11 Nov", items: 1, got: 0, cost: 3.15, days: 10 },
+    { id: "o7", seller: "Blue Pine Games", placed: "14 Nov", items: 5, got: 0, cost: 27.60, days: 7 },
+    { id: "o8", seller: "Corner Hobby", placed: "16 Nov", items: 2, got: 0, cost: 8.90, days: 5 },
+    { id: "o9", seller: "Riverside Collectibles", placed: "18 Nov", items: 3, got: 0, cost: 18.30, days: 3 }
+  ];
+  var SELLERS = ["Northgate Cards", "Blue Pine Games", "Corner Hobby", "Kestrel Card Co", "Old Mill Games", "Riverside Collectibles", "Sable Street Cards", "Tin Roof Games", "Harbor Light Hobby", "Wren Hollow Cards"];
+  var MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+  function rowsFor(year, n, seed) {
+    var out = [];
+    for (var i = 0; i < n; i++) {
+      var k = (i * 7 + seed) % SELLERS.length;
+      var m = 11 - Math.floor(i * 12 / n);
+      var day = 1 + ((i * 11 + seed) % 27);
+      var items = 1 + ((i * 5 + seed) % 6);
+      var cost = Math.round((2.5 + ((i * 37 + seed * 13) % 290) / 10) * 100) / 100;
+      out.push({ id: year + "-" + i, year: year, seller: SELLERS[k], placed: day + " " + MONTHS[Math.max(0, m - 1)], received: day + " " + MONTHS[m] + " " + year, items: items, cost: cost, num: String(1000 + ((i * 97 + seed * 31) % 8999)) });
+    }
+    return out;
+  }
+  var YEARS = [
+    { y: 2026, orders: 427, spent: 3912.40, rec: 418, rows: rowsFor(2026, 8, 3) },
+    { y: 2025, orders: 512, spent: 4388.15, rec: 512, rows: rowsFor(2025, 8, 5) },
+    { y: 2024, orders: 301, spent: 2140.70, rec: 301, rows: rowsFor(2024, 8, 2) }
+  ];
+  function yr(y) { for (var i = 0; i < YEARS.length; i++) if (YEARS[i].y === y) return YEARS[i]; return YEARS[0]; }
+  function money(v) { return "$" + v.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  function num(v) { return String(v).replace(/\B(?=(\d{3})+(?!\d))/g, ","); }
+  function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]; }); }
+
+  // ---------- Icons ----------
+  var I = {
+    ring: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/></svg>',
+    half: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 3a9 9 0 0 1 0 18z" fill="currentColor"/></svg>',
+    done: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9" fill="currentColor" stroke="none"/><path d="M7.5 12.5l3 3 6-6.5" stroke="var(--raised)" stroke-width="2.2"/></svg>',
+    chev: '<svg class="chev" width="10" height="16" viewBox="0 0 10 16" fill="none" stroke="currentColor" stroke-width="2"><path d="M2 2l6 6-6 6"/></svg>',
+    back: '<svg width="12" height="20" viewBox="0 0 12 20" fill="none" stroke="currentColor" stroke-width="2.4"><path d="M10 2L2 10l8 8"/></svg>',
+    list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1" fill="currentColor"/><circle cx="4" cy="12" r="1" fill="currentColor"/><circle cx="4" cy="18" r="1" fill="currentColor"/></svg>',
+    box: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="5" rx="1"/><path d="M5 9v10a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1V9M10 13h4"/></svg>',
+    share: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 3v12M7 8l5-5 5 5M5 13v6a1 1 0 0 0 1 1h12a1 1 0 0 0 1-1v-6"/></svg>',
+    search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg>',
+    lock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="5" y="11" width="14" height="10" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg>',
+    check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4"><circle cx="12" cy="12" r="10"/><path d="M7.5 12.5l3 3 6-6.5"/></svg>',
+    warn: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><path d="M12 3l10 18H2z"/><path d="M12 10v5M12 18v.5"/></svg>'
+  };
+
+  function statusBar() { return '<div class="status" aria-hidden="true"><span>9:41</span><span class="dots"><i></i><i></i><i></i></span></div>'; }
+  function homeBar() { return '<div class="home" aria-hidden="true"></div>'; }
+  function nav(lead, title, trail) {
+    return '<div class="nav"><span class="lead">' + (lead || "") + '</span><span class="ttl">' + (title || "") + '</span><span class="trail">' + (trail || "") + "</span></div>";
+  }
+  function backBtn(act, label, extra) { return '<button type="button" class="link" data-act="' + act + '"' + (extra || "") + ">" + I.back + " " + esc(label) + "</button>"; }
+
+  function openRow(o, ringAct) {
+    var icon = o.got > 0 ? I.half : I.ring;
+    var late = o.days >= 30;
+    var sub = "Placed " + o.placed + ", " + o.got + " of " + o.items + (o.items === 1 ? " item" : " items") + (late ? ", " + o.days + " days" : "");
+    return '<li><div class="row"><button type="button" class="ring" data-act="' + ringAct + '" data-id="' + o.id + '" aria-label="Mark every item from ' + esc(o.seller) + ' received">' + icon + "</button>" +
+      '<span class="main"><span class="t">' + esc(o.seller) + '</span><span class="s' + (late ? " late" : "") + '">' + sub + "</span></span>" +
+      '<span class="v">' + money(o.cost) + "</span></div></li>";
+  }
+  function recRow(r, act) {
+    return '<li><button type="button" class="row noicon" data-act="' + act + '" data-id="' + r.id + '"><span class="main"><span class="t">' + esc(r.seller) + '</span><span class="s">' + r.received + ", " + r.items + (r.items === 1 ? " item" : " items") + '</span></span><span class="v">' + money(r.cost) + I.chev + "</span></button></li>";
+  }
+  function findRow(id) {
+    for (var i = 0; i < YEARS.length; i++) for (var j = 0; j < YEARS[i].rows.length; j++) if (YEARS[i].rows[j].id === id) return YEARS[i].rows[j];
+    return YEARS[1].rows[0];
+  }
+  function searchBox(st, ph) {
+    return '<label class="search">' + I.search + '<input type="search" data-q value="' + esc(st.q || "") + '" placeholder="' + esc(ph) + '" aria-label="' + esc(ph) + '"></label>';
+  }
+  function filterRows(rows, q) {
+    if (!q) return rows;
+    q = q.toLowerCase();
+    return rows.filter(function (r) { return r.seller.toLowerCase().indexOf(q) >= 0 || r.num.indexOf(q) >= 0; });
+  }
+  function unknownMsg(act) {
+    return '<div class="msg bad" role="alert"><p>Orders could not be read, so nothing is shown. Nothing was changed.</p><button type="button" class="btn primary" data-act="' + act + '">Try again</button><details><summary>What the device said</summary>read failed: store not ready (sample)</details></div>';
+  }
+  function orderDetail(r, backAct, backLabel, keptLine) {
+    return nav(backBtn(backAct, backLabel), "", "") +
+      '<div class="scroll"><h1 class="lt">' + esc(r.seller) + "</h1>" +
+      '<div class="grp"><dl class="list">' +
+      '<div class="kv"><dt>Order number</dt><dd>' + r.num + "</dd></div>" +
+      '<div class="kv"><dt>Placed</dt><dd>' + r.placed + " " + r.year + "</dd></div>" +
+      '<div class="kv"><dt>Every item in</dt><dd>' + r.received + "</dd></div>" +
+      '<div class="kv"><dt>Items</dt><dd>' + r.items + "</dd></div>" +
+      '<div class="kv"><dt>Cost</dt><dd>' + money(r.cost) + "</dd></div>" +
+      "</dl>" + '<p class="kept">' + I.lock + "<span>" + keptLine + "</span></p></div>" +
+      '<button type="button" class="btn tint wide" data-act="share">' + I.share + " Share for a dispute</button></div>";
+  }
+
+  // =====================================================================
+  // Year close: tabs Orders and Records; a year-end bar puts a year away.
+  // =====================================================================
+  var CLOSE_STATES = {
+    orders: {}, sheet: { sheet: true }, done: { put: true }, failed: { fail: true },
+    records: { tab: "records" }, year: { tab: "records", view: "year", y: 2026 },
+    order: { tab: "records", view: "order", y: 2025, o: "2025-2" }, nomatch: { tab: "records", view: "year", y: 2025, q: "Quillback" },
+    empty: { empty: true, put: true }, unknown: { unknown: true }
+  };
+  var CLOSE_LABELS = { orders: "Orders", sheet: "Put-away sheet", done: "Put away", failed: "Put away failed", records: "Records", year: "Year record", order: "Kept order", nomatch: "Search, no match", empty: "Nothing open", unknown: "Could not read" };
+
+  function closeOpen(st) { return OPEN.filter(function (o) { return st.got.indexOf(o.id) < 0; }); }
+  function closeOrdersPage(st, split) {
+    var h = statusBar() + nav("", "", "");
+    h += '<div class="scroll"><h1 class="lt">Orders</h1>';
+    if (st.unknown) {
+      h += unknownMsg("retry");
+    } else if (st.empty) {
+      h += '<div class="msg"><p>Nothing is waiting on mail. A new order shows here when you add it.</p><button type="button" class="btn primary" data-act="noop">Add orders</button></div>';
+      if (st.put) h += '<p class="foot">2026\'s received orders are in Records.</p><button type="button" class="btn tint wide" data-act="c-year" data-y="2026">Open 2026 record</button>';
+    } else {
+      var open = closeOpen(st);
+      h += '<div class="dock-in">' + closeBar(st) + "</div>";
+      h += '<section class="grp"><h2 class="gh">Waiting on mail <span class="n">' + open.length + "</span></h2><ul class=\"list\">" + open.map(function (o) { return openRow(o, "c-got"); }).join("") + "</ul></section>";
+      var extra = st.got.length;
+      if (!st.put) {
+        var recent = YEARS[0].rows.slice(0, 3);
+        h += '<section class="grp"><h2 class="gh">Received in 2026 <span class="n">' + num(418 + extra) + "</span></h2><ul class=\"list\">" +
+          recent.map(function (r) { return '<li><div class="row"><span class="dot-ok" aria-label="every item received">' + I.done + '</span><span class="main"><span class="t">' + esc(r.seller) + '</span><span class="s">' + r.received + '</span></span><span class="v">' + money(r.cost) + "</span></div></li>"; }).join("") +
+          '<li><div class="row noicon more"><span class="main"><span class="t">and ' + num(415 + extra) + " more</span></span></div></li></ul></section>";
+      } else {
+        h += '<p class="foot">2026\'s received orders are in Records. An order that arrives later joins the 2026 record.</p>';
+      }
+    }
+    h += "</div>";
+    if (!st.unknown && !st.empty) h += '<div class="dock">' + closeBar(st) + "</div>";
+    if (!split) h += closeTabs(st);
+    h += homeBar();
+    if (st.sheet) h += closeSheet(st);
+    return h;
+  }
+  function closeBar(st) {
+    var n = 418 + st.got.length;
+    if (st.fail) return '<div class="bar bad" role="alert"><span class="ico">' + I.warn + '</span><span class="txt"><b>2026 was not put away</b><span>Nothing moved. The record could not be saved.</span></span><button type="button" class="btn primary" data-act="c-confirm">Try again</button></div>';
+    if (st.put) return '<div class="bar ok" role="status"><span class="ico">' + I.check + '</span><span class="txt"><b>' + num(n) + ' orders are in the 2026 record</b><span>Nothing was deleted.</span></span><button type="button" class="btn tint" data-act="c-undo">Undo</button></div>';
+    return '<div class="bar lbl" data-new="year-end bar"><span class="txt"><b>2026 year end</b><span>' + num(n) + ' received orders can go to Records.</span></span><button type="button" class="btn primary" data-act="c-sheet">Put away</button></div>';
+  }
+  function closeTabs(st) {
+    var t = st.tab || "orders";
+    return '<nav class="tabbar" aria-label="Sections"><div class="pill">' +
+      '<button type="button" class="tab" data-act="c-tab" data-tab="orders"' + (t === "orders" ? ' aria-current="page"' : "") + ">" + I.list + "Orders</button>" +
+      '<button type="button" class="tab lbl" data-new="tab" data-act="c-tab" data-tab="records"' + (t === "records" ? ' aria-current="page"' : "") + ">" + I.box + "Records</button>" +
+      "</div></nav>";
+  }
+  function closeSheet(st) {
+    var n = 418 + st.got.length;
+    var openLeft = closeOpen(st);
+    var openCost = openLeft.reduce(function (a, o) { return a + o.cost; }, 0);
+    return '<div class="scrim"><div class="sheet lbl" data-new="put-away sheet" role="dialog" aria-label="2026 year end"><div class="grab"></div>' +
+      nav('<button type="button" class="link" data-act="c-cancel">Cancel</button>', "2026 year end", "") +
+      '<div class="scroll">' +
+      '<div class="grp"><h2 class="gh">Goes to Records</h2><div class="figure"><b>' + num(n) + ' orders</b><span>Every item in. ' + money(3912.40 - openCost) + " spent on them.</span></div></div>" +
+      '<div class="grp"><h2 class="gh">Stays in Orders</h2><ul class="list"><li><div class="row noicon"><span class="main"><span class="t">' + openLeft.length + ' orders still on the way</span><span class="s">When one arrives, it joins the 2026 record.</span></span><span class="v">' + money(openCost) + "</span></div></li></ul></div>" +
+      '<div class="grp"><h2 class="gh">Kept for good</h2><ul class="list"><li><div class="row noicon"><span class="main"><span class="t">Spent in 2026</span><span class="s">All 427 orders, open ones too</span></span><span class="v">' + money(3912.40) + "</span></div></li>" +
+      '<li><div class="sw-row"><span class="main"><span class="t">Also save a tax file</span><br><span class="s" style="color:var(--muted)">One file of every 2026 order, with the total.</span></span><button type="button" class="switch" role="switch" data-act="c-file" aria-checked="' + (st.file ? "true" : "false") + '" aria-label="Also save a tax file"></button></div></li></ul>' +
+      '<p class="foot">Records keeps each order: seller, dates, items and cost. Nothing is deleted, and Undo brings the orders back.</p></div>' +
+      '</div><div class="dock"><button type="button" class="btn primary wide" data-act="c-confirm">Put away ' + num(n) + " orders</button></div>" + homeBar() + "</div></div>";
+  }
+  function closeRecordsPage(st, split) {
+    var h = statusBar();
+    var v = st.view || "list";
+    if (v === "order") {
+      var r = findRow(st.o);
+      h += orderDetail(r, "c-back-year", String(r.year), "Kept in the " + r.year + " record. It cannot be edited.");
+    } else if (v === "year") {
+      var Y = yr(st.y);
+      var rows = filterRows(Y.rows, st.q);
+      h += nav(backBtn("c-back-list", "Records"), "", "");
+      h += '<div class="scroll"><h1 class="lt">' + Y.y + "</h1>";
+      h += '<div class="grp"><div class="figure"><b>' + money(Y.spent) + "</b><span>spent on " + num(Y.orders) + " orders" + (Y.y === 2026 ? (st.put ? ", " + (9 - st.got.length) + " still on the way" : ", year still open") : "") + "</span></div></div>";
+      h += '<button type="button" class="btn tint wide" data-act="share">' + I.share + " Export " + Y.y + " for taxes</button>";
+      h += searchBox(st, "Seller or order number in " + Y.y);
+      if (rows.length) {
+        h += '<section class="grp"><h2 class="gh">Newest first</h2><ul class="list">' + rows.map(function (r) { return recRow(r, "c-order"); }).join("") +
+          (st.q ? "" : '<li><div class="row noicon more"><span class="main"><span class="t">and ' + num(Y.orders - Y.rows.length - (Y.y === 2026 ? 9 : 0)) + " more</span></span></div></li>") + "</ul></section>";
+      } else {
+        h += '<div class="msg"><p>No order from “' + esc(st.q) + "” in " + Y.y + ".</p><button type=\"button\" class=\"btn tint\" data-act=\"clear-q\">Clear search</button></div>";
+      }
+      h += "</div>";
+    } else {
+      h += nav("", "", "");
+      h += '<div class="scroll"><h1 class="lt">Records</h1>';
+      h += '<section class="grp"><h2 class="gh">Each year, what it cost</h2><ul class="list">' + YEARS.map(function (Y) {
+        var sub = num(Y.orders) + " orders" + (Y.y === 2026 && !st.put ? ", year still open" : "");
+        return '<li><button type="button" class="row noicon" data-act="c-year" data-y="' + Y.y + '"><span class="main"><span class="t">' + Y.y + '</span><span class="s">' + sub + '</span></span><span class="v">' + money(Y.spent) + I.chev + "</span></button></li>";
+      }).join("") + "</ul></section>";
+      h += '<p class="kept">' + I.lock + "<span>Records are read only. They stay on this device and in its backup.</span></p>";
+      h += "</div>";
+    }
+    if (!split) h += closeTabs(st);
+    h += homeBar();
+    return h;
+  }
+  function renderClose(f) {
+    var st = f.st;
+    if (f.layout === "split") {
+      return '<div class="pg">' + closeOrdersPage(st, true) + '</div><div class="hinge" aria-hidden="true"></div><div class="pg">' + closeRecordsPage(st, true) + "</div>";
+    }
+    return '<div class="pg">' + ((st.tab || "orders") === "records" ? closeRecordsPage(st, false) : closeOrdersPage(st, false)) + "</div>";
+  }
+  function actClose(f, act, el) {
+    var st = f.st;
+    if (act === "c-tab") { st.tab = el.getAttribute("data-tab"); st.view = "list"; }
+    else if (act === "c-sheet") { st.sheet = true; st.fail = false; }
+    else if (act === "c-cancel") { st.sheet = false; }
+    else if (act === "c-confirm") { st.sheet = false; st.fail = false; st.put = true; }
+    else if (act === "c-undo") { st.put = false; }
+    else if (act === "c-file") { st.file = !st.file; }
+    else if (act === "c-got") { st.got.push(el.getAttribute("data-id")); }
+    else if (act === "c-year") { st.tab = "records"; st.view = "year"; st.y = +el.getAttribute("data-y"); st.q = ""; }
+    else if (act === "c-order") { st.view = "order"; st.o = el.getAttribute("data-id"); }
+    else if (act === "c-back-year") { st.view = "year"; }
+    else if (act === "c-back-list") { st.view = "list"; }
+    else if (act === "retry") { st.unknown = false; }
+    else if (act === "clear-q") { st.q = ""; }
+  }
+
+  // =====================================================================
+  // Strata: one column through time. Now at the bottom, by the thumb;
+  // each year a band above it, as tall as what it cost. A received order
+  // settles into its year's band at once. Year end seals the band.
+  // =====================================================================
+  var STRATA_STATES = {
+    now: {}, layer: { open: 2025 }, seal: { sheet: true }, sealed: { sealed: true }, failed: { fail: true },
+    order: { open: 2025, o: "2025-2" }, nomatch: { open: 2025, q: "Quillback" }, empty: { empty: true }, unknown: { unknown: true }
+  };
+  var STRATA_LABELS = { now: "Now", layer: "Year opened", seal: "Seal sheet", sealed: "Sealed", failed: "Seal failed", order: "Kept order", nomatch: "Search, no match", empty: "Nothing waiting", unknown: "Could not read" };
+
+  function sOpen(st) { return OPEN.filter(function (o) { return st.got.indexOf(o.id) < 0; }); }
+  function sSettled(st) {
+    var add = OPEN.filter(function (o) { return st.got.indexOf(o.id) >= 0; });
+    return { n: 418 + add.length, spent: 3770.15 + add.reduce(function (a, o) { return a + o.cost; }, 0) };
+  }
+  function band(st, Y, split) {
+    var cur = Y.y === 2026;
+    var sealed = !cur || st.sealed;
+    var shown = cur ? sSettled(st) : { n: Y.orders, spent: Y.spent };
+    // Height is in proportion to money, from zero: 36 pt for each $1,000 spent.
+    var hgt = Math.round(36 * shown.spent / 1000);
+    var on = split ? (st.open || 2026) === Y.y : st.open === Y.y;
+    var cls = "layer" + (sealed ? "" : " forming") + (cur ? " lbl" : "");
+    return '<button type="button" class="' + cls + '"' + (cur ? ' data-new="this year\'s band" data-band="2026"' : "") + ' data-act="s-band" data-y="' + Y.y + '" style="min-block-size:' + hgt + 'px"' +
+      (split ? (on ? ' aria-current="true"' : "") : ' aria-expanded="' + on + '"') +
+      ' aria-label="' + Y.y + ", " + money(shown.spent) + ", " + num(shown.n) + " orders" + (sealed ? ", sealed" : ", still forming") + '">' +
+      '<span class="yr">' + (sealed ? I.lock : "") + "<span>" + Y.y + "</span></span>" +
+      '<span class="amt"><b>' + money(shown.spent) + "</b><span>" + num(shown.n) + " orders" + (cur && !st.sealed ? " so far" : "") + "</span></span></button>";
+  }
+  function yearRecord(st, Y, opts) {
+    var rows = filterRows(Y.rows, st.q);
+    var cur = Y.y === 2026;
+    var shown = cur ? sSettled(st) : { n: Y.orders, spent: Y.spent };
+    var h = "";
+    if (opts.figure) h += '<div class="figure"><b>' + money(shown.spent) + "</b><span>" + num(shown.n) + " orders, every item in" + (cur ? (st.sealed ? "" : ". Still forming") : "") + "</span></div>";
+    h += '<button type="button" class="btn tint wide" data-act="share">' + I.share + " Export " + Y.y + " for taxes</button>";
+    h += searchBox(st, "Seller or order number in " + Y.y);
+    if (rows.length) {
+      h += '<ul class="list">' + rows.map(function (r) { return recRow(r, "s-order"); }).join("") +
+        (st.q ? "" : '<li><div class="row noicon more"><span class="main"><span class="t">and ' + num(shown.n - Y.rows.length) + " more</span></span></div></li>") + "</ul>";
+    } else {
+      h += '<div class="msg"><p>No order from “' + esc(st.q) + "” in " + Y.y + ".</p><button type=\"button\" class=\"btn tint\" data-act=\"clear-q\">Clear search</button></div>";
+    }
+    if (!cur || st.sealed) h += '<p class="kept">' + I.lock + "<span>Sealed. These orders and this total cannot be edited or deleted.</span></p>";
+    return h;
+  }
+  function strataBar(st) {
+    if (st.fail) return '<div class="bar bad" role="alert"><span class="ico">' + I.warn + '</span><span class="txt"><b>2026 was not sealed</b><span>Nothing changed. The seal could not be saved.</span></span><button type="button" class="btn primary" data-act="s-confirm">Try again</button></div>';
+    if (st.sealed) return '<div class="bar ok" role="status"><span class="ico">' + I.check + '</span><span class="txt"><b>2026 is sealed</b><span>' + num(sSettled(st).n) + " orders and their total are kept for good.</span></span><button type=\"button\" class=\"btn tint\" data-act=\"s-undo\">Undo</button></div>";
+    return '<div class="bar lbl" data-new="seal bar"><span class="txt"><b>2026 year end</b><span>Seal the band so its orders and total can never change.</span></span><button type="button" class="btn primary" data-act="s-sheet">Seal</button></div>';
+  }
+  function strataColumn(st, split) {
+    var h = statusBar() + nav("", "Orders", "");
+    if (!split && st.o) {
+      var r = findRow(st.o);
+      return statusBar() + orderDetail(r, "s-back", "Orders", "Sealed in the " + r.year + " band. It cannot be edited.") + homeBar();
+    }
+    h += '<div class="scroll" data-col>';
+    if (st.unknown) {
+      h += unknownMsg("retry") + "</div>" + homeBar();
+      return h;
+    }
+    h += '<p class="foot">One band per year, as tall as what it cost. Older years sit higher. Tap a band to open its record.</p>';
+    h += '<div class="strata lbl" data-new="year bands">';
+    for (var i = YEARS.length - 1; i >= 0; i--) {
+      var Y = YEARS[i];
+      h += band(st, Y, split);
+      if (!split && st.open === Y.y) h += '<div class="panel" data-panel>' + yearRecord(st, Y, { figure: false }) + "</div>";
+    }
+    h += "</div>";
+    if (st.sealed) h += '<p class="foot">An order that arrives later joins 2026 with its own date, shown apart from the sealed total.</p>';
+    h += '<div class="dock-in">' + strataBar(st) + "</div>";
+    if (st.empty) {
+      h += '<div class="msg"><p>Nothing is waiting on mail. A new order shows here when you add it.</p><button type="button" class="btn primary" data-act="noop">Add orders</button></div>';
+    } else {
+      var open = sOpen(st);
+      h += '<section class="grp" data-now><h2 class="gh">Waiting on mail <span class="n">' + open.length + '</span></h2><ul class="list">' + open.map(function (o) { return openRow(o, "s-got"); }).join("") + "</ul>" +
+        (st.last ? '<p class="foot" role="status"><span style="color:var(--ok)">' + esc(st.last) + " settled into 2026.</span> The band now holds " + num(sSettled(st).n) + " orders.</p>"
+          : '<p class="foot">Tap the circle when every item is in. The order settles into its year.</p>') + "</section>";
+    }
+    h += "</div>";
+    h += '<div class="dock">' + strataBar(st) + "</div>";
+    h += homeBar();
+    if (st.sheet) h += strataSheet(st);
+    return h;
+  }
+  function strataSheet(st) {
+    var s = sSettled(st);
+    var left = sOpen(st);
+    return '<div class="scrim"><div class="sheet lbl" data-new="seal sheet" role="dialog" aria-label="Seal 2026"><div class="grab"></div>' +
+      nav('<button type="button" class="link" data-act="s-cancel">Cancel</button>', "2026 year end", "") +
+      '<div class="scroll">' +
+      '<div class="grp"><h2 class="gh">The band keeps</h2><div class="figure"><b>' + money(s.spent) + "</b><span>" + num(s.n) + " orders, every item in</span></div></div>" +
+      '<div class="grp"><h2 class="gh">Below the band</h2><ul class="list"><li><div class="row noicon"><span class="main"><span class="t">' + left.length + ' orders still on the way</span><span class="s">Each one joins 2026 when it arrives, marked late.</span></span></div></li></ul></div>' +
+      '<div class="grp"><ul class="list"><li><div class="sw-row"><span class="main"><span class="t">Also save a tax file</span><br><span class="s" style="color:var(--muted)">One file of every 2026 order, with the total.</span></span><button type="button" class="switch" role="switch" data-act="s-file" aria-checked="' + (st.file ? "true" : "false") + '" aria-label="Also save a tax file"></button></div></li></ul>' +
+      '<p class="foot">After this, no order in the band and no figure on it can be edited or deleted. Undo shows until you leave the app.</p></div>' +
+      '</div><div class="dock"><button type="button" class="btn primary wide" data-act="s-confirm">Seal 2026</button></div>' + homeBar() + "</div></div>";
+  }
+  function strataRight(st) {
+    var h = statusBar();
+    if (st.unknown) return h + nav("", "", "") + '<div class="scroll"><p class="foot">A year\'s record shows here once orders can be read.</p></div>' + homeBar();
+    if (st.o) {
+      var r = findRow(st.o);
+      return h + orderDetail(r, "s-back", String(r.year), "Sealed in the " + r.year + " band. It cannot be edited.") + homeBar();
+    }
+    var Y = yr(st.open || 2026);
+    h += nav("", "", "") + '<div class="scroll"><h1 class="lt">' + Y.y + "</h1>" + yearRecord(st, Y, { figure: true }) + "</div>" + homeBar();
+    return h;
+  }
+  function renderStrata(f) {
+    var st = f.st;
+    if (f.layout === "split") return '<div class="pg">' + strataColumn(st, true) + '</div><div class="hinge" aria-hidden="true"></div><div class="pg">' + strataRight(st) + "</div>";
+    return '<div class="pg">' + strataColumn(st, false) + "</div>";
+  }
+  function afterStrata(f) {
+    var col = f.el.querySelector("[data-col]");
+    if (!col) return;
+    var panel = col.querySelector("[data-panel]");
+    if (f.st.scroll === "keep" && f.keepTop != null) col.scrollTop = f.keepTop;
+    else {
+      // Open on the forming year: older bands are a scroll up, what is waiting is right below.
+      // With a band open, start at that band instead.
+      var b = panel && f.layout !== "split" ? panel.previousElementSibling : col.querySelector('[data-band="2026"]');
+      if (b) col.scrollTop = b.getBoundingClientRect().top - col.getBoundingClientRect().top - (panel ? 8 : 32);
+    }
+    f.st.scroll = "";
+  }
+  function actStrata(f, act, el) {
+    var st = f.st;
+    if (act === "s-band") { var y = +el.getAttribute("data-y"); st.open = (f.layout !== "split" && st.open === y) ? 0 : y; st.o = ""; st.q = ""; }
+    else if (act === "s-sheet") { st.sheet = true; st.fail = false; }
+    else if (act === "s-cancel") { st.sheet = false; }
+    else if (act === "s-confirm") { st.sheet = false; st.fail = false; st.sealed = true; }
+    else if (act === "s-undo") { st.sealed = false; }
+    else if (act === "s-file") { st.file = !st.file; st.scroll = "keep"; }
+    else if (act === "s-order") { st.o = el.getAttribute("data-id"); }
+    else if (act === "s-back") { st.o = ""; }
+    else if (act === "retry") { st.unknown = false; }
+    else if (act === "clear-q") { st.q = ""; st.scroll = "keep"; }
+  }
+
+  // ---------- Frame engine ----------
+  var OPTS = {
+    close: { states: CLOSE_STATES, labels: CLOSE_LABELS, render: renderClose, act: actClose, first: "orders" },
+    strata: { states: STRATA_STATES, labels: STRATA_LABELS, render: renderStrata, act: actStrata, first: "now", after: afterStrata }
+  };
+  var frames = [];
+  function fresh(opt, s) {
+    var base = { got: [], q: "", file: true };
+    var p = OPTS[opt].states[s] || {};
+    for (var k in p) base[k] = p[k];
+    return base;
+  }
+  function draw(f) {
+    var focused = document.activeElement && f.el.contains(document.activeElement) && document.activeElement.hasAttribute("data-q");
+    var caret = focused ? document.activeElement.selectionStart : 0;
+    var col = f.el.querySelector("[data-col]");
+    f.keepTop = col ? col.scrollTop : null;
+    f.el.innerHTML = OPTS[f.opt].render(f);
+    if (OPTS[f.opt].after) OPTS[f.opt].after(f);
+    if (focused) { var inp = f.el.querySelector("[data-q]"); if (inp) { inp.focus({ preventScroll: true }); inp.setSelectionRange(caret, caret); } }
+  }
+  function parseHash() {
+    var o = {};
+    location.hash.replace(/^#/, "").split("&").forEach(function (kv) { var p = kv.split("="); if (p[0]) o[p[0]] = decodeURIComponent(p[1] || ""); });
+    return o;
+  }
+  function applyHash() {
+    var h = parseHash();
+    var theme = h.t === "dark" || h.t === "light" ? h.t : null;
+    if (theme) document.documentElement.setAttribute("data-theme", theme); else document.documentElement.removeAttribute("data-theme");
+    document.getElementById("ctl-theme").textContent = "Theme: " + (theme || "auto");
+    var labels = h.l !== "0";
+    document.body.classList.toggle("labels", labels);
+    document.getElementById("ctl-labels").setAttribute("aria-pressed", String(labels));
+    var hide = (h.hide || "").split(",");
+    document.querySelectorAll(".opt").forEach(function (sec) {
+      var id = sec.getAttribute("data-opt");
+      var hidden = hide.indexOf(id) >= 0 && h.c !== id;
+      sec.hidden = hidden;
+      var b = document.querySelector('[data-hide="' + id + '"]');
+      if (b) b.setAttribute("aria-pressed", String(hidden));
+    });
+    frames.forEach(function (f) {
+      var s = (h.c === f.opt && h.s && OPTS[f.opt].states[h.s]) ? h.s : OPTS[f.opt].first;
+      f.st = fresh(f.opt, s);
+      draw(f);
+    });
+    document.querySelectorAll("[data-states]").forEach(function (n) {
+      var opt = n.getAttribute("data-states");
+      var cur = h.c === opt && h.s ? h.s : OPTS[opt].first;
+      n.innerHTML = Object.keys(OPTS[opt].states).map(function (s) {
+        return '<a href="#' + link({ c: opt, s: s }) + '"' + (s === cur ? ' aria-current="true"' : "") + ">" + OPTS[opt].labels[s] + "</a>";
+      }).join("");
+    });
+    if (h.c) { var sec = document.getElementById("opt-" + h.c); if (sec) sec.scrollIntoView({ block: "start" }); }
+  }
+  function link(extra) {
+    var h = parseHash();
+    delete h.c; delete h.s;
+    for (var k in extra) h[k] = extra[k];
+    return Object.keys(h).filter(function (k) { return h[k] !== ""; }).map(function (k) { return k + "=" + encodeURIComponent(h[k]); }).join("&");
+  }
+  function setHash(extra) { location.hash = link(extra); }
+
+  document.querySelectorAll(".dev").forEach(function (el) {
+    frames.push({ el: el, opt: el.getAttribute("data-opt"), layout: el.getAttribute("data-layout"), st: null });
+  });
+  document.addEventListener("click", function (e) {
+    var el = e.target.closest("[data-act]");
+    if (!el) return;
+    var fe = el.closest(".dev");
+    if (!fe) return;
+    var f = frames.filter(function (x) { return x.el === fe; })[0];
+    var act = el.getAttribute("data-act");
+    if (act === "noop" || act === "share") {
+      // Answer at the press: these open system sheets the mockup does not draw.
+      var next = el.nextElementSibling;
+      if (!next || !next.classList.contains("ans")) {
+        next = document.createElement("p");
+        next.className = "foot ans";
+        next.setAttribute("role", "status");
+        el.insertAdjacentElement("afterend", next);
+      }
+      next.textContent = act === "share" ? "The share sheet opens here (sample)." : "Adding orders opens here (sample).";
+      return;
+    }
+    if (act === "s-got") {
+      // The row lifts toward its year's band, then the band takes it in.
+      var row = el.closest(".row");
+      var reduce = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+      row.classList.add("settling");
+      setTimeout(function () {
+        f.st.got.push(el.getAttribute("data-id"));
+        f.st.last = OPEN.filter(function (o) { return o.id === el.getAttribute("data-id"); })[0].seller;
+        f.st.scroll = "keep";
+        draw(f);
+        var b = f.el.querySelector('[data-band="2026"]');
+        if (b) b.classList.add("flash");
+      }, reduce ? 0 : 280);
+      return;
+    }
+    OPTS[f.opt].act(f, act, el);
+    draw(f);
+  });
+  document.addEventListener("input", function (e) {
+    if (!e.target.hasAttribute("data-q")) return;
+    var fe = e.target.closest(".dev");
+    var f = frames.filter(function (x) { return x.el === fe; })[0];
+    f.st.q = e.target.value;
+    f.st.scroll = "keep";
+    draw(f);
+  });
+  document.getElementById("ctl-theme").addEventListener("click", function () {
+    var h = parseHash(); var order = ["", "light", "dark"]; var next = order[(order.indexOf(h.t || "") + 1) % 3];
+    var keep = { t: next }; if (h.c) keep.c = h.c; if (h.s) keep.s = h.s; setHash(keep);
+  });
+  document.getElementById("ctl-labels").addEventListener("click", function () {
+    var h = parseHash(); var keep = { l: h.l === "0" ? "" : "0" }; if (h.c) keep.c = h.c; if (h.s) keep.s = h.s; setHash(keep);
+  });
+  document.querySelectorAll("[data-hide]").forEach(function (b) {
+    b.addEventListener("click", function () {
+      var h = parseHash(); var id = b.getAttribute("data-hide");
+      var list = (h.hide || "").split(",").filter(Boolean);
+      var i = list.indexOf(id); if (i >= 0) list.splice(i, 1); else list.push(id);
+      var keep = { hide: list.join(",") }; if (h.c && h.c !== id) { keep.c = h.c; if (h.s) keep.s = h.s; } else { keep.c = ""; keep.s = ""; }
+      setHash(keep);
+    });
+  });
+  window.addEventListener("hashchange", applyHash);
+  applyHash();
+})();
+</script>
+</body>
+</html>
