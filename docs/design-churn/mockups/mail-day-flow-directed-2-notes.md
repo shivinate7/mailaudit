@@ -30,7 +30,7 @@ Focus ids for the waiting page, one per option: `opt-bench` and `opt-wall` (item
 ## Choices
 
 1. **Concept: the bench, or the wall.** Each concept has its own section and its own Hide button (`opt-bench`, `opt-wall`).
-   - The bench. One envelope sits on the bench. The pile rail, the card field and three trays sit around it at all times. Gain: it works the same at 5 envelopes and at 500 open packages; it keeps today's Card in Hand flow (type a card, the envelope answers). Loss: you see only one envelope at a time, so "who else might this be" needs the tie card.
+   - The bench. One envelope sits on the bench. The pile rail, the card field and three trays always sit around it. Gain: it works the same at 5 envelopes and at 500 open packages; it keeps today's Card in Hand flow (type a card, the envelope answers). Loss: you see only one envelope at a time, so "who else might this be" needs the tie card.
    - The wall. Every open package is a tile on one wall, oldest order first. A typed card lights the tiles that hold it and dims the rest, and a tap on a lit tile puts it on the bench. Gain: the most "everything at once" of the two, and the wall shows the whole day's progress as green tiles. Loss: it does not scale. With hundreds of cards from many sellers, the wall runs to many screens on the folded Duo, and a lit tile can sit below the keys.
    - Pick: the bench. Take one part of the wall: a lit-tile strip could replace the tie card later.
 

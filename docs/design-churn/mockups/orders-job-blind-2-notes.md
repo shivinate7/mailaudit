@@ -30,8 +30,8 @@ Mail slot `#slot-band`. Each sits in the folded frame of its concept.
    in." or "No. The last check failed." Check now sits above the tab bar. Open, the right page shows
    the orders the check brought, or the sign-in steps when it failed.
    Gain: the plainest answer to the job; one press starts a check.
-   Loss: a third tab; the person has to go to it, so a failure is only seen there unless a badge is
-   added (not drawn).
+   Loss: a third tab; the person has to go to it, so a failure is only seen there until a badge is
+   added (the mockup draws none).
    Pick: my pick for the job as written. Hide control: "Hide this concept".
 
 3. **Mail slot (concept, the bold one).** The order list runs upward, newest at the bottom, next to

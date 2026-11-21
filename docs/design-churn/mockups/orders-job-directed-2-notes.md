@@ -50,7 +50,7 @@ Apple pages read 2026-11-21 (each answered 200, through the `tutorials/data/...j
 
 12. **AX5.** Rows stack at accessibility sizes, as `LedgerTab.versionRow` does at `isAccessibilitySize`: time, outcome and source each take a line. Day headings stop pinning, as a pinned AX5 heading would take a sixth of the screen. The register drops its column head and writes each figure with its word (`41 read`, `12 new`). The calendar keeps seven columns, with one-letter weekday heads. The nav bar and tab bar keep their size (`duo-card-in-hand`, Tab bar text; the system tab bar offers the large content viewer).
 
-13. **Motion.** One: the head's mark pulses while a run is live. Reduced motion leaves it still (`motion-reduced-leaves-it-drawn`). A new entry is written in at the top with no animation; the log moves under the head, not under the pressed button.
+13. **Motion.** One: the head's mark pulses while a run is live. Reduced motion leaves it still (`motion-reduced-leaves-it-drawn`). A new entry is written in at the top with no animation; the log moves under the head and stays off the pressed button.
 
 14. **Taps.** Each control is 44 pt tall or more; the calendar day cells are 52 to 56 pt tall and at least 49 pt wide on one page. A selected entry or row carries a 3 pt accent bar, an overlay that moves nothing.
 

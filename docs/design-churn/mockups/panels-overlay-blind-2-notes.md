@@ -96,7 +96,7 @@ something this design adds.
    - Gain: the bar stays visible above the sheet, so a tap on another button swaps the panel in one
      tap.
    - Gain: a dot on Filter shows that a filter is on.
-   - Loss: 76 pt of the folded screen is spent on the bar at all times.
+   - Loss: 76 pt of the folded screen is always spent on the bar.
    - Pick: yes.
 
 3. **Thumb sheet: one gesture to close.** Any one of these closes the sheet: a tap on the same

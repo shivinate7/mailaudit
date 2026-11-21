@@ -76,7 +76,7 @@ Top pick: card-speaks-for-itself. It is the only direction that works when the s
 - Auto-tick or confirm each card? Recommend: confirm the first card of each envelope, then auto-tick exact matches inside the pinned order. Undo covers mistakes.
 - Match on name only, or name, set and number? Recommend: name first, set and number as tie-breakers.
 - May a scan assign an orphaned package? Recommend: no. Suggest only; the owner taps.
-- Keep camera frames? Recommend: no, except when "Problem" is pressed.
+- Keep camera frames? Recommend: no, unless "Problem" is pressed.
 - Camera on web? Recommend: not at first.
 - Folding-phone layout? Recommend: camera on one half, expected list on the other, propped like a tent.
 - Sound on by default? Recommend: yes, with a remembered mute.

@@ -78,7 +78,7 @@ Strongest: A. The starting line. It removes the single largest first-hour cost (
 - **Slice 1 adds no new fields.** Each mark is an ordinary received check-in, written by the code path a hand check uses. `saved-state-shape` (fixed shape) holds. `storage-keys-are-frozen` holds. `imports-merge-never-replace` holds: the starting line only adds checks and never rewrites or drops an imported row. `parser-filters` (only card purchases kept) holds: the line sees only rows the parser kept. The device key is not touched (`the-token-is-a-credential`).
 - **The recent-checks log.** Unknown: whether it can hold one batch entry or would get 327 rows. The builder reads its shape first. If a batch entry needs a new field, that is owner decision 1.
 - **Slice 2, under an owner ruling:**
-  - One field for the whole ledger, `startLine: { date, setAt }`, inside the existing saved-state object, not under a new storage key.
+  - One field for the whole ledger, `startLine: { date, setAt }`, inside the existing saved-state object, and adds no new storage key.
   - "Arrived before the ledger" is derived: received, ordered on or before `date`, and checked in at `setAt`. No field per card.
   - This lets Tally and the forecast leave these cards out of their transit times, and lets the line be moved later.
 - **Sync.** The marks merge like any check-in. Under `merge-later-change-wins`, a hand check on another device after the mark wins, which is harmless because both read "received".
@@ -102,4 +102,4 @@ Later slices, in order: the offer in the import receipt for older orders (builds
 4. **Lost-mail warnings on the orders left out.** Recommended: they fire at once. The user has just said those orders never came.
 5. **Undo's lifetime.** Recommended: a single entry in the recent-checks log, valid until any card it marked is touched by hand. If the log cannot hold a batch entry without a new field, ship an inline Undo for that view only in slice 1.
 6. **Granularity of "never came".** Recommended: per order, with expansion to per card. Partial envelopes are common, so Tally's "did all four arrive" must stay true.
-7. **Moving the line later.** Recommended: not until slice 2. Until then, Undo and then set the line again.
+7. **Moving the line later.** Recommended: slice 2 or later. Until then, Undo and then set the line again.

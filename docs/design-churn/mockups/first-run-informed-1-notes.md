@@ -45,7 +45,7 @@ the file goes in on a computer.
 3. **Reset is absent while the ledger is empty.** On an empty ledger it changes nothing
    (ux-control-earns-place). Gain: no destructive row in the first minute. Loss: none found. Reset
    still arms in place once data exists (`armed-reset-takes-the-row`). Pick: yes.
-   Departs from: `src/app.jsx` and `LedgerTab.swift` show Reset at all times.
+   Departs from: `src/app.jsx` and `LedgerTab.swift` always show Reset.
 4. **The web app shows a phone code.** A "Show phone code" control on the web draws a QR of
    `manifestledger://sync#k=<key>`, as `scripts/send-key.mjs --native` does today from a terminal.
    Gain: a new person needs no terminal. Loss: the device key shows on a screen as a code.

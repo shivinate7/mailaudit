@@ -67,7 +67,7 @@ Top pick: seller-record-card. It needs only the seller name and the tick date, w
 
 **Data**
 - Seller name, order date, items and cost: the imported CSV.
-- Arrival date per card: the time of the latest check not undone. Unknown whether every check keeps a durable time; read the code first.
+- Arrival date per card: the time of the latest check that still stands. Unknown whether every check keeps a durable time; read the code first.
 - Stamps, photos, lost-warning state: existing package data. Nothing new stored.
 - Seller identity: exact name match for now; a stable extension seller id later.
 

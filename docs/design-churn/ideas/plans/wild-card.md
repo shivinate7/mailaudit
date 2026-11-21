@@ -27,7 +27,7 @@ Lens: none. The planner was told to avoid money, sellers, loss claims, speed of 
 **Practicality.** Speculative. Nothing is scored per seller, only per route.
 
 ## many-small-envelopes
-**Idea.** The five-year view. The core problem is "dozens of tiny shipments from many strangers, each a few items." That problem is not unique to cards. Seed swaps, stamp collecting, miniature parts, sample-size cosmetics and yarn destash buyers all live it. Separate the general ledger from the card-specific layer.
+**Idea.** The five-year view. The core problem is "dozens of tiny shipments from many strangers, each a few items." That problem also applies outside cards. Seed swaps, stamp collecting, miniature parts, sample-size cosmetics and yarn destash buyers all live it. Separate the general ledger from the card-specific layer.
 **Who and why now.** The owner, if they ever pick up a second hobby, or one friend in another hobby. It is also the strongest test of which parts of the design are truly about mail and which are about cards.
 **What they see and do.** The same checklist and late-mail flags. Item names and units change per hobby ("packet", "sheet", "skein"), and each hobby gets a small entry form in place of a file reader.
 **Risks.** Generalizing too early slows the card tool the owner actually uses. One person cannot support other hobbies' quirks.

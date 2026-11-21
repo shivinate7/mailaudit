@@ -174,7 +174,7 @@ Every figure is sample data: a seeded ledger of about 2,000 lines, 255 card name
     - The tab bar labels stop at the default size, as built (`duo-card-in-hand`, Tab bar text).
     - At AX5 How it adds up opens in the flow and pushes the list down, because an overlay that tall
       would cover the whole screen. Departs from: `motion-disclosure-panels-arrive` (panels overlay the
-      list), at AX5 only. A tap on the cell opens it, so the list moves below the finger, not under it.
+      list), at AX5 only. A tap on the cell opens it, so the list moves below the finger, and never covers it.
     - The sheet's toolbar stays at the default size. Whether the system grows a sheet toolbar at AX5 was
       not read, so it is unknown. The sheet's body text grows.
     - Measured on this page, 2026-11-21: at AX5, in loaded, all arrived, row open, panel and sheet, no

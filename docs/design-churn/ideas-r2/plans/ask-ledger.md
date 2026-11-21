@@ -12,7 +12,7 @@ Glossary: not checked. The feature names below are product names, not workflow t
 - **Who/why:** the collector at the mailbox. Scrolling hundreds of rows to find one card is slower than typing four words.
 - **Shape:** about eight question types: did X arrive, what is still out from seller S, spend in a date range, oldest open order, and similar. Fuzzy name match against names in the ledger only. "Last Tuesday" always resolves to a date shown on screen.
 - **Refuses:** when two rows fit (an Ember Drake from Hollow Oak Cards and another from Grimfang Games, both that week), it lists both and asks the collector to pick. It never picks.
-- **Risk:** the grammar covers too little and feels stiff. Each refusal says which word it did not understand.
+- **Risk:** the grammar covers too little and feels stiff. Each refusal says which word it failed to understand.
 - **Owner decides:** the first question types to ship, and whether a saved question can sit on the home screen.
 
 ## A model translates, the ledger answers
