@@ -1,0 +1,761 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Find the package</title>
+<style>
+/* Tokens. Spacing on the 4 px house step, 8 px radius (house tokens.md). Colours are this
+   designer's own choice: no product colour. */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px;
+  --space-6: 24px; --space-8: 32px; --space-11: 44px;
+  --radius: 8px;
+  --surface: #F2F4F7; --raised: #FFFFFF; --sunk: #E5E9EF; --text: #172131; --text-2: #4E5A6C;
+  --line: #CDD4DE; --accent: #2346A3; --on-accent: #FFFFFF; --accent-soft: #DCE4F7;
+  --arrived: #24703F; --partial: #995A08; --danger: #A8262F; --mark: #FFE38A; --mark-text: #172131;
+  --new: #7A3FB8; --chrome: #E8EBF0; --frame-edge: #8E99A8; --dot-off: #C6CDD8;
+  --sb: 32px; --hi: 20px;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --surface: #0F141B; --raised: #18202A; --sunk: #222B37; --text: #E6EBF1; --text-2: #A3AEBD;
+    --line: #2E3846; --accent: #8EAAF3; --on-accent: #0D1626; --accent-soft: #1E2B47;
+    --arrived: #66C48F; --partial: #E6AC58; --danger: #F4848B; --mark: #6E5C10; --mark-text: #FFF6D6;
+    --new: #C9A4F3; --chrome: #151A21; --frame-edge: #4D5868; --dot-off: #2D3745;
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --surface: #0F141B; --raised: #18202A; --sunk: #222B37; --text: #E6EBF1; --text-2: #A3AEBD;
+  --line: #2E3846; --accent: #8EAAF3; --on-accent: #0D1626; --accent-soft: #1E2B47;
+  --arrived: #66C48F; --partial: #E6AC58; --danger: #F4848B; --mark: #6E5C10; --mark-text: #FFF6D6;
+  --new: #C9A4F3; --chrome: #151A21; --frame-edge: #4D5868; --dot-off: #2D3745;
+  color-scheme: dark;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body {
+  background: var(--chrome); color: var(--text);
+  font-family: -apple-system, system-ui, "Segoe UI", Roboto, sans-serif;
+  font-size: 1rem; line-height: 1.4;
+}
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--accent); outline-offset: 2px; }
+
+/* ---------- Page shell (outside the device frames) ---------- */
+.sample {
+  background: var(--text); color: var(--surface); text-align: center;
+  padding: var(--space-2) var(--space-4); font-weight: 600;
+}
+.shell { display: flex; flex-direction: column; gap: var(--space-6); padding: var(--space-6) var(--space-4) var(--space-8); max-inline-size: 120rem; margin-inline: auto; }
+.intro { display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 46rem; }
+.intro h1 { margin: 0; font-size: 1.75rem; line-height: 1.2; }
+.intro p { margin: 0; color: var(--text-2); }
+.kind { font-weight: 600; color: var(--text); }
+.controls { display: flex; flex-wrap: wrap; gap: var(--space-4) var(--space-8); align-items: flex-end; }
+.ctl { display: flex; flex-direction: column; gap: var(--space-1); }
+.ctl > span { font-size: 0.8125rem; color: var(--text-2); }
+.seg { display: flex; flex-wrap: wrap; gap: var(--space-1); }
+.seg button {
+  min-block-size: 44px; padding: 0 var(--space-3); border-radius: var(--radius);
+  border: 1px solid var(--line); background: var(--raised); cursor: pointer;
+}
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--on-accent); border-color: var(--accent); }
+.concept-tab { display: flex; gap: 0; }
+.concept-tab button:first-child { border-start-end-radius: 0; border-end-end-radius: 0; }
+.concept-tab .hide { border-start-start-radius: 0; border-end-start-radius: 0; border-inline-start: 0; color: var(--text-2); }
+.concept-blurb { max-inline-size: 46rem; margin: 0; }
+.restore { background: none; border: 0; color: var(--accent); text-decoration: underline; cursor: pointer; min-block-size: 44px; padding: 0; }
+.stage { display: flex; flex-wrap: wrap; gap: var(--space-8); align-items: flex-start; }
+figure { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); max-inline-size: 100%; }
+figcaption { font-size: 0.875rem; color: var(--text-2); max-inline-size: 30rem; }
+figcaption b { color: var(--text); }
+.scroller { max-inline-size: 100%; overflow-x: auto; padding-block-end: var(--space-1); }
+
+/* ---------- Device frames ---------- */
+.device {
+  position: relative; overflow: hidden; background: var(--surface);
+  border: 1px solid var(--frame-edge); border-radius: 28px; flex: none;
+}
+.device[data-device="iphone-duo-folded"] { inline-size: 466px; block-size: 678px; }
+.device[data-device="iphone-duo-unfolded"] {
+  inline-size: 951px; block-size: 669px;
+  display: grid; grid-template-columns: 455.5px 40px 455.5px;
+}
+.device[data-device="iphone-regular"] {
+  inline-size: 466px; block-size: 678px; resize: both; min-inline-size: 320px; min-block-size: 480px;
+}
+.hinge { background: repeating-linear-gradient(90deg, var(--frame-edge) 0 1px, transparent 1px 39px, var(--frame-edge) 39px 40px); opacity: .6; }
+.page { position: relative; overflow: hidden; min-inline-size: 0; }
+
+/* ---------- App type: iOS Dynamic Type text styles (typography page, Large default) ---------- */
+.app {
+  --fs-lt: 34px; --lh-lt: 41px; --fs-t2: 22px; --lh-t2: 28px; --fs-t3: 20px; --lh-t3: 25px;
+  --fs-hl: 17px; --lh-hl: 22px; --fs-b: 17px; --lh-b: 22px; --fs-sub: 15px; --lh-sub: 20px;
+  --fs-ft: 13px; --lh-ft: 18px; --fs-c1: 12px; --lh-c1: 16px;
+  --tap: 44px; --dot: 14px;
+  position: absolute; inset: 0;
+  font-family: -apple-system, system-ui, "SF Pro Text", sans-serif;
+  font-size: var(--fs-b); line-height: var(--lh-b); color: var(--text);
+  -webkit-font-smoothing: antialiased;
+}
+/* AX5, the largest accessibility size, same text styles */
+.app.ax5 {
+  --fs-lt: 60px; --lh-lt: 70px; --fs-t2: 56px; --lh-t2: 66px; --fs-t3: 55px; --lh-t3: 65px;
+  --fs-hl: 53px; --lh-hl: 62px; --fs-b: 53px; --lh-b: 62px; --fs-sub: 49px; --lh-sub: 58px;
+  --fs-ft: 44px; --lh-ft: 52px; --fs-c1: 43px; --lh-c1: 51px;
+}
+.t-lt { font-size: var(--fs-lt); line-height: var(--lh-lt); font-weight: 700; margin: 0; }
+.t-t2 { font-size: var(--fs-t2); line-height: var(--lh-t2); font-weight: 700; margin: 0; }
+.t-t3 { font-size: var(--fs-t3); line-height: var(--lh-t3); font-weight: 600; margin: 0; }
+.t-hl { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; }
+.t-sub { font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.t-ft { font-size: var(--fs-ft); line-height: var(--lh-ft); }
+.t-c1 { font-size: var(--fs-c1); line-height: var(--lh-c1); }
+.muted { color: var(--text-2); }
+.num { font-variant-numeric: tabular-nums; }
+
+.statusbar {
+  position: absolute; inset-block-start: 0; inset-inline: 0; block-size: var(--sb);
+  display: flex; align-items: center; justify-content: space-between; padding: 0 var(--space-6);
+  font-size: 13px; font-weight: 600; z-index: 3; pointer-events: none;
+}
+.battery { inline-size: 24px; block-size: 12px; border: 1.5px solid currentColor; border-radius: 3px; position: relative; }
+.battery::after { content: ""; position: absolute; inset: 2px 6px 2px 2px; background: currentColor; border-radius: 1px; }
+.homebar { position: absolute; inset-block-end: 6px; inset-inline: 0; margin-inline: auto; inline-size: 128px; block-size: 5px; border-radius: 3px; background: var(--text); opacity: .8; z-index: 3; pointer-events: none; }
+
+.screen {
+  position: absolute; inset: 0; display: flex; flex-direction: column;
+  padding-block-start: calc(var(--sb) + env(safe-area-inset-top, 0px));
+  padding-block-end: calc(var(--hi) + env(safe-area-inset-bottom, 0px));
+  padding-inline: env(safe-area-inset-left, 0px) env(safe-area-inset-right, 0px);
+}
+.ax5 .screen { overflow-y: auto; overscroll-behavior: contain; }
+.scroll { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; }
+.ax5 .scroll { flex: none; overflow: visible; }
+.pad { padding-inline: var(--space-4); }
+.stack { display: flex; flex-direction: column; gap: var(--space-3); }
+.stack-tight { display: flex; flex-direction: column; gap: var(--space-1); }
+.cluster { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+
+/* Buttons */
+.btn {
+  min-block-size: var(--tap); min-inline-size: var(--tap); padding: 0 var(--space-4);
+  border-radius: var(--radius); border: 0; cursor: pointer;
+  font-size: var(--fs-b); line-height: var(--lh-b); font-weight: 600;
+  display: inline-flex; align-items: center; justify-content: center; gap: var(--space-2);
+}
+.btn-primary { background: var(--accent); color: var(--on-accent); }
+.btn-plain { background: transparent; color: var(--accent); }
+.btn-tinted { background: var(--accent-soft); color: var(--accent); }
+.btn-wide { inline-size: 100%; }
+.ax5 .btn { padding-block: var(--space-2); text-align: start; justify-content: flex-start; }
+
+/* Nav bar and title */
+.navbar { display: flex; align-items: center; min-block-size: var(--tap); padding-inline: var(--space-2); flex: none; }
+.back { background: none; border: 0; color: var(--accent); min-block-size: var(--tap); padding: 0 var(--space-2); cursor: pointer; display: inline-flex; align-items: center; gap: var(--space-1); font-size: var(--fs-b); }
+.back svg { inline-size: 0.7em; block-size: 1.1em; }
+.titlebar { flex: none; display: flex; flex-direction: column; gap: var(--space-1); padding: var(--space-2) var(--space-4) var(--space-3); }
+
+/* State ring: shape carries the state, so no status word repeats on a row */
+.ring { inline-size: 1.25em; block-size: 1.25em; flex: none; display: block; }
+.ring circle, .ring path { vector-effect: non-scaling-stroke; }
+
+/* Order rows */
+.list { list-style: none; margin: 0; padding: 0; }
+.group-h { padding: var(--space-4) var(--space-4) var(--space-1); color: var(--text-2); font-size: var(--fs-ft); line-height: var(--lh-ft); font-weight: 600; }
+.row {
+  inline-size: 100%; display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-3);
+  align-items: center; text-align: start; background: var(--raised); border: 0;
+  border-block-end: 1px solid var(--line); padding: var(--space-3) var(--space-4);
+  min-block-size: var(--tap); cursor: pointer;
+}
+.row[aria-current="true"] { background: var(--accent-soft); }
+.row .who { display: flex; flex-direction: column; gap: 2px; min-inline-size: 0; }
+.row .who > * { overflow: hidden; text-overflow: ellipsis; }
+.row .seller { font-weight: 600; white-space: nowrap; }
+.row .meta { color: var(--text-2); font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.row .why { font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.chev { inline-size: 0.5em; block-size: 0.9em; color: var(--text-2); }
+.ax5 .row { grid-template-columns: auto 1fr; }
+.ax5 .row .chev { display: none; }
+.ax5 .row .seller { white-space: normal; }
+mark { background: var(--mark); color: var(--mark-text); border-radius: 3px; padding: 0 1px; }
+
+/* Messages (loading, failed, empty, unknown, no match) */
+.msg { display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; padding: var(--space-6) var(--space-4); }
+.msg p { margin: 0; }
+details.said { font-size: var(--fs-ft); line-height: var(--lh-ft); color: var(--text-2); }
+details.said summary { min-block-size: var(--tap); display: flex; align-items: center; cursor: pointer; }
+.skel { block-size: 72px; border-block-end: 1px solid var(--line); background: var(--raised); display: grid; grid-template-columns: auto 1fr; gap: var(--space-3); align-items: center; padding: 0 var(--space-4); }
+.skel i { display: block; block-size: 12px; border-radius: 6px; background: var(--sunk); }
+.skel .c { inline-size: 20px; block-size: 20px; border-radius: 50%; }
+.skel .bars { display: flex; flex-direction: column; gap: var(--space-2); }
+.ax5 .skel { block-size: 200px; }
+
+/* ---------- Clue search ---------- */
+.dock { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-2); background: var(--surface); border-block-start: 1px solid var(--line); }
+.chips { display: flex; gap: var(--space-2); overflow-x: auto; }
+.chip {
+  flex: none; min-block-size: var(--tap); padding: 0 var(--space-4); border-radius: 22px;
+  border: 1px solid var(--line); background: var(--raised); cursor: pointer; font-size: var(--fs-sub);
+}
+.chip[aria-pressed="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+.field {
+  display: flex; align-items: center; gap: var(--space-2); min-block-size: var(--tap);
+  background: var(--raised); border: 1px solid var(--line); border-radius: var(--radius); padding-inline: var(--space-3);
+}
+.field:focus-within { border-color: var(--accent); box-shadow: 0 0 0 1px var(--accent); }
+.field input { flex: 1; min-inline-size: 0; border: 0; background: transparent; color: var(--text); font: inherit; font-size: var(--fs-b); min-block-size: var(--tap); outline: none; }
+.field input::placeholder { color: var(--text-2); }
+.field svg { inline-size: 1em; block-size: 1em; color: var(--text-2); flex: none; }
+.clear { background: none; border: 0; min-inline-size: var(--tap); min-block-size: var(--tap); color: var(--text-2); cursor: pointer; display: grid; place-items: center; }
+.buckets { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-2); }
+.bucket { min-block-size: var(--tap); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); cursor: pointer; font-size: var(--fs-sub); padding: var(--space-1) var(--space-2); }
+.bucket[aria-pressed="true"] { background: var(--text); color: var(--surface); border-color: var(--text); }
+.ax5 .dock { border: 0; padding-block: var(--space-2); }
+.ax5 .buckets { grid-template-columns: 1fr; }
+
+/* ---------- Sieve ---------- */
+.sv-head { flex: none; display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-2); padding: var(--space-2) var(--space-4) 0; min-block-size: 64px; }
+.sv-count { display: flex; align-items: baseline; gap: var(--space-2); flex-wrap: wrap; }
+.sv-big { font-size: 56px; line-height: 60px; font-weight: 700; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; }
+.ax5 .sv-big { font-size: var(--fs-lt); line-height: var(--lh-lt); }
+.ax5 .sv-head { flex-direction: column; align-items: flex-start; }
+.pills { flex: none; display: flex; flex-wrap: wrap; gap: var(--space-2); padding: var(--space-2) var(--space-4); min-block-size: 60px; align-content: flex-start; }
+.pill { min-block-size: var(--tap); border-radius: 22px; border: 0; background: var(--accent-soft); color: var(--accent); padding: 0 var(--space-2) 0 var(--space-4); display: inline-flex; align-items: center; gap: var(--space-1); cursor: pointer; font-size: var(--fs-sub); font-weight: 600; }
+.pill svg { inline-size: 0.8em; block-size: 0.8em; margin-inline: var(--space-1); }
+.pills .hint { color: var(--text-2); font-size: var(--fs-sub); line-height: var(--lh-sub); align-self: center; margin: 0; }
+.field-area { flex: 1 1 auto; min-block-size: 0; overflow-y: auto; overscroll-behavior: contain; border-block: 1px solid var(--line); background: var(--raised); }
+.ax5 .field-area { flex: none; overflow: visible; }
+.dots { display: flex; flex-direction: column; gap: var(--space-3); padding: var(--space-3) var(--space-4); }
+.dot-group { display: flex; flex-direction: column; gap: var(--space-1); }
+.dot-row { display: flex; flex-wrap: wrap; gap: 6px; }
+.dot { inline-size: var(--dot); block-size: var(--dot); border-radius: 50%; background: var(--accent); }
+.dot.out { background: transparent; box-shadow: inset 0 0 0 1.5px var(--dot-off); }
+@media (forced-colors: active) { .dot.out { border: 1px solid GrayText; box-shadow: none; } .dot { border: 1px solid CanvasText; } }
+.ask { flex: none; display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-3) var(--space-4) var(--space-2); background: var(--surface); }
+.ask-head { display: flex; justify-content: space-between; align-items: baseline; gap: var(--space-2); }
+.answers { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--space-2); }
+.answer { min-block-size: 52px; border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); cursor: pointer; padding: var(--space-1) var(--space-2); font-size: var(--fs-sub); line-height: var(--lh-sub); font-weight: 600; }
+.answer small { display: block; font-weight: 400; color: var(--text-2); font-size: var(--fs-c1); line-height: var(--lh-c1); }
+.letters { display: grid; grid-template-columns: repeat(auto-fill, minmax(44px, 1fr)); gap: var(--space-1); }
+.letter { min-block-size: var(--tap); border-radius: var(--radius); border: 1px solid var(--line); background: var(--raised); cursor: pointer; font-weight: 600; }
+.ask-foot { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); }
+.ax5 .answers, .ax5 .letters { grid-template-columns: 1fr; }
+.ax5 .letters { grid-template-columns: repeat(auto-fill, minmax(96px, 1fr)); }
+.ax5 .ask-head, .ax5 .ask-foot { flex-direction: column; align-items: flex-start; }
+
+/* ---------- Order detail ---------- */
+.d-head { display: flex; flex-direction: column; gap: var(--space-2); padding: var(--space-2) var(--space-4) var(--space-4); }
+.d-sum { display: flex; align-items: center; gap: var(--space-2); }
+.lines { list-style: none; margin: 0; padding: 0; background: var(--raised); border-block: 1px solid var(--line); }
+.line { display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-3); align-items: center; padding: var(--space-1) var(--space-4) var(--space-1) var(--space-2); border-block-end: 1px solid var(--line); min-block-size: 60px; }
+.line:last-child { border-block-end: 0; }
+.tick { inline-size: var(--tap); block-size: var(--tap); border: 0; background: none; cursor: pointer; display: grid; place-items: center; padding: 0; }
+.tick:disabled { cursor: not-allowed; opacity: .5; }
+.tick svg { inline-size: 28px; block-size: 28px; }
+.ax5 .tick { inline-size: 64px; block-size: 64px; }
+.ax5 .tick svg { inline-size: 52px; block-size: 52px; }
+.ln-name { display: flex; flex-direction: column; min-inline-size: 0; }
+.ln-right { display: flex; flex-direction: column; align-items: flex-end; gap: 2px; }
+.stepper { display: inline-flex; align-items: center; border: 1px solid var(--line); border-radius: var(--radius); }
+.stepper button { inline-size: var(--tap); block-size: var(--tap); border: 0; background: none; color: var(--accent); cursor: pointer; font-size: var(--fs-t3); }
+.stepper button:disabled { color: var(--text-2); opacity: .4; cursor: not-allowed; }
+.stepper output { min-inline-size: 4.2em; text-align: center; font-variant-numeric: tabular-nums; font-size: var(--fs-sub); }
+.ax5 .line { grid-template-columns: auto 1fr; }
+.ax5 .ln-right { grid-column: 1 / -1; align-items: flex-start; }
+.d-bar { flex: none; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2) var(--space-4); background: var(--surface); border-block-start: 1px solid var(--line); min-block-size: 64px; }
+.d-bar p { margin: 0; flex: 1; }
+.ax5 .d-bar { flex-direction: column; align-items: stretch; border: 0; }
+.placeholder { display: flex; flex-direction: column; gap: var(--space-2); justify-content: center; block-size: 100%; padding: var(--space-8); text-align: center; color: var(--text-2); }
+
+/* "New:" labels: a dashed edge names each part this design adds */
+.labels-on [data-new] { outline: 1.5px dashed var(--new); outline-offset: -2px; position: relative; }
+.labels-on [data-new]::after {
+  content: "New: " attr(data-new); position: absolute; inset-block-start: 2px; inset-inline-end: 2px;
+  font: 600 10px/14px -apple-system, system-ui, sans-serif; color: var(--new); background: var(--raised);
+  padding: 0 4px; border-radius: 3px; pointer-events: none; z-index: 2; white-space: nowrap;
+}
+.ax5 [data-new]::after { display: none; }
+
+@media (prefers-reduced-motion: no-preference) {
+  .dot { transition: background-color .25s ease, box-shadow .25s ease; }
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note">Sample: every order, seller, card, price and order number on this page is made up. No figure here is real.</div>
+<main class="shell">
+  <div class="intro">
+    <h1>Find the package</h1>
+    <p><span class="kind">Designer kind: blind.</span> Designer: find-package-blind-2. Drawn from the job alone, with no look at any current screen.</p>
+    <p>An envelope arrives. Which order is it? Each concept below answers that in its own way, then opens the same order screen to tick off the cards.</p>
+  </div>
+
+  <div class="controls" aria-label="Mockup controls">
+    <div class="ctl"><span>Concept</span><div class="seg" id="concepts"></div></div>
+    <div class="ctl"><span>State</span><div class="seg" id="states"></div></div>
+    <div class="ctl"><span>Theme</span><div class="seg" id="themes"></div></div>
+    <div class="ctl"><span>Devices</span><div class="seg" id="devices"></div></div>
+    <div class="ctl"><span>Part labels</span><div class="seg" id="labels"></div></div>
+  </div>
+  <p class="concept-blurb" id="blurb"></p>
+  <div class="stage" id="stage"></div>
+</main>
+
+<script>
+(() => {
+"use strict";
+/* ---------- Sample data (made up, seeded so every load is the same) ---------- */
+const TODAY = new Date(2026, 10, 21);
+const DAY = 86400000;
+function rng(seed) { return () => { seed |= 0; seed = seed + 0x6D2B79F5 | 0; let t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }; }
+const R = rng(20261121);
+const pick = a => a[Math.floor(R() * a.length)];
+const SELLERS = ["Moss Hollow Cards","Brightlane Games","Copper Kite Singles","Northgate Card Co","Little Owl Cards","Harbor Light Gaming","Quiet Fox Collectibles","Red Barn Cards","Pine and Paper","Stormfront Singles","Maple Street Games","Tin Robot Toys","Juniper Card House","Old Mill Games","Bluebird Breaks","Cobalt Deck Supply","Sunday Draft Shop","Wren and Rook","Lantern Cards","Granite Peak Games","Velvet Mouse Cards","Quarry Road Cards","Ash and Oak Games","Fern Valley Cards","Island Hop Games","Kettle Pond Cards","Yellow Door Games","Zephyr Card Bin","Dusty Attic Singles","Echo Lake Cards","Holloway Games","Upper Deck Corner","Ivy Lane Cards","Driftwood Games","Mosaic Mana","Night Owl Singles","Orchard Cards","Saltmarsh Games","Thistle Card Shop","Vale Street Cards"];
+const ADJ = ["Ember","Tidal","Hollow","Gilded","Thorn","Frost","Sable","Verdant","Ashen","Radiant","Gloom","Ivory","Storm","Mire","Copper","Silent","Briar","Lunar"];
+const NOUN = ["Wyrm","Adept","Sentinel","Wisp","Familiar","Herald","Golem","Oracle","Stag","Lantern","Warden","Drake","Pact","Tithe","Bloom","Rite","Courier","Mender"];
+const cardName = () => R() < 0.25 ? `${pick(NOUN)} of the ${pick(ADJ)} ${pick(["Vale","Reach","Court","Deep","Spire"])}` : `${pick(ADJ)} ${pick(NOUN)}`;
+const hex = () => Math.floor(R() * 65536).toString(16).toUpperCase().padStart(4, "0");
+const ORDERS = [];
+for (let i = 0; i < 318; i++) {
+  const age = Math.floor(Math.pow(R(), 1.7) * 120);
+  const nLines = 1 + Math.floor(Math.pow(R(), 2) * 7);
+  const lines = [], used = new Set();
+  while (lines.length < nLines) {
+    const name = cardName(); if (used.has(name)) continue; used.add(name);
+    const qty = R() < 0.7 ? 1 : 2 + Math.floor(R() * 3);
+    const price = Math.max(10, Math.round(Math.pow(R(), 2.4) * 70) * 5);
+    lines.push({ name, qty, price });
+  }
+  ORDERS.push({ id: `${hex()}-${hex()}-${hex().slice(0, 2)}`, seller: pick(SELLERS), age, date: new Date(TODAY - age * DAY), lines });
+}
+ORDERS.sort((a, b) => a.age - b.age);
+const BY_ID = Object.fromEntries(ORDERS.map(o => [o.id, o]));
+const GOT = {}; // shared check-in state, one array of received counts per order
+for (const o of ORDERS) {
+  const r = R();
+  const p = o.age < 5 ? (r < .04 ? "all" : "none") : o.age < 14 ? (r < .45 ? "all" : r < .5 ? "some" : "none") : o.age < 28 ? (r < .85 ? "all" : r < .9 ? "some" : "none") : (r < .95 ? "all" : r < .975 ? "some" : "none");
+  GOT[o.id] = o.lines.map((l, i) => p === "all" ? l.qty : p === "some" ? (o.lines.length === 1 ? Math.max(0, l.qty - 1) : (i % 2 ? 0 : l.qty)) : 0);
+}
+const cards = o => o.lines.reduce((s, l) => s + l.qty, 0);
+const total = o => o.lines.reduce((s, l) => s + l.qty * l.price, 0);
+const gotCount = o => GOT[o.id].reduce((s, n) => s + n, 0);
+function orderState(o) {
+  if (G.state === "unknown") return "unknown";
+  const g = gotCount(o);
+  return g === 0 ? "none" : g >= cards(o) ? "all" : "some";
+}
+const money = c => "$" + (c / 100).toFixed(2);
+const MONTHS = ["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+const fmtDate = d => `${MONTHS[d.getMonth()]} ${d.getDate()}`;
+const ago = n => n === 0 ? "today" : n === 1 ? "yesterday" : `${n} days ago`;
+const BUCKETS = [["week", "This week"], ["last", "Last week"], ["mid", "2 to 3 weeks ago"], ["older", "4 weeks or more"]];
+const bucketOf = age => age < 7 ? "week" : age < 14 ? "last" : age < 28 ? "mid" : "older";
+const bucketName = k => BUCKETS.find(b => b[0] === k)[1];
+const THICK = [["thin", "1 or 2 cards", "a flat envelope"], ["few", "3 to 8 cards", "a little bulge"], ["thick", "9 or more", "a fat mailer"]];
+const thickOf = o => { const n = cards(o); return n <= 2 ? "thin" : n <= 8 ? "few" : "thick"; };
+const letterOf = o => o.seller.replace(/^the\s+/i, "")[0].toUpperCase();
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+function markIn(text, q) {
+  if (!q) return esc(text);
+  const i = text.toLowerCase().indexOf(q.toLowerCase());
+  if (i < 0) return esc(text);
+  return esc(text.slice(0, i)) + "<mark>" + esc(text.slice(i, i + q.length)) + "</mark>" + esc(text.slice(i + q.length));
+}
+function markOrderNo(id, qn) {
+  const pos = []; for (let i = 0; i < id.length; i++) if (id[i] !== "-") pos.push(i);
+  const flat = id.replace(/-/g, "").toLowerCase(); const k = flat.indexOf(qn);
+  if (k < 0) return esc(id);
+  const a = pos[k], b = pos[k + qn.length - 1] + 1;
+  return esc(id.slice(0, a)) + "<mark>" + esc(id.slice(a, b)) + "</mark>" + esc(id.slice(b));
+}
+
+/* ---------- Icons ---------- */
+const ICON = {
+  search: `<svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6" fill="none" stroke="currentColor" stroke-width="2"/><path d="M13 13l5 5" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+  x: `<svg viewBox="0 0 20 20" aria-hidden="true" width="18" height="18"><circle cx="10" cy="10" r="9" fill="currentColor" opacity=".25"/><path d="M6.5 6.5l7 7M13.5 6.5l-7 7" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+  xs: `<svg viewBox="0 0 12 12" aria-hidden="true"><path d="M2 2l8 8M10 2l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/></svg>`,
+  back: `<svg viewBox="0 0 12 20" aria-hidden="true"><path d="M10 2L2 10l8 8" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+  chev: `<svg class="chev" viewBox="0 0 8 14" aria-hidden="true"><path d="M1 1l6 6-6 6" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>`,
+};
+const STATE_WORD = { none: "Nothing arrived", some: "Some arrived", all: "All arrived", unknown: "Arrival unknown" };
+function ring(s) {
+  const c = s === "all" ? "var(--arrived)" : s === "some" ? "var(--partial)" : "var(--text-2)";
+  let inner = "";
+  if (s === "all") inner = `<circle cx="10" cy="10" r="9" fill="${c}"/><path d="M5.5 10.5l3 3 6-7" fill="none" stroke="var(--raised)" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>`;
+  else if (s === "some") inner = `<circle cx="10" cy="10" r="8" fill="none" stroke="${c}" stroke-width="2"/><path d="M10 2a8 8 0 0 1 0 16z" fill="${c}"/>`;
+  else if (s === "unknown") inner = `<circle cx="10" cy="10" r="8" fill="none" stroke="${c}" stroke-width="2" stroke-dasharray="3 3"/><text x="10" y="14" text-anchor="middle" font-size="11" font-weight="700" fill="${c}">?</text>`;
+  else inner = `<circle cx="10" cy="10" r="8" fill="none" stroke="${c}" stroke-width="2"/>`;
+  return `<svg class="ring" viewBox="0 0 20 20" role="img" aria-label="${STATE_WORD[s]}">${inner}</svg>`;
+}
+function tickIcon(n, q) {
+  const full = n >= q, part = n > 0 && n < q;
+  if (full) return `<svg viewBox="0 0 28 28" aria-hidden="true"><rect x="2" y="2" width="24" height="24" rx="7" fill="var(--arrived)"/><path d="M8 14.5l4 4 8-9" fill="none" stroke="var(--raised)" stroke-width="2.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+  if (part) return `<svg viewBox="0 0 28 28" aria-hidden="true"><rect x="3" y="3" width="22" height="22" rx="6" fill="none" stroke="var(--partial)" stroke-width="2"/><path d="M9 14h10" stroke="var(--partial)" stroke-width="2.6" stroke-linecap="round"/></svg>`;
+  return `<svg viewBox="0 0 28 28" aria-hidden="true"><rect x="3" y="3" width="22" height="22" rx="6" fill="none" stroke="var(--text-2)" stroke-width="2"/></svg>`;
+}
+
+/* ---------- Page state and deep links ---------- */
+const CONCEPTS = [
+  { key: "clue", name: "Clue search", blurb: "One box takes any clue you can read: a seller, a card, part of an order number. Chips narrow what the box looks at, and When swaps the box for four time spans. The box and chips sit at the bottom, under the thumb." },
+  { key: "sieve", name: "Sieve", blurb: "Bold: no list and no search box to start. Every order still waiting is a dot. Answer what the envelope in your hand tells you (how thick it feels, the first letter of the sender, when you bought) and the dots that cannot be it go hollow. At eight or fewer, the dots turn into rows to pick from." },
+];
+const STATES = [["loaded", "Loaded"], ["loading", "Loading"], ["failed", "Read failed"], ["unknown", "Arrival unknown"], ["empty", "No orders"], ["nomatch", "No match"]];
+const THEMES = [["auto", "Auto"], ["light", "Light"], ["dark", "Dark"]];
+const DEVICES = [["all", "All"], ["folded", "Duo folded"], ["open", "Duo open"], ["phone", "Large phone"], ["ax5", "Largest text"]];
+const G = { concept: "clue", state: "loaded", theme: "auto", device: "all", labels: true, hidden: new Set() };
+
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (CONCEPTS.some(c => c.key === p.get("c"))) G.concept = p.get("c");
+  if (STATES.some(s => s[0] === p.get("s"))) G.state = p.get("s");
+  const t = p.get("t"); G.theme = t === "dark" || t === "light" ? t : "auto";
+  if (DEVICES.some(d => d[0] === p.get("d"))) G.device = p.get("d");
+  G.labels = p.get("l") !== "0";
+  G.hidden = new Set((p.get("h") || "").split(",").filter(k => CONCEPTS.some(c => c.key === k)));
+  G.hidden.delete(G.concept);
+}
+function writeHash() {
+  const p = new URLSearchParams();
+  p.set("c", G.concept); p.set("s", G.state);
+  if (G.theme !== "auto") p.set("t", G.theme);
+  if (G.device !== "all") p.set("d", G.device);
+  if (!G.labels) p.set("l", "0");
+  if (G.hidden.size) p.set("h", [...G.hidden].join(","));
+  history.replaceState(null, "", "#" + p.toString());
+}
+function applyTheme() {
+  if (G.theme === "auto") document.documentElement.removeAttribute("data-theme");
+  else document.documentElement.setAttribute("data-theme", G.theme);
+}
+
+/* ---------- Frames ---------- */
+const FRAMES = [
+  { key: "folded", device: "iphone-duo-folded", pose: "single", ax5: false, cap: "<b>Duo, folded.</b> 466 x 678 pt, one screen, portrait, one hand." },
+  { key: "open", device: "iphone-duo-unfolded", pose: "open", ax5: false, cap: "<b>Duo, open.</b> 951 x 669 pt. Two pages, 455.5 pt each, with the hinge gap from x 455.5 to 495.5 kept empty." },
+  { key: "phone", device: "iphone-regular", pose: "single", ax5: false, cap: "<b>Large phone.</b> Size not written in the brief or the device list, so it is drawn at the folded Duo size. Drag the corner to resize: the layout is fluid." },
+  { key: "ax5", device: "iphone-duo-folded", pose: "single", ax5: true, cap: "<b>Duo, folded, largest accessibility text (AX5).</b> Body 53 pt. Rows stack and the whole screen scrolls." },
+];
+let live = [];
+
+function freshState() {
+  const st = { view: "find", orderId: null, q: "", scope: "any", when: null, clues: { thick: null, letter: null, when: null, word: "" }, ask: 0, listAll: false, undo: null, loaded: null };
+  if (G.state === "nomatch") { st.q = "zzq"; st.clues.word = "zzq"; st.clues.thick = "thin"; st.ask = 3; }
+  return st;
+}
+function frameState(f) { return f.st.loaded || G.state; } // a frame can recover from failed/empty on its own button
+
+function buildStage() {
+  const stage = document.getElementById("stage");
+  stage.innerHTML = "";
+  live = [];
+  for (const def of FRAMES) {
+    if (G.device !== "all" && G.device !== def.key) continue;
+    const fig = document.createElement("figure");
+    const cap = document.createElement("figcaption"); cap.innerHTML = def.cap;
+    const sc = document.createElement("div"); sc.className = "scroller";
+    const dev = document.createElement("div"); dev.className = "device"; dev.dataset.device = def.device;
+    if (def.ax5) dev.dataset.text = "ax5";
+    dev.setAttribute("role", "region"); dev.setAttribute("aria-label", def.cap.replace(/<[^>]+>/g, ""));
+    sc.append(dev); fig.append(cap, sc); stage.append(fig);
+    const f = { def, el: dev, st: freshState() };
+    live.push(f);
+    dev.addEventListener("click", e => onClick(f, e));
+    dev.addEventListener("input", e => onInput(f, e));
+    render(f);
+  }
+}
+
+/* Re-render keeps focus, caret and each scroll position, so a tick never jumps the list. */
+function render(f) {
+  const scrolls = {};
+  f.el.querySelectorAll("[data-scroll]").forEach(n => { scrolls[n.dataset.scroll] = n.scrollTop; });
+  const a = document.activeElement; let fk = null, sel = null;
+  if (a && f.el.contains(a) && a.dataset.key) { fk = a.dataset.key; if (a.selectionStart != null) sel = [a.selectionStart, a.selectionEnd]; }
+  f.el.innerHTML = f.def.pose === "open" ? openPose(f) : singlePose(f);
+  f.el.querySelectorAll("[data-scroll]").forEach(n => { if (scrolls[n.dataset.scroll] != null) n.scrollTop = scrolls[n.dataset.scroll]; });
+  if (fk) { const n = f.el.querySelector(`[data-key="${fk}"]`); if (n) { n.focus({ preventScroll: true }); if (sel && n.setSelectionRange) n.setSelectionRange(sel[0], sel[1]); } }
+}
+const renderAll = () => live.forEach(render);
+const chrome = () => `<div class="statusbar" aria-hidden="true"><span>12:03</span><span class="battery"></span></div><div class="homebar" aria-hidden="true"></div>`;
+const appCls = f => `app${f.def.ax5 ? " ax5" : ""}${G.labels && !f.def.ax5 ? " labels-on" : ""}`;
+const rootId = f => f.def.key === "folded" ? ` id="concept-${G.concept}"` : "";
+
+function singlePose(f) {
+  const body = f.st.view === "order" && f.st.orderId ? detail(f, true, G.concept === "clue" ? "Find mail" : "Back") : finder(f);
+  return `<div class="${appCls(f)}"${rootId(f)}>${chrome()}${body}</div>`;
+}
+function openPose(f) {
+  let right;
+  if (f.st.orderId) right = detail(f, G.concept === "sieve", "Candidates");
+  else if (G.concept === "sieve" && frameState(f) !== "loading" && frameState(f) !== "failed" && frameState(f) !== "empty") right = sieveList(f);
+  else right = `<div class="screen"><div class="placeholder"><p class="t-t3">No order open</p><p>Pick an order on the left to see its cards here.</p></div></div>`;
+  return `<div class="page">${`<div class="${appCls(f)}">${chrome()}${finder(f)}</div>`}</div><div class="hinge" aria-hidden="true"></div><div class="page">${`<div class="${appCls(f)}">${chrome()}${right}</div>`}</div>`;
+}
+const finder = f => G.concept === "clue" ? clueFinder(f) : sieveFinder(f);
+
+/* ---------- Shared pieces ---------- */
+function rowHtml(f, o, why) {
+  const s = orderState(o), n = cards(o);
+  const cur = f.st.orderId === o.id ? ` aria-current="true"` : "";
+  const part = s === "some" ? `, ${gotCount(o)} of ${n} in` : "";
+  return `<li><button class="row" data-act="open" data-id="${o.id}"${cur}>${ring(s)}<span class="who"><span class="seller">${why && why.seller ? why.seller : esc(o.seller)}</span><span class="meta num">${fmtDate(o.date)}, ${ago(o.age)}. ${n} card${n === 1 ? "" : "s"}, ${money(total(o))}${part}</span>${why && why.line ? `<span class="why">${why.line}</span>` : ""}</span>${ICON.chev}</button></li>`;
+}
+function grouped(f, list, whyMap) {
+  let out = "", cur = null;
+  for (const o of list) {
+    const b = bucketOf(o.age);
+    if (b !== cur) { if (cur) out += "</ul>"; out += `<div class="group-h">${bucketName(b)}</div><ul class="list">`; cur = b; }
+    out += rowHtml(f, o, whyMap && whyMap.get(o.id));
+  }
+  return cur ? out + "</ul>" : out;
+}
+const skeleton = n => Array.from({ length: n }, () => `<div class="skel" aria-hidden="true"><i class="c"></i><span class="bars"><i style="inline-size:55%"></i><i style="inline-size:80%"></i></span></div>`).join("");
+function stateBlock(f) {
+  const s = frameState(f);
+  if (s === "loading") return `<div role="status" class="pad t-sub muted" style="padding-block:var(--space-3)">Reading your orders.</div>${skeleton(6)}`;
+  if (s === "failed") return `<div class="msg" role="alert"><p class="t-hl">Your orders could not be read.</p><p class="t-sub muted">Nothing was changed. Your check-ins are safe.</p><button class="btn btn-primary" data-act="recover">Try again</button><details class="said"><summary>What the app said</summary>Read error: the saved order file did not open (sample text).</details></div>`;
+  if (s === "empty") return `<div class="msg"><p>No orders yet. Import your order history to fill this list.</p><button class="btn btn-primary" data-act="recover">Import orders</button></div>`;
+  return null;
+}
+
+/* ---------- Concept: Clue search ---------- */
+const SCOPES = [["seller", "Seller"], ["card", "Card"], ["order", "Order no."], ["when", "When"]];
+const PH = { any: "Seller, card or order no.", seller: "Any part of the seller's name", card: "Any part of a card name", order: "Any part of the order number" };
+function clueResults(st) {
+  const q = st.q.trim().toLowerCase();
+  if (st.scope === "when") {
+    if (!st.when) return { mode: "default" };
+    return { mode: "when", list: ORDERS.filter(o => bucketOf(o.age) === st.when) };
+  }
+  if (!q) return { mode: "default" };
+  const qn = q.replace(/[^a-z0-9]/g, "");
+  const hits = [], why = new Map();
+  for (const o of ORDERS) {
+    let score = 0, w = {};
+    if ((st.scope === "any" || st.scope === "seller") && o.seller.toLowerCase().includes(q)) {
+      score = new RegExp("(^|\\s)" + q.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")).test(o.seller.toLowerCase()) ? 4 : 3;
+      w.seller = markIn(o.seller, q);
+    }
+    if (st.scope === "any" || st.scope === "card") {
+      const m = o.lines.filter(l => l.name.toLowerCase().includes(q));
+      if (m.length) { score = Math.max(score, 2); w.line = `Card: ${markIn(m[0].name, q)}${m.length > 1 ? `, and ${m.length - 1} more` : ""}`; }
+    }
+    if ((st.scope === "any" || st.scope === "order") && qn.length >= 2 && o.id.replace(/-/g, "").toLowerCase().includes(qn)) {
+      score = Math.max(score, 1); if (!w.line) w.line = `Order no. <span class="num">${markOrderNo(o.id, qn)}</span>`;
+    }
+    if (score) { hits.push([score, o]); why.set(o.id, w); }
+  }
+  const rank = { none: 0, some: 1, all: 2, unknown: 0 };
+  hits.sort((a, b) => b[0] - a[0] || rank[orderState(a[1])] - rank[orderState(b[1])] || a[1].age - b[1].age);
+  return { mode: "search", list: hits.map(h => h[1]), why };
+}
+function clueFinder(f) {
+  const st = f.st, ax = f.def.ax5, fs = frameState(f);
+  const waiting = ORDERS.filter(o => orderState(o) === "none");
+  let sub;
+  if (fs === "loaded" || fs === "nomatch") sub = `${waiting.length} orders with nothing arrived yet, of ${ORDERS.length}`;
+  else if (fs === "unknown") sub = `${ORDERS.length} orders. Which have arrived is not known right now.`;
+  else sub = "&nbsp;";
+  const title = `<div class="titlebar"><h2 class="t-lt">Find mail</h2><p class="t-ft muted num" role="status">${sub}</p></div>`;
+  const blk = stateBlock(f);
+  if (blk) return `<div class="screen" data-scroll="s-find">${title}<div class="scroll">${blk}</div></div>`;
+
+  const res = clueResults(st);
+  let body;
+  if (res.mode === "default") {
+    const list = fs === "unknown" ? ORDERS.slice(0, 60) : waiting;
+    body = (fs === "unknown" ? `<div class="msg" role="alert" style="padding-block:var(--space-3)"><p class="t-sub">Your check-ins could not be read, so every order shows as unknown. Search still works.</p><button class="btn btn-tinted" data-act="recover">Try again</button></div>` : "") + grouped(f, list);
+  } else if (!res.list.length) {
+    const what = res.mode === "when" ? `bought ${bucketName(st.when).toLowerCase()}` : `that matches “${esc(st.q.trim())}”`;
+    body = `<div class="msg"><p>No order ${what}.</p><button class="btn btn-tinted" data-act="clue-clear">Clear the search</button></div>`;
+  } else {
+    const head = `<div class="group-h" role="status">${res.list.length} match${res.list.length === 1 ? "" : "es"}, best first</div>`;
+    body = head + `<ul class="list">${res.list.slice(0, 80).map(o => rowHtml(f, o, res.why && res.why.get(o.id))).join("")}</ul>`;
+  }
+  const chipRow = ax
+    ? `<button class="btn btn-tinted btn-wide" data-act="scope-cycle" data-key="cycle">Look in: ${st.scope === "any" ? "everything" : SCOPES.find(s => s[0] === st.scope)[1]}</button>`
+    : `<div class="chips" role="group" aria-label="Look in" data-new="clue chips">${SCOPES.map(([k, n]) => `<button class="chip" data-act="scope" data-scope="${k}" aria-pressed="${st.scope === k}">${n}</button>`).join("")}</div>`;
+  const input = st.scope === "when"
+    ? `<div class="buckets" role="group" aria-label="When you bought it" data-new="time spans">${BUCKETS.map(([k, n]) => `<button class="bucket" data-act="when" data-when="${k}" aria-pressed="${st.when === k}">${n}</button>`).join("")}</div>`
+    : `<label class="field" data-new="one box for any clue">${ICON.search}<input type="search" data-key="q" data-act-input="q" value="${esc(st.q)}" placeholder="${PH[st.scope]}" aria-label="${PH[st.scope]}" autocomplete="off" enterkeyhint="search">${st.q ? `<button class="clear" data-act="clue-clear" aria-label="Clear the search">${ICON.x}</button>` : ""}</label>`;
+  const dock = `<div class="dock">${chipRow}${input}</div>`;
+  if (ax) return `<div class="screen" data-scroll="s-find">${title}${dock}<div class="scroll">${body}</div></div>`;
+  return `<div class="screen">${title}<div class="scroll" data-scroll="clue-list">${body}</div>${dock}</div>`;
+}
+
+/* ---------- Concept: Sieve ---------- */
+const ASKS = ["thick", "letter", "when", "word"];
+function sieveBase() { return G.state === "unknown" ? ORDERS : ORDERS.filter(o => orderState(o) === "none"); }
+function sieveMatch(o, c, skip) {
+  if (skip !== "thick" && c.thick && thickOf(o) !== c.thick) return false;
+  if (skip !== "letter" && c.letter && letterOf(o) !== c.letter) return false;
+  if (skip !== "when" && c.when && bucketOf(o.age) !== c.when) return false;
+  if (skip !== "word" && c.word.trim()) {
+    const q = c.word.trim().toLowerCase(), qn = q.replace(/[^a-z0-9]/g, "");
+    if (!(o.seller.toLowerCase().includes(q) || o.lines.some(l => l.name.toLowerCase().includes(q)) || (qn.length >= 2 && o.id.replace(/-/g, "").toLowerCase().includes(qn)))) return false;
+  }
+  return true;
+}
+const anyClue = c => !!(c.thick || c.letter || c.when || c.word.trim());
+function pillsHtml(f) {
+  const c = f.st.clues, p = [];
+  if (c.thick) p.push(["thick", THICK.find(t => t[0] === c.thick)[1]]);
+  if (c.letter) p.push(["letter", `Sender starts with ${c.letter}`]);
+  if (c.when) p.push(["when", bucketName(c.when)]);
+  if (c.word.trim()) p.push(["word", `“${esc(c.word.trim())}”`]);
+  if (!p.length) return `<div class="pills" data-new="clue pills"><p class="hint">Answer what the envelope tells you. Skip what you cannot tell.</p></div>`;
+  return `<div class="pills" role="group" aria-label="Your clues" data-new="clue pills">${p.map(([k, t]) => `<button class="pill" data-act="unclue" data-clue="${k}" aria-label="Remove clue: ${t}">${t}${ICON.xs}</button>`).join("")}</div>`;
+}
+function askHtml(f) {
+  const st = f.st, c = st.clues, base = sieveBase();
+  const k = ASKS[st.ask];
+  const pos = `<span class="t-ft muted">Clue ${st.ask + 1} of 4</span>`;
+  const foot = (skipLabel) => `<div class="ask-foot"><button class="btn btn-plain" data-act="ask-prev"${st.ask === 0 ? " disabled aria-disabled=\"true\" title=\"This is the first clue\"" : ""}>Previous clue</button><button class="btn btn-plain" data-act="ask-next">${skipLabel}</button></div>`;
+  if (k === "thick") return `<div class="ask" data-new="one question at a time"><div class="ask-head"><span class="t-hl">How thick is it?</span>${pos}</div><div class="answers">${THICK.map(([v, n, h]) => `<button class="answer" data-act="clue" data-clue="thick" data-v="${v}" aria-pressed="${c.thick === v}">${n}<small>${h}</small></button>`).join("")}</div>${foot("Not sure, skip")}</div>`;
+  if (k === "letter") {
+    const pool = base.filter(o => sieveMatch(o, c, "letter"));
+    const letters = [...new Set(pool.map(letterOf))].sort();
+    const grid = letters.length ? `<div class="letters" role="group" aria-label="First letter of the sender">${letters.map(L => `<button class="letter" data-act="clue" data-clue="letter" data-v="${L}" aria-pressed="${c.letter === L}">${L}</button>`).join("")}</div>` : `<p class="t-sub muted">No sender fits your other clues.</p>`;
+    return `<div class="ask" data-new="letter keys"><div class="ask-head"><span class="t-hl">Sender's name starts with</span>${pos}</div>${grid}${foot("Cannot read it, skip")}</div>`;
+  }
+  if (k === "when") return `<div class="ask"><div class="ask-head"><span class="t-hl">When did you buy it?</span>${pos}</div><div class="answers" style="grid-template-columns:${f.def.ax5 ? "1fr" : "1fr 1fr"}">${BUCKETS.map(([v, n]) => `<button class="answer" data-act="clue" data-clue="when" data-v="${v}" aria-pressed="${c.when === v}">${n}</button>`).join("")}</div>${foot("Not sure, skip")}</div>`;
+  return `<div class="ask"><div class="ask-head"><span class="t-hl">Any word you can read?</span>${pos}</div><label class="field">${ICON.search}<input type="search" data-key="word" data-act-input="word" value="${esc(c.word)}" placeholder="A seller, card or order no. word" aria-label="A word from the envelope or a card" autocomplete="off"></label>${foot("Done with clues")}</div>`;
+}
+function dotsHtml(f, base, set) {
+  let out = "", cur = null, row = "";
+  const flush = () => { if (cur) out += `<div class="dot-group"><span class="t-c1 muted">${bucketName(cur)}</span><div class="dot-row">${row}</div></div>`; };
+  for (const o of base) {
+    const b = bucketOf(o.age);
+    if (b !== cur) { flush(); cur = b; row = ""; }
+    row += `<span class="dot${set.has(o.id) ? "" : " out"}"></span>`;
+  }
+  flush();
+  return `<div class="dots" aria-hidden="true" data-new="one dot per waiting order">${out}</div>`;
+}
+function sieveFinder(f) {
+  const st = f.st, ax = f.def.ax5, open = f.def.pose === "open";
+  const blk = stateBlock(f);
+  if (blk) return `<div class="screen" data-scroll="s-find"><div class="titlebar"><h2 class="t-lt">Find mail</h2></div><div class="scroll">${blk}</div></div>`;
+  const base = sieveBase(), hits = base.filter(o => sieveMatch(o, st.clues)), set = new Set(hits.map(o => o.id));
+  const n = hits.length;
+  const showList = !open && (n <= 8 || st.listAll);
+  const listToggle = !open && n > 8 && n <= 60 ? `<button class="btn btn-plain" data-act="list-all" data-key="listall">${st.listAll ? "Show dots" : `List all ${n}`}</button>` : (anyClue(st.clues) ? `<button class="btn btn-plain" data-act="sv-reset" data-key="reset">Start over</button>` : "");
+  const label = n === 0 ? "orders fit" : n === 1 ? "order could be it" : "orders could be it";
+  const head = `<div class="sv-head"><div class="sv-count" role="status" aria-live="polite"><span class="sv-big">${n}</span><span class="t-sub muted">${label}${G.state === "unknown" ? ", arrived or not" : ""}</span></div>${listToggle}</div>`;
+  let area;
+  if (n === 0) area = `<div class="msg"><p>No order fits all your clues.</p><button class="btn btn-tinted" data-act="unclue-last">Remove the last clue</button></div>`;
+  else if (showList) area = `<ul class="list">${hits.map(o => rowHtml(f, o)).join("")}</ul>`;
+  else if (ax) area = `<p class="pad t-sub muted" style="padding-block:var(--space-3)">Answer a clue to narrow these down. At 8 or fewer, they show here as a list.</p>`;
+  else area = dotsHtml(f, base, set);
+  const unknownNote = G.state === "unknown" ? `<div class="msg" role="alert" style="padding-block:var(--space-2)"><p class="t-ft">Your check-ins could not be read, so arrived orders are in here too.</p><button class="btn btn-tinted" data-act="recover">Try again</button></div>` : "";
+  const fieldArea = `<div class="field-area" data-scroll="field">${area}</div>`;
+  if (ax) return `<div class="screen" data-scroll="s-find">${unknownNote}${head}${askHtml(f)}${pillsHtml(f)}${fieldArea}</div>`;
+  return `<div class="screen">${unknownNote}${head}${pillsHtml(f)}${fieldArea}${askHtml(f)}</div>`;
+}
+function sieveList(f) {
+  const hits = sieveBase().filter(o => sieveMatch(o, f.st.clues));
+  const body = hits.length ? grouped(f, hits) : `<div class="msg"><p>No order fits all your clues.</p><button class="btn btn-tinted" data-act="unclue-last">Remove the last clue</button></div>`;
+  return `<div class="screen"><div class="titlebar"><h2 class="t-t2">Pick yours</h2><p class="t-ft muted">Newest first. The list narrows as you answer.</p></div><div class="scroll" data-scroll="sv-right" data-new="live candidate list">${body}</div></div>`;
+}
+
+/* ---------- Order detail: the same screen for every concept ---------- */
+function detail(f, withBack, backLabel) {
+  const o = BY_ID[f.st.orderId], g = GOT[o.id], s = orderState(o), n = cards(o), have = gotCount(o);
+  const unk = s === "unknown";
+  const back = withBack ? `<div class="navbar"><button class="back" data-act="back">${ICON.back}${backLabel}</button></div>` : `<div class="navbar"></div>`;
+  const sumText = unk ? "Arrival unknown" : s === "all" ? "Every card arrived" : s === "some" ? `${have} of ${n} cards arrived` : `None of the ${n} cards arrived yet`;
+  const head = `<div class="d-head"><h2 class="t-t2">${esc(o.seller)}</h2><span class="t-sub muted num">Bought ${fmtDate(o.date)}, ${ago(o.age)}. Order no. ${o.id}</span><div class="d-sum" role="status">${ring(s)}<span class="t-hl">${sumText}</span><span class="muted num" style="margin-inline-start:auto">${money(total(o))}</span></div></div>`;
+  const lines = o.lines.map((l, i) => {
+    const got = g[i];
+    const dis = unk ? ` disabled title="Check-ins could not be read"` : "";
+    const right = l.qty > 1
+      ? `<span class="stepper" role="group" aria-label="${esc(l.name)}, received count"><button data-act="step" data-line="${i}" data-d="-1" aria-label="One fewer"${got <= 0 || unk ? " disabled" : ""}>−</button><output class="num">${unk ? "?" : got} of ${l.qty}</output><button data-act="step" data-line="${i}" data-d="1" aria-label="One more"${got >= l.qty || unk ? " disabled" : ""}>+</button></span>`
+      : "";
+    return `<li class="line"><button class="tick" data-act="tick" data-line="${i}" aria-pressed="${got >= l.qty}" aria-label="${esc(l.name)}: ${got >= l.qty ? "arrived" : "not arrived"}"${dis}>${tickIcon(unk ? 0 : got, l.qty)}</button><span class="ln-name"><span>${esc(l.name)}</span><span class="t-ft muted num">${l.qty > 1 ? `${l.qty} at ${money(l.price)}` : money(l.price)}</span></span><span class="ln-right">${right}<span class="t-sub num">${money(l.qty * l.price)}</span></span></li>`;
+  }).join("");
+  let bar;
+  if (unk) bar = `<div class="d-bar"><p class="t-ft">Check-ins could not be read, so ticks are off.</p><button class="btn btn-tinted" data-act="recover">Try again</button></div>`;
+  else if (f.st.undo && f.st.undo.id === o.id) bar = `<div class="d-bar" role="status"><p class="t-sub">Marked all ${n} arrived.</p><button class="btn btn-tinted" data-act="undo">Undo</button></div>`;
+  else if (s === "all") bar = `<div class="d-bar"><p class="t-sub muted">Every card in this order is ticked.</p></div>`;
+  else bar = `<div class="d-bar"><button class="btn btn-primary btn-wide" data-act="all" data-new="one press for the whole package">Mark all ${n - have} arrived</button></div>`;
+  const sc = `detail-${o.id}`;
+  if (f.def.ax5) return `<div class="screen" data-scroll="${sc}">${back}${head}<ul class="lines">${lines}</ul>${bar}</div>`;
+  return `<div class="screen">${back}<div class="scroll" data-scroll="${sc}">${head}<ul class="lines" data-new="tick each card">${lines}</ul></div>${bar}</div>`;
+}
+
+/* ---------- Events ---------- */
+function onInput(f, e) {
+  const k = e.target.dataset.actInput;
+  if (k === "q") f.st.q = e.target.value;
+  if (k === "word") f.st.clues.word = e.target.value;
+  if (k) render(f);
+}
+function onClick(f, e) {
+  const b = e.target.closest("[data-act]"); if (!b || !f.el.contains(b) || b.disabled) return;
+  const st = f.st, act = b.dataset.act;
+  if (act === "open") { st.orderId = b.dataset.id; st.view = "order"; st.undo = null; }
+  else if (act === "back") { st.view = "find"; st.orderId = null; st.undo = null; }
+  else if (act === "recover") { st.loaded = "loaded"; if (G.state === "unknown") { G.state = "loaded"; syncControls(); writeHash(); renderAll(); return; } }
+  else if (act === "scope") { const k = b.dataset.scope; st.scope = st.scope === k ? "any" : k; if (st.scope !== "when") st.when = null; }
+  else if (act === "scope-cycle") { const order = ["any", "seller", "card", "order", "when"]; st.scope = order[(order.indexOf(st.scope) + 1) % order.length]; }
+  else if (act === "when") { st.when = st.when === b.dataset.when ? null : b.dataset.when; }
+  else if (act === "clue-clear") { st.q = ""; st.when = null; if (st.scope === "when") st.scope = "any"; }
+  else if (act === "clue") { const k = b.dataset.clue, v = b.dataset.v; st.clues[k] = st.clues[k] === v ? null : v; st.last = k; if (st.clues[k]) st.ask = Math.min(3, ASKS.indexOf(k) + 1); st.listAll = false; }
+  else if (act === "unclue") { const k = b.dataset.clue; st.clues[k] = k === "word" ? "" : null; st.ask = ASKS.indexOf(k); }
+  else if (act === "unclue-last") { const c = st.clues; const k = st.last && (c[st.last] || (st.last === "word" && c.word)) ? st.last : [...ASKS].reverse().find(a => a === "word" ? c.word.trim() : c[a]); if (k) { c[k] = k === "word" ? "" : null; st.ask = ASKS.indexOf(k); } st.last = null; }
+  else if (act === "ask-next") { st.ask = Math.min(3, st.ask + 1); }
+  else if (act === "ask-prev") { st.ask = Math.max(0, st.ask - 1); }
+  else if (act === "sv-reset") { st.clues = { thick: null, letter: null, when: null, word: "" }; st.ask = 0; st.listAll = false; }
+  else if (act === "list-all") { st.listAll = !st.listAll; }
+  else if (act === "tick" || act === "step" || act === "all" || act === "undo") {
+    const o = BY_ID[st.orderId], g = GOT[o.id];
+    if (act === "tick") { const i = +b.dataset.line; g[i] = g[i] >= o.lines[i].qty ? 0 : o.lines[i].qty; st.undo = null; }
+    if (act === "step") { const i = +b.dataset.line; g[i] = Math.max(0, Math.min(o.lines[i].qty, g[i] + +b.dataset.d)); st.undo = null; }
+    if (act === "all") { st.undo = { id: o.id, prev: g.slice() }; o.lines.forEach((l, i) => { g[i] = l.qty; }); }
+    if (act === "undo") { st.undo.prev.forEach((v, i) => { g[i] = v; }); st.undo = null; }
+    renderAll(); return;   // check-ins are shared, so every frame shows the change
+  }
+  render(f);
+}
+
+/* ---------- Controls ---------- */
+function seg(id, items, cur, onPick) {
+  const el = document.getElementById(id); el.innerHTML = "";
+  for (const [k, n] of items) {
+    const b = document.createElement("button"); b.type = "button"; b.textContent = n; b.setAttribute("aria-pressed", String(cur === k));
+    b.addEventListener("click", () => onPick(k)); el.append(b);
+  }
+}
+function syncControls() {
+  const el = document.getElementById("concepts"); el.innerHTML = "";
+  for (const c of CONCEPTS) {
+    if (G.hidden.has(c.key)) continue;
+    const wrap = document.createElement("span"); wrap.className = "concept-tab";
+    const b = document.createElement("button"); b.type = "button"; b.textContent = c.name; b.setAttribute("aria-pressed", String(G.concept === c.key));
+    b.addEventListener("click", () => { G.concept = c.key; changed(true); });
+    const h = document.createElement("button"); h.type = "button"; h.className = "hide"; h.textContent = "Hide"; h.setAttribute("aria-label", `Hide ${c.name}`);
+    const visible = CONCEPTS.filter(x => !G.hidden.has(x.key)).length;
+    if (visible <= 1) { h.disabled = true; h.title = "The last concept cannot be hidden"; }
+    h.addEventListener("click", () => { G.hidden.add(c.key); if (G.concept === c.key) G.concept = CONCEPTS.find(x => !G.hidden.has(x.key)).key; changed(true); });
+    wrap.append(b, h); el.append(wrap);
+  }
+  if (G.hidden.size) { const r = document.createElement("button"); r.className = "restore"; r.type = "button"; r.textContent = `Show ${G.hidden.size} hidden`; r.addEventListener("click", () => { G.hidden.clear(); changed(false); }); el.append(r); }
+  seg("states", STATES, G.state, k => { G.state = k; changed(true); });
+  seg("themes", THEMES, G.theme, k => { G.theme = k; applyTheme(); syncControls(); writeHash(); });
+  seg("devices", DEVICES, G.device, k => { G.device = k; changed(true); });
+  seg("labels", [["on", "Show"], ["off", "Hide"]], G.labels ? "on" : "off", k => { G.labels = k === "on"; changed(false); });
+  document.getElementById("blurb").textContent = CONCEPTS.find(c => c.key === G.concept).blurb;
+}
+function changed(rebuild) { syncControls(); writeHash(); if (rebuild) buildStage(); else renderAll(); }
+window.addEventListener("hashchange", () => { readHash(); applyTheme(); syncControls(); buildStage(); });
+readHash(); applyTheme(); syncControls(); writeHash(); buildStage();
+})();
+</script>
+</body>
+</html>

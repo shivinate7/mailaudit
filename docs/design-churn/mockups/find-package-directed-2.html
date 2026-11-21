@@ -1,0 +1,847 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Find the Package</title>
+<style>
+/* Tokens: shared/tokens.json (decision design-parchment-ledger). Light keys for the app. The native app is held to light
+   (UIUserInterfaceStyle: Light), so the dark set (the dark* keys, today read only by the orders extension) is a spec here,
+   not a shipped state. --new and --today are page chrome for the dashed tags. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --gold:#C9A961; --silver:#C4C3C0;
+  --accent:#6F5CA6; --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA;
+  --manilaInk:#695832; --amber:#846008; --shadow:rgba(28,43,36,0.06); --scrim:rgba(28,43,36,0.92);
+  --new:#2E7A5E; --today:#A8443C;
+  --cochin: Cochin, "Iowan Old Style", Georgia, serif; --mono: Menlo, ui-monospace, monospace;
+  --sys: -apple-system, system-ui, sans-serif;
+  --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); --sal: env(safe-area-inset-left); --sar: env(safe-area-inset-right);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA; --green:#6DBB98;
+    --greenSoft:#26312C; --red:#E3857B; --redSoft:#3A2426; --manila:#3A3122; --manilaInk:#E2CB96; --amber:#D9AE4A;
+    --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA; --green:#6DBB98;
+  --greenSoft:#26312C; --red:#E3857B; --redSoft:#3A2426; --manila:#3A3122; --manilaInk:#E2CB96; --amber:#D9AE4A;
+  --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sys); font-size:15px; line-height:1.45; overflow-x:hidden; }
+main { max-width:1200px; margin:0 auto; padding:calc(16px + var(--sat)) calc(16px + var(--sar)) calc(32px + var(--sab)) calc(16px + var(--sal));
+  display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-size:28px; line-height:1.15; margin:0; }
+.kind { margin:0; font-size:15px; } .kind b { font-weight:600; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+nav { display:flex; flex-direction:column; gap:8px; }
+nav .grp { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+nav .lbl { font-size:13px; color:var(--inkSoft); min-width:64px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"], nav button[aria-pressed="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+a:focus-visible, button:focus-visible, [tabindex]:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+section.concept { display:flex; flex-direction:column; gap:12px; border-top:1px solid var(--line); padding-top:20px; }
+section.concept[hidden], figure[hidden] { display:none; }
+.concept h2 { font-size:22px; margin:0; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.concept > p { margin:0; max-width:72ch; }
+.concept .gl { margin:0; max-width:72ch; color:var(--inkSoft); font-size:14px; }
+.concept .gl b { color:var(--ink); }
+.frames { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; min-width:0; max-width:100%; }
+figure.wide { flex-basis:100%; }
+figcaption { font-size:13px; color:var(--inkSoft); max-width:60ch; }
+figcaption b { color:var(--ink); font-size:14px; }
+.scaler { position:relative; overflow:hidden; max-width:100%; }
+.scaler > .dev { transform-origin:0 0; }
+.chip { font:600 12px/1.4 var(--sys); border:2px dashed; border-radius:6px; padding:2px 6px; }
+.chip.new { color:var(--new); } .chip.today { color:var(--today); }
+code { font:13px var(--mono); }
+
+/* ================= the device frames: 1 CSS px = 1 pt ================= */
+.dev { --k:1; position:relative; background:var(--paper); border:1px solid var(--ink); overflow:hidden; color:var(--ink); font-family:var(--cochin);
+  border-radius:28px; }
+.dev[data-device="iphone-duo-unfolded"] { border-radius:16px; }
+.dev[data-device="iphone-regular"] { border-radius:48px; }
+.dev.ax { --k:3.1176; } /* AX5: Body 53 pt over Large Body 17 pt (Apple typography page). Every content size scales by it. */
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.hinge { position:absolute; top:0; bottom:0; left:455.5px; width:40px; z-index:20;
+  background:repeating-linear-gradient(90deg, color-mix(in srgb, var(--ink) 18%, transparent) 0 1px, color-mix(in srgb, var(--line) 70%, transparent) 1px 40px); }
+.sb { position:absolute; left:0; right:0; top:0; z-index:12; display:flex; justify-content:space-between; align-items:center; padding:0 20px;
+  font:600 13px var(--sys); color:var(--ink); background:var(--paper); }
+.sb i { font-style:normal; letter-spacing:1px; font-weight:500; }
+.scroll { position:absolute; left:0; right:0; overflow-y:auto; overflow-x:hidden; overscroll-behavior:contain; scrollbar-width:none; }
+.scroll::-webkit-scrollbar { display:none; }
+.stack { display:flex; flex-direction:column; gap:8px; padding:0 16px 16px; }
+
+/* masthead, drawn short (unchanged; MastheadView) */
+.mast { display:flex; flex-direction:column; align-items:center; gap:4px; padding:12px 16px 8px; }
+.mast .lh { font-size:min(calc(26px * var(--k)), 54px); letter-spacing:.22em; font-weight:700; line-height:1.1; }
+.mast .rl { align-self:stretch; height:4px; border-top:1px solid var(--gold); border-bottom:1px solid var(--gold); }
+.mast .tl { align-self:stretch; display:grid; grid-template-columns:1fr 1fr 1.7fr; gap:4px; text-align:center; }
+.mast .tl span { display:flex; flex-direction:column; font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); line-height:1.25; }
+.mast .tl b { font:700 calc(15px * var(--k)) var(--mono); color:var(--ink); }
+.ax .mast .tl { grid-template-columns:1fr; }
+.ruled { display:flex; flex-direction:column; padding:0 16px 8px; }
+.ruled .r { height:1px; background:var(--line); }
+.ruled .cells { display:flex; justify-content:flex-end; flex-wrap:wrap; }
+.ruled .cell { min-height:44px; padding:0 12px; display:flex; align-items:center; gap:4px; border-left:1px solid var(--line);
+  font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); }
+.hand { display:flex; justify-content:flex-end; padding:0 16px; }
+.mini { min-height:44px; display:inline-flex; align-items:center; padding:0 12px; font:600 calc(13px * var(--k)) var(--cochin); color:var(--accent);
+  border:1px solid var(--line); border-radius:8px; background:var(--card); cursor:pointer; }
+
+/* the package card (PackageRow), as built */
+.pcard { position:relative; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 1px var(--shadow); }
+.pcard.done { border-color:var(--green); }
+.pcard .bar { position:absolute; left:0; right:0; top:0; height:3px; background:var(--silver); border-radius:8px 8px 0 0; overflow:hidden; }
+.pcard .bar i { display:block; height:100%; background:var(--accent); }
+.pcard.done .bar i { background:var(--green); }
+.ph { display:flex; align-items:center; gap:8px; padding:12px 12px 0; }
+.ph .who { flex:1; min-width:0; display:flex; flex-direction:column; }
+.ph .who b { font-size:calc(15px * var(--k)); line-height:1.2; overflow-wrap:anywhere; }
+.ph .who span { font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); }
+.ph .oid { font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); text-decoration:underline; min-height:45px; display:flex; align-items:center; padding:0 12px; }
+.slot { flex:none; display:grid; place-items:center end; min-height:28px; }
+.pill { font:700 calc(12.5px * var(--k)) var(--cochin); color:var(--red); background:var(--redSoft); border-radius:999px; padding:4px 8px; white-space:nowrap; }
+.rcv { font:700 calc(10.5px * var(--k)) var(--mono); letter-spacing:1px; color:var(--green); border:2px solid var(--green); border-radius:4px; padding:4px 8px; transform:rotate(-4deg); }
+.crow { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:0 12px; min-height:44px; border-top:1px solid var(--line); flex-wrap:wrap; }
+.crow .mini { min-height:36px; }
+.crow .act { font:600 calc(13px * var(--k)) var(--cochin); color:var(--accent); background:none; border:0; min-height:44px; padding:0 4px; cursor:pointer; }
+.crow .act[disabled] { color:var(--inkSoft); cursor:default; }
+.ln { display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); padding:8px 12px 8px 4px; cursor:pointer; min-height:56px; }
+.ln.done { background:var(--greenSoft); }
+.ln:last-child { border-radius:0 0 8px 8px; }
+.box { flex:0 0 44px; height:44px; display:grid; place-items:center; }
+.box::before { content:""; width:28px; height:28px; border:2px solid var(--inkSoft); border-radius:8px; background:var(--card); }
+.ln.done .box::before { border-color:var(--green); background:var(--green); }
+.ln.done .box::after { content:""; position:absolute; width:12px; height:7px; border-left:3px solid var(--card); border-bottom:3px solid var(--card); transform:translateY(-2px) rotate(-45deg); }
+.box { position:relative; }
+.ln .t { flex:1; min-width:0; display:flex; flex-direction:column; gap:2px; }
+.ln .t b { font-size:calc(14px * var(--k)); font-weight:600; line-height:1.2; display:flex; justify-content:space-between; gap:8px; flex-wrap:wrap; }
+.ln.done .t b { color:var(--inkSoft); }
+.ln .t b span, .ln .t small { font:calc(12px * var(--k)) var(--mono); color:var(--inkSoft); font-weight:400; }
+
+/* ================= New parts ================= */
+/* the band: solid paper, ruled top (item 101 a in the brief), in the keyboard-avoiding safe area above the tab bar */
+.band { position:absolute; left:0; right:0; bottom:0; z-index:8; background:var(--paper); border-top:1px solid var(--line);
+  display:flex; flex-direction:column; gap:8px; padding:8px 16px; }
+.band .row { display:flex; gap:8px; align-items:stretch; min-height:44px; }
+.findkey { flex:none; width:44px; min-height:44px; border:1px solid var(--line); border-radius:22px; background:var(--card); display:grid; place-items:center; cursor:pointer; padding:0; }
+.findkey svg, .fpill svg { width:20px; height:20px; fill:none; stroke:var(--inkSoft); stroke-width:1.8; stroke-linecap:round; }
+.fpill { display:flex; align-items:center; gap:8px; min-height:48px; padding:0 6px 0 16px; border:1px solid var(--line); border-radius:999px; background:var(--paper); }
+.fpill input { flex:1; min-width:0; border:0; background:transparent; font:calc(16px * var(--k)) var(--cochin); color:var(--ink); outline:none; padding:0; }
+.fpill input::placeholder { color:var(--inkSoft); }
+.fpill .x { width:44px; height:44px; border:0; background:none; display:grid; place-items:center; cursor:pointer; padding:0; }
+.fpill .x::before { content:"\00D7"; width:20px; height:20px; border-radius:50%; background:var(--inkSoft); color:var(--paper); font:700 14px/20px var(--sys); text-align:center; }
+.fpill .x[hidden] { display:grid; visibility:hidden; }
+
+/* ruled segments: the Ledger's OptionChip vocabulary, as one row */
+.seg { flex:1; min-width:0; display:flex; border:1px solid var(--line); border-radius:8px; background:var(--card); overflow:hidden; }
+.seg button { flex:1 1 0; min-width:0; min-height:44px; border:0; border-left:1px solid var(--line); background:none; color:var(--ink); cursor:pointer; padding:0 4px;
+  font:calc(14px * var(--k)) var(--cochin); line-height:1.1; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:2px; }
+.seg button:first-child { border-left:0; }
+.seg button[aria-pressed="true"] { background:var(--accent); color:var(--card); font-weight:700; }
+.seg button small { font:calc(11px * var(--k)) var(--mono); opacity:.85; }
+.seg button[disabled] { color:var(--inkSoft); opacity:.55; cursor:default; }
+.tier { display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:4px; vertical-align:1px; }
+.tier.amber { background:var(--amber); } .tier.red { background:var(--red); }
+/* the AX form of a segment row: one row button that opens a list (Apple menus page) */
+.menu-btn { flex:1; min-width:0; min-height:44px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); cursor:pointer;
+  font:calc(14px * var(--k)) var(--cochin); text-align:left; padding:4px 12px; display:flex; justify-content:space-between; align-items:center; gap:8px; line-height:1.1; }
+.menu-btn b { color:var(--accent); }
+.menu { position:absolute; left:16px; right:16px; z-index:30; background:var(--paper); border:1px solid var(--ink); border-radius:12px; box-shadow:0 8px 24px var(--shadow);
+  display:flex; flex-direction:column; overflow:hidden; }
+.menu button { min-height:44px; border:0; border-top:1px solid var(--line); background:none; color:var(--ink); font:calc(14px * var(--k)) var(--cochin); text-align:left; padding:4px 16px; cursor:pointer; line-height:1.1; }
+.menu button:first-child { border-top:0; }
+.menu button[aria-pressed="true"] { color:var(--accent); font-weight:700; }
+
+/* Pigeonholes */
+.holes { display:grid; grid-template-columns:repeat(var(--cols,3), minmax(0,1fr)); gap:8px; }
+.hole { position:relative; min-height:76px; border:1px solid var(--line); border-radius:8px; background:var(--card); box-shadow:0 1px 1px var(--shadow);
+  padding:8px; display:flex; flex-direction:column; justify-content:space-between; gap:4px; text-align:left; color:var(--ink); cursor:pointer; font:inherit; }
+.hole b { font-size:calc(14px * var(--k)); line-height:1.15; font-weight:700; overflow-wrap:anywhere; padding-right:calc(22px * var(--k)); }
+.hole .n { position:absolute; right:8px; top:6px; font:700 calc(15px * var(--k)) var(--mono); }
+.hole .dots { display:flex; flex-wrap:wrap; gap:3px; align-items:center; font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); }
+.hole .dots i { width:9px; height:9px; border:1.5px solid var(--inkSoft); border-radius:2px; }
+.hole .dots i.some { background:var(--manila); border-color:var(--manilaInk); }
+.hole .dots i.late { border-color:var(--amber); } .hole .dots i.over { border-color:var(--red); background:var(--redSoft); }
+.hole.empty { background:transparent; box-shadow:none; border-style:dashed; color:var(--inkSoft); cursor:default; }
+.hole.empty .n { color:var(--inkSoft); font-weight:400; }
+.hole.on { border:2px solid var(--accent); padding:7px; }
+.ax .holes { --cols:1 !important; }
+.ax .hole { flex-direction:row; align-items:center; }
+.ax .hole .n { position:static; order:2; }
+.ax .hole .dots { display:none; }
+.letter { font:700 calc(11px * var(--k)) var(--mono); color:var(--inkSoft); letter-spacing:1px; padding:4px 0 0; grid-column:1 / -1; border-bottom:1px solid var(--line); }
+.shead { display:flex; flex-direction:column; gap:2px; padding:0 16px 8px; }
+.back { align-self:flex-start; min-height:44px; display:inline-flex; align-items:center; gap:4px; border:0; background:none; color:var(--accent); font:calc(17px * var(--k)) var(--sys); padding:0; cursor:pointer; }
+.back::before { content:""; width:10px; height:10px; border-left:2.5px solid currentColor; border-bottom:2.5px solid currentColor; transform:rotate(45deg); margin:0 4px 0 4px; }
+.shead h3 { margin:0; font-size:calc(22px * var(--k)); line-height:1.15; overflow-wrap:anywhere; }
+.shead span { font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); }
+.pushin { animation:push .28s cubic-bezier(.2,.7,.2,1); }
+@keyframes push { from { transform:translateX(40px); opacity:.2; } to { transform:none; opacity:1; } }
+@media (prefers-reduced-motion: reduce) { .pushin { animation:none; } }
+
+/* slips: one package as one line (Week Ruler and Thumb Index) */
+.slip { display:flex; align-items:center; gap:8px; border:1px solid var(--line); border-radius:8px; background:var(--card); box-shadow:0 1px 1px var(--shadow);
+  padding:6px 12px 6px 4px; min-height:56px; cursor:pointer; text-align:left; color:var(--ink); font:inherit; width:100%; position:relative; }
+.slip.on::before { content:""; position:absolute; left:-1px; top:8px; bottom:8px; width:4px; border-radius:0 3px 3px 0; background:var(--accent); }
+.slip .st { flex:0 0 44px; height:44px; display:grid; place-items:center; position:relative; }
+.slip .st::before { content:""; width:22px; height:22px; border:2px solid var(--inkSoft); border-radius:6px; background:var(--card); }
+.slip.some .st::before { border-color:var(--manilaInk); background:var(--manila); }
+.slip.some .st::after { content:""; position:absolute; width:10px; height:2.5px; background:var(--manilaInk); }
+.slip.all .st::before { border-color:var(--green); background:var(--green); }
+.slip .tx { flex:1; min-width:0; display:flex; flex-direction:column; gap:1px; }
+.slip .tx b { font-size:calc(15px * var(--k)); line-height:1.2; overflow-wrap:anywhere; }
+.slip .tx span { font-size:calc(13px * var(--k)); color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; line-height:1.25; }
+.ax .slip .tx span { white-space:normal; }
+.slip .rt { flex:none; display:flex; flex-direction:column; align-items:flex-end; gap:2px; }
+.slip .rt small { font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); }
+.ax .slip { flex-wrap:wrap; }
+.wk { position:sticky; top:0; z-index:3; background:var(--paper); display:flex; justify-content:space-between; align-items:baseline; gap:8px;
+  padding:8px 0 4px; border-bottom:1px solid var(--line); margin:0 -16px; padding-left:16px; padding-right:16px; flex-wrap:wrap; }
+.wk b { font-size:calc(15px * var(--k)); }
+.wk span { font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); }
+.wk.late b::before, .wk.over b::before { content:""; display:inline-block; width:8px; height:8px; border-radius:50%; margin-right:6px; vertical-align:2px; }
+.wk.late b::before { background:var(--amber); } .wk.over b::before { background:var(--red); }
+.wk.hit { box-shadow:inset 4px 0 0 var(--accent); }
+.wk-tier { font:calc(11px * var(--k)) var(--mono); }
+.wk.late .wk-tier { color:var(--amber); } .wk.over .wk-tier { color:var(--red); }
+
+/* the week ruler */
+.ruler { flex:1; min-width:0; display:flex; gap:0; border:1px solid var(--line); border-radius:8px; background:var(--card); overflow-x:auto; scrollbar-width:none; }
+.ruler::-webkit-scrollbar { display:none; }
+.ruler button { flex:1 0 44px; min-width:44px; min-height:60px; border:0; border-left:1px solid var(--line); background:none; cursor:pointer; color:var(--inkSoft);
+  display:flex; flex-direction:column; align-items:center; justify-content:flex-end; gap:3px; padding:4px 2px; font:calc(11px * var(--k)) var(--mono); }
+.ruler button:first-child { border-left:0; }
+.ruler button i { width:14px; border-radius:2px 2px 0 0; background:var(--accent); min-height:2px; }
+.ruler button.late i { background:var(--amber); } .ruler button.over i { background:var(--red); }
+.ruler button.zero i { background:var(--line); }
+.ruler button[aria-current="true"] { color:var(--ink); font-weight:700; box-shadow:inset 0 -3px 0 var(--accent); }
+.ax .ruler button { flex:0 0 auto; padding:4px 8px; min-height:64px; }
+
+/* Thumb Index tray */
+.tabs { flex:1; min-width:0; display:flex; gap:0; }
+.tabs button { flex:1 1 0; min-width:0; min-height:44px; border:1px solid var(--line); border-left-width:0; background:var(--card); color:var(--ink); cursor:pointer;
+  font:600 calc(14px * var(--k)) var(--cochin); display:flex; flex-direction:column; align-items:center; justify-content:center; line-height:1.05; padding:0 2px; }
+.tabs button:first-child { border-left-width:1px; border-radius:8px 0 0 8px; }
+.tabs button:last-child { border-radius:0 8px 8px 0; }
+.tabs button small { font:calc(11px * var(--k)) var(--mono); color:var(--inkSoft); font-weight:400; }
+.tabs button[aria-pressed="true"] { background:var(--ink); color:var(--card); }
+.tabs button[aria-pressed="true"] small { color:var(--card); }
+.tabs button[disabled] { color:var(--inkSoft); background:transparent; cursor:default; }
+.fit { display:flex; justify-content:space-between; align-items:center; min-height:28px; }
+.fit b { font:700 calc(13px * var(--k)) var(--mono); }
+.fit button { min-height:44px; margin:-8px 0; border:0; background:none; color:var(--accent); font:600 calc(14px * var(--k)) var(--cochin); cursor:pointer; padding:0 4px; }
+.fit button[disabled] { color:var(--inkSoft); opacity:.6; cursor:default; }
+.keys { display:grid; grid-template-columns:repeat(7, minmax(0,1fr)); gap:6px; }
+.keys button { min-height:52px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); font:700 18px var(--cochin); cursor:pointer;
+  display:flex; flex-direction:column; align-items:center; justify-content:center; gap:0; }
+.keys button small { font:11px var(--mono); color:var(--inkSoft); font-weight:400; }
+.keys button[aria-pressed="true"] { background:var(--ink); color:var(--card); } .keys button[aria-pressed="true"] small { color:var(--card); }
+.keys button[disabled] { background:transparent; color:var(--inkSoft); opacity:.5; cursor:default; }
+.desk { display:flex; flex-direction:column; gap:12px; padding:0 16px 16px; }
+.desk h4 { margin:0; font:600 15px var(--cochin); color:var(--inkSoft); }
+
+/* empty and placeholder */
+.empty-state { display:flex; flex-direction:column; align-items:flex-start; gap:8px; padding:16px 0; font-size:calc(15px * var(--k)); }
+.empty-state button { min-height:44px; border:1px solid var(--accent); color:var(--accent); background:var(--card); border-radius:8px; padding:0 16px; font:600 calc(15px * var(--k)) var(--cochin); cursor:pointer; }
+.ph-right { padding:24px 24px; color:var(--inkSoft); font-size:17px; max-width:36ch; }
+
+/* tab bars: the system bar on one page; the custom Duo bar under the right page (DuoBarMetrics) */
+.sysbar { position:absolute; left:0; right:0; bottom:0; height:83px; z-index:10; display:flex; justify-content:center; padding-top:8px; pointer-events:none; }
+.sysbar .cap, .duobar { border:1px solid var(--line); background:color-mix(in srgb, var(--paper) 62%, transparent);
+  -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); display:grid; grid-template-columns:repeat(4,1fr); align-items:center; }
+.sysbar .cap { width:calc(100% - 32px); height:56px; border-radius:28px; padding:0 8px; }
+.sysbar span, .duobar span { display:flex; flex-direction:column; align-items:center; gap:2px; font:11px var(--sys); color:var(--inkSoft); }
+.sysbar span i, .duobar span i { width:22px; height:22px; border:1.5px solid currentColor; border-radius:6px; display:block; }
+.sysbar span.on, .duobar span.on { color:var(--accent); }
+.duobar { position:absolute; left:64px; width:327.5px; bottom:12px; height:64px; border-radius:32px; z-index:10; padding:4px; }
+
+/* dashed tags, page chrome */
+.tag { outline:2px dashed var(--tc); outline-offset:-2px; position:relative; }
+.tag.today { --tc:var(--today); } .tag.new { --tc:var(--new); }
+.tag::after { content:attr(data-tag); position:absolute; z-index:40; left:4px; top:-1px; transform:translateY(-55%); background:var(--paper); color:var(--tc);
+  font:600 11px/1.3 var(--sys); padding:0 4px; border:1px dashed var(--tc); border-radius:4px; white-space:nowrap; pointer-events:none; letter-spacing:0; text-transform:none; }
+.notags .tag { outline:none; } .notags .tag::after { display:none; }
+.band.tag::after { top:2px; transform:none; }
+.sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); white-space:nowrap; }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" role="note">Sample: no figure on this page is real. Sellers, cards, prices, dates and order ids are made up, and the sample "today" is 20 Nov 2026.</div>
+  <h1>Find the Package</h1>
+  <p class="kind"><b>Designer kind: directed.</b> <b>Direction:</b> grouped scanning: no typing; group and filter by seller, state and date so the eye finds it.</p>
+  <p class="sub">The Packages tab, for the moment an envelope is in one hand and the phone in the other. Three concepts, each built on one key you can read off an envelope or remember: who sent it, roughly when you bought it, or both at once with the state. None needs the keys. The Find key stays at the band's end for an order number. Each concept draws the folded Duo, the folded Duo at AX5, the open Duo and the iPhone 18 Pro. Every frame works: tap a seller, a week, a tab or a package, and tick a card in.</p>
+  <nav aria-label="Mockup controls">
+    <div class="grp"><span class="lbl">Concept</span><a href="#" data-k="c" data-v="">All</a><a href="#c=pigeonholes" data-k="c" data-v="pigeonholes">Pigeonholes</a><a href="#c=week-ruler" data-k="c" data-v="week-ruler">Week Ruler</a><a href="#c=thumb-index" data-k="c" data-v="thumb-index">Thumb Index</a></div>
+    <div class="grp"><span class="lbl">Device</span><a href="#" data-k="d" data-v="">All</a><a href="#d=fold" data-k="d" data-v="fold">Duo folded</a><a href="#d=ax5" data-k="d" data-v="ax5">Duo folded, AX5</a><a href="#d=duo" data-k="d" data-v="duo">Duo open</a><a href="#d=pro" data-k="d" data-v="pro">iPhone 18 Pro</a></div>
+    <div class="grp"><span class="lbl">State</span><a href="#s=rest" data-k="s" data-v="rest">At rest</a><a href="#s=picked" data-k="s" data-v="picked">Picked</a><a href="#s=filtered" data-k="s" data-v="filtered">Filtered</a><a href="#s=empty" data-k="s" data-v="empty">Filter left none</a><a href="#s=find" data-k="s" data-v="find">Find open</a></div>
+    <div class="grp"><span class="lbl">Theme</span><a href="#t=light" data-k="t" data-v="light">Light</a><a href="#t=dark" data-k="t" data-v="dark">Dark (spec)</a>
+      <span class="lbl">Holes</span><a href="#o=owed" data-k="o" data-v="owed">Sellers owing</a><a href="#o=every" data-k="o" data-v="every">Every seller</a></div>
+    <div class="grp"><span class="lbl">Hide</span>
+      <button type="button" data-hide="pigeonholes" aria-pressed="false">Hide Pigeonholes</button>
+      <button type="button" data-hide="week-ruler" aria-pressed="false">Hide Week Ruler</button>
+      <button type="button" data-hide="thumb-index" aria-pressed="false">Hide Thumb Index</button>
+      <button type="button" id="tagsBtn" aria-pressed="false">Hide tags</button></div>
+  </nav>
+
+  <section class="concept" id="c-pigeonholes" data-concept="pigeonholes">
+    <h2>Pigeonholes <span class="chip new">New: seller grid, age band</span></h2>
+    <p>The return address is the one thing every envelope carries. Packages opens on a grid of sellers, A to Z, one hole each, like the sorting frame at a post office. A hole shows how many packages that seller still owes and a small box for each one: plain for nothing in, manila for some in, amber or red when it is late. Tap the hole and that seller's open packages slide in, as today's cards, ready to tick. The band under the grid narrows the holes by age.</p>
+    <p class="gl"><b>Gain:</b> one tap from envelope to cards for the common case, and a seller always sits in the same place in the alphabet. <b>Loss:</b> an envelope with no legible sender gets no help here; with 120 sellers owing the grid runs to about 40 rows on the folded Duo, so it leans on the age band. The open Duo uses its width: holes on the left page, that seller's cards on the right.</p>
+    <div class="frames" data-frames="pigeonholes"></div>
+  </section>
+
+  <section class="concept" id="c-week-ruler" data-concept="week-ruler">
+    <h2>Week Ruler <span class="chip new">New: slips by order week, week ruler</span></h2>
+    <p>"Roughly when I bought it" is the second thing a person knows. Packages becomes a list of slips, one line per package, grouped under the week it was ordered, newest first. The band holds a ruler of weeks: each mark is as tall as the number of packages still owed that week, amber from two weeks, red from 30 days, the lost-mail tiers. Tap a week and the list jumps to it; scroll and the ruler follows. Tap a slip and it opens in place into today's card.</p>
+    <p class="gl"><b>Gain:</b> time is visible at a glance, the late weeks stand out by colour, and the band is navigation, not a filter, so nothing on the list is hidden. <b>Loss:</b> it needs two looks, week then seller; a slip shows only the first card names. On the open Duo the slips stay on the left page and the opened card fills the right.</p>
+    <div class="frames" data-frames="week-ruler"></div>
+  </section>
+
+  <section class="concept" id="c-thumb-index" data-concept="thumb-index">
+    <h2>Thumb Index <span class="chip new">New: thumb tabs, age and state rows, fit count</span></h2>
+    <p>For the envelope with a smudged label: narrow by everything you half know, at once. The band is a tray of three rows of tabs, cut like the thumb index of a ledger: seller initials in six ranges, the age of the order, and what has come in so far. Every tap shrinks the list above and the count says how many still fit. When it reads 3, you can read them all.</p>
+    <p class="gl"><b>Gain:</b> works from any one clue, and combines all three keys from the direction. <b>Loss:</b> the tray is about 190 pt tall on one page, so the list above is short until the masthead scrolls away; three filters that hide rows are more to undo. On the open Duo the left page becomes a full sorting desk, A to Z keys and all, and the right page holds the matches.</p>
+    <div class="frames" data-frames="thumb-index"></div>
+  </section>
+</main>
+
+<template id="mag"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg></template>
+
+<script>
+(function () {
+'use strict';
+// ---------------- sample data (seeded, so every load draws the same ledger) ----------------
+var DAY = 86400000, TODAY = Date.UTC(2026, 10, 20);
+var SELLERS = ['Alder Row Cards', 'Amber Lantern', 'Arcane Attic', 'Beta Games', 'Bramble Hobby', 'Brightside TCG', 'Copper Dragon Cards',
+  'Corner Pocket Games', 'Dusk Lantern', 'Ember and Oak', 'Fable Shelf', 'Fernway Singles', 'Gilded Owl', 'Grey Heron TCG', 'Harbor Hobby',
+  'Hollow Pine Cards', 'Ironleaf Games', 'Juniper Card Co', 'Kestrel Collectibles', 'Lantern Row', 'Larkspur Games', 'Mossback Cards',
+  'Northgate TCG', 'Old Mill Games', 'Otter Creek Cards', 'Pinecone Cards', 'Quill and Quarry', 'Redcap Hobbies', 'Saltmarsh Singles',
+  'Silver Birch TCG', 'Tin Soldier TCG', 'Thistle Card Shop', 'Umber Fox', 'Vale Street Games', 'Wren Street Cards', 'Yarrow Hobby'];
+var CARDS = [['Ponder', 'Core Set', 0.35], ['Brainstorm', 'Masters', 0.50], ['Counterspell', 'Masters', 1.25], ['Lightning Bolt', 'Core Set', 0.85],
+  ['Llanowar Elves', 'Core Set', 0.25], ['Swords to Plowshares', 'Commander', 1.60], ['Dark Ritual', 'Masters', 0.40], ['Giant Growth', 'Core Set', 0.15],
+  ['Sol Ring', 'Commander', 1.10], ['Opt', 'Core Set', 0.12], ['Thoughtseize', 'Masters', 6.90], ['Fatal Push', 'Masters', 2.40],
+  ['Path to Exile', 'Commander', 2.10], ['Birds of Paradise', 'Masters', 4.75], ['Rampant Growth', 'Commander', 0.30], ['Cultivate', 'Commander', 0.45],
+  ['Arcane Signet', 'Commander', 0.60], ['Command Tower', 'Commander', 0.20], ['Evolving Wilds', 'Core Set', 0.18], ['Duress', 'Core Set', 0.15],
+  ['Shock', 'Core Set', 0.10], ['Negate', 'Core Set', 0.14], ['Mind Stone', 'Commander', 0.55], ['Preordain', 'Masters', 0.90],
+  ['Lotus Petal', 'Masters', 3.20], ['Spell Pierce', 'Masters', 0.70], ['Abrade', 'Core Set', 0.22], ['Reckless Charge', 'Masters', 0.12]];
+var seed = 20261120;
+function rnd() { seed |= 0; seed = seed + 0x6D2B79F5 | 0; var t = Math.imul(seed ^ seed >>> 15, 1 | seed); t = t + Math.imul(t ^ t >>> 7, 61 | t) ^ t; return ((t ^ t >>> 14) >>> 0) / 4294967296; }
+function pick(a) { return a[Math.floor(rnd() * a.length)]; }
+function hex(n) { var s = ''; for (var i = 0; i < n; i++) s += '0123456789ABCDEF'[Math.floor(rnd() * 16)]; return s; }
+var PKGS = [];
+function addPkg(seller, age, lines, state) {
+  var oid = hex(8) + '-' + hex(6) + '-' + hex(5);
+  var p = { gk: oid + '|' + seller, seller: seller, age: age, t: TODAY - age * DAY, oid: oid, lines: [] };
+  lines.forEach(function (c, i) {
+    var qty = rnd() < 0.18 ? 2 + Math.floor(rnd() * 2) : 1;
+    var got = state === 'all' ? qty : state === 'some' && i === 0 ? qty : 0;
+    p.lines.push({ key: p.gk + '#' + i, name: c[0], set: c[1], price: c[2], qty: qty, got: got });
+  });
+  PKGS.push(p);
+}
+for (var i = 0; i < 150; i++) {
+  var age = Math.floor(Math.pow(rnd(), 1.5) * 78), r = rnd(), st;
+  if (age < 7) st = r < 0.86 ? 'none' : r < 0.95 ? 'some' : 'all';
+  else if (age < 14) st = r < 0.45 ? 'none' : r < 0.62 ? 'some' : 'all';
+  else if (age < 30) st = r < 0.11 ? 'none' : r < 0.17 ? 'some' : 'all';
+  else st = r < 0.035 ? 'none' : 'all';
+  var n = 1 + Math.floor(rnd() * 4), cs = [];
+  while (cs.length < n) { var c = pick(CARDS); if (cs.indexOf(c) < 0) cs.push(c); }
+  var s = pick(SELLERS);
+  if (s.charAt(0) >= 'T' && age >= 30) s = 'Saltmarsh Singles';
+  addPkg(s, age, cs, st);
+}
+// The envelope in hand for the "Picked" state: Gilded Owl, ordered nine days ago.
+addPkg('Gilded Owl', 9, [CARDS[0], CARDS[13], CARDS[22]], 'none');
+var STORY = PKGS[PKGS.length - 1].gk;
+PKGS.sort(function (a, b) { return a.t - b.t || (a.gk < b.gk ? -1 : 1); }).reverse();   // newest first (package sort "newest", as built)
+
+// ---------------- rules the concepts share ----------------
+function got(p) { return p.lines.reduce(function (s, l) { return s + l.got; }, 0); }
+function qty(p) { return p.lines.reduce(function (s, l) { return s + l.qty; }, 0); }
+function stateOf(p) { var g = got(p); return g === 0 ? 'none' : g >= qty(p) ? 'all' : 'some'; }
+function tier(age) { return age >= 30 ? 'over' : age >= 14 ? 'late' : ''; }   // lost-mail-flags-use-order-date: 14 d amber, 30 d red
+var AGES = [['any', 'Any age', 'Any'], ['new', 'Under 2 wk', '< 2 wk'], ['late', '2 to 4 wk', '2–4 wk'], ['over', 'Over 30 d', '30 d +']];
+function ageOk(p, a) { return a === 'any' || (a === 'new' ? p.age < 14 : a === 'late' ? p.age >= 14 && p.age < 30 : p.age >= 30); }
+var RANGES = [['A', 'C'], ['D', 'F'], ['G', 'K'], ['L', 'O'], ['P', 'S'], ['T', 'Z']];
+function rangeOk(p, r) { if (r === 'any') return true; var c = p.seller.charAt(0).toUpperCase(), R = RANGES[r]; return c >= R[0] && c <= R[1]; }
+var STATES = [['any', 'Anything owed', 'Any'], ['none', 'Nothing in', 'Nothing in'], ['some', 'Some in', 'Some in']];
+function qOk(p, q) {
+  if (!q) return true; q = q.toLowerCase();
+  return p.seller.toLowerCase().indexOf(q) >= 0 || p.oid.toLowerCase().indexOf(q) >= 0 ||
+    p.lines.some(function (l) { return l.name.toLowerCase().indexOf(q) >= 0 || l.set.toLowerCase().indexOf(q) >= 0; });
+}
+function money(v) { return '$' + v.toFixed(2); }
+function fmtDate(t) { var d = new Date(t); return d.getUTCFullYear() + '-' + ('0' + (d.getUTCMonth() + 1)).slice(-2) + '-' + ('0' + d.getUTCDate()).slice(-2); }
+var MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+function weekStart(t) { var d = new Date(t), wd = (d.getUTCDay() + 6) % 7; return t - wd * DAY; }   // Monday
+function wkLabel(t) { var d = new Date(t); return MON[d.getUTCMonth()] + ' ' + d.getUTCDate(); }
+function esc(s) { return String(s).replace(/[&<>"]/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]; }); }
+function pl(n, w) { return n + ' ' + w + (n === 1 ? '' : 's'); }
+
+// ---------------- devices ----------------
+// Sizes: the brief (Duo 466 x 678 folded, 951 x 669 open, fold 455.5 to 495.5) and duo-fold-and-keyboard. The 18 Pro size is
+// 402 x 874 from a UI test log (step 8 notes). Top safe areas 20 and 54 pt and the 83 pt system bar are the step 8 notes' figures.
+var DEV = {
+  fold: { w: 466, h: 678, top: 20, bar: 83, kind: 'iphone-duo-folded', name: 'iPhone Duo, folded' },
+  ax5:  { w: 466, h: 678, top: 20, bar: 83, kind: 'iphone-duo-folded', name: 'iPhone Duo, folded, AX5', ax: true },
+  duo:  { w: 951, h: 669, top: 20, kind: 'iphone-duo-unfolded', name: 'iPhone Duo, open', two: true },
+  pro:  { w: 402, h: 874, top: 54, bar: 83, kind: 'iphone-regular', name: 'iPhone 18 Pro' }
+};
+
+// ---------------- hash state ----------------
+function readHash() { var o = {}; location.hash.replace(/^#/, '').split('&').forEach(function (kv) { var p = kv.split('='); if (p[0]) o[p[0]] = decodeURIComponent(p[1] || ''); }); return o; }
+var H = readHash();
+var HOLES = H.o === 'every' ? 'every' : 'owed';
+
+// ---------------- one frame = one small running app ----------------
+var FRAMES = [];
+function Frame(concept, devKey) {
+  this.c = concept; this.dk = devKey; this.d = DEV[devKey];
+  this.ui = { age: 'any', range: 'any', st: 'any', seller: null, open: {}, sel: null, q: '', find: false, menu: null, week: null };
+  this.sticky = {};
+  var s = H.s || 'rest';
+  if (s === 'picked') { this.ui.seller = 'Gilded Owl'; this.ui.sel = STORY; this.ui.open[STORY] = true; this.ui.range = 2; }
+  if (s === 'filtered') { this.ui.age = 'new'; if (concept === 'thumb-index') { this.ui.range = 2; this.ui.st = 'none'; } if (concept === 'week-ruler') this.ui.week = 'pick'; }
+  if (s === 'empty') { this.ui.age = 'over'; this.ui.range = 5; this.ui.st = 'some'; if (concept !== 'thumb-index') this.ui.q = 'Mox Opal'; if (concept !== 'thumb-index') this.ui.find = true; }
+  if (s === 'find') { this.ui.find = true; this.ui.q = 'Pond'; }
+}
+Frame.prototype.visible = function (extra) {
+  var ui = this.ui, self = this;
+  return PKGS.filter(function (p) {
+    if (self.sticky[p.gk]) return true;                                   // a row ticked to done stays until the filters change
+    if (stateOf(p) === 'all') return false;                               // Showing starts on Unreceived (ruled-head-showing-unreceived)
+    if (!ageOk(p, ui.age) || !qOk(p, ui.q)) return false;
+    if (self.c === 'thumb-index') { if (!rangeOk(p, ui.range)) return false; if (ui.st !== 'any' && stateOf(p) !== ui.st) return false; }
+    return extra ? extra(p) : true;
+  });
+};
+Frame.prototype.filterChanged = function () { this.sticky = {}; };
+
+// ---------- shared drawing ----------
+function statusBar(top) { return '<div class="sb" style="height:' + top + 'px" aria-hidden="true"><span>9:41</span><i>&#9679;&#9679;&#9679; &#9646;</i></div>'; }
+function masthead(owed, cards, value) {
+  return '<div class="mast tag today" data-tag="Today: masthead, drawn short"><span class="lh">MANIFEST</span><span class="rl"></span>' +
+    '<div class="tl"><span><b>' + owed + '</b>packages</span><span><b>' + cards + '</b>cards out</span><span><b>' + money(value) + '</b>still owed</span></div></div>';
+}
+function ruledRow() { return '<div class="ruled tag today" data-tag="Today: ruled row"><span class="r"></span><div class="cells"><span class="cell">2 stamped &#9675;</span></div><span class="r"></span></div>'; }
+function sysBar() { return '<div class="sysbar" aria-hidden="true"><div class="cap"><span class="on"><i></i>Packages</span><span><i></i>Tally</span><span><i></i>Orphaned</span><span><i></i>Ledger</span></div></div>'; }
+function duoBar() { return '<div class="duobar" aria-hidden="true"><span class="on"><i></i>Packages</span><span><i></i>Tally</span><span><i></i>Orphaned</span><span><i></i>Ledger</span></div>'; }
+function totals() {
+  var owed = PKGS.filter(function (p) { return stateOf(p) !== 'all'; });
+  var cards = 0, value = 0;
+  owed.forEach(function (p) { p.lines.forEach(function (l) { cards += l.qty - l.got; value += (l.qty - l.got) * l.price; }); });
+  return [owed.length, cards, value];
+}
+function card(p, f) {
+  var st = stateOf(p), left = qty(p) - got(p), frac = got(p) / qty(p);
+  var h = '<div class="pcard' + (st === 'all' ? ' done' : '') + '" data-gk="' + esc(p.gk) + '">';
+  if (frac > 0) h += '<div class="bar"><i style="width:' + (frac * 100) + '%"></i></div>';
+  h += '<div class="ph"><div class="who"><b>' + esc(p.seller) + '</b><span>' + fmtDate(p.t) + '</span></div><div class="slot">' +
+    (st === 'all' ? '<span class="rcv">RECEIVED</span>' : '<span class="pill">' + left + ' left</span>') + '</div></div>';
+  h += '<div style="display:flex"><span class="oid">' + p.oid + '</span></div>';
+  h += '<div class="crow"><span class="mini" role="button" tabindex="0">Stamp</span>' +
+    '<button class="act" data-act="bulk" data-gk="' + esc(p.gk) + '"' + (st === 'all' ? ' disabled' : '') + '>Mark All Received</button></div>';
+  p.lines.forEach(function (l) {
+    var done = l.got >= l.qty;
+    h += '<div class="ln' + (done ? ' done' : '') + '" role="checkbox" aria-checked="' + done + '" tabindex="0" data-act="tick" data-key="' + esc(l.key) + '">' +
+      '<span class="box"></span><span class="t"><b>' + esc(l.name) + ' <span>' + money(l.price) + (l.qty > 1 ? ' &times;' + l.qty : '') + '</span></b>' +
+      '<small>' + esc(l.set) + ' &middot; Near Mint</small></span></div>';
+  });
+  return h + '</div>';
+}
+function slip(p, f, on) {
+  var st = stateOf(p), left = qty(p) - got(p);
+  var names = p.lines.map(function (l) { return l.name; }).join(', ');
+  return '<button type="button" class="slip ' + st + (on ? ' on' : '') + '" data-act="slip" data-gk="' + esc(p.gk) + '" aria-expanded="' + !!f.ui.open[p.gk] + '"' +
+    ' aria-label="' + esc(p.seller + ', ' + pl(p.lines.length, 'card line') + ', ' + (st === 'all' ? 'received' : left + ' left') + ', ordered ' + p.age + ' days ago') + '">' +
+    '<span class="st" aria-hidden="true"></span><span class="tx"><b>' + esc(p.seller) + '</b><span>' + esc(names) + '</span></span>' +
+    '<span class="rt">' + (st === 'all' ? '<span class="rcv">RECEIVED</span>' : '<span class="pill">' + left + ' left</span>') + '<small>' + p.age + ' d</small></span></button>';
+}
+function findRow(f) {
+  var m = document.getElementById('mag').innerHTML;
+  if (f.ui.find) return '<div class="fpill tag today" data-tag="Today: Find pill"><span aria-hidden="true">' + m + '</span>' +
+    '<input type="text" aria-label="Find" placeholder="' + (f.d.ax ? 'Find' : 'Find card, set, seller, order') + '" value="' + esc(f.ui.q) + '" data-act="q">' +
+    '<button type="button" class="x" data-act="qclear" aria-label="Clear search"' + (f.ui.q ? '' : ' hidden') + '></button>' +
+    '<button type="button" class="x" data-act="findclose" aria-label="Close Find" style="width:auto;padding:0 8px;color:var(--accent);font:600 15px var(--cochin)">Done</button></div>';
+  return '';
+}
+function findKey() { return '<button type="button" class="findkey" data-act="find" aria-label="Find by typing">' + document.getElementById('mag').innerHTML + '</button>'; }
+function segRow(name, opts, cur, act, f, counts) {
+  if (f.d.ax) {
+    var curLabel = opts.filter(function (o) { return String(o[0]) === String(cur); })[0][1];
+    return '<button type="button" class="menu-btn" data-act="menu" data-menu="' + act + '" aria-haspopup="true">' + name + ' <b>' + esc(curLabel) + ' &#9662;</b></button>';
+  }
+  return '<div class="seg" role="group" aria-label="' + name + '">' + opts.map(function (o) {
+    var n = counts ? counts[o[0]] : null;
+    var dot = o[0] === 'late' ? '<span class="tier amber"></span>' : o[0] === 'over' ? '<span class="tier red"></span>' : '';
+    return '<button type="button" data-act="' + act + '" data-v="' + o[0] + '" aria-pressed="' + (String(cur) === String(o[0])) + '"' + (n === 0 && String(cur) !== String(o[0]) ? ' disabled' : '') + '>' +
+      '<span>' + dot + esc(o[2]) + '</span>' + (n != null ? '<small>' + n + '</small>' : '') + '</button>';
+  }).join('') + '</div>';
+}
+function menuPanel(f) {
+  var m = f.ui.menu; if (!m) return '';
+  var opts = m === 'age' ? AGES : m === 'st' ? STATES : [['any', 'Any seller']].concat(RANGES.map(function (r, i) { return [i, r[0] + ' to ' + r[1]]; }));
+  var cur = m === 'age' ? f.ui.age : m === 'st' ? f.ui.st : f.ui.range;
+  return '<div class="menu" style="bottom:' + (f.bandH + 8) + 'px" role="menu">' + opts.map(function (o) {
+    return '<button type="button" role="menuitemradio" data-act="' + m + '" data-v="' + o[0] + '" aria-pressed="' + (String(cur) === String(o[0])) + '">' + esc(o[1]) + '</button>';
+  }).join('') + '</div>';
+}
+function emptyState(f) {
+  return '<div class="empty-state" role="status"><span>Nothing still owed fits these choices.</span><button type="button" data-act="clearall">Clear Filters</button></div>';
+}
+function ageCounts(f) {
+  var c = {}; AGES.forEach(function (a) { c[a[0]] = 0; });
+  PKGS.forEach(function (p) { if (stateOf(p) === 'all' || !qOk(p, f.ui.q)) return; c.any++; AGES.slice(1).forEach(function (a) { if (ageOk(p, a[0])) c[a[0]]++; }); });
+  return c;
+}
+
+// ---------- Pigeonholes ----------
+function holesHTML(f, cols, primary) {
+  var vis = f.visible(), by = {};
+  vis.forEach(function (p) { (by[p.seller] = by[p.seller] || []).push(p); });
+  var names = HOLES === 'every' ? SELLERS.slice() : Object.keys(by).sort();
+  if (!names.length) return emptyState(f);
+  var h = '<div class="holes tag new" data-tag="New: pigeonholes" style="--cols:' + cols + '"' + (primary ? ' id="focus-pigeonholes"' : '') + '>', last = '';
+  names.forEach(function (s) {
+    var ps = by[s] || [], open = ps.filter(function (p) { return stateOf(p) !== 'all'; });
+    var L = s.charAt(0);
+    if (cols > 1 && L !== last && HOLES === 'every') { h += ''; }
+    last = L;
+    if (!ps.length) { h += '<div class="hole empty" aria-label="' + esc(s) + ', nothing owed"><b>' + esc(s) + '</b><span class="n">0</span><span class="dots"></span></div>'; return; }
+    var dots = open.slice(0, 7).map(function (p) { var t = tier(p.age), st = stateOf(p); return '<i class="' + (st === 'some' ? 'some ' : '') + t + '"></i>'; }).join('') + (open.length > 7 ? '+' + (open.length - 7) : '');
+    h += '<button type="button" class="hole' + (f.ui.seller === s ? ' on' : '') + '" data-act="hole" data-s="' + esc(s) + '" aria-label="' + esc(s + ', ' + pl(open.length, 'package') + ' owed') + '">' +
+      '<b>' + esc(s) + '</b><span class="n">' + open.length + '</span><span class="dots" aria-hidden="true">' + dots + '</span></button>';
+  });
+  return h + '</div>';
+}
+function sellerPage(f, withBack) {
+  var s = f.ui.seller, ps = f.visible(function (p) { return p.seller === s; });
+  var all = PKGS.filter(function (p) { return p.seller === s; }), rec = all.filter(function (p) { return stateOf(p) === 'all'; }).length;
+  var h = '<div class="shead tag new" data-tag="New: seller head">' + (withBack ? '<button type="button" class="back" data-act="back">All Sellers</button>' : '') +
+    '<h3>' + esc(s) + '</h3><span>' + pl(all.length - rec, 'package') + ' owed &middot; ' + rec + ' received</span></div>';
+  h += '<div class="stack">' + (ps.length ? ps.map(function (p) { return card(p, f); }).join('') : emptyState(f)) + '</div>';
+  return h;
+}
+function renderPigeon(f) {
+  var d = f.d, t = totals(), primary = f.primary;
+  var band = '<div class="band tag new" data-tag="New: band, age"' + (primary ? '' : '') + ' style="padding-bottom:' + ((d.bar || 12) + 0) + 'px">' +
+    (f.ui.find ? '<div class="row">' + findRow(f) + '</div>' : '') +
+    '<div class="row">' + segRow('Ordered', AGES, f.ui.age, 'age', f, d.ax ? null : ageCounts(f)) + (f.ui.find ? '' : findKey()) + '</div></div>';
+  if (d.two) {
+    var L = '<div class="page" style="left:0;width:455.5px">' + statusBar(d.top) +
+      '<div class="scroll" data-scroll="l" style="top:' + d.top + 'px;bottom:' + f.bandH + 'px">' + masthead(t[0], t[1], t[2]) + ruledRow() +
+      '<div class="hand"><span class="mini tag today" data-tag="Today: Card in Hand">Card in Hand</span></div><div class="stack" style="padding-top:8px">' + holesHTML(f, 3, false) + '</div></div>' + band + menuPanel(f) + '</div>';
+    var R = '<div class="page" style="left:495.5px;width:455.5px">' + statusBar(d.top) +
+      '<div class="scroll" data-scroll="r" style="top:' + (d.top + 8) + 'px;bottom:76px">' +
+      (f.ui.seller ? '<div class="pushin">' + sellerPage(f, false) + '</div>' : '<p class="ph-right">Tap a seller on the left page. What they still owe you opens here, ready to tick.</p>') +
+      '</div>' + duoBar() + '</div>';
+    return L + R + '<div class="hinge" aria-hidden="true"></div>';
+  }
+  var body = f.ui.seller ? '<div class="pushin">' + sellerPage(f, true) + '</div>' :
+    masthead(t[0], t[1], t[2]) + ruledRow() + '<div class="stack">' + holesHTML(f, d.w < 420 ? 2 : 3, primary) + '</div>';
+  return statusBar(d.top) + '<div class="scroll" data-scroll="m" style="top:' + d.top + 'px;bottom:' + f.bandH + 'px">' + body + '</div>' + band + menuPanel(f) + sysBar();
+}
+
+// ---------- Week Ruler ----------
+function weeks(f) {
+  var vis = f.visible(), map = {}, list = [];
+  vis.forEach(function (p) { var w = weekStart(p.t); if (!map[w]) { map[w] = { w: w, ps: [] }; list.push(map[w]); } map[w].ps.push(p); });
+  list.sort(function (a, b) { return b.w - a.w; });
+  return list;
+}
+function rulerHTML(f, primary) {
+  // Every week from the oldest owed one to this week, oldest left, so the newest sits under the right thumb.
+  var all = PKGS.filter(function (p) { return stateOf(p) !== 'all' && qOk(p, f.ui.q) && ageOk(p, f.ui.age); }), cnt = {}, max = 1, minW = weekStart(TODAY);
+  all.forEach(function (p) { var w = weekStart(p.t); cnt[w] = (cnt[w] || 0) + 1; if (cnt[w] > max) max = cnt[w]; if (w < minW) minW = w; });
+  var h = '<div class="ruler tag new" data-tag="New: week ruler" role="group" aria-label="Order weeks"' + (primary ? ' id="focus-week-ruler"' : '') + '>';
+  for (var w = minW; w <= weekStart(TODAY); w += 7 * DAY) {
+    var n = cnt[w] || 0, age = Math.round((TODAY - w) / DAY), tr = tier(age - 6);
+    h += '<button type="button" data-act="week" data-w="' + w + '" class="' + tr + (n ? '' : ' zero') + '" aria-current="' + (f.ui.week === w) + '" aria-label="Week of ' + wkLabel(w) + ', ' + pl(n, 'package') + ' owed"' + (n ? '' : ' disabled') + '>' +
+      '<i style="height:' + (f.d.ax ? 0 : Math.round(4 + 24 * n / max)) + 'px"></i><span>' + (f.d.ax ? wkLabel(w) + ' (' + n + ')' : wkLabel(w)) + '</span></button>';
+  }
+  return h + '</div>';
+}
+function weekList(f) {
+  var ws = weeks(f);
+  if (!ws.length) return emptyState(f);
+  return ws.map(function (W) {
+    var age = Math.round((TODAY - W.w) / DAY), tr = tier(age - 6);
+    var lab = tr === 'over' ? 'over 30 d' : tr === 'late' ? 'over 2 wk' : '';
+    return '<div class="wk ' + tr + (f.ui.week === W.w ? ' hit' : '') + '" data-week="' + W.w + '"><b>Week of ' + wkLabel(W.w) + '</b><span>' +
+      (lab ? '<span class="wk-tier">' + lab + '</span> &middot; ' : '') + W.ps.length + '</span></div>' +
+      W.ps.map(function (p) { return (!f.d.two && f.ui.open[p.gk]) ? card(p, f) : slip(p, f, f.d.two && f.ui.sel === p.gk); }).join('');
+  }).join('');
+}
+function renderWeek(f) {
+  var d = f.d, t = totals(), primary = f.primary;
+  var band = '<div class="band tag new" data-tag="New: band, week ruler" style="padding-bottom:' + (d.bar || 12) + 'px">' +
+    (f.ui.find ? '<div class="row">' + findRow(f) + '</div>' : '') +
+    '<div class="row">' + rulerHTML(f, primary) + (f.ui.find ? '' : findKey()) + '</div></div>';
+  if (d.two) {
+    var sel = PKGS.filter(function (p) { return p.gk === f.ui.sel; })[0];
+    var L = '<div class="page" style="left:0;width:455.5px">' + statusBar(d.top) +
+      '<div class="scroll" data-scroll="l" style="top:' + d.top + 'px;bottom:' + f.bandH + 'px">' + masthead(t[0], t[1], t[2]) + ruledRow() +
+      '<div class="hand"><span class="mini tag today" data-tag="Today: Card in Hand">Card in Hand</span></div><div class="stack tag new" data-tag="New: slips by week">' + weekList(f) + '</div></div>' + band + '</div>';
+    var R = '<div class="page" style="left:495.5px;width:455.5px">' + statusBar(d.top) +
+      '<div class="scroll" data-scroll="r" style="top:' + (d.top + 8) + 'px;bottom:76px"><div class="stack">' +
+      (sel ? '<div class="pushin tag today" data-tag="Today: package card">' + card(sel, f) + '</div>' : '<p class="ph-right">Tap a package on the left page. Its cards open here, ready to tick.</p>') +
+      '</div></div>' + duoBar() + '</div>';
+    return L + R + '<div class="hinge" aria-hidden="true"></div>';
+  }
+  return statusBar(d.top) + '<div class="scroll" data-scroll="m" style="top:' + d.top + 'px;bottom:' + f.bandH + 'px">' + masthead(t[0], t[1], t[2]) + ruledRow() +
+    '<div class="stack tag new" data-tag="New: slips by week">' + weekList(f) + '</div></div>' + band + menuPanel(f) + sysBar();
+}
+
+// ---------- Thumb Index ----------
+function rangeCounts(f) {
+  var c = { any: 0 }; RANGES.forEach(function (r, i) { c[i] = 0; });
+  PKGS.forEach(function (p) {
+    if (stateOf(p) === 'all' || !ageOk(p, f.ui.age) || !qOk(p, f.ui.q) || (f.ui.st !== 'any' && stateOf(p) !== f.ui.st)) return;
+    c.any++; RANGES.forEach(function (r, i) { if (rangeOk(p, i)) c[i]++; });
+  });
+  return c;
+}
+function stCounts(f) {
+  var c = { any: 0, none: 0, some: 0 };
+  PKGS.forEach(function (p) { var s = stateOf(p); if (s === 'all' || !ageOk(p, f.ui.age) || !rangeOk(p, f.ui.range) || !qOk(p, f.ui.q)) return; c.any++; c[s]++; });
+  return c;
+}
+function ageCountsT(f) {
+  var c = {}; AGES.forEach(function (a) { c[a[0]] = 0; });
+  PKGS.forEach(function (p) { if (stateOf(p) === 'all' || !rangeOk(p, f.ui.range) || !qOk(p, f.ui.q) || (f.ui.st !== 'any' && stateOf(p) !== f.ui.st)) return;
+    c.any++; AGES.slice(1).forEach(function (a) { if (ageOk(p, a[0])) c[a[0]]++; }); });
+  return c;
+}
+function tabsRow(f) {
+  if (f.d.ax) {
+    var lab = f.ui.range === 'any' ? 'Any' : RANGES[f.ui.range][0] + ' to ' + RANGES[f.ui.range][1];
+    return '<button type="button" class="menu-btn" data-act="menu" data-menu="range">From <b>' + lab + ' &#9662;</b></button>';
+  }
+  var rc = rangeCounts(f);
+  return '<div class="tabs" role="group" aria-label="Seller initials">' + RANGES.map(function (r, i) {
+    var on = f.ui.range === i;
+    return '<button type="button" data-act="range" data-v="' + i + '" aria-pressed="' + on + '"' + (rc[i] === 0 && !on ? ' disabled' : '') + ' aria-label="Sellers ' + r[0] + ' to ' + r[1] + ', ' + rc[i] + '">' +
+      r[0] + '&ndash;' + r[1] + '<small>' + rc[i] + '</small></button>';
+  }).join('') + '</div>';
+}
+function anyFilter(f) { return f.ui.range !== 'any' || f.ui.age !== 'any' || f.ui.st !== 'any'; }
+function trayHTML(f, primary) {
+  var n = f.visible().length, all = PKGS.filter(function (p) { return stateOf(p) !== 'all'; }).length;
+  return '<div class="band tag new" data-tag="New: thumb index tray"' + (primary ? ' id="focus-thumb-index"' : '') + ' style="padding-bottom:' + (f.d.bar || 12) + 'px">' +
+    (f.ui.find ? '<div class="row">' + findRow(f) + '</div>' : '') +
+    '<div class="fit"><b>' + n + ' of ' + all + ' fit</b><button type="button" data-act="clearall"' + (anyFilter(f) ? '' : ' disabled') + '>Clear</button></div>' +
+    '<div class="row">' + tabsRow(f) + (f.ui.find ? '' : findKey()) + '</div>' +
+    '<div class="row">' + segRow('Ordered', AGES, f.ui.age, 'age', f, f.d.ax ? null : ageCountsT(f)) + '</div>' +
+    '<div class="row">' + segRow('State', STATES, f.ui.st, 'st', f, f.d.ax ? null : stCounts(f)) + '</div></div>';
+}
+function matchList(f, inline) {
+  var vis = f.visible();
+  if (!vis.length) return emptyState(f);
+  return vis.map(function (p) { return f.ui.open[p.gk] ? card(p, f) : slip(p, f, false); }).join('');
+}
+function renderThumb(f) {
+  var d = f.d, t = totals();
+  if (d.two) {
+    var rc = rangeCounts(f), n = f.visible().length, all = PKGS.filter(function (p) { return stateOf(p) !== 'all'; }).length;
+    var letters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'.split('');
+    var lc = {}; PKGS.forEach(function (p) { if (stateOf(p) === 'all' || !ageOk(p, f.ui.age) || !qOk(p, f.ui.q) || (f.ui.st !== 'any' && stateOf(p) !== f.ui.st)) return; var L = p.seller.charAt(0); lc[L] = (lc[L] || 0) + 1; });
+    var keys = '<div class="keys" role="group" aria-label="Seller initial">' + letters.map(function (L) {
+      var on = f.ui.letter === L;
+      return '<button type="button" data-act="letter" data-v="' + L + '" aria-pressed="' + on + '"' + (lc[L] || on ? '' : ' disabled') + ' aria-label="' + L + ', ' + (lc[L] || 0) + '">' + L + '<small>' + (lc[L] || '') + '</small></button>';
+    }).join('') + '</div>';
+    var L2 = '<div class="page" style="left:0;width:455.5px">' + statusBar(d.top) +
+      '<div class="scroll" data-scroll="l" style="top:' + d.top + 'px;bottom:0">' + masthead(t[0], t[1], t[2]) +
+      '<div class="desk tag new" data-tag="New: sorting desk">' +
+      '<div class="fit"><b>' + n + ' of ' + all + ' fit</b><button type="button" data-act="clearall"' + (anyFilter(f) || f.ui.letter ? '' : ' disabled') + '>Clear</button></div>' +
+      '<h4>From</h4>' + keys + '<h4>Ordered</h4><div class="row" style="display:flex">' + segRow('Ordered', AGES, f.ui.age, 'age', f, ageCountsT(f)) + '</div>' +
+      '<h4>State</h4><div class="row" style="display:flex">' + segRow('State', STATES, f.ui.st, 'st', f, stCounts(f)) + '</div>' +
+      '<div class="row" style="display:flex;gap:8px">' + (f.ui.find ? findRow(f) : findKey() + '<span style="align-self:center;color:var(--inkSoft);font-size:14px">Find by typing</span>') + '</div>' +
+      '</div></div></div>';
+    var R2 = '<div class="page" style="left:495.5px;width:455.5px">' + statusBar(d.top) +
+      '<div class="scroll" data-scroll="r" style="top:' + (d.top + 8) + 'px;bottom:76px"><div class="hand" style="padding-bottom:8px"><span class="mini tag today" data-tag="Today: Card in Hand">Card in Hand</span></div>' +
+      '<div class="stack tag new" data-tag="New: matches">' + matchList(f) + '</div></div>' + duoBar() + '</div>';
+    return L2 + R2 + '<div class="hinge" aria-hidden="true"></div>';
+  }
+  return statusBar(d.top) + '<div class="scroll" data-scroll="m" style="top:' + d.top + 'px;bottom:' + f.bandH + 'px">' + masthead(t[0], t[1], t[2]) + ruledRow() +
+    '<div class="stack tag new" data-tag="New: matches as slips">' + matchList(f) + '</div></div>' + trayHTML(f, f.primary) + menuPanel(f) + sysBar();
+}
+
+// ---------- frame plumbing ----------
+Frame.prototype.mount = function (fig) {
+  var d = this.d;
+  this.fig = fig;
+  this.scaler = document.createElement('div'); this.scaler.className = 'scaler';
+  this.el = document.createElement('div');
+  this.el.className = 'dev' + (d.ax ? ' ax' : '');
+  this.el.setAttribute('data-device', d.kind);
+  this.el.style.width = d.w + 'px'; this.el.style.height = d.h + 'px';
+  this.el.setAttribute('role', 'group'); this.el.setAttribute('aria-label', d.name);
+  this.scaler.appendChild(this.el); fig.insertBefore(this.scaler, fig.firstChild);
+  var self = this;
+  this.el.addEventListener('click', function (e) { self.onClick(e); });
+  this.el.addEventListener('keydown', function (e) { if ((e.key === 'Enter' || e.key === ' ') && e.target.matches('.ln')) { e.preventDefault(); self.onClick(e); } });
+  this.el.addEventListener('input', function (e) { if (e.target.dataset.act === 'q') { self.ui.q = e.target.value; self.filterChanged(); self.render(true); } });
+  this.render();
+};
+Frame.prototype.render = function (keepFocus) {
+  var scrolls = {};
+  this.el.querySelectorAll('[data-scroll]').forEach(function (s) { scrolls[s.dataset.scroll] = s.scrollTop; });
+  var fx = document.activeElement && this.el.contains(document.activeElement) && document.activeElement.dataset.act === 'q';
+  // The band's height is measured after a first draw, so the list ends at the band's top rule.
+  this.bandH = this.bandH || 160;
+  this.el.innerHTML = this.draw();
+  var band = this.el.querySelector('.band');
+  if (band) {
+    var bh = band.offsetHeight;
+    if (Math.abs(bh - this.bandH) > 0.5) { this.bandH = bh; this.el.innerHTML = this.draw(); }
+  }
+  var el = this.el;
+  Object.keys(scrolls).forEach(function (k) { var s = el.querySelector('[data-scroll="' + k + '"]'); if (s) s.scrollTop = scrolls[k]; });
+  if (fx) { var inp = this.el.querySelector('input[data-act="q"]'); if (inp) { inp.focus(); inp.setSelectionRange(inp.value.length, inp.value.length); } }
+  if (this.c === 'week-ruler') this.spy();
+  if (this.pendingWeek) { this.jump(this.pendingWeek); this.pendingWeek = null; }
+};
+Frame.prototype.draw = function () { return this.c === 'pigeonholes' ? renderPigeon(this) : this.c === 'week-ruler' ? renderWeek(this) : renderThumb(this); };
+Frame.prototype.jump = function (w) {
+  var sc = this.el.querySelector('[data-scroll="' + (this.d.two ? 'l' : 'm') + '"]'), hd = this.el.querySelector('.wk[data-week="' + w + '"]');
+  if (!sc || !hd) return;
+  // The header pins at the scroll's top; scroll so its slips start just under it.
+  sc.scrollTop = hd.offsetTop - 0;
+  hd.classList.add('hit');
+};
+Frame.prototype.spy = function () {
+  var self = this, sc = this.el.querySelector('[data-scroll="' + (this.d.two ? 'l' : 'm') + '"]');
+  if (!sc) return;
+  sc.addEventListener('scroll', function () {
+    var top = sc.scrollTop + 4, cur = null;
+    sc.querySelectorAll('.wk').forEach(function (h) { if (h.offsetTop <= top) cur = +h.dataset.week; });
+    self.el.querySelectorAll('.ruler button').forEach(function (b) { b.setAttribute('aria-current', String(+b.dataset.w === cur)); });
+  }, { passive: true });
+};
+Frame.prototype.onClick = function (e) {
+  var t = e.target.closest('[data-act]'); if (!t || !this.el.contains(t)) return;
+  var a = t.dataset.act, ui = this.ui, v = t.dataset.v;
+  if (t.disabled) return;
+  if (a === 'tick') {
+    var l = null; PKGS.forEach(function (p) { p.lines.forEach(function (x) { if (x.key === t.dataset.key) { l = x; l.p = p; } }); });
+    if (!l) return;
+    l.got = l.got >= l.qty ? 0 : l.qty;
+    this.sticky[l.p.gk] = true;              // a row ticked here stays in view (no-layout-shift-under-pointer)
+    rerenderAll(this); return;
+  }
+  if (a === 'bulk') {
+    var p = PKGS.filter(function (x) { return x.gk === t.dataset.gk; })[0];
+    p.lines.forEach(function (x) { x.got = x.qty; }); this.sticky[p.gk] = true; rerenderAll(this); return;
+  }
+  if (a === 'hole') { ui.seller = t.dataset.s; this.sticky = {}; }
+  else if (a === 'back') { ui.seller = null; }
+  else if (a === 'age') { ui.age = v; ui.menu = null; this.filterChanged(); }
+  else if (a === 'st') { ui.st = v; ui.menu = null; this.filterChanged(); }
+  else if (a === 'range') { ui.range = v === 'any' ? 'any' : (ui.range === +v ? 'any' : +v); ui.menu = null; this.filterChanged(); }
+  else if (a === 'letter') { ui.letter = ui.letter === v ? null : v; ui.range = 'any'; this.filterChanged(); }
+  else if (a === 'menu') { ui.menu = ui.menu === t.dataset.menu ? null : t.dataset.menu; }
+  else if (a === 'clearall') { ui.age = 'any'; ui.range = 'any'; ui.st = 'any'; ui.letter = null; ui.q = ''; ui.find = false; this.filterChanged(); }
+  else if (a === 'find') { ui.find = true; this.render(); var i = this.el.querySelector('input[data-act="q"]'); if (i) i.focus(); return; }
+  else if (a === 'findclose') { ui.find = false; ui.q = ''; this.filterChanged(); }
+  else if (a === 'qclear') { ui.q = ''; this.filterChanged(); }
+  else if (a === 'slip') {
+    var gk = t.dataset.gk;
+    if (this.d.two && this.c === 'week-ruler') ui.sel = gk; else ui.open[gk] = true;
+  }
+  else if (a === 'week') { ui.week = +t.dataset.w; this.pendingWeek = +t.dataset.w; }
+  this.render();
+};
+// The open Duo Thumb Index uses one letter in place of a range.
+var baseVisible = Frame.prototype.visible;
+Frame.prototype.visible = function (extra) {
+  var self = this;
+  if (this.c === 'thumb-index' && this.ui.letter) return baseVisible.call(this, function (p) { return p.seller.charAt(0) === self.ui.letter && (extra ? extra(p) : true); });
+  return baseVisible.call(this, extra);
+};
+function rerenderAll(src) { FRAMES.forEach(function (f) { f.render(); }); }
+
+// ---------------- build the page ----------------
+var CAPS = {
+  pigeonholes: {
+    fold: '<b>Duo folded.</b> Three holes a row. Tap Gilded Owl: its open packages slide in as today\'s cards; All Sellers goes back. The age band counts what each choice leaves.',
+    ax5: '<b>Duo folded, AX5.</b> Holes become one full-width row each, name and count; the boxes drop out. The age band turns into one row that opens a list.',
+    duo: '<b>Duo open.</b> Holes on the left page, the picked seller\'s cards on the right. The band sits on the left page, so nothing crosses the fold.',
+    pro: '<b>iPhone 18 Pro.</b> 402 pt wide, so two holes a row.'
+  },
+  'week-ruler': {
+    fold: '<b>Duo folded.</b> Tap a week on the ruler and the list jumps to it; scroll and the ruler marks the week at the top. Tap a slip to open it in place.',
+    ax5: '<b>Duo folded, AX5.</b> The ruler drops its bars and scrolls sideways, each mark a date and a count. Slips wrap the seller to two lines.',
+    duo: '<b>Duo open.</b> Slips by week on the left page; the tapped slip takes an accent bar and its card opens on the right, so the list never moves.',
+    pro: '<b>iPhone 18 Pro.</b> The ruler shows as many weeks as fit at 44 pt, and scrolls for older ones.'
+  },
+  'thumb-index': {
+    fold: '<b>Duo folded.</b> Tap G&ndash;K, then 2&ndash;4 wk: the count drops and the list above follows. Each tab says how many it would leave; a tab that leaves none is off.',
+    ax5: '<b>Duo folded, AX5.</b> Each tray row becomes one row button that opens a list, three rows in all.',
+    duo: '<b>Duo open.</b> The left page is the whole sorting desk: one key per initial, the age and state rows, the count. Matches open on the right.',
+    pro: '<b>iPhone 18 Pro.</b> The same tray at 402 pt.'
+  }
+};
+var dSel = H.d, cSel = H.c;
+['pigeonholes', 'week-ruler', 'thumb-index'].forEach(function (c) {
+  var host = document.querySelector('[data-frames="' + c + '"]');
+  ['fold', 'ax5', 'duo', 'pro'].forEach(function (dk, i) {
+    var fig = document.createElement('figure');
+    if (dk === 'duo') fig.className = 'wide';
+    if (dSel && dSel !== dk) fig.hidden = true;
+    var cap = document.createElement('figcaption'); cap.innerHTML = CAPS[c][dk];
+    fig.appendChild(cap); host.appendChild(fig);
+    var f = new Frame(c, dk); f.primary = dk === 'fold'; FRAMES.push(f);
+    if (!fig.hidden) f.mount(fig); else f.lazy = fig;
+  });
+  if (cSel && cSel !== c) document.getElementById('c-' + c).hidden = true;
+});
+function fit() {
+  FRAMES.forEach(function (f) {
+    if (!f.el) return;
+    var avail = f.fig.parentElement.clientWidth, w = f.d.w + 2, h = f.d.h + 2;
+    var s = Math.min(1, avail / w);
+    f.el.style.transform = s < 1 ? 'scale(' + s + ')' : '';
+    f.scaler.style.width = (w * s) + 'px'; f.scaler.style.height = (h * s) + 'px';
+  });
+}
+fit(); window.addEventListener('resize', fit);
+
+// theme, nav state, hide buttons, tags
+if (H.t === 'dark' || H.t === 'light') document.documentElement.setAttribute('data-theme', H.t);
+document.querySelectorAll('nav a[data-k]').forEach(function (a) {
+  var k = a.dataset.k, v = a.dataset.v;
+  var on = (H[k] || '') === v || (k === 'o' && !H.o && v === 'owed') || (k === 's' && !H.s && v === 'rest');
+  if (k === 't') on = (H.t || '') === v;
+  a.setAttribute('aria-current', String(on));
+  a.addEventListener('click', function (e) {
+    e.preventDefault();
+    var h = readHash(); if (v) h[k] = v; else delete h[k];
+    var s = Object.keys(h).map(function (x) { return x + '=' + h[x]; }).join('&');
+    location.hash = s; location.reload();
+  });
+});
+document.querySelectorAll('[data-hide]').forEach(function (b) {
+  b.addEventListener('click', function () {
+    var sec = document.getElementById('c-' + b.dataset.hide), hide = !sec.hidden;
+    sec.hidden = hide; b.setAttribute('aria-pressed', String(hide)); fit();
+  });
+});
+var tb = document.getElementById('tagsBtn');
+tb.addEventListener('click', function () { var on = document.body.classList.toggle('notags'); tb.setAttribute('aria-pressed', String(on)); });
+// The waiting page focuses one element per option: the folded frame's deciding part.
+window.MOCKUP_FOCUS = { pigeonholes: '#focus-pigeonholes', 'week-ruler': '#focus-week-ruler', 'thumb-index': '#focus-thumb-index' };
+})();
+</script>
+</body>
+</html>

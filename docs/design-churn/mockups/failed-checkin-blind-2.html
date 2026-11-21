@@ -1,0 +1,798 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Unsaved Tick Concepts</title>
+<style>
+/* Tokens. Spacing on the 4 px house step; colours by role. Values chosen by the designer (blind). */
+:root {
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px; --space-8: 32px;
+  --radius: 8px;
+  --font: -apple-system, system-ui, "SF Pro Text", "Helvetica Neue", sans-serif;
+
+  --page: #E4E8EC;
+  --surface: #F6F8FA;
+  --raised: #FFFFFF;
+  --text: #14191F;
+  --text-2: #56616C;
+  --line: #D6DCE2;
+  --ink: #0D6857;          /* saved */
+  --ink-soft: #DDF1EC;
+  --fail: #C2301B;         /* did not save */
+  --fail-soft: #FCE6E1;
+  --fail-on: #FFFFFF;
+  --warn: #8F5B00;         /* no answer */
+  --warn-fill: #F0B232;
+  --warn-soft: #FDF1D6;
+  --wait: #6B7580;         /* waiting for signal */
+  --wait-soft: #E9EDF1;
+  --tape: #FFFFFF;
+  --tape-edge: #C9D0D7;
+  --glass: rgba(255,255,255,.82);
+  --focus: #1F5FD1;
+  --banner: #2A2F36;
+  --banner-on: #FFFFFF;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --page: #0F1215; --surface: #161A1E; --raised: #1F2429; --text: #ECEFF2; --text-2: #9BA6B1; --line: #2D343B;
+    --ink: #4CC3A8; --ink-soft: #12322C; --fail: #FF6C58; --fail-soft: #3B1A15; --fail-on: #1A0B08;
+    --warn: #F3BE4A; --warn-fill: #F3BE4A; --warn-soft: #33290F; --wait: #8E99A4; --wait-soft: #232A31;
+    --tape: #1B2025; --tape-edge: #39414A; --glass: rgba(31,36,41,.86); --focus: #7FB0FF; --banner: #E9EDF1; --banner-on: #14191F;
+  }
+}
+:root[data-theme="dark"] {
+  --page: #0F1215; --surface: #161A1E; --raised: #1F2429; --text: #ECEFF2; --text-2: #9BA6B1; --line: #2D343B;
+  --ink: #4CC3A8; --ink-soft: #12322C; --fail: #FF6C58; --fail-soft: #3B1A15; --fail-on: #1A0B08;
+  --warn: #F3BE4A; --warn-fill: #F3BE4A; --warn-soft: #33290F; --wait: #8E99A4; --wait-soft: #232A31;
+  --tape: #1B2025; --tape-edge: #39414A; --glass: rgba(31,36,41,.86); --focus: #7FB0FF; --banner: #E9EDF1; --banner-on: #14191F;
+}
+
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--page); color: var(--text); font-family: var(--font); font-size: 15px; line-height: 1.4; }
+button { font: inherit; color: inherit; }
+:focus-visible { outline: 3px solid var(--focus); outline-offset: 2px; }
+
+/* ---------- Page chrome (outside the device frames) ---------- */
+.sample { background: var(--banner); color: var(--banner-on); padding: var(--space-2) var(--space-4); font-size: 13px; }
+.top { padding: var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); max-width: 1400px; margin-inline: auto; }
+.top h1 { font-size: 22px; line-height: 28px; margin: 0; font-weight: 600; }
+.kind { font-size: 13px; color: var(--text-2); margin: 0; }
+.controls { display: flex; flex-direction: column; gap: var(--space-2); }
+.ctl { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-2); }
+.ctl > span { font-size: 13px; color: var(--text-2); min-width: 64px; }
+.seg { display: inline-flex; flex-wrap: wrap; gap: var(--space-1); background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 2px; }
+.seg button { border: 0; background: transparent; border-radius: 6px; padding: 6px 10px; min-height: 32px; cursor: pointer; font-size: 13px; }
+.seg button[aria-pressed="true"] { background: var(--raised); box-shadow: 0 0 0 1px var(--line); font-weight: 600; }
+.concepts { display: flex; flex-wrap: wrap; gap: var(--space-2); }
+.cpt { display: inline-flex; align-items: center; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); }
+.cpt button { border: 0; background: transparent; cursor: pointer; min-height: 36px; padding: 6px 12px; }
+.cpt .pick[aria-pressed="true"] { font-weight: 600; color: var(--ink); }
+.cpt .hide { color: var(--text-2); border-left: 1px solid var(--line); font-size: 13px; }
+.cpt.on { border-color: var(--ink); }
+.blurb { max-width: 72ch; margin: 0; font-size: 14px; color: var(--text-2); }
+.blurb b { color: var(--text); font-weight: 600; }
+.hidden-note { font-size: 13px; color: var(--text-2); }
+.linkbtn { border: 0; background: none; color: var(--focus); cursor: pointer; padding: 4px; text-decoration: underline; }
+
+.stage { display: flex; flex-wrap: wrap; gap: var(--space-8); padding: var(--space-4); align-items: flex-start; max-width: 2200px; margin-inline: auto; }
+.dev { margin: 0; display: flex; flex-direction: column; gap: var(--space-2); }
+.dev figcaption { font-size: 13px; color: var(--text-2); }
+.dev figcaption b { color: var(--text); font-weight: 600; }
+.fit { position: relative; }
+.fit > .screen { transform-origin: 0 0; position: absolute; left: 0; top: 0; }
+
+/* ---------- The device screen ---------- */
+.screen {
+  --fs-lt: 34px; --lh-lt: 41px; --fs-t3: 20px; --lh-t3: 25px; --fs-hl: 17px; --lh-hl: 22px;
+  --fs-body: 17px; --lh-body: 22px; --fs-sub: 15px; --lh-sub: 20px; --fs-fn: 13px; --lh-fn: 18px;
+  --fs-c1: 12px; --lh-c1: 16px; --fs-c2: 11px; --lh-c2: 13px; --pip: 16px; --tap: 44px;
+  --sa-top: 36px; --sa-bottom: 20px;
+  width: var(--w); height: var(--h); background: var(--surface); color: var(--text);
+  border-radius: 28px; overflow: hidden; position: relative; box-shadow: 0 0 0 1px var(--line);
+  font-family: var(--font); font-size: var(--fs-body); line-height: var(--lh-body);
+}
+/* Largest accessibility size (AX5), values from the Apple typography page. */
+.screen.ax {
+  --fs-lt: 60px; --lh-lt: 70px; --fs-t3: 55px; --lh-t3: 65px; --fs-hl: 53px; --lh-hl: 62px;
+  --fs-body: 53px; --lh-body: 62px; --fs-sub: 49px; --lh-sub: 58px; --fs-fn: 44px; --lh-fn: 52px;
+  --fs-c1: 43px; --lh-c1: 51px; --fs-c2: 40px; --lh-c2: 48px; --pip: 36px; --tap: 64px;
+}
+.screen.open { display: grid; grid-template-columns: 455.5px 40px 455.5px; border-radius: 22px; }
+.hinge { background: repeating-linear-gradient(90deg, var(--line) 0 1px, transparent 1px 39px, var(--line) 39px 40px), var(--page); }
+.page { position: relative; height: 100%; overflow: hidden; display: flex; flex-direction: column; background: var(--surface); }
+.solo { position: absolute; inset: 0; display: flex; flex-direction: column; }
+.safe { padding-top: max(var(--sa-top), env(safe-area-inset-top)); padding-bottom: max(var(--sa-bottom), env(safe-area-inset-bottom));
+        padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+        height: 100%; display: flex; flex-direction: column; min-height: 0; }
+.status { position: absolute; top: 0; left: 0; right: 0; height: var(--sa-top); display: flex; align-items: center; justify-content: space-between;
+          padding: 0 var(--space-6); font-size: 15px; font-weight: 600; pointer-events: none; }
+.status .sig { font-size: 12px; font-weight: 600; display: inline-flex; gap: 4px; align-items: center; }
+.status .sig.none { color: var(--fail); }
+.homeind { position: absolute; bottom: 7px; left: 50%; width: 134px; height: 5px; border-radius: 3px; background: var(--text); opacity: .8; transform: translateX(-50%); pointer-events: none; }
+.scroll { overflow-y: auto; overflow-x: hidden; min-height: 0; flex: 1 1 auto; overscroll-behavior: contain; }
+
+/* Navigation bar */
+.nav { padding: var(--space-1) var(--space-4) var(--space-2); display: flex; flex-direction: column; gap: var(--space-2); }
+.nav h2 { font-size: var(--fs-lt); line-height: var(--lh-lt); font-weight: 700; margin: 0; }
+.nav h2.std { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; text-align: center; }
+.nav .sum { font-size: var(--fs-sub); line-height: var(--lh-sub); color: var(--text-2); margin: 0; }
+.navrow { display: flex; align-items: center; gap: var(--space-2); justify-content: space-between; }
+.segc { display: grid; grid-template-columns: 1fr 1fr; background: var(--wait-soft); border-radius: 9px; padding: 2px; gap: 2px; }
+.segc button { border: 0; background: transparent; border-radius: 7px; min-height: 32px; font-size: var(--fs-fn); line-height: var(--lh-fn); font-weight: 600; cursor: pointer; padding: 4px 6px; }
+.ax .segc { grid-template-columns: 1fr; }
+.segc button[aria-pressed="true"] { background: var(--raised); box-shadow: 0 1px 2px rgba(0,0,0,.12); }
+
+/* List */
+.list { display: flex; flex-direction: column; gap: var(--space-5); padding: 0 var(--space-4) var(--space-4); }
+.group { display: flex; flex-direction: column; gap: var(--space-1); }
+.gh { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); padding: 0 var(--space-4); display: flex; justify-content: space-between; gap: var(--space-2); flex-wrap: wrap; }
+.gh b { color: var(--text); font-weight: 600; }
+.rows { background: var(--raised); border-radius: 10px; display: flex; flex-direction: column; overflow: hidden; }
+.row { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4); min-height: 60px; border-top: 1px solid var(--line); position: relative; }
+.row:first-child { border-top: 0; }
+.row.done { opacity: .55; }
+.row.bad { background: var(--fail-soft); }
+.row.ask { background: var(--warn-soft); }
+.row.flash { box-shadow: inset 4px 0 0 var(--ink); }
+.ax .row { flex-wrap: wrap; padding: var(--space-3) var(--space-4); }
+.rtext { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.ax .rtext { flex-basis: 100%; }
+.rname { font-size: var(--fs-body); line-height: var(--lh-body); }
+.rmeta { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); }
+.rmeta.bad { color: var(--fail); font-weight: 600; }
+.rmeta.ask { color: var(--warn); font-weight: 600; }
+.compact .row { min-height: 52px; padding-top: var(--space-1); padding-bottom: var(--space-1); }
+
+/* Copy pips: one per copy ordered. Shape carries state, colour backs it up. */
+.pips { display: inline-flex; gap: var(--space-1); flex: 0 0 auto; align-items: center; }
+.pip { width: var(--pip); height: var(--pip); border-radius: 50%; border: 2px solid var(--line); display: inline-grid; place-items: center;
+       font-size: calc(var(--pip) * .62); line-height: 1; font-weight: 800; color: transparent; }
+.pip[data-st="saved"] { background: var(--ink); border-color: var(--ink); }
+.pip[data-st="sending"] { border: 2px dashed var(--ink); animation: spin 1.2s linear infinite; }
+.pip[data-st="failed"] { background: var(--fail); border-color: var(--fail); color: var(--fail-on); }
+.pip[data-st="failed"]::after { content: "!"; }
+.pip[data-st="unknown"] { background: var(--warn-fill); border-color: var(--warn-fill); color: #2A1E00; }
+.pip[data-st="unknown"]::after { content: "?"; }
+.pip[data-st="waiting"] { border: 2px dotted var(--wait); background: var(--wait-soft); }
+@keyframes spin { to { transform: rotate(360deg); } }
+@media (prefers-reduced-motion: reduce) { .pip[data-st="sending"] { animation: none; } .screen * { transition: none !important; } }
+
+/* Buttons inside the screen */
+.tick { width: var(--tap); height: var(--tap); flex: 0 0 auto; border-radius: 50%; border: 2px solid var(--ink); background: transparent; color: var(--ink);
+        display: grid; place-items: center; cursor: pointer; padding: 0; }
+.tick svg { width: 55%; height: 55%; }
+.tick:active { background: var(--ink-soft); }
+.allin { width: var(--tap); height: var(--tap); flex: 0 0 auto; display: grid; place-items: center; color: var(--ink); }
+.allin svg { width: 55%; height: 55%; }
+.redo { min-height: var(--tap); min-width: var(--tap); flex: 0 0 auto; border-radius: 22px; border: 0; padding: 0 var(--space-4); cursor: pointer;
+        background: var(--fail); color: var(--fail-on); font-weight: 600; font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.redo.ask { background: var(--warn-fill); color: #2A1E00; }
+.redo.wait { background: var(--wait); color: #fff; }
+.ax .redo { flex-basis: 100%; border-radius: 16px; }
+.btn2 { min-height: var(--tap); border-radius: 22px; border: 1px solid var(--line); background: var(--raised); padding: 0 var(--space-4); cursor: pointer; font-weight: 600; font-size: var(--fs-sub); }
+
+/* Floating tab bar */
+.tabbar { position: absolute; left: var(--space-4); right: var(--space-4); bottom: max(var(--sa-bottom), env(safe-area-inset-bottom)); display: flex; gap: var(--space-1);
+          background: var(--glass); backdrop-filter: blur(12px); border: 1px solid var(--line); border-radius: 30px; padding: var(--space-1); }
+.tabbar button { flex: 1 1 0; min-height: 48px; border: 0; background: transparent; border-radius: 24px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: pointer;
+                 font-size: var(--fs-c2); line-height: var(--lh-c2); font-weight: 600; color: var(--text-2); gap: 2px; }
+.tabbar button svg { width: 22px; height: 22px; }
+.tabbar button[aria-current="page"] { color: var(--ink); background: var(--ink-soft); }
+.ax .tabbar button { min-height: 64px; }
+.ax .tabbar button span { display: none; }
+
+/* Concept: Outbox tray */
+.tray { position: absolute; left: var(--space-3); right: var(--space-3); bottom: calc(max(var(--sa-bottom), env(safe-area-inset-bottom)) + 64px);
+        background: var(--raised); border: 1px solid var(--line); border-radius: 16px; padding: var(--space-2) var(--space-2) var(--space-2) var(--space-4);
+        display: flex; align-items: center; gap: var(--space-3); min-height: 60px; box-shadow: 0 6px 18px rgba(0,0,0,.10); }
+.tray.notab { bottom: max(var(--sa-bottom), env(safe-area-inset-bottom)); }
+.ax .tray { flex-wrap: wrap; bottom: calc(max(var(--sa-bottom), env(safe-area-inset-bottom)) + 80px); }
+.tray .tt { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; text-align: left; border: 0; background: none; padding: 0; cursor: pointer; }
+.tray .t1 { font-size: var(--fs-sub); line-height: var(--lh-sub); font-weight: 600; }
+.tray .t2 { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); }
+.tray.ok .t1 { color: var(--ink); font-weight: 600; }
+.tray.bad { background: var(--fail); border-color: var(--fail); color: var(--fail-on); }
+.tray.bad .t2 { color: var(--fail-on); opacity: .9; }
+.tray.bad .redo { background: var(--fail-on); color: var(--fail); }
+.tray.ask { background: var(--warn-soft); border-color: var(--warn-fill); }
+.tray.wait { background: var(--wait-soft); }
+.tray .ic { width: 28px; height: 28px; flex: 0 0 auto; }
+.ax .tray .ic { display: none; }
+.pad-tray { height: 140px; flex: 0 0 auto; }
+.ax .pad-tray { height: 280px; }
+
+/* Log (right page, Outbox open pose; Tick log tab) */
+.log { display: flex; flex-direction: column; padding: 0 var(--space-4) var(--space-4); gap: var(--space-1); }
+.lrow { display: flex; align-items: center; gap: var(--space-3); padding: var(--space-2) 0; border-top: 1px solid var(--line); min-height: 52px; }
+.lrow:first-child { border-top: 0; }
+.ltime { font-variant-numeric: tabular-nums; font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); flex: 0 0 auto; min-width: 5ch; }
+.ltext { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+.ltext .a { font-size: var(--fs-sub); line-height: var(--lh-sub); }
+.ltext .b { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); }
+.ax .lrow { flex-wrap: wrap; }
+
+/* Concept: Envelope pages */
+.envhead { padding: var(--space-1) var(--space-4) var(--space-3); display: flex; flex-direction: column; gap: var(--space-1); }
+.envhead .k { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); }
+.envhead h2 { font-size: var(--fs-t3); line-height: var(--lh-t3); margin: 0; font-weight: 700; }
+.envtop { display: flex; justify-content: space-between; align-items: center; gap: var(--space-2); padding: var(--space-1) var(--space-4) 0; flex-wrap: wrap; }
+.capsule { min-height: var(--tap); border-radius: 22px; border: 1px solid var(--line); background: var(--raised); padding: 0 var(--space-3); display: inline-flex; align-items: center; gap: var(--space-2); cursor: pointer;
+           font-size: var(--fs-fn); line-height: var(--lh-fn); font-weight: 600; }
+.capsule.bad { background: var(--fail); color: var(--fail-on); border-color: var(--fail); }
+.capsule.ask { background: var(--warn-fill); color: #2A1E00; border-color: var(--warn-fill); }
+.capsule.wait { background: var(--wait); color: #fff; border-color: var(--wait); }
+.capsule.ok { color: var(--ink); cursor: default; }
+.tiles { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-3); padding: 0 var(--space-4) var(--space-4); }
+.ax .tiles { grid-template-columns: 1fr; }
+.tile { background: var(--raised); border-radius: 14px; border: 2px solid transparent; display: flex; flex-direction: column; overflow: hidden; min-height: 132px; position: relative; }
+.tile.bad { border-color: var(--fail); }
+.tile.ask { border-color: var(--warn-fill); }
+.tile.done { opacity: .6; }
+.tile-hit { flex: 1 1 auto; border: 0; background: none; text-align: left; padding: var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); cursor: pointer; min-height: 96px; }
+.tile-hit:disabled { cursor: default; }
+.tile-hit:active:not(:disabled) { background: var(--ink-soft); }
+.tile .nm { font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; }
+.tile .mt { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); }
+.tile .act { font-size: var(--fs-c1); line-height: var(--lh-c1); color: var(--ink); font-weight: 600; margin-top: auto; }
+.tile-fail { display: flex; align-items: center; gap: var(--space-2); padding: var(--space-2); background: var(--fail-soft); flex-wrap: wrap; }
+.tile.ask .tile-fail { background: var(--warn-soft); }
+.tile-fail .fx { flex: 1 1 6em; font-size: var(--fs-c1); line-height: var(--lh-c1); font-weight: 600; color: var(--fail); padding-left: var(--space-1); }
+.tile.ask .tile-fail .fx { color: var(--warn); }
+.tile.wt .tile-fail { background: var(--wait-soft); }
+.tile.wt .tile-fail .fx { color: var(--wait); }
+.tile .redo { font-size: var(--fs-fn); }
+.strip { display: flex; gap: var(--space-2); overflow-x: auto; padding: var(--space-2) var(--space-4); border-top: 1px solid var(--line); background: var(--raised); flex: 0 0 auto; scrollbar-width: none; }
+.chip { flex: 0 0 auto; min-height: 52px; min-width: 76px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); padding: var(--space-1) var(--space-3);
+        display: flex; flex-direction: column; justify-content: center; text-align: left; cursor: pointer; position: relative; }
+.chip .c1 { font-size: var(--fs-c1); line-height: var(--lh-c1); font-weight: 600; white-space: nowrap; }
+.chip .c2 { font-size: var(--fs-c2); line-height: var(--lh-c2); color: var(--text-2); font-variant-numeric: tabular-nums; }
+.chip[aria-current="true"] { border: 2px solid var(--ink); }
+.chip .mark { position: absolute; top: -6px; right: -6px; min-width: 22px; height: 22px; border-radius: 11px; background: var(--fail); color: var(--fail-on); font-size: 12px; font-weight: 700; display: grid; place-items: center; padding: 0 5px; }
+.chip .mark.ask { background: var(--warn-fill); color: #2A1E00; }
+.chip .mark.wait { background: var(--wait); color: #fff; }
+.chip.full .c2 { color: var(--ink); }
+.ax .chip { min-height: 64px; }
+.pkglist { display: flex; flex-direction: column; gap: var(--space-2); padding: 0 var(--space-4) var(--space-4); }
+.pkglist .chip { min-height: 60px; width: 100%; flex-direction: row; align-items: center; justify-content: space-between; gap: var(--space-2); }
+.pkglist .chip .mark { position: static; }
+.pkglist .chip > span:first-child { display: flex; flex-direction: column; }
+
+/* Concept: Receipt tape */
+.tapewrap { flex: 0 0 auto; height: 44%; display: flex; flex-direction: column; background: var(--page); padding: var(--space-2) var(--space-3) 0; position: relative; }
+.tapewrap.full { height: auto; flex: 1 1 auto; }
+.tape { flex: 1 1 auto; min-height: 0; background: var(--tape); display: flex; flex-direction: column; position: relative;
+        -webkit-mask: linear-gradient(#000 0 0) bottom/100% calc(100% - 8px) no-repeat, conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top/16px 8px repeat-x;
+                mask: linear-gradient(#000 0 0) bottom/100% calc(100% - 8px) no-repeat, conic-gradient(from 135deg at top, #0000, #000 1deg 89deg, #0000 90deg) top/16px 8px repeat-x;
+        border-left: 1px solid var(--tape-edge); border-right: 1px solid var(--tape-edge); }
+.tapehead { padding: var(--space-4) var(--space-4) var(--space-1); display: flex; justify-content: space-between; gap: var(--space-2); font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); flex-wrap: wrap; }
+.tapehead b { color: var(--text); }
+.tapeflow { flex: 1 1 auto; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; padding: 0 var(--space-4); overscroll-behavior: contain; }
+.tapeflow .spacer { flex: 1 1 auto; }
+.tl { display: grid; grid-template-columns: auto 1fr auto; gap: var(--space-3); align-items: center; padding: 6px 0; border-top: 1px dashed var(--tape-edge); }
+.tl:first-of-type { border-top: 0; }
+.ax .tl { grid-template-columns: 1fr auto; }
+.ax .tl .ltime { grid-column: 1 / -1; }
+.tl .ln { font-size: var(--fs-sub); line-height: var(--lh-sub); min-width: 0; }
+.tl .ln small { display: block; font-size: var(--fs-c1); line-height: var(--lh-c1); color: var(--text-2); }
+.stamp { font-size: var(--fs-c2); line-height: var(--lh-c2); font-weight: 700; padding: 3px 7px; border-radius: 4px; border: 1.5px solid currentColor; transform: rotate(-4deg); white-space: nowrap; }
+.stamp.saved { color: var(--ink); }
+.stamp.sending { color: var(--text-2); border-style: dashed; transform: none; }
+.ledge { flex: 0 0 auto; border-top: 2px solid var(--line); padding: var(--space-2) var(--space-3); display: flex; flex-direction: column; gap: var(--space-2); background: var(--tape); }
+.ledge.ok { color: var(--ink); font-size: var(--fs-fn); line-height: var(--lh-fn); font-weight: 600; flex-direction: row; align-items: center; gap: var(--space-2); min-height: 52px; padding-left: var(--space-4); }
+.ledge.has { background: var(--fail-soft); border-top-color: var(--fail); }
+.ledge.has.onlyask { background: var(--warn-soft); border-top-color: var(--warn-fill); }
+.ledge.has.onlywait { background: var(--wait-soft); border-top-color: var(--wait); }
+.lg { display: flex; align-items: center; gap: var(--space-3); flex-wrap: wrap; }
+.lg .lx { flex: 1 1 8em; min-width: 0; display: flex; flex-direction: column; }
+.lg .lx .a { font-size: var(--fs-sub); line-height: var(--lh-sub); font-weight: 600; }
+.lg .lx .b { font-size: var(--fs-c1); line-height: var(--lh-c1); color: var(--text-2); }
+.lg.f .lx .b { color: var(--fail); }
+.lg.u .lx .b { color: var(--warn); }
+
+/* Sheet */
+.scrim { position: absolute; inset: 0; background: rgba(0,0,0,.28); display: flex; flex-direction: column; justify-content: flex-end; z-index: 5; }
+.sheet { background: var(--surface); border-radius: 18px 18px 0 0; max-height: 72%; display: flex; flex-direction: column; padding-bottom: max(var(--sa-bottom), env(safe-area-inset-bottom)); }
+.ax .sheet { max-height: 92%; }
+.grab { width: 36px; height: 5px; border-radius: 3px; background: var(--line); margin: 6px auto 0; }
+.sbar { display: grid; grid-template-columns: 1fr auto 1fr; align-items: center; padding: var(--space-1) var(--space-2); }
+.sbar h3 { margin: 0; font-size: var(--fs-hl); line-height: var(--lh-hl); font-weight: 600; text-align: center; }
+.sbar .done { justify-self: end; border: 0; background: none; color: var(--ink); font-weight: 600; min-height: var(--tap); padding: 0 var(--space-3); cursor: pointer; font-size: var(--fs-body); }
+.ax .sbar { grid-template-columns: 1fr auto; }
+.ax .sbar > span { display: none; }
+.sheet .scroll { padding: 0 var(--space-4); }
+.sfoot { padding: var(--space-3) var(--space-4) 0; display: flex; }
+.sfoot .redo { flex: 1 1 auto; }
+
+/* Whole-screen states */
+.state { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; align-items: flex-start; gap: var(--space-4); padding: var(--space-6); }
+.state p { margin: 0; font-size: var(--fs-body); line-height: var(--lh-body); max-width: 30ch; }
+.state details { font-size: var(--fs-fn); line-height: var(--lh-fn); color: var(--text-2); }
+.state .primary { min-height: var(--tap); border-radius: 22px; border: 0; background: var(--ink); color: #fff; font-weight: 600; padding: 0 var(--space-5); cursor: pointer; font-size: var(--fs-body); }
+:root[data-theme="dark"] .state .primary { color: #08201B; }
+.empty-note { padding: var(--space-6) var(--space-4); display: flex; flex-direction: column; gap: var(--space-3); align-items: flex-start; }
+.empty-note p { margin: 0; }
+
+/* "New:" labels, dashed. One press hides all of them. */
+.labels [data-new] { outline: 2px dashed var(--focus); outline-offset: -2px; }
+.labels [data-new]::before { content: "New: " attr(data-new); position: absolute; z-index: 4; top: -2px; right: 8px; transform: translateY(-50%);
+        font: 600 11px/14px var(--font); background: var(--focus); color: #fff; padding: 1px 6px; border-radius: 4px; pointer-events: none; white-space: nowrap; }
+.labels .tray[data-new]::before, .labels .ledge[data-new]::before { top: 0; }
+.labels [data-new] { position: relative; }
+.labels .tray[data-new], .labels .tabbar[data-new] { position: absolute; }
+.ax [data-new]::before { font-size: 11px; }
+
+.ax-only { display: none; }
+.ax .ax-only { display: inline; }
+.ax .lg-only { display: none; }
+.ax .tray .t2, .ax .lg .lx .b { display: none; }
+.ax .tapehead, .ax .tapeflow { display: none; }
+.ax .tapewrap { height: auto; padding-top: 0; }
+.ax .tape { display: none; }
+.chip > span:first-child { display: flex; flex-direction: column; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.notes { max-width: 1400px; margin: 0 auto; padding: 0 var(--space-4) var(--space-8); font-size: 13px; color: var(--text-2); }
+
+@media (forced-colors: active) {
+  .pip { forced-color-adjust: none; }
+  .tray, .tile, .chip, .capsule, .redo, .tick { border: 2px solid CanvasText; }
+}
+</style>
+</head>
+<body>
+<div class="sample" role="note"><b>Sample.</b> No card, seller, order, count, person or time on this page is real.</div>
+
+<header class="top">
+  <h1>When a tick does not save</h1>
+  <p class="kind">Designer kind: blind. Designer failed-checkin-blind-2. Three concepts, each with its own structure, way to move around and first screen.</p>
+  <div class="concepts" id="concepts" aria-label="Concepts"></div>
+  <p class="blurb" id="blurb"></p>
+  <div class="controls">
+    <div class="ctl"><span>Devices</span><div class="seg" id="ctl-d"></div></div>
+    <div class="ctl"><span>State</span><div class="seg" id="ctl-s"></div></div>
+    <div class="ctl"><span>Signal</span><div class="seg" id="ctl-n"></div></div>
+    <div class="ctl"><span>Theme</span><div class="seg" id="ctl-t"></div></div>
+    <div class="ctl"><span>Labels</span><div class="seg" id="ctl-l"></div></div>
+  </div>
+</header>
+
+<main class="stage labels" id="stage" aria-live="off">
+  <!-- Replaced by the script. Without script, these say what is missing. -->
+  <figure class="dev" data-device="iphone-duo-folded"><figcaption><b>Duo, folded</b>. This mockup draws its screens with JavaScript. Turn it on to see them.</figcaption></figure>
+  <figure class="dev" data-device="iphone-duo-unfolded"><figcaption><b>Duo, open</b>. Needs JavaScript, as above.</figcaption></figure>
+</main>
+<div class="sr" aria-live="polite" id="announce"></div>
+<p class="notes">Tap a round tick button (or a tile) to tick the next copy. Set Signal to Flaky, No signal or Sync error to make ticks fail, then use Redo. Every state has a deep link: the URL hash holds c (concept), d (devices), s (state), n (signal) and t (theme).</p>
+
+<script>
+(() => {
+"use strict";
+/* Device frames. Folded first, then the largest accessibility size on the folded pose, then open, then the large phone. */
+const DEVICES = {
+  folded: { tag: 'data-device="iphone-duo-folded"', w: 466, h: 678, label: "Duo, folded", size: "466 x 678 pt, from the brief" },
+  ax:     { tag: 'data-device="iphone-duo-folded" data-text="ax5"', w: 466, h: 678, ax: true, label: "Duo, folded, largest text (AX5)", size: "466 x 678 pt, body 53 pt" },
+  open:   { tag: 'data-device="iphone-duo-unfolded"', w: 951, h: 669, open: true, label: "Duo, open", size: "951 x 669 pt; hinge x 455.5 to 495.5, from the brief" },
+  phone:  { tag: 'data-device="iphone-regular"', w: 440, h: 956, label: "Large phone", size: "440 x 956 pt, assumed (no size written)" },
+};
+const DEVICE_SETS = { all: ["folded","ax","open","phone"], folded: ["folded"], ax: ["ax"], open: ["open"], phone: ["phone"] };
+const DEVICE_NAMES = { all: "All", folded: "Folded", ax: "Folded, AX5", open: "Open", phone: "Large phone" };
+
+const CONCEPTS = {
+  outbox: { name: "Outbox tray", focus: "choice-outbox",
+    blurb: "<b>Outbox tray.</b> A plain checklist, grouped by order. Each copy of a card is a pip, and the pip shows whether its tick saved. One tray sits above the tab bar at all times. It says All is well., or it turns red and names the card that did not save, with Redo on the tray itself. Tap the tray for every unsaved tick. Open, the right page is the tick log." },
+  envelope: { name: "Envelope pages", focus: "choice-envelope",
+    blurb: "<b>Envelope pages.</b> One package per page, the way the mail is opened: one envelope in the hand, its cards as big tiles. Tap a tile to tick the next copy. A strip of packages at the bottom is the way around, and a package with an unsaved tick carries a red mark there. The capsule at the top counts unsaved ticks from any package and opens them in a sheet. Open, the left page lists packages and the right page shows one." },
+  tape: { name: "Receipt tape", focus: "choice-tape",
+    blurb: "<b>Receipt tape (bold).</b> No tabs. The lower part of the screen is a printed tape: every tick prints one line, newest at the bottom by the thumb, and the line is stamped when the ledger confirms it. A tick that did not save drops onto a red ledge under the tape and stays there, with Redo, until it saves. The ledge never scrolls away. Open, the list fills the left page and the tape the right." },
+};
+const STATES = { live: "Normal", sending: "Saving", failed: "One failed", many: "Five failed", waiting: "No signal", unknown: "No answer", done: "Filter emptied", empty: "No orders", loadfail: "Load failed" };
+const NETS = { good: "Good", flaky: "Flaky (1 in 3 fails)", none: "No signal", error: "Sync error" };
+const THEMES = { auto: "System", light: "Light", dark: "Dark" };
+
+/* ---------- Sample data (all invented) ---------- */
+const SELLERS = [
+  ["Northgate Cards", "4471", [["Ember Drake","Near mint",4],["Glass Heron","Near mint",1],["Copper Wren","Lightly played",2],["Signal Fire","Near mint",3]]],
+  ["Bluefin Games", "4480", [["Tidecaller Adept","Near mint",2],["Hollow Lantern","Foil, near mint",1],["Salt Oracle","Near mint",4]]],
+  ["Porch Light TCG", "4492", [["Quiet Archivist","Near mint",1],["Mossback Ox","Near mint",2],["Thorn Gate","Lightly played",1]]],
+  ["Mill Road Hobbies", "4503", [["Ashen Courier","Near mint",3],["Vellum Saint","Near mint",1],["Lantern Moth","Near mint",2]]],
+  ["Corner Booth", "4517", [["Iron Orchard","Near mint",4],["Dune Strider","Near mint",1]]],
+  ["Tall Pine Cards", "4526", [["Pale Cartographer","Foil, near mint",1],["Gilded Mule","Near mint",2],["Storm Ledger","Near mint",3]]],
+];
+let S; // app state
+let clock = 0; // seconds since 9:00
+function fmt(t) { const m = Math.floor(t / 60), h = 9 + Math.floor(m / 60); return `${h}:${String(m % 60).padStart(2, "0")}`; }
+function now() { clock += 23; return clock; }
+
+function baseData() {
+  clock = 41 * 60;
+  let id = 0, tid = 0;
+  const orders = SELLERS.map(([seller, no, cards], oi) => ({
+    id: "o" + oi, seller, no,
+    cards: cards.map(([name, cond, qty], ci) => ({ id: `c${oi}_${ci}`, name, cond, order: "o" + oi,
+      copies: Array.from({ length: qty }, (_, n) => ({ n: n + 1, st: "empty", tick: null })) })),
+  }));
+  const ticks = [];
+  // Earlier saved ticks: some by this device, some by the other phone.
+  const pre = [["c0_0",2,"you"],["c0_2",1,"other phone"],["c0_3",3,"you"],["c1_0",2,"you"],["c1_2",1,"other phone"],["c2_0",1,"you"],["c2_1",2,"you"],["c3_0",1,"you"],["c4_0",2,"other phone"],["c5_2",1,"you"]];
+  let t = 12 * 60;
+  for (const [cid, k, by] of pre) {
+    const c = findCard(orders, cid);
+    for (let i = 0; i < k; i++) { t += 47; const tk = { id: "t" + (tid++), card: cid, n: i + 1, st: "saved", by, at: t, why: "" }; ticks.push(tk); c.copies[i].st = "saved"; c.copies[i].tick = tk.id; }
+  }
+  return { orders, ticks, tid, filter: "waiting", tab: "list", pkg: 0, sheet: false, loadfail: false, flash: null, tickCount: 0 };
+}
+function findCard(orders, cid) { for (const o of orders) for (const c of o.cards) if (c.id === cid) return c; return null; }
+function card(cid) { return findCard(S.orders, cid); }
+function tickById(id) { return S.ticks.find(t => t.id === id); }
+function addTick(cid, st, by = "you", why = "") {
+  const c = card(cid); const cp = c.copies.find(x => x.st === "empty"); if (!cp) return null;
+  const tk = { id: "t" + (S.tid++), card: cid, n: cp.n, st, by, at: now(), why };
+  S.ticks.push(tk); cp.st = st; cp.tick = tk.id; return tk;
+}
+const WHY = { failed: "The ledger refused the change.", unknown: "The ledger did not answer.", waiting: "Kept on this phone until there is signal." };
+const SERVER_TEXT = { failed: "409 conflict: row version 18 is older than 19", unknown: "timeout after 15 s, no response", waiting: "offline: request queued" };
+
+function loadScenario(name) {
+  S = baseData();
+  if (name === "sending") { addTick("c0_0", "sending"); }
+  if (name === "failed") { addTick("c0_1", "saved"); addTick("c0_0", "failed", "you", WHY.failed); }
+  if (name === "many") { addTick("c0_0","failed","you",WHY.failed); addTick("c1_1","failed","you",WHY.failed); addTick("c2_1","failed","you",WHY.failed); addTick("c3_1","failed","you",WHY.failed); addTick("c5_1","failed","you",WHY.failed); }
+  if (name === "waiting") { addTick("c0_0","waiting","you",WHY.waiting); addTick("c0_2","waiting","you",WHY.waiting); addTick("c1_0","waiting","you",WHY.waiting); }
+  if (name === "unknown") { addTick("c0_0","unknown","you",WHY.unknown); }
+  if (name === "done") { for (const o of S.orders) for (const c of o.cards) while (c.copies.some(x => x.st === "empty")) addTick(c.id, "saved", "you"); }
+  if (name === "empty") { S.orders = []; S.ticks = []; }
+  if (name === "loadfail") { S.loadfail = true; }
+}
+
+/* ---------- Tick logic ---------- */
+function resolveTick(tk, isRedo) {
+  const net = ui.n;
+  let st = "saved";
+  if (net === "none") st = "waiting";
+  else if (net === "error" && !isRedo) st = "failed";
+  else if (net === "flaky" && !isRedo) { S.tickCount++; if (S.tickCount % 3 === 0) st = "failed"; }
+  setTickState(tk, st);
+}
+function setTickState(tk, st) {
+  tk.st = st; tk.why = WHY[st] || "";
+  const c = card(tk.card); const cp = c && c.copies.find(x => x.tick === tk.id); if (cp) cp.st = st;
+  if (st === "failed") announce(`${c.name}, copy ${tk.n} did not save.`);
+  if (st === "saved") announce(`${c.name}, copy ${tk.n} saved.`);
+}
+function doTick(cid) {
+  if (ui.s === "sending") ui.s = "live";
+  const tk = addTick(cid, "sending"); if (!tk) return;
+  S.flash = cid; render();
+  setTimeout(() => { resolveTick(tk, false); render(); }, 650);
+}
+function doRedo(tid) {
+  const tk = tickById(tid); if (!tk) return;
+  setTickState(tk, "sending"); render();
+  setTimeout(() => { resolveTick(tk, true); render(); }, 650);
+}
+function unsaved() { return S.ticks.filter(t => t.st === "failed" || t.st === "unknown" || t.st === "waiting"); }
+function counts() {
+  let total = 0, saved = 0; for (const o of S.orders) for (const c of o.cards) for (const cp of c.copies) { total++; if (cp.st === "saved") saved++; }
+  return { total, saved };
+}
+function announce(msg) { const el = document.getElementById("announce"); el.textContent = ""; setTimeout(() => el.textContent = msg, 30); }
+
+/* ---------- Small parts ---------- */
+const ICON = {
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg>',
+  list: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><path d="M8 6h12M8 12h12M8 18h12"/><circle cx="4" cy="6" r="1.2" fill="currentColor"/><circle cx="4" cy="12" r="1.2" fill="currentColor"/><circle cx="4" cy="18" r="1.2" fill="currentColor"/></svg>',
+  clock: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg>',
+  alert: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M12 7v6M12 16.5v.5"/></svg>',
+  ok: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M7.5 12.5l3 3 6-6"/></svg>',
+  q: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="9.5"/><path d="M9.5 9.5a2.5 2.5 0 1 1 3.5 2.3c-.7.3-1 .8-1 1.5v.4M12 16.8v.2"/></svg>',
+  nosig: '<svg viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" aria-hidden="true"><path d="M3 20h2M8 20v-4M13 20v-8M18 20V7M3 4l18 16"/></svg>',
+  sig: '<svg viewBox="0 0 24 24" width="14" height="14" fill="currentColor" aria-hidden="true"><rect x="2" y="17" width="3.5" height="4" rx="1"/><rect x="7.5" y="13" width="3.5" height="8" rx="1"/><rect x="13" y="9" width="3.5" height="12" rx="1"/><rect x="18.5" y="5" width="3.5" height="16" rx="1"/></svg>',
+};
+const esc = s => String(s).replace(/[&<>"]/g, ch => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[ch]));
+function pips(c) { return `<span class="pips" aria-hidden="true">${c.copies.map(cp => `<span class="pip" data-st="${cp.st}"></span>`).join("")}</span>`; }
+function savedOf(c) { return c.copies.filter(x => x.st === "saved").length; }
+function problem(c) { const cp = c.copies.find(x => ["failed","unknown","waiting"].includes(x.st)); return cp ? tickById(cp.tick) : null; }
+function lastTick(c) { const ids = c.copies.filter(x => x.tick).map(x => x.tick); const ts = ids.map(tickById).filter(Boolean).sort((a, b) => b.at - a.at); return ts[0]; }
+function stClass(st) { return st === "failed" ? "" : st === "unknown" ? "ask" : st === "waiting" ? "wait" : ""; }
+function problemLine(tk) {
+  if (tk.st === "failed") return `Copy ${tk.n} did not save. ${fmt(tk.at)}`;
+  if (tk.st === "unknown") return `Copy ${tk.n}: no answer yet. ${fmt(tk.at)}`;
+  return `Copy ${tk.n} waits for signal. ${fmt(tk.at)}`;
+}
+function metaLine(c) {
+  const p = problem(c); if (p) return `<span class="rmeta ${p.st === "failed" ? "bad" : p.st === "unknown" ? "ask" : ""}">${problemLine(p)}</span>`;
+  const lt = lastTick(c), k = savedOf(c);
+  const sending = c.copies.some(x => x.st === "sending");
+  const head = `${k} of ${c.copies.length} in`;
+  if (sending) return `<span class="rmeta">${head}. Saving copy ${c.copies.find(x => x.st === "sending").n}</span>`;
+  return `<span class="rmeta">${head}${lt ? `. Last: ${lt.by}, ${fmt(lt.at)}` : ""}</span>`;
+}
+function rowAction(c) {
+  const p = problem(c);
+  if (p) return `<button class="redo ${stClass(p.st)}" data-act="redo" data-tick="${p.id}" aria-label="Redo ${esc(c.name)}, copy ${p.n}">Redo</button>`;
+  const next = c.copies.find(x => x.st === "empty");
+  if (next) return `<button class="tick" data-act="tick" data-card="${c.id}" aria-label="Tick ${esc(c.name)}, copy ${next.n} of ${c.copies.length}">${ICON.check}</button>`;
+  return `<span class="allin" role="img" aria-label="All copies in">${ICON.check}</span>`;
+}
+function visibleCards(o) {
+  if (S.filter === "all") return o.cards;
+  // A card stays in the waiting list until the person leaves the view, so rows never leave under the finger.
+  return o.cards.filter(c => c.copies.some(x => x.st !== "saved") || c._stay);
+}
+function markStay() { for (const o of S.orders) for (const c of o.cards) c._stay = c.copies.some(x => x.st !== "saved"); }
+function cardRow(c) {
+  const p = problem(c); const done = !p && c.copies.every(x => x.st === "saved");
+  const cls = p ? (p.st === "failed" ? "bad" : p.st === "unknown" ? "ask" : "") : done ? "done" : "";
+  return `<div class="row ${cls} ${S.flash === c.id ? "flash" : ""}" data-row="${c.id}">
+    <div class="rtext"><span class="rname">${esc(c.name)}</span>${metaLine(c)}</div>${pips(c)}${rowAction(c)}</div>`;
+}
+function filterSeg() {
+  return `<div class="segc" role="group" aria-label="Show">
+    <button data-act="filter" data-v="waiting" aria-pressed="${S.filter === "waiting"}">Still coming</button>
+    <button data-act="filter" data-v="all" aria-pressed="${S.filter === "all"}">All cards</button></div>`;
+}
+function cardList() {
+  const groups = S.orders.map(o => ({ o, cards: visibleCards(o) })).filter(g => g.cards.length);
+  if (!groups.length) return `<div class="empty-note"><p>Every card in this list is in.</p><button class="btn2" data-act="filter" data-v="all">Show all cards</button></div>`;
+  return `<div class="list">${groups.map(({ o, cards }) => `<section class="group" aria-label="${esc(o.seller)}">
+      <div class="gh"><b>${esc(o.seller)}</b><span>Order ${o.no}</span></div>
+      <div class="rows">${cards.map(cardRow).join("")}</div></section>`).join("")}</div>`;
+}
+function statusBar() {
+  const none = ui.n === "none";
+  return `<div class="status" aria-hidden="true"><span>9:41</span><span class="sig ${none ? "none" : ""}">${none ? ICON.nosig + " No signal" : ICON.sig}</span></div>`;
+}
+function summary() { const k = counts(); return `${k.saved} of ${k.total} cards in`; }
+function wholeState() {
+  if (S.loadfail) return `<div class="state"><p>The card list did not load, so nothing here is counted yet. Your ticks on this phone are kept.</p>
+    <button class="primary" data-act="reload">Try again</button>
+    <details><summary>What the server said</summary>503 service unavailable</details></div>`;
+  if (!S.orders.length) return `<div class="state"><p>Import an order history to fill this checklist.</p><button class="primary" data-act="import">Import orders</button></div>`;
+  return null;
+}
+function unsavedSheet(title = "Not saved yet") {
+  if (!S.sheet) return "";
+  const list = unsaved();
+  const body = list.length ? list.map(tk => { const c = card(tk.card); return `<div class="lrow">
+      <span class="ltime">${fmt(tk.at)}</span><span class="ltext"><span class="a">${esc(c.name)}, copy ${tk.n}</span><span class="b">${esc(tk.why)}</span></span>
+      <button class="redo ${stClass(tk.st)}" data-act="redo" data-tick="${tk.id}" aria-label="Redo ${esc(c.name)}, copy ${tk.n}">Redo</button></div>`; }).join("")
+    : `<div class="empty-note"><p>All is well.</p></div>`;
+  return `<div class="scrim" data-act="closesheet"><div class="sheet" role="dialog" aria-label="${title}" data-stop="1">
+    <div class="grab"></div><div class="sbar"><span></span><h3>${title}</h3><button class="done" data-act="closesheet">Done</button></div>
+    <div class="scroll"><div class="log">${body}</div>
+    ${list.length ? `<details class="rmeta" style="padding:8px 0"><summary>What the server said</summary>${list.map(t => esc(SERVER_TEXT[t.st])).join("<br>")}</details>` : ""}</div>
+    ${list.length > 1 ? `<div class="sfoot"><button class="redo" data-act="redoall">Redo all ${list.length}</button></div>` : ""}</div></div>`;
+}
+
+/* ---------- Concept: Outbox tray ---------- */
+function tray(dev, first, notab) {
+  const list = unsaved(); const idattr = first ? `id="${CONCEPTS.outbox.focus}"` : "";
+  const nt = notab ? "notab" : "";
+  const sending = S.ticks.filter(t => t.st === "sending").length;
+  if (!list.length) {
+    if (sending) return `<div class="tray ${nt}" ${idattr} data-new="tray" role="status"><span class="ic" style="color:var(--text-2)">${ICON.clock}</span><span class="tt"><span class="t1">Saving ${sending} tick${sending > 1 ? "s" : ""}</span><span class="t2">${summary()}</span></span></div>`;
+    const lt = S.ticks.slice().sort((a, b) => b.at - a.at)[0];
+    return `<div class="tray ok ${nt}" ${idattr} data-new="tray" role="status"><span class="ic" style="color:var(--ink)">${ICON.ok}</span><span class="tt"><span class="t1">All is well.</span><span class="t2">${lt ? `Last tick saved ${fmt(lt.at)}` : "No ticks yet"}</span></span></div>`;
+  }
+  const f = list.filter(t => t.st === "failed").length, u = list.filter(t => t.st === "unknown").length;
+  const kind = f ? "bad" : u ? "ask" : "wait";
+  const icon = f ? ICON.alert : u ? ICON.q : ICON.clock;
+  const top = list.slice().sort((a, b) => b.at - a.at)[0]; const c = card(top.card);
+  const t1 = list.length === 1 ? `${esc(c.name)}, copy ${top.n}` : `${list.length} ticks not saved`;
+  const t2 = list.length === 1 ? (top.st === "failed" ? "Did not save. Count not changed." : top.st === "unknown" ? "No answer yet. Redo cannot count it twice." : "Waiting for signal. Kept on this phone.") : `Newest: ${esc(c.name)}, copy ${top.n}`;
+  const short = `${list.length} not saved`;
+  const btn = list.length === 1 ? `<button class="redo ${kind === "bad" ? "" : stClass(top.st)}" data-act="redo" data-tick="${top.id}" aria-label="Redo ${esc(c.name)}, copy ${top.n}">Redo</button>`
+                                : `<button class="redo ${kind === "bad" ? "" : kind}" data-act="redoall">Redo all</button>`;
+  return `<div class="tray ${kind} ${nt}" ${idattr} data-new="tray" role="alert"><span class="ic">${icon}</span>
+    <button class="tt" data-act="opensheet" aria-label="Show unsaved ticks"><span class="t1"><span class="lg-only">${t1}</span><span class="ax-only">${short}</span></span><span class="t2">${t2}</span></button>${btn}</div>`;
+}
+function tickLog(limit) {
+  const ts = S.ticks.slice().sort((a, b) => b.at - a.at).slice(0, limit);
+  if (!ts.length) return `<div class="empty-note"><p>Your ticks show here as you make them.</p></div>`;
+  return `<div class="log">${ts.map(tk => { const c = card(tk.card); return `<div class="lrow">
+    <span class="ltime">${fmt(tk.at)}</span><span class="pip" data-st="${tk.st}" aria-label="${tk.st}"></span>
+    <span class="ltext"><span class="a">${esc(c.name)}, copy ${tk.n} of ${c.copies.length}</span><span class="b">${tk.by}${tk.why ? ". " + esc(tk.why) : ""}</span></span>
+    ${["failed","unknown","waiting"].includes(tk.st) ? `<button class="redo ${stClass(tk.st)}" data-act="redo" data-tick="${tk.id}" aria-label="Redo ${esc(c.name)}, copy ${tk.n}">Redo</button>` : ""}</div>`; }).join("")}</div>`;
+}
+function tabbar() {
+  return `<nav class="tabbar" aria-label="Sections">
+    <button data-act="tab" data-v="list" aria-current="${S.tab === "list" ? "page" : "false"}">${ICON.list}<span>Check-in</span></button>
+    <button data-act="tab" data-v="log" aria-current="${S.tab === "log" ? "page" : "false"}">${ICON.clock}<span>Tick log</span></button></nav>`;
+}
+function outbox(dev, first) {
+  const ws = wholeState();
+  if (dev.open) {
+    const left = `<div class="page">${statusBar()}<div class="safe"><div class="nav"><h2>Check-in</h2><p class="sum">${ws ? "" : summary()}</p>${ws ? "" : filterSeg()}</div>
+      ${ws || `<div class="scroll compact">${cardList()}<div class="pad-tray" style="height:96px"></div></div>${tray(dev, first, true)}`}</div></div>`;
+    const right = `<div class="page">${statusBar()}<div class="safe"><div class="nav"><h2>Tick log</h2><p class="sum">Newest first. Every tick of this session.</p></div>
+      <div class="scroll">${ws ? "" : tickLog(40)}</div></div>${unsavedSheet()}</div>`;
+    return left + `<div class="hinge" aria-hidden="true"></div>` + right;
+  }
+  const body = S.tab === "log"
+    ? `<div class="nav"><h2>Tick log</h2><p class="sum">Newest first.</p></div><div class="scroll">${tickLog(40)}<div class="pad-tray"></div></div>`
+    : dev.ax && !ws ? `<div class="scroll"><div class="nav"><h2>Check-in</h2><p class="sum">${summary()}</p>${filterSeg()}</div>${cardList()}<div class="pad-tray"></div></div>`
+    : `<div class="nav"><h2>Check-in</h2><p class="sum">${ws ? "" : summary()}</p>${ws ? "" : filterSeg()}</div>${ws || `<div class="scroll">${cardList()}<div class="pad-tray"></div></div>`}`;
+  return `<div class="solo">${statusBar()}<div class="safe">${body}</div>${ws ? "" : tray(dev, first, false)}${tabbar()}${unsavedSheet()}<div class="homeind"></div></div>`;
+}
+
+/* ---------- Concept: Envelope pages ---------- */
+function pkgStatus(o) {
+  const ids = new Set(o.cards.map(c => c.id)); const list = unsaved().filter(t => ids.has(t.card));
+  const f = list.filter(t => t.st === "failed").length, u = list.filter(t => t.st === "unknown").length;
+  return { n: list.length, kind: f ? "" : u ? "ask" : "wait" };
+}
+function pkgCounts(o) { let t = 0, s = 0; for (const c of o.cards) for (const cp of c.copies) { t++; if (cp.st === "saved") s++; } return { t, s }; }
+function chip(o, i, first, wide) {
+  const st = pkgStatus(o), k = pkgCounts(o);
+  return `<button class="chip ${k.s === k.t ? "full" : ""}" data-act="pkg" data-v="${i}" aria-current="${S.pkg === i}" aria-label="${esc(o.seller)}, ${k.s} of ${k.t} in${st.n ? `, ${st.n} not saved` : ""}">
+    <span><span class="c1">${esc(wide ? o.seller : o.seller.split(" ")[0])}</span><span class="c2">${k.s}/${k.t} in</span></span>
+    ${st.n ? `<span class="mark ${st.kind}" aria-hidden="true">${st.n}</span>` : ""}</button>`;
+}
+function capsule(first) {
+  const list = unsaved(); const idattr = first ? `id="${CONCEPTS.envelope.focus}"` : "";
+  if (!list.length) return `<span class="capsule ok" ${idattr} data-new="unsaved capsule" role="status">${ICON.ok.replace('aria-hidden="true"', 'aria-hidden="true" width="18" height="18"')}All is well.</span>`;
+  const f = list.some(t => t.st === "failed"), u = list.some(t => t.st === "unknown");
+  return `<button class="capsule ${f ? "bad" : u ? "ask" : "wait"}" ${idattr} data-new="unsaved capsule" data-act="opensheet" role="alert">${list.length} not saved</button>`;
+}
+function tile(c) {
+  const p = problem(c); const done = !p && c.copies.every(x => x.st === "saved");
+  const next = c.copies.find(x => x.st === "empty");
+  const cls = p ? (p.st === "failed" ? "bad" : p.st === "unknown" ? "ask" : "wt") : done ? "done" : "";
+  const act = next ? `Tap to tick copy ${next.n}` : done ? "All in" : "";
+  return `<div class="tile ${cls}">
+    <button class="tile-hit" ${next ? `data-act="tick" data-card="${c.id}"` : "disabled"} aria-label="${next ? `Tick ${esc(c.name)}, copy ${next.n} of ${c.copies.length}` : `${esc(c.name)}, all in`}">
+      <span class="nm">${esc(c.name)}</span><span class="mt">${esc(c.cond)}. ${savedOf(c)} of ${c.copies.length} in</span>${pips(c)}<span class="act">${act}</span></button>
+    ${p ? `<div class="tile-fail" role="alert"><span class="fx">${p.st === "failed" ? `Copy ${p.n} did not save` : p.st === "unknown" ? `Copy ${p.n}: no answer` : `Copy ${p.n} waits for signal`}</span>
+      <button class="redo ${stClass(p.st)}" data-act="redo" data-tick="${p.id}" aria-label="Redo ${esc(c.name)}, copy ${p.n}">Redo</button></div>` : ""}</div>`;
+}
+function envelope(dev, first) {
+  const ws = wholeState();
+  const o = S.orders[Math.min(S.pkg, S.orders.length - 1)];
+  const top = o ? `<div class="envtop"><span class="k" style="font-size:var(--fs-fn);color:var(--text-2)">Package ${S.pkg + 1} of ${S.orders.length}</span>${capsule(first)}</div>` : "";
+  const head = o ? `<div class="envhead"><h2>${esc(o.seller)}</h2><span class="k">Order ${o.no}. ${pkgCounts(o).s} of ${pkgCounts(o).t} cards in. ${summary()} across all packages.</span></div>` : "";
+  const tiles = o ? `<div class="tiles">${o.cards.map(tile).join("")}</div>` : "";
+  const strip = `<nav class="strip" aria-label="Packages" data-new="package strip marks">${S.orders.map((x, i) => chip(x, i, first, false)).join("")}</nav>`;
+  if (dev.open) {
+    const left = `<div class="page">${statusBar()}<div class="safe"><div class="nav"><h2>Packages</h2><p class="sum">${ws ? "" : summary()}</p></div>
+      ${ws || `<div class="scroll"><nav class="pkglist" aria-label="Packages" data-new="package marks">${S.orders.map((x, i) => chip(x, i, false, true)).join("")}</nav></div>`}</div></div>`;
+    const right = `<div class="page">${statusBar()}<div class="safe">${ws ? "" : top + `<div class="scroll">${head}${tiles}</div>`}</div>${unsavedSheet()}</div>`;
+    return left + `<div class="hinge" aria-hidden="true"></div>` + right;
+  }
+  return `<div class="solo">${statusBar()}<div class="safe">${ws || top + `<div class="scroll">${head}${tiles}</div>` + strip}</div>${unsavedSheet()}<div class="homeind"></div></div>`;
+}
+
+/* ---------- Concept: Receipt tape ---------- */
+function tapeLines() {
+  const ts = S.ticks.filter(t => t.st === "saved" || t.st === "sending").sort((a, b) => a.at - b.at).slice(-30);
+  if (!ts.length) return `<div class="spacer"></div><p class="rmeta" style="padding:8px 0">Each tick prints a line here.</p>`;
+  return `<div class="spacer"></div>${ts.map(tk => { const c = card(tk.card); return `<div class="tl">
+    <span class="ltime">${fmt(tk.at)}</span><span class="ln">${esc(c.name)} <small>copy ${tk.n} of ${c.copies.length}, ${tk.by}</small></span>
+    <span class="stamp ${tk.st}">${tk.st === "saved" ? "Saved" : "Sending"}</span></div>`; }).join("")}`;
+}
+function ledge(first) {
+  const list = unsaved().sort((a, b) => b.at - a.at); const idattr = first ? `id="${CONCEPTS.tape.focus}"` : "";
+  if (!list.length) return `<div class="ledge ok" ${idattr} data-new="red ledge" role="status">${ICON.ok.replace('aria-hidden="true"', 'aria-hidden="true" width="20" height="20"')}All is well.</div>`;
+  const only = list.every(t => t.st === "unknown") ? "onlyask" : list.every(t => t.st === "waiting") ? "onlywait" : "";
+  const shown = list.slice(0, 2);
+  return `<div class="ledge has ${only}" ${idattr} data-new="red ledge" role="alert">${shown.map(tk => { const c = card(tk.card); return `<div class="lg ${tk.st === "failed" ? "f" : tk.st === "unknown" ? "u" : ""}">
+      <span class="pip" data-st="${tk.st}" aria-hidden="true"></span>
+      <span class="lx"><span class="a">${esc(c.name)}, copy ${tk.n}</span><span class="b">${fmt(tk.at)}. ${esc(tk.why)}</span></span>
+      <button class="redo ${stClass(tk.st)}" data-act="redo" data-tick="${tk.id}" aria-label="Redo ${esc(c.name)}, copy ${tk.n}">Redo</button></div>`; }).join("")}
+    ${list.length > 2 ? `<div class="lg"><span class="lx"><span class="b">${list.length - 2} more not saved</span></span><button class="btn2" data-act="opensheet">Show all</button><button class="redo" data-act="redoall">Redo all ${list.length}</button></div>` : ""}</div>`;
+}
+function tapeBlock(first, full) {
+  const k = counts(); const today = S.ticks.filter(t => t.st === "saved").length;
+  return `<div class="tapewrap ${full ? "full" : ""}" data-new="receipt tape"><div class="tape">
+    <div class="tapehead"><b>Tape</b><span>${today} ticks saved</span></div>
+    <div class="tapeflow" data-tapeflow="1">${tapeLines()}</div></div>${ledge(first)}</div>`;
+}
+function tape(dev, first) {
+  const ws = wholeState();
+  if (dev.open) {
+    const left = `<div class="page">${statusBar()}<div class="safe"><div class="nav"><h2>Check-in</h2><p class="sum">${ws ? "" : summary()}</p>${ws ? "" : filterSeg()}</div>
+      ${ws || `<div class="scroll compact">${cardList()}</div>`}</div></div>`;
+    const right = `<div class="page">${statusBar()}<div class="safe">${ws ? "" : tapeBlock(first, true)}</div>${unsavedSheet()}</div>`;
+    return left + `<div class="hinge" aria-hidden="true"></div>` + right;
+  }
+  if (dev.ax && !ws) return `<div class="solo">${statusBar()}<div class="safe"><div class="scroll compact"><div class="nav"><h2 class="std">Check-in</h2><p class="sum">${summary()}</p>${filterSeg()}</div>${cardList()}</div>${tapeBlock(first, false)}</div>${unsavedSheet()}<div class="homeind"></div></div>`;
+  return `<div class="solo">${statusBar()}<div class="safe"><div class="nav"><h2 class="std">Check-in</h2>
+      <div class="navrow"><p class="sum">${ws ? "" : summary()}</p></div>${ws ? "" : filterSeg()}</div>
+    ${ws || `<div class="scroll compact">${cardList()}</div>${tapeBlock(first, false)}`}</div>${unsavedSheet()}<div class="homeind"></div></div>`;
+}
+
+/* ---------- UI state, hash, render ---------- */
+const ui = { c: "outbox", d: "all", s: "failed", n: "flaky", t: "auto", l: "on", h: [] };
+function readHash() {
+  const p = new URLSearchParams(location.hash.slice(1));
+  if (CONCEPTS[p.get("c")]) ui.c = p.get("c");
+  if (DEVICE_SETS[p.get("d")]) ui.d = p.get("d");
+  if (STATES[p.get("s")]) ui.s = p.get("s");
+  if (NETS[p.get("n")]) ui.n = p.get("n");
+  if (THEMES[p.get("t")]) ui.t = p.get("t");
+  if (p.get("l") === "off") ui.l = "off";
+  ui.h = (p.get("h") || "").split(",").filter(x => CONCEPTS[x]);
+  if (ui.s === "waiting") ui.n = "none";
+}
+function writeHash() {
+  const p = new URLSearchParams({ c: ui.c, d: ui.d, s: ui.s, n: ui.n, t: ui.t });
+  if (ui.l === "off") p.set("l", "off");
+  if (ui.h.length) p.set("h", ui.h.join(","));
+  history.replaceState(null, "", "#" + p.toString());
+}
+function seg(el, map, key, extra) {
+  document.getElementById(el).innerHTML = Object.entries(map).map(([k, v]) => `<button data-ui="${key}" data-v="${k}" aria-pressed="${ui[key] === k}">${v}</button>`).join("");
+}
+function renderChrome() {
+  const vis = Object.keys(CONCEPTS).filter(k => !ui.h.includes(k));
+  if (!vis.includes(ui.c) && vis.length) ui.c = vis[0];
+  document.getElementById("concepts").innerHTML = vis.map(k => `<span class="cpt ${ui.c === k ? "on" : ""}">
+      <button class="pick" data-ui="c" data-v="${k}" aria-pressed="${ui.c === k}">${CONCEPTS[k].name}</button>
+      <button class="hide" data-ui="hide" data-v="${k}" aria-label="Hide ${CONCEPTS[k].name}">Hide</button></span>`).join("")
+    + (ui.h.length ? `<span class="hidden-note">${ui.h.length} hidden. <button class="linkbtn" data-ui="unhide">Show all</button></span>` : "");
+  document.getElementById("blurb").innerHTML = vis.length ? CONCEPTS[ui.c].blurb : "All concepts are hidden.";
+  seg("ctl-d", DEVICE_NAMES, "d"); seg("ctl-s", STATES, "s"); seg("ctl-n", NETS, "n"); seg("ctl-t", THEMES, "t"); seg("ctl-l", { on: "Show New labels", off: "Hide" }, "l");
+  const root = document.documentElement; if (ui.t === "auto") root.removeAttribute("data-theme"); else root.setAttribute("data-theme", ui.t);
+  document.getElementById("stage").classList.toggle("labels", ui.l === "on");
+  return vis.length > 0;
+}
+function render() {
+  const keepScroll = [...document.querySelectorAll("#stage .scroll, #stage .tapeflow")].map(el => el.scrollTop);
+  const any = renderChrome(); writeHash();
+  const stage = document.getElementById("stage");
+  if (!any) { stage.innerHTML = ""; return; }
+  const fn = { outbox, envelope, tape }[ui.c];
+  stage.innerHTML = DEVICE_SETS[ui.d].map((k, i) => {
+    const d = DEVICES[k];
+    return `<figure class="dev" ${d.tag}><figcaption><b>${d.label}</b>. ${d.size}. ${CONCEPTS[ui.c].name}.</figcaption>
+      <div class="fit" data-w="${d.w}" data-h="${d.h}"><div class="screen ${d.open ? "open" : ""} ${d.ax ? "ax" : ""}" style="--w:${d.w}px;--h:${d.h}px">${fn(d, i === 0)}</div></div></figure>`;
+  }).join("");
+  const now = [...document.querySelectorAll("#stage .scroll, #stage .tapeflow")];
+  now.forEach((el, i) => { if (el.dataset.tapeflow) el.scrollTop = el.scrollHeight; else if (keepScroll[i] != null) el.scrollTop = keepScroll[i]; });
+  fit();
+}
+function fit() {
+  const avail = document.getElementById("stage").clientWidth - 32;
+  document.querySelectorAll(".fit").forEach(f => {
+    const w = +f.dataset.w, h = +f.dataset.h, s = Math.min(1, avail / w);
+    f.style.width = w * s + "px"; f.style.height = h * s + "px";
+    f.firstElementChild.style.transform = s < 1 ? `scale(${s})` : "";
+  });
+}
+
+document.addEventListener("click", e => {
+  const u = e.target.closest("[data-ui]");
+  if (u) {
+    const k = u.dataset.ui, v = u.dataset.v;
+    if (k === "hide") { ui.h.push(v); }
+    else if (k === "unhide") { ui.h = []; }
+    else if (k === "s") { ui.s = v; ui.n = v === "waiting" ? "none" : (ui.n === "none" ? "flaky" : ui.n); loadScenario(v); if (v === "done") S.filter = "waiting"; markStay(); }
+    else if (k === "n") { const was = ui.n; ui.n = v;
+      if (was === "none" && v !== "none") { unsaved().filter(t => t.st === "waiting").forEach(t => { setTickState(t, "sending"); setTimeout(() => { setTickState(t, "saved"); render(); }, 900); }); } }
+    else ui[k] = v;
+    render(); return;
+  }
+  const a = e.target.closest("[data-act]");
+  if (!a) return;
+  if (a.classList.contains("scrim") && e.target.closest("[data-stop]")) return;
+  const act = a.dataset.act;
+  if (act === "tick") doTick(a.dataset.card);
+  else if (act === "redo") doRedo(a.dataset.tick);
+  else if (act === "redoall") { unsaved().forEach(t => doRedo(t.id)); }
+  else if (act === "opensheet") { S.sheet = true; render(); }
+  else if (act === "closesheet") { S.sheet = false; render(); }
+  else if (act === "filter") { S.filter = a.dataset.v; markStay(); render(); }
+  else if (act === "tab") { S.tab = a.dataset.v; render(); }
+  else if (act === "pkg") { S.pkg = +a.dataset.v; markStay(); render(); }
+  else if (act === "reload") { S.loadfail = false; ui.s = "live"; render(); }
+  else if (act === "import") { loadScenario("live"); ui.s = "live"; markStay(); render(); }
+});
+window.addEventListener("resize", fit);
+window.addEventListener("hashchange", () => { const before = ui.s; readHash(); if (ui.s !== before) { loadScenario(ui.s); markStay(); } render(); });
+
+readHash(); loadScenario(ui.s); if (ui.s === "done") S.filter = "waiting"; markStay(); render();
+})();
+</script>
+</body>
+</html>
