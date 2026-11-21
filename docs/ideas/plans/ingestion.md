@@ -69,3 +69,85 @@ All seller names and order ids are invented.
 - **Decision:** whether slip photos may be kept as evidence for claims.
 
 Top pick: mail-drop. It covers every order (new, shipped, refunded) after one setup step. It needs no stored login and no scraping. It also feeds tomorrows-envelopes and who-said-what: the shipped dates it records start the silence clock and set which orders each morning preview is matched against.
+
+---
+
+# Phase 2: mail-drop and tomorrows-envelopes, fleshed out
+
+## mail-drop (phase 2)
+
+**How it builds on what exists.**
+- The browser extension being built pulls orders when clicked. Mail drop works on its own, including orders placed on the phone. Both feed the same merge, matched on the marketplace order id; whichever arrives first creates the line, the other fills gaps.
+- Each automatic change is its own recent-checks log entry, with undo.
+- A refund or cancel email proposes the existing "refunded" stamp; it never sets it.
+- Shipping emails give the lost-mail warning a real shipped date instead of the order date.
+
+**Flow**
+1. Settings > Mail drop shows a private forwarding address (invented: `drop-7k2q@example.invalid`), a copy button, and two lines on making a filter rule.
+2. The owner adds the rule in their mail app and taps "Send test". The card changes to "Test received 14:02".
+3. The owner forwards one past confirmation, sees the parsed order, taps "Looks right".
+4. From then on the sync server receives each email, parses it, removes the recipient name and address, stores the line items, and syncs them.
+5. New packages show a small "from email" mark.
+6. An email the server cannot parse becomes "1 email could not be read". Nothing is dropped silently.
+
+**Screen states**
+1. Setup card: the address with copy, "Waiting for test…", then "Test received 14:02 · 1 order · 3 cards".
+2. Packages list: "Seller Gravel Owl · 4 cards · $3.18 · confirmed 11-19 · from email".
+3. Log: "Email: Seller Tin Lantern marked shipped, 11-20 08:41 · Undo".
+4. Attention card: "Refund email: Seller North Pike, 1 card, $0.42. Stamp refunded? [Stamp] [Ignore]", with "1 email could not be read" below.
+
+**Data**
+- Confirmation: order id, seller, items, condition, quantity, price, shipping, tax, date.
+- Shipping: shipped date, carrier, tracking if any.
+- Refund or cancel: amount and lines.
+- Delivery path: an inbound-mail receiver on the sync server's domain. Unknown whether the server can take inbound mail today.
+- Never stored: recipient name and address; the raw email after the keep window.
+
+**Smallest first slice.** Confirmation emails only: create or merge lines by order id, with the "from email" mark and an undoable log entry.
+
+**Owner decisions**
+- Forwarding rule or read-only mailbox access? Recommend: forwarding; no mail login stored.
+- Where does parsing run? Recommend: the sync server, stripping personal fields before storing.
+- Keep raw emails? Recommend: 7 days, then delete.
+- May a refund email set "refunded"? Recommend: no; propose it.
+- Extension and email disagree on a price? Recommend: newer source wins, disagreement shown in the log.
+- The address leaks? Recommend: a rotate button, and accept only the marketplace's sender domains.
+
+## tomorrows-envelopes (phase 2)
+
+**How it builds on what exists.**
+- The lost-mail warning reasons from elapsed time. This adds earlier evidence: "not seen in any preview since shipped".
+- An unmatched envelope that arrives goes to the orphaned pile with its preview image attached. A match is only a suggestion.
+- A matched preview image attaches to that package's photos.
+- It depends on mail-drop: the preview email arrives through the same forwarding address with a second rule.
+
+**Flow**
+1. On the mail-drop card, add a second rule for the postal service's daily preview email.
+2. Each morning the server receives the preview: one image per envelope front.
+3. The server reads return-address text and suggests matches against open shipped orders, by seller, learned return address and a mail-days-only ship window.
+4. The morning view shows what is expected today.
+5. When mail comes, open a matched package, see the envelope image, tick as today.
+6. An unmatched envelope that arrives goes to orphaned in one tap, image attached.
+7. Each mail day with no sighting adds evidence to that order's lost-mail warning.
+
+**Screen states**
+1. Morning card: "Expected today: 5 envelopes · 3 matched · 2 unknown", with thumbnails.
+2. Package detail: "Seller Tin Lantern · 6 cards · seen in preview 11-21", with the envelope image.
+3. Unknown-envelope sheet: the image, text read as "R. Ellery, Fairhaven", then "Possible: Seller Brass Heron (shipped 11-17)? [Yes] [Not sure] [Orphan it when it arrives]".
+4. Warning: "Seller North Pike · shipped 11-06 · 0 sightings in 11 mail days".
+
+**Data**
+- Preview images and text: the forwarded preview.
+- Seller return addresses: learned from confirmed matches.
+- Shipped dates: mail-drop's shipping emails.
+- A mail-day calendar: a built-in table.
+- Known gap: the preview covers machine-scanned letter mail only.
+
+**Smallest first slice.** No text reading. Show today's count and thumbnails; the owner taps one and picks the seller; the tool records the sighting and learns that return address.
+
+**Owner decisions**
+- Keep images of unmatched mail? Recommend: no; delete within 24 hours (the preview includes other household members).
+- What may a match change? Recommend: only "expected today" and "sighted"; never a tick, never an orphan move.
+- Where does text reading run? Recommend: the server, images deleted once matched or after 24 hours.
+- Does "not sighted" move the lost-mail warning? Recommend: evidence line only, until a month of data measures it.
+- How is the preview reached? Recommend: the forwarded email only, never the postal website.

@@ -88,3 +88,47 @@ The same planner sent a second, separate report. Its directions differ enough fr
 **Owner decides.** Whether to keep the image at all. How close a match must be before it is suggested.
 
 Top pick (second pass): Speakable names — it is the foundation that voice, screen reader, search, counter mode and the camera match all reuse, and it makes everyday search faster even for someone who never turns on an assistive feature.
+
+---
+
+# Phase 2: Say It Back, fleshed out (with Speakable names as its base)
+
+The app says each check-in back in a clean, speakable form. Later, the person can also speak a check-in. Both use one name layer per product: the spoken name, a short handle and a plain-letter search form.
+
+**How it fits what exists.**
+- Undo goes through the existing recent-checks log; no second undo strip. "Undo" spoken or tapped reverses the newest entry.
+- Voice can file an envelope into the orphaned pile, but never moves it out to a seller; that takes touch.
+- The lost-mail warning and the per-product cost total are only read aloud ("Last of four. Package complete. Two forty spent"). Their logic does not change.
+- Stamps and photos are out of scope at first.
+- Orders from the browser extension get spoken names by the same rule as CSV imports.
+- The read-back caption sits in a fixed-height slot that is always reserved, so nothing moves under the pointer. No native dialogs. Open question: does the browser's own microphone-permission prompt count under the no-native-dialogs rule? One reason voice input is the second slice.
+
+**Flow**
+1. Mail arrives. The person opens Packages and taps the sender, or types "tid".
+2. They tap an item's row, as today.
+3. The app speaks and captions: "Got it. Aether Bound Wanderer. One of four from Tidepool." A short haptic on the phone. A screen reader hears the same line through a polite announcement.
+4. Last item in the package: "Package complete." A product across sellers: "Three of four arrived across sellers."
+5. Wrong tap: say or tap "Undo". The app says back what it reversed.
+6. With voice on (slice 2), hold the mic button and say "Wanderer" or "XYZ 112". One match: checked and said back. Several: numbered in the caption; say or tap a number. None: "Not found. Keep it, or send to orphaned?"
+7. Done when the package is complete. The recent-checks log holds every act.
+
+**Screen states for a mockup**
+- A Packages row just checked, caption below the list: "Got it. Aether Bound Wanderer, return side. 1 of 4 from Tidepool Cards. Undo".
+- Voice listening on the phone: held mic button in the thumb zone; caption "Listening… say a name or a number like XYZ 112".
+- Several matches: "1 Wanderer, the Unmoored (XYZ 112) · 2 Wanderer's Return (XYZ 113)" with two big number targets.
+- Fold half-folded on the counter: list on the top screen; Got it, Next and Undo on the bottom, last read-back in large type.
+
+**Data**
+- Spoken name: made at import from the product name — strip punctuation, fold "Æ" to "AE", turn "//" into "return side". Per product, shared by Tally and Packages.
+- Handle: set code plus collector number if the export carries them (unknown); otherwise a short unique word.
+- Owner fixes to a spoken name: a per-product override that syncs. Needs a new field, and the saved-state shape is fixed, so this needs an owner ruling.
+- Voice: the speech recognition and synthesis built into each platform. Privacy: some browsers send audio to a server; iPhone can recognise on the device.
+
+**Smallest first slice.** Spoken names plus read-back only: caption, speech on/off, screen-reader announcement and haptic, undo through the existing log. No microphone, no new stored field; names are worked out at load time, so no saved state changes.
+
+**Owner decisions**
+- Speech on by default? Recommend: caption always on, speech off until turned on once per device.
+- Store owner fixes to spoken names? Recommend: yes, in slice 2, after a ruling on the saved-state shape.
+- Voice input on the web? Recommend: iPhone and fold first, on-device speech only.
+- Push-to-talk or open mic? Recommend: push-to-talk; open mic only in counter mode on the fold.
+- Can voice send mail to the orphaned pile? Recommend: yes. Only touch takes it back out.

@@ -43,3 +43,40 @@ All shop names are invented.
 **Owner decides:** Whether this stays a view of the past or later becomes a suggestion at buying time.
 
 Top pick: seller-record-card. It needs only the seller name and the tick date, which the tool likely holds already. The other four directions all read its data.
+
+---
+
+# Phase 2: seller-record-card, fleshed out
+
+**How it fits what exists.** No new tracking. It groups existing data by seller, where the per-product cost total groups it by product. It reads the hand-set stamps for its trouble line, the time of each check from the recent-checks log, and links to package photos. It shows the lost-mail warning's current state for that seller with an "usually N days" line beside it; the warning's own threshold stays as it is. Orphaned mail counts toward no seller. The extension being built may later give a stable seller id.
+
+**Flow**
+1. Tap a seller name on any order or package row. The name is now a link.
+2. On iPhone a sheet opens; on web a side panel; on the folding phone the second screen. The row underneath stays put.
+3. The card shows: orders, cards arrived out of owed, median days to arrive with range, money spent, stamps grouped by kind.
+4. If an order is still out: "day 9, usually 6", with the lost-mail warning's state.
+5. Tapping any count ("1 refunded", "2 cards out") filters the list to those packages.
+6. Close the card and return to the same scroll position.
+7. Over time, stamps set at mail time show up on the card. The first slice adds no other input.
+
+**Screen states for a mockup**
+- A package row with the seller as a link: "Gravel Pit Games · 3 cards · ordered 2026-10-02 · 2 of 3 in".
+- A card with history: "Gravel Pit Games: 4 orders · 31 of 31 cards · median 6 days (4–9) · $18.40 · stamps: 1 claim filed, 1 refunded".
+- A thin card with an open order: "Lantern Row Cards: 1 order · 2 of 3 cards · day 14 · too few orders to judge speed · lost-mail warning on".
+- Folding phone open: seller list on the left sorted by "late now" (Lantern Row 14 d, Copper Kettle 9 d), chosen card on the right.
+
+**Data**
+- Seller name, order date, items and cost: the imported CSV.
+- Arrival date per card: the time of the latest check not undone. Unknown whether every check keeps a durable time; read the code first.
+- Stamps, photos, lost-warning state: existing package data. Nothing new stored.
+- Seller identity: exact name match for now; a stable extension seller id later.
+
+**Smallest first slice.** A read-only card opened from a seller name: orders, cards arrived out of owed, median days, cards still out, stamps by kind, each count filtering the list. Web and iPhone. No new stamps, no lists, no alarm change.
+
+**Owner decisions**
+- Problem kinds (wrong printing, wrong condition, poor packing, short count): new stamps or separate tags? Recommend: new stamps.
+- Verdict word ("reliable") or only counts? Recommend: counts only, with "too few orders" under 3 orders.
+- Should the lost-mail warning use each seller's usual speed? Recommend: not in this slice; show "usually N days" only.
+- Merge renamed shops by hand? Recommend: not yet; wait for the extension's seller id.
+- Count matched orphaned mail for a seller? Recommend: yes, only after the match.
+- Spend gross or net of refunds? Recommend: gross, with "refunded" as a stamp count.

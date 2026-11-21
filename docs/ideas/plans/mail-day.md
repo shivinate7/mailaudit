@@ -40,3 +40,43 @@ All seller names are invented.
 **Owner decides:** how long photos are kept. The overdue threshold (one global number or per seller). Whether the app drafts claim text.
 
 Top pick: card-speaks-for-itself. It is the only direction that works when the slip and the return address are both missing, which is the hard case in the brief. It also makes outside-in optional and feeds the problem tray for free. Ship its type-ahead fallback first, so a weak camera read never slows the table.
+
+---
+
+# Phase 2: card-speaks-for-itself, fleshed out
+
+**What it builds on and where it differs.** A new way to enter check-ins. It writes the same check-ins as today and does not replace the package list. Its ticks feed the existing lost-mail warning and the per-product cost total, unchanged. Each tick lands in the recent-checks log, and that log's undo is what makes an auto-tick safe. A card that matches no open order goes to the existing orphaned pile, and a scan only proposes a match there (invariant `orphaned-mail-never-decides`, orphaned mail never decides). A wrong or damaged card opens the existing photo and stamp tools. The browser extension being built could supply set and collector number where the CSV lacks them; whether the CSV carries those is unknown.
+
+**Flow**
+1. On mail day, tap "Scan cards". The camera opens on iPhone or on one half of the folding phone. Web opens a type-ahead box instead.
+2. Prop the phone. Open the first envelope and slide a card under the camera.
+3. The app reads the name line, plus set and number where legible, and searches only open lines.
+4. One match: that order becomes "this envelope"; the app shows the expected cards and ticks the first with a click. Two or more: it asks once "which envelope?" with big buttons. None: it buzzes and offers "orphaned" or "extra card".
+5. Further cards from that envelope match the pinned order first and auto-tick.
+6. When every expected card is in, a short chord plays and a large "Next envelope" button appears. "Missing one" leaves the line open, so the lost-mail warning keeps counting it.
+7. A wrong or damaged card: tap "Problem". One photo, attached to the package, then the stamp picker.
+8. Done: a summary shows envelopes closed, cards ticked, cost received, lines still open.
+
+**Screen states for a mockup**
+- Live scan, nothing pinned: camera strip on top; "No envelope yet · 214 cards outstanding in 38 orders"; type-ahead fallback at the bottom.
+- Envelope pinned: "Seller Kestrel-7 · shipped 9 days ago · 1 of 3", Moss Golem ticked, Ember Wisp and Tidepool Lantern still expected, each with its price.
+- Ambiguous read: "Ember Wisp is in 2 open orders", two half-screen buttons, "Seller Kestrel-7" and "Seller Brindle Barn".
+- Envelope done or no match: "3 of 3 received · $1.85" with "Next envelope"; or "Glass Heron is in no open order" with "Orphaned" and "Extra card".
+
+**Data**
+- Each open line's card name, quantity and price: the CSV import.
+- Set code, collector number and printing: unknown in the CSV; the extension may supply them. Without them, matching is by name only.
+- Ship date for ranking ambiguous matches: the CSV.
+- Text read from the card: on-device text recognition on iPhone and the folding phone. Web camera is unmeasured, so web gets type-ahead only.
+- The pinned envelope: local, this session only. Nothing new syncs beyond the ticks.
+
+**Smallest first slice.** Card-first type-ahead on every platform, no camera. Type a few letters, see matches across all open lines. A tick pins the envelope, the next search checks the pinned order first, and the chord sounds when it completes. Camera reading on iPhone is the second slice and uses the same matcher.
+
+**Owner decisions**
+- Auto-tick or confirm each card? Recommend: confirm the first card of each envelope, then auto-tick exact matches inside the pinned order. Undo covers mistakes.
+- Match on name only, or name, set and number? Recommend: name first, set and number as tie-breakers.
+- May a scan assign an orphaned package? Recommend: no. Suggest only; the owner taps.
+- Keep camera frames? Recommend: no, except when "Problem" is pressed.
+- Camera on web? Recommend: not at first.
+- Folding-phone layout? Recommend: camera on one half, expected list on the other, propped like a tent.
+- Sound on by default? Recommend: yes, with a remembered mute.

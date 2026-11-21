@@ -35,3 +35,47 @@ Lens: none. The planner was told to avoid money, sellers, loss claims, speed of 
 **Practicality.** The seam is cheap; beyond that, speculative.
 
 Top pick: mail-weather. It uses only the buyer's own history and answers a question the tool cannot answer today: when to stop ordering before a trip or the holiday crunch.
+
+---
+
+# Phase 2: mailbox-deputy, fleshed out
+
+**How it relates to what exists.**
+- Device key: the deputy never gets it. The sync server issues a separate deputy pass that allows one act only — report a count. It expires and the buyer can revoke it.
+- Lost-mail warning: the deputy count never changes it.
+- Orphaned pile holds opened mail with no known sender; the tray holds unopened mail someone else brought in. Like the orphaned pile, the tray decides nothing.
+- Recent-checks log: each deputy report is one entry, with undo.
+- Platforms: the deputy page is plain web on any phone, no install.
+
+**Flow**
+1. In settings, the buyer taps "Add a deputy" and types a label, such as "Sam".
+2. The server makes a deputy pass. The buyer's device shows a QR code, a share link and "Print fridge sheet".
+3. The QR code goes on the fridge, or the link is sent.
+4. Sam brings in the mail, scans the code, and sees the expected count for the week — no card names, prices or sellers.
+5. Sam sets a stepper to the number of envelopes, adds an optional note ("one padded mailer"), and taps Done.
+6. Sam sees a confirmation with Undo for 10 minutes.
+7. The buyer's devices show a tray banner: count, who, when.
+8. Each check-in lowers the tray count; the banner clears at zero.
+9. The pass expires or is revoked: "This link is no longer active."
+
+**Screen states for a mockup**
+1. Buyer settings: "Deputy: Sam, active until 6 Dec", QR code, Print fridge sheet, Revoke.
+2. Deputy page: "Expected this week: about 5 to 7 small envelopes", stepper at 4, note field, large Done.
+3. Deputy confirmation: "Logged 4 envelopes, Thu 18:10. Thanks, Sam." with Undo (9 min left).
+4. Buyer home: banner "Tray: 4 envelopes from Sam, Thu 18:10, 1 checked in", the usual package list below.
+
+**Data**
+- Deputy pass: id, label, expiry, revoked flag. A credential, kept apart from the device key.
+- Tray report: time, count, note, pass id. Stored beside the check-in records, not inside them, so the saved-state shape keeps its form.
+- Expected-count range: the buyer's device computes it and posts only the rounded range. The server never needs the item list.
+- Tray decrement: computed locally from check-ins after the report.
+
+**Smallest first slice.** One deputy pass, fixed 30-day expiry and Revoke. Deputy page has the stepper and Done only. The buyer sees the tray banner; each report is one undoable log entry.
+
+**Owner decisions**
+1. Should the deputy see the expected count? Recommend: yes, as a rounded range, in slice 2.
+2. May a deputy report change a package's state or the lost-mail warning? Recommend: never.
+3. Pass life and count? Recommend: 30 days, revocable, one per named person.
+4. May the deputy add a photo of the stack? Recommend: not now; mail shows names and addresses.
+5. Deputy reports in the recent-checks log with undo? Recommend: yes.
+6. Paper fridge sheet before the link? Recommend: no; the link is the product.

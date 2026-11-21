@@ -43,3 +43,77 @@ All card names are invented.
 **Owner decisions.** Image only, or also a private link? May prices ever appear, even by opt-in? Does sharing belong on the web, the phone, or both?
 
 Top pick: the-reveal — it adds joy at the one moment the person is already in the app, needs no new data or social surface, and if the bulk path and the no-shift rule hold, it makes the daily check-in itself something to look forward to.
+
+---
+
+# Phase 2: mail-forecast and the-reveal, fleshed out
+
+## mail-forecast (phase 2)
+
+**Builds on / differs.** It reads the existing lost-mail warning's late threshold and adds no second lost-mail rule. The "running late" shelf is the warning, worded softly. A package stamped "claim filed" or "refunded" leaves the forecast. Orphaned mail never matches an expected envelope, but the orphaned count can appear under "today". The browser extension can later supply fresher ship dates; the forecast works without it.
+
+**Flow**
+1. Open the app any morning. A seven-day strip sits above the working list in a fixed-height band, so it never pushes rows.
+2. Each day shows an envelope count and a range: solid for likely days, faded for the spread.
+3. Tap a day to see its expected packages: seller placeholder, card count, cost.
+4. Check mail in as today. The day's count drops in place.
+5. A package past its range moves to the "running late" shelf. Past the lost threshold it carries the existing warning.
+6. Done: today reads "All in", or "2 still out, due by Sat".
+
+**Screen states**
+- Week strip: Mon 0, Tue 1–2, **Wed 3**, Thu 2–4 (faded), Fri 1, Sat 0, Sun 0. Below: "14 cards on the way, $38.20".
+- Day opened (Wed): Seller A, 6 cards, "Lantern Wyrm ×1, Tidecaller Apprentice ×4…"; Seller B, 2 cards; Seller C, 1 card.
+- Late shelf: "Seller D, 3 cards, expected Nov 3–7, 9 days late", one row with the lost warning, stamped "claim filed".
+- Too little history: "Forecast starts after 20 deliveries (12 so far)".
+- Two-screen fold: strip and late shelf on the left, the opened day on the right.
+
+**Data**
+- Order date and, if present, ship date: the imported order files. Unknown whether the export carries ship dates.
+- Received date per package: the recent-checks log or check-in times.
+- Transit spread, global first: computed from past order-to-received gaps, recomputed on read, nothing stored.
+- Late and lost: the existing warning threshold.
+
+**Smallest first slice.** Web only. A read-only "Due this week" list grouped by day, ranges from the 25th to 75th percentile of all past transit times, no per-seller model, no shelf. Shows once about 20 deliveries exist.
+
+**Owner decisions**
+- Range or single date? Recommend: range.
+- Per-seller or global model? Recommend: global first; per-seller once a seller has 5 or more deliveries.
+- Push notifications? Recommend: never.
+- Band above the list or its own view? Recommend: fixed-height band, collapsible, remembered per device.
+- A soft "running late" step before the lost warning? Recommend: yes, shown only on the shelf.
+
+## the-reveal (phase 2)
+
+**Builds on / differs.** A check-in stays one tap; the reveal only changes how the tick looks. The card flips in place inside a fixed box, so the no-layout-shift rule holds. "Today's pulls" is a filtered view of the recent-checks log, and its undo is that log's undo. The optional pull photo is the existing package photo. "Found its way home" appears once when a package with a lost warning or a "claim filed" stamp is checked in; it is derived, not a new stamp. Orphaned arrivals reveal too, with no seller.
+
+**Flow**
+1. Mail arrives. Tap a card row.
+2. The row's face flips once (about 250 ms) to "received", with a soft haptic. Sound off by default. Reduce-motion swaps the flip for a fade.
+3. Multi-select or "all in this package" ticks without motion, one haptic at the end.
+4. After the last tick, or on "Today", the pulls tray opens: today's received cards in a grid.
+5. Optional: "Add photo of the pull" attaches the package photo.
+6. A package that was flagged lost shows a one-time "Found its way home" postmark.
+7. Undo from the tray reverses through the recent-checks log; the card flips back.
+
+**Screen states**
+- Mid-flip: "Tidecaller Apprentice ×4, Seller A" half-turned, neighbours unmoved.
+- Pulls tray: "Today, 9 cards from 3 envelopes". Grid: Lantern Wyrm (foil), Tidecaller Apprentice ×4, Ashgrove Sentry ×2, Mirelight Totem, Quiet Harbor. "$11.40" folded shut.
+- Found: one tile stamped "Found its way home, 23 days".
+- Two-screen fold: the list ticking on the left, the tray filling live on the right.
+
+**Data**
+- Received events and times: the recent-checks log.
+- Card name, quantity, foil, cost: the order rows.
+- Photo: the existing package photo.
+- Lost or claimed before arrival: warning state and stamps, read at tick time.
+- Card artwork: no known source.
+- Sound and motion settings: per device, not synced.
+
+**Smallest first slice.** The in-place flip with reduce-motion support, plus a "Today" tray built from the recent-checks log, with undo. No sound, photos, art or found stamp. Web and iPhone together.
+
+**Owner decisions**
+- Sound on by default? Recommend: off.
+- Card art? Recommend: a text face (name, set, foil sheen) first.
+- Reveal on bulk ticks? Recommend: no motion, one haptic, full reveal in the tray.
+- Does "Found its way home" persist? Recommend: derived and shown once; it never clears the claim stamp.
+- Tray shows the day's spend? Recommend: folded shut, opened on purpose.

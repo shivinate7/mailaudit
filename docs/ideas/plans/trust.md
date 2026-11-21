@@ -43,3 +43,43 @@ All order ids below are invented.
 - **Owner decisions:** How often the check runs, or whether it runs only on demand. Which copy is the reference when all three differ. Whether to warn or to repair automatically.
 
 Top pick: tick-journal. The other four read from it. An import undo reverses journal entries, a disagreement is two journal entries that clash, a recovery replays the journal, and an audit compares journals. It also answers "why does it say this" directly, and that answer is what makes the owner believe the list over their memory.
+
+---
+
+# Phase 2: import-receipt, fleshed out
+
+**How it relates to what exists.** Every import still only merges (invariant `imports-merge-never-replace`). The receipt adds a step before the merge commits: it shows what the merge will do. Undo reuses the recent-checks log; a whole import becomes one entry there. The receipt is an in-app sheet, never a native dialog. File and extension imports go through the same receipt, each labelled with its source. The tick journal idea partly exists already as the recent-checks log.
+
+**Flow**
+1. Pick a CSV, or the extension delivers orders. An extension import adds nothing yet; it shows a badge: "3 new orders ready to add".
+2. The app compares every incoming line with what is held and opens the receipt sheet. Nothing is written yet.
+3. Four counts: New, Already here, Looks doubled, Differs. Each opens into its lines.
+4. If needed, flip "Add anyway" on a doubled line, for a genuine second copy.
+5. Tap "Add 112". The merge commits; the recent-checks log gets one entry, "Import Nov 18, 112 cards".
+6. A banner offers "Undo import". Undo removes only cards this import added that nobody has touched since; ticked, photographed or stamped cards stay and are listed.
+7. A clean import (all new, nothing doubled or different) skips the sheet: "Added 112, nothing doubled. Undo".
+
+**Screen states for a mockup**
+- Receipt sheet: "From orders-nov.csv · 41 orders · 128 lines". New 112, Already here 12, Looks doubled 4, Differs 0. "Add 112" and "Cancel".
+- Doubled list open: "A-48213 · Riverbend Cards · Storm Wyvern (NM) · $0.25 — already here from the Nov 3 import, line 2", with "Add anyway".
+- Done with undo: "Added 112 cards from 41 orders · Undo import", the new log entry on top.
+- Undo with touched cards: "Undo removes 104 cards. 8 stay because you ticked or photographed them since: Moss Golem, Tide Oracle, +6".
+- Two-screen phone: counts on the left, the open list on the right.
+
+**Data**
+- A fingerprint per line: order number, seller, product, condition, unit price, quantity — from the import rows.
+- Fingerprints of cards held: worked out from saved data; nothing new stored.
+- An import tag on each added card (import id, source, time): new data. If the saved-state shape cannot gain a field, a separate import ledger keyed by fingerprint can hold it. Status: unknown; check against invariant `saved-state-shape` first.
+- "Touched since import": the recent-checks log plus any photo or stamp.
+- The import tag must sync, so undo on the phone matches the web.
+
+**Smallest first slice.** CSV only. The receipt sheet with New and Already here counts before anything commits, plus Cancel. No undo, no Differs, no extension source yet.
+
+**Owner decisions**
+- What counts as a double? Recommend: same order number, product, condition and price as a line already held; only quantity above what is held counts as new.
+- Should extension imports add themselves? Recommend: no; they wait behind the badge.
+- Undo and cards touched since? Recommend: keep them and name them.
+- How long is undo offered? Recommend: until the next import, or 7 days.
+- An incoming line differs from what is held? Recommend: keep existing data, show it under Differs, overwrite nothing.
+- A clean import skips the sheet? Recommend: yes.
+- Where does import undo live? Recommend: the recent-checks log.
