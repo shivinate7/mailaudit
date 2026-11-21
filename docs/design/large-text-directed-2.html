@@ -26,7 +26,7 @@ body { margin:0; background:var(--paper); color:var(--ink); font-family:var(--sy
 main { max-width:1040px; margin:0 auto; padding:var(--space-4); display:flex; flex-direction:column; gap:var(--space-4); }
 .banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:var(--space-2) var(--space-3); font-weight:600; }
 header.page { display:flex; flex-direction:column; gap:var(--space-1); }
-header.page h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; margin:0; }
+header.page h1 { font-family:var(--system); font-weight:700; font-size:28px; line-height:1.15; margin:0; }
 .kind { font-size:14px; color:var(--inkSoft); margin:0; max-width:70ch; }
 .kind b { color:var(--ink); }
 .controls { display:flex; flex-direction:column; gap:var(--space-2); border-top:1px solid var(--line); border-bottom:1px solid var(--line); padding:var(--space-3) 0; }
@@ -38,12 +38,12 @@ header.page h1 { font-family:var(--cochin); font-size:28px; line-height:1.15; ma
 .ctl button:focus-visible, .ctl a:focus-visible, .dev button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
 section.concept { display:flex; flex-direction:column; gap:var(--space-3); }
 section.concept[hidden], figure[hidden] { display:none; }
-section.concept > h2 { font-family:var(--cochin); font-size:24px; margin:var(--space-4) 0 0; }
+section.concept > h2 { font-family:var(--system); font-size:22px; margin:var(--space-4) 0 0; }
 section.concept > p { margin:0; max-width:72ch; }
 .row { display:flex; flex-wrap:wrap; gap:var(--space-6); align-items:flex-start; }
 figure { margin:0; display:flex; flex-direction:column; gap:var(--space-2); max-width:100%; }
 figcaption { font-size:14px; max-width:60ch; }
-figcaption b { font-family:var(--cochin); font-size:17px; }
+figcaption b { font-size:15px; }
 .proof { font:12px/1.4 var(--mono); color:var(--inkSoft); max-width:466px; }
 figcaption { max-width:466px; }
 .proof.bad { color:var(--red); font-weight:700; }
@@ -190,7 +190,7 @@ figcaption { max-width:466px; }
 .strip { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(466px, 100%), 1fr)); gap:var(--space-4); }
 .pair { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:var(--space-3); display:flex; flex-direction:column; gap:var(--space-3);
   width:min(466px, 100%); }
-.pair h3 { font:700 17px/1.2 var(--cochin); margin:0; }
+.pair h3 { font:700 15px/1.2 var(--system); margin:0; }
 .cell { position:relative; border:1px solid var(--line); border-radius:8px; background:var(--paper); padding:var(--space-3); font-family:var(--cochin); }
 .ax5 { --a-body:53px; --a-lab:37.6px; --a-ct:47.7px; }
 </style>
