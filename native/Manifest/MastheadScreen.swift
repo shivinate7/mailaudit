@@ -14,7 +14,7 @@ struct MastheadScreen<Content: View>: View {
     var openSync: () -> Void = {}
     /// A ruled row of the tab's own between the running-head slot and the advisory line (Packages' stamped cell).
     var ruledRow: AnyView?
-    /// A drag on the scroll hides the keys. Off by default: only the Orphaned tab, whose composer's keys cover the tab bar, asks for it.
+    /// A drag on the scroll hides the keys at once (`.immediately`: `.interactively` waits for the finger to reach the keys). Off by default: only the Orphaned tab, whose composer's keys cover the tab bar, asks for it.
     var dismissesKeyboard = false
     @ViewBuilder let content: Content
 
@@ -41,7 +41,7 @@ struct MastheadScreen<Content: View>: View {
                 content
             }
         }
-        .scrollDismissesKeyboard(dismissesKeyboard ? .interactively : .automatic)
+        .scrollDismissesKeyboard(dismissesKeyboard ? .immediately : .automatic)
         // A tab's content asks for a view by id (a focused field, its Save) to be kept above the keyboard.
         .environment(\.scrollTo, { id in withAnimation(reduceMotion ? nil : .easeInOut(duration: 0.2)) { proxy.scrollTo(id, anchor: .bottom) } })
         // Pinned once the slot's top has passed the scroll view's top edge. A short tab never scrolls that far.
