@@ -16,7 +16,7 @@ UI_TEST ?= sim-test
 # The pro-ui workflow splits that second share in three: UI_TESTS_B1 (ui-b1), UI_TESTS_B2 (ui-b2, the Stamp class alone,
 # the slowest) and every other class (ui-b3). ui-b stays whole for the milestone workflow.
 # test/ci-wiring.test.mjs proves each class is in exactly one of A, B1, B2, the rest and Duo.
-DUO_UI_TESTS := DuoHandUITests DuoSpreadUITests DuoShellUITests
+DUO_UI_TESTS := DuoHandUITests DuoSpreadUITests DuoShellUITests FindPillDuoUITests
 UI_TESTS_A := AuditSkippingTabBarUITests LedgerSyncUITests MastheadBackupUITests MastheadPaintUITests OrphanedUITests
 UI_TESTS_B1 := PackageBulkUITests PackageCardUITests PackagesShellUITests
 UI_TESTS_B2 := PackageStampUITests

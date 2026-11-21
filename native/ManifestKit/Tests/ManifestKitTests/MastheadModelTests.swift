@@ -286,6 +286,9 @@ final class MastheadModelTests: XCTestCase {
     /// Urza's Saga is checked in so Hide received has a row to drop, and the search then keeps one of eight.
     func testTheTallyLineIgnoresSearchAndHideReceived() async throws {
         let open = try await openAll(envelopes: [])
+        // The subject is the change to Hide received, so the Tally starts on Everything and the switch to Unreceived is the
+        // one under test. Starting on Unreceived would leave the just-checked Saga copy sticky (ruled-head-showing-unreceived).
+        try await open.tally.setHideReceived(false)
         try await open.tally.checkIn(key: OrphanedSandbox.d1Saga, count: 1)
         try await open.tally.setHideReceived(true)
         XCTAssertEqual(open.tally.rows.count, 7, "anchor: Hide received dropped the finished Saga row")

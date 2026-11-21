@@ -32,7 +32,7 @@ struct BulkRow: View {
     @Environment(\.dynamicTypeSize) private var typeSize
 
     /// A non-breaking hyphen, so the label breaks as "Clear / check-ins", never "check- / ins".
-    private static let clearTitle = "Clear check\u{2011}ins"
+    private static let clearTitle = "Clear Check\u{2011}ins"
 
     private func id(_ part: String) -> String { "\(prefix)-\(part):\(key)" }
     private func cards(_ n: Int) -> String { "\(n) card\(n == 1 ? "" : "s")" }
@@ -61,20 +61,20 @@ struct BulkRow: View {
         .onChange(of: copiesIn) { _, n in if n == 0 { armed = false } }  // nothing left to clear, so nothing to ask about
     }
 
-    /// Mark all, or its Undo in the same frame. The slot is as wide as "Mark all received".
+    /// Mark all, or its Undo in the same frame. The slot is as wide as "Mark All Received".
     private var markSlot: some View {
-        MiniLabel(title: "Mark all received").hidden().accessibilityHidden(true)
+        MiniLabel(title: "Mark All Received").hidden().accessibilityHidden(true)
             .overlay {
                 if undoOffered {
-                    Button { Task { await undo() } } label: { MiniLabel(title: "Undo mark all", bold: true, wide: true) }
+                    Button { Task { await undo() } } label: { MiniLabel(title: "Undo Mark All", bold: true, wide: true) }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Undo mark all")
+                        .accessibilityLabel("Undo Mark All")
                         .accessibilityHint("Takes back the \(checkIns(undoCount)) it added")
                         .accessibilityIdentifier(id("undo"))
                 } else if canMark {
-                    Button { Task { await mark() } } label: { MiniLabel(title: "Mark all received", wide: true) }
+                    Button { Task { await mark() } } label: { MiniLabel(title: "Mark All Received", wide: true) }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Mark all received")
+                        .accessibilityLabel("Mark All Received")
                         .accessibilityHint("Checks in all \(cards(totalCopies)) \(scope)")
                         .accessibilityIdentifier(id("mark"))
                 }
@@ -87,7 +87,7 @@ struct BulkRow: View {
                 if copiesIn > 0 {
                     Button { armed.toggle() } label: { MiniLabel(title: Self.clearTitle, wide: true) }
                         .buttonStyle(.plain)
-                        .accessibilityLabel("Clear check-ins")
+                        .accessibilityLabel("Clear Check-ins")
                         .accessibilityHint("Asks first. Clears \(checkIns(copiesIn)) \(scope)")
                         .accessibilityValue("\(copiesIn) of \(totalCopies) copies in")  // the progress bar's fact: the bar is hidden from the audit
                         .accessibilityIdentifier(id("clear"))

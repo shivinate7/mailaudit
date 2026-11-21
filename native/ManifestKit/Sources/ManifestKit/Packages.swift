@@ -11,6 +11,21 @@ public struct LedgerItem: Codable, Equatable, Sendable {
 public struct Package: Decodable, Equatable, Sendable {
     public let gk, orderId, seller, date, tracking: String
     public let items: [LedgerItem]
+    /// The lines Find and Showing took out of this card, from the bundle's filterPackages. 0 on a package that was not filtered.
+    public let hiddenByFilters: Int
+
+    private enum CodingKeys: String, CodingKey { case gk, orderId, seller, date, tracking, items, hiddenByFilters }
+
+    public init(from decoder: Decoder) throws {
+        let c = try decoder.container(keyedBy: CodingKeys.self)
+        gk = try c.decode(String.self, forKey: .gk)
+        orderId = try c.decode(String.self, forKey: .orderId)
+        seller = try c.decode(String.self, forKey: .seller)
+        date = try c.decode(String.self, forKey: .date)
+        tracking = try c.decode(String.self, forKey: .tracking)
+        items = try c.decode([LedgerItem].self, forKey: .items)
+        hiddenByFilters = try c.decodeIfPresent(Int.self, forKey: .hiddenByFilters) ?? 0
+    }
 }
 
 /// Rows for the Packages view: the rules engine over the ledger store
@@ -19,7 +34,25 @@ public struct Package: Decodable, Equatable, Sendable {
 public final class PackagesModel {
     @ObservationIgnored private let engine: RulesEngine
     @ObservationIgnored private let store: LedgerStore
+    /// Find, Showing, Orders from and the sorts, shared with the Tally and the Ledger tab's View group.
+    public let options: ViewOptions
+    /// The packages the list is built from, as JSON: the range-kept live packages, or the stamped ones under the stamped filter.
+    @ObservationIgnored private var source = "[]"
+    /// The same packages, whole, for finding the package a line belongs to after the filters have dropped it.
+    @ObservationIgnored private var sourceRows: [Package] = []
+    /// Group key to place, set by the last sort and kept while the user checks in (no-layout-shift-under-pointer).
+    @ObservationIgnored private var order: [String: Int] = [:]
+    /// What `order` was placed from: the source JSON and the sort. A load that finds both unchanged keeps `order`.
+    @ObservationIgnored private var orderKey: (source: String, sort: PackageSort)?
+    /// Lines checked in under this filter context; filterPackages keeps them shown.
+    @ObservationIgnored private var sticky: Set<String> = []
+    /// Counts each refilter(). A load that finds it moved after its last await filters again, so the rows follow the Find, Showing or
+    /// reveal change made while it was in flight, as TallyModel's epoch does.
+    @ObservationIgnored private var filterEpoch = 0
+    /// The packages the list shows: the source, narrowed by Find and Showing, in the frozen order.
     public private(set) var rows: [Package] = []
+    /// Whether the ledger holds any item at all, for the Find pill (drawn only with items).
+    public private(set) var hasItems = false
     /// Every live package, whatever the stamped filter: the groupPackages of LiveItems.of, so canceled and refunded
     /// packages are out. Card in Hand reads it, not `rows` (stamped-filter-on-the-pipeline).
     public private(set) var liveRows: [Package] = []
@@ -65,24 +98,84 @@ public final class PackagesModel {
     private var bulkUndoHeld = 0
     /// The check-ins the held Undo would take back now: the one source of the Undo hint's count. 0 when none is held.
     public var bulkUndoCount: Int { bulkUndoGk == nil ? 0 : bulkUndoHeld }
+
+    /// The held Mark all Undo of a card that is no longer in the list (Showing: Unreceived drops a package its Mark all completes), so the
+    /// Undo's own slot went with it. `index` is the place in `rows` the card held, where the shared Undo notice takes over
+    /// (undo-removes-only-its-delta: "the undo notice shows at that vacated slot"). nil while the card is still listed.
+    public struct VacatedUndo: Equatable, Sendable {
+        public let gk, seller: String
+        public let count, index: Int
+        public var line: String { BulkNotice.line(count: count, seller: seller) }
+    }
+    public var vacatedUndo: VacatedUndo? {
+        guard let gk = bulkUndoGk, let pkg = package(gk: gk) else { return nil }
+        return vacated(gk: gk, seller: pkg.seller, count: bulkUndoCount)
+    }
+    /// The notices whose Undo another write ended while the card was off the list. Each keeps its slot, drawn inert, so nothing
+    /// below it moves under the pointer (no-layout-shift-under-pointer). A tab change, a restore or a Reset drops them all; a
+    /// dismiss (dismissVacated) drops its own. An Undo on the held card
+    /// (undoBulk) keeps the others.
+    public var lapsedUndos: [VacatedUndo] { lapsed.compactMap { vacated(gk: $0.gk, seller: $0.seller, count: $0.count) } }
+    private var lapsed: [(gk: String, seller: String, count: Int)] = []
+
+    private func vacated(gk: String, seller: String, count: Int) -> VacatedUndo? {
+        guard !rows.contains(where: { $0.gk == gk }) else { return nil }
+        let place = order[gk] ?? .max
+        return VacatedUndo(gk: gk, seller: seller, count: count, index: rows.filter { (order[$0.gk] ?? .max) < place }.count)
+    }
+
+    /// Ends the held Undo because some other write has run. A held Undo whose card is off the list leaves its notice behind, inert.
+    private func lapseBulkUndo() {
+        if let v = vacatedUndo {
+            lapsed.removeAll { $0.gk == v.gk }
+            lapsed.append((v.gk, v.seller, v.count))
+        }
+        dropHeld()  // the takes and the held count go too, so a later Mark all never counts a lapsed Undo's stale takes
+    }
+
+    /// Drops the held Undo: its card, its takes and its held count. lapseBulkUndo, undoBulk, endBulkUndo and dismissVacated call it.
+    private func dropHeld() {
+        bulkUndoGk = nil
+        bulkUndoTakes = []
+        bulkUndoHeld = 0
+    }
     /// The store's postsSaved when checkInError was last set: only a Post after that is a good write that outdates the failure line.
     @ObservationIgnored private var errorPosts = 0
+    /// The line a failed stamped toggle left. Its next good read clears that line and no other (debt stamped-toggle-clears-error).
+    @ObservationIgnored private var toggleError: String?
 
-    public init(engine: RulesEngine, store: LedgerStore) {
+    public init(engine: RulesEngine, store: LedgerStore, options: ViewOptions = ViewOptions()) {
         self.engine = engine
         self.store = store
+        self.options = options
+        options.engine = engine
     }
+
+    public var query: String { options.query }
+    /// Showing: true is Unreceived (src/app.jsx `hideDone`). The Tally calls the same choice hideReceived.
+    public var hideReceived: Bool { options.hideDone }
+    public var sort: PackageSort { options.sortBy }
+    /// The packages that draw their whole order, whatever Find and Showing say.
+    public var revealed: Set<String> { options.revealed }
 
     private func json(_ value: Any) throws -> String {
         String(decoding: try JSONSerialization.data(withJSONObject: value, options: [.fragmentsAllowed]), as: UTF8.self)
     }
 
-    /// groupPackages, then sortPackages "newest" (the web default, src/app.jsx). With the stamped filter on, the list is the
-    /// bundle's stampedPackagesOf on the canceled-free items, refunded packages included (stamped-filter-on-the-pipeline).
+    /// The list the web draws (src/app.jsx): the live items kept by the range (the store's saved Orders from, against the store's
+    /// clock), grouped, ordered by the saved Sorted by, then narrowed by Find and Showing. With the stamped filter on, the source is
+    /// the bundle's stampedPackagesOf on the range-kept, canceled-free items, refunded packages included
+    /// (stamped-filter-on-the-pipeline). `liveRows` stays the whole live set, range and all, for Card in Hand.
     /// Every value is built first, then rows and every map are set in one step after the last await, as
     /// MastheadModel.refresh does, so the view never draws a row without its maps. A failed call leaves its entry
     /// empty and is thrown after.
     public func load() async throws {
+        options.read(store)
+        try await build()
+    }
+
+    /// load() without the read of the saved choices, for a choice just made in memory (setSort).
+    private func build() async throws {
         let got = store.received()
         let held = store.stamps()
         // The recount runs only while an Undo is held. A failed call must not stop the list, so it counts 0.
@@ -92,26 +185,59 @@ public final class PackagesModel {
         if heldGk != nil { undoHeld = (try? await BulkRules.takenBack(takes, received: got, engine: engine)) ?? 0 }
         let live = try await LiveItems.of(store.items(), stamps: held, engine: engine)
         let active = try await engine.call("dropCanceled", "[\(try json(store.items()))]")
+        let range = try await ViewRange.range(options.dateFilter, store: store, engine: engine)
+        let rangedActive = try await ViewRange.apply(active, range: range, engine: engine)
+        let rangedLive = try await ViewRange.apply(live, range: range, engine: engine)
         let stampedGks = try await StampRules.keys(where: "hasStamp", in: held, engine: engine)
-        let stampedRaw = try await engine.call("stampedPackagesOf", "[\(active),\(try json(["$set": Array(stampedGks)]))]")
+        let stampedRaw = try await engine.call("stampedPackagesOf", "[\(rangedActive),\(try json(["$set": Array(stampedGks)]))]")
         let stamped = try JSONDecoder().decode([Package].self, from: Data(stampedRaw.utf8))
         let on = showStamped && !stamped.isEmpty
         let liveGrouped = try await engine.call("groupPackages", "[\(live)]")
         let newLive = try JSONDecoder().decode([Package].self, from: Data(liveGrouped.utf8))
-        let grouped = on ? stampedRaw : liveGrouped
-        let sorted = try await engine.call("sortPackages", "[\(grouped),\"newest\",\(try json(got))]")
-        let newRows = try JSONDecoder().decode([Package].self, from: Data(sorted.utf8))
+        let rangedGrouped = try await engine.call("groupPackages", "[\(rangedLive)]")
+        let newSource = on ? stampedRaw : rangedGrouped
+        // The order is placed again only when the sort or the packages it ranks changed. A reload for a check-in, a stamp write or a
+        // Worker apply of counts keeps it, as the web's packageOrder does (it reads the counts through receivedRef), so no card
+        // moves under the pointer under a value sort (no-layout-shift-under-pointer).
+        let newOrder: [String: Int]
+        if let from = orderKey, from.source == newSource, from.sort == options.sortBy {
+            newOrder = order
+        } else {
+            newOrder = try await Self.placed(newSource, by: options.sortBy, received: got, engine: engine)
+        }
+        var seen = filterEpoch
+        var newRows = try await filtered(newSource, order: newOrder, received: got, stamps: held)
         let refunds = try await StampRules.keys(where: "isRefundStamp", in: held, engine: engine)
         let kinds = try await StampRules.kinds(engine: engine)
-        // The maps cover the live lines the filter hides too, and the refunded packages the stamped list adds.
+        // The maps cover the live lines the range and the filters hide too, and the refunded packages the stamped list adds.
         let liveGks = Set(newLive.map(\.gk))
-        let covered = newLive + newRows.filter { !liveGks.contains($0.gk) }
+        let sourcePackages = try JSONDecoder().decode([Package].self, from: Data(newSource.utf8))
+        let covered = newLive + sourcePackages.filter { !liveGks.contains($0.gk) }
         var (updates, failure) = try await refresh(covered.map { ($0, $0.items) }, received: got, withStatic: true)
         let (texts, textFailure) = await stampTexts(stamped, held: held, refunds: refunds, received: got)
         updates += texts
         failure = failure ?? textFailure
+        let (kept, total) = (ViewRange.count(rangedLive), ViewRange.count(live))
+        let allItems = try json(store.items())
+        let choices = try JSONDecoder().decode([MonthChoice].self, from: Data(try await engine.call("monthChoices", "[\(allItems)]").utf8))
+        try await options.readLabels(engine: engine, itemsJSON: allItems)
+        // A Find, Showing or reveal change that landed during the awaits above was filtered over the old source. Filter again over the
+        // new one with the choices now, until none lands during the filter itself. No await sits between this check and the sets below.
+        while seen != filterEpoch {
+            seen = filterEpoch
+            newRows = try await filtered(newSource, order: newOrder, received: store.received(), stamps: held)
+        }
+        source = newSource
+        sourceRows = sourcePackages
+        order = newOrder
+        orderKey = (newSource, options.sortBy)
         rows = newRows
         liveRows = newLive
+        hasItems = !store.items().isEmpty
+        options.lineCount = kept
+        options.outsideCount = total - kept
+        try await options.readCanceled(itemsJSON: allItems, engine: engine)
+        options.months = choices
         received = got
         // A press or a clear that ran during the awaits above set its own count, so this one only fills the same Undo.
         if bulkUndoGk == heldGk && bulkUndoTakes == takes { bulkUndoHeld = undoHeld }
@@ -135,6 +261,100 @@ public final class PackagesModel {
         // the failure, must not hide a failure the owner has not retried.
         if checkInError != nil, store.postsSaved > errorPosts { checkInError = nil }
         if let failure { throw failure }
+    }
+
+    /// Group key to place, from the bundle's sortPackages with the counts as they are now. Callers keep it while the user checks
+    /// in, so a value-based sort does not reshuffle under the thumb (no-layout-shift-under-pointer).
+    private static func placed(_ source: String, by key: PackageSort, received: [String: Int], engine: RulesEngine) async throws -> [String: Int] {
+        struct Keyed: Decodable { let gk: String }
+        let counts = String(decoding: try JSONSerialization.data(withJSONObject: received), as: UTF8.self)
+        let sorted = try await engine.call("sortPackages", "[\(source),\"\(key.rawValue)\",\(counts)]")
+        let gks = try JSONDecoder().decode([Keyed].self, from: Data(sorted.utf8)).map(\.gk)
+        return Dictionary(gks.enumerated().map { ($1, $0) }, uniquingKeysWith: { first, _ in first })
+    }
+
+    /// The bundle's filterPackages over `source`, in `order`. The stamps cross as data, so Find reads a stamp's label and note.
+    private func filtered(_ source: String, order: [String: Int], received: [String: Int], stamps: [String: [String: Any]]) async throws -> [Package] {
+        let opts: [String: Any] = [
+            "query": options.query, "hideDone": options.hideDone, "received": received, "stamps": stamps,
+            "sticky": ["$set": Array(sticky)], "revealed": ["$set": Array(options.revealed)],
+        ]
+        let out = try await engine.call("filterPackages", "[\(source),\(try json(opts))]")
+        let shown = try JSONDecoder().decode([Package].self, from: Data(out.utf8))
+        return shown.sorted { (order[$0.gk] ?? .max) < (order[$1.gk] ?? .max) }
+    }
+
+    /// Reads the list again from the counts now, with the order kept: a completed package drops at once under Unreceived.
+    /// A result that a later refilter or a load's landing has passed is dropped: that one filtered by the choices now.
+    private func refilter() async throws {
+        filterEpoch += 1
+        let mine = filterEpoch
+        let from = source
+        let shown = try await filtered(from, order: order, received: store.received(), stamps: stamps)
+        guard mine == filterEpoch, from == source else { return }
+        rows = shown
+    }
+
+    // MARK: Find, Showing, Sorted by (the Ledger tab's View group and the Find pill)
+
+    /// A new query is a new question: the sticky lines and the reveals end, and the list is read again.
+    public func setQuery(_ text: String) async throws {
+        if options.setQuery(text) { sticky = [] }
+        try await refilter()
+    }
+
+    public func clearSearch() async throws { try await setQuery("") }
+
+    /// Showing. Changing it ends the sticky lines.
+    public func setHideReceived(_ on: Bool) async throws {
+        if on != options.hideDone { sticky = [] }
+        options.hideDone = on
+        try await refilter()
+    }
+
+    /// Sorted by: saved under `sortBy`, and the order is worked out again. A failed save does not undo the choice: the list is
+    /// built from the choice in memory, without reading the saved one back, as the Tally's setSort does. The next load()
+    /// reads the saved choice again.
+    public func setSort(_ key: PackageSort) async throws {
+        var saveFailure: Error?
+        do { try options.setSortBy(key, in: store) } catch { saveFailure = error }
+        try await build()
+        if let saveFailure { throw saveFailure }
+    }
+
+    /// Tally to Packages, on the order a copy came from (src/app.jsx openOrder). The package is revealed whole, because Find would cut it
+    /// to the matching line and Showing: Unreceived would drop it when every copy is in, and the stamped filter would swallow an
+    /// unstamped one; each leaves the jump nothing to land on. Packages scrolls to `options.jumpGk`. The group key comes from the
+    /// bundle's gkOf (no Swift copy). A failure lands in checkInError and is thrown.
+    public func openOrder(of item: LedgerItem) async throws {
+        do {
+            let gk = try JSONDecoder().decode(String.self, from: Data(try await engine.call("gkOf", "[\(try encode(item))]").utf8))
+            options.reveal(gk)
+            showStamped = false
+            try await load()
+            options.jumpGk = gk
+        } catch {
+            fail("Could not open the order. \(error.localizedDescription)")
+            throw error
+        }
+    }
+
+    /// Show the whole order of a package the filters cut down, or go back to the matches.
+    public func toggleReveal(_ gk: String) async throws {
+        options.toggleReveal(gk)
+        try await refilter()
+    }
+
+    /// For the view: a reveal toggle whose failure is already in checkInError.
+    public func reveal(_ gk: String) async {
+        do { try await toggleReveal(gk) } catch { fail("Could not read the list. \(error.localizedDescription)") }
+    }
+
+    /// The Packages tab came on screen: another tab may have changed Find or the counts. Like the web, a view change ends the sticky lines
+    /// and keeps the order.
+    public func viewOpened() async throws {
+        sticky = []
+        try await refilter()
     }
 
     /// The band text of each stamped package and the refunded pill of each refunded one, both from the bundle.
@@ -261,7 +481,7 @@ public final class PackagesModel {
 
     /// The package that holds the line: a live one, or a refunded one the stamped list shows.
     private func package(holding key: String) -> Package? {
-        (liveRows + rows).first { $0.items.contains { $0.key == key } }
+        (liveRows + sourceRows).first { $0.items.contains { $0.key == key } }
     }
 
     /// A tap: the bundle's toggleCount picks the count to write. Every failure, rule or save,
@@ -295,12 +515,25 @@ public final class PackagesModel {
             throw error
         }
         checkInError = nil
-        endBulkUndo()
+        lapseBulkUndo()
         received = store.received()
+        if count > 0 { sticky.insert(key) }  // checked in under this filter, so the line stays until the filters change
+        try await relist()
         if let pkg = package(holding: key), let item = pkg.items.first(where: { $0.key == key }) {
             try await reread(pkg, items: [item])
         }
     }
+
+    /// The list from the counts now. A failure lands in checkInError and is thrown, as a failed label refresh does.
+    private func relist() async throws {
+        do { try await refilter() } catch {
+            fail("Saved, but the list could not refresh. \(error.localizedDescription)")
+            throw error
+        }
+    }
+
+    /// The package with this group key, whole (a live one, or a refunded one the stamped list shows).
+    private func package(gk: String) -> Package? { (liveRows + sourceRows).first { $0.gk == gk } }
 
     /// The package's labels, pill and bar (and a refunded package's pill) from the counts now in `received`.
     private func reread(_ pkg: Package, items: [LedgerItem]) async throws {
@@ -338,7 +571,10 @@ public final class PackagesModel {
         received = store.received()
         // A Mark all that adds nothing has nothing to undo, so the held Undo stays. A Clear, or a Mark all that adds, ends it.
         // A new Undo sets its gk only after its count is known, so the hint never shows a count from before the press.
-        if !on || !takes.isEmpty { endBulkUndo() }
+        if !on || !takes.isEmpty {
+            lapseBulkUndo()
+            if on { lapsed.removeAll { $0.gk == gk } }  // the card is held again, so one notice per card
+        }
         let counted = takes.isEmpty ? bulkUndoTakes : takes
         if on && !counted.isEmpty {
             let n: Int
@@ -352,6 +588,7 @@ public final class PackagesModel {
                 if !takes.isEmpty { bulkUndoGk = gk }
             }
         }
+        try await relist()
         try await reread(pkg, items: pkg.items)
     }
 
@@ -359,7 +596,7 @@ public final class PackagesModel {
     public func undoBulk() async throws {
         guard let gk = bulkUndoGk else { return }
         let takes = bulkUndoTakes
-        endBulkUndo()
+        dropHeld()  // not endBulkUndo(): an Undo keeps the other lapsed notices in their slots (no-layout-shift-under-pointer)
         do {
             let counts = try await BulkRules.undone(takes, received: store.received(), engine: engine)
             try store.commitReceived(counts)
@@ -369,14 +606,21 @@ public final class PackagesModel {
         }
         checkInError = nil
         received = store.received()
-        if let pkg = rows.first(where: { $0.gk == gk }) { try await reread(pkg, items: pkg.items) }
+        try await relist()
+        if let pkg = package(gk: gk) { try await reread(pkg, items: pkg.items) }
     }
 
-    /// A tab change, a restore or a Reset: the held Undo is gone.
+    /// A tab change, a restore or a Reset: the held Undo is gone, and so are the notices left by earlier ones.
     public func endBulkUndo() {
-        bulkUndoGk = nil
-        bulkUndoTakes = []
-        bulkUndoHeld = 0
+        dropHeld()
+        lapsed = []
+    }
+
+    /// Dismisses one vacated notice. It ends the held Undo only when the notice is the held one's, and it leaves every other
+    /// lapsed notice in its slot, so nothing below it moves under the pointer (no-layout-shift-under-pointer).
+    public func dismissVacated(gk: String) {
+        if bulkUndoGk == gk { dropHeld() }
+        lapsed.removeAll { $0.gk == gk }
     }
 
     /// Stamps the package (the one stamp writer, StampWriter), then reads the ledger again: a refund leaves the list,
@@ -394,12 +638,16 @@ public final class PackagesModel {
     /// A failed read lands in checkInError and is thrown.
     public func toggleStamped() async throws {
         showStamped.toggle()
+        sticky = []
         do { try await load() } catch {
             showStamped.toggle()  // the rows on screen are still the old filter's, so the cell says that filter
             fail("Could not read the list. \(error.localizedDescription)")
+            toggleError = checkInError
             throw error
         }
-        checkInError = nil
+        // A failed check-in's line stays: only its own failed read, or a later Post, ends a line (load).
+        if let toggleError, checkInError == toggleError { checkInError = nil }
+        toggleError = nil
     }
 
     private func fail(_ message: String) {
@@ -412,7 +660,7 @@ public final class PackagesModel {
             fail("\(failure) \(error.localizedDescription)")
             throw error
         }
-        endBulkUndo()
+        lapseBulkUndo()
         do { try await load() } catch {
             fail("Saved, but the list could not refresh. \(error.localizedDescription)")
             throw error

@@ -870,7 +870,9 @@ const SIM_IOS_27_1 = /\bxcrun simctl create\b.*\bcom\.apple\.CoreSimulator\.SimR
 const ONLY_FLAG = /-only-testing:ManifestUITests\/(\w+)/g;
 const SKIP_FLAG = /-skip-testing:ManifestUITests\/(\w+)/g;
 const JOB_MINUTES = [45, 50];
-const duoOf = (classes) => classes.filter((c) => c.startsWith("Duo")).sort();
+// A Duo class is one that drives the hinge pose. Its name says Duo somewhere, not always first: FindPillDuoUITests does.
+const isDuoClass = (c) => c.includes("Duo");
+const duoOf = (classes) => classes.filter(isDuoClass).sort();
 const listOf = (value) => value.split(/\s+/).filter((w) => w !== "");
 const flagsIn = (text, re) => new Set([...text.matchAll(re)].map((m) => m[1]));
 const joinContinued = (text) => text.replace(/\\\r?\n/g, " ");
@@ -1195,7 +1197,7 @@ function uiTestChecks({ makefile, classes, msDoc, msErr }) {
     if (errs.length > 0) return { ok: false, detail: errs.join("; ") };
     const minutes = uiJobs.map((j) => Number(j.job["timeout-minutes"])).sort((x, y) => x - y);
     const duoRuns = uiJobs.flatMap((j) =>
-      j.selected.filter((c) => c.startsWith("Duo")).map((c) => `${j.id} runs ${c}`)
+      j.selected.filter(isDuoClass).map((c) => `${j.id} runs ${c}`)
     );
     const shape = uiJobs.map((j) => `${j.id} (timeout ${j.job["timeout-minutes"] ?? "none"})`).join(", ");
     return {
@@ -1752,6 +1754,20 @@ const MS_RED = [
   ["c: part-b runs an echo, not a make target", mutate(MS_GOOD, "run: make ui-b", "run: echo ok"), "c"],
   ["c: make ui-b is only in a comment", mutate(MS_GOOD, "run: make ui-b", "run: echo ok # make ui-b"), "c"],
   ["k1: a Duo class is scanned but not listed", MS_GOOD, "k1", { classes: [...FIX_CLASSES, "DuoNewUITests"] }],
+  // FindPillDuoUITests drives the hinge pose but its name does not start with Duo. A name-prefix rule let it into part-b.
+  ["k1: a Duo class that does not start with Duo is scanned but not listed", MS_GOOD, "k1", { classes: [...FIX_CLASSES, "FindPillDuoUITests"] }],
+  [
+    "k3: part-b runs a Duo class that does not start with Duo",
+    MS_GOOD,
+    "k3",
+    {
+      classes: [...FIX_CLASSES, "FindPillDuoUITests"],
+      makefile: fixtureMakefile({
+        duo: "DuoHandUITests FindPillDuoUITests",
+        uiTest: "xcodebuild test -skip-testing:ManifestUITests/DuoHandUITests -skip-testing:ManifestUITests/FindPillDuoUITests",
+      }),
+    },
+  ],
   ["k1: DUO_UI_TESTS is not set", MS_GOOD, "k1", { makefile: FIX_MAKEFILE.replace("DUO_UI_TESTS := DuoHandUITests\n", "") }],
   ["k2: ui-test skips no Duo class", MS_GOOD, "k2", { makefile: fixtureMakefile({ uiTest: "xcodebuild test" }) }],
   ["k3: part-a's timeout is 60", mutate(MS_GOOD, "timeout-minutes: 45", "timeout-minutes: 60"), "k3"],
@@ -1867,6 +1883,27 @@ for (const [name, extra] of SHARD_GOOD) {
   const bad = results.filter((r) => MS_CHECKS.includes(r.label.split(" ")[0]) && !r.ok);
   expect(
     "fixture good: the two-job milestone file passes a, a2, b, c and k1 to k6",
+    bad.length === 0,
+    bad.map((r) => `${r.label} (${r.detail})`).join("; ")
+  );
+}
+{
+  // The control for the k1 and k3 cases above: the Duo class without the Duo prefix is listed, skipped in ui-test and in part-b.
+  const duoFind = fixtureMakefile({
+    duo: "DuoHandUITests FindPillDuoUITests",
+    uiTest: "xcodebuild test -skip-testing:ManifestUITests/DuoHandUITests -skip-testing:ManifestUITests/FindPillDuoUITests",
+    uiB: "xcodebuild test -skip-testing:ManifestUITests/DuoHandUITests -skip-testing:ManifestUITests/FindPillDuoUITests -skip-testing:ManifestUITests/AuditSkippingTabBarUITests",
+  });
+  const results = milestoneChecks({
+    msText: MS_GOOD,
+    wfText: null,
+    read: () => null,
+    makefile: duoFind,
+    classes: [...FIX_CLASSES, "FindPillDuoUITests"],
+  });
+  const bad = results.filter((r) => MS_CHECKS.includes(r.label.split(" ")[0]) && !r.ok);
+  expect(
+    "fixture good: a Duo class without the Duo prefix, listed and skipped in both runs, passes k1 to k6",
     bad.length === 0,
     bad.map((r) => `${r.label} (${r.detail})`).join("; ")
   );

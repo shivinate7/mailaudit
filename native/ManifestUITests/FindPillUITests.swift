@@ -1,0 +1,192 @@
+// The Find pill on Packages and Tally, in a band above the tab bar (lane restyle-step8: search-filters-inside-package,
+// phone-nav-is-bottom-bar, no-layout-shift-under-pointer). The web's .mdl-pill: 48 tall, 8 above the
+// bar, a magnifier and a field, drawn only while the ledger holds items. It filters the tab you are on.
+//
+// Contract the cases name (the builder implements it):
+//   find-pill    the pill, drawn above the system tab bar on Packages and Tally.
+//   find-field   the pill's text field, placeholder "Find card, set, seller, order". A tap anywhere on the
+//                pill focuses it (the field may stay one line).
+//   find-clear   the pill's clear button: a 44 x 44 pt button labelled "Clear search", drawn only while the field
+//                holds text (owner item 46, answer a, 2026-11-08 10:55 CST). The empty state keeps its own "Clear search".
+//   package-row:<gk>, checkin:<key>: as PackagesShellUITests.
+//
+// The seed is the shared fixture: Delta Cards D1 (Urza's Saga, one line), Gamma Cards C1, Alpha Cards A1,
+// Beta Games B1. Every key here is fake.
+// Compile-checked only: this agent has no simulator. The red for each case is owed to a simulator run.
+
+import XCTest
+
+@MainActor
+final class FindPillUITests: XCTestCase {
+    override func setUp() {
+        super.setUp()
+        continueAfterFailure = false
+    }
+
+    /// The Packages tab, open, with its rows loaded. Scope first: the rows exist before any case reads them. The list is lazy,
+    /// and D1 is the fourth card, below the fold, so it is not in the tree until the list scrolls near it. ScreenKit.mount
+    /// does that scroll, as PackageCardUITests does for the same row. Every launch starts on Unreceived, and the seed has no
+    /// check-in, so all four packages are listed there. `mounting` names the row to scroll to; D1 by default.
+    func openPackages(_ app: XCUIApplication, mounting row: String = "package-row:D1::Delta Cards") throws {
+        app.tabBars.buttons["Packages"].tap()
+        XCTAssertTrue(ScreenKit.mount(app, row), "scope: the Packages rows are missing")
+    }
+
+    /// Each seeded package, mounted in turn. A row count would read only the rows near the screen, so the lazy list is
+    /// scrolled to each one before a case counts or reads the rows.
+    func mountSeededPackages(_ app: XCUIApplication) {
+        for key in ["A1::Alpha Cards", "B1::Beta Games", "C1::Gamma Cards", "D1::Delta Cards"] {
+            XCTAssertTrue(ScreenKit.mount(app, "package-row:" + key), "scope: \(key) is not on the Packages list")
+        }
+    }
+
+    /// The pill sits above the system tab bar on Packages and on Tally: its bottom edge is above the bar's top.
+    func testPillSitsAboveTheTabBarOnPackagesAndTally() throws {
+        let app = ShellUITest.launch(width: 375)
+        for tab in ["Packages", "Tally"] {
+            app.tabBars.buttons[tab].tap()
+            let bar = app.tabBars.firstMatch
+            XCTAssertTrue(bar.waitForExistence(timeout: 5), "scope: the system tab bar is missing on \(tab)")
+            let pill = ShellUITest.element(app, "find-pill")
+            XCTAssertTrue(pill.waitForExistence(timeout: 5), "the find pill find-pill is missing on \(tab)")
+            XCTAssertLessThanOrEqual(pill.frame.maxY, bar.frame.minY, "the find pill is not above the tab bar on \(tab)")
+        }
+    }
+
+    /// A query typed in the pill keeps the packages that hold a match. Urza's Saga is on one package (D1).
+    func testPillFiltersThePackagesList() throws {
+        let app = ShellUITest.launch(width: 375)
+        try openPackages(app)
+        // The masthead counts the ledger's packages, not the rows on screen, so it is the exact scope of four.
+        let count = ShellUITest.element(app, "masthead-count")
+        XCTAssertTrue(count.waitForExistence(timeout: 5), "scope: the masthead count is missing")
+        XCTAssertTrue(count.label.hasPrefix("4 packages"), "scope: the seed does not hold four packages, the masthead reads \(count.label)")
+        mountSeededPackages(app)
+
+        let field = ShellUITest.element(app, "find-field")
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "the find field find-field is missing")
+        field.tap()
+        field.typeText("Urza")
+
+        XCTAssertEqual(ShellUITest.elements(app, prefix: "package-row:").count, 1, "a search for Urza leaves more or fewer than one package")
+        XCTAssertTrue(ShellUITest.element(app, "package-row:D1::Delta Cards").exists, "the search for Urza dropped Delta Cards")
+    }
+
+    /// The pill's clear button shows only while the field holds a query, and one tap clears the query and the list returns.
+    /// Owner item 46, answer a (2026-11-08 10:55 CST) grants the button, which replaces the no-clear case. The web's match is the
+    /// empty state's "Clear search" in src/app.jsx (MailDayLedger): drawn under `query &&`, and its onClick is `setQuery("")`.
+    /// The button is 44 x 44 pt, the hit region the button rule requires.
+    func testPillClearButtonShowsOnlyWithAQueryAndClearsIt() throws {
+        let app = ShellUITest.launch(width: 375)
+        try openPackages(app)
+        let pill = ShellUITest.element(app, "find-pill")
+        XCTAssertTrue(pill.waitForExistence(timeout: 5), "the find pill find-pill is missing")
+        let field = ShellUITest.element(app, "find-field")
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "the find field find-field is missing")
+        mountSeededPackages(app)
+        // Scope: the four packages are listed before any query, and the empty field draws no clear control.
+        XCTAssertFalse(ShellUITest.element(app, "find-clear").exists, "the find pill draws a clear control over an empty field")
+
+        field.tap()
+        field.typeText("Urza")
+        let clear = ShellUITest.element(app, "find-clear")
+        XCTAssertTrue(clear.waitForExistence(timeout: 5), "the find pill has no clear control while the field holds Urza")
+        assertHitRegion(clear, "the find pill's clear control")
+        XCTAssertEqual(ShellUITest.elements(app, prefix: "package-row:").count, 1, "scope: the search for Urza leaves one package")
+
+        clear.tap()
+        XCTAssertFalse(ShellUITest.element(app, "find-clear").exists, "the clear control stayed after the query was cleared")
+        mountSeededPackages(app)
+    }
+
+    /// Opening search moves no package row or check-in control. The pill itself may lift above the keyboard.
+    func testOpeningSearchMovesNoPackageRow() throws {
+        let app = ShellUITest.launch(width: 375)
+        try openPackages(app)
+        let before = ShellUITest.layoutFrames(app)
+        XCTAssertFalse(before.isEmpty, "scope: no package row or check-in control to measure")
+        // The band a row can be read in, before the keyboard opens.
+        let top = app.listTop, bottom = app.listBottom
+
+        let field = ShellUITest.element(app, "find-field")
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "the find field find-field is missing")
+        field.tap()
+        XCTAssertTrue(app.keyboards.firstMatch.waitForExistence(timeout: 5), "the keyboard did not open on the find field")
+
+        // The keyboard shrinks the band, so its bottom is read again once it is up. The lazy list unmounts the rows that fall
+        // past the shrunk band, so a row missing from `after` is judged by where it lay before the tap: a row whose before-frame
+        // lies fully above the shrunk bottom must still be on screen, so its absence fails. A row whose before-frame reaches
+        // below that bottom is not read.
+        let shrunk = app.listBottom
+        let after = ShellUITest.layoutFrames(app)
+        // The rows on screen before the tap: their frames lay fully inside the band the tap was read in.
+        let watched = before.filter { $0.value.minY >= top && $0.value.maxY <= bottom }.keys.sorted()
+        XCTAssertFalse(watched.isEmpty, "scope: no package row or check-in control lies in the band above the keyboard, so none is compared")
+        for id in watched {
+            guard let was = before[id] else { continue }
+            guard let now = after[id] else {
+                if was.maxY <= shrunk {
+                    XCTFail("\(id) left the band under the pointer when search opened (no-layout-shift-under-pointer): before \(was), after none")
+                }
+                continue
+            }
+            XCTAssertEqual(now, was, "\(id) moved under the pointer when search opened (no-layout-shift-under-pointer): before \(was), after \(now)")
+        }
+    }
+
+    /// The find field's hit region is at least 44pt tall on Packages and on Tally. The audit reads a field's hit region, which a
+    /// one-line vertical field makes smaller than its frame: a sim run at 7168062 flagged the find field at 52pt. Only the find
+    /// field's issues fail here. Every other issue on the screen belongs to another case, so the closure ignores it.
+    /// The pill sits above the bar, so the tab-bar skip keeps it (the next case pins that).
+    func testFindFieldHitAreaIsAtLeast44ptTall() throws {
+        let app = ShellUITest.launch(width: 375)
+        for tab in ["Packages", "Tally"] {
+            app.tabBars.buttons[tab].tap()
+            let field = ShellUITest.element(app, "find-field")
+            XCTAssertTrue(field.waitForExistence(timeout: 5), "scope: the find field find-field is missing on \(tab)")
+            try app.performAccessibilityAudit(for: .hitRegion) { issue in
+                issue.element?.identifier != "find-field"
+            }
+        }
+    }
+
+    /// The pill is not under the tab bar. Its frame, as a sim run logged it (2026-11-08), ends above the bar's top, so the skip
+    /// that drops an audit issue under the bar must keep it. Pins that isUnderTabBar stays narrow.
+    func testPillAboveTheBarIsNotSkippedAsUnderTheBar() {
+        let bar = CGRect(x: 13.67, y: 791, width: 375, height: 83)
+        let window = CGRect(x: 0, y: 0, width: 402, height: 874)
+        let pill = CGRect(x: 77.67, y: 727, width: 279, height: 52)
+        XCTAssertFalse(isUnderTabBar(pill, bar: bar, window: window),
+                       "the find pill is skipped as under the tab bar: isUnderTabBar must not widen to the pill")
+    }
+
+    /// The pill at an accessibility size, on Packages. One line: the pill is shorter than the height the empty second line gave it
+    /// (87pt at AX3, 110pt at AX5, screen-check run 43765127724). The field keeps its 44pt hit region on the audit, and its
+    /// placeholder is the short "Find" (FindPill.promptText). Scope first: the pill and its field are drawn before either is read.
+    func assertFindPillHoldsOneLine(size: String, oldHeight: CGFloat, _ what: String) throws {
+        let app = ShellUITest.launch(width: 375, size: size)
+        // At AX5 each card is taller than the screen, so a plain reveal never mounts D1. B1 is mounted at both sizes.
+        try openPackages(app, mounting: "package-row:B1::Beta Games")
+        let pill = ShellUITest.element(app, "find-pill")
+        XCTAssertTrue(pill.waitForExistence(timeout: 5), "scope: the find pill find-pill is missing \(what)")
+        let field = ShellUITest.element(app, "find-field")
+        XCTAssertTrue(field.waitForExistence(timeout: 5), "scope: the find field find-field is missing \(what)")
+
+        XCTAssertLessThan(pill.frame.height, oldHeight,
+                          "the find pill is \(pill.frame.height)pt tall \(what), not under the \(oldHeight)pt the empty second line gave it")
+        XCTAssertEqual(field.placeholderValue, "Find", "the find field's placeholder is not \"Find\" \(what)")
+        try app.performAccessibilityAudit(for: .hitRegion) { issue in
+            issue.element?.identifier != "find-field"
+        }
+    }
+
+    /// AX3: one line, pill under 87pt, placeholder "Find", find field passes the 44pt hit-region audit.
+    func testFindPillHoldsOneLineAtAccessibilityXL() throws {
+        try assertFindPillHoldsOneLine(size: ShellUITest.accessibilityXL, oldHeight: 87, "at AX3")
+    }
+
+    /// AX5: one line, pill under 110pt, placeholder "Find", find field passes the 44pt hit-region audit.
+    func testFindPillHoldsOneLineAtAccessibilityXXXL() throws {
+        try assertFindPillHoldsOneLine(size: ShellUITest.accessibilityXXXL, oldHeight: 110, "at AX5")
+    }
+}

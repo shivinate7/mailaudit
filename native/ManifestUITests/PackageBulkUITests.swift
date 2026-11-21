@@ -23,7 +23,7 @@
 //   bulk-row:<gk>               the bulk action row, one container under the stamp slot: only the two bulk slots, no Stamp.
 //                               Its frame is the row's, the ask's top hangs below its bottom.
 //   bulk-mark:<gk>              Mark all received. Only while a line is owed. 44pt each way.
-//   bulk-undo:<gk>              Undo mark all, in Mark all's own slot (same frame), from the press until the next write
+//   bulk-undo:<gk>              Undo Mark All, in Mark all's own slot (same frame), from the press until the next write
 //                               on this device. Not there after a hand check-in, a Clear or a stamp.
 //   bulk-clear:<gk>             Clear check-ins. Only while a copy is in. 44pt each way. The first tap arms it.
 //   bulk-clear-confirm:<gk>     the armed ask's second tap. Its label is "Tap again to clear N check-ins", N the copies in
@@ -51,7 +51,9 @@
 //     native-armed-audit-misses-ask). The ask's label, enabled state and 44pt frames are read from one snapshot instead.
 //   - First focus on Cancel, the hints ("Asks first. Clears N check-ins from <seller>") and the VoiceOver names: XCUITest
 //     reads neither focus nor a hint (debt native-ask-has-no-cancel-focus).
-//   - The vacated Undo notice (a filter drops the card on the tap): the native Packages list has no Unreceived filter yet.
+//   - The vacated Undo notice has one case of its own, testTheNoticeStaysLaidOutWhenAnotherWriteEndsItsUndo, on the Unreceived
+//     default. The cases above read the list as Everything (ScreenKit.showEverything), so a card that Mark all completes stays
+//     on screen for its Undo.
 //   - The stacked row at an accessibility text size, and the open Duo's Packages page.
 //   - Clear's N across a filter's hidden copies on the Tally: TallyBulkModelTests pins that bulk reaches them, and V39.8 the N.
 //
@@ -111,16 +113,18 @@ final class PackageBulkUITests: XCTestCase {
         }
     }
 
-    /// The Tally tab with the Brainstorm row open and both copies on screen. `alone`: a search first leaves Brainstorm the only
+    /// The Tally tab with the Brainstorm row open and both copies on screen. Showing is Everything, so a Mark all that completes
+    /// the row does not take it off the list. `alone`: a find on the pill first leaves Brainstorm the only
     /// row, as TallyUITests does for its open-row audit, so no row sits cut by the glass tab bar and fails the audit for it.
     func openBrainstorm(alone: Bool = false) -> XCUIApplication {
         let app = ScreenKit.launch(tab: "Tally")
+        ScreenKit.showEverything(app, then: "Tally")
         if alone {
-            let search = el(app, "tally-search")
-            XCTAssertTrue(search.waitForExistence(timeout: 5), "the search field tally-search is missing")
-            search.tap()
-            search.typeText("Brainstorm\n")  // the return key closes the keyboard, so the tab bar shows
-            wait("exists == false", for: el(app, "tally-row:Lightning Bolt"), "the search left the Lightning Bolt row on screen")
+            let field = el(app, "find-field")
+            XCTAssertTrue(field.waitForExistence(timeout: 5), "the find field find-field is missing on Tally")
+            field.tap()
+            field.typeText("Brainstorm\n")  // the return key closes the keyboard, so the tab bar shows
+            wait("exists == false", for: el(app, "tally-row:Lightning Bolt"), "the find left the Lightning Bolt row on screen")
         }
         ScreenKit.openTallyRow(app, "Brainstorm", copy: Self.brainA)
         return app
@@ -129,16 +133,17 @@ final class PackageBulkUITests: XCTestCase {
     // MARK: sizes
 
     /// Every control the owner taps has a hit region of at least 44pt each way, at 375 and at the 320 stress width, where
-    /// the labels wrap: Mark all, Clear, Undo mark all, and the armed ask's two buttons. They sit inside the card and in
+    /// the labels wrap: Mark all, Clear, Undo Mark All, and the armed ask's two buttons. They sit inside the card and in
     /// the bulk row, and no two frames overlap. The ask is read from one snapshot, inside its 4 seconds.
     func testEveryBulkControlHasA44ptHitRegionInsideItsCard() throws {
         for width in [320, 375] {
             let app = launch(width: width)
+            ScreenKit.showEverything(app)  // Mark all completes the card, and the Undo is read from it
             let gk = Self.a1
             checkIn(app, Self.bolt)  // one copy in: Mark all and Clear both apply
             let mark = el(app, "bulk-mark:\(gk)"), clear = el(app, "bulk-clear:\(gk)")
             assertHitRegion(mark, "Mark all at \(width)pt")
-            assertHitRegion(clear, "Clear check-ins at \(width)pt")
+            assertHitRegion(clear, "Clear Check-ins at \(width)pt")
 
             let card = el(app, "package-row:\(gk)").frame.insetBy(dx: -1, dy: 0), row = el(app, "bulk-row:\(gk)").frame.insetBy(dx: -1, dy: -1)
             let parts = [("Mark all", mark), ("Clear", clear)]
@@ -165,7 +170,7 @@ final class PackageBulkUITests: XCTestCase {
             wait("exists == false", for: el(app, "bulk-clear-confirm:\(gk)"), "Cancel did not disarm at \(width)pt")
 
             tap(app, "bulk-mark:\(gk)")
-            assertHitRegion(el(app, "bulk-undo:\(gk)"), "Undo mark all at \(width)pt")
+            assertHitRegion(el(app, "bulk-undo:\(gk)"), "Undo Mark All at \(width)pt")
             app.terminate()
         }
     }
@@ -173,10 +178,11 @@ final class PackageBulkUITests: XCTestCase {
     // MARK: Mark all and its Undo
 
     /// Mark all is one tap, with no ask: every line of the card goes in, the masthead and the card follow, and the Mark all
-    /// slot reads Undo mark all. Undo is one tap too: the card is back where it was, and the check-in made before the press
+    /// slot reads Undo Mark All. Undo is one tap too: the card is back where it was, and the check-in made before the press
     /// stays in. Brainstorm reads 0 of 2 again.
     func testMarkAllChecksInTheWholeCardAndUndoTakesBackOnlyThat() throws {
         let app = launch()
+        ScreenKit.showEverything(app)  // Mark all completes the card, and the Undo is read from it
         let gk = Self.a1
         checkIn(app, Self.bolt)
         wait("value == '1/14'", for: el(app, "tally-cards"), "control: one card in at rest")
@@ -191,7 +197,7 @@ final class PackageBulkUITests: XCTestCase {
         wait("value == 'Received'", for: el(app, "card-slot:\(gk)"), "the card's status slot does not read Received")
         let undo = el(app, "bulk-undo:\(gk)")
         XCTAssertTrue(undo.waitForExistence(timeout: 5), "Mark all offers no Undo")
-        XCTAssertEqual(undo.label, "Undo mark all", "the Undo's label")
+        XCTAssertEqual(undo.label, "Undo Mark All", "the Undo's label")
         XCTAssertFalse(el(app, "bulk-mark:\(gk)").exists, "Mark all stays beside its own Undo")
         XCTAssertFalse(el(app, "bulk-clear-confirm:\(gk)").exists, "Mark all asked first: it takes one tap")
 
@@ -210,6 +216,7 @@ final class PackageBulkUITests: XCTestCase {
     /// is back in its slot, because a line is owed again.
     func testAHandCheckInAfterMarkAllEndsTheUndo() throws {
         let app = launch()
+        ScreenKit.showEverything(app)  // Mark all completes the card, and the Undo is read from it
         let gk = Self.a1
         tap(app, "bulk-mark:\(gk)")
         XCTAssertTrue(el(app, "bulk-undo:\(gk)").waitForExistence(timeout: 5), "control: Mark all offers its Undo")
@@ -282,6 +289,7 @@ final class PackageBulkUITests: XCTestCase {
     /// ask's 4 seconds.
     func testTheClearAskNamesOneCheckInInTheSingular() throws {
         let app = launch()
+        ScreenKit.showEverything(app)  // the one line in completes D1, which Unreceived would take off the list
         let gk = Self.d1
         XCTAssertTrue(ScreenKit.mount(app, "package-row:\(gk)"), "\(gk) is not on the list")  // the fourth card: the lazy list mounts it on a scroll
         checkIn(app, Self.urza)
@@ -298,6 +306,7 @@ final class PackageBulkUITests: XCTestCase {
     /// slot, to the same frame. Compared relative to the card's top, so a scroll to reach a control is not a move.
     func testNothingMovesOnMarkAllUndoOrClear() throws {
         let app = launch()
+        ScreenKit.showEverything(app)  // Mark all completes the card, and the card must stay on screen to be compared
         let gk = Self.a1, anchor = "package-row:\(gk)"
         checkIn(app, Self.bolt)  // Clear shows before and after Mark all, so its slot is compared
         app.reveal(el(app, anchor), whole: true)
@@ -308,7 +317,7 @@ final class PackageBulkUITests: XCTestCase {
         wait("exists == true", for: el(app, "bulk-undo:\(gk)"), "no Undo after Mark all")
         ScreenKit.assertStill(rest, app, anchor: anchor, "Mark all was tapped", prefixes: Self.framed)
         let afterMark = ScreenKit.relative(frames(snap(app)), to: anchor)
-        assertSame(afterMark["bulk-undo:\(gk)"], rest["bulk-mark:\(gk)"], "Undo mark all is not in Mark all's slot")
+        assertSame(afterMark["bulk-undo:\(gk)"], rest["bulk-mark:\(gk)"], "Undo Mark All is not in Mark all's slot")
 
         tap(app, "bulk-undo:\(gk)")
         wait("exists == true", for: el(app, "bulk-mark:\(gk)"), "no Mark all after Undo")
@@ -326,6 +335,7 @@ final class PackageBulkUITests: XCTestCase {
     /// by hand Mark all is hidden, and Clear must not move for that. The bulk row and the Stamp slot above it stay through both.
     func testAnInapplicableControlKeepsItsSlotHidden() throws {
         let app = launch()
+        ScreenKit.showEverything(app)  // the card is made whole by hand below, and must stay on screen to be compared
         let gk = Self.a1, anchor = "package-row:\(gk)"
         app.reveal(el(app, anchor), whole: true)
         func place(_ id: String) -> CGRect? { ScreenKit.relative(frames(snap(app)), to: anchor)[id] }
@@ -417,11 +427,11 @@ final class PackageBulkUITests: XCTestCase {
         tap(app, "tally-bulk-mark:\(name)")
         wait("exists == true", for: el(app, "tally-bulk-undo:\(name)"), "no Undo after Mark all on the Tally row")
         XCTAssertTrue(isIn(app, Self.brainA, prefix: "tally-checkin:") && isIn(app, Self.brainB, prefix: "tally-checkin:"), "Mark all did not check in both copies")
-        XCTAssertEqual(el(app, "tally-bulk-undo:\(name)").label, "Undo mark all", "the Tally Undo's label")
+        XCTAssertEqual(el(app, "tally-bulk-undo:\(name)").label, "Undo Mark All", "the Tally Undo's label")
         ScreenKit.assertStill(rest, app, anchor: anchor, "Mark all was tapped on the Tally row", prefixes: Self.tallyFramed, minimum: 5)
         assertSame(ScreenKit.relative(frames(snap(app, tally: true)), to: anchor)["tally-bulk-undo:\(name)"], rest["tally-bulk-mark:\(name)"],
                    "the Tally Undo is not in Mark all's slot")
-        assertHitRegion(el(app, "tally-bulk-undo:\(name)"), "the Tally row's Undo mark all")
+        assertHitRegion(el(app, "tally-bulk-undo:\(name)"), "the Tally row's Undo Mark All")
 
         tap(app, "tally-bulk-undo:\(name)")
         wait("label BEGINSWITH 'Check in'", for: el(app, "tally-checkin:\(Self.brainB)"), "Undo did not take back the second copy")
@@ -477,9 +487,10 @@ final class PackageBulkUITests: XCTestCase {
         try app.auditSkippingTabBar(ruled: skipMeasuredContrastFlags)
     }
 
-    /// The Packages screen with Undo mark all in Mark all's slot.
+    /// The Packages screen with Undo Mark All in Mark all's slot.
     func testAccessibilityAuditPackagesWithTheUndo() throws {
         let app = launch()
+        ScreenKit.showEverything(app)  // Mark all completes A1, and the Undo is audited on the card
         tap(app, "bulk-mark:\(Self.a1)")
         XCTAssertTrue(el(app, "bulk-undo:\(Self.a1)").waitForExistence(timeout: 5), "no Undo before the audit")
         try app.auditSkippingTabBar(ruled: skipMeasuredContrastFlags)
@@ -496,5 +507,42 @@ final class PackageBulkUITests: XCTestCase {
             XCTAssertLessThanOrEqual(seen.frame.maxY, barTop, "\(id) reaches under the tab bar, so the audit would read a cut row")
         }
         try app.auditNamingElements(skipping: skipMeasuredContrastFlags)
+    }
+
+    // MARK: the vacated Undo notice
+
+    /// A Mark all that completes a card Unreceived drops leaves its Undo as a notice in the card's place. A hand check-in on
+    /// another card ends that Undo (undo-removes-only-its-delta). The notice then stays laid out with no Undo and no dismiss, so
+    /// the cards below it do not move under the pointer (no-layout-shift-under-pointer). The list is read as the load leaves it,
+    /// Unreceived. Seed, Newest first: B1 is the first card, A1 the second, C1 the third and D1 the fourth. A1 holds three lines,
+    /// so Mark all completes it and one hand check-in on it does not. The anchor is B1, above the notice, and the check-in is on
+    /// B1's own line, so the lower cards C1 and D1 are the rows that would move.
+    func testTheNoticeStaysLaidOutWhenAnotherWriteEndsItsUndo() throws {
+        let app = launch()
+        let gk = Self.a1, anchor = "package-row:B1::Beta Games"
+        XCTAssertTrue(el(app, "package-row:\(gk)").waitForExistence(timeout: 5), "anchor: A1 is listed under Unreceived before the Mark all")
+        tap(app, "bulk-mark:\(gk)")
+        let undo = el(app, "bulk-vacated-undo:\(gk)")
+        XCTAssertTrue(undo.waitForExistence(timeout: 5), "Mark all on A1 drops it from Unreceived, and its Undo shows in its place")
+        XCTAssertFalse(el(app, "package-row:\(gk)").exists, "anchor: A1 is off the list, so the notice holds its place")
+        // B1's line can sit at rest below the list's end, under the Find pill's band, since the list ends at that band's top
+        // rule. The list scrolls it above the rule first. The frames are taken after that, and each is read relative to the
+        // anchor, so the scroll moves none of them.
+        app.reveal(el(app, "checkin:B1|1|pCounterspell"), whole: true)
+
+        let taken = snap(app)
+        for lower in ["package-row:C1::Gamma Cards", "package-row:D1::Delta Cards"] {
+            XCTAssertNotNil(taken[lower], "anchor: \(lower) is on screen below the notice, so its frame can be compared")
+        }
+        let before = ScreenKit.relative(frames(taken), to: anchor)
+        XCTAssertTrue(el(app, "checkin:B1|1|pCounterspell").isHittable, "anchor: the line that ends the Undo is hittable before the tap")
+
+        checkIn(app, "B1|1|pCounterspell")
+
+        // The held Undo is drawn inert (UndoNoticeBar.inertWhen), and XCUI still lists it, so the fact is "no tap target", not "absent".
+        let heldUndo = el(app, "bulk-vacated-undo:\(gk)")
+        XCTAssertTrue(!heldUndo.exists || !heldUndo.isHittable, "the held Undo has ended, so its Undo is no tap target")
+        XCTAssertTrue(!el(app, "bulk-vacated-undo:\(gk)-dismiss").exists || !el(app, "bulk-vacated-undo:\(gk)-dismiss").isHittable, "the held Undo has ended, so its dismiss is no tap target")
+        ScreenKit.assertStill(before, app, anchor: anchor, "the check-in that ended the held Undo", prefixes: Self.framed)
     }
 }

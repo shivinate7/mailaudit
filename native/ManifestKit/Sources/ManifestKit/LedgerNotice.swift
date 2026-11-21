@@ -6,3 +6,10 @@ public enum LedgerNotice {
             : nil
     }
 }
+
+/// The line of the Undo notice that takes a card's place when a Mark all drops it from the list (the step 7 mockup, `vacated`).
+public enum BulkNotice {
+    public static func line(count: Int, seller: String) -> String {
+        "Marked \(count) card\(count == 1 ? "" : "s") received \u{00B7} \(seller)"
+    }
+}

@@ -46,6 +46,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-ledger-tab-unbuilt` — The native Ledger tab lacks the View group.
 - `native-restore-later-reply-unpinned` — No test pins that a later Worker reply leaves a native restore in place.
 - `native-ask-has-no-cancel-focus` — The native ask does not move first focus to Cancel.
+- `native-ask-hangs-under-list-edge` — A hanging ask near the list's edge cannot be tapped.
 - `native-filters-tally-only` — The native client has no date filter, package sort or Packages search.
 - `native-tally-copy-no-flags` — The native Tally copy has no lost-mail flag and no order id tap.
 - `native-envelope-has-no-photos` — Native envelopes have no photos.
@@ -59,7 +60,7 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-compose-is-one-fade` — The native letterhead composes in one fade.
 - `native-card-lost-flags-unbuilt` — The native package card has no lost-mail flag and no tracked glyph.
 - `native-seller-scale-unmeasured` — The native seller shrinks to half size, and the cause is unmeasured.
-- `native-pinned-card-dynamic-type` — The pinned-head audit flags Dynamic Type on one card.
+- `native-pinned-card-dynamic-type` — The pinned-head audit flags Dynamic Type and contrast.
 - `native-cold-launch-ledger-shift` — The Ledger tab may jump at cold launch.
 - `native-masthead-foot-row-gap` — The native masthead foot's second row sits 4.6pt low.
 - `native-masthead-axl-clips` — The native masthead wraps and clips at accessibility text sizes.
@@ -93,6 +94,8 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `duo-post-bar-unmeasured-s-m` — The pinned Post bar of Card in Hand is read at L and AX5 (`duo-card-in-hand`), the slim head at AX3 and AX5; the bar at S, M and AX3 is unmeasured.
 - `hand-stale-checkin-error` — A good post leaves an old check-in error showing.
 - `stamped-toggle-clears-error` — The stamped toggle clears a failed check-in's error.
+- `tally-reorders-on-reload` — The native Tally re-sorts on every reload.
+- `packages-reload-counts-split` — A check-in during a Packages reload can revert its checkbox.
 - `checkin-error-bar-is-sans` — The native check-in error bar is set in sans on material.
 - `hand-open-under-bar-at-l` — At AccessibilityL the Card in Hand control sits under the tab bar.
 - `hand-tap-label-unpinned` — No test pins the tapped name's sideways place.
@@ -105,6 +108,10 @@ MANIFEST is rebuilt in Swift. These records say what both clients share, what th
 - `native-axl-rows-break` — Three native rows break at accessibility text sizes.
 - `sim-test-diagnose-and-pin` — sim-test runs simctl diagnose and can pick the Duo.
 - `composer-keys-cover-tab-bar` — The Orphaned composer's keys cover the tab bar, so a draft test stays red.
+- `masthead-at-ax-sizes` — At accessibility sizes the stacked masthead hides figures at rest.
+- `duo-filter-cell-under-bar` — On the open Duo at AX3, the Packages "0 stamped" cell sits under the bar.
+- `tally-name-breaks-mid-word` — On the 18 Pro at AX3, a Tally name breaks mid-word.
+- `unshot-states-of-step-8` — Four step 8 states have no shot, so none is checked.
 
 ## Measurements
 

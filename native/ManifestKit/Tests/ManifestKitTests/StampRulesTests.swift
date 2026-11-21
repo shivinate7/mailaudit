@@ -109,6 +109,7 @@ final class StampRulesTests: XCTestCase {
     func testPackagesModelListsWhatTheBundlesIsRefundStampKeeps() async throws {
         let model = PackagesModel(engine: try await shimmedEngine(), store: try await ledger())
         try await model.load()
+        try await model.setHideReceived(false)  // Showing is not the subject; F1 is in, so Unreceived drops it
         XCTAssertEqual(model.rows.map(\.gk).sorted(), ["A1::Seller A", "E1::Seller E", "F1::Seller F", "R1::Seller S"])
     }
 
