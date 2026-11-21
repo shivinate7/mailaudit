@@ -133,6 +133,9 @@ ul.tags { margin:0; padding-left:20px; color:var(--inkSoft); font-size:14px; max
 .ptr span { font:600 14px var(--cochin); color:var(--card); background:var(--red); border-radius:18px; padding:6px 14px; white-space:nowrap; }
 .ptr.up { top:calc(var(--sat) + 56px); } .ptr.down { bottom:calc(var(--sab) + 80px); }
 .ptr.show { display:flex; }
+.ptr span { display:inline-flex; align-items:center; gap:6px; font-size:17px; }
+.ptr .mini { width:22px; height:22px; border:2px dashed var(--card); border-radius:6px; display:grid; place-items:center; }
+.ptr .mini svg { width:14px; height:14px; } .ptr .mini .redo { stroke:var(--card); }
 .hnote { position:absolute; z-index:10; font:600 11px var(--sys); color:var(--new); background:var(--paper); border:1.5px dashed var(--new); border-radius:6px; padding:2px 6px; opacity:0; transition:opacity 200ms; pointer-events:none; white-space:nowrap; }
 .hnote.on { opacity:1; }
 
@@ -191,6 +194,7 @@ ul.tags { margin:0; padding-left:20px; color:var(--inkSoft); font-size:14px; max
 .tagbox { position:absolute; z-index:11; pointer-events:none; }
 .tagbox i { position:absolute; inset:0; border:2px dashed; border-radius:6px; }
 .tagbox b { position:absolute; right:4px; top:-9px; font:600 10.5px/14px var(--sys); padding:0 4px; background:var(--paper); white-space:nowrap; }
+.tagbox.left b { right:auto; left:120px; }
 .tagbox.new i { border-color:var(--new); } .tagbox.new b { color:var(--new); }
 .tagbox.today i { border-color:var(--today); } .tagbox.today b { color:var(--today); }
 :focus-visible { outline:3px solid var(--accent); outline-offset:2px; }
@@ -321,7 +325,7 @@ ul.tags { margin:0; padding-left:20px; color:var(--inkSoft); font-size:14px; max
 <!-- ============ ADD-ONS ============ -->
 <section class="opt" data-opt="pointer">
   <h2>Edge pointer (add-on to any concept)</h2>
-  <p>When the failed row scrolls out of view, a red pointer floats at the list's edge on the side where the row went: "1 not saved". A tap scrolls the row back to the middle of the list. It is an overlay, so nothing moves, and it goes when the row is fixed or back in view.</p>
+  <p>When the failed row scrolls out of view, a red pointer floats at the list's edge on the side where the row went. It carries the struck box face and an arrow, not words: the save slot already says "1 not saved" once (<code>ux-label-once</code>), and VoiceOver reads "Show the row that did not save". A tap scrolls the row back to the middle of the list. It is an overlay, so nothing moves, and it goes when the row is fixed or back in view.</p>
   <figure data-states="offscreen">
     <div class="ctlrow" data-for="ptr-fold"></div>
     <div class="fit" style="max-width:468px"><div class="dev folded" id="ptr-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="box" data-preset="offscreen" data-focus="focus-pointer"></div></div>
@@ -338,9 +342,11 @@ ul.tags { margin:0; padding-left:20px; color:var(--inkSoft); font-size:14px; max
     <figcaption><b>Rides along, open: Card in Hand, with Struck box.</b> "Counterspell" typed; the answer is Delta Games, and the Gamma Cards line that failed still waits at the top.</figcaption>
   </figure>
   <figure data-states="ride">
-    <div class="fit" style="max-width:468px"><div class="folded-note dev folded" data-device="iphone-duo-folded" style="padding:calc(var(--sat) + 16px) 16px 16px;font-family:var(--cochin)">
-      <b style="font-size:19px">Folded: Card in Hand does not open</b>
-      <p style="color:var(--inkSoft)">Card in Hand opens only on two pages side by side (<code>PackagesTab.twoPages</code>; decision <code>duo-card-in-hand</code>). Folded, the line check-ins are on Packages, drawn in each concept above.</p>
+    <div class="fit" style="max-width:468px"><div class="dev folded" data-device="iphone-duo-folded">
+      <div style="position:absolute;inset:calc(var(--sat) + 16px) 16px 16px;display:flex;flex-direction:column;gap:8px;font-family:var(--cochin)">
+        <b style="font-size:19px">Folded: Card in Hand does not open</b>
+        <span style="color:var(--inkSoft)">Card in Hand opens only on two pages side by side (<code>HandScreen.twoPages</code>; decision <code>duo-card-in-hand</code>). Folded, the line check-ins are on Packages, drawn in each concept above.</span>
+      </div>
     </div></div>
     <figcaption><b>Rides along, folded.</b> Nothing to draw.</figcaption>
   </figure>
@@ -351,8 +357,8 @@ ul.tags { margin:0; padding-left:20px; color:var(--inkSoft); font-size:14px; max
   <p>The person ticks without looking. A failed save plays the system error haptic (<code>.sensoryFeedback(.error, …)</code>) at the moment the box turns red, so the hand learns of it before the eye. A good save stays silent, as today: hundreds of success taps would numb the signal. Set "Next tick fails" and tap: the frame marks where the haptic plays.</p>
   <figure data-states="failed">
     <div class="ctlrow" data-for="hap-fold"></div>
-    <div class="fit" style="max-width:468px"><div class="dev folded" id="hap-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="box" data-preset="fresh" data-haptic="1" data-focus="focus-haptic"></div></div>
-    <figcaption><b>Error haptic, folded, with Struck box.</b> Felt, not seen: the dashed note stands for the haptic.</figcaption>
+    <div class="fit" style="max-width:468px"><div class="dev folded" id="hap-fold" data-device="iphone-duo-folded" data-view="packages" data-concept="box" data-preset="failed" data-haptic="1" data-focus="focus-haptic"></div></div>
+    <figcaption><b>Error haptic, folded, with Struck box.</b> Felt, not seen: the dashed note beside the struck box stands for the haptic. Set "Next tick fails" and tap a box to see it play again.</figcaption>
   </figure>
 </section>
 
@@ -484,7 +490,10 @@ function render(f) {
     h += tabbar('Packages');
     // Today's overlay sits at the bottom of the tab's safe area, just above the floating bar (PackagesView, overlay(alignment: .bottom)).
     if (c === 'today') h += `<div class="todaybar${s.todayErr ? ' show' : ''}" style="bottom:calc(var(--sab) + 76px)">${s.todayErr || ''}</div>`;
-    h += `<button class="ptr up" type="button" data-act="ptr"><span>1 not saved ↑</span></button><button class="ptr down" type="button" data-act="ptr"><span>1 not saved ↓</span></button>`;
+    // The save slot holds the words once (ux-label-once); the pointer says it by shape: the struck box face and an arrow.
+    const nf = Object.keys(s.failed).length;
+    h += `<button class="ptr up" type="button" data-act="ptr" aria-label="Show the row that did not save"><span><i class="mini">${REDO}</i>${nf > 1 ? nf + ' ' : ''}↑</span></button>`
+       + `<button class="ptr down" type="button" data-act="ptr" aria-label="Show the row that did not save"><span><i class="mini">${REDO}</i>${nf > 1 ? nf + ' ' : ''}↓</span></button>`;
   } else if (v === 'hand') {
     const ride = s.ride;
     const env = ride ? PKGS[1] : PKGS[0];
@@ -525,6 +534,7 @@ function render(f) {
   if (f.dataset.ax && !s.axPlaced) { const L = f.querySelector('.list'), r = L && L.querySelector('.ln.failed'); if (r) L.scrollTop = r.offsetTop - 60; s.axPlaced = true; }
   const L = f.querySelector('.list'); if (L) L.addEventListener('scroll', () => pointer(f), { passive:true });
   pointer(f);
+  hapticNote(f, false);
   placeFocus(f);
   placeTags(f);
 }
@@ -542,6 +552,14 @@ function pointer(f) {
   if (rr.bottom < top + 8 * z) up.classList.add('show'); else if (rr.top > bottom - 8 * z) dn.classList.add('show');
 }
 
+// The haptic note sits beside the failed row's box; a fresh failure makes it blink once.
+function hapticNote(f, blink) {
+  const hn = f.querySelector('.hnote'), row = f.querySelector('.ln.failed'); if (!hn || !row) return;
+  const b = row.querySelector('.box').getBoundingClientRect(), fr0 = f.getBoundingClientRect(), z = parseFloat(getComputedStyle(f).zoom) || 1;
+  hn.style.left = ((b.right - fr0.left) / z + 8) + 'px'; hn.style.top = ((b.top - fr0.top) / z - 22) + 'px';
+  hn.classList.add('on');
+  if (blink) { hn.classList.remove('on'); requestAnimationFrame(() => requestAnimationFrame(() => hn.classList.add('on'))); }
+}
 function placeFocus(f) {
   const id = f.dataset.focus; if (!id) return;
   let el = null;
@@ -566,7 +584,7 @@ function placeTags(f) {
     const sl = pick('.slot.bad') || (c === 'ink' && pick('.slot'));
     if (sl && v !== 'hand') tags.push([sl, 'new', 'New: slot holds the count']);
     tags.push([pick('.ptr.show'), 'new', 'New: edge pointer']);
-    tags.push([pick('.ride'), 'new', 'New: rides along']);
+    tags.push([pick('.ride'), 'new left', 'New: rides along']);
     tags.push([pick('.bulk.failed'), 'new', 'New: failure on the pressed row']);
     tags.push([pick('.nm.failed'), 'new', 'New: name row marked']);
   }
@@ -595,9 +613,7 @@ function tap(f, k, viaRetry) {
     s.failed[k] = want; (s.failAt = s.failAt || {})[k] = now();
     render(f); syncCtl(f);
     const row = f.querySelector(`.ln[data-k="${k}"]`); if (row) row.classList.add('blot');
-    const hn = f.querySelector('.hnote');
-    if (hn && !hidden.has('haptic')) { const b = row.querySelector('.box').getBoundingClientRect(), fr0 = f.getBoundingClientRect(), z = parseFloat(getComputedStyle(f).zoom) || 1;
-      hn.style.left = ((b.right - fr0.left) / z + 8) + 'px'; hn.style.top = ((b.top - fr0.top) / z + 4) + 'px'; hn.classList.add('on'); setTimeout(() => hn.classList.remove('on'), 1600); }
+    hapticNote(f, true);
     return;
   }
   if (c === 'today') s.todayErr = null;     // today: any good save clears the one line
