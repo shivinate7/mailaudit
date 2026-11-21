@@ -106,7 +106,7 @@ header.page .meta b{color:var(--accent);font-weight:600}
 .panel{background:var(--surface);border-radius:16px;padding:14px;display:flex;flex-direction:column;overflow:hidden;margin:0 0 14px}
 .panel.p-phone{height:536px}
 .panel.p-noprev{height:304px}
-.panel.p-desk{height:440px;display:grid;grid-template-columns:372px 1fr;gap:0 24px;padding:20px}
+.panel.p-desk{height:480px;display:grid;grid-template-columns:372px 1fr;gap:0 24px;padding:20px}
 .p-desk .col{display:flex;flex-direction:column;min-height:0}
 .q-title{font-size:17px;line-height:22px;font-weight:600;margin:0;height:22px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .q-sub{font-size:13px;line-height:18px;color:var(--ink2);margin:2px 0 10px;height:18px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -122,6 +122,8 @@ header.page .meta b{color:var(--accent);font-weight:600}
 .count b{color:var(--ink);font-weight:600;font-variant-numeric:tabular-nums}
 .q-extra{height:20px;font-size:13px;line-height:18px;color:var(--warn);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin:0 0 8px;flex:none}
 .spacer{flex:1}
+.how{margin:4px 0 0;padding:12px 0 0 18px;border-top:.5px solid var(--line);font-size:13px;line-height:18px;color:var(--ink2)}
+.how li{margin:0 0 6px}
 
 /* Preview */
 .pv-wrap{flex:1;min-height:0;display:flex;flex-direction:column;border-top:.5px solid var(--line);margin:0 -14px;}
@@ -389,7 +391,7 @@ function slot(c){
   var r1,r2;
   if(P.phase==="done"){
     r1='<div class="result ok" role="status">'+IC.check+'<span class="num">'+plural(c.m,"order")+' marked arrived.</span><button type="button" class="textbtn" data-act="undo" data-fk="undo">Undo</button></div>';
-    r2='<div class="row2 num">'+plural(c.outst,"order")+' still outstanding'+(c.lost?". "+c.lost+" flagged May be lost.":".")+'</div>';
+    r2='<div class="row2 num">'+plural(c.outst,"order")+' still outstanding'+(c.lost?". "+c.lost+" flagged “May be lost”.":".")+'</div>';
   }else if(P.phase==="skipped"){
     r1='<div class="result mute" role="status"><span class="num">All '+fmtN(c.T)+' orders stay outstanding.</span><button type="button" class="textbtn" data-act="undo" data-fk="undo">Undo</button></div>';
     r2='<div class="row2">Check cards by hand as the mail comes.</div>';
@@ -477,7 +479,8 @@ function pvBlock(){
 }
 function panel(kind){
   var c=calc();
-  if(kind==="desk")return L("new","starting line panel",'<section class="panel p-desk" aria-label="Starting line"><div class="col">'+head()+qrow(c)+'<div class="spacer"></div>'+slot(c)+'</div><div class="col">'+pvBlock()+'</div></section>');
+  var how='<ul class="how"><li>Marked orders count as received, in Packages and in Tally.</li><li>An order you switch to Never came stays outstanding, with the lost-mail warning.</li><li>Undo stays here until you leave this view.</li></ul>';
+  if(kind==="desk")return L("new","starting line panel",'<section class="panel p-desk" aria-label="Starting line"><div class="col">'+head()+qrow(c)+how+'<div class="spacer"></div>'+slot(c)+'</div><div class="col">'+pvBlock()+'</div></section>');
   if(kind==="noprev")return L("new","starting line panel",'<section class="panel p-noprev" aria-label="Starting line">'+head()+qrow(c)+'<div class="spacer"></div>'+slot(c)+'</section>');
   return L("new","starting line panel",'<section class="panel p-phone" aria-label="Starting line">'+head()+qrow(c)+pvBlock()+slot(c)+'</section>');
 }
