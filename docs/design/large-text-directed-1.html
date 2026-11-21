@@ -241,6 +241,10 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
 /* at accessibility sizes a dotted line becomes a short list: one part per line, no dots, no tracking */
 .ax.m-flow .part, .ax.m-dock .part { display:block; }
 .ax.m-flow .sep, .ax.m-dock .sep { display:none; }
+.nobr { white-space:nowrap; }
+/* last resort: a single word wider than the whole line takes a hyphen at a syllable, as print does */
+.ax.m-flow :is(.nm, .cand b, .pkg-h .who b, .ln .t small, .trow .meta), .ax.m-dock :is(.nm, .cand b, .pkg-h .who b, .ln .t small, .trow .meta) {
+  hyphens:auto; -webkit-hyphens:auto; overflow-wrap:anywhere; min-width:0; }
 .ax.m-flow .house, .ax.m-flow .cell .lab, .ax.m-flow .env-h .micro, .ax.m-flow .lcell .k,
 .ax.m-dock .house, .ax.m-dock .cell .lab, .ax.m-dock .env-h .micro, .ax.m-dock .lcell .k { letter-spacing:0; }
 </style>
@@ -350,7 +354,9 @@ const W = s => s.replace(/(?<!<)\//g, '/<wbr>');
 // live figure plus a hidden reserve of its widest 4-digit form; plain in Today, which reserves nothing
 const fig = (live, rsv, today) => today ? W(live) : `<span class="fig"><span class="rsv" aria-hidden="true">${W(rsv)}</span><span class="live">${W(live)}</span></span>`;
 // parts break only at their own spaces and after a separator, never inside a word
-const parts = arr => arr.map((p, i) => `<span class="part">${p}${i < arr.length - 1 ? '<span class="sep">&nbsp;·</span>' : ''}</span>`).join(' ');
+// an order id or a date never breaks at its hyphen
+const nobr = s => s.replace(/\b([0-9A-F]{4}-\d{2}|\d{4}-\d{2}-\d{2})\b/g, '<span class="nobr">$1</span>');
+const parts = arr => arr.map((p, i) => `<span class="part">${nobr(p)}${i < arr.length - 1 ? '<span class="sep">&nbsp;·</span>' : ''}</span>`).join(' ');
 
 const SEAL = `<svg class="seal" viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="wx" cx=".37" cy=".3" r=".78"><stop offset="0" stop-color="#C86A5F"/><stop offset=".5" stop-color="#A8443C"/><stop offset="1" stop-color="#66231D"/></radialGradient></defs><path d="M50 2C69 2 80 9 88 20C96 31 99 45 96 59C92 75 81 90 65 95C50 100 34 98 22 89C9 78 2 62 3 47C5 30 15 15 31 7C37 4 43 2 50 2Z" fill="url(#wx)"/><circle cx="50" cy="50" r="39" fill="none" stroke="#66231D" stroke-width="3.5" opacity=".6"/><path d="M29 58L50 38L71 58M31 72H69" fill="none" stroke="#5E1F1A" stroke-width="8" stroke-linecap="round" stroke-linejoin="round" opacity=".9"/><path d="M29 54.5L50 34.5L71 54.5M31 68.5H69" fill="none" stroke="#E09A90" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round" opacity=".55"/></svg>`;
 
@@ -389,8 +395,8 @@ function runningFigure(today) {
 function runningHead(m, ax, id) {
   const today = m === 'today';
   // at accessibility sizes the word mark leaves the slim head: the seal stands for it, the figure gets the width
-  const title = today || !ax ? `<span class="rt" ${today ? '' : 'data-fit'}>Manifest</span>` : '';
-  return `<div class="rh ${today ? 'tag-today' : 'tag-new'}" ${id ? `id="${id}"` : ''} data-tag="${today ? 'Today: running head' : 'New: running head grows by lines'}" aria-label="Running head">${SEAL}${title}<span class="rf">${runningFigure(today)}</span></div>`;
+  const brand = today || !ax ? `${SEAL}<span class="rt" ${today ? '' : 'data-fit'}>Manifest</span>` : '';
+  return `<div class="rh ${today ? 'tag-today' : 'tag-new'}" ${id ? `id="${id}"` : ''} data-tag="${today ? 'Today: running head' : 'New: running head grows by lines'}" aria-label="Running head">${brand}<span class="rf">${runningFigure(today)}</span></div>`;
 }
 function dock(id) {
   return `<div class="dock tag-new" ${id ? `id="${id}"` : ''} data-tag="New: facts at the thumb" aria-label="Pinned facts"><span class="rf">${runningFigure(false)}</span></div>`;
@@ -644,7 +650,12 @@ function auditFrame(dev) {
       const r = document.createRange(); r.setStart(n, mt.index); r.setEnd(n, mt.index + mt[0].length);
       const rects = [...r.getClientRects()].filter(x => x.width > 0);
       const tops = new Set(rects.map(x => Math.round(x.top)));
-      if (tops.size > 1) out.push(`word split "${mt[0]}"`);
+      // a word wider than its whole line may break in the hyphen-allowed boxes; that is reported apart, never as clean
+      if (tops.size > 1) {
+        const lineW = el.closest('.part, .nm, .t, .cand, .who, .meta, .rf, .lh') || el;
+        const wider = r.getBoundingClientRect().width === 0 ? false : [...rects].reduce((a, x) => a + x.width, 0) > lineW.getBoundingClientRect().width - 1;
+        out.push(`${getComputedStyle(el).hyphens === 'auto' && wider ? 'last-resort hyphen' : 'word split'} "${mt[0]}"`);
+      }
       const box = r.getBoundingClientRect(); if (!box.width) continue;
       const pw = el.closest('.pw'); const pr = pw ? pw.getBoundingClientRect() : frame;
       if (box.bottom < pr.top || box.top > pr.bottom) continue;  // scrolled out of its page
