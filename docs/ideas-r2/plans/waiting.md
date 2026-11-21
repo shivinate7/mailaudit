@@ -41,3 +41,82 @@ The idea: the app opens to one sentence that reflects the data: "All on time. 38
 - Owner decides: whether money appears in the sentence at all, and whether any notification is wanted.
 
 Strongest: Mailbox check-ins, empty days included. It is the one idea that adds new data (mail days), it makes every other lateness clock honest, and it gives each trip to the mailbox a defined end.
+
+## Phase 2: Mailbox check-ins (fleshed out)
+
+A trip to the mailbox becomes a recorded event. If nothing came, that day still counts. Lateness counts mail days, not calendar days. Every trip ends with one closing sentence.
+
+These parts belong to other planners and are only referenced here: the doorstep pass, the mail forecast, calibrated lateness, the claim clock and trip mode.
+
+Unknown: I did not read the code. So I do not know how the lost-mail warning counts days, what the recent-checks log stores, or whether sync merges per record. Any step that leans on these says so.
+
+### Flow, step by step
+1. The owner opens the app on Packages. A fixed-height bar sits above the list. It reads "Checked the mail?" with two buttons: **Mail came** and **Nothing today**.
+2. **Mail came** opens a trip. The bar becomes "Mail check · 14:10 · 0 marked" with a **Done** button. The owner marks cards in Packages as today. If the doorstep pass has shipped, its taps go into the open trip.
+3. **Done** closes the trip. The bar is replaced in place, at the same height, by the closing sentence. The trip appears as one line in the recent-checks log, and undo works from there.
+4. **Nothing today** records an empty check and shows the closing sentence at once. No list changes.
+5. Marks made with no trip open still count. Marks less than 30 minutes apart are grouped into one implied trip, read from the existing check-in timestamps. The bar then shows its closing sentence after 30 minutes with no marks, or the next time the app opens.
+6. A trip left open closes itself after 2 hours with no marks. Its sentence shows the next time the app opens.
+7. The next day the bar resets. A second check on the same day is allowed: a later "Mail came" turns an empty morning into a mail day.
+
+### Closing sentence (from "One calm sentence first")
+Each sentence is built from fixed states, so tests can pin every wording. It never mentions money. Examples:
+- Normal: "Done for today. 3 marked, 29 in the air. Nothing needs you."
+- Late: "Done for today. 1 late: Pinecone Cards, mail day 14. Nothing to do until Dec 3." The date comes from the claim clock if it has shipped. Otherwise the sentence stops after "mail day 14".
+- Empty: "No mail today. Clocks did not move."
+- Too early: "Nothing yet. Mail usually comes by 15:40." This check is not recorded as an empty day (see the rule below).
+- Sunday or a holiday: "No delivery today. Clocks paused."
+- Nothing in the air: "All in. Nothing in the air."
+- Forecast shipped: the sentence can add "4 likely tomorrow". Without the forecast it says nothing about tomorrow.
+
+### Mail-day counting
+- **Mail day:** a day with a "Mail came" check or any marked card.
+- **Empty day:** a day whose last check was "Nothing today" and came after the cutoff. The cutoff is the 90th percentile of past "Mail came" times, for example 15:40. A fixed default of 16:00 applies until 20 trips exist.
+- **Unknown day:** a day with no check. Monday to Saturday count as mail days, so lateness is never hidden. Sundays and holidays the owner enters do not count.
+- **Trip mode:** a span marked "away" by trip mode counts as unknown. It is never empty.
+- **Orphaned mail:** it decides nothing. An orphan never turns a day into a mail day by itself. Only the owner's "Mail came" tap does.
+- **Display:** each late order shows both counts: "mail day 9 (12 calendar)".
+
+### Screen states
+- **Empty:** no orders imported, so the bar is absent and the existing empty state stands. Orders exist but nothing is in the air, so the bar still shows and its sentence reads "All in."
+- **Normal:** three bar states (idle, trip open, closed with its sentence), all the same height. Tally and Orphaned show nothing new, so they say less.
+- **Edge cases:**
+  - After midnight: a check at 00:30 belongs to the previous day. The day boundary is 04:00.
+  - Two devices on one day: their checks are united. The latest kind wins.
+  - Clock skew: covered by the accepted risk `merge-later-change-wins`.
+  - Undo: an undone empty check reverts the day to unknown.
+  - Import: a CSV import never touches trips.
+- **Errors:**
+  - Sync fails: the trip is saved on the device, the sentence still shows, and the existing sync indicator carries the "not synced" state.
+  - Local save fails: the bar stays open (step 2 state) so nothing is lost silently. The message is in-app text, never a native dialog.
+
+### Data
+- New field `mailChecks`: a list of entries, each with `id`, `at`, `kind` (`mail` or `empty`), `closedAt` and `undone`. It holds no copy of any check-in, because trips link to marks by time window. It touches `saved-state-shape` and needs an owner ruling.
+- No new storage key. The field rides inside the existing saved state, which keeps `storage-keys-are-frozen`.
+- Sync merges the list as a union by `id`. An undo sets `undone: true` and never deletes, so a late device cannot bring an undone trip back. This keeps the spirit of `imports-merge-never-replace` for sync.
+- New field `holidays`: a list of dates the owner enters once a year. No outside calendar is fetched. It touches `saved-state-shape` and needs a ruling.
+- Learned cutoff: computed each time, never stored.
+- Unchanged: the parser (`parser-filters`), the device key (`the-token-is-a-credential`), the check-in shape and orphan handling.
+
+### Slices
+1. **Smallest first slice: closing sentence only.** The bar offers **Mail came** and **Done**, plus the implied-trip grouping. The sentence is built from existing check-ins and the existing lost warning. It adds no new field, needs no ruling, and ships alone. "Nothing today" is not in this slice.
+2. **Empty days.** Adds "Nothing today", the `mailChecks` field and the cutoff. Needs the saved-state ruling.
+3. **Mail-day counting.** The lost-mail warning switches to counting mail days, with both counts shown. Needs `holidays` and 30 recorded trips before it switches.
+4. **Optional later: "Not yet due, so not shown".** A fold above the Packages list hides orders whose window has not opened. It reuses the mail-day clock and seller medians from the seller record card.
+
+### Risks
+- **Friction.** One more tap per day. A forgotten tap makes the day unknown, not empty, so the cost is lost data, never hidden lateness.
+- **Sentence drift.** A wrong "Nothing needs you" is worse than none. Each wording needs a fixture test.
+- **Fewer counted days.** Counting mail days delays the lost warning by up to 1 day per Sunday or holiday. Showing both counts keeps this visible.
+- **Layout.** Each bar state must hold its height exactly (`no-layout-shift-under-pointer`). A long sentence wraps inside a fixed two-line slot and is cut with an ellipsis, never grown.
+- **Delivery-time patterns.** The learned cutoff can drift if the carrier changes route. 90 days of trips limit that drift.
+
+### Owner decisions (recommended answer first)
+1. Add `mailChecks` to the saved state? **Yes:** one append-only list with undo flags.
+2. Day boundary? **04:00 local time.**
+3. How does an unchecked weekday count? **As a mail day.** It never pauses a clock.
+4. When does an empty check count? **Only after the learned cutoff.** Before it, the sentence says "Nothing yet" and records nothing.
+5. Should the lost warning count mail days? **Yes, from slice 3**, after 30 trips, showing both counts.
+6. Where do holidays come from? **The owner enters them once a year.** Nothing is fetched.
+7. Should the sentence ever show money? **No.** Cost stays in Tally.
+8. Should an orphan-only trip make a mail day? **Only through the owner's "Mail came" tap**, never from the orphan itself.
