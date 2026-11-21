@@ -54,7 +54,9 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
 .dev[data-device="iphone-duo-unfolded"] { width:951px; height:669px; }
 .dev[data-device="iphone-regular"] { width:320px; height:678px; resize:horizontal; min-width:320px; max-width:520px; }
 .status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
-  padding:0 16px; font-size:12px; font-weight:600; z-index:9; pointer-events:none; }
+  padding:0 16px; font-size:12px; font-weight:600; z-index:9; pointer-events:none;
+  /* the scroll edge under the status bar: content fades out instead of colliding with the time */
+  background:linear-gradient(var(--paper) 70%, color-mix(in srgb, var(--paper) 0%, transparent)); }
 .pw { position:absolute; top:0; bottom:0; left:0; right:0; overflow:hidden; }
 .pw.l { right:auto; width:455.5px; } .pw.r { left:495.5px; right:auto; width:455.5px; }
 .fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 55%, var(--paper)); z-index:8; }
@@ -199,7 +201,7 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
 
 /* tags: dashed outline on what exists today, and on what a concept adds */
 :where([data-tag]) { position:relative; }
-.show-tags [data-tag]::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 10.5px/14px var(--sys); padding:0 4px;
+.show-tags [data-tag]:not([data-tag=""])::before { content:attr(data-tag); position:absolute; right:4px; top:-9px; font:600 10.5px/14px var(--sys); padding:0 4px;
   background:var(--paper); z-index:4; white-space:nowrap; pointer-events:none; }
 .show-tags .tag-new { outline:2px dashed var(--new); outline-offset:-2px; } .show-tags .tag-new::before { color:var(--new); }
 .show-tags .tag-today { outline:2px dashed var(--today); outline-offset:-2px; } .show-tags .tag-today::before { color:var(--today); }

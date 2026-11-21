@@ -41,6 +41,18 @@ Both concepts keep today's tabs, first screen and way between tabs. Structure ve
 
 13. **No haptic is added.** No control here changes a value (`ux-haptics-feel-substantial`).
 
+14. **At accessibility sizes a dotted line becomes a short list.** "Envelope · 2026-11-02 · 12 cards" reads as three lines with no dots; order ids and dates never break at their hyphens. Gain: no part wraps at a stray space. Loss: taller rows; the count line reserves two lines on tabs whose own line needs one, which reads as a blank line above the missing line. Pick: yes.
+
+15. **A word wider than the whole line takes a hyphen.** Only on the 320 pt phone at AX4 and AX5 ("Counterspell", "Remastered", "Innistrad:"). Nothing else on the Duo, folded or open, needs it. Gain: the word reads whole across two lines, as print does. Loss: it is still a break inside a word, which the brief calls out; the only other way is to shrink the text, which the direction rules out. SwiftUI needs a hyphenation factor in an attributed string for this. Pick: yes, as the last resort. **Owner grant: yes.**
+
+## Checks run on this mockup
+
+- In-page truncation check (button at the page foot, or `#audit=all`), headless Chrome, 2026-11-21: every concept, device, text size, tab and state (324 frames each). One column and Facts at the thumb: no clip, no ellipsis, no plain word split, nothing in the hinge, nothing past an edge, no target under 44 pt, no last control under the bar; 9 frames each show item 15's hyphen on the 320 pt phone. Today: 280 of 324 frames flagged. The 999 to 1,000 tap changed no letterhead, running head or strip height at any size or tab.
+- `check_ios_mockup.py`: exit 1 on `system-font`, because app content is set in Cochin (`typography-cochin-and-mono`). The existing `duo-hand-post-sender.html` fails the same way. Chrome uses the system font. Possible false alarm against house tokens ("brand fonts appear only in content").
+- `label_once.py` on a rendered frame: "near mint" and "order" repeat; both are data.
+- Own design-review pass (no blind reviewers spawned): structure `same` for both concepts; `native` for both.
+- impeccable critique (native: design review only; no detector, no snapshot). Fixed: content collided with the status bar time when scrolled (added a scroll-edge fade); empty tag labels drew on some rows. Open: at AX5 the letterhead fills the folded screen's first view, so the list starts below it (question below); the count line's reserved blank line (item 14).
+
 ## Sizes and sources
 
 - Devices: `layout.py devices` printed `unknown` for this repo, and the layout file gives no sizes. Folded Duo 466 x 678 pt and open 951 x 669 pt with the hinge at 455.5 to 495.5 pt come from the brief; both match measurement `duo-fold-and-keyboard`. Folded bar from y 595 pt, 83 pt with the bottom inset (same record). Open bar x 520 to 927, y 593 to 657 (debt `hand-open-under-bar-at-l`).
@@ -63,5 +75,6 @@ The Today section approximates the code's one-line limits with CSS: `lineLimit(1
 
 ## Input needed
 
-- Items 5, 6, 8, 9 and 11 need an owner grant.
+- Items 5, 6, 8, 9, 11 and 15 need an owner grant.
 - The large phone's size is not written. Name it, or keep 320 pt.
+- At AX5 the folded Duo's first view is all letterhead. Should the tallies collapse to the one cards-and-money line at AX4 and up, with the rest a tap away? That would trade "nothing hidden" for a shorter first screen.
