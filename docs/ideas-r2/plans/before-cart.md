@@ -46,3 +46,82 @@ Premises (blind brief, so none checked against code or records):
 - **Owner decides:** Whether to fold this into Already coming or keep it apart. How old a price can be and still be shown.
 
 Strongest: Seller report card — it is the one piece of cart-time advice nobody else can give, a seller's record at this one mailbox, built from check-in data the tool already holds.
+
+## Phase 2: Already coming (fleshed out)
+
+**The point.** Before checking out, the collector pastes the cart and sees, line by line, what is already in the mail, what arrived, and what they paid before. It is a read-only lookup against Tally. It saves nothing, so slice 1 needs no new saved field.
+
+### Flow
+1. On the marketplace, the collector selects the cart text and copies it.
+2. In MANIFEST, they open **Already coming**, a drawer from the masthead. It is a lookup, not a fourth view, because it reads Tally and writes nothing.
+3. They paste into a plain textarea. A paste event fills it, so no clipboard-permission prompt appears and no native dialog opens.
+4. They press **Check**. Each pasted line becomes a name, a quantity and, if present, a price.
+5. Each line is matched against Tally rows through the same name normalizer Tally uses. It is one function with one home, not a copy.
+6. The results list shows one row per cart line, with a verdict chip and the price-memory columns.
+7. The collector tweaks the cart on the marketplace, pastes again, and presses Check again. The previous result is replaced in place.
+8. Closing the drawer discards the paste and the result.
+
+### Row verdicts
+- **New:** no Tally row matches.
+- **Coming:** an example reads "3 in transit · 2 sellers · oldest 9 days". It names its sellers, such as "Pinewood Cardhaus ×2, Lantern Row ×1".
+- **Have:** an example reads "4 received · last Nov 12".
+- **Short:** shown when the cart quantity plus the in-transit and received counts is still under a target. This is shown only after targets exist (see decision 5).
+- **In doubt:** a matching order carries a lost-mail warning or a "claim filed" stamp. It shows apart from Coming and is never counted as on its way.
+- **Refunded:** a lost card stamped "refunded" counts as not coming, so buying it again reads as normal.
+- **Orphaned:** if any Orphaned package is open, a footer line reads "2 orphaned envelopes unmatched; they may hold cards on this list". It never changes a row's verdict.
+
+### Price memory columns (card price only; landed cost stays with round 1's landed-cost work)
+| Column | Example |
+|---|---|
+| Last paid | $0.22 (Oct 30, TwoMoonsTCG) |
+| Lowest | $0.18 |
+| Buys | 3 |
+| vs cart | +$0.33, shown only when the pasted line carries a price |
+
+### Screen states
+- **Empty, no orders imported:** "Import an order history first; there is nothing to compare yet." The import button sits in the drawer.
+- **Empty, nothing pasted:** the textarea shows a placeholder with a 2-line invented example. The Check button is disabled, but it holds its place.
+- **Normal:** a header line reads "12 lines · 4 coming · 2 have · 6 new", followed by the rows. Rows sort in cart order so the collector can scan alongside the marketplace tab.
+- **Edge, ambiguous name:** for example "Ashen Wyrm" matches two printings. The row shows **2 possible** and expands to list both with their counts. It never picks one silently.
+- **Edge, non-card line** (sealed product, sleeves, a shipping line): the row shows "skipped: not a card line" in a muted style. It is listed, never dropped silently.
+- **Edge, unparseable line:** the raw text shows with "could not read". The other lines still check.
+- **Edge, data may be behind:** "As of last sync 3 h ago on this device". This covers a check-in done on the phone that has not synced yet.
+- **Error, paste too large** (say over 500 lines): an inline message reads "Paste up to 500 lines; this has 812". Nothing is truncated quietly.
+- **Error, zero lines read:** "No card lines found. Paste the cart's item list, not the page header." It shows with one invented sample.
+
+### Layout (no layout shift under the pointer)
+- The textarea and the Check button keep fixed positions. Results render below them in a region whose space is held while checking.
+- An expanding "2 possible" row grows downward only, beneath the pointer, never above it.
+- The summary line keeps a fixed width for its counts, so a changing number does not push the chips.
+
+### Data
+- **Slice 1 adds no field.** It reads product names, order states, stamps and unit prices that Tally already holds.
+  - Rules touched: none written. `saved-state-shape` (the fixed saved-state shape) and `storage-keys-are-frozen` (frozen storage keys) are untouched.
+- **The paste is kept only in memory.** It is never stored, never synced and never logged. It is personal cart data that the collector did not import.
+- **The CSV parser is untouched.** `parser-filters` (the parser keeps only card purchases) governs the import. The paste reader is its own small reader and reuses only the name normalizer.
+- **Later, playset targets:** one optional number per Tally product, such as "want 4". This is a new saved field, so it needs an owner ruling under `saved-state-shape`. It lives inside the existing state object, never under a new storage key. It merges by product key, last change wins, which keeps `imports-merge-never-replace` (imports merge, never replace).
+- **Later, phone share sheet:** the native app takes shared text from the marketplace app into the same drawer. It adds no data.
+
+### Smallest first slice (ships alone)
+- What ships: the web drawer, the paste reader, the normalized-name match, and the New, Coming, Have, In doubt and Refunded chips. It adds the Last paid and Lowest columns and the orphaned footer.
+- What is left out: targets, the share sheet, the vs-cart price, and ambiguous-row expansion. In slice 1 an ambiguous match shows "2 possible" with both counts inline.
+- Proof:
+  - Fixture tests feed 3 invented cart pastes against an invented Tally. One cart has a refunded card, one has a claim-filed card, and one has an orphan open.
+  - The tests assert each verdict.
+  - One test asserts the saved state is byte-identical before and after a check.
+
+### Risks
+- **Cart text format is unknown and may change.** Mitigation: the reader is forgiving and shows each raw line it could not read. Fixtures come from real copied carts with names swapped for invented ones.
+- **A false "Have" costs a wanted card more than a false "New" does.** Mitigation: a weak match reads "possible", never "Have".
+- **Name drift between the cart and the CSV** (set codes, "(Foil)", condition suffixes). Mitigation: fix it in the shared normalizer, so Tally improves too.
+- **Sync lag misleads across devices.** Mitigation: the "as of" line.
+- **Scope creep toward landed cost or seller records.** Mitigation: link to round 1's work and do not rebuild it here.
+
+### Owner decisions (each with a recommended answer)
+1. **What counts as the same card?** Recommend name plus set. Show condition and foil as a sub-note, not a separate match.
+2. **How far back does "Have" look?** Recommend all time, showing the count and the last date.
+3. **Does "claim filed" count as coming?** Recommend no. Show it as In doubt until it is refunded or checked in.
+4. **Is it a drawer or a fourth view?** Recommend a drawer. It writes nothing, and the three views stay the working surfaces.
+5. **Store playset targets?** Recommend not in slice 1. Rule on it after a month of use shows whether "Short" is wanted.
+6. **Keep the last paste between visits?** Recommend no. It would need a new storage key (frozen) and would keep cart data that the collector never chose to save.
+7. **Who supplies cart samples?** Recommend the owner copies 3 real carts once. A builder swaps every name and price for invented ones before they become fixtures.
