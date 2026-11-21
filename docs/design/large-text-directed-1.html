@@ -107,6 +107,7 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
 .fig { display:inline-grid; text-align:inherit; }
 .fig > * { grid-area:1/1; }
 .fig > .rsv { visibility:hidden; }
+.fig > .live { align-self:end; }  /* any spare reserved line sits above the figure, next to the line before it */
 .stack { display:grid; } .stack > * { grid-area:1/1; } .stack > .rsv { visibility:hidden; }
 /* a part wraps as one unit at its separator first; only a part wider than the line wraps inside, at its own spaces */
 .part { display:inline-block; max-width:100%; white-space:normal; }
@@ -135,7 +136,7 @@ details.audit summary { cursor:pointer; min-height:44px; display:flex; align-ite
   padding:6px 10px; min-height:44px; min-width:44px; cursor:pointer; text-align:center; }
 .mini.accent { border-color:var(--accent); color:var(--accent); }
 .handrow { display:flex; justify-content:flex-end; padding:8px 16px; }
-.handhead { position:sticky; top:0; z-index:5; background:var(--paper); border-bottom:1px solid var(--line); margin-top:calc(-1 * var(--sat));
+.handhead { position:sticky; top:calc(-1 * var(--sat)); z-index:5; background:var(--paper); border-bottom:1px solid var(--line); margin-top:calc(-1 * var(--sat));
   padding:calc(var(--sat) + 8px) 16px 8px; display:flex; justify-content:flex-end; }
 
 /* Packages card */
@@ -374,7 +375,7 @@ function letterhead(m, ax, today, tag) {
     ['value', fig('<b>$1,204</b>/$1,890', '$0,000/$0,000', today)],
   ];
   const miss = today ? `${fmt(f.left)} still missing · ${money(f.owed)}`
-    : parts([`${fig(fmt(f.left), '0,000')} still missing`, fig(money(f.owed), '$0,000.00')]);
+    : parts([fig(`${fmt(f.left)} still missing`, '0,000 still missing'), fig(money(f.owed), '$0,000.00')]);
   return `<header class="lh">
     <div class="sealrow"><i></i>${SEAL}<i></i></div>
     <div class="ttl" data-fit>Manifest</div>
@@ -548,6 +549,9 @@ function after() {
       if (always) { always.style.bottom = (barH + 8) + 'px'; bottom += always.offsetHeight + 8; }
       scroll.style.setProperty('--pad-b', bottom + 'px');
       if (S.scroll === 'mid') scroll.scrollTop = (scroll.scrollHeight - scroll.clientHeight) / 2;
+      // a deep link to an armed ask opens with the ask in view, where the thumb that armed it is
+      const ask = S.s === 'armed' && scroll.querySelector('.reset, .env');
+      if (ask) scroll.scrollTop = ask.offsetTop - scroll.clientHeight / 3;
       const sentinel = scroll.querySelector('.sentinel');
       const pin = rh || dk;
       if (sentinel && pin) {
