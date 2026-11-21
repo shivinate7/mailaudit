@@ -1,0 +1,788 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Large Text Facts</title>
+<style>
+/* Tokens: shared/tokens.json (design-parchment-ledger). The native app is held to light (UIUserInterfaceStyle), so this page draws one theme. */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --green:#2E7A5E; --greenSoft:#E6E7D7; --red:#A8443C; --redSoft:#F4E4D9; --manila:#EADBBA; --manilaInk:#695832;
+  --gold:#C9A961; --scrim:rgba(28,43,36,0.92);
+  --cochin: Cochin, "Cochin", Georgia, serif;
+  --mono: Menlo, ui-monospace, monospace;
+  /* Status bar foot: unmeasured on the Duo. Drawn at the UI test's 20 pt floor (DuoHandUITests.statusBarFloor), as duo-hand-post-sender draws it. */
+  --sat: max(env(safe-area-inset-top), 20px);
+  --sab: max(env(safe-area-inset-bottom), 0px);
+  --bar-pill: 64px; --bar-lift: 12px;  /* DuoBarMetrics.pill and .lift */
+  --new:#2E7A5E; --today:#A8443C;
+}
+* { box-sizing: border-box; }
+html { background: var(--paper); }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.4; }
+main { max-width:1560px; margin:0 auto; padding:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-size:24px; margin:16px 0 4px; }
+.sub { color:var(--inkSoft); margin:0 0 8px; max-width:80ch; }
+.kind { font-weight:600; color:var(--ink); }
+.controls { display:flex; flex-direction:column; gap:8px; margin:12px 0; }
+.group { display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.group > span { font-size:13px; color:var(--inkSoft); min-width:72px; }
+.group a, .group button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+.group a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+.group button[aria-pressed="true"] { background:var(--line); }
+.group a:focus-visible, .group button:focus-visible, .dev button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+.stage { display:flex; flex-wrap:wrap; gap:24px; align-items:flex-start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure[hidden] { display:none; }
+figcaption { max-width:466px; font-size:14px; color:var(--inkSoft); }
+figcaption b { color:var(--ink); font-size:16px; display:block; }
+.fit { max-width:100%; overflow-x:auto; }
+
+/* ---- device frames, 1 CSS px = 1 pt ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-radius:12px; overflow:hidden; flex:none; }
+.status { position:absolute; left:0; right:0; top:0; height:var(--sat); display:flex; justify-content:space-between; align-items:center;
+  padding:0 16px; font-size:12px; font-weight:600; z-index:8; background:var(--paper); }
+.page { position:absolute; top:0; bottom:0; overflow:hidden; }
+.fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:9; }
+.fold span { position:absolute; top:240px; left:50%; transform:translateX(-50%) rotate(-90deg); font:10.5px var(--mono); color:var(--inkSoft); letter-spacing:1.2px; }
+.scroll { position:absolute; left:0; right:0; top:var(--sat); bottom:0; overflow-y:auto; overflow-x:hidden; scrollbar-width:none; }
+.scroll::-webkit-scrollbar { display:none; }
+.col { display:flex; flex-direction:column; }
+
+/* ---- app content: Cochin sets words, Menlo sets numbers (typography-cochin-and-mono). Sizes are set per Dynamic Type step by script. ---- */
+.app { font-family:var(--cochin); color:var(--ink); }
+.mono { font-family:var(--mono); }
+/* form controls do not inherit the font (design-form-controls-no-inherit), so the device frame sets it again on them */
+.dev button.app { font-family:var(--cochin); } .dev button.mono { font-family:var(--mono); }
+.lh { display:flex; flex-direction:column; align-items:center; padding:12px 24px 0; }
+.seal-row { display:flex; align-items:center; gap:12px; width:100%; max-width:270px; padding-bottom:12px; }
+.seal-row i { flex:1; height:1px; background:var(--gold); opacity:.75; }
+.seal { width:36px; height:36px; flex:none; }
+.title { text-transform:uppercase; letter-spacing:.18em; white-space:nowrap; font-weight:700; max-width:100%; overflow:hidden; }
+.house { text-transform:uppercase; letter-spacing:.2em; color:var(--inkSoft); white-space:nowrap; padding-top:8px; max-width:100%; overflow:hidden; }
+.tallies { width:100%; display:flex; flex-direction:column; }
+.rule { height:1px; background:var(--line); }
+.cells { display:grid; grid-template-columns:1fr 1fr 1.7fr; padding-top:12px; }
+.cells.stacked { display:flex; flex-direction:column; gap:8px; }
+.cell { display:flex; flex-direction:column; align-items:center; gap:4px; padding:0 4px; min-width:0; }
+.cells:not(.stacked) .cell + .cell { border-left:1px solid var(--line); }
+.cell .lab { text-transform:uppercase; letter-spacing:.14em; color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:clip; max-width:100%; }
+.cell .fig { white-space:nowrap; overflow:hidden; max-width:100%; }
+.lead { color:var(--accent); font-weight:700; } .rest { color:var(--inkSoft); }
+.cell .fig .miss { color:var(--red); font-weight:700; } .cell .fig .miss.done { color:var(--green); }
+/* the ruled form of a cell (new): label leads, figure trails, and the figure drops under the label when the pair does not fit */
+.cells.ruled { display:flex; flex-direction:column; gap:0; padding-top:4px; }
+.cells.ruled .cell { flex-direction:row; flex-wrap:wrap; justify-content:space-between; align-items:baseline; column-gap:12px; row-gap:0; padding:8px 0; border-top:1px solid var(--line); }
+.cells.ruled .cell:first-child { border-top:0; }
+.cells.ruled .cell + .cell { border-left:0; }
+.cells.ruled .fig { white-space:normal; overflow:visible; }
+.cells.ruled .fig > span { white-space:nowrap; }
+.bar { height:8px; border-radius:4px; background:var(--line); margin-top:8px; overflow:hidden; }
+.bar b { display:block; height:100%; background:var(--accent); border-radius:4px; transition:width .24s ease-out; }
+.bar b.full { background:var(--green); }
+.countline { padding-top:8px; color:var(--inkSoft); }
+.countline.clip { white-space:nowrap; overflow:hidden; }
+.reserve { display:grid; } .reserve > * { grid-area:1/1; } .reserve > [aria-hidden="true"] { visibility:hidden; }
+.foot { display:flex; align-items:baseline; gap:8px; padding-top:4px; }
+.missing { flex:1; min-width:0; color:var(--red); }
+.missing.done { color:var(--green); }
+.slot { white-space:nowrap; text-align:right; color:var(--inkSoft); }
+.slot.bad { color:var(--red); }
+.foot.split { flex-direction:column; align-items:stretch; gap:0; }
+.foot.split .slot { align-self:flex-end; }
+.unit { white-space:nowrap; }
+.headslot { flex:none; height:47px; }
+
+/* running head: fixed 46 pt plus a 1 pt rule, mounted over the scroll while pinned (masthead-running-head-sticky) */
+.rh { position:absolute; left:0; right:0; top:var(--sat); height:47px; display:flex; align-items:center; gap:8px; padding:0 16px; background:var(--paper);
+  border-bottom:1px solid var(--line); z-index:6; opacity:0; transform:translateY(-3px); transition:opacity .16s, transform .16s; pointer-events:none; }
+.rh.on { opacity:1; transform:none; pointer-events:auto; }
+.rh .seal { width:22px; height:22px; }
+.rh .t { text-transform:uppercase; letter-spacing:.12em; font-weight:700; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:0 1 auto; min-width:0; }
+.rh .f { color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; flex:1 1 0; min-width:0; text-align:right; }
+.rh.notitle .t { display:none; }
+.rh.capped .f { flex:1 0 auto; }
+
+/* lists */
+.sec { display:flex; flex-direction:column; gap:12px; padding:12px 16px; }
+.trow { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; gap:12px; cursor:pointer; text-align:left; font:inherit; font-family:var(--cochin); color:inherit; width:100%; }
+.trow.sel { border-color:var(--accent); }
+.trow .main { flex:1; min-width:0; display:flex; flex-direction:column; gap:4px; }
+.trow .nm { font-weight:600; }
+.trow .nm.anywhere { overflow-wrap:anywhere; }
+.trow .nm.words { overflow-wrap:break-word; hyphens:manual; }
+.trow .meta { color:var(--inkSoft); white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.trow .meta.wrapcounts { white-space:normal; display:flex; flex-wrap:wrap; column-gap:.6em; }
+.trow .meta.wrapcounts .sets { flex:1 1 100%; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; min-width:0; }
+.trow .side { flex:none; display:flex; flex-direction:column; align-items:flex-end; gap:2px; white-space:nowrap; }
+.trow .side.under { flex-direction:row; flex-wrap:wrap; align-items:baseline; column-gap:12px; row-gap:0; }
+.trow .cnt { font-weight:700; color:var(--accent); }
+.trow .cnt.done { color:var(--green); }
+.trow .out { color:var(--red); }
+.trow .out.gone { visibility:hidden; }
+.trow.stack { flex-direction:column; gap:4px; }
+
+/* ledger rows */
+.lrow { display:flex; flex-wrap:wrap; justify-content:space-between; align-items:baseline; column-gap:12px; min-height:44px; padding:10px 0; border-top:1px solid var(--line); }
+.lrow:first-child { border-top:0; }
+.lrow .v { color:var(--inkSoft); text-decoration:underline; text-underline-offset:3px; }
+.box { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:0 12px; }
+.ask { display:flex; align-items:stretch; border:1px solid var(--line); border-radius:8px; background:var(--card); overflow:hidden; }
+.ask button { font:inherit; border:0; background:transparent; color:inherit; cursor:pointer; min-height:44px; padding:8px 12px; }
+.ask .go { flex:1; min-width:0; text-align:left; color:var(--red); }
+.ask .go.armed { background:var(--red); color:var(--card); font-weight:700; }
+.ask .go.one { white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ask .cx { flex:none; border-left:1px solid var(--line); color:var(--ink); }
+.ask .cx.w80 { width:80px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; padding:8px 6px; }
+.ask .cx.off { visibility:hidden; }
+.ask.v { flex-direction:column; }
+.ask.v .cx { border-left:0; border-top:1px solid var(--line); text-align:left; }
+
+/* envelope card */
+.env { background:var(--card); border:1px solid var(--line); border-radius:8px; padding:12px; display:flex; flex-direction:column; gap:8px; }
+.env.sel { border-color:var(--accent); }
+.envh { display:flex; align-items:center; gap:8px; }
+.envh.wrap { flex-wrap:wrap; }
+.micro { text-transform:uppercase; letter-spacing:.12em; color:var(--inkSoft); }
+.envh .micro.anywhere { flex:1 1 0; min-width:0; overflow-wrap:anywhere; }
+.envh .micro.parts { flex:1 1 auto; display:flex; flex-wrap:wrap; column-gap:.5em; }
+.disc { font:inherit; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--red); min-height:44px; padding:0 10px; cursor:pointer; text-transform:uppercase; letter-spacing:.12em; }
+.disc.anywhere { flex:0 1 0; min-width:0; overflow-wrap:anywhere; padding:0 4px; }
+.disc.armed { background:var(--red); color:var(--card); border-color:var(--red); font-weight:700; text-transform:none; letter-spacing:0; }
+.envh.wrap .disc { margin-left:auto; }
+.envlines { display:flex; flex-direction:column; gap:4px; }
+.discask { display:flex; gap:8px; justify-content:flex-end; flex-wrap:wrap; }
+.discask.v { flex-direction:column; align-items:stretch; }
+.discask .cx { font:inherit; min-height:44px; border:1px solid var(--line); border-radius:8px; background:var(--card); color:var(--ink); padding:0 12px; cursor:pointer; }
+.discask .cx.off { visibility:hidden; }
+
+/* buttons in content */
+.mini { font:inherit; border:1px solid var(--line); background:var(--card); border-radius:8px; color:var(--ink); min-height:44px; min-width:44px; padding:0 12px; cursor:pointer; }
+.primary { font:inherit; border:0; background:var(--accent); color:var(--card); border-radius:26px; min-height:52px; padding:8px 20px; font-weight:700; cursor:pointer; }
+
+/* tab bar: the pill of DuoBar, 24 pt in from the page edges and 12 pt up. Its text is capped at the default size (DuoBar). */
+.tabbar { position:absolute; height:var(--bar-pill); bottom:calc(var(--bar-lift) + var(--sab)); display:flex; gap:4px; padding:4px;
+  background:color-mix(in srgb, var(--card) 88%, transparent); border:1px solid var(--line); border-radius:32px; z-index:7;
+  box-shadow:0 2px 12px rgba(28,43,36,0.06); }
+.tabbar button { flex:1; border:0; background:transparent; border-radius:28px; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:4px;
+  color:var(--inkSoft); font:12px/14px var(--cochin); cursor:pointer; min-width:44px; }
+.tabbar.system button { font:10px/12px -apple-system, system-ui, sans-serif; font-weight:500; }
+.tabbar button[aria-selected="true"] { color:var(--accent); background:color-mix(in srgb, var(--card) 90%, transparent); }
+.tabbar svg { width:22px; height:22px; }
+
+/* the facts dock (new, bold concept): always mounted, so it never pins or unpins */
+.dock { position:absolute; left:12px; right:12px; z-index:6; background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px;
+  overflow:hidden; display:flex; flex-direction:column; box-shadow:0 2px 12px rgba(28,43,36,0.06); }
+.dock .prog { height:6px; background:color-mix(in srgb, var(--line) 80%, transparent); }
+.dock .prog b { display:block; height:100%; background:var(--accent); transition:width .24s ease-out; }
+.dock .prog b.full { background:var(--green); }
+.dock .body { display:flex; flex-wrap:wrap; align-items:center; gap:8px 16px; padding:8px 12px 10px; }
+.dock .figs { flex:1 1 auto; display:flex; flex-wrap:wrap; column-gap:16px; row-gap:0; align-items:baseline; min-width:0; }
+.dock .fig { white-space:nowrap; }
+.dock .fig .got { color:var(--accent); font-weight:700; }
+.dock .fig .tot { color:var(--inkSoft); }
+.dock .fig .word { font-family:var(--cochin); color:var(--manilaInk); }
+.dock .fig .owed { color:var(--red); font-weight:700; }
+.dock .fig .owed.done { color:var(--green); }
+.dock .primary { flex:1 0 auto; }
+
+/* Card in Hand, opened on the right page */
+.hand { display:flex; flex-direction:column; gap:12px; padding:12px 16px; }
+.hand .top { display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:8px; }
+.field { min-height:48px; border:1px solid var(--line); background:var(--card); border-radius:8px; padding:8px 12px; display:flex; align-items:center; color:var(--inkSoft); }
+.pinned { position:absolute; left:0; right:0; top:var(--sat); z-index:5; background:var(--paper); border-bottom:1px solid var(--line); padding:8px 16px; display:flex; justify-content:flex-end; }
+
+/* the large content viewer (system HUD) */
+.lcv { position:absolute; left:50%; top:45%; transform:translate(-50%,-50%); width:min(380px, 90%); background:var(--scrim); color:var(--card); border-radius:16px;
+  padding:20px; z-index:10; display:none; flex-direction:column; align-items:center; gap:8px; text-align:center; font-family:-apple-system, system-ui, sans-serif; }
+.lcv.on { display:flex; }
+.lcv .big { font-family:var(--mono); font-weight:700; }
+.lcv small { font-size:13px; opacity:.85; }
+
+/* tags: dashed outline on what exists today, and on what an option adds */
+[data-tag] { position:relative; }
+.tags-on .tag-new { outline:2px dashed var(--new); outline-offset:-2px; }
+.tags-on .tag-today { outline:2px dashed var(--today); outline-offset:-2px; }
+.tags-on [data-tag]::after { content:attr(data-tag); position:absolute; right:4px; top:2px; font:600 10.5px/14px -apple-system, system-ui, sans-serif; padding:0 4px;
+  background:var(--paper); z-index:11; white-space:nowrap; pointer-events:none; letter-spacing:0; text-transform:none; }
+.tags-on .tag-new::after { color:var(--new); } .tags-on .tag-today::after { color:var(--today); }
+.toast { font-size:13px; color:var(--inkSoft); min-height:20px; }
+@media (prefers-reduced-motion: reduce) { .rh, .bar b, .dock .prog b { transition:none; } }
+</style>
+</head>
+<body>
+<main>
+<div class="banner">Sample. No figure, seller, card or count on this page is real. Row heights are drawn from the code's sizes, not measured.</div>
+<h1>Large text: the three facts stay whole and in reach</h1>
+<p class="sub"><span class="kind">Designer kind: informed.</span> Designer large-text-informed-1. Today beside two concepts, at one device, text size, tab and state at a time. Tap a row to check a copy in, tap Reset or Discard to arm it, scroll a screen to pin the head, and hold the running head or the dock to see it large. Light theme only: the native app is held to light.</p>
+
+<div class="controls">
+  <div class="group" role="group" aria-label="Device"><span>Device</span>
+    <a data-set="d=folded" href="#d=folded">Duo folded 466 x 678</a>
+    <a data-set="d=open" href="#d=open">Duo open 951 x 669</a>
+    <a data-set="d=phone" href="#d=phone">Large phone (size not written)</a>
+  </div>
+  <div class="group" role="group" aria-label="Text size"><span>Text size</span>
+    <a data-set="ts=L" href="#ts=L">Large (default)</a>
+    <a data-set="ts=xxxL" href="#ts=xxxL">xxxLarge</a>
+    <a data-set="ts=AX1" href="#ts=AX1">AX1</a>
+    <a data-set="ts=AX3" href="#ts=AX3">AX3</a>
+    <a data-set="ts=AX5" href="#ts=AX5">AX5, the largest</a>
+  </div>
+  <div class="group" role="group" aria-label="Tab"><span>Tab</span>
+    <a data-set="tab=ledger" href="#tab=ledger">Ledger</a>
+    <a data-set="tab=orphaned" href="#tab=orphaned">Orphaned</a>
+    <a data-set="tab=tally" href="#tab=tally">Tally</a>
+    <a data-set="tab=packages" href="#tab=packages">Packages</a>
+  </div>
+  <div class="group" role="group" aria-label="State"><span>State</span>
+    <a data-set="s=rest" href="#s=rest">At rest</a>
+    <a data-set="s=scrolled" href="#s=scrolled">Scrolled, head pinned</a>
+    <a data-set="s=armed" href="#s=armed">Armed ask (Ledger, Orphaned)</a>
+    <a data-set="s=hand" href="#s=hand">Card in Hand open (Duo open, Packages)</a>
+    <a data-set="s=viewer" href="#s=viewer">Held: large content viewer</a>
+    <a data-set="s=done" href="#s=done">All received</a>
+  </div>
+  <div class="group" role="group" aria-label="Show"><span>Show</span>
+    <button type="button" data-hide="today" aria-pressed="false">Hide Today</button>
+    <button type="button" data-hide="stacked" aria-pressed="false">Hide Stacked letterhead</button>
+    <button type="button" data-hide="dock" aria-pressed="false">Hide Facts dock</button>
+    <button type="button" data-tags aria-pressed="false">Hide tags</button>
+  </div>
+  <div class="toast" id="toast" aria-live="polite"></div>
+</div>
+
+<div class="stage" id="stage"></div>
+</main>
+
+<script>
+(function () {
+  // Dynamic Type sizes and leading, in points, from Apple's typography page (iOS, iPadOS Dynamic Type sizes, read 2026-11-21).
+  var T = {
+    L:    { largeTitle:[34,41], title3:[20,25], headline:[17,22], body:[17,22], footnote:[13,18], caption:[12,16], caption2:[11,13] },
+    xxxL: { largeTitle:[40,48], title3:[26,32], headline:[23,29], body:[23,29], footnote:[19,24], caption:[18,23], caption2:[17,22] },
+    AX1:  { largeTitle:[44,52], title3:[31,38], headline:[28,34], body:[28,34], footnote:[23,29], caption:[22,28], caption2:[20,25] },
+    AX3:  { largeTitle:[52,61], title3:[43,51], headline:[40,48], body:[40,48], footnote:[33,40], caption:[32,39], caption2:[29,35] },
+    AX5:  { largeTitle:[60,70], title3:[55,65], headline:[53,62], body:[53,62], footnote:[44,52], caption:[43,51], caption2:[40,48] }
+  };
+  var ORDER = ['L','xxxL','AX1','AX3','AX5'];
+  var CONCEPTS = [
+    { key:'today',   name:'Today',               cap:'Today, drawn from the four debts: the running head reads "MANIF… 1,2…", the count line clips at four digits, set names and the envelope header break mid-word, and Cancel shows "C…".' },
+    { key:'stacked', name:'Stacked letterhead',  cap:'Keeps today\'s structure. At accessibility sizes each part stacks instead of clipping: tallies become ruled rows, the missing line moves up under the cards row, Cancel gets its own reserved row, and the running head keeps 46 pt by capping its text and dropping its title word.' },
+    { key:'dock',    name:'Facts dock',          cap:'Bold. The two figures leave the letterhead for a manila dock that is always mounted above the tab bar, with the tab\'s main button beside them. Nothing pins or unpins, so nothing can move. The row fixes of Stacked letterhead apply here too.' }
+  ];
+  var TABS = [
+    { key:'ledger', title:'Ledger', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><circle cx="12" cy="12" r="3.2"/><path d="M12 2.8v3M12 18.2v3M2.8 12h3M18.2 12h3M5.5 5.5l2.1 2.1M16.4 16.4l2.1 2.1M5.5 18.5l2.1-2.1M16.4 7.6l2.1-2.1"/></svg>' },
+    { key:'orphaned', title:'Orphaned', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><rect x="3" y="6" width="18" height="12" rx="2"/><path d="M3.5 7l8.5 6 8.5-6"/></svg>' },
+    { key:'tally', title:'Tally', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M9 3.5L7.5 20.5M16.5 3.5L15 20.5M4 8.5h16.5M3.5 15.5h16.5"/></svg>' },
+    { key:'packages', title:'Packages', icon:'<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M3.5 7.5L12 3l8.5 4.5v9L12 21l-8.5-4.5z"/><path d="M3.5 7.5L12 12l8.5-4.5M12 12v9"/></svg>' }
+  ];
+  var DEVICES = {
+    folded: { w:466, h:678, id:'iphone-duo-folded', label:'Duo folded, 466 x 678 pt (brief\'s size)' },
+    open:   { w:951, h:669, id:'iphone-duo-unfolded', label:'Duo open, 951 x 669 pt, hinge x 455.5 to 495.5 (brief\'s size)' },
+    phone:  { w:430, h:678, id:'iphone-large', label:'Large phone. No size is written: drawn 430 wide (a record width in masthead-save-slot-reserved) and 678 tall (the folded Duo).' }
+  };
+
+  // Sample data. Four-digit counts on purpose (native-count-line-clips).
+  var TOTAL = 1530, ENVELOPE_CARDS = 7;
+  var base = { got:1204, owed:128460 };
+  var rows = [
+    { name:'Sheoldred, the Apocalypse', got:3, qty:4, basis:'$41.20', each:1370, sellers:3, orders:3, sets:'Dominaria United' },
+    { name:'Swords to Plowshares', got:7, qty:9, basis:'$12.60', each:140, sellers:5, orders:6, sets:'Commander Masters, Eternal Masters, Ice Age' },
+    { name:'Phyrexian Arena', got:1, qty:2, basis:'$3.10', each:155, sellers:1, orders:2, sets:'Phyrexia: All Will Be One' },
+    { name:'Thoughtseize', got:4, qty:4, basis:'$38.00', each:950, sellers:2, orders:2, sets:'Theros, Double Masters 2022' },
+    { name:'Counterspell', got:10, qty:12, basis:'$9.40', each:78, sellers:8, orders:9, sets:'Dominaria Remastered, Modern Horizons 2, Masters 25' },
+    { name:'Ragavan, Nimble Pilferer', got:0, qty:1, basis:'$52.00', each:5200, sellers:1, orders:1, sets:'Modern Horizons 2' },
+    { name:'Fatal Push', got:5, qty:6, basis:'$6.30', each:105, sellers:4, orders:4, sets:'Aether Revolt, Double Masters 2022' },
+    { name:'Brainstorm', got:8, qty:8, basis:'$5.60', each:70, sellers:6, orders:7, sets:'Ice Age, Masters 25, Commander Legends' },
+    { name:'Lightning Bolt', got:11, qty:16, basis:'$7.20', each:45, sellers:9, orders:11, sets:'Magic 2010, Masters 25, Jumpstart, Fourth Edition' }
+  ];
+  var packages = [
+    { name:'Cardboard Corner Games', got:3, qty:5, value:'$18.40' },
+    { name:'Northfield Card Exchange', got:12, qty:12, value:'$44.10' },
+    { name:'Blue Heron Collectibles', got:0, qty:7, value:'$9.85' },
+    { name:'The Tidewater Vault', got:2, qty:3, value:'$6.20' },
+    { name:'Lantern Street Cards', got:4, qty:9, value:'$21.75' },
+    { name:'Old Mill Gaming', got:1, qty:1, value:'$0.85' },
+    { name:'Copperline Singles', got:0, qty:4, value:'$3.40' },
+    { name:'Harbor Light Hobbies', got:6, qty:8, value:'$12.10' }
+  ];
+  var envelopes = [
+    { date:'2026-11-02', cards:['Ponder','Preordain','Brainstorm'] },
+    { date:'2026-11-09', cards:['Lightning Bolt','Path to Exile','Fatal Push','Opt'] }
+  ];
+
+  var st = { d:'folded', ts:'AX5', tab:'tally', s:'rest' };
+  var hidden = {}; var tagsOn = true;
+  var armed = { reset:false, discard:false }; var handOpen = false; var pickedRow = 0; var pickedEnv = 0;
+  var save = 'idle'; var saveTimer = null, armTimer = null;
+
+  function readHash() {
+    var h = location.hash.replace(/^#/, '');
+    h.split('&').forEach(function (kv) {
+      var p = kv.split('='); if (p.length !== 2) return;
+      var k = p[0], v = decodeURIComponent(p[1]);
+      if (k === 'd' && DEVICES[v]) st.d = v;
+      if (k === 'ts' && T[v]) st.ts = v;
+      if (k === 'tab' && TABS.some(function (t) { return t.key === v; })) st.tab = v;
+      if (k === 's' && ['rest','scrolled','armed','hand','viewer','done'].indexOf(v) >= 0) st.s = v;
+      if (k === 'hide') v.split(',').forEach(function (c) { if (c) hidden[c] = true; });
+      if (k === 'tags') tagsOn = v !== 'off';
+    });
+    armed.reset = armed.discard = st.s === 'armed';
+    handOpen = st.s === 'hand';
+  }
+  function writeHash() {
+    var hid = Object.keys(hidden).filter(function (k) { return hidden[k]; });
+    var h = 'd=' + st.d + '&ts=' + st.ts + '&tab=' + st.tab + '&s=' + st.s + (hid.length ? '&hide=' + hid.join(',') : '') + (tagsOn ? '' : '&tags=off');
+    history.replaceState(null, '', '#' + h);
+  }
+
+  // A font at a point size relative to a text style, scaled as Font.custom(_:size:relativeTo:) scales it. cap: the largest step it may reach.
+  function f(size, style, cap) {
+    var ts = st.ts;
+    if (cap && ORDER.indexOf(ts) > ORDER.indexOf(cap)) ts = cap;
+    var s = size * T[ts][style][0] / T.L[style][0];
+    var lh = s * T[ts][style][1] / T[ts][style][0];
+    return 'font-size:' + s.toFixed(1) + 'px;line-height:' + lh.toFixed(1) + 'px;';
+  }
+  function isAX() { return st.ts.indexOf('AX') === 0; }
+  function got() { return st.s === 'done' ? TOTAL : base.got; }
+  function owed() { return st.s === 'done' ? 0 : base.owed; }
+  function n(x) { return x.toLocaleString('en-US'); }
+  function money(c) { return '$' + (c / 100).toLocaleString('en-US', { minimumFractionDigits:2, maximumFractionDigits:2 }); }
+  function pct() { return Math.min(100, got() / TOTAL * 100); }
+  function tag(kind, text) { return ' data-tag="' + (kind === 'new' ? 'New: ' : 'Today: ') + text + '" class-tag="' + kind + '"'; }
+  function cls(base, kind) { return base + (kind ? ' tag-' + kind : ''); }
+
+  var SEAL = '<svg class="seal" viewBox="0 0 100 100" aria-hidden="true"><defs><radialGradient id="wx" cx=".37" cy=".3" r=".78"><stop offset="0" stop-color="#C86A5F"/><stop offset=".6" stop-color="#A8443C"/><stop offset="1" stop-color="#66231D"/></radialGradient></defs><path fill="url(#wx)" d="M50 2C69 2 80 9 88 20C96 31 99 45 96 59C92 75 81 90 65 95C50 100 34 98 22 89C9 78 2 62 3 47C5 30 15 15 31 7C37 4 43 2 50 2Z"/><circle cx="50" cy="50" r="39" fill="none" stroke="#5E1F1A" stroke-width="3.5"/><path d="M29 58L50 38L71 58M31 72H69" fill="none" stroke="#5E1F1A" stroke-width="8" stroke-linecap="round"/><path d="M29 54.5L50 34.5L71 54.5M31 68.5H69" fill="none" stroke="#E09A90" stroke-width="3.4" stroke-linecap="round"/></svg>';
+
+  function countLines() {
+    return { ledger: n(1046) + ' packages · autosaves', packages: n(1046) + ' packages · autosaves', tally: n(1117) + ' unique items', orphaned: envelopes.length + ' envelopes waiting' };
+  }
+  function missingText() { return owed() === 0 ? 'ALL ACCOUNTED FOR ✓' : n(TOTAL - got()) + ' still missing · ' + money(owed()); }
+  function saveLabel() { return { idle:' ', saving:'saving…', saved:'saved', bad:'couldn’t save' }[save]; }
+
+  // ---- the letterhead ----
+  function letterhead(c) {
+    var ax = isAX();
+    var h = '<div class="lh app">';
+    h += '<div class="seal-row"><i></i>' + SEAL + '<i></i></div>';
+    var titleSize = c === 'today' ? f(31, 'largeTitle') : f(31, 'largeTitle');
+    h += '<div class="title" data-minscale="0.5" style="' + titleSize + '">Manifest</div>';
+    h += '<div class="house" data-minscale="0.5" style="' + f(10, 'caption') + '">C.H Postal Company</div>';
+    var cells = [
+      { lab:'cards', lead:n(got()), rest:'/' + n(TOTAL) },
+      { lab:'packages', lead:n(st.s === 'done' ? 1046 : 934), rest:'/' + n(1046) },
+      { lab:'value', lead:'$3,104.20', rest:'/$4,388.80' }
+    ];
+    if (c === 'dock') cells = cells.slice(1);  // the cards figure lives in the dock (ux-label-once)
+    // Stacked letterhead, accessibility sizes: the missing line becomes the second ruled row, so both facts sit at the top
+    // (Apple typography: keep primary elements toward the top of a view even when the font size is very large)
+    if (c === 'stacked' && ax) cells.splice(1, 0, { lab:'missing', miss:true });
+    var cellCls = c === 'today' ? (ax ? 'cells stacked' : 'cells') : (ax ? 'cells ruled' : 'cells');
+    var cellTag = (c !== 'today' && ax) ? 'new' : '';
+    h += '<div class="tallies"><div class="rule" style="margin-top:12px"></div>';
+    h += '<div class="' + cls(cellCls, cellTag) + '"' + (cellTag ? ' data-tag="New: ruled tallies"' : '') + (c === 'dock' && !ax ? ' style="grid-template-columns:1fr 1.7fr"' : '') + '>';
+    cells.forEach(function (x) {
+      if (x.miss) {
+        var mt = owed() === 0 ? '<span class="miss done">All accounted for ✓</span>' : '<span class="miss">' + n(TOTAL - got()) + ' ·</span><wbr> <span class="miss">' + money(owed()) + '</span>';
+        h += '<div class="cell tag-new" data-tag="New: missing moves up"><span class="lab" style="' + f(10, 'caption') + '">missing</span><span class="fig mono" style="' + f(13, 'footnote') + '">' + mt + '</span></div>';
+        return;
+      }
+      h += '<div class="cell"><span class="lab" data-minscale="0.6" style="' + f(10, 'caption') + '">' + x.lab + '</span><span class="fig mono"' + (cellCls === 'cells ruled' ? '' : ' data-minscale="0.6"') + ' style="' + f(13, 'footnote') + '"><span class="lead">' + x.lead + '</span>' + (cellCls === 'cells ruled' ? '<wbr>' : '') + '<span class="rest">' + x.rest + '</span></span></div>';
+    });
+    h += '</div>';
+    if (c !== 'dock') h += '<div class="bar"><b class="' + (pct() >= 100 ? 'full' : '') + '" style="width:' + pct() + '%"></b></div>';
+    // the count line
+    var cl = countLines();
+    if (c === 'today') {
+      var tcl = cl[st.tab];
+      h += '<div class="' + cls('countline mono' + (ax ? '' : ' clip'), ax ? '' : 'today') + '"' + (ax ? '' : ' data-tag="Today: clips"') + ' style="' + f(10.5, 'caption') + '">' + tcl + '</div>';
+    } else {
+      // every tab's line sits in one grid cell, so the reserved height is the tallest of the four and a tab change moves nothing
+      h += '<div class="' + cls('countline mono reserve', ax || st.ts === 'xxxL' ? 'new' : '') + '"' + (ax || st.ts === 'xxxL' ? ' data-tag="New: wraps, height of the longest tab"' : '') + ' style="' + f(10.5, 'caption') + '">';
+      ['ledger','orphaned','tally','packages'].forEach(function (k) {
+        h += '<span' + (k === st.tab ? '' : ' aria-hidden="true"') + '>' + wrapUnits(cl[k]) + '</span>';
+      });
+      h += '</div>';
+    }
+    // the foot: missing line and the reserved save slot
+    var slot = '<span class="reserve slot mono' + (save === 'bad' ? ' bad' : '') + '" style="' + f(10.5, 'caption') + ';min-width:13ch"><span>' + saveLabel() + '</span><span aria-hidden="true">couldn’t save</span></span>';
+    if (c === 'today') {
+      h += '<div class="' + cls('foot', ax ? 'today' : '') + '"' + (ax ? ' data-tag="Today: wraps over three lines"' : '') + '><span class="missing' + (owed() === 0 ? ' done' : '') + '" style="' + f(10.5, 'caption') + '">' + missingText() + '</span>' + slot + '</div>';
+    } else if (c === 'stacked' && !ax) {
+      h += '<div class="foot"><span class="missing' + (owed() === 0 ? ' done' : '') + '" style="' + f(10.5, 'caption') + '">' + wrapUnits(missingText()) + '</span>' + slot + '</div>';
+    } else {
+      h += '<div class="foot' + (ax ? ' split' : '') + '"><span style="flex:1"></span>' + slot + '</div>';
+    }
+    h += '</div></div>';
+    return h;
+  }
+  // Each part between " · " keeps together; the line may break only at the joins.
+  function wrapUnits(s) {
+    return s.split(' · ').map(function (p, i, a) { return '<span class="unit">' + p + (i < a.length - 1 ? ' ·' : '') + '</span>'; }).join(' ');
+  }
+
+  // ---- the running head (Today, Stacked letterhead) ----
+  function runningHead(c) {
+    var fig = n(got()) + '/' + n(TOTAL) + (owed() === 0 ? '' : ' · ' + money(owed()));
+    if (c === 'today') {
+      return '<div class="rh app tag-today" data-tag="Today: MANIF… and $…" data-rh><span>' + SEAL + '</span><span class="t" style="' + f(16, 'headline') + '">Manifest</span><span class="f mono" style="' + f(11, 'caption') + '">' + fig + '</span></div>';
+    }
+    // capped at xxxLarge, as a bar's text is; the full size shows in the large content viewer on a hold
+    return '<div class="rh app capped tag-new" id="stacked-facts" data-tag="New: 46 pt, capped, title yields" data-rh data-hold><span>' + SEAL + '</span><span class="t" style="' + f(16, 'headline', 'xxxL') + '">Manifest</span><span class="f mono" style="' + f(11, 'caption', 'xxxL') + '">' + fig + '</span></div>';
+  }
+
+  // ---- the facts dock ----
+  function dock(primary) {
+    var cap = 'AX1';
+    var h = '<div class="dock tag-new" id="dock-facts" data-tag="New: facts dock" data-hold data-dock>';
+    h += '<div class="prog"><b class="' + (pct() >= 100 ? 'full' : '') + '" style="width:' + pct() + '%"></b></div>';
+    h += '<div class="body"><div class="figs">';
+    h += '<span class="fig mono" style="' + f(17, 'body', cap) + '"><span class="got">' + n(got()) + '</span><span class="tot">/' + n(TOTAL) + '</span> <span class="word">in</span></span>';
+    h += '<span class="fig mono" style="' + f(17, 'body', cap) + '">' + (owed() === 0 ? '<span class="owed done">All in ✓</span>' : '<span class="owed">' + money(owed()) + '</span> <span class="word">out</span>') + '</span>';
+    h += '</div>';
+    if (primary) h += '<button type="button" class="primary app" style="' + f(17, 'body', cap) + '" data-act="' + primary.act + '">' + primary.label + '</button>';
+    h += '</div></div>';
+    return h;
+  }
+
+  // ---- tab content ----
+  function tallyRow(r, i, c, sel) {
+    var ax = isAX();
+    var done = r.got >= r.qty;
+    var outTxt = money((r.qty - r.got) * r.each) + ' out';
+    var side = '<span class="cnt mono' + (done ? ' done' : '') + '" style="' + f(13, 'footnote') + '">' + r.got + '/' + r.qty + '</span>' +
+               '<span class="mono" style="' + f(11, 'caption') + '">' + r.basis + '</span>' +
+               '<span class="out mono' + (done ? ' gone' : '') + '" style="' + f(11, 'caption') + '">' + outTxt + '</span>';
+    var counts = r.sellers + ' seller' + (r.sellers === 1 ? '' : 's') + ' · ' + r.orders + ' orders';
+    var t = '';
+    if (c === 'today') {
+      var tg = ax && i === 0 ? ' tag-today" data-tag="Today: name breaks mid-word' : '';
+      t += '<button type="button" class="trow app' + (sel ? ' sel' : '') + tg + '" data-act="row" data-i="' + i + '">';
+      t += '<span class="main"><span class="nm anywhere" style="' + f(15, 'body') + '">' + r.name + '</span><span class="meta mono" style="' + f(11, 'caption') + '">' + counts + ' · ' + r.sets + '</span></span>';
+      t += '<span class="side">' + side + '</span></button>';
+      return t;
+    }
+    var tg2 = ax && i === 0 ? ' tag-new" data-tag="New: name wraps at words, figures under it' : '';
+    t += '<button type="button" class="trow app' + (ax ? ' stack' : '') + (sel ? ' sel' : '') + tg2 + '" data-act="row" data-i="' + i + '">';
+    t += '<span class="main"><span class="nm words" style="' + f(15, 'body') + '">' + r.name + '</span>';
+    if (!ax) t += '<span class="meta mono" style="' + f(11, 'caption') + '">' + counts + ' · ' + r.sets + '</span>';
+    t += '</span>';
+    t += '<span class="side' + (ax ? ' under' : '') + '">' + side + '</span>';
+    if (ax) t += '<span class="meta mono wrapcounts" style="' + f(11, 'caption') + '">' + wrapUnits(counts) + '<span class="sets">' + r.sets + '</span></span>';
+    t += '</button>';
+    return t;
+  }
+  function packageRow(p, i, c) {
+    var ax = isAX();
+    var done = p.got >= p.qty;
+    var t = '<button type="button" class="trow app' + (ax && c !== 'today' ? ' stack' : '') + '" data-act="pkg" data-i="' + i + '">';
+    t += '<span class="main"><span class="nm ' + (c === 'today' ? 'anywhere' : 'words') + '" style="' + f(15, 'body') + '">' + p.name + '</span>';
+    t += '<span class="meta mono" style="' + f(11, 'caption') + '">order ' + (2210 + i * 37) + '</span></span>';
+    t += '<span class="side' + (ax && c !== 'today' ? ' under' : '') + '"><span class="cnt mono' + (done ? ' done' : '') + '" style="' + f(13, 'footnote') + '">' + p.got + '/' + p.qty + '</span><span class="mono" style="' + f(11, 'caption') + '">' + p.value + '</span></span>';
+    t += '</button>';
+    return t;
+  }
+  function ledgerBody(c) {
+    var ax = isAX();
+    var h = '<div class="sec app">';
+    h += '<div class="box">' +
+      lrow('Sync', 'last sync 2 min ago') + lrow('History', '14 saved versions') + lrow('Backup', 'save a file') + '</div>';
+    var ask = 'Tap again to clear ' + n(TOTAL + ENVELOPE_CARDS) + ' cards';
+    var on = armed.reset;
+    if (c === 'today') {
+      h += '<div class="ask' + (ax && on ? ' tag-today" data-tag="Today: ask and Cancel clip' : '') + '">' +
+        '<button type="button" class="go one' + (on ? ' armed' : '') + '" style="' + (on ? f(15, 'body') : f(20, 'title3')) + '" data-act="reset">' + (on ? ask : 'Reset') + '</button>' +
+        '<button type="button" class="cx w80' + (on ? '' : ' off') + '" style="' + f(20, 'title3') + '" data-act="reset-cancel"' + (on ? '' : ' tabindex="-1" aria-hidden="true"') + '>Cancel</button></div>';
+    } else {
+      // At accessibility sizes the ask stacks: Reset keeps its row, and Cancel takes a row below it that is kept free all along.
+      h += '<div class="ask' + (ax ? ' v tag-new" data-tag="New: Cancel row kept free below' : '') + '" id="' + c + '-reset">' +
+        '<button type="button" class="go' + (on ? ' armed' : '') + '" style="' + (on ? f(15, 'body') : f(20, 'title3')) + '" data-act="reset">' + (on ? ask : 'Reset') + '</button>' +
+        '<button type="button" class="cx' + (on ? '' : ' off') + '" style="' + f(20, 'title3') + '" data-act="reset-cancel"' + (on ? '' : ' tabindex="-1" aria-hidden="true"') + '>Cancel</button></div>';
+    }
+    h += '</div>';
+    return h;
+  }
+  function lrow(l, v) { return '<div class="lrow"><span style="' + f(17, 'body') + '">' + l + '</span><span class="v mono" style="' + f(11, 'caption') + '">' + v + '</span></div>'; }
+  function envelopeCard(e, i, c, detail) {
+    var ax = isAX();
+    var count = e.cards.length + ' card' + (e.cards.length === 1 ? '' : 's');
+    var on = armed.discard && detail;
+    var h = '<div class="env app' + (detail ? '' : (i === pickedEnv ? ' sel' : '')) + '" data-act="env" data-i="' + i + '">';
+    if (c === 'today') {
+      h += '<div class="envh' + (ax && i === 0 ? ' tag-today" data-tag="Today: ENVELOP/E, Discar/d' : '') + '"><span class="micro mono anywhere" style="' + f(11, 'caption') + '">Envelope · ' + e.date + ' · ' + count + '</span>';
+      if (detail || st.d !== 'open') h += '<button type="button" class="disc anywhere mono' + (on ? ' armed' : '') + '" style="' + f(11, 'caption') + '" data-act="discard">' + (on ? 'Tap again to discard ' + count : 'Discard') + '</button>';
+      h += '</div>';
+    } else {
+      h += '<div class="envh wrap' + (ax && i === 0 ? ' tag-new" data-tag="New: breaks at the dots, Discard drops' : '') + '"><span class="micro mono parts" style="' + f(11, 'caption') + '">' + wrapUnits('Envelope · ' + e.date + ' · ' + count) + '</span>';
+      if (detail || st.d !== 'open') h += '<button type="button" class="disc mono' + (on ? ' armed' : '') + '" style="' + f(11, 'caption') + '" data-act="discard">' + (on ? 'Tap again to discard ' + count : 'Discard') + '</button>';
+      h += '</div>';
+    }
+    h += '<div class="envlines">' + e.cards.map(function (x) { return '<span style="' + f(15, 'body') + '">' + x + '</span>'; }).join('') + '</div>';
+    if (detail || st.d !== 'open') {
+      var v = c !== 'today' && ax;
+      h += '<div class="discask' + (v ? ' v' : '') + '"><button type="button" class="cx' + (on ? '' : ' off') + '" style="' + f(17, 'body') + '" data-act="discard-cancel"' + (on ? '' : ' tabindex="-1" aria-hidden="true"') + '>Cancel</button></div>';
+    }
+    h += '</div>';
+    return h;
+  }
+  function newEnvelope(c) {
+    if (c === 'dock') return '';  // the dock carries it
+    return '<div style="display:flex;justify-content:flex-end"><button type="button" class="mini app" style="' + f(15, 'body') + '" data-act="newenv">New envelope</button></div>';
+  }
+
+  function listFor(c, page) {
+    // page: 'one' (one page), 'left' (open, list page)
+    var h = '';
+    if (st.tab === 'tally') {
+      h += '<div class="sec">' + rows.map(function (r, i) { return tallyRow(r, i, c, page === 'left' && i === pickedRow); }).join('') + '</div>';
+    } else if (st.tab === 'packages') {
+      if (c === 'today' && page === 'one') h += '';
+      h += '<div class="sec">' + packages.map(function (p, i) { return packageRow(p, i, c); }).join('') + '</div>';
+    } else if (st.tab === 'orphaned') {
+      h += '<div class="sec">' + (page === 'one' ? newEnvelope(c) : '') + envelopes.map(function (e, i) { return envelopeCard(e, i, c, page === 'one'); }).join('') + '</div>';
+    } else {
+      if (page === 'one') h += ledgerBody(c);
+    }
+    return h;
+  }
+
+  function primaryFor(c, pose) {
+    if (c !== 'dock') return null;
+    if (st.tab === 'orphaned') return { act:'newenv', label:'New envelope' };
+    if (st.tab === 'packages' && pose === 'open') return { act:'hand', label:'Card in Hand' };
+    return null;
+  }
+
+  function dockReserve(c, pose) {
+    // bottom room so the last row scrolls clear of the bar, and of the dock when there is one
+    return '<div style="height:calc(var(--bar-pill) + var(--bar-lift) + var(--sab) + ' + (c === 'dock' ? 'var(--dock-h, 0px)' : '0px') + ' + 8px)"></div>';
+  }
+
+  function tabBar(left, width, system) {
+    var h = '<div class="tabbar' + (system ? ' system' : '') + '" role="tablist" style="left:' + left + 'px;width:' + width + 'px">';
+    TABS.forEach(function (t) {
+      h += '<button type="button" role="tab" aria-selected="' + (t.key === st.tab) + '" data-act="tab" data-tab="' + t.key + '" aria-label="' + t.title + '">' + t.icon + '<span>' + t.title + '</span></button>';
+    });
+    return h + '</div>';
+  }
+
+  function viewer(c) {
+    var fig = n(got()) + '/' + n(TOTAL) + (owed() === 0 ? '' : ' · ' + money(owed()));
+    // The system sets the viewer's text size; drawn at 40 pt. Each figure keeps together.
+    var u = function (s) { return '<span class="unit">' + s + '</span>'; };
+    var body = c === 'dock' ? u(n(got()) + '/' + n(TOTAL)) + ' ' + u('in') + '<br>' + (owed() === 0 ? u('All in') : u(money(owed())) + ' ' + u('out'))
+                            : u(n(got()) + '/' + n(TOTAL)) + (owed() === 0 ? '' : ' ' + u('·') + ' ' + u(money(owed())));
+    return '<div class="lcv" data-lcv><div class="big" style="font-size:40px;line-height:46px">' + body + '</div><small>Large content viewer: shown while held. Release to close.</small></div>';
+  }
+
+  // ---- one device frame for one concept ----
+  function frame(c) {
+    var dv = DEVICES[st.d];
+    var h = '<div class="dev" data-device="' + dv.id + '" data-concept="' + c + '" style="width:' + dv.w + 'px;height:' + dv.h + 'px">';
+    h += '<div class="status"><span>9:41</span><span>●●● 100%</span></div>';
+    if (st.d !== 'open') {
+      h += '<div class="scroll" data-scroll="main"><div class="col">' + letterhead(c) + (c === 'dock' ? '' : '<div class="headslot" aria-hidden="true"></div>') + listFor(c, 'one') + dockReserve(c) + '</div></div>';
+      if (c !== 'dock') h += runningHead(c);
+      if (c === 'dock') h += '<div data-dock-wrap style="position:absolute;left:0;right:0;bottom:calc(var(--bar-pill) + var(--bar-lift) + var(--sab) + 8px);z-index:6">' + dock(primaryFor(c, 'one')).replace('class="dock', 'style="position:relative;left:auto;right:auto;margin:0 12px" class="dock') + '</div>';
+      h += tabBar(24, dv.w - 48, true);
+    } else {
+      // two pages; nothing sits across the hinge (x 455.5 to 495.5)
+      h += '<div class="page" style="left:0;width:455.5px">';
+      var leftTop = '', rightTop = '';
+      var todayPkgRight = c === 'today' && (st.tab === 'packages' || st.tab === 'ledger');
+      if (todayPkgRight) {
+        // Today, Packages and Ledger are one page; debt hand-open-under-bar-at-l puts the masthead and the control on the right page.
+        h += '<div class="scroll"><div class="col"><div class="sec app" style="color:var(--inkSoft);' + f(13, 'footnote') + '">Today Packages and Ledger are one page, not split at the fold. Drawn here from debt hand-open-under-bar-at-l, which names only the right page.</div></div></div>';
+      } else {
+        h += '<div class="scroll" data-scroll="left"><div class="col">' + letterhead(c) + (c === 'dock' ? '' : '<div class="headslot" aria-hidden="true"></div>') + listFor(c, 'left') +
+             '<div style="height:calc(' + (c === 'dock' ? 'var(--dock-h, 0px) + 24px' : '16px') + ')"></div></div></div>';
+        if (c !== 'dock') h += runningHead(c);
+        if (c === 'dock') h += '<div data-dock-wrap style="position:absolute;left:0;right:0;bottom:calc(var(--bar-lift) + var(--sab));z-index:6">' + dock(primaryFor(c, 'open')).replace('class="dock', 'style="position:relative;left:auto;right:auto;margin:0 12px" class="dock') + '</div>';
+      }
+      h += '</div>';
+      h += '<div class="fold"><span>HINGE</span></div>';
+      h += '<div class="page" style="left:495.5px;width:455.5px">';
+      h += rightPage(c, todayPkgRight);
+      h += '</div>';
+      h += tabBar(495.5 + 24, 455.5 - 48, false);
+    }
+    h += viewer(c);
+    h += '</div>';
+    return h;
+  }
+
+  function rightPage(c, todayOnePage) {
+    var h = '';
+    var reserve = '<div style="height:calc(var(--bar-pill) + var(--bar-lift) + var(--sab) + 8px)"></div>';
+    if (st.tab === 'tally') {
+      var r = rows[pickedRow];
+      h += '<div class="scroll"><div class="col"><div class="sec app">' +
+        '<div style="' + f(22, 'title3') + 'font-weight:700;overflow-wrap:break-word">' + r.name + '</div>' +
+        '<div class="mono" style="' + f(13, 'footnote') + '"><span class="unit"><b style="color:var(--accent)">' + r.got + '/' + r.qty + '</b> in</span> <span class="unit">· basis ' + r.basis + '</span></div>' +
+        '<div class="mono" style="color:var(--inkSoft);' + f(11, 'caption') + '">' + wrapUnits(r.sellers + ' sellers · ' + r.orders + ' orders') + '</div>' +
+        '<div class="box">' + Array.apply(null, Array(r.qty)).map(function (_, k) { return lrow('Copy ' + (k + 1), k < r.got ? 'received' : 'out'); }).join('') + '</div>' +
+        '</div>' + reserve + '</div></div>';
+      return h;
+    }
+    if (st.tab === 'orphaned') {
+      h += '<div class="scroll"><div class="col"><div class="sec">' + newEnvelope(c) + envelopeCard(envelopes[pickedEnv], pickedEnv, c, true) + '</div>' + reserve + '</div></div>';
+      return h;
+    }
+    if (st.tab === 'ledger') {
+      if (todayOnePage) return '<div class="scroll" data-scroll="main"><div class="col">' + letterhead(c) + '<div class="headslot" aria-hidden="true"></div>' + ledgerBody(c) + reserve + '</div></div>' + runningHead(c);
+      return '<div class="scroll"><div class="col">' + ledgerBody(c) + reserve + '</div></div>';
+    }
+    // packages
+    if (handOpen) {
+      h += '<div class="scroll"><div class="hand app"><div class="top"><span style="' + f(17, 'headline') + 'font-weight:700">Card in Hand</span><button type="button" class="mini" style="' + f(15, 'body') + '" data-act="hand-close">Close</button></div>' +
+        '<div class="field" style="' + f(16, 'body') + '">Card name</div><div style="color:var(--inkSoft);' + f(13, 'footnote') + '">Type the name on the card you hold.</div></div>' + reserve + '</div>';
+      return h;
+    }
+    if (todayOnePage) {
+      return '<div class="scroll" data-scroll="main"><div class="col">' + letterhead(c) + '<div class="headslot" aria-hidden="true"></div>' +
+        '<div class="sec" style="padding-bottom:0"><div style="display:flex;justify-content:flex-end"><button type="button" class="mini app tag-today" data-tag="Today: under the bar at AX L" style="' + f(11, 'caption') + '" data-act="hand">Card in Hand</button></div></div>' +
+        listFor(c, 'left') + reserve + '</div></div>' + runningHead(c);
+    }
+    if (c === 'stacked') {
+      // The control leaves the masthead's flow and pins at the top of the right page, so no text size can push it under the bar.
+      return '<div class="pinned tag-new" data-tag="New: pinned above the page"><button type="button" class="mini app" style="' + f(11, 'caption') + '" data-act="hand">Card in Hand</button></div>' +
+        '<div class="scroll" style="top:calc(var(--sat) + 61px)"><div class="col"><div class="sec app" style="color:var(--inkSoft);' + f(13, 'footnote') + '">Pick a package on the left page, or open Card in Hand to check cards in by name.</div>' + reserve + '</div></div>';
+    }
+    return '<div class="scroll"><div class="col"><div class="sec app" style="color:var(--inkSoft);' + f(13, 'footnote') + '">Pick a package on the left page, or open Card in Hand from the dock.</div>' + reserve + '</div></div>';
+  }
+
+  // ---- render ----
+  function render() {
+    writeHash();
+    document.querySelectorAll('[data-set]').forEach(function (a) {
+      var p = a.getAttribute('data-set').split('=');
+      a.setAttribute('aria-current', String(st[p[0]] === p[1]));
+      a.setAttribute('href', '#' + hashWith(p[0], p[1]));
+    });
+    document.querySelectorAll('[data-hide]').forEach(function (b) {
+      var k = b.getAttribute('data-hide'); b.setAttribute('aria-pressed', String(!!hidden[k]));
+      b.textContent = (hidden[k] ? 'Show ' : 'Hide ') + CONCEPTS.filter(function (x) { return x.key === k; })[0].name;
+    });
+    var tb = document.querySelector('[data-tags]'); tb.setAttribute('aria-pressed', String(!tagsOn)); tb.textContent = tagsOn ? 'Hide tags' : 'Show tags';
+    var stage = document.getElementById('stage');
+    var keep = {};
+    stage.querySelectorAll('[data-concept]').forEach(function (d) {
+      var sc = d.querySelector('[data-scroll]'); if (sc) keep[d.getAttribute('data-concept')] = sc.scrollTop;
+    });
+    var h = '';
+    CONCEPTS.forEach(function (c) {
+      h += '<figure id="opt-' + c.key + '"' + (hidden[c.key] ? ' hidden' : '') + '><div class="fit' + (tagsOn ? ' tags-on' : '') + '">' + frame(c.key) + '</div>' +
+           '<figcaption><b>' + c.name + '</b>' + c.cap + '<br>' + DEVICES[st.d].label + ', ' + st.ts + '.</figcaption></figure>';
+    });
+    stage.innerHTML = h;
+    // tag classes
+    stage.querySelectorAll('[class-tag]').forEach(function (el) { el.classList.add('tag-' + el.getAttribute('class-tag')); });
+    // lineLimit(1).minimumScaleFactor(k): shrink to fit, down to k, then clip
+    stage.querySelectorAll('[data-minscale]').forEach(function (el) {
+      var k = +el.getAttribute('data-minscale');
+      if (el.scrollWidth > el.clientWidth + 1) {
+        var r = Math.max(k, el.clientWidth / el.scrollWidth);
+        var fs = parseFloat(el.style.fontSize), lh = parseFloat(el.style.lineHeight);
+        el.style.fontSize = (fs * r).toFixed(1) + 'px';
+        el.style.letterSpacing = getComputedStyle(el).letterSpacing === 'normal' ? '' : (parseFloat(getComputedStyle(el).letterSpacing) * r).toFixed(2) + 'px';
+        if (lh) el.style.lineHeight = lh + 'px';
+      }
+    });
+    // the Today count line is tagged only where it really clips
+    stage.querySelectorAll('.countline.clip').forEach(function (el) {
+      if (el.scrollWidth <= el.clientWidth + 1) { el.removeAttribute('data-tag'); el.classList.remove('tag-today'); }
+    });
+    stage.querySelectorAll('[data-concept]').forEach(function (dev) {
+      var c = dev.getAttribute('data-concept');
+      var dk = dev.querySelector('[data-dock]');
+      if (dk) dev.style.setProperty('--dock-h', dk.offsetHeight + 'px');
+      // a running head whose title and figure do not both fit lets the title go, so the figure stays whole (Stacked letterhead)
+      dev.querySelectorAll('.rh.capped').forEach(function (rh) {
+        var fEl = rh.querySelector('.f'); if (fEl.scrollWidth > fEl.clientWidth + 1) rh.classList.add('notitle');
+      });
+      var sc = dev.querySelector('[data-scroll]');
+      var rh = dev.querySelector('[data-rh]');
+      if (sc && rh) {
+        var lh = sc.querySelector('.lh');
+        var pin = function () { rh.classList.toggle('on', lh && sc.scrollTop >= lh.offsetHeight); };
+        sc.addEventListener('scroll', pin, { passive:true });
+        if (st.s === 'scrolled') sc.scrollTop = (lh ? lh.offsetHeight : 0) + 60; else if (keep[c] != null) sc.scrollTop = keep[c];
+        pin();
+      } else if (sc && st.s === 'scrolled') {
+        var lh2 = sc.querySelector('.lh'); sc.scrollTop = (lh2 ? lh2.offsetHeight : 0) + 60;
+      }
+      if (st.s === 'armed') {
+        // bring the armed ask into view, below the pinned head
+        dev.querySelectorAll('.go.armed, .disc.armed').forEach(function (el) {
+          var box = el.closest('.scroll'); if (!box) return;
+          box.scrollTop = el.getBoundingClientRect().top - box.getBoundingClientRect().top + box.scrollTop - 64;
+          if (rh && box === sc) { var l4 = sc.querySelector('.lh'); rh.classList.toggle('on', l4 && sc.scrollTop >= l4.offsetHeight); }
+        });
+      }
+      if (st.s === 'viewer') { var v = dev.querySelector('[data-lcv]'); if (v && (c === 'dock' || c === 'stacked')) { v.classList.add('on'); if (rh) { rh.classList.add('on'); if (sc && sc.scrollTop < 1) { var l3 = sc.querySelector('.lh'); sc.scrollTop = (l3 ? l3.offsetHeight : 0) + 60; } } } }
+    });
+  }
+  function hashWith(k, v) {
+    var c = { d:st.d, ts:st.ts, tab:st.tab, s:st.s }; c[k] = v;
+    return 'd=' + c.d + '&ts=' + c.ts + '&tab=' + c.tab + '&s=' + c.s;
+  }
+  function toast(t) { document.getElementById('toast').textContent = t; }
+  function bumpSave() {
+    save = 'saving'; render();
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(function () { save = 'saved'; render(); saveTimer = setTimeout(function () { save = 'idle'; render(); }, 2500); }, 600);
+  }
+  function arm(which) {
+    clearTimeout(armTimer);
+    armTimer = setTimeout(function () { armed[which] = false; if (st.s === 'armed') st.s = 'rest'; render(); }, 4000);  // the shared arm helper's 4000 ms
+  }
+
+  document.addEventListener('click', function (e) {
+    var hb = e.target.closest('[data-hide]');
+    if (hb) { var k = hb.getAttribute('data-hide'); hidden[k] = !hidden[k]; render(); return; }
+    if (e.target.closest('[data-tags]')) { tagsOn = !tagsOn; render(); return; }
+    var a = e.target.closest('[data-set]');
+    if (a) { e.preventDefault(); var p = a.getAttribute('data-set').split('='); st[p[0]] = p[1];
+      if (p[0] === 's') { armed.reset = armed.discard = p[1] === 'armed'; handOpen = p[1] === 'hand'; if (p[1] === 'armed') { st.tab = st.tab === 'orphaned' ? 'orphaned' : 'ledger'; } if (p[1] === 'hand') { st.d = 'open'; st.tab = 'packages'; } }
+      render(); return; }
+    var t = e.target.closest('[data-act]'); if (!t) return;
+    var act = t.getAttribute('data-act');
+    if (act === 'tab') { st.tab = t.getAttribute('data-tab'); armed.reset = armed.discard = false; handOpen = false; if (st.s === 'armed' || st.s === 'hand') st.s = 'rest'; render(); return; }
+    if (act === 'row') { e.stopPropagation(); var i = +t.getAttribute('data-i'); var r = rows[i];
+      if (st.d === 'open') { pickedRow = i; }
+      if (r.got < r.qty) { r.got++; base.got++; base.owed -= r.each; toast('Checked in one copy of ' + r.name + ' (sample).'); bumpSave(); return; }
+      render(); return; }
+    if (act === 'pkg') { var pk = packages[+t.getAttribute('data-i')]; if (pk.got < pk.qty) { pk.got++; base.got++; base.owed -= 132; toast('Checked in one card from ' + pk.name + ' (sample).'); bumpSave(); } return; }
+    if (act === 'env') { if (st.d === 'open') { pickedEnv = +t.getAttribute('data-i'); render(); } return; }
+    if (act === 'reset') { e.stopPropagation(); if (armed.reset) { armed.reset = false; toast('Second tap: the ledger would clear. Nothing is cleared on this sample page.'); } else { armed.reset = true; arm('reset'); } render(); return; }
+    if (act === 'reset-cancel') { armed.reset = false; render(); return; }
+    if (act === 'discard') { e.stopPropagation(); if (armed.discard) { armed.discard = false; toast('Second tap: the envelope would be discarded. Nothing is removed here.'); } else { armed.discard = true; arm('discard'); } render(); return; }
+    if (act === 'discard-cancel') { e.stopPropagation(); armed.discard = false; render(); return; }
+    if (act === 'newenv') { toast('New envelope: the current envelope ends and a fresh one starts (new-envelope-ends-an-envelope).'); return; }
+    if (act === 'hand') { if (st.d === 'open') { handOpen = true; st.s = 'hand'; render(); } else toast('Card in Hand opens only on two pages side by side (PackagesTab.twoPages).'); return; }
+    if (act === 'hand-close') { handOpen = false; st.s = 'rest'; render(); return; }
+  });
+
+  // a hold on the running head or the dock shows the large content viewer; release closes it
+  var holdTimer = null;
+  document.addEventListener('pointerdown', function (e) {
+    var hEl = e.target.closest('[data-hold]'); if (!hEl || e.target.closest('button')) return;
+    var dev = hEl.closest('.dev');
+    holdTimer = setTimeout(function () { var v = dev.querySelector('[data-lcv]'); if (v) v.classList.add('on'); }, 450);
+  });
+  document.addEventListener('pointerup', function () {
+    clearTimeout(holdTimer);
+    if (st.s !== 'viewer') document.querySelectorAll('[data-lcv].on').forEach(function (v) { v.classList.remove('on'); });
+  });
+  window.addEventListener('hashchange', function () { readHash(); render(); });
+  readHash(); render();
+})();
+</script>
+</body>
+</html>
