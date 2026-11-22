@@ -8,7 +8,7 @@ Home: docs/decisions/phone-forms-and-mockup-size.md
 
 The app is designed for three phone forms: iPhone 18, iPhone Max and iPhone Duo. The owner's words: "just need to worry about iphone 18, iphone max, and iphone duo form factors frankly" (page item 109, 2026-11-21 19:57 CST). No measurement in this repo gives a width for iPhone 18 or iPhone Max.
 
-New mockups draw the iPhone Duo at its folded size only: 466 by 678 pt, the outer screen with the fold closed (measurement `duo-fold-and-keyboard`). Mockups made before this ruling are history. On main, `docs/design-churn` (measured 2026-11-22 at commit `622ee04b`) holds 140 HTML files. 133 of them carry `iphone-duo-unfolded`, and 38 mockups name 402 by 874, 440 by 956, 430 by 900 or 375 by 812 points. They stay there for review and culling.
+New mockups draw the iPhone Duo at its folded size only: 466 by 678 pt, the outer screen with the fold closed (measurement `duo-fold-and-keyboard`). Mockups made before this ruling are history. On main, `docs/design-churn` (measured 2026-11-22 at commit `622ee04b`) holds 140 HTML files. 133 of them carry `iphone-duo-unfolded`. 36 name 402 by 874, 440 by 956, 430 by 900 or 375 by 812 points, and 20 more name 390 by 844 or 430 by 932 points. They stay there for review and culling.
 
 **Holds while:** `duo-fold-and-keyboard` gives the folded outer screen as 466 by 678 pt, and the ruling above stands.
 

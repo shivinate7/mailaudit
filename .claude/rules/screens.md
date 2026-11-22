@@ -116,7 +116,7 @@ The register is stationery, not software. One rule governs all of it: nothing ma
 Where the page holds its shape, and where every colour comes from.
 
 - `card-tally-row-counts-first` — The Tally row degrades sets first, never counts.
-- `card-the-action-row-is-reserved` — The card action row reserves its tallest height. The three phone forms are set in `phone-forms-and-mockup-size` (owner, page item 109, 2026-11-21 19:57 CST), and 320 px is not one of them.
+- `card-the-action-row-is-reserved` — The card action row reserves its tallest height. The phone forms are set in `phone-forms-and-mockup-size` (owner, page item 109, 2026-11-21 19:57 CST).
 - `card-the-bar-is-out-of-flow` — The package progress bar sits out of flow.
 - `design-form-controls-no-inherit` — Form controls need their own font rule.
 - `design-parchment-ledger` — The palette is parchment ledger.
