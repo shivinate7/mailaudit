@@ -16,10 +16,12 @@ public struct HandDayRow: Equatable, Sendable {
     public var short: Bool { got < qty }
 }
 
-/// A short envelope of today's pile: the cards still owed, and how many copies are owed.
+/// A short envelope of today's pile: the cards still owed, and how many copies are owed. `owedLines` is the one home of each
+/// owed card with its copies still owed, "1 Lightning Bolt", in the envelope's own line order; `missing` is the names alone.
 public struct HandShortRow: Equatable, Sendable {
     public let gk, seller: String
     public let missing: [String]
+    public let owedLines: [String]
     public let left: Int
 }
 
@@ -163,12 +165,14 @@ public final class HandModel {
     }
 
     /// The short envelopes of today's pile, each with the cards it still owes. `pastCount` is the envelopes past 14 days
-    /// (PastTransitModel), which the page also counts before it says all is well.
-    public func notNormalToday(now: Date, calendar: Calendar, pastCount: Int) async throws -> HandNotNormal {
+    /// (PastTransitModel), which the page also counts before it says all is well. nil means that list could not be read, so
+    /// the days past are unknown and the page never says all is well (ux-unknown-is-not-empty).
+    public func notNormalToday(now: Date, calendar: Calendar, pastCount: Int?) async throws -> HandNotNormal {
         let rows = try await todaysEnvelopes(now: now, calendar: calendar).compactMap { e -> HandShortRow? in
             guard e.got < e.qty else { return nil }
             let owed = e.pkg.items.filter { (e.received[$0.key] ?? 0) < $0.qty }
-            return HandShortRow(gk: e.pkg.gk, seller: e.pkg.seller, missing: owed.map(\.name), left: e.qty - e.got)
+            return HandShortRow(gk: e.pkg.gk, seller: e.pkg.seller, missing: owed.map(\.name),
+                                owedLines: owed.map { "\($0.qty - (e.received[$0.key] ?? 0)) \($0.name)" }, left: e.qty - e.got)
         }
         return HandNotNormal(rows: rows, allWell: rows.isEmpty && pastCount == 0)
     }

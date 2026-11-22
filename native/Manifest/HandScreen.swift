@@ -61,6 +61,7 @@ struct HandScreen: View {
     /// The envelope the answer page shows. A post leaves it, so the lines you checked in stay under your finger until the next card.
     @State private var shown: String?
     @State private var pastTransit = false
+    @State private var pastRead = PastRead.loading
     /// Today's pile and Not normal today (item 79 a): empty until a card is checked in today.
     @State private var dayPile: [HandDayRow] = []
     @State private var dayNotNormal: HandNotNormal?
@@ -81,22 +82,30 @@ struct HandScreen: View {
             DuoPages(pages: pages) { leftPage } right: { rightPage }
                 .background(Parchment.paper.ignoresSafeArea())
                 .contentShape(Rectangle())
-                .task { try? await kit.transit.load() }
-                // The day's end reads the ledger again after each check-in or un-check, and when the late list changes.
-                .task(id: DayKey(received: packages.received, past: kit.transit.rows.count)) { await loadDay() }
+                .task { await loadPast() }
+                // The day's end reads the ledger again after each check-in or un-check, and when the late list changes or is read.
+                .task(id: DayKey(received: packages.received, past: kit.transit.rows.count, read: pastRead)) { await loadDay() }
                 // A screen left open past midnight must not keep yesterday's pile: read again when the app comes back and at the day change.
                 .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await loadDay() } } }
                 .onReceive(NotificationCenter.default.publisher(for: UIApplication.significantTimeChangeNotification)) { _ in Task { await loadDay() } }
         }
     }
 
-    private struct DayKey: Hashable { let received: [String: Int]; let past: Int }
+    private struct DayKey: Hashable { let received: [String: Int]; let past: Int; let read: PastRead }
+
+    /// Whether the past-14-days list has been read. Until it has, and after a read that threw, its count is unknown, so
+    /// the page never says "All is well." (ux-unknown-is-not-empty).
+    private enum PastRead { case loading, read, failed }
+
+    private func loadPast() async {
+        do { try await kit.transit.load(); pastRead = .read } catch { pastRead = .failed }
+    }
 
     private func loadDay() async {
         let (now, calendar) = (Date(), Calendar.current)
         do {
             let pile = try await hand.todaysPile(now: now, calendar: calendar)
-            let odd = try await hand.notNormalToday(now: now, calendar: calendar, pastCount: kit.transit.rows.count)
+            let odd = try await hand.notNormalToday(now: now, calendar: calendar, pastCount: pastRead == .read ? kit.transit.rows.count : nil)
             guard !Task.isCancelled else { return }
             (dayPile, dayNotNormal, dayFailure) = (pile, odd, nil)
         } catch {
@@ -482,7 +491,7 @@ struct HandScreen: View {
     /// A write has landed: Packages reads the new check-ins, the late list follows, and the figures and the slot after them.
     private func afterWrite(failed: Bool) async {
         try? await packages.load()
-        try? await kit.transit.load()
+        await loadPast()
         // Tally and Orphaned too; a failed read marks the write failed, as StampSection.write does.
         var refreshed = true
         do { try await onChange() } catch { refreshed = false }
@@ -552,7 +561,7 @@ struct HandScreen: View {
         VStack(alignment: .leading, spacing: 8) {
             micro("Not normal today", size: 11).accessibilityAddTraits(.isHeader)
             if nn.rows.isEmpty {
-                // Nothing short and something past 14 days: the header alone, and the past-14-days box below it.
+                // Nothing short and something past 14 days, or that list unread: the header alone (and the past-14-days box below it).
                 if nn.allWell {
                     Text(HandNotNormal.allWellText).font(.cochin(20, relativeTo: .title3).weight(.bold)).foregroundStyle(Parchment.green)
                 }
@@ -566,6 +575,11 @@ struct HandScreen: View {
                 .background(Parchment.card, in: RoundedRectangle(cornerRadius: 8))
                 .overlay(RoundedRectangle(cornerRadius: 8).strokeBorder(Parchment.line, lineWidth: 1))
             }
+            // The late list could not be read: its count is unknown, so the all-clear above stays out (ux-unknown-is-not-empty).
+            if pastRead == .failed {
+                Text("Could not read the last days.").font(.cochin(14, relativeTo: .body)).foregroundStyle(Parchment.red)
+                    .accessibilityIdentifier("hand-past-error")
+            }
         }
         .accessibilityElement(children: .contain).accessibilityIdentifier("hand-not-normal")
     }
@@ -574,12 +588,8 @@ struct HandScreen: View {
         // The pill is the bundle's packagePill, "N left · $Y", the words Packages uses for the same figure.
         let left = packages.pills[row.gk] ?? "\(row.left) left"
         let pkg = packages.liveRows.first { $0.gk == row.gk }
-        // Each missing card with its copies still owed, "1 Lightning Bolt", in the envelope's own line order.
-        let owed = pkg?.items.compactMap { it -> String? in
-            let n = it.qty - min(it.qty, packages.received[it.key] ?? 0)
-            return n > 0 ? "\(n) \(it.name)" : nil
-        } ?? row.missing
-        let detail = (pkg.map { [$0.date] } ?? []).filter { !$0.isEmpty } + [owed.joined(separator: ", "), left]
+        // Each missing card with its copies still owed, "1 Lightning Bolt": HandShortRow.owedLines is the one home.
+        let detail = (pkg.map { [$0.date] } ?? []).filter { !$0.isEmpty } + [row.owedLines.joined(separator: ", "), left]
         return VStack(alignment: .leading, spacing: 2) {
             Text("\(row.seller) came \(row.left) short").font(.cochin(14, relativeTo: .body).weight(.bold)).foregroundStyle(Parchment.ink)
             Text(detail.joined(separator: " \u{00B7} ")).font(.mono(11, relativeTo: .caption)).foregroundStyle(Parchment.inkSoft)
