@@ -10,6 +10,7 @@
    The zone is pinned to New York below, so every local time here reads the same on any runner. */
 process.env.TZ = "America/New_York";
 
+import { readFileSync } from "node:fs";
 import { failLine } from "./fail-line.mjs";
 
 /* A missing core does not stop the run. An absent export reads as undefined, so each case
@@ -70,7 +71,7 @@ const iso = (ms) => new Date(ms).toISOString();
 const fold = (s) => (typeof s === "string" ? s.replace(/\s/g, " ") : s);
 const when = (ms) => fold(call("whenText", ms));
 const shown = (d) => ({ text: d?.text, kind: d?.kind, title: fold(d?.title) });
-const LEAD = "MANIFEST orders: ";
+const LEAD = "CH Post orders: ";
 const okRun = (added, at = PULL_AT, extra = {}) => ({ at, ok: true, added, ...extra });
 const failRun = (kind, at = PULL_AT) => ({ at, ok: false, kind });
 
@@ -360,6 +361,47 @@ await test("9.1", async () =>
 await test("9.2", async () =>
   eq(["…", "!", "in", ""].map(cap), ["…", "!", "in", ""],
     "a badge text that is not a count passes through unchanged"));
+
+/* ---------- 10. the names the extension shows on its own pages: manifest and options ---------- */
+const extFile = (rel) => readFileSync(new URL(`../extension/${rel}`, import.meta.url), "utf8");
+
+await test("10.1", async () => {
+  const name = JSON.parse(extFile("manifest.json")).name;
+  eq(typeof name, "string", "scope, the manifest has a name string");
+  eq(name.includes("CH Post"), true, "the manifest name says CH Post, the product name, not MANIFEST");
+});
+
+await test("10.2", async () => {
+  const description = JSON.parse(extFile("manifest.json")).description;
+  eq(typeof description, "string", "scope, the manifest has a description string");
+  eq(description.includes("CH Post"), true, "the manifest description says CH Post");
+});
+
+await test("10.3", async () => {
+  const title = JSON.parse(extFile("manifest.json")).action?.default_title;
+  eq(typeof title, "string", "scope, the action has a default_title string");
+  eq(title.includes("CH Post"), true, "the action default_title says CH Post, the toolbar hover");
+});
+
+await test("10.4", async () =>
+  eq(extFile("manifest.json").includes("MANIFEST"), false,
+    "the manifest file holds no MANIFEST anywhere, name, description or default_title"));
+
+await test("10.5", async () => {
+  const m = /<title>([^<]*)<\/title>/.exec(extFile("options.html"));
+  eq(!!m, true, "scope, options.html has a title element");
+  eq(m[1].includes("CH Post"), true, "the options page title says CH Post");
+});
+
+await test("10.6", async () => {
+  const m = /<div class="t">([^<]*)<\/div>/.exec(extFile("options.html"));
+  eq(!!m, true, "scope, options.html has a letterhead div of class t");
+  eq(m[1].includes("CH Post"), true, "the options page letterhead says CH Post");
+});
+
+await test("10.7", async () =>
+  eq(extFile("options.html").includes("MANIFEST"), false,
+    "the options page holds no MANIFEST anywhere, title or letterhead"));
 
 /* ---------- report ---------- */
 if (loadNote) console.log(`note: extension/core.mjs did not load (${loadNote}); each case reads undefined from it`);
