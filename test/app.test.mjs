@@ -265,6 +265,13 @@ const card = packageCard;
 /* from group 32 */
 /* the jump scrolls on a frame, and the frame lands outside the click's act() */
 const settle = () => act(async () => await sleep(0));
+/* a line as the tracking stamp leaves it: without trackingAt, which a refresh adds (owner item 94).
+   Module scope, because groups 33 and 57 sit in different part gates. */
+const unstamped = (it) => {
+  if (!it) return it;
+  const { trackingAt, ...rest } = it;
+  return rest;
+};
 /* from group 37 */
 const GK_A = "A1::Alpha Cards";
 /* from group 37 */
@@ -1271,7 +1278,10 @@ if (cell(/^Re-import CSV/)?.getAttribute("aria-expanded") !== "true")
   await click(btn(/Re-import CSV/), "open the upload zone");
 await dropFile("backup.json", JSON.stringify({ hello: "world" }));
 await act(async () => await sleep(0));
-ok(/isn’t a Mail Day backup/.test(text()), "26.20 a non-ledger JSON is refused on the restore path");
+// Copy names CH Post: owner ruling 114 b (2026-11-21 19:54 CST).
+ok(/isn’t a CH Post backup/.test(text()), "26.20 a non-ledger JSON is refused on the restore path");
+ok(text().includes("CH Post"), "26.20a the refusal copy names CH Post");
+ok(!text().includes("Mail Day"), "26.20b and no Mail Day copy is left on the page");
 await sleep(SAVE_WAIT);
 eq(saved().items.length, ITEMS.length, "26.21 and nothing local moved");
 
@@ -2864,8 +2874,9 @@ const TRK_IN = [
 ];
 const TRK_OPT = { refreshTracking: true };
 const trkOf = (items, n) => items.find((it) => it.key === `T|${n}|${n}`)?.tracking;
+/* the refresh's own stamp (trackingAt) is the one other field it may add */
 const withoutTracking = (it) => {
-  const { tracking, ...rest } = it;
+  const { tracking, trackingAt, ...rest } = it;
   return JSON.stringify(rest);
 };
 const trkOnce = mergeItems(TRK_BASE, TRK_IN, TRK_OPT);
@@ -2909,7 +2920,7 @@ eq(
     { items: [trkLine(1, "with tracking")] }
   ).merged.items[0].tracking,
   "unknown",
-  "33.65 a two-device merge keeps the local tracking: mergeLedger never refreshes"
+  "33.65 a two-device merge of two unstamped lines keeps the local tracking: mergeLedger never refreshes"
 );
 /* the count is per key, against the tracking the base held: two incoming rows of one
    key count once, and the last row decides whether that key counted at all */
@@ -2970,10 +2981,12 @@ eq(
   "33.76 an empty incoming name keeps the stored one"
 );
 eq(
-  mergeItems([nmLine(1, "Old", { tracking: "unknown" })], [nmLine(1, "New", { tracking: "Canceled" })], {
-    refreshTracking: true,
-    refreshName: true,
-  }).items[0],
+  unstamped(
+    mergeItems([nmLine(1, "Old", { tracking: "unknown" })], [nmLine(1, "New", { tracking: "Canceled" })], {
+      refreshTracking: true,
+      refreshName: true,
+    }).items[0]
+  ),
   { ...nmLine(1, "New"), tracking: "Canceled" },
   "33.77 both options together change only name and tracking"
 );
@@ -2991,6 +3004,80 @@ eq(
   1,
   "33.79 after the rename the old-style line and a new-style line pool into one Tally group"
 );
+
+/* ── 33, the tracking stamp (owner item 94, route c, 2026-11-21 20:00 CST). A line may carry
+   `trackingAt`, a ms stamp that defaults to 0. On a line clash mergeItems takes the incoming
+   line's tracking and stamp when the incoming stamp is later, so a device that already holds the
+   line takes the update. A tie, or two unstamped lines, keeps the base copy (33.54 to 33.66b).
+   A refresh stamps each line whose tracking it changes with the injected `now`, and no other.
+   TRK_NOW is a fixed instant: the merge never reads the clock. */
+const TRK_NOW = Date.UTC(2026, 10, 21, 20, 0);
+const stampedTrk = (n, tracking, at) => trkLine(n, tracking, { trackingAt: at });
+const trkAtOf = (items, n) => items.find((it) => it.key === `T|${n}|${n}`)?.trackingAt ?? 0;
+/* trkAtOf reads 0 for a missing line, so each stamp case first checks the line is present */
+const trkHas = (items, n) => items.some((it) => it.key === `T|${n}|${n}`);
+
+/* a stamped line on either side of a clash, in either argument order */
+const TRK_UNSTAMPED_1 = [trkLine(1, "unknown")];
+const TRK_STAMPED_1 = [stampedTrk(1, "with tracking", 5000)];
+eq(trkOf(mergeItems(TRK_UNSTAMPED_1, TRK_STAMPED_1).items, 1), "with tracking", "33.80 a stamped incoming line beats an unstamped base line on tracking");
+eq(trkAtOf(mergeItems(TRK_UNSTAMPED_1, TRK_STAMPED_1).items, 1), 5000, "33.80a and the winning line carries its stamp, so a later merge can compare it");
+eq(trkOf(mergeItems(TRK_STAMPED_1, TRK_UNSTAMPED_1).items, 1), "with tracking", "33.81 a stamped base line keeps its tracking against an unstamped incoming line");
+eq(trkAtOf(mergeItems(TRK_STAMPED_1, TRK_UNSTAMPED_1).items, 1), 5000, "33.81a and keeps its stamp");
+
+/* the two-device merge, both orders: the same stamped tracking comes out */
+const TRK_UNSTAMPED_LEDGER = { items: [trkLine(1, "unknown")] };
+const TRK_STAMPED_LEDGER = { items: [stampedTrk(1, "with tracking", 5000)] };
+eq(trkOf(mergeLedger(TRK_UNSTAMPED_LEDGER, TRK_STAMPED_LEDGER).merged.items, 1), "with tracking", "33.82 a two-device merge, with this device holding the unstamped line, takes the stamped tracking");
+eq(trkOf(mergeLedger(TRK_STAMPED_LEDGER, TRK_UNSTAMPED_LEDGER).merged.items, 1), "with tracking", "33.82a a two-device merge, with this device holding the stamped line, keeps its tracking");
+
+/* equal stamps, and two lines stamped 0 (the same as unstamped), keep the base copy */
+eq(trkOf(mergeItems([stampedTrk(1, "unknown", 5000)], [stampedTrk(1, "with tracking", 5000)]).items, 1), "unknown", "33.83 equal stamps keep the base line's tracking");
+eq(trkOf(mergeItems([stampedTrk(1, "unknown", 0)], [stampedTrk(1, "with tracking", 0)]).items, 1), "unknown", "33.84 two lines stamped 0 keep the base line's tracking, as two unstamped lines do");
+
+/* the refresh: the injected now stamps each line it changes, and no other */
+const trkStamped = mergeItems(TRK_BASE, TRK_IN, { refreshTracking: true, now: TRK_NOW });
+eq(trkOf(trkStamped.items, 1), "with tracking", "33.85a scope: the refresh still takes the incoming tracking");
+eq(trkAtOf(trkStamped.items, 1), TRK_NOW, "33.85 a refreshed line is stamped with the injected now");
+eq(trkAtOf(trkStamped.items, 2), TRK_NOW, "33.86 and so is each other line the refresh changed");
+ok(trkHas(trkStamped.items, 3), "33.87 line 3, which the refresh leaves unchanged, is present in the merged list");
+eq(trkAtOf(trkStamped.items, 3), 0, "33.87 a line the refresh leaves unchanged gets no stamp");
+ok(trkHas(trkStamped.items, 5), "33.87a line 5, a stored line absent from the incoming list, is present in the merged list");
+eq(trkAtOf(trkStamped.items, 5), 0, "33.87a a stored line absent from the incoming list gets no stamp");
+const trkRenamed = mergeItems(
+  [trkLine(1, "unknown")],
+  [trkLine(1, "unknown", { name: "Card 1 reprint" })],
+  { refreshName: true, refreshTracking: true, now: TRK_NOW }
+);
+eq(trkRenamed.renamed, 1, "33.88a scope: the name changed on the one line");
+ok(trkHas(trkRenamed.items, 1), "33.88 line 1, changed only by its name, is present in the merged list");
+eq(trkAtOf(trkRenamed.items, 1), 0, "33.88 a line changed only by its name gets no stamp");
+
+/* the empty state and the full-size state of the refresh */
+eq(
+  mergeItems(TRK_BASE, [], { refreshTracking: true, now: TRK_NOW }).items.filter((it) => it.trackingAt).length,
+  0,
+  "33.89 an empty incoming list stamps no stored line"
+);
+const TRK_FULL_BASE = Array.from({ length: 300 }, (_, i) => trkLine(i + 1, "without tracking"));
+const TRK_FULL_IN = TRK_FULL_BASE.map((it, i) => (i % 3 === 0 ? { ...it, tracking: "with tracking" } : it));
+const trkFull = mergeItems(TRK_FULL_BASE, TRK_FULL_IN, { refreshTracking: true, now: TRK_NOW });
+eq(trkFull.refreshed, 100, "33.90a scope: 100 of the 300 lines changed");
+eq(
+  trkFull.items.filter((it) => it.trackingAt === TRK_NOW).length,
+  100,
+  "33.90 full size: exactly the 100 changed lines are stamped"
+);
+
+/* no `now` in the options: the merge never reads the clock, so a refresh stamps nothing
+   (the no-now rule in mergeItems). The stamp count is the lines that carry a nonzero stamp. */
+const stampsIn = (items) => items.filter((it) => (it.trackingAt || 0) !== 0).length;
+const trkNoNow = mergeItems(TRK_BASE, TRK_IN, TRK_OPT);
+eq(trkOf(trkNoNow.items, 1), "with tracking", "33.91 scope: with no now the refresh still takes the incoming tracking");
+eq(stampsIn(trkNoNow.items), 0, "33.91a with no now a refreshed line is not stamped: the merge never reads the clock");
+const trkFullNoNow = mergeItems(TRK_FULL_BASE, TRK_FULL_IN, TRK_OPT);
+eq(trkFullNoNow.refreshed, 100, "33.91b scope, full size: 100 of the 300 lines changed");
+eq(stampsIn(trkFullNoNow.items), 0, "33.91c full size with no now: no changed line is stamped");
 
 /* ── 34. the conflict stops being a trap ──────────────────────────────────
    Group 25 proves a stale write is refused. This proves it can now be resolved
@@ -3245,6 +3332,36 @@ await openSync();
 ok(!(await win.sync.hasKey()), "34.25pre this device holds no Worker key");
 await wakeWorker();
 eq(workerPosts().length, 0, "34.25 with no key on this device, nothing is sent to the Worker");
+
+/* ── 33b. a reply brings the new status to a device that already holds the line (owner
+   item 94, route c, 2026-11-21 20:00 CST). Device 2 holds the line at its old status. The
+   Worker holds the same line at the new status, stamped later. The reply must bring the new
+   status to device 2, not leave the base copy's old one. */
+const KEY33B = "device-33b-key";
+const LINE33B = ITEMS[0];
+const DATES33B = { preset: "all", from: "", to: "" };
+const LEDGER33B = (line) => ({
+  mailday: 1,
+  items: [line],
+  received: {},
+  envelopes: [],
+  stamps: {},
+  dateFilter: DATES33B,
+  sortBy: "newest",
+  itemSort: "missing",
+});
+await boot({ items: [{ ...LINE33B, tracking: "without tracking" }], received: {}, dateFilter: DATES33B }, null, {
+  syncKey: KEY33B,
+});
+await goTo("Packages");
+ok(text().includes(LINE33B.seller), "33b.1 scope: device 2 shows the package");
+ok(text().includes("○ untracked"), "33b.2 device 2 shows the old status before any reply");
+setServerLedger(LEDGER33B({ ...LINE33B, tracking: "with tracking", trackingAt: 5000 }));
+await backgroundFor(5 * 60_000);
+await drain();
+ok(text().includes("● tracked"), "33b.3 after a reply from the Worker, device 2 shows the new status");
+await sleep(SAVE_WAIT);
+eq(saved().items?.[0]?.trackingAt ?? null, 5000, "33b.4 and the stamp reaches device 2 with the status");
 
 /* ── 35. a pull that didn't land must not license a push ──────────────────
    Retired by the switch (owner ruling 2026-10-14 21:12 CDT, decision sync-revamp-cloudflare).
@@ -7619,15 +7736,24 @@ eq(betaBefore57?.tracking, "without tracking", "57.14a before the canceled re-im
 await reachFor(/Re-import CSV/);
 await click(btn(/Re-import CSV/), "show upload zone");
 ok(/Drop your OrderWand CSV here/.test(text()), "57.14b the upload zone is open before the canceled drop");
+/* the virtual clock is the only clock here, and it moves only inside sleep, so the import's
+   stamp falls between the two readings taken around the drop */
+const dropFrom57 = Date.now();
 await dropFile(
   "orders.csv",
   csv([FIRST57[0], { ...FIRST57[1], "Shipping Status": "Canceled" }, FIRST57[2], NEW57])
 );
+const dropTo57 = Date.now();
 await sleep(SAVE_WAIT);
 eq(
-  canon56(saved().items.find((it) => it.name === RB57)),
+  canon56(unstamped(saved().items.find((it) => it.name === RB57))),
   canon56({ ...betaBefore57, tracking: "Canceled" }),
   "57.14 the canceled re-import sets Beta's stored tracking to Canceled and changes no other Beta field"
+);
+const betaStamp57 = saved().items.find((it) => it.name === RB57)?.trackingAt;
+ok(
+  typeof betaStamp57 === "number" && betaStamp57 >= dropFrom57 && betaStamp57 <= dropTo57,
+  "57.14c the canceled re-import stamps Beta's tracking with the import's clock"
 );
 eq(saved().items.length, 4, "57.15 the canceled re-import adds no line");
 eq(
@@ -7893,6 +8019,18 @@ ok(
   !!loadErrL1 && !!loadBtnL1 && loadBtnL1.parentElement !== loadBtnL1.closest(".mdl-panel") && loadBtnL1.parentElement.contains(loadErrL1),
   "61.40 and it shares a row with the control that failed"
 );
+remote.fail = null;
+
+/* P6c: a Load older whose reply is not a ledger says so, in the product's name (REMOTE_SAYS["bad-response"]). */
+await boot({ items: ITEMS, received: {} });
+await openHistory();
+remote.fail = "bad-response";
+await tapL1(/Load older versions/, "ask for the older versions when the reply is not a ledger");
+await settle();
+const badRespL1 = leafL1(/^That isn’t a .+ ledger\. Nothing on this device was changed\.$/);
+ok(!!badRespL1, "61.39b the bad-response line is on screen, with its nothing-changed sentence");
+// Copy names CH Post: owner ruling 114 b (2026-11-21 19:54 CST).
+ok(/CH Post ledger/.test(badRespL1?.textContent ?? ""), "61.39c and it names CH Post, not Mail Day");
 remote.fail = null;
 
 /* ── 61.41+ (orchestrator defaults, 2026-10-11 — defaults, not owner rulings) ──
@@ -9142,7 +9280,8 @@ try {
    native-ledger-is-raw-json, milestones-taken-before-risk. */
 const KEY68 = "device-68-key";
 const COPY68 = /A copy of that file could not be saved to History, so nothing was changed\./;
-const NOT_BACKUP68 = /isn[’']t a Mail Day backup/;
+// Copy names CH Post: owner ruling 114 b (2026-11-21 19:54 CST).
+const NOT_BACKUP68 = /isn[’']t a CH Post backup/;
 
 /* 68.1 a file restore from a refused load: when the raw text cannot be copied, the restore changes nothing. */
 try {
@@ -9187,7 +9326,8 @@ try {
   await click(btn(/Re-import CSV/), "show upload zone");
   await dropFile("mailday-backup.json", JSON.stringify({ ...withField67("received", "x"), items: ITEMS }));
   await sleep(SAVE_WAIT);
-  ok(!NOT_BACKUP68.test(text()), "68.2 a damaged file whose copy cannot be saved is not called “not a Mail Day backup”");
+  // Copy names CH Post: owner ruling 114 b (2026-11-21 19:54 CST).
+  ok(!NOT_BACKUP68.test(text()), "68.2 a damaged file whose copy cannot be saved is not called “not a CH Post backup”");
   ok(COPY68.test(text()), "68.2a the line says a copy could not be saved, and nothing was changed");
   eq(savedText(), savedBefore68, "68.2b the saved text is unchanged");
 } catch (e) {

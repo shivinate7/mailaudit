@@ -11,8 +11,8 @@ seller, and it is the working view for when the mail comes. **Tally** pools one 
 across every seller, which answers "did all four arrive" and carries the cost
 basis. **Orphaned** holds a package that arrives with no way to tell who sent it.
 
-The masthead is MANIFEST. Home-screen labels read CH Post on iOS and web. Project, repo,
-storage namespace follow neither. See `masthead-is-not-project-name`.
+The in-app masthead is MANIFEST. Home-screen labels read CH Post on iOS and web, and the
+extension reads CH Post (owner 2026-11-22, 118 b, extension name follows CH Post). Project, repo, storage namespace follow neither. See `masthead-is-not-project-name`.
 
 ## How to read this file
 
@@ -51,7 +51,7 @@ Nothing in the component touches a storage API. Three adapters do, and each fail
 
 ## Process
 
-- `masthead-is-not-project-name` — The masthead is not the project name.
+- `masthead-is-not-project-name` — The masthead is not the project name. The extension is CH Post.
 - `main-moves-only-by-pr` — Main moves only by pull request, admins included.
 - `records-hold-current-text-only` — Records hold current text only; git keeps history.
 - `debts-hold-known-gaps` — Known gaps live in debts, one file each. Caught tasks live in `docs/todo.md`.
@@ -67,7 +67,7 @@ A fact an agent needs, that argues nothing. Read the CSV record before touching 
 
 - `assets-and-icons` — Icon files and how to export them.
 - `build-and-deploy` — Build, test and deploy commands, and `ios-ship testflight`.
-- `cloud-session-reach` — What a cloud session can reach: the Worker, GitHub and the Mac, with a probe for each.
+- `cloud-session-reach` — What a cloud session can reach: the Worker, GitHub and the Mac, with a probe for each. Its CSV route adds new lines and refreshes no tracking.
 - `live-verification` — What has run against real GitHub, a real device or a Worker probe.
 - `orderwand-csv` — The OrderWand CSV schema and quirks.
 
@@ -84,7 +84,7 @@ A question this repo has not closed, or a risk it accepted on purpose. Each reco
 - `ledger-private-source-public` — The ledger repo is private, the source repo is public.
 - `token-sits-on-shared-origin` — The device key sits on a shared origin.
 - `vendor-toggle-undecided` — The vendor toggle stays undecided.
-- `merge-later-change-wins` — Clock skew can pin a merge key. Accepted risk.
+- `merge-later-change-wins` — Clock skew can pin a merge key, including a line's tracking stamp. Accepted risk.
 
 ## Measurements
 

@@ -7,7 +7,7 @@ Debt: `orders-job-unbuilt`. Plan: `orders-extension`. Earlier pages for the exte
 ## Sizes, theme, links
 
 - iPhone Duo, folded: 466 x 678 pt. Open: 951 x 669 pt, fold from x 455.5 to 495.5, kept empty. Both from the brief. `layout.py devices` prints `unknown` for this repo, and `layout.json` gives no Duo size.
-- Large iPhone: no size is written in the brief, `layout.json` or the repo. The frame uses 375 x 812, the phone viewport in `test/screens.mjs` (`WIDTHS[0]`, and 812 tall in `freshVisitorCheck`). It is narrower than an 18 Pro.
+- Large iPhone: no size is written in the brief, `layout.json` or the repo. The frame uses 375 x 812, the phone viewport `test/screens.mjs` used before the three forms (`WIDTHS[0]`, and 812 tall in `freshVisitorCheck`). It is narrower than an 18 Pro.
 - AX5, folded: two frames, the top and the log. Sizes are the default size times the AX5 / Large ratio of each text style, from the HIG Dynamic Type table.
 - Status bar foot and home indicator: unmeasured. Drawn at the 20 pt floor the UI tests use (`DuoHandUITests.statusBarFloor`), as `duo-hand-gaps.html` does.
 - Theme: light only. The native app is held to light (`design-parchment-ledger`, `UIUserInterfaceStyle`). The dark keys in `shared/tokens.json` belong to the extension.

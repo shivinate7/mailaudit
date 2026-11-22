@@ -2308,7 +2308,7 @@ await test("72.19 a pages merge keeps every stored field and check-in, and refre
   const cur = s.state.ledger;
   const solo = cur.items.find((i) => i.key === SOLO) ?? {};
   eq(solo.tracking, "with tracking", "the shipping status of the named line is refreshed");
-  eq(without(solo, "tracking"), without(stored.items[0], "tracking"), "nothing else on that line changes: name, set, condition, price, qty, seller and date");
+  eq(without(without(solo, "tracking"), "trackingAt"), without(stored.items[0], "tracking"), "nothing else on that line changes but its stamp: name, set, condition, price, qty, seller and date");
   eq(cur.items.find((i) => i.key === "555|1|777"), stored.items[1], "a stored line the page does not name is kept as it was");
   eq(cur.received, { [SOLO]: 1 }, "stored check-ins survive");
   eq(cur.receivedAt, { [SOLO]: PREV }, "check-in times survive");
@@ -2428,6 +2428,70 @@ await test("72.27 an order with no readable order id counts each of its lines un
   ok(!keysOf(s).some((k) => k.startsWith("unknown|")), "no line of the id-less order is stored under the id unknown");
   const st = await (await getStatus(s)).json();
   eq({ kind: st.lastFailure?.kind, count: st.lastFailure?.count }, { kind: "unreadable", count: 2 }, "status: kind unreadable with count 2");
+});
+
+/* ---------- 73. the tracking stamp: a newer stamp wins a POST, and the orders refresh stamps its change ----------
+   Owner item 94, route c (2026-11-21 20:00 CST). A line carries `trackingAt`. On a clash the later
+   stamp's tracking wins, so a stale device cannot put old tracking back, and the orders refresh
+   stamps `now` on each line whose tracking it changes. */
+const row73 = (key, tracking, over = {}) => ({
+  key,
+  orderId: key.split("|")[0],
+  seller: "Acme Cards",
+  name: "Tracked Card",
+  set: "Test Set",
+  condition: "Near Mint",
+  finish: "",
+  qty: 1,
+  price: 6,
+  date: "2026-10-24",
+  tracking,
+  line: "",
+  ...over,
+});
+const SOLO73 = `${OID.F}|1|100009`;
+
+await test("73.1 a POST from a stale device keeps the stored newer tracking and its stamp", async () => {
+  const s = fakeStore({ ledger: ledger({ items: [row73(SOLO73, "with tracking", { trackingAt: LATER })] }), rev: 3 });
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_PHONE,
+    json: { ledger: ledger({ items: [row73(SOLO73, "without tracking")] }) },
+  });
+  eq(res.status, 200, "status");
+  const line = itemsOf(s).find((i) => i.key === SOLO73);
+  eq(line !== undefined, true, "scope: the line is still stored");
+  eq(line?.tracking, "with tracking", "the stored newer tracking survives a POST that holds the older one");
+  eq(line?.trackingAt, LATER, "and so does its stamp");
+});
+
+await test("73.2 a POST carrying a later stamp takes its tracking and its stamp over an older stored line", async () => {
+  const s = fakeStore({ ledger: ledger({ items: [row73(SOLO73, "unknown")] }), rev: 3 });
+  const res = await send(s, "POST", "/ledger", {
+    key: KEY_PHONE,
+    json: { ledger: ledger({ items: [row73(SOLO73, "with tracking", { trackingAt: NOW })] }) },
+  });
+  eq(res.status, 200, "status");
+  const line = itemsOf(s).find((i) => i.key === SOLO73);
+  eq(line?.tracking, "with tracking", "the later stamp's tracking reaches the stored line");
+  eq(line?.trackingAt, NOW, "and the stored line carries the later stamp");
+});
+
+await test("73.3 the orders refresh stamps each line whose tracking it changes with the request's now", async () => {
+  const s = fakeStore({ ledger: ledger({ items: [row73(SOLO73, "without tracking")] }), rev: 3 });
+  const res = await postOrders(s, pagesBody(ORDER_F), { now: LATER });
+  eq(res.status, 200, "status");
+  const line = itemsOf(s).find((i) => i.key === SOLO73);
+  eq(line?.tracking, "with tracking", "scope: the refresh took the page's shipping status");
+  eq(line?.trackingAt, LATER, "the refreshed line is stamped with the request's now");
+});
+
+await test("73.4 the orders refresh stamps no line whose tracking it leaves unchanged", async () => {
+  const s = fakeStore({ ledger: ledger({ items: [row73(SOLO73, "with tracking")] }), rev: 3 });
+  const res = await postOrders(s, pagesBody(ORDER_F), { now: LATER });
+  eq(res.status, 200, "status");
+  const line = itemsOf(s).find((i) => i.key === SOLO73);
+  eq(line?.tracking, "with tracking", "scope: the stored tracking already matches the page");
+  eq(line?.trackingAt ?? 0, 0, "and the unchanged line is not stamped");
 });
 
 report();
