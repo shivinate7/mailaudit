@@ -63,7 +63,7 @@ Join keys with `&`, for example `#c=week-ruler&d=duo&s=picked&t=dark`. With no h
    - Loss: the tray is about 190 pt tall on one page (about 280 pt with the tab bar under it), so at rest the folded Duo shows about three slips below the masthead. The initials row has six tabs, one more than Apple's "about five" for iPhone. Three filters that hide rows are more to undo.
    - Owner grant: yes.
 
-4. **The band.** Waiting page item 95 is open, so the band is drawn here.
+4. **The band.** Waiting page item 95 was open when drawn, so the band is drawn here. Item 101 a is closed as moot by item 95 b (owner, 2026-11-21 19:54 CST).
    - What: one band for all three concepts. It is solid paper with a 1 pt `line` rule on top, it sits above the tab bar, and the list ends at its rule. That is the band that PR 238 built (`View.findPill`), with the fill the brief gives as item 101 a. The band holds the concept's control. Find becomes a 44 pt key at the band's end. The key opens today's pill, with Clear and Done. The pill searches card, set, seller and order, as built.
    - Gain: the thumb reaches the scanning control (`ux-thumb-zone`), and typing stays one tap away for an order number.
    - Loss: on one page, Find costs one more tap than the built pill.

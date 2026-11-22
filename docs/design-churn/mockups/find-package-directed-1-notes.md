@@ -30,7 +30,7 @@ Mockup: `docs/design/find-package-directed-1.html`. It is a mockup only. Nothing
   - layout: lay out by size class, and respect the safe areas.
   - tab-bars: a tab bar is for navigation, not actions.
   - buttons and lists-and-tables were read; no figure is taken from them.
-- Item 101 a ("the band under the pill is solid paper, ruled") comes from the brief. `duo-card-in-hand` on main does not hold it. Item 95 (whether the native pill stops floating) is still open, so the band is drawn for it.
+- Item 101 a ("the band under the pill is solid paper, ruled") comes from the brief. `duo-card-in-hand` on main does not hold it. Item 95 (whether the native pill stops floating) was open when this was drawn, so the band is drawn for it. Item 101 a is closed as moot by item 95 b (owner, 2026-11-21 19:54 CST).
 
 ## Items
 
@@ -97,7 +97,7 @@ Mockup: `docs/design/find-package-directed-1.html`. It is a mockup only. Nothing
    - Canceled and refunded orders stay out (`canceled-orders-leave-the-list`, `a-refund-leaves-every-count`).
    - A stamp's label and note still match (`filterPackages`, `stampText`).
    - Owner grant: no.
-10. **The band under the box.** It follows item 101 a; item 95 is open.
+10. **The band under the box.** It follows item 101 a, closed as moot by item 95 b (owner, 2026-11-21 19:54 CST); item 95 was open when drawn.
     - What: the box sits in a band of solid paper, with a 1 pt line rule on top. The list ends at the rule. This is as built in PR 238 (`View.findPill`, `findPillRule`).
     - On the open Duo, Thumb Index puts the band under the left page's results. Deck puts it under the left order.
     - Departs from: `findPillOnDuo`, which floats the pill on the right page. Not blocking.
