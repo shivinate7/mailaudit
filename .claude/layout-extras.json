@@ -4,6 +4,7 @@
   "kinds": {
     "invariants": { "path": "invariants", "record": true, "listed": true, "about": "One record per rule that must not break, each naming the test that pins it." },
     "measurements": { "path": "measurements", "record": true, "listed": true, "about": "One record per measured figure, with the way to measure it again." },
+    "design-churn": { "path": "docs/design-churn", "about": "Mockup churn from the design explorations, not built. The owner culls it later (ruling 110)." },
     "extension": { "path": "extension", "about": "The Chrome extension that reads TCGplayer order history from a signed-in tab and sends it to the ledger Worker." },
     "icon": { "path": "icon", "about": "The 1024px app icon master and the script that redraws it." },
     "native": { "path": "native", "about": "The Swift iOS client: the app, ManifestKit, UI tests and the XcodeGen project file." },
