@@ -59,6 +59,25 @@ func isKeyboardPredictionCell(detail: String) -> Bool {
     isKeyboardPredictionCell(detail: issue.detailedDescription)
 }
 
+/// One failing audit issue as one short line: `AUDIT-FAIL <type> | <identifier or label> | frame x,y,w,h`. The type is cut
+/// to 30 characters, the name to 40, and the frame is rounded to whole points, so a line stays under 120 characters and
+/// survives a truncated log. An issue with no element has no name and no frame.
+func auditFailLine(type: String, name: String?, frame: CGRect?) -> String {
+    let flat = (name ?? "").map { $0.isNewline ? " " : String($0) }.joined()
+    let shownName = flat.isEmpty ? "no name" : String(flat.prefix(40))
+    var shownFrame = "none"
+    if let f = frame, !f.isNull, f.minX.isFinite, f.minY.isFinite, f.width.isFinite, f.height.isFinite {
+        shownFrame = "\(Int(f.minX.rounded())),\(Int(f.minY.rounded())),\(Int(f.width.rounded())),\(Int(f.height.rounded()))"
+    }
+    return "AUDIT-FAIL \(String(type.prefix(30))) | \(shownName) | frame \(shownFrame)"
+}
+
+/// The failure text for the failing issues: their lines first, at most 12 lines. Past 12, the last line counts the rest.
+func auditFailureText(_ failing: [String]) -> String {
+    guard failing.count > 12 else { return failing.joined(separator: "\n") }
+    return (Array(failing.prefix(11)) + ["AUDIT-FAIL +\(failing.count - 11) more not shown"]).joined(separator: "\n")
+}
+
 /// The element is on screen and its frame is at least 44pt each way: the hit region of every control the owner taps.
 /// A frame comes back with float noise (a minHeight 44 row reads 43.99999999999997), so the floor has a thousandth
 /// of a point of slack. A real miss is a third of a point or more short. OrphanedUITests and PackageStampUITests call it.
@@ -68,6 +87,10 @@ func isKeyboardPredictionCell(detail: String) -> Bool {
     XCTAssertGreaterThanOrEqual(f.width, 44 - 0.001, "\(what) is \(f.width)pt wide, under 44pt", file: file, line: line)
     XCTAssertGreaterThanOrEqual(f.height, 44 - 0.001, "\(what) is \(f.height)pt high, under 44pt", file: file, line: line)
 }
+
+/// FindPill's `.padding(.top, 8)` in `findPill` (FindPill.swift). The band's top rule sits this far above the pill's frame,
+/// and a list ends at that rule.
+private let findPillBandTop: CGFloat = 8
 
 extension XCUIApplication {
     /// The top of the band a list scrolls in: the status bar's foot, or the window's top when no status bar resolves.
@@ -79,30 +102,57 @@ extension XCUIApplication {
         max(windows.firstMatch.frame.minY, statusBars.firstMatch.exists ? statusBars.firstMatch.frame.maxY : 0)
     }
 
-    /// The one scroll helper of these tests. Plain: swipe up until the element exists and can be tapped, at most 5 swipes.
-    /// A lazy list mounts a row only near the screen, so an element not there yet is swiped toward, a second at a time.
+    /// The bottom of the band a list scrolls in: the top rule of the Find pill's band when one is drawn, else the top of the bar
+    /// the list ends on. That bar is the system tab bar, or on the open Duo the custom bar, whose top edge is its pill's (DuoMetrics.pill).
+    /// The flat Duo hides the system bar (DuoSystemBar), so tabBars has no match there. The list ends above the pill's band, so a
+    /// drag that starts on the pill moves nothing, and a row under the band is not free to read. The pill's own frame is
+    /// `find-pill`, the container of the field, and the band's top rule sits findPillBandTop above it.
+    var listBottom: CGFloat {
+        let bar = tabBars.firstMatch.exists ? tabBars.firstMatch.frame.minY
+            : duoBar.exists ? duoBar.frame.minY
+            : windows.firstMatch.frame.maxY
+        let pill = descendants(matching: .any).matching(identifier: "find-pill").firstMatch
+        return pill.exists && !pill.frame.isEmpty ? min(bar, pill.frame.minY - findPillBandTop) : bar
+    }
+
+    /// One drag up a list, from `from` to `to` in screen points, at `x` (the window's middle by default). It holds before it
+    /// lifts, so it has no fling. It runs in the window's space: on the open Duo, app coordinates land on the outer display.
+    func dragUp(from: CGFloat, to: CGFloat, x: CGFloat? = nil) {
+        let w = windows.firstMatch
+        let dx = (x ?? w.frame.midX) - w.frame.minX
+        func at(_ y: CGFloat) -> XCUICoordinate {
+            w.coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: dx, dy: y - w.frame.minY))
+        }
+        at(from).press(forDuration: 0.05, thenDragTo: at(to), withVelocity: .slow, thenHoldForDuration: 0.3)
+    }
+
+    /// The one scroll helper of these tests. Plain: drag up until the element exists and can be tapped, at most 5 drags.
+    /// A lazy list mounts a row only near the screen, so an element not there yet is dragged toward, a second at a time.
     /// `whole`: for a test that records frames before a tap. A tap on an element that is off screen scrolls the
-    /// list and moves every frame, so the element must lie fully between the status bar and the tab bar first.
+    /// list and moves every frame, so the element must lie fully between the status bar and the Find pill or the tab
+    /// bar (listBottom) first.
     /// It drags the list by the measured gap (a drag that holds before it lifts has no fling, so it cannot
     /// overshoot), then waits until the element's frame stops changing. A drag can start on a control, so a
     /// caller reads its at-rest state after this call, never before.
     func reveal(_ element: XCUIElement, whole: Bool = false) {
         guard whole else {
-            var swipes = 0
-            while !(element.exists && element.isHittable) && swipes < 5 {
-                swipeUp()
-                swipes += 1
+            // Plain: a drag from 40 pt above listBottom, half the band per drag, as whole's drags start. It is not swipeUp():
+            // XCTest chooses swipeUp's start point, and a start on the Find pill moves nothing.
+            var drags = 0
+            while !(element.exists && element.isHittable) && drags < 5 {
+                let top = listTop, bottom = listBottom
+                dragUp(from: bottom - 40, to: bottom - 40 - (bottom - top - 80) / 2)
+                drags += 1
                 _ = element.waitForExistence(timeout: 1)
             }
             return
         }
-        guard element.waitForExistence(timeout: 5), tabBars.firstMatch.exists else {
-            XCTFail("reveal: the element or the tab bar is missing")
+        guard element.waitForExistence(timeout: 5), tabBars.firstMatch.exists || duoBar.exists else {
+            XCTFail("reveal: the element or the bar is missing")
             return
         }
-        let screen = windows.firstMatch.frame
         let top = listTop
-        let bottom = tabBars.firstMatch.frame.minY
+        let bottom = listBottom
         func inView() -> Bool { element.frame.minY >= top && element.frame.maxY <= bottom }
         func settle() {
             var last = element.frame
@@ -118,10 +168,7 @@ extension XCUIApplication {
             let span = bottom - top - 80
             let from = gap > 0 ? bottom - 40 : top + 40
             let to = from - max(-span, min(span, gap))
-            let x = screen.midX
-            coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: from))
-                .press(forDuration: 0.05, thenDragTo: coordinate(withNormalizedOffset: .zero).withOffset(CGVector(dx: x, dy: to)),
-                       withVelocity: .slow, thenHoldForDuration: 0.3)
+            dragUp(from: from, to: to)
             settle()
         }
         settle()
@@ -129,14 +176,16 @@ extension XCUIApplication {
     }
 
     /// The accessibility audit, minus every issue whose element touches the tab bar or lies below the window
-    /// (isUnderTabBar). The issues it skips and the issues it fails come back as text. `bar` and `window` replace the
-    /// tab bar's and the window's frames, for the narrowness test. With `record: false` no issue is recorded, so a test
-    /// can read them.
+    /// (isUnderTabBar). `bar` and `window` replace the tab bar's and the window's frames, for the narrowness test.
     /// `ruled` is another skip the owner ruled on, such as skipMeasuredContrastFlags. An issue it accepts is left
     /// out and is not counted in `skipped`, which means "under the bar" only. It comes back in `ruled` instead.
+    /// A failing issue comes back in `failing` as one AUDIT-FAIL line (auditFailLine). With `record: true` the
+    /// failing issues fail the test once, with those lines first (auditFailureText). With `record: false` nothing
+    /// fails, so a test can read them.
     @discardableResult
     func auditSkippingTabBar(bar override: CGRect? = nil, window windowOverride: CGRect? = nil, record: Bool = true,
-                             ruled: ((XCUIAccessibilityAuditIssue) -> Bool)? = nil) throws
+                             ruled: ((XCUIAccessibilityAuditIssue) -> Bool)? = nil,
+                             file: StaticString = #filePath, line: UInt = #line) throws
         -> (skipped: [String], failing: [String], ruled: [String])
     {
         let tabBar = tabBars.firstMatch
@@ -156,9 +205,14 @@ extension XCUIApplication {
                 ruledText.append(text)
                 return true
             }
-            print("AUDIT-FAIL \(text)")
-            failing.append(text)
-            return !record
+            let name = issue.element.map { $0.identifier.isEmpty ? $0.label : $0.identifier }
+            let fail = auditFailLine(type: issue.compactDescription, name: name, frame: frame)
+            print(fail)
+            failing.append(fail)
+            return true
+        }
+        if record {
+            XCTAssertTrue(failing.isEmpty, auditFailureText(failing), file: file, line: line)
         }
         return (skipped, failing, ruledText)
     }
@@ -173,7 +227,7 @@ extension XCUIApplication {
     func auditNamingElements(skipping skip: @escaping (XCUIAccessibilityAuditIssue) -> Bool = { _ in false },
                              file: StaticString = #filePath, line: UInt = #line) throws -> [String] {
         let result = try auditSkippingTabBar(record: false, ruled: skip)
-        XCTAssertEqual(result.failing, [], "the audit flagged these elements", file: file, line: line)
+        XCTAssertTrue(result.failing.isEmpty, auditFailureText(result.failing), file: file, line: line)
         return result.skipped + result.ruled
     }
 }
@@ -324,7 +378,7 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         let app = launchedPackages()
 
         let real = try app.auditSkippingTabBar(record: false)
-        XCTAssertEqual(real.failing, [], "an issue outside the tab bar fails the Packages audit")
+        XCTAssertTrue(real.failing.isEmpty, auditFailureText(real.failing) + "\nan issue outside the tab bar fails the Packages audit")
         try XCTSkipIf(real.skipped.isEmpty, "no audit issue sits under the tab bar, so the rule hides nothing")
 
         let away = try app.auditSkippingTabBar(bar: Self.farAway, window: Self.tallWindow, record: false)
@@ -351,11 +405,11 @@ final class AuditSkippingTabBarUITests: XCTestCase {
         return app
     }
 
-    /// The filtered audit still records an issue outside the bar. The screen is a known one that raises issues (the open
-    /// Orphaned composer), so the test proves the skip lets a real finding through. The bar is far away, so it covers
-    /// nothing and every issue is outside it. The expected failure is strict, so the test goes red when the audit
-    /// records nothing, as it does if the handler returns true for such an issue. It also goes red if the composer
-    /// ever audits clean: the finding to plant is then another known one, not a looser check.
+    /// The filtered audit still fails the test on an issue outside the bar. The screen is a known one that raises issues
+    /// (the open Orphaned composer), so the test proves the skip lets a real finding through. The bar is far away, so it
+    /// covers nothing and every issue is outside it. The expected failure is strict, so the test goes red when the audit
+    /// fails no issue, as it does if the helper accepts an issue outside the bar without failing the test. It also goes
+    /// red if the composer ever audits clean: the finding to plant is then another known one, not a looser check.
     func testAnIssueOutsideTheBarIsRecorded() throws {
         let app = launchedOrphanedComposer()
         try XCTExpectFailure("an issue outside the tab bar fails the audit", strict: true) {

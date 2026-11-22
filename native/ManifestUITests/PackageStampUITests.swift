@@ -231,7 +231,8 @@ final class PackageStampUITests: XCTestCase {
         let armed = snapshot(app)
         guard let askBox = armed["stamp-ask-confirm:\(gk)"], let cancelBox = armed["stamp-ask-cancel:\(gk)"],
               let saveBox = armed["stamp-save:\(gk)"], let cardBox = armed[anchor] else {
-            return XCTFail("the ask, its Cancel or Save is missing from the snapshot taken after the first tap: the ask had gone")
+            return XCTFail("the ask, its Cancel or Save is missing from the snapshot taken after the first tap: the ask had gone\n"
+                           + ScreenKit.bandDump(app, gk))
         }
         XCTAssertNotNil(armed["stamp-editor:\(gk)"], "the first tap closed the editor")
         // The ask is an overlay inside the editor, so the editor's frame spans it: its bottom grows to the ask's and nothing

@@ -111,6 +111,7 @@ final class OrphanedUITests: XCTestCase {
     /// One tap on "This one" checks the card in and leaves an Undo. Nothing asks "Tap again".
     func testAssignIsOneTapWithUndoAndNoArm() throws {
         let app = launch()
+        ScreenKit.showEverything(app)  // Unreceived hides the card once it is checked in, and sagaLabel reads it after
         openOrphaned(app)
         recordSaga(app)
         XCTAssertEqual(sagaLabel(app), "Check in Urza's Saga", "anchor: the card starts unchecked")
@@ -132,6 +133,7 @@ final class OrphanedUITests: XCTestCase {
     /// The Undo survives a trip to Packages, and it takes the card back out and brings the envelope back.
     func testUndoSurvivesATripToPackagesAndRestoresTheEnvelope() throws {
         let app = launch()
+        ScreenKit.showEverything(app)  // Unreceived hides the card once it is checked in, and sagaLabel reads it after
         openOrphaned(app)
         recordSaga(app)
         let assign = el(app, "assign:\(Self.d1)")

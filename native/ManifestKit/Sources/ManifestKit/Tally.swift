@@ -44,6 +44,8 @@ public struct TallyRow: Equatable, Sendable {
 public final class TallyModel {
     @ObservationIgnored private let engine: RulesEngine
     @ObservationIgnored private let store: LedgerStore
+    /// Find, Showing, Orders from and the sorts, shared with the Packages and the Ledger tab's View group.
+    public let options: ViewOptions
     @ObservationIgnored private var groups = "[]"
     /// Product name to place, set by the last sort and kept while the user checks in
     /// (tally-sort-keys-are-six, no-layout-shift-under-pointer).
@@ -57,9 +59,12 @@ public final class TallyModel {
     public private(set) var received: [String: Int] = [:]
     /// Per copy key of a copy with more than one unit, from the bundle's gotQty: "got/qty". No entry for a one-unit copy.
     public private(set) var readouts: [String: String] = [:]
-    public private(set) var sort: TallySort = .missing
-    public private(set) var query = ""
-    public private(set) var hideReceived = false
+    public var sort: TallySort { options.itemSort }
+    public var query: String { options.query }
+    /// Showing: true is Unreceived, where the web starts (ruled-head-showing-unreceived).
+    public var hideReceived: Bool { options.hideDone }
+    /// Whether the ledger holds any item at all, for the Find pill (drawn only with items).
+    public private(set) var hasItems = false
     /// Set when the last check-in could not be saved; nil after one that was.
     public private(set) var checkInError: String?
     /// The product the held Mark all Undo is for, as PackagesModel.bulkUndoGk is for a package. nil when there is none.
@@ -70,9 +75,11 @@ public final class TallyModel {
     /// The check-ins the held Undo would take back now, as PackagesModel.bulkUndoCount. 0 when none is held.
     public var bulkUndoCount: Int { bulkUndoName == nil ? 0 : bulkUndoHeld }
 
-    public init(engine: RulesEngine, store: LedgerStore) {
+    public init(engine: RulesEngine, store: LedgerStore, options: ViewOptions = ViewOptions()) {
         self.engine = engine
         self.store = store
+        self.options = options
+        options.engine = engine
     }
 
     private func json(_ value: Any) throws -> String {
@@ -90,10 +97,15 @@ public final class TallyModel {
 
     private struct Left: Decodable { let left: Int; let value: Double }
 
-    /// Pools every live item again and sorts: canceled orders and refunded packages stay out (LiveItems).
+    /// Pools every live item the saved Orders from keeps and sorts by the saved Sorted by: canceled orders and refunded
+    /// packages stay out (LiveItems). A range changes the counts, because the pool holds only the lines it keeps.
     public func load() async throws {
+        options.read(store)
         let live = try await LiveItems.of(store.items(), stamps: store.stamps(), engine: engine)
-        groups = try await engine.call("tallyGroups", "[\(live)]")
+        let range = try await ViewRange.range(options.dateFilter, store: store, engine: engine)
+        groups = try await engine.call("tallyGroups", "[\(try await ViewRange.apply(live, range: range, engine: engine))]")
+        hasItems = !store.items().isEmpty
+        try await options.readCanceled(itemsJSON: try json(store.items()), engine: engine)
         try await resort()
     }
 
@@ -104,20 +116,22 @@ public final class TallyModel {
         try await refresh()
     }
 
+    /// Sorted by: saved under `itemSort`, then the order is worked out again.
     public func setSort(_ key: TallySort) async throws {
-        sort = key
+        var saveFailure: Error?
+        do { try options.setItemSort(key, in: store) } catch { saveFailure = error }  // the order still changes for this run
         try await resort()
+        if let saveFailure { throw saveFailure }
     }
 
     public func setQuery(_ text: String) async throws {
-        if text != query { sticky = [] }
-        query = text
+        if options.setQuery(text) { sticky = [] }
         try await refresh()
     }
 
     public func setHideReceived(_ on: Bool) async throws {
-        if on != hideReceived { sticky = [] }
-        hideReceived = on
+        if on != options.hideDone { sticky = [] }
+        options.hideDone = on
         try await refresh()
     }
 

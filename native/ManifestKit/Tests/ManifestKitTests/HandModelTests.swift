@@ -69,39 +69,6 @@ final class HandSaveCounter {
     var n = 0
 }
 
-/// Holds a rules call inside its handStep until the test lets go. The gated bundle calls `__gate()` there, and the call
-/// blocks in it on the engine's thread, with no clock to race. It is a latch: once opened it stays open, so a read that
-/// runs again passes straight through. The wait is capped at 10 s, so a gate nobody opens cannot block an engine thread for good.
-final class HandStepGate: @unchecked Sendable {
-    private let cond = NSCondition()
-    private var isEntered = false
-    private var isOpen = false
-
-    /// True once a call is blocked in the gate. A poll reads it on the main actor and never waits on it there: a call
-    /// hops back to the main actor between its engine calls.
-    var entered: Bool { cond.lock(); defer { cond.unlock() }; return isEntered }
-
-    /// Runs on the engine's thread, inside the JS call.
-    func hold() {
-        cond.lock()
-        defer { cond.unlock() }
-        isEntered = true
-        let deadline = Date(timeIntervalSinceNow: 10)
-        while !isOpen && cond.wait(until: deadline) {}
-    }
-
-    func open() {
-        cond.lock()
-        isOpen = true
-        cond.broadcast()
-        cond.unlock()
-    }
-
-    /// The JS function `__gate`. It is built here, off the main actor: a block made inside a @MainActor test is main-actor
-    /// isolated and traps when JavaScriptCore calls it from the engine's thread.
-    var jsFunction: @convention(block) () -> Void { { [self] in hold() } }
-}
-
 @MainActor
 final class HandModelTests: XCTestCase {
     static let t0: Double = 1_786_543_380_000
@@ -165,13 +132,8 @@ final class HandModelTests: XCTestCase {
     func gatedHandStepBundle(typing name: String, needsHeld: Bool) throws -> URL {
         let dir = try PhotoTestKit.tempDir("hand-bundle")
         addTeardownBlock { try? FileManager.default.removeItem(at: dir) }
-        let gated = """
-
-        Rules.handStep=(function(o){return function(){if(\(needsHeld ? "arguments[3]!==null&&" : "")arguments[4]==="\(name)"){__gate()}return o.apply(null,arguments)}})(Rules.handStep);
-        """
-        let url = dir.appending(path: "rules-gated.js")
-        try (try String(contentsOf: RulesGoldenTests.bundleURL, encoding: .utf8) + gated).write(to: url, atomically: true, encoding: .utf8)
-        return url
+        return try gatedRulesBundle(in: dir, wrapping: "handStep",
+                                    when: "\(needsHeld ? "arguments[3]!==null&&" : "")arguments[4]===\"\(name)\"")
     }
 
     /// A hand whose handStep blocks on the returned gate when `name` is typed. A case starts the call, waits for it to enter the gate
@@ -179,21 +141,17 @@ final class HandModelTests: XCTestCase {
     /// leaves no engine thread blocked.
     /// RulesEngine keeps its JSContext private and has no hook for a test. Mirror reaches it with no product code, and a renamed
     /// field fails here with the message below, never as a pass.
-    func makeGatedHand(typing name: String = "Lightning Bolt", needsHeld: Bool = true) async throws -> (hand: HandFixture, gate: HandStepGate) {
+    func makeGatedHand(typing name: String = "Lightning Bolt", needsHeld: Bool = true) async throws -> (hand: HandFixture, gate: RulesCallGate) {
         let h = try await makeHand(bundle: try gatedHandStepBundle(typing: name, needsHeld: needsHeld))
-        let gate = HandStepGate()
+        let gate = RulesCallGate()
         addTeardownBlock { gate.open() }
-        let core = try XCTUnwrap(Mirror(reflecting: h.engine).children.first { $0.label == "core" }?.value as? RulesCore,
-                                 "RulesEngine no longer keeps its RulesCore in a field named core")
-        let context = try XCTUnwrap(Mirror(reflecting: core).children.first { $0.label == "context" }?.value as? JSContext,
-                                    "RulesCore no longer keeps its JSContext in a field named context")
-        context.setObject(unsafeBitCast(gate.jsFunction, to: AnyObject.self), forKeyedSubscript: "__gate" as NSString)
+        try installGate(gate, on: h.engine)
         return (h, gate)
     }
 
     /// Waits until a call is blocked in the gate. That proves the setup the cases name: the call has read the ledger generation, the
     /// held name and the received map, and sits in its last engine call. It polls (`eventually`, 3 s) and never blocks the main actor.
-    func waitForGate(_ gate: HandStepGate) async throws {
+    func waitForGate(_ gate: RulesCallGate) async throws {
         try await eventually { gate.entered }
         XCTAssertTrue(gate.entered, "the setup is real: the call entered its handStep and is held there")
     }
@@ -477,14 +435,6 @@ final class HandModelTests: XCTestCase {
     }
 
     // MARK: a write or New envelope landing while a type() reads
-
-    /// Polls up to 3 s for `cond`, so a reply that settles after type() returned is still caught. It asserts nothing.
-    func eventually(_ cond: @escaping @MainActor () -> Bool) async throws {
-        for _ in 0..<60 {
-            if cond() { return }
-            try await Task.sleep(for: .milliseconds(50))
-        }
-    }
 
     /// The first card is typed while `write` lands in the store, with the call held inside its handStep. The write moves the
     /// generation, so the call's reply is outdated. The card must still end held, and its reply must be the one that

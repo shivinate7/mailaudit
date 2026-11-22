@@ -1,0 +1,380 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Ask Clear Of Band</title>
+<style>
+/* Tokens: shared/tokens.json through Parchment (native/Manifest/Theme.swift) and the paint tables
+   (StampPaint.swift, ControlPaint.swift): the ask panel is card on a redSoft border, its confirm is red with card text,
+   Cancel is ink on card on line. The native app ships light only (native/project.yml UIUserInterfaceStyle: Light), so the
+   dark theme is a spec, not a shipped state. Page chrome only: manila, manilaInk, green (--new), red (--today). */
+:root {
+  --paper:#F2E9DA; --card:#FCF6EA; --ink:#332E3F; --inkSoft:#6E6379; --line:#DCCDB6; --accent:#6F5CA6;
+  --red:#A8443C; --redSoft:#F4E4D9; --shadow:rgba(28,43,36,0.06);
+  --manila:#EADBBA; --manilaInk:#695832; --new:#2E7A5E; --today:#A8443C;
+  --cochin: Cochin, Georgia, serif; --mono: Menlo, monospace;
+  --sat: env(safe-area-inset-top); --sab: env(safe-area-inset-bottom); --sal: env(safe-area-inset-left); --sar: env(safe-area-inset-right);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+    --red:#E3857B; --redSoft:#3A2426; --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --paper:#1E1B24; --card:#27232E; --ink:#EFE6D6; --inkSoft:#B1A6BB; --line:#443D4D; --accent:#A796DA;
+  --red:#E3857B; --redSoft:#3A2426; --manila:#3A3122; --manilaInk:#E2CB96; --new:#6DBB98; --today:#E3857B; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { margin:0; background:var(--paper); color:var(--ink); font-family:-apple-system, system-ui, sans-serif; font-size:15px; line-height:1.45; }
+main { max-width:1040px; margin:0 auto; padding:calc(16px + var(--sat)) calc(16px + var(--sar)) calc(16px + var(--sab)) calc(16px + var(--sal));
+  display:flex; flex-direction:column; gap:16px; }
+.banner { background:var(--manila); color:var(--manilaInk); border:1px solid var(--line); border-radius:8px; padding:8px 12px; font-weight:600; }
+h1 { font-size:24px; line-height:1.2; margin:0; }
+.sub { color:var(--inkSoft); margin:0; max-width:72ch; }
+nav { display:flex; flex-wrap:wrap; gap:8px; }
+nav a, nav button { font:inherit; font-size:14px; min-height:44px; padding:0 12px; display:inline-flex; align-items:center; border:1px solid var(--line);
+  border-radius:8px; background:var(--card); color:var(--ink); text-decoration:none; cursor:pointer; }
+nav a[aria-current="true"] { border-color:var(--accent); color:var(--accent); font-weight:600; }
+nav a:focus-visible, nav button:focus-visible { outline:2px solid var(--accent); outline-offset:2px; }
+nav .sep { flex-basis:100%; height:0; }
+section.opt { display:flex; flex-direction:column; gap:8px; border-top:1px solid var(--line); padding-top:16px; }
+section.opt[hidden], figure[hidden] { display:none; }
+.opt h2 { font-size:18px; margin:0; display:flex; flex-wrap:wrap; gap:8px; align-items:center; }
+.opt p { margin:0; color:var(--inkSoft); max-width:72ch; }
+.chip { font:600 12px/1.4 -apple-system, system-ui, sans-serif; border:2px dashed; border-radius:6px; padding:2px 6px; }
+.chip.new { color:var(--new); } .chip.today { color:var(--today); }
+.pick { font-size:13px; font-weight:600; color:var(--accent); }
+.verdict { font-size:13px; font-weight:600; }
+.row { display:grid; grid-template-columns:repeat(auto-fill, minmax(min(100%, 400px), 1fr)); gap:16px; align-items:start; }
+figure { margin:0; display:flex; flex-direction:column; gap:8px; }
+figure.wide { grid-column:1 / -1; }
+figcaption { font-size:13px; color:var(--inkSoft); }
+figcaption b { color:var(--ink); font-size:14px; }
+.fit { width:100%; overflow:hidden; }
+
+/* ---- device crops, 1 CSS px = 1 pt. Each frame is the bottom band of the screen. ---- */
+.dev { position:relative; background:var(--paper); border:1px solid var(--ink); border-top-style:dashed; overflow:hidden;
+  font-family:var(--cochin); color:var(--ink); }
+.w375 { width:375px; border-radius:0 0 40px 40px; }   /* 375 pt launch width (brief); window 874 tall */
+.fold-out { width:466px; border-radius:0 0 24px 24px; } /* folded Duo 466 x 678 */
+.duo { width:951px; border-radius:0 0 12px 12px; }      /* open Duo 951 x 669 */
+.duo .fold { position:absolute; top:0; bottom:0; left:455.5px; width:40px; background:color-mix(in srgb, var(--line) 45%, transparent); z-index:7; }
+
+.sysbar { position:absolute; left:0; right:0; bottom:0; height:83px; z-index:6; display:flex; justify-content:center; padding-top:8px; }
+.sysbar .cap, .duobar { border:1px solid var(--line); background:color-mix(in srgb, var(--paper) 62%, transparent);
+  -webkit-backdrop-filter:blur(18px); backdrop-filter:blur(18px); display:grid; grid-template-columns:repeat(4,1fr); align-items:center; }
+.sysbar .cap { width:calc(100% - 32px); height:56px; border-radius:28px; padding:0 8px; }
+.sysbar span, .duobar span { display:flex; flex-direction:column; align-items:center; gap:2px; font:11px -apple-system, system-ui, sans-serif; color:var(--inkSoft); }
+.sysbar span i { width:22px; height:22px; border:1.5px solid currentColor; border-radius:6px; display:block; }
+.sysbar span.on, .duobar span.on { color:var(--accent); }
+.duobar { position:absolute; left:519.5px; width:407.5px; bottom:12px; height:64px; border-radius:32px; z-index:6; padding:4px; gap:4px; }
+.duobar span { font-family:var(--cochin); font-size:12px; }
+
+/* the band (findPill): paper, its 1 pt top rule, the pill 8 pt below */
+.band { position:absolute; left:0; right:0; z-index:5; background:var(--paper); border-top:1px solid var(--line); }
+.find { position:absolute; z-index:9; display:flex; align-items:center; gap:8px; padding:4px 6px 4px 16px; border-radius:999px;
+  border:1px solid var(--line); background:var(--paper); }
+.find svg { flex:none; width:20px; height:20px; fill:none; stroke:var(--inkSoft); stroke-width:1.8; stroke-linecap:round; }
+.find .q { flex:1; min-width:0; font-family:var(--cochin); font-size:16px; color:var(--inkSoft); white-space:nowrap; overflow:hidden; }
+.find .clr { flex:none; width:44px; height:44px; }
+.ax3 .find .q { font-size:24px; } .ax5 .find .q { font-size:30px; }
+
+/* the list viewport: it ends at the band's top (one page) or runs to the window's foot under the overlays (open Duo) */
+.vp { position:absolute; left:0; right:0; top:0; overflow:hidden; }
+.content { position:absolute; left:0; right:0; top:0; }
+.card { position:absolute; background:var(--card); border:1px solid var(--line); border-radius:8px; box-shadow:0 1px 1px var(--shadow); }
+.blk { position:relative; }
+.hdr { display:flex; justify-content:space-between; align-items:baseline; gap:8px; padding:12px; }
+.hdr b { font-size:calc(15px * var(--kb)); line-height:1.2; } .hdr span { font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.shead { display:flex; align-items:center; gap:8px; padding:0 12px 8px; font:calc(11px * var(--kc))/1 var(--mono); letter-spacing:.15em; color:var(--inkSoft); }
+.shead::after { content:""; flex:1; height:1px; background:var(--line); }
+.chips { display:flex; flex-wrap:wrap; gap:12px 4px; padding:0 12px 12px; }
+.chips span { font:calc(11.5px * var(--kc))/1.2 var(--mono); border:1px solid var(--line); padding:0 8px; min-height:34px; display:inline-flex; align-items:center; background:var(--card); }
+.note { margin:0 12px 8px; min-height:44px; border:1px solid var(--line); border-radius:8px; padding:8px 12px; font:calc(16px * var(--kb))/1.25 var(--cochin); color:var(--inkSoft); background:var(--paper); }
+.btns, .bulk { display:flex; gap:8px; align-items:center; padding:0 12px; min-height:48px; }
+.btns .sp, .bulk .sp { flex:1; }
+.ax .btns, .ax .bulk { flex-direction:column; align-items:flex-end; padding:0 12px 8px; }
+.ax .btns .sp, .ax .bulk .sp { display:none; }
+.mini { font:calc(11.5px * var(--kc))/1.2 var(--mono); border:1px solid var(--line); background:var(--card); color:var(--ink); padding:8px 12px;
+  min-height:44px; min-width:44px; display:inline-flex; align-items:center; justify-content:center; border-radius:4px; text-align:center; }
+.mini.rm { color:var(--red); border-color:var(--redSoft); }
+.mini.off { color:var(--inkSoft); }
+.ln { display:flex; gap:8px; align-items:center; border-top:1px solid var(--line); padding:12px 12px 12px 4px; }
+.ln i { flex:0 0 45px; height:30px; display:grid; place-items:center; }
+.ln i::before { content:""; width:30px; height:30px; border:2px solid var(--inkSoft); border-radius:8px; }
+.ln i.on::before { background:var(--accent); border-color:var(--accent); }
+.ln .t { flex:1; display:flex; flex-direction:column; gap:4px; min-width:0; }
+.ln .t b { font-size:calc(14px * var(--kb)); font-weight:600; display:flex; justify-content:space-between; flex-wrap:wrap; gap:0 8px; line-height:1.2; }
+.ln .t b span, .ln .t small { font:calc(12px * var(--kc)) var(--mono); color:var(--inkSoft); font-weight:400; }
+.thead { display:flex; align-items:flex-start; gap:8px; padding:12px; flex-wrap:wrap; }
+.thead .nm { flex:1; display:flex; flex-direction:column; min-width:0; } .thead .nm b { font-size:calc(15px * var(--kb)); line-height:1.2; }
+.thead .nm span, .thead .fig span { font:calc(12px * var(--kc)) var(--mono); color:var(--inkSoft); }
+.thead .fig { display:flex; flex-direction:column; align-items:flex-end; } .thead .fig b { font:700 calc(15px * var(--kc)) var(--mono); }
+.across { padding:0 12px 4px; font:calc(11px * var(--kc)) var(--mono); color:var(--inkSoft); }
+
+/* the ask (AskPanel, hung by HangingAsk): an overlay of its row, trailing, proposed the row's width */
+.ask { position:absolute; right:12px; z-index:4; max-width:calc(100% - 24px); display:flex; gap:4px; align-items:stretch; padding:4px;
+  background:var(--card); border:1px solid var(--redSoft); border-radius:8px; box-shadow:0 1px 2px var(--shadow); }
+.ax .ask { flex-direction:column; align-items:flex-end; }
+.ask .mini { font-size:calc(11px * var(--kc)); padding:4px 8px; }
+.ask .go { background:var(--red); border-color:var(--red); color:var(--card); font-weight:700; }
+
+/* page chrome on the frames: the thumb's last tap, and the clip mark */
+.thumb { position:absolute; z-index:11; width:44px; height:44px; border:2px dashed var(--today); border-radius:50%; pointer-events:none; }
+.thumb b { position:absolute; left:50%; top:100%; transform:translateX(-50%); white-space:nowrap; font:600 11px/1.3 -apple-system, system-ui, sans-serif;
+  color:var(--today); background:var(--paper); padding:0 4px; }
+.ghost { position:absolute; z-index:10; border:2px dashed var(--today); border-radius:8px; pointer-events:none; }
+.ghost b { position:absolute; right:4px; bottom:4px; font:600 11px/1.3 -apple-system, system-ui, sans-serif; color:var(--today); background:var(--paper); padding:0 4px; }
+.newmark { position:absolute; z-index:10; border:2px dashed var(--new); border-radius:10px; pointer-events:none; }
+.newmark b { position:absolute; left:4px; top:-18px; font:600 11px/1.3 -apple-system, system-ui, sans-serif; color:var(--new); background:var(--paper); padding:0 4px; white-space:nowrap; }
+.margin { position:absolute; left:16px; right:16px; border:1px dashed var(--new); border-radius:4px; font:600 11px -apple-system, system-ui, sans-serif;
+  color:var(--new); display:grid; place-items:center; }
+</style>
+</head>
+<body>
+<main>
+  <div class="banner" role="note">Sample: no figure on this page is real. Rows use the test fixture names (shared/fixtures/golden).</div>
+  <h1>Ask clear of the Find band</h1>
+  <p class="sub">Step 8 fix, PR 238. A two-tap ask (Remove stamp, Clear Check-ins) hangs 4 pt below its row. When that row sits near the list's edge, the ask falls past it and nothing can tap it. Each option draws the armed ask with its row at the edge. The 375 pt frames show Packages (stamp ask) and Tally (Clear ask) at normal size, AX3 and AX5. The Duo frames show the folded Duo, then the open Duo. Designer kind: informed.</p>
+  <nav aria-label="States">
+    <a href="#">All</a><a href="#o=flip">Hang above</a><a href="#o=scroll">Scroll on arm</a><a href="#o=margin">End margin</a><a href="#o=clamp">Clamp</a><a href="#o=today">Today</a>
+    <span class="sep"></span>
+    <a href="#s=stamp">Remove stamp ask</a><a href="#s=bulk">Clear ask</a>
+    <a href="#d=375">375 pt</a><a href="#d=fold">Duo folded</a><a href="#d=duo">Duo open</a>
+    <a href="#x=normal">Normal size</a><a href="#x=ax3">AX3</a><a href="#x=ax5">AX5</a>
+    <span class="sep"></span>
+    <a href="#t=light" data-theme-link>Light</a><a href="#t=dark" data-theme-link>Dark</a>
+    <button type="button" data-hide="flip">Hide hang above</button>
+    <button type="button" data-hide="scroll">Hide scroll on arm</button>
+    <button type="button" data-hide="margin">Hide end margin</button>
+    <button type="button" data-hide="clamp">Hide clamp</button>
+    <button type="button" data-hide="today">Hide today</button>
+  </nav>
+
+  <template id="t375"><div class="dev w375" data-device="iphone-375"></div></template>
+  <template id="folded"><div class="dev fold-out" data-device="iphone-duo-folded"></div></template>
+  <template id="unfolded"><div class="dev duo" data-device="iphone-duo-unfolded"></div></template>
+  <template id="sys"><div class="sysbar"><div class="cap"><span><i></i>Packages</span><span><i></i>Tally</span><span><i></i>Orphaned</span><span><i></i>Ledger</span></div></div></template>
+  <template id="mag"><svg viewBox="0 0 20 20" aria-hidden="true"><circle cx="8.5" cy="8.5" r="6"/><path d="M13 13l5 5"/></svg></template>
+
+  <div id="opts"></div>
+</main>
+<script>
+const OPTS = [
+  { k:'flip', name:'Hang above', pick:true, chip:['new','New: the ask hangs above its row when below has no room'],
+    text:'HangingAsk measures the room under the row against the list\'s visible edge, once, when the ask arms. When the ask fits below, it hangs below as today. When it does not, it hangs 4 pt above the row instead, over the note field or the stamp slot. Nothing scrolls and nothing moves, so the finger that tapped Remove still sits on Remove. The side stays put until the ask disarms.' },
+  { k:'scroll', name:'Scroll on arm', pick:false, chip:['new','New: the list scrolls the ask clear when it arms'],
+    text:'Arming calls scrollTo on the ask, so the list moves up until the ask clears the band. Loss: the list moves under the finger that just tapped. What now sits under that finger is the ask itself. On the Clear ask it is the confirm, so a quick second tap on the same spot clears the check-ins. The invariant no-layout-shift-under-pointer names that failure: "A row moving under the thumb".' },
+  { k:'margin', name:'End margin', pick:false, chip:['new','New: a content margin at the list end, as tall as the ask'],
+    text:'contentMargins(.bottom) at the list end adds room after the last card. It helps only the last card, and only once the person scrolls into the room. Alpha Cards and Brainstorm are first in the fixture, so their asks still fall past the edge. The first frame shows the one case it fixes, the last card.' },
+  { k:'clamp', name:'Clamp', pick:false, chip:['new','New: the ask slides up until it fits above the edge'],
+    text:'The ask keeps its place below the row unless that passes the edge. Then it slides up just enough to fit. Loss: it then lies over its own row, Remove stamp or Clear Check-ins included. A second tap where the first one landed hits the ask, and on the Clear ask that is the confirm.' },
+  { k:'today', name:'Today', pick:false, chip:['today','Today: the ask hangs below and is clipped at the list edge'],
+    text:'As built: HangingAsk (StampViews.swift) offsets the ask by the row height plus 4 pt. It takes no layout space and nothing scrolls on arm. With the row near the edge, the ask is in the tree but cut off, so a test cannot tap it. ScreenKit.tap then drags the list for about 3 s, and the ask lapses at 4 s, before the tap lands.' },
+];
+// Geometry, screen points. edge: where the list's visible part ends (the band's top rule; on the open Duo the top of the pill's room).
+// 375: pill 727 to 779 at normal, 728 to 779 at AX3 (51 pt), 720 to 779 at AX5 (59 pt), from notes item 17 (brief's figures, not measured).
+// Folded Duo: pill 535 to 587, bar at 595 (code). Open Duo: pill 533 to 585, Duo bar 593 to 657; the detail's content margin is
+// FindPillMetrics.duoRoom 140, so its covered room starts at 669 - 140 = 529.
+const FRAMES = [
+  { d:'375', s:'stamp', x:'normal', tpl:'t375', W:375, crop:534, H:340, edge:719, pill:[727,52], cardX:16, cardW:343 },
+  { d:'375', s:'stamp', x:'ax3', tpl:'t375', W:375, crop:101, H:773, edge:720, pill:[728,51], cardX:16, cardW:343 },
+  { d:'375', s:'stamp', x:'ax5', tpl:'t375', W:375, crop:101, H:773, edge:712, pill:[720,59], cardX:16, cardW:343 },
+  { d:'fold', s:'stamp', x:'normal', tpl:'folded', W:466, crop:318, H:360, edge:527, pill:[535,52], cardX:16, cardW:434 },
+  { d:'375', s:'bulk', x:'normal', tpl:'t375', W:375, crop:534, H:340, edge:719, pill:[727,52], cardX:16, cardW:343 },
+  { d:'375', s:'bulk', x:'ax3', tpl:'t375', W:375, crop:101, H:773, edge:720, pill:[728,51], cardX:16, cardW:343 },
+  { d:'375', s:'bulk', x:'ax5', tpl:'t375', W:375, crop:101, H:773, edge:712, pill:[720,59], cardX:16, cardW:343 },
+  { d:'duo', s:'bulk', x:'normal', tpl:'unfolded', W:951, crop:329, H:340, edge:529, pill:[533,52], cardX:511.5, cardW:423.5, wide:true },
+];
+const K = { normal:{kc:1, kb:1}, ax3:{kc:32/12, kb:40/17}, ax5:{kc:43/12, kb:53/17} };  // Caption 1 and Body at Large, AX3, AX5 (Apple typography table)
+const CAP = {
+  '375|stamp|normal':'375 pt, Packages, normal size. Alpha Cards\' stamp editor with Remove armed. List edge 719, pill 727.',
+  '375|stamp|ax3':'375 pt, Packages, AX3. The editor\'s buttons and the ask stack (typeSize.isAccessibilitySize). List edge 720.',
+  '375|stamp|ax5':'375 pt, Packages, AX5. List edge 712. AX type drawn to fit, not measured.',
+  'fold|stamp|normal':'Duo folded, Packages, normal size. 466 x 678 pt. List edge 527, pill 535, bar 595 (code).',
+  '375|bulk|normal':'375 pt, Tally, normal size. Brainstorm open, Clear Check-ins armed. List edge 719.',
+  '375|bulk|ax3':'375 pt, Tally, AX3. The bulk row and the ask stack. List edge 720. The blank space above Brainstorm is the masthead, not drawn.',
+  '375|bulk|ax5':'375 pt, Tally, AX5. List edge 712. AX type drawn to fit, not measured. The blank space above is the masthead, not drawn.',
+  'duo|bulk|normal':'Duo open, Tally. 951 x 669 pt. The right page shows Brainstorm\'s detail. Its scroll runs under the pill and the Duo bar, with a 140 pt margin, so the free part ends at 529.',
+};
+const tpl = id => document.getElementById(id).content.cloneNode(true).firstElementChild;
+const el = (cls, html) => { const e = document.createElement('div'); if (cls) e.className = cls; if (html != null) e.innerHTML = html; return e; };
+const mini = (t, cls) => `<span class="mini ${cls || ''}">${t}</span>`;
+
+function stampCard(last) {
+  const c = el('card');
+  c.append(el('blk hdr', last ? '<b>Delta Cards</b><span>D1 &middot; 2026-06-01</span>' : '<b>Alpha Cards</b><span>A1 &middot; 2026-07-01</span>'));
+  c.append(el('blk shead', 'STAMP'));
+  c.append(el('blk chips', ['Claim filed','Refunded','Seller contacted','Reshipped','Partial refund','Other'].map(t => `<span>${t}</span>`).join('')));
+  c.append(el('blk note', 'Anything else — what they said, when…'));
+  const key = el('blk btns', mini('Remove stamp','rm') + '<span class="sp"></span>' + mini('Cancel') + mini('Save','off'));
+  key.dataset.key = '1'; c.append(key);
+  c.append(el('blk bulk', '<span class="sp"></span>' + mini('Mark All Received') + mini('Clear Check‑ins')));
+  const lines = last ? [['Swords to Plowshares','$1.50']] : [['Brainstorm','$0.50'],['Lightning Bolt','$1.00'],['Path to Exile','$3.00']];
+  lines.forEach(([n, p]) => c.append(el('blk ln', `<i></i><div class="t"><b>${n} <span>${p}</span></b><small>Test Set &middot; Near Mint</small></div>`)));
+  const n = last ? 1 : 4;
+  return { card:c, key, tapAt:'lead', ask:`${mini('Cancel')}${mini(`Tap again to remove stamp from ${n} card${n === 1 ? '' : 's'}`,'go')}` };
+}
+function bulkCard(detail) {
+  const c = el('card');
+  if (detail) { c.style.background = 'transparent'; c.style.border = '0'; c.style.boxShadow = 'none'; }
+  c.append(el('blk thead', '<div class="nm"><b>Brainstorm</b><span>Test Set &middot; 2 sellers</span></div><div class="fig"><b>1/4</b><span>$2.00</span></div>'));
+  c.append(el('blk across', '$2.00 across 4 copies &middot; $0.50 avg'));
+  const key = el('blk bulk', '<span class="sp"></span>' + mini('Mark All Received') + mini('Clear Check‑ins'));
+  key.dataset.key = '1'; c.append(key);
+  [['Alpha Cards &middot; A1','2026-07-01',true],['Beta Games &middot; B1','2026-07-29',false],['Beta Games &middot; B1','2026-07-29',false]]
+    .forEach(([s, d, on]) => c.append(el('blk ln', `<i class="${on ? 'on' : ''}"></i><div class="t"><b>${s} <span>$0.50</span></b><small>${d} &middot; Test Set &middot; Near Mint</small></div>`)));
+  return { card:c, key, tapAt:'trail', ask:`${mini('Cancel')}${mini('Tap again to clear 1 check‑in','go')}` };
+}
+function pill(x, top, w, h, ax) {
+  const p = el('find'); p.style.left = x + 'px'; p.style.top = top + 'px'; p.style.width = w + 'px'; p.style.height = h + 'px';
+  p.append(document.getElementById('mag').content.cloneNode(true));
+  const q = document.createElement('span'); q.className = 'q'; q.textContent = ax ? 'Find' : 'Find card, set, seller, order'; p.append(q);
+  p.append(el('clr')); return p;
+}
+
+const host = document.getElementById('opts');
+const built = [];  // frames to lay out once they are in the page
+OPTS.forEach(o => {
+  const sec = document.createElement('section'); sec.className = 'opt'; sec.dataset.o = o.k;
+  sec.innerHTML = `<h2>${o.name} <span class="chip ${o.chip[0]}">${o.chip[1]}</span>${o.pick ? '<span class="pick">Pick</span>' : ''}</h2><p>${o.text}</p>`;
+  const row = document.createElement('div'); row.className = 'row';
+  let focused = false;
+  FRAMES.forEach(f => {
+    const fig = document.createElement('figure'); fig.dataset.d = f.d; fig.dataset.s = f.s; fig.dataset.x = f.x;
+    if (f.wide) fig.className = 'wide';
+    const cap = CAP[`${f.d}|${f.s}|${f.x}`];
+    const first = o.k === 'margin' && f.d === '375' && f.s === 'stamp' && f.x === 'normal';
+    fig.innerHTML = `<figcaption><b>${cap.split('. ')[0]}.</b> ${cap.split('. ').slice(1).join('. ')}${first ? ' Here the armed card is the last one, Delta Cards, scrolled to the list end.' : ''} <span class="verdict" data-v></span></figcaption>`;
+    const fit = el('fit');
+    const d = tpl(f.tpl); d.style.height = f.H + 'px';
+    if (f.x !== 'normal') d.classList.add('ax', f.x);
+    d.style.setProperty('--kc', K[f.x].kc); d.style.setProperty('--kb', K[f.x].kb);
+    const y = v => v - f.crop;  // screen y to crop y
+    const duo = f.d === 'duo';
+    // the list viewport: one page ends at the band; the open Duo's detail runs to the window foot
+    const vp = el('vp'); vp.style.height = (duo ? f.H : y(f.edge)) + 'px';
+    if (duo) { vp.style.left = '495.5px'; }
+    const content = el('content'); vp.append(content);
+    const built1 = f.s === 'stamp' ? stampCard(first) : bulkCard(duo);
+    const card = built1.card; card.style.left = (duo ? 16 : f.cardX) + 'px'; card.style.width = (duo ? f.cardW + 16 - 16 : f.cardW) + 'px';
+    content.append(card);
+    d.append(vp);
+    if (duo) {
+      const left = el('vp'); left.style.width = '455.5px'; left.style.height = f.H + 'px';
+      left.innerHTML = ['Brainstorm 1/4','Counterspell 0/2','Lightning Bolt 0/3','Path to Exile 0/1'].map((t, i) =>
+        `<div class="card" style="left:16px;right:16px;top:${12 + i * 72}px;height:60px;padding:12px;${i === 0 ? 'outline:2px solid var(--accent);outline-offset:-1px;' : ''}"><b style="font-size:15px">${t.replace(/ \d.*/, '')}</b><span style="float:right;font:700 15px var(--mono)">${t.match(/\d+\/\d+/)[0]}</span></div>`).join('');
+      d.append(left, el('fold'));
+      const bar = el('duobar', '<span>Packages</span><span class="on">Tally</span><span>Orphaned</span><span>Ledger</span>'); d.append(bar);
+      d.append(pill(f.cardX, y(f.pill[0]), f.cardW, f.pill[1], false));
+    } else {
+      const band = el('band'); band.style.top = y(f.edge) + 'px'; band.style.bottom = '0'; d.append(band);
+      const sys = tpl('sys'); sys.querySelectorAll('span')[f.s === 'stamp' ? 0 : 1].classList.add('on'); d.append(sys);
+      d.append(pill(16, y(f.pill[0]), f.W - 32, f.pill[1], f.x !== 'normal'));
+    }
+    const ask = el('ask', built1.ask); ask.setAttribute('role', 'group'); ask.setAttribute('aria-label', 'Armed ask');
+    built1.key.append(ask);
+    const fid = (!focused && f.d === '375') ? 'focus-' + o.k : null; if (fid) { focused = true; ask.id = fid; }
+    fit.append(d); fig.append(fit); row.append(fig);
+    built.push({ o:o.k, f, d, vp, content, card, key:built1.key, ask, tapAt:built1.tapAt, y, duo, last:first, fig });
+  });
+  sec.append(row); host.append(sec);
+});
+
+// Lay out: put the key row's bottom 8 pt above the edge (where a tap that just revealed it leaves it), then hang the ask per option.
+function layout(b) {
+  const { f, o } = b, edgeC = b.y(f.edge), gap = 8;
+  const keyBottomInCard = b.key.offsetTop + b.key.offsetHeight;
+  const keyTopInCard = b.key.offsetTop;
+  let cardTop = edgeC - gap - keyBottomInCard;
+  const askH = b.ask.offsetHeight;
+  if (b.last) {  // End margin's first frame: the last card at the list end, with the margin under it, scrolled to rest on the edge
+    const m = askH + 8;
+    cardTop = edgeC - m - b.card.offsetHeight;
+    const mg = el('margin', `New: margin ${Math.round(m)} pt`); mg.style.top = (cardTop + b.card.offsetHeight) + 'px'; mg.style.height = m + 'px';
+    b.content.append(mg);
+  }
+  b.card.style.top = cardTop + 'px';
+  const below = () => { b.ask.style.top = `calc(100% + 4px)`; b.ask.style.bottom = 'auto'; };
+  const above = () => { b.ask.style.top = 'auto'; b.ask.style.bottom = `calc(100% + 4px)`; };
+  const keyTopC = cardTop + keyTopInCard, keyBottomC = cardTop + keyBottomInCard;
+  // Room above runs to the list's top under the pinned running head: the top safe area plus RunningHead's 47 pt slot. Drawn at
+  // 101 pt on the 375 frames (54 + 47; the 54 is a guess, notes item 17), 67 on the folded Duo and 20 + 47 on the open Duo.
+  const topFree = b.y(f.d === '375' ? 101 : 67);
+  const roomBelow = edgeC - (keyBottomC + 4), roomAbove = keyTopC - 4 - topFree;
+  let shift = 0, verdict = '', bad = false;
+  below();
+  if (o === 'flip') {
+    if (askH <= roomBelow) verdict = 'Fits below: hangs below as today.';
+    else if (askH <= roomAbove) { above(); verdict = 'Ask in view and free to tap. Nothing moved.'; }
+    else { verdict = 'No room either side: hangs below as today.'; bad = true; }
+  } else if (o === 'scroll') {
+    shift = Math.max(0, keyBottomC + 4 + askH + 8 - edgeC);
+    verdict = `Ask in view, but the list moved ${Math.round(shift)} pt under the finger.`; bad = true;
+  } else if (o === 'clamp') {
+    const top = Math.min(b.key.offsetHeight + 4, edgeC - 4 - askH - keyTopC);
+    b.ask.style.top = top + 'px';
+    verdict = 'Ask in view, over its own row: a repeat tap lands on the ask.'; bad = true;
+  } else if (o === 'margin') {
+    verdict = b.last ? 'Last card only: the ask fits in the margin.' : 'Not the last card: the margin is out of reach, the ask is cut off.'; bad = !b.last;
+  } else {
+    verdict = b.duo ? 'Ask under the pill: not free to tap.' : 'Ask cut off at the list edge: not free to tap.'; bad = true;
+  }
+  b.content.style.top = -shift + 'px';
+  b.fig.querySelector('[data-v]').textContent = verdict;
+  b.fig.querySelector('[data-v]').style.color = bad ? 'var(--today)' : 'var(--new)';
+  // page chrome: where the finger tapped (Remove or Clear), before any move
+  b.d.querySelectorAll('.thumb,.ghost,.newmark').forEach(n => n.remove());
+  const own = b.key.querySelectorAll(':scope > .mini');  // the row's own buttons, not the ask's
+  const btn = own[b.tapAt === 'lead' ? 0 : own.length - 1];
+  const vpLeft = b.duo ? 495.5 : 0;
+  const bx = vpLeft + b.card.offsetLeft + b.key.offsetLeft + btn.offsetLeft + btn.offsetWidth / 2;
+  const by = cardTop + b.key.offsetTop + btn.offsetTop + btn.offsetHeight / 2;
+  if (o === 'scroll' || o === 'clamp') {
+    const t = el('thumb', '<b>last tap</b>'); t.style.left = (bx - 22) + 'px'; t.style.top = (by - 22) + 'px'; b.d.append(t);
+  }
+  // the ask's box in frame points, from layout offsets (zoom does not touch them)
+  const ax = vpLeft + b.card.offsetLeft + b.key.offsetLeft + b.ask.offsetLeft;
+  const ay = cardTop + b.key.offsetTop + b.ask.offsetTop - shift;
+  if (o === 'today' || (o === 'margin' && !b.last)) {
+    // the drawn ask past the free edge: a dashed ghost where it hangs, under the band or the pill
+    const g = el('ghost', '<b>ask, cut off</b>');
+    g.style.left = ax + 'px'; g.style.top = ay + 'px'; g.style.width = b.ask.offsetWidth + 'px'; g.style.height = askH + 'px'; b.d.append(g);
+  }
+  if (o === 'flip' && b.ask.style.bottom !== 'auto') {
+    const m = el('newmark', '<b>New: hangs above</b>');
+    m.style.left = (ax - 3) + 'px'; m.style.top = (ay - 3) + 'px'; m.style.width = (b.ask.offsetWidth + 6) + 'px'; m.style.height = (askH + 6) + 'px';
+    b.d.append(m);
+  }
+}
+const hidden = new Set();
+document.querySelectorAll('[data-hide]').forEach(btn => btn.addEventListener('click', () => {
+  const k = btn.dataset.hide; hidden.has(k) ? hidden.delete(k) : hidden.add(k);
+  btn.textContent = (hidden.has(k) ? 'Show ' : 'Hide ') + OPTS.find(o => o.k === k).name.toLowerCase(); route();
+}));
+function fit() {
+  document.querySelectorAll('.fit').forEach(w => { const d = w.firstElementChild; d.style.zoom = Math.min(1, w.clientWidth / d.offsetWidth); });
+}
+// Deep links: #o=flip|scroll|margin|clamp|today, s=stamp|bulk, d=375|fold|duo, x=normal|ax3|ax5, t=light|dark; join with &.
+function route() {
+  const h = new URLSearchParams(location.hash.slice(1));
+  const o = h.get('o'), d = h.get('d'), s = h.get('s'), x = h.get('x'), t = h.get('t');
+  if (t === 'light' || t === 'dark') document.documentElement.dataset.theme = t; else delete document.documentElement.dataset.theme;
+  document.querySelectorAll('section.opt').forEach(sec => { sec.hidden = (o && sec.dataset.o !== o) || hidden.has(sec.dataset.o); });
+  document.querySelectorAll('figure').forEach(f => { f.hidden = (d && f.dataset.d !== d) || (s && f.dataset.s !== s) || (x && f.dataset.x !== x); });
+  document.querySelectorAll('nav a').forEach(a => {
+    const k = new URLSearchParams(a.getAttribute('href').slice(1));
+    const on = [...k].length ? [...k].every(([kk, v]) => h.get(kk) === v) : !location.hash || location.hash === '#';
+    a.setAttribute('aria-current', String(on));
+    if (a.hasAttribute('data-theme-link')) { const n = new URLSearchParams(h); n.set('t', k.get('t')); a.href = '#' + n; }
+  });
+  fit();
+  built.forEach(b => { if (!b.fig.hidden && b.fig.closest('section').hidden === false) layout(b); });
+}
+addEventListener('hashchange', route); addEventListener('resize', route); route();
+</script>
+</body>
+</html>

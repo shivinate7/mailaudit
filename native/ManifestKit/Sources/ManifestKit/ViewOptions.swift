@@ -1,0 +1,277 @@
+import Foundation
+import Observation
+
+/// The two list tabs the Sorted by row can order. The Ledger tab shows the list of the last one left (src/app.jsx `lastList`).
+public enum ListTab: Sendable { case packages, tally }
+
+/// The Packages sort keys. The raw value is the key sortPackages takes. The labels and their order are PKG_SORTS in the rules
+/// bundle (ViewOptions.packageSorts), not a copy here.
+public enum PackageSort: String, CaseIterable, Sendable {
+    case newest, oldest, value, rate, seller
+}
+
+/// The seven Orders from presets. The labels and their order are RANGES in the rules bundle (ViewOptions.rangePresets).
+public enum RangePreset: CaseIterable, Sendable {
+    case all, d30, d45, d60, d90, days, custom
+
+    /// The value the saved `dateFilter.preset` holds: a string, or the number of days.
+    var saved: Any {
+        switch self {
+        case .all: "all"
+        case .d30: 30
+        case .d45: 45
+        case .d60: 60
+        case .d90: 90
+        case .days: "days"
+        case .custom: "custom"
+        }
+    }
+
+    init?(saved value: Any?) {
+        if let n = value as? Int {
+            switch n {
+            case 30: self = .d30
+            case 45: self = .d45
+            case 60: self = .d60
+            case 90: self = .d90
+            default: return nil
+            }
+        } else if let s = value as? String {
+            switch s {
+            case "all": self = .all
+            case "days": self = .days
+            case "custom": self = .custom
+            default: return nil
+            }
+        } else { return nil }
+    }
+}
+
+/// The saved `dateFilter`: `{ preset, from, to, days }` (saved-state-shape). `from` and `to` are ISO days, `days` the text
+/// of the Last field. The bundle's dateRange turns it into a range.
+public struct DateFilter: Equatable, Sendable {
+    public var preset = RangePreset.all
+    public var from = ""
+    public var to = ""
+    public var days: String?
+
+    public init() {}
+
+    /// A saved value, or the default for a value that is no filter (the web keeps its default then too).
+    init(saved value: Any?) {
+        guard let d = value as? [String: Any], let p = RangePreset(saved: d["preset"]) else { return }
+        preset = p
+        from = d["from"] as? String ?? ""
+        to = d["to"] as? String ?? ""
+        days = d["days"] as? String
+    }
+
+    /// The object the store keeps and the bundle's dateRange reads.
+    var saved: [String: Any] {
+        var out: [String: Any] = ["preset": preset.saved, "from": from, "to": to]
+        if let days { out["days"] = days }
+        return out
+    }
+}
+
+/// One cell of the By month picker, from the bundle's monthChoices: the order months that exist, newest first. `from` and `to`
+/// are the ISO days the cell picks.
+public struct MonthChoice: Decodable, Equatable, Sendable {
+    public let key, label, from, to: String
+}
+
+/// A canceled order, from the bundle's canceledPackagesOf: kept on record for cross-checking refunds, in no count
+/// (canceled-orders-leave-the-list). Newest first.
+public struct CanceledPackage: Decodable, Equatable, Sendable {
+    public let gk, orderId, seller, date: String
+    public let items: [LedgerItem]
+}
+
+/// The choices Packages and Tally share: one Find query, one Showing, one reveal set, one Orders from and the two sorts
+/// (src/app.jsx `query`, `hideDone`, `revealed`, `dateFilter`, `sortBy`, `itemSort`). The models and the Ledger tab's View group
+/// hold the same instance. Find, Showing and the reveals are not saved (saved-state-shape); the last three are, under the
+/// keys the web writes.
+@MainActor @Observable
+public final class ViewOptions {
+    public private(set) var query = ""
+    /// Showing: true is Unreceived. Every load starts there (ruled-head-showing-unreceived).
+    public var hideDone = true
+    /// Packages that ignore Find and Showing and draw their whole order.
+    public private(set) var revealed: Set<String> = []
+    public private(set) var sortBy = PackageSort.newest
+    public private(set) var itemSort = TallySort.missing
+    public private(set) var dateFilter = DateFilter()
+    /// The list tab left last; Sorted by sorts that list. Native opens on Ledger, so it starts as Packages.
+    public var lastList = ListTab.packages
+    /// The lines the range keeps and the lines it leaves out, for the Orders from row's sub line. Set by PackagesModel.load.
+    public internal(set) var lineCount = 0
+    public internal(set) var outsideCount = 0
+    /// The canceled lines the ledger holds and their orders, whatever the range (the web's canceledCount and canceledPackages read every
+    /// item). Set by the Packages and Tally loads.
+    public internal(set) var canceledCount = 0
+    public internal(set) var canceled: [CanceledPackage] = []
+    /// Whether the canceled list is open under the cards. One flag serves both tabs, not saved (src/app.jsx `showCanceled`).
+    public var showCanceled = false
+
+    /// Reads the canceled count and orders off the whole ledger through the bundle's dropCanceled and canceledPackagesOf.
+    func readCanceled(itemsJSON: String, engine: RulesEngine) async throws {
+        let active = try await engine.call("dropCanceled", "[\(itemsJSON)]")
+        let raw = try await engine.call("canceledPackagesOf", "[\(itemsJSON)]")
+        let orders = try JSONDecoder().decode([CanceledPackage].self, from: Data(raw.utf8))
+        canceledCount = ViewRange.count(itemsJSON) - ViewRange.count(active)
+        canceled = orders
+    }
+
+    /// The package a Tally order-id tap asked Packages to scroll to. Packages clears it once it has scrolled (src/app.jsx `jumpGk`).
+    public var jumpGk: String?
+
+    /// The months the By month picker offers, from the bundle's monthChoices over every order. Set by PackagesModel.load.
+    public internal(set) var months: [MonthChoice] = []
+    /// The rules bundle, for what a view reads that has no model of its own (the Last stepper). Set by the models.
+    @ObservationIgnored var engine: RulesEngine?
+
+    /// Orders from's value: the bundle's rangeLabel over the saved range and every order. It is read again at each load, so a
+    /// range just changed shows the earlier label until the lists are read again, which the Ledger tab does at once.
+    public private(set) var rangeLabel = ""
+
+    /// The Orders from presets and the Sorted by keys with their labels, in the bundle's order (RANGES and PKG_SORTS).
+    public private(set) var rangePresets: [(preset: RangePreset, label: String)] = []
+    public private(set) var packageSorts: [(sort: PackageSort, label: String)] = []
+
+    public func label(of sort: PackageSort) -> String { packageSorts.first { $0.sort == sort }?.label ?? "" }
+
+    /// Reads the bundle's constants RANGES and PKG_SORTS and its rangeLabel for the saved range.
+    func readLabels(engine: RulesEngine, itemsJSON: String) async throws {
+        let ranges = try await Self.table(engine, "RANGES")
+        let sorts = try await Self.table(engine, "PKG_SORTS")
+        let label = try await engine.call("rangeLabel", "[\(try LiveItems.json(dateFilter.saved)),\(itemsJSON)]")
+        rangePresets = ranges.compactMap { row in RangePreset(saved: row.0).map { ($0, row.1) } }
+        packageSorts = sorts.compactMap { row in (row.0 as? String).flatMap(PackageSort.init(rawValue:)).map { ($0, row.1) } }
+        rangeLabel = (try JSONSerialization.jsonObject(with: Data(label.utf8), options: [.fragmentsAllowed]) as? String) ?? rangeLabel
+    }
+
+    /// A bundle constant of `[key, label]` pairs.
+    private static func table(_ engine: RulesEngine, _ name: String) async throws -> [(Any, String)] {
+        let raw = try await engine.constant(name)
+        let rows = (try JSONSerialization.jsonObject(with: Data(raw.utf8)) as? [[Any]]) ?? []
+        return rows.compactMap { $0.count == 2 ? ($0[0], $0[1] as? String ?? "") : nil }
+    }
+
+    /// The Last stepper: the bundle's bumpDays over the saved range (a blank or "0" field starts from 21, never under 1), saved as
+    /// the new range. The caller reads the lists again.
+    public func bumpDays(by step: Int, in store: LedgerStore) async throws {
+        guard let engine else { return }
+        let out = try await engine.call("bumpDays", "[\(try LiveItems.json(dateFilter.saved)),\(step)]")
+        let next = DateFilter(saved: try JSONSerialization.jsonObject(with: Data(out.utf8)))
+        try setDateFilter(next, in: store)
+    }
+
+    // MARK: Coming back after an absence
+
+    /// The store's clock when the app last left the foreground. nil while it is in front.
+    @ObservationIgnored private var leftAt: Double?
+
+    /// The app went to the background (src/app.jsx, the visibilitychange effect: hiddenAt).
+    public func leftForeground(in store: LedgerStore) { leftAt = store.clock() }
+
+    /// The app came back. After RESUME_RESET_MS away, read from the bundle against the store's clock, Showing starts over on
+    /// Unreceived (a session's start); the query, the range and the reveals stay. Returns whether it did, so the caller reads the
+    /// lists again. A return with no earlier leave does nothing.
+    public func returnedToForeground(in store: LedgerStore, engine: RulesEngine) async throws -> Bool {
+        guard let left = leftAt else { return false }
+        leftAt = nil
+        guard let ms = Double(try await engine.constant("RESUME_RESET_MS")), store.clock() - left >= ms else { return false }
+        hideDone = true
+        return true
+    }
+
+    /// Picks a whole month: the bundle's cell range, saved as a custom range, and read back as the month's name, not "Custom".
+    public func setMonth(_ choice: MonthChoice, in store: LedgerStore) throws {
+        var next = dateFilter
+        next.preset = .custom
+        next.from = choice.from
+        next.to = choice.to
+        rangeLabel = choice.label
+        try setDateFilter(next, in: store)
+    }
+
+    public init() {}
+
+    /// Takes the saved choices from the store, or their defaults when it holds none (a Reset clears them).
+    func read(_ store: LedgerStore) {
+        let saved = store.viewPreferences()
+        let sort = saved.sortBy.flatMap(PackageSort.init(rawValue:)) ?? .newest
+        let item = saved.itemSort.flatMap(TallySort.init(rawValue:)) ?? .missing
+        let range = DateFilter(saved: saved.dateFilter)
+        if sortBy != sort { sortBy = sort }
+        if itemSort != item { itemSort = item }
+        if dateFilter != range { dateFilter = range }
+    }
+
+    /// True when the query changed. A new query is a new question, so the reveals end (src/app.jsx, the effect on query and dateFilter).
+    func setQuery(_ text: String) -> Bool {
+        guard text != query else { return false }
+        query = text
+        revealed = []
+        return true
+    }
+
+    /// Shows the package's whole order whatever Find and Showing say, and keeps it so if it already does (src/app.jsx openOrder).
+    func reveal(_ gk: String) { revealed.insert(gk) }
+
+    func toggleReveal(_ gk: String) {
+        if revealed.contains(gk) { revealed.remove(gk) } else { revealed.insert(gk) }
+    }
+
+    /// Each setter below keeps the choice in memory and then writes it. A failed write throws, and the choice stays for this run.
+    public func setSortBy(_ key: PackageSort, in store: LedgerStore) throws {
+        sortBy = key
+        try store.savePreference("sortBy", key.rawValue)
+    }
+
+    public func setItemSort(_ key: TallySort, in store: LedgerStore) throws {
+        itemSort = key
+        try store.savePreference("itemSort", key.rawValue)
+    }
+
+    public func setDateFilter(_ filter: DateFilter, in store: LedgerStore) throws {
+        if filter != dateFilter { revealed = [] }
+        dateFilter = filter
+        try store.savePreference("dateFilter", filter.saved)
+    }
+}
+
+extension LedgerStore {
+    /// The saved view preferences. `cardSort` is the key itemSort shipped under before the rename; it is read when itemSort is
+    /// absent, never written (saved-state-shape).
+    func viewPreferences() -> (sortBy: String?, itemSort: String?, dateFilter: Any?) {
+        (doc["sortBy"] as? String, (doc["itemSort"] as? String) ?? (doc["cardSort"] as? String), doc["dateFilter"])
+    }
+
+    /// Saves one view preference. A choice of view is not ledger data: it arms no sync POST and moves no generation, as the
+    /// web's save of dateFilter, sortBy or itemSort arms no push (saved-state-shape). A failed save leaves the ledger as it was.
+    func savePreference(_ key: String, _ value: Any) throws {
+        let old = doc
+        doc[key] = value
+        do { try save() } catch { doc = old; throw error }
+    }
+}
+
+/// The date range the Packages, Tally and Masthead models share: the bundle's dateRange against the store's clock, then inRange.
+@MainActor
+enum ViewRange {
+    /// `null`, or the `{from, to}` object dateRange gives, as JSON.
+    static func range(_ filter: DateFilter, store: LedgerStore, engine: RulesEngine) async throws -> String {
+        try await engine.call("dateRange", "[\(try LiveItems.json(filter.saved)),\(try LiveItems.json(store.clock()))]")
+    }
+
+    /// The items inRange keeps. With no range every item stays, and no call is made.
+    static func apply(_ itemsJSON: String, range: String, engine: RulesEngine) async throws -> String {
+        range == "null" ? itemsJSON : try await engine.call("inRange", "[\(itemsJSON),\(range)]")
+    }
+
+    /// The number of items in a JSON array.
+    static func count(_ itemsJSON: String) -> Int {
+        ((try? JSONSerialization.jsonObject(with: Data(itemsJSON.utf8))) as? [Any])?.count ?? 0
+    }
+}

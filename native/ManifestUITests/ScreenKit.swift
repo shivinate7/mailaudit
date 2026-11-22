@@ -36,10 +36,11 @@ enum ScreenKit {
         app.descendants(matching: .any).matching(identifier: id).firstMatch
     }
 
+    /// `detail` is added to the failure text. It is read only when the wait fails, so a measurement taken there costs a pass nothing.
     @MainActor static func wait(_ predicate: String, for e: XCUIElement, _ message: String, timeout: TimeInterval = 5,
-                                file: StaticString = #filePath, line: UInt = #line) {
+                                detail: @autoclosure () -> String = "", file: StaticString = #filePath, line: UInt = #line) {
         let done = XCTNSPredicateExpectation(predicate: NSPredicate(format: predicate), object: e)
-        XCTAssertEqual(XCTWaiter.wait(for: [done], timeout: timeout), .completed, message, file: file, line: line)
+        XCTAssertEqual(XCTWaiter.wait(for: [done], timeout: timeout), .completed, message + detail(), file: file, line: line)
     }
 
     /// Waits for the element, scrolls it into reach when it is not hittable, taps it.
@@ -72,6 +73,19 @@ enum ScreenKit {
         app.reveal(el(app, "tally-row:\(name)"), whole: true)
     }
 
+    /// Sets the Ledger tab's Showing row to Everything, then goes back to `tab`. Every launch starts on Unreceived
+    /// (ruled-head-showing-unreceived), and a card or a Tally row that a case completes leaves the list under Unreceived, so
+    /// such a case calls this after its launch. Showing is shared by Packages and Tally, so one pick serves both tabs.
+    @MainActor static func showEverything(_ app: XCUIApplication, then tab: String = "Packages",
+                                          file: StaticString = #filePath, line: UInt = #line) {
+        app.tabBars.buttons["Ledger"].tap()
+        let value = el(app, "ledger-showing-value")
+        XCTAssertTrue(value.waitForExistence(timeout: 5), "the Showing row's value is missing on Ledger", file: file, line: line)
+        if value.label.contains("Unreceived") { tap(app, "ledger-showing", file: file, line: line) }
+        wait("label CONTAINS 'Everything'", for: value, "Showing did not change to Everything", file: file, line: line)
+        app.tabBars.buttons[tab].tap()
+    }
+
     /// Keeps one screenshot of the app in the test's results under `name`, kept past the run.
     @MainActor static func attach(_ app: XCUIApplication, _ name: String, to test: XCTestCase) {
         let shot = XCTAttachment(screenshot: app.screenshot())
@@ -91,7 +105,27 @@ enum ScreenKit {
             el(app, "stamp-note:\(gk)").typeText(note)
         }
         tap(app, "stamp-save:\(gk)", file: file, line: line)
-        wait("exists == false", for: el(app, "stamp-editor:\(gk)"), "Save did not close the editor on \(gk)", file: file, line: line)
+        wait("exists == false", for: el(app, "stamp-editor:\(gk)"), "Save did not close the editor on \(gk)",
+             detail: "\n" + bandDump(app, gk), file: file, line: line)
+    }
+
+    /// The frames that place the stamp band, for a failure: the Save button, the armed ask's two buttons, the Find pill
+    /// (identifier find-pill, FindPill.swift) and the bottom of the list. One line each, `BAND-DUMP <name> frame x,y,w,h`. A
+    /// control not on screen reads `none`. The list's bottom is a y only, so it reads as x 0, width 0, height 0.
+    @MainActor static func bandDump(_ app: XCUIApplication, _ gk: String) -> String {
+        func line(_ name: String, _ id: String) -> String {
+            let e = el(app, id)
+            return "BAND-DUMP \(name) frame " + (e.exists ? rectText(e.frame) : "none")
+        }
+        let bottom = CGRect(x: 0, y: app.listBottom, width: 0, height: 0)
+        return [line("save", "stamp-save:\(gk)"), line("ask-confirm", "stamp-ask-confirm:\(gk)"),
+                line("ask-cancel", "stamp-ask-cancel:\(gk)"), line("find-pill", "find-pill"),
+                "BAND-DUMP listBottom frame " + rectText(bottom)].joined(separator: "\n")
+    }
+
+    /// x,y,width,height, each to one decimal place.
+    static func rectText(_ r: CGRect) -> String {
+        [r.minX, r.minY, r.width, r.height].map { String(format: "%.1f", $0) }.joined(separator: ",")
     }
 
     /// Each element whose identifier starts with one of `prefixes`, by identifier, from one snapshot of the app's tree.
