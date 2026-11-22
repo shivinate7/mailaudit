@@ -17,7 +17,7 @@ public struct HandDayRow: Equatable, Sendable {
 }
 
 /// A short envelope of today's pile: the cards still owed, and how many copies are owed. `owedLines` is the one home of each
-/// owed card with its copies still owed, "1 Lightning Bolt", in the envelope's own line order; `missing` is the names alone.
+/// owed card with its copies still owed, "1 Lightning Bolt", sorted by card name, as `groupPackages` returns them; `missing` is the names alone.
 public struct HandShortRow: Equatable, Sendable {
     public let gk, seller: String
     public let missing: [String]
