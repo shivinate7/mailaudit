@@ -27,6 +27,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `one-repo-for-both-halves` | The source repository, `mailaudit`, is public and holds no data. | [`docs/decisions/one-repo-for-both-halves.md`](../docs/decisions/one-repo-for-both-halves.md) |
 | `one-simulator-per-mac` | Kind: process | [`docs/decisions/one-simulator-per-mac.md`](../docs/decisions/one-simulator-per-mac.md) |
 | `peek-is-three-valued` | **Status:** retired 2026-10-14. | [`docs/decisions/peek-is-three-valued.md`](../docs/decisions/peek-is-three-valued.md) |
+| `phone-forms-and-mockup-size` | Kind: process | [`docs/decisions/phone-forms-and-mockup-size.md`](../docs/decisions/phone-forms-and-mockup-size.md) |
 | `photo-branch-must-preexist` | Photos lived on the `main` branch of `mailaudit-data`, in `photos/`. | [`docs/decisions/photo-branch-must-preexist.md`](../docs/decisions/photo-branch-must-preexist.md) |
 | `photo-errors-never-hit-pushstate` | Kind: process | [`docs/decisions/photo-errors-never-hit-pushstate.md`](../docs/decisions/photo-errors-never-hit-pushstate.md) |
 | `photo-writes-wait-one-second` | **Status:** retired 2026-10-14. | [`docs/decisions/photo-writes-wait-one-second.md`](../docs/decisions/photo-writes-wait-one-second.md) |
@@ -97,7 +98,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `ruled-head-masthead-vocabulary` | Kind: build | [`docs/decisions/ruled-head-masthead-vocabulary.md`](../docs/decisions/ruled-head-masthead-vocabulary.md) |
 | `ruled-head-one-advisory-entrance` | Kind: build | [`docs/decisions/ruled-head-one-advisory-entrance.md`](../docs/decisions/ruled-head-one-advisory-entrance.md) |
 | `rules-run-in-javascriptcore` | **Status:** ruled. | [`docs/decisions/rules-run-in-javascriptcore.md`](../docs/decisions/rules-run-in-javascriptcore.md) |
-| `screens-checked-headless-in-ci` | Each view (Ledger tab, Orphaned, Tally, Packages) is checked in a headless browser at 375px and 760px. | [`docs/decisions/screens-checked-headless-in-ci.md`](../docs/decisions/screens-checked-headless-in-ci.md) |
+| `screens-checked-headless-in-ci` | Each view (Ledger tab, Orphaned, Tally, Packages) is checked in a headless browser at 402px, 440px and 466px, the three phone forms. | [`docs/decisions/screens-checked-headless-in-ci.md`](../docs/decisions/screens-checked-headless-in-ci.md) |
 | `seed-load-guards` | Kind: build | [`docs/decisions/seed-load-guards.md`](../docs/decisions/seed-load-guards.md) |
 | `spacing-on-4px-grid` | Kind: build | [`docs/decisions/spacing-on-4px-grid.md`](../docs/decisions/spacing-on-4px-grid.md) |
 | `sync-revamp-cloudflare` | Kind: build | [`docs/decisions/sync-revamp-cloudflare.md`](../docs/decisions/sync-revamp-cloudflare.md) |
@@ -349,7 +350,7 @@ Each row has the slug, the first sentence of the record, and a link to it. A rec
 | `recent-log-unbuilt` | The web client ships the log, its merge rule, its panel and its undo (plan `recent-log-web`). | [`docs/debts/recent-log-unbuilt.md`](../docs/debts/recent-log-unbuilt.md) |
 | `recent-log-unmeasured` | How many actions a heavy day's mail makes is unmeasured. | [`docs/debts/recent-log-unmeasured.md`](../docs/debts/recent-log-unmeasured.md) |
 | `recent-undo-under-bar` | At 375px with the page at the top, the first open Recent row's UNDO cell spans y 705 to 777. | [`docs/debts/recent-undo-under-bar.md`](../docs/debts/recent-undo-under-bar.md) |
-| `reimport-refresh-stays-on-device` | A CSV re-import refreshes `tracking` and renames a line (`refreshName`, owner item 90) on the device that imports it. | [`docs/debts/reimport-refresh-stays-on-device.md`](../docs/debts/reimport-refresh-stays-on-device.md) |
+| `reimport-refresh-stays-on-device` | A CSV re-import renames a line (`refreshName`, owner item 90) on the device that imports it. | [`docs/debts/reimport-refresh-stays-on-device.md`](../docs/debts/reimport-refresh-stays-on-device.md) |
 | `reset-all-keeps-token-unpinned` | No test pins that `resetAll` keeps the GitHub token. | [`docs/debts/reset-all-keeps-token-unpinned.md`](../docs/debts/reset-all-keeps-token-unpinned.md) |
 | `reset-leaves-sync-unpinned` | No test pins that an armed Reset leaves Sync open. | [`docs/debts/reset-leaves-sync-unpinned.md`](../docs/debts/reset-leaves-sync-unpinned.md) |
 | `reset-vs-worker-copy-unmeasured` | A Reset writes an empty ledger with no change times, on the web and on native. | [`docs/debts/reset-vs-worker-copy-unmeasured.md`](../docs/debts/reset-vs-worker-copy-unmeasured.md) |

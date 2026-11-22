@@ -14,7 +14,7 @@ Spacing uses a 4px step. Every gap is a multiple of 4px. The card corner radius 
 
 The build is the grid on web. Every margin, padding, row gap and column gap is a multiple of 4px. Each card's four corners are 8px.
 
-- Claim 14 in `check:screens` pins it, in `test/screens.mjs`, at 375px and 760px, and at 375px on touch, in every state. The probe reads computed margin, padding, row gap and column gap. Auto margins are skipped, and a gap of "normal" counts as 0. It also reads each card's four corners. It does not walk insets or pseudo-elements. So an inset such as the photo badge's -6px offset, and a pseudo-element such as the chip ::after, are not checked.
+- Claim 14 in `check:screens` pins it, in `test/screens.mjs`, at 402px, 440px and 466px, and at each form on touch, in every state. The probe reads computed margin, padding, row gap and column gap. Auto margins are skipped, and a gap of "normal" counts as 0. It also reads each card's four corners. It does not walk insets or pseudo-elements. So an inset such as the photo badge's -6px offset, and a pseudo-element such as the chip ::after, are not checked.
 - `GRID_EXEMPT` in `test/screens.mjs` is an empty list. No element is exempt. The test header gives the reason: no offender at the lane head is out of scope, and none is a UA default.
 - Six snaps break the nearest-multiple-of-4 rule. Each keeps its value, with a one-line code comment in `src/app.jsx` that names its reason. There are seven comment sites, because the envelope composer has two.
   - Stamp chip row gap, 12px: keeps a 44px target.

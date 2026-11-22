@@ -12,7 +12,7 @@ paths:
 A milestone is taken before the risky step, never after. Read these before changing anything that restores.
 
 - `milestones-taken-before-risk` — Milestones save before the risky step.
-- `a-restore-is-not-local` — A restore is not local.
+- `a-restore-is-not-local` — A restore is not local. Tracking is the exception.
 - `older-versions-come-off-branch` — Older versions come from the branch.
 - `unwritable-store-says-so` — A broken version store must say so.
 - `recovery-control-not-state-gated` — A recovery control cannot need the state it recovers.
